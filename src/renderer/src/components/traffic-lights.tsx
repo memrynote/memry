@@ -23,8 +23,8 @@ export function TrafficLights({ className, compact = false }: TrafficLightsProps
         window.api.windowMaximize()
     }
 
-    const buttonSize = compact ? "size-2.5" : "size-3"
-    const iconSize = compact ? "size-2.5" : "size-3"
+    const buttonSize = compact ? "size-2.5" : "size-3.5"
+    const iconSize = compact ? "size-2.5" : "size-3.5"
 
     return (
         <div
