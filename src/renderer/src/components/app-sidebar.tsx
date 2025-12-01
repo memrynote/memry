@@ -8,15 +8,10 @@ import {
   Command,
   Frame,
   GalleryVerticalEnd,
-  Home,
-  Inbox,
   Map,
   PieChart,
-  Plus,
-  Search,
   Settings2,
   SquareTerminal,
-  CheckSquare,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -42,46 +37,104 @@ const data = {
     {
       name: "Acme Inc",
       logo: GalleryVerticalEnd,
+      plan: "Enterprise",
     },
     {
       name: "Acme Corp.",
       logo: AudioWaveform,
+      plan: "Startup",
     },
     {
       name: "Evil Corp.",
       logo: Command,
+      plan: "Free",
     },
   ],
   navMain: [
     {
-      title: "Search",
+      title: "Playground",
       url: "#",
-      icon: Search,
+      icon: SquareTerminal,
+      isActive: true,
+      items: [
+        {
+          title: "History",
+          url: "#",
+        },
+        {
+          title: "Starred",
+          url: "#",
+        },
+        {
+          title: "Settings",
+          url: "#",
+        },
+      ],
     },
     {
-      title: "New",
+      title: "Models",
       url: "#",
-      icon: Plus,
+      icon: Bot,
+      items: [
+        {
+          title: "Genesis",
+          url: "#",
+        },
+        {
+          title: "Explorer",
+          url: "#",
+        },
+        {
+          title: "Quantum",
+          url: "#",
+        },
+      ],
     },
     {
-      title: "",
-      url: "",
-      isSeparator: true,
+      title: "Documentation",
+      url: "#",
+      icon: BookOpen,
+      items: [
+        {
+          title: "Introduction",
+          url: "#",
+        },
+        {
+          title: "Get Started",
+          url: "#",
+        },
+        {
+          title: "Tutorials",
+          url: "#",
+        },
+        {
+          title: "Changelog",
+          url: "#",
+        },
+      ],
     },
     {
-      title: "Home",
+      title: "Settings",
       url: "#",
-      icon: Home,
-    },
-    {
-      title: "Inbox",
-      url: "#",
-      icon: Inbox,
-    },
-    {
-      title: "Tasks",
-      url: "#",
-      icon: CheckSquare,
+      icon: Settings2,
+      items: [
+        {
+          title: "General",
+          url: "#",
+        },
+        {
+          title: "Team",
+          url: "#",
+        },
+        {
+          title: "Billing",
+          url: "#",
+        },
+        {
+          title: "Limits",
+          url: "#",
+        },
+      ],
     },
   ],
   projects: [
