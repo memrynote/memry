@@ -3,28 +3,63 @@
 import * as React from "react"
 import {
   AudioWaveform,
-  BookOpen,
-  Bot,
   Command,
   Frame,
   GalleryVerticalEnd,
+  Home,
+  Inbox,
+  ListTodo,
   Map,
   PieChart,
-  Settings2,
-  SquareTerminal,
+  Plus,
+  Search,
 } from "lucide-react"
 
-import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
+import { InputGroup } from "@/components/ui/input-group"
 import { NavUser } from "@/components/nav-user"
 import { TeamSwitcher } from "@/components/team-switcher"
+import { Kbd } from "@/components/ui/kbd"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
   SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarRail,
+  SidebarSeparator,
 } from "@/components/ui/sidebar"
+
+// Quick actions data
+const quickActions = [
+  {
+    title: "New",
+    icon: Plus,
+    kbd: "⌘N",
+  },
+]
+
+// Main navigation data
+const mainNav = [
+  {
+    title: "Home",
+    url: "#",
+    icon: Home,
+  },
+  {
+    title: "Inbox",
+    url: "#",
+    icon: Inbox,
+  },
+  {
+    title: "Tasks",
+    url: "#",
+    icon: ListTodo,
+  },
+]
 
 // This is sample data.
 const data = {
@@ -48,93 +83,6 @@ const data = {
       name: "Evil Corp.",
       logo: Command,
       plan: "Free",
-    },
-  ],
-  navMain: [
-    {
-      title: "Playground",
-      url: "#",
-      icon: SquareTerminal,
-      isActive: true,
-      items: [
-        {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Models",
-      url: "#",
-      icon: Bot,
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: BookOpen,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
     },
   ],
   projects: [
@@ -163,7 +111,53 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        {/* Quick Actions: Search & New */}
+        <SidebarGroup>
+          <SidebarMenu>
+            {/* Search Input */}
+            <SidebarMenuItem>
+              <InputGroup className="h-8 w-full border-none shadow-none bg-transparent hover:bg-sidebar-accent rounded-md p-2 gap-2 overflow-hidden">
+                <Search className="size-4 shrink-0 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground min-w-0"
+                />
+                <Kbd>⌘K</Kbd>
+              </InputGroup>
+            </SidebarMenuItem>
+
+            {/* New Button */}
+            {quickActions.map((action) => (
+              <SidebarMenuItem key={action.title}>
+                <SidebarMenuButton tooltip={action.title}>
+                  <action.icon />
+                  <span>{action.title}</span>
+                  <Kbd className="ml-auto">{action.kbd}</Kbd>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+
+        <SidebarSeparator className="!w-auto" />
+
+        {/* Main Navigation: Home, Inbox, Tasks */}
+        <SidebarGroup>
+          <SidebarMenu>
+            {mainNav.map((item) => (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton tooltip={item.title} asChild>
+                  <a href={item.url}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>
