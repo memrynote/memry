@@ -1,5 +1,7 @@
 {
   "style": "new-york",
+  "rsc": false,
+  "tsx": true,
   "tailwind": {
     "config": "tailwind.config.js",
     "css": "src/renderer/src/assets/base.css",
@@ -7,25 +9,25 @@
     "cssVariables": true,
     "prefix": ""
   },
-  "rsc": false,
-  "aliases": {
-    "utils": "@/lib/utils",
-    "components": "@/components",
-    "lib": "@/lib",
-    "hooks": "@/lib/hooks",
-    "ui": "@/components/ui"
-  },
   "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/lib/hooks"
+  },
   "registries": {
-        "@alpine": "https://alpine-registry.vercel.app/r/{name}.json",
-        "@tailark": "https://tailark.com/r/{name}.json",
-        "@magicui": "https://magicui.dev/r/{name}.json",
-        "@shadcn-form": "https://www.shadcn-form.com/r/{name}.json",
-        "@kokonutui": "https://kokonutui.com/r/{name}.json",
-        "@diceui": "https://diceui.com/r/{name}.json",
-        "@basecn": "https://basecn.dev/r/{name}.json",
-        "@animateui": "https://animate-ui.com/r/{name}.json",
-        "@fancycomponents": "https://fancycomponents.dev/r/{name}.json",
-        "@coss": "https://coss.com/origin/r/{name}.json"
+    "@alpine": "https://alpine-registry.vercel.app/r/{name}.json",
+    "@tailark": "https://tailark.com/r/{name}.json",
+    "@magicui": "https://magicui.dev/r/{name}.json",
+    "@shadcn-form": "https://www.shadcn-form.com/r/{name}.json",
+    "@kokonutui": "https://kokonutui.com/r/{name}.json",
+    "@diceui": "https://diceui.com/r/{name}.json",
+    "@basecn": "https://basecn.dev/r/{name}.json",
+    "@animateui": "https://animate-ui.com/r/{name}.json",
+    "@fancycomponents": "https://fancycomponents.dev/r/{name}.json",
+    "@coss": "https://coss.com/origin/r/{name}.json",
+    "@kibo-ui": "https://www.kibo-ui.com/r/{name}.json"
   }
 }

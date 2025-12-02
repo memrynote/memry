@@ -21,6 +21,7 @@ import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -29,7 +30,7 @@ import {
   SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar"
-import TreeComponent from "@/components/comp-567"
+import FileTree from "@/components/file-tree"
 
 // Quick actions data
 const quickActions = [
@@ -154,7 +155,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         {/* File Tree */}
         <SidebarGroup className="flex-1 overflow-auto">
-          <TreeComponent />
+          <SidebarGroupLabel>Files</SidebarGroupLabel>
+          <SidebarMenu>
+            <FileTree />
+          </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
       <SidebarRail />
