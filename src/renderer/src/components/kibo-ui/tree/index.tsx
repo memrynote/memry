@@ -22,10 +22,25 @@ type NodeInfo = {
   hasChildren: boolean;
 };
 
+export type DropPosition = "before" | "after" | "inside";
+
+export type DragState = {
+  draggedId: string | null;
+  dropTargetId: string | null;
+  dropPosition: DropPosition | null;
+};
+
+export type MoveOperation = {
+  draggedId: string;
+  targetId: string;
+  position: DropPosition;
+};
+
 type TreeContextType = {
   expandedIds: Set<string>;
   selectedIds: string[];
   focusedId: string | null;
+  dragState: DragState;
   toggleExpanded: (nodeId: string) => void;
   handleSelection: (nodeId: string, ctrlKey: boolean) => void;
   setFocusedId: (nodeId: string | null) => void;
@@ -35,6 +50,10 @@ type TreeContextType = {
   getNodeInfo: (nodeId: string) => NodeInfo | undefined;
   expandNode: (nodeId: string) => void;
   collapseNode: (nodeId: string) => void;
+  setDragState: (state: Partial<DragState>) => void;
+  handleDrop: () => void;
+  draggable?: boolean;
+  onMove?: (operation: MoveOperation) => void;
   showLines?: boolean;
   showIcons?: boolean;
   selectable?: boolean;
@@ -84,6 +103,8 @@ export type TreeProviderProps = {
   multiSelect?: boolean;
   selectedIds?: string[];
   onSelectionChange?: (selectedIds: string[]) => void;
+  draggable?: boolean;
+  onMove?: (operation: MoveOperation) => void;
   indent?: number;
   animateExpand?: boolean;
   className?: string;
@@ -98,6 +119,8 @@ export const TreeProvider = ({
   multiSelect = false,
   selectedIds,
   onSelectionChange,
+  draggable = false,
+  onMove,
   indent = 20,
   animateExpand = true,
   className,
@@ -109,12 +132,39 @@ export const TreeProvider = ({
     selectedIds ?? []
   );
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [dragState, setDragStateInternal] = useState<DragState>({
+    draggedId: null,
+    dropTargetId: null,
+    dropPosition: null,
+  });
   const nodesRef = useRef<Map<string, NodeInfo>>(new Map());
   const nodeOrderRef = useRef<string[]>([]);
 
   const isControlled =
     selectedIds !== undefined && onSelectionChange !== undefined;
   const currentSelectedIds = isControlled ? selectedIds : internalSelectedIds;
+
+  const setDragState = useCallback((state: Partial<DragState>) => {
+    setDragStateInternal((prev) => ({ ...prev, ...state }));
+  }, []);
+
+  const handleDrop = useCallback(() => {
+    const { draggedId, dropTargetId, dropPosition } = dragState;
+
+    if (draggedId && dropTargetId && dropPosition && onMove) {
+      onMove({
+        draggedId,
+        targetId: dropTargetId,
+        position: dropPosition,
+      });
+    }
+
+    setDragStateInternal({
+      draggedId: null,
+      dropTargetId: null,
+      dropPosition: null,
+    });
+  }, [dragState, onMove]);
 
   const registerNode = useCallback((nodeId: string, parentId: string | null, hasChildren: boolean) => {
     nodesRef.current.set(nodeId, { nodeId, parentId, hasChildren });
@@ -214,6 +264,7 @@ export const TreeProvider = ({
         expandedIds,
         selectedIds: currentSelectedIds,
         focusedId,
+        dragState,
         toggleExpanded,
         handleSelection,
         setFocusedId,
@@ -223,6 +274,10 @@ export const TreeProvider = ({
         getNodeInfo,
         expandNode,
         collapseNode,
+        setDragState,
+        handleDrop,
+        draggable,
+        onMove,
         showLines,
         showIcons,
         selectable,
@@ -332,10 +387,18 @@ export const TreeNodeTrigger = ({
     expandNode,
     collapseNode,
     expandedIds,
+    draggable,
+    dragState,
+    setDragState,
+    handleDrop,
   } = useTree();
   const { nodeId, level, hasChildren, parentId } = useTreeNode();
   const isSelected = selectedIds.includes(nodeId);
   const triggerRef = useRef<HTMLDivElement>(null);
+
+  const isDragging = dragState.draggedId === nodeId;
+  const isDropTarget = dragState.dropTargetId === nodeId;
+  const dropPosition = isDropTarget ? dragState.dropPosition : null;
 
   // Direct DOM focus - much faster than React state updates
   const focusNode = useCallback((targetNodeId: string) => {
@@ -406,16 +469,69 @@ export const TreeNodeTrigger = ({
     }
   }, [nodeId, hasChildren, parentId, getVisibleNodes, focusNode, expandNode, collapseNode, expandedIds, getNodeInfo, handleSelection]);
 
+  // Drag event handlers
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    if (!draggable) return;
+
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", nodeId);
+    setDragState({ draggedId: nodeId });
+  }, [draggable, nodeId, setDragState]);
+
+  const handleDragEnd = useCallback(() => {
+    setDragState({ draggedId: null, dropTargetId: null, dropPosition: null });
+  }, [setDragState]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (!draggable || dragState.draggedId === nodeId) return;
+
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const y = e.clientY - rect.top;
+    const height = rect.height;
+    const threshold = height / 3;
+
+    let position: DropPosition;
+    if (y < threshold) {
+      position = "before";
+    } else if (y > height - threshold) {
+      position = "after";
+    } else {
+      position = hasChildren ? "inside" : "after";
+    }
+
+    setDragState({ dropTargetId: nodeId, dropPosition: position });
+  }, [draggable, dragState.draggedId, nodeId, hasChildren, setDragState]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (!triggerRef.current?.contains(relatedTarget)) {
+      setDragState({ dropTargetId: null, dropPosition: null });
+    }
+  }, [setDragState]);
+
+  const handleDropEvent = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    handleDrop();
+  }, [handleDrop]);
+
   return (
     <motion.div
       ref={triggerRef}
       tabIndex={0}
       data-tree-node-id={nodeId}
+      draggable={draggable}
       className={cn(
         "group relative flex cursor-pointer items-center rounded-md px-3 py-1 outline-none",
         "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         "focus:bg-sidebar-accent focus:text-sidebar-accent-foreground",
         isSelected && "bg-sidebar-accent text-sidebar-accent-foreground",
+        isDragging && "opacity-50",
+        draggable && "cursor-grab active:cursor-grabbing",
         className
       )}
       onClick={(e) => {
@@ -426,10 +542,39 @@ export const TreeNodeTrigger = ({
       }}
       onFocus={() => setFocusedId(nodeId)}
       onKeyDown={handleKeyDown}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDropEvent}
       style={{ paddingLeft: level * (indent ?? 0) + 8 }}
       whileTap={{ scale: 0.98, transition: { duration: 0.1 } }}
       {...props}
     >
+      {/* Drop indicator - before */}
+      {isDropTarget && dropPosition === "before" && (
+        <div
+          className="absolute left-2 right-2 -top-0.5 h-0.5 rounded-full bg-primary"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Drop indicator - after */}
+      {isDropTarget && dropPosition === "after" && (
+        <div
+          className="absolute left-2 right-2 -bottom-0.5 h-0.5 rounded-full bg-primary"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Drop indicator - inside (for folders) */}
+      {isDropTarget && dropPosition === "inside" && (
+        <div
+          className="absolute inset-0 rounded-md border-2 border-primary border-dashed bg-primary/10"
+          aria-hidden="true"
+        />
+      )}
+
       <TreeLines />
       {children as ReactNode}
     </motion.div>

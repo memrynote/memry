@@ -9,14 +9,33 @@ import {
     TreeNodeTrigger,
     TreeProvider,
     TreeView,
+    type MoveOperation,
 } from "@/components/kibo-ui/tree";
 import { FileCode, FileJson, FileText } from "lucide-react";
 
 export default function FileTree() {
+    const handleMove = (operation: MoveOperation) => {
+
+        console.log("Move operation:", {
+            draggedId: operation.draggedId,
+            targetId: operation.targetId,
+            position: operation.position,
+        });
+
+        // Backend payload:
+        // {
+        //   itemId: operation.draggedId,
+        //   targetId: operation.targetId,
+        //   position: operation.position, // "before" | "after" | "inside"
+        // }
+    };
+
     return (
         <TreeProvider
             // defaultExpandedIds={["src", "components", "ui"]}
             onSelectionChange={(ids) => console.log("Selected:", ids)}
+            onMove={handleMove}
+            draggable={true}
             animateExpand={false}
             multiSelect={true}
             indent={16}
