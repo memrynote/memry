@@ -25,6 +25,7 @@
         "@diceui": "https://diceui.com/r/{name}.json",
         "@basecn": "https://basecn.dev/r/{name}.json",
         "@animateui": "https://animate-ui.com/r/{name}.json",
-        "@fancycomponents": "https://fancycomponents.dev/r/{name}.json"
+        "@fancycomponents": "https://fancycomponents.dev/r/{name}.json",
+        "@coss": "https://coss.com/origin/r/{name}.json"
   }
 }

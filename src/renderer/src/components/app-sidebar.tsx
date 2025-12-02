@@ -29,8 +29,7 @@ import {
   SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { FileTree } from "@/components/file-tree"
-import { TreeDataItem } from "@/types"
+import TreeComponent from "@/components/comp-567"
 
 // Quick actions data
 const quickActions = [
@@ -92,68 +91,6 @@ const data = {
 }
 
 
-const treeData: TreeDataItem[] = [
-  {
-    id: "1",
-    name: "Documents",
-    type: "folder",
-    isOpen: true,
-    children: [
-      {
-        id: "2",
-        name: "Projects",
-        type: "folder",
-        isOpen: true,
-        children: [
-          {
-            id: "3",
-            name: "Project A",
-            type: "file",
-          },
-          {
-            id: "4",
-            name: "Project B",
-            type: "file",
-          },
-        ],
-      },
-      {
-        id: "5",
-        name: "Notes",
-        type: "folder",
-        children: [
-          {
-            id: "6",
-            name: "Meeting Notes",
-            type: "file",
-          },
-          {
-            id: "7",
-            name: "Ideas",
-            type: "file",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "8",
-    name: "Archive",
-    type: "folder",
-    children: [
-      {
-        id: "9",
-        name: "Old Files",
-        type: "file",
-      },
-    ],
-  },
-  {
-    id: "10",
-    name: "Quick Notes.txt",
-    type: "file",
-  },
-]
 
 function SidebarHeaderContent({ teams }: { teams: typeof data.teams }) {
   const { state } = useSidebar()
@@ -216,8 +153,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
 
         {/* File Tree */}
-        <SidebarGroup>
-          <FileTree data={treeData} />
+        <SidebarGroup className="flex-1 overflow-auto">
+          <TreeComponent />
         </SidebarGroup>
       </SidebarContent>
       <SidebarRail />
