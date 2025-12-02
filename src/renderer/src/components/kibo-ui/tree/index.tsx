@@ -326,7 +326,6 @@ export const TreeNodeTrigger = ({
     toggleExpanded,
     handleSelection,
     indent,
-    focusedId,
     setFocusedId,
     getVisibleNodes,
     getNodeInfo,
@@ -336,15 +335,15 @@ export const TreeNodeTrigger = ({
   } = useTree();
   const { nodeId, level, hasChildren, parentId } = useTreeNode();
   const isSelected = selectedIds.includes(nodeId);
-  const isFocused = focusedId === nodeId;
   const triggerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-focus when this node becomes the focused node
-  useEffect(() => {
-    if (isFocused && triggerRef.current) {
-      triggerRef.current.focus();
+  // Direct DOM focus - much faster than React state updates
+  const focusNode = useCallback((targetNodeId: string) => {
+    const element = document.querySelector(`[data-tree-node-id="${targetNodeId}"]`) as HTMLElement;
+    if (element) {
+      element.focus();
     }
-  }, [isFocused]);
+  }, []);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const visibleNodes = getVisibleNodes();
@@ -356,7 +355,7 @@ export const TreeNodeTrigger = ({
         const nextIndex = currentIndex + 1;
         if (nextIndex < visibleNodes.length) {
           const nextNodeId = visibleNodes[nextIndex];
-          setFocusedId(nextNodeId);
+          focusNode(nextNodeId);
           handleSelection(nextNodeId, false);
         }
         break;
@@ -366,7 +365,7 @@ export const TreeNodeTrigger = ({
         const prevIndex = currentIndex - 1;
         if (prevIndex >= 0) {
           const prevNodeId = visibleNodes[prevIndex];
-          setFocusedId(prevNodeId);
+          focusNode(prevNodeId);
           handleSelection(prevNodeId, false);
         }
         break;
@@ -384,7 +383,7 @@ export const TreeNodeTrigger = ({
               const nextNodeInfo = getNodeInfo(visibleNodes[nextIndex]);
               if (nextNodeInfo?.parentId === nodeId) {
                 const nextNodeId = visibleNodes[nextIndex];
-                setFocusedId(nextNodeId);
+                focusNode(nextNodeId);
                 handleSelection(nextNodeId, false);
               }
             }
@@ -399,20 +398,21 @@ export const TreeNodeTrigger = ({
           collapseNode(nodeId);
         } else if (parentId) {
           // Move to parent and select it
-          setFocusedId(parentId);
+          focusNode(parentId);
           handleSelection(parentId, false);
         }
         break;
       }
     }
-  }, [nodeId, hasChildren, parentId, getVisibleNodes, setFocusedId, expandNode, collapseNode, expandedIds, getNodeInfo, handleSelection]);
+  }, [nodeId, hasChildren, parentId, getVisibleNodes, focusNode, expandNode, collapseNode, expandedIds, getNodeInfo, handleSelection]);
 
   return (
     <motion.div
       ref={triggerRef}
       tabIndex={0}
+      data-tree-node-id={nodeId}
       className={cn(
-        "group relative flex cursor-pointer items-center rounded-md px-3 py-1 transition-all duration-100 outline-none",
+        "group relative flex cursor-pointer items-center rounded-md px-3 py-1 outline-none",
         "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         "focus:bg-sidebar-accent focus:text-sidebar-accent-foreground",
         isSelected && "bg-sidebar-accent text-sidebar-accent-foreground",
