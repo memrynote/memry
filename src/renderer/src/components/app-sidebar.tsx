@@ -32,41 +32,48 @@ import {
 } from "@/components/ui/sidebar"
 import FileTree from "@/components/file-tree"
 
-// Quick actions data
+// Quick actions data with soft utility colors
 const quickActions = [
   {
     title: "Search",
     icon: Search,
     kbd: "⌘ K",
+    iconColor: "text-soft-slate",
   },
   {
     title: "New",
     icon: Plus,
     kbd: "⌘ N",
+    iconColor: "text-soft-sage",
   },
 ]
 
-// Main navigation data
+// Main navigation data with soft accent colors
 const mainNav = [
+  {
+    title: "Inbox",
+    url: "#",
+    icon: Inbox,
+    iconColor: "text-accent-cyan",
+  },
   {
     title: "Home",
     url: "#",
     icon: Home,
+    iconColor: "text-accent-green",
   },
   {
     title: "Today",
     url: "#",
     icon: Calendar,
+    iconColor: "text-accent-orange",
   },
-  {
-    title: "Inbox",
-    url: "#",
-    icon: Inbox,
-  },
+
   {
     title: "Tasks",
     url: "#",
     icon: ListTodo,
+    iconColor: "text-accent-purple",
   },
 ]
 
@@ -124,7 +131,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             {quickActions.map((action) => (
               <SidebarMenuItem key={action.title}>
                 <SidebarMenuButton tooltip={action.title}>
-                  <action.icon />
+                  <action.icon className={cn("size-4", action.iconColor)} />
                   <span>{action.title}</span>
                   <KbdGroup className="ml-auto">
                     <Kbd>{action.kbd}</Kbd>
@@ -144,7 +151,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton tooltip={item.title} asChild>
                   <a href={item.url}>
-                    <item.icon />
+                    <item.icon className={cn("size-4", item.iconColor)} />
                     <span>{item.title}</span>
                   </a>
                 </SidebarMenuButton>
