@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Link, FileText, Image, Mic, Globe, Check, Loader2 } from "lucide-react"
 
 import {
@@ -21,6 +21,7 @@ import {
   existingNotes,
 } from "@/data/filing-data"
 import { extractDomain } from "@/lib/inbox-utils"
+import { isMac, isInputFocused } from "@/hooks/use-keyboard-shortcuts"
 import type { InboxItem, InboxItemType, Folder, LinkedNote } from "@/types"
 
 // Item preview icon component
@@ -97,6 +98,9 @@ const FilingPanel = ({
   const [linkedNotes, setLinkedNotes] = useState<LinkedNote[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
+  // Get suggested folders for number shortcuts
+  const suggestedFoldersForShortcut = useMemo(() => getSuggestedFolders(), [])
+
   // Reset state when panel opens with new item
   useEffect(() => {
     if (isOpen && item) {
@@ -111,18 +115,31 @@ const FilingPanel = ({
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (!isOpen) return
 
+      // Skip if typing in an input field
+      if (isInputFocused()) return
+
       // Cmd/Ctrl + Enter to file
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault()
         if (selectedFolder && item) {
           handleFileItem()
         }
+        return
+      }
+
+      // Number keys 1-5 to select suggested folders (when not in input)
+      if (/^[1-5]$/.test(e.key)) {
+        const index = parseInt(e.key, 10) - 1
+        if (index < suggestedFoldersForShortcut.length) {
+          e.preventDefault()
+          setSelectedFolder(suggestedFoldersForShortcut[index])
+        }
       }
     }
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, selectedFolder, item])
+  }, [isOpen, selectedFolder, item, suggestedFoldersForShortcut])
 
   const handleFolderSelect = useCallback((folder: Folder): void => {
     setSelectedFolder(folder)
@@ -161,8 +178,8 @@ const FilingPanel = ({
     }
   }
 
-  const isMac = typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0
-  const keyboardHint = isMac ? "⌘⏎ to file · Esc to close" : "Ctrl+Enter to file · Esc to close"
+  const modifierKeyDisplay = isMac ? "⌘" : "Ctrl+"
+  const keyboardHint = `${modifierKeyDisplay}⏎ file · 1-5 folder · Esc close`
 
   const canFile = selectedFolder !== null && !isLoading
 

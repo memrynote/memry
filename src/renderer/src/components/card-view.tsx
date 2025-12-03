@@ -466,6 +466,61 @@ const CardView = ({
           }
           break
 
+        case "Home":
+          // Jump to first item
+          e.preventDefault()
+          if (flatItems.length > 0) {
+            setFocusedItemId(flatItems[0].id)
+          }
+          break
+
+        case "End":
+          // Jump to last item
+          e.preventDefault()
+          if (flatItems.length > 0) {
+            setFocusedItemId(flatItems[flatItems.length - 1].id)
+          }
+          break
+
+        case "PageDown":
+          // Jump 10 items down
+          e.preventDefault()
+          if (flatItems.length > 0) {
+            const targetIndex = Math.min(currentIndex + 10, flatItems.length - 1)
+            setFocusedItemId(flatItems[targetIndex].id)
+          }
+          break
+
+        case "PageUp":
+          // Jump 10 items up
+          e.preventDefault()
+          if (flatItems.length > 0) {
+            const targetIndex = Math.max(currentIndex - 10, 0)
+            setFocusedItemId(flatItems[targetIndex].id)
+          }
+          break
+
+        case "Delete":
+        case "Backspace":
+          // Delete focused item
+          e.preventDefault()
+          if (focusedItemId) {
+            onDelete(focusedItemId)
+          }
+          break
+
+        case "o":
+        case "O":
+          // Open link in new tab
+          if (focusedItemId) {
+            const focusedItem = flatItems.find((i) => i.id === focusedItemId)
+            if (focusedItem?.type === "link" && focusedItem.url) {
+              e.preventDefault()
+              window.open(focusedItem.url, "_blank", "noopener,noreferrer")
+            }
+          }
+          break
+
         case "Enter":
           // Open Filing Panel for focused item
           if (focusedItemId) {
@@ -493,7 +548,7 @@ const CardView = ({
           break
       }
     },
-    [flatItems, focusedItemId, onPreview, onFile, setFocusedItemId, handleSelectionToggle, isInBulkMode, onSelectionChange]
+    [flatItems, focusedItemId, onPreview, onFile, onDelete, setFocusedItemId, handleSelectionToggle, isInBulkMode, onSelectionChange]
   )
 
   // Add keyboard listener

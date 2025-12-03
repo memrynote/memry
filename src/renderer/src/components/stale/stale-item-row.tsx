@@ -67,17 +67,17 @@ export const StaleItemRow = ({
   return (
     <div
       className={cn(
-        "group relative flex flex-col gap-0.5 py-2 px-2 rounded-md cursor-pointer",
-        "transition-all duration-200 ease-out",
+        "group relative flex flex-col gap-0.5 py-2 px-3 rounded-md cursor-pointer",
+        "transition-[background-color,box-shadow] duration-150 ease-out",
         // Exit animation
         isExiting
           ? "opacity-0 scale-95 -translate-y-1 motion-reduce:opacity-0 motion-reduce:scale-100 motion-reduce:translate-y-0"
           : "opacity-100 scale-100 translate-y-0",
-        // Selection/focus states
+        // Selection/focus states (using ring-inset to prevent layout shift)
         isSelected
-          ? "bg-[var(--primary)]/10 ring-1 ring-[var(--primary)]/30"
+          ? "bg-primary/10 ring-1 ring-inset ring-primary/30"
           : isFocused
-            ? "bg-amber-500/10 ring-2 ring-amber-500/30 ring-offset-1 ring-offset-[var(--background)]"
+            ? "bg-amber-500/10 ring-2 ring-inset ring-amber-500/50"
             : "hover:bg-amber-500/5"
       )}
       role="listitem"
@@ -116,26 +116,32 @@ export const StaleItemRow = ({
           {item.title}
         </span>
 
-        {/* Timestamp - hidden on hover when actions show (unless in bulk mode) */}
-        <span className={cn(
-          "shrink-0 text-xs text-[var(--muted-foreground)] tabular-nums transition-opacity duration-100",
-          isInBulkMode ? "" : "group-hover:hidden"
-        )}>
-          {formatTimestamp(item.timestamp, "OLDER")}
-        </span>
+        {/* Timestamp & Quick Actions container - fixed width to prevent layout shift */}
+        <div className="relative shrink-0 flex items-center">
+          {/* Timestamp - fades out on hover or when focused */}
+          <span className={cn(
+            "text-xs text-muted-foreground tabular-nums transition-opacity duration-100",
+            isInBulkMode ? "" : isFocused ? "opacity-0" : "group-hover:opacity-0"
+          )}>
+            {formatTimestamp(item.timestamp, "OLDER")}
+          </span>
 
-        {/* Quick Actions - visible on hover (hidden in bulk mode) */}
-        {!isInBulkMode && (
-          <div className="hidden group-hover:flex shrink-0 transition-opacity duration-100 ease-out">
-            <QuickActions
-              itemId={item.id}
-              onFile={onFile}
-              onPreview={onPreview}
-              onDelete={onDelete}
-              variant="row"
-            />
-          </div>
-        )}
+          {/* Quick Actions - absolutely positioned over timestamp, visible on hover or when focused */}
+          {!isInBulkMode && (
+            <div className={cn(
+              "absolute right-0 top-1/2 -translate-y-1/2 flex transition-opacity duration-100",
+              isFocused ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            )}>
+              <QuickActions
+                itemId={item.id}
+                onFile={onFile}
+                onPreview={onPreview}
+                onDelete={onDelete}
+                variant="row"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Bottom row: Age indicator */}

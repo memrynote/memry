@@ -78,6 +78,9 @@ const InboxItemRow = ({
   onQuickFileArrowUp,
   onQuickFileFolderSelect,
 }: InboxItemRowProps): React.JSX.Element => {
+  // Compute filtered folders for number key shortcuts
+  const filteredFolders = getFilteredFolders(sampleFolders, quickFileQuery, 5)
+
   // Format title for voice memos
   const displayTitle =
     item.type === "voice" && item.duration
@@ -101,16 +104,16 @@ const InboxItemRow = ({
   return (
     <div
       className={cn(
-        "group relative flex items-center gap-3 py-2 px-2 rounded-md cursor-pointer",
+        "group relative flex items-center gap-3 py-2 px-3 rounded-md cursor-pointer",
         // Smooth transitions using animation tokens
         "transition-[background-color,box-shadow,opacity,transform] duration-[var(--duration-instant)] ease-[var(--ease-out)]",
         // Exit animation with height collapse
         isExiting && "item-removing",
-        // Selection/focus states with smooth transitions
+        // Selection/focus states with smooth transitions (using inset ring to prevent overflow)
         isSelected
-          ? "bg-primary/10 ring-1 ring-primary/30"
+          ? "bg-primary/10 ring-1 ring-inset ring-primary/30"
           : isFocused
-            ? "bg-muted ring-2 ring-ring ring-offset-1 ring-offset-background"
+            ? "bg-muted ring-2 ring-inset ring-primary/50"
             : "hover:bg-muted"
       )}
       role="listitem"
@@ -158,6 +161,8 @@ const InboxItemRow = ({
             onCancel={onQuickFileCancel}
             onArrowDown={onQuickFileArrowDown}
             onArrowUp={onQuickFileArrowUp}
+            filteredFolders={filteredFolders}
+            onFolderSelect={onQuickFileFolderSelect}
           />
 
           {/* Dropdown */}
@@ -319,6 +324,27 @@ const ListView = ({
     onSelectionChange(newSelection)
   }, [selectedItemIds, flatItems, onSelectionChange])
 
+  // Quick-File folder select handler (moved before handleKeyDown for use in keyboard shortcuts)
+  const handleQuickFileFolderSelect = useCallback(
+    (folder: Folder): void => {
+      if (quickFileItemId) {
+        onQuickFile(quickFileItemId, folder.id)
+
+        // Move focus to next item
+        const currentIndex = flatItems.findIndex((i) => i.id === quickFileItemId)
+        const nextItem = flatItems[currentIndex + 1] || flatItems[currentIndex - 1]
+        if (nextItem) {
+          setFocusedItemId(nextItem.id)
+        }
+
+        // Close Quick-File
+        setQuickFileItemId(null)
+        setQuickFileQuery("")
+      }
+    },
+    [quickFileItemId, onQuickFile, flatItems, setFocusedItemId]
+  )
+
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
     (e: KeyboardEvent): void => {
@@ -377,6 +403,81 @@ const ListView = ({
           }
           break
 
+        case "Home":
+          // Jump to first item (Cmd+Up also handled below)
+          e.preventDefault()
+          if (quickFileItemId) return
+          if (flatItems.length > 0) {
+            setFocusedItemId(flatItems[0].id)
+          }
+          break
+
+        case "End":
+          // Jump to last item (Cmd+Down also handled below)
+          e.preventDefault()
+          if (quickFileItemId) return
+          if (flatItems.length > 0) {
+            setFocusedItemId(flatItems[flatItems.length - 1].id)
+          }
+          break
+
+        case "PageDown":
+          // Jump 10 items down
+          e.preventDefault()
+          if (quickFileItemId) return
+          if (flatItems.length > 0) {
+            const targetIndex = Math.min(currentIndex + 10, flatItems.length - 1)
+            setFocusedItemId(flatItems[targetIndex].id)
+          }
+          break
+
+        case "PageUp":
+          // Jump 10 items up
+          e.preventDefault()
+          if (quickFileItemId) return
+          if (flatItems.length > 0) {
+            const targetIndex = Math.max(currentIndex - 10, 0)
+            setFocusedItemId(flatItems[targetIndex].id)
+          }
+          break
+
+        case "Delete":
+        case "Backspace":
+          // Delete focused item (or selected items in bulk mode)
+          e.preventDefault()
+          if (quickFileItemId) return
+          if (focusedItemId) {
+            onDelete(focusedItemId)
+          }
+          break
+
+        case "o":
+        case "O":
+          // Open link in new tab
+          if (focusedItemId && !quickFileItemId) {
+            const focusedItem = flatItems.find((i) => i.id === focusedItemId)
+            if (focusedItem?.type === "link" && focusedItem.url) {
+              e.preventDefault()
+              window.open(focusedItem.url, "_blank", "noopener,noreferrer")
+            }
+          }
+          break
+
+        case "1":
+        case "2":
+        case "3":
+        case "4":
+        case "5":
+          // Number keys for Quick-File folder selection
+          if (quickFileItemId && filteredFolders.length > 0) {
+            const index = parseInt(e.key, 10) - 1
+            if (index < filteredFolders.length) {
+              e.preventDefault()
+              handleQuickFileFolderSelect(filteredFolders[index])
+            }
+          }
+          break
+
         case ".":
         case "f":
         case "F":
@@ -420,7 +521,7 @@ const ListView = ({
           break
       }
     },
-    [flatItems, focusedItemId, quickFileItemId, onPreview, onFile, isPreviewOpen, setFocusedItemId, handleSelectionToggle, isInBulkMode, onSelectionChange]
+    [flatItems, focusedItemId, quickFileItemId, filteredFolders, onPreview, onFile, onDelete, isPreviewOpen, setFocusedItemId, handleSelectionToggle, handleQuickFileFolderSelect, isInBulkMode, onSelectionChange]
   )
 
   // Add keyboard listener
@@ -487,26 +588,6 @@ const ListView = ({
       setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : prev))
     }
   }, [filteredFolders.length])
-
-  const handleQuickFileFolderSelect = useCallback(
-    (folder: Folder): void => {
-      if (quickFileItemId) {
-        onQuickFile(quickFileItemId, folder.id)
-
-        // Move focus to next item
-        const currentIndex = flatItems.findIndex((i) => i.id === quickFileItemId)
-        const nextItem = flatItems[currentIndex + 1] || flatItems[currentIndex - 1]
-        if (nextItem) {
-          setFocusedItemId(nextItem.id)
-        }
-
-        // Close Quick-File
-        setQuickFileItemId(null)
-        setQuickFileQuery("")
-      }
-    },
-    [quickFileItemId, onQuickFile, flatItems, setFocusedItemId]
-  )
 
   const handleItemFocus = useCallback((id: string): void => {
     setFocusedItemId(id)

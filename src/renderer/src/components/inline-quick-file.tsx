@@ -2,6 +2,7 @@ import { useRef, useEffect } from "react"
 import { Folder, CornerDownLeft } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import type { Folder as FolderType } from "@/types"
 
 interface InlineQuickFileProps {
   query: string
@@ -10,6 +11,8 @@ interface InlineQuickFileProps {
   onCancel: () => void
   onArrowDown: () => void
   onArrowUp: () => void
+  filteredFolders?: FolderType[]
+  onFolderSelect?: (folder: FolderType) => void
   className?: string
 }
 
@@ -20,6 +23,8 @@ const InlineQuickFile = ({
   onCancel,
   onArrowDown,
   onArrowUp,
+  filteredFolders = [],
+  onFolderSelect,
   className,
 }: InlineQuickFileProps): React.JSX.Element => {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -30,6 +35,16 @@ const InlineQuickFile = ({
   }, [])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    // Handle number keys 1-5 for quick folder selection
+    if (e.key >= "1" && e.key <= "5") {
+      const index = parseInt(e.key, 10) - 1
+      if (filteredFolders.length > 0 && index < filteredFolders.length && onFolderSelect) {
+        e.preventDefault()
+        onFolderSelect(filteredFolders[index])
+        return
+      }
+    }
+
     switch (e.key) {
       case "Enter":
         e.preventDefault()

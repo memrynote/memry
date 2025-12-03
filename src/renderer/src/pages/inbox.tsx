@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo, useEffect } from "react"
 import { List, Grid, Check } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -14,11 +14,14 @@ import { BulkFilePanel } from "@/components/bulk/bulk-file-panel"
 import { BulkTagPopover } from "@/components/bulk/bulk-tag-popover"
 import { DeleteConfirmationDialog } from "@/components/bulk/delete-confirmation-dialog"
 import { EmptyState } from "@/components/empty-state/empty-state"
+import { KeyboardShortcutsModal } from "@/components/keyboard-shortcuts-modal"
+import { SRAnnouncer } from "@/components/sr-announcer"
 import { sampleInboxItems } from "@/data/sample-inbox-items"
 import { sampleFolders, UNSORTED_FOLDER_ID } from "@/data/filing-data"
 import { detectClusters, getClusterKey } from "@/lib/ai-clustering"
 import { getStaleItems, getNonStaleItems } from "@/lib/stale-utils"
 import { cn } from "@/lib/utils"
+import { isInputFocused, isMac } from "@/hooks/use-keyboard-shortcuts"
 import type { InboxItem } from "@/types"
 
 type ViewMode = "list" | "card"
@@ -75,6 +78,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const [isBulkTagPopoverOpen, setIsBulkTagPopoverOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
+  // Keyboard shortcuts modal state
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false)
+
   // Focused item state (shared between views for preview navigation)
   const [focusedItemId, setFocusedItemId] = useState<string | null>(items[0]?.id || null)
 
@@ -112,12 +118,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const nonStaleItems = useMemo(() => getNonStaleItems(items), [items])
   const hasStaleItems = staleItems.length > 0
 
-  const handleViewChange = (value: string): void => {
-    if (value === "list" || value === "card") {
-      setViewMode(value)
-    }
-  }
-
   // Generate unique toast ID
   const generateToastId = (): string => {
     return `toast-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
@@ -134,6 +134,132 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const removeToast = useCallback((id: string): void => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id))
   }, [])
+
+  // Global keyboard shortcuts handler
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent): void => {
+      // Skip if modal is open or typing in an input
+      if (isShortcutsModalOpen || isFilingPanelOpen || isBulkFilePanelOpen) return
+
+      // ? or Cmd+/ opens keyboard shortcuts help
+      if (e.key === "?" || ((e.metaKey || e.ctrlKey) && e.key === "/")) {
+        e.preventDefault()
+        setIsShortcutsModalOpen(true)
+        return
+      }
+
+      // Skip other shortcuts if in an input field
+      if (isInputFocused()) return
+
+      // V toggles view mode
+      if (e.key.toLowerCase() === "v" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault()
+        setViewMode((prev) => (prev === "list" ? "card" : "list"))
+        return
+      }
+
+      // R refreshes the inbox (placeholder - would fetch new data in real app)
+      if (e.key.toLowerCase() === "r" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault()
+        // In a real app, this would fetch new data
+        addToast({
+          message: "Inbox refreshed",
+          type: "success",
+        })
+        return
+      }
+
+      // Delete/Backspace for deleting focused or selected items
+      if (e.key === "Delete" || e.key === "Backspace") {
+        // If in bulk mode, trigger bulk delete
+        if (isInBulkMode) {
+          e.preventDefault()
+          setIsDeleteDialogOpen(true)
+          return
+        }
+
+        // If single item is focused, delete it
+        if (focusedItemId && !isPreviewPanelOpen) {
+          e.preventDefault()
+          // Find the focused item and trigger delete
+          const focusedItem = items.find((i) => i.id === focusedItemId)
+          if (focusedItem) {
+            // Find next item to focus
+            const allItems = [...staleItems, ...nonStaleItems]
+            const currentIndex = allItems.findIndex((i) => i.id === focusedItemId)
+            const nextItem = allItems[currentIndex + 1] || allItems[currentIndex - 1]
+
+            // Trigger delete animation
+            setExitingItemIds((prev) => new Set(prev).add(focusedItemId))
+
+            // After animation, remove item
+            setTimeout(() => {
+              const itemIndex = items.findIndex((i) => i.id === focusedItemId)
+              setDeletedItems((prev) => [...prev, { item: focusedItem, index: itemIndex }])
+              setItems((prev) => prev.filter((i) => i.id !== focusedItemId))
+              setExitingItemIds((prev) => {
+                const next = new Set(prev)
+                next.delete(focusedItemId)
+                return next
+              })
+
+              // Update focus to next item
+              if (nextItem) {
+                setFocusedItemId(nextItem.id)
+              }
+
+              // Show undo toast
+              addToast({
+                message: `"${focusedItem.title}" deleted`,
+                type: "success",
+                onUndo: () => {
+                  setItems((prev) => {
+                    const newItems = [...prev]
+                    newItems.splice(itemIndex, 0, focusedItem)
+                    return newItems
+                  })
+                  setDeletedItems((prev) => prev.filter((d) => d.item.id !== focusedItem.id))
+                },
+              })
+            }, 200)
+          }
+        }
+        return
+      }
+
+      // O opens the original link for the focused item
+      if (e.key.toLowerCase() === "o" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (focusedItemId) {
+          const focusedItem = items.find((i) => i.id === focusedItemId)
+          if (focusedItem?.url) {
+            e.preventDefault()
+            window.open(focusedItem.url, "_blank", "noopener,noreferrer")
+          }
+        }
+        return
+      }
+    }
+
+    window.addEventListener("keydown", handleGlobalKeyDown)
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown)
+  }, [
+    isShortcutsModalOpen,
+    isFilingPanelOpen,
+    isBulkFilePanelOpen,
+    isInBulkMode,
+    focusedItemId,
+    isPreviewPanelOpen,
+    items,
+    staleItems,
+    nonStaleItems,
+    addToast,
+  ])
+
+  const handleViewChange = (value: string): void => {
+    if (value === "list" || value === "card") {
+      setViewMode(value)
+    }
+  }
 
   // Handle selection change
   const handleSelectionChange = useCallback((newSelection: Set<string>): void => {
@@ -767,12 +893,12 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         ) : (
           // Normal Header
           <>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold text-foreground">Inbox</h1>
-          <Badge variant="secondary" className="text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold text-foreground">Inbox</h1>
+              <Badge variant="secondary" className="text-muted-foreground">
                 {items.length} items{todayItemsCount > 0 && ` · ${todayItemsCount} from today`}
-          </Badge>
-        </div>
+              </Badge>
+            </div>
             <div className="flex items-center gap-2">
               {items.length > 0 && (
                 <Button
@@ -784,26 +910,26 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                   Select all
                 </Button>
               )}
-        <ToggleGroup
-          type="single"
-          value={viewMode}
+              <ToggleGroup
+                type="single"
+                value={viewMode}
                 onValueChange={handleViewChange}
-          className="gap-1"
-        >
-          <ToggleGroupItem value="list" aria-label="List view">
-            <List className="size-4" />
-          </ToggleGroupItem>
-          <ToggleGroupItem value="card" aria-label="Grid view">
-            <Grid className="size-4" />
-          </ToggleGroupItem>
-        </ToggleGroup>
-      </div>
+                className="gap-1"
+              >
+                <ToggleGroupItem value="list" aria-label="List view">
+                  <List className="size-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="card" aria-label="Grid view">
+                  <Grid className="size-4" />
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
           </>
         )}
-              </div>
+      </div>
 
       {/* Content: Scrollable area with view-based rendering or empty state */}
-      <div className={cn("flex-1 overflow-y-auto", isInBulkMode && "pb-32")}>
+      <div className={cn("flex-1 overflow-y-auto px-1", isInBulkMode && "pb-32")}>
         {showEmptyState ? (
           <EmptyState
             itemsProcessedToday={itemsProcessedToday}
@@ -901,6 +1027,15 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
 
       {/* Toast notifications */}
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
+
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcutsModal
+        isOpen={isShortcutsModalOpen}
+        onClose={() => setIsShortcutsModalOpen(false)}
+      />
+
+      {/* Screen Reader Announcer */}
+      <SRAnnouncer />
     </div>
   )
 }
