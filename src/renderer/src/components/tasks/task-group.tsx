@@ -23,6 +23,7 @@ interface TaskGroupProps {
   accentColor?: string
   isMuted?: boolean
   showProjectBadge?: boolean
+  selectedTaskId?: string | null
   onToggleComplete: (taskId: string) => void
   onTaskClick?: (taskId: string) => void
   className?: string
@@ -32,6 +33,7 @@ interface StatusTaskGroupProps {
   status: Status
   tasks: Task[]
   project: Project
+  selectedTaskId?: string | null
   onToggleComplete: (taskId: string) => void
   onTaskClick?: (taskId: string) => void
   className?: string
@@ -80,6 +82,7 @@ export const TaskGroup = ({
   accentColor,
   isMuted = false,
   showProjectBadge = false,
+  selectedTaskId,
   onToggleComplete,
   onTaskClick,
   className,
@@ -108,6 +111,7 @@ export const TaskGroup = ({
               task={task}
               project={project}
               isCompleted={completed}
+              isSelected={selectedTaskId === task.id}
               showProjectBadge={showProjectBadge}
               onToggleComplete={onToggleComplete}
               onClick={onTaskClick}
@@ -127,6 +131,7 @@ export const StatusTaskGroup = ({
   status,
   tasks,
   project,
+  selectedTaskId,
   onToggleComplete,
   onTaskClick,
   className,
@@ -157,6 +162,7 @@ export const StatusTaskGroup = ({
               task={task}
               project={project}
               isCompleted={completed}
+              isSelected={selectedTaskId === task.id}
               showProjectBadge={false} // Never show in project view
               onToggleComplete={onToggleComplete}
               onClick={onTaskClick}

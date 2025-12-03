@@ -26,6 +26,7 @@ interface TaskListProps {
     projects: Project[]
     selectedId: string
     selectedType: "view" | "project"
+    selectedTaskId?: string | null
     onToggleComplete: (taskId: string) => void
     onTaskClick?: (taskId: string) => void
     onQuickAdd: (
@@ -48,6 +49,7 @@ interface TaskListByDueDateProps {
     tasks: Task[]
     projects: Project[]
     showProjectBadge: boolean
+    selectedTaskId?: string | null
     onToggleComplete: (taskId: string) => void
     onTaskClick?: (taskId: string) => void
 }
@@ -56,6 +58,7 @@ const TaskListByDueDate = ({
     tasks,
     projects,
     showProjectBadge,
+    selectedTaskId,
     onToggleComplete,
     onTaskClick,
 }: TaskListByDueDateProps): React.JSX.Element => {
@@ -85,6 +88,7 @@ const TaskListByDueDate = ({
                         accentColor={config.accentColor}
                         isMuted={config.isMuted}
                         showProjectBadge={showProjectBadge}
+                        selectedTaskId={selectedTaskId}
                         onToggleComplete={onToggleComplete}
                         onTaskClick={onTaskClick}
                     />
@@ -101,6 +105,7 @@ const TaskListByDueDate = ({
 interface TaskListByCompletionProps {
     tasks: Task[]
     projects: Project[]
+    selectedTaskId?: string | null
     onToggleComplete: (taskId: string) => void
     onTaskClick?: (taskId: string) => void
 }
@@ -108,6 +113,7 @@ interface TaskListByCompletionProps {
 const TaskListByCompletion = ({
     tasks,
     projects,
+    selectedTaskId,
     onToggleComplete,
     onTaskClick,
 }: TaskListByCompletionProps): React.JSX.Element => {
@@ -130,6 +136,7 @@ const TaskListByCompletion = ({
                         accentColor={config.accentColor}
                         isMuted={config.isMuted}
                         showProjectBadge={true}
+                        selectedTaskId={selectedTaskId}
                         onToggleComplete={onToggleComplete}
                         onTaskClick={onTaskClick}
                     />
@@ -146,6 +153,7 @@ const TaskListByCompletion = ({
 interface TaskListByStatusProps {
     tasks: Task[]
     project: Project
+    selectedTaskId?: string | null
     onToggleComplete: (taskId: string) => void
     onTaskClick?: (taskId: string) => void
 }
@@ -153,6 +161,7 @@ interface TaskListByStatusProps {
 const TaskListByStatus = ({
     tasks,
     project,
+    selectedTaskId,
     onToggleComplete,
     onTaskClick,
 }: TaskListByStatusProps): React.JSX.Element => {
@@ -169,6 +178,7 @@ const TaskListByStatus = ({
                     status={group.status}
                     tasks={group.tasks}
                     project={project}
+                    selectedTaskId={selectedTaskId}
                     onToggleComplete={onToggleComplete}
                     onTaskClick={onTaskClick}
                 />
@@ -186,6 +196,7 @@ export const TaskList = ({
     projects,
     selectedId,
     selectedType,
+    selectedTaskId,
     onToggleComplete,
     onTaskClick,
     onQuickAdd,
@@ -232,6 +243,7 @@ export const TaskList = ({
                 <TaskListByStatus
                     tasks={tasks}
                     project={selectedProject}
+                    selectedTaskId={selectedTaskId}
                     onToggleComplete={onToggleComplete}
                     onTaskClick={onTaskClick}
                 />
@@ -244,6 +256,7 @@ export const TaskList = ({
                 <TaskListByCompletion
                     tasks={tasks}
                     projects={projects}
+                    selectedTaskId={selectedTaskId}
                     onToggleComplete={onToggleComplete}
                     onTaskClick={onTaskClick}
                 />
@@ -256,6 +269,7 @@ export const TaskList = ({
                 tasks={tasks}
                 projects={projects}
                 showProjectBadge={true}
+                selectedTaskId={selectedTaskId}
                 onToggleComplete={onToggleComplete}
                 onTaskClick={onTaskClick}
             />

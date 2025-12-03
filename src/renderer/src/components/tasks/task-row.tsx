@@ -17,6 +17,7 @@ interface TaskRowProps {
   task: Task
   project: Project
   isCompleted: boolean
+  isSelected?: boolean
   showProjectBadge?: boolean
   onToggleComplete: (taskId: string) => void
   onClick?: (taskId: string) => void
@@ -31,6 +32,7 @@ export const TaskRow = ({
   task,
   project,
   isCompleted,
+  isSelected = false,
   showProjectBadge = false,
   onToggleComplete,
   onClick,
@@ -66,6 +68,7 @@ export const TaskRow = ({
         "hover:bg-accent/50",
         onClick && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         isOverdue && !isCompleted && "border-l-2 border-l-destructive",
+        isSelected && "bg-primary/10 ring-2 ring-primary/30",
         className
       )}
       aria-label={`Task: ${task.title}${isCompleted ? ", completed" : ""}`}

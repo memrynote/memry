@@ -15,10 +15,12 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { toast } from "sonner"
 import { ProjectModal } from "@/components/tasks/project-modal"
 import { DeleteProjectDialog, type DeleteTasksOption } from "@/components/tasks/delete-project-dialog"
 import { TaskList } from "@/components/tasks/task-list"
 import { AddTaskModal } from "@/components/tasks/add-task-modal"
+import { TaskDetailPanel } from "@/components/tasks/task-detail-panel"
 import { getIconByName } from "@/components/icon-picker"
 import { cn } from "@/lib/utils"
 import {
@@ -539,6 +541,10 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
     const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false)
     const [addTaskPrefillTitle, setAddTaskPrefillTitle] = useState("")
 
+    // Task Detail Panel states
+    const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false)
+    const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+
     // ========== DERIVED STATE ==========
 
     // Calculate view counts dynamically
@@ -611,6 +617,21 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
     const headerSubtitle = useMemo(() => {
         return formatTaskSubtitle(taskCounts, selectedId, selectedType)
     }, [taskCounts, selectedId, selectedType])
+
+    // Derived: selected task for detail panel
+    const selectedTask = useMemo(() => {
+        if (!selectedTaskId) return null
+        return tasks.find((t) => t.id === selectedTaskId) || null
+    }, [selectedTaskId, tasks])
+
+    // Derived: is selected task completed
+    const isSelectedTaskCompleted = useMemo(() => {
+        if (!selectedTask) return false
+        const project = projectsWithCounts.find((p) => p.id === selectedTask.projectId)
+        if (!project) return false
+        const status = project.statuses.find((s) => s.id === selectedTask.statusId)
+        return status?.type === "done"
+    }, [selectedTask, projectsWithCounts])
 
     // ========== HANDLERS ==========
 
@@ -841,9 +862,68 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
     )
 
     const handleTaskClick = useCallback((taskId: string): void => {
-        console.log("Task clicked:", taskId)
-        // Future: Open task detail panel
+        setSelectedTaskId(taskId)
+        setIsDetailPanelOpen(true)
     }, [])
+
+    const handleCloseDetailPanel = useCallback((): void => {
+        setIsDetailPanelOpen(false)
+        setSelectedTaskId(null)
+    }, [])
+
+    const handleUpdateTask = useCallback((taskId: string, updates: Partial<Task>): void => {
+        setTasks((prev) =>
+            prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
+        )
+    }, [])
+
+    const handleDeleteTask = useCallback((taskId: string): void => {
+        const task = tasks.find((t) => t.id === taskId)
+        if (!task) return
+
+        // Store for undo
+        const deletedTask = { ...task }
+
+        setTasks((prev) => prev.filter((t) => t.id !== taskId))
+        setIsDetailPanelOpen(false)
+        setSelectedTaskId(null)
+
+        toast.success("Task deleted", {
+            description: `"${task.title}" has been deleted.`,
+            action: {
+                label: "Undo",
+                onClick: () => {
+                    setTasks((prev) => [...prev, deletedTask])
+                },
+            },
+        })
+    }, [tasks])
+
+    const handleDuplicateTask = useCallback((taskId: string): void => {
+        const task = tasks.find((t) => t.id === taskId)
+        if (!task) return
+
+        const project = projectsWithCounts.find((p) => p.id === task.projectId)
+        const defaultStatus = project ? getDefaultTodoStatus(project) : null
+
+        const duplicatedTask: Task = {
+            ...task,
+            id: `task-${Date.now()}`,
+            title: `${task.title} (copy)`,
+            statusId: defaultStatus?.id || task.statusId,
+            createdAt: new Date(),
+            completedAt: null,
+        }
+
+        setTasks((prev) => [...prev, duplicatedTask])
+
+        toast.success("Task duplicated", {
+            description: `"${duplicatedTask.title}" has been created.`,
+        })
+
+        // Open the duplicated task in the panel
+        setSelectedTaskId(duplicatedTask.id)
+    }, [tasks, projectsWithCounts])
 
     return (
         <>
@@ -881,6 +961,7 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
                             projects={projectsWithCounts}
                             selectedId={selectedId}
                             selectedType={selectedType}
+                            selectedTaskId={selectedTaskId}
                             onToggleComplete={handleToggleComplete}
                             onTaskClick={handleTaskClick}
                             onQuickAdd={handleQuickAdd}
@@ -928,6 +1009,19 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
                 defaultProjectId={modalDefaultProjectId}
                 defaultDueDate={modalDefaultDueDate}
                 prefillTitle={addTaskPrefillTitle}
+            />
+
+            {/* Task Detail Panel */}
+            <TaskDetailPanel
+                isOpen={isDetailPanelOpen}
+                task={selectedTask}
+                projects={projectsWithCounts}
+                isCompleted={isSelectedTaskCompleted}
+                onClose={handleCloseDetailPanel}
+                onUpdateTask={handleUpdateTask}
+                onToggleComplete={handleToggleComplete}
+                onDeleteTask={handleDeleteTask}
+                onDuplicateTask={handleDuplicateTask}
             />
         </>
     )
