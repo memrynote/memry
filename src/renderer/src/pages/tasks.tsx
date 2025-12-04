@@ -21,6 +21,7 @@ import { DeleteProjectDialog, type DeleteTasksOption } from "@/components/tasks/
 import { TaskList } from "@/components/tasks/task-list"
 import { AddTaskModal } from "@/components/tasks/add-task-modal"
 import { TaskDetailPanel } from "@/components/tasks/task-detail-panel"
+import { KanbanBoard } from "@/components/tasks/kanban"
 import { getIconByName } from "@/components/icon-picker"
 import { cn } from "@/lib/utils"
 import {
@@ -782,6 +783,7 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
                 dueDate: Date | null
                 priority: Priority
                 projectId: string | null
+                statusId?: string | null // Optional status ID for kanban column context
             }
         ): void => {
             // Use parsed data if available, otherwise use context defaults
@@ -810,10 +812,17 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
                 }
             }
 
-            // Find the project and get default status
+            // Find the project
             const project = projectsWithCounts.find((p) => p.id === projectId)
-            const defaultStatus = project ? getDefaultTodoStatus(project) : null
-            const statusId = defaultStatus?.id || project?.statuses[0]?.id || "p-todo"
+
+            // Use provided statusId if available (from kanban column), otherwise fall back to default todo status
+            let statusId: string
+            if (parsedData?.statusId) {
+                statusId = parsedData.statusId
+            } else {
+                const defaultStatus = project ? getDefaultTodoStatus(project) : null
+                statusId = defaultStatus?.id || project?.statuses[0]?.id || "p-todo"
+            }
 
             const newTask = createDefaultTask(projectId, statusId, title, dueDate)
             // Apply priority from parsed data
@@ -969,13 +978,27 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
                         />
                     )}
 
-                    {/* Placeholder for Kanban and Calendar views */}
-                    {activeView !== "list" && (
+                    {/* Kanban View */}
+                    {activeView === "kanban" && (
+                        <KanbanBoard
+                            tasks={filteredTasks}
+                            projects={projectsWithCounts}
+                            selectedId={selectedId}
+                            selectedType={selectedType}
+                            selectedTaskId={selectedTaskId}
+                            onUpdateTask={handleUpdateTask}
+                            onTaskClick={handleTaskClick}
+                            onToggleComplete={handleToggleComplete}
+                            onDeleteTask={handleDeleteTask}
+                            onQuickAdd={handleQuickAdd}
+                        />
+                    )}
+
+                    {/* Placeholder for Calendar view */}
+                    {activeView === "calendar" && (
                         <div className="flex flex-1 items-center justify-center p-6">
                             <div className="text-center">
-                                <p className="text-lg text-text-secondary">
-                                    {activeView === "kanban" ? "Kanban" : "Calendar"} view
-                                </p>
+                                <p className="text-lg text-text-secondary">Calendar view</p>
                                 <p className="mt-2 text-sm text-text-tertiary">(coming soon)</p>
                             </div>
                         </div>
