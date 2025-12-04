@@ -752,3 +752,499 @@ export const completionGroupConfig: Record<keyof TaskGroupByCompletion, GroupHea
   earlier: { id: "earlier", label: "EARLIER", isMuted: true },
 }
 
+// ============================================================================
+// TODAY & UPCOMING VIEW HELPERS
+// ============================================================================
+
+/**
+ * Get end of day (23:59:59.999) for a date
+ */
+export const endOfDay = (date: Date): Date => {
+  const result = new Date(date)
+  result.setHours(23, 59, 59, 999)
+  return result
+}
+
+/**
+ * Priority order for sorting (lower = higher priority)
+ */
+const priorityOrder: Record<string, number> = {
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+  none: 4,
+}
+
+/**
+ * Sort tasks by time first (if available), then by priority
+ */
+export const sortTasksByTimeAndPriority = (tasks: Task[]): Task[] => {
+  return [...tasks].sort((a, b) => {
+    // Tasks with time come first
+    if (a.dueTime && !b.dueTime) return -1
+    if (!a.dueTime && b.dueTime) return 1
+
+    // Both have time: sort by time
+    if (a.dueTime && b.dueTime) {
+      const timeCompare = a.dueTime.localeCompare(b.dueTime)
+      if (timeCompare !== 0) return timeCompare
+    }
+
+    // Same time or no time: sort by priority
+    return priorityOrder[a.priority] - priorityOrder[b.priority]
+  })
+}
+
+/**
+ * Sort overdue tasks by date (oldest first), then by priority
+ */
+export const sortOverdueTasks = (tasks: Task[]): Task[] => {
+  return [...tasks].sort((a, b) => {
+    // Date compare (oldest first)
+    if (a.dueDate && b.dueDate) {
+      const dateCompare = a.dueDate.getTime() - b.dueDate.getTime()
+      if (dateCompare !== 0) return dateCompare
+    }
+
+    // Then by priority
+    return priorityOrder[a.priority] - priorityOrder[b.priority]
+  })
+}
+
+/**
+ * Result type for Today view filtering
+ */
+export interface TodayViewTasks {
+  overdue: Task[]
+  today: Task[]
+}
+
+/**
+ * Get tasks for Today view: overdue and today's tasks
+ * Filters out completed tasks
+ */
+export const getTodayTasks = (
+  tasks: Task[],
+  projects: Project[]
+): TodayViewTasks => {
+  const now = new Date()
+  const todayStart = startOfDay(now)
+  const todayEnd = endOfDay(now)
+
+  const overdue: Task[] = []
+  const today: Task[] = []
+
+  tasks.forEach((task) => {
+    // Skip completed tasks
+    if (isTaskCompleted(task, projects)) return
+
+    // Skip tasks without due date
+    if (!task.dueDate) return
+
+    const dueDate = startOfDay(task.dueDate)
+
+    if (isBefore(dueDate, todayStart)) {
+      // Overdue: due before today
+      overdue.push(task)
+    } else if (isWithinInterval(task.dueDate, { start: todayStart, end: todayEnd })) {
+      // Today: due today
+      today.push(task)
+    }
+  })
+
+  return {
+    overdue: sortOverdueTasks(overdue),
+    today: sortTasksByTimeAndPriority(today),
+  }
+}
+
+/**
+ * Result type for Upcoming view filtering
+ */
+export interface UpcomingViewTasks {
+  overdue: Task[]
+  byDay: Map<string, Task[]>
+}
+
+/**
+ * Get tasks for Upcoming view: overdue and tasks grouped by day for the next N days
+ * Filters out completed tasks
+ */
+export const getUpcomingTasks = (
+  tasks: Task[],
+  projects: Project[],
+  daysAhead: number = 7
+): UpcomingViewTasks => {
+  const now = new Date()
+  const todayStart = startOfDay(now)
+  const rangeEnd = endOfDay(addDays(now, daysAhead - 1))
+
+  const overdue: Task[] = []
+  const byDay = new Map<string, Task[]>()
+
+  // Initialize days
+  for (let i = 0; i < daysAhead; i++) {
+    const date = addDays(todayStart, i)
+    const key = formatDateKey(date)
+    byDay.set(key, [])
+  }
+
+  tasks.forEach((task) => {
+    // Skip completed tasks
+    if (isTaskCompleted(task, projects)) return
+
+    // Skip tasks without due date
+    if (!task.dueDate) return
+
+    const dueDate = startOfDay(task.dueDate)
+
+    if (isBefore(dueDate, todayStart)) {
+      // Overdue
+      overdue.push(task)
+    } else if (isWithinInterval(task.dueDate, { start: todayStart, end: rangeEnd })) {
+      // Within range
+      const key = formatDateKey(dueDate)
+      if (byDay.has(key)) {
+        byDay.get(key)!.push(task)
+      }
+    }
+  })
+
+  // Sort overdue
+  const sortedOverdue = sortOverdueTasks(overdue)
+
+  // Sort each day's tasks
+  byDay.forEach((dayTasks, key) => {
+    byDay.set(key, sortTasksByTimeAndPriority(dayTasks))
+  })
+
+  return { overdue: sortedOverdue, byDay }
+}
+
+/**
+ * Day header text format for Upcoming view
+ */
+export interface DayHeaderText {
+  primary: string    // "TODAY", "TOMORROW", or weekday name
+  secondary: string  // Full date like "Monday, Dec 16"
+}
+
+/**
+ * Format day header text for Upcoming view sections
+ */
+export const getDayHeaderText = (date: Date): DayHeaderText => {
+  const now = new Date()
+  const todayStart = startOfDay(now)
+  const tomorrowStart = addDays(todayStart, 1)
+
+  // Format the secondary string (full date)
+  const secondary = date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  })
+
+  if (isSameDay(date, todayStart)) {
+    return {
+      primary: "TODAY",
+      secondary,
+    }
+  }
+
+  if (isSameDay(date, tomorrowStart)) {
+    return {
+      primary: "TOMORROW",
+      secondary,
+    }
+  }
+
+  // Other days: show day name
+  const dayName = date.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase()
+  const shortDate = date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+
+  return {
+    primary: dayName,
+    secondary: shortDate,
+  }
+}
+
+/**
+ * Parse a date key (yyyy-MM-dd) back to a Date object
+ */
+export const parseDateKey = (key: string): Date => {
+  const [year, month, day] = key.split("-").map(Number)
+  return new Date(year, month - 1, day)
+}
+
+// ============================================================================
+// COMPLETED VIEW & ARCHIVE HELPERS
+// ============================================================================
+
+/**
+ * Get completed tasks that are NOT archived
+ */
+export const getCompletedTasks = (tasks: Task[]): Task[] => {
+  return tasks.filter((task) => task.completedAt !== null && task.archivedAt === null)
+}
+
+/**
+ * Get archived tasks
+ */
+export const getArchivedTasks = (tasks: Task[]): Task[] => {
+  return tasks.filter((task) => task.archivedAt !== null)
+}
+
+/**
+ * Completion period labels
+ */
+export type CompletionPeriod =
+  | "today"
+  | "yesterday"
+  | "earlierThisWeek"
+  | "lastWeek"
+  | "older"
+
+/**
+ * Enhanced grouping for completed tasks by period
+ */
+export interface CompletedTaskGroups {
+  today: Task[]
+  yesterday: Task[]
+  earlierThisWeek: Task[]
+  lastWeek: Task[]
+  older: Task[]
+}
+
+/**
+ * Group completed tasks by period:
+ * - Today
+ * - Yesterday
+ * - Earlier This Week
+ * - Last Week
+ * - Older
+ */
+export const groupCompletedByPeriod = (tasks: Task[]): CompletedTaskGroups => {
+  const groups: CompletedTaskGroups = {
+    today: [],
+    yesterday: [],
+    earlierThisWeek: [],
+    lastWeek: [],
+    older: [],
+  }
+
+  const now = new Date()
+  const todayStart = startOfDay(now)
+  const yesterdayStart = subDays(todayStart, 1)
+  const weekStart = startOfWeek(todayStart, 1) // Monday
+  const lastWeekStart = subDays(weekStart, 7)
+  const lastWeekEnd = subDays(weekStart, 1)
+
+  tasks.forEach((task) => {
+    if (!task.completedAt) return
+
+    const completedDate = startOfDay(task.completedAt)
+
+    if (isSameDay(completedDate, todayStart)) {
+      groups.today.push(task)
+    } else if (isSameDay(completedDate, yesterdayStart)) {
+      groups.yesterday.push(task)
+    } else if (isWithinInterval(completedDate, { start: weekStart, end: subDays(yesterdayStart, 1) })) {
+      groups.earlierThisWeek.push(task)
+    } else if (isWithinInterval(completedDate, { start: lastWeekStart, end: lastWeekEnd })) {
+      groups.lastWeek.push(task)
+    } else {
+      groups.older.push(task)
+    }
+  })
+
+  // Sort each group by completion time (most recent first)
+  const sortByCompletionDesc = (taskList: Task[]): Task[] => {
+    return [...taskList].sort((a, b) => {
+      if (!a.completedAt || !b.completedAt) return 0
+      return b.completedAt.getTime() - a.completedAt.getTime()
+    })
+  }
+
+  groups.today = sortByCompletionDesc(groups.today)
+  groups.yesterday = sortByCompletionDesc(groups.yesterday)
+  groups.earlierThisWeek = sortByCompletionDesc(groups.earlierThisWeek)
+  groups.lastWeek = sortByCompletionDesc(groups.lastWeek)
+  groups.older = sortByCompletionDesc(groups.older)
+
+  return groups
+}
+
+/**
+ * Config for completion period headers
+ */
+export const completionPeriodConfig: Record<CompletionPeriod, GroupHeaderConfig> = {
+  today: { id: "today", label: "TODAY", accentColor: "#10b981" },
+  yesterday: { id: "yesterday", label: "YESTERDAY" },
+  earlierThisWeek: { id: "earlierThisWeek", label: "EARLIER THIS WEEK" },
+  lastWeek: { id: "lastWeek", label: "LAST WEEK", isMuted: true },
+  older: { id: "older", label: "OLDER", isMuted: true },
+}
+
+/**
+ * Group archived tasks by month (e.g., "December 2024")
+ */
+export interface ArchivedByMonth {
+  monthKey: string // "2024-12" format for sorting
+  label: string    // "December 2024" for display
+  tasks: Task[]
+}
+
+/**
+ * Group archived tasks by month they were archived
+ */
+export const groupArchivedByMonth = (tasks: Task[]): ArchivedByMonth[] => {
+  const monthMap = new Map<string, Task[]>()
+
+  tasks.forEach((task) => {
+    if (!task.archivedAt) return
+
+    const archivedDate = new Date(task.archivedAt)
+    const year = archivedDate.getFullYear()
+    const month = archivedDate.getMonth()
+    const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`
+
+    if (!monthMap.has(monthKey)) {
+      monthMap.set(monthKey, [])
+    }
+    monthMap.get(monthKey)!.push(task)
+  })
+
+  // Convert to array and sort by month (most recent first)
+  const result: ArchivedByMonth[] = []
+
+  monthMap.forEach((monthTasks, monthKey) => {
+    const [year, month] = monthKey.split("-").map(Number)
+    const date = new Date(year, month - 1, 1)
+    const label = date.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+
+    // Sort tasks within month by archived date (most recent first)
+    const sortedTasks = [...monthTasks].sort((a, b) => {
+      if (!a.archivedAt || !b.archivedAt) return 0
+      return b.archivedAt.getTime() - a.archivedAt.getTime()
+    })
+
+    result.push({ monthKey, label, tasks: sortedTasks })
+  })
+
+  // Sort months (most recent first)
+  result.sort((a, b) => b.monthKey.localeCompare(a.monthKey))
+
+  return result
+}
+
+/**
+ * Completion statistics
+ */
+export interface CompletionStats {
+  today: number
+  thisWeek: number
+  thisMonth: number
+  streak: number
+}
+
+/**
+ * Calculate completion statistics
+ */
+export const getCompletionStats = (tasks: Task[]): CompletionStats => {
+  const now = new Date()
+  const todayStart = startOfDay(now)
+  const weekStart = startOfWeek(todayStart, 1) // Monday
+  const monthStart = startOfMonth(todayStart)
+
+  let today = 0
+  let thisWeek = 0
+  let thisMonth = 0
+
+  tasks.forEach((task) => {
+    if (!task.completedAt) return
+
+    const completedDate = startOfDay(task.completedAt)
+
+    if (isSameDay(completedDate, todayStart)) {
+      today++
+      thisWeek++
+      thisMonth++
+    } else if (isWithinInterval(completedDate, { start: weekStart, end: todayStart })) {
+      thisWeek++
+      if (isWithinInterval(completedDate, { start: monthStart, end: todayStart })) {
+        thisMonth++
+      }
+    } else if (isWithinInterval(completedDate, { start: monthStart, end: todayStart })) {
+      thisMonth++
+    }
+  })
+
+  const streak = calculateStreak(tasks)
+
+  return { today, thisWeek, thisMonth, streak }
+}
+
+/**
+ * Calculate consecutive days with at least one completed task
+ */
+export const calculateStreak = (tasks: Task[]): number => {
+  // Get all unique completion dates (normalized to start of day)
+  const completionDatesSet = new Set<string>()
+
+  tasks.forEach((task) => {
+    if (task.completedAt) {
+      const dateKey = formatDateKey(startOfDay(task.completedAt))
+      completionDatesSet.add(dateKey)
+    }
+  })
+
+  if (completionDatesSet.size === 0) return 0
+
+  // Check from today backwards
+  let streak = 0
+  let checkDate = startOfDay(new Date())
+
+  // If nothing completed today, check if yesterday had completions
+  // (streak continues if we completed yesterday)
+  const todayKey = formatDateKey(checkDate)
+  if (!completionDatesSet.has(todayKey)) {
+    // Check yesterday
+    checkDate = subDays(checkDate, 1)
+    const yesterdayKey = formatDateKey(checkDate)
+    if (!completionDatesSet.has(yesterdayKey)) {
+      return 0 // No streak
+    }
+  }
+
+  // Count consecutive days
+  while (completionDatesSet.has(formatDateKey(checkDate))) {
+    streak++
+    checkDate = subDays(checkDate, 1)
+  }
+
+  return streak
+}
+
+/**
+ * Search/filter completed tasks by title
+ */
+export const filterCompletedBySearch = (tasks: Task[], query: string): Task[] => {
+  if (!query.trim()) return tasks
+
+  const lowerQuery = query.toLowerCase().trim()
+  return tasks.filter((task) => task.title.toLowerCase().includes(lowerQuery))
+}
+
+/**
+ * Get tasks that are older than N days (for bulk archive)
+ */
+export const getTasksOlderThan = (tasks: Task[], days: number): Task[] => {
+  const cutoffDate = subDays(startOfDay(new Date()), days)
+
+  return tasks.filter((task) => {
+    if (!task.completedAt) return false
+    return isBefore(startOfDay(task.completedAt), cutoffDate)
+  })
+}
+

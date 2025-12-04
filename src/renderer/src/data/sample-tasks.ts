@@ -60,6 +60,7 @@ export interface Task {
   // Metadata
   createdAt: Date
   completedAt: Date | null // set when moved to "done" type status
+  archivedAt: Date | null // set when task is archived (for completed tasks)
 }
 
 // ============================================================================
@@ -119,6 +120,7 @@ export const sampleTasks: Task[] = [
     sourceNoteId: null,
     createdAt: new Date("2024-12-01"),
     completedAt: null,
+    archivedAt: null,
   },
   {
     id: "task-2",
@@ -135,6 +137,7 @@ export const sampleTasks: Task[] = [
     sourceNoteId: null,
     createdAt: new Date("2024-12-10"),
     completedAt: null,
+    archivedAt: null,
   },
   {
     id: "task-3",
@@ -158,6 +161,7 @@ export const sampleTasks: Task[] = [
     sourceNoteId: null,
     createdAt: new Date("2024-11-01"),
     completedAt: null,
+    archivedAt: null,
   },
   {
     id: "task-4",
@@ -174,6 +178,7 @@ export const sampleTasks: Task[] = [
     sourceNoteId: null,
     createdAt: new Date("2024-12-05"),
     completedAt: null,
+    archivedAt: null,
   },
   {
     id: "task-5",
@@ -190,6 +195,7 @@ export const sampleTasks: Task[] = [
     sourceNoteId: null,
     createdAt: new Date("2024-12-01"),
     completedAt: null,
+    archivedAt: null,
   },
 
   // ========== Project Alpha tasks ==========
@@ -208,6 +214,7 @@ export const sampleTasks: Task[] = [
     sourceNoteId: null,
     createdAt: new Date("2024-12-01"),
     completedAt: null,
+    archivedAt: null,
   },
   {
     id: "task-7",
@@ -224,6 +231,7 @@ export const sampleTasks: Task[] = [
     sourceNoteId: null,
     createdAt: new Date("2024-12-08"),
     completedAt: null,
+    archivedAt: null,
   },
   {
     id: "task-8",
@@ -240,6 +248,7 @@ export const sampleTasks: Task[] = [
     sourceNoteId: null,
     createdAt: new Date("2024-12-10"),
     completedAt: null,
+    archivedAt: null,
   },
   {
     id: "task-9",
@@ -256,6 +265,7 @@ export const sampleTasks: Task[] = [
     sourceNoteId: null,
     createdAt: new Date("2024-12-01"),
     completedAt: daysFromNow(-1),
+    archivedAt: null,
   },
 
   // ========== Work tasks ==========
@@ -274,6 +284,7 @@ export const sampleTasks: Task[] = [
     sourceNoteId: null,
     createdAt: new Date("2024-12-05"),
     completedAt: null,
+    archivedAt: null,
   },
   {
     id: "task-11",
@@ -297,6 +308,7 @@ export const sampleTasks: Task[] = [
     sourceNoteId: null,
     createdAt: new Date("2024-11-01"),
     completedAt: null,
+    archivedAt: null,
   },
   {
     id: "task-12",
@@ -313,6 +325,151 @@ export const sampleTasks: Task[] = [
     sourceNoteId: null,
     createdAt: new Date("2024-12-01"),
     completedAt: null,
+    archivedAt: null,
+  },
+
+  // ========== Sample completed tasks for testing ==========
+  {
+    id: "task-completed-1",
+    title: "Morning planning",
+    description: "",
+    projectId: "personal",
+    statusId: "p-done",
+    priority: "none",
+    dueDate: daysFromNow(0),
+    dueTime: "08:00",
+    isRepeating: true,
+    repeatConfig: {
+      frequency: "daily",
+      interval: 1,
+      endType: "never",
+      completedCount: 5,
+      createdAt: new Date("2024-11-01"),
+    },
+    linkedNoteIds: [],
+    sourceNoteId: null,
+    createdAt: new Date("2024-11-01"),
+    completedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+    archivedAt: null,
+  },
+  {
+    id: "task-completed-2",
+    title: "Send project update",
+    description: "",
+    projectId: "work",
+    statusId: "w-done",
+    priority: "medium",
+    dueDate: daysFromNow(0),
+    dueTime: null,
+    isRepeating: false,
+    repeatConfig: null,
+    linkedNoteIds: [],
+    sourceNoteId: null,
+    createdAt: new Date("2024-12-01"),
+    completedAt: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
+    archivedAt: null,
+  },
+  {
+    id: "task-completed-3",
+    title: "Client presentation",
+    description: "",
+    projectId: "work",
+    statusId: "w-done",
+    priority: "high",
+    dueDate: daysFromNow(-1),
+    dueTime: "17:30",
+    isRepeating: false,
+    repeatConfig: null,
+    linkedNoteIds: [],
+    sourceNoteId: null,
+    createdAt: new Date("2024-12-01"),
+    completedAt: daysFromNow(-1), // yesterday
+    archivedAt: null,
+  },
+  {
+    id: "task-completed-4",
+    title: "Code review PR #42",
+    description: "",
+    projectId: "project-alpha",
+    statusId: "a-done",
+    priority: "medium",
+    dueDate: daysFromNow(-1),
+    dueTime: null,
+    isRepeating: false,
+    repeatConfig: null,
+    linkedNoteIds: [],
+    sourceNoteId: null,
+    createdAt: new Date("2024-12-01"),
+    completedAt: daysFromNow(-1), // yesterday
+    archivedAt: null,
+  },
+  {
+    id: "task-completed-5",
+    title: "Team retrospective",
+    description: "",
+    projectId: "work",
+    statusId: "w-done",
+    priority: "none",
+    dueDate: daysFromNow(-3),
+    dueTime: null,
+    isRepeating: false,
+    repeatConfig: null,
+    linkedNoteIds: [],
+    sourceNoteId: null,
+    createdAt: new Date("2024-12-01"),
+    completedAt: daysFromNow(-3), // 3 days ago
+    archivedAt: null,
+  },
+  {
+    id: "task-completed-6",
+    title: "Update documentation",
+    description: "",
+    projectId: "project-alpha",
+    statusId: "a-done",
+    priority: "low",
+    dueDate: daysFromNow(-5),
+    dueTime: null,
+    isRepeating: false,
+    repeatConfig: null,
+    linkedNoteIds: [],
+    sourceNoteId: null,
+    createdAt: new Date("2024-11-25"),
+    completedAt: daysFromNow(-5), // 5 days ago
+    archivedAt: null,
+  },
+  {
+    id: "task-completed-7",
+    title: "Set up CI/CD pipeline",
+    description: "",
+    projectId: "project-alpha",
+    statusId: "a-done",
+    priority: "high",
+    dueDate: daysFromNow(-10),
+    dueTime: null,
+    isRepeating: false,
+    repeatConfig: null,
+    linkedNoteIds: [],
+    sourceNoteId: null,
+    createdAt: new Date("2024-11-20"),
+    completedAt: daysFromNow(-10), // 10 days ago
+    archivedAt: null,
+  },
+  {
+    id: "task-completed-8",
+    title: "Initial project setup",
+    description: "",
+    projectId: "project-alpha",
+    statusId: "a-done",
+    priority: "high",
+    dueDate: daysFromNow(-15),
+    dueTime: null,
+    isRepeating: false,
+    repeatConfig: null,
+    linkedNoteIds: [],
+    sourceNoteId: null,
+    createdAt: new Date("2024-11-15"),
+    completedAt: daysFromNow(-15), // 15 days ago
+    archivedAt: null,
   },
 ]
 
@@ -340,5 +497,6 @@ export const createDefaultTask = (
   sourceNoteId: null,
   createdAt: new Date(),
   completedAt: null,
+  archivedAt: null,
 })
 

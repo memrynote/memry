@@ -25,6 +25,15 @@ import { AddTaskModal } from "@/components/tasks/add-task-modal"
 import { TaskDetailPanel } from "@/components/tasks/task-detail-panel"
 import { KanbanBoard } from "@/components/tasks/kanban"
 import { CalendarView } from "@/components/tasks/calendar"
+import { TodayView } from "@/components/tasks/today"
+import { UpcomingView } from "@/components/tasks/upcoming"
+import {
+    CompletedView,
+    ArchivedView,
+    ClearCompletedMenu,
+    ArchiveConfirmDialog,
+    DeleteCompletedDialog,
+} from "@/components/tasks/completed"
 import { TasksSidebar, type SidebarView, type SidebarProject } from "@/components/tasks/tasks-sidebar"
 import { getIconByName } from "@/components/icon-picker"
 import { cn } from "@/lib/utils"
@@ -35,6 +44,9 @@ import {
     getDefaultTodoStatus,
     getDefaultDoneStatus,
     startOfDay,
+    getCompletedTasks,
+    getArchivedTasks,
+    getTasksOlderThan,
 } from "@/lib/task-utils"
 import {
     taskViews,
@@ -558,6 +570,15 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
     const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false)
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
 
+    // Completed/Archive view states
+    const [showArchivedView, setShowArchivedView] = useState(false)
+    const [isClearMenuOpen, setIsClearMenuOpen] = useState(false)
+    const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
+    const [archiveDialogVariant, setArchiveDialogVariant] = useState<"all" | "older-than">("all")
+    const [archiveOlderThanDays, setArchiveOlderThanDays] = useState(7)
+    const [isDeleteCompletedDialogOpen, setIsDeleteCompletedDialogOpen] = useState(false)
+    const [deleteCompletedVariant, setDeleteCompletedVariant] = useState<"completed" | "archived">("completed")
+
     // ========== DERIVED STATE ==========
 
     // Calculate view counts dynamically
@@ -628,6 +649,15 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
 
     // Derived: subtitle for content header
     const headerSubtitle = useMemo(() => {
+        // For Today view, show full date like "Monday, December 16"
+        if (selectedId === "today") {
+            const today = new Date()
+            return today.toLocaleDateString("en-US", {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+            })
+        }
         return formatTaskSubtitle(taskCounts, selectedId, selectedType)
     }, [taskCounts, selectedId, selectedType])
 
@@ -946,14 +976,14 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
                     prev.map((task) =>
                         task.id === taskId
                             ? {
-                                  ...task,
-                                  statusId: doneStatus?.id || task.statusId,
-                                  completedAt: new Date(),
-                                  repeatConfig: {
-                                      ...config,
-                                      completedCount: newCompletedCount,
-                                  },
-                              }
+                                ...task,
+                                statusId: doneStatus?.id || task.statusId,
+                                completedAt: new Date(),
+                                repeatConfig: {
+                                    ...config,
+                                    completedCount: newCompletedCount,
+                                },
+                            }
                             : task
                     )
                 )
@@ -1117,6 +1147,193 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
         [selectedProject, selectedType]
     )
 
+    // ========== ARCHIVE HANDLERS ==========
+
+    const handleUncompleteTask = useCallback(
+        (taskId: string): void => {
+            const task = tasks.find((t) => t.id === taskId)
+            if (!task) return
+
+            const project = projectsWithCounts.find((p) => p.id === task.projectId)
+            if (!project) return
+
+            const todoStatus = getDefaultTodoStatus(project)
+
+            setTasks((prev) =>
+                prev.map((t) =>
+                    t.id === taskId
+                        ? { ...t, statusId: todoStatus?.id || t.statusId, completedAt: null }
+                        : t
+                )
+            )
+
+            toast.success("Task restored to active")
+        },
+        [tasks, projectsWithCounts]
+    )
+
+    const handleArchiveTask = useCallback(
+        (taskId: string): void => {
+            setTasks((prev) =>
+                prev.map((t) =>
+                    t.id === taskId
+                        ? { ...t, archivedAt: new Date() }
+                        : t
+                )
+            )
+
+            toast.success("Task archived", {
+                action: {
+                    label: "Undo",
+                    onClick: () => {
+                        setTasks((prev) =>
+                            prev.map((t) =>
+                                t.id === taskId
+                                    ? { ...t, archivedAt: null }
+                                    : t
+                            )
+                        )
+                    },
+                },
+            })
+        },
+        []
+    )
+
+    const handleUnarchiveTask = useCallback(
+        (taskId: string): void => {
+            setTasks((prev) =>
+                prev.map((t) =>
+                    t.id === taskId
+                        ? { ...t, archivedAt: null }
+                        : t
+                )
+            )
+
+            toast.success("Task restored to completed")
+        },
+        []
+    )
+
+    const handleDeleteCompletedTask = useCallback(
+        (taskId: string): void => {
+            const task = tasks.find((t) => t.id === taskId)
+            if (!task) return
+
+            const deletedTask = { ...task }
+
+            setTasks((prev) => prev.filter((t) => t.id !== taskId))
+
+            toast.success("Task deleted", {
+                action: {
+                    label: "Undo",
+                    onClick: () => {
+                        setTasks((prev) => [...prev, deletedTask])
+                    },
+                },
+            })
+        },
+        [tasks]
+    )
+
+    const handleViewArchived = useCallback((): void => {
+        setShowArchivedView(true)
+    }, [])
+
+    const handleBackFromArchived = useCallback((): void => {
+        setShowArchivedView(false)
+    }, [])
+
+    const handleOpenClearMenu = useCallback((): void => {
+        setIsClearMenuOpen(true)
+    }, [])
+
+    const completedTasksForActions = useMemo(
+        () => getCompletedTasks(tasks),
+        [tasks]
+    )
+
+    const archivedTasksForActions = useMemo(
+        () => getArchivedTasks(tasks),
+        [tasks]
+    )
+
+    const handleArchiveAll = useCallback((): void => {
+        setArchiveDialogVariant("all")
+        setIsArchiveDialogOpen(true)
+    }, [])
+
+    const handleArchiveOlderThan = useCallback((days: number): void => {
+        setArchiveOlderThanDays(days)
+        setArchiveDialogVariant("older-than")
+        setIsArchiveDialogOpen(true)
+    }, [])
+
+    const handleConfirmArchive = useCallback((): void => {
+        if (archiveDialogVariant === "all") {
+            // Archive all completed tasks
+            const completedIds = completedTasksForActions.map((t) => t.id)
+            setTasks((prev) =>
+                prev.map((t) =>
+                    completedIds.includes(t.id)
+                        ? { ...t, archivedAt: new Date() }
+                        : t
+                )
+            )
+            toast.success(`${completedIds.length} task${completedIds.length !== 1 ? "s" : ""} archived`)
+        } else {
+            // Archive tasks older than N days
+            const olderTasks = getTasksOlderThan(completedTasksForActions, archiveOlderThanDays)
+            const olderIds = olderTasks.map((t) => t.id)
+            setTasks((prev) =>
+                prev.map((t) =>
+                    olderIds.includes(t.id)
+                        ? { ...t, archivedAt: new Date() }
+                        : t
+                )
+            )
+            toast.success(`${olderIds.length} task${olderIds.length !== 1 ? "s" : ""} archived`)
+        }
+        setIsArchiveDialogOpen(false)
+    }, [archiveDialogVariant, archiveOlderThanDays, completedTasksForActions])
+
+    const tasksToArchiveCount = useMemo((): number => {
+        if (archiveDialogVariant === "all") {
+            return completedTasksForActions.length
+        }
+        return getTasksOlderThan(completedTasksForActions, archiveOlderThanDays).length
+    }, [archiveDialogVariant, archiveOlderThanDays, completedTasksForActions])
+
+    const handleDeleteAllCompleted = useCallback((): void => {
+        setDeleteCompletedVariant("completed")
+        setIsDeleteCompletedDialogOpen(true)
+    }, [])
+
+    const handleDeleteAllArchived = useCallback((): void => {
+        setDeleteCompletedVariant("archived")
+        setIsDeleteCompletedDialogOpen(true)
+    }, [])
+
+    const handleConfirmDeleteCompleted = useCallback((): void => {
+        if (deleteCompletedVariant === "completed") {
+            const completedIds = completedTasksForActions.map((t) => t.id)
+            setTasks((prev) => prev.filter((t) => !completedIds.includes(t.id)))
+            toast.success(`${completedIds.length} task${completedIds.length !== 1 ? "s" : ""} deleted permanently`)
+        } else {
+            const archivedIds = archivedTasksForActions.map((t) => t.id)
+            setTasks((prev) => prev.filter((t) => !archivedIds.includes(t.id)))
+            toast.success(`${archivedIds.length} task${archivedIds.length !== 1 ? "s" : ""} deleted permanently`)
+        }
+        setIsDeleteCompletedDialogOpen(false)
+    }, [deleteCompletedVariant, completedTasksForActions, archivedTasksForActions])
+
+    const tasksToDeleteCount = useMemo((): number => {
+        if (deleteCompletedVariant === "completed") {
+            return completedTasksForActions.length
+        }
+        return archivedTasksForActions.length
+    }, [deleteCompletedVariant, completedTasksForActions, archivedTasksForActions])
+
     const calendarTasks = useMemo(() => {
         if (selectedType === "project") {
             return tasks.filter((t) => t.projectId === selectedId)
@@ -1189,8 +1406,61 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
                         onProjectSettings={handleProjectSettings}
                     />
 
-                    {/* Content Body - Task List */}
-                    {activeView === "list" && (
+                    {/* Content Body - Today View */}
+                    {activeView === "list" && selectedId === "today" && (
+                        <TodayView
+                            tasks={tasks}
+                            projects={projectsWithCounts}
+                            selectedTaskId={selectedTaskId}
+                            onToggleComplete={handleToggleComplete}
+                            onTaskClick={handleTaskClick}
+                            onQuickAdd={handleQuickAdd}
+                            onOpenModal={handleOpenAddTaskModal}
+                            onViewUpcoming={() => handleSelectView("upcoming")}
+                        />
+                    )}
+
+                    {/* Content Body - Upcoming View */}
+                    {activeView === "list" && selectedId === "upcoming" && (
+                        <UpcomingView
+                            tasks={tasks}
+                            projects={projectsWithCounts}
+                            selectedTaskId={selectedTaskId}
+                            onToggleComplete={handleToggleComplete}
+                            onTaskClick={handleTaskClick}
+                            onQuickAdd={handleQuickAdd}
+                            onOpenModal={handleOpenAddTaskModal}
+                            onAddTaskWithDate={handleAddTaskWithDate}
+                        />
+                    )}
+
+                    {/* Content Body - Completed View */}
+                    {activeView === "list" && selectedId === "completed" && !showArchivedView && (
+                        <CompletedView
+                            tasks={tasks}
+                            projects={projectsWithCounts}
+                            onUncomplete={handleUncompleteTask}
+                            onArchive={handleArchiveTask}
+                            onDelete={handleDeleteCompletedTask}
+                            onViewArchived={handleViewArchived}
+                            onOpenClearMenu={handleOpenClearMenu}
+                        />
+                    )}
+
+                    {/* Content Body - Archived View */}
+                    {activeView === "list" && selectedId === "completed" && showArchivedView && (
+                        <ArchivedView
+                            tasks={tasks}
+                            projects={projectsWithCounts}
+                            onBack={handleBackFromArchived}
+                            onRestore={handleUnarchiveTask}
+                            onDelete={handleDeleteCompletedTask}
+                            onDeleteAll={handleDeleteAllArchived}
+                        />
+                    )}
+
+                    {/* Content Body - Task List (for other views) */}
+                    {activeView === "list" && selectedId !== "today" && selectedId !== "upcoming" && selectedId !== "completed" && (
                         <TaskList
                             tasks={filteredTasks}
                             projects={projectsWithCounts}
@@ -1277,6 +1547,35 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
                 onDuplicateTask={handleDuplicateTask}
                 onSkipOccurrence={handleSkipOccurrence}
                 onStopRepeating={handleStopRepeating}
+            />
+
+            {/* Clear Completed Menu */}
+            <ClearCompletedMenu
+                open={isClearMenuOpen}
+                onOpenChange={setIsClearMenuOpen}
+                onArchiveAll={handleArchiveAll}
+                onArchiveOlderThan={handleArchiveOlderThan}
+                onDeleteAll={handleDeleteAllCompleted}
+                completedCount={completedTasksForActions.length}
+            />
+
+            {/* Archive Confirm Dialog */}
+            <ArchiveConfirmDialog
+                open={isArchiveDialogOpen}
+                onOpenChange={setIsArchiveDialogOpen}
+                onConfirm={handleConfirmArchive}
+                taskCount={tasksToArchiveCount}
+                variant={archiveDialogVariant}
+                olderThanDays={archiveOlderThanDays}
+            />
+
+            {/* Delete Completed Dialog */}
+            <DeleteCompletedDialog
+                open={isDeleteCompletedDialogOpen}
+                onOpenChange={setIsDeleteCompletedDialogOpen}
+                onConfirm={handleConfirmDeleteCompleted}
+                taskCount={tasksToDeleteCount}
+                variant={deleteCompletedVariant}
             />
         </>
     )
