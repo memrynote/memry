@@ -64,6 +64,64 @@ export const differenceInDays = (date1: Date, date2: Date): number => {
   return Math.floor(diffTime / (1000 * 60 * 60 * 24))
 }
 
+/**
+ * Get the next Saturday (for "this weekend")
+ * If today is Saturday, returns today
+ * If today is Sunday, returns next Saturday
+ */
+export const nextSaturday = (from: Date = new Date()): Date => {
+  const today = startOfDay(from)
+  const currentDay = today.getDay()
+
+  // If today is Saturday (6), return today
+  if (currentDay === 6) {
+    return today
+  }
+
+  // If today is Sunday (0), return next Saturday (6 days)
+  if (currentDay === 0) {
+    return addDays(today, 6)
+  }
+
+  // Otherwise, find days until Saturday
+  const daysUntilSaturday = 6 - currentDay
+  return addDays(today, daysUntilSaturday)
+}
+
+/**
+ * Get the next Monday (for "next week")
+ * If today is Monday, returns next Monday (7 days)
+ */
+export const nextMonday = (from: Date = new Date()): Date => {
+  const today = startOfDay(from)
+  const currentDay = today.getDay()
+
+  // If today is Monday (1), return next Monday (7 days)
+  if (currentDay === 1) {
+    return addDays(today, 7)
+  }
+
+  // Calculate days until next Monday
+  const daysUntilMonday = currentDay === 0 ? 1 : 8 - currentDay
+  return addDays(today, daysUntilMonday)
+}
+
+/**
+ * Add weeks to a date
+ */
+export const addWeeks = (date: Date, weeks: number): Date => {
+  return addDays(date, weeks * 7)
+}
+
+/**
+ * Add months to a date
+ */
+export const addMonths = (date: Date, months: number): Date => {
+  const result = new Date(date)
+  result.setMonth(result.getMonth() + months)
+  return result
+}
+
 // ============================================================================
 // DATE FORMATTING
 // ============================================================================
