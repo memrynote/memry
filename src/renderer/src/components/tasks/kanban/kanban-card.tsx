@@ -6,7 +6,7 @@ import { Check, Repeat } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PriorityBadge, DueDateBadge } from "@/components/tasks/task-badges"
 import { SelectionCheckbox } from "@/components/tasks/bulk-actions"
-import { SubtaskProgressBar } from "@/components/tasks/subtask-progress-bar"
+import { SubtaskBadge } from "@/components/tasks/subtask-badge"
 import { KanbanSubtaskPreview } from "./kanban-subtask-preview"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { getSubtasks, calculateProgress } from "@/lib/subtask-utils"
@@ -261,10 +261,14 @@ export const KanbanCard = ({
         </div>
       )}
 
-      {/* Subtask Progress - only if has subtasks and not completed */}
+      {/* Subtask Count - only if has subtasks and not completed */}
       {hasSubtasks && !isCompleted && (
-        <div className="mt-3 pt-2 border-t border-border/50">
-          <SubtaskProgressBar progress={subtaskProgress} size="sm" />
+        <div className="mt-2 pt-2 border-t border-border/50">
+          <SubtaskBadge
+            completed={subtaskProgress.completed}
+            total={subtaskProgress.total}
+            size="sm"
+          />
         </div>
       )}
     </div>
@@ -373,10 +377,14 @@ export const KanbanCardSkeleton = ({
         </div>
       )}
 
-      {/* Subtask Progress - only if has subtasks and not completed */}
+      {/* Subtask Count - only if has subtasks and not completed */}
       {hasSubtasks && !isCompleted && (
-        <div className="mt-3 pt-2 border-t border-border/50">
-          <SubtaskProgressBar progress={subtaskProgress} size="sm" />
+        <div className="mt-2 pt-2 border-t border-border/50">
+          <SubtaskBadge
+            completed={subtaskProgress.completed}
+            total={subtaskProgress.total}
+            size="sm"
+          />
         </div>
       )}
     </div>

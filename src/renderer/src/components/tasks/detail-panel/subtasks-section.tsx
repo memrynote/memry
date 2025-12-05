@@ -2,7 +2,7 @@ import { useState, useRef } from "react"
 import { Plus } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { CelebrationProgress } from "@/components/tasks/celebration-progress"
+
 import { BulkSubtaskActionsMenu } from "./bulk-subtask-actions-menu"
 import { SubtasksEmptyState } from "./subtasks-empty-state"
 import { SortableSubtaskDetailList } from "./sortable-subtask-detail-list"
@@ -167,12 +167,7 @@ export const SubtasksSection = ({
         </div>
       </div>
 
-      {/* Progress bar with celebration */}
-      {hasSubtasks && (
-        <div className="mb-4">
-          <CelebrationProgress progress={progress} size="md" showLabel={false} />
-        </div>
-      )}
+
 
       {/* Subtask list or empty state */}
       {hasSubtasks ? (

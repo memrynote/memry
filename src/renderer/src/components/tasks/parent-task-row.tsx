@@ -8,7 +8,7 @@ import {
   DueDateBadge,
 } from "@/components/tasks/task-badges"
 import { RepeatIndicator } from "@/components/tasks/repeat-indicator"
-import { CelebrationProgress } from "@/components/tasks/celebration-progress"
+
 import { ExpandChevron } from "@/components/tasks/expand-chevron"
 import { SubtaskBadge } from "@/components/tasks/subtask-badge"
 import { SubtaskRow } from "@/components/tasks/subtask-row"
@@ -150,12 +150,7 @@ export const ParentTaskRow = ({
             )}
           </div>
 
-          {/* Progress bar with celebration (only when expanded) */}
-          {taskHasSubtasks && isExpanded && (
-            <div className="mt-1">
-              <CelebrationProgress progress={progress} size="sm" />
-            </div>
-          )}
+
         </div>
 
         {/* Right side badges container */}

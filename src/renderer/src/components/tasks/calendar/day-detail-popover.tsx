@@ -5,10 +5,10 @@ import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { SelectionCheckbox } from "@/components/tasks/bulk-actions"
-import { SubtaskProgressBar } from "@/components/tasks/subtask-progress-bar"
+import { SubtaskBadge } from "@/components/tasks/subtask-badge"
 import { cn } from "@/lib/utils"
 import { formatDayName } from "@/lib/task-utils"
-import { getSubtasks, calculateProgress, hasSubtasks } from "@/lib/subtask-utils"
+import { getSubtasks, calculateProgress } from "@/lib/subtask-utils"
 import { priorityConfig, type Task } from "@/data/sample-tasks"
 
 interface DayDetailPopoverProps {
@@ -213,10 +213,14 @@ export const DayDetailPopover = ({
                     </div>
                   </button>
 
-                  {/* Subtask progress bar (if has subtasks and not expanded) */}
+                  {/* Subtask badge (if has subtasks and not expanded) */}
                   {taskHasSubtasks && !isExpanded && (
                     <div className="ml-7 pl-6 py-1">
-                      <SubtaskProgressBar progress={subtaskProgress} size="sm" />
+                      <SubtaskBadge
+                        completed={subtaskProgress.completed}
+                        total={subtaskProgress.total}
+                        size="sm"
+                      />
                     </div>
                   )}
 

@@ -14,7 +14,7 @@ import {
 } from "@/components/tasks/task-badges"
 import { RepeatIndicator } from "@/components/tasks/repeat-indicator"
 import { SelectionCheckbox } from "@/components/tasks/bulk-actions"
-import { CelebrationProgress } from "@/components/tasks/celebration-progress"
+
 import { ExpandChevron } from "@/components/tasks/expand-chevron"
 import { SubtaskBadge } from "@/components/tasks/subtask-badge"
 import { SortableSubtaskList } from "@/components/tasks/sortable-subtask-list"
@@ -314,12 +314,7 @@ export const SortableParentTaskRow = ({
               )}
             </div>
 
-            {/* Progress bar with celebration (only when expanded) */}
-            {taskHasSubtasks && isExpanded && (
-              <div className="mt-1">
-                <CelebrationProgress progress={progress} size="sm" />
-              </div>
-            )}
+
           </div>
 
           {/* Project Badge - Column 6 (conditional, 120px) - hidden on mobile & tablet */}
