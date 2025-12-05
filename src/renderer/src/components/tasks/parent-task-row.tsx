@@ -1,5 +1,3 @@
-import { ChevronRight } from "lucide-react"
-
 import { cn } from "@/lib/utils"
 import { formatDueDate } from "@/lib/task-utils"
 import { hasSubtasks, type SubtaskProgress } from "@/lib/subtask-utils"
@@ -11,6 +9,8 @@ import {
 } from "@/components/tasks/task-badges"
 import { RepeatIndicator } from "@/components/tasks/repeat-indicator"
 import { CelebrationProgress } from "@/components/tasks/celebration-progress"
+import { ExpandChevron } from "@/components/tasks/expand-chevron"
+import { SubtaskBadge } from "@/components/tasks/subtask-badge"
 import { SubtaskRow } from "@/components/tasks/subtask-row"
 import type { Task } from "@/data/sample-tasks"
 import type { Project } from "@/data/tasks-data"
@@ -83,17 +83,8 @@ export const ParentTaskRow = ({
     }
   }
 
-  const handleExpandClick = (e: React.MouseEvent): void => {
-    e.stopPropagation()
+  const handleExpandToggle = (): void => {
     if (taskHasSubtasks) {
-      onToggleExpand(task.id)
-    }
-  }
-
-  const handleExpandKeyDown = (e: React.KeyboardEvent): void => {
-    if ((e.key === "Enter" || e.key === " ") && taskHasSubtasks) {
-      e.preventDefault()
-      e.stopPropagation()
       onToggleExpand(task.id)
     }
   }
@@ -119,30 +110,13 @@ export const ParentTaskRow = ({
         )}
         aria-label={`Task: ${task.title}${isCompleted ? ", completed" : ""}${taskHasSubtasks ? `, ${subtasks.length} subtasks` : ""}`}
       >
-        {/* Expand/collapse button */}
-        <button
-          type="button"
-          onClick={handleExpandClick}
-          onKeyDown={handleExpandKeyDown}
-          tabIndex={taskHasSubtasks ? 0 : -1}
-          className={cn(
-            "w-5 h-5 flex items-center justify-center rounded shrink-0",
-            "hover:bg-accent transition-colors",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            !taskHasSubtasks && "invisible" // Hide but maintain spacing
-          )}
-          aria-expanded={taskHasSubtasks ? isExpanded : undefined}
-          aria-label={isExpanded ? "Collapse subtasks" : "Expand subtasks"}
-          aria-controls={taskHasSubtasks ? `subtasks-${task.id}` : undefined}
-        >
-          <ChevronRight
-            className={cn(
-              "w-4 h-4 text-muted-foreground transition-transform duration-150",
-              isExpanded && "rotate-90"
-            )}
-            aria-hidden="true"
-          />
-        </button>
+        {/* Expand/collapse chevron */}
+        <ExpandChevron
+          isExpanded={isExpanded}
+          hasSubtasks={taskHasSubtasks}
+          onClick={handleExpandToggle}
+          size="md"
+        />
 
         {/* Task checkbox */}
         <TaskCheckbox
@@ -164,10 +138,20 @@ export const ParentTaskRow = ({
             {task.isRepeating && task.repeatConfig && !isCompleted && (
               <RepeatIndicator config={task.repeatConfig} size="sm" />
             )}
+            {/* Subtask badge - always visible when has subtasks */}
+            {taskHasSubtasks && (
+              <SubtaskBadge
+                completed={progress.completed}
+                total={progress.total}
+                isExpanded={isExpanded}
+                onClick={handleExpandToggle}
+                size="sm"
+              />
+            )}
           </div>
 
-          {/* Progress bar with celebration (only if has subtasks) */}
-          {taskHasSubtasks && (
+          {/* Progress bar with celebration (only when expanded) */}
+          {taskHasSubtasks && isExpanded && (
             <div className="mt-1">
               <CelebrationProgress progress={progress} size="sm" />
             </div>
