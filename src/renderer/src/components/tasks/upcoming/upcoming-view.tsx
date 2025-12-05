@@ -277,7 +277,7 @@ export const UpcomingView = ({
             onAdd={handleQuickAdd}
             onOpenModal={onOpenModal}
             projects={projects}
-            placeholder="Add upcoming task... (use !tomorrow !!high for quick options)"
+            placeholder="Add upcoming task..."
             className="flex-1 mr-4"
           />
 

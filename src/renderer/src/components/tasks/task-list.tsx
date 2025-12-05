@@ -471,7 +471,7 @@ export const TaskList = ({
                             onAdd={onQuickAdd}
                             onOpenModal={onOpenModal}
                             projects={projects}
-                            placeholder="Add task... (use !today !!high #project for quick options)"
+                            placeholder="Add task..."
                         />
                     </div>
                 )}

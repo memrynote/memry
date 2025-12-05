@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from "react"
+import { useState, useRef, useCallback, useMemo, useEffect } from "react"
 import { Plus, Calendar, Folder } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -6,10 +6,20 @@ import {
     parseQuickAdd,
     getParsePreview,
     hasSpecialSyntax,
+    getDateOptions,
+    getPriorityOptions,
+    getProjectOptions,
 } from "@/lib/quick-add-parser"
 import { priorityConfig, type Priority } from "@/data/sample-tasks"
 import type { Project } from "@/data/tasks-data"
 import { formatDateShort } from "@/lib/task-utils"
+import {
+    QuickOptionsBar,
+    AutocompleteDropdown,
+    QuickAddHelp,
+    type AutocompleteType,
+    type AutocompleteOption,
+} from "./quick-add"
 
 // ============================================================================
 // TYPES
@@ -140,7 +150,76 @@ export const QuickAddInput = ({
 }: QuickAddInputProps): React.JSX.Element => {
     const [value, setValue] = useState("")
     const [isFocused, setIsFocused] = useState(false)
+    const [showAutocomplete, setShowAutocomplete] = useState(false)
+    const [autocompleteType, setAutocompleteType] = useState<AutocompleteType>(null)
+    const [autocompleteQuery, setAutocompleteQuery] = useState("")
     const inputRef = useRef<HTMLInputElement>(null)
+
+    // Detect triggers for autocomplete
+    useEffect(() => {
+        if (!isFocused) {
+            setShowAutocomplete(false)
+            setAutocompleteType(null)
+            return
+        }
+
+        const lastWord = value.split(" ").pop() || ""
+
+        // Check for priority trigger first (!! before !)
+        if (lastWord.startsWith("!!")) {
+            setAutocompleteType("priority")
+            setAutocompleteQuery(lastWord.slice(2))
+            setShowAutocomplete(true)
+        } else if (lastWord.startsWith("!")) {
+            // Date trigger (single !)
+            setAutocompleteType("date")
+            setAutocompleteQuery(lastWord.slice(1))
+            setShowAutocomplete(true)
+        } else if (lastWord.startsWith("#")) {
+            // Project trigger
+            setAutocompleteType("project")
+            setAutocompleteQuery(lastWord.slice(1))
+            setShowAutocomplete(true)
+        } else {
+            setShowAutocomplete(false)
+            setAutocompleteType(null)
+            setAutocompleteQuery("")
+        }
+    }, [value, isFocused])
+
+    // Get autocomplete options based on type and query
+    const autocompleteOptions = useMemo((): AutocompleteOption[] => {
+        if (!autocompleteType) return []
+
+        switch (autocompleteType) {
+            case "date": {
+                const opts = getDateOptions(autocompleteQuery)
+                return opts.map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                    icon: <span>{o.icon}</span>,
+                }))
+            }
+            case "priority": {
+                const opts = getPriorityOptions(autocompleteQuery)
+                return opts.map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                    icon: <span>{o.icon}</span>,
+                }))
+            }
+            case "project": {
+                const opts = getProjectOptions(autocompleteQuery, projects)
+                return opts.map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                    icon: <span>{o.icon}</span>,
+                }))
+            }
+            default:
+                return []
+        }
+    }, [autocompleteType, autocompleteQuery, projects])
 
     // Parse preview data
     const preview = useMemo(() => {
@@ -170,6 +249,21 @@ export const QuickAddInput = ({
     }, [value, projects, onAdd])
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+        // Let autocomplete handle navigation keys when visible
+        if (showAutocomplete && autocompleteOptions.length > 0) {
+            if (["ArrowDown", "ArrowUp", "Tab"].includes(e.key)) {
+                return // Let AutocompleteDropdown handle these
+            }
+            if (e.key === "Enter") {
+                return // Let AutocompleteDropdown handle selection
+            }
+            if (e.key === "Escape") {
+                e.preventDefault()
+                setShowAutocomplete(false)
+                return
+            }
+        }
+
         if (e.key === "Enter") {
             // Cmd/Ctrl+Enter opens modal
             if ((e.metaKey || e.ctrlKey) && onOpenModal) {
@@ -201,76 +295,128 @@ export const QuickAddInput = ({
     }
 
     const handleBlur = (): void => {
-        setIsFocused(false)
+        // Delay to allow click on autocomplete/chips
+        setTimeout(() => {
+            setIsFocused(false)
+            setShowAutocomplete(false)
+        }, 150)
     }
 
     const handleContainerClick = (): void => {
         inputRef.current?.focus()
     }
 
+    // Insert text from quick options or autocomplete
+    const handleInsert = useCallback((text: string): void => {
+        setValue((prev) => {
+            const trimmed = prev.trimEnd()
+            return trimmed ? `${trimmed} ${text}` : text
+        })
+        inputRef.current?.focus()
+    }, [])
+
+    // Insert from autocomplete (replaces the trigger word)
+    const handleAutocompleteSelect = useCallback((selectedValue: string): void => {
+        setValue((prev) => {
+            const words = prev.split(" ")
+            words.pop() // Remove the trigger word
+            words.push(selectedValue)
+            return words.join(" ") + " "
+        })
+        setShowAutocomplete(false)
+        inputRef.current?.focus()
+    }, [])
+
+    const handleAutocompleteClose = useCallback((): void => {
+        setShowAutocomplete(false)
+    }, [])
+
     const showPreview = isFocused && preview && (preview.hasDate || preview.hasPriority || preview.hasProject)
+    const showQuickOptions = isFocused && !showAutocomplete && !value.trim()
 
     return (
-        <div
-            role="button"
-            tabIndex={-1}
-            onClick={handleContainerClick}
-            className={cn(
-                "flex flex-col rounded-md border transition-all duration-150 overflow-hidden",
-                isFocused
-                    ? "border-primary bg-background shadow-sm"
-                    : "border-transparent bg-muted/50 hover:bg-muted",
-                className
-            )}
-        >
-            <div className="flex items-center gap-3 px-3 py-2.5">
-                {/* Checkbox placeholder / Plus icon */}
-                <div
-                    className={cn(
-                        "flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-                        isFocused ? "border-text-tertiary" : "border-transparent"
-                    )}
-                >
-                    {!isFocused && (
-                        <Plus className="size-4 text-text-tertiary" aria-hidden="true" />
+        <div className="relative">
+            <div
+                role="button"
+                tabIndex={-1}
+                onClick={handleContainerClick}
+                className={cn(
+                    "flex flex-col rounded-md border transition-all duration-150 overflow-hidden",
+                    isFocused
+                        ? "border-primary bg-background shadow-sm"
+                        : "border-transparent bg-muted/50 hover:bg-muted",
+                    className
+                )}
+            >
+                <div className="flex items-center gap-3 px-3 py-2.5">
+                    {/* Checkbox placeholder / Plus icon */}
+                    <div
+                        className={cn(
+                            "flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                            isFocused ? "border-text-tertiary" : "border-transparent"
+                        )}
+                    >
+                        {!isFocused && (
+                            <Plus className="size-4 text-text-tertiary" aria-hidden="true" />
+                        )}
+                    </div>
+
+                    {/* Input */}
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        value={value}
+                        onChange={handleChange}
+                        onFocus={handleFocus}
+                        onBlur={handleBlur}
+                        onKeyDown={handleKeyDown}
+                        placeholder={placeholder}
+                        className={cn(
+                            "flex-1 bg-transparent text-sm outline-none",
+                            "placeholder:text-text-tertiary",
+                            isFocused ? "text-text-primary" : "text-text-tertiary"
+                        )}
+                        aria-label="Quick add task"
+                    />
+
+                    {/* Help icon when not focused */}
+                    {!isFocused && <QuickAddHelp />}
+
+                    {/* Keyboard hint when focused with content */}
+                    {isFocused && value.trim() && onOpenModal && (
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                            <kbd className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">
+                                ⌘↵
+                            </kbd>
+                            {" "}for more options
+                        </span>
                     )}
                 </div>
 
-                {/* Input */}
-                <input
-                    ref={inputRef}
-                    type="text"
-                    value={value}
-                    onChange={handleChange}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
-                    onKeyDown={handleKeyDown}
-                    placeholder={placeholder}
-                    className={cn(
-                        "flex-1 bg-transparent text-sm outline-none",
-                        "placeholder:text-text-tertiary",
-                        isFocused ? "text-text-primary" : "text-text-tertiary"
-                    )}
-                    aria-label="Quick add task"
-                />
+                {/* Parse preview */}
+                {showPreview && preview && (
+                    <ParsePreview
+                        dueDate={preview.dueDate}
+                        priority={preview.priority}
+                        projectName={preview.projectName}
+                    />
+                )}
 
-                {/* Keyboard hint */}
-                {isFocused && value.trim() && onOpenModal && (
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                        <kbd className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">
-                            ⌘↵
-                        </kbd>
-                        {" "}for more options
-                    </span>
+                {/* Quick options bar */}
+                {showQuickOptions && (
+                    <div className="px-3 pb-2">
+                        <QuickOptionsBar onInsert={handleInsert} />
+                    </div>
                 )}
             </div>
 
-            {/* Parse preview */}
-            {showPreview && preview && (
-                <ParsePreview
-                    dueDate={preview.dueDate}
-                    priority={preview.priority}
-                    projectName={preview.projectName}
+            {/* Autocomplete dropdown */}
+            {showAutocomplete && autocompleteOptions.length > 0 && (
+                <AutocompleteDropdown
+                    type={autocompleteType}
+                    options={autocompleteOptions}
+                    onSelect={handleAutocompleteSelect}
+                    onClose={handleAutocompleteClose}
                 />
             )}
         </div>
