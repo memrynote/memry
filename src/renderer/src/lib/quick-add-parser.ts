@@ -313,3 +313,91 @@ export const getParsePreview = (
   }
 }
 
+// ============================================================================
+// AUTOCOMPLETE OPTION GENERATORS
+// ============================================================================
+
+export interface AutocompleteOption {
+  value: string
+  label: string
+  icon?: string
+}
+
+/**
+ * Get date options for autocomplete, filtered by query
+ */
+export const getDateOptions = (query: string): AutocompleteOption[] => {
+  const options: AutocompleteOption[] = [
+    { value: "!today", label: "Today", icon: "📅" },
+    { value: "!tomorrow", label: "Tomorrow", icon: "📅" },
+    { value: "!nextweek", label: "Next Week", icon: "📅" },
+    { value: "!monday", label: "Monday", icon: "📅" },
+    { value: "!tuesday", label: "Tuesday", icon: "📅" },
+    { value: "!wednesday", label: "Wednesday", icon: "📅" },
+    { value: "!thursday", label: "Thursday", icon: "📅" },
+    { value: "!friday", label: "Friday", icon: "📅" },
+    { value: "!saturday", label: "Saturday", icon: "📅" },
+    { value: "!sunday", label: "Sunday", icon: "📅" },
+  ]
+
+  if (!query) return options.slice(0, 5) // Show first 5 by default
+
+  const lowerQuery = query.toLowerCase()
+  return options.filter(
+    (opt) =>
+      opt.value.toLowerCase().includes(lowerQuery) ||
+      opt.label.toLowerCase().includes(lowerQuery)
+  )
+}
+
+/**
+ * Get priority options for autocomplete, filtered by query
+ */
+export const getPriorityOptions = (query: string): AutocompleteOption[] => {
+  const options: AutocompleteOption[] = [
+    { value: "!!urgent", label: "Urgent", icon: "🔴" },
+    { value: "!!high", label: "High", icon: "🟠" },
+    { value: "!!medium", label: "Medium", icon: "🟡" },
+    { value: "!!low", label: "Low", icon: "🟢" },
+  ]
+
+  if (!query) return options
+
+  const lowerQuery = query.toLowerCase()
+  return options.filter(
+    (opt) =>
+      opt.value.toLowerCase().includes(lowerQuery) ||
+      opt.label.toLowerCase().includes(lowerQuery)
+  )
+}
+
+/**
+ * Get project options for autocomplete, filtered by query
+ */
+export const getProjectOptions = (
+  query: string,
+  projects: Project[]
+): AutocompleteOption[] => {
+  const activeProjects = projects.filter((p) => !p.isArchived)
+
+  if (!query) {
+    return activeProjects.map((p) => ({
+      value: `#${p.id}`,
+      label: p.name,
+      icon: "📁",
+    }))
+  }
+
+  const lowerQuery = query.toLowerCase()
+  return activeProjects
+    .filter(
+      (p) =>
+        p.name.toLowerCase().includes(lowerQuery) ||
+        p.id.toLowerCase().includes(lowerQuery)
+    )
+    .map((p) => ({
+      value: `#${p.id}`,
+      label: p.name,
+      icon: "📁",
+    }))
+}

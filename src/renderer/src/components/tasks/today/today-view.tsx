@@ -94,7 +94,7 @@ export const TodayView = ({
           onAdd={handleQuickAdd}
           onOpenModal={onOpenModal}
           projects={projects}
-          placeholder="Add task for today... (use !!high #project for quick options)"
+          placeholder="Add task for today..."
         />
 
         {/* Empty state */}
