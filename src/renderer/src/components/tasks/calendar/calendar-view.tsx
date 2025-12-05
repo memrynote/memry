@@ -48,6 +48,10 @@ interface CalendarViewProps {
     onTaskClick: (taskId: string) => void
     onAddTaskWithDate: (date: Date) => void
     onToggleComplete: (taskId: string) => void
+    // Selection props
+    isSelectionMode?: boolean
+    selectedIds?: Set<string>
+    onToggleSelect?: (taskId: string) => void
 }
 
 const useIsCompact = (): boolean => {
@@ -74,6 +78,10 @@ export const CalendarView = ({
     onTaskClick,
     onAddTaskWithDate,
     onToggleComplete,
+    // Selection props
+    isSelectionMode = false,
+    selectedIds,
+    onToggleSelect,
 }: CalendarViewProps): React.JSX.Element => {
     const [currentMonth, setCurrentMonth] = useState<Date>(startOfDay(new Date()))
     const [selectedDate, setSelectedDate] = useState<Date | null>(null)
@@ -361,6 +369,10 @@ export const CalendarView = ({
                 onTaskClick={onTaskClick}
                 onToggleComplete={onToggleComplete}
                 onAddTask={handleAddTask}
+                // Selection props
+                isSelectionMode={isSelectionMode}
+                selectedIds={selectedIds}
+                onToggleSelect={onToggleSelect}
             />
         </div>
     )

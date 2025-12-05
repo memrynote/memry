@@ -52,6 +52,10 @@ interface KanbanBoardProps {
     }
   ) => void
   className?: string
+  // Selection props
+  isSelectionMode?: boolean
+  selectedIds?: Set<string>
+  onToggleSelect?: (taskId: string) => void
 }
 
 // ============================================================================
@@ -114,6 +118,10 @@ export const KanbanBoard = ({
   onDeleteTask,
   onQuickAdd,
   className,
+  // Selection props
+  isSelectionMode = false,
+  selectedIds,
+  onToggleSelect,
 }: KanbanBoardProps): React.JSX.Element => {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
@@ -723,6 +731,10 @@ export const KanbanBoard = ({
                   onQuickAdd={handleColumnQuickAdd}
                   onEditSave={handleEditSave}
                   onEditCancel={handleEditCancel}
+                  // Selection props
+                  isSelectionMode={isSelectionMode}
+                  selectedIds={selectedIds}
+                  onToggleSelect={onToggleSelect}
                 />
               )
             })}
