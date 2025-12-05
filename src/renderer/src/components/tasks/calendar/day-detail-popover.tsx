@@ -4,8 +4,9 @@ import { X } from "lucide-react"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { SelectionCheckbox } from "@/components/tasks/bulk-actions"
 import { cn } from "@/lib/utils"
-import { formatDateShort, formatDayName } from "@/lib/task-utils"
+import { formatDayName } from "@/lib/task-utils"
 import { priorityConfig, type Task } from "@/data/sample-tasks"
 
 interface DayDetailPopoverProps {
@@ -16,6 +17,10 @@ interface DayDetailPopoverProps {
   onTaskClick: (taskId: string) => void
   onToggleComplete: (taskId: string) => void
   onAddTask: (date: Date) => void
+  // Selection props
+  isSelectionMode?: boolean
+  selectedIds?: Set<string>
+  onToggleSelect?: (taskId: string) => void
 }
 
 const sortTasks = (tasks: Task[]): Task[] => {
@@ -42,19 +47,36 @@ export const DayDetailPopover = ({
   onTaskClick,
   onToggleComplete,
   onAddTask,
+  // Selection props
+  isSelectionMode = false,
+  selectedIds,
+  onToggleSelect,
 }: DayDetailPopoverProps): React.JSX.Element | null => {
   const sortedTasks = useMemo(() => sortTasks(tasks), [tasks])
   const title = date
     ? `${formatDayName(date)}, ${date.toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-      })}`
+      month: "long",
+      day: "numeric",
+    })}`
     : ""
 
   const handleAdd = (): void => {
     if (!date) return
     onAddTask(date)
     onClose()
+  }
+
+  const handleTaskClick = (taskId: string): void => {
+    // In selection mode, clicking toggles selection
+    if (isSelectionMode && onToggleSelect) {
+      onToggleSelect(taskId)
+      return
+    }
+    onTaskClick(taskId)
+  }
+
+  const handleSelectionCheckboxChange = (taskId: string): void => {
+    onToggleSelect?.(taskId)
   }
 
   return (
@@ -83,49 +105,72 @@ export const DayDetailPopover = ({
           )}
 
           <div className="space-y-2">
-            {sortedTasks.map((task) => (
-              <button
-                key={task.id}
-                type="button"
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm",
-                  "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                )}
-                onClick={() => onTaskClick(task.id)}
-              >
-                <Checkbox
-                  checked={!!task.completedAt}
-                  onCheckedChange={() => onToggleComplete(task.id)}
-                  aria-label="Toggle complete"
-                />
-                <div className="flex flex-1 items-center gap-2">
-                  <span
-                    className={cn(
-                      "w-12 shrink-0 tabular-nums text-xs",
-                      task.dueTime ? "text-muted-foreground" : "text-muted-foreground/60"
-                    )}
-                  >
-                    {task.dueTime || "—"}
-                  </span>
-                  {task.priority !== "none" && (
-                    <span
-                      className="block size-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: priorityConfig[task.priority].color || undefined }}
-                      aria-hidden="true"
-                    />
+            {sortedTasks.map((task) => {
+              const isCheckedForSelection = selectedIds?.has(task.id) ?? false
+
+              return (
+                <button
+                  key={task.id}
+                  type="button"
+                  className={cn(
+                    "group flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm",
+                    "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    isCheckedForSelection && "bg-primary/10 hover:bg-primary/15"
                   )}
-                  <span
-                    className={cn(
-                      "truncate text-sm",
-                      task.completedAt && "line-through text-muted-foreground"
+                  onClick={() => handleTaskClick(task.id)}
+                >
+                  {/* Selection checkbox - visible in selection mode or on hover */}
+                  {onToggleSelect && (
+                    <div
+                      className={cn(
+                        "shrink-0 transition-opacity",
+                        isSelectionMode ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                      )}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <SelectionCheckbox
+                        checked={isCheckedForSelection}
+                        onChange={() => handleSelectionCheckboxChange(task.id)}
+                        aria-label={`Select ${task.title}`}
+                      />
+                    </div>
+                  )}
+
+                  {/* Task completion checkbox */}
+                  <Checkbox
+                    checked={!!task.completedAt}
+                    onCheckedChange={() => onToggleComplete(task.id)}
+                    aria-label="Toggle complete"
+                  />
+                  <div className="flex flex-1 items-center gap-2">
+                    <span
+                      className={cn(
+                        "w-12 shrink-0 tabular-nums text-xs",
+                        task.dueTime ? "text-muted-foreground" : "text-muted-foreground/60"
+                      )}
+                    >
+                      {task.dueTime || "—"}
+                    </span>
+                    {task.priority !== "none" && (
+                      <span
+                        className="block size-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: priorityConfig[task.priority].color || undefined }}
+                        aria-hidden="true"
+                      />
                     )}
-                  >
-                    {task.title}
-                  </span>
-                  {task.isRepeating && <span className="shrink-0 text-xs opacity-60">🔄</span>}
-                </div>
-              </button>
-            ))}
+                    <span
+                      className={cn(
+                        "truncate text-sm",
+                        task.completedAt && "line-through text-muted-foreground"
+                      )}
+                    >
+                      {task.title}
+                    </span>
+                    {task.isRepeating && <span className="shrink-0 text-xs opacity-60">🔄</span>}
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
 
@@ -140,4 +185,3 @@ export const DayDetailPopover = ({
 }
 
 export default DayDetailPopover
-

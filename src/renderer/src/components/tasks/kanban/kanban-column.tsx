@@ -39,6 +39,10 @@ interface KanbanColumnProps {
   onQuickAdd: (title: string, columnId: string) => void
   onEditSave: (taskId: string, updates: Partial<Task>) => void
   onEditCancel: () => void
+  // Selection props
+  isSelectionMode?: boolean
+  selectedIds?: Set<string>
+  onToggleSelect?: (taskId: string) => void
 }
 
 // ============================================================================
@@ -58,6 +62,10 @@ export const KanbanColumn = ({
   onQuickAdd,
   onEditSave,
   onEditCancel,
+  // Selection props
+  isSelectionMode = false,
+  selectedIds,
+  onToggleSelect,
 }: KanbanColumnProps): React.JSX.Element => {
   const [isAddingTask, setIsAddingTask] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState("")
@@ -171,6 +179,7 @@ export const KanbanColumn = ({
                 const isCompleted = getTaskIsCompleted(task)
                 const isOverdue = isTaskOverdue(task) && !isCompleted
                 const isEditing = editingTaskId === task.id
+                const isCheckedForSelection = selectedIds?.has(task.id) ?? false
 
                 // Render edit form if this task is being edited
                 if (isEditing) {
@@ -196,6 +205,10 @@ export const KanbanColumn = ({
                     isOverdue={isOverdue}
                     onClick={() => onTaskClick(task.id)}
                     onDoubleClick={() => onTaskDoubleClick(task.id)}
+                    // Selection props
+                    isSelectionMode={isSelectionMode}
+                    isCheckedForSelection={isCheckedForSelection}
+                    onToggleSelect={onToggleSelect}
                   />
                 )
               })

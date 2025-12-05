@@ -27,6 +27,11 @@ interface TaskGroupProps {
   onToggleComplete: (taskId: string) => void
   onTaskClick?: (taskId: string) => void
   className?: string
+  // Selection props
+  isSelectionMode?: boolean
+  selectedIds?: Set<string>
+  onToggleSelect?: (taskId: string) => void
+  onShiftSelect?: (taskId: string) => void
 }
 
 interface StatusTaskGroupProps {
@@ -37,6 +42,11 @@ interface StatusTaskGroupProps {
   onToggleComplete: (taskId: string) => void
   onTaskClick?: (taskId: string) => void
   className?: string
+  // Selection props
+  isSelectionMode?: boolean
+  selectedIds?: Set<string>
+  onToggleSelect?: (taskId: string) => void
+  onShiftSelect?: (taskId: string) => void
 }
 
 // ============================================================================
@@ -86,6 +96,11 @@ export const TaskGroup = ({
   onToggleComplete,
   onTaskClick,
   className,
+  // Selection props
+  isSelectionMode = false,
+  selectedIds,
+  onToggleSelect,
+  onShiftSelect,
 }: TaskGroupProps): React.JSX.Element | null => {
   // Don't render if no tasks
   if (tasks.length === 0) return null
@@ -104,6 +119,7 @@ export const TaskGroup = ({
           if (!project) return null
 
           const completed = isTaskCompleted(task, projects)
+          const isCheckedForSelection = selectedIds?.has(task.id) ?? false
 
           return (
             <TaskRow
@@ -115,6 +131,11 @@ export const TaskGroup = ({
               showProjectBadge={showProjectBadge}
               onToggleComplete={onToggleComplete}
               onClick={onTaskClick}
+              // Selection props
+              isSelectionMode={isSelectionMode}
+              isCheckedForSelection={isCheckedForSelection}
+              onToggleSelect={onToggleSelect}
+              onShiftSelect={onShiftSelect}
             />
           )
         })}
@@ -135,6 +156,11 @@ export const StatusTaskGroup = ({
   onToggleComplete,
   onTaskClick,
   className,
+  // Selection props
+  isSelectionMode = false,
+  selectedIds,
+  onToggleSelect,
+  onShiftSelect,
 }: StatusTaskGroupProps): React.JSX.Element | null => {
   // Don't render if no tasks
   if (tasks.length === 0) return null
@@ -155,6 +181,7 @@ export const StatusTaskGroup = ({
       <div className="flex flex-col">
         {tasks.map((task) => {
           const completed = status.type === "done"
+          const isCheckedForSelection = selectedIds?.has(task.id) ?? false
 
           return (
             <TaskRow
@@ -166,6 +193,11 @@ export const StatusTaskGroup = ({
               showProjectBadge={false} // Never show in project view
               onToggleComplete={onToggleComplete}
               onClick={onTaskClick}
+              // Selection props
+              isSelectionMode={isSelectionMode}
+              isCheckedForSelection={isCheckedForSelection}
+              onToggleSelect={onToggleSelect}
+              onShiftSelect={onShiftSelect}
             />
           )
         })}
@@ -175,4 +207,3 @@ export const StatusTaskGroup = ({
 }
 
 export default TaskGroup
-

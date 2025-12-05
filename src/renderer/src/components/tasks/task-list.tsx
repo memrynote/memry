@@ -39,6 +39,11 @@ interface TaskListProps {
     ) => void
     onOpenModal?: (prefillTitle: string) => void
     className?: string
+    // Selection props
+    isSelectionMode?: boolean
+    selectedIds?: Set<string>
+    onToggleSelect?: (taskId: string) => void
+    onShiftSelect?: (taskId: string) => void
 }
 
 // ============================================================================
@@ -52,6 +57,11 @@ interface TaskListByDueDateProps {
     selectedTaskId?: string | null
     onToggleComplete: (taskId: string) => void
     onTaskClick?: (taskId: string) => void
+    // Selection props
+    isSelectionMode?: boolean
+    selectedIds?: Set<string>
+    onToggleSelect?: (taskId: string) => void
+    onShiftSelect?: (taskId: string) => void
 }
 
 const TaskListByDueDate = ({
@@ -61,6 +71,11 @@ const TaskListByDueDate = ({
     selectedTaskId,
     onToggleComplete,
     onTaskClick,
+    // Selection props
+    isSelectionMode = false,
+    selectedIds,
+    onToggleSelect,
+    onShiftSelect,
 }: TaskListByDueDateProps): React.JSX.Element => {
     const groupedTasks = useMemo(() => groupTasksByDueDate(tasks), [tasks])
 
@@ -91,6 +106,11 @@ const TaskListByDueDate = ({
                         selectedTaskId={selectedTaskId}
                         onToggleComplete={onToggleComplete}
                         onTaskClick={onTaskClick}
+                        // Selection props
+                        isSelectionMode={isSelectionMode}
+                        selectedIds={selectedIds}
+                        onToggleSelect={onToggleSelect}
+                        onShiftSelect={onShiftSelect}
                     />
                 )
             })}
@@ -108,6 +128,11 @@ interface TaskListByCompletionProps {
     selectedTaskId?: string | null
     onToggleComplete: (taskId: string) => void
     onTaskClick?: (taskId: string) => void
+    // Selection props
+    isSelectionMode?: boolean
+    selectedIds?: Set<string>
+    onToggleSelect?: (taskId: string) => void
+    onShiftSelect?: (taskId: string) => void
 }
 
 const TaskListByCompletion = ({
@@ -116,6 +141,11 @@ const TaskListByCompletion = ({
     selectedTaskId,
     onToggleComplete,
     onTaskClick,
+    // Selection props
+    isSelectionMode = false,
+    selectedIds,
+    onToggleSelect,
+    onShiftSelect,
 }: TaskListByCompletionProps): React.JSX.Element => {
     const groupedTasks = useMemo(() => groupTasksByCompletion(tasks), [tasks])
 
@@ -139,6 +169,11 @@ const TaskListByCompletion = ({
                         selectedTaskId={selectedTaskId}
                         onToggleComplete={onToggleComplete}
                         onTaskClick={onTaskClick}
+                        // Selection props
+                        isSelectionMode={isSelectionMode}
+                        selectedIds={selectedIds}
+                        onToggleSelect={onToggleSelect}
+                        onShiftSelect={onShiftSelect}
                     />
                 )
             })}
@@ -156,6 +191,11 @@ interface TaskListByStatusProps {
     selectedTaskId?: string | null
     onToggleComplete: (taskId: string) => void
     onTaskClick?: (taskId: string) => void
+    // Selection props
+    isSelectionMode?: boolean
+    selectedIds?: Set<string>
+    onToggleSelect?: (taskId: string) => void
+    onShiftSelect?: (taskId: string) => void
 }
 
 const TaskListByStatus = ({
@@ -164,6 +204,11 @@ const TaskListByStatus = ({
     selectedTaskId,
     onToggleComplete,
     onTaskClick,
+    // Selection props
+    isSelectionMode = false,
+    selectedIds,
+    onToggleSelect,
+    onShiftSelect,
 }: TaskListByStatusProps): React.JSX.Element => {
     const groupedTasks = useMemo(
         () => groupTasksByStatus(tasks, project.statuses),
@@ -181,6 +226,11 @@ const TaskListByStatus = ({
                     selectedTaskId={selectedTaskId}
                     onToggleComplete={onToggleComplete}
                     onTaskClick={onTaskClick}
+                    // Selection props
+                    isSelectionMode={isSelectionMode}
+                    selectedIds={selectedIds}
+                    onToggleSelect={onToggleSelect}
+                    onShiftSelect={onShiftSelect}
                 />
             ))}
         </>
@@ -202,6 +252,11 @@ export const TaskList = ({
     onQuickAdd,
     onOpenModal,
     className,
+    // Selection props
+    isSelectionMode = false,
+    selectedIds,
+    onToggleSelect,
+    onShiftSelect,
 }: TaskListProps): React.JSX.Element => {
     // Determine if we should show the quick add input
     // Hide for "completed" view since you can't add completed tasks
@@ -246,6 +301,11 @@ export const TaskList = ({
                     selectedTaskId={selectedTaskId}
                     onToggleComplete={onToggleComplete}
                     onTaskClick={onTaskClick}
+                    // Selection props
+                    isSelectionMode={isSelectionMode}
+                    selectedIds={selectedIds}
+                    onToggleSelect={onToggleSelect}
+                    onShiftSelect={onShiftSelect}
                 />
             )
         }
@@ -259,6 +319,11 @@ export const TaskList = ({
                     selectedTaskId={selectedTaskId}
                     onToggleComplete={onToggleComplete}
                     onTaskClick={onTaskClick}
+                    // Selection props
+                    isSelectionMode={isSelectionMode}
+                    selectedIds={selectedIds}
+                    onToggleSelect={onToggleSelect}
+                    onShiftSelect={onShiftSelect}
                 />
             )
         }
@@ -272,6 +337,11 @@ export const TaskList = ({
                 selectedTaskId={selectedTaskId}
                 onToggleComplete={onToggleComplete}
                 onTaskClick={onTaskClick}
+                // Selection props
+                isSelectionMode={isSelectionMode}
+                selectedIds={selectedIds}
+                onToggleSelect={onToggleSelect}
+                onShiftSelect={onShiftSelect}
             />
         )
     }
@@ -299,4 +369,3 @@ export const TaskList = ({
 }
 
 export default TaskList
-

@@ -7,6 +7,7 @@ import {
   DueDateBadge,
 } from "@/components/tasks/task-badges"
 import { RepeatIndicator } from "@/components/tasks/repeat-indicator"
+import { SelectionCheckbox } from "@/components/tasks/bulk-actions"
 import type { Task } from "@/data/sample-tasks"
 import type { Project } from "@/data/tasks-data"
 
@@ -23,6 +24,15 @@ interface TaskRowProps {
   onToggleComplete: (taskId: string) => void
   onClick?: (taskId: string) => void
   className?: string
+  // Selection props
+  /** Whether selection mode is active */
+  isSelectionMode?: boolean
+  /** Whether this specific task is checked for selection */
+  isCheckedForSelection?: boolean
+  /** Toggle selection for this task */
+  onToggleSelect?: (taskId: string) => void
+  /** Handle shift+click for range selection */
+  onShiftSelect?: (taskId: string) => void
 }
 
 // ============================================================================
@@ -38,12 +48,38 @@ export const TaskRow = ({
   onToggleComplete,
   onClick,
   className,
+  // Selection props
+  isSelectionMode = false,
+  isCheckedForSelection = false,
+  onToggleSelect,
+  onShiftSelect,
 }: TaskRowProps): React.JSX.Element => {
   // Check if overdue
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === "overdue"
 
-  const handleRowClick = (): void => {
+  const handleRowClick = (e: React.MouseEvent): void => {
+    // Shift+click for range selection
+    if (e.shiftKey && isSelectionMode && onShiftSelect) {
+      e.preventDefault()
+      onShiftSelect(task.id)
+      return
+    }
+
+    // Cmd/Ctrl+click for toggle selection
+    if ((e.metaKey || e.ctrlKey) && onToggleSelect) {
+      e.preventDefault()
+      onToggleSelect(task.id)
+      return
+    }
+
+    // In selection mode, clicking toggles selection
+    if (isSelectionMode && onToggleSelect) {
+      onToggleSelect(task.id)
+      return
+    }
+
+    // Normal click behavior
     onClick?.(task.id)
   }
 
@@ -58,23 +94,51 @@ export const TaskRow = ({
     onToggleComplete(task.id)
   }
 
+  const handleSelectionCheckboxChange = (): void => {
+    onToggleSelect?.(task.id)
+  }
+
+  const handleSelectionCheckboxClick = (e: React.MouseEvent): void => {
+    e.stopPropagation()
+  }
+
   return (
     <div
       role="button"
       tabIndex={onClick ? 0 : -1}
-      onClick={onClick ? handleRowClick : undefined}
+      onClick={handleRowClick}
       onKeyDown={onClick ? handleRowKeyDown : undefined}
       className={cn(
         "group flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors duration-150",
         "hover:bg-accent/50",
         onClick && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         isOverdue && !isCompleted && "border-l-2 border-l-destructive",
-        isSelected && "bg-primary/10 ring-2 ring-primary/30",
+        // Selection highlight (when checked for selection)
+        isCheckedForSelection && "bg-primary/10 hover:bg-primary/15",
+        // Detail panel selected (not the same as selection mode)
+        isSelected && !isCheckedForSelection && "bg-primary/10 ring-2 ring-primary/30",
         className
       )}
       aria-label={`Task: ${task.title}${isCompleted ? ", completed" : ""}`}
     >
-      {/* Checkbox */}
+      {/* Selection Checkbox - visible in selection mode or on hover */}
+      {onToggleSelect && (
+        <div
+          className={cn(
+            "shrink-0 transition-opacity",
+            isSelectionMode ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          )}
+        >
+          <SelectionCheckbox
+            checked={isCheckedForSelection}
+            onChange={handleSelectionCheckboxChange}
+            onClick={handleSelectionCheckboxClick}
+            aria-label={`Select ${task.title}`}
+          />
+        </div>
+      )}
+
+      {/* Task Completion Checkbox */}
       <TaskCheckbox
         checked={isCompleted}
         onChange={handleToggleComplete}
@@ -125,4 +189,3 @@ export const TaskRow = ({
 }
 
 export default TaskRow
-
