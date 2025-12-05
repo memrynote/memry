@@ -10,6 +10,7 @@ const WEEKDAYS_MON_START = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 interface CalendarGridProps {
   days: CalendarDay[]
   tasksByDate: Map<string, Task[]>
+  allTasks?: Task[]
   weekStartsOn?: 0 | 1
   selectedDate: Date | null
   focusedDate: Date | null
@@ -23,6 +24,7 @@ interface CalendarGridProps {
 export const CalendarGrid = ({
   days,
   tasksByDate,
+  allTasks = [],
   weekStartsOn = 0,
   selectedDate,
   focusedDate,
@@ -69,6 +71,7 @@ export const CalendarGrid = ({
               key={dateKey}
               day={day}
               tasks={dayTasks}
+              allTasks={allTasks}
               maxVisible={maxVisibleTasks}
               isSelected={isSelected}
               isFocused={isFocused}

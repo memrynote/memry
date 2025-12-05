@@ -9,6 +9,7 @@ import type { Task } from "@/data/sample-tasks"
 interface DayCellProps {
   day: CalendarDay
   tasks: Task[]
+  allTasks?: Task[]
   maxVisible?: number
   isSelected?: boolean
   isFocused?: boolean
@@ -53,6 +54,7 @@ const DraggableCalendarTask = ({
 export const DayCell = ({
   day,
   tasks,
+  allTasks = [],
   maxVisible = 3,
   isSelected = false,
   isFocused = false,
@@ -127,6 +129,7 @@ export const DayCell = ({
             <div data-task-item>
               <CalendarTaskItem
                 task={task}
+                allTasks={allTasks}
                 compact={isCompact}
                 onClick={() => onTaskClick(task.id)}
               />

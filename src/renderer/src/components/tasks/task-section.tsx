@@ -20,6 +20,7 @@ interface TaskSectionProps {
   subtitle?: string
   count: number
   tasks: Task[]
+  allTasks?: Task[]
   projects: Project[]
   variant: TaskSectionVariant
   emptyMessage?: string
@@ -92,6 +93,7 @@ export const TaskSection = ({
   subtitle,
   count,
   tasks,
+  allTasks = [],
   projects,
   variant,
   emptyMessage,
@@ -190,6 +192,7 @@ export const TaskSection = ({
                   task={task}
                   project={project}
                   sectionId={id}
+                  allTasks={allTasks}
                   isCompleted={isTaskCompleted(task)}
                   isSelected={selectedTaskId === task.id}
                   showProjectBadge={true}

@@ -349,6 +349,7 @@ export const CalendarView = ({
                     <CalendarGrid
                         days={calendarDays}
                         tasksByDate={tasksByDate}
+                        allTasks={tasks}
                         selectedDate={selectedDate}
                         focusedDate={focusedDate}
                         maxVisibleTasks={isCompact ? 2 : 3}
@@ -364,6 +365,7 @@ export const CalendarView = ({
             <DayDetailPopover
                 date={selectedDate}
                 tasks={selectedDateTasks}
+                allTasks={tasks}
                 isOpen={isDayDetailOpen}
                 onClose={() => setIsDayDetailOpen(false)}
                 onTaskClick={onTaskClick}

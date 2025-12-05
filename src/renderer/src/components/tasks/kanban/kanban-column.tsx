@@ -29,6 +29,7 @@ export interface KanbanColumnData {
 interface KanbanColumnProps {
   column: KanbanColumnData
   tasks: Task[]
+  allTasks: Task[]
   selectedTaskId: string | null
   focusedTaskId: string | null
   editingTaskId: string | null
@@ -52,6 +53,7 @@ interface KanbanColumnProps {
 export const KanbanColumn = ({
   column,
   tasks,
+  allTasks,
   selectedTaskId,
   focusedTaskId,
   editingTaskId,
@@ -199,6 +201,7 @@ export const KanbanColumn = ({
                   <KanbanCard
                     key={task.id}
                     task={task}
+                    allTasks={allTasks}
                     isSelected={selectedTaskId === task.id}
                     isFocused={focusedTaskId === task.id}
                     isCompleted={isCompleted}

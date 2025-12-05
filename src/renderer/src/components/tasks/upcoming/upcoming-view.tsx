@@ -53,6 +53,7 @@ interface UpcomingViewProps {
 interface DaySectionProps {
   dateKey: string
   tasks: Task[]
+  allTasks: Task[]
   projects: Project[]
   selectedTaskId?: string | null
   showEmptyDays: boolean
@@ -64,6 +65,7 @@ interface DaySectionProps {
 const DaySection = ({
   dateKey,
   tasks,
+  allTasks,
   projects,
   selectedTaskId,
   showEmptyDays,
@@ -136,6 +138,7 @@ const DaySection = ({
                   task={task}
                   project={project}
                   sectionId={dateKey}
+                  allTasks={allTasks}
                   isCompleted={isTaskCompleted(task)}
                   isSelected={selectedTaskId === task.id}
                   showProjectBadge={true}
@@ -308,6 +311,7 @@ export const UpcomingView = ({
             title="OVERDUE"
             count={overdue.length}
             tasks={overdue}
+            allTasks={tasks}
             projects={projects}
             variant="overdue"
             date={startOfDay(new Date())} // Dropping here reschedules to today
@@ -325,6 +329,7 @@ export const UpcomingView = ({
                 key={dateKey}
                 dateKey={dateKey}
                 tasks={dayTasks}
+                allTasks={tasks}
                 projects={projects}
                 selectedTaskId={selectedTaskId}
                 showEmptyDays={showEmptyDays}

@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, useMemo } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { GripVertical } from "lucide-react"
@@ -13,6 +13,8 @@ import {
 } from "@/components/tasks/task-badges"
 import { RepeatIndicator } from "@/components/tasks/repeat-indicator"
 import { SelectionCheckbox } from "@/components/tasks/bulk-actions"
+import { SubtaskProgressBar } from "@/components/tasks/subtask-progress-bar"
+import { getSubtasks, calculateProgress } from "@/lib/subtask-utils"
 import type { Task } from "@/data/sample-tasks"
 import type { Project } from "@/data/tasks-data"
 
@@ -24,6 +26,7 @@ interface SortableTaskRowProps {
   task: Task
   project: Project
   sectionId: string
+  allTasks?: Task[]
   isCompleted: boolean
   isSelected?: boolean
   showProjectBadge?: boolean
@@ -48,6 +51,7 @@ export const SortableTaskRow = ({
   task,
   project,
   sectionId,
+  allTasks = [],
   isCompleted,
   isSelected = false,
   showProjectBadge = false,
@@ -60,6 +64,18 @@ export const SortableTaskRow = ({
   onShiftSelect,
 }: SortableTaskRowProps): React.JSX.Element => {
   const rowRef = useRef<HTMLDivElement>(null)
+
+  // Calculate subtasks and progress
+  const subtasks = useMemo(() => {
+    if (allTasks.length === 0) return []
+    return getSubtasks(task.id, allTasks)
+  }, [task.id, allTasks])
+
+  const subtaskProgress = useMemo(() => {
+    return calculateProgress(subtasks)
+  }, [subtasks])
+
+  const hasSubtasks = subtasks.length > 0
 
   const {
     attributes,
@@ -217,7 +233,7 @@ export const SortableTaskRow = ({
         onChange={handleToggleComplete}
       />
 
-      {/* Title with Repeat Indicator */}
+      {/* Title with Repeat Indicator and Subtask Progress */}
       <div className="flex flex-1 items-center gap-2 min-w-0">
         <span
           className={cn(
@@ -231,6 +247,10 @@ export const SortableTaskRow = ({
         </span>
         {task.isRepeating && task.repeatConfig && !isCompleted && (
           <RepeatIndicator config={task.repeatConfig} size="sm" />
+        )}
+        {/* Subtask Progress */}
+        {hasSubtasks && !isCompleted && (
+          <SubtaskProgressBar progress={subtaskProgress} size="sm" className="max-w-[100px]" />
         )}
       </div>
 

@@ -785,6 +785,7 @@ export const KanbanBoard = ({
                   key={column.id}
                   column={column}
                   tasks={columnTasks[column.id] || []}
+                  allTasks={tasks}
                   selectedTaskId={selectedTaskId}
                   focusedTaskId={focusedTaskId}
                   editingTaskId={editingTaskId}

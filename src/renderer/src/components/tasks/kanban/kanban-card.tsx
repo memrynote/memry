@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, useMemo } from "react"
 import { useSortable, defaultAnimateLayoutChanges, type AnimateLayoutChanges } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { Check, Repeat } from "lucide-react"
@@ -6,6 +6,10 @@ import { Check, Repeat } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PriorityBadge, DueDateBadge } from "@/components/tasks/task-badges"
 import { SelectionCheckbox } from "@/components/tasks/bulk-actions"
+import { SubtaskProgressBar } from "@/components/tasks/subtask-progress-bar"
+import { KanbanSubtaskPreview } from "./kanban-subtask-preview"
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
+import { getSubtasks, calculateProgress } from "@/lib/subtask-utils"
 import type { Task } from "@/data/sample-tasks"
 
 // ============================================================================
@@ -14,6 +18,7 @@ import type { Task } from "@/data/sample-tasks"
 
 interface KanbanCardProps {
   task: Task
+  allTasks?: Task[]
   isSelected?: boolean
   isFocused?: boolean
   isCompleted?: boolean
@@ -47,6 +52,7 @@ const animateLayoutChanges: AnimateLayoutChanges = (args) => {
 
 export const KanbanCard = ({
   task,
+  allTasks = [],
   isSelected = false,
   isFocused = false,
   isCompleted = false,
@@ -59,6 +65,18 @@ export const KanbanCard = ({
   onToggleSelect,
 }: KanbanCardProps): React.JSX.Element => {
   const cardRef = useRef<HTMLDivElement>(null)
+
+  // Calculate subtasks and progress
+  const subtasks = useMemo(() => {
+    if (allTasks.length === 0) return []
+    return getSubtasks(task.id, allTasks)
+  }, [task.id, allTasks])
+
+  const subtaskProgress = useMemo(() => {
+    return calculateProgress(subtasks)
+  }, [subtasks])
+
+  const hasSubtasks = subtasks.length > 0
 
   const {
     attributes,
@@ -143,7 +161,7 @@ export const KanbanCard = ({
     e.stopPropagation()
   }
 
-  return (
+  const cardContent = (
     <div
       ref={setRefs}
       style={style}
@@ -247,8 +265,34 @@ export const KanbanCard = ({
           )}
         </div>
       )}
+
+      {/* Subtask Progress - only if has subtasks and not completed */}
+      {hasSubtasks && !isCompleted && (
+        <div className="mt-3 pt-2 border-t border-border/50">
+          <SubtaskProgressBar progress={subtaskProgress} size="sm" />
+        </div>
+      )}
     </div>
   )
+
+  // Wrap in HoverCard if has subtasks
+  if (hasSubtasks) {
+    return (
+      <HoverCard openDelay={300}>
+        <HoverCardTrigger asChild>
+          {cardContent}
+        </HoverCardTrigger>
+        <HoverCardContent side="right" className="w-72">
+          <KanbanSubtaskPreview
+            parentTitle={task.title}
+            subtasks={subtasks}
+          />
+        </HoverCardContent>
+      </HoverCard>
+    )
+  }
+
+  return cardContent
 }
 
 // ============================================================================
@@ -257,18 +301,25 @@ export const KanbanCard = ({
 
 interface KanbanCardSkeletonProps {
   task: Task
+  allTasks?: Task[]
   isCompleted?: boolean
   isOverdue?: boolean
 }
 
 export const KanbanCardSkeleton = ({
   task,
+  allTasks = [],
   isCompleted = false,
   isOverdue = false,
 }: KanbanCardSkeletonProps): React.JSX.Element => {
   const hasPriority = task.priority !== "none"
   const hasDueDate = !!task.dueDate
   const hasMetadata = hasPriority || hasDueDate || task.isRepeating
+
+  // Calculate subtasks and progress
+  const subtasks = allTasks.length > 0 ? getSubtasks(task.id, allTasks) : []
+  const subtaskProgress = calculateProgress(subtasks)
+  const hasSubtasks = subtasks.length > 0
 
   return (
     <div
@@ -324,6 +375,13 @@ export const KanbanCardSkeleton = ({
               aria-label="Repeating task"
             />
           )}
+        </div>
+      )}
+
+      {/* Subtask Progress - only if has subtasks and not completed */}
+      {hasSubtasks && !isCompleted && (
+        <div className="mt-3 pt-2 border-t border-border/50">
+          <SubtaskProgressBar progress={subtaskProgress} size="sm" />
         </div>
       )}
     </div>
