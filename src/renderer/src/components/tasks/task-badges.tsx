@@ -215,7 +215,7 @@ export const DueDateBadge = ({
   const isToday = formatted.status === "today"
   const showBackground = isOverdue || isToday
 
-  return (
+  const badgeContent = (
     <span
       className={cn(
         "inline-flex items-center gap-1 text-xs font-medium",
@@ -223,9 +223,7 @@ export const DueDateBadge = ({
         showBackground && variant === "default" && cn(
           "rounded-md px-1.5 py-0.5",
           dueDateBackgroundStyles[formatted.status]
-        ),
-        fixedWidth && "w-[110px] justify-end",
-        className
+        )
       )}
     >
       {isRepeating && (
@@ -239,6 +237,17 @@ export const DueDateBadge = ({
       )}
     </span>
   )
+
+  // If fixedWidth, wrap in a container for grid alignment
+  if (fixedWidth) {
+    return (
+      <span className={cn("w-[110px] flex justify-end", className)}>
+        {badgeContent}
+      </span>
+    )
+  }
+
+  return <span className={className}>{badgeContent}</span>
 }
 
 // ============================================================================

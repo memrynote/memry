@@ -110,18 +110,18 @@ export const ParentTaskRow = ({
         )}
         aria-label={`Task: ${task.title}${isCompleted ? ", completed" : ""}${taskHasSubtasks ? `, ${subtasks.length} subtasks` : ""}`}
       >
-        {/* Expand/collapse chevron */}
+        {/* Task checkbox */}
+        <TaskCheckbox
+          checked={isCompleted}
+          onChange={handleToggleComplete}
+        />
+
+        {/* Expand/collapse chevron - after checkbox for alignment */}
         <ExpandChevron
           isExpanded={isExpanded}
           hasSubtasks={taskHasSubtasks}
           onClick={handleExpandToggle}
           size="md"
-        />
-
-        {/* Task checkbox */}
-        <TaskCheckbox
-          checked={isCompleted}
-          onChange={handleToggleComplete}
         />
 
         {/* Task content */}

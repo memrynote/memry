@@ -209,13 +209,14 @@ export const SortableTaskRow = ({
         // When selection mode is inactive: [drag][check][title][project?][priority][due]
         "md:grid md:items-center md:gap-1",
         // Dynamic grid columns based on selection mode
+        // [drag 24px][select? 20px][check 20px][chevron 20px][title 1fr][project? 120px][priority 70px][due 110px]
         isSelectionMode
           ? showProjectBadge
-            ? "md:grid-cols-[24px_20px_20px_1fr_70px_110px] lg:grid-cols-[24px_20px_20px_1fr_120px_70px_110px]"
-            : "md:grid-cols-[24px_20px_20px_1fr_70px_110px]"
+            ? "md:grid-cols-[24px_20px_20px_20px_1fr_70px_110px] lg:grid-cols-[24px_20px_20px_20px_1fr_120px_70px_110px]"
+            : "md:grid-cols-[24px_20px_20px_20px_1fr_70px_110px]"
           : showProjectBadge
-            ? "md:grid-cols-[24px_20px_1fr_70px_110px] lg:grid-cols-[24px_20px_1fr_120px_70px_110px]"
-            : "md:grid-cols-[24px_20px_1fr_70px_110px]",
+            ? "md:grid-cols-[24px_20px_20px_1fr_70px_110px] lg:grid-cols-[24px_20px_20px_1fr_120px_70px_110px]"
+            : "md:grid-cols-[24px_20px_20px_1fr_70px_110px]",
         // Urgency accent class takes priority, otherwise fall back to overdue styling
         accentClass ? accentClass : (isOverdue && !isCompleted && "border-l-2 border-l-destructive"),
         // Selection highlight (when checked for selection)
@@ -267,7 +268,7 @@ export const SortableTaskRow = ({
           </div>
         )}
 
-        {/* Task Completion Checkbox - Column 3 */}
+        {/* Task Completion Checkbox - Column 3 (20px) */}
         <div className="flex items-center justify-center shrink-0">
           <TaskCheckbox
             checked={isCompleted}
@@ -275,7 +276,10 @@ export const SortableTaskRow = ({
           />
         </div>
 
-        {/* Title with Repeat Indicator and Subtask Progress - Column 4 (flex-1) */}
+        {/* Chevron Placeholder - Column 4 (20px) - empty for non-parent tasks */}
+        <div className="hidden md:block w-5" aria-hidden="true" />
+
+        {/* Title with Repeat Indicator and Subtask Progress - Column 5 (flex-1) */}
         <div className="flex flex-1 items-center gap-2 min-w-0">
           <span
             className={cn(

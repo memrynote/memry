@@ -206,9 +206,22 @@ export const SortableParentTaskRow = ({
         onClick={handleRowClick}
         onKeyDown={onClick ? handleRowKeyDown : undefined}
         className={cn(
-          "flex items-center gap-2 rounded-md px-2 py-2.5 transition-all duration-150",
+          "rounded-md px-2 py-2.5 transition-all duration-150",
           "hover:bg-accent/50",
           onClick && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          // Mobile: flex layout for stacked view
+          "flex flex-col gap-1",
+          // Tablet+: grid layout with fixed columns
+          // [drag 24px][checkbox 20px][chevron 20px][title 1fr][project? 120px][priority 70px][due 110px]
+          "md:grid md:items-center md:gap-1",
+          // Dynamic grid columns based on selection mode
+          isSelectionMode
+            ? showProjectBadge
+              ? "md:grid-cols-[24px_20px_20px_20px_1fr_70px_110px] lg:grid-cols-[24px_20px_20px_20px_1fr_120px_70px_110px]"
+              : "md:grid-cols-[24px_20px_20px_20px_1fr_70px_110px]"
+            : showProjectBadge
+              ? "md:grid-cols-[24px_20px_20px_1fr_70px_110px] lg:grid-cols-[24px_20px_20px_1fr_120px_70px_110px]"
+              : "md:grid-cols-[24px_20px_20px_1fr_70px_110px]",
           // Urgency accent class takes priority, otherwise fall back to overdue styling
           accentClass ? accentClass : (isOverdue && "border-l-2 border-l-destructive"),
           // Selection highlight (when checked for selection)
@@ -220,105 +233,136 @@ export const SortableParentTaskRow = ({
         )}
         aria-label={`Task: ${task.title}${isCompleted ? ", completed" : ""}${taskHasSubtasks ? `, ${subtasks.length} subtasks` : ""}`}
       >
-        {/* Drag Handle */}
-        <button
-          type="button"
-          data-drag-handle
-          {...attributes}
-          {...listeners}
-          className={cn(
-            "shrink-0 cursor-grab touch-none p-1 text-muted-foreground/50",
-            "hover:text-muted-foreground active:cursor-grabbing",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded",
-            "opacity-0 group-hover:opacity-100 transition-opacity",
-            isDragging && "cursor-grabbing opacity-100"
-          )}
-          aria-label="Drag to reorder"
-        >
-          <GripVertical className="size-4" />
-        </button>
+        {/* Mobile: Main row with checkbox and title */}
+        {/* Desktop: Grid columns */}
+        <div className="flex items-center gap-2 md:contents">
+          {/* Drag Handle - Column 1 (24px) */}
+          <button
+            type="button"
+            data-drag-handle
+            {...attributes}
+            {...listeners}
+            className={cn(
+              "flex items-center justify-center cursor-grab touch-none text-muted-foreground/50",
+              "hover:text-muted-foreground active:cursor-grabbing",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded",
+              "opacity-0 group-hover:opacity-100 transition-opacity",
+              // Hide on mobile
+              "hidden md:flex",
+              isDragging && "cursor-grabbing opacity-100"
+            )}
+            aria-label="Drag to reorder"
+          >
+            <GripVertical className="size-4" />
+          </button>
 
-        {/* Selection Checkbox - visible only in selection mode */}
-        {onToggleSelect && isSelectionMode && (
-          <div className="shrink-0">
-            <SelectionCheckbox
-              checked={isCheckedForSelection}
-              onChange={handleSelectionCheckboxChange}
-              onClick={handleSelectionCheckboxClick}
-              aria-label={`Select ${task.title}`}
-            />
-          </div>
-        )}
-
-        {/* Expand/collapse chevron */}
-        <ExpandChevron
-          isExpanded={isExpanded}
-          hasSubtasks={taskHasSubtasks}
-          onClick={handleExpandToggle}
-          size="md"
-        />
-
-        {/* Task checkbox */}
-        <TaskCheckbox
-          checked={isCompleted}
-          onChange={handleToggleComplete}
-        />
-
-        {/* Task content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span
-              className={cn(
-                "truncate text-sm",
-                isCompleted && "line-through text-muted-foreground"
+          {/* Selection Checkbox - Column 2 (only in selection mode, 20px) */}
+          {isSelectionMode && (
+            <div className="hidden md:flex items-center justify-center">
+              {onToggleSelect && (
+                <SelectionCheckbox
+                  checked={isCheckedForSelection}
+                  onChange={handleSelectionCheckboxChange}
+                  onClick={handleSelectionCheckboxClick}
+                  aria-label={`Select ${task.title}`}
+                />
               )}
-            >
-              {task.title}
-            </span>
-            {task.isRepeating && task.repeatConfig && !isCompleted && (
-              <RepeatIndicator config={task.repeatConfig} size="sm" />
-            )}
-            {/* Subtask badge - always visible when has subtasks */}
-            {taskHasSubtasks && (
-              <SubtaskBadge
-                completed={progress.completed}
-                total={progress.total}
-                isExpanded={isExpanded}
-                onClick={handleExpandToggle}
-                size="sm"
-              />
-            )}
-          </div>
-
-          {/* Progress bar with celebration (only when expanded) */}
-          {taskHasSubtasks && isExpanded && (
-            <div className="mt-1">
-              <CelebrationProgress progress={progress} size="sm" />
             </div>
           )}
+
+          {/* Task Completion Checkbox - Column 3 (20px) */}
+          <div className="flex items-center justify-center shrink-0">
+            <TaskCheckbox
+              checked={isCompleted}
+              onChange={handleToggleComplete}
+            />
+          </div>
+
+          {/* Expand/collapse chevron - Column 4 (20px) */}
+          <div className="flex items-center justify-center">
+            <ExpandChevron
+              isExpanded={isExpanded}
+              hasSubtasks={taskHasSubtasks}
+              onClick={handleExpandToggle}
+              size="md"
+            />
+          </div>
+
+          {/* Task content - Column 5 (1fr) */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "truncate text-sm",
+                  isCompleted && "line-through text-muted-foreground"
+                )}
+              >
+                {task.title}
+              </span>
+              {task.isRepeating && task.repeatConfig && !isCompleted && (
+                <RepeatIndicator config={task.repeatConfig} size="sm" />
+              )}
+              {/* Subtask badge - always visible when has subtasks */}
+              {taskHasSubtasks && (
+                <SubtaskBadge
+                  completed={progress.completed}
+                  total={progress.total}
+                  isExpanded={isExpanded}
+                  onClick={handleExpandToggle}
+                  size="sm"
+                />
+              )}
+            </div>
+
+            {/* Progress bar with celebration (only when expanded) */}
+            {taskHasSubtasks && isExpanded && (
+              <div className="mt-1">
+                <CelebrationProgress progress={progress} size="sm" />
+              </div>
+            )}
+          </div>
+
+          {/* Project Badge - Column 6 (conditional, 120px) - hidden on mobile & tablet */}
+          {showProjectBadge && (
+            <div className="hidden lg:block">
+              <ProjectBadge project={project} fixedWidth />
+            </div>
+          )}
+
+          {/* Priority Badge - Column 7 (70px) - hidden on mobile */}
+          <div className="hidden md:block">
+            <PriorityBadge
+              priority={isCompleted ? "none" : task.priority}
+              compact
+              fixedWidth
+            />
+          </div>
+
+          {/* Due Date Badge - Column 8 (110px) - hidden on mobile */}
+          <div className="hidden md:block">
+            <DueDateBadge
+              dueDate={task.dueDate}
+              dueTime={task.dueTime}
+              isRepeating={task.isRepeating}
+              fixedWidth
+              className={cn(isCompleted && "opacity-60")}
+            />
+          </div>
         </div>
 
-        {/* Right side badges container */}
-        <div className="flex items-center gap-3 shrink-0">
-          {/* Project Badge (conditional) */}
+        {/* Mobile: Stacked metadata row */}
+        <div className="flex items-center gap-2 pl-7 text-xs md:hidden">
           {showProjectBadge && (
             <ProjectBadge project={project} />
           )}
-
-          {/* Priority Badge (hidden when completed) */}
-          {!isCompleted && (
-            <PriorityBadge priority={task.priority} />
+          {!isCompleted && task.priority !== "none" && (
+            <PriorityBadge priority={task.priority} compact />
           )}
-
-          {/* Due Date Badge */}
           <DueDateBadge
             dueDate={task.dueDate}
             dueTime={task.dueTime}
             isRepeating={task.isRepeating}
-            className={cn(
-              "min-w-[80px] text-right",
-              isCompleted && "opacity-60"
-            )}
+            className={cn(isCompleted && "opacity-60")}
           />
         </div>
       </div>

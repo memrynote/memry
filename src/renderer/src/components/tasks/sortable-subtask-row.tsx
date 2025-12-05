@@ -3,8 +3,7 @@ import { CSS } from "@dnd-kit/utilities"
 import { Check, GripVertical } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { formatDueDate } from "@/lib/task-utils"
-import { TaskCheckbox, PriorityBadge } from "@/components/tasks/task-badges"
+import { TaskCheckbox, PriorityBadge, DueDateBadge } from "@/components/tasks/task-badges"
 import type { Task } from "@/data/sample-tasks"
 
 // ============================================================================
@@ -33,7 +32,6 @@ export const SortableSubtaskRow = ({
   className,
 }: SortableSubtaskRowProps): React.JSX.Element => {
   const isCompleted = !!subtask.completedAt
-  const formattedDate = formatDueDate(subtask.dueDate, subtask.dueTime)
 
   const {
     attributes,
@@ -82,7 +80,7 @@ export const SortableSubtaskRow = ({
       onClick={handleClick}
       onKeyDown={onClick ? handleKeyDown : undefined}
       className={cn(
-        "group/subtask flex items-center gap-2 px-3 py-1.5 ml-2",
+        "group/subtask flex items-center gap-2 px-2 py-1.5 ml-2",
         "hover:bg-accent/50 cursor-pointer rounded-r-lg",
         "transition-all duration-150",
         onClick && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -135,30 +133,48 @@ export const SortableSubtaskRow = ({
         {subtask.title}
       </span>
 
-      {/* Completion status or metadata */}
+      {/* Metadata badges - aligned with parent task columns */}
       {isCompleted ? (
-        <span className="text-xs text-green-600 dark:text-green-500 flex items-center gap-1">
+        <span className="text-xs text-green-600 dark:text-green-500 flex items-center gap-1 w-[180px] justify-end">
           <Check className="w-3 h-3" aria-hidden="true" />
           <span>Done</span>
         </span>
       ) : (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {subtask.priority !== "none" && (
-            <PriorityBadge priority={subtask.priority} size="sm" />
-          )}
-          {formattedDate && (
-            <span className={cn(
-              formattedDate.status === "overdue" && "text-destructive"
-            )}>
-              {formattedDate.label}
-            </span>
-          )}
-        </div>
+        <>
+          {/* Desktop: badges with gap to match parent task grid */}
+          <div className="hidden md:flex items-center gap-1">
+            {/* Priority Badge - 70px fixed width to align with parent */}
+            <PriorityBadge
+              priority={subtask.priority}
+              compact
+              fixedWidth
+              size="sm"
+            />
+
+            {/* Due Date Badge - 110px fixed width to align with parent */}
+            <DueDateBadge
+              dueDate={subtask.dueDate}
+              dueTime={subtask.dueTime}
+              isRepeating={subtask.isRepeating}
+              fixedWidth
+            />
+          </div>
+
+          {/* Mobile: compact inline badges */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground md:hidden">
+            {subtask.priority !== "none" && (
+              <PriorityBadge priority={subtask.priority} size="sm" compact />
+            )}
+            <DueDateBadge
+              dueDate={subtask.dueDate}
+              dueTime={subtask.dueTime}
+              isRepeating={subtask.isRepeating}
+            />
+          </div>
+        </>
       )}
     </div>
   )
 }
 
 export default SortableSubtaskRow
-
-
