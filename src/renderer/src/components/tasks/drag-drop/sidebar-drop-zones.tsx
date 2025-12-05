@@ -1,5 +1,5 @@
 import { useDroppable } from "@dnd-kit/core"
-import { Trash2, Archive } from "lucide-react"
+import { Trash2, Archive, Settings } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { useDragContext } from "@/contexts/drag-context"
@@ -41,6 +41,7 @@ export const DroppableProjectItem = ({
   project,
   isSelected,
   onClick,
+  onEdit,
 }: DroppableProjectItemProps): React.JSX.Element => {
   const { dragState } = useDragContext()
 
@@ -67,6 +68,19 @@ export const DroppableProjectItem = ({
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()
       onClick()
+    }
+  }
+
+  const handleEditClick = (e: React.MouseEvent): void => {
+    e.stopPropagation()
+    onEdit?.(project)
+  }
+
+  const handleEditKeyDown = (e: React.KeyboardEvent): void => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      e.stopPropagation()
+      onEdit?.(project)
     }
   }
 
@@ -113,6 +127,25 @@ export const DroppableProjectItem = ({
         <span className="text-xs text-primary font-medium shrink-0">
           Drop here
         </span>
+      )}
+
+      {/* Settings Icon (visible on hover, hidden when dropping) */}
+      {!isOver && onEdit && (
+        <button
+          type="button"
+          onClick={handleEditClick}
+          onKeyDown={handleEditKeyDown}
+          tabIndex={0}
+          aria-label={`Edit ${project.name}`}
+          className={cn(
+            "shrink-0 rounded p-0.5 text-text-tertiary opacity-0 transition-opacity",
+            "hover:bg-accent hover:text-text-secondary",
+            "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "group-hover:opacity-100"
+          )}
+        >
+          <Settings className="size-3.5" />
+        </button>
       )}
 
       {/* Task Count - hide when showing drop indicator */}
@@ -250,3 +283,6 @@ export const SidebarDropZones = ({
 }
 
 export default SidebarDropZones
+
+
+

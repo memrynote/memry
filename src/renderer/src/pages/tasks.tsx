@@ -35,9 +35,8 @@ import {
 } from "@/components/tasks/completed"
 import { TasksSidebar, type SidebarView, type SidebarProject } from "@/components/tasks/tasks-sidebar"
 import { FilterBar, FilterEmptyState, type FilterBarRef } from "@/components/tasks/filters"
-import { TaskDragOverlay } from "@/components/tasks/drag-drop"
+import { TaskDragOverlay, DroppableProjectItem } from "@/components/tasks/drag-drop"
 import { DragProvider, type DragState } from "@/contexts/drag-context"
-import { getIconByName } from "@/components/icon-picker"
 import { cn } from "@/lib/utils"
 import {
     getFilteredTasks,
@@ -115,13 +114,6 @@ interface TasksViewNavItemProps {
     onSelect: (id: string) => void
 }
 
-interface TasksProjectNavItemProps {
-    project: Project
-    isSelected: boolean
-    onSelect: (id: string) => void
-    onEdit: (project: Project) => void
-}
-
 interface TasksContentHeaderProps {
     title: string
     subtitle: string
@@ -197,100 +189,6 @@ const TasksViewNavItem = ({
 }
 
 // ============================================================================
-// PROJECT NAV ITEM COMPONENT (with edit button on hover)
-// ============================================================================
-
-const TasksProjectNavItem = ({
-    project,
-    isSelected,
-    onSelect,
-    onEdit,
-}: TasksProjectNavItemProps): React.JSX.Element => {
-    const handleClick = (): void => {
-        onSelect(project.id)
-    }
-
-    const handleKeyDown = (e: React.KeyboardEvent): void => {
-        if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault()
-            onSelect(project.id)
-        }
-    }
-
-    const handleEditClick = (e: React.MouseEvent): void => {
-        e.stopPropagation()
-        onEdit(project)
-    }
-
-    const handleEditKeyDown = (e: React.KeyboardEvent): void => {
-        if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault()
-            e.stopPropagation()
-            onEdit(project)
-        }
-    }
-
-    // Get the icon component
-    const IconComponent = getIconByName(project.icon)
-
-    return (
-        <div
-            role="button"
-            onClick={handleClick}
-            onKeyDown={handleKeyDown}
-            tabIndex={0}
-            aria-label={`${project.name}, ${project.taskCount} tasks`}
-            aria-pressed={isSelected}
-            className={cn(
-                "group flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors duration-150",
-                "hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                isSelected && "bg-accent border-l-3 border-l-primary font-medium"
-            )}
-        >
-            {/* Project Icon or Color Dot */}
-            {IconComponent ? (
-                <IconComponent
-                    className="size-4 shrink-0"
-                    style={{ color: project.color }}
-                    aria-hidden="true"
-                />
-            ) : (
-                <span
-                    className="size-3 shrink-0 rounded-full"
-                    style={{ backgroundColor: project.color }}
-                    aria-hidden="true"
-                />
-            )}
-
-            {/* Project Name */}
-            <span className="flex-1 truncate text-left text-text-secondary">
-                {project.name}
-            </span>
-
-            {/* Settings Icon (visible on hover) */}
-            <button
-                type="button"
-                onClick={handleEditClick}
-                onKeyDown={handleEditKeyDown}
-                tabIndex={0}
-                aria-label={`Edit ${project.name}`}
-                className={cn(
-                    "shrink-0 rounded p-0.5 text-text-tertiary opacity-0 transition-opacity",
-                    "hover:bg-accent hover:text-text-secondary",
-                    "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    "group-hover:opacity-100"
-                )}
-            >
-                <Settings className="size-3.5" />
-            </button>
-
-            {/* Task Count */}
-            <span className="shrink-0 text-xs text-text-tertiary">{project.taskCount}</span>
-        </div>
-    )
-}
-
-// ============================================================================
 // VIEWS SECTION COMPONENT
 // ============================================================================
 
@@ -361,11 +259,11 @@ const TasksProjectsSection = ({
             </h2>
             <nav className="flex flex-col gap-0.5" role="navigation" aria-label="Projects">
                 {visibleProjects.map((project) => (
-                    <TasksProjectNavItem
+                    <DroppableProjectItem
                         key={project.id}
                         project={project}
                         isSelected={selectedType === "project" && selectedId === project.id}
-                        onSelect={onSelect}
+                        onClick={() => onSelect(project.id)}
                         onEdit={onEditProject}
                     />
                 ))}
