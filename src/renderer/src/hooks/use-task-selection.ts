@@ -44,6 +44,10 @@ export interface UseTaskSelectionReturn {
   toggleSelectAll: () => void
   /** Check if a specific task is selected */
   isSelected: (taskId: string) => boolean
+  /** Enter selection mode without selecting any tasks */
+  enterSelectionMode: () => void
+  /** Exit selection mode and clear all selections */
+  exitSelectionMode: () => void
 }
 
 // ============================================================================
@@ -233,6 +237,17 @@ export const useTaskSelection = (
     [selection.selectedIds]
   )
 
+  const enterSelectionMode = useCallback((): void => {
+    setSelection((prev) => ({
+      ...prev,
+      isSelectionMode: true,
+    }))
+  }, [])
+
+  const exitSelectionMode = useCallback((): void => {
+    setSelection(initialSelectionState)
+  }, [])
+
   return {
     selection,
     selectedCount,
@@ -248,6 +263,8 @@ export const useTaskSelection = (
     deselectAll,
     toggleSelectAll,
     isSelected,
+    enterSelectionMode,
+    exitSelectionMode,
   }
 }
 

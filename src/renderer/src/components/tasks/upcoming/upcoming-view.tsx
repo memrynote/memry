@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 import { Plus } from "lucide-react"
+import { AnimatePresence } from "framer-motion"
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { useDroppable } from "@dnd-kit/core"
 
@@ -9,8 +10,12 @@ import { Label } from "@/components/ui/label"
 import { TaskSection } from "@/components/tasks/task-section"
 import { DaySectionHeader } from "@/components/tasks/day-section-header"
 import { SortableTaskRow } from "@/components/tasks/drag-drop"
-import { UpcomingEmptyState } from "@/components/tasks/upcoming-empty-state"
 import { QuickAddInput } from "@/components/tasks/quick-add-input"
+import {
+  PlanningEmptyState,
+  SimpleEmptyState,
+  OverdueClearedBanner,
+} from "@/components/tasks/empty-states"
 import { cn } from "@/lib/utils"
 import {
   getUpcomingTasks,
@@ -19,6 +24,8 @@ import {
   isSameDay,
   addDays,
 } from "@/lib/task-utils"
+import { getSectionVisibility } from "@/lib/section-visibility"
+import { useOverdueCelebration } from "@/hooks"
 import type { Task, Priority } from "@/data/sample-tasks"
 import type { Project } from "@/data/tasks-data"
 
@@ -43,6 +50,7 @@ interface UpcomingViewProps {
   ) => void
   onOpenModal?: (prefillTitle: string) => void
   onAddTaskWithDate?: (date: Date) => void
+  onViewCalendar?: () => void
   className?: string
 }
 
@@ -57,6 +65,8 @@ interface DaySectionProps {
   projects: Project[]
   selectedTaskId?: string | null
   showEmptyDays: boolean
+  isTomorrow: boolean
+  hasTasksThisWeek: boolean
   onToggleComplete: (taskId: string) => void
   onTaskClick?: (taskId: string) => void
   onAddTaskForDate: (date: Date) => void
@@ -69,6 +79,8 @@ const DaySection = ({
   projects,
   selectedTaskId,
   showEmptyDays,
+  isTomorrow,
+  hasTasksThisWeek,
   onToggleComplete,
   onTaskClick,
   onAddTaskForDate,
@@ -94,9 +106,40 @@ const DaySection = ({
   // Get task IDs for SortableContext
   const taskIds = tasks.map((t) => t.id)
 
-  // Hide empty days if setting is off
-  if (isEmpty && !showEmptyDays) {
-    return null
+  // Use visibility logic for tomorrow section
+  if (isTomorrow) {
+    const tomorrowVisibility = getSectionVisibility("tomorrow", tasks.length, {
+      hasTasksThisWeek,
+    })
+
+    if (!tomorrowVisibility.shouldShow) {
+      return null
+    }
+
+    // Show simple empty state for tomorrow when empty but should show
+    if (isEmpty && tomorrowVisibility.showEmptyState) {
+      return (
+        <section
+          ref={setNodeRef}
+          className={cn(
+            "rounded-lg border border-border overflow-hidden transition-all",
+            "border-l-2 border-l-border",
+            isOver && "ring-2 ring-primary/50 border-primary/50"
+          )}
+        >
+          <DaySectionHeader date={date} taskCount={0} />
+          <SimpleEmptyState
+            label="tomorrow"
+            onAddTask={() => onAddTaskForDate(date)}
+          />
+        </section>
+      )
+    }
+  } else {
+    // Regular day section - hide empty days if setting is off
+    if (isEmpty && !showEmptyDays) {
+      return null
+    }
   }
 
   const handleAddTask = (): void => {
@@ -207,6 +250,7 @@ export const UpcomingView = ({
   onQuickAdd,
   onOpenModal,
   onAddTaskWithDate,
+  onViewCalendar,
   className,
 }: UpcomingViewProps): React.JSX.Element => {
   // State for showing/hiding empty days
@@ -218,13 +262,29 @@ export const UpcomingView = ({
     [tasks, projects, daysAhead]
   )
 
-  // Calculate if there are any tasks at all
-  const hasOverdue = overdue.length > 0
+  // Track overdue celebration state
+  const { showCelebration, dismiss: dismissCelebration } = useOverdueCelebration(
+    overdue.length
+  )
+
+  // Calculate section visibility
+  const overdueVisibility = getSectionVisibility("overdue", overdue.length)
+  const upcomingVisibility = getSectionVisibility("upcoming", 0) // Always show
+
+  // Calculate if there are any tasks this week (for tomorrow visibility)
   let totalUpcomingTasks = 0
   byDay.forEach((dayTasks) => {
     totalUpcomingTasks += dayTasks.length
   })
-  const isEmpty = totalUpcomingTasks === 0 && !hasOverdue
+  const hasTasksThisWeek = totalUpcomingTasks > 0 || overdue.length > 0
+  const isCompletelyEmpty = totalUpcomingTasks === 0 && !overdueVisibility.shouldShow
+
+  // Convert Map to array for rendering
+  const dayEntries = Array.from(byDay.entries())
+
+  // Determine tomorrow's date key
+  const tomorrow = addDays(startOfDay(new Date()), 1)
+  const tomorrowKey = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`
 
   // Handle adding task for a specific date
   const handleAddTaskForDate = (date: Date): void => {
@@ -241,7 +301,6 @@ export const UpcomingView = ({
 
   // Handle adding task (defaults to tomorrow for upcoming)
   const handleAddTask = (): void => {
-    const tomorrow = addDays(startOfDay(new Date()), 1)
     handleAddTaskForDate(tomorrow)
   }
 
@@ -255,7 +314,6 @@ export const UpcomingView = ({
     }
   ): void => {
     // Default to tomorrow if no date specified
-    const tomorrow = addDays(startOfDay(new Date()), 1)
     const finalData = {
       ...parsedData,
       dueDate: parsedData?.dueDate ?? tomorrow,
@@ -264,9 +322,6 @@ export const UpcomingView = ({
     }
     onQuickAdd(title, finalData)
   }
-
-  // Convert Map to array for rendering
-  const dayEntries = Array.from(byDay.entries())
 
   return (
     <ScrollArea className={cn("flex-1", className)}>
@@ -296,16 +351,23 @@ export const UpcomingView = ({
           </div>
         </div>
 
-        {/* Empty state */}
-        {isEmpty && (
-          <UpcomingEmptyState
-            hasOverdue={false}
+        {/* Overdue Cleared Celebration Banner */}
+        <AnimatePresence>
+          {showCelebration && (
+            <OverdueClearedBanner onDismiss={dismissCelebration} />
+          )}
+        </AnimatePresence>
+
+        {/* Planning empty state - show when completely empty */}
+        {isCompletelyEmpty && upcomingVisibility.showEmptyState && (
+          <PlanningEmptyState
             onAddTask={handleAddTask}
+            onViewCalendar={onViewCalendar}
           />
         )}
 
-        {/* Overdue section */}
-        {hasOverdue && (
+        {/* Overdue section - only show when has tasks */}
+        {overdueVisibility.shouldShow && (
           <TaskSection
             id="overdue"
             title="OVERDUE"
@@ -322,7 +384,7 @@ export const UpcomingView = ({
         )}
 
         {/* Day sections */}
-        {(totalUpcomingTasks > 0 || showEmptyDays) && (
+        {!isCompletelyEmpty && (
           <div className="space-y-4">
             {dayEntries.map(([dateKey, dayTasks]) => (
               <DaySection
@@ -333,20 +395,14 @@ export const UpcomingView = ({
                 projects={projects}
                 selectedTaskId={selectedTaskId}
                 showEmptyDays={showEmptyDays}
+                isTomorrow={dateKey === tomorrowKey}
+                hasTasksThisWeek={hasTasksThisWeek}
                 onToggleComplete={onToggleComplete}
                 onTaskClick={onTaskClick}
                 onAddTaskForDate={handleAddTaskForDate}
               />
             ))}
           </div>
-        )}
-
-        {/* Show empty state in place of day sections if no tasks and not showing empty days */}
-        {totalUpcomingTasks === 0 && !showEmptyDays && hasOverdue && (
-          <UpcomingEmptyState
-            hasOverdue={true}
-            onAddTask={handleAddTask}
-          />
         )}
       </div>
     </ScrollArea>

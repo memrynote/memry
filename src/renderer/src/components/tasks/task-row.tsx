@@ -137,17 +137,16 @@ export const TaskRow = ({
       {/* Desktop: Grid columns */}
       <div className="flex items-center gap-2 md:contents">
         {/* Selection Checkbox - Column 1 */}
+        {/* Selection Checkbox - visible only in selection mode */}
         <div
           className={cn(
-            "flex items-center justify-center transition-opacity",
+            "flex items-center justify-center",
             // Hide on mobile
             "hidden md:flex",
-            showSelection
-              ? (isSelectionMode ? "opacity-100" : "opacity-0 group-hover:opacity-100")
-              : "opacity-0"
+            showSelection && isSelectionMode ? "opacity-100" : "hidden"
           )}
         >
-          {showSelection && (
+          {showSelection && isSelectionMode && (
             <SelectionCheckbox
               checked={isCheckedForSelection}
               onChange={handleSelectionCheckboxChange}

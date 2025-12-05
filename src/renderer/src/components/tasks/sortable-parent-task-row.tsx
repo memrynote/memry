@@ -238,14 +238,9 @@ export const SortableParentTaskRow = ({
           <GripVertical className="size-4" />
         </button>
 
-        {/* Selection Checkbox - visible in selection mode or on hover */}
-        {onToggleSelect && (
-          <div
-            className={cn(
-              "shrink-0 transition-opacity",
-              isSelectionMode ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-            )}
-          >
+        {/* Selection Checkbox - visible only in selection mode */}
+        {onToggleSelect && isSelectionMode && (
+          <div className="shrink-0">
             <SelectionCheckbox
               checked={isCheckedForSelection}
               onChange={handleSelectionCheckboxChange}

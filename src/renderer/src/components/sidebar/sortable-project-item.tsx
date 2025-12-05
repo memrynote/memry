@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { GripVertical, MoreHorizontal, Pencil, Archive, Trash2 } from "lucide-react"
+import { GripVertical, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   SidebarMenuAction,
@@ -9,13 +9,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import type { Project } from "@/data/tasks-data"
 
 interface SortableProjectItemProps {
@@ -97,48 +90,27 @@ export const SortableProjectItem = ({
       </SidebarMenuButton>
 
       {/* Task count badge */}
-      <SidebarMenuBadge className="group-hover/project:hidden">
+      <SidebarMenuBadge className={cn(
+        !isActive && "group-hover/project:hidden"
+      )}>
         {project.taskCount > 0 ? project.taskCount : ""}
       </SidebarMenuBadge>
 
-      {/* Actions dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <SidebarMenuAction
-            showOnHover
-            className="opacity-0 group-hover/project:opacity-100"
-          >
-            <MoreHorizontal className="size-4" />
-            <span className="sr-only">Project options</span>
-          </SidebarMenuAction>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          className="w-48 rounded-lg"
-          side={isMobile ? "bottom" : "right"}
-          align={isMobile ? "end" : "start"}
-        >
-          <DropdownMenuItem onClick={() => onEdit(project)}>
-            <Pencil className="size-4 text-muted-foreground" />
-            <span>Edit project</span>
-          </DropdownMenuItem>
-          {!project.isDefault && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onArchive(project)}>
-                <Archive className="size-4 text-muted-foreground" />
-                <span>Archive project</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onDelete(project.id)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="size-4" />
-                <span>Delete project</span>
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {/* Edit project button */}
+      <SidebarMenuAction
+        showOnHover
+        className={cn(
+          !isActive && "opacity-0 group-hover/project:opacity-100",
+          isActive && "hidden"
+        )}
+        onClick={(e) => {
+          e.stopPropagation()
+          onEdit(project)
+        }}
+      >
+        <Settings className="size-4 text-muted-foreground" />
+        <span className="sr-only">Edit project</span>
+      </SidebarMenuAction>
     </SidebarMenuItem>
   )
 }

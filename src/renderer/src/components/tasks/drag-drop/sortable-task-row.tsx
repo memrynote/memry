@@ -232,18 +232,16 @@ export const SortableTaskRow = ({
           <GripVertical className="size-4" />
         </button>
 
-        {/* Selection Checkbox - Column 2 */}
+        {/* Selection Checkbox - Column 2 (visible only in selection mode) */}
         <div
           className={cn(
-            "flex items-center justify-center transition-opacity",
+            "flex items-center justify-center",
             // Hide on mobile
             "hidden md:flex",
-            showSelection
-              ? (isSelectionMode ? "opacity-100" : "opacity-0 group-hover:opacity-100")
-              : "opacity-0"
+            showSelection && isSelectionMode ? "opacity-100" : "hidden"
           )}
         >
-          {showSelection && (
+          {showSelection && isSelectionMode && (
             <SelectionCheckbox
               checked={isCheckedForSelection}
               onChange={handleSelectionCheckboxChange}

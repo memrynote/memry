@@ -163,13 +163,10 @@ export const DayDetailPopover = ({
                       <span className="w-5 shrink-0" />
                     )}
 
-                    {/* Selection checkbox - visible in selection mode or on hover */}
-                    {onToggleSelect && (
+                    {/* Selection checkbox - visible only in selection mode */}
+                    {onToggleSelect && isSelectionMode && (
                       <div
-                        className={cn(
-                          "shrink-0 transition-opacity",
-                          isSelectionMode ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                        )}
+                        className="shrink-0"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <SelectionCheckbox

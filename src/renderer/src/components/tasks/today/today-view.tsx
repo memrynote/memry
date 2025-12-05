@@ -1,11 +1,17 @@
 import { useMemo } from "react"
+import { AnimatePresence } from "framer-motion"
 
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { TaskSection } from "@/components/tasks/task-section"
-import { TodayEmptyState } from "@/components/tasks/today-empty-state"
 import { QuickAddInput } from "@/components/tasks/quick-add-input"
+import {
+  CelebrationEmptyState,
+  OverdueClearedBanner,
+} from "@/components/tasks/empty-states"
 import { cn } from "@/lib/utils"
 import { getTodayTasks, startOfDay } from "@/lib/task-utils"
+import { getSectionVisibility } from "@/lib/section-visibility"
+import { useOverdueCelebration } from "@/hooks"
 import type { Task, Priority } from "@/data/sample-tasks"
 import type { Project } from "@/data/tasks-data"
 
@@ -53,10 +59,14 @@ export const TodayView = ({
     [tasks, projects]
   )
 
-  const totalTasks = overdue.length + today.length
-  const hasOverdue = overdue.length > 0
-  const hasTodayTasks = today.length > 0
-  const isEmpty = totalTasks === 0
+  // Track overdue celebration state
+  const { showCelebration, dismiss: dismissCelebration } = useOverdueCelebration(
+    overdue.length
+  )
+
+  // Calculate section visibility
+  const overdueVisibility = getSectionVisibility("overdue", overdue.length)
+  const todayVisibility = getSectionVisibility("today", today.length)
 
   // Handle adding task with today's date
   const handleAddTaskForToday = (): void => {
@@ -97,17 +107,15 @@ export const TodayView = ({
           placeholder="Add task for today..."
         />
 
-        {/* Empty state */}
-        {isEmpty && (
-          <TodayEmptyState
-            hasOverdue={false}
-            onAddTask={handleAddTaskForToday}
-            onViewUpcoming={onViewUpcoming}
-          />
-        )}
+        {/* Overdue Cleared Celebration Banner */}
+        <AnimatePresence>
+          {showCelebration && (
+            <OverdueClearedBanner onDismiss={dismissCelebration} />
+          )}
+        </AnimatePresence>
 
-        {/* Overdue section */}
-        {hasOverdue && (
+        {/* Overdue section - only show when has tasks */}
+        {overdueVisibility.shouldShow && (
           <TaskSection
             id="overdue"
             title="OVERDUE"
@@ -123,10 +131,10 @@ export const TodayView = ({
           />
         )}
 
-        {/* Today section */}
-        {(hasTodayTasks || hasOverdue) && (
+        {/* Today section - always show with empty state when needed */}
+        {todayVisibility.shouldShow && (
           <>
-            {hasTodayTasks ? (
+            {today.length > 0 ? (
               <TaskSection
                 id="today"
                 title="TODAY"
@@ -135,7 +143,7 @@ export const TodayView = ({
                 allTasks={tasks}
                 projects={projects}
                 variant="today"
-                date={startOfDay(new Date())} // Explicitly today's date
+                date={startOfDay(new Date())}
                 showAddTask
                 selectedTaskId={selectedTaskId}
                 onAddTask={handleAddTaskForToday}
@@ -143,12 +151,16 @@ export const TodayView = ({
                 onTaskClick={onTaskClick}
               />
             ) : (
-              // Has overdue but nothing for today
-              <TodayEmptyState
-                hasOverdue={true}
-                onAddTask={handleAddTaskForToday}
-                onViewUpcoming={onViewUpcoming}
-              />
+              /* Empty state for today - show celebration style */
+              todayVisibility.showEmptyState && (
+                <CelebrationEmptyState
+                  title="All clear for today!"
+                  description="Enjoy your free time or plan ahead."
+                  onAddTask={handleAddTaskForToday}
+                  addButtonLabel="Add task for today"
+                  onViewUpcoming={onViewUpcoming}
+                />
+              )
             )}
           </>
         )}

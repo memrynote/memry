@@ -197,14 +197,9 @@ export const KanbanCard = ({
         isDragging && "opacity-40 shadow-none border-dashed border-primary/50 bg-primary/5"
       )}
     >
-      {/* Selection Checkbox - visible in selection mode or on hover */}
-      {onToggleSelect && (
-        <div
-          className={cn(
-            "absolute -left-1 -top-1 z-10 transition-opacity",
-            isSelectionMode ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-          )}
-        >
+      {/* Selection Checkbox - visible only in selection mode */}
+      {onToggleSelect && isSelectionMode && (
+        <div className="absolute -left-1 -top-1 z-10">
           <SelectionCheckbox
             checked={isCheckedForSelection}
             onChange={handleSelectionCheckboxChange}

@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, forwardRef, useImperativeHandle } from "react"
+import { CheckSquare } from "lucide-react"
 
 import { SearchInput } from "./search-input"
 import { ProjectFilter } from "./project-filter"
@@ -38,6 +39,10 @@ interface FilterBarProps {
   onApplySavedFilter: (filter: SavedFilter) => void
   showStatusFilter?: boolean
   statuses?: Status[]
+  /** Whether selection mode is active */
+  isSelectionMode?: boolean
+  /** Toggle selection mode on/off */
+  onToggleSelectionMode?: () => void
   className?: string
 }
 
@@ -65,6 +70,8 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
       onApplySavedFilter,
       showStatusFilter = false,
       statuses = [],
+      isSelectionMode = false,
+      onToggleSelectionMode,
       className,
     },
     ref
@@ -208,6 +215,29 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
 
           {/* Sort */}
           <SortDropdown sort={sort} onChange={onUpdateSort} />
+
+          {/* Select mode toggle */}
+          {onToggleSelectionMode && (
+            <>
+              <div className="h-6 w-px bg-border" />
+              <button
+                type="button"
+                onClick={onToggleSelectionMode}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
+                  "hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  isSelectionMode
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                aria-label={isSelectionMode ? "Exit selection mode" : "Enter selection mode"}
+                aria-pressed={isSelectionMode}
+              >
+                <CheckSquare className="size-4" />
+                <span className="hidden sm:inline">Select</span>
+              </button>
+            </>
+          )}
         </div>
 
         {/* Active filter chips */}

@@ -347,6 +347,8 @@ export const TasksPage = ({
         selectAll,
         deselectAll,
         toggleSelectAll,
+        enterSelectionMode,
+        exitSelectionMode,
     } = useTaskSelection(visibleTaskIds)
 
     // Bulk actions hook
@@ -389,6 +391,15 @@ export const TasksPage = ({
         },
         [onDragEndHandler, deselectAll]
     )
+
+    // Toggle selection mode handler
+    const handleToggleSelectionMode = useCallback(() => {
+        if (selection.isSelectionMode) {
+            exitSelectionMode()
+        } else {
+            enterSelectionMode()
+        }
+    }, [selection.isSelectionMode, enterSelectionMode, exitSelectionMode])
 
     // Subtask management hook
     const subtaskManagement = useSubtaskManagement({
@@ -1154,6 +1165,8 @@ export const TasksPage = ({
                                 onApplySavedFilter={handleApplySavedFilter}
                                 showStatusFilter={activeView === "kanban"}
                                 statuses={currentProjectStatuses}
+                                isSelectionMode={selection.isSelectionMode}
+                                onToggleSelectionMode={handleToggleSelectionMode}
                             />
                         )}
 
