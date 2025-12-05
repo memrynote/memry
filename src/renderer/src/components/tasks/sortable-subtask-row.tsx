@@ -66,10 +66,7 @@ export const SortableSubtaskRow = ({
     }
   }
 
-  const handleToggleComplete = (e: React.MouseEvent): void => {
-    e.stopPropagation()
-    onToggleComplete(subtask.id)
-  }
+
 
   return (
     <div
@@ -116,7 +113,7 @@ export const SortableSubtaskRow = ({
       </span>
 
       {/* Subtask checkbox */}
-      <div onClick={handleToggleComplete}>
+      <div onClick={(e) => e.stopPropagation()}>
         <TaskCheckbox
           checked={isCompleted}
           onChange={() => onToggleComplete(subtask.id)}

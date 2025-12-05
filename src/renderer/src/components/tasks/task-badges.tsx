@@ -271,9 +271,7 @@ export const TaskCheckbox = ({
 }: TaskCheckboxProps): React.JSX.Element => {
   const handleClick = (e: React.MouseEvent): void => {
     e.stopPropagation()
-  }
-
-  const handleCheckedChange = (): void => {
+    // Trigger onChange on click since Radix Checkbox might not fire it properly
     if (!disabled) {
       onChange()
     }
@@ -290,24 +288,27 @@ export const TaskCheckbox = ({
 
   return (
     <div
-      className="group/checkbox relative"
+      className="group/checkbox relative cursor-pointer"
       onClick={handleClick}
     >
+      {/* Invisible overlay to capture all clicks - ensures clicks work even when Radix internal elements override pointer-events */}
+      <div className="absolute inset-0 z-10" aria-hidden="true" />
       <Checkbox
         checked={checked}
-        onCheckedChange={handleCheckedChange}
         disabled={disabled}
         className={cn(
-          "size-[18px] rounded-[4px] border-[1.5px] transition-all duration-200",
+          "size-[18px] rounded-[4px] border-[1.5px] transition-all duration-200 pointer-events-none",
           "data-[state=unchecked]:border-muted-foreground/40",
           "data-[state=unchecked]:hover:border-primary/70 data-[state=unchecked]:hover:bg-primary/8",
           "data-[state=checked]:border-primary data-[state=checked]:bg-primary",
+          // Add hover effect for checked state too
+          "data-[state=checked]:hover:opacity-80",
           className
         )}
         style={priorityBorderColor ? { borderColor: priorityBorderColor } : undefined}
         aria-label={checked ? "Mark as incomplete" : "Mark as complete"}
       />
-      {/* Hover state - soft checkmark preview */}
+      {/* Hover state - soft checkmark preview (only for unchecked) */}
       {!checked && !disabled && (
         <Check
           className="absolute inset-0 m-auto size-3 text-primary/25 opacity-0 group-hover/checkbox:opacity-100 transition-opacity duration-200 pointer-events-none"

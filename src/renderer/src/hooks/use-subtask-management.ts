@@ -440,6 +440,16 @@ export const useSubtaskManagement = ({
       if (!subtask || !subtask.parentId) return
 
       const parentId = subtask.parentId
+      const isCompleted = subtask.completedAt !== null
+
+      // If already completed, uncomplete it (toggle off)
+      if (isCompleted) {
+        const updatedTasks = tasks.map((t) =>
+          t.id === subtaskId ? { ...t, completedAt: null } : t
+        )
+        onTasksChange(updatedTasks)
+        return
+      }
 
       // Complete the subtask
       const now = new Date()
