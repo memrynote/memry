@@ -1,16 +1,24 @@
 "use client"
 
 import * as React from "react"
+import { useState, useMemo } from "react"
 import {
   AudioWaveform,
   Calendar,
+  CalendarDays,
+  Check,
   Command,
   GalleryVerticalEnd,
   Home,
   Inbox,
-  ListTodo,
+  List,
+  MoreHorizontal,
+  Pencil,
   Plus,
   Search,
+  Star,
+  Trash2,
+  Archive,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -21,17 +29,29 @@ import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { SidebarSection } from "@/components/sidebar-section"
 import FileTree from "@/components/file-tree"
-import type { AppPage } from "@/App"
+import { ProjectModal } from "@/components/tasks/project-modal"
+import { DeleteProjectDialog, type DeleteTasksOption } from "@/components/tasks/delete-project-dialog"
+import type { AppPage, TaskSelectionType } from "@/App"
+import type { Project } from "@/data/tasks-data"
 
 // Quick actions data with soft utility colors
 const quickActions = [
@@ -49,7 +69,7 @@ const quickActions = [
   },
 ]
 
-// Main navigation data with soft accent colors
+// Main navigation data (simplified - no Tasks/Today since they're in the TASKS section)
 const mainNav: {
   title: string
   page: AppPage
@@ -68,21 +88,17 @@ const mainNav: {
       icon: Home,
       iconColor: "text-accent-green",
     },
-    {
-      title: "Today",
-      page: "today",
-      icon: Calendar,
-      iconColor: "text-accent-orange",
-    },
-    {
-      title: "Tasks",
-      page: "tasks",
-      icon: ListTodo,
-      iconColor: "text-accent-purple",
-    },
   ]
 
-// This is sample data.
+// Task views configuration
+const taskViewsConfig = [
+  { id: "all", label: "All Tasks", icon: List, iconColor: "text-soft-slate" },
+  { id: "today", label: "Today", icon: Star, iconColor: "text-accent-orange" },
+  { id: "upcoming", label: "Upcoming", icon: CalendarDays, iconColor: "text-accent-blue" },
+  { id: "completed", label: "Completed", icon: Check, iconColor: "text-accent-green" },
+]
+
+// Team data
 const data = {
   teams: [
     {
@@ -102,8 +118,6 @@ const data = {
     },
   ],
 }
-
-
 
 function SidebarHeaderContent({ teams }: { teams: typeof data.teams }) {
   const { state } = useSidebar()
@@ -127,65 +141,300 @@ function SidebarHeaderContent({ teams }: { teams: typeof data.teams }) {
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   currentPage: AppPage
+  taskSelectedId: string
+  taskSelectedType: TaskSelectionType
   onNavigate: (page: AppPage) => void
+  onSelectTaskView: (id: string) => void
+  onSelectProject: (id: string) => void
+  viewCounts: Record<string, number>
+  projects: Project[]
+  onProjectsChange: (projects: Project[]) => void
 }
 
-export function AppSidebar({ currentPage, onNavigate, ...props }: AppSidebarProps) {
+export function AppSidebar({
+  currentPage,
+  taskSelectedId,
+  taskSelectedType,
+  onNavigate,
+  onSelectTaskView,
+  onSelectProject,
+  viewCounts,
+  projects,
+  onProjectsChange,
+  ...props
+}: AppSidebarProps) {
+  const { isMobile } = useSidebar()
+
+  // Project modal state
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
+
+  // Calculate total tasks count for TASKS section (shown when collapsed)
+  const totalTasksCount = useMemo(() => {
+    return viewCounts["all"] || 0
+  }, [viewCounts])
+
   const handleNavClick = (page: AppPage) => (e: React.MouseEvent) => {
     e.preventDefault()
     onNavigate(page)
   }
 
+  const handleTaskViewClick = (viewId: string) => (e: React.MouseEvent) => {
+    e.preventDefault()
+    onSelectTaskView(viewId)
+  }
+
+  const handleProjectClick = (projectId: string) => (e: React.MouseEvent) => {
+    e.preventDefault()
+    onSelectProject(projectId)
+  }
+
+  const handleNewProject = (): void => {
+    setEditingProject(null)
+    setIsProjectModalOpen(true)
+  }
+
+  const handleEditProject = (project: Project): void => {
+    setEditingProject(project)
+    setIsProjectModalOpen(true)
+  }
+
+  const handleProjectModalClose = (): void => {
+    setIsProjectModalOpen(false)
+    setEditingProject(null)
+  }
+
+  const handleProjectSave = (project: Project): void => {
+    const existingIndex = projects.findIndex((p) => p.id === project.id)
+    if (existingIndex >= 0) {
+      const updated = [...projects]
+      updated[existingIndex] = project
+      onProjectsChange(updated)
+    } else {
+      onProjectsChange([...projects, project])
+    }
+  }
+
+  const handleProjectDelete = (projectId: string): void => {
+    const project = projects.find((p) => p.id === projectId)
+    if (project && !project.isDefault) {
+      setProjectToDelete(project)
+      setIsDeleteDialogOpen(true)
+      setIsProjectModalOpen(false)
+    }
+  }
+
+  const handleDeleteDialogClose = (): void => {
+    setIsDeleteDialogOpen(false)
+    setProjectToDelete(null)
+  }
+
+  const handleDeleteConfirm = (option: DeleteTasksOption): void => {
+    if (!projectToDelete) return
+
+    // Note: Task handling would need to be done at App level
+    // For now, just remove the project
+    onProjectsChange(projects.filter((p) => p.id !== projectToDelete.id))
+
+    // If deleted project was selected, switch to "All Tasks"
+    if (taskSelectedId === projectToDelete.id) {
+      onSelectTaskView("all")
+    }
+
+    setIsDeleteDialogOpen(false)
+    setProjectToDelete(null)
+  }
+
+  const handleArchiveProject = (project: Project): void => {
+    const updated = projects.map((p) =>
+      p.id === project.id ? { ...p, isArchived: true } : p
+    )
+    onProjectsChange(updated)
+
+    // If archived project was selected, switch to "All Tasks"
+    if (taskSelectedId === project.id) {
+      onSelectTaskView("all")
+    }
+  }
+
+  // Filter out archived projects for display
+  const visibleProjects = projects.filter((p) => !p.isArchived)
+
+  // Check if a task view is active
+  const isTaskViewActive = (viewId: string): boolean => {
+    return currentPage === "tasks" && taskSelectedType === "view" && taskSelectedId === viewId
+  }
+
+  // Check if a project is active
+  const isProjectActive = (projectId: string): boolean => {
+    return currentPage === "tasks" && taskSelectedType === "project" && taskSelectedId === projectId
+  }
+
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeaderContent teams={data.teams} />
-      <SidebarContent>
-        {/* Quick Actions: Search & New */}
-        <SidebarGroup>
-          <SidebarMenu>
-            {quickActions.map((action) => (
-              <SidebarMenuItem key={action.title}>
-                <SidebarMenuButton tooltip={action.title}>
-                  <action.icon className={cn("size-4", action.iconColor)} />
-                  <span>{action.title}</span>
-                  <KbdGroup className="ml-auto">
-                    <Kbd>{action.kbd}</Kbd>
-                  </KbdGroup>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
+    <>
+      <Sidebar collapsible="icon" {...props}>
+        <SidebarHeaderContent teams={data.teams} />
+        <SidebarContent>
+          {/* Quick Actions: Search & New */}
+          <SidebarGroup>
+            <SidebarMenu>
+              {quickActions.map((action) => (
+                <SidebarMenuItem key={action.title}>
+                  <SidebarMenuButton tooltip={action.title}>
+                    <action.icon className={cn("size-4", action.iconColor)} />
+                    <span>{action.title}</span>
+                    <KbdGroup className="ml-auto">
+                      <Kbd>{action.kbd}</Kbd>
+                    </KbdGroup>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
 
-        <SidebarSeparator className="!w-auto" />
+          <SidebarSeparator className="w-auto!" />
 
-        {/* Main Navigation: Home, Inbox, Tasks */}
-        <SidebarGroup>
-          <SidebarMenu>
-            {mainNav.map((item) => (
-              <SidebarMenuItem key={item.title}>
+          {/* Main Navigation: Inbox, Home */}
+          <SidebarGroup>
+            <SidebarMenu>
+              {mainNav.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    tooltip={item.title}
+                    isActive={currentPage === item.page}
+                    onClick={handleNavClick(item.page)}
+                  >
+                    <item.icon className={cn("size-4", item.iconColor)} />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+
+          <SidebarSeparator className="w-auto!" />
+
+          {/* TASKS Section - Collapsible */}
+          <SidebarSection id="tasks" label="Tasks" defaultExpanded={true} totalCount={totalTasksCount}>
+            {/* Task Views */}
+            {taskViewsConfig.map((view) => (
+              <SidebarMenuItem key={view.id}>
                 <SidebarMenuButton
-                  tooltip={item.title}
-                  isActive={currentPage === item.page}
-                  onClick={handleNavClick(item.page)}
+                  tooltip={view.label}
+                  isActive={isTaskViewActive(view.id)}
+                  onClick={handleTaskViewClick(view.id)}
                 >
-                  <item.icon className={cn("size-4", item.iconColor)} />
-                  <span>{item.title}</span>
+                  <view.icon className={cn("size-4", view.iconColor)} />
+                  <span>{view.label}</span>
                 </SidebarMenuButton>
+                {viewCounts[view.id] !== undefined && viewCounts[view.id] > 0 && (
+                  <SidebarMenuBadge>{viewCounts[view.id]}</SidebarMenuBadge>
+                )}
               </SidebarMenuItem>
             ))}
-          </SidebarMenu>
-        </SidebarGroup>
 
-        {/* File Tree */}
-        <SidebarGroup className="flex-1 overflow-auto">
-          <SidebarGroupLabel>Collections</SidebarGroupLabel>
-          <SidebarMenu>
+            {/* Dashed divider between views and projects */}
+            <div className="my-2 mx-2 border-t border-dashed border-sidebar-border" />
+
+            {/* Projects */}
+            {visibleProjects.map((project) => (
+              <SidebarMenuItem key={project.id} className="group/project">
+                <SidebarMenuButton
+                  tooltip={project.name}
+                  isActive={isProjectActive(project.id)}
+                  onClick={handleProjectClick(project.id)}
+                >
+                  <span
+                    className="size-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: project.color }}
+                    aria-hidden="true"
+                  />
+                  <span className="truncate">{project.name}</span>
+                </SidebarMenuButton>
+                <SidebarMenuBadge className="group-hover/project:hidden">
+                  {project.taskCount > 0 ? project.taskCount : ""}
+                </SidebarMenuBadge>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <SidebarMenuAction
+                      showOnHover
+                      className="opacity-0 group-hover/project:opacity-100"
+                    >
+                      <MoreHorizontal className="size-4" />
+                      <span className="sr-only">Project options</span>
+                    </SidebarMenuAction>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="w-48 rounded-lg"
+                    side={isMobile ? "bottom" : "right"}
+                    align={isMobile ? "end" : "start"}
+                  >
+                    <DropdownMenuItem onClick={() => handleEditProject(project)}>
+                      <Pencil className="size-4 text-muted-foreground" />
+                      <span>Edit project</span>
+                    </DropdownMenuItem>
+                    {!project.isDefault && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleArchiveProject(project)}>
+                          <Archive className="size-4 text-muted-foreground" />
+                          <span>Archive project</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleProjectDelete(project.id)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="size-4" />
+                          <span>Delete project</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </SidebarMenuItem>
+            ))}
+
+            {/* New Project Button */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="New Project"
+                onClick={handleNewProject}
+                className="text-sidebar-foreground/70"
+              >
+                <Plus className="size-4" />
+                <span>New Project</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarSection>
+
+          <SidebarSeparator className="w-auto!" />
+
+          {/* COLLECTIONS Section - Collapsible */}
+          <SidebarSection id="collections" label="Collections" defaultExpanded={false}>
             <FileTree />
-          </SidebarMenu>
-        </SidebarGroup>
-      </SidebarContent>
-      <SidebarRail />
-    </Sidebar>
+          </SidebarSection>
+        </SidebarContent>
+        <SidebarRail />
+      </Sidebar>
+
+      {/* Project Modal */}
+      <ProjectModal
+        isOpen={isProjectModalOpen}
+        onClose={handleProjectModalClose}
+        onSave={handleProjectSave}
+        onDelete={handleProjectDelete}
+        project={editingProject}
+      />
+
+      {/* Delete Project Dialog */}
+      <DeleteProjectDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={handleDeleteDialogClose}
+        onConfirm={handleDeleteConfirm}
+        project={projectToDelete}
+      />
+    </>
   )
 }
