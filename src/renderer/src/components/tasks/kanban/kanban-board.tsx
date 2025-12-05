@@ -6,9 +6,12 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  DragOverlay,
   type DragEndEvent,
   type DragStartEvent,
   type DragOverEvent,
+  type DropAnimation,
+  defaultDropAnimationSideEffects,
   MeasuringStrategy,
 } from "@dnd-kit/core"
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable"
@@ -17,7 +20,8 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { KanbanColumn, type KanbanColumnData } from "./kanban-column"
-import { KanbanDragOverlay } from "./kanban-drag-overlay"
+import { KanbanCardSkeleton } from "./kanban-card"
+import { MultiDragOverlay } from "@/components/tasks/drag-drop"
 import { startOfDay, isBefore, getDefaultTodoStatus, getDefaultDoneStatus } from "@/lib/task-utils"
 import type { Task } from "@/data/sample-tasks"
 import type { Project } from "@/data/tasks-data"
@@ -124,9 +128,19 @@ export const KanbanBoard = ({
   onToggleSelect,
 }: KanbanBoardProps): React.JSX.Element => {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
+  const [activeTaskIds, setActiveTaskIds] = useState<string[]>([])
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
+
+  // Drop animation config
+  const dropAnimation: DropAnimation = {
+    sideEffects: defaultDropAnimationSideEffects({
+      styles: { active: { opacity: "0.5" } },
+    }),
+    duration: 200,
+    easing: "ease-out",
+  }
 
   // Generate columns based on view context
   const columns = useMemo(
@@ -157,11 +171,20 @@ export const KanbanBoard = ({
     return grouped
   }, [columns, tasks])
 
-  // Get the active task being dragged
+  // Get the active task(s) being dragged
   const activeTask = useMemo(() => {
     if (!activeTaskId) return null
     return tasks.find((t) => t.id === activeTaskId) || null
   }, [activeTaskId, tasks])
+
+  // Get all active tasks for multi-drag
+  const activeTasks = useMemo(() => {
+    if (activeTaskIds.length === 0) return []
+    return tasks.filter((t) => activeTaskIds.includes(t.id))
+  }, [activeTaskIds, tasks])
+
+  // Check if multi-dragging
+  const isMultiDrag = activeTaskIds.length > 1
 
   // Check if a task is completed
   const getTaskIsCompleted = useCallback(
@@ -201,10 +224,26 @@ export const KanbanBoard = ({
     },
   }
 
-  // Handle drag start
+  // Handle drag start - check for multi-select
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveTaskId(event.active.id as string)
-  }, [])
+    const draggedId = event.active.id as string
+    setActiveTaskId(draggedId)
+
+    // Check if the dragged task is part of a multi-selection
+    const isPartOfSelection = selectedIds?.has(draggedId)
+    if (isPartOfSelection && selectedIds && selectedIds.size > 1) {
+      // Drag all selected tasks
+      setActiveTaskIds(Array.from(selectedIds))
+    } else {
+      // Drag only this task
+      setActiveTaskIds([draggedId])
+    }
+
+    // Haptic feedback on mobile
+    if ("vibrate" in navigator) {
+      navigator.vibrate(50)
+    }
+  }, [selectedIds])
 
   // Handle drag over - for real-time visual feedback
   const handleDragOver = useCallback((event: DragOverEvent) => {
@@ -212,18 +251,16 @@ export const KanbanBoard = ({
     // The actual update happens in handleDragEnd
   }, [])
 
-  // Handle drag end
+  // Handle drag end - supports multi-drag
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event
+      const draggedTaskIds = [...activeTaskIds]
 
       setActiveTaskId(null)
+      setActiveTaskIds([])
 
-      if (!over) return
-
-      const taskId = active.id as string
-      const task = tasks.find((t) => t.id === taskId)
-      if (!task) return
+      if (!over || draggedTaskIds.length === 0) return
 
       // Determine target column
       const overData = over.data.current
@@ -256,57 +293,84 @@ export const KanbanBoard = ({
         )
         if (!targetStatus) return
 
-        const updates: Partial<Task> = {
-          statusId: targetColumnId,
-        }
+        // Update all dragged tasks
+        let updatedCount = 0
+        draggedTaskIds.forEach((taskId) => {
+          const task = tasks.find((t) => t.id === taskId)
+          if (!task || task.statusId === targetColumnId) return
 
-        // If moving to "done" status, set completedAt
-        if (targetStatus.type === "done" && !task.completedAt) {
-          updates.completedAt = new Date()
-        }
-        // If moving out of "done" status, clear completedAt
-        else if (targetStatus.type !== "done" && task.completedAt) {
-          updates.completedAt = null
-        }
+          const updates: Partial<Task> = {
+            statusId: targetColumnId,
+          }
 
-        // Only update if something changed
-        if (task.statusId !== targetColumnId) {
+          // If moving to "done" status, set completedAt
+          if (targetStatus.type === "done" && !task.completedAt) {
+            updates.completedAt = new Date()
+          }
+          // If moving out of "done" status, clear completedAt
+          else if (targetStatus.type !== "done" && task.completedAt) {
+            updates.completedAt = null
+          }
+
           onUpdateTask(taskId, updates)
+          updatedCount++
+        })
+
+        if (updatedCount > 0) {
+          toast.success(
+            updatedCount === 1
+              ? `Moved to ${targetStatus.name}`
+              : `${updatedCount} tasks moved to ${targetStatus.name}`
+          )
         }
       }
 
       // Handle project columns (all tasks view)
       if (targetColumn.type === "project") {
-        if (task.projectId === targetColumnId) return // No change
-
         const targetProject = projects.find((p) => p.id === targetColumnId)
         if (!targetProject) return
 
-        // Find the current status type
-        const currentProject = projects.find((p) => p.id === task.projectId)
-        const currentStatus = currentProject?.statuses.find(
-          (s) => s.id === task.statusId
-        )
-        const currentStatusType = currentStatus?.type || "todo"
+        // Update all dragged tasks
+        let updatedCount = 0
+        draggedTaskIds.forEach((taskId) => {
+          const task = tasks.find((t) => t.id === taskId)
+          if (!task || task.projectId === targetColumnId) return
 
-        // Map to equivalent status in new project
-        let newStatus = targetProject.statuses.find(
-          (s) => s.type === currentStatusType
-        )
-        // Fall back to first todo status if no match
-        if (!newStatus) {
-          newStatus = getDefaultTodoStatus(targetProject)
+          // Find the current status type
+          const currentProject = projects.find((p) => p.id === task.projectId)
+          const currentStatus = currentProject?.statuses.find(
+            (s) => s.id === task.statusId
+          )
+          const currentStatusType = currentStatus?.type || "todo"
+
+          // Map to equivalent status in new project
+          let newStatus = targetProject.statuses.find(
+            (s) => s.type === currentStatusType
+          )
+          // Fall back to first todo status if no match
+          if (!newStatus) {
+            newStatus = getDefaultTodoStatus(targetProject)
+          }
+
+          const updates: Partial<Task> = {
+            projectId: targetColumnId,
+            statusId: newStatus?.id || targetProject.statuses[0]?.id,
+          }
+
+          onUpdateTask(taskId, updates)
+          updatedCount++
+        })
+
+        if (updatedCount > 0) {
+          toast.success(
+            updatedCount === 1
+              ? `Moved to ${targetColumn.title}`
+              : `${updatedCount} tasks moved to ${targetColumn.title}`
+          )
         }
-
-        const updates: Partial<Task> = {
-          projectId: targetColumnId,
-          statusId: newStatus?.id || targetProject.statuses[0]?.id,
-        }
-
-        onUpdateTask(taskId, updates)
       }
     },
-    [tasks, columns, selectedType, selectedProject, projects, onUpdateTask]
+    [tasks, columns, selectedType, selectedProject, projects, onUpdateTask, activeTaskIds]
   )
 
   // Handle quick add from column
@@ -743,11 +807,19 @@ export const KanbanBoard = ({
         </ScrollArea>
       </div>
 
-      <KanbanDragOverlay
-        activeTask={activeTask}
-        isCompleted={isActiveTaskCompleted}
-        isOverdue={isActiveTaskOverdue}
-      />
+      <DragOverlay dropAnimation={dropAnimation}>
+        {activeTask && (
+          isMultiDrag ? (
+            <MultiDragOverlay tasks={activeTasks} />
+          ) : (
+            <KanbanCardSkeleton
+              task={activeTask}
+              isCompleted={isActiveTaskCompleted}
+              isOverdue={isActiveTaskOverdue}
+            />
+          )
+        )}
+      </DragOverlay>
     </DndContext>
   )
 }

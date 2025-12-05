@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react"
 import { Plus } from "lucide-react"
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
+import { useDroppable } from "@dnd-kit/core"
 
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { TaskSection } from "@/components/tasks/task-section"
 import { DaySectionHeader } from "@/components/tasks/day-section-header"
-import { TodayTaskRow } from "@/components/tasks/today-task-row"
+import { SortableTaskRow } from "@/components/tasks/drag-drop"
 import { UpcomingEmptyState } from "@/components/tasks/upcoming-empty-state"
 import { QuickAddInput } from "@/components/tasks/quick-add-input"
 import { cn } from "@/lib/utils"
@@ -73,6 +75,23 @@ const DaySection = ({
   const isToday = isSameDay(date, startOfDay(new Date()))
   const isEmpty = tasks.length === 0
 
+  // Section ID for drag-drop
+  const sectionId = `day-${dateKey}`
+
+  // Set up droppable for section-level drops
+  const { setNodeRef, isOver } = useDroppable({
+    id: sectionId,
+    data: {
+      type: "section",
+      sectionId: dateKey,
+      label: date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }),
+      date: date, // Pass the actual date for reschedule
+    },
+  })
+
+  // Get task IDs for SortableContext
+  const taskIds = tasks.map((t) => t.id)
+
   // Hide empty days if setting is off
   if (isEmpty && !showEmptyDays) {
     return null
@@ -82,52 +101,74 @@ const DaySection = ({
     onAddTaskForDate(date)
   }
 
+  // Check if a task is completed
+  const isTaskCompleted = (task: Task): boolean => {
+    const project = projects.find((p) => p.id === task.projectId)
+    if (!project) return false
+    const status = project.statuses.find((s) => s.id === task.statusId)
+    return status?.type === "done"
+  }
+
   return (
     <section
+      ref={setNodeRef}
       className={cn(
-        "rounded-lg border border-border overflow-hidden",
+        "rounded-lg border border-border overflow-hidden transition-all",
         "border-l-2",
-        isToday ? "border-l-amber-500 bg-amber-50/30 dark:bg-amber-950/10" : "border-l-border"
+        isToday ? "border-l-amber-500 bg-amber-50/30 dark:bg-amber-950/10" : "border-l-border",
+        isOver && "ring-2 ring-primary/50 border-primary/50"
       )}
     >
       {/* Day header */}
       <DaySectionHeader date={date} taskCount={tasks.length} />
 
       {/* Task list */}
-      <div className="divide-y divide-border/50">
-        {tasks.length > 0 ? (
-          tasks.map((task) => {
-            const project = projects.find((p) => p.id === task.projectId)
+      <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+        <div className="divide-y divide-border/50">
+          {tasks.length > 0 ? (
+            tasks.map((task) => {
+              const project = projects.find((p) => p.id === task.projectId)
+              if (!project) return null
 
-            return (
-              <TodayTaskRow
-                key={task.id}
-                task={task}
-                project={project}
-                section="today"
-                isSelected={selectedTaskId === task.id}
-                onToggleComplete={onToggleComplete}
-                onClick={onTaskClick}
-              />
-            )
-          })
-        ) : (
-          <div className="px-4 py-6 text-center text-text-tertiary text-sm">
-            No tasks scheduled
-            <button
-              type="button"
-              onClick={handleAddTask}
-              className={cn(
-                "block mx-auto mt-2 text-primary hover:text-primary/80",
-                "text-sm font-medium transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              )}
-            >
-              + Add task for {date.toLocaleDateString("en-US", { weekday: "long" })}
-            </button>
-          </div>
-        )}
-      </div>
+              return (
+                <SortableTaskRow
+                  key={task.id}
+                  task={task}
+                  project={project}
+                  sectionId={dateKey}
+                  isCompleted={isTaskCompleted(task)}
+                  isSelected={selectedTaskId === task.id}
+                  showProjectBadge={true}
+                  onToggleComplete={onToggleComplete}
+                  onClick={onTaskClick}
+                />
+              )
+            })
+          ) : (
+            <div className="px-4 py-6 text-center text-text-tertiary text-sm">
+              No tasks scheduled
+              <button
+                type="button"
+                onClick={handleAddTask}
+                className={cn(
+                  "block mx-auto mt-2 text-primary hover:text-primary/80",
+                  "text-sm font-medium transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                )}
+              >
+                + Add task for {date.toLocaleDateString("en-US", { weekday: "long" })}
+              </button>
+            </div>
+          )}
+        </div>
+      </SortableContext>
+
+      {/* Drop indicator message when hovering */}
+      {isOver && (
+        <div className="px-4 py-2 text-center text-sm text-primary font-medium bg-primary/5 border-t border-primary/20">
+          Drop to reschedule to {date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
+        </div>
+      )}
 
       {/* Add task footer for non-empty days */}
       {tasks.length > 0 && (
@@ -269,6 +310,7 @@ export const UpcomingView = ({
             tasks={overdue}
             projects={projects}
             variant="overdue"
+            date={startOfDay(new Date())} // Dropping here reschedules to today
             selectedTaskId={selectedTaskId}
             onToggleComplete={onToggleComplete}
             onTaskClick={onTaskClick}

@@ -115,6 +115,7 @@ export const TodayView = ({
             tasks={overdue}
             projects={projects}
             variant="overdue"
+            date={startOfDay(new Date())} // Dropping here reschedules to today
             selectedTaskId={selectedTaskId}
             onToggleComplete={onToggleComplete}
             onTaskClick={onTaskClick}
@@ -132,6 +133,7 @@ export const TodayView = ({
                 tasks={today}
                 projects={projects}
                 variant="today"
+                date={startOfDay(new Date())} // Explicitly today's date
                 showAddTask
                 selectedTaskId={selectedTaskId}
                 onAddTask={handleAddTaskForToday}
