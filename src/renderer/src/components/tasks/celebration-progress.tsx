@@ -111,3 +111,4 @@ export const CelebrationProgress = ({
 }
 
 export default CelebrationProgress
+

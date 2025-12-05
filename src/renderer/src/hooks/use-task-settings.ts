@@ -105,3 +105,4 @@ export const useTaskSettings = (): UseTaskSettingsReturn => {
 }
 
 export default useTaskSettings
+
