@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import {
     List,
     Star,
@@ -9,8 +9,6 @@ import {
     Columns3,
     CalendarDays,
     Settings,
-    ChevronLeft,
-    ChevronRight,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -35,6 +33,7 @@ import {
     DeleteCompletedDialog,
 } from "@/components/tasks/completed"
 import { TasksSidebar, type SidebarView, type SidebarProject } from "@/components/tasks/tasks-sidebar"
+import { FilterBar, FilterEmptyState, type FilterBarRef } from "@/components/tasks/filters"
 import { getIconByName } from "@/components/icon-picker"
 import { cn } from "@/lib/utils"
 import {
@@ -55,11 +54,15 @@ import {
     type TaskView,
     type Project,
     type ViewMode,
+    type TaskFilters,
+    type TaskSort,
+    type SavedFilter,
 } from "@/data/tasks-data"
-import { sampleTasks, createDefaultTask, generateTaskId, type Task, type Priority, type RepeatConfig } from "@/data/sample-tasks"
+import { sampleTasks, createDefaultTask, generateTaskId, type Task, type Priority } from "@/data/sample-tasks"
 import { addDays, formatDateShort } from "@/lib/task-utils"
 import { calculateNextOccurrence, shouldCreateNextOccurrence } from "@/lib/repeat-utils"
 import type { StopRepeatOption } from "@/components/tasks/stop-repeating-dialog"
+import { useFilterState, useSavedFilters, useFilteredAndSortedTasks } from "@/hooks/use-task-filters"
 
 // ============================================================================
 // TYPES
@@ -579,6 +582,31 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
     const [isDeleteCompletedDialogOpen, setIsDeleteCompletedDialogOpen] = useState(false)
     const [deleteCompletedVariant, setDeleteCompletedVariant] = useState<"completed" | "archived">("completed")
 
+    // Filter bar ref
+    const filterBarRef = useRef<FilterBarRef>(null)
+
+    // Filter state with persistence
+    const {
+        filters,
+        sort,
+        updateFilters,
+        updateSort,
+        clearFilters,
+        hasActiveFilters: filtersActive,
+    } = useFilterState({
+        selectedType,
+        selectedId,
+        activeView,
+        persistFilters: true,
+    })
+
+    // Saved filters
+    const {
+        savedFilters,
+        saveFilter,
+        deleteFilter: deleteSavedFilter,
+    } = useSavedFilters()
+
     // ========== DERIVED STATE ==========
 
     // Calculate view counts dynamically
@@ -628,10 +656,26 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
         }
     }, [availableViews, activeView])
 
-    // Derived: filtered tasks for current selection
-    const filteredTasks = useMemo(() => {
+    // Derived: filtered tasks for current selection (base filter by view/project)
+    const baseFilteredTasks = useMemo(() => {
         return getFilteredTasks(tasks, selectedId, selectedType, projectsWithCounts)
     }, [tasks, selectedId, selectedType, projectsWithCounts])
+
+    // Apply advanced filters and sort to base filtered tasks
+    const { filteredTasks: advancedFilteredTasks, totalCount, filteredCount } = useFilteredAndSortedTasks({
+        tasks: baseFilteredTasks,
+        filters,
+        sort,
+        projects: projectsWithCounts,
+    })
+
+    // Determine which filtered tasks to use based on view
+    // For special views (today, upcoming, completed), we don't apply advanced filters
+    const shouldApplyAdvancedFilters = selectedId !== "today" && selectedId !== "upcoming" && selectedId !== "completed"
+    const filteredTasks = shouldApplyAdvancedFilters ? advancedFilteredTasks : baseFilteredTasks
+
+    // Check if we should show the filter empty state
+    const showFilterEmptyState = shouldApplyAdvancedFilters && filtersActive && filteredCount === 0 && totalCount > 0
 
     // Derived: task counts for header
     const taskCounts = useMemo(() => {
@@ -658,8 +702,12 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
                 day: "numeric",
             })
         }
+        // Show filtered count when filters are active
+        if (shouldApplyAdvancedFilters && filtersActive) {
+            return `Showing ${filteredCount} of ${totalCount} tasks`
+        }
         return formatTaskSubtitle(taskCounts, selectedId, selectedType)
-    }, [taskCounts, selectedId, selectedType])
+    }, [taskCounts, selectedId, selectedType, shouldApplyAdvancedFilters, filtersActive, filteredCount, totalCount])
 
     // Derived: selected task for detail panel
     const selectedTask = useMemo(() => {
@@ -675,6 +723,9 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
         const status = project.statuses.find((s) => s.id === selectedTask.statusId)
         return status?.type === "done"
     }, [selectedTask, projectsWithCounts])
+
+    // Show filter bar for views that support it
+    const showFilterBar = selectedId !== "today" && selectedId !== "upcoming" && selectedId !== "completed"
 
     // ========== HANDLERS ==========
 
@@ -832,6 +883,36 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
         window.addEventListener("keydown", handler)
         return () => window.removeEventListener("keydown", handler)
     }, [toggleSidebar])
+
+    // Keyboard shortcuts for filter operations
+    useEffect(() => {
+        const isInputFocused = (): boolean => {
+            const activeElement = document.activeElement
+            return (
+                activeElement instanceof HTMLInputElement ||
+                activeElement instanceof HTMLTextAreaElement ||
+                (activeElement as HTMLElement)?.isContentEditable === true
+            )
+        }
+
+        const handler = (e: KeyboardEvent): void => {
+            // "/" to focus search (only when filter bar is visible)
+            if (e.key === "/" && !isInputFocused() && showFilterBar) {
+                e.preventDefault()
+                filterBarRef.current?.focusSearch()
+            }
+
+            // Shift+F to clear all filters
+            if (e.key === "F" && e.shiftKey && !isInputFocused() && showFilterBar) {
+                e.preventDefault()
+                clearFilters()
+                toast.success("Filters cleared")
+            }
+        }
+
+        window.addEventListener("keydown", handler)
+        return () => window.removeEventListener("keydown", handler)
+    }, [showFilterBar, clearFilters])
 
     const handleAddTask = (): void => {
         // Open the add task modal
@@ -1341,6 +1422,45 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
         return tasks
     }, [selectedType, selectedId, tasks])
 
+    // ========== FILTER HANDLERS ==========
+
+    const handleSaveFilter = useCallback(
+        (name: string, filterState: TaskFilters, sortState?: TaskSort): void => {
+            saveFilter(name, filterState, sortState)
+            toast.success("Filter saved", {
+                description: `"${name}" has been saved to your filters.`,
+            })
+        },
+        [saveFilter]
+    )
+
+    const handleDeleteSavedFilter = useCallback(
+        (filterId: string): void => {
+            deleteSavedFilter(filterId)
+            toast.success("Filter deleted")
+        },
+        [deleteSavedFilter]
+    )
+
+    const handleApplySavedFilter = useCallback(
+        (savedFilter: SavedFilter): void => {
+            updateFilters(savedFilter.filters)
+            if (savedFilter.sort) {
+                updateSort(savedFilter.sort)
+            }
+            toast.success(`Applied "${savedFilter.name}"`)
+        },
+        [updateFilters, updateSort]
+    )
+
+    // Get statuses for the current project (for Kanban filter)
+    const currentProjectStatuses = useMemo(() => {
+        if (selectedType === "project" && selectedProject) {
+            return selectedProject.statuses
+        }
+        return []
+    }, [selectedType, selectedProject])
+
     const sidebarViews: SidebarView[] = useMemo(
         () =>
             taskViews.map((view) => ({
@@ -1406,6 +1526,26 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
                         onProjectSettings={handleProjectSettings}
                     />
 
+                    {/* Filter Bar */}
+                    {showFilterBar && (
+                        <FilterBar
+                            ref={filterBarRef}
+                            filters={filters}
+                            sort={sort}
+                            onUpdateFilters={updateFilters}
+                            onUpdateSort={updateSort}
+                            onClearFilters={clearFilters}
+                            projects={projectsWithCounts}
+                            tasks={baseFilteredTasks}
+                            savedFilters={savedFilters}
+                            onSaveFilter={handleSaveFilter}
+                            onDeleteSavedFilter={handleDeleteSavedFilter}
+                            onApplySavedFilter={handleApplySavedFilter}
+                            showStatusFilter={activeView === "kanban"}
+                            statuses={currentProjectStatuses}
+                        />
+                    )}
+
                     {/* Content Body - Today View */}
                     {activeView === "list" && selectedId === "today" && (
                         <TodayView
@@ -1461,33 +1601,49 @@ export const TasksPage = ({ className }: TasksPageProps): React.JSX.Element => {
 
                     {/* Content Body - Task List (for other views) */}
                     {activeView === "list" && selectedId !== "today" && selectedId !== "upcoming" && selectedId !== "completed" && (
-                        <TaskList
-                            tasks={filteredTasks}
-                            projects={projectsWithCounts}
-                            selectedId={selectedId}
-                            selectedType={selectedType}
-                            selectedTaskId={selectedTaskId}
-                            onToggleComplete={handleToggleComplete}
-                            onTaskClick={handleTaskClick}
-                            onQuickAdd={handleQuickAdd}
-                            onOpenModal={handleOpenAddTaskModal}
-                        />
+                        showFilterEmptyState ? (
+                            <FilterEmptyState
+                                filters={filters}
+                                projects={projectsWithCounts}
+                                onClearFilters={clearFilters}
+                            />
+                        ) : (
+                            <TaskList
+                                tasks={filteredTasks}
+                                projects={projectsWithCounts}
+                                selectedId={selectedId}
+                                selectedType={selectedType}
+                                selectedTaskId={selectedTaskId}
+                                onToggleComplete={handleToggleComplete}
+                                onTaskClick={handleTaskClick}
+                                onQuickAdd={handleQuickAdd}
+                                onOpenModal={handleOpenAddTaskModal}
+                            />
+                        )
                     )}
 
                     {/* Kanban View */}
                     {activeView === "kanban" && (
-                        <KanbanBoard
-                            tasks={filteredTasks}
-                            projects={projectsWithCounts}
-                            selectedId={selectedId}
-                            selectedType={selectedType}
-                            selectedTaskId={selectedTaskId}
-                            onUpdateTask={handleUpdateTask}
-                            onTaskClick={handleTaskClick}
-                            onToggleComplete={handleToggleComplete}
-                            onDeleteTask={handleDeleteTask}
-                            onQuickAdd={handleQuickAdd}
-                        />
+                        showFilterEmptyState ? (
+                            <FilterEmptyState
+                                filters={filters}
+                                projects={projectsWithCounts}
+                                onClearFilters={clearFilters}
+                            />
+                        ) : (
+                            <KanbanBoard
+                                tasks={filteredTasks}
+                                projects={projectsWithCounts}
+                                selectedId={selectedId}
+                                selectedType={selectedType}
+                                selectedTaskId={selectedTaskId}
+                                onUpdateTask={handleUpdateTask}
+                                onTaskClick={handleTaskClick}
+                                onToggleComplete={handleToggleComplete}
+                                onDeleteTask={handleDeleteTask}
+                                onQuickAdd={handleQuickAdd}
+                            />
+                        )
                     )}
 
                     {/* Placeholder for Calendar view */}

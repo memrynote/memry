@@ -1,3 +1,5 @@
+import type { Priority } from "./sample-tasks"
+
 // ============================================================================
 // STATUS TYPES AND INTERFACES
 // ============================================================================
@@ -300,3 +302,191 @@ export const canDeleteStatus = (
 
   return { canDelete: true }
 }
+
+// ============================================================================
+// FILTER TYPES AND INTERFACES
+// ============================================================================
+
+export type DueDateFilterType =
+  | "any"
+  | "none"
+  | "overdue"
+  | "today"
+  | "tomorrow"
+  | "this-week"
+  | "next-week"
+  | "this-month"
+  | "custom"
+
+export type CompletionFilterType = "active" | "completed" | "all"
+
+export type RepeatFilterType = "all" | "repeating" | "one-time"
+
+export type HasTimeFilterType = "all" | "with-time" | "without-time"
+
+export interface DueDateFilter {
+  type: DueDateFilterType
+  customStart?: Date | null
+  customEnd?: Date | null
+}
+
+export interface TaskFilters {
+  // Text search
+  search: string
+
+  // Project filter (multi-select)
+  projectIds: string[] // empty = all projects
+
+  // Priority filter (multi-select)
+  priorities: Priority[] // empty = all priorities
+
+  // Due date filter
+  dueDate: DueDateFilter
+
+  // Status filter (for Kanban view)
+  statusIds: string[] // empty = all statuses
+
+  // Completion filter
+  completion: CompletionFilterType
+
+  // Repeat filter
+  repeatType: RepeatFilterType
+
+  // Has time set
+  hasTime: HasTimeFilterType
+}
+
+// ============================================================================
+// SORT TYPES AND INTERFACES
+// ============================================================================
+
+export type SortField =
+  | "dueDate"
+  | "priority"
+  | "createdAt"
+  | "title"
+  | "project"
+  | "completedAt"
+
+export type SortDirection = "asc" | "desc"
+
+export interface TaskSort {
+  field: SortField
+  direction: SortDirection
+}
+
+// ============================================================================
+// SAVED FILTER TYPES
+// ============================================================================
+
+export interface SavedFilter {
+  id: string
+  name: string
+  filters: TaskFilters
+  sort?: TaskSort
+  createdAt: Date
+}
+
+// ============================================================================
+// DEFAULT FILTER/SORT VALUES
+// ============================================================================
+
+export const defaultDueDateFilter: DueDateFilter = {
+  type: "any",
+  customStart: null,
+  customEnd: null,
+}
+
+export const defaultFilters: TaskFilters = {
+  search: "",
+  projectIds: [],
+  priorities: [],
+  dueDate: defaultDueDateFilter,
+  statusIds: [],
+  completion: "active",
+  repeatType: "all",
+  hasTime: "all",
+}
+
+export const defaultSort: TaskSort = {
+  field: "dueDate",
+  direction: "asc",
+}
+
+// ============================================================================
+// FILTER OPTIONS CONFIGURATION
+// ============================================================================
+
+export const dueDateFilterOptions: { value: DueDateFilterType; label: string }[] = [
+  { value: "any", label: "Any due date" },
+  { value: "none", label: "No due date" },
+  { value: "overdue", label: "Overdue" },
+  { value: "today", label: "Today" },
+  { value: "tomorrow", label: "Tomorrow" },
+  { value: "this-week", label: "This week" },
+  { value: "next-week", label: "Next week" },
+  { value: "this-month", label: "This month" },
+  { value: "custom", label: "Custom range..." },
+]
+
+export const sortFieldOptions: { value: SortField; label: string }[] = [
+  { value: "dueDate", label: "Due Date" },
+  { value: "priority", label: "Priority" },
+  { value: "createdAt", label: "Created" },
+  { value: "title", label: "Title (A-Z)" },
+  { value: "project", label: "Project" },
+]
+
+// ============================================================================
+// QUICK FILTER PRESETS
+// ============================================================================
+
+export interface QuickFilterPreset {
+  id: string
+  label: string
+  icon: string
+  filters: Partial<TaskFilters>
+}
+
+export const quickFilterPresets: QuickFilterPreset[] = [
+  {
+    id: "overdue",
+    label: "Overdue",
+    icon: "AlertTriangle",
+    filters: {
+      dueDate: { type: "overdue", customStart: null, customEnd: null },
+    },
+  },
+  {
+    id: "high-priority",
+    label: "High Priority",
+    icon: "Flag",
+    filters: {
+      priorities: ["urgent", "high"],
+    },
+  },
+  {
+    id: "due-this-week",
+    label: "Due This Week",
+    icon: "Calendar",
+    filters: {
+      dueDate: { type: "this-week", customStart: null, customEnd: null },
+    },
+  },
+  {
+    id: "repeating",
+    label: "Repeating",
+    icon: "Repeat",
+    filters: {
+      repeatType: "repeating",
+    },
+  },
+  {
+    id: "no-due-date",
+    label: "No Due Date",
+    icon: "HelpCircle",
+    filters: {
+      dueDate: { type: "none", customStart: null, customEnd: null },
+    },
+  },
+]
