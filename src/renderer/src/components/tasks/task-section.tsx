@@ -1,7 +1,10 @@
 import { Plus } from "lucide-react"
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
+import { useDroppable } from "@dnd-kit/core"
 
 import { cn } from "@/lib/utils"
-import { TodayTaskRow } from "@/components/tasks/today-task-row"
+import { SortableTaskRow } from "@/components/tasks/drag-drop"
+import { startOfDay, addDays } from "@/lib/task-utils"
 import type { Task } from "@/data/sample-tasks"
 import type { Project } from "@/data/tasks-data"
 
@@ -22,6 +25,8 @@ interface TaskSectionProps {
   emptyMessage?: string
   showAddTask?: boolean
   selectedTaskId?: string | null
+  /** Explicit date for this section (for reschedule on drop) */
+  date?: Date | null
   onAddTask?: () => void
   onTaskClick?: (taskId: string) => void
   onToggleComplete: (taskId: string) => void
@@ -92,11 +97,44 @@ export const TaskSection = ({
   emptyMessage,
   showAddTask = false,
   selectedTaskId,
+  date,
   onAddTask,
   onTaskClick,
   onToggleComplete,
   className,
 }: TaskSectionProps): React.JSX.Element => {
+  // Section ID for drag-drop
+  const sectionId = `section-${id}`
+
+  // Determine target date based on variant if not explicitly provided
+  const getDefaultDate = (): Date | null => {
+    const today = startOfDay(new Date())
+    switch (variant) {
+      case "overdue":
+        return addDays(today, -1) // Yesterday for overdue
+      case "today":
+        return today
+      default:
+        return null
+    }
+  }
+
+  const targetDate = date !== undefined ? date : getDefaultDate()
+
+  // Set up droppable for section-level drops
+  const { setNodeRef, isOver } = useDroppable({
+    id: sectionId,
+    data: {
+      type: "section",
+      sectionId: id,
+      label: title,
+      date: targetDate,
+    },
+  })
+
+  // Get task IDs for SortableContext
+  const taskIds = tasks.map((t) => t.id)
+
   const accentBorderColor = {
     overdue: "border-l-red-500",
     today: "border-l-amber-500",
@@ -109,19 +147,26 @@ export const TaskSection = ({
     default: "bg-background",
   }[variant]
 
-  // Get the section type for task row
-  const sectionType = variant === "overdue" ? "overdue" : "today"
+  // Determine if task is completed based on its project status
+  const isTaskCompleted = (task: Task): boolean => {
+    const project = projects.find((p) => p.id === task.projectId)
+    if (!project) return false
+    const status = project.statuses.find((s) => s.id === task.statusId)
+    return status?.type === "done"
+  }
 
   return (
     <section
+      ref={setNodeRef}
       className={cn(
-        "rounded-lg border border-border overflow-hidden",
+        "rounded-lg border border-border overflow-hidden transition-all",
         "border-l-2",
         accentBorderColor,
         accentBgColor,
+        isOver && "ring-2 ring-primary/50 border-primary/50",
         className
       )}
-      aria-labelledby={`section-${id}`}
+      aria-labelledby={sectionId}
     >
       {/* Header */}
       <TaskSectionHeader
@@ -132,42 +177,54 @@ export const TaskSection = ({
       />
 
       {/* Task list */}
-      <div className="divide-y divide-border/50">
-        {tasks.length > 0 ? (
-          tasks.map((task) => {
-            const project = projects.find((p) => p.id === task.projectId)
+      <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+        <div className="divide-y divide-border/50">
+          {tasks.length > 0 ? (
+            tasks.map((task) => {
+              const project = projects.find((p) => p.id === task.projectId)
+              if (!project) return null
 
-            return (
-              <TodayTaskRow
-                key={task.id}
-                task={task}
-                project={project}
-                section={sectionType}
-                isSelected={selectedTaskId === task.id}
-                onToggleComplete={onToggleComplete}
-                onClick={onTaskClick}
-              />
-            )
-          })
-        ) : (
-          <div className="px-4 py-8 text-center text-text-tertiary text-sm">
-            {emptyMessage || "No tasks"}
-            {showAddTask && onAddTask && (
-              <button
-                type="button"
-                onClick={onAddTask}
-                className={cn(
-                  "block mx-auto mt-3 text-primary hover:text-primary/80",
-                  "text-sm font-medium transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                )}
-              >
-                + Add task
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+              return (
+                <SortableTaskRow
+                  key={task.id}
+                  task={task}
+                  project={project}
+                  sectionId={id}
+                  isCompleted={isTaskCompleted(task)}
+                  isSelected={selectedTaskId === task.id}
+                  showProjectBadge={true}
+                  onToggleComplete={onToggleComplete}
+                  onClick={onTaskClick}
+                />
+              )
+            })
+          ) : (
+            <div className="px-4 py-8 text-center text-text-tertiary text-sm">
+              {emptyMessage || "No tasks"}
+              {showAddTask && onAddTask && (
+                <button
+                  type="button"
+                  onClick={onAddTask}
+                  className={cn(
+                    "block mx-auto mt-3 text-primary hover:text-primary/80",
+                    "text-sm font-medium transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  )}
+                >
+                  + Add task
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </SortableContext>
+
+      {/* Drop indicator message when hovering */}
+      {isOver && (
+        <div className="px-4 py-2 text-center text-sm text-primary font-medium bg-primary/5 border-t border-primary/20">
+          Drop to move to {title}
+        </div>
+      )}
 
       {/* Add task footer (if tasks exist and showAddTask) */}
       {tasks.length > 0 && showAddTask && onAddTask && (
