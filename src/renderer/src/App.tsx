@@ -150,6 +150,57 @@ function App(): React.JSX.Element {
         return
       }
 
+      // Handle dropping task on a status column (for status change)
+      if (overData?.type === "column" && activeData?.type === "task") {
+        const taskId = active.id as string
+        const newStatusId = overData.statusId as string || overData.columnId as string
+        const task = tasks.find((t) => t.id === taskId)
+        if (!task) return
+
+        // Find the project for this task
+        const project = projects.find((p) => p.id === task.projectId)
+        if (!project) return
+
+        // Find the target status
+        const targetStatus = project.statuses.find((s) => s.id === newStatusId)
+        if (!targetStatus) return
+
+        // Don't update if already in the same status
+        if (task.statusId === newStatusId) return
+
+        // Handle multi-select drag
+        if (dragState.activeIds.length > 1) {
+          setTasks((prev) =>
+            prev.map((t) =>
+              dragState.activeIds.includes(t.id)
+                ? {
+                  ...t,
+                  statusId: newStatusId,
+                  // Mark as completed if moving to done status
+                  completedAt: targetStatus.type === "done" ? new Date() : null
+                }
+                : t
+            )
+          )
+          toast.success(`Moved ${dragState.activeIds.length} tasks to ${targetStatus.name}`)
+          setSelectedTaskIds(new Set())
+        } else {
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === taskId
+                ? {
+                  ...t,
+                  statusId: newStatusId,
+                  completedAt: targetStatus.type === "done" ? new Date() : null
+                }
+                : t
+            )
+          )
+          toast.success(`Moved task to ${targetStatus.name}`)
+        }
+        return
+      }
+
       // Handle project reordering in sidebar
       if (activeData?.type === undefined && over.id !== active.id) {
         // Check if this is a project reorder (active.id matches a project id)

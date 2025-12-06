@@ -134,8 +134,19 @@ const createCollisionDetection = (): CollisionDetection => {
       return [dateCollision]
     }
 
-    // Check for section drop zones
+    // Check for column drop zones (status groups in list view)
+    // Use rectIntersection for larger hit area
     const rectCollisions = rectIntersection(args)
+    const columnCollision = rectCollisions.find((collision) => {
+      const type = collision.data?.droppableContainer?.data?.current?.type
+      return type === "column"
+    })
+
+    if (columnCollision) {
+      return [columnCollision]
+    }
+
+    // Check for section drop zones (date groups)
     const sectionCollision = rectCollisions.find((collision) => {
       const type = collision.data?.droppableContainer?.data?.current?.type
       return type === "section"
