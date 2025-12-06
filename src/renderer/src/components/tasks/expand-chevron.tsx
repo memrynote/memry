@@ -74,12 +74,17 @@ export const ExpandChevron = ({
       className={cn(
         "flex items-center justify-center rounded shrink-0",
         "transition-all duration-150",
-        "hover:bg-accent active:bg-accent/80",
+        // Enhanced hover and active states for better visibility
+        "text-gray-400 hover:text-gray-600 hover:bg-gray-100",
+        "active:bg-gray-200",
+        "dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-800",
+        "dark:active:bg-gray-700",
+        // Focus states for accessibility
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
         // Size variants
         size === "sm" ? "w-5 h-5" : "w-6 h-6",
         // Animation feedback on click
-        isAnimating && "scale-110 bg-accent",
+        isAnimating && "scale-110 bg-gray-100 dark:bg-gray-800",
         className
       )}
       aria-expanded={isExpanded}
@@ -87,11 +92,11 @@ export const ExpandChevron = ({
     >
       <ChevronRight
         className={cn(
-          "transition-transform duration-200",
+          "transition-transform duration-200 ease-out",
           size === "sm" ? "w-4 h-4" : "w-5 h-5",
-          "text-muted-foreground",
           isExpanded && "rotate-90"
         )}
+        strokeWidth={2.5}
         aria-hidden="true"
       />
     </button>
@@ -99,4 +104,3 @@ export const ExpandChevron = ({
 }
 
 export default ExpandChevron
-
