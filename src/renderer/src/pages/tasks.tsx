@@ -1256,6 +1256,8 @@ export const TasksPage = ({
                                 selectedIds={selection.selectedIds}
                                 onToggleSelect={toggleTask}
                                 onShiftSelect={selectRange}
+                                onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
+                                onAddSubtask={subtaskManagement.handleAddSubtask}
                             />
                         )
                     )}

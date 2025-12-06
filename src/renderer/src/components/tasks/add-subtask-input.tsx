@@ -58,19 +58,26 @@ export const AddSubtaskInput = ({
   }
 
   return (
-    <div className={cn("flex items-center gap-2 py-1", className)}>
-      {/* Tree connector */}
-      <span
-        className="text-muted-foreground/50 text-sm font-mono w-4 select-none"
+    <div className={cn("relative py-1", className)}>
+      {/* Tree connector lines - CSS based for seamless connection */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-5"
         aria-hidden="true"
       >
-        └─
-      </span>
+        {/* Vertical line - extends to 50% height since add input is always last */}
+        <div
+          className="absolute left-2 w-px bg-border top-0 h-[50%]"
+        />
+        {/* Horizontal line - connects vertical line to content */}
+        <div
+          className="absolute left-2 top-1/2 w-3 h-px bg-border"
+        />
+      </div>
 
       {/* Input container */}
       <div
         className={cn(
-          "flex-1 flex items-center rounded-lg border transition-colors",
+          "flex items-center rounded-lg border transition-colors ml-7",
           isActive
             ? "border-ring bg-background shadow-sm"
             : "border-transparent hover:border-border"

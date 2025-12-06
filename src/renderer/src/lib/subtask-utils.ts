@@ -359,6 +359,7 @@ export const createMultipleSubtasks = (
 
 /**
  * Reorder subtasks within a parent task
+ * Handles partial reordering when some subtask IDs may be orphaned
  */
 export const reorderSubtasks = (
   parentId: string,
@@ -377,15 +378,17 @@ export const reorderSubtasks = (
     return { success: false, error: "Invalid subtask IDs in new order" }
   }
 
-  // Ensure we haven't lost any subtasks
-  if (newOrder.length !== parent.subtaskIds.length) {
-    return { success: false, error: "Subtask count mismatch" }
-  }
+  // Build final order: start with newOrder, then append any missing IDs
+  // This handles case where some subtaskIds exist but aren't in the visible subtasks
+  // (e.g., orphaned IDs that weren't found in allTasks)
+  const newOrderSet = new Set(newOrder)
+  const missingIds = parent.subtaskIds.filter((id) => !newOrderSet.has(id))
+  const finalOrder = [...newOrder, ...missingIds]
 
   // Update parent's subtaskIds
   const updatedParent: Task = {
     ...parent,
-    subtaskIds: newOrder,
+    subtaskIds: finalOrder,
   }
 
   const updatedTasks = allTasks.map((t) =>
