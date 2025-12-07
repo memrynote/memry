@@ -895,6 +895,55 @@ export function tabReducer(
       };
     }
 
+    case 'REOPEN_SPECIFIC_CLOSED_TAB': {
+      const { index } = action.payload;
+
+      if (index < 0 || index >= state.recentlyClosed.length) return state;
+
+      const closedTab = state.recentlyClosed[index];
+      const { tab, groupId: originalGroupId, index: originalIndex } = closedTab;
+
+      // Check if original group still exists, otherwise use active group
+      const targetGroupId = state.tabGroups[originalGroupId]
+        ? originalGroupId
+        : state.activeGroupId;
+      const targetGroup = state.tabGroups[targetGroupId];
+
+      if (!targetGroup) return state;
+
+      const newTab = {
+        ...tab,
+        id: generateId(),
+        openedAt: Date.now(),
+        lastAccessedAt: Date.now(),
+        isPreview: false,
+      };
+
+      const insertIndex = Math.min(originalIndex, targetGroup.tabs.length);
+      const newTabs = [
+        ...targetGroup.tabs.slice(0, insertIndex),
+        newTab,
+        ...targetGroup.tabs.slice(insertIndex),
+      ];
+
+      // Remove from recently closed
+      const remainingClosed = state.recentlyClosed.filter((_, i) => i !== index);
+
+      return {
+        ...state,
+        tabGroups: {
+          ...state.tabGroups,
+          [targetGroupId]: {
+            ...targetGroup,
+            tabs: newTabs,
+            activeTabId: newTab.id,
+          },
+        },
+        recentlyClosed: remainingClosed,
+        activeGroupId: targetGroupId,
+      };
+    }
+
     case 'CLEAR_RECENTLY_CLOSED': {
       return {
         ...state,

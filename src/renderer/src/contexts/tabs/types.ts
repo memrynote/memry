@@ -246,6 +246,7 @@ export type TabAction =
 
   // Recently closed
   | { type: 'REOPEN_CLOSED_TAB' }
+  | { type: 'REOPEN_SPECIFIC_CLOSED_TAB'; payload: { index: number } }
   | { type: 'CLEAR_RECENTLY_CLOSED' }
 
   // Split view

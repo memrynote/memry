@@ -19,3 +19,6 @@ export { TabDragOverlay } from './tab-drag-overlay';
 // Context menus
 export { TabContextMenu } from './tab-context-menu';
 export { TabBarContextMenu } from './tab-bar-context-menu';
+
+// Recently closed
+export { RecentlyClosedMenu } from './recently-closed-menu';
