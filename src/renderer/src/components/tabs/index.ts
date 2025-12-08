@@ -6,6 +6,7 @@
 export { TabBar } from './tab-bar';
 export { TabBarWithDrag } from './tab-bar-with-drag';
 export { TabBarWithOverflow } from './tab-bar-with-overflow';
+export { TabDragProvider } from './tab-drag-provider';
 
 // Individual tab components
 export { RegularTab } from './regular-tab';

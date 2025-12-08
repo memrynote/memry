@@ -23,6 +23,7 @@ export const useTabKeyboardShortcuts = (): void => {
     unpinTab,
     reopenClosedTab,
     splitView,
+    moveTabToNewSplit,
   } = useTabs();
 
   const shortcuts = useMemo<KeyboardShortcut[]>(() => {
@@ -191,12 +192,18 @@ export const useTabKeyboardShortcuts = (): void => {
       // SPLIT VIEW
       // =====================================================================
 
-      // Split right (⌘\)
+      // Split right (⌘\) - move active tab to new split
       {
         key: '\\',
         modifiers: { meta: true },
-        action: () => splitView('horizontal', state.activeGroupId),
-        description: 'Split right',
+        action: () => {
+          const group = state.tabGroups[state.activeGroupId];
+          const activeTabId = group?.activeTabId;
+          if (activeTabId && group && group.tabs.length > 0) {
+            moveTabToNewSplit(activeTabId, state.activeGroupId, 'right');
+          }
+        },
+        description: 'Split right with active tab',
       },
 
       // Close split (⌘⌥W)

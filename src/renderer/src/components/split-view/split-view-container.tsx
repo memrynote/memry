@@ -31,4 +31,3 @@ export const SplitViewContainer = ({
 };
 
 export default SplitViewContainer;
-
