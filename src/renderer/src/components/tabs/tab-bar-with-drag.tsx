@@ -214,11 +214,6 @@ export const TabBarWithDrag = ({
                         tooltip="Split Right"
                         onClick={handleSplitRight}
                     />
-                    <TabBarAction
-                        icon={<Plus className="w-4 h-4" />}
-                        tooltip="New Tab"
-                        onClick={handleNewTab}
-                    />
                 </div>
             </div>
         </TabBarContextMenu>
