@@ -196,22 +196,41 @@ const AppContent = ({
       </header>
 
       {/* Main Content Area - Split View or Single Pane */}
-      <div className="flex flex-1 flex-col overflow-hidden" id="main-content">
+      <div className="flex flex-1 overflow-hidden" id="main-content">
         {isSplitView ? (
-          // Multiple panes - use SplitViewContainer (without headers)
-          <SplitViewContainer hideTabBars />
+          // Multiple panes - use SplitViewContainer with matching header spacers
+          <>
+            {/* Left spacer - matches header's sidebar trigger area for alignment */}
+            <div className="flex items-center gap-2 px-2 shrink-0" aria-hidden="true">
+              <div className="size-7 -ml-1" />
+              <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4 invisible" />
+            </div>
+
+            {/* Split view container */}
+            <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+              <SplitViewContainer hideTabBars />
+            </div>
+
+            {/* Right spacer - matches header's global actions area for alignment */}
+            <div className="flex items-center gap-1 px-2 shrink-0" aria-hidden="true">
+              <div className="size-8" />
+              <div className="size-8" />
+            </div>
+          </>
         ) : (
-          // Single pane - render content directly
-          <TabContentRenderer
-            tasks={tasks}
-            projects={projects}
-            taskSelectedId={taskSelectedId}
-            taskSelectedType={taskSelectedType}
-            selectedTaskIds={selectedTaskIds}
-            onTasksChange={onTasksChange}
-            onSelectionChange={onSelectionChange}
-            onSelectedTaskIdsChange={onSelectedTaskIdsChange}
-          />
+          // Single pane - render content directly (full width)
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <TabContentRenderer
+              tasks={tasks}
+              projects={projects}
+              taskSelectedId={taskSelectedId}
+              taskSelectedType={taskSelectedType}
+              selectedTaskIds={selectedTaskIds}
+              onTasksChange={onTasksChange}
+              onSelectionChange={onSelectionChange}
+              onSelectedTaskIdsChange={onSelectedTaskIdsChange}
+            />
+          </div>
         )}
       </div>
 
