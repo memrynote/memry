@@ -2,14 +2,6 @@ import { useState, useMemo, useCallback } from "react"
 import type { DragEndEvent } from "@dnd-kit/core"
 import { arrayMove } from "@dnd-kit/sortable"
 import { AppSidebar } from "@/components/app-sidebar"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
 import {
   SidebarInset,
@@ -26,6 +18,14 @@ import { sampleTasks, type Task } from "@/data/sample-tasks"
 import { getFilteredTasks } from "@/lib/task-utils"
 import { toast } from "sonner"
 
+// Tab System imports
+import { TabProvider, useTabs, useActiveTab } from "@/contexts/tabs"
+import { TasksProvider } from "@/contexts/tasks"
+import { TabBarWithDrag, RecentlyClosedMenu } from "@/components/tabs"
+import { SplitViewContainer } from "@/components/split-view"
+import { ChordIndicator, KeyboardShortcutsDialog } from "@/components/keyboard"
+import { useTabKeyboardShortcuts, useChordShortcuts } from "@/hooks"
+
 // Base pages (non-task)
 export type BasePage = "inbox" | "home"
 
@@ -38,10 +38,191 @@ export type TaskSelectionType = "view" | "project"
 // Combined page type for routing
 export type AppPage = BasePage | "tasks"
 
-const pageTitles: Record<BasePage, string> = {
-  inbox: "Inbox",
-  home: "Home",
+// =============================================================================
+// TAB CONTENT RENDERER
+// =============================================================================
+
+interface TabContentRendererProps {
+  tasks: Task[]
+  projects: Project[]
+  taskSelectedId: string
+  taskSelectedType: TaskSelectionType
+  selectedTaskIds: Set<string>
+  onTasksChange: (tasks: Task[]) => void
+  onSelectionChange: (id: string, type: TaskSelectionType) => void
+  onSelectedTaskIdsChange: (ids: Set<string>) => void
 }
+
+const TabContentRenderer = ({
+  tasks,
+  projects,
+  taskSelectedId,
+  taskSelectedType,
+  selectedTaskIds,
+  onTasksChange,
+  onSelectionChange,
+  onSelectedTaskIdsChange,
+}: TabContentRendererProps): React.JSX.Element => {
+  const activeTab = useActiveTab()
+
+  if (!activeTab) {
+    return <InboxPage />
+  }
+
+  // Route based on tab type
+  switch (activeTab.type) {
+    case "inbox":
+      return <InboxPage />
+    case "all-tasks":
+    case "today":
+    case "upcoming":
+    case "completed":
+    case "project":
+      return (
+        <TasksPage
+          selectedId={taskSelectedId}
+          selectedType={taskSelectedType}
+          tasks={tasks}
+          projects={projects}
+          onTasksChange={onTasksChange}
+          onSelectionChange={onSelectionChange}
+          selectedTaskIds={selectedTaskIds}
+          onSelectedTaskIdsChange={onSelectedTaskIdsChange}
+        />
+      )
+    default:
+      // Placeholder for other tab types
+      return (
+        <div className="flex items-center justify-center h-full text-gray-500">
+          <div className="text-center">
+            <p className="text-lg font-medium">{activeTab.title}</p>
+            <p className="text-sm">Tab type: {activeTab.type}</p>
+          </div>
+        </div>
+      )
+  }
+}
+
+// =============================================================================
+// MAIN APP CONTENT (inside TabProvider)
+// =============================================================================
+
+interface AppContentProps {
+  tasks: Task[]
+  projects: Project[]
+  taskSelectedId: string
+  taskSelectedType: TaskSelectionType
+  selectedTaskIds: Set<string>
+  onTasksChange: (tasks: Task[]) => void
+  onSelectionChange: (id: string, type: TaskSelectionType) => void
+  onSelectedTaskIdsChange: (ids: Set<string>) => void
+}
+
+const AppContent = ({
+  tasks,
+  projects,
+  taskSelectedId,
+  taskSelectedType,
+  selectedTaskIds,
+  onTasksChange,
+  onSelectionChange,
+  onSelectedTaskIdsChange,
+}: AppContentProps): React.JSX.Element => {
+  const { state } = useTabs()
+  const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
+
+  // Keyboard shortcuts
+  useTabKeyboardShortcuts()
+  const isChordActive = useChordShortcuts()
+
+  // Get active group for tab bar
+  const activeGroupId = state.activeGroupId
+  const groupIds = Object.keys(state.tabGroups)
+  const isSplitView = groupIds.length > 1
+
+  return (
+    <>
+      {/* Header with Tab Bar(s) */}
+      <header className="drag-region flex h-10 shrink-0 items-center border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+        {/* Sidebar trigger */}
+        <div className="flex items-center gap-2 px-2 h-full shrink-0">
+          <SidebarTrigger className="-ml-1 no-drag" />
+          <Separator
+            orientation="vertical"
+            className="mr-2 data-[orientation=vertical]:h-4"
+          />
+        </div>
+
+        {/* Tab Bar(s) - single or split */}
+        {isSplitView ? (
+          // Split view: show tab bars side by side with divider
+          <div className="flex-1 flex h-full">
+            {groupIds.map((gId, index) => (
+              <div
+                key={gId}
+                className={`flex-1 h-full overflow-hidden ${index > 0 ? 'border-l border-gray-300 dark:border-gray-600' : ''
+                  }`}
+              >
+                <TabBarWithDrag groupId={gId} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          // Single pane: show one tab bar
+          <div className="flex-1 h-full overflow-hidden">
+            <TabBarWithDrag groupId={activeGroupId} />
+          </div>
+        )}
+
+        {/* Global Actions */}
+        <div className="flex items-center gap-1 px-2 shrink-0">
+          <RecentlyClosedMenu />
+          <button
+            type="button"
+            onClick={() => setShowShortcutsDialog(true)}
+            className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
+            title="Keyboard shortcuts (?)"
+          >
+            <span className="text-xs font-mono">?</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Main Content Area - Split View or Single Pane */}
+      <div className="flex flex-1 flex-col overflow-hidden" id="main-content">
+        {isSplitView ? (
+          // Multiple panes - use SplitViewContainer (without headers)
+          <SplitViewContainer hideTabBars />
+        ) : (
+          // Single pane - render content directly
+          <TabContentRenderer
+            tasks={tasks}
+            projects={projects}
+            taskSelectedId={taskSelectedId}
+            taskSelectedType={taskSelectedType}
+            selectedTaskIds={selectedTaskIds}
+            onTasksChange={onTasksChange}
+            onSelectionChange={onSelectionChange}
+            onSelectedTaskIdsChange={onSelectedTaskIdsChange}
+          />
+        )}
+      </div>
+
+      {/* Chord Indicator */}
+      <ChordIndicator isActive={isChordActive} />
+
+      {/* Keyboard Shortcuts Dialog */}
+      <KeyboardShortcutsDialog
+        isOpen={showShortcutsDialog}
+        onClose={() => setShowShortcutsDialog(false)}
+      />
+    </>
+  )
+}
+
+// =============================================================================
+// MAIN APP COMPONENT
+// =============================================================================
 
 function App(): React.JSX.Element {
   // Navigation state
@@ -225,75 +406,45 @@ function App(): React.JSX.Element {
     setTaskSelectedType(type)
   }, [])
 
-  const renderPage = (): React.JSX.Element => {
-    switch (currentPage) {
-      case "tasks":
-        return (
-          <TasksPage
-            selectedId={taskSelectedId}
-            selectedType={taskSelectedType}
+  // Tasks page needs DragProvider
+  const isTasksPage = currentPage === "tasks"
+
+  // Main content with TabProvider and TasksProvider wrapping everything
+  const mainContent = (
+    <TasksProvider
+      initialTasks={tasks}
+      initialProjects={projectsWithCounts}
+      onTasksChange={handleTasksChange}
+      onProjectsChange={handleProjectsChange}
+    >
+      <TabProvider>
+        <AppSidebar
+          currentPage={currentPage}
+          taskSelectedId={taskSelectedId}
+          taskSelectedType={taskSelectedType}
+          onNavigate={handleNavigate}
+          onSelectTaskView={handleSelectTaskView}
+          onSelectProject={handleSelectProject}
+          viewCounts={viewCounts}
+          projects={projectsWithCounts}
+          onProjectsChange={handleProjectsChange}
+        />
+        <SidebarInset className="flex flex-col">
+          <AppContent
             tasks={tasks}
             projects={projectsWithCounts}
+            taskSelectedId={taskSelectedId}
+            taskSelectedType={taskSelectedType}
+            selectedTaskIds={selectedTaskIds}
             onTasksChange={handleTasksChange}
             onSelectionChange={handleTaskSelectionChange}
-            selectedTaskIds={selectedTaskIds}
             onSelectedTaskIdsChange={handleSelectionChange}
           />
-        )
-      case "inbox":
-      default:
-        return <InboxPage />
-    }
-  }
-
-  // Tasks page has its own header, so we render it differently
-  const isTasksPage = currentPage === "tasks"
-  const pageTitle = isTasksPage ? "Tasks" : pageTitles[currentPage as BasePage]
-
-  // Wrap content with DragProvider when on tasks page
-  const tasksContent = (
-    <>
-      <AppSidebar
-        currentPage={currentPage}
-        taskSelectedId={taskSelectedId}
-        taskSelectedType={taskSelectedType}
-        onNavigate={handleNavigate}
-        onSelectTaskView={handleSelectTaskView}
-        onSelectProject={handleSelectProject}
-        viewCounts={viewCounts}
-        projects={projectsWithCounts}
-        onProjectsChange={handleProjectsChange}
-      />
-      <SidebarInset>
-        <header className="drag-region flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#">
-                    Building Your Application
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{pageTitle}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-        </header>
-        <div className="flex flex-1 flex-col">
-          {renderPage()}
-        </div>
-      </SidebarInset>
-      {/* Drag Overlay - only for task drag to sidebar */}
-      {isTasksPage && <TaskDragOverlay projects={projectsWithCounts} />}
-    </>
+        </SidebarInset>
+        {/* Drag Overlay - only for task drag to sidebar */}
+        {isTasksPage && <TaskDragOverlay projects={projectsWithCounts} />}
+      </TabProvider>
+    </TasksProvider>
   )
 
   return (
@@ -305,10 +456,10 @@ function App(): React.JSX.Element {
             selectedIds={selectedTaskIds}
             onDragEnd={handleDragEnd}
           >
-            {tasksContent}
+            {mainContent}
           </DragProvider>
         ) : (
-          tasksContent
+          mainContent
         )}
       </SidebarProvider>
       <Toaster />

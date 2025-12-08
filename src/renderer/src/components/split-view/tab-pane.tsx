@@ -14,6 +14,8 @@ interface TabPaneProps {
     groupId: string;
     /** Whether this is the active/focused pane */
     isActive: boolean;
+    /** Hide tab bar (when shown in main header instead) */
+    hideTabBar?: boolean;
     /** Additional CSS classes */
     className?: string;
 }
@@ -24,6 +26,7 @@ interface TabPaneProps {
 export const TabPane = ({
     groupId,
     isActive,
+    hideTabBar = false,
     className,
 }: TabPaneProps): React.JSX.Element | null => {
     const { dispatch, state } = useTabs();
@@ -63,8 +66,8 @@ export const TabPane = ({
             data-pane-id={groupId}
             data-pane-active={isActive}
         >
-            {/* Tab bar */}
-            <TabBarWithDrag groupId={groupId} />
+            {/* Tab bar - only show if not hidden */}
+            {!hideTabBar && <TabBarWithDrag groupId={groupId} />}
 
             {/* Content area */}
             <div className="flex-1 overflow-hidden">
@@ -79,3 +82,4 @@ export const TabPane = ({
 };
 
 export default TabPane;
+

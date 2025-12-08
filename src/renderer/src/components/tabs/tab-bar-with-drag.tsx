@@ -26,6 +26,7 @@ import { PinnedTab } from './pinned-tab';
 import { TabBarAction } from './tab-bar-action';
 import { TabDragOverlay } from './tab-drag-overlay';
 import { TabBarContextMenu } from './tab-bar-context-menu';
+import { TabContextMenu } from './tab-context-menu';
 import { cn } from '@/lib/utils';
 import type { Tab } from '@/contexts/tabs/types';
 
@@ -213,12 +214,17 @@ export const TabBarWithDrag = ({
                         <>
                             <div className="flex items-center px-1 gap-0.5">
                                 {pinnedTabs.map((tab) => (
-                                    <PinnedTab
+                                    <TabContextMenu
                                         key={tab.id}
                                         tab={tab}
                                         groupId={groupId}
-                                        isActive={tab.id === group.activeTabId}
-                                    />
+                                    >
+                                        <PinnedTab
+                                            tab={tab}
+                                            groupId={groupId}
+                                            isActive={tab.id === group.activeTabId}
+                                        />
+                                    </TabContextMenu>
                                 ))}
                             </div>
 

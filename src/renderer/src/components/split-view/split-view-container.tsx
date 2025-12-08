@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils';
 interface SplitViewContainerProps {
     /** Additional CSS classes */
     className?: string;
+    /** Hide tab bars in panes (when shown in main header instead) */
+    hideTabBars?: boolean;
 }
 
 /**
@@ -17,14 +19,16 @@ interface SplitViewContainerProps {
  */
 export const SplitViewContainer = ({
     className,
+    hideTabBars = false,
 }: SplitViewContainerProps): React.JSX.Element => {
     const { state } = useTabs();
 
     return (
         <div className={cn('flex-1 flex overflow-hidden', className)}>
-            <SplitLayoutRenderer layout={state.layout} path={[]} />
+            <SplitLayoutRenderer layout={state.layout} path={[]} hideTabBars={hideTabBars} />
         </div>
     );
 };
 
 export default SplitViewContainer;
+

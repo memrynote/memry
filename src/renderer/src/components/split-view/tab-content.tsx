@@ -6,7 +6,10 @@
 import { useRef, useEffect } from 'react';
 import type { Tab } from '@/contexts/tabs/types';
 import { useTabs } from '@/contexts/tabs';
+import { useTasksOptional } from '@/contexts/tasks';
 import { cn } from '@/lib/utils';
+import { InboxPage } from '@/pages/inbox';
+import { TasksPage } from '@/pages/tasks';
 
 interface TabContentProps {
     /** Tab data */
@@ -27,6 +30,7 @@ export const TabContent = ({
 }: TabContentProps): React.JSX.Element => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const { dispatch } = useTabs();
+    const tasksContext = useTasksOptional();
 
     // Save scroll position on unmount or tab change
     useEffect(() => {
@@ -57,31 +61,47 @@ export const TabContent = ({
     const renderContent = (): React.ReactNode => {
         switch (tab.type) {
             case 'inbox':
-                // Placeholder - will integrate with actual views
-                return <PlaceholderView title="Inbox" icon="inbox" />;
+                return <InboxPage />;
 
             case 'home':
                 return <PlaceholderView title="Home" icon="home" />;
 
             case 'all-tasks':
-                return <PlaceholderView title="All Tasks" icon="list-checks" />;
-
             case 'today':
-                return <PlaceholderView title="Today" icon="star" />;
-
             case 'upcoming':
-                return <PlaceholderView title="Upcoming" icon="calendar" />;
-
             case 'completed':
-                return <PlaceholderView title="Completed" icon="check-circle" />;
-
             case 'project':
+                // Use TasksContext if available
+                if (tasksContext) {
+                    // Determine selection based on tab type
+                    const selectionId = tab.type === 'project'
+                        ? (tab.entityId || 'personal')
+                        : tab.type === 'all-tasks'
+                            ? 'all'
+                            : tab.type;
+                    const selectionType = tab.type === 'project' ? 'project' : 'view';
+
+                    return (
+                        <TasksPage
+                            selectedId={selectionId}
+                            selectedType={selectionType}
+                            tasks={tasksContext.tasks}
+                            projects={tasksContext.projects}
+                            onTasksChange={tasksContext.setTasks}
+                            onSelectionChange={tasksContext.setSelection}
+                            selectedTaskIds={tasksContext.selectedTaskIds}
+                            onSelectedTaskIdsChange={tasksContext.setSelectedTaskIds}
+                        />
+                    );
+                }
+                // Fallback if context not available
                 return (
-                    <PlaceholderView
-                        title={tab.title}
-                        icon="folder"
-                        subtitle={`Project: ${tab.entityId}`}
-                    />
+                    <div className="h-full p-4 text-gray-500">
+                        <div className="text-lg font-medium mb-2">{tab.title}</div>
+                        <p className="text-sm text-gray-400">
+                            TasksContext not available
+                        </p>
+                    </div>
                 );
 
             case 'note':
@@ -144,7 +164,7 @@ export const TabContent = ({
 };
 
 // =============================================================================
-// PLACEHOLDER VIEW (temporary until real views are integrated)
+// PLACEHOLDER VIEW (for tab types not yet implemented)
 // =============================================================================
 
 interface PlaceholderViewProps {
@@ -161,7 +181,6 @@ const PlaceholderView = ({
     return (
         <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 p-8">
             <div className="text-6xl mb-4 opacity-30">
-                {/* Icon placeholder - will use TabIcon when integrated */}
                 📄
             </div>
             <h2 className="text-xl font-medium text-gray-600 dark:text-gray-300 mb-2">
@@ -170,11 +189,9 @@ const PlaceholderView = ({
             {subtitle && (
                 <p className="text-sm text-gray-400 dark:text-gray-500">{subtitle}</p>
             )}
-            <p className="text-xs text-gray-300 dark:text-gray-600 mt-4">
-                Content view will be integrated here
-            </p>
         </div>
     );
 };
 
 export default TabContent;
+

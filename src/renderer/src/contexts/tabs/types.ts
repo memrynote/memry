@@ -289,8 +289,8 @@ export type TabAction =
  * Sidebar item that can be opened as a tab
  */
 export interface SidebarItem {
-  /** Unique identifier */
-  id: string;
+  /** Unique identifier (optional - will be generated if not provided) */
+  id?: string;
   /** Content type */
   type: TabType;
   /** Display title */

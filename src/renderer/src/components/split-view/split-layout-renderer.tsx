@@ -13,6 +13,8 @@ interface SplitLayoutRendererProps {
     layout: SplitLayout;
     /** Path in tree for resize operations */
     path: number[];
+    /** Hide tab bars in panes */
+    hideTabBars?: boolean;
 }
 
 /**
@@ -21,6 +23,7 @@ interface SplitLayoutRendererProps {
 export const SplitLayoutRenderer = ({
     layout,
     path,
+    hideTabBars = false,
 }: SplitLayoutRendererProps): React.JSX.Element | null => {
     const { state, dispatch } = useTabs();
 
@@ -33,6 +36,7 @@ export const SplitLayoutRenderer = ({
             <TabPane
                 groupId={layout.tabGroupId}
                 isActive={state.activeGroupId === layout.tabGroupId}
+                hideTabBar={hideTabBars}
             />
         );
     }
@@ -55,12 +59,13 @@ export const SplitLayoutRenderer = ({
             minSize={100}
         >
             {/* First child */}
-            <SplitLayoutRenderer layout={layout.first} path={[...path, 0]} />
+            <SplitLayoutRenderer layout={layout.first} path={[...path, 0]} hideTabBars={hideTabBars} />
 
             {/* Second child */}
-            <SplitLayoutRenderer layout={layout.second} path={[...path, 1]} />
+            <SplitLayoutRenderer layout={layout.second} path={[...path, 1]} hideTabBars={hideTabBars} />
         </SplitPane>
     );
 };
 
 export default SplitLayoutRenderer;
+

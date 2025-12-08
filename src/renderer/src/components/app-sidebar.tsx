@@ -38,6 +38,8 @@ import { SortableProjectList } from "@/components/sidebar/sortable-project-list"
 import FileTree from "@/components/file-tree"
 import { ProjectModal } from "@/components/tasks/project-modal"
 import { DeleteProjectDialog, type DeleteTasksOption } from "@/components/tasks/delete-project-dialog"
+import { useSidebarNavigation } from "@/hooks/use-sidebar-navigation"
+import type { SidebarItem, TabType } from "@/contexts/tabs/types"
 import type { AppPage, TaskSelectionType } from "@/App"
 import type { Project } from "@/data/tasks-data"
 
@@ -162,14 +164,43 @@ export function AppSidebar({
     return viewCounts["all"] || 0
   }, [viewCounts])
 
+  // Tab navigation hook
+  const { openSidebarItem } = useSidebarNavigation()
+
+  // Map task view IDs to TabTypes
+  const viewIdToTabType: Record<string, TabType> = {
+    "all": "all-tasks",
+    "today": "today",
+    "upcoming": "upcoming",
+    "completed": "completed",
+  }
+
   const handleNavClick = (page: AppPage) => (e: React.MouseEvent) => {
     e.preventDefault()
-    onNavigate(page)
+    // Tab system handles navigation - no need to change currentPage
+    // onNavigate(page) - REMOVED: was causing split view to reset
+
+    // Open as tab in active pane
+    const item: SidebarItem = {
+      type: page === "inbox" ? "inbox" : "home",
+      title: page === "inbox" ? "Inbox" : "Home",
+      path: `/${page}`,
+    }
+    openSidebarItem(item)
   }
 
   const handleTaskViewClick = (viewId: string) => (e: React.MouseEvent) => {
     e.preventDefault()
     onSelectTaskView(viewId)
+
+    // Also open as tab
+    const viewConfig = taskViewsConfig.find(v => v.id === viewId)
+    const item: SidebarItem = {
+      type: viewIdToTabType[viewId] || "all-tasks",
+      title: viewConfig?.label || "All Tasks",
+      path: `/tasks/${viewId}`,
+    }
+    openSidebarItem(item)
   }
 
   const handleNewProject = (): void => {
@@ -325,7 +356,20 @@ export function AppSidebar({
               <SortableProjectList
                 projects={visibleProjects}
                 activeProjectId={isProjectActive(taskSelectedId) ? taskSelectedId : null}
-                onProjectClick={(projectId) => onSelectProject(projectId)}
+                onProjectClick={(projectId) => {
+                  onSelectProject(projectId)
+                  // Also open as tab
+                  const project = projects.find(p => p.id === projectId)
+                  if (project) {
+                    const item: SidebarItem = {
+                      type: "project",
+                      title: project.name,
+                      path: `/project/${projectId}`,
+                      entityId: projectId,
+                    }
+                    openSidebarItem(item)
+                  }
+                }}
                 onProjectEdit={handleEditProject}
                 onProjectArchive={handleArchiveProject}
                 onProjectDelete={handleProjectDelete}
