@@ -45,8 +45,6 @@ export type AppPage = BasePage | "tasks"
 interface TabContentRendererProps {
   tasks: Task[]
   projects: Project[]
-  taskSelectedId: string
-  taskSelectedType: TaskSelectionType
   selectedTaskIds: Set<string>
   onTasksChange: (tasks: Task[]) => void
   onSelectionChange: (id: string, type: TaskSelectionType) => void
@@ -56,8 +54,6 @@ interface TabContentRendererProps {
 const TabContentRenderer = ({
   tasks,
   projects,
-  taskSelectedId,
-  taskSelectedType,
   selectedTaskIds,
   onTasksChange,
   onSelectionChange,
@@ -77,11 +73,19 @@ const TabContentRenderer = ({
     case "today":
     case "upcoming":
     case "completed":
-    case "project":
+    case "project": {
+      // Derive selection from active tab (not from external state)
+      const selectedId = activeTab.type === 'project'
+        ? (activeTab.entityId || 'personal')
+        : activeTab.type === 'all-tasks'
+          ? 'all'
+          : activeTab.type
+      const selectedType = activeTab.type === 'project' ? 'project' : 'view'
+
       return (
         <TasksPage
-          selectedId={taskSelectedId}
-          selectedType={taskSelectedType}
+          selectedId={selectedId}
+          selectedType={selectedType}
           tasks={tasks}
           projects={projects}
           onTasksChange={onTasksChange}
@@ -90,6 +94,7 @@ const TabContentRenderer = ({
           onSelectedTaskIdsChange={onSelectedTaskIdsChange}
         />
       )
+    }
     default:
       // Placeholder for other tab types
       return (
@@ -110,8 +115,6 @@ const TabContentRenderer = ({
 interface AppContentProps {
   tasks: Task[]
   projects: Project[]
-  taskSelectedId: string
-  taskSelectedType: TaskSelectionType
   selectedTaskIds: Set<string>
   onTasksChange: (tasks: Task[]) => void
   onSelectionChange: (id: string, type: TaskSelectionType) => void
@@ -121,8 +124,6 @@ interface AppContentProps {
 const AppContent = ({
   tasks,
   projects,
-  taskSelectedId,
-  taskSelectedType,
   selectedTaskIds,
   onTasksChange,
   onSelectionChange,
@@ -223,8 +224,6 @@ const AppContent = ({
             <TabContentRenderer
               tasks={tasks}
               projects={projects}
-              taskSelectedId={taskSelectedId}
-              taskSelectedType={taskSelectedType}
               selectedTaskIds={selectedTaskIds}
               onTasksChange={onTasksChange}
               onSelectionChange={onSelectionChange}
@@ -459,8 +458,6 @@ function App(): React.JSX.Element {
           <AppContent
             tasks={tasks}
             projects={projectsWithCounts}
-            taskSelectedId={taskSelectedId}
-            taskSelectedType={taskSelectedType}
             selectedTaskIds={selectedTaskIds}
             onTasksChange={handleTasksChange}
             onSelectionChange={handleTaskSelectionChange}
