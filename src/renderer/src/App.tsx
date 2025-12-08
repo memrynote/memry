@@ -21,7 +21,7 @@ import { toast } from "sonner"
 // Tab System imports
 import { TabProvider, useTabs, useActiveTab, getOrderedGroupWidths } from "@/contexts/tabs"
 import { TasksProvider } from "@/contexts/tasks"
-import { TabBarWithDrag, RecentlyClosedMenu } from "@/components/tabs"
+import { TabBarWithDrag, RecentlyClosedMenu, TabDragProvider } from "@/components/tabs"
 import { SplitViewContainer } from "@/components/split-view"
 import { ChordIndicator, KeyboardShortcutsDialog } from "@/components/keyboard"
 import { useTabKeyboardShortcuts, useChordShortcuts } from "@/hooks"
@@ -147,7 +147,7 @@ const AppContent = ({
   )
 
   return (
-    <>
+    <TabDragProvider>
       {/* Header with Tab Bar(s) */}
       <header className="drag-region flex h-10 shrink-0 items-center border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
         {/* Sidebar trigger */}
@@ -223,7 +223,7 @@ const AppContent = ({
         isOpen={showShortcutsDialog}
         onClose={() => setShowShortcutsDialog(false)}
       />
-    </>
+    </TabDragProvider>
   )
 }
 
