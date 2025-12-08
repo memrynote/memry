@@ -149,7 +149,7 @@ const AppContent = ({
   return (
     <TabDragProvider>
       {/* Header with Tab Bar(s) */}
-      <header className="drag-region flex h-10 shrink-0 items-center border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+      <header className="drag-region flex h-10 shrink-0 items-center border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
         {/* Sidebar trigger */}
         <div className="flex items-center gap-2 px-2 h-full shrink-0">
           <SidebarTrigger className="-ml-1 no-drag" />

@@ -69,21 +69,23 @@ export const RegularTab = ({
             className={cn(
                 // Base styles
                 'group relative flex items-center gap-2 h-9 px-3 cursor-pointer',
-                'border-r border-gray-200 dark:border-gray-700',
                 'min-w-[100px] max-w-[200px]',
                 'transition-colors duration-100',
                 'select-none',
 
-                // Active state
+                // Active state - browser style with rounded top corners
                 isActive
                     ? [
                         'bg-white dark:bg-gray-800',
-                        'border-b-2 border-b-blue-500 -mb-px',
+                        'rounded-t-lg',
+                        'border border-gray-200 dark:border-gray-600',
+                        'border-b-0',
+                        '-mb-px',
                         'z-10',
                     ]
                     : [
                         'bg-gray-100/50 dark:bg-gray-800/50',
-                        'hover:bg-gray-100 dark:hover:bg-gray-700/50',
+                        'hover:bg-gray-200/50 dark:hover:bg-gray-700/50',
                     ],
 
                 // Preview tab (italic)

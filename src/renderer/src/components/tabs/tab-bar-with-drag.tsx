@@ -110,10 +110,10 @@ export const TabBarWithDrag = ({
                 className={cn(
                     // Container
                     'flex items-center h-9',
-                    'bg-gray-50 dark:bg-gray-900',
+                    'bg-gray-100 dark:bg-gray-800',
                     'border-b border-gray-200 dark:border-gray-700',
                     // Active group indicator
-                    isActiveGroup && 'bg-gray-100/50 dark:bg-gray-800/50',
+                    isActiveGroup && 'bg-gray-100 dark:bg-gray-800',
                     className
                 )}
                 role="tablist"

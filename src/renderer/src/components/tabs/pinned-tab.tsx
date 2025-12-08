@@ -54,16 +54,18 @@ export const PinnedTab = ({
                     className={cn(
                         // Base styles
                         'relative flex items-center justify-center',
-                        'w-9 h-9 cursor-pointer rounded',
+                        'w-9 h-9 cursor-pointer',
                         'transition-colors duration-100',
                         'select-none',
 
-                        // Active state
+                        // Active state - browser style with rounded top corners
                         isActive
                             ? [
                                 'bg-white dark:bg-gray-800',
-                                'shadow-sm',
-                                'ring-1 ring-gray-200 dark:ring-gray-700',
+                                'rounded-t-lg',
+                                'border border-gray-200 dark:border-gray-600',
+                                'border-b-0',
+                                '-mb-px',
                             ]
                             : ['hover:bg-gray-200/50 dark:hover:bg-gray-700/50'],
 
