@@ -3,11 +3,12 @@
  * Two-column layout with infinite scroll day cards and sticky sidebar
  */
 
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { Calendar, Sparkles, FileText, Loader2 } from 'lucide-react'
-import { DayCard } from '@/components/journal/day-card'
+import { DayCard, JournalCalendar, type HeatmapEntry } from '@/components/journal'
 import { useJournalScroll } from '@/hooks/use-journal-scroll'
+import { formatDateToISO, addDays } from '@/lib/journal-utils'
 
 interface JournalPageProps {
     className?: string
@@ -20,6 +21,30 @@ interface JournalPageProps {
  */
 export function JournalPage({ className }: JournalPageProps): React.JSX.Element {
     const journal = useJournalScroll()
+
+    // Generate dummy heatmap data for demo
+    const heatmapData = useMemo(() => {
+        const data: HeatmapEntry[] = []
+        const today = new Date()
+        // Generate random data for past 60 days
+        for (let i = -60; i <= 0; i++) {
+            const date = addDays(today, i)
+            const dateStr = formatDateToISO(date)
+            const charCount = Math.random() > 0.3 ? Math.floor(Math.random() * 1500) : 0
+            const level = charCount === 0 ? 0
+                : charCount <= 100 ? 1
+                    : charCount <= 500 ? 2
+                        : charCount <= 1000 ? 3
+                            : 4
+            data.push({ date: dateStr, characterCount: charCount, level: level as 0 | 1 | 2 | 3 | 4 })
+        }
+        return data
+    }, [])
+
+    // Handle calendar day click - scroll to that date
+    const handleCalendarDayClick = useCallback((date: string) => {
+        journal.scrollToDate(date)
+    }, [journal])
 
     return (
         <div
@@ -35,6 +60,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             <JournalSidebar
                 activeDate={journal.state.activeDate}
                 onTodayClick={() => journal.scrollToToday(true)}
+                onDayClick={handleCalendarDayClick}
+                heatmapData={heatmapData}
             />
         </div>
     )
@@ -95,6 +122,17 @@ function JournalScrollArea({ journal }: JournalScrollAreaProps): React.JSX.Eleme
                         isToday={day.isToday}
                         isFuture={day.isFuture}
                         opacity={getOpacity(day.date)}
+                        // Dummy data for today only
+                        calendarEvents={day.isToday ? [
+                            { id: '1', time: '9:00 AM', title: 'Team Standup', attendeeCount: 5 },
+                            { id: '2', time: '2:00 PM', title: 'Design Review', attendeeCount: 3 },
+                            { id: '3', time: '4:30 PM', title: '1:1 with Sarah' },
+                        ] : []}
+                        overdueTasks={day.isToday ? [
+                            { id: '1', title: 'Review PRs', dueDate: 'Dec 8', completed: false },
+                            { id: '2', title: 'Update documentation', dueDate: 'Dec 8', completed: false },
+                            { id: '3', title: 'Send invoice to client', dueDate: 'Dec 6', completed: false },
+                        ] : []}
                     />
                 ))}
             </div>
@@ -117,11 +155,15 @@ function JournalScrollArea({ journal }: JournalScrollAreaProps): React.JSX.Eleme
 interface JournalSidebarProps {
     activeDate: string
     onTodayClick: () => void
+    onDayClick: (date: string) => void
+    heatmapData: HeatmapEntry[]
 }
 
 function JournalSidebar({
     activeDate,
     onTodayClick,
+    onDayClick,
+    heatmapData,
 }: JournalSidebarProps): React.JSX.Element {
     return (
         <aside
@@ -147,25 +189,12 @@ function JournalSidebar({
             )}
         >
             {/* Calendar Section */}
-            <SidebarSection
-                icon={Calendar}
-                title="Calendar"
-                iconColor="text-accent-blue"
-                action={
-                    <button
-                        type="button"
-                        onClick={onTodayClick}
-                        className="text-xs text-primary hover:underline"
-                    >
-                        Today
-                    </button>
-                }
-            >
-                <div className="h-48 rounded-lg border border-dashed border-border/60 flex flex-col items-center justify-center text-muted-foreground text-sm gap-2">
-                    <span>Calendar Heatmap</span>
-                    <span className="text-xs">Active: {activeDate}</span>
-                </div>
-            </SidebarSection>
+            <JournalCalendar
+                selectedDate={activeDate}
+                onDayClick={onDayClick}
+                onTodayClick={onTodayClick}
+                heatmapData={heatmapData}
+            />
 
             {/* AI Connections Section */}
             <SidebarSection

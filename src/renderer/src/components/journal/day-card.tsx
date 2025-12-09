@@ -4,10 +4,10 @@
  */
 
 import { forwardRef, memo, useMemo } from 'react'
-import { Calendar, Clock } from 'lucide-react'
+import { Calendar, Clock, Sun, Sunrise, Sunset, Moon, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDayHeader, getTimeBasedGreeting, getSpecialDayLabel } from '@/lib/journal-utils'
-import { CollapsibleSection, NotesSection, JournalSection } from './collapsible-section'
+import { CollapsibleSection, JournalSection } from './collapsible-section'
 
 // =============================================================================
 // TYPES
@@ -27,13 +27,6 @@ export interface OverdueTask {
     completed: boolean
 }
 
-export interface Note {
-    id: string
-    time: string
-    title: string
-    preview?: string
-}
-
 export interface DayCardProps {
     /** Date in ISO format (YYYY-MM-DD) */
     date: string
@@ -49,12 +42,22 @@ export interface DayCardProps {
     calendarEvents?: CalendarEvent[]
     /** Overdue tasks for this day */
     overdueTasks?: OverdueTask[]
-    /** Notes for this day */
-    notes?: Note[]
     /** Additional CSS classes */
     className?: string
-    /** Callback when a note is clicked */
-    onNoteClick?: (noteId: string) => void
+}
+
+// =============================================================================
+// GREETING ICON MAPPING
+// =============================================================================
+
+function getGreetingIcon(icon: string): React.ReactNode {
+    switch (icon) {
+        case '🌅': return <Sunrise className="size-4 text-amber-500" />
+        case '☀️': return <Sun className="size-4 text-yellow-500" />
+        case '🌆': return <Sunset className="size-4 text-orange-500" />
+        case '🌙': return <Moon className="size-4 text-indigo-400" />
+        default: return <Sun className="size-4 text-yellow-500" />
+    }
 }
 
 // =============================================================================
@@ -66,7 +69,6 @@ export interface DayCardProps {
  * - Header with date, day name, greeting (for today)
  * - Collapsible Calendar Events section
  * - Collapsible Overdue Tasks section
- * - Notes section
  * - Journal editor placeholder
  */
 export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
@@ -77,9 +79,7 @@ export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
     opacity,
     calendarEvents = [],
     overdueTasks = [],
-    notes = [],
     className,
-    onNoteClick,
 }, ref) => {
     const header = formatDayHeader(date)
     const greeting = useMemo(() => isToday ? getTimeBasedGreeting() : null, [isToday])
@@ -166,7 +166,7 @@ export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
                                     className="flex items-center justify-between py-2 px-1"
                                 >
                                     <div className="flex items-center gap-2">
-                                        <span className="text-muted-foreground">☐</span>
+                                        <Square className="size-4 text-muted-foreground" />
                                         <span className="text-sm text-foreground">{task.title}</span>
                                     </div>
                                     <span className="text-xs text-muted-foreground">{task.dueDate}</span>
@@ -175,9 +175,6 @@ export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
                         </div>
                     </CollapsibleSection>
                 )}
-
-                {/* Notes Section - always visible */}
-                <NotesSection notes={notes} onNoteClick={onNoteClick} />
 
                 {/* Journal Section - always visible */}
                 <JournalSection
@@ -257,7 +254,7 @@ function DayCardHeader({
             {/* Right side - Greeting (only for today) */}
             {greeting && (
                 <div className="flex items-center gap-2 text-sm">
-                    <span>{greeting.icon}</span>
+                    {getGreetingIcon(greeting.icon)}
                     <span className="text-muted-foreground">{greeting.greeting}</span>
                 </div>
             )}
