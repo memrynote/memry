@@ -9,6 +9,7 @@ import { useTabs } from '@/contexts/tabs';
 import { useTasksOptional } from '@/contexts/tasks';
 import { cn } from '@/lib/utils';
 import { InboxPage } from '@/pages/inbox';
+import { JournalPage } from '@/pages/journal';
 import { TasksPage } from '@/pages/tasks';
 
 interface TabContentProps {
@@ -114,13 +115,7 @@ export const TabContent = ({
                 );
 
             case 'journal':
-                return (
-                    <PlaceholderView
-                        title={tab.title}
-                        icon="book-open"
-                        subtitle={`Journal: ${tab.entityId}`}
-                    />
-                );
+                return <JournalPage />;
 
             case 'search':
                 return (

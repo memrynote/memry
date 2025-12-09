@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
 import { InboxPage } from "@/pages/inbox"
+import { JournalPage } from "@/pages/journal"
 import { TasksPage } from "@/pages/tasks"
 import { DragProvider, type DragState } from "@/contexts/drag-context"
 import { TaskDragOverlay } from "@/components/tasks/drag-drop"
@@ -95,6 +96,10 @@ const TabContentRenderer = ({
         />
       )
     }
+    case "journal":
+      return <JournalPage />
+    case "home":
+
     default:
       // Placeholder for other tab types
       return (
