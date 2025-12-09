@@ -3,3 +3,4 @@
  */
 
 export * from './day-card'
+export * from './collapsible-section'

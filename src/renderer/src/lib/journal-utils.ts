@@ -214,3 +214,62 @@ export function getDateDistance(date1: string, date2: string): number {
   const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
   return diffDays
 }
+
+// =============================================================================
+// GREETING
+// =============================================================================
+
+export interface TimeGreeting {
+  /** Greeting text (Good morning, Good afternoon, etc.) */
+  greeting: string
+  /** Icon for the greeting */
+  icon: string
+}
+
+/**
+ * Get time-based greeting for today's day card
+ * @returns Greeting text and icon based on current hour
+ */
+export function getTimeBasedGreeting(): TimeGreeting {
+  const hour = new Date().getHours()
+
+  if (hour >= 5 && hour < 12) {
+    return { greeting: 'Good morning', icon: '🌅' }
+  } else if (hour >= 12 && hour < 17) {
+    return { greeting: 'Good afternoon', icon: '☀️' }
+  } else if (hour >= 17 && hour < 21) {
+    return { greeting: 'Good evening', icon: '🌆' }
+  } else {
+    return { greeting: 'Good night', icon: '🌙' }
+  }
+}
+
+/**
+ * Check if a date is yesterday relative to today
+ */
+export function isYesterday(dateStr: string): boolean {
+  const today = new Date()
+  const yesterday = addDays(today, -1)
+  return dateStr === formatDateToISO(yesterday)
+}
+
+/**
+ * Check if a date is tomorrow relative to today
+ */
+export function isTomorrow(dateStr: string): boolean {
+  const today = new Date()
+  const tomorrow = addDays(today, 1)
+  return dateStr === formatDateToISO(tomorrow)
+}
+
+/**
+ * Get special day label (Today, Yesterday, Tomorrow) or null
+ */
+export function getSpecialDayLabel(dateStr: string): string | null {
+  const today = formatDateToISO(new Date())
+
+  if (dateStr === today) return 'Today'
+  if (isYesterday(dateStr)) return 'Yesterday'
+  if (isTomorrow(dateStr)) return 'Tomorrow'
+  return null
+}

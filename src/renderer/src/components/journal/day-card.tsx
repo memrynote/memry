@@ -1,15 +1,38 @@
 /**
  * Day Card Component
- * Renders a single day in the journal infinite scroll
+ * Renders a single day in the journal infinite scroll with full structure
  */
 
-import { forwardRef, memo } from 'react'
+import { forwardRef, memo, useMemo } from 'react'
+import { Calendar, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatDayHeader } from '@/lib/journal-utils'
+import { formatDayHeader, getTimeBasedGreeting, getSpecialDayLabel } from '@/lib/journal-utils'
+import { CollapsibleSection, NotesSection, JournalSection } from './collapsible-section'
 
 // =============================================================================
 // TYPES
 // =============================================================================
+
+export interface CalendarEvent {
+    id: string
+    time: string
+    title: string
+    attendeeCount?: number
+}
+
+export interface OverdueTask {
+    id: string
+    title: string
+    dueDate: string
+    completed: boolean
+}
+
+export interface Note {
+    id: string
+    time: string
+    title: string
+    preview?: string
+}
 
 export interface DayCardProps {
     /** Date in ISO format (YYYY-MM-DD) */
@@ -22,8 +45,16 @@ export interface DayCardProps {
     isFuture: boolean
     /** Opacity based on distance from active day */
     opacity: number
+    /** Calendar events for this day */
+    calendarEvents?: CalendarEvent[]
+    /** Overdue tasks for this day */
+    overdueTasks?: OverdueTask[]
+    /** Notes for this day */
+    notes?: Note[]
     /** Additional CSS classes */
     className?: string
+    /** Callback when a note is clicked */
+    onNoteClick?: (noteId: string) => void
 }
 
 // =============================================================================
@@ -31,8 +62,12 @@ export interface DayCardProps {
 // =============================================================================
 
 /**
- * Day Card - displays a single day with header and content area
- * Uses forwardRef for scroll position tracking
+ * Day Card - displays a single day with full structure:
+ * - Header with date, day name, greeting (for today)
+ * - Collapsible Calendar Events section
+ * - Collapsible Overdue Tasks section
+ * - Notes section
+ * - Journal editor placeholder
  */
 export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
     date,
@@ -40,9 +75,15 @@ export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
     isToday,
     isFuture,
     opacity,
+    calendarEvents = [],
+    overdueTasks = [],
+    notes = [],
     className,
+    onNoteClick,
 }, ref) => {
     const header = formatDayHeader(date)
+    const greeting = useMemo(() => isToday ? getTimeBasedGreeting() : null, [isToday])
+    const specialLabel = getSpecialDayLabel(date)
 
     return (
         <div
@@ -52,7 +93,6 @@ export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
             className={cn(
                 // Base styling
                 "rounded-xl transition-all duration-150",
-                "min-h-[200px]",
                 // Background
                 "bg-card",
                 // Border (solid for past, dashed for future)
@@ -67,27 +107,83 @@ export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
                         : "border-primary/30",
                     "shadow-lg shadow-primary/5",
                 ],
-                // Today indicator
-                isToday && !isActive && "ring-2 ring-primary/20 ring-offset-2 ring-offset-background",
-                // Hover
-                !isActive && "hover:border-border/60 cursor-pointer",
                 className
             )}
         >
             {/* Header */}
             <DayCardHeader
-                dayName={header.dayName}
                 dateStr={header.dateStr}
-                isToday={isToday}
-                isFuture={isFuture}
+                dayName={header.dayName}
+                specialLabel={specialLabel}
+                greeting={greeting}
                 isActive={isActive}
+                isFuture={isFuture}
             />
 
-            {/* Content Area - placeholder for now, will be replaced in Prompt 03 */}
-            <div className="p-6 pt-0">
-                <div className="h-32 rounded-lg border border-dashed border-border/40 flex items-center justify-center text-muted-foreground text-sm">
-                    {isFuture ? 'Plan your day...' : 'Journal content...'}
-                </div>
+            {/* Sections Container */}
+            <div className="p-4 flex flex-col gap-4">
+                {/* Calendar Events - only show if has events */}
+                {calendarEvents.length > 0 && (
+                    <CollapsibleSection
+                        icon={<Calendar className="size-4 text-accent-blue" />}
+                        title="Calendar Events"
+                        count={calendarEvents.length}
+                        countLabel={calendarEvents.length === 1 ? 'meeting' : 'meetings'}
+                    >
+                        <div className="flex flex-col gap-2 mt-2">
+                            {calendarEvents.map(event => (
+                                <div
+                                    key={event.id}
+                                    className="flex items-start justify-between p-3 rounded-md bg-background/50"
+                                >
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">{event.time}</p>
+                                        <p className="text-sm font-medium text-foreground">{event.title}</p>
+                                    </div>
+                                    {event.attendeeCount && (
+                                        <span className="text-xs text-muted-foreground">
+                                            ({event.attendeeCount} people)
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </CollapsibleSection>
+                )}
+
+                {/* Overdue Tasks - only show if has tasks (and not future) */}
+                {!isFuture && overdueTasks.length > 0 && (
+                    <CollapsibleSection
+                        icon={<Clock className="size-4 text-accent-orange" />}
+                        title="Overdue Tasks"
+                        count={overdueTasks.length}
+                        countLabel={overdueTasks.length === 1 ? 'task' : 'tasks'}
+                    >
+                        <div className="flex flex-col gap-1 mt-2">
+                            {overdueTasks.map(task => (
+                                <div
+                                    key={task.id}
+                                    className="flex items-center justify-between py-2 px-1"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground">☐</span>
+                                        <span className="text-sm text-foreground">{task.title}</span>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">{task.dueDate}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </CollapsibleSection>
+                )}
+
+                {/* Notes Section - always visible */}
+                <NotesSection notes={notes} onNoteClick={onNoteClick} />
+
+                {/* Journal Section - always visible */}
+                <JournalSection
+                    isActive={isActive}
+                    placeholder={isFuture ? "Plan your day..." : "Start writing..."}
+                />
             </div>
         </div>
     )
@@ -100,57 +196,70 @@ DayCard.displayName = 'DayCard'
 // =============================================================================
 
 interface DayCardHeaderProps {
-    dayName: string
     dateStr: string
-    isToday: boolean
-    isFuture: boolean
+    dayName: string
+    specialLabel: string | null
+    greeting: { greeting: string; icon: string } | null
     isActive: boolean
+    isFuture: boolean
 }
 
 function DayCardHeader({
-    dayName,
     dateStr,
-    isToday,
-    isFuture,
+    dayName,
+    specialLabel,
+    greeting,
     isActive,
+    isFuture,
 }: DayCardHeaderProps): React.JSX.Element {
     return (
         <header className={cn(
             "px-6 py-4",
             "border-b border-border/30",
-            "flex items-center justify-between"
+            "flex items-start justify-between"
         )}>
-            <div className="flex items-center gap-3">
-                {/* Day name */}
+            {/* Left side - Date info */}
+            <div className="flex flex-col gap-1">
+                {/* Date */}
                 <h2 className={cn(
                     "text-lg font-semibold",
                     isActive ? "text-foreground" : "text-foreground/80",
                     isFuture && !isActive && "text-foreground/60"
                 )}>
-                    {isToday ? 'Today' : dayName}
+                    {dateStr}
                 </h2>
 
-                {/* Date */}
-                <span className={cn(
-                    "text-sm",
-                    isActive ? "text-muted-foreground" : "text-muted-foreground/70"
-                )}>
-                    {dateStr}
-                </span>
-
-                {/* Today badge */}
-                {isToday && !isActive && (
-                    <span className="px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary rounded-full">
-                        Today
+                {/* Day name + special label */}
+                <div className="flex items-center gap-2">
+                    <span className={cn(
+                        "text-xs uppercase tracking-wide font-medium",
+                        isActive ? "text-muted-foreground" : "text-muted-foreground/70"
+                    )}>
+                        {dayName}
                     </span>
-                )}
+
+                    {specialLabel && (
+                        <>
+                            <span className="text-muted-foreground/50">•</span>
+                            <span className={cn(
+                                "text-xs font-medium",
+                                specialLabel === 'Today'
+                                    ? "text-primary"
+                                    : "text-muted-foreground"
+                            )}>
+                                {specialLabel}
+                            </span>
+                        </>
+                    )}
+                </div>
             </div>
 
-            {/* Future indicator */}
-            {isFuture && (
-                <span className="text-xs text-muted-foreground/50 italic">
-                    Upcoming
-                </span>
+            {/* Right side - Greeting (only for today) */}
+            {greeting && (
+                <div className="flex items-center gap-2 text-sm">
+                    <span>{greeting.icon}</span>
+                    <span className="text-muted-foreground">{greeting.greeting}</span>
+                </div>
             )}
         </header>
     )
