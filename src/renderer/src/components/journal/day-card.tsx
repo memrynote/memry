@@ -8,6 +8,7 @@ import { Calendar, Clock, Sun, Sunrise, Sunset, Moon, Square } from 'lucide-reac
 import { cn } from '@/lib/utils'
 import { formatDayHeader, getTimeBasedGreeting, getSpecialDayLabel } from '@/lib/journal-utils'
 import { CollapsibleSection, JournalSection } from './collapsible-section'
+import { NotesSection, type Note } from './notes-section'
 
 // =============================================================================
 // TYPES
@@ -42,6 +43,12 @@ export interface DayCardProps {
     calendarEvents?: CalendarEvent[]
     /** Overdue tasks for this day */
     overdueTasks?: OverdueTask[]
+    /** Notes for this day */
+    notes?: Note[]
+    /** Currently open note id in drawer */
+    activeNoteId?: string | null
+    /** Callback when a note is clicked */
+    onNoteClick?: (noteId: string) => void
     /** Additional CSS classes */
     className?: string
 }
@@ -79,6 +86,9 @@ export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
     opacity,
     calendarEvents = [],
     overdueTasks = [],
+    notes = [],
+    activeNoteId,
+    onNoteClick,
     className,
 }, ref) => {
     const header = formatDayHeader(date)
@@ -175,6 +185,13 @@ export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
                         </div>
                     </CollapsibleSection>
                 )}
+
+                {/* Notes Section - always visible */}
+                <NotesSection
+                    notes={notes}
+                    activeNoteId={activeNoteId}
+                    onNoteClick={onNoteClick}
+                />
 
                 {/* Journal Section - always visible */}
                 <JournalSection

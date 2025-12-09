@@ -1,8 +1,8 @@
-# Memry Journal — Notes Section
+# Memry Journal — Notes Section with Drawer
 
 ## Overview
 
-Build the Notes section within the day card and the split view sliding panel that opens when clicking a note. Unlike the collapsible sections, Notes is always visible. Clicking a note opens it in a sliding panel alongside the journal, maintaining context.
+Build the Notes section within the day card and the drawer panel that opens when clicking a note. The drawer slides over the right sidebar, maintaining the 3-column layout at all times. This provides quick access to notes without disrupting the journal writing flow.
 
 ## Notes Section Placement
 ```
@@ -26,6 +26,26 @@ Build the Notes section within the day card and the split view sliding panel tha
 ┃   [Journal Editor - always visible]                            ┃
 ┃                                                                ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+```
+
+## Layout Principle: Always 3 Columns
+```
+CRITICAL RULE: Never exceed 3 columns
+
+┌────────────┬────────────────────────────────┬────────────────────┐
+│            │                                │                    │
+│    NAV     │         JOURNAL AREA           │   RIGHT SIDEBAR    │
+│  SIDEBAR   │                                │   or NOTE DRAWER   │
+│            │                                │                    │
+│   ~200px   │           ~60%                 │       ~40%         │
+│            │                                │                    │
+└────────────┴────────────────────────────────┴────────────────────┘
+
+The right section is EITHER:
+- Right Sidebar (Calendar, AI Connections, Today's Notes)
+- Note Drawer (when a note is open)
+
+NEVER both at the same time.
 ```
 
 ## Notes Section Structure
@@ -75,7 +95,6 @@ Empty state:
 - Section header still shows (no count badge)
 - Centered text: "No notes from this day"
 - Subtle/secondary text color
-- No action buttons (notes created elsewhere in app)
 ```
 
 ## Note Item Structure
@@ -99,7 +118,7 @@ Elements:
 - Time: "9:34 AM" - secondary color, small font (12px)
 - Icon: 📄 or document icon
 - Title: Note title - primary color, medium weight (14px, 500)
-- Arrow: → indicates clickable, opens panel
+- Arrow: → indicates clickable, opens drawer
 - Preview: First line snippet - secondary color, truncated (13px)
           Max 1 line with ellipsis
 
@@ -131,10 +150,10 @@ HOVER:
 Properties:
 - Background: Subtle highlight
 - Cursor: pointer
-- Arrow: May become more visible/colored
+- Arrow: More visible
 - Transition: 150ms ease
 
-ACTIVE (Currently open in panel):
+ACTIVE (Currently open in drawer):
 ┌──────────────────────────────────────────────────────────────────┐
 │████████████████████████████████████████████████████████████████████│
 │██  9:34 AM                                                      ██│
@@ -144,342 +163,287 @@ ACTIVE (Currently open in panel):
 └──────────────────────────────────────────────────────────────────┘
 
 Properties:
-- Background: Accent color (muted) or strong highlight
-- Left border: 3px accent color (optional)
-- Indicates this note is currently open in panel
+- Background: Accent color (muted)
+- Left border: 3px accent color
+- Indicates this note is currently open in drawer
 ```
 
-## Split View Panel
+## Drawer Behavior
 
-When a note is clicked, a sliding panel opens from the right, creating a split view.
-
-### Before Click (Normal View)
+### Normal State (No Drawer)
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│           SCROLL AREA (100%)                        │     SIDEBAR           │
-│                                                     │                       │
-│    ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓   │                       │
-│    ┃  December 9                                ┃   │                       │
-│    ┃  ────────────────────────────────────────  ┃   │                       │
-│    ┃                                            ┃   │                       │
-│    ┃  [Sections...]                             ┃   │                       │
-│    ┃                                            ┃   │                       │
-│    ┃  📝 Notes                                  ┃   │                       │
-│    ┃  ┌──────────────────────────────────────┐  ┃   │                       │
-│    ┃  │ 9:34 AM                              │  ┃   │                       │
-│    ┃  │ 📄 Meeting Notes                  →  │←─╋───┼─── User clicks       │
-│    ┃  └──────────────────────────────────────┘  ┃   │                       │
-│    ┃                                            ┃   │                       │
-│    ┃  [Journal Editor]                          ┃   │                       │
-│    ┃                                            ┃   │                       │
-│    ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   │                       │
-│                                                     │                       │
-└─────────────────────────────────────────────────────┴───────────────────────┘
+┌────────────┬──────────────────────────────────────┬─────────────────────────┐
+│            │                                      │                         │
+│            │   December 9, 2025                   │   📅 December 2025      │
+│    NAV     │   TUESDAY • Today                    │   ┌─────────────────┐   │
+│  SIDEBAR   │                                      │   │ [Calendar Grid] │   │
+│            │   📝 Notes                      (2)  │   └─────────────────┘   │
+│            │   ┌────────────────────────────────┐ │                         │
+│            │   │ 9:34 AM                        │ │   ⚡ AI Connections     │
+│            │   │ 📄 Meeting Notes           →  │ │   [Connections...]      │
+│            │   └────────────────────────────────┘ │                         │
+│            │   ┌────────────────────────────────┐ │   📝 Today's Notes      │
+│            │   │ 2:15 PM                        │ │   [Notes list...]       │
+│            │   │ 📄 Feature Ideas           →  │ │                         │
+│            │   └────────────────────────────────┘ │                         │
+│            │                                      │                         │
+│            │   ✏️ Journal                         │                         │
+│            │   [Editor...]                        │                         │
+│            │                                      │                         │
+└────────────┴──────────────────────────────────────┴─────────────────────────┘
+
+Right sidebar visible with all components
 ```
 
-### After Click (Split View)
+### Click Note → Drawer Opens
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│      SCROLL AREA (55%)           │     NOTE PANEL (45%)     │   SIDEBAR    │
-│                                  │                          │   (hidden    │
-│    ┏━━━━━━━━━━━━━━━━━━━━━━━━━┓   │  ┌──────────────────────┐│    or       │
-│    ┃  December 9             ┃   │  │ 📄 Meeting Notes  ✕ ↗││   behind)   │
-│    ┃  ──────────────────────  ┃   │  │ ────────────────────││             │
-│    ┃                         ┃   │  │                      ││             │
-│    ┃  [Collapsed sections]   ┃   │  │ Discussed the        ││             │
-│    ┃                         ┃   │  │ roadmap changes      ││             │
-│    ┃  📝 Notes               ┃   │  │ with the team today. ││             │
-│    ┃  ┌───────────────────┐  ┃   │  │                      ││             │
-│    ┃  │ 9:34 AM           │  ┃   │  │ Key decisions:       ││             │
-│    ┃  │ 📄 Meeting Notes █│  ┃   │  │ • Timeline shifted   ││             │
-│    ┃  └───────────────────┘  ┃   │  │ • New milestones     ││             │
-│    ┃                         ┃   │  │                      ││             │
-│    ┃  [Journal Editor]       ┃   │  │ [[Project Alpha]]    ││             │
-│    ┃                         ┃   │  │                      ││             │
-│    ┗━━━━━━━━━━━━━━━━━━━━━━━━━┛   │  │ ────────────────────││             │
-│                                  │  │ B I U │ 🔗 📷 │ ⋮   ││             │
-│                                  │  └──────────────────────┘│             │
-│                                  │                          │             │
-│                                  │  [↗️ Open full page]     │             │
-│                                  │                          │             │
-└──────────────────────────────────┴──────────────────────────┴─────────────┘
+┌────────────┬──────────────────────────────────────┬─────────────────────────┐
+│            │                                      │┃                       ┃│
+│            │   December 9, 2025                   │┃  📄 Meeting Notes   ✕ ┃│
+│    NAV     │   TUESDAY • Today                    │┃                       ┃│
+│  SIDEBAR   │                                      │┃  ───────────────────  ┃│
+│            │   📝 Notes                      (2)  │┃                       ┃│
+│            │   ┌────────────────────────────────┐ │┃  Discussed the       ┃│
+│            │   │ 9:34 AM                        │ │┃  roadmap changes     ┃│
+│            │   │ 📄 Meeting Notes        [●]   │ │┃  with the team       ┃│
+│            │   └────────────────────────────────┘ │┃  today. Sarah raised ┃│
+│            │   ┌────────────────────────────────┐ │┃  some excellent      ┃│
+│            │   │ 2:15 PM                        │ │┃  points about the    ┃│
+│            │   │ 📄 Feature Ideas           →  │ │┃  timeline.           ┃│
+│            │   └────────────────────────────────┘ │┃                       ┃│
+│            │                                      │┃  Key decisions:       ┃│
+│            │   ✏️ Journal                         │┃  • Timeline → Q2     ┃│
+│            │   [Editor...]                        │┃  • New milestones    ┃│
+│            │                                      │┃                       ┃│
+│            │                                      │┃  ───────────────────  ┃│
+│            │                                      │┃  B I U │ 🔗 📷 │ ↗  ┃│
+│            │                                      │┃                       ┃│
+└────────────┴──────────────────────────────────────┴┻───────────────────────┻┘
+                                                     ↑
+                                               DRAWER (40%)
+                                               Slides over sidebar
+                                               Sidebar is hidden behind
 
-Layout changes:
-- Scroll area shrinks from ~65% to ~55%
-- Note panel takes ~45% of scroll area space (or fixed width ~400px)
-- Sidebar may hide or stay (depending on screen width)
-- Day card content adjusts to narrower width
+[●] = Indicates this note is open in drawer
 ```
 
-## Panel Animation
+## Drawer Animation
 
 ### Opening Animation
 ```
 STEP 1: User clicks note item
         │
         ▼
-STEP 2: Note item highlights as "active"
+STEP 2: Note item shows "active" state immediately
         │
         ▼
-STEP 3: Panel slides in from right edge
+STEP 3: Drawer slides in from right edge
 
-        ┌──────────────────────────┐
-        │                          │
-        │  SCROLL AREA             │ ←─── Panel slides
-        │                          │      from here
-        │                          │         │
-        │                          │         │
-        │                          │    ┌────┴─────┐
-        │                          │←───│  PANEL   │
-        │                          │    │ (sliding)│
-        │                          │    └──────────┘
-        │                          │
-        └──────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│   JOURNAL AREA              │    RIGHT SIDEBAR                  │
+│                             │                                   │
+│                             │                    ┌─────────────┐│
+│                             │                ←───│   DRAWER    ││
+│                             │                    │  (sliding)  ││
+│                             │                    └─────────────┘│
+│                             │                                   │
+└─────────────────────────────┴───────────────────────────────────┘
 
-STEP 4: Scroll area shrinks simultaneously
-        │
-        ▼
-STEP 5: Final split view state
-
-Animation timing:
-- Duration: 300ms
+Animation:
+- Duration: 250ms
 - Easing: ease-out (cubic-bezier(0.33, 1, 0.68, 1))
-- Panel: translateX(100%) → translateX(0)
-- Scroll area: width 100% → 55% (simultaneous)
+- Drawer: translateX(100%) → translateX(0)
+- Sidebar: Stays in place, drawer covers it
 ```
 
 ### Closing Animation
 ```
-STEP 1: User clicks ✕ or clicks outside panel
+STEP 1: User clicks ✕ or outside drawer or presses Escape
         │
         ▼
-STEP 2: Panel slides out to right
+STEP 2: Drawer slides out to right
 
-        ┌──────────────────────────┐
-        │                          │    ┌──────────┐
-        │  SCROLL AREA             │───▶│  PANEL   │
-        │  (expanding)             │    │ (sliding)│
-        │                          │    └────┬─────┘
-        │                          │         │
-        │                          │         ▼
-        │                          │      (exits)
-        │                          │
-        └──────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│   JOURNAL AREA              │    RIGHT SIDEBAR                  │
+│                             │                                   │
+│                             │    ┌─────────────┐                │
+│                             │    │   DRAWER    │───▶            │
+│                             │    │  (sliding)  │   (exits)      │
+│                             │    └─────────────┘                │
+│                             │                                   │
+└─────────────────────────────┴───────────────────────────────────┘
 
-STEP 3: Scroll area expands back to full width
+STEP 3: Sidebar revealed underneath
         │
         ▼
 STEP 4: Note item removes "active" state
 
-Animation timing:
-- Duration: 250ms
+Animation:
+- Duration: 200ms
 - Easing: ease-in (cubic-bezier(0.32, 0, 0.67, 0))
-- Panel: translateX(0) → translateX(100%)
-- Scroll area: width 55% → 100% (simultaneous)
+- Drawer: translateX(0) → translateX(100%)
 ```
 
-## Panel Structure
+## Drawer Structure
 ```
-┌──────────────────────────────────────────────────────┐
-│                                                      │
-│   📄  Meeting Notes                          ✕   ↗   │  ← Panel Header
-│                                                      │
-│   ────────────────────────────────────────────────   │
-│                                                      │
-│   ┌────────────────────────────────────────────────┐ │
-│   │                                                │ │
-│   │  Discussed the roadmap changes with the team   │ │
-│   │  today. Sarah raised some excellent points     │ │
-│   │  about the timeline.                           │ │
-│   │                                                │ │  ← Note Content
-│   │  Key decisions:                                │ │     (Tiptap Editor)
-│   │  • Timeline shifted to Q2                      │ │
-│   │  • New milestones defined                      │ │
-│   │  • [[Project Alpha]] scope reduced             │ │
-│   │                                                │ │
-│   │  #work #meetings #roadmap                      │ │
-│   │                                                │ │
-│   ├────────────────────────────────────────────────┤ │
-│   │  B  I  U  S  │  🔗  📷  🎤  📎  │  ⋮          │ │  ← Toolbar
-│   └────────────────────────────────────────────────┘ │
-│                                                      │
-│   ────────────────────────────────────────────────   │
-│                                                      │
-│   ↗️  Open in full page                              │  ← Footer action
-│                                                      │
-└──────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│   📄  Meeting Notes                                    ↗    ✕   │
+│                                                                 │
+│   ─────────────────────────────────────────────────────────────│
+│                                                                 │
+│   ┌───────────────────────────────────────────────────────────┐ │
+│   │                                                           │ │
+│   │  Discussed the roadmap changes with the team today.       │ │
+│   │  Sarah raised some excellent points about the timeline.   │ │
+│   │                                                           │ │
+│   │  Key decisions:                                           │ │
+│   │  • Timeline shifted to Q2                                 │ │
+│   │  • New milestones defined                                 │ │
+│   │  • [[Project Alpha]] scope reduced                        │ │
+│   │                                                           │ │
+│   │  #work #meetings #roadmap                                 │ │
+│   │                                                           │ │
+│   │                                                           │ │
+│   │                                                           │ │
+│   │                                                           │ │
+│   │                                                           │ │
+│   │                                                           │ │
+│   ├───────────────────────────────────────────────────────────┤ │
+│   │  B  I  U  S  │  🔗  📷  🎤  📎  │  ⋮                      │ │
+│   └───────────────────────────────────────────────────────────┘ │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Panel Header
+### Drawer Header
 ```
-┌──────────────────────────────────────────────────────┐
-│                                                      │
-│   📄  Meeting Notes                          ✕   ↗   │
-│                                                      │
-└──────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│   📄  Meeting Notes                                    ↗    ✕   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 
 Layout:
-┌──────────────────────────────────────────────────────┐
-│  [ICON]  [NOTE TITLE]                    [CLOSE] [EXPAND]│
-└──────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  [ICON]  [NOTE TITLE]                           [EXPAND] [CLOSE]│
+└─────────────────────────────────────────────────────────────────┘
 
 Elements:
 - Icon: 📄 or document icon (16px)
-- Title: Note title, truncate if long (14px, 600 weight)
-- Close button: ✕ (closes panel, returns to normal view)
+- Title: Note title, truncate if long (15px, 600 weight)
 - Expand button: ↗ (opens note in full page)
+- Close button: ✕ (closes drawer)
 
 Spacing:
 - Padding: 16px
 - Gap between icon and title: 8px
 - Buttons on right with 8px gap between them
+
+Button tooltips:
+- ↗ : "Open in full page"
+- ✕ : "Close"
 ```
 
-### Panel Content (Note Editor)
+### Drawer Content (Note Editor)
 ```
-┌────────────────────────────────────────────────────┐
-│                                                    │
-│  Discussed the roadmap changes with the team       │
-│  today. Sarah raised some excellent points         │
-│  about the timeline.                               │
-│                                                    │
-│  Key decisions:                                    │
-│  • Timeline shifted to Q2                          │
-│  • New milestones defined                          │
-│  • [[Project Alpha]] scope reduced                 │
-│                                                    │
-│  #work #meetings #roadmap                          │
-│                                                    │
-├────────────────────────────────────────────────────┤
-│  B  I  U  S  │  🔗  📷  🎤  📎  │  ⋮              │
-└────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│                                                               │
+│  Discussed the roadmap changes with the team today.           │
+│  Sarah raised some excellent points about the timeline.       │
+│                                                               │
+│  Key decisions:                                               │
+│  • Timeline shifted to Q2                                     │
+│  • New milestones defined                                     │
+│  • [[Project Alpha]] scope reduced                            │
+│                                                               │
+│  #work #meetings #roadmap                                     │
+│                                                               │
+├───────────────────────────────────────────────────────────────┤
+│  B  I  U  S  │  🔗  📷  🎤  📎  │  ⋮                          │
+└───────────────────────────────────────────────────────────────┘
 
 Properties:
 - Full Tiptap editor (same as journal editor)
 - Supports [[wiki-links]] and #tags
 - All formatting options available
 - Scrollable if content is long
-- Min-height to fill panel space
+- Editor fills available height (flex: 1)
+- Toolbar at bottom
 ```
 
-### Panel Footer
+## Drawer Sizing
 ```
-┌──────────────────────────────────────────────────────┐
-│                                                      │
-│   ↗️  Open in full page                              │
-│                                                      │
-└──────────────────────────────────────────────────────┘
+DRAWER WIDTH: 40% of viewport
 
-Elements:
-- Link/button to open note in full page view
-- Useful when user wants more space to edit
+┌────────────┬────────────────────────────────────┬──────────────────────────┐
+│            │                                    │                          │
+│    NAV     │         JOURNAL AREA               │        DRAWER            │
+│  SIDEBAR   │                                    │                          │
+│            │                                    │                          │
+│   ~200px   │           ~60%                     │         40%              │
+│   fixed    │         flexible                   │       of viewport        │
+│            │                                    │                          │
+└────────────┴────────────────────────────────────┴──────────────────────────┘
 
-Interaction:
-- Click: Navigates to dedicated note page
-- Panel closes, user leaves journal view
-```
+Calculations:
+- Viewport: 1440px
+- Nav sidebar: 200px
+- Remaining: 1240px
+- Drawer: 40% of 1440px = 576px
+- Journal area: 1440px - 200px - 576px = 664px
 
-## Responsive Behavior
-
-### Wide Screen (> 1400px)
-```
-┌────────────────────────────────────┬────────────────────┬──────────────────┐
-│                                    │                    │                  │
-│     SCROLL AREA (50%)              │   PANEL (30%)      │  SIDEBAR (20%)   │
-│                                    │                    │                  │
-│     Day cards visible              │   Note editor      │  Calendar, etc.  │
-│                                    │                    │                  │
-└────────────────────────────────────┴────────────────────┴──────────────────┘
-
-All three sections visible simultaneously
+Minimum drawer width: 360px
+Maximum drawer width: 600px
 ```
 
-### Medium Screen (1024px - 1400px)
+## Close Methods
 ```
-┌────────────────────────────────────┬────────────────────────────────────────┐
-│                                    │                                        │
-│     SCROLL AREA (55%)              │            PANEL (45%)                 │
-│                                    │                                        │
-│     Day cards visible              │            Note editor                 │
-│                                    │                                        │
-└────────────────────────────────────┴────────────────────────────────────────┘
+METHOD 1: Click ✕ button
+┌───┐
+│ ✕ │  → Drawer slides out, sidebar revealed
+└───┘
 
-Sidebar hidden when panel is open (slides out or overlays)
-```
+METHOD 2: Press Escape key
+[Esc]  → Drawer slides out, sidebar revealed
 
-### Narrow Screen (768px - 1024px)
-```
-┌────────────────────────────────────────────────────────────────────────────┐
-│                                                                            │
-│                              PANEL (100%)                                  │
-│                                                                            │
-│                              Note editor                                   │
-│                              Full width overlay                            │
-│                                                                            │
-│                              [← Back to Journal]                           │
-│                                                                            │
-└────────────────────────────────────────────────────────────────────────────┘
+METHOD 3: Click outside drawer (on journal area)
+┌──────────────────────────────────────┬─────────────────────────┐
+│                                      │┃                       ┃│
+│   Click here                         │┃      DRAWER           ┃│
+│      ↓                               │┃                       ┃│
+│   ████████                           │┃                       ┃│
+│                                      │┃                       ┃│
+└──────────────────────────────────────┴┻───────────────────────┻┘
 
-Panel becomes full-width overlay with back button
-```
+→ Drawer slides out, sidebar revealed
 
-### Mobile (< 768px)
-```
-┌──────────────────────────────────┐
-│                                  │
-│  ← Back          Meeting Notes   │  ← Header with back
-│                                  │
-│  ────────────────────────────    │
-│                                  │
-│  [Full screen note editor]       │
-│                                  │
-│                                  │
-│                                  │
-│  ────────────────────────────    │
-│  B I U │ 🔗 📷 │ ⋮              │
-│                                  │
-└──────────────────────────────────┘
+METHOD 4: Click different note
+┌────────────────────────────────────────┐
+│   📝 Notes                             │
+│   ┌──────────────────────────────────┐ │
+│   │ Meeting Notes              [●]   │ │  ← Currently open
+│   └──────────────────────────────────┘ │
+│   ┌──────────────────────────────────┐ │
+│   │ Feature Ideas               →    │ │  ← Click this
+│   └──────────────────────────────────┘ │
+└────────────────────────────────────────┘
 
-Full screen note view, replaces journal entirely
-Back button returns to journal
+→ Drawer content switches to Feature Ideas (no close/reopen animation)
 ```
 
-## Panel Interactions
-
-### Close Panel Methods
+## Switch Between Notes
 ```
-1. Click ✕ button in panel header
-   → Panel slides out, normal view restored
-
-2. Press Escape key
-   → Panel slides out, normal view restored
-
-3. Click outside panel (on scroll area)
-   → Optional: Can close panel or keep it open
-   → Recommendation: Keep panel open (user might click journal to edit)
-
-4. Click different note
-   → Current panel content changes to new note
-   → No close/reopen animation, just content swap
-
-5. Scroll away from current day
-   → Panel stays open with same note
-   → OR panel closes (design decision)
-   → Recommendation: Panel closes when scrolling to different day
-```
-
-### Switch Between Notes
-```
-Panel showing "Meeting Notes"
+Drawer showing "Meeting Notes"
 User clicks "Feature Ideas" in notes list
         │
         ▼
-Content transitions (no panel animation):
+Content transitions (drawer stays open):
 
 ┌────────────────────────────┐     ┌────────────────────────────┐
-│ 📄 Meeting Notes      ✕ ↗ │     │ 📄 Feature Ideas      ✕ ↗ │
+│ 📄 Meeting Notes      ↗ ✕ │     │ 📄 Feature Ideas      ↗ ✕ │
 │ ────────────────────────── │ →   │ ────────────────────────── │
 │                            │     │                            │
 │ Meeting content...         │     │ Feature ideas content...   │
@@ -487,78 +451,172 @@ Content transitions (no panel animation):
 └────────────────────────────┘     └────────────────────────────┘
 
 Animation:
-- Crossfade: Old content fades out (150ms), new fades in (150ms)
-- OR instant swap (simpler)
+- Crossfade: Old content fades out (100ms), new fades in (100ms)
+- No drawer slide animation
 - "Active" state moves to newly selected note item
+```
+
+## "Open in Full Page" Behavior
+```
+Click ↗ button in drawer header:
+        │
+        ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│  ← Back to Journal                              Meeting Notes   │
+│                                                                 │
+│  ───────────────────────────────────────────────────────────────│
+│                                                                 │
+│                                                                 │
+│  [Full page note editor]                                        │
+│                                                                 │
+│  Much more space for editing                                    │
+│                                                                 │
+│                                                                 │
+│                                                                 │
+│  ───────────────────────────────────────────────────────────────│
+│  B  I  U  S  │  🔗  📷  🎤  📎  │  ⋮                            │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+Behavior:
+- Navigates away from Journal page
+- Opens dedicated note page
+- "Back to Journal" link to return
+- For deep editing sessions
+```
+
+## Responsive Behavior
+
+### Desktop (> 1200px)
+```
+┌────────────┬────────────────────────────────────┬──────────────────────────┐
+│            │                                    │                          │
+│    NAV     │         JOURNAL AREA               │        DRAWER (40%)      │
+│  SIDEBAR   │                                    │                          │
+│            │                                    │                          │
+│   200px    │           flexible                 │        ~500px            │
+│            │                                    │                          │
+└────────────┴────────────────────────────────────┴──────────────────────────┘
+```
+
+### Tablet (768px - 1200px)
+```
+┌────────────┬──────────────────────────┬──────────────────────────────────────┐
+│            │                          │                                      │
+│    NAV     │      JOURNAL AREA        │           DRAWER (50%)               │
+│  (icons)   │                          │                                      │
+│            │                          │                                      │
+│   60px     │        flexible          │           ~400px                     │
+│            │                          │                                      │
+└────────────┴──────────────────────────┴──────────────────────────────────────┘
+
+- Nav sidebar collapses to icons
+- Drawer takes 50% on tablet
+```
+
+### Mobile (< 768px)
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                                                              │
+│  ← Back                                                    Meeting Notes     │
+│                                                                              │
+│  ────────────────────────────────────────────────────────────────────────────│
+│                                                                              │
+│                                                                              │
+│  [Full screen note editor]                                                   │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│  ────────────────────────────────────────────────────────────────────────────│
+│  B  I  U  │  🔗  📷  │  ⋮                                                    │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+- Drawer becomes full screen
+- Back button to return to journal
+- Like opening a new page
 ```
 
 ## Keyboard Navigation
 ```
-When panel is open:
+When drawer is open:
 
-Tab         → Move focus within panel (header buttons, editor)
-Escape      → Close panel, return focus to note list
+Tab         → Move focus within drawer (header buttons, editor)
+Escape      → Close drawer, return focus to note list
 Cmd/Ctrl+S  → Save note (if not auto-saved)
 
 When note list is focused:
 
-Enter       → Open selected note in panel
+Enter       → Open selected note in drawer
 Arrow Up/Down → Navigate between notes
 ```
 
 ## Accessibility
 ```
-Panel:
-- role="dialog" or role="complementary"
-- aria-labelledby="panel-title"
-- Focus trapped within panel when open (optional)
-- Close button: aria-label="Close note panel"
-- Expand button: aria-label="Open note in full page"
+Drawer:
+- role="dialog"
+- aria-modal="true"
+- aria-labelledby="drawer-title"
+- Focus moves to drawer when opened
+- Focus returns to trigger element when closed
 
 Note items:
-- role="button" or role="listitem" with click handler
+- role="button"
+- aria-expanded="true" when drawer is open for this note
 - aria-selected="true" for currently open note
-- aria-expanded="true" when panel is showing this note
 
 Screen reader announcements:
-- "Meeting Notes, note panel opened"
-- "Note panel closed"
+- "Meeting Notes, note drawer opened"
+- "Note drawer closed"
+
+Close button:
+- aria-label="Close note drawer"
+
+Expand button:
+- aria-label="Open note in full page"
 ```
 
 ## Component Hierarchy
 ```
-NotesSection
-├── SectionHeader
-│   ├── Icon (📝)
-│   ├── Title ("Notes")
-│   └── Count ((2))
+JournalPage
+├── NavSidebar
+├── JournalArea
+│   └── DayCard
+│       └── NotesSection
+│           ├── SectionHeader
+│           │   ├── Icon (📝)
+│           │   ├── Title ("Notes")
+│           │   └── Count ((2))
+│           │
+│           ├── Separator
+│           │
+│           ├── NotesList (if notes.length > 0)
+│           │   └── NoteItem (×n)
+│           │       ├── Time
+│           │       ├── Icon
+│           │       ├── Title
+│           │       ├── Preview
+│           │       └── Arrow
+│           │
+│           └── EmptyState (if notes.length === 0)
 │
-├── Separator
+├── RightSidebar (hidden when drawer is open)
+│   ├── CalendarHeatmap
+│   ├── AIConnections
+│   └── TodaysNotes
 │
-├── NotesList (if notes.length > 0)
-│   └── NoteItem (×n)
-│       ├── Time
-│       ├── Icon
-│       ├── Title
-│       ├── Preview
-│       └── Arrow
-│
-└── EmptyState (if notes.length === 0)
-    └── "No notes from this day"
-
-
-NotePanel (separate component, portal or sibling)
-├── PanelHeader
-│   ├── Icon
-│   ├── Title
-│   ├── CloseButton
-│   └── ExpandButton
-│
-├── PanelContent
-│   └── TiptapEditor
-│
-└── PanelFooter
-    └── OpenFullPageLink
+└── NoteDrawer (when note is selected)
+    ├── DrawerHeader
+    │   ├── Icon
+    │   ├── Title
+    │   ├── ExpandButton
+    │   └── CloseButton
+    │
+    ├── DrawerContent
+    │   └── TiptapEditor
+    │
+    └── DrawerToolbar
 ```
 
 ## Data Structure
@@ -574,11 +632,11 @@ interface Note {
 
 interface NotesSectionProps {
   notes: Note[];
+  activeNoteId?: string;     // Currently open in drawer
   onNoteClick: (noteId: string) => void;
-  activeNoteId?: string;     // Currently open in panel
 }
 
-interface NotePanelProps {
+interface NoteDrawerProps {
   note: Note;
   isOpen: boolean;
   onClose: () => void;
@@ -589,36 +647,47 @@ interface NotePanelProps {
 
 ## State Management
 ```typescript
-// Parent component (JournalPage or DayCard) manages:
-{
-  // Panel state
-  isPanelOpen: boolean;
-  activeNoteId: string | null;
+// JournalPage component manages drawer state
+const [drawerState, setDrawerState] = useState<{
+  isOpen: boolean;
+  noteId: string | null;
+}>({
+  isOpen: false,
+  noteId: null
+});
 
-  // Actions
-  openNotePanel: (noteId: string) => void;
-  closeNotePanel: () => void;
-  switchNote: (noteId: string) => void;
+// Open drawer
+function openDrawer(noteId: string) {
+  setDrawerState({ isOpen: true, noteId });
 }
 
-// Open panel
-function openNotePanel(noteId: string) {
-  setActiveNoteId(noteId);
-  setIsPanelOpen(true);
+// Close drawer
+function closeDrawer() {
+  setDrawerState({ isOpen: false, noteId: null });
 }
 
-// Close panel
-function closeNotePanel() {
-  setIsPanelOpen(false);
-  // Optional: delay clearing activeNoteId until animation completes
-  setTimeout(() => setActiveNoteId(null), 300);
-}
-
-// Switch note (panel already open)
+// Switch note (drawer stays open)
 function switchNote(noteId: string) {
-  setActiveNoteId(noteId);
-  // No change to isPanelOpen
+  setDrawerState(prev => ({ ...prev, noteId }));
 }
+
+// Handle click outside
+function handleJournalAreaClick() {
+  if (drawerState.isOpen) {
+    closeDrawer();
+  }
+}
+
+// Handle escape key
+useEffect(() => {
+  function handleKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape' && drawerState.isOpen) {
+      closeDrawer();
+    }
+  }
+  document.addEventListener('keydown', handleKeyDown);
+  return () => document.removeEventListener('keydown', handleKeyDown);
+}, [drawerState.isOpen]);
 ```
 
 ## Spacing Specifications
@@ -649,13 +718,13 @@ Notes Section:
     └── Arrow: 16px, secondary (brighter on hover)
 
 
-Note Panel:
-├── Width: 400px fixed or 45% flexible
-├── Min-width: 320px
-├── Max-width: 500px
+Note Drawer:
+├── Width: 40% of viewport
+├── Min-width: 360px
+├── Max-width: 600px
 ├── Background: Card background
 ├── Border-left: 1px border color
-├── Box-shadow: -4px 0 12px rgba(0,0,0,0.1)
+├── Box-shadow: -4px 0 20px rgba(0,0,0,0.15)
 │
 ├── Header
 │   ├── Padding: 16px
@@ -668,34 +737,95 @@ Note Panel:
 │   ├── Flex: 1 (fills available space)
 │   └── Overflow-y: auto
 │
-└── Footer
-    ├── Padding: 12px 16px
+└── Toolbar
+    ├── Padding: 8px 12px
     ├── Border-top: 1px
-    └── Link font: 13px, accent color
+    └── Sticky at bottom
 ```
 
-## Empty State Details
-```
-┌────────────────────────────────────────────────────────────────┐
-│                                                                │
-│   📝  Notes                                                    │
-│                                                                │
-│   ──────────────────────────────────────────────────────────   │
-│                                                                │
-│                                                                │
-│                         📄                                     │
-│                                                                │
-│               No notes from this day                           │
-│                                                                │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
+## CSS Implementation
+```css
+/* Notes Section */
+.notes-section {
+  padding: 16px;
+}
 
-Elements:
-- Faded document icon (optional)
-- Text: "No notes from this day"
-- Secondary/muted text color
-- Vertically centered in section
-- Min-height to prevent section from being too short (~80px)
+.note-item {
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.note-item:hover {
+  background-color: var(--hover-bg);
+}
+
+.note-item.active {
+  background-color: var(--accent-bg-muted);
+  border-left: 3px solid var(--accent-color);
+}
+
+/* Note Drawer */
+.note-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 40vw;
+  min-width: 360px;
+  max-width: 600px;
+  background: var(--card-bg);
+  border-left: 1px solid var(--border-color);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 250ms ease-out;
+}
+
+.note-drawer.open {
+  transform: translateX(0);
+}
+
+.note-drawer-header {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.note-drawer-title {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.note-drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.note-drawer-toolbar {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+/* Overlay for click outside (optional) */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  /* transparent, just for capturing clicks */
+}
 ```
 
 ## Expected Output
@@ -703,36 +833,22 @@ Elements:
 After implementing this prompt:
 1. Notes section displays list of notes with time, title, preview
 2. Empty state shows when no notes exist
-3. Clicking note opens split view panel
-4. Panel slides in from right with animation
-5. Scroll area shrinks to accommodate panel
-6. Panel shows note content in editable Tiptap editor
-7. Close button closes panel with animation
-8. Expand button opens note in full page
-9. Active note is highlighted in list
-10. Switching notes changes panel content
-11. Escape key closes panel
-12. Responsive behavior on different screen sizes
-13. Proper accessibility attributes
+3. Clicking note opens drawer (slides from right)
+4. Drawer covers right sidebar (40% width)
+5. Drawer shows note content in editable Tiptap editor
+6. Close via ✕ button, Escape key, or click outside
+7. Expand button opens note in full page
+8. Active note is highlighted in list
+9. Switching notes changes drawer content (no reopen animation)
+10. Responsive behavior on different screen sizes
+11. Proper accessibility attributes
+12. Smooth slide animations
 
-## Do Not Include Yet
+## User Scenarios Addressed
 
-- Full page note view/route
-- Note creation from this section
-- Tiptap editor implementation details (Prompt 07)
-- Wiki-links and tags functionality (Prompt 11)
-
-Focus on the section structure and split view panel behavior.
-
-Implementation Notes
-TechniqueWhyCSS transform for panelHardware-accelerated animationFlex layout for splitEasy responsive resizingPortal for panelAvoid z-index issuesFocus trapAccessibility for modal-like panelDebounced auto-saveDon't lose edits
-Expected Outcome
-After implementing this prompt, you should have:
-
-Working notes list within day card
-Empty state for days without notes
-Split view panel that slides in from right
-Smooth open/close animations
-Active note highlighting
-Close and expand buttons
-Responsive behavior
+| User Type | Need | Solution |
+|-----------|------|----------|
+| Quick Capture | Glance at notes while journaling | Drawer shows note, journal stays visible |
+| Cross-Referencer | Copy from note to journal | Both visible side by side |
+| Light Editor | Fix a typo quickly | Edit in drawer, close when done |
+| Deep Worker | Full editing session | "Open in full page" escape hatch |

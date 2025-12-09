@@ -3,16 +3,41 @@
  * Two-column layout with infinite scroll day cards and sticky sidebar
  */
 
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Calendar, Sparkles, FileText, Loader2 } from 'lucide-react'
-import { DayCard, JournalCalendar, type HeatmapEntry } from '@/components/journal'
+import { DayCard, JournalCalendar, NoteDrawer, type HeatmapEntry, type Note } from '@/components/journal'
 import { useJournalScroll } from '@/hooks/use-journal-scroll'
-import { formatDateToISO, addDays } from '@/lib/journal-utils'
+import { formatDateToISO, addDays, getTodayString } from '@/lib/journal-utils'
 
 interface JournalPageProps {
     className?: string
 }
+
+// =============================================================================
+// DUMMY NOTES DATA
+// =============================================================================
+
+const DUMMY_NOTES: Note[] = [
+    {
+        id: 'note-1',
+        title: 'Meeting Notes',
+        content: '<p>Discussed the roadmap changes with the team today. Sarah raised some excellent points about the timeline.</p><h3>Key decisions:</h3><ul><li>Timeline shifted to Q2</li><li>New milestones defined</li><li>Project Alpha scope reduced</li></ul><p>#work #meetings #roadmap</p>',
+        createdAt: new Date().toISOString().replace(/T.*/, 'T09:34:00.000Z'),
+        preview: 'Discussed the roadmap changes with the team today...',
+    },
+    {
+        id: 'note-2',
+        title: 'Feature Ideas',
+        content: '<p>New onboarding flow concept with progressive disclosure. Users should only see what they need at each step.</p><h3>Steps:</h3><ol><li>Welcome screen with single CTA</li><li>Profile setup (optional)</li><li>First action prompt</li></ol>',
+        createdAt: new Date().toISOString().replace(/T.*/, 'T14:15:00.000Z'),
+        preview: 'New onboarding flow concept with progressive disclosure...',
+    },
+]
+
+// =============================================================================
+// MAIN COMPONENT
+// =============================================================================
 
 /**
  * Main Journal Page with two-column layout
@@ -21,14 +46,30 @@ interface JournalPageProps {
  */
 export function JournalPage({ className }: JournalPageProps): React.JSX.Element {
     const journal = useJournalScroll()
+    const today = getTodayString()
+
+    // Drawer state
+    const [drawerState, setDrawerState] = useState<{
+        isOpen: boolean
+        noteId: string | null
+    }>({
+        isOpen: false,
+        noteId: null
+    })
+
+    // Get the current note for drawer
+    const currentNote = useMemo(() => {
+        if (!drawerState.noteId) return null
+        return DUMMY_NOTES.find(n => n.id === drawerState.noteId) || null
+    }, [drawerState.noteId])
 
     // Generate dummy heatmap data for demo
     const heatmapData = useMemo(() => {
         const data: HeatmapEntry[] = []
-        const today = new Date()
+        const todayDate = new Date()
         // Generate random data for past 60 days
         for (let i = -60; i <= 0; i++) {
-            const date = addDays(today, i)
+            const date = addDays(todayDate, i)
             const dateStr = formatDateToISO(date)
             const charCount = Math.random() > 0.3 ? Math.floor(Math.random() * 1500) : 0
             const level = charCount === 0 ? 0
@@ -46,6 +87,30 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         journal.scrollToDate(date)
     }, [journal])
 
+    // Handle note click - open drawer
+    const handleNoteClick = useCallback((noteId: string) => {
+        setDrawerState({ isOpen: true, noteId })
+    }, [])
+
+    // Close drawer
+    const handleCloseDrawer = useCallback(() => {
+        setDrawerState({ isOpen: false, noteId: null })
+    }, [])
+
+    // Open note in full page (placeholder)
+    const handleOpenFullPage = useCallback((noteId: string) => {
+        console.log('Open note in full page:', noteId)
+        // TODO: Navigate to full page note editor
+    }, [])
+
+    // Get notes for a specific date (only today for now)
+    const getNotesForDate = useCallback((date: string): Note[] => {
+        if (date === today) {
+            return DUMMY_NOTES
+        }
+        return []
+    }, [today])
+
     return (
         <div
             className={cn(
@@ -54,14 +119,28 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             )}
         >
             {/* Left Section - Scrollable Day Cards Area */}
-            <JournalScrollArea journal={journal} />
+            <JournalScrollArea
+                journal={journal}
+                activeNoteId={drawerState.noteId}
+                onNoteClick={handleNoteClick}
+                getNotesForDate={getNotesForDate}
+            />
 
-            {/* Right Section - Sticky Sidebar */}
+            {/* Right Section - Sticky Sidebar (hidden when drawer is open) */}
             <JournalSidebar
                 activeDate={journal.state.activeDate}
                 onTodayClick={() => journal.scrollToToday(true)}
                 onDayClick={handleCalendarDayClick}
                 heatmapData={heatmapData}
+                isHidden={drawerState.isOpen}
+            />
+
+            {/* Note Drawer */}
+            <NoteDrawer
+                note={currentNote}
+                isOpen={drawerState.isOpen}
+                onClose={handleCloseDrawer}
+                onOpenFullPage={handleOpenFullPage}
             />
         </div>
     )
@@ -73,10 +152,19 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
 interface JournalScrollAreaProps {
     journal: ReturnType<typeof useJournalScroll>
+    activeNoteId: string | null
+    onNoteClick: (noteId: string) => void
+    getNotesForDate: (date: string) => Note[]
 }
 
-function JournalScrollArea({ journal }: JournalScrollAreaProps): React.JSX.Element {
+function JournalScrollArea({
+    journal,
+    activeNoteId,
+    onNoteClick,
+    getNotesForDate,
+}: JournalScrollAreaProps): React.JSX.Element {
     const { state, scrollContainerRef, registerDayCardRef, getOpacity } = journal
+    const today = getTodayString()
 
     // Create ref callback for each day card
     const createRefCallback = useCallback((date: string) => {
@@ -133,6 +221,9 @@ function JournalScrollArea({ journal }: JournalScrollAreaProps): React.JSX.Eleme
                             { id: '2', title: 'Update documentation', dueDate: 'Dec 8', completed: false },
                             { id: '3', title: 'Send invoice to client', dueDate: 'Dec 6', completed: false },
                         ] : []}
+                        notes={getNotesForDate(day.date)}
+                        activeNoteId={activeNoteId}
+                        onNoteClick={onNoteClick}
                     />
                 ))}
             </div>
@@ -157,6 +248,7 @@ interface JournalSidebarProps {
     onTodayClick: () => void
     onDayClick: (date: string) => void
     heatmapData: HeatmapEntry[]
+    isHidden?: boolean
 }
 
 function JournalSidebar({
@@ -164,6 +256,7 @@ function JournalSidebar({
     onTodayClick,
     onDayClick,
     heatmapData,
+    isHidden = false,
 }: JournalSidebarProps): React.JSX.Element {
     return (
         <aside
@@ -185,7 +278,9 @@ function JournalSidebar({
                 // Padding
                 "p-6",
                 // Spacing between sections
-                "flex flex-col gap-5"
+                "flex flex-col gap-5",
+                // Hide when drawer is open
+                isHidden && "invisible"
             )}
         >
             {/* Calendar Section */}
@@ -226,7 +321,7 @@ function JournalSidebar({
 // =============================================================================
 
 interface SidebarSectionProps {
-    icon: typeof Calendar
+    icon: React.ComponentType<{ className?: string }>
     title: string
     iconColor?: string
     action?: React.ReactNode
@@ -241,16 +336,21 @@ function SidebarSection({
     children,
 }: SidebarSectionProps): React.JSX.Element {
     return (
-        <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
+        <div className="rounded-lg border border-border/40 bg-card overflow-hidden">
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <Icon className={cn("size-4", iconColor)} />
-                    <h3 className="text-sm font-medium text-foreground">{title}</h3>
+                    <span className="text-sm font-medium">{title}</span>
                 </div>
                 {action}
             </div>
-            {children}
-        </section>
+
+            {/* Content */}
+            <div className="p-3">
+                {children}
+            </div>
+        </div>
     )
 }
 
