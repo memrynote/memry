@@ -27,7 +27,7 @@ import { ChordIndicator, KeyboardShortcutsDialog } from "@/components/keyboard"
 import { useTabKeyboardShortcuts, useChordShortcuts } from "@/hooks"
 
 // Base pages (non-task)
-export type BasePage = "inbox" | "home"
+export type BasePage = "inbox" | "home" | "journal"
 
 // Task view type for navigation within tasks
 export type TaskViewId = "all" | "today" | "upcoming" | "completed"

@@ -4,6 +4,7 @@ import * as React from "react"
 import { useState, useMemo } from "react"
 import {
   AudioWaveform,
+  BookOpen,
   CalendarDays,
   Check,
   Command,
@@ -77,6 +78,12 @@ const mainNav: {
       page: "home",
       icon: Home,
       iconColor: "text-accent-green",
+    },
+    {
+      title: "Journal",
+      page: "journal",
+      icon: BookOpen,
+      iconColor: "text-accent-purple",
     },
   ]
 
@@ -180,10 +187,24 @@ export function AppSidebar({
     // Tab system handles navigation - no need to change currentPage
     // onNavigate(page) - REMOVED: was causing split view to reset
 
+    // Map page to tab type and title
+    const pageToTabType: Record<AppPage, TabType> = {
+      inbox: "inbox",
+      home: "home",
+      journal: "journal",
+      tasks: "all-tasks",
+    }
+    const pageToTitle: Record<AppPage, string> = {
+      inbox: "Inbox",
+      home: "Home",
+      journal: "Journal",
+      tasks: "All Tasks",
+    }
+
     // Open as tab in active pane
     const item: SidebarItem = {
-      type: page === "inbox" ? "inbox" : "home",
-      title: page === "inbox" ? "Inbox" : "Home",
+      type: pageToTabType[page],
+      title: pageToTitle[page],
       path: `/${page}`,
     }
     openSidebarItem(item)

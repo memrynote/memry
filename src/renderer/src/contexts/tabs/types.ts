@@ -31,6 +31,7 @@ export type TabType =
 export const SINGLETON_TAB_TYPES: TabType[] = [
   'inbox',
   'home',
+  'journal',
   'all-tasks',
   'today',
   'upcoming',
