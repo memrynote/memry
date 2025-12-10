@@ -1,0 +1,82 @@
+import { ReactNode, useState, useEffect } from 'react'
+import { cn } from '@/lib/utils'
+import { OutlineEdge } from './outline-edge'
+import { RightSidebar } from './right-sidebar'
+
+interface HeadingItem {
+  id: string
+  level: number
+  text: string
+  position: number
+}
+
+interface NoteLayoutProps {
+  children: ReactNode
+  headings?: HeadingItem[]
+  onHeadingClick?: (headingId: string) => void
+  className?: string
+  sidebarOpen?: boolean
+  onSidebarToggle?: (isOpen: boolean) => void
+}
+
+export function NoteLayout({
+  children,
+  headings = [],
+  onHeadingClick,
+  className,
+  sidebarOpen: controlledSidebarOpen,
+  onSidebarToggle
+}: NoteLayoutProps) {
+  // Controlled vs uncontrolled sidebar state
+  const [internalSidebarOpen, setInternalSidebarOpen] = useState(true)
+  const isSidebarControlled = controlledSidebarOpen !== undefined
+  const sidebarOpen = isSidebarControlled ? controlledSidebarOpen : internalSidebarOpen
+
+  // Load sidebar preference from localStorage on mount
+  useEffect(() => {
+    if (!isSidebarControlled) {
+      const savedState = localStorage.getItem('memry_note_sidebar_open')
+      if (savedState !== null) {
+        setInternalSidebarOpen(savedState === 'true')
+      }
+    }
+  }, [isSidebarControlled])
+
+  const handleSidebarToggle = () => {
+    const newState = !sidebarOpen
+    if (isSidebarControlled) {
+      onSidebarToggle?.(newState)
+    } else {
+      setInternalSidebarOpen(newState)
+      localStorage.setItem('memry_note_sidebar_open', String(newState))
+    }
+  }
+
+  return (
+    <div className={cn('h-full w-full overflow-hidden flex', className)}>
+      {/* Main content area with outline edge */}
+      <div className="flex-1 relative flex">
+        {/* Main content zone */}
+        <div
+          className="flex-1 overflow-y-auto overflow-x-hidden"
+          style={{ backgroundColor: '#fafaf9' }}
+        >
+          {/* Centered content wrapper */}
+          <div className="mx-auto max-w-[720px] px-6 md:px-12 py-8">
+            {children}
+          </div>
+        </div>
+
+        {/* Outline edge zone - hidden on mobile */}
+        <div className="hidden md:block relative w-8">
+          <OutlineEdge headings={headings} onHeadingClick={onHeadingClick} />
+        </div>
+      </div>
+
+      {/* Right sidebar zone */}
+      <RightSidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle} />
+    </div>
+  )
+}
+
+export type { HeadingItem }
