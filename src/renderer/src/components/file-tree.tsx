@@ -52,7 +52,7 @@ export default function FileTree() {
             onMove={handleMove}
             onIconChange={handleIconChange}
             draggable={true}
-            animateExpand={false}
+            animateExpand={true}
             multiSelect={true}
             indent={16}
         >
