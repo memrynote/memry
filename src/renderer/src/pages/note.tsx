@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { NoteLayout, HeadingItem } from '@/components/note'
+import { NoteLayout, HeadingItem, ContentArea, HeadingInfo } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, Property, NewProperty } from '@/components/note/info-section'
@@ -8,18 +8,36 @@ interface NotePageProps {
   noteId?: string
 }
 
-// Mock heading data for demonstration
-const mockHeadings: HeadingItem[] = [
-  { id: 'h1', level: 1, text: 'Introduction', position: 10 },
-  { id: 'h2', level: 2, text: 'Background', position: 25 },
-  { id: 'h3', level: 2, text: 'Key Concepts', position: 40 },
-  { id: 'h4', level: 3, text: 'Concept A', position: 45 },
-  { id: 'h5', level: 3, text: 'Concept B', position: 52 },
-  { id: 'h6', level: 1, text: 'Implementation', position: 65 },
-  { id: 'h7', level: 2, text: 'Setup', position: 70 },
-  { id: 'h8', level: 2, text: 'Configuration', position: 80 },
-  { id: 'h9', level: 1, text: 'Conclusion', position: 90 }
-]
+// Initial content for the editor
+const initialContent = `
+<h1>Introduction</h1>
+<p>This is a sample note demonstrating the note editor layout. The layout follows a clean, three-zone design inspired by Capacities and other modern PKM applications.</p>
+<p>The main content area is centered with a comfortable max-width of 720px, providing optimal reading width while maintaining a clean, paper-like aesthetic.</p>
+
+<h2>Background</h2>
+<p>The design philosophy emphasizes progressive disclosure, with advanced features hidden until needed. The warm color palette creates a comfortable reading environment.</p>
+
+<h2>Key Concepts</h2>
+<p>The layout is built with three distinct zones, each serving a specific purpose in the note-taking workflow.</p>
+
+<h3>Concept A</h3>
+<p>The main content zone provides a distraction-free writing environment with generous padding and a warm background color.</p>
+
+<h3>Concept B</h3>
+<p>The outline edge allows quick navigation through document structure, while the right sidebar provides access to AI features and related notes.</p>
+
+<h1>Implementation</h1>
+<p>The layout is implemented using modern React patterns with TypeScript, following the existing architectural conventions in the Memry application.</p>
+
+<h2>Setup</h2>
+<p>Components are organized in a modular fashion, with clear separation of concerns between layout logic and content rendering.</p>
+
+<h2>Configuration</h2>
+<p>The layout supports responsive breakpoints, adapting seamlessly from desktop to tablet and mobile viewports while maintaining usability.</p>
+
+<h1>Conclusion</h1>
+<p>This layout shell provides a solid foundation for building a comprehensive note editor with all the features specified in the design document.</p>
+`
 
 // Mock tag data for demonstration
 const mockAvailableTags: Tag[] = [
@@ -65,10 +83,45 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
   const [properties, setProperties] = useState<Property[]>(mockProperties)
   const [isInfoExpanded, setIsInfoExpanded] = useState(true)
 
-  const handleHeadingClick = (headingId: string) => {
+  // Content state for the editor
+  const [content, setContent] = useState(initialContent)
+  const [headings, setHeadings] = useState<HeadingItem[]>([])
+
+  const handleHeadingClick = useCallback((headingId: string) => {
     console.log('Heading clicked:', headingId)
-    // In a real implementation, this would scroll to the heading
-  }
+    // Scroll to the heading element
+    const element = document.getElementById(headingId)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [])
+
+  const handleContentChange = useCallback((newContent: string) => {
+    setContent(newContent)
+  }, [])
+
+  const handleHeadingsChange = useCallback((newHeadings: HeadingInfo[]) => {
+    // Transform HeadingInfo to HeadingItem for NoteLayout
+    setHeadings(
+      newHeadings.map((h) => ({
+        id: h.id,
+        level: h.level,
+        text: h.text,
+        position: h.position
+      }))
+    )
+  }, [])
+
+  const handleInternalLinkClick = useCallback((noteId: string) => {
+    console.log('Internal link clicked, navigate to note:', noteId)
+    // TODO: Implement navigation to linked note
+  }, [])
+
+  const handleLinkClick = useCallback((href: string) => {
+    console.log('External link clicked:', href)
+    // Open in default browser
+    window.open(href, '_blank', 'noopener,noreferrer')
+  }, [])
 
   const handleEmojiChange = (newEmoji: string | null) => {
     setEmoji(newEmoji)
@@ -132,8 +185,8 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
   }, [])
 
   return (
-    <NoteLayout headings={mockHeadings} onHeadingClick={handleHeadingClick}>
-      {/* Note content - this is placeholder content */}
+    <NoteLayout headings={headings} onHeadingClick={handleHeadingClick}>
+      {/* Note content */}
       <div className="space-y-6">
         {/* Title section */}
         <div className="space-y-3">
@@ -169,78 +222,15 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
           onDeleteProperty={handleDeleteProperty}
         />
 
-        {/* Main content */}
-        <div className="prose prose-stone max-w-none">
-          <h2 id="h1">Introduction</h2>
-          <p>
-            This is a sample note demonstrating the note editor layout. The layout follows a
-            clean, three-zone design inspired by Capacities and other modern PKM applications.
-          </p>
-          <p>
-            The main content area is centered with a comfortable max-width of 720px, providing
-            optimal reading width while maintaining a clean, paper-like aesthetic.
-          </p>
-
-          <h3 id="h2">Background</h3>
-          <p>
-            The design philosophy emphasizes progressive disclosure, with advanced features hidden
-            until needed. The warm color palette creates a comfortable reading environment.
-          </p>
-
-          <h3 id="h3">Key Concepts</h3>
-          <p>
-            The layout is built with three distinct zones, each serving a specific purpose in the
-            note-taking workflow.
-          </p>
-
-          <h4 id="h4">Concept A</h4>
-          <p>
-            The main content zone provides a distraction-free writing environment with generous
-            padding and a warm background color.
-          </p>
-
-          <h4 id="h5">Concept B</h4>
-          <p>
-            The outline edge allows quick navigation through document structure, while the right
-            sidebar provides access to AI features and related notes.
-          </p>
-
-          <h2 id="h6">Implementation</h2>
-          <p>
-            The layout is implemented using modern React patterns with TypeScript, following the
-            existing architectural conventions in the Memry application.
-          </p>
-
-          <h3 id="h7">Setup</h3>
-          <p>
-            Components are organized in a modular fashion, with clear separation of concerns
-            between layout logic and content rendering.
-          </p>
-
-          <h3 id="h8">Configuration</h3>
-          <p>
-            The layout supports responsive breakpoints, adapting seamlessly from desktop to tablet
-            and mobile viewports while maintaining usability.
-          </p>
-
-          <h2 id="h9">Conclusion</h2>
-          <p>
-            This layout shell provides a solid foundation for building a comprehensive note editor
-            with all the features specified in the design document.
-          </p>
-
-          {/* Additional content for scrolling demonstration */}
-          <p>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
-            incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
-            exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-          </p>
-          <p>
-            Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat
-            nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui
-            officia deserunt mollit anim id est laborum.
-          </p>
-        </div>
+        {/* Main content - TipTap Editor */}
+        <ContentArea
+          content={content}
+          placeholder="Start writing, or press '/' for commands..."
+          onContentChange={handleContentChange}
+          onHeadingsChange={handleHeadingsChange}
+          onLinkClick={handleLinkClick}
+          onInternalLinkClick={handleInternalLinkClick}
+        />
 
         {/* Backlinks section */}
         <div className="border-t border-stone-200 pt-6 mt-8">
