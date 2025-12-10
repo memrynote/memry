@@ -5,17 +5,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { FileText, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import {
     DayCard,
     JournalCalendar,
     NoteDrawer,
     AIConnectionsPanel,
+    TodaysNotesSection,
     type HeatmapEntry,
-    type Note,
     type AIConnection
 } from '@/components/journal'
 import { useJournalScroll } from '@/hooks/use-journal-scroll'
+import { useNotes, type Note } from '@/hooks/use-notes'
 import { formatDateToISO, addDays, getTodayString } from '@/lib/journal-utils'
 
 interface JournalPageProps {
@@ -32,6 +33,7 @@ const DUMMY_NOTES: Note[] = [
         title: 'Meeting Notes',
         content: '<p>Discussed the roadmap changes with the team today. Sarah raised some excellent points about the timeline.</p><h3>Key decisions:</h3><ul><li>Timeline shifted to Q2</li><li>New milestones defined</li><li>Project Alpha scope reduced</li></ul><p>#work #meetings #roadmap</p>',
         createdAt: new Date().toISOString().replace(/T.*/, 'T09:34:00.000Z'),
+        updatedAt: new Date().toISOString().replace(/T.*/, 'T09:34:00.000Z'),
         preview: 'Discussed the roadmap changes with the team today...',
     },
     {
@@ -39,6 +41,7 @@ const DUMMY_NOTES: Note[] = [
         title: 'Feature Ideas',
         content: '<p>New onboarding flow concept with progressive disclosure. Users should only see what they need at each step.</p><h3>Steps:</h3><ol><li>Welcome screen with single CTA</li><li>Profile setup (optional)</li><li>First action prompt</li></ol>',
         createdAt: new Date().toISOString().replace(/T.*/, 'T14:15:00.000Z'),
+        updatedAt: new Date().toISOString().replace(/T.*/, 'T14:15:00.000Z'),
         preview: 'New onboarding flow concept with progressive disclosure...',
     },
 ]
@@ -94,6 +97,8 @@ const DUMMY_AI_CONNECTIONS: AIConnection[] = [
 export function JournalPage({ className }: JournalPageProps): React.JSX.Element {
     const journal = useJournalScroll()
     const today = getTodayString()
+    const { getTodaysNotes, createNote } = useNotes()
+    const todaysNotes = getTodaysNotes()
 
     // Drawer state
     const [drawerState, setDrawerState] = useState<{
@@ -220,6 +225,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                     onDayClick={handleCalendarDayClick}
                     heatmapData={heatmapData}
                     isHidden={drawerState.isOpen}
+                    todaysNotes={todaysNotes}
+                    activeNoteId={drawerState.noteId}
+                    onNoteClick={handleNoteClick}
+                    onCreateNote={(title) => {
+                        const note = createNote(title)
+                        handleNoteClick(note.id)
+                    }}
                 />
             )}
 
@@ -349,6 +361,10 @@ interface JournalSidebarProps {
     onDayClick: (date: string) => void
     heatmapData: HeatmapEntry[]
     isHidden?: boolean
+    todaysNotes: Note[]
+    activeNoteId: string | null
+    onNoteClick: (noteId: string) => void
+    onCreateNote: (title: string) => void
 }
 
 function JournalSidebar({
@@ -357,6 +373,10 @@ function JournalSidebar({
     onDayClick,
     heatmapData,
     isHidden = false,
+    todaysNotes,
+    activeNoteId,
+    onNoteClick,
+    onCreateNote,
 }: JournalSidebarProps): React.JSX.Element {
     return (
         <aside
@@ -406,54 +426,13 @@ function JournalSidebar({
             />
 
             {/* Today's Notes Section */}
-            <SidebarSection
-                icon={FileText}
-                title="Today's Notes"
-                iconColor="text-accent-green"
-            >
-                <div className="h-40 rounded-lg border border-dashed border-border/60 flex items-center justify-center text-muted-foreground text-sm">
-                    Today's Notes
-                </div>
-            </SidebarSection>
+            <TodaysNotesSection
+                notes={todaysNotes}
+                onNoteClick={onNoteClick}
+                activeNoteId={activeNoteId}
+                onCreate={onCreateNote}
+            />
         </aside>
-    )
-}
-
-// =============================================================================
-// SIDEBAR SECTION
-// =============================================================================
-
-interface SidebarSectionProps {
-    icon: React.ComponentType<{ className?: string }>
-    title: string
-    iconColor?: string
-    action?: React.ReactNode
-    children: React.ReactNode
-}
-
-function SidebarSection({
-    icon: Icon,
-    title,
-    iconColor = "text-muted-foreground",
-    action,
-    children,
-}: SidebarSectionProps): React.JSX.Element {
-    return (
-        <div className="rounded-lg border border-border/40 bg-card overflow-hidden">
-            {/* Header */}
-            <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Icon className={cn("size-4", iconColor)} />
-                    <span className="text-sm font-medium">{title}</span>
-                </div>
-                {action}
-            </div>
-
-            {/* Content */}
-            <div className="p-3">
-                {children}
-            </div>
-        </div>
     )
 }
 
