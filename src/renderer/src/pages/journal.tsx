@@ -17,34 +17,11 @@ import {
 } from '@/components/journal'
 import { useJournalScroll } from '@/hooks/use-journal-scroll'
 import { useNotes, type Note } from '@/hooks/use-notes'
-import { formatDateToISO, addDays, getTodayString } from '@/lib/journal-utils'
+import { formatDateToISO, addDays } from '@/lib/journal-utils'
 
 interface JournalPageProps {
     className?: string
 }
-
-// =============================================================================
-// DUMMY NOTES DATA
-// =============================================================================
-
-const DUMMY_NOTES: Note[] = [
-    {
-        id: 'note-1',
-        title: 'Meeting Notes',
-        content: '<p>Discussed the roadmap changes with the team today. Sarah raised some excellent points about the timeline.</p><h3>Key decisions:</h3><ul><li>Timeline shifted to Q2</li><li>New milestones defined</li><li>Project Alpha scope reduced</li></ul><p>#work #meetings #roadmap</p>',
-        createdAt: new Date().toISOString().replace(/T.*/, 'T09:34:00.000Z'),
-        updatedAt: new Date().toISOString().replace(/T.*/, 'T09:34:00.000Z'),
-        preview: 'Discussed the roadmap changes with the team today...',
-    },
-    {
-        id: 'note-2',
-        title: 'Feature Ideas',
-        content: '<p>New onboarding flow concept with progressive disclosure. Users should only see what they need at each step.</p><h3>Steps:</h3><ol><li>Welcome screen with single CTA</li><li>Profile setup (optional)</li><li>First action prompt</li></ol>',
-        createdAt: new Date().toISOString().replace(/T.*/, 'T14:15:00.000Z'),
-        updatedAt: new Date().toISOString().replace(/T.*/, 'T14:15:00.000Z'),
-        preview: 'New onboarding flow concept with progressive disclosure...',
-    },
-]
 
 // =============================================================================
 // DUMMY AI CONNECTIONS DATA
@@ -96,8 +73,7 @@ const DUMMY_AI_CONNECTIONS: AIConnection[] = [
  */
 export function JournalPage({ className }: JournalPageProps): React.JSX.Element {
     const journal = useJournalScroll()
-    const today = getTodayString()
-    const { getTodaysNotes, createNote } = useNotes()
+    const { getTodaysNotes, createNote, getNote } = useNotes()
     const todaysNotes = getTodaysNotes()
 
     // Drawer state
@@ -148,8 +124,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     // Get the current note for drawer
     const currentNote = useMemo(() => {
         if (!drawerState.noteId) return null
-        return DUMMY_NOTES.find(n => n.id === drawerState.noteId) || null
-    }, [drawerState.noteId])
+        return getNote(drawerState.noteId) || null
+    }, [drawerState.noteId, getNote])
 
     // Generate dummy heatmap data for demo
     const heatmapData = useMemo(() => {
@@ -191,14 +167,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         // TODO: Navigate to full page note editor
     }, [])
 
-    // Get notes for a specific date (only today for now)
-    const getNotesForDate = useCallback((date: string): Note[] => {
-        if (date === today) {
-            return DUMMY_NOTES
-        }
-        return []
-    }, [today])
-
     return (
         <div
             className={cn(
@@ -210,9 +178,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             {/* Left Section - Scrollable Day Cards Area */}
             <JournalScrollArea
                 journal={journal}
-                activeNoteId={drawerState.noteId}
-                onNoteClick={handleNoteClick}
-                getNotesForDate={getNotesForDate}
                 viewMode={viewMode}
                 onToggleFocusMode={toggleFocusMode}
             />
@@ -252,18 +217,12 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
 interface JournalScrollAreaProps {
     journal: ReturnType<typeof useJournalScroll>
-    activeNoteId: string | null
-    onNoteClick: (noteId: string) => void
-    getNotesForDate: (date: string) => Note[]
     viewMode: 'full' | 'focus'
     onToggleFocusMode: () => void
 }
 
 function JournalScrollArea({
     journal,
-    activeNoteId,
-    onNoteClick,
-    getNotesForDate,
     viewMode,
     onToggleFocusMode,
 }: JournalScrollAreaProps): React.JSX.Element {
@@ -333,9 +292,6 @@ function JournalScrollArea({
                             { id: '2', title: 'Update documentation', dueDate: 'Dec 8', completed: false },
                             { id: '3', title: 'Send invoice to client', dueDate: 'Dec 6', completed: false },
                         ] : [])}
-                        notes={viewMode === 'focus' ? [] : getNotesForDate(day.date)}
-                        activeNoteId={activeNoteId}
-                        onNoteClick={onNoteClick}
                     />
                 ))}
             </div>

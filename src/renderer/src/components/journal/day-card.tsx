@@ -8,7 +8,6 @@ import { Calendar, Clock, Sun, Sunrise, Sunset, Moon, Square } from 'lucide-reac
 import { cn } from '@/lib/utils'
 import { formatDayHeader, getTimeBasedGreeting, getSpecialDayLabel } from '@/lib/journal-utils'
 import { CollapsibleSection, JournalSection } from './collapsible-section'
-import { NotesSection, type Note } from './notes-section'
 
 // =============================================================================
 // TYPES
@@ -43,12 +42,6 @@ export interface DayCardProps {
     calendarEvents?: CalendarEvent[]
     /** Overdue tasks for this day */
     overdueTasks?: OverdueTask[]
-    /** Notes for this day */
-    notes?: Note[]
-    /** Currently open note id in drawer */
-    activeNoteId?: string | null
-    /** Callback when a note is clicked */
-    onNoteClick?: (noteId: string) => void
     /** View mode: full or focus */
     viewMode?: 'full' | 'focus'
     /** Toggle focus mode callback */
@@ -90,9 +83,6 @@ export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
     opacity,
     calendarEvents = [],
     overdueTasks = [],
-    notes = [],
-    activeNoteId,
-    onNoteClick,
     viewMode = 'full',
     onToggleFocusMode,
     className,
@@ -193,15 +183,6 @@ export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
                             ))}
                         </div>
                     </CollapsibleSection>
-                )}
-
-                {/* Notes Section - only show if not focus mode */}
-                {!isFocusMode && (
-                    <NotesSection
-                        notes={notes}
-                        activeNoteId={activeNoteId}
-                        onNoteClick={onNoteClick}
-                    />
                 )}
 
                 {/* Journal Section - always visible */}
