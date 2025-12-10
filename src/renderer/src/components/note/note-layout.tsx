@@ -54,11 +54,11 @@ export function NoteLayout({
 
   return (
     <div className={cn('h-full w-full overflow-hidden flex', className)}>
-      {/* Main content area with outline edge */}
-      <div className="flex-1 relative flex">
+      {/* Main content area with floating outline edge */}
+      <div className="flex-1 relative">
         {/* Main content zone */}
         <div
-          className="flex-1 overflow-y-auto overflow-x-hidden"
+          className="h-full overflow-y-auto overflow-x-hidden"
           style={{ backgroundColor: '#fafaf9' }}
         >
           {/* Centered content wrapper */}
@@ -67,10 +67,8 @@ export function NoteLayout({
           </div>
         </div>
 
-        {/* Outline edge zone - hidden on mobile */}
-        <div className="hidden md:block relative w-8">
-          <OutlineEdge headings={headings} onHeadingClick={onHeadingClick} />
-        </div>
+        {/* Floating outline edge - positioned at right of viewport */}
+        <OutlineEdge headings={headings} onHeadingClick={onHeadingClick} />
       </div>
 
       {/* Right sidebar zone */}

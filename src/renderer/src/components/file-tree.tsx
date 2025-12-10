@@ -12,22 +12,18 @@ import {
     type MoveOperation,
     type IconChangeOperation,
 } from "@/components/kibo-ui/tree";
-import { FileCode, FileJson, FileText } from "lucide-react";
+import { useTabs } from "@/contexts/tabs";
+import { FileText, BookOpen, Lightbulb, Code, Coffee, Rocket, Target } from "lucide-react";
 
 export default function FileTree() {
+    const { openTab } = useTabs();
+
     const handleMove = (operation: MoveOperation) => {
         console.log("Move operation:", {
             draggedId: operation.draggedId,
             targetId: operation.targetId,
             position: operation.position,
         });
-
-        // Backend payload:
-        // {
-        //   itemId: operation.draggedId,
-        //   targetId: operation.targetId,
-        //   position: operation.position, // "before" | "after" | "inside"
-        // }
     };
 
     const handleIconChange = (operation: IconChangeOperation) => {
@@ -36,127 +32,187 @@ export default function FileTree() {
             iconName: operation.iconName,
             hasChildren: operation.hasChildren,
         });
+    };
 
-        // Backend'e gönderilecek payload:
-        // {
-        //   nodeId: operation.nodeId,
-        //   iconName: operation.iconName, // null ise ikon temizlendi
-        //   hasChildren: operation.hasChildren, // true ise klasör, child'lara da uygulanmalı
-        // }
+    // Navigate to note page when a note item is selected
+    const handleSelectionChange = (ids: string[]) => {
+        console.log("Selected:", ids);
+        if (ids.length > 0) {
+            const selectedId = ids[0];
+            // Open the note in a tab
+            openTab({
+                type: 'note',
+                title: selectedId,
+                icon: 'file-text',
+                path: `/notes/${selectedId}`,
+                entityId: selectedId,
+                isPinned: false,
+                isModified: false,
+                isPreview: true,
+            });
+        }
     };
 
     return (
         <TreeProvider
-            // defaultExpandedIds={["src", "components", "ui"]}
-            onSelectionChange={(ids) => console.log("Selected:", ids)}
+            onSelectionChange={handleSelectionChange}
             onMove={handleMove}
             onIconChange={handleIconChange}
             draggable={true}
             animateExpand={true}
-            multiSelect={true}
+            multiSelect={false}
             indent={16}
         >
             <TreeView>
-                <TreeNode nodeId="src">
+                {/* Projects Folder */}
+                <TreeNode nodeId="projects">
                     <TreeNodeTrigger>
                         <TreeExpander hasChildren />
                         <TreeIcon hasChildren />
-                        <TreeLabel>src</TreeLabel>
+                        <TreeLabel>Projects</TreeLabel>
                     </TreeNodeTrigger>
                     <TreeNodeContent hasChildren>
-                        <TreeNode level={1} nodeId="components">
+                        <TreeNode level={1} nodeId="memry-app">
                             <TreeNodeTrigger>
                                 <TreeExpander hasChildren />
                                 <TreeIcon hasChildren />
-                                <TreeLabel>components</TreeLabel>
+                                <TreeLabel>Memry App</TreeLabel>
                             </TreeNodeTrigger>
                             <TreeNodeContent hasChildren>
-                                <TreeNode level={2} nodeId="ui">
+                                <TreeNode level={2} nodeId="Architecture Overview">
                                     <TreeNodeTrigger>
-                                        <TreeExpander hasChildren />
-                                        <TreeIcon hasChildren />
-                                        <TreeLabel>ui</TreeLabel>
+                                        <TreeExpander />
+                                        <TreeIcon icon={<Code className="h-4 w-4" />} />
+                                        <TreeLabel>Architecture Overview</TreeLabel>
                                     </TreeNodeTrigger>
-                                    <TreeNodeContent hasChildren>
-                                        <TreeNode level={3} nodeId="button.tsx">
-                                            <TreeNodeTrigger>
-                                                <TreeExpander />
-                                                <TreeIcon icon={<FileCode className="h-4 w-4" />} />
-                                                <TreeLabel>button.tsx</TreeLabel>
-                                            </TreeNodeTrigger>
-                                        </TreeNode>
-                                        <TreeNode level={3} nodeId="card.tsx">
-                                            <TreeNodeTrigger>
-                                                <TreeExpander />
-                                                <TreeIcon icon={<FileCode className="h-4 w-4" />} />
-                                                <TreeLabel>card.tsx</TreeLabel>
-                                            </TreeNodeTrigger>
-                                        </TreeNode>
-                                        <TreeNode isLast level={3} nodeId="dialog.tsx">
-                                            <TreeNodeTrigger>
-                                                <TreeExpander />
-                                                <TreeIcon icon={<FileCode className="h-4 w-4" />} />
-                                                <TreeLabel>dialog.tsx</TreeLabel>
-                                            </TreeNodeTrigger>
-                                        </TreeNode>
-                                    </TreeNodeContent>
                                 </TreeNode>
-                                <TreeNode isLast level={2} nodeId="layout">
+                                <TreeNode level={2} nodeId="Feature Roadmap">
                                     <TreeNodeTrigger>
-                                        <TreeExpander hasChildren />
-                                        <TreeIcon hasChildren />
-                                        <TreeLabel>layout</TreeLabel>
+                                        <TreeExpander />
+                                        <TreeIcon icon={<Rocket className="h-4 w-4" />} />
+                                        <TreeLabel>Feature Roadmap</TreeLabel>
                                     </TreeNodeTrigger>
-                                    <TreeNodeContent hasChildren>
-                                        <TreeNode level={3} nodeId="header.tsx">
-                                            <TreeNodeTrigger>
-                                                <TreeExpander />
-                                                <TreeIcon icon={<FileCode className="h-4 w-4" />} />
-                                                <TreeLabel>header.tsx</TreeLabel>
-                                            </TreeNodeTrigger>
-                                        </TreeNode>
-                                        <TreeNode isLast level={3} nodeId="footer.tsx">
-                                            <TreeNodeTrigger>
-                                                <TreeExpander />
-                                                <TreeIcon icon={<FileCode className="h-4 w-4" />} />
-                                                <TreeLabel>footer.tsx</TreeLabel>
-                                            </TreeNodeTrigger>
-                                        </TreeNode>
-                                    </TreeNodeContent>
+                                </TreeNode>
+                                <TreeNode isLast level={2} nodeId="Tech Stack Notes">
+                                    <TreeNodeTrigger>
+                                        <TreeExpander />
+                                        <TreeIcon icon={<FileText className="h-4 w-4" />} />
+                                        <TreeLabel>Tech Stack Notes</TreeLabel>
+                                    </TreeNodeTrigger>
+                                </TreeNode>
+                            </TreeNodeContent>
+                        </TreeNode>
+                        <TreeNode isLast level={1} nodeId="side-projects">
+                            <TreeNodeTrigger>
+                                <TreeExpander hasChildren />
+                                <TreeIcon hasChildren />
+                                <TreeLabel>Side Projects</TreeLabel>
+                            </TreeNodeTrigger>
+                            <TreeNodeContent hasChildren>
+                                <TreeNode level={2} nodeId="CLI Tool Ideas">
+                                    <TreeNodeTrigger>
+                                        <TreeExpander />
+                                        <TreeIcon icon={<Lightbulb className="h-4 w-4" />} />
+                                        <TreeLabel>CLI Tool Ideas</TreeLabel>
+                                    </TreeNodeTrigger>
+                                </TreeNode>
+                                <TreeNode isLast level={2} nodeId="Learning Goals 2024">
+                                    <TreeNodeTrigger>
+                                        <TreeExpander />
+                                        <TreeIcon icon={<Target className="h-4 w-4" />} />
+                                        <TreeLabel>Learning Goals 2024</TreeLabel>
+                                    </TreeNodeTrigger>
                                 </TreeNode>
                             </TreeNodeContent>
                         </TreeNode>
                     </TreeNodeContent>
                 </TreeNode>
-                <TreeNode nodeId="public">
+
+                {/* Notes Folder */}
+                <TreeNode nodeId="notes">
                     <TreeNodeTrigger>
                         <TreeExpander hasChildren />
                         <TreeIcon hasChildren />
-                        <TreeLabel>public</TreeLabel>
+                        <TreeLabel>Notes</TreeLabel>
                     </TreeNodeTrigger>
                     <TreeNodeContent hasChildren>
-                        <TreeNode isLast level={1} nodeId="images">
+                        <TreeNode level={1} nodeId="daily">
                             <TreeNodeTrigger>
                                 <TreeExpander hasChildren />
                                 <TreeIcon hasChildren />
-                                <TreeLabel>images</TreeLabel>
+                                <TreeLabel>Daily</TreeLabel>
                             </TreeNodeTrigger>
                             <TreeNodeContent hasChildren>
-                                <TreeNode level={2} nodeId="logo.svg">
+                                <TreeNode level={2} nodeId="2024-12-10">
                                     <TreeNodeTrigger>
                                         <TreeExpander />
-                                        <TreeIcon icon={<FileText className="h-4 w-4" />} />
-                                        <TreeLabel>logo.svg</TreeLabel>
+                                        <TreeIcon icon={<BookOpen className="h-4 w-4" />} />
+                                        <TreeLabel>2024-12-10</TreeLabel>
                                     </TreeNodeTrigger>
                                 </TreeNode>
-                                <TreeNode isLast level={2} nodeId="hero.png">
+                                <TreeNode level={2} nodeId="2024-12-09">
                                     <TreeNodeTrigger>
                                         <TreeExpander />
-                                        <TreeIcon icon={<FileText className="h-4 w-4" />} />
-                                        <TreeLabel>hero.png</TreeLabel>
+                                        <TreeIcon icon={<BookOpen className="h-4 w-4" />} />
+                                        <TreeLabel>2024-12-09</TreeLabel>
+                                    </TreeNodeTrigger>
+                                </TreeNode>
+                                <TreeNode isLast level={2} nodeId="2024-12-08">
+                                    <TreeNodeTrigger>
+                                        <TreeExpander />
+                                        <TreeIcon icon={<BookOpen className="h-4 w-4" />} />
+                                        <TreeLabel>2024-12-08</TreeLabel>
                                     </TreeNodeTrigger>
                                 </TreeNode>
                             </TreeNodeContent>
+                        </TreeNode>
+                        <TreeNode isLast level={1} nodeId="ideas">
+                            <TreeNodeTrigger>
+                                <TreeExpander hasChildren />
+                                <TreeIcon hasChildren />
+                                <TreeLabel>Ideas</TreeLabel>
+                            </TreeNodeTrigger>
+                            <TreeNodeContent hasChildren>
+                                <TreeNode level={2} nodeId="Product Ideas">
+                                    <TreeNodeTrigger>
+                                        <TreeExpander />
+                                        <TreeIcon icon={<Lightbulb className="h-4 w-4" />} />
+                                        <TreeLabel>Product Ideas</TreeLabel>
+                                    </TreeNodeTrigger>
+                                </TreeNode>
+                                <TreeNode isLast level={2} nodeId="Blog Post Drafts">
+                                    <TreeNodeTrigger>
+                                        <TreeExpander />
+                                        <TreeIcon icon={<FileText className="h-4 w-4" />} />
+                                        <TreeLabel>Blog Post Drafts</TreeLabel>
+                                    </TreeNodeTrigger>
+                                </TreeNode>
+                            </TreeNodeContent>
+                        </TreeNode>
+                    </TreeNodeContent>
+                </TreeNode>
+
+                {/* Quick Notes */}
+                <TreeNode nodeId="quick-notes">
+                    <TreeNodeTrigger>
+                        <TreeExpander hasChildren />
+                        <TreeIcon hasChildren />
+                        <TreeLabel>Quick Notes</TreeLabel>
+                    </TreeNodeTrigger>
+                    <TreeNodeContent hasChildren>
+                        <TreeNode level={1} nodeId="Meeting Notes">
+                            <TreeNodeTrigger>
+                                <TreeExpander />
+                                <TreeIcon icon={<Coffee className="h-4 w-4" />} />
+                                <TreeLabel>Meeting Notes</TreeLabel>
+                            </TreeNodeTrigger>
+                        </TreeNode>
+                        <TreeNode isLast level={1} nodeId="Todo List">
+                            <TreeNodeTrigger>
+                                <TreeExpander />
+                                <TreeIcon icon={<Target className="h-4 w-4" />} />
+                                <TreeLabel>Todo List</TreeLabel>
+                            </TreeNodeTrigger>
                         </TreeNode>
                     </TreeNodeContent>
                 </TreeNode>

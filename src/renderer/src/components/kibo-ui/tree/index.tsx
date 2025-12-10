@@ -317,13 +317,16 @@ export const TreeProvider = ({
           ? currentSelectedIds.filter((id) => id !== nodeId)
           : [...currentSelectedIds, nodeId];
       } else {
-        newSelection = currentSelectedIds.includes(nodeId) ? [] : [nodeId];
+        // Always select the clicked item (don't toggle off)
+        newSelection = [nodeId];
       }
 
       if (isControlled) {
         onSelectionChange?.(newSelection);
       } else {
         setInternalSelectedIds(newSelection);
+        // Always call onSelectionChange callback if provided
+        onSelectionChange?.(newSelection);
       }
     },
     [
@@ -682,7 +685,7 @@ export const TreeNodeTrigger = ({
             onDragLeaveCapture={handleDragLeave as unknown as React.DragEventHandler}
             onDropCapture={handleDropEvent as unknown as React.DragEventHandler}
             style={{ paddingLeft: level * (indent ?? 0) + 8 }}
-            whileTap={{ scale: 0.98, transition: { duration: 0.1 } }}
+
             {...props}
           >
             {/* Drop indicator - before */}
