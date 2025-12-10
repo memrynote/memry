@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { NoteLayout, HeadingItem } from '@/components/note'
+import { NoteTitle } from '@/components/note/note-title'
 import { Badge } from '@/components/ui/badge'
 
 interface NotePageProps {
@@ -20,9 +22,22 @@ const mockHeadings: HeadingItem[] = [
 
 export function NotePage({ noteId: _noteId }: NotePageProps) {
   // noteId will be used in the future to load specific note data
+  const [emoji, setEmoji] = useState<string | null>('📝')
+  const [title, setTitle] = useState('Sample Note Title')
+
   const handleHeadingClick = (headingId: string) => {
     console.log('Heading clicked:', headingId)
     // In a real implementation, this would scroll to the heading
+  }
+
+  const handleEmojiChange = (newEmoji: string | null) => {
+    setEmoji(newEmoji)
+    console.log('Emoji changed:', newEmoji)
+  }
+
+  const handleTitleChange = (newTitle: string) => {
+    setTitle(newTitle)
+    console.log('Title changed:', newTitle)
   }
 
   return (
@@ -31,12 +46,13 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
       <div className="space-y-6">
         {/* Title section */}
         <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <span className="text-4xl">📝</span>
-            <h1 className="text-3xl font-semibold text-stone-900">
-              Sample Note Title
-            </h1>
-          </div>
+          <NoteTitle
+            emoji={emoji}
+            title={title}
+            onEmojiChange={handleEmojiChange}
+            onTitleChange={handleTitleChange}
+            placeholder="Untitled"
+          />
           <p className="text-sm text-stone-600">
             A brief description of what this note is about
           </p>
