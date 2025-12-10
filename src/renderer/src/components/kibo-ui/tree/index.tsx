@@ -665,7 +665,7 @@ export const TreeNodeTrigger = ({
               "focus:bg-sidebar-accent focus:text-sidebar-accent-foreground",
               isSelected && "bg-sidebar-accent text-sidebar-accent-foreground",
               isDragging && "opacity-50",
-              draggable && "cursor-grab active:cursor-grabbing",
+              draggable && "cursor-default",
               className
             )}
             onClick={(e) => {
@@ -827,7 +827,7 @@ export const TreeNodeContent = ({
           exit={{ height: 0, opacity: 0 }}
           initial={{ height: 0, opacity: 0 }}
           transition={{
-            duration: animateExpand ? 0.3 : 0,
+            duration: animateExpand ? 0.1 : 0,
             ease: "easeInOut",
           }}
         >
