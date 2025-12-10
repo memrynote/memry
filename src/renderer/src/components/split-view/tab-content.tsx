@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { InboxPage } from '@/pages/inbox';
 import { JournalPage } from '@/pages/journal';
 import { TasksPage } from '@/pages/tasks';
+import { NotePage } from '@/pages/note';
 
 interface TabContentProps {
     /** Tab data */
@@ -106,13 +107,7 @@ export const TabContent = ({
                 );
 
             case 'note':
-                return (
-                    <PlaceholderView
-                        title={tab.title}
-                        icon="file-text"
-                        subtitle={`Note: ${tab.entityId}`}
-                    />
-                );
+                return <NotePage noteId={tab.entityId} />;
 
             case 'journal':
                 return <JournalPage />;
