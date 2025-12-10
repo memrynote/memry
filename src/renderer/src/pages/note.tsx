@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { NoteLayout, HeadingItem } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
+import { InfoSection, Property, NewProperty } from '@/components/note/info-section'
 
 interface NotePageProps {
   noteId?: string
@@ -41,6 +42,17 @@ const mockRecentTags: Tag[] = [
   { id: '5', name: 'Research', color: 'amber' }
 ]
 
+// Mock properties for demonstration
+const mockProperties: Property[] = [
+  { id: 'p1', name: 'Director', type: 'text', value: 'Francis Ford Coppola', icon: '🎬', isCustom: false },
+  { id: 'p2', name: 'Year', type: 'number', value: 1972, icon: '📅', isCustom: false },
+  { id: 'p3', name: 'Rating', type: 'rating', value: 5, icon: '⭐', isCustom: false },
+  { id: 'p4', name: 'Watched', type: 'checkbox', value: true, icon: '☑️', isCustom: false },
+  { id: 'p5', name: 'Status', type: 'select', value: 'Completed', icon: '📋', isCustom: false, options: ['Draft', 'In Progress', 'Completed', 'Archived'] },
+  { id: 'p6', name: 'IMDB', type: 'url', value: 'https://imdb.com/title/tt0068646', icon: '🔗', isCustom: true },
+  { id: 'p7', name: 'Notes', type: 'longText', value: '', icon: '📝', isCustom: true }
+]
+
 export function NotePage({ noteId: _noteId }: NotePageProps) {
   // noteId will be used in the future to load specific note data
   const [emoji, setEmoji] = useState<string | null>('📝')
@@ -50,6 +62,8 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
     { id: '4', name: 'Project', color: 'purple' }
   ])
   const [availableTags, setAvailableTags] = useState<Tag[]>(mockAvailableTags)
+  const [properties, setProperties] = useState<Property[]>(mockProperties)
+  const [isInfoExpanded, setIsInfoExpanded] = useState(true)
 
   const handleHeadingClick = (headingId: string) => {
     console.log('Heading clicked:', headingId)
@@ -93,6 +107,30 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
     console.log('Tag removed:', tagId)
   }, [])
 
+  const handlePropertyChange = useCallback((propertyId: string, value: unknown) => {
+    setProperties((prev) =>
+      prev.map((p) => (p.id === propertyId ? { ...p, value } : p))
+    )
+    console.log('Property changed:', propertyId, value)
+  }, [])
+
+  const handleAddProperty = useCallback((newProp: NewProperty) => {
+    const property: Property = {
+      id: `custom-${Date.now()}`,
+      name: newProp.name,
+      type: newProp.type,
+      value: null,
+      isCustom: true
+    }
+    setProperties((prev) => [...prev, property])
+    console.log('Property added:', newProp.name, newProp.type)
+  }, [])
+
+  const handleDeleteProperty = useCallback((propertyId: string) => {
+    setProperties((prev) => prev.filter((p) => p.id !== propertyId))
+    console.log('Property deleted:', propertyId)
+  }, [])
+
   return (
     <NoteLayout headings={mockHeadings} onHeadingClick={handleHeadingClick}>
       {/* Note content - this is placeholder content */}
@@ -121,15 +159,15 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
           onRemoveTag={handleRemoveTag}
         />
 
-        {/* Properties compact row */}
-        <div className="flex items-center gap-3 text-sm text-stone-600 border-b border-stone-200 pb-4">
-          <span>📋 Properties:</span>
-          <span>Status: Draft</span>
-          <span>·</span>
-          <span>Priority: Medium</span>
-          <span>·</span>
-          <span>Updated: Today</span>
-        </div>
+        {/* Info Section (Collapsible Properties) */}
+        <InfoSection
+          properties={properties}
+          isExpanded={isInfoExpanded}
+          onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
+          onPropertyChange={handlePropertyChange}
+          onAddProperty={handleAddProperty}
+          onDeleteProperty={handleDeleteProperty}
+        />
 
         {/* Main content */}
         <div className="prose prose-stone max-w-none">
