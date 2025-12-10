@@ -12,6 +12,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { InboxPage } from "@/pages/inbox"
 import { JournalPage } from "@/pages/journal"
 import { TasksPage } from "@/pages/tasks"
+import { NotePage } from "@/pages/note"
 import { DragProvider, type DragState } from "@/contexts/drag-context"
 import { TaskDragOverlay } from "@/components/tasks/drag-drop"
 import { initialProjects, taskViews, type Project } from "@/data/tasks-data"
@@ -98,6 +99,8 @@ const TabContentRenderer = ({
     }
     case "journal":
       return <JournalPage />
+    case "note":
+      return <NotePage noteId={activeTab.entityId} />
     case "home":
 
     default:
