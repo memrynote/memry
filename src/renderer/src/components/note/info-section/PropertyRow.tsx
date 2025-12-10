@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -19,19 +19,28 @@ interface PropertyRowProps {
   onValueChange: (value: unknown) => void
   onDelete?: () => void
   disabled?: boolean
+  autoFocus?: boolean
 }
 
 export function PropertyRow({
   property,
   onValueChange,
   onDelete,
-  disabled
+  disabled,
+  autoFocus = false
 }: PropertyRowProps) {
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useState(autoFocus && property.type !== 'checkbox' && property.type !== 'rating')
   const [isHovered, setIsHovered] = useState(false)
 
   const config = PROPERTY_TYPE_CONFIG[property.type]
-  const icon = property.icon || config.icon
+  const IconComponent = config.icon
+
+  // Handle autoFocus - start editing when mounted with autoFocus
+  useEffect(() => {
+    if (autoFocus && property.type !== 'checkbox' && property.type !== 'rating') {
+      setIsEditing(true)
+    }
+  }, [autoFocus, property.type])
 
   const handleStartEdit = useCallback(() => {
     if (!disabled && property.type !== 'checkbox' && property.type !== 'rating') {
@@ -203,8 +212,8 @@ export function PropertyRow({
       )}
     >
       {/* Icon */}
-      <span className="mr-2 flex-shrink-0 text-base leading-5">
-        {icon}
+      <span className="mr-2 flex-shrink-0 text-stone-400">
+        <IconComponent className="h-4 w-4" />
       </span>
 
       {/* Label */}
@@ -225,9 +234,9 @@ export function PropertyRow({
         className={cn(
           'flex-1 min-w-0',
           !isEditing &&
-            property.type !== 'checkbox' &&
-            property.type !== 'rating' &&
-            'cursor-pointer rounded px-1 -mx-1 hover:bg-stone-100'
+          property.type !== 'checkbox' &&
+          property.type !== 'rating' &&
+          'cursor-pointer rounded px-1 -mx-1 hover:bg-stone-100'
         )}
       >
         {renderValue()}

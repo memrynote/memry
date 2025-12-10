@@ -44,13 +44,13 @@ const mockRecentTags: Tag[] = [
 
 // Mock properties for demonstration
 const mockProperties: Property[] = [
-  { id: 'p1', name: 'Director', type: 'text', value: 'Francis Ford Coppola', icon: '🎬', isCustom: false },
-  { id: 'p2', name: 'Year', type: 'number', value: 1972, icon: '📅', isCustom: false },
-  { id: 'p3', name: 'Rating', type: 'rating', value: 5, icon: '⭐', isCustom: false },
-  { id: 'p4', name: 'Watched', type: 'checkbox', value: true, icon: '☑️', isCustom: false },
-  { id: 'p5', name: 'Status', type: 'select', value: 'Completed', icon: '📋', isCustom: false, options: ['Draft', 'In Progress', 'Completed', 'Archived'] },
-  { id: 'p6', name: 'IMDB', type: 'url', value: 'https://imdb.com/title/tt0068646', icon: '🔗', isCustom: true },
-  { id: 'p7', name: 'Notes', type: 'longText', value: '', icon: '📝', isCustom: true }
+  { id: 'p1', name: 'Director', type: 'text', value: 'Francis Ford Coppola', isCustom: false },
+  { id: 'p2', name: 'Year', type: 'number', value: 1972, isCustom: false },
+  { id: 'p3', name: 'Rating', type: 'rating', value: 5, isCustom: false },
+  { id: 'p4', name: 'Watched', type: 'checkbox', value: true, isCustom: false },
+  { id: 'p5', name: 'Status', type: 'select', value: 'Completed', isCustom: false, options: ['Draft', 'In Progress', 'Completed', 'Archived'] },
+  { id: 'p6', name: 'IMDB', type: 'url', value: 'https://imdb.com/title/tt0068646', isCustom: true },
+  { id: 'p7', name: 'Notes', type: 'longText', value: '', isCustom: true }
 ]
 
 export function NotePage({ noteId: _noteId }: NotePageProps) {

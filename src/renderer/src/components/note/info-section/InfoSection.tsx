@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Property, PropertyTemplate, NewProperty } from './types'
@@ -31,6 +32,9 @@ export function InfoSection({
 }: InfoSectionProps) {
   const [showAllProperties, setShowAllProperties] = useState(false)
   const [isAddPopupOpen, setIsAddPopupOpen] = useState(false)
+  const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null)
+  const [newlyAddedPropertyId, setNewlyAddedPropertyId] = useState<string | null>(null)
+  const addButtonRef = useRef<HTMLButtonElement>(null)
 
   // Split properties into visible and hidden
   const { visibleProperties, hiddenProperties } = useMemo(() => {
@@ -70,6 +74,45 @@ export function InfoSection({
   const toggleShowMore = useCallback(() => {
     setShowAllProperties((prev) => !prev)
   }, [])
+
+  const handleOpenAddPopup = useCallback(() => {
+    if (addButtonRef.current) {
+      const rect = addButtonRef.current.getBoundingClientRect()
+      setPopupPosition({
+        top: rect.bottom + 8,
+        left: rect.left
+      })
+    }
+    setIsAddPopupOpen(true)
+  }, [])
+
+  const handleCloseAddPopup = useCallback(() => {
+    setIsAddPopupOpen(false)
+    setPopupPosition(null)
+  }, [])
+
+  // Track the previous properties length to detect new additions
+  const prevPropertiesLength = useRef(properties.length)
+
+  // Detect when a new property is added and set it for auto-focus
+  useEffect(() => {
+    if (properties.length > prevPropertiesLength.current) {
+      // A new property was added - it should be the last one
+      const newProperty = properties[properties.length - 1]
+      if (newProperty) {
+        setNewlyAddedPropertyId(newProperty.id)
+        setShowAllProperties(true)
+        // Clear after a short delay
+        setTimeout(() => setNewlyAddedPropertyId(null), 100)
+      }
+    }
+    prevPropertiesLength.current = properties.length
+  }, [properties])
+
+  // Handle adding new property
+  const handleAddProperty = useCallback((newProp: NewProperty) => {
+    onAddProperty(newProp)
+  }, [onAddProperty])
 
   return (
     <div className="mb-4">
@@ -119,6 +162,7 @@ export function InfoSection({
                     : undefined
                 }
                 disabled={disabled}
+                autoFocus={property.id === newlyAddedPropertyId}
               />
             ))}
           </div>
@@ -157,10 +201,11 @@ export function InfoSection({
           )}
 
           {/* Add Property Button */}
-          <div className="relative mt-3 border-t border-stone-200 pt-3">
+          <div className="mt-3 border-t border-stone-200 pt-3">
             <button
+              ref={addButtonRef}
               type="button"
-              onClick={() => setIsAddPopupOpen(true)}
+              onClick={handleOpenAddPopup}
               disabled={disabled}
               className={cn(
                 'flex items-center gap-1.5',
@@ -173,15 +218,20 @@ export function InfoSection({
               <Plus className="h-3.5 w-3.5" />
               Add property
             </button>
-
-            <AddPropertyPopup
-              isOpen={isAddPopupOpen}
-              onClose={() => setIsAddPopupOpen(false)}
-              onAdd={onAddProperty}
-            />
           </div>
         </div>
       </div>
+
+      {/* Portal for AddPropertyPopup - renders at document body level */}
+      {isAddPopupOpen && popupPosition && createPortal(
+        <AddPropertyPopup
+          isOpen={isAddPopupOpen}
+          onClose={handleCloseAddPopup}
+          onAdd={handleAddProperty}
+          position={popupPosition}
+        />,
+        document.body
+      )}
     </div>
   )
 }
