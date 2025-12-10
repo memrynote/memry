@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { NoteLayout, HeadingItem } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
-import { Badge } from '@/components/ui/badge'
+import { TagsRow, Tag } from '@/components/note/tags-row'
 
 interface NotePageProps {
   noteId?: string
@@ -20,10 +20,36 @@ const mockHeadings: HeadingItem[] = [
   { id: 'h9', level: 1, text: 'Conclusion', position: 90 }
 ]
 
+// Mock tag data for demonstration
+const mockAvailableTags: Tag[] = [
+  { id: '1', name: 'Important', color: 'red' },
+  { id: '2', name: 'Work', color: 'blue' },
+  { id: '3', name: 'Personal', color: 'green' },
+  { id: '4', name: 'Project', color: 'purple' },
+  { id: '5', name: 'Research', color: 'amber' },
+  { id: '6', name: 'Ideas', color: 'yellow' },
+  { id: '7', name: 'Meeting', color: 'cyan' },
+  { id: '8', name: 'Review', color: 'pink' },
+  { id: '9', name: 'Urgent', color: 'coral' },
+  { id: '10', name: 'Archive', color: 'stone' }
+]
+
+const mockRecentTags: Tag[] = [
+  { id: '1', name: 'Important', color: 'red' },
+  { id: '2', name: 'Work', color: 'blue' },
+  { id: '4', name: 'Project', color: 'purple' },
+  { id: '5', name: 'Research', color: 'amber' }
+]
+
 export function NotePage({ noteId: _noteId }: NotePageProps) {
   // noteId will be used in the future to load specific note data
   const [emoji, setEmoji] = useState<string | null>('📝')
   const [title, setTitle] = useState('Sample Note Title')
+  const [tags, setTags] = useState<Tag[]>([
+    { id: '1', name: 'Important', color: 'red' },
+    { id: '4', name: 'Project', color: 'purple' }
+  ])
+  const [availableTags, setAvailableTags] = useState<Tag[]>(mockAvailableTags)
 
   const handleHeadingClick = (headingId: string) => {
     console.log('Heading clicked:', headingId)
@@ -39,6 +65,33 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
     setTitle(newTitle)
     console.log('Title changed:', newTitle)
   }
+
+  const handleAddTag = useCallback(
+    (tagId: string) => {
+      const tagToAdd = availableTags.find((t) => t.id === tagId)
+      if (tagToAdd && !tags.some((t) => t.id === tagId)) {
+        setTags((prev) => [...prev, tagToAdd])
+        console.log('Tag added:', tagToAdd.name)
+      }
+    },
+    [availableTags, tags]
+  )
+
+  const handleCreateTag = useCallback((name: string, color: string) => {
+    const newTag: Tag = {
+      id: `new-${Date.now()}`,
+      name,
+      color
+    }
+    setAvailableTags((prev) => [...prev, newTag])
+    setTags((prev) => [...prev, newTag])
+    console.log('Tag created:', name, color)
+  }, [])
+
+  const handleRemoveTag = useCallback((tagId: string) => {
+    setTags((prev) => prev.filter((t) => t.id !== tagId))
+    console.log('Tag removed:', tagId)
+  }, [])
 
   return (
     <NoteLayout headings={mockHeadings} onHeadingClick={handleHeadingClick}>
@@ -59,18 +112,14 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
         </div>
 
         {/* Tags section */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-stone-500">🏷 Tags:</span>
-          <Badge variant="secondary" className="bg-rose-100 text-rose-700 hover:bg-rose-200">
-            important
-          </Badge>
-          <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-200">
-            project
-          </Badge>
-          <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-200">
-            notes
-          </Badge>
-        </div>
+        <TagsRow
+          tags={tags}
+          availableTags={availableTags}
+          recentTags={mockRecentTags}
+          onAddTag={handleAddTag}
+          onCreateTag={handleCreateTag}
+          onRemoveTag={handleRemoveTag}
+        />
 
         {/* Properties compact row */}
         <div className="flex items-center gap-3 text-sm text-stone-600 border-b border-stone-200 pb-4">
