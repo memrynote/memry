@@ -3,10 +3,18 @@
  * Two-column layout with infinite scroll day cards and sticky sidebar
  */
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Calendar, Sparkles, FileText, Loader2 } from 'lucide-react'
-import { DayCard, JournalCalendar, NoteDrawer, type HeatmapEntry, type Note } from '@/components/journal'
+import { FileText, Loader2 } from 'lucide-react'
+import {
+    DayCard,
+    JournalCalendar,
+    NoteDrawer,
+    AIConnectionsPanel,
+    type HeatmapEntry,
+    type Note,
+    type AIConnection
+} from '@/components/journal'
 import { useJournalScroll } from '@/hooks/use-journal-scroll'
 import { formatDateToISO, addDays, getTodayString } from '@/lib/journal-utils'
 
@@ -36,6 +44,45 @@ const DUMMY_NOTES: Note[] = [
 ]
 
 // =============================================================================
+// DUMMY AI CONNECTIONS DATA
+// =============================================================================
+
+const DUMMY_AI_CONNECTIONS: AIConnection[] = [
+    {
+        id: 'conn-1',
+        type: 'journal',
+        date: 'Nov 15, 2024',
+        preview: 'Also discussed Project Alpha timeline with the team today. Sarah mentioned concerns about Q2 deadlines...',
+        score: 0.92,
+        matchedKeywords: ['Project Alpha', 'timeline', 'team'],
+    },
+    {
+        id: 'conn-2',
+        type: 'note',
+        title: 'Meeting Notes - Q3 Planning',
+        preview: 'Key decisions about resource allocation and hiring plans for the next quarter...',
+        score: 0.87,
+        matchedKeywords: ['decisions', 'hiring', 'Q3'],
+    },
+    {
+        id: 'conn-3',
+        type: 'journal',
+        date: 'Oct 28, 2024',
+        preview: 'Feeling optimistic about the project direction after today\'s review session...',
+        score: 0.78,
+        matchedKeywords: ['project', 'review'],
+    },
+    {
+        id: 'conn-4',
+        type: 'note',
+        title: 'Product Roadmap Draft',
+        preview: 'Initial draft of Q1-Q2 product roadmap with major milestones...',
+        score: 0.72,
+        matchedKeywords: ['roadmap', 'milestones'],
+    },
+]
+
+// =============================================================================
 // MAIN COMPONENT
 // =============================================================================
 
@@ -56,6 +103,42 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         isOpen: false,
         noteId: null
     })
+
+    // Focus Mode state
+    const [viewMode, setViewMode] = useState<'full' | 'focus'>('full')
+
+    // Restore Focus Mode from localStorage
+    useEffect(() => {
+        const saved = localStorage.getItem('memry_journal_view_mode')
+        if (saved === 'focus') setViewMode('focus')
+    }, [])
+
+    // Save Focus Mode to localStorage
+    useEffect(() => {
+        localStorage.setItem('memry_journal_view_mode', viewMode)
+    }, [viewMode])
+
+    // Toggle Focus Mode
+    const toggleFocusMode = useCallback(() => {
+        setViewMode(prev => prev === 'focus' ? 'full' : 'focus')
+    }, [])
+
+    // Keyboard shortcuts for Focus Mode
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Escape exits Focus Mode
+            if (e.key === 'Escape' && viewMode === 'focus') {
+                setViewMode('full')
+            }
+            // Cmd/Ctrl + \ toggles Focus Mode
+            if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+                e.preventDefault()
+                toggleFocusMode()
+            }
+        }
+        document.addEventListener('keydown', handleKeyDown)
+        return () => document.removeEventListener('keydown', handleKeyDown)
+    }, [viewMode, toggleFocusMode])
 
     // Get the current note for drawer
     const currentNote = useMemo(() => {
@@ -114,7 +197,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return (
         <div
             className={cn(
-                "flex h-full w-full overflow-hidden",
+                "flex h-full w-full overflow-hidden transition-all duration-300",
+                viewMode === 'focus' && "justify-center",
                 className
             )}
         >
@@ -124,16 +208,20 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 activeNoteId={drawerState.noteId}
                 onNoteClick={handleNoteClick}
                 getNotesForDate={getNotesForDate}
+                viewMode={viewMode}
+                onToggleFocusMode={toggleFocusMode}
             />
 
-            {/* Right Section - Sticky Sidebar (hidden when drawer is open) */}
-            <JournalSidebar
-                activeDate={journal.state.activeDate}
-                onTodayClick={() => journal.scrollToToday(true)}
-                onDayClick={handleCalendarDayClick}
-                heatmapData={heatmapData}
-                isHidden={drawerState.isOpen}
-            />
+            {/* Right Section - Sticky Sidebar (hidden when drawer is open OR in focus mode) */}
+            {viewMode === 'full' && (
+                <JournalSidebar
+                    activeDate={journal.state.activeDate}
+                    onTodayClick={() => journal.scrollToToday(true)}
+                    onDayClick={handleCalendarDayClick}
+                    heatmapData={heatmapData}
+                    isHidden={drawerState.isOpen}
+                />
+            )}
 
             {/* Note Drawer */}
             <NoteDrawer
@@ -155,6 +243,8 @@ interface JournalScrollAreaProps {
     activeNoteId: string | null
     onNoteClick: (noteId: string) => void
     getNotesForDate: (date: string) => Note[]
+    viewMode: 'full' | 'focus'
+    onToggleFocusMode: () => void
 }
 
 function JournalScrollArea({
@@ -162,9 +252,10 @@ function JournalScrollArea({
     activeNoteId,
     onNoteClick,
     getNotesForDate,
+    viewMode,
+    onToggleFocusMode,
 }: JournalScrollAreaProps): React.JSX.Element {
     const { state, scrollContainerRef, registerDayCardRef, getOpacity } = journal
-    const today = getTodayString()
 
     // Create ref callback for each day card
     const createRefCallback = useCallback((date: string) => {
@@ -179,16 +270,20 @@ function JournalScrollArea({
             className={cn(
                 // Layout
                 "flex-1 min-w-0",
-                // Responsive width
-                "w-[65%] min-w-[600px]",
-                "max-lg:w-[60%] max-lg:min-w-[500px]",
-                "max-md:w-full max-md:min-w-0",
+                // Responsive width (only in full mode)
+                viewMode === 'full' ? [
+                    "w-[65%] min-w-[600px]",
+                    "max-lg:w-[60%] max-lg:min-w-[500px]",
+                    "max-md:w-full max-md:min-w-0",
+                ] : "w-full",
                 // Scrolling
                 "overflow-y-auto overflow-x-hidden",
                 // Hide scrollbar but keep functionality
                 "scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700",
                 // Padding
-                "px-6 py-10"
+                "px-6 py-10",
+                // Transition
+                "transition-all duration-300"
             )}
         >
             {/* Loading indicator for past days */}
@@ -200,7 +295,10 @@ function JournalScrollArea({
             )}
 
             {/* Day Cards Container */}
-            <div className="mx-auto max-w-[800px] flex flex-col gap-6">
+            <div className={cn(
+                "mx-auto flex flex-col gap-6",
+                viewMode === 'focus' ? "max-w-[700px]" : "max-w-[800px]"
+            )}>
                 {state.days.map((day) => (
                     <DayCard
                         key={day.date}
@@ -210,18 +308,20 @@ function JournalScrollArea({
                         isToday={day.isToday}
                         isFuture={day.isFuture}
                         opacity={getOpacity(day.date)}
-                        // Dummy data for today only
-                        calendarEvents={day.isToday ? [
+                        viewMode={viewMode}
+                        onToggleFocusMode={onToggleFocusMode}
+                        // Hide sections in focus mode
+                        calendarEvents={viewMode === 'focus' ? [] : (day.isToday ? [
                             { id: '1', time: '9:00 AM', title: 'Team Standup', attendeeCount: 5 },
                             { id: '2', time: '2:00 PM', title: 'Design Review', attendeeCount: 3 },
                             { id: '3', time: '4:30 PM', title: '1:1 with Sarah' },
-                        ] : []}
-                        overdueTasks={day.isToday ? [
+                        ] : [])}
+                        overdueTasks={viewMode === 'focus' ? [] : (day.isToday ? [
                             { id: '1', title: 'Review PRs', dueDate: 'Dec 8', completed: false },
                             { id: '2', title: 'Update documentation', dueDate: 'Dec 8', completed: false },
                             { id: '3', title: 'Send invoice to client', dueDate: 'Dec 6', completed: false },
-                        ] : []}
-                        notes={getNotesForDate(day.date)}
+                        ] : [])}
+                        notes={viewMode === 'focus' ? [] : getNotesForDate(day.date)}
                         activeNoteId={activeNoteId}
                         onNoteClick={onNoteClick}
                     />
@@ -291,16 +391,19 @@ function JournalSidebar({
                 heatmapData={heatmapData}
             />
 
-            {/* AI Connections Section */}
-            <SidebarSection
-                icon={Sparkles}
-                title="AI Connections"
-                iconColor="text-accent-purple"
-            >
-                <div className="h-32 rounded-lg border border-dashed border-border/60 flex items-center justify-center text-muted-foreground text-sm">
-                    AI Connections
-                </div>
-            </SidebarSection>
+            {/* AI Connections Panel */}
+            <AIConnectionsPanel
+                connections={DUMMY_AI_CONNECTIONS}
+                isLoading={false}
+                onConnectionClick={(conn) => {
+                    console.log('Connection clicked:', conn)
+                    // TODO: Navigate to connection
+                }}
+                onRefresh={() => {
+                    console.log('Refresh connections')
+                    // TODO: Re-analyze connections
+                }}
+            />
 
             {/* Today's Notes Section */}
             <SidebarSection

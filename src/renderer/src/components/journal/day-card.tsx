@@ -49,6 +49,10 @@ export interface DayCardProps {
     activeNoteId?: string | null
     /** Callback when a note is clicked */
     onNoteClick?: (noteId: string) => void
+    /** View mode: full or focus */
+    viewMode?: 'full' | 'focus'
+    /** Toggle focus mode callback */
+    onToggleFocusMode?: () => void
     /** Additional CSS classes */
     className?: string
 }
@@ -89,11 +93,14 @@ export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
     notes = [],
     activeNoteId,
     onNoteClick,
+    viewMode = 'full',
+    onToggleFocusMode,
     className,
 }, ref) => {
     const header = formatDayHeader(date)
     const greeting = useMemo(() => isToday ? getTimeBasedGreeting() : null, [isToday])
     const specialLabel = getSpecialDayLabel(date)
+    const isFocusMode = viewMode === 'focus'
 
     return (
         <div
@@ -125,15 +132,17 @@ export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
                 dateStr={header.dateStr}
                 dayName={header.dayName}
                 specialLabel={specialLabel}
-                greeting={greeting}
+                greeting={isFocusMode ? null : greeting}
                 isActive={isActive}
                 isFuture={isFuture}
+                isFocusMode={isFocusMode}
+                onToggleFocusMode={onToggleFocusMode}
             />
 
             {/* Sections Container */}
             <div className="p-4 flex flex-col gap-4">
-                {/* Calendar Events - only show if has events */}
-                {calendarEvents.length > 0 && (
+                {/* Calendar Events - only show if has events and not focus mode */}
+                {!isFocusMode && calendarEvents.length > 0 && (
                     <CollapsibleSection
                         icon={<Calendar className="size-4 text-accent-blue" />}
                         title="Calendar Events"
@@ -161,8 +170,8 @@ export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
                     </CollapsibleSection>
                 )}
 
-                {/* Overdue Tasks - only show if has tasks (and not future) */}
-                {!isFuture && overdueTasks.length > 0 && (
+                {/* Overdue Tasks - only show if has tasks (and not future, not focus mode) */}
+                {!isFocusMode && !isFuture && overdueTasks.length > 0 && (
                     <CollapsibleSection
                         icon={<Clock className="size-4 text-accent-orange" />}
                         title="Overdue Tasks"
@@ -186,12 +195,14 @@ export const DayCard = memo(forwardRef<HTMLDivElement, DayCardProps>(({
                     </CollapsibleSection>
                 )}
 
-                {/* Notes Section - always visible */}
-                <NotesSection
-                    notes={notes}
-                    activeNoteId={activeNoteId}
-                    onNoteClick={onNoteClick}
-                />
+                {/* Notes Section - only show if not focus mode */}
+                {!isFocusMode && (
+                    <NotesSection
+                        notes={notes}
+                        activeNoteId={activeNoteId}
+                        onNoteClick={onNoteClick}
+                    />
+                )}
 
                 {/* Journal Section - always visible */}
                 <JournalSection
@@ -209,6 +220,9 @@ DayCard.displayName = 'DayCard'
 // HEADER COMPONENT
 // =============================================================================
 
+import { Minimize2, Maximize2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+
 interface DayCardHeaderProps {
     dateStr: string
     dayName: string
@@ -216,6 +230,8 @@ interface DayCardHeaderProps {
     greeting: { greeting: string; icon: string } | null
     isActive: boolean
     isFuture: boolean
+    isFocusMode?: boolean
+    onToggleFocusMode?: () => void
 }
 
 function DayCardHeader({
@@ -225,6 +241,8 @@ function DayCardHeader({
     greeting,
     isActive,
     isFuture,
+    isFocusMode = false,
+    onToggleFocusMode,
 }: DayCardHeaderProps): React.JSX.Element {
     return (
         <header className={cn(
@@ -234,47 +252,83 @@ function DayCardHeader({
         )}>
             {/* Left side - Date info */}
             <div className="flex flex-col gap-1">
-                {/* Date */}
-                <h2 className={cn(
-                    "text-lg font-semibold",
-                    isActive ? "text-foreground" : "text-foreground/80",
-                    isFuture && !isActive && "text-foreground/60"
-                )}>
-                    {dateStr}
-                </h2>
-
-                {/* Day name + special label */}
-                <div className="flex items-center gap-2">
-                    <span className={cn(
-                        "text-xs uppercase tracking-wide font-medium",
-                        isActive ? "text-muted-foreground" : "text-muted-foreground/70"
+                {/* Date - simplified in focus mode */}
+                {isFocusMode ? (
+                    <h2 className={cn(
+                        "text-base font-medium",
+                        isActive ? "text-foreground" : "text-foreground/80"
                     )}>
-                        {dayName}
-                    </span>
+                        {dayName}, {dateStr}
+                    </h2>
+                ) : (
+                    <>
+                        <h2 className={cn(
+                            "text-lg font-semibold",
+                            isActive ? "text-foreground" : "text-foreground/80",
+                            isFuture && !isActive && "text-foreground/60"
+                        )}>
+                            {dateStr}
+                        </h2>
 
-                    {specialLabel && (
-                        <>
-                            <span className="text-muted-foreground/50">•</span>
+                        {/* Day name + special label */}
+                        <div className="flex items-center gap-2">
                             <span className={cn(
-                                "text-xs font-medium",
-                                specialLabel === 'Today'
-                                    ? "text-primary"
-                                    : "text-muted-foreground"
+                                "text-xs uppercase tracking-wide font-medium",
+                                isActive ? "text-muted-foreground" : "text-muted-foreground/70"
                             )}>
-                                {specialLabel}
+                                {dayName}
                             </span>
-                        </>
-                    )}
-                </div>
+
+                            {specialLabel && (
+                                <>
+                                    <span className="text-muted-foreground/50">•</span>
+                                    <span className={cn(
+                                        "text-xs font-medium",
+                                        specialLabel === 'Today'
+                                            ? "text-primary"
+                                            : "text-muted-foreground"
+                                    )}>
+                                        {specialLabel}
+                                    </span>
+                                </>
+                            )}
+                        </div>
+                    </>
+                )}
             </div>
 
-            {/* Right side - Greeting (only for today) */}
-            {greeting && (
-                <div className="flex items-center gap-2 text-sm">
-                    {getGreetingIcon(greeting.icon)}
-                    <span className="text-muted-foreground">{greeting.greeting}</span>
-                </div>
-            )}
+            {/* Right side */}
+            <div className="flex items-center gap-2">
+                {/* Greeting (only for today, not in focus mode) */}
+                {greeting && !isFocusMode && (
+                    <div className="flex items-center gap-2 text-sm">
+                        {getGreetingIcon(greeting.icon)}
+                        <span className="text-muted-foreground">{greeting.greeting}</span>
+                    </div>
+                )}
+
+                {/* Focus Mode toggle button - always visible when callback exists */}
+                {onToggleFocusMode && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                            "size-7",
+                            isFocusMode && "bg-muted"
+                        )}
+                        onClick={onToggleFocusMode}
+                        title={isFocusMode ? "Exit Focus Mode (Esc)" : "Enter Focus Mode (⌘\\)"}
+                        aria-label={isFocusMode ? "Exit Focus Mode" : "Enter Focus Mode"}
+                        aria-pressed={isFocusMode}
+                    >
+                        {isFocusMode ? (
+                            <Minimize2 className="size-4" />
+                        ) : (
+                            <Maximize2 className="size-4" />
+                        )}
+                    </Button>
+                )}
+            </div>
         </header>
     )
 }
