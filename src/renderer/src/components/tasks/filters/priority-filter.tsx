@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { ChevronDown, Check } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -85,51 +85,31 @@ export const PriorityFilter = ({
   className,
 }: PriorityFilterProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
-  const [localSelection, setLocalSelection] = useState<Priority[]>(selectedPriorities)
 
-  // Sync local selection when props change
-  useMemo(() => {
-    setLocalSelection(selectedPriorities)
-  }, [selectedPriorities])
-
-  const allSelected = localSelection.length === 0
+  const allSelected = selectedPriorities.length === 0
   const hasSelection = selectedPriorities.length > 0
 
   const handleToggleAll = (): void => {
-    setLocalSelection([])
+    onChange([])
   }
 
   const handleTogglePriority = (priority: Priority): void => {
-    setLocalSelection((prev) => {
-      if (prev.includes(priority)) {
-        return prev.filter((p) => p !== priority)
-      }
-      return [...prev, priority]
-    })
+    const nextSelection = selectedPriorities.includes(priority)
+      ? selectedPriorities.filter((p) => p !== priority)
+      : [...selectedPriorities, priority]
+    onChange(nextSelection)
   }
 
   const handleApplyPreset = (priorities: Priority[]): void => {
-    setLocalSelection(priorities)
-  }
-
-  const handleApply = (): void => {
-    onChange(localSelection)
-    setIsOpen(false)
+    onChange(priorities)
   }
 
   const handleClear = (): void => {
-    setLocalSelection([])
-  }
-
-  const handleOpenChange = (open: boolean): void => {
-    if (open) {
-      setLocalSelection(selectedPriorities)
-    }
-    setIsOpen(open)
+    onChange([])
   }
 
   return (
-    <Popover open={isOpen} onOpenChange={handleOpenChange}>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -161,8 +141,8 @@ export const PriorityFilter = ({
             <div className="flex flex-wrap gap-1 px-2">
               {quickPresets.map((preset) => {
                 const isActive =
-                  localSelection.length === preset.priorities.length &&
-                  preset.priorities.every((p) => localSelection.includes(p))
+                  selectedPriorities.length === preset.priorities.length &&
+                  preset.priorities.every((p) => selectedPriorities.includes(p))
 
                 return (
                   <button
@@ -206,7 +186,7 @@ export const PriorityFilter = ({
           {/* Individual priorities */}
           <div className="max-h-64 overflow-y-auto">
             {priorityOptions.map((option) => {
-              const isSelected = localSelection.includes(option.value)
+              const isSelected = selectedPriorities.includes(option.value)
               const taskCount = taskCountByPriority[option.value] || 0
 
               return (
@@ -238,7 +218,7 @@ export const PriorityFilter = ({
           <div className="my-2 h-px bg-border" />
 
           {/* Action buttons */}
-          <div className="flex items-center justify-between px-2 py-1">
+          <div className="flex items-center justify-end px-2 py-1">
             <Button
               variant="ghost"
               size="sm"
@@ -246,13 +226,6 @@ export const PriorityFilter = ({
               className="h-7 text-xs text-muted-foreground hover:text-foreground"
             >
               Clear
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleApply}
-              className="h-7 text-xs"
-            >
-              Apply
             </Button>
           </div>
         </div>

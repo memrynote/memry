@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { ChevronDown, Calendar as CalendarIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -40,7 +40,7 @@ export const DueDateFilter = ({
   const [showCustom, setShowCustom] = useState(value.type === "custom")
 
   // Sync local state when props change
-  useMemo(() => {
+  useEffect(() => {
     setLocalType(value.type)
     setCustomStart(value.customStart || undefined)
     setCustomEnd(value.customEnd || undefined)
@@ -71,13 +71,12 @@ export const DueDateFilter = ({
       setIsOpen(false)
     }
   }
-
-  const handleApplyCustom = (): void => {
-    if (customStart && customEnd) {
+  const tryApplyCustomRange = (start?: Date, end?: Date): void => {
+    if (start && end) {
       onChange({
         type: "custom",
-        customStart,
-        customEnd,
+        customStart: start,
+        customEnd: end,
       })
       setIsOpen(false)
     }
@@ -211,7 +210,16 @@ export const DueDateFilter = ({
                     <Calendar
                       mode="single"
                       selected={customStart}
-                      onSelect={(date) => setCustomStart(date || undefined)}
+                      onSelect={(date) => {
+                        const nextStart = date || undefined
+                        const nextEnd =
+                          nextStart && customEnd && customEnd < nextStart ? undefined : customEnd
+                        setCustomStart(nextStart)
+                        if (nextEnd !== customEnd) {
+                          setCustomEnd(nextEnd)
+                        }
+                        tryApplyCustomRange(nextStart, nextEnd)
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
@@ -246,22 +254,17 @@ export const DueDateFilter = ({
                     <Calendar
                       mode="single"
                       selected={customEnd}
-                      onSelect={(date) => setCustomEnd(date || undefined)}
+                      onSelect={(date) => {
+                        const nextEnd = date || undefined
+                        setCustomEnd(nextEnd)
+                        tryApplyCustomRange(customStart, nextEnd)
+                      }}
                       disabled={(date) => (customStart ? date < customStart : false)}
                       initialFocus
                     />
                   </PopoverContent>
                 </Popover>
               </div>
-
-              {/* Apply button */}
-              <Button
-                onClick={handleApplyCustom}
-                disabled={!customStart || !customEnd}
-                className="w-full"
-              >
-                Apply
-              </Button>
             </div>
           </div>
         )}
