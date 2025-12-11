@@ -103,6 +103,7 @@ export const findPreviewTab = (group: TabGroup): Tab | null => {
 const TAB_ICONS: Record<TabType, string> = {
   inbox: 'inbox',
   home: 'home',
+  tasks: 'list-checks',      // New unified tasks tab
   'all-tasks': 'list-checks',
   today: 'star',
   upcoming: 'calendar',

@@ -73,6 +73,21 @@ const TabContentRenderer = ({
   switch (activeTab.type) {
     case "inbox":
       return <InboxPage />
+    // New unified tasks tab type
+    case "tasks":
+      return (
+        <TasksPage
+          selectedId="all"
+          selectedType="view"
+          tasks={tasks}
+          projects={projects}
+          onTasksChange={onTasksChange}
+          onSelectionChange={onSelectionChange}
+          selectedTaskIds={selectedTaskIds}
+          onSelectedTaskIdsChange={onSelectedTaskIdsChange}
+        />
+      )
+    // Legacy task tab types (kept for backwards compatibility)
     case "all-tasks":
     case "today":
     case "upcoming":
@@ -261,11 +276,11 @@ const AppContent = ({
 
 function App(): React.JSX.Element {
   // Navigation state
-  const [currentPage, setCurrentPage] = useState<AppPage>("inbox")
+  // Note: setCurrentPage is unused because navigation is now handled by tabs
+  // currentPage is still used for sidebar highlight state
+  const [currentPage, _setCurrentPage] = useState<AppPage>("inbox")
 
   // Task-related state (lifted from TasksPage)
-  const [taskSelectedId, setTaskSelectedId] = useState<string>("all")
-  const [taskSelectedType, setTaskSelectedType] = useState<TaskSelectionType>("view")
   const [projects, setProjects] = useState<Project[]>(initialProjects)
   const [tasks, setTasks] = useState<Task[]>(sampleTasks)
 
@@ -293,23 +308,6 @@ function App(): React.JSX.Element {
       return { ...project, taskCount: incompleteTasks.length }
     })
   }, [projects, tasks])
-
-  // Navigation handlers
-  const handleNavigate = useCallback((page: AppPage): void => {
-    setCurrentPage(page)
-  }, [])
-
-  const handleSelectTaskView = useCallback((id: string): void => {
-    setTaskSelectedId(id)
-    setTaskSelectedType("view")
-    setCurrentPage("tasks")
-  }, [])
-
-  const handleSelectProject = useCallback((id: string): void => {
-    setTaskSelectedId(id)
-    setTaskSelectedType("project")
-    setCurrentPage("tasks")
-  }, [])
 
   // Task handlers (passed to TasksPage)
   const handleTasksChange = useCallback((newTasks: Task[]): void => {
@@ -436,9 +434,10 @@ function App(): React.JSX.Element {
     setSelectedTaskIds(ids)
   }, [])
 
-  const handleTaskSelectionChange = useCallback((id: string, type: TaskSelectionType): void => {
-    setTaskSelectedId(id)
-    setTaskSelectedType(type)
+  // Task selection is now handled internally by TasksPage via internal tabs
+  // This callback is kept for interface compatibility but is a no-op
+  const handleTaskSelectionChange = useCallback((_id: string, _type: TaskSelectionType): void => {
+    // No-op - internal tabs manage selection now
   }, [])
 
   // Tasks page needs DragProvider
@@ -455,14 +454,7 @@ function App(): React.JSX.Element {
       <TabProvider>
         <AppSidebar
           currentPage={currentPage}
-          taskSelectedId={taskSelectedId}
-          taskSelectedType={taskSelectedType}
-          onNavigate={handleNavigate}
-          onSelectTaskView={handleSelectTaskView}
-          onSelectProject={handleSelectProject}
           viewCounts={viewCounts}
-          projects={projectsWithCounts}
-          onProjectsChange={handleProjectsChange}
         />
         <SidebarInset className="flex flex-col">
           <AppContent

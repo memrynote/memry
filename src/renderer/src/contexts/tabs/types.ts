@@ -13,11 +13,12 @@
 export type TabType =
   | 'inbox'
   | 'home'
-  | 'all-tasks'
-  | 'today'
-  | 'upcoming'
-  | 'completed'
-  | 'project'
+  | 'tasks'       // New unified tasks tab
+  | 'all-tasks'   // Legacy - kept for backwards compatibility
+  | 'today'       // Legacy - kept for backwards compatibility
+  | 'upcoming'    // Legacy - kept for backwards compatibility
+  | 'completed'   // Legacy - kept for backwards compatibility
+  | 'project'     // Legacy - kept for backwards compatibility
   | 'note'
   | 'journal'
   | 'search'
@@ -32,10 +33,11 @@ export const SINGLETON_TAB_TYPES: TabType[] = [
   'inbox',
   'home',
   'journal',
-  'all-tasks',
-  'today',
-  'upcoming',
-  'completed',
+  'tasks',      // New unified tasks tab
+  'all-tasks',  // Legacy
+  'today',      // Legacy
+  'upcoming',   // Legacy
+  'completed',  // Legacy
   'settings',
 ];
 

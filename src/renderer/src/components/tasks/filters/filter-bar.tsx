@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, forwardRef, useImperativeHandle } from "react"
-import { CheckSquare } from "lucide-react"
+import { CheckSquare, CircleCheck } from "lucide-react"
 
 import { SearchInput } from "./search-input"
 import { ProjectFilter } from "./project-filter"
@@ -43,6 +43,8 @@ interface FilterBarProps {
   isSelectionMode?: boolean
   /** Toggle selection mode on/off */
   onToggleSelectionMode?: () => void
+  /** Whether to show the "Show Completed" toggle */
+  showCompletionToggle?: boolean
   className?: string
 }
 
@@ -72,6 +74,7 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
       statuses = [],
       isSelectionMode = false,
       onToggleSelectionMode,
+      showCompletionToggle = false,
       className,
     },
     ref
@@ -215,6 +218,37 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
 
           {/* Sort */}
           <SortDropdown sort={sort} onChange={onUpdateSort} />
+
+          {/* Show Completed toggle */}
+          {showCompletionToggle && (
+            <>
+              <div className="h-6 w-px bg-border" />
+              <button
+                type="button"
+                onClick={() =>
+                  onUpdateFilters({
+                    completion: filters.completion === "all" ? "active" : "all",
+                  })
+                }
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
+                  "hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  filters.completion === "all"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                aria-label={
+                  filters.completion === "all"
+                    ? "Hide completed tasks"
+                    : "Show completed tasks"
+                }
+                aria-pressed={filters.completion === "all"}
+              >
+                <CircleCheck className="size-4" />
+                <span className="hidden sm:inline">Completed</span>
+              </button>
+            </>
+          )}
 
           {/* Select mode toggle */}
           {onToggleSelectionMode && (

@@ -157,10 +157,12 @@ export const TaskRow = ({
         </div>
 
         {/* Task Completion Checkbox - Column 2 */}
+        {/* Disabled during selection mode to prevent accidental completions */}
         <div className="flex items-center justify-center shrink-0">
           <TaskCheckbox
             checked={isCompleted}
             onChange={handleToggleComplete}
+            disabled={isSelectionMode}
           />
         </div>
 
@@ -170,7 +172,7 @@ export const TaskRow = ({
             className={cn(
               "truncate text-sm",
               isCompleted
-                ? "text-text-tertiary line-through"
+                ? "text-text-tertiary line-through decoration-text-tertiary"
                 : "text-text-primary"
             )}
           >

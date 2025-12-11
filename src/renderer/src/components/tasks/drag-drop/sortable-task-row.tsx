@@ -256,10 +256,12 @@ export const SortableTaskRow = ({
         )}
 
         {/* Task Completion Checkbox - Column 3 (20px) */}
+        {/* Disabled during selection mode to prevent accidental completions */}
         <div className="flex items-center justify-center shrink-0">
           <TaskCheckbox
             checked={isCompleted}
             onChange={handleToggleComplete}
+            disabled={isSelectionMode}
           />
         </div>
 
@@ -271,8 +273,9 @@ export const SortableTaskRow = ({
           <span
             className={cn(
               "truncate text-sm",
-              isCompleted
-                ? "text-text-tertiary line-through"
+              // Show strikethrough immediately when exiting (completing) or when already completed
+              (isExiting || isCompleted)
+                ? "text-text-tertiary line-through decoration-text-tertiary"
                 : "text-text-primary"
             )}
           >

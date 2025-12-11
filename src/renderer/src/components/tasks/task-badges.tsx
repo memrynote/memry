@@ -288,7 +288,10 @@ export const TaskCheckbox = ({
 
   return (
     <div
-      className="group/checkbox relative cursor-pointer"
+      className={cn(
+        "group/checkbox relative",
+        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+      )}
       onClick={handleClick}
     >
       {/* Invisible overlay to capture all clicks - ensures clicks work even when Radix internal elements override pointer-events */}
