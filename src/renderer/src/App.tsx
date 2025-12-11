@@ -19,6 +19,8 @@ import { initialProjects, taskViews, type Project } from "@/data/tasks-data"
 import { sampleTasks, type Task } from "@/data/sample-tasks"
 import { getFilteredTasks } from "@/lib/task-utils"
 import { toast } from "sonner"
+import { ThemeProvider } from "next-themes"
+
 
 // Tab System imports
 import { TabProvider, useTabs, useActiveTab, getOrderedGroupWidths } from "@/contexts/tabs"
@@ -479,7 +481,7 @@ function App(): React.JSX.Element {
   )
 
   return (
-    <>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <SidebarProvider>
         {isTasksPage ? (
           <DragProvider
@@ -494,7 +496,7 @@ function App(): React.JSX.Element {
         )}
       </SidebarProvider>
       <Toaster />
-    </>
+    </ThemeProvider>
   )
 }
 

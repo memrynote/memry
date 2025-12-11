@@ -3,6 +3,7 @@ import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/comp
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, Property, NewProperty } from '@/components/note/info-section'
+import { BacklinksSection, Backlink } from '@/components/note/backlinks'
 
 interface NotePageProps {
   noteId?: string
@@ -60,6 +61,65 @@ const mockRecentTags: Tag[] = [
   { id: '5', name: 'Research', color: 'amber' }
 ]
 
+// Mock backlinks data for demonstration
+const mockBacklinks: Backlink[] = [
+  {
+    id: 'bl-1',
+    noteId: 'note-123',
+    noteTitle: 'Film Analysis Project',
+    folder: 'Projects',
+    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    mentions: [
+      {
+        id: 'm-1',
+        snippet:
+          "...studying the cinematography of [[The Godfather]] reveals Coppola's masterful use of low-key lighting...",
+        linkStart: 32,
+        linkEnd: 48
+      }
+    ]
+  },
+  {
+    id: 'bl-2',
+    noteId: 'note-456',
+    noteTitle: 'Team Meeting Dec 5',
+    folder: 'Meetings',
+    date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+    mentions: [
+      {
+        id: 'm-2',
+        snippet:
+          '...decided to use [[The Godfather]] as our case study for the presentation next week...',
+        linkStart: 19,
+        linkEnd: 35
+      }
+    ]
+  },
+  {
+    id: 'bl-3',
+    noteId: 'note-789',
+    noteTitle: 'Classic Cinema Notes',
+    folder: 'Research',
+    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    mentions: [
+      {
+        id: 'm-3',
+        snippet:
+          '...alongside Citizen Kane, [[The Godfather]] represents a turning point in American filmmaking...',
+        linkStart: 27,
+        linkEnd: 43
+      },
+      {
+        id: 'm-4',
+        snippet:
+          "...the baptism scene in [[The Godfather]] is often cited as one of cinema's greatest...",
+        linkStart: 23,
+        linkEnd: 39
+      }
+    ]
+  }
+]
+
 // Mock properties for demonstration
 const mockProperties: Property[] = [
   { id: 'p1', name: 'Director', type: 'text', value: 'Francis Ford Coppola', isCustom: false },
@@ -81,7 +141,7 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
   ])
   const [availableTags, setAvailableTags] = useState<Tag[]>(mockAvailableTags)
   const [properties, setProperties] = useState<Property[]>(mockProperties)
-  const [isInfoExpanded, setIsInfoExpanded] = useState(true)
+  const [isInfoExpanded, setIsInfoExpanded] = useState(false)
 
   // Content state for the editor (BlockNote blocks)
   const [_blocks, setBlocks] = useState<Block[]>([])
@@ -186,6 +246,11 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
     console.log('Property deleted:', propertyId)
   }, [])
 
+  const handleBacklinkClick = useCallback((noteId: string) => {
+    console.log('Backlink clicked, navigate to note:', noteId)
+    // TODO: Implement navigation to linked note
+  }, [])
+
   return (
     <NoteLayout headings={headings} onHeadingClick={handleHeadingClick}>
       {/* Note content */}
@@ -235,12 +300,13 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
         />
 
         {/* Backlinks section */}
-        <div className="border-t border-stone-200 pt-6 mt-8">
-          <h3 className="text-sm font-medium text-stone-900 mb-3">Backlinks</h3>
-          <p className="text-sm text-stone-500">
-            Notes that link to this one will appear here.
-          </p>
-        </div>
+        <BacklinksSection
+          backlinks={mockBacklinks}
+          isLoading={false}
+          initialCount={5}
+          collapsible={true}
+          onBacklinkClick={handleBacklinkClick}
+        />
       </div>
     </NoteLayout>
   )

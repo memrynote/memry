@@ -237,16 +237,16 @@ export function RelatedNotesTab({
     : relatedNotes.length - visibleCount
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-card">
       {/* Header Section */}
-      <div className="flex-shrink-0 px-4 pt-4 pb-3 border-b border-stone-100">
+      <div className="flex-shrink-0 px-4 pt-4 pb-3 border-b border-border/30">
         <div className="flex items-center gap-2 mb-1">
-          <Search className="h-4 w-4 text-stone-500" />
-          <h3 className="text-[13px] font-medium text-stone-600">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-medium">
             AI-discovered connections
           </h3>
         </div>
-        <p className="text-xs text-stone-400">Based on content similarity</p>
+        <p className="text-xs text-muted-foreground">Based on content similarity</p>
 
         {/* Filter and Sort Controls */}
         <div className="flex items-center gap-2 mt-3">
@@ -256,8 +256,8 @@ export function RelatedNotesTab({
               <button
                 className={cn(
                   'inline-flex items-center gap-1 px-2 py-1',
-                  'text-xs text-stone-500 bg-stone-100 rounded',
-                  'hover:bg-stone-200 transition-colors duration-150'
+                  'text-xs text-muted-foreground bg-muted/50 rounded',
+                  'hover:bg-muted transition-colors duration-150'
                 )}
               >
                 {FILTER_LABELS[filterBy]}
@@ -269,7 +269,7 @@ export function RelatedNotesTab({
                 <DropdownMenuItem
                   key={filter}
                   onClick={() => handleFilterChange(filter)}
-                  className={cn(filterBy === filter && 'bg-stone-100')}
+                  className={cn(filterBy === filter && 'bg-muted')}
                 >
                   {FILTER_LABELS[filter]}
                 </DropdownMenuItem>
@@ -283,8 +283,8 @@ export function RelatedNotesTab({
               <button
                 className={cn(
                   'inline-flex items-center gap-1 px-2 py-1',
-                  'text-xs text-stone-500 bg-stone-100 rounded',
-                  'hover:bg-stone-200 transition-colors duration-150'
+                  'text-xs text-muted-foreground bg-muted/50 rounded',
+                  'hover:bg-muted transition-colors duration-150'
                 )}
               >
                 {SORT_LABELS[sortBy]}
@@ -296,7 +296,7 @@ export function RelatedNotesTab({
                 <DropdownMenuItem
                   key={sort}
                   onClick={() => handleSortChange(sort)}
-                  className={cn(sortBy === sort && 'bg-stone-100')}
+                  className={cn(sortBy === sort && 'bg-muted')}
                 >
                   {SORT_LABELS[sort]}
                 </DropdownMenuItem>
@@ -310,7 +310,7 @@ export function RelatedNotesTab({
             disabled={isLoading || isRefreshing}
             className={cn(
               'p-1.5 rounded',
-              'text-stone-400 hover:text-stone-600 hover:bg-stone-100',
+              'text-muted-foreground hover:text-foreground hover:bg-muted',
               'transition-colors duration-150',
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
@@ -327,7 +327,7 @@ export function RelatedNotesTab({
       <div className="flex-1 overflow-hidden">
         {isLoading || isRefreshing ? (
           <div aria-live="polite" aria-busy="true">
-            <div className="px-4 py-2 text-xs text-stone-400">
+            <div className="px-4 py-2 text-xs text-muted-foreground">
               Analyzing note content...
             </div>
             <LoadingSkeleton />
@@ -353,8 +353,8 @@ export function RelatedNotesTab({
                   onClick={handleShowMore}
                   className={cn(
                     'w-full py-2.5 mt-2',
-                    'text-sm text-stone-500 font-medium',
-                    'hover:text-stone-700 hover:bg-stone-50 rounded-lg',
+                    'text-sm text-muted-foreground font-medium',
+                    'hover:text-foreground hover:bg-muted/50 rounded-lg',
                     'transition-colors duration-150'
                   )}
                 >

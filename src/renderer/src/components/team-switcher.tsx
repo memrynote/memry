@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { ChevronsUpDown, Plus, Check } from "lucide-react"
+import { useTheme } from "next-themes"
 
 import {
   DropdownMenu,
@@ -28,7 +29,9 @@ export function TeamSwitcher({
 }) {
   const { isMobile } = useSidebar()
   const [activeTeam, setActiveTeam] = React.useState(teams[0])
-  const [darkMode, setDarkMode] = React.useState(false)
+  const { theme, setTheme } = useTheme()
+  const isDarkMode = theme === "dark"
+
 
   if (!activeTeam) {
     return null
@@ -91,17 +94,23 @@ export function TeamSwitcher({
             <DropdownMenuSeparator className="my-2 -mx-2 bg-gray-200/80" />
 
             {/* Settings section */}
-            <DropdownMenuItem className="rounded-lg cursor-pointer hover:bg-gray-100 focus:bg-gray-100 transition-colors">
+            <DropdownMenuItem
+              className="rounded-lg cursor-pointer hover:bg-gray-100 focus:bg-gray-100 transition-colors"
+              onSelect={(e) => {
+                e.preventDefault() // Prevent dropdown from closing
+              }}
+            >
               <div className="flex size-7 items-center justify-center">
                 <svg className="size-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
                 </svg>
               </div>
               <span className="flex-1 text-gray-900">Dark mode</span>
-              {/* Toggle placeholder */}
-              <div className="w-10 h-6 bg-blue-500 rounded-full relative">
-                <div className="absolute right-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm" />
-              </div>
+              <Switch
+                checked={isDarkMode}
+                onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+                onClick={(e) => e.stopPropagation()}
+              />
             </DropdownMenuItem>
 
             <DropdownMenuItem className="rounded-lg cursor-pointer hover:bg-gray-100 focus:bg-gray-100 transition-colors">

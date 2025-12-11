@@ -5,6 +5,25 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ===== BLOCKNOTE EDITOR CUSTOMIZATION ===== */
+/* Override BlockNote's default white background to match theme */
+:root .bn-editor,
+:root .bn-container {
+  background-color: var(--background) !important;
+}
+
+.dark .bn-editor,
+.dark .bn-container {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+/* Make all text content in BlockNote white in dark mode */
+.dark .bn-editor *,
+.dark .bn-container * {
+  color: inherit !important;
+}
+
 @layer base {
   :root {
     /* ===== TYPOGRAPHY - Font Families ===== */
@@ -12,22 +31,35 @@
     --font-serif: 'Merriweather', Georgia, 'Times New Roman', serif;
 
     /* ===== BASE COLORS (Canvas) - "Warm Utility" Aesthetic ===== */
-    --background: #F6F5F0;           /* Warm Beige / "Paper" */
-    --foreground: #1A1A1A;           /* Primary Text - Near Black */
-    --surface: #EFEFE9;              /* Sidebar/Panels - Slightly darker warm grey */
-    --surface-active: #E4E4DE;       /* Hover states */
+    --background: #F6F5F0;
+
+    /* Warm Beige / "Paper" */
+    --foreground: #1A1A1A;
+    /* Primary Text - Near Black */
+    --surface: #EFEFE9;
+    /* Sidebar/Panels - Slightly darker warm grey */
+    --surface-active: #E4E4DE;
+    /* Hover states */
 
     /* ===== SEMANTIC PASTELS (Card Backgrounds) ===== */
-    --card-sage: #E6EFE6;            /* Biology/Nature */
-    --card-rose: #EFE6E6;            /* Economics/History */
-    --card-sand: #EFEBDD;            /* Cyber Security/General */
-    --card-lavender: #E6E0EF;        /* Machine Learning */
-    --card-grey: #E0E0E0;            /* Unknown/Sort */
+    --card-sage: #E6EFE6;
+    /* Biology/Nature */
+    --card-rose: #EFE6E6;
+    /* Economics/History */
+    --card-sand: #EFEBDD;
+    /* Cyber Security/General */
+    --card-lavender: #E6E0EF;
+    /* Machine Learning */
+    --card-grey: #E0E0E0;
+    /* Unknown/Sort */
 
     /* ===== TYPOGRAPHY COLORS ===== */
-    --text-primary: #1A1A1A;         /* Near Black - Title Headers */
-    --text-secondary: #4A4A4A;       /* Body text, sidebar items */
-    --text-tertiary: #8C8C8C;        /* Meta data, dates, unused icons */
+    --text-primary: #1A1A1A;
+    /* Near Black - Title Headers */
+    --text-secondary: #4A4A4A;
+    /* Body text, sidebar items */
+    --text-tertiary: #8C8C8C;
+    /* Meta data, dates, unused icons */
 
     /* ===== ACCENT COLORS (Category Dots) ===== */
     --accent-cyan: #06B6D4;
@@ -55,13 +87,20 @@
     --ring: #8C8C8C;
 
     /* ===== BORDER RADIUS (Squircle/Soft Rounding) ===== */
-    --radius: 0.5rem;                /* 8px - Default */
-    --radius-sm: 0.375rem;           /* 6px */
-    --radius-md: 0.5rem;             /* 8px - List Rows */
-    --radius-lg: 0.75rem;            /* 12px */
-    --radius-xl: 1rem;               /* 16px - Cards */
-    --radius-2xl: 1.25rem;           /* 20px */
-    --radius-full: 9999px;           /* Fully rounded - Tags/Badges */
+    --radius: 0.5rem;
+    /* 8px - Default */
+    --radius-sm: 0.375rem;
+    /* 6px */
+    --radius-md: 0.5rem;
+    /* 8px - List Rows */
+    --radius-lg: 0.75rem;
+    /* 12px */
+    --radius-xl: 1rem;
+    /* 16px - Cards */
+    --radius-2xl: 1.25rem;
+    /* 20px */
+    --radius-full: 9999px;
+    /* Fully rounded - Tags/Badges */
 
     /* ===== SHADOWS (Flat-first design) ===== */
     --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.03), 0 1px 3px 0 rgb(0 0 0 / 0.05);
@@ -77,15 +116,23 @@
     --queue-number-bg: #D4D1C5;
 
     /* ===== ANIMATION TOKENS ===== */
-    --duration-instant: 100ms;   /* Hover states, micro-feedback */
-    --duration-fast: 150ms;      /* Small transitions, appears/disappears */
-    --duration-normal: 200ms;    /* Most interactions */
-    --duration-slow: 300ms;      /* Panel slides, larger movements */
-    --duration-deliberate: 400ms; /* Empty state entrance, significant changes */
+    --duration-instant: 100ms;
+    /* Hover states, micro-feedback */
+    --duration-fast: 150ms;
+    /* Small transitions, appears/disappears */
+    --duration-normal: 200ms;
+    /* Most interactions */
+    --duration-slow: 300ms;
+    /* Panel slides, larger movements */
+    --duration-deliberate: 400ms;
+    /* Empty state entrance, significant changes */
 
-    --ease-out: cubic-bezier(0.0, 0.0, 0.2, 1);    /* Elements entering */
-    --ease-in: cubic-bezier(0.4, 0.0, 1, 1);       /* Elements leaving */
-    --ease-in-out: cubic-bezier(0.4, 0.0, 0.2, 1); /* Elements moving/transforming */
+    --ease-out: cubic-bezier(0.0, 0.0, 0.2, 1);
+    /* Elements entering */
+    --ease-in: cubic-bezier(0.4, 0.0, 1, 1);
+    /* Elements leaving */
+    --ease-in-out: cubic-bezier(0.4, 0.0, 0.2, 1);
+    /* Elements moving/transforming */
   }
 
   .dark {
@@ -94,10 +141,14 @@
     --font-serif: 'Merriweather', Georgia, 'Times New Roman', serif;
 
     /* ===== BASE COLORS - Dark Mode (Warm Dark Variant) ===== */
-    --background: #1C1B19;           /* Warm Dark */
-    --foreground: #E8E6E1;           /* Light warm text */
-    --surface: #252420;              /* Dark panels */
-    --surface-active: #2E2D28;       /* Dark hover */
+    --background: #1C1B19;
+    /* Warm Dark */
+    --foreground: #E8E6E1;
+    /* Light warm text */
+    --surface: #252420;
+    /* Dark panels */
+    --surface-active: #2E2D28;
+    /* Dark hover */
 
     /* ===== SEMANTIC PASTELS - Dark Mode (Muted versions) ===== */
     --card-sage: #2A332A;
@@ -193,7 +244,12 @@
   }
 
   /* Typography Scale */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-weight: 600;
     line-height: 1.2;
     letter-spacing: -0.01em;
@@ -227,7 +283,7 @@
   /* Card transition */
   .transition-card {
     transition: transform var(--duration-fast) var(--ease-out),
-                box-shadow var(--duration-fast) var(--ease-out);
+      box-shadow var(--duration-fast) var(--ease-out);
   }
 
   /* Hover lift effect */
@@ -245,7 +301,7 @@
     opacity: 0;
     transform: translateX(8px);
     transition: opacity var(--duration-instant) var(--ease-out),
-                transform var(--duration-instant) var(--ease-out);
+      transform var(--duration-instant) var(--ease-out);
   }
 
   .group:hover .quick-actions-reveal,
@@ -280,10 +336,21 @@
   }
 
   /* Empty state stagger entrance */
-  .stagger-1 { animation-delay: 0ms; }
-  .stagger-2 { animation-delay: 100ms; }
-  .stagger-3 { animation-delay: 200ms; }
-  .stagger-4 { animation-delay: 300ms; }
+  .stagger-1 {
+    animation-delay: 0ms;
+  }
+
+  .stagger-2 {
+    animation-delay: 100ms;
+  }
+
+  .stagger-3 {
+    animation-delay: 200ms;
+  }
+
+  .stagger-4 {
+    animation-delay: 300ms;
+  }
 
   /* Fade in with translate (for staggered entrance) */
   .fade-in-up {
@@ -382,10 +449,12 @@
     margin-bottom: 2px;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.5;
     transform: scale(0.98);
   }
+
   100% {
     opacity: 0;
     max-height: 0;
@@ -402,6 +471,7 @@
     opacity: 1;
     transform: scale(1);
   }
+
   100% {
     opacity: 0;
     transform: scale(0.9);
@@ -414,6 +484,7 @@
     opacity: 0;
     transform: scale(0.8);
   }
+
   100% {
     opacity: 1;
     transform: scale(1);
@@ -426,6 +497,7 @@
     opacity: 1;
     transform: scale(1);
   }
+
   100% {
     opacity: 0;
     transform: scale(0.8);
@@ -441,6 +513,7 @@
     opacity: 0;
     transform: translateY(100%);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -453,6 +526,7 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -461,9 +535,17 @@
 
 /* Count number pulse */
 @keyframes count-pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* Checkmark draw animation (SVG) */
@@ -471,6 +553,7 @@
   0% {
     stroke-dashoffset: 100;
   }
+
   100% {
     stroke-dashoffset: 0;
   }
@@ -478,6 +561,7 @@
 
 /* ===== REDUCED MOTION SUPPORT ===== */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -526,26 +610,42 @@
 
 :root {
   /* ===== SIDEBAR THEME - Warm Palette ===== */
-  --sidebar: #EFEFE9;                    /* Surface color for sidebar */
-  --sidebar-foreground: #4A4A4A;         /* Secondary text color */
-  --sidebar-primary: #1A1A1A;            /* Primary text color */
-  --sidebar-primary-foreground: #F6F5F0; /* Inverse for buttons */
-  --sidebar-accent: #E4E4DE;             /* Surface active/hover */
-  --sidebar-accent-foreground: #1A1A1A;  /* Text on accent */
-  --sidebar-border: #E4E4DE;             /* Border color */
-  --sidebar-ring: #8C8C8C;               /* Focus ring */
+  --sidebar: #EFEFE9;
+  /* Surface color for sidebar */
+  --sidebar-foreground: #4A4A4A;
+  /* Secondary text color */
+  --sidebar-primary: #1A1A1A;
+  /* Primary text color */
+  --sidebar-primary-foreground: #F6F5F0;
+  /* Inverse for buttons */
+  --sidebar-accent: #E4E4DE;
+  /* Surface active/hover */
+  --sidebar-accent-foreground: #1A1A1A;
+  /* Text on accent */
+  --sidebar-border: #E4E4DE;
+  /* Border color */
+  --sidebar-ring: #8C8C8C;
+  /* Focus ring */
 }
 
 .dark {
   /* ===== SIDEBAR THEME - Warm Dark Palette ===== */
-  --sidebar: #252420;                    /* Dark surface */
-  --sidebar-foreground: #A8A6A1;         /* Muted light text */
-  --sidebar-primary: #E8E6E1;            /* Primary light text */
-  --sidebar-primary-foreground: #1C1B19; /* Dark inverse */
-  --sidebar-accent: #2E2D28;             /* Dark hover */
-  --sidebar-accent-foreground: #E8E6E1;  /* Light text on accent */
-  --sidebar-border: #3A3935;             /* Dark border */
-  --sidebar-ring: #6B6966;               /* Focus ring */
+  --sidebar: #252420;
+  /* Dark surface */
+  --sidebar-foreground: #A8A6A1;
+  /* Muted light text */
+  --sidebar-primary: #E8E6E1;
+  /* Primary light text */
+  --sidebar-primary-foreground: #1C1B19;
+  /* Dark inverse */
+  --sidebar-accent: #2E2D28;
+  /* Dark hover */
+  --sidebar-accent-foreground: #E8E6E1;
+  /* Light text on accent */
+  --sidebar-border: #3A3935;
+  /* Dark border */
+  --sidebar-ring: #6B6966;
+  /* Focus ring */
 }
 
 @theme inline {

@@ -59,10 +59,9 @@ export function NoteLayout({
         {/* Main content zone */}
         <div
           className="h-full overflow-y-auto overflow-x-hidden"
-          style={{ backgroundColor: '#fafaf9' }}
         >
           {/* Centered content wrapper */}
-          <div className="mx-auto max-w-[720px] px-6 md:px-12 py-8">
+          <div className="mx-auto w-full max-w-5xl px-6 md:px-12 lg:px-16 py-8">
             {children}
           </div>
         </div>
