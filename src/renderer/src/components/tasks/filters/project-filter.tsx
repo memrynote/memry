@@ -31,47 +31,31 @@ export const ProjectFilter = ({
   className,
 }: ProjectFilterProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
-  const [localSelection, setLocalSelection] = useState<string[]>(selectedIds)
-
-  // Sync local selection when props change
-  useMemo(() => {
-    setLocalSelection(selectedIds)
-  }, [selectedIds])
 
   const visibleProjects = useMemo(
     () => projects.filter((p) => !p.isArchived),
     [projects]
   )
 
-  const allSelected = localSelection.length === 0
+  const allSelected = selectedIds.length === 0
   const hasSelection = selectedIds.length > 0
 
   const handleToggleAll = (): void => {
-    setLocalSelection([])
+    onChange([])
   }
 
   const handleToggleProject = (projectId: string): void => {
-    setLocalSelection((prev) => {
-      if (prev.includes(projectId)) {
-        return prev.filter((id) => id !== projectId)
-      }
-      return [...prev, projectId]
-    })
-  }
-
-  const handleApply = (): void => {
-    onChange(localSelection)
-    setIsOpen(false)
+    const nextSelection = selectedIds.includes(projectId)
+      ? selectedIds.filter((id) => id !== projectId)
+      : [...selectedIds, projectId]
+    onChange(nextSelection)
   }
 
   const handleClear = (): void => {
-    setLocalSelection([])
+    onChange([])
   }
 
   const handleOpenChange = (open: boolean): void => {
-    if (open) {
-      setLocalSelection(selectedIds)
-    }
     setIsOpen(open)
   }
 
@@ -121,7 +105,7 @@ export const ProjectFilter = ({
           {/* Individual projects */}
           <div className="max-h-64 overflow-y-auto">
             {visibleProjects.map((project) => {
-              const isSelected = localSelection.includes(project.id)
+              const isSelected = selectedIds.includes(project.id)
               const taskCount = taskCountByProject[project.id] || project.taskCount || 0
               const IconComponent = getIconByName(project.icon)
 
@@ -164,7 +148,7 @@ export const ProjectFilter = ({
           <div className="my-2 h-px bg-border" />
 
           {/* Action buttons */}
-          <div className="flex items-center justify-between px-2 py-1">
+          <div className="flex items-center justify-end px-2 py-1">
             <Button
               variant="ghost"
               size="sm"
@@ -172,13 +156,6 @@ export const ProjectFilter = ({
               className="h-7 text-xs text-muted-foreground hover:text-foreground"
             >
               Clear
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleApply}
-              className="h-7 text-xs"
-            >
-              Apply
             </Button>
           </div>
         </div>
