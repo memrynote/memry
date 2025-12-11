@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { Bot, Link2, ChevronRight, X } from 'lucide-react'
 import { AIAgentTab } from './ai-agent'
+import { RelatedNotesTab } from './related-notes'
 
 type TabType = 'ai' | 'related'
 
@@ -115,30 +115,9 @@ export function RightSidebar({
               id="related-panel"
               role="tabpanel"
               aria-labelledby="related-tab"
-              className="p-4 space-y-4"
+              className="h-full"
             >
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-stone-900">Outgoing Links</h3>
-                <p className="text-sm text-stone-500">No outgoing links yet.</p>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-stone-900">Backlinks</h3>
-                <p className="text-sm text-stone-500">
-                  Notes that link to this one will appear here.
-                </p>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-stone-900">Related Notes</h3>
-                <p className="text-sm text-stone-500">
-                  Similar notes based on content and tags will appear here.
-                </p>
-              </div>
+              <RelatedNotesTab />
             </div>
           )}
         </div>
