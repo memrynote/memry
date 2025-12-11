@@ -36,8 +36,8 @@ export function RightSidebar({
       {/* Sidebar */}
       <div
         className={cn(
-          'fixed lg:relative right-0 top-0 h-full w-80 bg-white',
-          'border-l border-stone-200/60 shadow-sm',
+          'fixed lg:relative right-0 top-0 h-full w-80 bg-sidebar',
+          'border-l border-sidebar-border shadow-sm',
           'transition-transform duration-200 ease-out z-50',
           'flex flex-col',
           isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0',
@@ -46,8 +46,8 @@ export function RightSidebar({
         )}
       >
         {/* Header with close button (mobile) */}
-        <div className="flex items-center justify-between px-4 py-3 lg:hidden border-b border-stone-200/60">
-          <h2 className="text-sm font-medium text-stone-900">Panel</h2>
+        <div className="flex items-center justify-between px-4 py-3 lg:hidden border-b border-sidebar-border">
+          <h2 className="text-sm font-medium text-sidebar-primary">Panel</h2>
           <Button
             variant="ghost"
             size="icon"
@@ -60,7 +60,7 @@ export function RightSidebar({
         </div>
 
         {/* Tab bar */}
-        <div className="flex border-b border-stone-200/60" role="tablist">
+        <div className="flex border-b border-sidebar-border" role="tablist">
           <button
             role="tab"
             aria-selected={activeTab === 'ai'}
@@ -69,10 +69,10 @@ export function RightSidebar({
             className={cn(
               'flex-1 flex items-center justify-center gap-2 px-4 py-3',
               'text-sm font-medium transition-colors duration-150',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-inset',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset',
               activeTab === 'ai'
-                ? 'text-stone-900 border-b-2 border-stone-900'
-                : 'text-stone-500 hover:text-stone-700'
+                ? 'text-sidebar-primary border-b-2 border-sidebar-primary'
+                : 'text-sidebar-foreground hover:text-sidebar-primary'
             )}
           >
             <Bot className="h-4 w-4" />
@@ -86,10 +86,10 @@ export function RightSidebar({
             className={cn(
               'flex-1 flex items-center justify-center gap-2 px-4 py-3',
               'text-sm font-medium transition-colors duration-150',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-inset',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset',
               activeTab === 'related'
-                ? 'text-stone-900 border-b-2 border-stone-900'
-                : 'text-stone-500 hover:text-stone-700'
+                ? 'text-sidebar-primary border-b-2 border-sidebar-primary'
+                : 'text-sidebar-foreground hover:text-sidebar-primary'
             )}
           >
             <Link2 className="h-4 w-4" />
@@ -130,14 +130,14 @@ export function RightSidebar({
           className={cn(
             'hidden lg:flex items-center justify-center',
             'fixed right-0 top-1/2 -translate-y-1/2',
-            'w-6 h-16 bg-white border border-r-0 border-stone-200/60',
+            'w-6 h-16 bg-sidebar border border-r-0 border-sidebar-border',
             'rounded-l-md shadow-sm',
-            'hover:bg-stone-50 transition-colors duration-150',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400'
+            'hover:bg-sidebar-accent transition-colors duration-150',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring'
           )}
           aria-label="Open sidebar"
         >
-          <ChevronRight className="h-4 w-4 text-stone-500 -ml-0.5" />
+          <ChevronRight className="h-4 w-4 text-sidebar-foreground -ml-0.5" />
         </button>
       )}
     </>

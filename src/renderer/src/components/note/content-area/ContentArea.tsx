@@ -34,12 +34,12 @@ function extractHeadings(blocks: Block[]): HeadingInfo[] {
       // Extract text from inline content
       const text = Array.isArray(block.content)
         ? block.content
-            .map((item) => {
-              if (typeof item === 'string') return item
-              if (item && typeof item === 'object' && 'text' in item) return item.text
-              return ''
-            })
-            .join('')
+          .map((item) => {
+            if (typeof item === 'string') return item
+            if (item && typeof item === 'object' && 'text' in item) return item.text
+            return ''
+          })
+          .join('')
         : ''
 
       if (text.trim()) {
@@ -166,9 +166,6 @@ export const ContentArea = memo(function ContentArea({
 
   return (
     <div className={cn('content-area', className)}>
-      {/* Content divider */}
-      <ContentDivider />
-
       {/* BlockNote Editor */}
       <div className="bn-container min-h-[300px]">
         <BlockNoteView

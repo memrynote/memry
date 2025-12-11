@@ -255,40 +255,38 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
     <NoteLayout headings={headings} onHeadingClick={handleHeadingClick}>
       {/* Note content */}
       <div className="space-y-6">
-        {/* Title section */}
-        <div className="space-y-3">
-          <NoteTitle
-            emoji={emoji}
-            title={title}
-            onEmojiChange={handleEmojiChange}
-            onTitleChange={handleTitleChange}
-            placeholder="Untitled"
+        <div style={{ paddingInline: "54px" }}>
+          {/* Title section */}
+          <div className="space-y-3">
+            <NoteTitle
+              emoji={emoji}
+              title={title}
+              onEmojiChange={handleEmojiChange}
+              onTitleChange={handleTitleChange}
+              placeholder="Untitled"
+            />
+          </div>
+
+          {/* Tags section */}
+          <TagsRow
+            tags={tags}
+            availableTags={availableTags}
+            recentTags={mockRecentTags}
+            onAddTag={handleAddTag}
+            onCreateTag={handleCreateTag}
+            onRemoveTag={handleRemoveTag}
           />
-          <p className="text-sm text-stone-600">
-            A brief description of what this note is about
-          </p>
+
+          {/* Info Section (Collapsible Properties) */}
+          <InfoSection
+            properties={properties}
+            isExpanded={isInfoExpanded}
+            onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
+            onPropertyChange={handlePropertyChange}
+            onAddProperty={handleAddProperty}
+            onDeleteProperty={handleDeleteProperty}
+          />
         </div>
-
-        {/* Tags section */}
-        <TagsRow
-          tags={tags}
-          availableTags={availableTags}
-          recentTags={mockRecentTags}
-          onAddTag={handleAddTag}
-          onCreateTag={handleCreateTag}
-          onRemoveTag={handleRemoveTag}
-        />
-
-        {/* Info Section (Collapsible Properties) */}
-        <InfoSection
-          properties={properties}
-          isExpanded={isInfoExpanded}
-          onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
-          onPropertyChange={handlePropertyChange}
-          onAddProperty={handleAddProperty}
-          onDeleteProperty={handleDeleteProperty}
-        />
-
         {/* Main content - BlockNote Editor */}
         <ContentArea
           initialContent={initialContent}
@@ -308,6 +306,6 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
           onBacklinkClick={handleBacklinkClick}
         />
       </div>
-    </NoteLayout>
+    </NoteLayout >
   )
 }
