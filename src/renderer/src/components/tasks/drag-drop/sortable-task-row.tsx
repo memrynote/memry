@@ -9,13 +9,15 @@ import {
   TaskCheckbox,
   ProjectBadge,
   PriorityBadge,
-  DueDateBadge,
+  InteractiveProjectBadge,
+  InteractivePriorityBadge,
+  InteractiveDueDateBadge,
 } from "@/components/tasks/task-badges"
 import { RepeatIndicator } from "@/components/tasks/repeat-indicator"
 import { SelectionCheckbox } from "@/components/tasks/bulk-actions"
 
 
-import type { Task } from "@/data/sample-tasks"
+import type { Task, Priority } from "@/data/sample-tasks"
 import type { Project } from "@/data/tasks-data"
 
 // ============================================================================
@@ -25,11 +27,14 @@ import type { Project } from "@/data/tasks-data"
 interface SortableTaskRowProps {
   task: Task
   project: Project
+  projects: Project[]
   sectionId: string
+  allTasks?: Task[]
   isCompleted: boolean
   isSelected?: boolean
   showProjectBadge?: boolean
   onToggleComplete: (taskId: string) => void
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onClick?: (taskId: string) => void
   className?: string
   /** Whether selection mode is active */
@@ -54,11 +59,14 @@ const EXIT_ANIMATION_DURATION = 200
 export const SortableTaskRow = ({
   task,
   project,
+  projects,
   sectionId,
+  allTasks: _allTasks,
   isCompleted,
   isSelected = false,
   showProjectBadge = false,
   onToggleComplete,
+  onUpdateTask,
   onClick,
   className,
   isSelectionMode = false,
@@ -171,6 +179,18 @@ export const SortableTaskRow = ({
 
   const handleSelectionCheckboxClick = (e: React.MouseEvent): void => {
     e.stopPropagation()
+  }
+
+  const handleProjectChange = (projectId: string): void => {
+    onUpdateTask?.(task.id, { projectId })
+  }
+
+  const handlePriorityChange = (priority: Priority): void => {
+    onUpdateTask?.(task.id, { priority })
+  }
+
+  const handleDateChange = (date: Date | null): void => {
+    onUpdateTask?.(task.id, { dueDate: date })
   }
 
   // Determine grid columns based on what's shown
@@ -290,14 +310,20 @@ export const SortableTaskRow = ({
         {/* Project Badge - Column 5 (conditional, 120px) - hidden on mobile & tablet */}
         {showProjectBadge && (
           <div className="hidden lg:block">
-            <ProjectBadge project={project} fixedWidth />
+            <InteractiveProjectBadge
+              project={project}
+              projects={projects}
+              onProjectChange={handleProjectChange}
+              fixedWidth
+            />
           </div>
         )}
 
         {/* Priority Badge - Column 6 (70px) - hidden on mobile */}
         <div className="hidden md:block">
-          <PriorityBadge
+          <InteractivePriorityBadge
             priority={isCompleted ? "none" : task.priority}
+            onPriorityChange={handlePriorityChange}
             compact
             fixedWidth
           />
@@ -305,9 +331,10 @@ export const SortableTaskRow = ({
 
         {/* Due Date Badge - Column 7 (110px) - hidden on mobile */}
         <div className="hidden md:block">
-          <DueDateBadge
+          <InteractiveDueDateBadge
             dueDate={task.dueDate}
             dueTime={task.dueTime}
+            onDateChange={handleDateChange}
             isRepeating={task.isRepeating}
             fixedWidth
             className={cn(isCompleted && "opacity-60")}
@@ -318,14 +345,23 @@ export const SortableTaskRow = ({
       {/* Mobile: Stacked metadata row */}
       <div className="flex items-center gap-2 pl-7 text-xs md:hidden">
         {showProjectBadge && (
-          <ProjectBadge project={project} />
+          <InteractiveProjectBadge
+            project={project}
+            projects={projects}
+            onProjectChange={handleProjectChange}
+          />
         )}
         {!isCompleted && task.priority !== "none" && (
-          <PriorityBadge priority={task.priority} compact />
+          <InteractivePriorityBadge
+            priority={task.priority}
+            onPriorityChange={handlePriorityChange}
+            compact
+          />
         )}
-        <DueDateBadge
+        <InteractiveDueDateBadge
           dueDate={task.dueDate}
           dueTime={task.dueTime}
+          onDateChange={handleDateChange}
           isRepeating={task.isRepeating}
           className={cn(isCompleted && "opacity-60")}
         />

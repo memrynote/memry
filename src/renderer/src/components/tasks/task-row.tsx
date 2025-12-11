@@ -2,13 +2,13 @@ import { cn } from "@/lib/utils"
 import { formatDueDate } from "@/lib/task-utils"
 import {
   TaskCheckbox,
-  ProjectBadge,
-  PriorityBadge,
-  DueDateBadge,
+  InteractiveProjectBadge,
+  InteractivePriorityBadge,
+  InteractiveDueDateBadge,
 } from "@/components/tasks/task-badges"
 import { RepeatIndicator } from "@/components/tasks/repeat-indicator"
 import { SelectionCheckbox } from "@/components/tasks/bulk-actions"
-import type { Task } from "@/data/sample-tasks"
+import type { Task, Priority } from "@/data/sample-tasks"
 import type { Project } from "@/data/tasks-data"
 
 // ============================================================================
@@ -18,10 +18,12 @@ import type { Project } from "@/data/tasks-data"
 interface TaskRowProps {
   task: Task
   project: Project
+  projects: Project[]
   isCompleted: boolean
   isSelected?: boolean
   showProjectBadge?: boolean
   onToggleComplete: (taskId: string) => void
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onClick?: (taskId: string) => void
   className?: string
   // Selection props
@@ -42,10 +44,12 @@ interface TaskRowProps {
 export const TaskRow = ({
   task,
   project,
+  projects,
   isCompleted,
   isSelected = false,
   showProjectBadge = false,
   onToggleComplete,
+  onUpdateTask,
   onClick,
   className,
   // Selection props
@@ -100,6 +104,18 @@ export const TaskRow = ({
 
   const handleSelectionCheckboxClick = (e: React.MouseEvent): void => {
     e.stopPropagation()
+  }
+
+  const handleProjectChange = (projectId: string): void => {
+    onUpdateTask?.(task.id, { projectId })
+  }
+
+  const handlePriorityChange = (priority: Priority): void => {
+    onUpdateTask?.(task.id, { priority })
+  }
+
+  const handleDateChange = (date: Date | null): void => {
+    onUpdateTask?.(task.id, { dueDate: date })
   }
 
   // Determine if selection is available
@@ -186,14 +202,20 @@ export const TaskRow = ({
         {/* Project Badge - Column 4 (conditional, 120px) - hidden on mobile & tablet */}
         {showProjectBadge && (
           <div className="hidden lg:block">
-            <ProjectBadge project={project} fixedWidth />
+            <InteractiveProjectBadge
+              project={project}
+              projects={projects}
+              onProjectChange={handleProjectChange}
+              fixedWidth
+            />
           </div>
         )}
 
         {/* Priority Badge - Column 5 (70px) - hidden on mobile */}
         <div className="hidden md:block">
-          <PriorityBadge
+          <InteractivePriorityBadge
             priority={isCompleted ? "none" : task.priority}
+            onPriorityChange={handlePriorityChange}
             compact
             fixedWidth
           />
@@ -201,9 +223,10 @@ export const TaskRow = ({
 
         {/* Due Date Badge - Column 6 (110px) - hidden on mobile */}
         <div className="hidden md:block">
-          <DueDateBadge
+          <InteractiveDueDateBadge
             dueDate={task.dueDate}
             dueTime={task.dueTime}
+            onDateChange={handleDateChange}
             isRepeating={task.isRepeating}
             fixedWidth
             className={cn(isCompleted && "opacity-60")}
@@ -214,14 +237,23 @@ export const TaskRow = ({
       {/* Mobile: Stacked metadata row */}
       <div className="flex items-center gap-2 pl-7 text-xs md:hidden">
         {showProjectBadge && (
-          <ProjectBadge project={project} />
+          <InteractiveProjectBadge
+            project={project}
+            projects={projects}
+            onProjectChange={handleProjectChange}
+          />
         )}
         {!isCompleted && task.priority !== "none" && (
-          <PriorityBadge priority={task.priority} compact />
+          <InteractivePriorityBadge
+            priority={task.priority}
+            onPriorityChange={handlePriorityChange}
+            compact
+          />
         )}
-        <DueDateBadge
+        <InteractiveDueDateBadge
           dueDate={task.dueDate}
           dueTime={task.dueTime}
+          onDateChange={handleDateChange}
           isRepeating={task.isRepeating}
           className={cn(isCompleted && "opacity-60")}
         />
@@ -231,3 +263,4 @@ export const TaskRow = ({
 }
 
 export default TaskRow
+

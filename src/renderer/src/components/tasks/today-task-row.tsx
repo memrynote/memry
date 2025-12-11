@@ -2,11 +2,12 @@ import { cn } from "@/lib/utils"
 import { formatTime, differenceInDays, startOfDay } from "@/lib/task-utils"
 import {
   TaskCheckbox,
-  ProjectBadge,
-  PriorityBadge,
+  InteractiveProjectBadge,
+  InteractivePriorityBadge,
+  InteractiveDueDateBadge,
 } from "@/components/tasks/task-badges"
 import { RepeatIndicator } from "@/components/tasks/repeat-indicator"
-import type { Task } from "@/data/sample-tasks"
+import type { Task, Priority } from "@/data/sample-tasks"
 import type { Project } from "@/data/tasks-data"
 
 // ============================================================================
@@ -18,9 +19,11 @@ type TodayTaskSection = "overdue" | "today"
 interface TodayTaskRowProps {
   task: Task
   project: Project | undefined
+  projects: Project[]
   section: TodayTaskSection
   isSelected?: boolean
   onToggleComplete: (taskId: string) => void
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onClick?: (taskId: string) => void
   className?: string
 }
@@ -32,9 +35,11 @@ interface TodayTaskRowProps {
 export const TodayTaskRow = ({
   task,
   project,
+  projects,
   section,
   isSelected = false,
   onToggleComplete,
+  onUpdateTask,
   onClick,
   className,
 }: TodayTaskRowProps): React.JSX.Element => {
@@ -74,6 +79,18 @@ export const TodayTaskRow = ({
 
   const handleToggleComplete = (): void => {
     onToggleComplete(task.id)
+  }
+
+  const handleProjectChange = (projectId: string): void => {
+    onUpdateTask?.(task.id, { projectId })
+  }
+
+  const handlePriorityChange = (priority: Priority): void => {
+    onUpdateTask?.(task.id, { priority })
+  }
+
+  const handleDateChange = (date: Date | null): void => {
+    onUpdateTask?.(task.id, { dueDate: date })
   }
 
   return (
@@ -119,13 +136,32 @@ export const TodayTaskRow = ({
         <RepeatIndicator config={task.repeatConfig} size="sm" />
       )}
 
-      {/* Project badge */}
+      {/* Project badge - interactive */}
       {project && (
-        <ProjectBadge project={project} />
+        <InteractiveProjectBadge
+          project={project}
+          projects={projects}
+          onProjectChange={handleProjectChange}
+        />
       )}
 
-      {/* Priority */}
-      <PriorityBadge priority={task.priority} variant="dot" showTooltip className="shrink-0" />
+      {/* Priority - interactive */}
+      <InteractivePriorityBadge
+        priority={task.priority}
+        onPriorityChange={handlePriorityChange}
+        variant="full"
+        compact
+        className="shrink-0"
+      />
+
+      {/* Date - interactive */}
+      <InteractiveDueDateBadge
+        dueDate={task.dueDate}
+        dueTime={task.dueTime}
+        onDateChange={handleDateChange}
+        isRepeating={task.isRepeating}
+        variant="compact"
+      />
 
       {/* Overdue label */}
       {isOverdue && daysOverdue > 0 && (
@@ -138,3 +174,4 @@ export const TodayTaskRow = ({
 }
 
 export default TodayTaskRow
+

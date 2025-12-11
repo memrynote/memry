@@ -39,6 +39,7 @@ interface UpcomingViewProps {
   selectedTaskId?: string | null
   daysAhead?: number
   onToggleComplete: (taskId: string) => void
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onTaskClick?: (taskId: string) => void
   onQuickAdd: (
     title: string,
@@ -68,6 +69,7 @@ interface DaySectionProps {
   isTomorrow: boolean
   hasTasksThisWeek: boolean
   onToggleComplete: (taskId: string) => void
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onTaskClick?: (taskId: string) => void
   onAddTaskForDate: (date: Date) => void
 }
@@ -82,6 +84,7 @@ const DaySection = ({
   isTomorrow,
   hasTasksThisWeek,
   onToggleComplete,
+  onUpdateTask,
   onTaskClick,
   onAddTaskForDate,
 }: DaySectionProps): React.JSX.Element | null => {
@@ -180,12 +183,14 @@ const DaySection = ({
                   key={task.id}
                   task={task}
                   project={project}
+                  projects={projects}
                   sectionId={dateKey}
                   allTasks={allTasks}
                   isCompleted={isTaskCompleted(task)}
                   isSelected={selectedTaskId === task.id}
                   showProjectBadge={true}
                   onToggleComplete={onToggleComplete}
+                  onUpdateTask={onUpdateTask}
                   onClick={onTaskClick}
                 />
               )
@@ -246,6 +251,7 @@ export const UpcomingView = ({
   selectedTaskId,
   daysAhead = 7,
   onToggleComplete,
+  onUpdateTask,
   onTaskClick,
   onQuickAdd,
   onOpenModal,
@@ -379,6 +385,7 @@ export const UpcomingView = ({
             date={startOfDay(new Date())} // Dropping here reschedules to today
             selectedTaskId={selectedTaskId}
             onToggleComplete={onToggleComplete}
+            onUpdateTask={onUpdateTask}
             onTaskClick={onTaskClick}
           />
         )}
@@ -398,6 +405,7 @@ export const UpcomingView = ({
                 isTomorrow={dateKey === tomorrowKey}
                 hasTasksThisWeek={hasTasksThisWeek}
                 onToggleComplete={onToggleComplete}
+                onUpdateTask={onUpdateTask}
                 onTaskClick={onTaskClick}
                 onAddTaskForDate={handleAddTaskForDate}
               />

@@ -24,6 +24,7 @@ interface TodayViewProps {
   projects: Project[]
   selectedTaskId?: string | null
   onToggleComplete: (taskId: string) => void
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onTaskClick?: (taskId: string) => void
   onQuickAdd: (
     title: string,
@@ -47,6 +48,7 @@ export const TodayView = ({
   projects,
   selectedTaskId,
   onToggleComplete,
+  onUpdateTask,
   onTaskClick,
   onQuickAdd,
   onOpenModal,
@@ -127,6 +129,7 @@ export const TodayView = ({
             date={startOfDay(new Date())} // Dropping here reschedules to today
             selectedTaskId={selectedTaskId}
             onToggleComplete={onToggleComplete}
+            onUpdateTask={onUpdateTask}
             onTaskClick={onTaskClick}
           />
         )}
@@ -148,6 +151,7 @@ export const TodayView = ({
                 selectedTaskId={selectedTaskId}
                 onAddTask={handleAddTaskForToday}
                 onToggleComplete={onToggleComplete}
+                onUpdateTask={onUpdateTask}
                 onTaskClick={onTaskClick}
               />
             ) : (

@@ -31,6 +31,7 @@ interface TaskSectionProps {
   onAddTask?: () => void
   onTaskClick?: (taskId: string) => void
   onToggleComplete: (taskId: string) => void
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   className?: string
 }
 
@@ -103,6 +104,7 @@ export const TaskSection = ({
   onAddTask,
   onTaskClick,
   onToggleComplete,
+  onUpdateTask,
   className,
 }: TaskSectionProps): React.JSX.Element => {
   // Section ID for drag-drop
@@ -191,12 +193,14 @@ export const TaskSection = ({
                   key={task.id}
                   task={task}
                   project={project}
+                  projects={projects}
                   sectionId={id}
                   allTasks={allTasks}
                   isCompleted={isTaskCompleted(task)}
                   isSelected={selectedTaskId === task.id}
                   showProjectBadge={true}
                   onToggleComplete={onToggleComplete}
+                  onUpdateTask={onUpdateTask}
                   onClick={onTaskClick}
                 />
               )

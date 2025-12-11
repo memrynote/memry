@@ -30,6 +30,7 @@ interface TaskListProps {
     selectedType: "view" | "project"
     selectedTaskId?: string | null
     onToggleComplete: (taskId: string) => void
+    onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
     onToggleSubtaskComplete?: (subtaskId: string) => void
     onTaskClick?: (taskId: string) => void
     onQuickAdd: (
@@ -63,6 +64,7 @@ interface TaskListByDueDateProps {
     showProjectBadge: boolean
     selectedTaskId?: string | null
     onToggleComplete: (taskId: string) => void
+    onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
     onToggleSubtaskComplete?: (subtaskId: string) => void
     onTaskClick?: (taskId: string) => void
     // Selection props
@@ -85,6 +87,7 @@ const TaskListByDueDate = ({
     showProjectBadge,
     selectedTaskId,
     onToggleComplete,
+    onUpdateTask,
     onToggleSubtaskComplete,
     onTaskClick,
     // Selection props
@@ -129,6 +132,7 @@ const TaskListByDueDate = ({
                         showProjectBadge={showProjectBadge}
                         selectedTaskId={selectedTaskId}
                         onToggleComplete={onToggleComplete}
+                        onUpdateTask={onUpdateTask}
                         onToggleSubtaskComplete={onToggleSubtaskComplete}
                         onTaskClick={onTaskClick}
                         // Selection props
@@ -246,6 +250,7 @@ interface TaskListByStatusProps {
     project: Project
     selectedTaskId?: string | null
     onToggleComplete: (taskId: string) => void
+    onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
     onToggleSubtaskComplete?: (subtaskId: string) => void
     onTaskClick?: (taskId: string) => void
     // Selection props
@@ -267,6 +272,7 @@ const TaskListByStatus = ({
     project,
     selectedTaskId,
     onToggleComplete,
+    onUpdateTask,
     onToggleSubtaskComplete,
     onTaskClick,
     // Selection props
@@ -297,6 +303,7 @@ const TaskListByStatus = ({
                     project={project}
                     selectedTaskId={selectedTaskId}
                     onToggleComplete={onToggleComplete}
+                    onUpdateTask={onUpdateTask}
                     onToggleSubtaskComplete={onToggleSubtaskComplete}
                     onTaskClick={onTaskClick}
                     // Selection props
@@ -327,6 +334,7 @@ export const TaskList = ({
     selectedType,
     selectedTaskId,
     onToggleComplete,
+    onUpdateTask,
     onToggleSubtaskComplete,
     onTaskClick,
     onQuickAdd,
@@ -392,6 +400,7 @@ export const TaskList = ({
                     project={selectedProject}
                     selectedTaskId={selectedTaskId}
                     onToggleComplete={onToggleComplete}
+                    onUpdateTask={onUpdateTask}
                     onToggleSubtaskComplete={onToggleSubtaskComplete}
                     onTaskClick={onTaskClick}
                     // Selection props
@@ -444,6 +453,7 @@ export const TaskList = ({
                 showProjectBadge={true}
                 selectedTaskId={selectedTaskId}
                 onToggleComplete={onToggleComplete}
+                onUpdateTask={onUpdateTask}
                 onToggleSubtaskComplete={onToggleSubtaskComplete}
                 onTaskClick={onTaskClick}
                 // Selection props

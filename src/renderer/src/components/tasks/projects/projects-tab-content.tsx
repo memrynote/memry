@@ -26,6 +26,7 @@ interface ProjectsTabContentProps {
     selectedProjectId: string | null
     onProjectSelect: (projectId: string) => void
     onToggleComplete: (taskId: string) => void
+    onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
     onToggleSubtaskComplete: (taskId: string) => void
     onTaskClick: (taskId: string) => void
     onQuickAdd: (
@@ -74,13 +75,22 @@ const ProjectListItem = ({
     onArchive,
     onDelete,
 }: ProjectListItemProps): React.JSX.Element => {
+    const handleKeyDown = (e: React.KeyboardEvent): void => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            onClick()
+        }
+    }
+
     return (
-        <button
-            type="button"
+        <div
+            role="button"
+            tabIndex={0}
             onClick={onClick}
+            onKeyDown={handleKeyDown}
             className={cn(
-                "group flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
-                "hover:bg-accent",
+                "group flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors cursor-pointer",
+                "hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 isActive && "bg-accent"
             )}
         >
@@ -132,7 +142,7 @@ const ProjectListItem = ({
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-        </button>
+        </div>
     )
 }
 
@@ -147,6 +157,7 @@ export const ProjectsTabContent = ({
     selectedProjectId,
     onProjectSelect,
     onToggleComplete,
+    onUpdateTask,
     onToggleSubtaskComplete,
     onTaskClick,
     onQuickAdd,
@@ -294,6 +305,7 @@ export const ProjectsTabContent = ({
                         selectedType="project"
                         selectedTaskId={selectedTaskId}
                         onToggleComplete={onToggleComplete}
+                        onUpdateTask={onUpdateTask}
                         onToggleSubtaskComplete={onToggleSubtaskComplete}
                         onTaskClick={onTaskClick}
                         onQuickAdd={handleQuickAdd}

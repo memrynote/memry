@@ -111,6 +111,7 @@ interface TaskGroupProps {
   showProjectBadge?: boolean
   selectedTaskId?: string | null
   onToggleComplete: (taskId: string) => void
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onToggleSubtaskComplete?: (subtaskId: string) => void
   onTaskClick?: (taskId: string) => void
   className?: string
@@ -136,6 +137,7 @@ interface StatusTaskGroupProps {
   project: Project
   selectedTaskId?: string | null
   onToggleComplete: (taskId: string) => void
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onToggleSubtaskComplete?: (subtaskId: string) => void
   onTaskClick?: (taskId: string) => void
   className?: string
@@ -220,6 +222,7 @@ export const TaskGroup = ({
   showProjectBadge = false,
   selectedTaskId,
   onToggleComplete,
+  onUpdateTask,
   onToggleSubtaskComplete,
   onTaskClick,
   className,
@@ -343,11 +346,13 @@ export const TaskGroup = ({
                 key={task.id}
                 task={task}
                 project={project}
+                projects={projects}
                 sectionId={sectionId}
                 isCompleted={completed}
                 isSelected={selectedTaskId === task.id}
                 showProjectBadge={showProjectBadge}
                 onToggleComplete={onToggleComplete}
+                onUpdateTask={onUpdateTask}
                 onClick={onTaskClick}
                 // Selection props
                 isSelectionMode={isSelectionMode}
@@ -376,6 +381,7 @@ export const StatusTaskGroup = ({
   project,
   selectedTaskId,
   onToggleComplete,
+  onUpdateTask,
   onToggleSubtaskComplete,
   onTaskClick,
   className,
@@ -482,11 +488,13 @@ export const StatusTaskGroup = ({
                 key={task.id}
                 task={task}
                 project={project}
+                projects={[project]}
                 sectionId={sectionId}
                 isCompleted={completed}
                 isSelected={selectedTaskId === task.id}
                 showProjectBadge={false} // Never show in project view
                 onToggleComplete={onToggleComplete}
+                onUpdateTask={onUpdateTask}
                 onClick={onTaskClick}
                 // Selection props
                 isSelectionMode={isSelectionMode}
