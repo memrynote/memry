@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Bot, Link2, ChevronRight, X } from 'lucide-react'
+import { AIAgentTab } from './ai-agent'
 
 type TabType = 'ai' | 'related'
 
@@ -97,49 +98,15 @@ export function RightSidebar({
         </div>
 
         {/* Tab content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-hidden">
           {activeTab === 'ai' && (
             <div
               id="ai-panel"
               role="tabpanel"
               aria-labelledby="ai-tab"
-              className="p-4 space-y-4"
+              className="h-full"
             >
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-stone-900">AI Suggestions</h3>
-                <p className="text-sm text-stone-500">
-                  AI-powered suggestions and insights will appear here.
-                </p>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-stone-900">Quick Actions</h3>
-                <div className="space-y-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start text-sm text-stone-600 hover:text-stone-900"
-                  >
-                    Summarize note
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start text-sm text-stone-600 hover:text-stone-900"
-                  >
-                    Generate outline
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start text-sm text-stone-600 hover:text-stone-900"
-                  >
-                    Suggest connections
-                  </Button>
-                </div>
-              </div>
+              <AIAgentTab />
             </div>
           )}
 
