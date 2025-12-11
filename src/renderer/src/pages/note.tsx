@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { NoteLayout, HeadingItem, ContentArea, HeadingInfo } from '@/components/note'
+import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, Property, NewProperty } from '@/components/note/info-section'
@@ -8,7 +8,7 @@ interface NotePageProps {
   noteId?: string
 }
 
-// Initial content for the editor
+// Initial content for the editor (HTML string - will be parsed by BlockNote)
 const initialContent = `
 <h1>Introduction</h1>
 <p>This is a sample note demonstrating the note editor layout. The layout follows a clean, three-zone design inspired by Capacities and other modern PKM applications.</p>
@@ -83,21 +83,23 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
   const [properties, setProperties] = useState<Property[]>(mockProperties)
   const [isInfoExpanded, setIsInfoExpanded] = useState(true)
 
-  // Content state for the editor
-  const [content, setContent] = useState(initialContent)
+  // Content state for the editor (BlockNote blocks)
+  const [_blocks, setBlocks] = useState<Block[]>([])
   const [headings, setHeadings] = useState<HeadingItem[]>([])
 
   const handleHeadingClick = useCallback((headingId: string) => {
     console.log('Heading clicked:', headingId)
-    // Scroll to the heading element
-    const element = document.getElementById(headingId)
+    // Scroll to the heading element - BlockNote uses data-id attribute
+    const element = document.querySelector(`[data-id="${headingId}"]`)
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [])
 
-  const handleContentChange = useCallback((newContent: string) => {
-    setContent(newContent)
+  const handleContentChange = useCallback((newBlocks: Block[]) => {
+    setBlocks(newBlocks)
+    // You can also convert to HTML if needed:
+    // const html = await editor.blocksToHTMLLossy(newBlocks)
   }, [])
 
   const handleHeadingsChange = useCallback((newHeadings: HeadingInfo[]) => {
@@ -222,9 +224,9 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
           onDeleteProperty={handleDeleteProperty}
         />
 
-        {/* Main content - TipTap Editor */}
+        {/* Main content - BlockNote Editor */}
         <ContentArea
-          content={content}
+          initialContent={initialContent}
           placeholder="Start writing, or press '/' for commands..."
           onContentChange={handleContentChange}
           onHeadingsChange={handleHeadingsChange}
