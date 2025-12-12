@@ -273,3 +273,131 @@ export function getSpecialDayLabel(dateStr: string): string | null {
   if (isTomorrow(dateStr)) return 'Tomorrow'
   return null
 }
+
+// =============================================================================
+// BREADCRUMB NAVIGATION HELPERS
+// =============================================================================
+
+export interface DateParts {
+  /** Day number (1-31) */
+  day: number
+  /** Month name (January, February, etc.) */
+  month: string
+  /** Month index (0-11) */
+  monthIndex: number
+  /** Full year (2025) */
+  year: number
+  /** Day name (Monday, Tuesday, etc.) */
+  dayName: string
+}
+
+/**
+ * Parse a date string into its clickable parts for breadcrumb navigation
+ */
+export function formatDateParts(dateStr: string): DateParts {
+  const date = parseISODate(dateStr)
+  return {
+    day: date.getDate(),
+    month: MONTH_NAMES[date.getMonth()],
+    monthIndex: date.getMonth(),
+    year: date.getFullYear(),
+    dayName: DAY_NAMES[date.getDay()],
+  }
+}
+
+/**
+ * Get all days in a specific month
+ */
+export function getDaysInMonth(year: number, month: number): DayData[] {
+  const today = formatDateToISO(new Date())
+  const days: DayData[] = []
+
+  // Get the number of days in the month
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month, day)
+    const dateStr = formatDateToISO(date)
+    days.push({
+      date: dateStr,
+      isToday: dateStr === today,
+      isFuture: dateStr > today,
+    })
+  }
+
+  return days
+}
+
+export interface MonthStat {
+  /** Month index (0-11) */
+  month: number
+  /** Month name */
+  monthName: string
+  /** Number of days with entries */
+  entryCount: number
+  /** Total character count for the month */
+  totalChars: number
+  /** Activity levels for mini heatmap (up to 5 dots) */
+  activityDots: (0 | 1 | 2 | 3 | 4)[]
+}
+
+/**
+ * Get month statistics for year view
+ */
+export function getMonthStats(
+  year: number,
+  heatmapData: Array<{ date: string; characterCount: number; level: 0 | 1 | 2 | 3 | 4 }>
+): MonthStat[] {
+  const stats: MonthStat[] = []
+
+  for (let month = 0; month < 12; month++) {
+    const monthName = MONTH_NAMES[month]
+
+    // Filter heatmap data for this month
+    const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`
+    const monthEntries = heatmapData.filter(entry => entry.date.startsWith(monthPrefix))
+
+    // Calculate stats
+    const entriesWithContent = monthEntries.filter(e => e.characterCount > 0)
+    const entryCount = entriesWithContent.length
+    const totalChars = monthEntries.reduce((sum, e) => sum + e.characterCount, 0)
+
+    // Generate activity dots (sample 5 weeks worth of data)
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const weekCount = Math.ceil(daysInMonth / 7)
+    const activityDots: (0 | 1 | 2 | 3 | 4)[] = []
+
+    for (let week = 0; week < Math.min(weekCount, 5); week++) {
+      // Get max level for this week
+      const weekStart = week * 7 + 1
+      const weekEnd = Math.min(weekStart + 6, daysInMonth)
+      let maxLevel: 0 | 1 | 2 | 3 | 4 = 0
+
+      for (let day = weekStart; day <= weekEnd; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+        const entry = monthEntries.find(e => e.date === dateStr)
+        if (entry && entry.level > maxLevel) {
+          maxLevel = entry.level
+        }
+      }
+      activityDots.push(maxLevel)
+    }
+
+    stats.push({
+      month,
+      monthName,
+      entryCount,
+      totalChars,
+      activityDots,
+    })
+  }
+
+  return stats
+}
+
+/**
+ * Get month name from month index
+ */
+export function getMonthName(monthIndex: number): string {
+  return MONTH_NAMES[monthIndex]
+}

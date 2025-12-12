@@ -288,14 +288,36 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
           />
         </div>
         {/* Main content - BlockNote Editor */}
-        <ContentArea
-          initialContent={initialContent}
-          placeholder="Start writing, or press '/' for commands..."
-          onContentChange={handleContentChange}
-          onHeadingsChange={handleHeadingsChange}
-          onLinkClick={handleLinkClick}
-          onInternalLinkClick={handleInternalLinkClick}
-        />
+        <div
+          className="editor-click-area min-h-[400px]"
+          onMouseDown={(e) => {
+            const target = e.target as HTMLElement
+            // If clicking directly on editable text, let it work normally
+            if (target.closest('[contenteditable="true"]')?.contains(target) &&
+                target.closest('.bn-block-content')) {
+              return
+            }
+            // If clicking on buttons or links, let it work normally
+            if (target.closest('button, a, input')) {
+              return
+            }
+            // Focus editor for all other clicks (empty areas)
+            const editor = (e.currentTarget as HTMLElement).querySelector('.bn-editor [contenteditable="true"]') as HTMLElement
+            if (editor) {
+              e.preventDefault()
+              editor.focus()
+            }
+          }}
+        >
+          <ContentArea
+            initialContent={initialContent}
+            placeholder="Start writing, or press '/' for commands..."
+            onContentChange={handleContentChange}
+            onHeadingsChange={handleHeadingsChange}
+            onLinkClick={handleLinkClick}
+            onInternalLinkClick={handleInternalLinkClick}
+          />
+        </div>
 
         {/* Backlinks section */}
         <BacklinksSection

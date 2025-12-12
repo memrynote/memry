@@ -165,9 +165,9 @@ export const ContentArea = memo(function ContentArea({
   }, [onLinkClick])
 
   return (
-    <div className={cn('content-area', className)}>
+    <div className={cn('content-area h-full flex flex-col', className)}>
       {/* BlockNote Editor */}
-      <div className="bn-container min-h-[300px]">
+      <div className="bn-container flex-1 min-h-[300px]">
         <BlockNoteView
           editor={editor}
           editable={editable}

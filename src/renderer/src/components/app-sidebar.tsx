@@ -67,6 +67,12 @@ const mainNav: {
       iconColor: "text-accent-cyan",
     },
     {
+      title: "Inbox 2",
+      page: "inbox2",
+      icon: Inbox,
+      iconColor: "text-accent-cyan",
+    },
+    {
       title: "Home",
       page: "home",
       icon: Home,
@@ -151,12 +157,14 @@ export function AppSidebar({
     // Map page to tab type and title
     const pageToTabType: Record<AppPage, TabType> = {
       inbox: "inbox",
+      inbox2: "inbox2",
       home: "home",
       journal: "journal",
       tasks: "tasks", // New unified tasks tab type
     }
     const pageToTitle: Record<AppPage, string> = {
       inbox: "Inbox",
+      inbox2: "Inbox 2",
       home: "Home",
       journal: "Journal",
       tasks: "Tasks",

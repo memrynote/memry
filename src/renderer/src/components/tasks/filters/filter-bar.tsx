@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, forwardRef, useImperativeHandle } from "react"
-import { CheckSquare, CircleCheck } from "lucide-react"
+import { CheckSquare, CircleCheck, SlidersHorizontal } from "lucide-react"
 
 import { SearchInput } from "./search-input"
 import { ProjectFilter } from "./project-filter"
@@ -10,6 +10,7 @@ import { SortDropdown } from "./sort-dropdown"
 import { ActiveFiltersBar } from "./active-filters-bar"
 import { SavedFiltersDropdown } from "./saved-filters-dropdown"
 import { SaveFilterDialog } from "./save-filter-dialog"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type {
   TaskFilters,
@@ -18,7 +19,7 @@ import type {
   Project,
   Status,
 } from "@/data/tasks-data"
-import { hasActiveFilters } from "@/lib/task-utils"
+import { hasActiveFilters, countActiveFilters } from "@/lib/task-utils"
 import type { Priority, Task } from "@/data/sample-tasks"
 
 // ============================================================================
@@ -39,6 +40,8 @@ interface FilterBarProps {
   onApplySavedFilter: (filter: SavedFilter) => void
   showStatusFilter?: boolean
   statuses?: Status[]
+  /** Hide project filter UI (e.g. in Projects tab) */
+  hideProjectFilter?: boolean
   /** Whether selection mode is active */
   isSelectionMode?: boolean
   /** Toggle selection mode on/off */
@@ -72,6 +75,7 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
       onApplySavedFilter,
       showStatusFilter = false,
       statuses = [],
+      hideProjectFilter = false,
       isSelectionMode = false,
       onToggleSelectionMode,
       showCompletionToggle = false,
@@ -81,6 +85,7 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
   ) => {
     const searchRef = useRef<HTMLInputElement>(null)
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false)
+    const [showFiltersPanel, setShowFiltersPanel] = useState(false)
 
     // Expose focusSearch method to parent
     useImperativeHandle(ref, () => ({
@@ -90,6 +95,7 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
     }))
 
     const isActive = hasActiveFilters(filters)
+    const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters])
 
     // Calculate task counts for filters
     const taskCountByProject = useMemo(() => {
@@ -159,119 +165,157 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
 
     return (
       <div className={cn("border-b", className)}>
-        {/* Main filter bar */}
+        {/* Main compact bar with inline expandable filters */}
         <div className="flex items-center gap-2 px-4 py-2">
-          {/* Search */}
-          <SearchInput
-            ref={searchRef}
-            value={filters.search}
-            onChange={(search) => onUpdateFilters({ search })}
-            placeholder="Search tasks..."
-            expandOnFocus
-          />
+          {/* Left group grows, right group stays fixed */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {/* Search */}
+            <SearchInput
+              ref={searchRef}
+              value={filters.search}
+              onChange={(search) => onUpdateFilters({ search })}
+              placeholder="Search tasks..."
+              expandOnFocus
+            />
 
-          {/* Divider */}
-          <div className="h-6 w-px bg-border" />
+            {/* Divider */}
+            <div className="h-6 w-px bg-border" />
 
-          {/* Filter dropdowns */}
-          <ProjectFilter
-            projects={projects}
-            selectedIds={filters.projectIds}
-            onChange={(projectIds) => onUpdateFilters({ projectIds })}
-            taskCountByProject={taskCountByProject}
-          />
+            {/* Filters toggle */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFiltersPanel((prev) => !prev)}
+              className={cn(
+                "h-9 gap-2 shrink-0",
+                activeFilterCount > 0 && "border-primary bg-primary/5"
+              )}
+              aria-label="Toggle filters panel"
+              aria-expanded={showFiltersPanel}
+            >
+              <SlidersHorizontal className="size-4 opacity-70" />
+              <span>Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full min-w-5 text-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </Button>
 
-          <PriorityFilter
-            selectedPriorities={filters.priorities}
-            onChange={(priorities) => onUpdateFilters({ priorities })}
-            taskCountByPriority={taskCountByPriority}
-          />
-
-          <DueDateFilter
-            value={filters.dueDate}
-            onChange={(dueDate) => onUpdateFilters({ dueDate })}
-          />
-
-          <MoreFiltersDropdown
-            statuses={statuses}
-            selectedStatusIds={filters.statusIds}
-            onStatusChange={(statusIds) => onUpdateFilters({ statusIds })}
-            showStatusFilter={showStatusFilter}
-            repeatType={filters.repeatType}
-            onRepeatTypeChange={(repeatType) => onUpdateFilters({ repeatType })}
-            hasTime={filters.hasTime}
-            onHasTimeChange={(hasTime) => onUpdateFilters({ hasTime })}
-            taskCountByStatus={taskCountByStatus}
-            taskCountByRepeat={taskCountByRepeat}
-            taskCountByTime={taskCountByTime}
-          />
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Saved filters */}
-          <SavedFiltersDropdown
-            savedFilters={savedFilters}
-            onApply={onApplySavedFilter}
-            onDelete={onDeleteSavedFilter}
-          />
-
-          {/* Sort */}
-          <SortDropdown sort={sort} onChange={onUpdateSort} />
-
-          {/* Show Completed toggle */}
-          {showCompletionToggle && (
-            <>
-              <div className="h-6 w-px bg-border" />
-              <button
-                type="button"
-                onClick={() =>
-                  onUpdateFilters({
-                    completion: filters.completion === "all" ? "active" : "all",
-                  })
-                }
-                className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
-                  "hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  filters.completion === "all"
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : "text-muted-foreground hover:text-foreground"
+            {/* Inline expanded filters (uses remaining space, no wrap) */}
+            {showFiltersPanel && (
+              <div className="flex items-center gap-2 min-w-0 flex-1 overflow-x-auto overflow-y-hidden scrollbar-none h-9">
+                {!hideProjectFilter && (
+                  <ProjectFilter
+                    projects={projects}
+                    selectedIds={filters.projectIds}
+                    onChange={(projectIds) => onUpdateFilters({ projectIds })}
+                    taskCountByProject={taskCountByProject}
+                    className="shrink-0"
+                  />
                 )}
-                aria-label={
-                  filters.completion === "all"
-                    ? "Hide completed tasks"
-                    : "Show completed tasks"
-                }
-                aria-pressed={filters.completion === "all"}
-              >
-                <CircleCheck className="size-4" />
-                <span className="hidden sm:inline">Completed</span>
-              </button>
-            </>
-          )}
 
-          {/* Select mode toggle */}
-          {onToggleSelectionMode && (
-            <>
-              <div className="h-6 w-px bg-border" />
-              <button
-                type="button"
-                onClick={onToggleSelectionMode}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
-                  "hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  isSelectionMode
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : "text-muted-foreground hover:text-foreground"
+                <PriorityFilter
+                  selectedPriorities={filters.priorities}
+                  onChange={(priorities) => onUpdateFilters({ priorities })}
+                  taskCountByPriority={taskCountByPriority}
+                  className="shrink-0"
+                />
+
+                <DueDateFilter
+                  value={filters.dueDate}
+                  onChange={(dueDate) => onUpdateFilters({ dueDate })}
+                  className="shrink-0"
+                />
+
+                <MoreFiltersDropdown
+                  statuses={statuses}
+                  selectedStatusIds={filters.statusIds}
+                  onStatusChange={(statusIds) => onUpdateFilters({ statusIds })}
+                  showStatusFilter={showStatusFilter}
+                  repeatType={filters.repeatType}
+                  onRepeatTypeChange={(repeatType) => onUpdateFilters({ repeatType })}
+                  hasTime={filters.hasTime}
+                  onHasTimeChange={(hasTime) => onUpdateFilters({ hasTime })}
+                  taskCountByStatus={taskCountByStatus}
+                  taskCountByRepeat={taskCountByRepeat}
+                  taskCountByTime={taskCountByTime}
+                  className="shrink-0"
+                />
+
+                <SavedFiltersDropdown
+                  savedFilters={savedFilters}
+                  onApply={onApplySavedFilter}
+                  onDelete={onDeleteSavedFilter}
+                />
+
+                {showCompletionToggle && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onUpdateFilters({
+                        completion: filters.completion === "all" ? "active" : "all",
+                      })
+                    }
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors shrink-0",
+                      "hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      filters.completion === "all"
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    aria-label={
+                      filters.completion === "all"
+                        ? "Hide completed tasks"
+                        : "Show completed tasks"
+                    }
+                    aria-pressed={filters.completion === "all"}
+                  >
+                    <CircleCheck className="size-4" />
+                    <span className="hidden sm:inline">Completed</span>
+                  </button>
                 )}
-                aria-label={isSelectionMode ? "Exit selection mode" : "Enter selection mode"}
-                aria-pressed={isSelectionMode}
-              >
-                <CheckSquare className="size-4" />
-                <span className="hidden sm:inline">Select</span>
-              </button>
-            </>
-          )}
+
+                {isActive && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onClearFilters}
+                    className="h-9 text-xs text-muted-foreground hover:text-foreground shrink-0"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Right group */}
+          <div className="flex items-center gap-2 shrink-0">
+            <SortDropdown sort={sort} onChange={onUpdateSort} />
+
+            {onToggleSelectionMode && (
+              <>
+                <div className="h-6 w-px bg-border" />
+                <button
+                  type="button"
+                  onClick={onToggleSelectionMode}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
+                    "hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    isSelectionMode
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  aria-label={isSelectionMode ? "Exit selection mode" : "Enter selection mode"}
+                  aria-pressed={isSelectionMode}
+                >
+                  <CheckSquare className="size-4" />
+                  <span className="hidden sm:inline">Select</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Active filter chips */}

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
 import { InboxPage } from "@/pages/inbox"
+import { Inbox2Page } from "@/pages/inbox2"
 import { JournalPage } from "@/pages/journal"
 import { TasksPage } from "@/pages/tasks"
 import { NotePage } from "@/pages/note"
@@ -30,7 +31,7 @@ import { ChordIndicator, KeyboardShortcutsDialog } from "@/components/keyboard"
 import { useTabKeyboardShortcuts, useChordShortcuts, useDragHandlers, useTaskOrder } from "@/hooks"
 
 // Base pages (non-task)
-export type BasePage = "inbox" | "home" | "journal"
+export type BasePage = "inbox" | "inbox2" | "home" | "journal"
 
 // Task view type for navigation within tasks
 export type TaskViewId = "all" | "today" | "upcoming" | "completed"
@@ -72,6 +73,8 @@ const TabContentRenderer = ({
   switch (activeTab.type) {
     case "inbox":
       return <InboxPage />
+    case "inbox2":
+      return <Inbox2Page />
     // New unified tasks tab type
     case "tasks":
       return (

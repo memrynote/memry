@@ -39,6 +39,8 @@ import {
     getArchivedTasks,
     getTasksOlderThan,
     formatDateShort,
+    getTodayTasks,
+    getUpcomingTasks,
 } from "@/lib/task-utils"
 import {
     type Project,
@@ -349,25 +351,44 @@ export const TasksPage = ({
         projects,
     })
 
-    // Determine which filtered tasks to use based on view
-    const shouldApplyAdvancedFilters = selectedId !== "today" && selectedId !== "upcoming" && selectedId !== "completed"
-    const filteredTasks = shouldApplyAdvancedFilters ? advancedFilteredTasks : baseFilteredTasks
+    // Apply advanced filters for all selections (All/Today/Upcoming/Projects/Project)
+    const filteredTasks = advancedFilteredTasks
 
     // For project list view, use base filtered tasks to show all statuses including Done
     // (kept for potential future use in project tab enhancements)
     const _projectListTasks = selectedType === "project" ? baseFilteredTasks : filteredTasks
 
     // Check if we should show the filter empty state
-    const showFilterEmptyState = shouldApplyAdvancedFilters && filtersActive && filteredCount === 0 && totalCount > 0
+    const showFilterEmptyState = filtersActive && filteredCount === 0 && totalCount > 0
 
     // Visible task IDs for selection (used by multi-select)
-    const visibleTaskIds = useMemo(() => {
-        const scopeTasks =
-            activeInternalTab === "projects" && selectedProjectId
-                ? projectsTabFilteredTasks
-                : filteredTasks
-        return scopeTasks.map((t) => t.id)
-    }, [activeInternalTab, selectedProjectId, projectsTabFilteredTasks, filteredTasks])
+    // Scope to what's actually rendered in the active internal tab.
+    const selectionScopeTasks = useMemo(() => {
+        if (activeInternalTab === "projects") {
+            return selectedProjectId ? projectsTabFilteredTasks : []
+        }
+
+        if (activeInternalTab === "today") {
+            const { overdue, today } = getTodayTasks(filteredTasks, projects)
+            return [...overdue, ...today]
+        }
+
+        if (activeInternalTab === "upcoming") {
+            const { overdue, byDay } = getUpcomingTasks(filteredTasks, projects, 7)
+            const upcomingTasks: Task[] = []
+            byDay.forEach((dayTasks) => {
+                upcomingTasks.push(...dayTasks)
+            })
+            return [...overdue, ...upcomingTasks]
+        }
+
+        return filteredTasks
+    }, [activeInternalTab, selectedProjectId, projectsTabFilteredTasks, filteredTasks, projects])
+
+    const visibleTaskIds = useMemo(
+        () => selectionScopeTasks.map((t) => t.id),
+        [selectionScopeTasks]
+    )
 
     // Task selection hook
     const {
@@ -512,8 +533,8 @@ export const TasksPage = ({
         return status?.type === "done"
     }, [selectedTask, projects])
 
-    // Show filter bar for views that support it (All and Projects tabs)
-    const showFilterBar = activeInternalTab === "all" || activeInternalTab === "projects"
+    // Show filter bar for all internal tabs (compact UI)
+    const showFilterBar = true
 
     // ========== HANDLERS ==========
 
@@ -1239,6 +1260,7 @@ export const TasksPage = ({
                             onApplySavedFilter={handleApplySavedFilter}
                             showStatusFilter={activeView === "kanban"}
                             statuses={currentProjectStatuses}
+                            hideProjectFilter={activeInternalTab === "projects"}
                             isSelectionMode={selection.isSelectionMode}
                             onToggleSelectionMode={handleToggleSelectionMode}
                             showCompletionToggle={activeInternalTab === "all"}
@@ -1269,7 +1291,7 @@ export const TasksPage = ({
                     {/* Content Body - Today Tab */}
                     {activeInternalTab === "today" && (
                         <TodayView
-                            tasks={tasks}
+                            tasks={filteredTasks}
                             projects={projects}
                             selectedTaskId={selectedTaskId}
                             onToggleComplete={handleToggleComplete}
@@ -1284,7 +1306,7 @@ export const TasksPage = ({
                     {/* Content Body - Upcoming Tab */}
                     {activeInternalTab === "upcoming" && (
                         <UpcomingView
-                            tasks={tasks}
+                            tasks={filteredTasks}
                             projects={projects}
                             selectedTaskId={selectedTaskId}
                             onToggleComplete={handleToggleComplete}

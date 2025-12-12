@@ -897,9 +897,11 @@ export const getTodayTasks = (
     }
   })
 
+  // Return tasks preserving the order they came in (from user's sort preference)
+  // Don't re-sort here - the caller controls sort order
   return {
-    overdue: sortOverdueTasks(overdue),
-    today: sortTasksByTimeAndPriority(today),
+    overdue,
+    today,
   }
 }
 
@@ -955,15 +957,9 @@ export const getUpcomingTasks = (
     }
   })
 
-  // Sort overdue
-  const sortedOverdue = sortOverdueTasks(overdue)
-
-  // Sort each day's tasks
-  byDay.forEach((dayTasks, key) => {
-    byDay.set(key, sortTasksByTimeAndPriority(dayTasks))
-  })
-
-  return { overdue: sortedOverdue, byDay }
+  // Return tasks preserving the order they came in (from user's sort preference)
+  // Don't re-sort here - the caller controls sort order
+  return { overdue, byDay }
 }
 
 /**

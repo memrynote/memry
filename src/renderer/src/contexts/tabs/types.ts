@@ -12,6 +12,7 @@
  */
 export type TabType =
   | 'inbox'
+  | 'inbox2'
   | 'home'
   | 'tasks'       // New unified tasks tab
   | 'all-tasks'   // Legacy - kept for backwards compatibility
@@ -31,6 +32,7 @@ export type TabType =
  */
 export const SINGLETON_TAB_TYPES: TabType[] = [
   'inbox',
+  'inbox2',
   'home',
   'journal',
   'tasks',      // New unified tasks tab
@@ -310,4 +312,3 @@ export interface SidebarItem {
   /** Nested children items */
   children?: SidebarItem[];
 }
-
