@@ -7,7 +7,15 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { InboxHeader, CompactView, MediumView, ExpandedView } from '@/components/inbox'
+import {
+  InboxHeader,
+  CompactView,
+  MediumView,
+  ExpandedView,
+  EmptyState,
+  type EmptyStateContext,
+  type SnoozedItemPreview,
+} from '@/components/inbox'
 import {
   type InboxViewMode,
   type InboxFilters,
@@ -194,6 +202,41 @@ function hasActiveFilters(filters: InboxFilters): boolean {
   )
 }
 
+/**
+ * Get context for empty state determination
+ */
+function getEmptyStateContext(items: InboxItem[]): EmptyStateContext {
+  // For demo purposes, we'll mock some stats
+  // In a real app, these would come from a stats service
+  const hasHistory = items.length > 0 || true // Assume user has some history
+
+  // Mock: pretend user processed some items today
+  const processedToday = 0 // Set to 0 to show "returning" state, or >0 for "inbox zero"
+
+  // Get snoozed items for the returning state
+  const snoozedItems: SnoozedItemPreview[] = items
+    .filter((item) => isItemSnoozed(item))
+    .slice(0, 5)
+    .map((item) => ({
+      id: item.id,
+      type: item.type,
+      title: item.title,
+      returnsAt: item.snoozedUntil || new Date(),
+    }))
+
+  return {
+    hasHistory,
+    processedToday,
+    stats: {
+      processedToday,
+      filedToday: 0,
+      deletedToday: 0,
+      snoozedToday: 0,
+    },
+    snoozedItems,
+  }
+}
+
 // =============================================================================
 // INBOX PAGE COMPONENT
 // =============================================================================
@@ -334,6 +377,16 @@ export function InboxPage(): React.JSX.Element {
     [setFocusedItemId]
   )
 
+  const handleCapture = useCallback(() => {
+    // Open capture dialog or focus on paste listener (to be implemented)
+    console.log('Open capture dialog')
+  }, [])
+
+  const handleViewSnoozed = useCallback(() => {
+    // Navigate to snoozed items view (to be implemented)
+    console.log('View snoozed items')
+  }, [])
+
   return (
     <div className="flex h-full flex-col bg-background">
       {/* Header */}
@@ -384,13 +437,21 @@ export function InboxPage(): React.JSX.Element {
         )}
       >
         {filteredItems.length === 0 ? (
-          <div className="flex h-64 items-center justify-center">
-            <p className="text-sm text-muted-foreground">
-              {hasActiveFilters(filters)
-                ? 'No items match your filters'
-                : 'Your inbox is empty'}
-            </p>
-          </div>
+          hasActiveFilters(filters) ? (
+            // Filters active but no results
+            <div className="flex h-64 items-center justify-center">
+              <p className="text-sm text-muted-foreground">
+                No items match your filters
+              </p>
+            </div>
+          ) : (
+            // True empty state - use EmptyState component
+            <EmptyState
+              context={getEmptyStateContext(items)}
+              onCapture={handleCapture}
+              onViewSnoozed={handleViewSnoozed}
+            />
+          )
         ) : (
           <>
             {/* Compact View */}
