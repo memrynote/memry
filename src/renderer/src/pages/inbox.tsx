@@ -7,7 +7,7 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { InboxHeader } from '@/components/inbox'
+import { InboxHeader, CompactView, MediumView } from '@/components/inbox'
 import {
   type InboxViewMode,
   type InboxFilters,
@@ -72,6 +72,10 @@ function useInboxState() {
     setState((prev) => ({ ...prev, selectedIds: new Set() }))
   }, [])
 
+  const setFocusedItemId = useCallback((focusedItemId: string | null) => {
+    setState((prev) => ({ ...prev, focusedItemId }))
+  }, [])
+
   return {
     ...state,
     setViewMode,
@@ -79,6 +83,7 @@ function useInboxState() {
     setSearchQuery,
     toggleFiltersOpen,
     setSelectedIds,
+    setFocusedItemId,
     deselectAll,
   }
 }
@@ -229,9 +234,12 @@ export function InboxPage(): React.JSX.Element {
     filters,
     isFiltersOpen: _isFiltersOpen, // Will be used when filter panel is implemented
     selectedIds,
+    focusedItemId,
     setViewMode,
     setSearchQuery,
     toggleFiltersOpen,
+    setSelectedIds,
+    setFocusedItemId,
     deselectAll,
   } = useInboxState()
 
@@ -247,6 +255,74 @@ export function InboxPage(): React.JSX.Element {
   const counts = useMemo(() => getItemCounts(items), [items])
 
   const isInBulkMode = selectedIds.size > 0
+
+  // =========================================================================
+  // HANDLERS
+  // =========================================================================
+
+  const handleSelectionChange = useCallback(
+    (newSelectedIds: Set<string>) => {
+      setSelectedIds(newSelectedIds)
+    },
+    [setSelectedIds]
+  )
+
+  const handleItemClick = useCallback(
+    (id: string) => {
+      // In non-bulk mode, clicking opens preview (to be implemented)
+      // For now, just focus the item
+      setFocusedItemId(id)
+    },
+    [setFocusedItemId]
+  )
+
+  const handleItemDoubleClick = useCallback(
+    (id: string) => {
+      // Open preview panel (to be implemented)
+      console.log('Double-clicked item:', id)
+    },
+    []
+  )
+
+  const handleFile = useCallback(
+    (ids: string[]) => {
+      // Open filing panel (to be implemented)
+      console.log('File items:', ids)
+    },
+    []
+  )
+
+  const handlePreview = useCallback(
+    (id: string) => {
+      // Open preview panel (to be implemented)
+      console.log('Preview item:', id)
+    },
+    []
+  )
+
+  const handleOpenOriginal = useCallback(
+    (id: string) => {
+      // Open original link/file (to be implemented)
+      console.log('Open original:', id)
+    },
+    []
+  )
+
+  const handleSnooze = useCallback(
+    (ids: string[]) => {
+      // Open snooze menu (to be implemented)
+      console.log('Snooze items:', ids)
+    },
+    []
+  )
+
+  const handleDelete = useCallback(
+    (ids: string[]) => {
+      // Delete items (to be implemented)
+      console.log('Delete items:', ids)
+    },
+    []
+  )
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -297,22 +373,63 @@ export function InboxPage(): React.JSX.Element {
           'scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border'
         )}
       >
-        <div className="px-6 py-4">
-          {filteredItems.length === 0 ? (
-            <div className="flex h-64 items-center justify-center">
-              <p className="text-sm text-muted-foreground">
-                {hasActiveFilters(filters)
-                  ? 'No items match your filters'
-                  : 'Your inbox is empty'}
-              </p>
-            </div>
-          ) : (
-            <ContentPlaceholder
-              viewMode={viewMode}
-              itemCount={filteredItems.length}
-            />
-          )}
-        </div>
+        {filteredItems.length === 0 ? (
+          <div className="flex h-64 items-center justify-center">
+            <p className="text-sm text-muted-foreground">
+              {hasActiveFilters(filters)
+                ? 'No items match your filters'
+                : 'Your inbox is empty'}
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Compact View */}
+            {viewMode === 'compact' && (
+              <CompactView
+                items={filteredItems}
+                selectedIds={selectedIds}
+                focusedId={focusedItemId}
+                isBulkMode={isInBulkMode}
+                onSelectionChange={handleSelectionChange}
+                onItemClick={handleItemClick}
+                onItemDoubleClick={handleItemDoubleClick}
+                onFile={handleFile}
+                onPreview={handlePreview}
+                onOpenOriginal={handleOpenOriginal}
+                onSnooze={handleSnooze}
+                onDelete={handleDelete}
+              />
+            )}
+
+            {/* Medium View */}
+            {viewMode === 'medium' && (
+              <MediumView
+                items={filteredItems}
+                selectedIds={selectedIds}
+                focusedId={focusedItemId}
+                isBulkMode={isInBulkMode}
+                onSelectionChange={handleSelectionChange}
+                onItemClick={handleItemClick}
+                onItemDoubleClick={handleItemDoubleClick}
+                onFile={handleFile}
+                onPreview={handlePreview}
+                onOpenOriginal={handleOpenOriginal}
+                onSnooze={handleSnooze}
+                onDelete={handleDelete}
+              />
+            )}
+
+            {/* Expanded View - placeholder */}
+            {viewMode === 'expanded' && (
+              <div className="px-6 py-4">
+                <ContentPlaceholder
+                  viewMode={viewMode}
+                  itemCount={filteredItems.length}
+                />
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Bulk Action Bar Area - placeholder for future implementation */}
