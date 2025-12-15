@@ -26,7 +26,7 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     // Zoom out once (equivalent to Cmd+-)
-    mainWindow.webContents.setZoomLevel(-0.8)
+    // mainWindow.webContents.setZoomLevel(-0.8)
     mainWindow.show()
   })
 

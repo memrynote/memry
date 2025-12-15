@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Sun, Sunrise, Sunset, Moon, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Sun, Sunrise, Sunset, Moon, Maximize2, Minimize2 } from 'lucide-react'
 import { useSidebar } from '@/components/ui/sidebar'
 import {
     JournalCalendar,
@@ -202,15 +202,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     const isToday = selectedDate === today
     const selectedDateObj = parseISODate(selectedDate)
 
-    // Format date for display
-    const dateDisplay = useMemo(() => {
-        const date = selectedDateObj
-        const dayName = date.toLocaleDateString('en-US', { weekday: 'long' })
-        const monthDay = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-
-        return { dayName, monthDay }
-    }, [selectedDateObj])
-
     // Get date parts for current selected date
     const dateParts = useMemo(() => formatDateParts(selectedDate), [selectedDate])
 
@@ -381,134 +372,62 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 <div className={cn(
                     "mx-auto min-h-full flex flex-col",
                     "transition-all duration-500 ease-out",
-                    focusMode ? "max-w-2xl" : "max-w-4xl",
+                    focusMode ? "max-w-xl" : "max-w-2xl",
                     focusMode ? "py-20 lg:py-28" : "py-10 lg:py-16"
                 )}>
-                    {/* Header with Dramatic Date Display */}
+                    {/* Header - Centered Breadcrumb Navigation */}
                     <header className={cn(
-                        "relative mb-12 lg:mb-16",
+                        "relative mb-8 lg:mb-12",
                         "journal-animate-in"
                     )}>
-                        {/* Large decorative day number watermark */}
-                        {viewState.type === 'day' && (
-                            <div
-                                className={cn(
-                                    "absolute -left-4 lg:-left-8 -top-4 lg:-top-8",
-                                    "text-[10rem] lg:text-[14rem]",
-                                    "journal-day-watermark",
-                                    "transition-opacity duration-500",
-                                    focusMode ? "opacity-[0.02]" : "opacity-[0.03]"
-                                )}
-                                aria-hidden="true"
-                            >
-                                {dateParts.day}
-                            </div>
-                        )}
-
                         {/* Content layer */}
                         <div className="relative z-10">
-                            {/* Breadcrumb */}
-                            <DateBreadcrumb
-                                viewState={viewState}
-                                onMonthClick={navigateToMonth}
-                                onYearClick={navigateToYear}
-                                onBackClick={navigateBack}
-                                className="mb-3 opacity-0 journal-animate-in journal-stagger-1"
-                            />
-
-                            {/* Day view header */}
-                            {viewState.type === 'day' && (
-                                <div className="flex items-start justify-between gap-6">
-                                    <div className="opacity-0 journal-animate-in journal-stagger-2">
-                                        {/* Day name with navigation */}
-                                        <div className="flex items-center gap-3 mb-1">
-                                            {/* Navigation arrows */}
-                                            <div className="flex items-center gap-0.5">
-                                                <button
-                                                    type="button"
-                                                    onClick={handlePreviousDay}
-                                                    aria-label="Previous day"
-                                                    className={cn(
-                                                        "p-1.5 -ml-1.5 rounded-lg",
-                                                        "text-muted-foreground/60 hover:text-foreground",
-                                                        "hover:bg-foreground/5",
-                                                        "transition-all duration-200"
-                                                    )}
-                                                >
-                                                    <ChevronLeft className="size-4" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={handleNextDay}
-                                                    aria-label="Next day"
-                                                    className={cn(
-                                                        "p-1.5 rounded-lg",
-                                                        "text-muted-foreground/60 hover:text-foreground",
-                                                        "hover:bg-foreground/5",
-                                                        "transition-all duration-200"
-                                                    )}
-                                                >
-                                                    <ChevronRight className="size-4" />
-                                                </button>
-                                            </div>
-
-                                            {/* Day name - Display font */}
-                                            <h1 className="font-display text-2xl lg:text-3xl font-normal tracking-tight text-foreground/90">
-                                                {dateDisplay.dayName}
-                                            </h1>
-
-                                            {/* Today indicator */}
-                                            {isToday && (
-                                                <span className={cn(
-                                                    "px-2.5 py-0.5 ml-1",
-                                                    "text-[0.65rem] font-semibold uppercase tracking-[0.12em]",
-                                                    "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-                                                    "rounded-full",
-                                                    "border border-amber-500/20"
-                                                )}>
-                                                    Today
-                                                </span>
-                                            )}
+                            {/* Top bar with greeting (left), breadcrumb (center), focus toggle (right) */}
+                            <div className="flex items-center justify-between gap-4">
+                                {/* Left side - Greeting (only for today in day view, hidden in focus mode) */}
+                                <div className="flex-1 flex justify-start">
+                                    {viewState.type === 'day' && greeting && !focusMode && (
+                                        <div className={cn(
+                                            "hidden sm:flex items-center gap-2",
+                                            "px-3 py-1.5 rounded-lg",
+                                            "bg-gradient-to-r from-amber-50/80 to-orange-50/60",
+                                            "dark:from-amber-950/30 dark:to-orange-950/20",
+                                            "journal-greeting-glow",
+                                            "transition-all duration-300",
+                                            "opacity-0 journal-animate-in journal-stagger-1"
+                                        )}>
+                                            {getGreetingIcon(greeting.icon)}
+                                            <span className="text-sm font-medium text-amber-800/80 dark:text-amber-200/80">
+                                                {greeting.greeting}
+                                            </span>
                                         </div>
+                                    )}
+                                </div>
 
-                                        {/* Full date - subtle serif */}
-                                        <p className="font-serif text-sm text-muted-foreground/70 tracking-wide pl-[52px]">
-                                            {dateDisplay.monthDay}
-                                        </p>
-                                    </div>
+                                {/* Center - Breadcrumb Navigation */}
+                                <DateBreadcrumb
+                                    viewState={viewState}
+                                    onMonthClick={navigateToMonth}
+                                    onYearClick={navigateToYear}
+                                    onBackClick={navigateBack}
+                                    onPreviousDay={handlePreviousDay}
+                                    onNextDay={handleNextDay}
+                                    className="opacity-0 journal-animate-in journal-stagger-2"
+                                />
 
-                                    {/* Right side - Greeting & Focus Toggle */}
-                                    <div className={cn(
-                                        "flex items-center gap-3",
-                                        "opacity-0 journal-animate-in journal-stagger-3"
-                                    )}>
-                                        {/* Greeting (only for today, hidden in focus mode) */}
-                                        {greeting && !focusMode && (
-                                            <div className={cn(
-                                                "hidden sm:flex items-center gap-2",
-                                                "px-3.5 py-2 rounded-xl",
-                                                "bg-gradient-to-r from-amber-50/80 to-orange-50/60",
-                                                "dark:from-amber-950/30 dark:to-orange-950/20",
-                                                "journal-greeting-glow",
-                                                "transition-all duration-300"
-                                            )}>
-                                                {getGreetingIcon(greeting.icon)}
-                                                <span className="text-sm font-medium text-amber-800/80 dark:text-amber-200/80">
-                                                    {greeting.greeting}
-                                                </span>
-                                            </div>
-                                        )}
-
-                                        {/* Focus Mode Toggle */}
+                                {/* Right side - Focus Mode Toggle */}
+                                <div className="flex-1 flex justify-end">
+                                    {viewState.type === 'day' && (
                                         <Button
                                             variant="ghost"
                                             size="icon"
                                             className={cn(
-                                                "size-9 rounded-lg",
+                                                "size-8 rounded-lg",
                                                 "text-muted-foreground/60 hover:text-foreground",
                                                 "hover:bg-foreground/5",
                                                 "transition-all duration-200",
-                                                focusMode && "bg-foreground/5 text-foreground"
+                                                focusMode && "bg-foreground/5 text-foreground",
+                                                "opacity-0 journal-animate-in journal-stagger-3"
                                             )}
                                             onClick={() => setFocusMode(!focusMode)}
                                             title={focusMode ? "Exit Focus Mode (Esc)" : "Enter Focus Mode (⌘\\)"}
@@ -519,32 +438,22 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                                 <Maximize2 className="size-4" />
                                             )}
                                         </Button>
-                                    </div>
+                                    )}
                                 </div>
-                            )}
+                            </div>
 
-                            {/* Month view header */}
+                            {/* Month view subtitle */}
                             {viewState.type === 'month' && (
-                                <div className="opacity-0 journal-animate-in journal-stagger-2">
-                                    <h1 className="font-display text-3xl lg:text-4xl font-normal tracking-tight text-foreground/90 mb-2">
-                                        {new Date(viewState.year, viewState.month - 1).toLocaleDateString('en-US', { month: 'long' })}
-                                    </h1>
-                                    <p className="font-serif text-sm text-muted-foreground/60 italic">
-                                        All journal entries for this month
-                                    </p>
-                                </div>
+                                <p className="text-center font-serif text-sm text-muted-foreground/60 italic mt-2 opacity-0 journal-animate-in journal-stagger-3">
+                                    All journal entries for this month
+                                </p>
                             )}
 
-                            {/* Year view header */}
+                            {/* Year view subtitle */}
                             {viewState.type === 'year' && (
-                                <div className="opacity-0 journal-animate-in journal-stagger-2">
-                                    <h1 className="font-display text-3xl lg:text-4xl font-normal tracking-tight text-foreground/90 mb-2">
-                                        {viewState.year}
-                                    </h1>
-                                    <p className="font-serif text-sm text-muted-foreground/60 italic">
-                                        Select a month to view entries
-                                    </p>
-                                </div>
+                                <p className="text-center font-serif text-sm text-muted-foreground/60 italic mt-2 opacity-0 journal-animate-in journal-stagger-3">
+                                    Select a month to view entries
+                                </p>
                             )}
                         </div>
                     </header>

@@ -1,43 +1,42 @@
 import { cn } from '@/lib/utils'
-import { Skeleton } from '@/components/ui/skeleton'
 
 export function LoadingSkeleton() {
   return (
-    <div className="space-y-2.5 p-4">
+    <div className="space-y-3 p-4">
       {[1, 2, 3].map((i) => (
-        <SkeletonCard key={i} />
+        <SkeletonCard key={i} index={i} />
       ))}
     </div>
   )
 }
 
-function SkeletonCard() {
+function SkeletonCard({ index }: { index: number }) {
   return (
     <div
       className={cn(
-        'bg-white border border-stone-200 rounded-[10px] p-3.5',
+        'p-3.5 rounded-lg',
+        'bg-sidebar-accent/20 border border-sidebar-border/10',
         'animate-pulse'
       )}
+      style={{ animationDelay: `${index * 100}ms` }}
     >
-      {/* Header */}
-      <div className="flex items-start gap-2 mb-2.5">
-        <Skeleton className="h-5 w-5 rounded bg-stone-200" />
-        <Skeleton className="h-4 flex-1 rounded bg-stone-200" />
+      {/* Header with icon and title */}
+      <div className="flex items-center gap-2.5 mb-2">
+        <div className="size-6 rounded-md bg-sidebar-accent/40" />
+        <div className="h-4 bg-sidebar-accent/40 rounded flex-1 max-w-[60%]" />
+        <div className="h-4 w-8 bg-sidebar-accent/30 rounded" />
       </div>
 
-      {/* Badge */}
-      <Skeleton className="h-6 w-16 rounded-xl bg-stone-200 mb-2.5" />
-
       {/* Snippet lines */}
-      <div className="space-y-1.5 mb-2.5">
-        <Skeleton className="h-3.5 w-full rounded bg-stone-200" />
-        <Skeleton className="h-3.5 w-3/4 rounded bg-stone-200" />
+      <div className="pl-8 space-y-1.5 mb-2.5">
+        <div className="h-3 bg-sidebar-accent/30 rounded w-full" />
+        <div className="h-3 bg-sidebar-accent/20 rounded w-3/4" />
       </div>
 
       {/* Metadata */}
-      <div className="flex items-center gap-2">
-        <Skeleton className="h-3 w-20 rounded bg-stone-200" />
-        <Skeleton className="h-3 w-24 rounded bg-stone-200" />
+      <div className="pl-8 flex items-center gap-2">
+        <div className="h-2.5 w-16 bg-sidebar-accent/20 rounded" />
+        <div className="h-2.5 w-20 bg-sidebar-accent/20 rounded" />
       </div>
     </div>
   )

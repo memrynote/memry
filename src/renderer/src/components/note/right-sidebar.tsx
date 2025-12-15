@@ -1,27 +1,19 @@
-import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Bot, Link2, ChevronRight, X } from 'lucide-react'
-import { AIAgentTab } from './ai-agent'
+import { ChevronRight, X } from 'lucide-react'
 import { RelatedNotesTab } from './related-notes'
-
-type TabType = 'ai' | 'related'
 
 interface RightSidebarProps {
   isOpen: boolean
   onToggle: () => void
-  defaultTab?: TabType
   className?: string
 }
 
 export function RightSidebar({
   isOpen,
   onToggle,
-  defaultTab = 'ai',
   className
 }: RightSidebarProps) {
-  const [activeTab, setActiveTab] = useState<TabType>(defaultTab)
-
   return (
     <>
       {/* Mobile backdrop */}
@@ -37,21 +29,21 @@ export function RightSidebar({
       <div
         className={cn(
           'fixed lg:relative right-0 top-0 h-full w-80 bg-sidebar',
-          'border-l border-sidebar-border shadow-sm',
+          'border-l border-sidebar-border/50 shadow-sm',
           'transition-transform duration-200 ease-out z-50',
-          'flex flex-col',
+          'flex flex-col journal-animate-in',
           isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0',
           !isOpen && 'lg:w-0 lg:border-0 lg:shadow-none',
           className
         )}
       >
         {/* Header with close button (mobile) */}
-        <div className="flex items-center justify-between px-4 py-3 lg:hidden border-b border-sidebar-border">
-          <h2 className="text-sm font-medium text-sidebar-primary">Panel</h2>
+        <div className="flex items-center justify-between px-4 py-3 lg:hidden border-b border-sidebar-border/40">
+          <h2 className="font-display text-sm font-medium text-sidebar-primary">Related</h2>
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6"
+            className="h-6 w-6 hover:bg-sidebar-accent/50"
             onClick={onToggle}
             aria-label="Close sidebar"
           >
@@ -59,67 +51,9 @@ export function RightSidebar({
           </Button>
         </div>
 
-        {/* Tab bar */}
-        <div className="flex border-b border-sidebar-border" role="tablist">
-          <button
-            role="tab"
-            aria-selected={activeTab === 'ai'}
-            aria-controls="ai-panel"
-            onClick={() => setActiveTab('ai')}
-            className={cn(
-              'flex-1 flex items-center justify-center gap-2 px-4 py-3',
-              'text-sm font-medium transition-colors duration-150',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset',
-              activeTab === 'ai'
-                ? 'text-sidebar-primary border-b-2 border-sidebar-primary'
-                : 'text-sidebar-foreground hover:text-sidebar-primary'
-            )}
-          >
-            <Bot className="h-4 w-4" />
-            <span>AI Agent</span>
-          </button>
-          <button
-            role="tab"
-            aria-selected={activeTab === 'related'}
-            aria-controls="related-panel"
-            onClick={() => setActiveTab('related')}
-            className={cn(
-              'flex-1 flex items-center justify-center gap-2 px-4 py-3',
-              'text-sm font-medium transition-colors duration-150',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset',
-              activeTab === 'related'
-                ? 'text-sidebar-primary border-b-2 border-sidebar-primary'
-                : 'text-sidebar-foreground hover:text-sidebar-primary'
-            )}
-          >
-            <Link2 className="h-4 w-4" />
-            <span>Related</span>
-          </button>
-        </div>
-
-        {/* Tab content */}
+        {/* Content - Related Notes */}
         <div className="flex-1 overflow-hidden">
-          {activeTab === 'ai' && (
-            <div
-              id="ai-panel"
-              role="tabpanel"
-              aria-labelledby="ai-tab"
-              className="h-full"
-            >
-              <AIAgentTab />
-            </div>
-          )}
-
-          {activeTab === 'related' && (
-            <div
-              id="related-panel"
-              role="tabpanel"
-              aria-labelledby="related-tab"
-              className="h-full"
-            >
-              <RelatedNotesTab />
-            </div>
-          )}
+          <RelatedNotesTab />
         </div>
       </div>
 
@@ -130,14 +64,14 @@ export function RightSidebar({
           className={cn(
             'hidden lg:flex items-center justify-center',
             'fixed right-0 top-1/2 -translate-y-1/2',
-            'w-6 h-16 bg-sidebar border border-r-0 border-sidebar-border',
+            'w-6 h-16 bg-sidebar border border-r-0 border-sidebar-border/50',
             'rounded-l-md shadow-sm',
-            'hover:bg-sidebar-accent transition-colors duration-150',
+            'hover:bg-sidebar-accent/50 hover:border-amber-500/30 transition-all duration-200',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring'
           )}
           aria-label="Open sidebar"
         >
-          <ChevronRight className="h-4 w-4 text-sidebar-foreground -ml-0.5" />
+          <ChevronRight className="h-4 w-4 text-sidebar-foreground/60 hover:text-amber-600 -ml-0.5 transition-colors" />
         </button>
       )}
     </>

@@ -1083,3 +1083,89 @@
     transparent
   );
 }
+
+/* ===== RIGHT SIDEBAR SPECIFIC STYLES ===== */
+
+/* Sidebar tab active indicator glow */
+.sidebar-tab-active {
+  position: relative;
+}
+
+.sidebar-tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(245, 158, 11, 0.6),
+    transparent
+  );
+}
+
+/* Related note card hover glow */
+.related-card-glow:hover {
+  box-shadow:
+    0 2px 8px -2px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(245, 158, 11, 0.08);
+}
+
+.dark .related-card-glow:hover {
+  box-shadow:
+    0 2px 8px -2px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(251, 191, 36, 0.12);
+}
+
+/* Similarity badge pulse for high matches */
+@keyframes similarity-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.similarity-high {
+  animation: similarity-pulse 2s ease-in-out infinite;
+}
+
+/* Sidebar section divider */
+.sidebar-divider {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    rgba(245, 158, 11, 0.3),
+    var(--sidebar-border) 30%,
+    transparent
+  );
+}
+
+/* Scholarly reference styling */
+.reference-snippet {
+  font-family: var(--font-serif);
+  font-style: italic;
+  quotes: '"' '"';
+}
+
+.reference-snippet::before {
+  content: open-quote;
+  color: var(--sidebar-foreground);
+  opacity: 0.3;
+}
+
+.reference-snippet::after {
+  content: close-quote;
+  color: var(--sidebar-foreground);
+  opacity: 0.3;
+}
+
+/* Sidebar scroll fade */
+.sidebar-scroll-fade {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 8px,
+    black calc(100% - 8px),
+    transparent 100%
+  );
+}

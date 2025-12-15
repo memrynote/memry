@@ -3,6 +3,7 @@ import { RelatedNoteCard } from './RelatedNoteCard'
 import { EmptyState } from './EmptyState'
 import { LoadingSkeleton } from './LoadingSkeleton'
 import type { RelatedNote } from './types'
+import { cn } from '@/lib/utils'
 
 // Demo data for development - showing only 4 notes
 const DEMO_RELATED_NOTES: RelatedNote[] = [
@@ -88,13 +89,29 @@ export function RelatedNotesTab({
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Content Area - No header, no filters, just the notes */}
+    <div className="flex flex-col h-full journal-animate-in">
+      {/* Section Header - Scholarly label */}
+      <div className="px-4 pt-4 pb-2 journal-stagger-1">
+        <div className="flex items-baseline justify-between">
+          <h3 className="font-sans text-xs font-medium uppercase tracking-wider text-sidebar-foreground/50">
+            Suggested Connections
+          </h3>
+          <span className="font-serif text-xs italic text-sidebar-foreground/30">
+            {relatedNotes.length} found
+          </span>
+        </div>
+        {/* Decorative divider */}
+        <div className="mt-2 h-px bg-gradient-to-r from-amber-500/20 via-sidebar-border/30 to-transparent" />
+      </div>
+
+      {/* Content Area */}
       <div className="flex-1 overflow-hidden">
         {isLoading ? (
-          <div aria-live="polite" aria-busy="true">
-            <div className="px-4 py-2 text-xs text-muted-foreground">
-              Analyzing note content...
+          <div aria-live="polite" aria-busy="true" className="journal-stagger-2">
+            <div className="px-4 py-3">
+              <p className="font-serif text-sm italic text-muted-foreground/60">
+                Analyzing note content...
+              </p>
             </div>
             <LoadingSkeleton />
           </div>
@@ -102,15 +119,19 @@ export function RelatedNotesTab({
           <EmptyState onRefresh={() => console.log('Refresh (not implemented)')} />
         ) : (
           <ScrollArea className="h-full">
-            <div className="p-4 space-y-2.5" role="list">
-              {relatedNotes.map((note) => (
-                <RelatedNoteCard
+            <div className="p-4 pt-2 space-y-3" role="list">
+              {relatedNotes.map((note, index) => (
+                <div
                   key={note.id}
-                  note={note}
-                  onNoteClick={handleNoteClick}
-                  onAddReference={handleAddReference}
-                  onHideSuggestion={handleHideSuggestion}
-                />
+                  className={cn('journal-stagger-' + Math.min(index + 2, 5))}
+                >
+                  <RelatedNoteCard
+                    note={note}
+                    onNoteClick={handleNoteClick}
+                    onAddReference={handleAddReference}
+                    onHideSuggestion={handleHideSuggestion}
+                  />
+                </div>
               ))}
             </div>
           </ScrollArea>

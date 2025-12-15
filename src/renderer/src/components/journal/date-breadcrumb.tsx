@@ -1,13 +1,13 @@
 /**
  * DateBreadcrumb Component
- * Renders clickable date navigation with pill-style segments
- * Supports day, month, and year view states
+ * Centered navigation breadcrumb for journal page
+ * Supports day, month, and year view states with elegant hierarchy
  */
 
 import { useMemo } from 'react'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatDateParts, getMonthName } from '@/lib/journal-utils'
+import { formatDateParts, getMonthName, getTodayString } from '@/lib/journal-utils'
 
 // =============================================================================
 // TYPES
@@ -27,45 +27,90 @@ export interface DateBreadcrumbProps {
   onYearClick: (year: number) => void
   /** Callback for back navigation */
   onBackClick: () => void
+  /** Callback for day click (for day view - navigates to specific day) */
+  onDayClick?: (date: string) => void
+  /** Callback for previous day navigation */
+  onPreviousDay?: () => void
+  /** Callback for next day navigation */
+  onNextDay?: () => void
   /** Additional CSS classes */
   className?: string
 }
 
 // =============================================================================
-// PILL BUTTON COMPONENT
+// BREADCRUMB SEGMENT COMPONENT
 // =============================================================================
 
-interface PillButtonProps {
-  onClick: () => void
+interface BreadcrumbSegmentProps {
+  onClick?: () => void
   children: React.ReactNode
+  isActive?: boolean
   className?: string
-  isLarge?: boolean
 }
 
-function PillButton({ onClick, children, className, isLarge = false }: PillButtonProps) {
+function BreadcrumbSegment({ onClick, children, isActive = false, className }: BreadcrumbSegmentProps) {
+  const isClickable = !!onClick
+
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={!isClickable}
       className={cn(
-        // Base pill styling with subtle background to indicate clickability
-        "inline-flex items-center rounded-md",
-        "bg-surface-active/40",
-        "cursor-pointer transition-all duration-150",
-        // Text color
-        "text-foreground",
-        // Hover state - darken background
-        "hover:bg-muted-foreground/20",
-        // Focus state for accessibility
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-        // Active state
-        "active:scale-[0.98]",
-        // Size-specific padding
-        isLarge ? "px-2.5 py-1 -mx-1" : "px-2 py-0.5 -mx-1",
+        "inline-flex items-center",
+        "font-sans text-sm transition-all duration-200",
+        isClickable && !isActive && [
+          "text-muted-foreground/70 hover:text-foreground",
+          "hover:bg-muted/50 px-2 py-1 -mx-1 rounded-md",
+          "cursor-pointer"
+        ],
+        isActive && "text-foreground font-medium",
+        !isClickable && "text-muted-foreground/50 cursor-default",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:rounded-md",
         className
       )}
     >
       {children}
+    </button>
+  )
+}
+
+// =============================================================================
+// SEPARATOR COMPONENT
+// =============================================================================
+
+function BreadcrumbSeparator() {
+  return (
+    <span className="mx-1 text-muted-foreground/30 select-none">/</span>
+  )
+}
+
+// =============================================================================
+// DAY NAVIGATION ARROWS
+// =============================================================================
+
+interface DayNavArrowProps {
+  direction: 'prev' | 'next'
+  onClick?: () => void
+}
+
+function DayNavArrow({ direction, onClick }: DayNavArrowProps) {
+  const Icon = direction === 'prev' ? ChevronLeft : ChevronRight
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={direction === 'prev' ? 'Previous day' : 'Next day'}
+      className={cn(
+        "p-1 rounded-md",
+        "text-muted-foreground/50 hover:text-foreground",
+        "hover:bg-muted/50",
+        "transition-all duration-200",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      )}
+    >
+      <Icon className="size-3.5" />
     </button>
   )
 }
@@ -86,14 +131,15 @@ function BackButton({ onClick, className }: BackButtonProps) {
       onClick={onClick}
       aria-label="Go back"
       className={cn(
-        "inline-flex items-center gap-1 mr-2",
-        "text-muted-foreground hover:text-foreground",
-        "cursor-pointer transition-colors duration-150",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-purple/50 focus-visible:rounded-md",
+        "inline-flex items-center gap-1 mr-2 p-1 rounded-md",
+        "text-muted-foreground/60 hover:text-foreground",
+        "hover:bg-muted/50",
+        "cursor-pointer transition-all duration-200",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
         className
       )}
     >
-      <ChevronLeft className="size-5" />
+      <ChevronLeft className="size-4" />
     </button>
   )
 }
@@ -107,8 +153,12 @@ export function DateBreadcrumb({
   onMonthClick,
   onYearClick,
   onBackClick,
+  onPreviousDay,
+  onNextDay,
   className,
 }: DateBreadcrumbProps): React.JSX.Element {
+  const today = getTodayString()
+
   // Parse date parts for day view
   const dateParts = useMemo(() => {
     if (viewState.type === 'day') {
@@ -117,70 +167,114 @@ export function DateBreadcrumb({
     return null
   }, [viewState])
 
-  // Day View: "December 12, 2025" with clickable month and year
+  // Check if selected date is today
+  const isToday = viewState.type === 'day' && viewState.date === today
+
+  // Day View: Centered breadcrumb with hierarchy
+  // [< >] Year / Month / Day DayName [Today]
   if (viewState.type === 'day' && dateParts) {
     return (
-      <h1
+      <nav
+        aria-label="Journal date navigation"
         className={cn(
-          "font-serif text-3xl lg:text-4xl font-medium text-foreground tracking-tight",
-          "flex items-center gap-1.5 flex-wrap",
+          "flex items-center justify-center gap-2",
           className
         )}
       >
-        <PillButton
-          onClick={() => onMonthClick(dateParts.year, dateParts.monthIndex)}
-          isLarge
-        >
-          {dateParts.month}
-        </PillButton>
-        <span>{dateParts.day},</span>
-        <PillButton
-          onClick={() => onYearClick(dateParts.year)}
-          isLarge
-        >
-          {dateParts.year}
-        </PillButton>
-      </h1>
+        {/* Day navigation arrows - grouped on left */}
+        <div className="flex items-center gap-0.5 mr-1">
+          <DayNavArrow direction="prev" onClick={onPreviousDay} />
+          <DayNavArrow direction="next" onClick={onNextDay} />
+        </div>
+
+        {/* Breadcrumb segments */}
+        <div className="flex items-center">
+          {/* Year */}
+          <BreadcrumbSegment onClick={() => onYearClick(dateParts.year)}>
+            {dateParts.year}
+          </BreadcrumbSegment>
+
+          <BreadcrumbSeparator />
+
+          {/* Month */}
+          <BreadcrumbSegment onClick={() => onMonthClick(dateParts.year, dateParts.monthIndex)}>
+            {dateParts.month}
+          </BreadcrumbSegment>
+
+          <BreadcrumbSeparator />
+
+          {/* Day + Day Name (active) */}
+          <span className="flex items-center gap-2">
+            <span className="font-display text-base font-medium text-foreground">
+              {dateParts.day}
+            </span>
+            <span className="font-serif text-sm italic text-muted-foreground/70">
+              {dateParts.dayName}
+            </span>
+          </span>
+
+          {/* Today badge */}
+          {isToday && (
+            <span className={cn(
+              "ml-2.5 px-2 py-0.5",
+              "text-[0.6rem] font-semibold uppercase tracking-[0.1em]",
+              "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+              "rounded-full border border-amber-500/20"
+            )}>
+              Today
+            </span>
+          )}
+        </div>
+      </nav>
     )
   }
 
-  // Month View: "← December 2025" with back arrow and clickable year
+  // Month View: Back + Month Year with clickable year
   if (viewState.type === 'month') {
     const monthName = getMonthName(viewState.month)
     return (
-      <h1
+      <nav
+        aria-label="Journal date navigation"
         className={cn(
-          "flex items-center",
-          "font-serif text-3xl lg:text-4xl font-medium text-foreground tracking-tight",
+          "flex items-center justify-center",
           className
         )}
       >
         <BackButton onClick={onBackClick} />
-        <span>{monthName}</span>
-        <span className="mx-1.5"></span>
-        <PillButton
-          onClick={() => onYearClick(viewState.year)}
-          isLarge
-        >
-          {viewState.year}
-        </PillButton>
-      </h1>
+
+        <div className="flex items-center">
+          {/* Year (clickable) */}
+          <BreadcrumbSegment onClick={() => onYearClick(viewState.year)}>
+            {viewState.year}
+          </BreadcrumbSegment>
+
+          <BreadcrumbSeparator />
+
+          {/* Month (active) */}
+          <span className="font-display text-base font-medium text-foreground">
+            {monthName}
+          </span>
+        </div>
+      </nav>
     )
   }
 
-  // Year View: "← 2025" with back arrow
+  // Year View: Back + Year
   if (viewState.type === 'year') {
     return (
-      <h1
+      <nav
+        aria-label="Journal date navigation"
         className={cn(
-          "flex items-center",
-          "font-serif text-3xl lg:text-4xl font-medium text-foreground tracking-tight",
+          "flex items-center justify-center",
           className
         )}
       >
         <BackButton onClick={onBackClick} />
-        <span>{viewState.year}</span>
-      </h1>
+
+        <span className="font-display text-base font-medium text-foreground">
+          {viewState.year}
+        </span>
+      </nav>
     )
   }
 
