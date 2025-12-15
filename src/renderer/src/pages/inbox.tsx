@@ -1,7 +1,12 @@
+/**
+ * Inbox Page - Contemplative Editorial Design
+ * Consistent with Journal page aesthetic
+ * A refined, warm interface for processing incoming items
+ */
+
 import { useState, useCallback, useMemo, useEffect } from "react"
 import { List, Grid, Check } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { ToastContainer, type Toast } from "@/components/ui/toast"
@@ -21,7 +26,7 @@ import { sampleFolders, UNSORTED_FOLDER_ID } from "@/data/filing-data"
 import { detectClusters, getClusterKey } from "@/lib/ai-clustering"
 import { getStaleItems, getNonStaleItems } from "@/lib/stale-utils"
 import { cn } from "@/lib/utils"
-import { isInputFocused, isMac } from "@/hooks/use-keyboard-shortcuts"
+import { isInputFocused } from "@/hooks/use-keyboard-shortcuts"
 import type { InboxItem } from "@/types"
 
 type ViewMode = "list" | "card"
@@ -35,10 +40,6 @@ interface FiledItem {
   item: InboxItem
   index: number
   folderId: string
-}
-
-interface BulkDeletedItems {
-  items: { item: InboxItem; index: number }[]
 }
 
 interface InboxPageProps {
@@ -116,7 +117,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   // Separate items into stale and non-stale
   const staleItems = useMemo(() => getStaleItems(items), [items])
   const nonStaleItems = useMemo(() => getNonStaleItems(items), [items])
-  const hasStaleItems = staleItems.length > 0
 
   // Generate unique toast ID
   const generateToastId = (): string => {
@@ -586,7 +586,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
 
   // Handle bulk file complete
   const handleBulkFileComplete = useCallback(
-    (itemIds: string[], folderId: string, tags: string[]): void => {
+    (itemIds: string[], folderId: string, _tags: string[]): void => {
       const folder = sampleFolders.find((f) => f.id === folderId)
       const processedCount = itemIds.length
 
@@ -854,82 +854,171 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   }, [items])
 
   return (
-    <div className={cn("flex flex-col h-full px-6 pt-6", className)}>
-      {/* Header: Title + Badge + View Toggle OR Bulk Selection Header */}
-      <div className="flex items-center justify-between mb-6">
-        {isInBulkMode ? (
-          // Bulk Selection Header
-          <>
-            <div className="flex items-center gap-2">
-              <Check className="size-5 text-[var(--primary)]" aria-hidden="true" />
-              <h1 className="text-2xl font-semibold text-foreground">
-                {selectedCount} selected
-              </h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDeselectAll}
-                className="text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-              >
-                Deselect all
-              </Button>
-              <ToggleGroup
-                type="single"
-                value={viewMode}
-                onValueChange={handleViewChange}
-                className="gap-1"
-              >
-                <ToggleGroupItem value="list" aria-label="List view">
-                  <List className="size-4" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="card" aria-label="Grid view">
-                  <Grid className="size-4" />
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-          </>
-        ) : (
-          // Normal Header
-          <>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold text-foreground">Inbox</h1>
-              <Badge variant="secondary" className="text-muted-foreground">
-                {items.length} items{todayItemsCount > 0 && ` · ${todayItemsCount} from today`}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-2">
-              {items.length > 0 && (
+    <div className={cn(
+      "flex flex-col h-full",
+      "px-6 lg:px-8",
+      "py-8 lg:py-12",
+      className
+    )}>
+      {/* Header with Dramatic Item Count */}
+      <header className={cn(
+        "relative mb-8 lg:mb-10",
+        "journal-animate-in"
+      )}>
+        {/* Large decorative item count watermark */}
+        {!isInBulkMode && items.length > 0 && (
+          <div
+            className={cn(
+              "absolute -left-2 lg:-left-4 -top-4 lg:-top-6",
+              "text-[8rem] lg:text-[10rem]",
+              "journal-day-watermark"
+            )}
+            aria-hidden="true"
+          >
+            {items.length}
+          </div>
+        )}
+
+        {/* Content layer */}
+        <div className="relative z-10">
+          {isInBulkMode ? (
+            /* Bulk Selection Header */
+            <div className="flex items-start justify-between gap-6">
+              <div className="opacity-0 journal-animate-in journal-stagger-1">
+                <div className="flex items-center gap-3 mb-1">
+                  <Check className="size-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                  <h1 className="font-display text-2xl lg:text-3xl font-normal tracking-tight text-foreground/90">
+                    {selectedCount} selected
+                  </h1>
+                </div>
+                <p className="font-serif text-sm text-muted-foreground/70 tracking-wide pl-8">
+                  Ready to process
+                </p>
+              </div>
+
+              <div className={cn(
+                "flex items-center gap-3",
+                "opacity-0 journal-animate-in journal-stagger-2"
+              )}>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleSelectAll}
-                  className="text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                  onClick={handleDeselectAll}
+                  className={cn(
+                    "text-muted-foreground/60 hover:text-foreground",
+                    "hover:bg-foreground/5",
+                    "transition-all duration-200"
+                  )}
                 >
-                  Select all
+                  Deselect all
                 </Button>
-              )}
-              <ToggleGroup
-                type="single"
-                value={viewMode}
-                onValueChange={handleViewChange}
-                className="gap-1"
-              >
-                <ToggleGroupItem value="list" aria-label="List view">
-                  <List className="size-4" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="card" aria-label="Grid view">
-                  <Grid className="size-4" />
-                </ToggleGroupItem>
-              </ToggleGroup>
+                <ToggleGroup
+                  type="single"
+                  value={viewMode}
+                  onValueChange={handleViewChange}
+                  className="gap-0.5 p-1 rounded-lg bg-muted/30"
+                >
+                  <ToggleGroupItem
+                    value="list"
+                    aria-label="List view"
+                    className={cn(
+                      "rounded-md px-3 py-1.5",
+                      "data-[state=on]:bg-background data-[state=on]:shadow-sm",
+                      "transition-all duration-200"
+                    )}
+                  >
+                    <List className="size-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="card"
+                    aria-label="Grid view"
+                    className={cn(
+                      "rounded-md px-3 py-1.5",
+                      "data-[state=on]:bg-background data-[state=on]:shadow-sm",
+                      "transition-all duration-200"
+                    )}
+                  >
+                    <Grid className="size-4" />
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
             </div>
-          </>
-        )}
-      </div>
+          ) : (
+            /* Normal Header */
+            <div className="flex items-start justify-between gap-6">
+              <div className="opacity-0 journal-animate-in journal-stagger-1">
+                <h1 className="font-display text-2xl lg:text-3xl font-normal tracking-tight text-foreground/90 mb-1">
+                  Inbox
+                </h1>
+                <p className="font-serif text-sm text-muted-foreground/70 tracking-wide">
+                  {items.length === 0
+                    ? "All caught up"
+                    : todayItemsCount > 0
+                      ? `${todayItemsCount} item${todayItemsCount !== 1 ? "s" : ""} arrived today`
+                      : `${items.length} item${items.length !== 1 ? "s" : ""} waiting`
+                  }
+                </p>
+              </div>
+
+              <div className={cn(
+                "flex items-center gap-3",
+                "opacity-0 journal-animate-in journal-stagger-2"
+              )}>
+                {items.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSelectAll}
+                    className={cn(
+                      "text-muted-foreground/60 hover:text-foreground",
+                      "hover:bg-foreground/5",
+                      "transition-all duration-200"
+                    )}
+                  >
+                    Select all
+                  </Button>
+                )}
+                <ToggleGroup
+                  type="single"
+                  value={viewMode}
+                  onValueChange={handleViewChange}
+                  className="gap-0.5 p-1 rounded-lg bg-muted/30"
+                >
+                  <ToggleGroupItem
+                    value="list"
+                    aria-label="List view"
+                    className={cn(
+                      "rounded-md px-3 py-1.5",
+                      "data-[state=on]:bg-background data-[state=on]:shadow-sm",
+                      "transition-all duration-200"
+                    )}
+                  >
+                    <List className="size-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="card"
+                    aria-label="Grid view"
+                    className={cn(
+                      "rounded-md px-3 py-1.5",
+                      "data-[state=on]:bg-background data-[state=on]:shadow-sm",
+                      "transition-all duration-200"
+                    )}
+                  >
+                    <Grid className="size-4" />
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+            </div>
+          )}
+        </div>
+      </header>
 
       {/* Content: Scrollable area with view-based rendering or empty state */}
-      <div className={cn("flex-1 overflow-y-auto", isInBulkMode && "pb-32")}>
+      <div className={cn(
+        "flex-1 overflow-y-auto",
+        "opacity-0 journal-animate-in journal-stagger-3",
+        isInBulkMode && "pb-32"
+      )}>
         {showEmptyState ? (
           <EmptyState
             itemsProcessedToday={itemsProcessedToday}
