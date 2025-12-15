@@ -31,6 +31,7 @@ import {
   defaultInboxFilters,
   isItemSnoozed,
 } from '@/data/inbox-types'
+import { formatSnoozePreview } from '@/lib/snooze-utils'
 import { sampleInboxItems } from '@/data/sample-inbox'
 import {
   sampleFolders,
@@ -530,13 +531,27 @@ export function InboxPage(): React.JSX.Element {
     toast.success(`Opening tag panel for ${count} ${count === 1 ? 'item' : 'items'}`)
   }, [selection])
 
-  const handleBulkSnooze = useCallback(() => {
-    const count = selection.selectedCount
-    // Open snooze menu (to be implemented)
-    console.log('Bulk snooze items:', Array.from(selection.selectedIds))
-    toast.success(`Snoozed ${count} ${count === 1 ? 'item' : 'items'} until tomorrow`)
-    selection.deselectAll()
-  }, [selection])
+  const handleBulkSnooze = useCallback(
+    (until: Date) => {
+      const count = selection.selectedCount
+      const previewTime = formatSnoozePreview(until)
+      // Snooze the selected items
+      console.log('Bulk snooze items:', Array.from(selection.selectedIds), 'until:', until)
+      toast.success(
+        `Snoozed ${count} ${count === 1 ? 'item' : 'items'} until ${previewTime}`,
+        {
+          action: {
+            label: 'Undo',
+            onClick: () => {
+              toast.info('Undo snooze (not implemented)')
+            },
+          },
+        }
+      )
+      selection.deselectAll()
+    },
+    [selection]
+  )
 
   const handleBulkDelete = useCallback(() => {
     const count = selection.selectedCount
@@ -568,7 +583,32 @@ export function InboxPage(): React.JSX.Element {
   const handleViewSnoozed = useCallback(() => {
     // Navigate to snoozed items view (to be implemented)
     console.log('View snoozed items')
+    toast.info('Snoozed items view coming soon')
   }, [])
+
+  const handleUnsnooze = useCallback(
+    (itemId: string) => {
+      console.log('Unsnooze item:', itemId)
+      toast.success('Item returned to inbox', {
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            toast.info('Undo unsnooze (not implemented)')
+          },
+        },
+      })
+    },
+    []
+  )
+
+  const handlePreviewSnoozedItem = useCallback(
+    (itemId: string) => {
+      console.log('Preview snoozed item:', itemId)
+      // Open preview panel for the item
+      handlePreview(itemId)
+    },
+    [handlePreview]
+  )
 
   // =========================================================================
   // FILING PANEL HANDLERS
@@ -628,6 +668,7 @@ export function InboxPage(): React.JSX.Element {
       <InboxHeader
         itemCount={counts.total}
         todayCount={counts.today}
+        items={items}
         snoozedCount={counts.snoozed}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
@@ -645,6 +686,9 @@ export function InboxPage(): React.JSX.Element {
         isPartiallySelected={selection.isPartiallySelected}
         onSelectAll={selection.selectAll}
         onDeselectAll={selection.deselectAll}
+        onUnsnooze={handleUnsnooze}
+        onPreviewItem={handlePreviewSnoozedItem}
+        onViewAllSnoozed={handleViewSnoozed}
       />
 
       {/* Active Filters Bar */}

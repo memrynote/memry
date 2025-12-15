@@ -3,6 +3,7 @@
  *
  * The header bar for the inbox page featuring:
  * - Title with item count badge
+ * - Snoozed items indicator with popover
  * - Search input (expandable with recent queries)
  * - Filter popover
  * - View mode toggle (Compact/Medium/Expanded)
@@ -16,7 +17,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ViewSwitcher } from './view-switcher'
 import { SearchInput } from './search-input'
 import { FilterPopover, type FilterState } from './filter-popover'
-import type { InboxViewMode } from '@/data/inbox-types'
+import { SnoozedIndicator } from './snoozed-indicator'
+import type { InboxViewMode, InboxItem } from '@/data/inbox-types'
 
 // ============================================================================
 // TYPES
@@ -27,7 +29,9 @@ export interface InboxHeaderProps {
   itemCount: number
   /** Number of items captured today */
   todayCount: number
-  /** Number of snoozed items */
+  /** All items (for snoozed indicator) */
+  items?: InboxItem[]
+  /** Number of snoozed items (used if items not provided) */
   snoozedCount?: number
   /** Current view mode */
   viewMode: InboxViewMode
@@ -61,6 +65,12 @@ export interface InboxHeaderProps {
   onSelectAll?: () => void
   /** Callback to deselect all */
   onDeselectAll?: () => void
+  /** Callback when an item is unsnoozed from the indicator */
+  onUnsnooze?: (itemId: string) => void
+  /** Callback to preview an item from the snoozed indicator */
+  onPreviewItem?: (itemId: string) => void
+  /** Callback to view all snoozed items */
+  onViewAllSnoozed?: () => void
 }
 
 // ============================================================================
@@ -70,15 +80,21 @@ export interface InboxHeaderProps {
 interface ItemCountBadgeProps {
   itemCount: number
   todayCount: number
+  items?: InboxItem[]
   snoozedCount?: number
-  onSnoozedClick?: () => void
+  onUnsnooze?: (itemId: string) => void
+  onPreviewItem?: (itemId: string) => void
+  onViewAllSnoozed?: () => void
 }
 
 function ItemCountBadge({
   itemCount,
   todayCount,
+  items,
   snoozedCount,
-  onSnoozedClick,
+  onUnsnooze,
+  onPreviewItem,
+  onViewAllSnoozed,
 }: ItemCountBadgeProps): React.JSX.Element {
   const parts: string[] = []
 
@@ -93,18 +109,19 @@ function ItemCountBadge({
       <span className="text-sm text-muted-foreground">
         {parts.join(' · ')}
       </span>
-      {snoozedCount && snoozedCount > 0 && (
-        <button
-          type="button"
-          onClick={onSnoozedClick}
-          className={cn(
-            'text-sm text-muted-foreground/80 hover:text-foreground',
-            'cursor-pointer transition-colors duration-150'
-          )}
-        >
-          {snoozedCount} snoozed
-        </button>
-      )}
+      {/* Snoozed Indicator - uses items if available, otherwise falls back to count */}
+      {items ? (
+        <SnoozedIndicator
+          items={items}
+          onUnsnooze={onUnsnooze}
+          onPreview={onPreviewItem}
+          onViewAll={onViewAllSnoozed}
+        />
+      ) : snoozedCount && snoozedCount > 0 ? (
+        <span className="text-sm text-muted-foreground/80">
+          · {snoozedCount} snoozed
+        </span>
+      ) : null}
     </div>
   )
 }
@@ -198,6 +215,7 @@ const DEFAULT_FILTERS: FilterState = {
 export function InboxHeader({
   itemCount,
   todayCount,
+  items,
   snoozedCount = 0,
   viewMode,
   onViewModeChange,
@@ -215,6 +233,9 @@ export function InboxHeader({
   isPartiallySelected = false,
   onSelectAll,
   onDeselectAll,
+  onUnsnooze,
+  onPreviewItem,
+  onViewAllSnoozed,
 }: InboxHeaderProps): React.JSX.Element {
   return (
     <header
@@ -253,11 +274,15 @@ export function InboxHeader({
             {/* Separator */}
             <div className="h-6 w-px bg-border/60" />
 
-            {/* Item count badge */}
+            {/* Item count badge with snoozed indicator */}
             <ItemCountBadge
               itemCount={itemCount}
               todayCount={todayCount}
+              items={items}
               snoozedCount={snoozedCount}
+              onUnsnooze={onUnsnooze}
+              onPreviewItem={onPreviewItem}
+              onViewAllSnoozed={onViewAllSnoozed}
             />
           </>
         )}

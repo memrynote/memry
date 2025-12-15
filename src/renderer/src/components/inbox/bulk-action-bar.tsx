@@ -37,6 +37,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { TypeIcon } from './type-badge'
+import { SnoozeMenu } from './snooze-menu'
 import type { InboxItem } from '@/data/inbox-types'
 
 // ============================================================================
@@ -61,8 +62,8 @@ export interface BulkActionBarProps {
   onFileAll: () => void
   /** Callback when Tag All action is triggered */
   onTagAll: () => void
-  /** Callback when Snooze All action is triggered */
-  onSnoozeAll: () => void
+  /** Callback when Snooze All action is triggered with selected time */
+  onSnoozeAll: (until: Date) => void
   /** Callback when Delete All action is triggered */
   onDeleteAll: () => void
   /** AI cluster suggestion */
@@ -338,6 +339,7 @@ export function BulkActionBar({
   const [isVisible, setIsVisible] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isSuggestionExpanded, setIsSuggestionExpanded] = useState(false)
+  const [isSnoozeMenuOpen, setIsSnoozeMenuOpen] = useState(false)
 
   // Animate in when items are selected
   useEffect(() => {
@@ -382,7 +384,7 @@ export function BulkActionBar({
         case 's':
           if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
             e.preventDefault()
-            onSnoozeAll()
+            setIsSnoozeMenuOpen(true)
           }
           break
         case 'backspace':
@@ -397,7 +399,7 @@ export function BulkActionBar({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedCount, onFileAll, onTagAll, onSnoozeAll])
+  }, [selectedCount, onFileAll, onTagAll])
 
   const handleDeleteConfirm = useCallback(() => {
     setShowDeleteConfirm(false)
@@ -490,11 +492,38 @@ export function BulkActionBar({
               shortcut="t"
               onClick={onTagAll}
             />
-            <ActionButton
-              icon={<Clock className="size-4" />}
-              label="Snooze"
-              shortcut="s"
-              onClick={onSnoozeAll}
+            {/* Snooze Menu */}
+            <SnoozeMenu
+              open={isSnoozeMenuOpen}
+              onOpenChange={setIsSnoozeMenuOpen}
+              onSnooze={onSnoozeAll}
+              itemCount={selectedCount}
+              align="end"
+              side="top"
+              trigger={
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className={cn(
+                        'h-9 gap-2 px-3',
+                        'font-medium tracking-tight',
+                        'transition-all duration-150'
+                      )}
+                    >
+                      <Clock className="size-4" />
+                      <span className="hidden sm:inline">Snooze</span>
+                      <Kbd className="ml-1 hidden lg:inline-flex">s</Kbd>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8}>
+                    <p className="text-xs">
+                      Snooze <Kbd className="ml-1">s</Kbd>
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              }
             />
             <div className="hidden sm:block h-5 w-px bg-border/60 mx-1" />
             <ActionButton
