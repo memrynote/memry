@@ -19,6 +19,7 @@ import {
   BulkActionBar,
   useMockClusterSuggestion,
   FilingPanel,
+  StaleSection,
   type EmptyStateContext,
   type SnoozedItemPreview,
   type FilterState,
@@ -32,6 +33,7 @@ import {
   isItemSnoozed,
 } from '@/data/inbox-types'
 import { formatSnoozePreview } from '@/lib/snooze-utils'
+import { partitionByStale } from '@/lib/stale-utils'
 import { sampleInboxItems } from '@/data/sample-inbox'
 import {
   sampleFolders,
@@ -305,6 +307,12 @@ export function InboxPage(): React.JSX.Element {
   const filteredItems = useMemo(
     () => filterItems(items, filters),
     [items, filters]
+  )
+
+  // Partition into stale and non-stale items
+  const { stale: staleItems, nonStale: nonStaleItems } = useMemo(
+    () => partitionByStale(filteredItems),
+    [filteredItems]
   )
 
   // Selection management (using the new hook)
@@ -611,6 +619,58 @@ export function InboxPage(): React.JSX.Element {
   )
 
   // =========================================================================
+  // STALE SECTION HANDLERS
+  // =========================================================================
+
+  const handleFileAllToUnsorted = useCallback(
+    (itemsToFile: InboxItem[]) => {
+      const count = itemsToFile.length
+      console.log('Filing stale items to Unsorted:', itemsToFile.map((i) => i.id))
+      toast.success(`Filed ${count} ${count === 1 ? 'item' : 'items'} to Unsorted`, {
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            toast.info('Undo filing (not implemented)')
+          },
+        },
+      })
+    },
+    []
+  )
+
+  const handleFileStaleItem = useCallback(
+    (item: InboxItem) => {
+      // Open filing panel for this item
+      setItemsToFile([item])
+      setIsFilingPanelOpen(true)
+    },
+    []
+  )
+
+  const handleDeleteStaleItem = useCallback(
+    (item: InboxItem) => {
+      console.log('Delete stale item:', item.id)
+      toast.success(`Deleted "${item.title}"`, {
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            toast.info('Undo delete (not implemented)')
+          },
+        },
+      })
+    },
+    []
+  )
+
+  const handlePreviewStaleItem = useCallback(
+    (item: InboxItem) => {
+      console.log('Preview stale item:', item.id)
+      setFocusedItemId(item.id)
+    },
+    [setFocusedItemId]
+  )
+
+  // =========================================================================
   // FILING PANEL HANDLERS
   // =========================================================================
 
@@ -729,58 +789,72 @@ export function InboxPage(): React.JSX.Element {
           )
         ) : (
           <>
-            {/* Compact View */}
-            {viewMode === 'compact' && (
-              <CompactView
-                items={filteredItems}
-                selectedIds={selection.selectedIds}
-                focusedId={focusedItemId}
-                isBulkMode={selection.isInBulkMode}
-                onItemSelect={handleItemSelect}
-                onItemClick={handleItemClick}
-                onItemDoubleClick={handleItemDoubleClick}
-                onFile={handleFile}
-                onPreview={handlePreview}
-                onOpenOriginal={handleOpenOriginal}
-                onSnooze={handleSnooze}
-                onDelete={handleDelete}
-              />
+            {/* Regular items (non-stale) */}
+            {nonStaleItems.length > 0 && (
+              <>
+                {/* Compact View */}
+                {viewMode === 'compact' && (
+                  <CompactView
+                    items={nonStaleItems}
+                    selectedIds={selection.selectedIds}
+                    focusedId={focusedItemId}
+                    isBulkMode={selection.isInBulkMode}
+                    onItemSelect={handleItemSelect}
+                    onItemClick={handleItemClick}
+                    onItemDoubleClick={handleItemDoubleClick}
+                    onFile={handleFile}
+                    onPreview={handlePreview}
+                    onOpenOriginal={handleOpenOriginal}
+                    onSnooze={handleSnooze}
+                    onDelete={handleDelete}
+                  />
+                )}
+
+                {/* Medium View */}
+                {viewMode === 'medium' && (
+                  <MediumView
+                    items={nonStaleItems}
+                    selectedIds={selection.selectedIds}
+                    focusedId={focusedItemId}
+                    isBulkMode={selection.isInBulkMode}
+                    onItemSelect={handleItemSelect}
+                    onItemClick={handleItemClick}
+                    onItemDoubleClick={handleItemDoubleClick}
+                    onFile={handleFile}
+                    onPreview={handlePreview}
+                    onOpenOriginal={handleOpenOriginal}
+                    onSnooze={handleSnooze}
+                    onDelete={handleDelete}
+                  />
+                )}
+
+                {/* Expanded View */}
+                {viewMode === 'expanded' && (
+                  <ExpandedView
+                    items={nonStaleItems}
+                    focusedId={focusedItemId}
+                    onFocusChange={handleFocusChange}
+                    onFile={handleFile}
+                    onOpenOriginal={handleOpenOriginal}
+                    onSnooze={handleSnooze}
+                    onDelete={handleDelete}
+                    onAcceptSuggestion={handleAcceptSuggestion}
+                    onDismissSuggestion={handleDismissSuggestion}
+                    onAddTag={handleAddTag}
+                    onRemoveTag={handleRemoveTag}
+                  />
+                )}
+              </>
             )}
 
-            {/* Medium View */}
-            {viewMode === 'medium' && (
-              <MediumView
-                items={filteredItems}
-                selectedIds={selection.selectedIds}
-                focusedId={focusedItemId}
-                isBulkMode={selection.isInBulkMode}
-                onItemSelect={handleItemSelect}
-                onItemClick={handleItemClick}
-                onItemDoubleClick={handleItemDoubleClick}
-                onFile={handleFile}
-                onPreview={handlePreview}
-                onOpenOriginal={handleOpenOriginal}
-                onSnooze={handleSnooze}
-                onDelete={handleDelete}
-              />
-            )}
-
-            {/* Expanded View */}
-            {viewMode === 'expanded' && (
-              <ExpandedView
-                items={filteredItems}
-                focusedId={focusedItemId}
-                onFocusChange={handleFocusChange}
-                onFile={handleFile}
-                onOpenOriginal={handleOpenOriginal}
-                onSnooze={handleSnooze}
-                onDelete={handleDelete}
-                onAcceptSuggestion={handleAcceptSuggestion}
-                onDismissSuggestion={handleDismissSuggestion}
-                onAddTag={handleAddTag}
-                onRemoveTag={handleRemoveTag}
-              />
-            )}
+            {/* Stale Items Section */}
+            <StaleSection
+              items={staleItems}
+              onFileAllToUnsorted={handleFileAllToUnsorted}
+              onFileItem={handleFileStaleItem}
+              onDeleteItem={handleDeleteStaleItem}
+              onPreviewItem={handlePreviewStaleItem}
+            />
           </>
         )}
       </div>

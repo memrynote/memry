@@ -135,3 +135,6 @@ export {
   type SnoozedBadgeProps,
   type ReturningItemHighlightProps,
 } from './snoozed-indicator'
+
+// Stale Items
+export { StaleSection, type StaleSectionProps } from './stale-section'
