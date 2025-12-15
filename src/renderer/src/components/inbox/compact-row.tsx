@@ -48,8 +48,8 @@ export interface CompactRowProps {
   isBulkMode?: boolean
   /** Callback when selection changes */
   onSelectionChange?: (id: string, selected: boolean) => void
-  /** Callback when row is clicked */
-  onClick?: (id: string) => void
+  /** Callback when row is clicked (with mouse event for modifier keys) */
+  onClick?: (id: string, event: React.MouseEvent) => void
   /** Callback when row is double-clicked */
   onDoubleClick?: (id: string) => void
   /** Callback when file action is triggered */
@@ -229,15 +229,12 @@ export const CompactRow = forwardRef<HTMLDivElement, CompactRowProps>(
     const [isHovered, setIsHovered] = useState(false)
 
     const handleClick = useCallback(
-      () => {
-        // If clicking on checkbox area or bulk mode, toggle selection
-        if (isBulkMode) {
-          onSelectionChange?.(item.id, !isSelected)
-        } else {
-          onClick?.(item.id)
-        }
+      (e: React.MouseEvent) => {
+        // Always pass the click event with modifier info
+        // The parent component decides how to handle selection
+        onClick?.(item.id, e)
       },
-      [item.id, isBulkMode, isSelected, onClick, onSelectionChange]
+      [item.id, onClick]
     )
 
     const handleDoubleClick = useCallback(() => {

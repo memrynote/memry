@@ -29,3 +29,6 @@ export * from "./use-throttled-tab-switch"
 
 // Journal
 export * from "./use-journal-scroll"
+
+// Inbox
+export * from "./use-inbox-selection"

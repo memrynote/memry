@@ -6,11 +6,13 @@
  * - Search input (expandable with recent queries)
  * - Filter popover
  * - View mode toggle (Compact/Medium/Expanded)
+ * - Bulk mode transformation with selection controls
  */
 
 import { Inbox } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { ViewSwitcher } from './view-switcher'
 import { SearchInput } from './search-input'
 import { FilterPopover, type FilterState } from './filter-popover'
@@ -49,6 +51,14 @@ export interface InboxHeaderProps {
   isInBulkMode?: boolean
   /** Number of selected items */
   selectedCount?: number
+  /** Total number of visible items (for select all) */
+  visibleItemCount?: number
+  /** Whether all visible items are selected */
+  isAllSelected?: boolean
+  /** Whether some but not all items are selected */
+  isPartiallySelected?: boolean
+  /** Callback to select all */
+  onSelectAll?: () => void
   /** Callback to deselect all */
   onDeselectAll?: () => void
 }
@@ -105,27 +115,71 @@ function ItemCountBadge({
 
 interface BulkModeHeaderProps {
   selectedCount: number
+  visibleItemCount: number
+  isAllSelected: boolean
+  isPartiallySelected: boolean
+  onSelectAll: () => void
   onDeselectAll: () => void
 }
 
-function BulkModeHeader({ selectedCount, onDeselectAll }: BulkModeHeaderProps): React.JSX.Element {
+function BulkModeHeader({
+  selectedCount,
+  visibleItemCount,
+  isAllSelected,
+  isPartiallySelected,
+  onSelectAll,
+  onDeselectAll,
+}: BulkModeHeaderProps): React.JSX.Element {
+  // Handle checkbox click - toggle between select all and deselect all
+  const handleCheckboxChange = (checked: boolean | 'indeterminate') => {
+    if (checked === true || checked === 'indeterminate') {
+      onSelectAll()
+    } else {
+      onDeselectAll()
+    }
+  }
+
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2">
-        <div className="flex size-8 items-center justify-center rounded-full bg-primary/10">
-          <span className="text-sm font-semibold text-primary">{selectedCount}</span>
+    <div className="flex items-center gap-4">
+      {/* Select All Checkbox */}
+      <div className="flex items-center gap-3">
+        <Checkbox
+          checked={isAllSelected ? true : isPartiallySelected ? 'indeterminate' : false}
+          onCheckedChange={handleCheckboxChange}
+          aria-label={isAllSelected ? 'Deselect all items' : 'Select all items'}
+          className={cn(
+            'size-5 rounded-[4px] border-2',
+            'data-[state=checked]:bg-primary data-[state=checked]:border-primary',
+            'data-[state=indeterminate]:bg-primary data-[state=indeterminate]:border-primary',
+            'transition-all duration-150'
+          )}
+        />
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-foreground tabular-nums">
+            {selectedCount}
+          </span>
+          <span className="text-sm text-muted-foreground">
+            of {visibleItemCount} selected
+          </span>
         </div>
-        <span className="text-sm font-medium text-foreground">
-          {selectedCount === 1 ? 'item' : 'items'} selected
-        </span>
       </div>
+
+      {/* Divider */}
+      <div className="h-5 w-px bg-border/60" />
+
+      {/* Deselect Button */}
       <Button
         variant="ghost"
         size="sm"
         onClick={onDeselectAll}
-        className="h-7 text-xs text-muted-foreground hover:text-foreground"
+        className={cn(
+          'h-8 px-3 text-sm',
+          'text-muted-foreground hover:text-foreground',
+          'hover:bg-accent/80',
+          'transition-colors duration-150'
+        )}
       >
-        Deselect all
+        Clear selection
       </Button>
     </div>
   )
@@ -156,15 +210,30 @@ export function InboxHeader({
   activeFilterCount = 0,
   isInBulkMode = false,
   selectedCount = 0,
+  visibleItemCount = 0,
+  isAllSelected = false,
+  isPartiallySelected = false,
+  onSelectAll,
   onDeselectAll,
 }: InboxHeaderProps): React.JSX.Element {
   return (
-    <header className="flex items-center justify-between px-6 py-4">
+    <header
+      className={cn(
+        'flex items-center justify-between px-6 py-4',
+        'transition-colors duration-200',
+        // Subtle background change in bulk mode
+        isInBulkMode && 'bg-accent/20'
+      )}
+    >
       {/* Left Section */}
       <div className="flex items-center gap-4">
-        {isInBulkMode && selectedCount > 0 && onDeselectAll ? (
+        {isInBulkMode && selectedCount > 0 && onDeselectAll && onSelectAll ? (
           <BulkModeHeader
             selectedCount={selectedCount}
+            visibleItemCount={visibleItemCount}
+            isAllSelected={isAllSelected}
+            isPartiallySelected={isPartiallySelected}
+            onSelectAll={onSelectAll}
             onDeselectAll={onDeselectAll}
           />
         ) : (

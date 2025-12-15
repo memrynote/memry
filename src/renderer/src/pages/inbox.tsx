@@ -3,6 +3,7 @@
  *
  * Displays captured items from browser extension, quick captures, and unprocessed content.
  * Supports three view modes: Compact, Medium, and Expanded.
+ * Features robust selection system with shift-click range, cmd/ctrl multi-select.
  */
 
 import { useState, useMemo, useCallback } from 'react'
@@ -27,6 +28,10 @@ import {
   isItemSnoozed,
 } from '@/data/inbox-types'
 import { sampleInboxItems } from '@/data/sample-inbox'
+import {
+  useInboxSelection,
+  useSelectionKeyboard,
+} from '@/hooks/use-inbox-selection'
 
 // =============================================================================
 // TYPES
@@ -36,7 +41,6 @@ interface InboxPageState {
   viewMode: InboxViewMode
   filters: InboxFilters
   focusedItemId: string | null
-  selectedIds: Set<string>
 }
 
 // =============================================================================
@@ -44,14 +48,13 @@ interface InboxPageState {
 // =============================================================================
 
 /**
- * Hook to manage inbox page state
+ * Hook to manage inbox page state (excluding selection which is handled separately)
  */
 function useInboxState() {
   const [state, setState] = useState<InboxPageState>({
     viewMode: 'medium',
     filters: defaultInboxFilters,
     focusedItemId: null,
-    selectedIds: new Set(),
   })
 
   const setViewMode = useCallback((viewMode: InboxViewMode) => {
@@ -94,14 +97,6 @@ function useInboxState() {
     setState((prev) => ({ ...prev, filters: defaultInboxFilters }))
   }, [])
 
-  const setSelectedIds = useCallback((selectedIds: Set<string>) => {
-    setState((prev) => ({ ...prev, selectedIds }))
-  }, [])
-
-  const deselectAll = useCallback(() => {
-    setState((prev) => ({ ...prev, selectedIds: new Set() }))
-  }, [])
-
   const setFocusedItemId = useCallback((focusedItemId: string | null) => {
     setState((prev) => ({ ...prev, focusedItemId }))
   }, [])
@@ -115,9 +110,7 @@ function useInboxState() {
     setTimeFilter,
     setSortBy,
     resetFilters,
-    setSelectedIds,
     setFocusedItemId,
-    deselectAll,
   }
 }
 
@@ -283,7 +276,6 @@ export function InboxPage(): React.JSX.Element {
   const {
     viewMode,
     filters,
-    selectedIds,
     focusedItemId,
     setViewMode,
     setSearchQuery,
@@ -291,9 +283,7 @@ export function InboxPage(): React.JSX.Element {
     setTimeFilter,
     setSortBy,
     resetFilters,
-    setSelectedIds,
     setFocusedItemId,
-    deselectAll,
   } = useInboxState()
 
   // Items (using sample data for now)
@@ -305,9 +295,19 @@ export function InboxPage(): React.JSX.Element {
     [items, filters]
   )
 
-  const counts = useMemo(() => getItemCounts(items), [items])
+  // Selection management (using the new hook)
+  const selection = useInboxSelection(filteredItems)
 
-  const isInBulkMode = selectedIds.size > 0
+  // Enable keyboard shortcuts for selection
+  useSelectionKeyboard({
+    focusedId: focusedItemId,
+    toggleSelection: selection.toggleSelection,
+    selectAll: selection.selectAll,
+    deselectAll: selection.deselectAll,
+    enabled: true,
+  })
+
+  const counts = useMemo(() => getItemCounts(items), [items])
 
   const hasFilters = hasActiveFiltersCheck(filters)
   const activeFilterCount = getActiveFilterCount(
@@ -350,20 +350,32 @@ export function InboxPage(): React.JSX.Element {
   // ITEM HANDLERS
   // =========================================================================
 
-  const handleSelectionChange = useCallback(
-    (newSelectedIds: Set<string>) => {
-      setSelectedIds(newSelectedIds)
+  // Handle item click with modifier key support
+  const handleItemClick = useCallback(
+    (
+      id: string,
+      event: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }
+    ) => {
+      // Always update focus
+      setFocusedItemId(id)
+
+      // Delegate all selection logic to the selection hook
+      // This ensures lastSelectedId is always tracked correctly
+      selection.handleItemClick(id, event)
     },
-    [setSelectedIds]
+    [setFocusedItemId, selection]
   )
 
-  const handleItemClick = useCallback(
-    (id: string) => {
-      // In non-bulk mode, clicking opens preview (to be implemented)
-      // For now, just focus the item
-      setFocusedItemId(id)
+  // Handle checkbox toggle (direct selection change without modifiers)
+  const handleItemSelect = useCallback(
+    (id: string, selected: boolean) => {
+      if (selected) {
+        selection.addToSelection([id])
+      } else {
+        selection.removeFromSelection([id])
+      }
     },
-    [setFocusedItemId]
+    [selection]
   )
 
   const handleItemDoubleClick = useCallback(
@@ -479,9 +491,13 @@ export function InboxPage(): React.JSX.Element {
         onFiltersChange={handleFiltersChange}
         hasActiveFilters={hasFilters}
         activeFilterCount={activeFilterCount}
-        isInBulkMode={isInBulkMode}
-        selectedCount={selectedIds.size}
-        onDeselectAll={deselectAll}
+        isInBulkMode={selection.isInBulkMode}
+        selectedCount={selection.selectedCount}
+        visibleItemCount={filteredItems.length}
+        isAllSelected={selection.isAllSelected}
+        isPartiallySelected={selection.isPartiallySelected}
+        onSelectAll={selection.selectAll}
+        onDeselectAll={selection.deselectAll}
       />
 
       {/* Active Filters Bar */}
@@ -526,10 +542,10 @@ export function InboxPage(): React.JSX.Element {
             {viewMode === 'compact' && (
               <CompactView
                 items={filteredItems}
-                selectedIds={selectedIds}
+                selectedIds={selection.selectedIds}
                 focusedId={focusedItemId}
-                isBulkMode={isInBulkMode}
-                onSelectionChange={handleSelectionChange}
+                isBulkMode={selection.isInBulkMode}
+                onItemSelect={handleItemSelect}
                 onItemClick={handleItemClick}
                 onItemDoubleClick={handleItemDoubleClick}
                 onFile={handleFile}
@@ -544,10 +560,10 @@ export function InboxPage(): React.JSX.Element {
             {viewMode === 'medium' && (
               <MediumView
                 items={filteredItems}
-                selectedIds={selectedIds}
+                selectedIds={selection.selectedIds}
                 focusedId={focusedItemId}
-                isBulkMode={isInBulkMode}
-                onSelectionChange={handleSelectionChange}
+                isBulkMode={selection.isInBulkMode}
+                onItemSelect={handleItemSelect}
                 onItemClick={handleItemClick}
                 onItemDoubleClick={handleItemDoubleClick}
                 onFile={handleFile}
@@ -579,7 +595,7 @@ export function InboxPage(): React.JSX.Element {
       </div>
 
       {/* Bulk Action Bar Area - placeholder for future implementation */}
-      {isInBulkMode && (
+      {selection.isInBulkMode && (
         <div
           className={cn(
             'border-t border-border bg-background/95 backdrop-blur',
@@ -587,8 +603,9 @@ export function InboxPage(): React.JSX.Element {
           )}
         >
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">
-              {selectedIds.size} {selectedIds.size === 1 ? 'item' : 'items'} selected
+            <span className="text-sm font-medium tabular-nums">
+              {selection.selectedCount}{' '}
+              {selection.selectedCount === 1 ? 'item' : 'items'} selected
             </span>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               Bulk actions will be implemented in prompt 12

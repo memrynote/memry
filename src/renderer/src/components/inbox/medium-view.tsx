@@ -25,8 +25,13 @@ export interface MediumViewProps {
   isBulkMode?: boolean
   /** Callback when selection changes */
   onSelectionChange?: (selectedIds: Set<string>) => void
-  /** Callback when an item is clicked */
-  onItemClick?: (id: string) => void
+  /** Callback when an item checkbox is toggled */
+  onItemSelect?: (id: string, selected: boolean) => void
+  /** Callback when an item is clicked with modifier info */
+  onItemClick?: (
+    id: string,
+    event: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }
+  ) => void
   /** Callback when an item is double-clicked */
   onItemDoubleClick?: (id: string) => void
   /** Callback when file action is triggered */
@@ -53,6 +58,7 @@ export function MediumView({
   focusedId,
   isBulkMode = false,
   onSelectionChange,
+  onItemSelect,
   onItemClick,
   onItemDoubleClick,
   onFile,
@@ -62,9 +68,15 @@ export function MediumView({
   onDelete,
   className,
 }: MediumViewProps): React.JSX.Element {
-  // Handle individual item selection change
+  // Handle individual item selection change (checkbox toggle)
   const handleSelectionChange = useCallback(
     (id: string, selected: boolean) => {
+      // If onItemSelect is provided, use it (from useInboxSelection)
+      if (onItemSelect) {
+        onItemSelect(id, selected)
+        return
+      }
+      // Fallback to direct Set manipulation
       const newSelectedIds = new Set(selectedIds)
       if (selected) {
         newSelectedIds.add(id)
@@ -73,13 +85,17 @@ export function MediumView({
       }
       onSelectionChange?.(newSelectedIds)
     },
-    [selectedIds, onSelectionChange]
+    [selectedIds, onSelectionChange, onItemSelect]
   )
 
-  // Handle item click
+  // Handle item click with modifier keys
   const handleItemClick = useCallback(
-    (id: string) => {
-      onItemClick?.(id)
+    (id: string, e: React.MouseEvent) => {
+      onItemClick?.(id, {
+        shiftKey: e.shiftKey,
+        metaKey: e.metaKey,
+        ctrlKey: e.ctrlKey,
+      })
     },
     [onItemClick]
   )

@@ -50,8 +50,8 @@ export interface MediumCardProps {
   isBulkMode?: boolean
   /** Callback when selection changes */
   onSelectionChange?: (id: string, selected: boolean) => void
-  /** Callback when card is clicked */
-  onClick?: (id: string) => void
+  /** Callback when card is clicked (with mouse event for modifier keys) */
+  onClick?: (id: string, event: React.MouseEvent) => void
   /** Callback when card is double-clicked */
   onDoubleClick?: (id: string) => void
   /** Callback when file action is triggered */
@@ -234,13 +234,14 @@ export const MediumCard = forwardRef<HTMLDivElement, MediumCardProps>(
   ) {
     const [isHovered, setIsHovered] = useState(false)
 
-    const handleClick = useCallback(() => {
-      if (isBulkMode) {
-        onSelectionChange?.(item.id, !isSelected)
-      } else {
-        onClick?.(item.id)
-      }
-    }, [item.id, isBulkMode, isSelected, onClick, onSelectionChange])
+    const handleClick = useCallback(
+      (e: React.MouseEvent) => {
+        // Always pass the click event with modifier info
+        // The parent component decides how to handle selection
+        onClick?.(item.id, e)
+      },
+      [item.id, onClick]
+    )
 
     const handleDoubleClick = useCallback(() => {
       onDoubleClick?.(item.id)
