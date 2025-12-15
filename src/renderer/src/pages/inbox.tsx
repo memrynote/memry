@@ -13,8 +13,11 @@ import {
   MediumView,
   ExpandedView,
   EmptyState,
+  ActiveFilters,
+  getActiveFilterCount,
   type EmptyStateContext,
   type SnoozedItemPreview,
+  type FilterState,
 } from '@/components/inbox'
 import {
   type InboxViewMode,
@@ -32,7 +35,6 @@ import { sampleInboxItems } from '@/data/sample-inbox'
 interface InboxPageState {
   viewMode: InboxViewMode
   filters: InboxFilters
-  isFiltersOpen: boolean
   focusedItemId: string | null
   selectedIds: Set<string>
 }
@@ -48,7 +50,6 @@ function useInboxState() {
   const [state, setState] = useState<InboxPageState>({
     viewMode: 'medium',
     filters: defaultInboxFilters,
-    isFiltersOpen: false,
     focusedItemId: null,
     selectedIds: new Set(),
   })
@@ -68,8 +69,29 @@ function useInboxState() {
     }))
   }, [])
 
-  const toggleFiltersOpen = useCallback(() => {
-    setState((prev) => ({ ...prev, isFiltersOpen: !prev.isFiltersOpen }))
+  const setTypeFilter = useCallback((typeFilter: InboxFilters['typeFilter']) => {
+    setState((prev) => ({
+      ...prev,
+      filters: { ...prev.filters, typeFilter },
+    }))
+  }, [])
+
+  const setTimeFilter = useCallback((timeFilter: InboxFilters['timeFilter']) => {
+    setState((prev) => ({
+      ...prev,
+      filters: { ...prev.filters, timeFilter },
+    }))
+  }, [])
+
+  const setSortBy = useCallback((sortBy: InboxFilters['sortBy']) => {
+    setState((prev) => ({
+      ...prev,
+      filters: { ...prev.filters, sortBy },
+    }))
+  }, [])
+
+  const resetFilters = useCallback(() => {
+    setState((prev) => ({ ...prev, filters: defaultInboxFilters }))
   }, [])
 
   const setSelectedIds = useCallback((selectedIds: Set<string>) => {
@@ -89,7 +111,10 @@ function useInboxState() {
     setViewMode,
     setFilters,
     setSearchQuery,
-    toggleFiltersOpen,
+    setTypeFilter,
+    setTimeFilter,
+    setSortBy,
+    resetFilters,
     setSelectedIds,
     setFocusedItemId,
     deselectAll,
@@ -193,13 +218,25 @@ function getItemCounts(items: InboxItem[]) {
 /**
  * Check if any filters are active (beyond defaults)
  */
-function hasActiveFilters(filters: InboxFilters): boolean {
+function hasActiveFiltersCheck(filters: InboxFilters): boolean {
   return (
     filters.search !== '' ||
     filters.typeFilter !== 'all' ||
     filters.timeFilter !== 'all' ||
+    filters.sortBy !== 'newest' ||
     filters.tagIds.length > 0
   )
+}
+
+/**
+ * Convert InboxFilters to FilterState for the header
+ */
+function toFilterState(filters: InboxFilters): FilterState {
+  return {
+    typeFilter: filters.typeFilter,
+    timeFilter: filters.timeFilter,
+    sortBy: filters.sortBy,
+  }
 }
 
 /**
@@ -246,12 +283,14 @@ export function InboxPage(): React.JSX.Element {
   const {
     viewMode,
     filters,
-    isFiltersOpen: _isFiltersOpen, // Will be used when filter panel is implemented
     selectedIds,
     focusedItemId,
     setViewMode,
     setSearchQuery,
-    toggleFiltersOpen,
+    setTypeFilter,
+    setTimeFilter,
+    setSortBy,
+    resetFilters,
     setSelectedIds,
     setFocusedItemId,
     deselectAll,
@@ -270,8 +309,45 @@ export function InboxPage(): React.JSX.Element {
 
   const isInBulkMode = selectedIds.size > 0
 
+  const hasFilters = hasActiveFiltersCheck(filters)
+  const activeFilterCount = getActiveFilterCount(
+    filters.typeFilter,
+    filters.timeFilter,
+    filters.sortBy,
+    filters.search
+  )
+
   // =========================================================================
-  // HANDLERS
+  // FILTER HANDLERS
+  // =========================================================================
+
+  const handleFiltersChange = useCallback(
+    (newFilters: FilterState) => {
+      setTypeFilter(newFilters.typeFilter)
+      setTimeFilter(newFilters.timeFilter)
+      setSortBy(newFilters.sortBy)
+    },
+    [setTypeFilter, setTimeFilter, setSortBy]
+  )
+
+  const handleClearTypeFilter = useCallback(() => {
+    setTypeFilter('all')
+  }, [setTypeFilter])
+
+  const handleClearTimeFilter = useCallback(() => {
+    setTimeFilter('all')
+  }, [setTimeFilter])
+
+  const handleClearSort = useCallback(() => {
+    setSortBy('newest')
+  }, [setSortBy])
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('')
+  }, [setSearchQuery])
+
+  // =========================================================================
+  // ITEM HANDLERS
   // =========================================================================
 
   const handleSelectionChange = useCallback(
@@ -398,36 +474,28 @@ export function InboxPage(): React.JSX.Element {
         onViewModeChange={setViewMode}
         searchQuery={filters.search}
         onSearchChange={setSearchQuery}
-        hasActiveFilters={hasActiveFilters(filters)}
-        onFiltersClick={toggleFiltersOpen}
+        searchResultCount={filters.search ? filteredItems.length : undefined}
+        filters={toFilterState(filters)}
+        onFiltersChange={handleFiltersChange}
+        hasActiveFilters={hasFilters}
+        activeFilterCount={activeFilterCount}
         isInBulkMode={isInBulkMode}
         selectedCount={selectedIds.size}
         onDeselectAll={deselectAll}
       />
 
-      {/* Active Filters Bar - placeholder for future implementation */}
-      {hasActiveFilters(filters) && (
-        <div className="border-b border-border/50 bg-muted/30 px-6 py-2">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Active filters:</span>
-            {filters.search && (
-              <span className="rounded-full bg-background px-2 py-0.5 text-xs">
-                Search: "{filters.search}"
-              </span>
-            )}
-            {filters.typeFilter !== 'all' && (
-              <span className="rounded-full bg-background px-2 py-0.5 text-xs capitalize">
-                Type: {filters.typeFilter}
-              </span>
-            )}
-            {filters.timeFilter !== 'all' && (
-              <span className="rounded-full bg-background px-2 py-0.5 text-xs capitalize">
-                Time: {filters.timeFilter}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Active Filters Bar */}
+      <ActiveFilters
+        typeFilter={filters.typeFilter}
+        timeFilter={filters.timeFilter}
+        sortBy={filters.sortBy}
+        searchQuery={filters.search}
+        onClearTypeFilter={handleClearTypeFilter}
+        onClearTimeFilter={handleClearTimeFilter}
+        onClearSort={handleClearSort}
+        onClearSearch={handleClearSearch}
+        onClearAll={resetFilters}
+      />
 
       {/* Content Area */}
       <div
@@ -437,7 +505,7 @@ export function InboxPage(): React.JSX.Element {
         )}
       >
         {filteredItems.length === 0 ? (
-          hasActiveFilters(filters) ? (
+          hasFilters ? (
             // Filters active but no results
             <div className="flex h-64 items-center justify-center">
               <p className="text-sm text-muted-foreground">

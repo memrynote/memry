@@ -80,3 +80,27 @@ export {
   type ReturningEmptyProps,
   type SnoozedItemPreview,
 } from './empty-states'
+
+// Search
+export {
+  SearchInput,
+  StandaloneSearchInput,
+  type SearchInputProps,
+  type StandaloneSearchInputProps,
+} from './search-input'
+
+// Filters
+export {
+  FilterPopover,
+  FilterDropdown,
+  type FilterPopoverProps,
+  type FilterState,
+  type FilterDropdownProps,
+} from './filter-popover'
+
+export {
+  ActiveFilters,
+  getActiveFilterCount,
+  hasActiveFilters,
+  type ActiveFiltersProps,
+} from './active-filters'
