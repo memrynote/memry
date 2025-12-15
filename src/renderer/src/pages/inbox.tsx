@@ -18,6 +18,7 @@ import {
   getActiveFilterCount,
   BulkActionBar,
   useMockClusterSuggestion,
+  FilingPanel,
   type EmptyStateContext,
   type SnoozedItemPreview,
   type FilterState,
@@ -31,6 +32,13 @@ import {
   isItemSnoozed,
 } from '@/data/inbox-types'
 import { sampleInboxItems } from '@/data/sample-inbox'
+import {
+  sampleFolders,
+  sampleTags,
+  sampleRecentFolders,
+} from '@/data/filing-data'
+import { getMockSuggestions } from '@/lib/filing-utils'
+import type { Tag, TagColor } from '@/data/filing-types'
 import {
   useInboxSelection,
   useSelectionKeyboard,
@@ -330,6 +338,18 @@ export function InboxPage(): React.JSX.Element {
     }
   }, [selection.selectedCount])
 
+  // Filing panel state
+  const [isFilingPanelOpen, setIsFilingPanelOpen] = useState(false)
+  const [itemsToFile, setItemsToFile] = useState<InboxItem[]>([])
+  const [localTags, setLocalTags] = useState<Tag[]>(sampleTags)
+
+  // AI suggestions for filing
+  const filingSuggestions = useMemo(() => {
+    if (itemsToFile.length === 0) return undefined
+    // For simplicity, use the first item for suggestions
+    return getMockSuggestions(itemsToFile[0], sampleFolders, filteredItems)
+  }, [itemsToFile, filteredItems])
+
   const counts = useMemo(() => getItemCounts(items), [items])
 
   const hasFilters = hasActiveFiltersCheck(filters)
@@ -498,11 +518,10 @@ export function InboxPage(): React.JSX.Element {
   // =========================================================================
 
   const handleBulkFile = useCallback(() => {
-    const count = selection.selectedCount
-    // Open filing panel (to be implemented)
-    console.log('Bulk file items:', Array.from(selection.selectedIds))
-    toast.success(`Opening file panel for ${count} ${count === 1 ? 'item' : 'items'}`)
-  }, [selection])
+    // Open filing panel with selected items
+    setItemsToFile(selectedItems)
+    setIsFilingPanelOpen(true)
+  }, [selectedItems])
 
   const handleBulkTag = useCallback(() => {
     const count = selection.selectedCount
@@ -550,6 +569,58 @@ export function InboxPage(): React.JSX.Element {
     // Navigate to snoozed items view (to be implemented)
     console.log('View snoozed items')
   }, [])
+
+  // =========================================================================
+  // FILING PANEL HANDLERS
+  // =========================================================================
+
+  const handleCloseFilingPanel = useCallback(() => {
+    setIsFilingPanelOpen(false)
+    setItemsToFile([])
+  }, [])
+
+  const handleFileItems = useCallback(
+    (folderId: string, tagIds: string[]) => {
+      const count = itemsToFile.length
+      const folder = sampleFolders.find((f) => f.id === folderId)
+
+      // File the items (mock implementation)
+      console.log('Filing items:', itemsToFile.map((i) => i.id), 'to folder:', folderId, 'with tags:', tagIds)
+
+      // Show success toast
+      toast.success(
+        `Filed ${count} ${count === 1 ? 'item' : 'items'} to ${folder?.name || 'folder'}`,
+        {
+          action: {
+            label: 'Undo',
+            onClick: () => {
+              toast.info('Undo filing (not implemented)')
+            },
+          },
+        }
+      )
+
+      // Close panel and clear selection
+      handleCloseFilingPanel()
+      selection.deselectAll()
+    },
+    [itemsToFile, handleCloseFilingPanel, selection]
+  )
+
+  const handleCreateTag = useCallback(
+    (name: string, color: TagColor): Tag => {
+      const newTag: Tag = {
+        id: `tag-${Date.now()}`,
+        name: name.toLowerCase(),
+        color,
+        usageCount: 0,
+        createdAt: new Date(),
+      }
+      setLocalTags((prev) => [...prev, newTag])
+      return newTag
+    },
+    []
+  )
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -681,6 +752,19 @@ export function InboxPage(): React.JSX.Element {
         aiSuggestion={showSuggestion ? aiSuggestion : undefined}
         onAddSuggestion={handleAddAISuggestion}
         onDismissSuggestion={handleDismissAISuggestion}
+      />
+
+      {/* Filing Panel */}
+      <FilingPanel
+        isOpen={isFilingPanelOpen}
+        onClose={handleCloseFilingPanel}
+        items={itemsToFile}
+        folders={sampleFolders}
+        tags={localTags}
+        recentFolderIds={sampleRecentFolders.folderIds}
+        aiSuggestions={filingSuggestions}
+        onFile={handleFileItems}
+        onCreateTag={handleCreateTag}
       />
     </div>
   )

@@ -119,3 +119,8 @@ export {
   type AIClusterSuggestionProps,
   type AIClusterSuggestionCompactProps,
 } from './ai-cluster-suggestion'
+
+// Filing Panel
+export { FilingPanel, type FilingPanelProps } from './filing-panel'
+export { FolderTree, type FolderTreeProps } from './folder-tree'
+export { TagInput, type TagInputProps } from './tag-input'
