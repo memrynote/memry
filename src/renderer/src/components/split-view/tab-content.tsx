@@ -9,7 +9,6 @@ import { useTabs } from '@/contexts/tabs';
 import { useTasksOptional } from '@/contexts/tasks';
 import { cn } from '@/lib/utils';
 import { InboxPage } from '@/pages/inbox';
-import { Inbox2Page } from '@/pages/inbox2';
 import { JournalPage } from '@/pages/journal';
 import { TasksPage } from '@/pages/tasks';
 import { NotePage } from '@/pages/note';
@@ -65,8 +64,6 @@ export const TabContent = ({
         switch (tab.type) {
             case 'inbox':
                 return <InboxPage />;
-            case 'inbox2':
-                return <Inbox2Page />;
 
             case 'home':
                 return <PlaceholderView title="Home" icon="home" />;

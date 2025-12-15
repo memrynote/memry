@@ -102,7 +102,6 @@ export const findPreviewTab = (group: TabGroup): Tab | null => {
  */
 const TAB_ICONS: Record<TabType, string> = {
   inbox: 'inbox',
-  inbox2: 'inbox',
   home: 'home',
   tasks: 'list-checks',      // New unified tasks tab
   'all-tasks': 'list-checks',
@@ -133,7 +132,6 @@ export const getTabIcon = (type: TabType): string => {
  */
 const TAB_PATHS: Partial<Record<TabType, string>> = {
   inbox: '/inbox',
-  inbox2: '/inbox2',
   home: '/home',
   'all-tasks': '/tasks/all',
   today: '/tasks/today',
