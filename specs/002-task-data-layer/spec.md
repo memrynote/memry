@@ -5,6 +5,14 @@
 **Status**: Draft
 **Input**: User description: "Build the task management data layer that persists tasks, projects, and enables the existing UI components"
 
+## Clarifications
+
+### Session 2025-12-17
+
+- Q: What are the exact fields for Task entity? → A: Task has id, title, description (rich text), projectId (required), statusId, priority, dueDate, dueTime ("HH:MM" format), isRepeating, repeatConfig, linkedNoteIds, sourceNoteId, parentId, subtaskIds, createdAt, completedAt, archivedAt.
+- Q: What filter criteria should be supported and can users save filters? → A: Filters include project, priority, due date (Today/Tomorrow/This Week/Overdue/No Date/Custom Range), status, completion state, and repeating. Users CAN save filters for future use.
+- Q: What is the allowed depth for subtasks? → A: Single depth only. Main tasks can have subtasks, but subtasks CANNOT have their own subtasks.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Persist Tasks Locally (Priority: P1)
@@ -25,17 +33,37 @@ As a user, I want my tasks persisted locally so they survive app restarts.
 
 ### User Story 2 - Create Tasks with Full Details (Priority: P1)
 
-As a user, I want to create tasks with title, description, due date, and priority.
+As a user, I want to create tasks with title, description (rich text), due date, due time, priority, and assign them to a project with a status.
 
 **Why this priority**: Users need to capture task information to effectively manage their work. Without rich task data, the app provides minimal value over a simple text list.
 
 **Independent Test**: Can be fully tested by creating a task with all fields populated and verifying each field is saved and displayed correctly.
 
+**Task Fields**:
+- `id`: Unique identifier (auto-generated)
+- `title`: Required, task name
+- `description`: Optional, rich text content
+- `projectId`: Required, references a project
+- `statusId`: References a status within the project
+- `priority`: none, low, medium, high, or urgent
+- `dueDate`: Optional, date only
+- `dueTime`: Optional, "HH:MM" format (can be set even without dueDate)
+- `isRepeating`: Whether task repeats
+- `repeatConfig`: Configuration for repeating tasks
+- `linkedNoteIds`: Array of linked note references
+- `sourceNoteId`: If task was extracted from a note
+- `parentId`: ID of parent task (null if top-level)
+- `subtaskIds`: Ordered list of subtask IDs
+- `createdAt`: Creation timestamp
+- `completedAt`: Completion timestamp (set when moved to "done" status)
+- `archivedAt`: Archive timestamp (for completed tasks)
+
 **Acceptance Scenarios**:
 
-1. **Given** I am creating a new task, **When** I enter a title, description, select a due date, and set priority to "High," **Then** all fields are saved and displayed correctly.
-2. **Given** I create a task with only a title (minimal info), **When** I view the task, **Then** it appears with sensible defaults (no due date, no priority).
+1. **Given** I am creating a new task, **When** I enter a title, rich text description, select a due date and time, set priority to "High," and assign to a project with a status, **Then** all fields are saved and displayed correctly.
+2. **Given** I create a task with only a title (minimal info), **When** I view the task, **Then** it appears with sensible defaults (no due date, default priority "none," assigned to default project with first "todo" status).
 3. **Given** I edit an existing task's due date, **When** I save, **Then** the change persists and the task appears in the correct date group.
+4. **Given** I set a due time without a due date, **When** I save, **Then** the time is stored (can represent a recurring time-based reminder).
 
 ---
 
@@ -71,13 +99,21 @@ As a user, I want to mark tasks as complete and see them in a completed view.
 
 ---
 
-### User Story 5 - Filter and Sort Tasks (Priority: P1)
+### User Story 5 - Filter, Sort, and Save Filters (Priority: P1)
 
-As a user, I want to filter and sort tasks by various criteria (due date, priority, project, status).
+As a user, I want to filter and sort tasks by various criteria (project, priority, due date, status, repeating) and save my filters for future use.
 
-**Why this priority**: With many tasks, users need to focus on what matters now. Filtering and sorting are essential for productivity.
+**Why this priority**: With many tasks, users need to focus on what matters now. Filtering and sorting are essential for productivity. Saved filters enable quick access to commonly used views.
 
-**Independent Test**: Can be fully tested by creating diverse tasks and verifying each filter/sort combination shows the correct subset.
+**Independent Test**: Can be fully tested by creating diverse tasks, verifying each filter/sort combination shows the correct subset, and saving/loading filters.
+
+**Filter Criteria**:
+- Project: Filter by one or more projects
+- Priority: Filter by priority levels (none, low, medium, high, urgent)
+- Due date: Today, Tomorrow, This Week, Overdue, No Date, Custom Range
+- Status: Filter by status IDs within projects
+- Completion state: Active, Completed, All
+- Repeating: All, Repeating Only, One-time Only
 
 **Acceptance Scenarios**:
 
@@ -85,6 +121,11 @@ As a user, I want to filter and sort tasks by various criteria (due date, priori
 2. **Given** I filter by "Today," **When** I view results, **Then** only tasks due today appear.
 3. **Given** I sort by due date, **When** I view my tasks, **Then** overdue tasks appear first, then today, then future dates.
 4. **Given** I search for "meeting," **When** results appear, **Then** I see all tasks with "meeting" in the title or description.
+5. **Given** I filter by "Repeating Only," **When** I view results, **Then** only tasks with repeat configurations appear.
+6. **Given** I create a complex filter (High priority + Due This Week + Project "Work"), **When** I click "Save Filter" and name it "Urgent Work," **Then** the filter is saved.
+7. **Given** I have saved filters, **When** I select "Urgent Work" from my saved filters, **Then** the filter is applied instantly.
+8. **Given** I want to modify a saved filter, **When** I adjust criteria and click "Update," **Then** the saved filter is updated.
+9. **Given** I no longer need a saved filter, **When** I delete it, **Then** it's removed from my saved filters list.
 
 ---
 
@@ -107,11 +148,13 @@ As a user, I want repeating tasks that automatically create the next occurrence 
 
 ### User Story 7 - Subtasks (Priority: P2)
 
-As a user, I want subtasks to break down complex tasks into smaller steps.
+As a user, I want subtasks to break down complex tasks into smaller steps. Subtasks are limited to one level of depth (main task → subtasks only, no nested subtasks).
 
-**Why this priority**: Complex tasks become manageable when broken into steps. Subtasks help users track progress on larger work items.
+**Why this priority**: Complex tasks become manageable when broken into steps. Subtasks help users track progress on larger work items. Single-depth limitation keeps the hierarchy simple and predictable.
 
 **Independent Test**: Can be fully tested by creating a parent task with subtasks, completing subtasks, and verifying the parent task displays progress.
+
+**Depth Constraint**: Only one level of nesting is allowed. A main task can have subtasks, but subtasks CANNOT have their own subtasks.
 
 **Acceptance Scenarios**:
 
@@ -119,6 +162,7 @@ As a user, I want subtasks to break down complex tasks into smaller steps.
 2. **Given** I complete all subtasks, **When** I view the parent, **Then** the parent is NOT automatically completed (user decides when done).
 3. **Given** I delete a parent task, **When** prompted, **Then** I can choose to delete all subtasks or promote them to standalone tasks.
 4. **Given** I reorder subtasks, **When** I drag them, **Then** the new order persists.
+5. **Given** I have a subtask, **When** I try to add a subtask to it, **Then** the option is not available (subtasks cannot have children).
 
 ---
 
@@ -236,11 +280,12 @@ As a user, I want to drag tasks between status columns in Kanban view.
 
 - What happens when deleting a project with tasks? User must choose to move tasks to another project or delete them.
 - What happens when deleting a status with tasks in it? The deletion is blocked with a clear error message.
-- What happens with circular subtask references? The system prevents creating a subtask that references its parent or ancestors.
+- What happens when trying to add a subtask to a subtask? The system prevents this (only one level of depth allowed).
 - What happens when a repeating task's end date has passed? No new instance is created; user is notified.
 - What happens when bulk-deleting many tasks? The operation completes without freezing the UI; undo restores all.
-- What happens with a task that has 100 subtasks? The UI remains responsive using virtualization.
+- What happens with a task that has many subtasks? The UI remains responsive (subtasks are loaded with parent).
 - What happens when moving a task to an archived project? The task is also archived automatically.
+- What happens when a saved filter references a deleted project? The filter gracefully excludes the deleted project and shows remaining results.
 
 ## Requirements *(mandatory)*
 
@@ -256,8 +301,8 @@ As a user, I want to drag tasks between status columns in Kanban view.
 - **FR-008**: System MUST support repeating tasks with configurable frequency (daily, weekly, monthly, yearly).
 - **FR-009**: System MUST automatically create the next instance of a repeating task when the current one is completed.
 - **FR-010**: System MUST support end conditions for repeating tasks: never, after a date, or after N occurrences.
-- **FR-011**: System MUST support subtasks with unlimited nesting depth.
-- **FR-012**: System MUST prevent circular subtask references.
+- **FR-011**: System MUST support subtasks with exactly one level of depth (main task → subtasks only, no nested subtasks).
+- **FR-012**: System MUST prevent adding subtasks to existing subtasks (enforcing single-depth constraint).
 - **FR-013**: System MUST support linking tasks to notes using note identifiers.
 - **FR-014**: System MUST support archiving tasks to hide them from active views while preserving history.
 - **FR-015**: System MUST provide undo support for delete and complete actions within 10 seconds.
@@ -265,6 +310,8 @@ As a user, I want to drag tasks between status columns in Kanban view.
 - **FR-017**: System MUST support text search with fuzzy matching on task title and description.
 - **FR-018**: System MUST support filtering by: project, priority, due date range, status, completion state, repeating/one-time.
 - **FR-019**: System MUST support sorting by: due date, priority, created date, title, manual order.
+- **FR-027**: System MUST support saving filter configurations with user-defined names for future use.
+- **FR-028**: System MUST support loading, updating, and deleting saved filters.
 - **FR-020**: System MUST maintain task ordering when manually sorted.
 - **FR-021**: System MUST support duplicating tasks, preserving all details except completion state.
 - **FR-022**: System MUST use soft delete with a 30-day trash retention period before permanent deletion.
@@ -275,7 +322,24 @@ As a user, I want to drag tasks between status columns in Kanban view.
 
 ### Key Entities
 
-- **Task**: A work item with title, optional description, due date/time, priority, status, and relationships to project, parent task, and linked notes. Can be marked complete or archived.
+- **Task**: A work item with:
+  - `id`: Unique identifier (auto-generated)
+  - `title`: Required, task name
+  - `description`: Optional, rich text content
+  - `projectId`: Required, references a project
+  - `statusId`: References a status within the project
+  - `priority`: none, low, medium, high, or urgent
+  - `dueDate`: Optional, date only
+  - `dueTime`: Optional, "HH:MM" format
+  - `isRepeating`: Whether task repeats
+  - `repeatConfig`: Configuration for repeating tasks
+  - `linkedNoteIds`: Array of linked note references
+  - `sourceNoteId`: If task was extracted from a note
+  - `parentId`: ID of parent task (null if top-level)
+  - `subtaskIds`: Ordered list of subtask IDs
+  - `createdAt`: Creation timestamp
+  - `completedAt`: Set when moved to "done" type status
+  - `archivedAt`: Set when task is archived
 
 - **Project**: A container for related tasks with a unique name, color, icon, and custom status workflow. One project is always the default. Projects can be archived but not deleted if they contain tasks.
 
@@ -283,7 +347,9 @@ As a user, I want to drag tasks between status columns in Kanban view.
 
 - **Repeat Configuration**: Defines how a task repeats including frequency, interval, optional day constraints, and end conditions.
 
-- **Subtask**: A child task linked to a parent task, displayed hierarchically. Inherits project from parent.
+- **Subtask**: A child task linked to a parent task via `parentId`. Limited to one level of depth (subtasks cannot have subtasks). Inherits project from parent.
+
+- **Saved Filter**: A named configuration storing filter criteria (project, priority, due date range, status, completion state, repeating) that users can quickly apply.
 
 ### Assumptions
 
