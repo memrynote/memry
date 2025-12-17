@@ -136,196 +136,298 @@ interface JournalEntry {
 
 ## Database Entities
 
-### data.db Schema
+### data.db Schema (Drizzle ORM)
 
-The `data.db` database stores structured data that doesn't benefit from file-based storage.
+The `data.db` database stores structured data using **Drizzle ORM** for type-safe schema definitions. These schemas are **shared** between Electron and future React Native apps.
 
-```sql
--- Enable WAL mode for better performance
-PRAGMA journal_mode = WAL;
-PRAGMA foreign_keys = ON;
+**Location**: `src/shared/db/schema/`
 
--- Schema version tracking
-CREATE TABLE schema_version (
-  version INTEGER PRIMARY KEY,
-  applied_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
+#### Projects Schema
+```typescript
+// src/shared/db/schema/projects.ts
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 
--- Projects: containers for tasks
-CREATE TABLE projects (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  color TEXT NOT NULL DEFAULT '#6366f1',
-  icon TEXT,
-  position INTEGER NOT NULL DEFAULT 0,
-  is_inbox INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  modified_at TEXT NOT NULL DEFAULT (datetime('now')),
-  archived_at TEXT
-);
+export const projects = sqliteTable('projects', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  color: text('color').notNull().default('#6366f1'),
+  icon: text('icon'),
+  position: integer('position').notNull().default(0),
+  isInbox: integer('is_inbox', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  modifiedAt: text('modified_at').notNull().default(sql`(datetime('now'))`),
+  archivedAt: text('archived_at'),
+});
 
--- Default inbox project
-INSERT INTO projects (id, name, is_inbox, position)
-VALUES ('inbox', 'Inbox', 1, 0);
+// Inferred types
+export type Project = typeof projects.$inferSelect;
+export type NewProject = typeof projects.$inferInsert;
+```
 
--- Custom statuses per project
-CREATE TABLE statuses (
-  id TEXT PRIMARY KEY,
-  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  color TEXT NOT NULL DEFAULT '#6b7280',
-  position INTEGER NOT NULL DEFAULT 0,
-  is_default INTEGER NOT NULL DEFAULT 0,
-  is_done INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
+#### Statuses Schema
+```typescript
+// src/shared/db/schema/statuses.ts
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+import { projects } from './projects';
 
--- Tasks
-CREATE TABLE tasks (
-  id TEXT PRIMARY KEY,
-  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  status_id TEXT REFERENCES statuses(id) ON DELETE SET NULL,
-  parent_id TEXT REFERENCES tasks(id) ON DELETE CASCADE,
+export const statuses = sqliteTable('statuses', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  color: text('color').notNull().default('#6b7280'),
+  position: integer('position').notNull().default(0),
+  isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+  isDone: integer('is_done', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index('idx_statuses_project').on(table.projectId),
+]);
 
-  title TEXT NOT NULL,
-  description TEXT,
-  priority INTEGER NOT NULL DEFAULT 0,  -- 0=none, 1=low, 2=medium, 3=high
-  position INTEGER NOT NULL DEFAULT 0,
+export type Status = typeof statuses.$inferSelect;
+export type NewStatus = typeof statuses.$inferInsert;
+```
 
-  due_date TEXT,                         -- ISO 8601 date
-  due_time TEXT,                         -- HH:mm format
-  start_date TEXT,                       -- ISO 8601 date
+#### Tasks Schema
+```typescript
+// src/shared/db/schema/tasks.ts
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+import { projects } from './projects';
+import { statuses } from './statuses';
 
-  -- Repeat configuration (JSON)
-  repeat_config TEXT,                    -- JSON: { type, interval, days[], endDate }
-  repeat_from TEXT,                      -- 'due' | 'completion'
+export const tasks = sqliteTable('tasks', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  statusId: text('status_id').references(() => statuses.id, { onDelete: 'set null' }),
+  parentId: text('parent_id'), // Self-reference for subtasks
 
-  -- Completion tracking
-  completed_at TEXT,
-  archived_at TEXT,
+  title: text('title').notNull(),
+  description: text('description'),
+  priority: integer('priority').notNull().default(0), // 0=none, 1=low, 2=medium, 3=high
+  position: integer('position').notNull().default(0),
 
-  -- Timestamps
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  modified_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
+  dueDate: text('due_date'),       // ISO 8601 date (YYYY-MM-DD)
+  dueTime: text('due_time'),       // HH:mm format
+  startDate: text('start_date'),   // ISO 8601 date
 
--- Task-Note links
-CREATE TABLE task_notes (
-  task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-  note_id TEXT NOT NULL,                 -- References note frontmatter id
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  PRIMARY KEY (task_id, note_id)
-);
+  repeatConfig: text('repeat_config', { mode: 'json' }), // JSON object
+  repeatFrom: text('repeat_from'), // 'due' | 'completion'
 
--- Task tags
-CREATE TABLE task_tags (
-  task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-  tag TEXT NOT NULL,
-  PRIMARY KEY (task_id, tag)
-);
+  completedAt: text('completed_at'),
+  archivedAt: text('archived_at'),
 
--- Inbox items (quick capture before filing)
-CREATE TABLE inbox_items (
-  id TEXT PRIMARY KEY,
-  type TEXT NOT NULL,                    -- 'text' | 'link' | 'voice' | 'image'
-  content TEXT NOT NULL,                 -- Text content or file path
-  metadata TEXT,                         -- JSON: { url, title, thumbnail } for links
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  filed_at TEXT                          -- When moved to note/task
-);
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  modifiedAt: text('modified_at').notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index('idx_tasks_project').on(table.projectId),
+  index('idx_tasks_status').on(table.statusId),
+  index('idx_tasks_parent').on(table.parentId),
+  index('idx_tasks_due_date').on(table.dueDate),
+  index('idx_tasks_completed').on(table.completedAt),
+]);
 
--- App settings
-CREATE TABLE settings (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL,                   -- JSON-encoded value
-  modified_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
+export type Task = typeof tasks.$inferSelect;
+export type NewTask = typeof tasks.$inferInsert;
+```
 
--- Saved filters
-CREATE TABLE saved_filters (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  config TEXT NOT NULL,                  -- JSON filter configuration
-  position INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
+#### Task Relations Schema
+```typescript
+// src/shared/db/schema/task-relations.ts
+import { sqliteTable, text, primaryKey, index } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+import { tasks } from './tasks';
 
--- Indexes for common queries
-CREATE INDEX idx_tasks_project ON tasks(project_id);
-CREATE INDEX idx_tasks_status ON tasks(status_id);
-CREATE INDEX idx_tasks_parent ON tasks(parent_id);
-CREATE INDEX idx_tasks_due_date ON tasks(due_date);
-CREATE INDEX idx_tasks_completed ON tasks(completed_at);
-CREATE INDEX idx_inbox_type ON inbox_items(type);
+// Task-Note links
+export const taskNotes = sqliteTable('task_notes', {
+  taskId: text('task_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
+  noteId: text('note_id').notNull(), // References note frontmatter id
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  primaryKey({ columns: [table.taskId, table.noteId] }),
+]);
+
+// Task tags
+export const taskTags = sqliteTable('task_tags', {
+  taskId: text('task_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
+  tag: text('tag').notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.taskId, table.tag] }),
+  index('idx_task_tags_tag').on(table.tag),
+]);
+```
+
+#### Inbox Schema
+```typescript
+// src/shared/db/schema/inbox.ts
+import { sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+
+export const inboxItems = sqliteTable('inbox_items', {
+  id: text('id').primaryKey(),
+  type: text('type').notNull(), // 'text' | 'link' | 'voice' | 'image'
+  content: text('content').notNull(),
+  metadata: text('metadata', { mode: 'json' }), // JSON: { url, title, thumbnail }
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  filedAt: text('filed_at'),
+}, (table) => [
+  index('idx_inbox_type').on(table.type),
+]);
+
+export type InboxItem = typeof inboxItems.$inferSelect;
+export type NewInboxItem = typeof inboxItems.$inferInsert;
+```
+
+#### Settings Schema
+```typescript
+// src/shared/db/schema/settings.ts
+import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(), // JSON-encoded value
+  modifiedAt: text('modified_at').notNull().default(sql`(datetime('now'))`),
+});
+
+export const savedFilters = sqliteTable('saved_filters', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  config: text('config', { mode: 'json' }).notNull(),
+  position: integer('position').notNull().default(0),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+});
+```
+
+#### Schema Index (Re-exports)
+```typescript
+// src/shared/db/schema/index.ts
+export * from './projects';
+export * from './statuses';
+export * from './tasks';
+export * from './task-relations';
+export * from './inbox';
+export * from './settings';
 ```
 
 ---
 
-### index.db Schema
+### index.db Schema (Drizzle ORM)
 
-The `index.db` database is a rebuildable cache for note metadata and full-text search.
+The `index.db` database is a **rebuildable cache** for note metadata and full-text search. These schemas are also shared but only used with SQLite (FTS5 is SQLite-specific).
 
-```sql
-PRAGMA journal_mode = WAL;
+**Location**: `src/shared/db/schema/notes-cache.ts`
 
--- Schema version
-CREATE TABLE schema_version (
-  version INTEGER PRIMARY KEY,
-  applied_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
+#### Note Cache Schema
+```typescript
+// src/shared/db/schema/notes-cache.ts
+import { sqliteTable, text, integer, index, primaryKey, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 
--- Note metadata cache (rebuildable from files)
-CREATE TABLE note_cache (
-  id TEXT PRIMARY KEY,                   -- From frontmatter
-  path TEXT NOT NULL UNIQUE,             -- Relative path from vault
-  title TEXT NOT NULL,
-  content_hash TEXT NOT NULL,            -- For change detection
-  word_count INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL,
-  modified_at TEXT NOT NULL,
-  indexed_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
+// Note metadata cache (rebuildable from files)
+export const noteCache = sqliteTable('note_cache', {
+  id: text('id').primaryKey(),           // From frontmatter
+  path: text('path').notNull().unique(), // Relative path from vault
+  title: text('title').notNull(),
+  contentHash: text('content_hash').notNull(), // For change detection
+  wordCount: integer('word_count').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  modifiedAt: text('modified_at').notNull(),
+  indexedAt: text('indexed_at').notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index('idx_note_cache_path').on(table.path),
+  index('idx_note_cache_modified').on(table.modifiedAt),
+]);
 
--- Tags extracted from notes
-CREATE TABLE note_tags (
-  note_id TEXT NOT NULL REFERENCES note_cache(id) ON DELETE CASCADE,
-  tag TEXT NOT NULL,
-  PRIMARY KEY (note_id, tag)
-);
+// Tags extracted from notes
+export const noteTags = sqliteTable('note_tags', {
+  noteId: text('note_id').notNull().references(() => noteCache.id, { onDelete: 'cascade' }),
+  tag: text('tag').notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.noteId, table.tag] }),
+  index('idx_note_tags_tag').on(table.tag),
+]);
 
--- Wiki links between notes
-CREATE TABLE note_links (
-  source_id TEXT NOT NULL REFERENCES note_cache(id) ON DELETE CASCADE,
-  target_id TEXT,                        -- NULL if target doesn't exist
-  target_title TEXT NOT NULL,            -- Original link text
-  PRIMARY KEY (source_id, target_title)
-);
+// Wiki links between notes
+export const noteLinks = sqliteTable('note_links', {
+  sourceId: text('source_id').notNull().references(() => noteCache.id, { onDelete: 'cascade' }),
+  targetId: text('target_id'),           // NULL if target doesn't exist
+  targetTitle: text('target_title').notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.sourceId, table.targetTitle] }),
+  index('idx_note_links_target').on(table.targetId),
+]);
 
--- Full-text search index
-CREATE VIRTUAL TABLE fts_notes USING fts5(
-  id UNINDEXED,
-  title,
-  content,
-  tags,
-  tokenize='porter unicode61'
-);
+// Type exports
+export type NoteCache = typeof noteCache.$inferSelect;
+export type NewNoteCache = typeof noteCache.$inferInsert;
+```
 
--- Triggers to keep FTS in sync
-CREATE TRIGGER note_cache_insert AFTER INSERT ON note_cache BEGIN
-  INSERT INTO fts_notes (id, title, content, tags)
-  SELECT NEW.id, NEW.title, '', '';
-END;
+#### FTS5 Virtual Table (Raw SQL)
 
-CREATE TRIGGER note_cache_delete AFTER DELETE ON note_cache BEGIN
-  DELETE FROM fts_notes WHERE id = OLD.id;
-END;
+FTS5 virtual tables are not directly supported by Drizzle ORM schema definitions. They must be created via raw SQL during migration:
 
--- Indexes
-CREATE INDEX idx_note_cache_path ON note_cache(path);
-CREATE INDEX idx_note_cache_modified ON note_cache(modified_at);
-CREATE INDEX idx_note_tags_tag ON note_tags(tag);
-CREATE INDEX idx_note_links_target ON note_links(target_id);
+```typescript
+// src/main/database/migrations/index/001_initial.ts
+import { sql } from 'drizzle-orm';
+
+export async function createFtsTable(db: DrizzleDb) {
+  // FTS5 virtual table for full-text search
+  await db.run(sql`
+    CREATE VIRTUAL TABLE IF NOT EXISTS fts_notes USING fts5(
+      id UNINDEXED,
+      title,
+      content,
+      tags,
+      tokenize='porter unicode61'
+    )
+  `);
+
+  // Triggers to keep FTS in sync with note_cache
+  await db.run(sql`
+    CREATE TRIGGER IF NOT EXISTS note_cache_ai AFTER INSERT ON note_cache BEGIN
+      INSERT INTO fts_notes (id, title, content, tags)
+      VALUES (NEW.id, NEW.title, '', '');
+    END
+  `);
+
+  await db.run(sql`
+    CREATE TRIGGER IF NOT EXISTS note_cache_ad AFTER DELETE ON note_cache BEGIN
+      DELETE FROM fts_notes WHERE id = OLD.id;
+    END
+  `);
+
+  await db.run(sql`
+    CREATE TRIGGER IF NOT EXISTS note_cache_au AFTER UPDATE ON note_cache BEGIN
+      UPDATE fts_notes SET title = NEW.title WHERE id = NEW.id;
+    END
+  `);
+}
+```
+
+#### FTS5 Query Helper
+```typescript
+// src/shared/db/queries/search.ts
+import { sql } from 'drizzle-orm';
+
+export function searchNotes(db: DrizzleDb, query: string, limit = 50) {
+  // Escape special FTS5 characters
+  const escapedQuery = query.replace(/[*"]/g, '') + '*';
+
+  return db.all(sql`
+    SELECT
+      id,
+      title,
+      snippet(fts_notes, 2, '<mark>', '</mark>', '...', 30) as snippet,
+      bm25(fts_notes) as rank
+    FROM fts_notes
+    WHERE fts_notes MATCH ${escapedQuery}
+    ORDER BY rank
+    LIMIT ${limit}
+  `);
+}
 ```
 
 ---
@@ -522,55 +624,107 @@ type SettingKey = keyof AppSettings;
 
 ## Migration Strategy
 
-### Initial Migration (v1)
+### Drizzle Kit Migration Workflow
 
+Drizzle Kit generates and manages migrations automatically from schema changes.
+
+#### Configuration
 ```typescript
-// src/main/database/migrations/data/001_initial.ts
-export const up = (db: Database) => {
-  db.exec(`
-    -- All CREATE TABLE statements from data.db schema above
-  `);
-};
+// drizzle.config.ts
+import type { Config } from 'drizzle-kit';
 
-export const down = (db: Database) => {
-  db.exec(`
-    DROP TABLE IF EXISTS task_notes;
-    DROP TABLE IF EXISTS task_tags;
-    DROP TABLE IF EXISTS tasks;
-    DROP TABLE IF EXISTS statuses;
-    DROP TABLE IF EXISTS projects;
-    DROP TABLE IF EXISTS inbox_items;
-    DROP TABLE IF EXISTS saved_filters;
-    DROP TABLE IF EXISTS settings;
-    DROP TABLE IF EXISTS schema_version;
-  `);
-};
+export default {
+  schema: './src/shared/db/schema/index.ts',
+  out: './src/main/database/drizzle',
+  dialect: 'sqlite',
+  dbCredentials: {
+    url: './vault/.memry/data.db',
+  },
+} satisfies Config;
 ```
 
-### Migration Runner
+#### Migration Commands
+```bash
+# Generate migrations from schema changes
+npx drizzle-kit generate
+
+# Apply migrations (development - pushes directly)
+npx drizzle-kit push
+
+# View database in Drizzle Studio
+npx drizzle-kit studio
+```
+
+#### Generated Migration Example
+```sql
+-- src/main/database/drizzle/0000_init.sql
+CREATE TABLE `projects` (
+  `id` text PRIMARY KEY NOT NULL,
+  `name` text NOT NULL,
+  `description` text,
+  `color` text DEFAULT '#6366f1' NOT NULL,
+  `icon` text,
+  `position` integer DEFAULT 0 NOT NULL,
+  `is_inbox` integer DEFAULT false NOT NULL,
+  `created_at` text DEFAULT (datetime('now')) NOT NULL,
+  `modified_at` text DEFAULT (datetime('now')) NOT NULL,
+  `archived_at` text
+);
+-- ... more tables
+```
+
+### Programmatic Migration Runner
+
+For Electron, migrations run at app startup:
 
 ```typescript
-interface Migration {
-  version: number;
-  name: string;
-  up: (db: Database) => void;
-  down: (db: Database) => void;
+// src/main/database/migrate.ts
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import Database from 'better-sqlite3';
+import path from 'path';
+
+export function runMigrations(dbPath: string, migrationsPath: string) {
+  const sqlite = new Database(dbPath);
+  const db = drizzle(sqlite);
+
+  // Run all pending migrations
+  migrate(db, { migrationsFolder: migrationsPath });
+
+  sqlite.close();
 }
 
-function runMigrations(db: Database, migrations: Migration[]): void {
-  const currentVersion = getCurrentVersion(db);
+// Usage at app startup
+runMigrations(
+  path.join(vaultPath, '.memry', 'data.db'),
+  path.join(__dirname, 'drizzle')
+);
+```
 
-  const pendingMigrations = migrations
-    .filter(m => m.version > currentVersion)
-    .sort((a, b) => a.version - b.version);
+### Seed Data
 
-  db.transaction(() => {
-    for (const migration of pendingMigrations) {
-      migration.up(db);
-      db.prepare('INSERT INTO schema_version (version) VALUES (?)')
-        .run(migration.version);
-    }
-  })();
+Create default inbox project after initial migration:
+
+```typescript
+// src/main/database/seed.ts
+import { eq } from 'drizzle-orm';
+import { projects } from '@shared/db/schema';
+
+export async function seedDefaults(db: DrizzleDb) {
+  // Check if inbox exists
+  const inbox = await db.select()
+    .from(projects)
+    .where(eq(projects.id, 'inbox'))
+    .get();
+
+  if (!inbox) {
+    await db.insert(projects).values({
+      id: 'inbox',
+      name: 'Inbox',
+      isInbox: true,
+      position: 0,
+    });
+  }
 }
 ```
 

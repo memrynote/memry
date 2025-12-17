@@ -15,10 +15,10 @@
 
 ```bash
 # Install core data layer dependencies
-pnpm add better-sqlite3 chokidar gray-matter nanoid electron-store zod
+pnpm add drizzle-orm better-sqlite3 chokidar gray-matter nanoid electron-store zod
 
 # Install dev dependencies
-pnpm add -D @electron/rebuild @types/better-sqlite3 vitest
+pnpm add -D drizzle-kit @electron/rebuild @types/better-sqlite3 vitest
 ```
 
 ## Step 2: Configure Native Module Rebuilding
@@ -29,7 +29,10 @@ Add to `package.json`:
 {
   "scripts": {
     "postinstall": "electron-rebuild",
-    "rebuild": "electron-rebuild -f -w better-sqlite3"
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   }
 }
 ```
@@ -47,6 +50,7 @@ Update `electron.vite.config.ts` to externalize native modules:
 ```typescript
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
+import path from 'path';
 
 export default defineConfig({
   main: {
@@ -55,23 +59,54 @@ export default defineConfig({
       rollupOptions: {
         external: ['better-sqlite3']
       }
+    },
+    resolve: {
+      alias: {
+        '@shared': path.resolve(__dirname, 'src/shared')
+      }
     }
   },
   preload: {
     plugins: [externalizeDepsPlugin()]
   },
   renderer: {
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, 'src/renderer/src'),
+        '@shared': path.resolve(__dirname, 'src/shared')
+      }
+    },
     plugins: [react()]
   }
 });
 ```
 
-## Step 4: Create Directory Structure
+## Step 4: Create Drizzle Configuration
+
+Create `drizzle.config.ts` in the project root:
+
+```typescript
+import type { Config } from 'drizzle-kit';
+
+export default {
+  schema: './src/shared/db/schema/index.ts',
+  out: './src/main/database/drizzle',
+  dialect: 'sqlite',
+  dbCredentials: {
+    url: './test.db', // For development/generation only
+  },
+} satisfies Config;
+```
+
+## Step 5: Create Directory Structure
 
 ```bash
+# Create shared database directories
+mkdir -p src/shared/db/schema
+mkdir -p src/shared/db/queries
+
 # Create main process directories
-mkdir -p src/main/database/migrations/data
-mkdir -p src/main/database/migrations/index
+mkdir -p src/main/database/drizzle
 mkdir -p src/main/vault
 mkdir -p src/main/ipc
 mkdir -p src/main/lib
@@ -81,260 +116,260 @@ mkdir -p src/renderer/src/services
 mkdir -p src/renderer/src/hooks
 ```
 
-## Step 5: Initialize Database Module
+## Step 6: Create Drizzle Schema Files
 
-Create `src/main/database/index.ts`:
+Create `src/shared/db/schema/projects.ts`:
 
 ```typescript
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+
+export const projects = sqliteTable('projects', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  color: text('color').notNull().default('#6366f1'),
+  icon: text('icon'),
+  position: integer('position').notNull().default(0),
+  isInbox: integer('is_inbox', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  modifiedAt: text('modified_at').notNull().default(sql`(datetime('now'))`),
+  archivedAt: text('archived_at'),
+});
+
+export type Project = typeof projects.$inferSelect;
+export type NewProject = typeof projects.$inferInsert;
+```
+
+Create `src/shared/db/schema/tasks.ts`:
+
+```typescript
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+import { projects } from './projects';
+
+export const tasks = sqliteTable('tasks', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  parentId: text('parent_id'),
+  title: text('title').notNull(),
+  description: text('description'),
+  priority: integer('priority').notNull().default(0),
+  position: integer('position').notNull().default(0),
+  dueDate: text('due_date'),
+  completedAt: text('completed_at'),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  modifiedAt: text('modified_at').notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index('idx_tasks_project').on(table.projectId),
+  index('idx_tasks_due_date').on(table.dueDate),
+]);
+
+export type Task = typeof tasks.$inferSelect;
+export type NewTask = typeof tasks.$inferInsert;
+```
+
+Create `src/shared/db/schema/index.ts`:
+
+```typescript
+export * from './projects';
+export * from './tasks';
+// Add more exports as you create schema files
+```
+
+## Step 7: Generate Initial Migration
+
+```bash
+# Generate SQL migration from schema
+pnpm db:generate
+```
+
+This creates migration files in `src/main/database/drizzle/`.
+
+## Step 8: Initialize Database Module
+
+Create `src/main/database/client.ts`:
+
+```typescript
+import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
-import { app } from 'electron';
-import path from 'path';
+import * as schema from '@shared/db/schema';
 
-let dataDb: Database.Database | null = null;
-let indexDb: Database.Database | null = null;
+export type DrizzleDb = BetterSQLite3Database<typeof schema>;
 
-export function initDatabases(vaultPath: string): void {
-  const memryDir = path.join(vaultPath, '.memry');
+let dataDb: DrizzleDb | null = null;
+let sqliteDb: Database.Database | null = null;
 
-  // Initialize data.db (source of truth)
-  dataDb = new Database(path.join(memryDir, 'data.db'));
-  dataDb.pragma('journal_mode = WAL');
-  dataDb.pragma('foreign_keys = ON');
+export function initDatabase(dbPath: string): DrizzleDb {
+  sqliteDb = new Database(dbPath);
+  sqliteDb.pragma('journal_mode = WAL');
+  sqliteDb.pragma('foreign_keys = ON');
 
-  // Initialize index.db (rebuildable cache)
-  indexDb = new Database(path.join(memryDir, 'index.db'));
-  indexDb.pragma('journal_mode = WAL');
-
-  // Run migrations
-  runMigrations(dataDb, 'data');
-  runMigrations(indexDb, 'index');
+  dataDb = drizzle(sqliteDb, { schema });
+  return dataDb;
 }
 
-export function getDataDb(): Database.Database {
+export function getDatabase(): DrizzleDb {
   if (!dataDb) throw new Error('Database not initialized');
   return dataDb;
 }
 
-export function getIndexDb(): Database.Database {
-  if (!indexDb) throw new Error('Index database not initialized');
-  return indexDb;
-}
-
-export function closeDatabases(): void {
-  dataDb?.close();
-  indexDb?.close();
+export function closeDatabase(): void {
+  sqliteDb?.close();
+  sqliteDb = null;
   dataDb = null;
-  indexDb = null;
-}
-
-function runMigrations(db: Database.Database, type: 'data' | 'index'): void {
-  // Migration logic here
 }
 ```
 
-## Step 6: Set Up File Watcher
-
-Create `src/main/vault/watcher.ts`:
+Create `src/main/database/migrate.ts`:
 
 ```typescript
-import chokidar from 'chokidar';
-import type { FSWatcher } from 'chokidar';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import Database from 'better-sqlite3';
+import path from 'path';
 
-let watcher: FSWatcher | null = null;
+export function runMigrations(dbPath: string): void {
+  const sqlite = new Database(dbPath);
+  const db = drizzle(sqlite);
 
-export function startWatching(
-  vaultPath: string,
-  callbacks: {
-    onAdd: (path: string) => void;
-    onChange: (path: string) => void;
-    onUnlink: (path: string) => void;
-  }
-): void {
-  watcher = chokidar.watch(vaultPath, {
-    persistent: true,
-    ignored: (filePath, stats) => {
-      const basename = filePath.split('/').pop() || '';
-      if (basename.startsWith('.')) return true;
-      if (basename === 'node_modules') return true;
-      return stats?.isFile() && !filePath.endsWith('.md');
-    },
-    awaitWriteFinish: {
-      stabilityThreshold: 100,
-      pollInterval: 50
-    },
-    atomic: true,
-    ignoreInitial: true,
-    depth: 99,
-    followSymlinks: false
-  });
+  const migrationsFolder = path.join(__dirname, 'drizzle');
+  migrate(db, { migrationsFolder });
 
-  watcher
-    .on('add', callbacks.onAdd)
-    .on('change', callbacks.onChange)
-    .on('unlink', callbacks.onUnlink)
-    .on('error', (error) => console.error('Watcher error:', error));
-}
-
-export function stopWatching(): Promise<void> {
-  return watcher?.close() ?? Promise.resolve();
+  sqlite.close();
 }
 ```
 
-## Step 7: Register IPC Handlers
+Create `src/main/database/index.ts`:
+
+```typescript
+export { initDatabase, getDatabase, closeDatabase, type DrizzleDb } from './client';
+export { runMigrations } from './migrate';
+```
+
+## Step 9: Create Example Query Functions
+
+Create `src/shared/db/queries/tasks.ts`:
+
+```typescript
+import { eq, isNull, desc } from 'drizzle-orm';
+import { tasks, type Task, type NewTask } from '../schema';
+import type { DrizzleDb } from '../../main/database';
+
+export function getAllTasks(db: DrizzleDb): Task[] {
+  return db.select().from(tasks).all();
+}
+
+export function getIncompleteTasks(db: DrizzleDb): Task[] {
+  return db.select()
+    .from(tasks)
+    .where(isNull(tasks.completedAt))
+    .orderBy(tasks.position)
+    .all();
+}
+
+export function getTasksByProject(db: DrizzleDb, projectId: string): Task[] {
+  return db.select()
+    .from(tasks)
+    .where(eq(tasks.projectId, projectId))
+    .orderBy(tasks.position)
+    .all();
+}
+
+export function createTask(db: DrizzleDb, task: NewTask): Task {
+  return db.insert(tasks).values(task).returning().get();
+}
+
+export function completeTask(db: DrizzleDb, taskId: string): Task | undefined {
+  return db.update(tasks)
+    .set({ completedAt: new Date().toISOString() })
+    .where(eq(tasks.id, taskId))
+    .returning()
+    .get();
+}
+```
+
+## Step 10: Update Main Process
 
 Update `src/main/index.ts`:
 
 ```typescript
 import { app, BrowserWindow, ipcMain } from 'electron';
-import { initDatabases, closeDatabases } from './database';
-import { registerVaultHandlers } from './ipc/vault-handlers';
-import { registerNotesHandlers } from './ipc/notes-handlers';
+import { join } from 'path';
+import { initDatabase, closeDatabase, runMigrations } from './database';
 import { registerTasksHandlers } from './ipc/tasks-handlers';
-import { registerSearchHandlers } from './ipc/search-handlers';
 
-app.whenReady().then(() => {
-  // Register all IPC handlers
-  registerVaultHandlers();
-  registerNotesHandlers();
+let vaultPath = '/path/to/vault'; // Load from electron-store
+
+async function initializeApp(): Promise<void> {
+  const dbPath = join(vaultPath, '.memry', 'data.db');
+
+  // Run migrations
+  runMigrations(dbPath);
+
+  // Initialize database connection
+  initDatabase(dbPath);
+
+  // Register IPC handlers
   registerTasksHandlers();
-  registerSearchHandlers();
+}
 
+app.whenReady().then(async () => {
+  await initializeApp();
   createWindow();
 });
 
 app.on('before-quit', () => {
-  closeDatabases();
+  closeDatabase();
 });
 ```
 
-## Step 8: Update Preload Script
+## Step 11: Create IPC Handlers
 
-Update `src/preload/index.ts`:
+Create `src/main/ipc/tasks-handlers.ts`:
 
 ```typescript
-import { contextBridge, ipcRenderer } from 'electron';
-import { electronAPI } from '@electron-toolkit/preload';
+import { ipcMain } from 'electron';
+import { getDatabase } from '../database';
+import * as taskQueries from '@shared/db/queries/tasks';
+import { nanoid } from 'nanoid';
 
-const api = {
-  // Window controls
-  windowMinimize: () => ipcRenderer.send('window-minimize'),
-  windowMaximize: () => ipcRenderer.send('window-maximize'),
-  windowClose: () => ipcRenderer.send('window-close'),
+export function registerTasksHandlers(): void {
+  ipcMain.handle('tasks:list', async () => {
+    const db = getDatabase();
+    return taskQueries.getAllTasks(db);
+  });
 
-  // Vault operations
-  vault: {
-    select: (path?: string) => ipcRenderer.invoke('vault:select', { path }),
-    getStatus: () => ipcRenderer.invoke('vault:get-status'),
-    getConfig: () => ipcRenderer.invoke('vault:get-config'),
-  },
+  ipcMain.handle('tasks:create', async (_, input: { title: string; projectId: string }) => {
+    const db = getDatabase();
+    return taskQueries.createTask(db, {
+      id: nanoid(),
+      title: input.title,
+      projectId: input.projectId,
+    });
+  });
 
-  // Notes operations
-  notes: {
-    create: (input: unknown) => ipcRenderer.invoke('notes:create', input),
-    get: (id: string) => ipcRenderer.invoke('notes:get', id),
-    update: (input: unknown) => ipcRenderer.invoke('notes:update', input),
-    delete: (id: string) => ipcRenderer.invoke('notes:delete', id),
-    list: (options?: unknown) => ipcRenderer.invoke('notes:list', options),
-  },
-
-  // Tasks operations
-  tasks: {
-    create: (input: unknown) => ipcRenderer.invoke('tasks:create', input),
-    get: (id: string) => ipcRenderer.invoke('tasks:get', id),
-    update: (input: unknown) => ipcRenderer.invoke('tasks:update', input),
-    complete: (input: unknown) => ipcRenderer.invoke('tasks:complete', input),
-    list: (options?: unknown) => ipcRenderer.invoke('tasks:list', options),
-  },
-
-  // Search operations
-  search: {
-    query: (input: unknown) => ipcRenderer.invoke('search:query', input),
-    quick: (input: unknown) => ipcRenderer.invoke('search:quick', input),
-  },
-
-  // Event subscriptions
-  on: (channel: string, callback: (...args: unknown[]) => void) => {
-    ipcRenderer.on(channel, (_, ...args) => callback(...args));
-  },
-  off: (channel: string, callback: (...args: unknown[]) => void) => {
-    ipcRenderer.removeListener(channel, callback);
-  },
-};
-
-if (process.contextIsolated) {
-  contextBridge.exposeInMainWorld('electron', electronAPI);
-  contextBridge.exposeInMainWorld('api', api);
+  ipcMain.handle('tasks:complete', async (_, taskId: string) => {
+    const db = getDatabase();
+    return taskQueries.completeTask(db, taskId);
+  });
 }
 ```
 
-## Step 9: Create TypeScript Declarations
-
-Update `src/preload/index.d.ts`:
-
-```typescript
-import { ElectronAPI } from '@electron-toolkit/preload';
-
-interface WindowAPI {
-  windowMinimize: () => void;
-  windowMaximize: () => void;
-  windowClose: () => void;
-}
-
-interface VaultAPI {
-  select: (path?: string) => Promise<unknown>;
-  getStatus: () => Promise<unknown>;
-  getConfig: () => Promise<unknown>;
-}
-
-interface NotesAPI {
-  create: (input: unknown) => Promise<unknown>;
-  get: (id: string) => Promise<unknown>;
-  update: (input: unknown) => Promise<unknown>;
-  delete: (id: string) => Promise<unknown>;
-  list: (options?: unknown) => Promise<unknown>;
-}
-
-interface TasksAPI {
-  create: (input: unknown) => Promise<unknown>;
-  get: (id: string) => Promise<unknown>;
-  update: (input: unknown) => Promise<unknown>;
-  complete: (input: unknown) => Promise<unknown>;
-  list: (options?: unknown) => Promise<unknown>;
-}
-
-interface SearchAPI {
-  query: (input: unknown) => Promise<unknown>;
-  quick: (input: unknown) => Promise<unknown>;
-}
-
-interface API extends WindowAPI {
-  vault: VaultAPI;
-  notes: NotesAPI;
-  tasks: TasksAPI;
-  search: SearchAPI;
-  on: (channel: string, callback: (...args: unknown[]) => void) => void;
-  off: (channel: string, callback: (...args: unknown[]) => void) => void;
-}
-
-declare global {
-  interface Window {
-    electron: ElectronAPI;
-    api: API;
-  }
-}
-```
-
-## Step 10: Verify Setup
+## Step 12: Verify Setup
 
 ```bash
 # Run type check
 pnpm typecheck
 
+# Generate migrations if schema changed
+pnpm db:generate
+
 # Run development server
 pnpm dev
 
-# Test that the app starts without errors
-# Open DevTools (F12) and check for any module loading errors
+# Open Drizzle Studio to inspect database (optional)
+pnpm db:studio
 ```
 
 ## Troubleshooting
@@ -346,16 +381,21 @@ Run the rebuild script:
 pnpm rebuild
 ```
 
-### "SQLITE_MISUSE: Database is closed"
+### "Cannot find module '@shared/db/schema'"
 
-Ensure databases are initialized before any IPC handlers are called:
-```typescript
-// In main/index.ts, init databases before registering handlers
-app.whenReady().then(async () => {
-  await initFromStoredVault(); // Load previously selected vault
-  registerHandlers();
-  createWindow();
-});
+Ensure path aliases are configured in:
+1. `electron.vite.config.ts` (build-time)
+2. `tsconfig.json` (type-checking)
+
+Add to `tsconfig.json`:
+```json
+{
+  "compilerOptions": {
+    "paths": {
+      "@shared/*": ["./src/shared/*"]
+    }
+  }
+}
 ```
 
 ### "EMFILE: too many open files" (Linux)
@@ -366,43 +406,65 @@ echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 ```
 
-### Native module errors on different Node version
+### Drizzle Kit errors
 
-Clear and rebuild:
+Ensure the database file exists or use `push` for development:
 ```bash
-rm -rf node_modules
-pnpm install
-pnpm rebuild
+# Create empty db and push schema directly (development)
+pnpm db:push
 ```
 
 ## Next Steps
 
-1. Implement initial migration schemas (see `data-model.md`)
+1. Complete all schema files (see `data-model.md`)
 2. Implement vault selection UI
-3. Connect existing TasksProvider to real database
-4. Add file watcher integration with UI updates
-5. Implement search functionality
+3. Add file watcher with chokidar
+4. Connect existing TasksProvider to real database
+5. Implement search with FTS5
 
 ## File Checklist
 
 After completing setup, you should have:
 
 ```
-src/main/
-├── index.ts                    ✓ Updated with IPC handlers
-├── database/
-│   ├── index.ts               ✓ Database initialization
-│   ├── migrations/
-│   │   ├── data/              □ Migration files
-│   │   └── index/             □ Migration files
-├── vault/
-│   ├── watcher.ts             ✓ File watcher setup
-├── ipc/
-│   ├── vault-handlers.ts      □ To implement
-│   ├── notes-handlers.ts      □ To implement
-│   ├── tasks-handlers.ts      □ To implement
-│   └── search-handlers.ts     □ To implement
-src/preload/
-├── index.ts                    ✓ Updated with IPC bridge
-└── index.d.ts                  ✓ Updated with types
+src/
+├── shared/
+│   └── db/
+│       ├── schema/
+│       │   ├── index.ts           ✓ Schema exports
+│       │   ├── projects.ts        ✓ Projects schema
+│       │   └── tasks.ts           ✓ Tasks schema
+│       └── queries/
+│           └── tasks.ts           ✓ Task queries
+├── main/
+│   ├── index.ts                   ✓ Updated with init
+│   ├── database/
+│   │   ├── index.ts              ✓ Exports
+│   │   ├── client.ts             ✓ Drizzle client
+│   │   ├── migrate.ts            ✓ Migration runner
+│   │   └── drizzle/              ✓ Generated migrations
+│   └── ipc/
+│       └── tasks-handlers.ts     ✓ Example handlers
+
+drizzle.config.ts                  ✓ Drizzle Kit config
 ```
+
+## React Native (Future)
+
+When building the React Native app, you'll:
+
+1. Use the **same** `src/shared/db/schema/` files
+2. Use the **same** `src/shared/db/queries/` files
+3. Create a different database client:
+
+```typescript
+// react-native/database/client.ts
+import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { openDatabaseSync } from 'expo-sqlite';
+import * as schema from '@shared/db/schema';
+
+const sqlite = openDatabaseSync('data.db');
+export const db = drizzle(sqlite, { schema });
+```
+
+The queries work identically across platforms!

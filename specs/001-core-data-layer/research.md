@@ -10,56 +10,150 @@ This document captures research findings for the technology decisions in Memry's
 
 ---
 
-## 1. SQLite Database: better-sqlite3
+## 1. Database Layer: Drizzle ORM + better-sqlite3
 
 ### Decision
-Use **better-sqlite3** v11.x for SQLite database operations in Electron's main process.
+Use **Drizzle ORM** v0.38.x with **better-sqlite3** driver for Electron, enabling future React Native support with shared schema/query code.
 
 ### Rationale
-- **Synchronous API**: Simpler code flow, no callback/promise complexity for database operations
-- **Performance**: Native C++ binding, significantly faster than WASM alternatives
-- **Mature**: Well-maintained, extensive documentation, large user base
-- **Transaction Support**: Built-in transaction wrapper with automatic commit/rollback
+- **Platform Agnostic**: Same TypeScript schemas work with different SQLite drivers
+- **Future-Proof**: React Native support via expo-sqlite or op-sqlite driver
+- **Type Safety**: Full TypeScript inference from schema definitions
+- **Zero Runtime Overhead**: Drizzle compiles to raw SQL at build time
+- **Great DX**: Auto-complete, type-safe queries, migration generation
+
+### Why Not better-sqlite3 Alone?
+
+better-sqlite3 is a **Node.js native module** that cannot run in React Native. Using Drizzle ORM provides:
+
+```
+┌─────────────────────────────────────────────┐
+│        Drizzle ORM (shared schemas)         │
+│   src/shared/db/schema/* (platform-agnostic)│
+└─────────────────┬───────────────────────────┘
+                  │
+        ┌─────────┴─────────┐
+        ▼                   ▼
+┌───────────────┐   ┌───────────────┐
+│   Electron    │   │ React Native  │
+│ better-sqlite3│   │  expo-sqlite  │
+└───────────────┘   └───────────────┘
+```
 
 ### Key Implementation Patterns
 
-#### Database Initialization
+#### Schema Definition (Shared)
 ```typescript
+// src/shared/db/schema/tasks.ts
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+
+export const tasks = sqliteTable('tasks', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  priority: integer('priority').notNull().default(0),
+  position: integer('position').notNull().default(0),
+  dueDate: text('due_date'),
+  completedAt: text('completed_at'),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  modifiedAt: text('modified_at').notNull().default(sql`(datetime('now'))`),
+});
+
+// TypeScript types inferred from schema
+export type Task = typeof tasks.$inferSelect;
+export type NewTask = typeof tasks.$inferInsert;
+```
+
+#### Database Client (Electron-specific)
+```typescript
+// src/main/database/client.ts
+import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
+import * as schema from '@shared/db/schema';
 
-const db = new Database('path/to/data.db', {
-  verbose: process.env.NODE_ENV === 'development' ? console.log : undefined
-});
+export function createDataDb(dbPath: string) {
+  const sqlite = new Database(dbPath);
+  sqlite.pragma('journal_mode = WAL');
+  sqlite.pragma('foreign_keys = ON');
 
-// Enable WAL mode for better concurrent read/write performance
-db.pragma('journal_mode = WAL');
-
-// Enable foreign keys
-db.pragma('foreign_keys = ON');
+  return drizzle(sqlite, { schema });
+}
 ```
 
-#### Transaction Pattern
+#### Type-Safe Queries (Shared)
 ```typescript
-const insertMany = db.transaction((items) => {
-  const insert = db.prepare('INSERT INTO items (name, value) VALUES (@name, @value)');
-  for (const item of items) {
-    insert.run(item);
-  }
-});
+// src/shared/db/queries/tasks.ts
+import { eq, and, isNull, desc } from 'drizzle-orm';
+import { tasks } from '../schema';
 
-// Automatic commit on success, rollback on error
-insertMany([{ name: 'a', value: 1 }, { name: 'b', value: 2 }]);
+export function getIncompleteTasks(db: DrizzleDb) {
+  return db.select()
+    .from(tasks)
+    .where(isNull(tasks.completedAt))
+    .orderBy(tasks.position);
+}
+
+export function getTasksByProject(db: DrizzleDb, projectId: string) {
+  return db.select()
+    .from(tasks)
+    .where(eq(tasks.projectId, projectId))
+    .orderBy(tasks.position);
+}
+
+export function createTask(db: DrizzleDb, task: NewTask) {
+  return db.insert(tasks).values(task).returning();
+}
 ```
 
-#### Prepared Statement Pattern
+#### Transactions
 ```typescript
-// Prepare once, execute many times
-const getById = db.prepare('SELECT * FROM notes WHERE id = ?');
-const note = getById.get(noteId);
+import { sql } from 'drizzle-orm';
 
-// Named parameters for clarity
-const insert = db.prepare('INSERT INTO notes (id, title, content) VALUES (@id, @title, @content)');
-insert.run({ id: 'abc123', title: 'My Note', content: '...' });
+async function completeTaskWithSubtasks(db: DrizzleDb, taskId: string) {
+  return db.transaction(async (tx) => {
+    const now = new Date().toISOString();
+
+    // Complete parent task
+    await tx.update(tasks)
+      .set({ completedAt: now })
+      .where(eq(tasks.id, taskId));
+
+    // Complete all subtasks
+    await tx.update(tasks)
+      .set({ completedAt: now })
+      .where(eq(tasks.parentId, taskId));
+  });
+}
+```
+
+### Drizzle Kit Configuration
+
+```typescript
+// drizzle.config.ts
+import type { Config } from 'drizzle-kit';
+
+export default {
+  schema: './src/shared/db/schema/index.ts',
+  out: './src/main/database/drizzle',
+  dialect: 'sqlite',
+  dbCredentials: {
+    url: './vault/.memry/data.db',
+  },
+} satisfies Config;
+```
+
+### Migration Commands
+
+```bash
+# Generate migration from schema changes
+npx drizzle-kit generate
+
+# Apply migrations (development)
+npx drizzle-kit push
+
+# View current schema
+npx drizzle-kit studio
 ```
 
 ### Electron Integration
@@ -91,9 +185,11 @@ export default defineConfig({
 
 | Library | Pros | Cons | Decision |
 |---------|------|------|----------|
-| **sql.js** | No native binding, works in browser | 3-5x slower, larger bundle | Rejected |
-| **Drizzle ORM** | Type-safe queries, migrations | Additional abstraction layer | Consider for v2 |
-| **Prisma** | Great DX, schema-first | Electron compatibility issues, heavy | Rejected |
+| **better-sqlite3 alone** | Simpler, faster | No React Native support; major refactor later | Rejected |
+| **Prisma** | Great DX | Electron issues, no React Native, heavy runtime | Rejected |
+| **sql.js (WASM)** | Cross-platform | 3-5x slower, larger bundle | Rejected |
+| **TypeORM** | Full-featured ORM | Heavy, poor TypeScript inference | Rejected |
+| **Kysely** | Type-safe SQL builder | Less mature ecosystem | Monitor |
 
 ---
 
@@ -503,11 +599,14 @@ const api = {
 
 | Question | Resolution |
 |----------|------------|
+| Database layer for React Native? | Drizzle ORM with platform-specific drivers (better-sqlite3 for Electron, expo-sqlite for RN) |
 | better-sqlite3 with electron-vite? | Works with @electron/rebuild and external rollup config |
+| Drizzle ORM performance? | <1% overhead vs raw SQL; compiles to optimized queries |
 | chokidar v4 breaking changes? | Glob patterns removed; use `ignored` function instead |
 | Rename detection without inode? | Use UUID matching within 500ms window |
 | FTS5 vs external search? | FTS5 sufficient for <50ms on 10k notes |
 | Atomic writes cross-platform? | temp-file-then-rename works on all platforms |
+| Schema sharing Electron ↔ RN? | Put schemas in `src/shared/db/`, import with path alias |
 
 ---
 
@@ -519,3 +618,4 @@ These topics are noted for future investigation:
 2. **CRDT sync**: Automerge vs Yjs for future conflict-free sync
 3. **Encryption**: libsodium integration patterns for E2EE phase
 4. **Voice transcription**: Whisper API vs local whisper.cpp
+5. **React Native driver**: expo-sqlite vs op-sqlite performance comparison

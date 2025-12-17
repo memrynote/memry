@@ -5,21 +5,27 @@
 
 ## Summary
 
-Build the foundational data layer for Memry that enables local-first storage with markdown files as the source of truth for notes, SQLite databases for structured data (tasks, projects, settings), and real-time file watching for external edit detection. The implementation uses better-sqlite3 for synchronous database operations in Electron's main process, chokidar for cross-platform file watching, and gray-matter for YAML frontmatter parsing.
+Build the foundational data layer for Memry that enables local-first storage with markdown files as the source of truth for notes, SQLite databases for structured data (tasks, projects, settings), and real-time file watching for external edit detection. The implementation uses **Drizzle ORM** with better-sqlite3 driver for type-safe database operations, enabling future code sharing with React Native. Chokidar handles cross-platform file watching, and gray-matter parses YAML frontmatter.
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9+ with strict mode
 **Primary Dependencies**:
-- better-sqlite3 ^11.x (synchronous SQLite for Node.js)
+- drizzle-orm ^0.38.x (TypeScript ORM - platform-agnostic query layer)
+- better-sqlite3 ^11.x (SQLite driver for Electron)
+- drizzle-kit ^0.30.x (migrations and schema tooling)
 - chokidar ^4.x (cross-platform file watching)
 - gray-matter ^4.x (YAML frontmatter parsing)
 - nanoid ^5.x (unique identifier generation)
 
 **Storage**:
-- SQLite via better-sqlite3 (two databases: index.db, data.db)
+- SQLite via Drizzle ORM + better-sqlite3 driver (two databases: index.db, data.db)
 - File system via Node.js fs/promises
 - Vault folder location stored in electron-store
+
+**Future Platform Support**:
+- React Native: Same Drizzle schemas with expo-sqlite or op-sqlite driver
+- Code sharing: Schema definitions and queries shared across platforms
 
 **Testing**: Vitest for unit/integration tests, Playwright for E2E
 **Target Platform**: Electron 38+ (macOS, Windows, Linux)
@@ -88,51 +94,69 @@ specs/001-core-data-layer/
 
 ```text
 src/
+├── shared/                          # Shared code (Electron + future React Native)
+│   └── db/
+│       ├── schema/
+│       │   ├── index.ts             # Re-exports all schemas
+│       │   ├── tasks.ts             # Tasks table schema
+│       │   ├── projects.ts          # Projects table schema
+│       │   ├── statuses.ts          # Statuses table schema
+│       │   ├── inbox.ts             # Inbox items schema
+│       │   ├── settings.ts          # Settings schema
+│       │   └── notes-cache.ts       # Note cache schema (index.db)
+│       ├── queries/
+│       │   ├── tasks.ts             # Task query functions
+│       │   ├── projects.ts          # Project query functions
+│       │   ├── notes.ts             # Note cache query functions
+│       │   └── search.ts            # Search query functions
+│       └── types.ts                 # Inferred types from schemas
 ├── main/
-│   ├── index.ts                    # Electron main process entry
+│   ├── index.ts                     # Electron main process entry
 │   ├── database/
-│   │   ├── index.ts                # Database initialization
-│   │   ├── data-db.ts              # data.db operations (tasks, projects, settings)
-│   │   ├── index-db.ts             # index.db operations (note cache, FTS)
-│   │   ├── migrations/             # Database migrations
-│   │   │   ├── data/               # data.db migrations
-│   │   │   └── index/              # index.db migrations
-│   │   └── schemas.ts              # TypeScript types for DB entities
+│   │   ├── index.ts                 # Database initialization (Drizzle + better-sqlite3)
+│   │   ├── client.ts                # Drizzle client instances
+│   │   ├── migrate.ts               # Migration runner
+│   │   └── drizzle/                 # Generated migrations (by drizzle-kit)
+│   │       ├── data/                # data.db migrations
+│   │       └── index/               # index.db migrations
 │   ├── vault/
-│   │   ├── index.ts                # Vault management entry
-│   │   ├── watcher.ts              # chokidar file watcher
-│   │   ├── file-ops.ts             # File CRUD operations
-│   │   ├── frontmatter.ts          # gray-matter parsing/serialization
-│   │   ├── rename-tracker.ts       # UUID-based rename detection
-│   │   └── indexer.ts              # Initial vault indexing
+│   │   ├── index.ts                 # Vault management entry
+│   │   ├── watcher.ts               # chokidar file watcher
+│   │   ├── file-ops.ts              # File CRUD operations
+│   │   ├── frontmatter.ts           # gray-matter parsing/serialization
+│   │   ├── rename-tracker.ts        # UUID-based rename detection
+│   │   └── indexer.ts               # Initial vault indexing
 │   ├── ipc/
-│   │   ├── index.ts                # IPC handler registration
-│   │   ├── vault-handlers.ts       # Vault IPC handlers
-│   │   ├── notes-handlers.ts       # Notes IPC handlers
-│   │   ├── tasks-handlers.ts       # Tasks IPC handlers
-│   │   └── search-handlers.ts      # Search IPC handlers
+│   │   ├── index.ts                 # IPC handler registration
+│   │   ├── vault-handlers.ts        # Vault IPC handlers
+│   │   ├── notes-handlers.ts        # Notes IPC handlers
+│   │   ├── tasks-handlers.ts        # Tasks IPC handlers
+│   │   └── search-handlers.ts       # Search IPC handlers
 │   └── lib/
-│       ├── paths.ts                # Path utilities and sanitization
-│       ├── id.ts                   # nanoid wrapper for UUID generation
-│       └── errors.ts               # Custom error types
+│       ├── paths.ts                 # Path utilities and sanitization
+│       ├── id.ts                    # nanoid wrapper for UUID generation
+│       └── errors.ts                # Custom error types
 ├── preload/
-│   ├── index.ts                    # Preload script with IPC bridge
-│   └── index.d.ts                  # TypeScript declarations
+│   ├── index.ts                     # Preload script with IPC bridge
+│   └── index.d.ts                   # TypeScript declarations
 └── renderer/
     └── src/
         ├── services/
-        │   ├── vault-service.ts    # Vault IPC client
-        │   ├── notes-service.ts    # Notes IPC client
-        │   ├── tasks-service.ts    # Tasks IPC client
-        │   └── search-service.ts   # Search IPC client
+        │   ├── vault-service.ts     # Vault IPC client
+        │   ├── notes-service.ts     # Notes IPC client
+        │   ├── tasks-service.ts     # Tasks IPC client
+        │   └── search-service.ts    # Search IPC client
         └── hooks/
-            ├── use-vault.ts        # Vault state hook
-            ├── use-notes.ts        # Notes state hook
-            ├── use-tasks.ts        # Tasks state hook
-            └── use-search.ts       # Search hook
+            ├── use-vault.ts         # Vault state hook
+            ├── use-notes.ts         # Notes state hook
+            ├── use-tasks.ts         # Tasks state hook
+            └── use-search.ts        # Search hook
+
+# Drizzle configuration files (root level)
+drizzle.config.ts                    # Drizzle Kit configuration
 ```
 
-**Structure Decision**: Electron application with clear separation between main process (Node.js with file/database access) and renderer process (React UI). All data operations happen in main process; renderer communicates via IPC channels. Services in renderer wrap IPC calls; hooks provide React integration.
+**Structure Decision**: Electron application with **shared database layer** designed for future React Native support. Drizzle ORM schemas and queries live in `src/shared/db/` and can be imported by both Electron main process and future React Native app. Platform-specific database drivers are configured separately. All data operations happen in main process; renderer communicates via IPC channels.
 
 ## Complexity Tracking
 
@@ -140,16 +164,19 @@ src/
 |-----------|------------|-------------------------------------|
 | Two SQLite databases | Separation of rebuildable cache (index.db) from source-of-truth data (data.db) | Single database would mix transient and permanent data, complicating recovery |
 | IPC abstraction layer | Type safety and validation at process boundary | Direct ipcRenderer calls would spread validation logic across components |
+| Drizzle ORM layer | Future React Native support requires shared schema/query code | Direct better-sqlite3 would require complete rewrite for mobile |
+| Shared src/shared/db folder | Platform-agnostic database code | Duplicating schemas between Electron and React Native is error-prone |
 
 ## Implementation Phases
 
 ### Phase 1: Database Foundation
-1. Install better-sqlite3 with electron-rebuild configuration
-2. Create database module with initialization logic
-3. Implement data.db schema (tasks, projects, settings, inbox)
-4. Implement index.db schema (note_cache, fts_notes)
-5. Add migration system for schema versioning
-6. Create IPC handlers for database operations
+1. Install Drizzle ORM, drizzle-kit, and better-sqlite3 with electron-rebuild
+2. Create shared schema definitions in `src/shared/db/schema/`
+3. Configure drizzle-kit for dual database (data.db, index.db)
+4. Generate initial migrations with `drizzle-kit generate`
+5. Create Electron database client with better-sqlite3 driver
+6. Implement migration runner for both databases
+7. Create IPC handlers for database operations
 
 ### Phase 2: Vault Management
 1. Implement vault folder selection dialog
@@ -191,6 +218,7 @@ src/
 ```json
 {
   "dependencies": {
+    "drizzle-orm": "^0.38.3",
     "better-sqlite3": "^11.7.0",
     "chokidar": "^4.0.3",
     "gray-matter": "^4.0.3",
@@ -199,9 +227,20 @@ src/
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "drizzle-kit": "^0.30.4",
     "@electron/rebuild": "^3.7.1",
     "@types/better-sqlite3": "^7.6.12",
     "vitest": "^2.1.0"
+  }
+}
+```
+
+**Future React Native Dependencies** (when mobile app is built):
+```json
+{
+  "dependencies": {
+    "drizzle-orm": "^0.38.3",
+    "expo-sqlite": "^15.0.0"
   }
 }
 ```
@@ -211,7 +250,9 @@ src/
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | better-sqlite3 native binding issues with electron-vite | Medium | High | Use @electron/rebuild; test on all platforms early |
+| Drizzle ORM performance overhead | Low | Low | Drizzle compiles to raw SQL; benchmark shows <1% overhead vs direct queries |
 | Large vault performance degradation | Low | Medium | Implement lazy loading; use FTS5; add pagination |
 | File watcher resource exhaustion | Low | Medium | Use chokidar v4 efficiency improvements; increase inotify limits on Linux |
 | Concurrent file access conflicts | Medium | Medium | Use atomic writes; implement file locking strategy |
 | Index corruption on unexpected shutdown | Medium | High | Design index as fully rebuildable; use WAL mode |
+| React Native driver differences | Low | Medium | Use Drizzle abstraction; write platform-specific tests |
