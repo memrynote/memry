@@ -30,11 +30,10 @@ Plan the implementation of Memry's backend with these technology decisions:
 - Drizzle: Good option if we want TypeScript ORM
 
 **Database Files:**
-```
 vault/.memry/
 ├── index.db     # Note cache, FTS index (rebuildable)
 └── data.db      # Tasks, projects, inbox, settings (source of truth)
-```
+
 
 ### File System Operations
 **Choice: Node.js fs/promises + chokidar**
@@ -106,7 +105,6 @@ vault/.memry/
 - Can migrate to Option B if needed
 
 ### Server Architecture
-```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Cloudflare Workers                        │
 ├─────────────────────────────────────────────────────────────┤
@@ -130,7 +128,6 @@ vault/.memry/
 │  └──────────────────────┘  └───────────────────────┘       │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
-```
 
 ### Database Schema (D1)
 ```sql
