@@ -32,7 +32,6 @@ Build the sync engine that synchronizes encrypted data between devices:
 ## CRYPTOGRAPHIC DESIGN
 
 ### Key Hierarchy
-```
 Recovery Key (24 words BIP39)
         │
         └──► Master Key (256-bit, derived via Argon2id)
@@ -42,7 +41,7 @@ Recovery Key (24 words BIP39)
                 ├──► File Keys (random per file, encrypted with Vault Key)
                 │
                 └──► Device Keys (derived per device for device auth)
-```
+
 
 ### Encryption Scheme
 ```typescript
