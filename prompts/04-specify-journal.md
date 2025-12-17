@@ -25,9 +25,8 @@ Build the journal system for daily entries that connects to the existing Journal
 
 ### P3 - Nice to Have
 11. As a user, I want journal templates for different entry types (morning pages, reflection, gratitude)
-12. As a user, I want to add mood tracking to journal entries
-13. As a user, I want to see streak information (consecutive days journaled)
-14. As a user, I want to search across all journal entries
+12. As a user, I want to see streak information (consecutive days journaled)
+13. As a user, I want to search across all journal entries
 
 ## DATA MODEL
 
@@ -44,8 +43,6 @@ created: "2024-01-15T08:30:00Z"
 modified: "2024-01-15T14:22:00Z"
 wordCount: 523
 characterCount: 2891
-mood: "productive"        # Optional
-weather: "sunny"          # Optional (could be auto-fetched)
 tags:
   - reflection
   - work
