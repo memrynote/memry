@@ -32,7 +32,7 @@
 - [x] T004 [P] Update electron.vite.config.ts to externalize better-sqlite3 and add @shared path alias
 - [x] T005 [P] Update tsconfig.json with @shared/* path alias
 - [x] T006 Create drizzle.config.ts in project root
-- [ ] T007 Create directory structure per plan.md (src/shared/db/, src/main/database/, src/main/vault/, src/main/ipc/, src/main/lib/)
+- [x] T007 Create directory structure per plan.md (src/shared/db/, src/main/database/, src/main/vault/, src/main/ipc/, src/main/lib/)
 - [ ] T008 Run electron-rebuild to compile better-sqlite3 for Electron
 
 ---
