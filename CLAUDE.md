@@ -125,8 +125,108 @@ const api = {
 - Tailwind classes for styling (no CSS files except for base styles)
 - Accessibility attributes on interactive elements (tabindex, aria-label, keyboard handlers)
 
+## Data Layer Architecture
+
+### Vault System
+
+The app uses a "vault" model where users select a folder to store all their data. See `docs/vault-architecture.md` for full details.
+
+**Key concepts:**
+- **Vault**: User-selected folder containing notes, journals, and `.memry/` hidden folder
+- **data.db**: SQLite database for tasks/projects (source of truth)
+- **index.db**: SQLite database for note cache/FTS (rebuildable from files)
+
+**Vault folder structure:**
+```
+MyVault/
+├── notes/
+├── journal/
+├── attachments/
+└── .memry/
+    ├── data.db
+    ├── index.db
+    └── config.json
+```
+
+### Database (Drizzle ORM + SQLite)
+
+```bash
+pnpm db:generate    # Generate migrations from schema changes
+pnpm db:push        # Push schema to database (dev)
+pnpm db:studio      # Open Drizzle Studio GUI
+pnpm rebuild        # Rebuild native modules (better-sqlite3)
+```
+
+**Schema files**: `src/shared/db/schema/`
+- `projects.ts`, `statuses.ts`, `tasks.ts`, `task-relations.ts`
+- `inbox.ts`, `settings.ts`, `notes-cache.ts`
+
+### IPC Communication (Modern Pattern)
+
+For request/response operations, use `ipcMain.handle` + `ipcRenderer.invoke`:
+
+1. Define handler in `src/main/ipc/<domain>-handlers.ts`:
+```typescript
+import { ipcMain } from 'electron'
+import { createValidatedHandler } from './validate'
+import { MySchema } from '@shared/contracts/my-api'
+
+export function registerMyHandlers() {
+  ipcMain.handle('my:action', createValidatedHandler(MySchema, async (input) => {
+    return myService.doAction(input)
+  }))
+}
+```
+
+2. Register in `src/main/ipc/index.ts`
+3. Expose in `src/preload/index.ts`
+4. Add types in `src/preload/index.d.ts`
+5. Create service in `src/renderer/src/services/`
+6. Create hook in `src/renderer/src/hooks/`
+
+### Path Aliases
+
+- `@/` → `src/renderer/src/`
+- `@shared/` → `src/shared/`
+- `@renderer/` → `src/renderer/src/`
+
+### Main Process Modules
+
+```
+src/main/
+├── store.ts              # electron-store for vault persistence
+├── vault/
+│   ├── index.ts          # Vault manager (select, open, close)
+│   └── init.ts           # Folder structure creation
+├── ipc/
+│   ├── index.ts          # Handler registration
+│   ├── vault-handlers.ts # Vault IPC handlers
+│   └── validate.ts       # Zod validation middleware
+├── database/
+│   ├── client.ts         # Drizzle ORM client
+│   ├── migrate.ts        # Migration runner
+│   └── fts.ts            # FTS5 full-text search
+└── lib/
+    ├── errors.ts         # Custom error classes
+    ├── paths.ts          # Path utilities
+    └── id.ts             # ID generation (nanoid)
+```
+
+## Documentation
+
+- `docs/vault-architecture.md` - Full vault system documentation
+- `docs/implementation-status.md` - What's implemented vs missing
+- `specs/001-core-data-layer/` - Design documents and contracts
+
 ## Active Technologies
-- TypeScript 5.9+ with strict mode (001-core-data-layer)
+- TypeScript 5.9+ with strict mode
+- Drizzle ORM with better-sqlite3
+- electron-store for settings persistence
+- Zod for runtime validation
 
 ## Recent Changes
-- 001-core-data-layer: Added TypeScript 5.9+ with strict mode
+- 001-core-data-layer: Vault foundation complete (T025-T036)
+  - Vault selection with native folder picker
+  - Database initialization on vault open
+  - IPC infrastructure with Zod validation
+  - React hooks for vault state management
