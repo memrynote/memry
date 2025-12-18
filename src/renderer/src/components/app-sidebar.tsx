@@ -16,6 +16,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { TeamSwitcher } from "@/components/team-switcher"
+import { VaultSwitcher } from "@/components/vault-switcher"
 import { TrafficLights } from "@/components/traffic-lights"
 import { Kbd, KbdGroup } from "@/components/ui/kbd"
 import {
@@ -122,6 +123,7 @@ function SidebarHeaderContent({ teams }: { teams: typeof data.teams }) {
       >
         <TrafficLights compact={isCollapsed} />
       </div>
+      <VaultSwitcher />
       <TeamSwitcher teams={teams} />
     </SidebarHeader>
   )

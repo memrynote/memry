@@ -29,7 +29,8 @@ import { TasksProvider } from "@/contexts/tasks"
 import { TabBarWithDrag, TabDragProvider } from "@/components/tabs"
 import { SplitViewContainer } from "@/components/split-view"
 import { ChordIndicator, KeyboardShortcutsDialog } from "@/components/keyboard"
-import { useTabKeyboardShortcuts, useChordShortcuts, useDragHandlers, useTaskOrder } from "@/hooks"
+import { useTabKeyboardShortcuts, useChordShortcuts, useDragHandlers, useTaskOrder, useVault } from "@/hooks"
+import { VaultOnboarding } from "@/components/vault-onboarding"
 
 // Base pages (non-task)
 export type BasePage = "inbox" | "home" | "journal"
@@ -278,6 +279,10 @@ const AppContent = ({
 // =============================================================================
 
 function App(): React.JSX.Element {
+  // Vault state - check if vault is open
+  const { status: vaultStatus, isLoading: vaultLoading } = useVault()
+  const isVaultOpen = vaultStatus?.isOpen ?? false
+
   // Navigation state
   // Note: setCurrentPage is unused because navigation is now handled by tabs
   // currentPage is still used for sidebar highlight state
@@ -419,6 +424,16 @@ function App(): React.JSX.Element {
       </AIAgentProvider>
     </TasksProvider>
   )
+
+  // Show onboarding if no vault is open (and not still loading)
+  if (!vaultLoading && !isVaultOpen) {
+    return (
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <VaultOnboarding />
+        <Toaster />
+      </ThemeProvider>
+    )
+  }
 
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>

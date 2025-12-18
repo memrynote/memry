@@ -1,7 +1,9 @@
-import Store from 'electron-store'
+import { app } from 'electron'
+import fs from 'fs'
+import path from 'path'
 
 /**
- * Vault information stored in electron-store
+ * Vault information stored in config
  */
 export interface StoredVaultInfo {
   path: string
@@ -22,17 +24,64 @@ interface StoreSchema {
   vaults: StoredVaultInfo[]
 }
 
+const CONFIG_FILE = 'memry-config.json'
+
+const defaultData: StoreSchema = {
+  currentVault: null,
+  vaults: []
+}
+
 /**
- * Persistent store for application settings.
- * Data is stored in the OS-specific app data directory.
+ * Get the config file path in the app's userData directory
  */
-export const store = new Store<StoreSchema>({
-  name: 'memry-config',
-  defaults: {
-    currentVault: null,
-    vaults: []
+function getConfigPath(): string {
+  const userDataPath = app.getPath('userData')
+  return path.join(userDataPath, CONFIG_FILE)
+}
+
+/**
+ * Read the config file
+ */
+function readConfig(): StoreSchema {
+  try {
+    const configPath = getConfigPath()
+    if (fs.existsSync(configPath)) {
+      const content = fs.readFileSync(configPath, 'utf-8')
+      return { ...defaultData, ...JSON.parse(content) }
+    }
+  } catch (error) {
+    console.error('Error reading config:', error)
   }
-})
+  return defaultData
+}
+
+/**
+ * Write the config file
+ */
+function writeConfig(data: StoreSchema): void {
+  try {
+    const configPath = getConfigPath()
+    fs.writeFileSync(configPath, JSON.stringify(data, null, 2), 'utf-8')
+  } catch (error) {
+    console.error('Error writing config:', error)
+  }
+}
+
+/**
+ * Simple store object that mimics electron-store API
+ */
+export const store = {
+  get<K extends keyof StoreSchema>(key: K): StoreSchema[K] {
+    const data = readConfig()
+    return data[key]
+  },
+
+  set<K extends keyof StoreSchema>(key: K, value: StoreSchema[K]): void {
+    const data = readConfig()
+    data[key] = value
+    writeConfig(data)
+  }
+}
 
 /**
  * Get the current vault path
@@ -74,26 +123,26 @@ export function upsertVault(vault: StoredVaultInfo): void {
 /**
  * Remove a vault from the known vaults list
  */
-export function removeVault(path: string): void {
+export function removeVault(vaultPath: string): void {
   const vaults = store.get('vaults')
   store.set(
     'vaults',
-    vaults.filter((v) => v.path !== path)
+    vaults.filter((v) => v.path !== vaultPath)
   )
 }
 
 /**
  * Find a vault by path
  */
-export function findVault(path: string): StoredVaultInfo | undefined {
-  return store.get('vaults').find((v) => v.path === path)
+export function findVault(vaultPath: string): StoredVaultInfo | undefined {
+  return store.get('vaults').find((v) => v.path === vaultPath)
 }
 
 /**
  * Update the lastOpened timestamp for a vault
  */
-export function touchVault(path: string): void {
-  const vault = findVault(path)
+export function touchVault(vaultPath: string): void {
+  const vault = findVault(vaultPath)
   if (vault) {
     upsertVault({
       ...vault,

@@ -31,3 +31,6 @@ export * from "./use-throttled-tab-switch"
 
 // Journal
 export * from "./use-journal-scroll"
+
+// Vault management
+export * from "./use-vault"
