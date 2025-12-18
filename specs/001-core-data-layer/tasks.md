@@ -144,11 +144,11 @@
 
 ### Implementation for User Story 3
 
-- [ ] T055 [US3] Create rename detection using UUID matching within 500ms window in src/main/vault/rename-tracker.ts
-- [ ] T056 [US3] Update note links cache (note_links table) when files are renamed in src/main/vault/rename-tracker.ts
-- [ ] T057 [US3] Add RENAMED event to file watcher notifications in src/main/vault/watcher.ts
-- [ ] T058 [US3] Implement get-links IPC handler for backlinks in src/main/ipc/notes-handlers.ts
-- [ ] T059 [US3] Update paths in noteCache when files are renamed in src/main/vault/rename-tracker.ts
+- [x] T055 [US3] Create rename detection using UUID matching within 500ms window in src/main/vault/rename-tracker.ts
+- [x] T056 [US3] Update note links cache (note_links table) when files are renamed in src/main/vault/rename-tracker.ts
+- [x] T057 [US3] Add RENAMED event to file watcher notifications in src/main/vault/watcher.ts
+- [x] T058 [US3] Implement get-links IPC handler for backlinks in src/main/ipc/notes-handlers.ts
+- [x] T059 [US3] Update paths in noteCache when files are renamed in src/main/vault/rename-tracker.ts
 
 **Checkpoint**: US3 complete - file renames are tracked by UUID, internal links remain valid
 

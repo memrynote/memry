@@ -10,7 +10,7 @@
 
 import path from 'path'
 import { BrowserWindow } from 'electron'
-import { updateNoteCache, getNoteCacheById } from '@shared/db/queries/notes'
+import { updateNoteCache } from '@shared/db/queries/notes'
 import { getIndexDatabase } from '../database'
 import { NotesChannels } from '@shared/ipc-channels'
 import type { NoteRenamedEvent } from '@shared/contracts/notes-api'
