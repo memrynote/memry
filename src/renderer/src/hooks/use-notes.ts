@@ -1,218 +1,638 @@
 /**
  * useNotes Hook
- * Manages notes data for journal functionality
+ * Manages notes data with real IPC calls to the main process.
+ *
+ * @example
+ * ```tsx
+ * function NotesList() {
+ *   const { notes, isLoading, error, createNote, deleteNote } = useNotes()
+ *
+ *   if (isLoading) return <div>Loading...</div>
+ *   if (error) return <div>Error: {error}</div>
+ *
+ *   return (
+ *     <ul>
+ *       {notes.map(note => (
+ *         <li key={note.id}>{note.title}</li>
+ *       ))}
+ *     </ul>
+ *   )
+ * }
+ * ```
  */
 
-import { useState, useCallback, useEffect } from 'react'
-import { fuzzySearch } from '@/lib/fuzzy-search'
-import { getTodayString } from '@/lib/journal-utils'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import type {
+  Note,
+  NoteListItem,
+  NoteListResponse,
+  NoteLinksResponse
+} from '../../../preload/index.d'
+import {
+  notesService,
+  onNoteCreated,
+  onNoteUpdated,
+  onNoteDeleted,
+  onNoteRenamed,
+  onNoteMoved,
+  onNoteExternalChange
+} from '../services/notes-service'
 
-export interface Note {
-  id: string
-  title: string
-  content: string
-  createdAt: string // ISO timestamp
-  updatedAt: string
-  folderPath?: string
-  preview?: string // First ~60 chars
+export interface UseNotesOptions {
+  /** Initial folder to filter notes */
+  folder?: string
+  /** Initial tags to filter by */
+  tags?: string[]
+  /** Sort field */
+  sortBy?: 'modified' | 'created' | 'title'
+  /** Sort direction */
+  sortOrder?: 'asc' | 'desc'
+  /** Page size */
+  limit?: number
+  /** Auto-load on mount */
+  autoLoad?: boolean
 }
 
-const STORAGE_KEY = 'memry:notes'
+export interface UseNotesReturn {
+  // State
+  notes: NoteListItem[]
+  currentNote: Note | null
+  total: number
+  hasMore: boolean
+  isLoading: boolean
+  error: string | null
 
-// Mock data for initial development
-const MOCK_NOTES: Note[] = [
-  {
-    id: '1',
-    title: 'Meeting Notes - Design Review',
-    content: '<p>Discussed the new dashboard designs with the team. Great feedback from Sarah about the navigation flow.</p><p>Action items: Update prototype, schedule follow-up.</p>',
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago (today)
-    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    preview: 'Discussed the new dashboard designs with the team. Great feedback from Sarah...',
-  },
-  {
-    id: '2',
-    title: 'Quick Ideas',
-    content: '<p>Brainstorming session notes:</p><ul><li>Add dark mode toggle</li><li>Improve search performance</li><li>Better mobile navigation</li></ul>',
-    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago (today)
-    updatedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    preview: 'Brainstorming session notes: Add dark mode toggle, Improve search...',
-  },
-  {
-    id: '3',
-    title: 'Sprint Planning Notes',
-    content: '<p>Q1 sprint planning discussion. Team capacity looks good for the upcoming features.</p><p>Priorities: Performance improvements, new onboarding flow.</p>',
-    createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago (today)
-    updatedAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-    preview: 'Q1 sprint planning discussion. Team capacity looks good...',
-  },
-  {
-    id: '4',
-    title: 'Book Notes - Deep Work',
-    content: '<p>Key takeaways from Cal Newport\'s Deep Work:</p><ul><li>Schedule deep work blocks</li><li>Minimize shallow work</li><li>Embrace boredom</li></ul>',
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-    updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    preview: "Key takeaways from Cal Newport's Deep Work: Schedule deep work blocks...",
-  },
-  {
-    id: '5',
-    title: 'Weekly Review',
-    content: '<p>What went well this week:</p><ul><li>Shipped new feature</li><li>Great team collaboration</li><li>Good progress on roadmap</li></ul>',
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
-    updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    preview: 'What went well this week: Shipped new feature, Great team collaboration...',
-  },
-  {
-    id: '6',
-    title: 'Project Alpha Ideas',
-    content: '<p>Initial thoughts for Project Alpha:</p><ul><li>User research needed</li><li>Competitive analysis</li><li>Technical feasibility study</li></ul>',
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
-    updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    preview: 'Initial thoughts for Project Alpha: User research needed...',
-  },
-]
+  // Actions
+  loadNotes: (options?: {
+    folder?: string
+    tags?: string[]
+    sortBy?: 'modified' | 'created' | 'title'
+    sortOrder?: 'asc' | 'desc'
+    limit?: number
+    offset?: number
+  }) => Promise<NoteListResponse>
+  loadMore: () => Promise<void>
+  refresh: () => Promise<void>
+  createNote: (input: {
+    title: string
+    content?: string
+    folder?: string
+    tags?: string[]
+  }) => Promise<Note | null>
+  getNote: (id: string) => Promise<Note | null>
+  updateNote: (input: {
+    id: string
+    title?: string
+    content?: string
+    tags?: string[]
+    frontmatter?: Record<string, unknown>
+  }) => Promise<Note | null>
+  renameNote: (id: string, newTitle: string) => Promise<Note | null>
+  moveNote: (id: string, newFolder: string) => Promise<Note | null>
+  deleteNote: (id: string) => Promise<boolean>
+  setCurrentNote: (note: Note | null) => void
+  clearError: () => void
+}
 
 /**
- * Custom hook for managing notes
+ * Hook for notes state management.
+ * Provides notes list, current note, loading states, and CRUD actions.
  */
-export function useNotes() {
-  const [notes, setNotes] = useState<Note[]>(() => {
-    // Try to load from localStorage, fall back to mock data
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        return JSON.parse(stored)
-      }
-    } catch (error) {
-      console.error('Failed to load notes from localStorage:', error)
-    }
-    return MOCK_NOTES
+export function useNotes(options: UseNotesOptions = {}): UseNotesReturn {
+  const {
+    folder: initialFolder,
+    tags: initialTags,
+    sortBy: initialSortBy = 'modified',
+    sortOrder: initialSortOrder = 'desc',
+    limit: initialLimit = 100,
+    autoLoad = true
+  } = options
+
+  // State
+  const [notes, setNotes] = useState<NoteListItem[]>([])
+  const [currentNote, setCurrentNote] = useState<Note | null>(null)
+  const [total, setTotal] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Track current filter options for loadMore
+  const currentOptionsRef = useRef({
+    folder: initialFolder,
+    tags: initialTags,
+    sortBy: initialSortBy,
+    sortOrder: initialSortOrder,
+    limit: initialLimit,
+    offset: 0
   })
 
-  // Persist to localStorage whenever notes change
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(notes))
-    } catch (error) {
-      console.error('Failed to save notes to localStorage:', error)
-    }
-  }, [notes])
-
   /**
-   * Get a note by ID
+   * Load notes with optional filters.
    */
-  const getNote = useCallback(
-    (id: string): Note | undefined => {
-      return notes.find((n) => n.id === id)
+  const loadNotes = useCallback(
+    async (loadOptions?: {
+      folder?: string
+      tags?: string[]
+      sortBy?: 'modified' | 'created' | 'title'
+      sortOrder?: 'asc' | 'desc'
+      limit?: number
+      offset?: number
+    }): Promise<NoteListResponse> => {
+      setIsLoading(true)
+      setError(null)
+
+      const opts = {
+        folder: loadOptions?.folder ?? initialFolder,
+        tags: loadOptions?.tags ?? initialTags,
+        sortBy: loadOptions?.sortBy ?? initialSortBy,
+        sortOrder: loadOptions?.sortOrder ?? initialSortOrder,
+        limit: loadOptions?.limit ?? initialLimit,
+        offset: loadOptions?.offset ?? 0
+      }
+
+      // Store for loadMore
+      currentOptionsRef.current = opts
+
+      try {
+        const result = await notesService.list(opts)
+        setNotes(result.notes)
+        setTotal(result.total)
+        setHasMore(result.hasMore)
+        return result
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load notes'
+        setError(message)
+        return { notes: [], total: 0, hasMore: false }
+      } finally {
+        setIsLoading(false)
+      }
     },
-    [notes]
+    [initialFolder, initialTags, initialSortBy, initialSortOrder, initialLimit]
   )
 
   /**
-   * Create a new note
+   * Load more notes (pagination).
+   */
+  const loadMore = useCallback(async (): Promise<void> => {
+    if (!hasMore || isLoading) return
+
+    setIsLoading(true)
+    setError(null)
+
+    const opts = {
+      ...currentOptionsRef.current,
+      offset: notes.length
+    }
+
+    try {
+      const result = await notesService.list(opts)
+      setNotes((prev) => [...prev, ...result.notes])
+      setTotal(result.total)
+      setHasMore(result.hasMore)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load more notes'
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [hasMore, isLoading, notes.length])
+
+  /**
+   * Refresh the current notes list.
+   */
+  const refresh = useCallback(async (): Promise<void> => {
+    await loadNotes(currentOptionsRef.current)
+  }, [loadNotes])
+
+  /**
+   * Create a new note.
    */
   const createNote = useCallback(
-    (title: string, content: string = ''): Note => {
-      const now = new Date().toISOString()
-      const newNote: Note = {
-        id: crypto.randomUUID(),
-        title: title.trim(),
-        content,
-        createdAt: now,
-        updatedAt: now,
-        preview: content ? content.substring(0, 60).replace(/<[^>]*>/g, '') + '...' : undefined,
-      }
+    async (input: {
+      title: string
+      content?: string
+      folder?: string
+      tags?: string[]
+    }): Promise<Note | null> => {
+      setError(null)
 
-      setNotes((prev) => [newNote, ...prev])
-      return newNote
+      try {
+        const result = await notesService.create(input)
+
+        if (!result.success) {
+          setError(result.error ?? 'Failed to create note')
+          return null
+        }
+
+        // Note will be added via event listener
+        return result.note
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to create note'
+        setError(message)
+        return null
+      }
     },
     []
   )
 
   /**
-   * Update an existing note
+   * Get a single note by ID.
    */
-  const updateNote = useCallback((id: string, updates: Partial<Omit<Note, 'id'>>) => {
-    setNotes((prev) =>
-      prev.map((note) =>
-        note.id === id
-          ? {
-              ...note,
-              ...updates,
-              updatedAt: new Date().toISOString(),
-            }
-          : note
-      )
-    )
+  const getNote = useCallback(async (id: string): Promise<Note | null> => {
+    setError(null)
+
+    try {
+      const note = await notesService.get(id)
+      return note
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to get note'
+      setError(message)
+      return null
+    }
   }, [])
 
   /**
-   * Delete a note
+   * Update an existing note.
    */
-  const deleteNote = useCallback((id: string) => {
-    setNotes((prev) => prev.filter((note) => note.id !== id))
-  }, [])
+  const updateNote = useCallback(
+    async (input: {
+      id: string
+      title?: string
+      content?: string
+      tags?: string[]
+      frontmatter?: Record<string, unknown>
+    }): Promise<Note | null> => {
+      setError(null)
 
-  /**
-   * Get notes for a specific date (YYYY-MM-DD format)
-   */
-  const getNotesByDate = useCallback(
-    (date: string): Note[] => {
-      return notes.filter((note) => {
-        const noteDate = note.createdAt.substring(0, 10) // Extract YYYY-MM-DD
-        return noteDate === date
-      })
+      try {
+        const result = await notesService.update(input)
+
+        if (!result.success) {
+          setError(result.error ?? 'Failed to update note')
+          return null
+        }
+
+        // Update current note if it's the one being updated
+        if (currentNote?.id === input.id && result.note) {
+          setCurrentNote(result.note)
+        }
+
+        // Note will be updated via event listener
+        return result.note
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to update note'
+        setError(message)
+        return null
+      }
     },
-    [notes]
+    [currentNote?.id]
   )
 
   /**
-   * Get today's notes (sorted by creation time, newest first)
+   * Rename a note.
    */
-  const getTodaysNotes = useCallback((): Note[] => {
-    const today = getTodayString()
-    return getNotesByDate(today).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-  }, [getNotesByDate])
+  const renameNote = useCallback(
+    async (id: string, newTitle: string): Promise<Note | null> => {
+      setError(null)
+
+      try {
+        const result = await notesService.rename(id, newTitle)
+
+        if (!result.success) {
+          setError(result.error ?? 'Failed to rename note')
+          return null
+        }
+
+        // Update current note if it's the one being renamed
+        if (currentNote?.id === id && result.note) {
+          setCurrentNote(result.note)
+        }
+
+        return result.note
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to rename note'
+        setError(message)
+        return null
+      }
+    },
+    [currentNote?.id]
+  )
 
   /**
-   * Search notes with fuzzy matching
+   * Move a note to a different folder.
    */
-  const searchNotes = useCallback(
-    (query: string): Note[] => {
-      if (!query || query.trim() === '') {
-        // Return all notes sorted by most recently updated
-        return [...notes].sort(
-          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  const moveNote = useCallback(
+    async (id: string, newFolder: string): Promise<Note | null> => {
+      setError(null)
+
+      try {
+        const result = await notesService.move(id, newFolder)
+
+        if (!result.success) {
+          setError(result.error ?? 'Failed to move note')
+          return null
+        }
+
+        // Update current note if it's the one being moved
+        if (currentNote?.id === id && result.note) {
+          setCurrentNote(result.note)
+        }
+
+        return result.note
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to move note'
+        setError(message)
+        return null
+      }
+    },
+    [currentNote?.id]
+  )
+
+  /**
+   * Delete a note.
+   */
+  const deleteNote = useCallback(
+    async (id: string): Promise<boolean> => {
+      setError(null)
+
+      try {
+        const result = await notesService.delete(id)
+
+        if (!result.success) {
+          setError(result.error ?? 'Failed to delete note')
+          return false
+        }
+
+        // Clear current note if it's the one being deleted
+        if (currentNote?.id === id) {
+          setCurrentNote(null)
+        }
+
+        // Note will be removed via event listener
+        return true
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to delete note'
+        setError(message)
+        return false
+      }
+    },
+    [currentNote?.id]
+  )
+
+  /**
+   * Clear error state.
+   */
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
+
+  // Load initial notes
+  useEffect(() => {
+    if (autoLoad) {
+      loadNotes()
+    }
+  }, [autoLoad, loadNotes])
+
+  // Subscribe to note events
+  useEffect(() => {
+    const unsubCreated = onNoteCreated((event) => {
+      // Add to list if it matches current filter
+      setNotes((prev) => {
+        // Check if note already exists
+        if (prev.some((n) => n.id === event.note.id)) {
+          return prev
+        }
+        // Add at start (assuming sorted by modified desc)
+        return [event.note, ...prev]
+      })
+      setTotal((prev) => prev + 1)
+    })
+
+    const unsubUpdated = onNoteUpdated((event) => {
+      setNotes((prev) =>
+        prev.map((note) =>
+          note.id === event.id
+            ? {
+                ...note,
+                ...event.changes,
+                modified: event.changes.modified ?? note.modified
+              }
+            : note
+        )
+      )
+
+      // Update current note if it's the one being updated
+      if (currentNote?.id === event.id) {
+        setCurrentNote((prev) => (prev ? { ...prev, ...event.changes } : prev))
+      }
+    })
+
+    const unsubDeleted = onNoteDeleted((event) => {
+      setNotes((prev) => prev.filter((note) => note.id !== event.id))
+      setTotal((prev) => Math.max(0, prev - 1))
+
+      // Clear current note if it's the one being deleted
+      if (currentNote?.id === event.id) {
+        setCurrentNote(null)
+      }
+    })
+
+    const unsubRenamed = onNoteRenamed((event) => {
+      setNotes((prev) =>
+        prev.map((note) =>
+          note.id === event.id
+            ? { ...note, title: event.newTitle, path: event.newPath }
+            : note
+        )
+      )
+
+      if (currentNote?.id === event.id) {
+        setCurrentNote((prev) =>
+          prev ? { ...prev, title: event.newTitle, path: event.newPath } : prev
         )
       }
+    })
 
-      return fuzzySearch(notes, query, ['title', 'content', 'preview'])
-    },
-    [notes]
-  )
+    const unsubMoved = onNoteMoved((event) => {
+      setNotes((prev) =>
+        prev.map((note) => (note.id === event.id ? { ...note, path: event.newPath } : note))
+      )
 
-  /**
-   * Get recent notes (sorted by last updated)
-   */
-  const getRecentNotes = useCallback(
-    (limit: number = 5): Note[] => {
-      return [...notes]
-        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-        .slice(0, limit)
-    },
-    [notes]
-  )
+      if (currentNote?.id === event.id) {
+        setCurrentNote((prev) => (prev ? { ...prev, path: event.newPath } : prev))
+      }
+    })
+
+    const unsubExternal = onNoteExternalChange((event) => {
+      if (event.type === 'deleted') {
+        setNotes((prev) => prev.filter((note) => note.id !== event.id))
+        setTotal((prev) => Math.max(0, prev - 1))
+
+        if (currentNote?.id === event.id) {
+          setCurrentNote(null)
+        }
+      } else if (event.type === 'modified') {
+        // Refresh the note data
+        refresh()
+      }
+    })
+
+    return () => {
+      unsubCreated()
+      unsubUpdated()
+      unsubDeleted()
+      unsubRenamed()
+      unsubMoved()
+      unsubExternal()
+    }
+  }, [currentNote?.id, refresh])
 
   return {
+    // State
     notes,
-    getNote,
+    currentNote,
+    total,
+    hasMore,
+    isLoading,
+    error,
+
+    // Actions
+    loadNotes,
+    loadMore,
+    refresh,
     createNote,
+    getNote,
     updateNote,
+    renameNote,
+    moveNote,
     deleteNote,
-    getNotesByDate,
-    getTodaysNotes,
-    searchNotes,
-    getRecentNotes,
+    setCurrentNote,
+    clearError
   }
 }
+
+/**
+ * Hook for getting tags with counts.
+ */
+export function useNoteTags() {
+  const [tags, setTags] = useState<{ tag: string; count: number }[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadTags = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const result = await notesService.getTags()
+      setTags(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load tags'
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadTags()
+  }, [loadTags])
+
+  return {
+    tags,
+    isLoading,
+    error,
+    refresh: loadTags
+  }
+}
+
+/**
+ * Hook for getting note links (outgoing and incoming).
+ */
+export function useNoteLinks(noteId: string | null) {
+  const [links, setLinks] = useState<NoteLinksResponse | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadLinks = useCallback(async (id: string) => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const result = await notesService.getLinks(id)
+      setLinks(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load links'
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (noteId) {
+      loadLinks(noteId)
+    } else {
+      setLinks(null)
+    }
+  }, [noteId, loadLinks])
+
+  return {
+    outgoing: links?.outgoing ?? [],
+    incoming: links?.incoming ?? [],
+    isLoading,
+    error,
+    refresh: noteId ? () => loadLinks(noteId) : undefined
+  }
+}
+
+/**
+ * Hook for getting note folders.
+ */
+export function useNoteFolders() {
+  const [folders, setFolders] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadFolders = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const result = await notesService.getFolders()
+      setFolders(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load folders'
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  const createFolder = useCallback(async (path: string): Promise<boolean> => {
+    try {
+      const result = await notesService.createFolder(path)
+      if (result.success) {
+        await loadFolders()
+      }
+      return result.success
+    } catch {
+      return false
+    }
+  }, [loadFolders])
+
+  useEffect(() => {
+    loadFolders()
+  }, [loadFolders])
+
+  return {
+    folders,
+    isLoading,
+    error,
+    refresh: loadFolders,
+    createFolder
+  }
+}
+
+// Re-export types for convenience
+export type { Note, NoteListItem, NoteListResponse, NoteLinksResponse }

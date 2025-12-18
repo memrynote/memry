@@ -23,11 +23,8 @@ import {
 import {
   atomicWrite,
   safeRead,
-  readRequired,
   deleteFile,
-  fileExists,
   ensureDirectory,
-  listMarkdownFiles,
   listDirectories,
   sanitizeFilename,
   generateNotePath,
@@ -48,8 +45,7 @@ import {
   getOutgoingLinks,
   getIncomingLinks,
   findDuplicateId,
-  resolveNoteByTitle,
-  type ListNotesOptions
+  resolveNoteByTitle
 } from '@shared/db/queries/notes'
 import { getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'

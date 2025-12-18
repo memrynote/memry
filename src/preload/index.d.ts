@@ -139,6 +139,12 @@ export interface NoteMovedEvent {
   newPath: string
 }
 
+export interface NoteExternalChangeEvent {
+  id: string
+  path: string
+  type: 'modified' | 'deleted'
+}
+
 export interface VaultStatus {
   isOpen: boolean
   path: string | null
@@ -219,7 +225,7 @@ interface API extends WindowAPI {
   onNoteDeleted: (callback: (event: NoteDeletedEvent) => void) => () => void
   onNoteRenamed: (callback: (event: NoteRenamedEvent) => void) => () => void
   onNoteMoved: (callback: (event: NoteMovedEvent) => void) => () => void
-  onNoteExternalChange: (callback: (event: unknown) => void) => () => void
+  onNoteExternalChange: (callback: (event: NoteExternalChangeEvent) => void) => () => void
 }
 
 declare global {

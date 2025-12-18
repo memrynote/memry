@@ -10,7 +10,8 @@ import type {
   NoteUpdatedEvent,
   NoteDeletedEvent,
   NoteRenamedEvent,
-  NoteMovedEvent
+  NoteMovedEvent,
+  NoteExternalChangeEvent
 } from '../../../preload/index.d'
 
 /**
@@ -193,7 +194,7 @@ export function onNoteMoved(callback: (event: NoteMovedEvent) => void): () => vo
  * Returns unsubscribe function.
  */
 export function onNoteExternalChange(
-  callback: (event: { id: string; path: string; type: 'modified' | 'deleted' }) => void
+  callback: (event: NoteExternalChangeEvent) => void
 ): () => void {
   return window.api.onNoteExternalChange(callback)
 }
@@ -210,5 +211,6 @@ export type {
   NoteUpdatedEvent,
   NoteDeletedEvent,
   NoteRenamedEvent,
-  NoteMovedEvent
+  NoteMovedEvent,
+  NoteExternalChangeEvent
 }
