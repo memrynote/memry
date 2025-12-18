@@ -45,7 +45,7 @@
 
 ### Database Schemas (src/shared/db/schema/)
 
-- [ ] T009 [P] Create projects schema in src/shared/db/schema/projects.ts
+- [x] T009 [P] Create projects schema in src/shared/db/schema/projects.ts
 - [ ] T010 [P] Create statuses schema in src/shared/db/schema/statuses.ts
 - [ ] T011 [P] Create tasks schema in src/shared/db/schema/tasks.ts
 - [ ] T012 [P] Create task-relations schema (taskNotes, taskTags) in src/shared/db/schema/task-relations.ts
