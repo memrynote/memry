@@ -26,12 +26,18 @@ import {
   updateNoteCache,
   deleteNoteCache,
   getNoteCacheByPath,
+  getNoteCacheById,
   setNoteTags,
   setNoteLinks,
   resolveNoteByTitle
 } from '@shared/db/queries/notes'
 import { getIndexDatabase } from '../database'
 import { NotesChannels } from '@shared/ipc-channels'
+import {
+  trackPendingDelete,
+  checkForRename,
+  clearAllPendingDeletes
+} from './rename-tracker'
 
 // ============================================================================
 // Types
@@ -214,6 +220,9 @@ export class VaultWatcher {
    * Stop watching the vault.
    */
   async stop(): Promise<void> {
+    // Clear any pending rename detections
+    clearAllPendingDeletes()
+
     if (this.watcher) {
       await this.watcher.close()
       this.watcher = null
@@ -237,6 +246,7 @@ export class VaultWatcher {
 
   /**
    * Handle new file creation.
+   * Also checks if this might be a rename (matching UUID with pending delete).
    */
   private async handleFileAdd(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
@@ -255,10 +265,29 @@ export class VaultWatcher {
       const parsed = parseNote(content, relativePath)
       const db = getIndexDatabase()
 
+      // Check if this is a rename (UUID matches a pending delete)
+      const oldPath = await checkForRename(parsed.frontmatter.id, relativePath)
+      if (oldPath !== null) {
+        // This was a rename - rename-tracker already handled cache update and event
+        console.log('[Watcher] File rename handled:', oldPath, '->', relativePath)
+        return
+      }
+
       // Check if already in cache (might have been added by internal operation)
       const existing = getNoteCacheByPath(db, relativePath)
       if (existing) {
         // Already cached, skip
+        return
+      }
+
+      // Also check if a note with this ID exists at a different path
+      // (e.g., copy-paste scenario - the ID exists but path is different)
+      const existingById = getNoteCacheById(db, parsed.frontmatter.id)
+      if (existingById && existingById.path !== relativePath) {
+        // Note with this ID exists elsewhere - this is a new file with duplicate ID
+        // The file should have gotten a new ID from parseNote/ensureFrontmatter
+        // but if not, we skip to avoid conflicts
+        console.warn('[Watcher] Duplicate ID detected, skipping:', parsed.frontmatter.id)
         return
       }
 
@@ -401,6 +430,7 @@ export class VaultWatcher {
 
   /**
    * Handle file deletion.
+   * Tracks as pending delete to detect renames (delete + add with same UUID).
    */
   private async handleFileDelete(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
@@ -411,21 +441,25 @@ export class VaultWatcher {
 
       const db = getIndexDatabase()
 
-      // Get cached entry
+      // Get cached entry to get the UUID
       const cached = getNoteCacheByPath(db, relativePath)
       if (!cached) {
         // Not in cache, nothing to do
         return
       }
 
-      // Remove from cache (cascades to tags and links)
-      deleteNoteCache(db, cached.id)
+      // Track as pending delete - wait for potential rename (matching 'add' event)
+      trackPendingDelete(cached.id, relativePath, async () => {
+        // This callback runs if no rename is detected within 500ms
+        // Remove from cache (cascades to tags and links)
+        deleteNoteCache(db, cached.id)
 
-      // Emit delete event
-      emitNoteEvent(NotesChannels.events.DELETED, {
-        id: cached.id,
-        path: relativePath,
-        source: 'external'
+        // Emit delete event
+        emitNoteEvent(NotesChannels.events.DELETED, {
+          id: cached.id,
+          path: relativePath,
+          source: 'external'
+        })
       })
     } catch (error) {
       console.error('[Watcher] Error handling file delete:', error)
