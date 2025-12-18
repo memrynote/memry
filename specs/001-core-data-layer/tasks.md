@@ -27,7 +27,7 @@
 **Purpose**: Install dependencies, configure build tools, create project structure
 
 - [x] T001 Install production dependencies: drizzle-orm, better-sqlite3, chokidar, gray-matter, nanoid, electron-store, zod
-- [ ] T002 Install dev dependencies: drizzle-kit, @electron/rebuild, @types/better-sqlite3, vitest
+- [x] T002 Install dev dependencies: drizzle-kit, @electron/rebuild, @types/better-sqlite3, vitest
 - [ ] T003 [P] Add npm scripts to package.json (postinstall, rebuild, db:generate, db:push, db:studio)
 - [ ] T004 [P] Update electron.vite.config.ts to externalize better-sqlite3 and add @shared path alias
 - [ ] T005 [P] Update tsconfig.json with @shared/* path alias
