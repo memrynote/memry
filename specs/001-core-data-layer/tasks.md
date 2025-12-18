@@ -100,18 +100,18 @@
 
 ### Implementation for User Story 1
 
-- [ ] T037 [US1] Create frontmatter parsing/serialization module using gray-matter in src/main/vault/frontmatter.ts
-- [ ] T038 [US1] Create atomic file write operations (write-temp-then-rename) in src/main/vault/file-ops.ts
-- [ ] T039 [US1] Implement note CRUD operations (create, read, update, delete) in src/main/vault/notes.ts
-- [ ] T040 [US1] Create notes query functions in src/shared/db/queries/notes.ts
-- [ ] T041 [US1] Implement notes IPC handlers (CREATE, GET, UPDATE, DELETE, LIST) in src/main/ipc/notes-handlers.ts
-- [ ] T042 [US1] Update preload script with notes API in src/preload/index.ts
-- [ ] T043 [US1] Create notes-service.ts client in src/renderer/src/services/notes-service.ts
-- [ ] T044 [US1] Create use-notes.ts hook in src/renderer/src/hooks/use-notes.ts
-- [ ] T045 [US1] Handle missing frontmatter: auto-add UUID and timestamps on first edit in src/main/vault/frontmatter.ts
-- [ ] T046 [US1] Handle duplicate UUIDs: generate new UUID when copy-paste detected in src/main/vault/notes.ts
-- [ ] T047 [US1] Add note caching in index.db on create/update in src/main/vault/notes.ts
-- [ ] T048 [US1] Register notes handlers in main process in src/main/ipc/index.ts
+- [x] T037 [US1] Create frontmatter parsing/serialization module using gray-matter in src/main/vault/frontmatter.ts
+- [x] T038 [US1] Create atomic file write operations (write-temp-then-rename) in src/main/vault/file-ops.ts
+- [x] T039 [US1] Implement note CRUD operations (create, read, update, delete) in src/main/vault/notes.ts
+- [x] T040 [US1] Create notes query functions in src/shared/db/queries/notes.ts
+- [x] T041 [US1] Implement notes IPC handlers (CREATE, GET, UPDATE, DELETE, LIST) in src/main/ipc/notes-handlers.ts
+- [x] T042 [US1] Update preload script with notes API in src/preload/index.ts
+- [x] T043 [US1] Create notes-service.ts client in src/renderer/src/services/notes-service.ts
+- [x] T044 [US1] Create use-notes.ts hook in src/renderer/src/hooks/use-notes.ts
+- [x] T045 [US1] Handle missing frontmatter: auto-add UUID and timestamps on first edit in src/main/vault/frontmatter.ts
+- [x] T046 [US1] Handle duplicate UUIDs: generate new UUID when copy-paste detected in src/main/vault/notes.ts
+- [x] T047 [US1] Add note caching in index.db on create/update in src/main/vault/notes.ts
+- [x] T048 [US1] Register notes handlers in main process in src/main/ipc/index.ts
 
 **Checkpoint**: US1 complete - notes can be created and edited as portable markdown files
 
