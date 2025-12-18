@@ -64,9 +64,9 @@
 
 ### Utility Modules (src/main/lib/)
 
-- [ ] T022 [P] Create path utilities and sanitization in src/main/lib/paths.ts
-- [ ] T023 [P] Create nanoid wrapper for UUID generation in src/main/lib/id.ts
-- [ ] T024 [P] Create custom error types in src/main/lib/errors.ts
+- [x] T022 [P] Create path utilities and sanitization in src/main/lib/paths.ts
+- [x] T023 [P] Create nanoid wrapper for UUID generation in src/main/lib/id.ts
+- [x] T024 [P] Create custom error types in src/main/lib/errors.ts
 
 ### Vault Foundation (US5 + US6 - Required for all operations)
 
