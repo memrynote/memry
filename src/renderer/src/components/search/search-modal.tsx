@@ -29,7 +29,6 @@ export function SearchModal({ isOpen, onClose, onSelectNote }: SearchModalProps)
     if (isOpen) {
       clear()
       setSelectedIndex(0)
-      // Focus input after dialog animation
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }, [isOpen, clear])
@@ -41,11 +40,11 @@ export function SearchModal({ isOpen, onClose, onSelectNote }: SearchModalProps)
 
   // Scroll selected item into view
   useEffect(() => {
-    if (resultsRef.current && notes.length > 0) {
+    if (resultsRef.current && itemCount > 0) {
       const selectedElement = resultsRef.current.querySelector('[aria-selected="true"]')
       selectedElement?.scrollIntoView({ block: 'nearest' })
     }
-  }, [selectedIndex, notes.length])
+  }, [selectedIndex, itemCount])
 
   // Handle selecting a recent search
   const handleSelectRecent = useCallback((recentQuery: string) => {

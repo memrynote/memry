@@ -31,7 +31,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import type {
   SearchResult,
   SearchResultNote,
-  SearchSuggestion,
   SearchStats
 } from '../../../preload/index.d'
 import {
@@ -265,60 +264,6 @@ export function useQuickSearch(debounceMs: number = 50): UseQuickSearchReturn {
   }, [])
 
   return { query, notes, isLoading, setQuery, clear }
-}
-
-// ============================================================================
-// Suggestions Hook
-// ============================================================================
-
-export interface UseSearchSuggestionsReturn {
-  prefix: string
-  suggestions: SearchSuggestion[]
-  isLoading: boolean
-  setPrefix: (prefix: string) => void
-  clear: () => void
-}
-
-/**
- * Hook for search suggestions / autocomplete.
- */
-export function useSearchSuggestions(debounceMs: number = 100): UseSearchSuggestionsReturn {
-  const [prefix, setPrefix] = useState('')
-  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-
-  const debouncedPrefix = useDebouncedValue(prefix, debounceMs)
-
-  useEffect(() => {
-    if (!debouncedPrefix.trim()) {
-      setSuggestions([])
-      return
-    }
-
-    const fetchSuggestions = async () => {
-      setIsLoading(true)
-      try {
-        const response = await searchService.suggestions({
-          prefix: debouncedPrefix,
-          limit: 5
-        })
-        setSuggestions(response.suggestions)
-      } catch {
-        setSuggestions([])
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchSuggestions()
-  }, [debouncedPrefix])
-
-  const clear = useCallback(() => {
-    setPrefix('')
-    setSuggestions([])
-  }, [])
-
-  return { prefix, suggestions, isLoading, setPrefix, clear }
 }
 
 // ============================================================================
