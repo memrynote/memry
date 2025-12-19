@@ -37,6 +37,7 @@ export const EmptyPaneState = ({
                 isPinned: false,
                 isModified: false,
                 isPreview: false,
+                isDeleted: false,
             },
             { groupId }
         );

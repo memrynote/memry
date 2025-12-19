@@ -96,6 +96,7 @@ export const TabBarWithDrag = ({
                 isPinned: false,
                 isModified: false,
                 isPreview: false,
+                isDeleted: false,
             },
             { groupId }
         );

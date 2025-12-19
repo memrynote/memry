@@ -40,6 +40,7 @@ export const TabBarContextMenu = ({
                 isPinned: false,
                 isModified: false,
                 isPreview: false,
+                isDeleted: false,
             },
             { groupId }
         );

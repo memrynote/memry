@@ -123,7 +123,8 @@ export const RegularTab = ({
                     isActive
                         ? 'text-gray-900 dark:text-gray-100'
                         : 'text-gray-600 dark:text-gray-400',
-                    tab.isPreview && 'italic'
+                    tab.isPreview && 'italic',
+                    tab.isDeleted && 'line-through opacity-60'
                 )}
             >
                 {tab.title}

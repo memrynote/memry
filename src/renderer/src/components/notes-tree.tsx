@@ -326,6 +326,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
             isPinned: false,
             isModified: false,
             isPreview: true,
+            isDeleted: false,
           })
         }
       }
@@ -356,6 +357,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           isPinned: false,
           isModified: false,
           isPreview: false, // Not preview mode since we're creating it
+          isDeleted: false,
         })
 
         // Auto-focus rename mode for the new note
@@ -426,6 +428,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           isPinned: false,
           isModified: false,
           isPreview: false,
+          isDeleted: false,
         })
       }
     } catch (err) {

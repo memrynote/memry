@@ -181,6 +181,7 @@ export const createDefaultTab = (): Tab => ({
   isPinned: false,
   isModified: false,
   isPreview: false,
+  isDeleted: false,
   openedAt: Date.now(),
   lastAccessedAt: Date.now(),
 });
@@ -201,6 +202,7 @@ export const createTabFromSidebarItem = (
     isPinned: false,
     isModified: false,
     isPreview,
+    isDeleted: false,
   };
 };
 

@@ -584,6 +584,26 @@ export function tabReducer(
       };
     }
 
+    case 'SET_TAB_DELETED': {
+      const { tabId, groupId, isDeleted } = action.payload;
+      const group = state.tabGroups[groupId];
+
+      if (!group) return state;
+
+      return {
+        ...state,
+        tabGroups: {
+          ...state.tabGroups,
+          [groupId]: {
+            ...group,
+            tabs: group.tabs.map((t) =>
+              t.id === tabId ? { ...t, isDeleted } : t
+            ),
+          },
+        },
+      };
+    }
+
     case 'UPDATE_TAB_TITLE': {
       const { tabId, groupId, title } = action.payload;
       const group = state.tabGroups[groupId];

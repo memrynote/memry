@@ -76,6 +76,8 @@ export interface Tab {
   isModified: boolean;
   /** Preview mode - single-click, replaced on next open */
   isPreview: boolean;
+  /** Entity was deleted externally (show strikethrough) */
+  isDeleted: boolean;
 
   // Preserved state
   /** Scroll position to restore */
@@ -203,6 +205,7 @@ export type TabAction =
   | { type: 'PIN_TAB'; payload: { tabId: string; groupId: string } }
   | { type: 'UNPIN_TAB'; payload: { tabId: string; groupId: string } }
   | { type: 'SET_TAB_MODIFIED'; payload: { tabId: string; groupId: string; isModified: boolean } }
+  | { type: 'SET_TAB_DELETED'; payload: { tabId: string; groupId: string; isDeleted: boolean } }
   | { type: 'UPDATE_TAB_TITLE'; payload: { tabId: string; groupId: string; title: string } }
   | { type: 'PROMOTE_PREVIEW_TAB'; payload: { tabId: string; groupId: string } }
 

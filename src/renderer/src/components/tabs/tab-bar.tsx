@@ -88,6 +88,7 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
                 isPinned: false,
                 isModified: false,
                 isPreview: false,
+                isDeleted: false,
             },
             { groupId }
         );

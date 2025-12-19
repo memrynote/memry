@@ -88,6 +88,7 @@ export const deserializeTabState = (
       ...tab,
       isModified: false,
       isPreview: false,
+      isDeleted: false,
       openedAt: Date.now(),
       lastAccessedAt: Date.now(),
     }));

@@ -12,8 +12,10 @@ import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, Property, NewProperty } from '@/components/note/info-section'
 import { BacklinksSection, Backlink } from '@/components/note/backlinks'
 import { useNotes, useNoteLinks, useNoteTags, type Note } from '@/hooks/use-notes'
+import { onNoteDeleted, onNoteExternalChange } from '@/services/notes-service'
 import { useTabs } from '@/contexts/tabs'
 import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 // ============================================================================
 // Types
@@ -101,7 +103,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const { getNote, updateNote, renameNote } = useNotes({ autoLoad: false })
   const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinks(noteId ?? null)
   const { tags: allAvailableTags } = useNoteTags()
-  const { openTab } = useTabs()
+  const { openTab, setTabDeleted } = useTabs()
 
   // Local state
   const [note, setNote] = useState<Note | null>(null)
@@ -110,6 +112,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [headings, setHeadings] = useState<HeadingItem[]>([])
   const [isInfoExpanded, setIsInfoExpanded] = useState(false)
+  const [isDeleted, setIsDeleted] = useState(false)
 
   // Content tracking for change detection
   const lastSavedContent = useRef<string>('')
@@ -133,6 +136,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
     setIsLoading(true)
     setError(null)
+    setIsDeleted(false) // Reset deleted state when loading a new note
 
     try {
       const loadedNote = await getNote(noteId)
@@ -181,6 +185,34 @@ export function NotePage({ noteId }: NotePageProps) {
       }
     }
   }, [])
+
+  // Listen for note deletion events
+  useEffect(() => {
+    if (!noteId) return
+
+    const handleDeleted = (event: { id: string }) => {
+      if (event.id === noteId) {
+        setIsDeleted(true)
+        // Mark tab as deleted with strikethrough (using entityId)
+        setTabDeleted(noteId, true)
+      }
+    }
+
+    const handleExternalChange = (event: { id: string; type: string }) => {
+      if (event.id === noteId && event.type === 'deleted') {
+        setIsDeleted(true)
+        setTabDeleted(noteId, true)
+      }
+    }
+
+    const unsubDeleted = onNoteDeleted(handleDeleted)
+    const unsubExternal = onNoteExternalChange(handleExternalChange)
+
+    return () => {
+      unsubDeleted()
+      unsubExternal()
+    }
+  }, [noteId, setTabDeleted])
 
   // ============================================================================
   // Tags - Convert between string[] and Tag[]
@@ -252,6 +284,12 @@ export function NotePage({ noteId }: NotePageProps) {
   const handleMarkdownChange = useCallback((markdown: string) => {
     if (!noteId || !note) return
 
+    // Block saves if note was deleted
+    if (isDeleted) {
+      toast.error('Cannot save - this note was deleted')
+      return
+    }
+
     // Skip if content hasn't changed
     if (markdown === lastSavedContent.current) return
 
@@ -272,7 +310,7 @@ export function NotePage({ noteId }: NotePageProps) {
         setIsSaving(false)
       }
     }, 500)
-  }, [noteId, note, updateNote])
+  }, [noteId, note, updateNote, isDeleted])
 
   const handleContentChange = useCallback((_blocks: Block[]) => {
     // Content change is handled via onMarkdownChange
@@ -280,6 +318,11 @@ export function NotePage({ noteId }: NotePageProps) {
 
   const handleTitleChange = useCallback(async (newTitle: string) => {
     if (!noteId || !note || newTitle === note.title) return
+
+    if (isDeleted) {
+      toast.error('Cannot rename - this note was deleted')
+      return
+    }
 
     try {
       const result = await renameNote(noteId, newTitle)
@@ -289,7 +332,7 @@ export function NotePage({ noteId }: NotePageProps) {
     } catch (err) {
       console.error('Failed to rename note:', err)
     }
-  }, [noteId, note, renameNote])
+  }, [noteId, note, renameNote, isDeleted])
 
   const handleEmojiChange = useCallback((_newEmoji: string | null) => {
     // Emoji handling could be stored in frontmatter in the future
@@ -298,6 +341,11 @@ export function NotePage({ noteId }: NotePageProps) {
   // Tag handlers
   const handleAddTag = useCallback(async (tagId: string) => {
     if (!noteId || !note) return
+
+    if (isDeleted) {
+      toast.error('Cannot add tag - this note was deleted')
+      return
+    }
 
     const tagToAdd = availableTags.find((t) => t.id === tagId)
     if (tagToAdd && !note.tags.includes(tagToAdd.name)) {
@@ -311,10 +359,15 @@ export function NotePage({ noteId }: NotePageProps) {
         console.error('Failed to add tag:', err)
       }
     }
-  }, [noteId, note, availableTags, updateNote])
+  }, [noteId, note, availableTags, updateNote, isDeleted])
 
   const handleCreateTag = useCallback(async (name: string, _color: string) => {
     if (!noteId || !note) return
+
+    if (isDeleted) {
+      toast.error('Cannot add tag - this note was deleted')
+      return
+    }
 
     if (!note.tags.includes(name)) {
       const newTags = [...note.tags, name]
@@ -327,10 +380,15 @@ export function NotePage({ noteId }: NotePageProps) {
         console.error('Failed to create tag:', err)
       }
     }
-  }, [noteId, note, updateNote])
+  }, [noteId, note, updateNote, isDeleted])
 
   const handleRemoveTag = useCallback(async (tagId: string) => {
     if (!noteId || !note) return
+
+    if (isDeleted) {
+      toast.error('Cannot remove tag - this note was deleted')
+      return
+    }
 
     const newTags = note.tags.filter((t) => t !== tagId)
     try {
@@ -341,7 +399,7 @@ export function NotePage({ noteId }: NotePageProps) {
     } catch (err) {
       console.error('Failed to remove tag:', err)
     }
-  }, [noteId, note, updateNote])
+  }, [noteId, note, updateNote, isDeleted])
 
   // Property handlers
   const handlePropertyChange = useCallback((propertyId: string, value: unknown) => {

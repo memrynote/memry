@@ -49,6 +49,7 @@ export default function FileTree() {
                 isPinned: false,
                 isModified: false,
                 isPreview: true,
+                isDeleted: false,
             });
         }
     };

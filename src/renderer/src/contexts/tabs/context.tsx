@@ -126,6 +126,11 @@ interface TabContextType {
     setTabModified: (tabId: string, isModified: boolean, groupId?: string) => void;
 
     /**
+     * Mark a tab as deleted (strikethrough styling) by entity ID
+     */
+    setTabDeleted: (entityId: string, isDeleted: boolean) => void;
+
+    /**
      * Update a tab's title
      */
     updateTabTitle: (tabId: string, title: string, groupId?: string) => void;
@@ -427,6 +432,23 @@ export const TabProvider = ({
         [state.activeGroupId]
     );
 
+    const setTabDeleted = useCallback(
+        (entityId: string, isDeleted: boolean) => {
+            // Find the tab by entityId across all groups
+            for (const [groupId, group] of Object.entries(state.tabGroups)) {
+                const tab = group.tabs.find((t) => t.entityId === entityId);
+                if (tab) {
+                    dispatch({
+                        type: 'SET_TAB_DELETED',
+                        payload: { tabId: tab.id, groupId, isDeleted },
+                    });
+                    return;
+                }
+            }
+        },
+        [state.tabGroups]
+    );
+
     const updateTabTitle = useCallback(
         (tabId: string, title: string, groupId?: string) => {
             const actualGroupId = groupId ?? state.activeGroupId;
@@ -597,6 +619,7 @@ export const TabProvider = ({
             unpinTab,
             togglePinTab,
             setTabModified,
+            setTabDeleted,
             updateTabTitle,
             promotePreviewTab,
             reorderTabs,
@@ -632,6 +655,7 @@ export const TabProvider = ({
             unpinTab,
             togglePinTab,
             setTabModified,
+            setTabDeleted,
             updateTabTitle,
             promotePreviewTab,
             reorderTabs,
