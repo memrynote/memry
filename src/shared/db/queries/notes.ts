@@ -303,6 +303,13 @@ export function getIncomingLinks(db: DrizzleDb, noteId: string): NoteLink[] {
 }
 
 /**
+ * Delete links where this note is the target (cleanup orphaned links on note deletion).
+ */
+export function deleteLinksToNote(db: DrizzleDb, targetId: string): void {
+  db.delete(noteLinks).where(eq(noteLinks.targetId, targetId)).run()
+}
+
+/**
  * Resolve a link target title to a note ID.
  */
 export function resolveNoteByTitle(db: DrizzleDb, title: string): NoteCache | undefined {
