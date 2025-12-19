@@ -200,6 +200,7 @@ export interface NotesClientAPI {
   getFolders(): Promise<string[]>
   createFolder(path: string): Promise<{ success: boolean; error?: string }>
   renameFolder(oldPath: string, newPath: string): Promise<{ success: boolean; error?: string }>
+  deleteFolder(path: string): Promise<{ success: boolean; error?: string }>
   exists(titleOrPath: string): Promise<boolean>
   openExternal(id: string): Promise<void>
   revealInFinder(id: string): Promise<void>

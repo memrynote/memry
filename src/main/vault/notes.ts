@@ -775,6 +775,18 @@ export async function renameFolder(oldPath: string, newPath: string): Promise<vo
   await rename(oldAbsPath, newAbsPath)
 }
 
+/**
+ * Delete a folder and all its contents recursively.
+ */
+export async function deleteFolder(folderPath: string): Promise<void> {
+  const notesDir = getNotesDir()
+  const absPath = path.join(notesDir, folderPath)
+
+  // Recursively delete folder and all contents
+  const { rm } = await import('fs/promises')
+  await rm(absPath, { recursive: true, force: true })
+}
+
 // ============================================================================
 // Utilities
 // ============================================================================

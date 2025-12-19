@@ -130,6 +130,13 @@ export const notesService: NotesClientAPI = {
   },
 
   /**
+   * Delete a folder and all its contents.
+   */
+  deleteFolder: (path: string): Promise<{ success: boolean; error?: string }> => {
+    return window.api.notes.deleteFolder(path)
+  },
+
+  /**
    * Check if a note exists by title or path.
    */
   exists: (titleOrPath: string): Promise<boolean> => {
