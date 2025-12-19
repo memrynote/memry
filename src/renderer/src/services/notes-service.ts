@@ -123,6 +123,13 @@ export const notesService: NotesClientAPI = {
   },
 
   /**
+   * Rename a folder.
+   */
+  renameFolder: (oldPath: string, newPath: string): Promise<{ success: boolean }> => {
+    return window.api.notes.renameFolder(oldPath, newPath)
+  },
+
+  /**
    * Check if a note exists by title or path.
    */
   exists: (titleOrPath: string): Promise<boolean> => {

@@ -32,6 +32,8 @@ import {
   Trash2,
   ExternalLink,
   FolderOpen,
+  FilePlus,
+  FolderPlus,
 } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
@@ -217,9 +219,10 @@ function NotesTreeError({ error }: { error: string }) {
 
 export function NotesTree() {
   const { notes, isLoading, error, createNote, deleteNote, renameNote } = useNotes({ autoLoad: true })
-  const { folders } = useNoteFolders()
+  const { folders, createFolder, refresh: refreshFolders } = useNoteFolders()
   const { openTab, closeTab } = useTabs()
   const [isCreating, setIsCreating] = useState(false)
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false)
 
   // Multi-selection state (controlled mode)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -229,20 +232,34 @@ export function NotesTree() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // Inline rename state
+  // Inline rename state for notes
   const [renamingNoteId, setRenamingNoteId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState("")
   const [isRenaming, setIsRenaming] = useState(false)
   const renameInputRef = useRef<HTMLInputElement>(null)
   const treeContainerRef = useRef<HTMLDivElement>(null)
 
-  // Focus input when renaming starts
+  // Inline rename state for folders
+  const [renamingFolderPath, setRenamingFolderPath] = useState<string | null>(null)
+  const [folderRenameValue, setFolderRenameValue] = useState("")
+  const [isFolderRenaming, setIsFolderRenaming] = useState(false)
+  const folderRenameInputRef = useRef<HTMLInputElement>(null)
+
+  // Focus input when note renaming starts
   useEffect(() => {
     if (renamingNoteId && renameInputRef.current) {
       renameInputRef.current.focus()
       renameInputRef.current.select()
     }
   }, [renamingNoteId])
+
+  // Focus input when folder renaming starts
+  useEffect(() => {
+    if (renamingFolderPath && folderRenameInputRef.current) {
+      folderRenameInputRef.current.focus()
+      folderRenameInputRef.current.select()
+    }
+  }, [renamingFolderPath])
 
   // Build tree structure from notes and folders
   const tree = useMemo(() => {
@@ -256,14 +273,41 @@ export function NotesTree() {
     return map
   }, [notes])
 
+  // Compute target folder from selection (for creating notes/folders in context)
+  const targetFolder = useMemo(() => {
+    if (selectedIds.length === 0) return "" // root
+
+    const selectedId = selectedIds[0]
+
+    // If folder selected, use its path
+    if (selectedId.startsWith("folder-")) {
+      return selectedId.replace("folder-", "")
+    }
+
+    // If note selected, get its parent folder
+    const note = noteMap.get(selectedId)
+    if (note) {
+      const parts = note.path.split("/")
+      parts.pop() // remove filename
+      // If path is "notes/subfolder/file.md", after pop we have ["notes", "subfolder"]
+      // We want "subfolder" (remove the "notes" prefix)
+      if (parts.length > 1 && parts[0] === "notes") {
+        return parts.slice(1).join("/")
+      }
+      return "" // root notes folder
+    }
+
+    return ""
+  }, [selectedIds, noteMap])
+
   // Handle note selection - update state and optionally open in tab
   const handleSelectionChange = useCallback(
     (ids: string[]) => {
-      // Filter to only include note IDs (not folder IDs)
-      const noteIds = ids.filter((id) => !id.startsWith("folder-") && id !== "notes-root")
-      setSelectedIds(noteIds)
+      // Keep all IDs including folders for context-aware creation
+      setSelectedIds(ids)
 
-      // Only open in tab on single selection (not during multi-select)
+      // Only open in tab on single note selection (not folders, not multi-select)
+      const noteIds = ids.filter((id) => !id.startsWith("folder-") && id !== "notes-root")
       if (noteIds.length === 1) {
         const note = noteMap.get(noteIds[0])
         if (note) {
@@ -283,7 +327,7 @@ export function NotesTree() {
     [noteMap, openTab]
   )
 
-  // Handle creating a new note
+  // Handle creating a new note (in target folder)
   const handleCreateNote = useCallback(async () => {
     if (isCreating) return
 
@@ -292,6 +336,7 @@ export function NotesTree() {
       const newNote = await createNote({
         title: "Untitled",
         content: "",
+        folder: targetFolder || undefined, // Create in selected folder
       })
 
       if (newNote) {
@@ -306,6 +351,76 @@ export function NotesTree() {
           isModified: false,
           isPreview: false, // Not preview mode since we're creating it
         })
+
+        // Auto-focus rename mode for the new note
+        setRenamingNoteId(newNote.id)
+        setRenameValue("Untitled")
+      }
+    } catch (err) {
+      console.error("Failed to create note:", err)
+    } finally {
+      setIsCreating(false)
+    }
+  }, [isCreating, createNote, openTab, targetFolder])
+
+  // Handle creating a new folder (in target folder)
+  const handleCreateFolder = useCallback(async () => {
+    if (isCreatingFolder) return
+
+    setIsCreatingFolder(true)
+    try {
+      // Generate unique folder name
+      const baseName = "Untitled Folder"
+      let folderName = baseName
+      let counter = 1
+      const targetPath = targetFolder ? `${targetFolder}/` : ""
+
+      // Check for existing folders with same name
+      while (folders.includes(`${targetPath}${folderName}`)) {
+        folderName = `${baseName} ${counter++}`
+      }
+
+      const fullPath = `${targetPath}${folderName}`
+      const success = await createFolder(fullPath)
+
+      if (success) {
+        // Reload folders to show the new one
+        await refreshFolders()
+
+        // Auto-focus rename mode for the new folder
+        setRenamingFolderPath(fullPath)
+        setFolderRenameValue(folderName)
+      }
+    } catch (err) {
+      console.error("Failed to create folder:", err)
+    } finally {
+      setIsCreatingFolder(false)
+    }
+  }, [isCreatingFolder, createFolder, folders, targetFolder, refreshFolders])
+
+  // Handle creating a note in a specific folder (from context menu)
+  const handleCreateNoteInFolder = useCallback(async (folderPath: string) => {
+    if (isCreating) return
+
+    setIsCreating(true)
+    try {
+      const newNote = await createNote({
+        title: "Untitled",
+        content: "",
+        folder: folderPath || undefined,
+      })
+
+      if (newNote) {
+        openTab({
+          type: "note",
+          title: getDisplayName(newNote.path),
+          icon: "file-text",
+          path: `/notes/${newNote.id}`,
+          entityId: newNote.id,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+        })
       }
     } catch (err) {
       console.error("Failed to create note:", err)
@@ -313,6 +428,34 @@ export function NotesTree() {
       setIsCreating(false)
     }
   }, [isCreating, createNote, openTab])
+
+  // Handle creating a subfolder in a specific folder (from context menu)
+  const handleCreateSubfolder = useCallback(async (parentPath: string) => {
+    if (isCreatingFolder) return
+
+    setIsCreatingFolder(true)
+    try {
+      const baseName = "Untitled Folder"
+      let folderName = baseName
+      let counter = 1
+      const targetPath = parentPath ? `${parentPath}/` : ""
+
+      while (folders.includes(`${targetPath}${folderName}`)) {
+        folderName = `${baseName} ${counter++}`
+      }
+
+      const fullPath = `${targetPath}${folderName}`
+      const success = await createFolder(fullPath)
+
+      if (success) {
+        await refreshFolders()
+      }
+    } catch (err) {
+      console.error("Failed to create folder:", err)
+    } finally {
+      setIsCreatingFolder(false)
+    }
+  }, [isCreatingFolder, createFolder, folders, refreshFolders])
 
   // Context menu action handlers
   const handleRenameClick = useCallback((note: NoteListItem) => {
@@ -346,6 +489,50 @@ export function NotesTree() {
   const handleRenameCancel = useCallback(() => {
     setRenamingNoteId(null)
     setRenameValue("")
+  }, [])
+
+  // Folder rename handlers
+  const handleRenameFolderClick = useCallback((folderPath: string) => {
+    setRenamingFolderPath(folderPath)
+    const folderName = folderPath.split("/").pop() || folderPath
+    setFolderRenameValue(folderName)
+  }, [])
+
+  const handleFolderRenameSubmit = useCallback(async (oldPath: string) => {
+    if (!folderRenameValue.trim() || isFolderRenaming) {
+      setRenamingFolderPath(null)
+      return
+    }
+
+    const oldName = oldPath.split("/").pop() || oldPath
+    if (folderRenameValue.trim() === oldName) {
+      setRenamingFolderPath(null)
+      return
+    }
+
+    setIsFolderRenaming(true)
+    try {
+      // Build new path: replace last segment with new name
+      const parentPath = oldPath.includes("/")
+        ? oldPath.substring(0, oldPath.lastIndexOf("/"))
+        : ""
+      const newPath = parentPath
+        ? `${parentPath}/${folderRenameValue.trim()}`
+        : folderRenameValue.trim()
+
+      await notesService.renameFolder(oldPath, newPath)
+      await refreshFolders()
+    } catch (err) {
+      console.error("Failed to rename folder:", err)
+    } finally {
+      setIsFolderRenaming(false)
+      setRenamingFolderPath(null)
+    }
+  }, [folderRenameValue, isFolderRenaming, refreshFolders])
+
+  const handleFolderRenameCancel = useCallback(() => {
+    setRenamingFolderPath(null)
+    setFolderRenameValue("")
   }, [])
 
   // Delete single note from context menu
@@ -540,6 +727,7 @@ export function NotesTree() {
     isLast: boolean
   ): ReactNode => {
     const hasChildren = folder.children.length > 0 || folder.notes.length > 0
+    const isBeingRenamed = renamingFolderPath === folder.path
 
     return (
       <TreeNode
@@ -548,13 +736,54 @@ export function NotesTree() {
         level={level}
         isLast={isLast}
       >
-        <TreeNodeTrigger>
+        <TreeNodeTrigger
+          contextMenuContent={
+            <>
+              <ContextMenuItem onClick={() => handleCreateNoteInFolder(folder.path)}>
+                <FilePlus className="mr-2 h-4 w-4" />
+                New Note
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => handleCreateSubfolder(folder.path)}>
+                <FolderPlus className="mr-2 h-4 w-4" />
+                New Folder
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={() => handleRenameFolderClick(folder.path)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Rename
+              </ContextMenuItem>
+            </>
+          }
+        >
           <TreeExpander hasChildren={hasChildren} />
           <TreeIcon
             hasChildren={hasChildren}
             icon={<Folder className="h-4 w-4" />}
           />
-          <TreeLabel>{folder.name}</TreeLabel>
+          {isBeingRenamed ? (
+            <input
+              ref={folderRenameInputRef}
+              type="text"
+              value={folderRenameValue}
+              onChange={(e) => setFolderRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  handleFolderRenameSubmit(folder.path)
+                } else if (e.key === "Escape") {
+                  e.preventDefault()
+                  handleFolderRenameCancel()
+                }
+                e.stopPropagation()
+              }}
+              onBlur={() => handleFolderRenameSubmit(folder.path)}
+              onClick={(e) => e.stopPropagation()}
+              disabled={isFolderRenaming}
+              className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          ) : (
+            <TreeLabel>{folder.name}</TreeLabel>
+          )}
         </TreeNodeTrigger>
         {hasChildren && (
           <TreeNodeContent hasChildren>
@@ -582,18 +811,19 @@ export function NotesTree() {
 
   return (
     <div ref={treeContainerRef} className="flex flex-col" tabIndex={-1}>
-      {/* Header with New Note button */}
+      {/* Header with New Note and New Folder buttons */}
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-border/50">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           Notes
         </span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           {/* Show selection count when multi-selecting */}
-          {selectedIds.length > 1 && (
+          {selectedIds.filter(id => !id.startsWith("folder-") && id !== "notes-root").length > 1 && (
             <span className="text-xs text-muted-foreground mr-1">
-              {selectedIds.length} selected
+              {selectedIds.filter(id => !id.startsWith("folder-") && id !== "notes-root").length} selected
             </span>
           )}
+          {/* New Note button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -606,13 +836,35 @@ export function NotesTree() {
                 {isCreating ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Plus className="h-3.5 w-3.5" />
+                  <FilePlus className="h-3.5 w-3.5" />
                 )}
                 <span className="sr-only">New Note</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>Create new note</p>
+            <TooltipContent side="bottom">
+              <p>New note{targetFolder ? ` in ${targetFolder}` : ""}</p>
+            </TooltipContent>
+          </Tooltip>
+          {/* New Folder button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={handleCreateFolder}
+                disabled={isCreatingFolder}
+              >
+                {isCreatingFolder ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <FolderPlus className="h-3.5 w-3.5" />
+                )}
+                <span className="sr-only">New Folder</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>New folder{targetFolder ? ` in ${targetFolder}` : ""}</p>
             </TooltipContent>
           </Tooltip>
         </div>

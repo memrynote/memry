@@ -762,6 +762,19 @@ export async function createFolder(folderPath: string): Promise<void> {
   await ensureDirectory(absolutePath)
 }
 
+/**
+ * Rename a folder.
+ */
+export async function renameFolder(oldPath: string, newPath: string): Promise<void> {
+  const notesDir = getNotesDir()
+  const oldAbsPath = path.join(notesDir, oldPath)
+  const newAbsPath = path.join(notesDir, newPath)
+
+  // Use fs.promises.rename for atomic rename
+  const { rename } = await import('fs/promises')
+  await rename(oldAbsPath, newAbsPath)
+}
+
 // ============================================================================
 // Utilities
 // ============================================================================

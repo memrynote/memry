@@ -28,6 +28,7 @@ import {
   getNoteLinks,
   getFolders,
   createFolder,
+  renameFolder,
   noteExists,
   openExternal,
   revealInFinder
@@ -168,6 +169,20 @@ export function registerNotesHandlers(): void {
         return { success: false, error: message }
       }
     })
+  )
+
+  // notes:rename-folder - Rename a folder
+  ipcMain.handle(
+    NotesChannels.invoke.RENAME_FOLDER,
+    async (_, oldPath: string, newPath: string) => {
+      try {
+        await renameFolder(oldPath, newPath)
+        return { success: true }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to rename folder'
+        return { success: false, error: message }
+      }
+    }
   )
 
   // notes:exists - Check if note exists

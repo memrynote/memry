@@ -169,6 +169,11 @@ export interface NotesHandlers {
 
   [NotesChannels.invoke.CREATE_FOLDER]: (path: string) => Promise<{ success: boolean }>;
 
+  [NotesChannels.invoke.RENAME_FOLDER]: (
+    oldPath: string,
+    newPath: string
+  ) => Promise<{ success: boolean }>;
+
   [NotesChannels.invoke.EXISTS]: (titleOrPath: string) => Promise<boolean>;
 
   [NotesChannels.invoke.OPEN_EXTERNAL]: (id: string) => Promise<void>;

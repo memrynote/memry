@@ -62,6 +62,8 @@ export const NotesChannels = {
     GET_FOLDERS: 'notes:get-folders',
     /** Create a new folder */
     CREATE_FOLDER: 'notes:create-folder',
+    /** Rename a folder */
+    RENAME_FOLDER: 'notes:rename-folder',
     /** Check if note exists */
     EXISTS: 'notes:exists',
     /** Open note in external editor */
