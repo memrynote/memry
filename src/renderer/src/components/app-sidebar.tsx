@@ -43,14 +43,16 @@ const quickActions = [
   {
     title: "Search",
     icon: Search,
-    kbd: "⌘ K",
+    kbd: "⌘ P",
     iconColor: "text-soft-slate",
+    action: "search" as const,
   },
   {
     title: "New",
     icon: Plus,
     kbd: "⌘ N",
     iconColor: "text-soft-sage",
+    action: "new" as const,
   },
 ]
 
@@ -132,11 +134,13 @@ function SidebarHeaderContent({ teams }: { teams: typeof data.teams }) {
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   currentPage: AppPage
   viewCounts: Record<string, number>
+  onOpenSearch?: () => void
 }
 
 export function AppSidebar({
   currentPage,
   viewCounts,
+  onOpenSearch,
   ...props
 }: AppSidebarProps) {
   // State to hold action buttons from NotesTree
@@ -186,7 +190,10 @@ export function AppSidebar({
             <SidebarMenu>
               {quickActions.map((action) => (
                 <SidebarMenuItem key={action.title}>
-                  <SidebarMenuButton tooltip={action.title}>
+                  <SidebarMenuButton
+                    tooltip={action.title}
+                    onClick={action.action === "search" ? onOpenSearch : undefined}
+                  >
                     <action.icon className={cn("size-4", action.iconColor)} />
                     <span>{action.title}</span>
                     <KbdGroup className="ml-auto">

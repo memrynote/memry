@@ -45,6 +45,96 @@ export interface SearchSuggestion {
 }
 
 // ============================================================================
+// Highlighting Utilities
+// ============================================================================
+
+/**
+ * Highlights search terms in arbitrary text using <mark> tags.
+ * Useful for highlighting matches in titles, tags, etc. that don't
+ * come from FTS snippet().
+ *
+ * @param text - Text to highlight
+ * @param query - Search query (will be split into terms)
+ * @param tag - HTML tag to use for highlighting (default: 'mark')
+ * @returns Text with highlighted matches
+ *
+ * @example
+ * ```typescript
+ * highlightTerms('Hello World', 'world')
+ * // Returns: 'Hello <mark>World</mark>'
+ * ```
+ */
+export function highlightTerms(text: string, query: string, tag: string = 'mark'): string {
+  if (!text || !query) return text
+
+  // Get search terms from query
+  const terms = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length > 0)
+    .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Escape regex special chars
+
+  if (terms.length === 0) return text
+
+  // Build regex pattern that matches any term (case insensitive)
+  const pattern = new RegExp(`(${terms.join('|')})`, 'gi')
+
+  // Replace matches with highlighted version
+  return text.replace(pattern, `<${tag}>$1</${tag}>`)
+}
+
+/**
+ * Extracts a snippet from text around the first match.
+ * Useful for creating snippets when FTS snippet() isn't available.
+ *
+ * @param text - Full text to extract from
+ * @param query - Search query to find
+ * @param contextChars - Characters of context around match (default: 50)
+ * @returns Snippet with highlighted match
+ */
+export function extractSnippet(
+  text: string,
+  query: string,
+  contextChars: number = 50
+): string {
+  if (!text || !query) return text.slice(0, contextChars * 2) + '...'
+
+  const terms = query.toLowerCase().split(/\s+/).filter((t) => t.length > 0)
+  if (terms.length === 0) return text.slice(0, contextChars * 2) + '...'
+
+  // Find first match position
+  const textLower = text.toLowerCase()
+  let matchIndex = -1
+  let matchTerm = ''
+
+  for (const term of terms) {
+    const idx = textLower.indexOf(term)
+    if (idx !== -1 && (matchIndex === -1 || idx < matchIndex)) {
+      matchIndex = idx
+      matchTerm = term
+    }
+  }
+
+  if (matchIndex === -1) {
+    // No match found, return beginning of text
+    return text.slice(0, contextChars * 2) + (text.length > contextChars * 2 ? '...' : '')
+  }
+
+  // Calculate start and end positions for snippet
+  const start = Math.max(0, matchIndex - contextChars)
+  const end = Math.min(text.length, matchIndex + matchTerm.length + contextChars)
+
+  // Build snippet
+  let snippet = ''
+  if (start > 0) snippet += '...'
+  snippet += text.slice(start, end)
+  if (end < text.length) snippet += '...'
+
+  // Highlight all terms in snippet
+  return highlightTerms(snippet, query)
+}
+
+// ============================================================================
 // Query Escaping
 // ============================================================================
 

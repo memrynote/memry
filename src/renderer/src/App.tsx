@@ -29,7 +29,8 @@ import { TasksProvider } from "@/contexts/tasks"
 import { TabBarWithDrag, TabDragProvider } from "@/components/tabs"
 import { SplitViewContainer } from "@/components/split-view"
 import { ChordIndicator, KeyboardShortcutsDialog } from "@/components/keyboard"
-import { useTabKeyboardShortcuts, useChordShortcuts, useDragHandlers, useTaskOrder, useVault } from "@/hooks"
+import { SearchModal } from "@/components/search"
+import { useTabKeyboardShortcuts, useChordShortcuts, useDragHandlers, useTaskOrder, useVault, useSearchShortcut } from "@/hooks"
 import { VaultOnboarding } from "@/components/vault-onboarding"
 
 // Base pages (non-task)
@@ -146,6 +147,8 @@ interface AppContentProps {
   onTasksChange: (tasks: Task[]) => void
   onSelectionChange: (id: string, type: TaskSelectionType) => void
   onSelectedTaskIdsChange: (ids: Set<string>) => void
+  searchOpen: boolean
+  onSearchOpenChange: (open: boolean) => void
 }
 
 const AppContent = ({
@@ -155,13 +158,32 @@ const AppContent = ({
   onTasksChange,
   onSelectionChange,
   onSelectedTaskIdsChange,
+  searchOpen,
+  onSearchOpenChange,
 }: AppContentProps): React.JSX.Element => {
-  const { state } = useTabs()
+  const { state, openTab } = useTabs()
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
 
   // Keyboard shortcuts
   useTabKeyboardShortcuts()
   const isChordActive = useChordShortcuts()
+  useSearchShortcut(() => onSearchOpenChange(true))
+
+  // Handle search result selection - open note in tab
+  const handleSelectSearchResult = useCallback((noteId: string) => {
+    openTab({
+      type: 'note',
+      title: 'Note', // Will be updated when note loads
+      icon: 'file-text',
+      path: `/note/${noteId}`,
+      entityId: noteId,
+      isPinned: false,
+      isModified: false,
+      isPreview: true,
+      isDeleted: false,
+    })
+    onSearchOpenChange(false)
+  }, [openTab, onSearchOpenChange])
 
   // Get active group for tab bar
   const activeGroupId = state.activeGroupId
@@ -270,6 +292,13 @@ const AppContent = ({
         isOpen={showShortcutsDialog}
         onClose={() => setShowShortcutsDialog(false)}
       />
+
+      {/* Search Modal */}
+      <SearchModal
+        isOpen={searchOpen}
+        onClose={() => onSearchOpenChange(false)}
+        onSelectNote={handleSelectSearchResult}
+      />
     </TabDragProvider>
   )
 }
@@ -294,6 +323,9 @@ function App(): React.JSX.Element {
 
   // Task selection state for drag-drop (lifted from TasksPage)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
+
+  // Search modal state
+  const [searchOpen, setSearchOpen] = useState(false)
 
   // Calculate view counts dynamically
   const viewCounts = useMemo(() => {
@@ -407,6 +439,7 @@ function App(): React.JSX.Element {
           <AppSidebar
             currentPage={currentPage}
             viewCounts={viewCounts}
+            onOpenSearch={() => setSearchOpen(true)}
           />
           <SidebarInset className="flex flex-col">
             <AppContent
@@ -416,6 +449,8 @@ function App(): React.JSX.Element {
               onTasksChange={handleTasksChange}
               onSelectionChange={handleTaskSelectionChange}
               onSelectedTaskIdsChange={handleSelectionChange}
+              searchOpen={searchOpen}
+              onSearchOpenChange={setSearchOpen}
             />
           </SidebarInset>
           {/* Drag Overlay - only for task drag to sidebar */}
