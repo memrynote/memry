@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // Import channel constants from shared (single source of truth)
-import { VaultChannels, NotesChannels } from '@shared/ipc-channels'
+import { VaultChannels, NotesChannels, SearchChannels } from '@shared/ipc-channels'
 
 // Custom APIs for renderer
 const api = {
@@ -65,6 +65,37 @@ const api = {
     revealInFinder: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.REVEAL_IN_FINDER, id)
   },
 
+  // Search API
+  search: {
+    query: (input: {
+      query: string
+      types?: ('note' | 'task' | 'journal')[]
+      tags?: string[]
+      projectId?: string
+      dateFrom?: string
+      dateTo?: string
+      includeArchived?: boolean
+      includeCompleted?: boolean
+      sortBy?: 'relevance' | 'modified' | 'created'
+      limit?: number
+      offset?: number
+    }) => ipcRenderer.invoke(SearchChannels.invoke.SEARCH, input),
+    quick: (input: { query: string; limit?: number }) =>
+      ipcRenderer.invoke(SearchChannels.invoke.QUICK_SEARCH, input),
+    suggestions: (input: { prefix: string; limit?: number }) =>
+      ipcRenderer.invoke(SearchChannels.invoke.SUGGESTIONS, input),
+    getRecent: () => ipcRenderer.invoke(SearchChannels.invoke.GET_RECENT),
+    clearRecent: () => ipcRenderer.invoke(SearchChannels.invoke.CLEAR_RECENT),
+    addRecent: (query: string) => ipcRenderer.invoke(SearchChannels.invoke.ADD_RECENT, query),
+    getStats: () => ipcRenderer.invoke(SearchChannels.invoke.GET_STATS),
+    rebuildIndex: () => ipcRenderer.invoke(SearchChannels.invoke.REBUILD_INDEX),
+    searchNotes: (query: string, options?: { tags?: string[]; limit?: number }) =>
+      ipcRenderer.invoke(SearchChannels.invoke.SEARCH_NOTES, { query, ...options }),
+    findByTag: (tag: string) => ipcRenderer.invoke(SearchChannels.invoke.FIND_BY_TAG, tag),
+    findBacklinks: (noteId: string) =>
+      ipcRenderer.invoke(SearchChannels.invoke.FIND_BACKLINKS, noteId)
+  },
+
   // Event subscription helpers
   onVaultStatusChanged: (callback: (status: unknown) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, status: unknown): void => callback(status)
@@ -120,6 +151,41 @@ const api = {
     const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
     ipcRenderer.on(NotesChannels.events.EXTERNAL_CHANGE, handler)
     return () => ipcRenderer.removeListener(NotesChannels.events.EXTERNAL_CHANGE, handler)
+  },
+
+  // Search event subscription helpers
+  onSearchIndexRebuildStarted: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on(SearchChannels.events.INDEX_REBUILD_STARTED, handler)
+    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_REBUILD_STARTED, handler)
+  },
+
+  onSearchIndexRebuildProgress: (
+    callback: (progress: { phase: string; current: number; total: number; percentage: number }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      progress: { phase: string; current: number; total: number; percentage: number }
+    ): void => callback(progress)
+    ipcRenderer.on(SearchChannels.events.INDEX_REBUILD_PROGRESS, handler)
+    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_REBUILD_PROGRESS, handler)
+  },
+
+  onSearchIndexRebuildCompleted: (
+    callback: (result: { duration: number; notesIndexed: number; tasksIndexed: number }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      result: { duration: number; notesIndexed: number; tasksIndexed: number }
+    ): void => callback(result)
+    ipcRenderer.on(SearchChannels.events.INDEX_REBUILD_COMPLETED, handler)
+    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_REBUILD_COMPLETED, handler)
+  },
+
+  onSearchIndexCorrupt: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on(SearchChannels.events.INDEX_CORRUPT, handler)
+    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_CORRUPT, handler)
   }
 }
 
