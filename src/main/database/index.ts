@@ -15,5 +15,10 @@ export {
   createFtsTable,
   createFtsTriggers,
   updateFtsContent,
+  insertFtsNote,
+  deleteFtsNote,
+  clearFtsTable,
+  getFtsCount,
+  ftsNoteExists,
   initializeFts
 } from './fts'

@@ -48,7 +48,7 @@ import {
   findDuplicateId,
   resolveNoteByTitle
 } from '@shared/db/queries/notes'
-import { getIndexDatabase } from '../database'
+import { getIndexDatabase, updateFtsContent } from '../database'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@shared/contracts/notes-api'
@@ -227,6 +227,9 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   if (input.tags && input.tags.length > 0) {
     setNoteTags(db, frontmatter.id, input.tags)
   }
+
+  // Update FTS index with content and tags
+  updateFtsContent(db, frontmatter.id, content, input.tags ?? [])
 
   // Extract and set links
   const wikiLinks = extractWikiLinks(content)
@@ -435,6 +438,9 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
 
   // Update tags
   setNoteTags(db, input.id, newTags)
+
+  // Update FTS index with content and tags
+  updateFtsContent(db, input.id, newContent, newTags)
 
   // Update links
   const wikiLinks = extractWikiLinks(newContent)

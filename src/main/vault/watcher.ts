@@ -33,7 +33,7 @@ import {
   setNoteLinks,
   resolveNoteByTitle
 } from '@shared/db/queries/notes'
-import { getIndexDatabase } from '../database'
+import { getIndexDatabase, updateFtsContent } from '../database'
 import { NotesChannels } from '@shared/ipc-channels'
 import {
   trackPendingDelete,
@@ -325,6 +325,9 @@ export class VaultWatcher {
         setNoteTags(db, parsed.frontmatter.id, tags)
       }
 
+      // Update FTS index with content and tags
+      updateFtsContent(db, parsed.frontmatter.id, parsed.content, tags)
+
       // Set links
       if (wikiLinks.length > 0) {
         const links = wikiLinks.map((title) => {
@@ -407,6 +410,9 @@ export class VaultWatcher {
 
         // Update tags
         setNoteTags(db, cached.id, tags)
+
+        // Update FTS index with content and tags
+        updateFtsContent(db, cached.id, parsed.content, tags)
 
         // Update links
         const links = wikiLinks.map((linkTitle) => {
