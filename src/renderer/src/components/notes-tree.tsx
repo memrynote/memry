@@ -217,7 +217,12 @@ function NotesTreeError({ error }: { error: string }) {
 // Main Component
 // ============================================================================
 
-export function NotesTree() {
+interface NotesTreeProps {
+  /** Callback to receive action buttons for external rendering */
+  onActionsReady?: (actions: React.ReactNode) => void
+}
+
+export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   const { notes, isLoading, error, createNote, deleteNote, renameNote } = useNotes({ autoLoad: true })
   const { folders, createFolder, refresh: refreshFolders } = useNoteFolders()
   const { openTab, closeTab } = useTabs()
@@ -618,6 +623,61 @@ export function NotesTree() {
     return () => container.removeEventListener("keydown", handleKeyDown)
   }, [selectedIds, renamingNoteId, handleBulkDelete])
 
+  // Render action buttons (must be before early returns to follow Rules of Hooks)
+  const actionButtons = useMemo(() => (
+    <>
+      {/* New Note button */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={handleCreateNote}
+            disabled={isCreating}
+          >
+            {isCreating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <FilePlus className="h-3.5 w-3.5" />
+            )}
+            <span className="sr-only">New Note</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          <p>New note{targetFolder ? ` in ${targetFolder}` : ""}</p>
+        </TooltipContent>
+      </Tooltip>
+      {/* New Folder button */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={handleCreateFolder}
+            disabled={isCreatingFolder}
+          >
+            {isCreatingFolder ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <FolderPlus className="h-3.5 w-3.5" />
+            )}
+            <span className="sr-only">New Folder</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          <p>New folder{targetFolder ? ` in ${targetFolder}` : ""}</p>
+        </TooltipContent>
+      </Tooltip>
+    </>
+  ), [handleCreateNote, handleCreateFolder, isCreating, isCreatingFolder, targetFolder])
+
+  // Notify parent about action buttons (must be before early returns)
+  useEffect(() => {
+    onActionsReady?.(actionButtons)
+  }, [onActionsReady, actionButtons])
+
   // Render loading state
   if (isLoading) {
     return <NotesTreeSkeleton />
@@ -811,65 +871,6 @@ export function NotesTree() {
 
   return (
     <div ref={treeContainerRef} className="flex flex-col" tabIndex={-1}>
-      {/* Header with New Note and New Folder buttons */}
-      <div className="flex items-center justify-between px-2 py-1.5 border-b border-border/50">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Notes
-        </span>
-        <div className="flex items-center gap-0.5">
-          {/* Show selection count when multi-selecting */}
-          {selectedIds.filter(id => !id.startsWith("folder-") && id !== "notes-root").length > 1 && (
-            <span className="text-xs text-muted-foreground mr-1">
-              {selectedIds.filter(id => !id.startsWith("folder-") && id !== "notes-root").length} selected
-            </span>
-          )}
-          {/* New Note button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={handleCreateNote}
-                disabled={isCreating}
-              >
-                {isCreating ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <FilePlus className="h-3.5 w-3.5" />
-                )}
-                <span className="sr-only">New Note</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p>New note{targetFolder ? ` in ${targetFolder}` : ""}</p>
-            </TooltipContent>
-          </Tooltip>
-          {/* New Folder button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={handleCreateFolder}
-                disabled={isCreatingFolder}
-              >
-                {isCreatingFolder ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <FolderPlus className="h-3.5 w-3.5" />
-                )}
-                <span className="sr-only">New Folder</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p>New folder{targetFolder ? ` in ${targetFolder}` : ""}</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </div>
-
       {/* Tree View */}
       <TreeProvider
         selectedIds={selectedIds}
@@ -880,21 +881,21 @@ export function NotesTree() {
         indent={16}
       >
         <TreeView>
-          {/* Root Notes - displayed directly without wrapper */}
-          {tree.rootNotes.map((note, index) =>
-            renderNote(
-              note,
-              0,
-              index === tree.rootNotes.length - 1 && tree.folders.length === 0
-            )
-          )}
-
-          {/* Folders */}
+          {/* Folders first */}
           {tree.folders.map((folder, index) =>
             renderFolder(
               folder,
               0,
-              index === tree.folders.length - 1
+              index === tree.folders.length - 1 && tree.rootNotes.length === 0
+            )
+          )}
+
+          {/* Root notes after folders */}
+          {tree.rootNotes.map((note, index) =>
+            renderNote(
+              note,
+              0,
+              index === tree.rootNotes.length - 1
             )
           )}
         </TreeView>
