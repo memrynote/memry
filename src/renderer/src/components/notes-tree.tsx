@@ -234,6 +234,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
 
   // Dialog state for single/bulk delete
   const [notesToDelete, setNotesToDelete] = useState<NoteListItem[]>([])
+  const [foldersToDelete, setFoldersToDelete] = useState<string[]>([])
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -543,27 +544,49 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   // Delete single note from context menu
   const handleDeleteClick = useCallback((note: NoteListItem) => {
     setNotesToDelete([note])
+    setFoldersToDelete([])
     setIsDeleteDialogOpen(true)
   }, [])
 
-  // Delete all selected notes (bulk delete)
-  const handleBulkDelete = useCallback(() => {
-    const selectedNotes = selectedIds
-      .map((id) => noteMap.get(id))
-      .filter((note): note is NoteListItem => note !== undefined)
+  // Delete single folder from context menu
+  const handleDeleteFolderClick = useCallback((folderPath: string) => {
+    setNotesToDelete([])
+    setFoldersToDelete([folderPath])
+    setIsDeleteDialogOpen(true)
+  }, [])
 
-    if (selectedNotes.length > 0) {
+  // Delete all selected items (notes and folders)
+  const handleBulkDelete = useCallback(() => {
+    // Separate folder IDs from note IDs
+    const folderPaths: string[] = []
+    const selectedNotes: NoteListItem[] = []
+
+    for (const id of selectedIds) {
+      if (id.startsWith("folder-")) {
+        // Extract folder path from "folder-path/to/folder" format
+        const folderPath = id.replace("folder-", "")
+        folderPaths.push(folderPath)
+      } else {
+        const note = noteMap.get(id)
+        if (note) {
+          selectedNotes.push(note)
+        }
+      }
+    }
+
+    if (selectedNotes.length > 0 || folderPaths.length > 0) {
       setNotesToDelete(selectedNotes)
+      setFoldersToDelete(folderPaths)
       setIsDeleteDialogOpen(true)
     }
   }, [selectedIds, noteMap])
 
   const handleDeleteConfirm = useCallback(async () => {
-    if (notesToDelete.length === 0 || isDeleting) return
+    if ((notesToDelete.length === 0 && foldersToDelete.length === 0) || isDeleting) return
 
     setIsDeleting(true)
     try {
-      // Delete all notes in sequence
+      // Delete notes first (before folders, in case notes are inside folders)
       for (const note of notesToDelete) {
         const success = await deleteNote(note.id)
         if (success) {
@@ -571,15 +594,27 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           closeTab(`/notes/${note.id}`)
         }
       }
+
+      // Delete folders (this also deletes any nested notes)
+      for (const folderPath of foldersToDelete) {
+        await notesService.deleteFolder(folderPath)
+      }
+
+      // Refresh folders list if any folders were deleted
+      if (foldersToDelete.length > 0) {
+        await refreshFolders()
+      }
+
       setIsDeleteDialogOpen(false)
       setNotesToDelete([])
+      setFoldersToDelete([])
       setSelectedIds([]) // Clear selection after delete
     } catch (err) {
-      console.error("Failed to delete notes:", err)
+      console.error("Failed to delete items:", err)
     } finally {
       setIsDeleting(false)
     }
-  }, [notesToDelete, isDeleting, deleteNote, closeTab])
+  }, [notesToDelete, foldersToDelete, isDeleting, deleteNote, closeTab, refreshFolders])
 
   const handleOpenExternal = useCallback(async (note: NoteListItem) => {
     try {
@@ -812,6 +847,13 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
                 <Pencil className="mr-2 h-4 w-4" />
                 Rename
               </ContextMenuItem>
+              <ContextMenuItem
+                variant="destructive"
+                onClick={() => handleDeleteFolderClick(folder.path)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </ContextMenuItem>
             </>
           }
         >
@@ -906,24 +948,53 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {notesToDelete.length === 1 ? "Delete Note" : `Delete ${notesToDelete.length} Notes`}
+              {(() => {
+                const totalItems = notesToDelete.length + foldersToDelete.length
+                if (totalItems === 1) {
+                  if (foldersToDelete.length === 1) return "Delete Folder"
+                  return "Delete Note"
+                }
+                return `Delete ${totalItems} Items`
+              })()}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {notesToDelete.length === 1 ? (
-                <>Are you sure you want to delete &quot;{getDisplayName(notesToDelete[0]?.path || "")}&quot;? This action cannot be undone.</>
-              ) : (
-                <>
-                  Are you sure you want to delete these {notesToDelete.length} notes? This action cannot be undone.
-                  <ul className="mt-2 max-h-32 overflow-y-auto text-sm list-disc list-inside">
-                    {notesToDelete.slice(0, 5).map((note) => (
-                      <li key={note.id}>{getDisplayName(note.path)}</li>
-                    ))}
-                    {notesToDelete.length > 5 && (
-                      <li className="text-muted-foreground">...and {notesToDelete.length - 5} more</li>
-                    )}
-                  </ul>
-                </>
-              )}
+              {(() => {
+                const totalItems = notesToDelete.length + foldersToDelete.length
+
+                // Single item
+                if (totalItems === 1) {
+                  if (foldersToDelete.length === 1) {
+                    const folderName = foldersToDelete[0].split("/").pop() || foldersToDelete[0]
+                    return (
+                      <>Are you sure you want to delete the folder &quot;{folderName}&quot; and all its contents? This action cannot be undone.</>
+                    )
+                  }
+                  return (
+                    <>Are you sure you want to delete &quot;{getDisplayName(notesToDelete[0]?.path || "")}&quot;? This action cannot be undone.</>
+                  )
+                }
+
+                // Multiple items
+                return (
+                  <>
+                    Are you sure you want to delete these items? This action cannot be undone.
+                    <ul className="mt-2 max-h-32 overflow-y-auto text-sm list-disc list-inside">
+                      {foldersToDelete.slice(0, 3).map((folderPath) => (
+                        <li key={`folder-${folderPath}`} className="flex items-center gap-1">
+                          <Folder className="h-3 w-3 inline" />
+                          {folderPath.split("/").pop() || folderPath} (folder)
+                        </li>
+                      ))}
+                      {notesToDelete.slice(0, 5 - Math.min(foldersToDelete.length, 3)).map((note) => (
+                        <li key={note.id}>{getDisplayName(note.path)}</li>
+                      ))}
+                      {totalItems > 5 && (
+                        <li className="text-muted-foreground">...and {totalItems - 5} more</li>
+                      )}
+                    </ul>
+                  </>
+                )
+              })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -939,7 +1010,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
                   Deleting...
                 </>
               ) : (
-                notesToDelete.length === 1 ? "Delete" : `Delete ${notesToDelete.length}`
+                (notesToDelete.length + foldersToDelete.length) === 1 ? "Delete" : `Delete ${notesToDelete.length + foldersToDelete.length}`
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

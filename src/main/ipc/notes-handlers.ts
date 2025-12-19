@@ -29,6 +29,7 @@ import {
   getFolders,
   createFolder,
   renameFolder,
+  deleteFolder,
   noteExists,
   openExternal,
   revealInFinder
@@ -180,6 +181,20 @@ export function registerNotesHandlers(): void {
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to rename folder'
+        return { success: false, error: message }
+      }
+    }
+  )
+
+  // notes:delete-folder - Delete a folder and all its contents
+  ipcMain.handle(
+    NotesChannels.invoke.DELETE_FOLDER,
+    async (_, folderPath: string) => {
+      try {
+        await deleteFolder(folderPath)
+        return { success: true }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to delete folder'
         return { success: false, error: message }
       }
     }
