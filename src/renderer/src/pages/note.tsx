@@ -434,10 +434,10 @@ export function NotePage({ noteId }: NotePageProps) {
       )}
 
       {/* Note content */}
-      <div className="space-y-8 journal-animate-in">
+      <div className="space-y-8">
         <div style={{ paddingInline: "54px" }}>
           {/* Title section */}
-          <div className="space-y-4 journal-stagger-1">
+          <div className="space-y-4">
             <div className="relative">
               <div
                 className="absolute -left-8 top-1/2 -translate-y-1/2 w-1 h-12 bg-gradient-to-b from-amber-400/40 via-amber-500/20 to-transparent rounded-full opacity-60"
@@ -454,7 +454,7 @@ export function NotePage({ noteId }: NotePageProps) {
           </div>
 
           {/* Tags section */}
-          <div className="journal-stagger-2">
+          <div>
             <TagsRow
               tags={noteTags}
               availableTags={availableTags}
@@ -467,7 +467,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
           {/* Info Section (Properties from frontmatter) */}
           {properties.length > 0 && (
-            <div className="journal-stagger-3">
+            <div>
               <InfoSection
                 properties={properties}
                 isExpanded={isInfoExpanded}
@@ -482,7 +482,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
         {/* Main content - BlockNote Editor with Markdown */}
         <div
-          className="editor-click-area min-h-[400px] journal-stagger-4 relative"
+          className="editor-click-area min-h-[400px] relative"
           onMouseDown={(e) => {
             const target = e.target as HTMLElement
             if (target.closest('[contenteditable="true"]')?.contains(target) &&
@@ -513,7 +513,7 @@ export function NotePage({ noteId }: NotePageProps) {
         </div>
 
         {/* Backlinks section */}
-        <div className="journal-stagger-5 pt-8 mx-[54px] border-t border-border/30">
+        <div className="pt-8 mx-[54px] border-t border-border/30">
           <div className="flex items-baseline gap-2 mb-4">
             <span className="font-sans text-xs font-medium uppercase tracking-wider text-text-tertiary/50">
               References

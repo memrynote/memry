@@ -1,10 +1,9 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
-import { Search, Check, Plus } from 'lucide-react'
+import { Search, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useClickOutside } from '../note-title/use-click-outside'
 import { Tag } from './TagChip'
 import { getTagColors, getRandomColor } from './tag-colors'
-import { ColorPicker } from './ColorPicker'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 interface TagInputPopupProps {
@@ -16,8 +15,6 @@ interface TagInputPopupProps {
   onAddTag: (tagId: string) => void
   onCreateTag: (name: string, color: string) => void
 }
-
-type View = 'search' | 'create'
 
 export function TagInputPopup({
   isOpen,
@@ -31,7 +28,6 @@ export function TagInputPopup({
   const popupRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [view, setView] = useState<View>('search')
   const [newTagColor, setNewTagColor] = useState(getRandomColor())
 
   useClickOutside(popupRef, onClose, isOpen)
@@ -47,7 +43,6 @@ export function TagInputPopup({
   useEffect(() => {
     if (!isOpen) {
       setSearchQuery('')
-      setView('search')
       setNewTagColor(getRandomColor())
     }
   }, [isOpen])
@@ -74,14 +69,28 @@ export function TagInputPopup({
     (e: React.KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
-        if (view === 'create') {
-          setView('search')
-        } else {
-          onClose()
+        onClose()
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        const trimmedQuery = searchQuery.trim()
+        if (trimmedQuery) {
+          if (!exactMatchExists) {
+            // Create new tag with random color
+            onCreateTag(trimmedQuery, newTagColor)
+            onClose()
+          } else if (filteredTags.length > 0) {
+            // Select the first matching tag if it exists and not already added
+            const firstTag = filteredTags[0]
+            if (!currentTagIds.includes(firstTag.id)) {
+              onAddTag(firstTag.id)
+              onClose()
+            }
+          }
         }
       }
     },
-    [onClose, view]
+    [onClose, searchQuery, exactMatchExists, newTagColor, onCreateTag, filteredTags, currentTagIds, onAddTag]
   )
 
   const handleTagClick = useCallback(
@@ -93,19 +102,6 @@ export function TagInputPopup({
     },
     [currentTagIds, onAddTag, onClose]
   )
-
-  const handleCreateClick = useCallback(() => {
-    setView('create')
-  }, [])
-
-  const handleCreateConfirm = useCallback(() => {
-    onCreateTag(searchQuery.trim(), newTagColor)
-    onClose()
-  }, [searchQuery, newTagColor, onCreateTag, onClose])
-
-  const handleCreateCancel = useCallback(() => {
-    setView('search')
-  }, [])
 
   if (!isOpen) return null
 
@@ -124,104 +120,73 @@ export function TagInputPopup({
         'animate-in fade-in-0 zoom-in-95 duration-150'
       )}
     >
-      {view === 'search' ? (
-        <>
-          {/* Search input */}
-          <div className="border-b border-stone-200 p-2">
-            <div className="flex items-center gap-2 rounded-lg bg-stone-50 px-3 py-2">
-              <Search className="h-4 w-4 text-stone-400" />
-              <input
-                ref={inputRef}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Type tag name..."
-                className={cn(
-                  'flex-1 bg-transparent text-sm',
-                  'placeholder:text-stone-400',
-                  'outline-none'
-                )}
-              />
-            </div>
-          </div>
+      {/* Search input */}
+      <div className="border-b border-stone-200 p-2">
+        <div className="flex items-center gap-2 rounded-lg bg-stone-50 px-3 py-2">
+          <Search className="h-4 w-4 text-stone-400" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Type tag name..."
+            className={cn(
+              'flex-1 bg-transparent text-sm',
+              'placeholder:text-stone-400',
+              'outline-none'
+            )}
+          />
+        </div>
+      </div>
 
-          <ScrollArea className="max-h-[260px]">
-            <div className="p-2">
-              {/* Recent tags */}
-              {filteredRecentTags.length > 0 && !searchQuery && (
-                <div className="mb-3">
-                  <div className="mb-1.5 px-1 text-xs font-medium uppercase text-stone-400">
-                    Recent
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {filteredRecentTags.slice(0, 8).map((tag) => (
-                      <TagOption
-                        key={tag.id}
-                        tag={tag}
-                        isSelected={currentTagIds.includes(tag.id)}
-                        onClick={() => handleTagClick(tag)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* All/Filtered tags */}
-              {filteredTags.length > 0 && (
-                <div className="mb-2">
-                  <div className="mb-1.5 px-1 text-xs font-medium uppercase text-stone-400">
-                    {searchQuery ? 'Matching' : 'All Tags'}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {filteredTags.map((tag) => (
-                      <TagOption
-                        key={tag.id}
-                        tag={tag}
-                        isSelected={currentTagIds.includes(tag.id)}
-                        onClick={() => handleTagClick(tag)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Empty state */}
-              {filteredTags.length === 0 && searchQuery && (
-                <div className="py-4 text-center text-sm text-stone-400">
-                  No tags found
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-
-          {/* Create new tag option */}
-          {searchQuery.trim() && !exactMatchExists && (
-            <div className="border-t border-stone-200 p-2">
-              <button
-                type="button"
-                onClick={handleCreateClick}
-                className={cn(
-                  'flex w-full items-center gap-2 rounded-lg px-3 py-2',
-                  'text-sm text-stone-700',
-                  'transition-colors duration-150',
-                  'hover:bg-stone-100'
-                )}
-              >
-                <Plus className="h-4 w-4" />
-                Create &ldquo;{searchQuery.trim()}&rdquo;
-              </button>
+      <ScrollArea className="max-h-[260px]">
+        <div className="p-2">
+          {/* Recent tags */}
+          {filteredRecentTags.length > 0 && !searchQuery && (
+            <div className="mb-3">
+              <div className="mb-1.5 px-1 text-xs font-medium uppercase text-stone-400">
+                Recent
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {filteredRecentTags.slice(0, 8).map((tag) => (
+                  <TagOption
+                    key={tag.id}
+                    tag={tag}
+                    isSelected={currentTagIds.includes(tag.id)}
+                    onClick={() => handleTagClick(tag)}
+                  />
+                ))}
+              </div>
             </div>
           )}
-        </>
-      ) : (
-        <ColorPicker
-          selectedColor={newTagColor}
-          onSelectColor={setNewTagColor}
-          tagName={searchQuery.trim()}
-          onCancel={handleCreateCancel}
-          onConfirm={handleCreateConfirm}
-        />
-      )}
+
+          {/* All/Filtered tags */}
+          {filteredTags.length > 0 && (
+            <div className="mb-2">
+              <div className="mb-1.5 px-1 text-xs font-medium uppercase text-stone-400">
+                {searchQuery ? 'Matching' : 'All Tags'}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {filteredTags.map((tag) => (
+                  <TagOption
+                    key={tag.id}
+                    tag={tag}
+                    isSelected={currentTagIds.includes(tag.id)}
+                    onClick={() => handleTagClick(tag)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {filteredTags.length === 0 && searchQuery && (
+            <div className="py-4 text-center text-sm text-stone-400">
+              No tags found
+            </div>
+          )}
+        </div>
+      </ScrollArea>
     </div>
   )
 }
