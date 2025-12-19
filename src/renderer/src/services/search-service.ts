@@ -140,6 +140,66 @@ export function onSearchIndexCorrupt(callback: () => void): () => void {
 }
 
 // ============================================================================
+// Highlighting Utilities (Client-side)
+// ============================================================================
+
+/**
+ * Highlights search terms in text using <mark> tags.
+ * Useful for highlighting matches in titles, tags, etc.
+ *
+ * @param text - Text to highlight
+ * @param query - Search query (will be split into terms)
+ * @param tag - HTML tag to use (default: 'mark')
+ * @returns Text with highlighted matches
+ *
+ * @example
+ * ```tsx
+ * <span dangerouslySetInnerHTML={{
+ *   __html: highlightTerms(note.title, searchQuery)
+ * }} />
+ * ```
+ */
+export function highlightTerms(text: string, query: string, tag: string = 'mark'): string {
+  if (!text || !query) return text
+
+  const terms = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length > 0)
+    .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+
+  if (terms.length === 0) return text
+
+  const pattern = new RegExp(`(${terms.join('|')})`, 'gi')
+  return text.replace(pattern, `<${tag}>$1</${tag}>`)
+}
+
+/**
+ * Escapes HTML special characters to prevent XSS.
+ * Use before highlightTerms when displaying user content.
+ *
+ * @param text - Text to escape
+ * @returns HTML-safe text
+ */
+export function escapeHtml(text: string): string {
+  const div = document.createElement('div')
+  div.textContent = text
+  return div.innerHTML
+}
+
+/**
+ * Safely highlights text by escaping HTML first.
+ * Prevents XSS while allowing highlight tags.
+ *
+ * @param text - Text to highlight (will be HTML escaped)
+ * @param query - Search query
+ * @returns Safe HTML with highlighted terms
+ */
+export function safeHighlight(text: string, query: string): string {
+  return highlightTerms(escapeHtml(text), query)
+}
+
+// ============================================================================
 // Type Re-exports
 // ============================================================================
 

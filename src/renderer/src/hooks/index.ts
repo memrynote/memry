@@ -34,3 +34,7 @@ export * from "./use-journal-scroll"
 
 // Vault management
 export * from "./use-vault"
+
+// Search
+export * from "./use-search"
+export * from "./use-search-shortcut"
