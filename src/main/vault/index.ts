@@ -309,15 +309,29 @@ export function getConfig(): VaultConfig {
 }
 
 /**
- * Update vault configuration
+ * Update vault configuration.
+ * If excludePatterns change, the file watcher is restarted with the new patterns.
  */
-export function updateConfig(updates: Partial<VaultConfig>): VaultConfig {
+export async function updateConfig(updates: Partial<VaultConfig>): Promise<VaultConfig> {
   if (!currentStatus.path) {
     throw new VaultError('No vault is currently open', VaultErrorCode.NOT_INITIALIZED)
   }
 
+  const oldConfig = getConfig()
   writeVaultConfig(currentStatus.path, updates)
-  return getConfig()
+  const newConfig = getConfig()
+
+  // Restart watcher if exclude patterns changed
+  if (
+    updates.excludePatterns &&
+    JSON.stringify(oldConfig.excludePatterns) !== JSON.stringify(newConfig.excludePatterns)
+  ) {
+    console.log('[Vault] Exclude patterns changed, restarting watcher...')
+    await stopWatcher()
+    await startWatcher(currentStatus.path, newConfig.excludePatterns)
+  }
+
+  return newConfig
 }
 
 /**

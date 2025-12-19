@@ -55,8 +55,15 @@ interface IndexResult {
 
 /**
  * Recursively find all markdown files in a directory.
+ * @param dirPath - Directory to scan
+ * @param basePath - Vault root path for relative path calculation
+ * @param excludePatterns - Patterns to exclude from scanning
  */
-async function findMarkdownFiles(dirPath: string, basePath: string): Promise<string[]> {
+async function findMarkdownFiles(
+  dirPath: string,
+  basePath: string,
+  excludePatterns: string[] = []
+): Promise<string[]> {
   const files: string[] = []
 
   try {
@@ -66,11 +73,14 @@ async function findMarkdownFiles(dirPath: string, basePath: string): Promise<str
       // Skip hidden files and directories
       if (entry.name.startsWith('.')) continue
 
+      // Skip excluded patterns (exact match or prefix match)
+      if (excludePatterns.some((p) => entry.name === p || entry.name.startsWith(`${p}/`))) continue
+
       const fullPath = path.join(dirPath, entry.name)
 
       if (entry.isDirectory()) {
         // Recursively scan subdirectories
-        const subFiles = await findMarkdownFiles(fullPath, basePath)
+        const subFiles = await findMarkdownFiles(fullPath, basePath, excludePatterns)
         files.push(...subFiles)
       } else if (entry.isFile() && entry.name.endsWith('.md')) {
         // Add markdown file (relative path from vault root)
@@ -195,6 +205,7 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
   console.log('[Indexer] Starting vault indexing:', vaultPath)
 
   const config = getConfig()
+  const excludePatterns = config.excludePatterns ?? []
   const result: IndexResult = {
     indexed: 0,
     skipped: 0,
@@ -207,13 +218,13 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
     path.join(vaultPath, config.journalFolder)
   ]
 
-  // Find all markdown files
+  // Find all markdown files (respecting exclude patterns)
   const allFiles: string[] = []
   for (const folder of foldersToScan) {
     try {
       const folderStat = await stat(folder)
       if (folderStat.isDirectory()) {
-        const files = await findMarkdownFiles(folder, vaultPath)
+        const files = await findMarkdownFiles(folder, vaultPath, excludePatterns)
         allFiles.push(...files)
       }
     } catch {
