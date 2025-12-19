@@ -50,8 +50,10 @@ export interface SelectionInfo {
  * Props for the ContentArea component (BlockNote-based)
  */
 export interface ContentAreaProps {
-  /** Initial content as BlockNote blocks or HTML string */
+  /** Initial content as BlockNote blocks, HTML string, or markdown string */
   initialContent?: Block[] | string
+  /** Type of content being passed: 'html', 'markdown', or 'blocks' */
+  contentType?: 'html' | 'markdown' | 'blocks'
   /** Placeholder text when editor is empty */
   placeholder?: string
   /** Whether the editor is read-only */
@@ -60,6 +62,8 @@ export interface ContentAreaProps {
   autoFocus?: boolean
   /** Callback when content changes (returns blocks) */
   onContentChange?: (blocks: Block[]) => void
+  /** Callback when content changes (returns markdown string) */
+  onMarkdownChange?: (markdown: string) => void
   /** Callback when headings change (for outline) */
   onHeadingsChange?: (headings: HeadingInfo[]) => void
   /** Callback when selection changes */

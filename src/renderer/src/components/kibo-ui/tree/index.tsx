@@ -470,12 +470,19 @@ export const TreeNode = ({
   );
 };
 
-export type TreeNodeTriggerProps = ComponentProps<typeof motion.div>;
+export type TreeNodeTriggerProps = ComponentProps<typeof motion.div> & {
+  /** Custom context menu content to render instead of the default "Set Icon" menu */
+  contextMenuContent?: ReactNode;
+  /** Whether to show the default icon context menu (default: true) */
+  showIconMenu?: boolean;
+};
 
 export const TreeNodeTrigger = ({
   children,
   className,
   onClick,
+  contextMenuContent,
+  showIconMenu = true,
   ...props
 }: TreeNodeTriggerProps) => {
   const {
@@ -717,21 +724,29 @@ export const TreeNodeTrigger = ({
           </motion.div>
         </ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem onClick={handleSetIconClick}>
-            <Palette className="mr-2 h-4 w-4" />
-            Set Icon
-          </ContextMenuItem>
-          {effectiveIcon && (
+          {contextMenuContent ? (
+            // Use custom context menu content
+            contextMenuContent
+          ) : showIconMenu ? (
+            // Default icon menu
             <>
-              <ContextMenuSeparator />
-              <ContextMenuItem
-                onClick={() => setNodeIcon(nodeId, null)}
-                className="text-destructive focus:text-destructive"
-              >
-                Clear Icon
+              <ContextMenuItem onClick={handleSetIconClick}>
+                <Palette className="mr-2 h-4 w-4" />
+                Set Icon
               </ContextMenuItem>
+              {effectiveIcon && (
+                <>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem
+                    onClick={() => setNodeIcon(nodeId, null)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    Clear Icon
+                  </ContextMenuItem>
+                </>
+              )}
             </>
-          )}
+          ) : null}
         </ContextMenuContent>
       </ContextMenu>
 

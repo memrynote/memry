@@ -14,13 +14,15 @@ import { BrowserWindow } from 'electron'
 import { getConfig } from './index'
 import {
   parseNote,
+  serializeNote,
   extractTags,
   extractWikiLinks,
   calculateWordCount,
   generateContentHash,
   createSnippet
 } from './frontmatter'
-import { safeRead } from './file-ops'
+import { safeRead, atomicWrite } from './file-ops'
+import { generateNoteId } from '../lib/id'
 import {
   insertNoteCache,
   updateNoteCache,
@@ -280,15 +282,24 @@ export class VaultWatcher {
         return
       }
 
-      // Also check if a note with this ID exists at a different path
-      // (e.g., copy-paste scenario - the ID exists but path is different)
+      // Check if a note with this ID exists at a different path (copy-paste scenario)
       const existingById = getNoteCacheById(db, parsed.frontmatter.id)
       if (existingById && existingById.path !== relativePath) {
-        // Note with this ID exists elsewhere - this is a new file with duplicate ID
-        // The file should have gotten a new ID from parseNote/ensureFrontmatter
-        // but if not, we skip to avoid conflicts
-        console.warn('[Watcher] Duplicate ID detected, skipping:', parsed.frontmatter.id)
-        return
+        // This is a copy of an existing note - regenerate ID
+        console.log('[Watcher] Duplicate ID detected, regenerating for:', relativePath)
+        const newId = generateNoteId()
+        const oldId = parsed.frontmatter.id
+        parsed.frontmatter.id = newId
+
+        // Write back to file with new ID
+        try {
+          const newContent = serializeNote(parsed.frontmatter, parsed.content)
+          await atomicWrite(absolutePath, newContent)
+          console.log(`[Watcher] Regenerated ID for ${relativePath}: ${oldId} → ${newId}`)
+        } catch (writeError) {
+          console.error(`[Watcher] Failed to write new ID for ${relativePath}:`, writeError)
+          return
+        }
       }
 
       // Extract metadata

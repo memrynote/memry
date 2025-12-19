@@ -1,169 +1,243 @@
-import { useState, useCallback } from 'react'
+/**
+ * NotePage Component
+ *
+ * Displays and edits a note from the vault.
+ * Loads real note data via useNotes() hook and saves changes via updateNote().
+ */
+
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, Property, NewProperty } from '@/components/note/info-section'
 import { BacklinksSection, Backlink } from '@/components/note/backlinks'
+import { useNotes, useNoteLinks, useNoteTags, type Note } from '@/hooks/use-notes'
+import { useTabs } from '@/contexts/tabs'
+import { Loader2 } from 'lucide-react'
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface NotePageProps {
   noteId?: string
 }
 
-// Initial content for the editor (HTML string - will be parsed by BlockNote)
-const initialContent = `
-<h1>Introduction</h1>
-<p>This is a sample note demonstrating the note editor layout. The layout follows a clean, three-zone design inspired by Capacities and other modern PKM applications.</p>
-<p>The main content area is centered with a comfortable max-width of 720px, providing optimal reading width while maintaining a clean, paper-like aesthetic.</p>
-
-<h2>Background</h2>
-<p>The design philosophy emphasizes progressive disclosure, with advanced features hidden until needed. The warm color palette creates a comfortable reading environment.</p>
-
-<h2>Key Concepts</h2>
-<p>The layout is built with three distinct zones, each serving a specific purpose in the note-taking workflow.</p>
-
-<h3>Concept A</h3>
-<p>The main content zone provides a distraction-free writing environment with generous padding and a warm background color.</p>
-
-<h3>Concept B</h3>
-<p>The outline edge allows quick navigation through document structure, while the right sidebar provides access to AI features and related notes.</p>
-
-<h1>Implementation</h1>
-<p>The layout is implemented using modern React patterns with TypeScript, following the existing architectural conventions in the Memry application.</p>
-
-<h2>Setup</h2>
-<p>Components are organized in a modular fashion, with clear separation of concerns between layout logic and content rendering.</p>
-
-<h2>Configuration</h2>
-<p>The layout supports responsive breakpoints, adapting seamlessly from desktop to tablet and mobile viewports while maintaining usability.</p>
-
-<h1>Conclusion</h1>
-<p>This layout shell provides a solid foundation for building a comprehensive note editor with all the features specified in the design document.</p>
-`
-
-// Mock tag data for demonstration
-const mockAvailableTags: Tag[] = [
-  { id: '1', name: 'Important', color: 'red' },
-  { id: '2', name: 'Work', color: 'blue' },
-  { id: '3', name: 'Personal', color: 'green' },
-  { id: '4', name: 'Project', color: 'purple' },
-  { id: '5', name: 'Research', color: 'amber' },
-  { id: '6', name: 'Ideas', color: 'yellow' },
-  { id: '7', name: 'Meeting', color: 'cyan' },
-  { id: '8', name: 'Review', color: 'pink' },
-  { id: '9', name: 'Urgent', color: 'coral' },
-  { id: '10', name: 'Archive', color: 'stone' }
+// Tag color mapping for consistent colors
+const TAG_COLORS: Tag['color'][] = [
+  'red', 'blue', 'green', 'purple', 'amber',
+  'yellow', 'cyan', 'pink', 'coral', 'stone'
 ]
 
-const mockRecentTags: Tag[] = [
-  { id: '1', name: 'Important', color: 'red' },
-  { id: '2', name: 'Work', color: 'blue' },
-  { id: '4', name: 'Project', color: 'purple' },
-  { id: '5', name: 'Research', color: 'amber' }
-]
-
-// Mock backlinks data for demonstration
-const mockBacklinks: Backlink[] = [
-  {
-    id: 'bl-1',
-    noteId: 'note-123',
-    noteTitle: 'Film Analysis Project',
-    folder: 'Projects',
-    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    mentions: [
-      {
-        id: 'm-1',
-        snippet:
-          "...studying the cinematography of [[The Godfather]] reveals Coppola's masterful use of low-key lighting...",
-        linkStart: 32,
-        linkEnd: 48
-      }
-    ]
-  },
-  {
-    id: 'bl-2',
-    noteId: 'note-456',
-    noteTitle: 'Team Meeting Dec 5',
-    folder: 'Meetings',
-    date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    mentions: [
-      {
-        id: 'm-2',
-        snippet:
-          '...decided to use [[The Godfather]] as our case study for the presentation next week...',
-        linkStart: 19,
-        linkEnd: 35
-      }
-    ]
-  },
-  {
-    id: 'bl-3',
-    noteId: 'note-789',
-    noteTitle: 'Classic Cinema Notes',
-    folder: 'Research',
-    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    mentions: [
-      {
-        id: 'm-3',
-        snippet:
-          '...alongside Citizen Kane, [[The Godfather]] represents a turning point in American filmmaking...',
-        linkStart: 27,
-        linkEnd: 43
-      },
-      {
-        id: 'm-4',
-        snippet:
-          "...the baptism scene in [[The Godfather]] is often cited as one of cinema's greatest...",
-        linkStart: 23,
-        linkEnd: 39
-      }
-    ]
+function getTagColor(tagName: string): Tag['color'] {
+  // Generate consistent color based on tag name hash
+  let hash = 0
+  for (let i = 0; i < tagName.length; i++) {
+    hash = ((hash << 5) - hash) + tagName.charCodeAt(i)
+    hash = hash & hash
   }
-]
+  return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length]
+}
 
-// Mock properties for demonstration
-const mockProperties: Property[] = [
-  { id: 'p1', name: 'Director', type: 'text', value: 'Francis Ford Coppola', isCustom: false },
-  { id: 'p2', name: 'Year', type: 'number', value: 1972, isCustom: false },
-  { id: 'p3', name: 'Rating', type: 'rating', value: 5, isCustom: false },
-  { id: 'p4', name: 'Watched', type: 'checkbox', value: true, isCustom: false },
-  { id: 'p5', name: 'Status', type: 'select', value: 'Completed', isCustom: false, options: ['Draft', 'In Progress', 'Completed', 'Archived'] },
-  { id: 'p6', name: 'IMDB', type: 'url', value: 'https://imdb.com/title/tt0068646', isCustom: true },
-  { id: 'p7', name: 'Notes', type: 'longText', value: '', isCustom: true }
-]
+// ============================================================================
+// Loading State Component
+// ============================================================================
 
-export function NotePage({ noteId: _noteId }: NotePageProps) {
-  // noteId will be used in the future to load specific note data
-  const [emoji, setEmoji] = useState<string | null>('📝')
-  const [title, setTitle] = useState('Sample Note Title')
-  const [tags, setTags] = useState<Tag[]>([
-    { id: '1', name: 'Important', color: 'red' },
-    { id: '4', name: 'Project', color: 'purple' }
-  ])
-  const [availableTags, setAvailableTags] = useState<Tag[]>(mockAvailableTags)
-  const [properties, setProperties] = useState<Property[]>(mockProperties)
+function NoteLoadingState() {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[400px]">
+      <div className="flex flex-col items-center gap-3 text-muted-foreground">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <p className="text-sm">Loading note...</p>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// Error State Component
+// ============================================================================
+
+function NoteErrorState({ error, onRetry }: { error: string; onRetry?: () => void }) {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[400px]">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <p className="text-destructive font-medium">Failed to load note</p>
+        <p className="text-sm text-muted-foreground">{error}</p>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="text-sm text-primary hover:underline"
+          >
+            Try again
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// Empty State Component
+// ============================================================================
+
+function NoteEmptyState() {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[400px]">
+      <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
+        <p className="text-sm">No note selected</p>
+        <p className="text-xs">Select a note from the sidebar to view it</p>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
+export function NotePage({ noteId }: NotePageProps) {
+  // Hooks for data fetching
+  const { getNote, updateNote, renameNote } = useNotes({ autoLoad: false })
+  const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinks(noteId ?? null)
+  const { tags: allAvailableTags } = useNoteTags()
+  const { openTab } = useTabs()
+
+  // Local state
+  const [note, setNote] = useState<Note | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [headings, setHeadings] = useState<HeadingItem[]>([])
   const [isInfoExpanded, setIsInfoExpanded] = useState(false)
 
-  // Content state for the editor (BlockNote blocks)
-  const [_blocks, setBlocks] = useState<Block[]>([])
-  const [headings, setHeadings] = useState<HeadingItem[]>([])
+  // Content tracking for change detection
+  const lastSavedContent = useRef<string>('')
+
+  // Refs for debouncing
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Properties (from frontmatter - for future use)
+  const [properties, setProperties] = useState<Property[]>([])
+
+  // ============================================================================
+  // Load Note
+  // ============================================================================
+
+  const loadNote = useCallback(async () => {
+    if (!noteId) {
+      setNote(null)
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const loadedNote = await getNote(noteId)
+      if (loadedNote) {
+        setNote(loadedNote)
+        lastSavedContent.current = loadedNote.content
+
+        // Extract properties from frontmatter (for future use)
+        const frontmatterProps: Property[] = []
+        if (loadedNote.frontmatter) {
+          Object.entries(loadedNote.frontmatter).forEach(([key, value]) => {
+            if (!['id', 'title', 'created', 'modified', 'tags', 'aliases'].includes(key)) {
+              frontmatterProps.push({
+                id: key,
+                name: key,
+                type: typeof value === 'boolean' ? 'checkbox' :
+                      typeof value === 'number' ? 'number' :
+                      typeof value === 'string' && value.startsWith('http') ? 'url' : 'text',
+                value,
+                isCustom: true
+              })
+            }
+          })
+        }
+        setProperties(frontmatterProps)
+      } else {
+        setError('Note not found')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load note')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [noteId, getNote])
+
+  // Load note when noteId changes
+  useEffect(() => {
+    loadNote()
+  }, [loadNote])
+
+  // Cleanup save timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // ============================================================================
+  // Tags - Convert between string[] and Tag[]
+  // ============================================================================
+
+  const noteTags: Tag[] = useMemo(() => {
+    return (note?.tags || []).map((tagName) => ({
+      id: tagName,
+      name: tagName,
+      color: getTagColor(tagName)
+    }))
+  }, [note?.tags])
+
+  const availableTags: Tag[] = useMemo(() => {
+    return allAvailableTags.map((t) => ({
+      id: t.tag,
+      name: t.tag,
+      color: getTagColor(t.tag)
+    }))
+  }, [allAvailableTags])
+
+  const recentTags = useMemo(() => {
+    return availableTags.slice(0, 4)
+  }, [availableTags])
+
+  // ============================================================================
+  // Backlinks - Convert to UI format
+  // ============================================================================
+
+  const backlinks: Backlink[] = useMemo(() => {
+    return rawBacklinks.map((bl) => ({
+      id: bl.sourceId,
+      noteId: bl.sourceId,
+      noteTitle: bl.sourceTitle,
+      folder: bl.sourcePath.split('/')[0] || '',
+      date: new Date(),
+      mentions: bl.context ? [{
+        id: `mention-${bl.sourceId}`,
+        snippet: bl.context,
+        linkStart: 0,
+        linkEnd: 0
+      }] : []
+    }))
+  }, [rawBacklinks])
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const handleHeadingClick = useCallback((headingId: string) => {
-    console.log('Heading clicked:', headingId)
-    // Scroll to the heading element - BlockNote uses data-id attribute
     const element = document.querySelector(`[data-id="${headingId}"]`)
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [])
 
-  const handleContentChange = useCallback((newBlocks: Block[]) => {
-    setBlocks(newBlocks)
-    // You can also convert to HTML if needed:
-    // const html = await editor.blocksToHTMLLossy(newBlocks)
-  }, [])
-
   const handleHeadingsChange = useCallback((newHeadings: HeadingInfo[]) => {
-    // Transform HeadingInfo to HeadingItem for NoteLayout
     setHeadings(
       newHeadings.map((h) => ({
         id: h.id,
@@ -174,59 +248,107 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
     )
   }, [])
 
-  const handleInternalLinkClick = useCallback((noteId: string) => {
-    console.log('Internal link clicked, navigate to note:', noteId)
-    // TODO: Implement navigation to linked note
-  }, [])
+  // Debounced save on markdown content change
+  const handleMarkdownChange = useCallback((markdown: string) => {
+    if (!noteId || !note) return
 
-  const handleLinkClick = useCallback((href: string) => {
-    console.log('External link clicked:', href)
-    // Open in default browser
-    window.open(href, '_blank', 'noopener,noreferrer')
-  }, [])
+    // Skip if content hasn't changed
+    if (markdown === lastSavedContent.current) return
 
-  const handleEmojiChange = (newEmoji: string | null) => {
-    setEmoji(newEmoji)
-    console.log('Emoji changed:', newEmoji)
-  }
-
-  const handleTitleChange = (newTitle: string) => {
-    setTitle(newTitle)
-    console.log('Title changed:', newTitle)
-  }
-
-  const handleAddTag = useCallback(
-    (tagId: string) => {
-      const tagToAdd = availableTags.find((t) => t.id === tagId)
-      if (tagToAdd && !tags.some((t) => t.id === tagId)) {
-        setTags((prev) => [...prev, tagToAdd])
-        console.log('Tag added:', tagToAdd.name)
-      }
-    },
-    [availableTags, tags]
-  )
-
-  const handleCreateTag = useCallback((name: string, color: string) => {
-    const newTag: Tag = {
-      id: `new-${Date.now()}`,
-      name,
-      color
+    // Clear previous timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
     }
-    setAvailableTags((prev) => [...prev, newTag])
-    setTags((prev) => [...prev, newTag])
-    console.log('Tag created:', name, color)
+
+    // Debounce save (500ms)
+    saveTimeoutRef.current = setTimeout(async () => {
+      setIsSaving(true)
+      try {
+        await updateNote({ id: noteId, content: markdown })
+        lastSavedContent.current = markdown
+      } catch (err) {
+        console.error('Failed to save note:', err)
+      } finally {
+        setIsSaving(false)
+      }
+    }, 500)
+  }, [noteId, note, updateNote])
+
+  const handleContentChange = useCallback((_blocks: Block[]) => {
+    // Content change is handled via onMarkdownChange
   }, [])
 
-  const handleRemoveTag = useCallback((tagId: string) => {
-    setTags((prev) => prev.filter((t) => t.id !== tagId))
-    console.log('Tag removed:', tagId)
+  const handleTitleChange = useCallback(async (newTitle: string) => {
+    if (!noteId || !note || newTitle === note.title) return
+
+    try {
+      const result = await renameNote(noteId, newTitle)
+      if (result) {
+        setNote(result)
+      }
+    } catch (err) {
+      console.error('Failed to rename note:', err)
+    }
+  }, [noteId, note, renameNote])
+
+  const handleEmojiChange = useCallback((_newEmoji: string | null) => {
+    // Emoji handling could be stored in frontmatter in the future
   }, [])
 
+  // Tag handlers
+  const handleAddTag = useCallback(async (tagId: string) => {
+    if (!noteId || !note) return
+
+    const tagToAdd = availableTags.find((t) => t.id === tagId)
+    if (tagToAdd && !note.tags.includes(tagToAdd.name)) {
+      const newTags = [...note.tags, tagToAdd.name]
+      try {
+        const result = await updateNote({ id: noteId, tags: newTags })
+        if (result) {
+          setNote(result)
+        }
+      } catch (err) {
+        console.error('Failed to add tag:', err)
+      }
+    }
+  }, [noteId, note, availableTags, updateNote])
+
+  const handleCreateTag = useCallback(async (name: string, _color: string) => {
+    if (!noteId || !note) return
+
+    if (!note.tags.includes(name)) {
+      const newTags = [...note.tags, name]
+      try {
+        const result = await updateNote({ id: noteId, tags: newTags })
+        if (result) {
+          setNote(result)
+        }
+      } catch (err) {
+        console.error('Failed to create tag:', err)
+      }
+    }
+  }, [noteId, note, updateNote])
+
+  const handleRemoveTag = useCallback(async (tagId: string) => {
+    if (!noteId || !note) return
+
+    const newTags = note.tags.filter((t) => t !== tagId)
+    try {
+      const result = await updateNote({ id: noteId, tags: newTags })
+      if (result) {
+        setNote(result)
+      }
+    } catch (err) {
+      console.error('Failed to remove tag:', err)
+    }
+  }, [noteId, note, updateNote])
+
+  // Property handlers
   const handlePropertyChange = useCallback((propertyId: string, value: unknown) => {
     setProperties((prev) =>
       prev.map((p) => (p.id === propertyId ? { ...p, value } : p))
     )
-    console.log('Property changed:', propertyId, value)
+    // TODO: Save to frontmatter
   }, [])
 
   const handleAddProperty = useCallback((newProp: NewProperty) => {
@@ -238,35 +360,92 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
       isCustom: true
     }
     setProperties((prev) => [...prev, property])
-    console.log('Property added:', newProp.name, newProp.type)
+    // TODO: Save to frontmatter
   }, [])
 
   const handleDeleteProperty = useCallback((propertyId: string) => {
     setProperties((prev) => prev.filter((p) => p.id !== propertyId))
-    console.log('Property deleted:', propertyId)
+    // TODO: Save to frontmatter
   }, [])
 
-  const handleBacklinkClick = useCallback((noteId: string) => {
-    console.log('Backlink clicked, navigate to note:', noteId)
-    // TODO: Implement navigation to linked note
+  // Link handlers
+  const handleLinkClick = useCallback((href: string) => {
+    window.open(href, '_blank', 'noopener,noreferrer')
   }, [])
+
+  const handleInternalLinkClick = useCallback((linkedNoteId: string) => {
+    openTab({
+      type: 'note',
+      title: 'Loading...',
+      icon: 'file-text',
+      path: `/notes/${linkedNoteId}`,
+      entityId: linkedNoteId,
+      isPinned: false,
+      isModified: false,
+      isPreview: true
+    })
+  }, [openTab])
+
+  const handleBacklinkClick = useCallback((backlinkNoteId: string) => {
+    openTab({
+      type: 'note',
+      title: 'Loading...',
+      icon: 'file-text',
+      path: `/notes/${backlinkNoteId}`,
+      entityId: backlinkNoteId,
+      isPinned: false,
+      isModified: false,
+      isPreview: true
+    })
+  }, [openTab])
+
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // No note ID - show empty state
+  if (!noteId) {
+    return <NoteEmptyState />
+  }
+
+  // Loading
+  if (isLoading) {
+    return <NoteLoadingState />
+  }
+
+  // Error
+  if (error) {
+    return <NoteErrorState error={error} onRetry={loadNote} />
+  }
+
+  // No note found
+  if (!note) {
+    return <NoteErrorState error="Note not found" />
+  }
 
   return (
     <NoteLayout headings={headings} onHeadingClick={handleHeadingClick}>
-      {/* Note content with editorial aesthetic */}
+      {/* Saving indicator */}
+      {isSaving && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-full border">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          <span>Saving...</span>
+        </div>
+      )}
+
+      {/* Note content */}
       <div className="space-y-8 journal-animate-in">
         <div style={{ paddingInline: "54px" }}>
-          {/* Title section with decorative accent */}
+          {/* Title section */}
           <div className="space-y-4 journal-stagger-1">
             <div className="relative">
-              {/* Decorative margin accent */}
               <div
                 className="absolute -left-8 top-1/2 -translate-y-1/2 w-1 h-12 bg-gradient-to-b from-amber-400/40 via-amber-500/20 to-transparent rounded-full opacity-60"
                 aria-hidden="true"
               />
               <NoteTitle
-                emoji={emoji}
-                title={title}
+                emoji={null}
+                title={note.title}
                 onEmojiChange={handleEmojiChange}
                 onTitleChange={handleTitleChange}
                 placeholder="Untitled"
@@ -277,43 +456,42 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
           {/* Tags section */}
           <div className="journal-stagger-2">
             <TagsRow
-              tags={tags}
+              tags={noteTags}
               availableTags={availableTags}
-              recentTags={mockRecentTags}
+              recentTags={recentTags}
               onAddTag={handleAddTag}
               onCreateTag={handleCreateTag}
               onRemoveTag={handleRemoveTag}
             />
           </div>
 
-          {/* Info Section (Collapsible Properties) */}
-          <div className="journal-stagger-3">
-            <InfoSection
-              properties={properties}
-              isExpanded={isInfoExpanded}
-              onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
-              onPropertyChange={handlePropertyChange}
-              onAddProperty={handleAddProperty}
-              onDeleteProperty={handleDeleteProperty}
-            />
-          </div>
+          {/* Info Section (Properties from frontmatter) */}
+          {properties.length > 0 && (
+            <div className="journal-stagger-3">
+              <InfoSection
+                properties={properties}
+                isExpanded={isInfoExpanded}
+                onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
+                onPropertyChange={handlePropertyChange}
+                onAddProperty={handleAddProperty}
+                onDeleteProperty={handleDeleteProperty}
+              />
+            </div>
+          )}
         </div>
 
-        {/* Main content - BlockNote Editor */}
+        {/* Main content - BlockNote Editor with Markdown */}
         <div
           className="editor-click-area min-h-[400px] journal-stagger-4 relative"
           onMouseDown={(e) => {
             const target = e.target as HTMLElement
-            // If clicking directly on editable text, let it work normally
             if (target.closest('[contenteditable="true"]')?.contains(target) &&
                 target.closest('.bn-block-content')) {
               return
             }
-            // If clicking on buttons or links, let it work normally
             if (target.closest('button, a, input')) {
               return
             }
-            // Focus editor for all other clicks (empty areas)
             const editor = (e.currentTarget as HTMLElement).querySelector('.bn-editor [contenteditable="true"]') as HTMLElement
             if (editor) {
               e.preventDefault()
@@ -322,28 +500,31 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
           }}
         >
           <ContentArea
-            initialContent={initialContent}
+            key={noteId} // Force re-mount when note changes
+            initialContent={note.content}
+            contentType="markdown"
             placeholder="Start writing, or press '/' for commands..."
             onContentChange={handleContentChange}
+            onMarkdownChange={handleMarkdownChange}
             onHeadingsChange={handleHeadingsChange}
             onLinkClick={handleLinkClick}
             onInternalLinkClick={handleInternalLinkClick}
           />
         </div>
 
-        {/* Backlinks section with editorial separator */}
+        {/* Backlinks section */}
         <div className="journal-stagger-5 pt-8 mx-[54px] border-t border-border/30">
           <div className="flex items-baseline gap-2 mb-4">
             <span className="font-sans text-xs font-medium uppercase tracking-wider text-text-tertiary/50">
               References
             </span>
             <span className="font-serif text-xs italic text-text-tertiary/30">
-              {mockBacklinks.length} backlink{mockBacklinks.length !== 1 ? 's' : ''}
+              {backlinks.length} backlink{backlinks.length !== 1 ? 's' : ''}
             </span>
           </div>
           <BacklinksSection
-            backlinks={mockBacklinks}
-            isLoading={false}
+            backlinks={backlinks}
+            isLoading={backlinksLoading}
             initialCount={5}
             collapsible={true}
             onBacklinkClick={handleBacklinkClick}

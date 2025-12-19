@@ -39,6 +39,7 @@ import {
 } from '../database'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { startWatcher, stopWatcher } from './watcher'
+import { indexVault } from './indexer'
 
 /**
  * Current vault status
@@ -154,7 +155,7 @@ export function emitVaultError(error: string): void {
 }
 
 /**
- * Open a vault: initialize structure, run migrations, start database
+ * Open a vault: initialize structure, run migrations, start database, index notes
  */
 async function openVault(vaultPath: string): Promise<void> {
   // Initialize vault structure if needed
@@ -176,6 +177,17 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // Initialize FTS
   initializeFts(getIndexDatabase())
+
+  // Run indexing to pick up any new/missing notes
+  // This will skip files already in cache, so it's fast for subsequent opens
+  updateStatus({ isIndexing: true, indexProgress: 0 })
+  try {
+    await indexVault(vaultPath)
+  } catch (error) {
+    console.error('[Vault] Indexing failed:', error)
+    // Continue anyway - watcher will pick up files
+  }
+  updateStatus({ isIndexing: false, indexProgress: 100 })
 
   // Start file watcher for external changes
   await startWatcher(vaultPath)
@@ -333,8 +345,7 @@ export async function reindex(): Promise<void> {
   updateStatus({ isIndexing: true, indexProgress: 0 })
 
   try {
-    // TODO: Implement full reindex logic in later phases
-    // For now, just mark as complete
+    await indexVault(currentStatus.path)
     updateStatus({ isIndexing: false, indexProgress: 100 })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Reindex failed'

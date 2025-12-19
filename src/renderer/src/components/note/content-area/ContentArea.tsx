@@ -14,7 +14,6 @@ import '@blocknote/core/fonts/inter.css'
 import '@blocknote/shadcn/style.css'
 
 import { cn } from '@/lib/utils'
-import { ContentDivider } from './ContentDivider'
 import type { ContentAreaProps, HeadingInfo } from './types'
 
 // =============================================================================
@@ -79,9 +78,11 @@ function extractHeadings(blocks: Block[]): HeadingInfo[] {
  */
 export const ContentArea = memo(function ContentArea({
   initialContent,
+  contentType = 'html',
   placeholder = "Start writing, or press '/' for commands...",
   editable = true,
   onContentChange,
+  onMarkdownChange,
   onHeadingsChange,
   onLinkClick,
   className
@@ -98,37 +99,53 @@ export const ContentArea = memo(function ContentArea({
     }
   })
 
-  // Parse HTML content if provided as string
+  // Parse content based on content type
   useEffect(() => {
-    async function loadHTMLContent() {
+    async function loadContent() {
       if (typeof initialContent === 'string' && initialContent.trim()) {
         try {
-          const blocks = await editor.tryParseHTMLToBlocks(initialContent)
+          let blocks
+          if (contentType === 'markdown') {
+            blocks = await editor.tryParseMarkdownToBlocks(initialContent)
+          } else {
+            // Default to HTML parsing
+            blocks = await editor.tryParseHTMLToBlocks(initialContent)
+          }
           editor.replaceBlocks(editor.document, blocks)
         } catch (error) {
-          console.error('Failed to parse HTML content:', error)
+          console.error(`Failed to parse ${contentType} content:`, error)
         }
       } else if (Array.isArray(initialContent) && initialContent.length > 0) {
         // If it's already blocks, replace the document
         editor.replaceBlocks(editor.document, initialContent)
       }
     }
-    loadHTMLContent()
-  }, [editor, initialContent])
+    loadContent()
+  }, [editor, initialContent, contentType])
 
   // Handle content changes
-  const handleChange = useCallback(() => {
+  const handleChange = useCallback(async () => {
     const blocks = editor.document
 
-    // Notify parent of content changes
+    // Notify parent of content changes (blocks)
     onContentChange?.(blocks as Block[])
+
+    // Notify parent of markdown changes if callback provided
+    if (onMarkdownChange) {
+      try {
+        const markdown = await editor.blocksToMarkdownLossy(blocks)
+        onMarkdownChange(markdown)
+      } catch (error) {
+        console.error('Failed to convert blocks to markdown:', error)
+      }
+    }
 
     // Extract and emit headings for outline
     if (onHeadingsChange) {
       const headings = extractHeadings(blocks as Block[])
       onHeadingsChange(headings)
     }
-  }, [editor, onContentChange, onHeadingsChange])
+  }, [editor, onContentChange, onMarkdownChange, onHeadingsChange])
 
   // Initial heading extraction
   useEffect(() => {

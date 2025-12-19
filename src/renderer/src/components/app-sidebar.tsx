@@ -33,7 +33,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { SidebarSection } from "@/components/sidebar-section"
-import FileTree from "@/components/file-tree"
+import { NotesTree } from "@/components/notes-tree"
 import { useSidebarNavigation } from "@/hooks/use-sidebar-navigation"
 import type { SidebarItem, TabType } from "@/contexts/tabs/types"
 import type { AppPage } from "@/App"
@@ -223,7 +223,7 @@ export function AppSidebar({
 
           {/* COLLECTIONS Section - Collapsible */}
           <SidebarSection id="collections" label="Collections" defaultExpanded={false}>
-            <FileTree />
+            <NotesTree />
           </SidebarSection>
         </SidebarContent>
         <SidebarRail />
