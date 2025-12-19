@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import {
   AudioWaveform,
   BookOpen,
@@ -139,6 +139,9 @@ export function AppSidebar({
   viewCounts,
   ...props
 }: AppSidebarProps) {
+  // State to hold action buttons from NotesTree
+  const [notesActions, setNotesActions] = useState<React.ReactNode>(null)
+
   // Calculate today's tasks count for Tasks badge in sidebar
   const todayTasksCount = useMemo(() => {
     return viewCounts["today"] || 0
@@ -221,9 +224,9 @@ export function AppSidebar({
 
           <SidebarSeparator className="w-auto!" />
 
-          {/* COLLECTIONS Section - Collapsible */}
-          <SidebarSection id="collections" label="Collections" defaultExpanded={false}>
-            <NotesTree />
+          {/* COLLECTIONS Section - Collapsible with actions */}
+          <SidebarSection id="collections" label="Collections" defaultExpanded={false} actions={notesActions}>
+            <NotesTree onActionsReady={setNotesActions} />
           </SidebarSection>
         </SidebarContent>
         <SidebarRail />
