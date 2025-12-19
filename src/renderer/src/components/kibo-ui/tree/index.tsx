@@ -261,21 +261,23 @@ export const TreeProvider = ({
   }, []);
 
   const getVisibleNodes = useCallback(() => {
+    // Query DOM for nodes in visual order instead of registration order
+    // This ensures shift+click selection works correctly for both folders and files
+    const treeElement = document.querySelector('[data-tree-view]');
+    if (!treeElement) return [];
+
+    const nodeElements = treeElement.querySelectorAll('[data-tree-node-id]');
     const visibleNodes: string[] = [];
-    const traverse = (parentId: string | null) => {
-      for (const nodeId of nodeOrderRef.current) {
-        const info = nodesRef.current.get(nodeId);
-        if (info && info.parentId === parentId) {
-          visibleNodes.push(nodeId);
-          if (info.hasChildren && expandedIds.has(nodeId)) {
-            traverse(nodeId);
-          }
-        }
+
+    for (const el of nodeElements) {
+      const nodeId = el.getAttribute('data-tree-node-id');
+      if (nodeId) {
+        visibleNodes.push(nodeId);
       }
-    };
-    traverse(null);
+    }
+
     return visibleNodes;
-  }, [expandedIds]);
+  }, []);
 
   const expandNode = useCallback((nodeId: string) => {
     setExpandedIds((prev) => {
@@ -406,7 +408,7 @@ export const TreeProvider = ({
 export type TreeViewProps = HTMLAttributes<HTMLDivElement>;
 
 export const TreeView = ({ className, children, ...props }: TreeViewProps) => (
-  <div className={cn("py-2 h-full", className)} {...props}>
+  <div className={cn("py-2 h-full", className)} data-tree-view {...props}>
     {children}
   </div>
 );
