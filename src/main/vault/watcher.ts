@@ -58,6 +58,7 @@ interface NoteListItem {
 
 interface WatcherOptions {
   vaultPath: string
+  excludePatterns?: string[]
   onError?: (error: Error) => void
 }
 
@@ -116,6 +117,7 @@ function emitNoteEvent(channel: string, payload: unknown): void {
 export class VaultWatcher {
   private watcher: FSWatcher | null = null
   private vaultPath: string | null = null
+  private excludePatterns: string[] = []
   private onError?: (error: Error) => void
   private isReady = false
 
@@ -126,13 +128,14 @@ export class VaultWatcher {
    * Start watching the vault for file changes.
    */
   async start(options: WatcherOptions): Promise<void> {
-    const { vaultPath, onError } = options
+    const { vaultPath, excludePatterns = [], onError } = options
 
     if (this.watcher) {
       await this.stop()
     }
 
     this.vaultPath = vaultPath
+    this.excludePatterns = excludePatterns
     this.onError = onError
     this.isReady = false
 
@@ -149,19 +152,27 @@ export class VaultWatcher {
       100
     )
 
+    // Capture exclude patterns for use in ignored function
+    const userExcludePatterns = this.excludePatterns
+
     // Create watcher with chokidar
     this.watcher = chokidar.watch(watchPaths, {
       persistent: true,
 
-      // Ignore hidden files, .git, node_modules, .memry, non-.md files
+      // Ignore hidden files, excluded patterns, non-.md files
       ignored: (filePath: string, stats) => {
         const basename = path.basename(filePath)
 
-        // Ignore hidden files and directories
+        // Always ignore hidden files and directories
         if (basename.startsWith('.')) return true
 
-        // Ignore common directories
-        if (basename === 'node_modules' || basename === '.git') return true
+        // Check user-defined exclude patterns
+        for (const pattern of userExcludePatterns) {
+          // Exact match (e.g., 'node_modules', '.git')
+          if (basename === pattern) return true
+          // Check if file is inside an excluded directory
+          if (filePath.includes(`/${pattern}/`) || filePath.includes(`\\${pattern}\\`)) return true
+        }
 
         // For files, only watch .md files
         if (stats?.isFile()) {
@@ -503,11 +514,16 @@ export function getWatcher(): VaultWatcher {
 
 /**
  * Start the file watcher for a vault.
+ * @param vaultPath - Absolute path to the vault
+ * @param excludePatterns - Optional patterns to exclude from watching (defaults to config)
  */
-export async function startWatcher(vaultPath: string): Promise<void> {
+export async function startWatcher(vaultPath: string, excludePatterns?: string[]): Promise<void> {
   const watcher = getWatcher()
+  // Use provided patterns or fall back to config
+  const patterns = excludePatterns ?? getConfig().excludePatterns ?? []
   await watcher.start({
     vaultPath,
+    excludePatterns: patterns,
     onError: (error) => {
       console.error('[Watcher] Error:', error)
       // Could emit vault error here if needed

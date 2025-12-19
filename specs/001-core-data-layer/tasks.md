@@ -206,12 +206,12 @@
 
 ### Implementation for User Story 9 + 10
 
-- [ ] T074 [US9] Store multiple vault paths in electron-store in src/main/vault/index.ts
-- [ ] T075 [US9] Implement SWITCH and GET_ALL vault IPC handlers in src/main/ipc/vault-handlers.ts
-- [ ] T076 [US9] Update use-vault.ts with multi-vault support in src/renderer/src/hooks/use-vault.ts
-- [ ] T077 [US10] Add exclude patterns to VaultConfig and watcher configuration in src/main/vault/watcher.ts
-- [ ] T078 [US10] Implement UPDATE_CONFIG IPC handler for exclusion patterns in src/main/ipc/vault-handlers.ts
-- [ ] T079 [US10] Skip excluded files during initial indexing in src/main/vault/indexer.ts
+- [x] T074 [US9] Store multiple vault paths in electron-store in src/main/vault/index.ts
+- [x] T075 [US9] Implement SWITCH and GET_ALL vault IPC handlers in src/main/ipc/vault-handlers.ts
+- [x] T076 [US9] Update use-vault.ts with multi-vault support in src/renderer/src/hooks/use-vault.ts
+- [x] T077 [US10] Add exclude patterns to VaultConfig and watcher configuration in src/main/vault/watcher.ts
+- [x] T078 [US10] Implement UPDATE_CONFIG IPC handler for exclusion patterns in src/main/ipc/vault-handlers.ts
+- [x] T079 [US10] Skip excluded files during initial indexing in src/main/vault/indexer.ts
 
 **Checkpoint**: US9+US10 complete - multiple vaults can be managed, and folders can be excluded from indexing
 
