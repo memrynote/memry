@@ -3,7 +3,8 @@ import type {
   VaultStatus,
   VaultConfig,
   SelectVaultResponse,
-  GetVaultsResponse
+  GetVaultsResponse,
+  IndexRecoveredEvent
 } from '../../../preload/index.d'
 
 /**
@@ -105,4 +106,13 @@ export function onVaultIndexProgress(callback: (progress: number) => void): () =
  */
 export function onVaultError(callback: (error: string) => void): () => void {
   return window.api.onVaultError(callback)
+}
+
+/**
+ * Subscribe to vault index recovery events.
+ * Fired when index database is automatically rebuilt from source files.
+ * Returns unsubscribe function.
+ */
+export function onVaultIndexRecovered(callback: (event: IndexRecoveredEvent) => void): () => void {
+  return window.api.onVaultIndexRecovered(callback)
 }

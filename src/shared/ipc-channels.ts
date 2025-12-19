@@ -28,6 +28,7 @@ export const VaultChannels = {
   events: {
     STATUS_CHANGED: 'vault:status-changed',
     INDEX_PROGRESS: 'vault:index-progress',
+    INDEX_RECOVERED: 'vault:index-recovered',
     ERROR: 'vault:error'
   }
 } as const

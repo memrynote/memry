@@ -116,6 +116,17 @@ const api = {
     return () => ipcRenderer.removeListener(VaultChannels.events.ERROR, handler)
   },
 
+  onVaultIndexRecovered: (
+    callback: (event: { reason: string; filesIndexed: number; duration: number }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { reason: string; filesIndexed: number; duration: number }
+    ): void => callback(data)
+    ipcRenderer.on(VaultChannels.events.INDEX_RECOVERED, handler)
+    return () => ipcRenderer.removeListener(VaultChannels.events.INDEX_RECOVERED, handler)
+  },
+
   // Notes event subscription helpers
   onNoteCreated: (callback: (event: unknown) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)

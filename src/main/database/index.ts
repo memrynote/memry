@@ -6,7 +6,9 @@ export {
   closeDatabase,
   closeIndexDatabase,
   closeAllDatabases,
-  type DrizzleDb
+  checkIndexHealth,
+  type DrizzleDb,
+  type IndexHealth
 } from './client'
 
 export { runMigrations, runIndexMigrations } from './migrate'
