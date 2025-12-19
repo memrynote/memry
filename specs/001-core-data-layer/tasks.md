@@ -162,14 +162,14 @@
 
 ### Implementation for User Story 4
 
-- [ ] T060 [US4] Create FTS5 triggers to sync fts_notes with note_cache in src/main/database/fts.ts
-- [ ] T061 [US4] Implement search query functions with BM25 ranking in src/shared/db/queries/search.ts
-- [ ] T062 [US4] Create search IPC handlers (SEARCH, QUICK_SEARCH, SUGGESTIONS) in src/main/ipc/search-handlers.ts
-- [ ] T063 [US4] Update preload script with search API in src/preload/index.ts
-- [ ] T064 [US4] Create search-service.ts client in src/renderer/src/services/search-service.ts
-- [ ] T065 [US4] Create use-search.ts hook in src/renderer/src/hooks/use-search.ts
-- [ ] T066 [US4] Register search handlers in main process in src/main/ipc/index.ts
-- [ ] T067 [US4] Implement search result highlighting with snippet extraction in src/shared/db/queries/search.ts
+- [x] T060 [US4] Create FTS5 triggers to sync fts_notes with note_cache in src/main/database/fts.ts
+- [x] T061 [US4] Implement search query functions with BM25 ranking in src/shared/db/queries/search.ts
+- [x] T062 [US4] Create search IPC handlers (SEARCH, QUICK_SEARCH, SUGGESTIONS) in src/main/ipc/search-handlers.ts
+- [x] T063 [US4] Update preload script with search API in src/preload/index.ts
+- [x] T064 [US4] Create search-service.ts client in src/renderer/src/services/search-service.ts
+- [x] T065 [US4] Create use-search.ts hook in src/renderer/src/hooks/use-search.ts
+- [x] T066 [US4] Register search handlers in main process in src/main/ipc/index.ts
+- [x] T067 [US4] Implement search result highlighting with snippet extraction in src/shared/db/queries/search.ts
 
 **Checkpoint**: US4 complete - full-text search works across all notes with <50ms response time
 
@@ -185,12 +185,12 @@
 
 ### Implementation for User Story 7 + 8
 
-- [ ] T068 [US7] Create initial vault indexer with progress reporting in src/main/vault/indexer.ts
-- [ ] T069 [US7] Add INDEX_PROGRESS event to vault IPC channels in src/main/ipc/vault-handlers.ts
-- [ ] T070 [US7] Display indexing progress in UI via use-vault.ts hook in src/renderer/src/hooks/use-vault.ts
-- [ ] T071 [US8] Implement index corruption detection (check schema version, table existence) in src/main/database/index.ts
-- [ ] T072 [US8] Implement automatic index rebuild from source files in src/main/vault/indexer.ts
-- [ ] T073 [US8] Add notification for auto-recovery completion in src/main/ipc/vault-handlers.ts
+- [x] T068 [US7] Create initial vault indexer with progress reporting in src/main/vault/indexer.ts
+- [x] T069 [US7] Add INDEX_PROGRESS event to vault IPC channels in src/main/ipc/vault-handlers.ts
+- [x] T070 [US7] Display indexing progress in UI via use-vault.ts hook in src/renderer/src/hooks/use-vault.ts
+- [x] T071 [US8] Implement index corruption detection (check schema version, table existence) in src/main/database/index.ts
+- [x] T072 [US8] Implement automatic index rebuild from source files in src/main/vault/indexer.ts
+- [x] T073 [US8] Add notification for auto-recovery completion in src/main/ipc/vault-handlers.ts
 
 **Checkpoint**: US7+US8 complete - indexing progress is visible, and index corruption triggers automatic recovery
 

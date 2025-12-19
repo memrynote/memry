@@ -1,10 +1,17 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { VaultStatus, VaultConfig, VaultInfo, SelectVaultResponse } from '../../../preload/index.d'
+import type {
+  VaultStatus,
+  VaultConfig,
+  VaultInfo,
+  SelectVaultResponse,
+  IndexRecoveredEvent
+} from '../../../preload/index.d'
 import {
   vaultService,
   onVaultStatusChanged,
   onVaultIndexProgress,
-  onVaultError
+  onVaultError,
+  onVaultIndexRecovered
 } from '../services/vault-service'
 
 /**
@@ -32,6 +39,7 @@ export function useVault() {
   const [config, setConfig] = useState<VaultConfig | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [recoveryInfo, setRecoveryInfo] = useState<IndexRecoveredEvent | null>(null)
 
   // Load initial status and config
   useEffect(() => {
@@ -73,10 +81,17 @@ export function useVault() {
       setError(errorMsg)
     })
 
+    const unsubRecovered = onVaultIndexRecovered((event) => {
+      setRecoveryInfo(event)
+      // Auto-clear recovery info after 10 seconds
+      setTimeout(() => setRecoveryInfo(null), 10000)
+    })
+
     return () => {
       unsubStatus()
       unsubProgress()
       unsubError()
+      unsubRecovered()
     }
   }, [])
 
@@ -187,12 +202,20 @@ export function useVault() {
     setError(null)
   }, [])
 
+  /**
+   * Clear recovery info state.
+   */
+  const clearRecoveryInfo = useCallback(() => {
+    setRecoveryInfo(null)
+  }, [])
+
   return {
     // State
     status,
     config,
     isLoading,
     error,
+    recoveryInfo,
 
     // Computed
     isOpen: status?.isOpen ?? false,
@@ -206,7 +229,8 @@ export function useVault() {
     switchVault,
     updateConfig,
     reindex,
-    clearError
+    clearError,
+    clearRecoveryInfo
   }
 }
 

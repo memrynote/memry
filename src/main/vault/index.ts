@@ -35,11 +35,14 @@ import {
   runMigrations,
   runIndexMigrations,
   initializeFts,
-  getIndexDatabase
+  getIndexDatabase,
+  checkIndexHealth,
+  type IndexHealth
 } from '../database'
+import { VaultChannels } from '@shared/ipc-channels'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { startWatcher, stopWatcher } from './watcher'
-import { indexVault } from './indexer'
+import { indexVault, rebuildIndex } from './indexer'
 
 /**
  * Current vault status
@@ -155,6 +158,25 @@ export function emitVaultError(error: string): void {
 }
 
 /**
+ * Index recovered event data
+ */
+export interface IndexRecoveredEvent {
+  reason: IndexHealth
+  filesIndexed: number
+  duration: number
+}
+
+/**
+ * Emit index recovered event to all windows.
+ * Sent after automatic recovery from corrupt or missing index.
+ */
+export function emitIndexRecovered(event: IndexRecoveredEvent): void {
+  BrowserWindow.getAllWindows().forEach((win) => {
+    win.webContents.send(VaultChannels.events.INDEX_RECOVERED, event)
+  })
+}
+
+/**
  * Open a vault: initialize structure, run migrations, start database, index notes
  */
 async function openVault(vaultPath: string): Promise<void> {
@@ -167,26 +189,45 @@ async function openVault(vaultPath: string): Promise<void> {
   const dataDbPath = getDataDbPath(vaultPath)
   const indexDbPath = getIndexDbPath(vaultPath)
 
-  // Run migrations
+  // Run data.db migrations (always needed)
   runMigrations(dataDbPath)
-  runIndexMigrations(indexDbPath)
 
-  // Initialize databases
+  // Initialize data database
   initDatabase(dataDbPath)
-  initIndexDatabase(indexDbPath)
 
-  // Initialize FTS
-  initializeFts(getIndexDatabase())
+  // Check index database health before proceeding
+  const indexHealth = checkIndexHealth(indexDbPath)
+  console.log(`[Vault] Index health check: ${indexHealth}`)
 
-  // Run indexing to pick up any new/missing notes
-  // This will skip files already in cache, so it's fast for subsequent opens
   updateStatus({ isIndexing: true, indexProgress: 0 })
+
   try {
-    await indexVault(vaultPath)
+    if (indexHealth !== 'healthy') {
+      // Index is corrupt or missing - rebuild from source files
+      console.log(`[Vault] Index ${indexHealth}, triggering rebuild...`)
+      const rebuildResult = await rebuildIndex(vaultPath)
+
+      // Notify renderer about recovery
+      emitIndexRecovered({
+        reason: indexHealth,
+        filesIndexed: rebuildResult.filesIndexed,
+        duration: rebuildResult.duration
+      })
+    } else {
+      // Index is healthy - run migrations and normal indexing
+      runIndexMigrations(indexDbPath)
+      initIndexDatabase(indexDbPath)
+      initializeFts(getIndexDatabase())
+
+      // Run indexing to pick up any new/missing notes
+      // This will skip files already in cache, so it's fast for subsequent opens
+      await indexVault(vaultPath)
+    }
   } catch (error) {
     console.error('[Vault] Indexing failed:', error)
     // Continue anyway - watcher will pick up files
   }
+
   updateStatus({ isIndexing: false, indexProgress: 100 })
 
   // Start file watcher for external changes

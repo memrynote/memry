@@ -233,6 +233,12 @@ export interface IndexRebuildCompletedEvent {
   tasksIndexed: number
 }
 
+export interface IndexRecoveredEvent {
+  reason: 'corrupt' | 'missing' | 'healthy'
+  filesIndexed: number
+  duration: number
+}
+
 export interface VaultStatus {
   isOpen: boolean
   path: string | null
@@ -325,6 +331,7 @@ interface API extends WindowAPI {
   onVaultStatusChanged: (callback: (status: VaultStatus) => void) => () => void
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
   onVaultError: (callback: (error: string) => void) => () => void
+  onVaultIndexRecovered: (callback: (event: IndexRecoveredEvent) => void) => () => void
   // Notes event subscriptions
   onNoteCreated: (callback: (event: NoteCreatedEvent) => void) => () => void
   onNoteUpdated: (callback: (event: NoteUpdatedEvent) => void) => () => void

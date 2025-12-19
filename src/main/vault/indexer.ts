@@ -9,7 +9,16 @@
 
 import path from 'path'
 import { readdir, stat } from 'fs/promises'
+import { existsSync, unlinkSync } from 'fs'
 import { getConfig, emitIndexProgress } from './index'
+import { getIndexDbPath } from './init'
+import {
+  initIndexDatabase,
+  runIndexMigrations,
+  initializeFts,
+  getIndexDatabase,
+  closeIndexDatabase
+} from '../database'
 import {
   parseNote,
   serializeNote,
@@ -29,7 +38,6 @@ import {
   resolveNoteByTitle,
   countNotes
 } from '@shared/db/queries/notes'
-import { getIndexDatabase } from '../database'
 
 // ============================================================================
 // Types
@@ -268,5 +276,69 @@ export function needsInitialIndex(): boolean {
     return count === 0
   } catch {
     return true
+  }
+}
+
+// ============================================================================
+// Index Rebuild
+// ============================================================================
+
+/**
+ * Result of index rebuild operation
+ */
+export interface RebuildResult {
+  filesIndexed: number
+  duration: number
+}
+
+/**
+ * Rebuild the index database from scratch.
+ * Deletes the existing index.db, recreates it, and re-indexes all markdown files.
+ * Used for recovery from corruption or to force a fresh index.
+ *
+ * @param vaultPath - Absolute path to the vault
+ * @returns Rebuild result with count and duration
+ */
+export async function rebuildIndex(vaultPath: string): Promise<RebuildResult> {
+  const startTime = Date.now()
+  const indexDbPath = getIndexDbPath(vaultPath)
+
+  console.log('[Indexer] Starting index rebuild:', vaultPath)
+
+  // Close existing index database connection if open
+  try {
+    closeIndexDatabase()
+  } catch {
+    // Ignore if not open
+  }
+
+  // Delete corrupt/existing index file
+  if (existsSync(indexDbPath)) {
+    console.log('[Indexer] Deleting existing index.db')
+    unlinkSync(indexDbPath)
+  }
+
+  // Re-initialize database (migrations will recreate tables)
+  console.log('[Indexer] Running index migrations')
+  runIndexMigrations(indexDbPath)
+
+  // Initialize the database connection
+  console.log('[Indexer] Initializing index database')
+  initIndexDatabase(indexDbPath)
+
+  // Initialize FTS5
+  console.log('[Indexer] Initializing FTS')
+  initializeFts(getIndexDatabase())
+
+  // Re-index all files
+  console.log('[Indexer] Re-indexing all files')
+  const result = await indexVault(vaultPath)
+
+  const duration = Date.now() - startTime
+  console.log(`[Indexer] Rebuild complete: ${result.indexed} files in ${duration}ms`)
+
+  return {
+    filesIndexed: result.indexed,
+    duration
   }
 }
