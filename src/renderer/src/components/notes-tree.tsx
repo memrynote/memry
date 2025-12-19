@@ -7,7 +7,7 @@
  * Replaces the hardcoded FileTree with data from useNotes() hook.
  */
 
-import { useMemo, useCallback, useState, type ReactNode } from "react"
+import { useMemo, useCallback, useState, useRef, useEffect, type ReactNode } from "react"
 import {
   TreeExpander,
   TreeIcon,
@@ -54,16 +54,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 
 // ============================================================================
 // Types
@@ -79,6 +69,14 @@ interface FolderNode {
 interface TreeStructure {
   folders: FolderNode[]
   rootNotes: NoteListItem[]
+}
+
+/**
+ * Get display name from note path (filename without extension)
+ */
+function getDisplayName(notePath: string): string {
+  const filename = notePath.split('/').pop() || notePath
+  return filename.replace(/\.md$/i, '')
 }
 
 // ============================================================================
@@ -226,10 +224,21 @@ export function NotesTree() {
   // Dialog state
   const [selectedNote, setSelectedNote] = useState<NoteListItem | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
-  const [newTitle, setNewTitle] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Inline rename state
+  const [renamingNoteId, setRenamingNoteId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState("")
   const [isRenaming, setIsRenaming] = useState(false)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+
+  // Focus input when renaming starts
+  useEffect(() => {
+    if (renamingNoteId && renameInputRef.current) {
+      renameInputRef.current.focus()
+      renameInputRef.current.select()
+    }
+  }, [renamingNoteId])
 
   // Build tree structure from notes and folders
   const tree = useMemo(() => {
@@ -254,7 +263,7 @@ export function NotesTree() {
       if (note) {
         openTab({
           type: "note",
-          title: note.title,
+          title: getDisplayName(note.path),
           icon: "file-text",
           path: `/notes/${note.id}`,
           entityId: note.id,
@@ -282,7 +291,7 @@ export function NotesTree() {
         // Open the new note in a tab
         openTab({
           type: "note",
-          title: newNote.title,
+          title: getDisplayName(newNote.path),
           icon: "file-text",
           path: `/notes/${newNote.id}`,
           entityId: newNote.id,
@@ -300,28 +309,37 @@ export function NotesTree() {
 
   // Context menu action handlers
   const handleRenameClick = useCallback((note: NoteListItem) => {
-    setSelectedNote(note)
-    setNewTitle(note.title)
-    setIsRenameDialogOpen(true)
+    setRenamingNoteId(note.id)
+    setRenameValue(getDisplayName(note.path))
   }, [])
 
-  const handleRenameSubmit = useCallback(async () => {
-    if (!selectedNote || !newTitle.trim() || isRenaming) return
-    if (newTitle.trim() === selectedNote.title) {
-      setIsRenameDialogOpen(false)
+  const handleRenameSubmit = useCallback(async (noteId: string, originalPath: string) => {
+    if (!renameValue.trim() || isRenaming) {
+      setRenamingNoteId(null)
+      return
+    }
+
+    const currentName = getDisplayName(originalPath)
+    if (renameValue.trim() === currentName) {
+      setRenamingNoteId(null)
       return
     }
 
     setIsRenaming(true)
     try {
-      await renameNote(selectedNote.id, newTitle.trim())
-      setIsRenameDialogOpen(false)
+      await renameNote(noteId, renameValue.trim())
     } catch (err) {
       console.error("Failed to rename note:", err)
     } finally {
       setIsRenaming(false)
+      setRenamingNoteId(null)
     }
-  }, [selectedNote, newTitle, isRenaming, renameNote])
+  }, [renameValue, isRenaming, renameNote])
+
+  const handleRenameCancel = useCallback(() => {
+    setRenamingNoteId(null)
+    setRenameValue("")
+  }, [])
 
   const handleDeleteClick = useCallback((note: NoteListItem) => {
     setSelectedNote(note)
@@ -378,46 +396,73 @@ export function NotesTree() {
   }
 
   // Render note item with context menu
-  const renderNote = (note: NoteListItem, level: number, isLast: boolean) => (
-    <TreeNode
-      key={note.id}
-      nodeId={note.id}
-      level={level}
-      isLast={isLast}
-    >
-      <TreeNodeTrigger
-        contextMenuContent={
-          <>
-            <ContextMenuItem onClick={() => handleRenameClick(note)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Rename
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuItem onClick={() => handleOpenExternal(note)}>
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Open in External Editor
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => handleRevealInFinder(note)}>
-              <FolderOpen className="mr-2 h-4 w-4" />
-              Reveal in Finder
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuItem
-              variant="destructive"
-              onClick={() => handleDeleteClick(note)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </ContextMenuItem>
-          </>
-        }
+  const renderNote = (note: NoteListItem, level: number, isLast: boolean) => {
+    const isBeingRenamed = renamingNoteId === note.id
+
+    return (
+      <TreeNode
+        key={note.id}
+        nodeId={note.id}
+        level={level}
+        isLast={isLast}
       >
-        <TreeExpander />
-        <TreeIcon icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
-        <TreeLabel>{note.title}</TreeLabel>
-      </TreeNodeTrigger>
-    </TreeNode>
-  )
+        <TreeNodeTrigger
+          contextMenuContent={
+            <>
+              <ContextMenuItem onClick={() => handleRenameClick(note)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Rename
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={() => handleOpenExternal(note)}>
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Open in External Editor
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => handleRevealInFinder(note)}>
+                <FolderOpen className="mr-2 h-4 w-4" />
+                Reveal in Finder
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem
+                variant="destructive"
+                onClick={() => handleDeleteClick(note)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </ContextMenuItem>
+            </>
+          }
+        >
+          <TreeExpander />
+          <TreeIcon icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
+          {isBeingRenamed ? (
+            <input
+              ref={renameInputRef}
+              type="text"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  handleRenameSubmit(note.id, note.path)
+                } else if (e.key === "Escape") {
+                  e.preventDefault()
+                  handleRenameCancel()
+                }
+                e.stopPropagation()
+              }}
+              onBlur={() => handleRenameSubmit(note.id, note.path)}
+              onClick={(e) => e.stopPropagation()}
+              disabled={isRenaming}
+              className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          ) : (
+            <TreeLabel>{getDisplayName(note.path)}</TreeLabel>
+          )}
+        </TreeNodeTrigger>
+      </TreeNode>
+    )
+  }
 
   // Render folder with its contents
   const renderFolder = (
@@ -541,63 +586,13 @@ export function NotesTree() {
         </TreeView>
       </TreeProvider>
 
-      {/* Rename Dialog */}
-      <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rename Note</DialogTitle>
-            <DialogDescription>
-              Enter a new name for the note.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="note-title" className="sr-only">
-              Note Title
-            </Label>
-            <Input
-              id="note-title"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Note title"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault()
-                  handleRenameSubmit()
-                }
-              }}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsRenameDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleRenameSubmit}
-              disabled={!newTitle.trim() || isRenaming}
-            >
-              {isRenaming ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Renaming...
-                </>
-              ) : (
-                "Rename"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Note</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{selectedNote?.title}&quot;? This action cannot be undone.
+              Are you sure you want to delete &quot;{selectedNote ? getDisplayName(selectedNote.path) : ''}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
