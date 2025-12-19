@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Search, Loader2, Clock } from 'lucide-react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useQuickSearch, useRecentSearches } from '@/hooks/use-search'
@@ -95,7 +95,11 @@ export function SearchModal({ isOpen, onClose, onSelectNote }: SearchModalProps)
       <DialogContent
         className="max-w-xl p-0 gap-0 overflow-hidden"
         onKeyDown={handleKeyDown}
+        aria-describedby={undefined}
       >
+        {/* Visually hidden title for screen readers */}
+        <DialogTitle className="sr-only">Search notes</DialogTitle>
+
         {/* Search Input */}
         <div className="flex items-center border-b px-3">
           <Search className="size-4 text-muted-foreground shrink-0" />
