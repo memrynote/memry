@@ -44,6 +44,7 @@ import {
   setNoteLinks,
   getOutgoingLinks,
   getIncomingLinks,
+  deleteLinksToNote,
   findDuplicateId,
   resolveNoteByTitle
 } from '@shared/db/queries/notes'
@@ -609,7 +610,10 @@ export async function deleteNote(id: string): Promise<void> {
   const absolutePath = toAbsolutePath(cached.path)
   await deleteFile(absolutePath)
 
-  // Remove from cache (cascades to tags and links)
+  // Clean up links where this note is the target (orphaned outgoing links from other notes)
+  deleteLinksToNote(db, id)
+
+  // Remove from cache (cascades to tags and outgoing links via sourceId)
   deleteNoteCache(db, id)
 
   // Emit event

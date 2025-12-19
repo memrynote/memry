@@ -577,6 +577,26 @@ export function useNoteLinks(noteId: string | null) {
     }
   }, [noteId, loadLinks])
 
+  // Subscribe to note events to refresh backlinks when notes change
+  useEffect(() => {
+    if (!noteId) return
+
+    const refresh = () => loadLinks(noteId)
+
+    // Refresh when any note is deleted (might be a backlinked note)
+    const unsubDeleted = onNoteDeleted(refresh)
+    // Refresh when notes are updated (links in content might have changed)
+    const unsubUpdated = onNoteUpdated(refresh)
+    // Refresh on external file changes
+    const unsubExternal = onNoteExternalChange(refresh)
+
+    return () => {
+      unsubDeleted()
+      unsubUpdated()
+      unsubExternal()
+    }
+  }, [noteId, loadLinks])
+
   return {
     outgoing: links?.outgoing ?? [],
     incoming: links?.incoming ?? [],
