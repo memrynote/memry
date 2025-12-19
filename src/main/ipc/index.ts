@@ -1,5 +1,6 @@
 import { registerVaultHandlers, unregisterVaultHandlers } from './vault-handlers'
 import { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
+import { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 
 /**
  * Flag to prevent duplicate handler registration
@@ -30,9 +31,11 @@ export function registerAllHandlers(): void {
   // Register notes handlers
   registerNotesHandlers()
 
+  // Register search handlers
+  registerSearchHandlers()
+
   // Future handler registrations:
   // registerTasksHandlers()
-  // registerSearchHandlers()
 
   handlersRegistered = true
   console.log('All IPC handlers registered')
@@ -49,6 +52,7 @@ export function unregisterAllHandlers(): void {
 
   unregisterVaultHandlers()
   unregisterNotesHandlers()
+  unregisterSearchHandlers()
   // Future: unregisterTasksHandlers(), etc.
 
   handlersRegistered = false
@@ -65,3 +69,4 @@ export function areHandlersRegistered(): boolean {
 // Re-export individual handler modules for direct access if needed
 export { registerVaultHandlers, unregisterVaultHandlers } from './vault-handlers'
 export { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
+export { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
