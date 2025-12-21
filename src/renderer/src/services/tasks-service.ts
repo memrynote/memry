@@ -404,34 +404,4 @@ export function onProjectDeleted(callback: (event: ProjectDeletedEvent) => void)
   return window.api.onProjectDeleted(callback)
 }
 
-// ============================================================================
-// Re-export types for convenience
-// ============================================================================
-
-export type {
-  Task,
-  TaskListItem,
-  Project,
-  ProjectWithStats,
-  ProjectWithStatuses,
-  Status,
-  TaskCreateInput,
-  TaskUpdateInput,
-  TaskListOptions,
-  TaskCreateResponse,
-  TaskListResponse,
-  ProjectCreateInput,
-  ProjectUpdateInput,
-  ProjectListResponse,
-  StatusCreateInput,
-  TaskStats,
-  TaskMoveInput,
-  TaskCreatedEvent,
-  TaskUpdatedEvent,
-  TaskDeletedEvent,
-  TaskCompletedEvent,
-  TaskMovedEvent,
-  ProjectCreatedEvent,
-  ProjectUpdatedEvent,
-  ProjectDeletedEvent
-}
+// Types are already exported with their interface/type definitions above
