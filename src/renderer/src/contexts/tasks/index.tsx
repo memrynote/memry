@@ -15,8 +15,8 @@ import {
   useEffect,
   type ReactNode
 } from 'react'
-import type { Task } from '@/data/sample-tasks'
-import type { Project } from '@/data/tasks-data'
+import type { Task, RepeatConfig } from '@/data/sample-tasks'
+import type { Project, Status, StatusType } from '@/data/tasks-data'
 import type { TaskSelectionType } from '@/App'
 import {
   tasksService,
@@ -28,7 +28,8 @@ import {
   onProjectDeleted,
   type Task as DbTask,
   type Project as DbProject,
-  type ProjectWithStats
+  type ProjectWithStats,
+  type Status as DbStatus
 } from '@/services/tasks-service'
 import { useVault } from '@/hooks/use-vault'
 
@@ -40,7 +41,8 @@ const priorityMap: Record<number, Task['priority']> = {
   0: 'none',
   1: 'low',
   2: 'medium',
-  3: 'high'
+  3: 'high',
+  4: 'urgent' // T006: Added urgent priority level
 }
 
 const priorityReverseMap: Record<Task['priority'], number> = {
@@ -48,13 +50,71 @@ const priorityReverseMap: Record<Task['priority'], number> = {
   low: 1,
   medium: 2,
   high: 3,
-  urgent: 3 // Map urgent to high for database
+  urgent: 4 // T006: Map urgent to level 4
+}
+
+/**
+ * Convert database status to UI status format
+ * T004: Added for loading statuses per project
+ */
+function dbStatusToUiStatus(dbStatus: DbStatus): Status {
+  // Map isDone to status type
+  let type: StatusType = 'todo'
+  if (dbStatus.isDone) {
+    type = 'done'
+  } else if (dbStatus.isDefault) {
+    // Default non-done status is typically "in_progress" or "todo"
+    // Using position to infer - first status is usually todo
+    type = dbStatus.position === 0 ? 'todo' : 'in_progress'
+  } else {
+    // Non-default, non-done status
+    type = 'in_progress'
+  }
+
+  return {
+    id: dbStatus.id,
+    name: dbStatus.name,
+    color: dbStatus.color,
+    type,
+    order: dbStatus.position
+  }
+}
+
+/**
+ * Convert database repeatConfig JSON to UI RepeatConfig format
+ * T005: Implement repeatConfig conversion
+ */
+function dbRepeatConfigToUiRepeatConfig(dbConfig: unknown): RepeatConfig | null {
+  if (!dbConfig || typeof dbConfig !== 'object') return null
+
+  const config = dbConfig as Record<string, unknown>
+
+  // Validate required fields
+  if (!config.frequency || !config.endType) return null
+
+  return {
+    frequency: config.frequency as RepeatConfig['frequency'],
+    interval: (config.interval as number) ?? 1,
+    daysOfWeek: config.daysOfWeek as number[] | undefined,
+    monthlyType: config.monthlyType as RepeatConfig['monthlyType'],
+    dayOfMonth: config.dayOfMonth as number | undefined,
+    weekOfMonth: config.weekOfMonth as number | undefined,
+    dayOfWeekForMonth: config.dayOfWeekForMonth as number | undefined,
+    endType: config.endType as RepeatConfig['endType'],
+    endDate: config.endDate ? new Date(config.endDate as string) : null,
+    endCount: config.endCount as number | undefined,
+    completedCount: (config.completedCount as number) ?? 0,
+    createdAt: config.createdAt ? new Date(config.createdAt as string) : new Date()
+  }
 }
 
 /**
  * Convert database task to UI task format
  */
 function dbTaskToUiTask(dbTask: DbTask): Task {
+  // T005: Convert repeatConfig from JSON to UI format
+  const repeatConfig = dbRepeatConfigToUiRepeatConfig(dbTask.repeatConfig)
+
   return {
     id: dbTask.id,
     title: dbTask.title,
@@ -65,11 +125,11 @@ function dbTaskToUiTask(dbTask: DbTask): Task {
     dueDate: dbTask.dueDate ? new Date(dbTask.dueDate) : null,
     dueTime: dbTask.dueTime,
     isRepeating: !!dbTask.repeatConfig,
-    repeatConfig: null, // TODO: Convert repeat config
+    repeatConfig, // T005: Now properly converted
     linkedNoteIds: dbTask.linkedNoteIds ?? [],
     sourceNoteId: null,
     parentId: dbTask.parentId,
-    subtaskIds: [], // Loaded separately if needed
+    subtaskIds: [], // T007: Loaded separately via getSubtasks
     createdAt: new Date(dbTask.createdAt),
     completedAt: dbTask.completedAt ? new Date(dbTask.completedAt) : null,
     archivedAt: dbTask.archivedAt ? new Date(dbTask.archivedAt) : null
@@ -192,9 +252,26 @@ export const TasksProvider = ({
       try {
         // Load projects first
         const projectsResponse = await tasksService.listProjects()
-        const uiProjects = projectsResponse.projects.map(dbProjectToUiProject)
-        setProjectsState(uiProjects)
-        onProjectsChange?.(uiProjects)
+        const baseProjects = projectsResponse.projects.map(dbProjectToUiProject)
+
+        // T004: Load statuses for each project
+        const projectsWithStatuses = await Promise.all(
+          baseProjects.map(async (project) => {
+            try {
+              const statuses = await tasksService.listStatuses(project.id)
+              return {
+                ...project,
+                statuses: statuses.map(dbStatusToUiStatus)
+              }
+            } catch (error) {
+              console.warn(`[TasksProvider] Failed to load statuses for project ${project.id}:`, error)
+              return project // Return project without statuses on error
+            }
+          })
+        )
+
+        setProjectsState(projectsWithStatuses)
+        onProjectsChange?.(projectsWithStatuses)
 
         // Load tasks
         const tasksResponse = await tasksService.list({
@@ -208,8 +285,9 @@ export const TasksProvider = ({
 
         setIsLoaded(true)
         console.log('[TasksProvider] Loaded from database:', {
-          projects: uiProjects.length,
-          tasks: uiTasks.length
+          projects: projectsWithStatuses.length,
+          tasks: uiTasks.length,
+          totalStatuses: projectsWithStatuses.reduce((sum, p) => sum + p.statuses.length, 0)
         })
       } catch (error) {
         console.error('[TasksProvider] Failed to load from database:', error)
