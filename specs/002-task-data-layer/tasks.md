@@ -42,13 +42,18 @@
 
 **⚠️ CRITICAL**: These gaps block proper persistence for all features
 
-- [ ] T004 Load statuses per project in `src/renderer/src/contexts/tasks/index.tsx:89` (fix `statuses: []` TODO)
-- [ ] T005 [P] Implement repeatConfig conversion in `src/renderer/src/contexts/tasks/index.tsx:68` (fix TODO)
-- [ ] T006 [P] Add priority level 4 (urgent) to priorityMap in `src/renderer/src/contexts/tasks/index.tsx:39-52`
-- [ ] T007 Verify TasksProvider loads subtaskIds for each task in `src/renderer/src/contexts/tasks/index.tsx`
-- [ ] T008 [P] Verify App.tsx wraps tasks page with TasksProvider correctly
+- [x] T004 Load statuses per project in `src/renderer/src/contexts/tasks/index.tsx:89` (fix `statuses: []` TODO)
+  - **Result**: Added `dbStatusToUiStatus()` converter. Projects now load statuses via `Promise.all()` after loading base projects. Console log shows total statuses loaded.
+- [x] T005 [P] Implement repeatConfig conversion in `src/renderer/src/contexts/tasks/index.tsx:68` (fix TODO)
+  - **Result**: Added `dbRepeatConfigToUiRepeatConfig()` function that parses JSON and converts date strings to Date objects. Handles all RepeatConfig fields.
+- [x] T006 [P] Add priority level 4 (urgent) to priorityMap in `src/renderer/src/contexts/tasks/index.tsx:39-52`
+  - **Result**: Added `4: 'urgent'` to priorityMap and updated priorityReverseMap to map `urgent: 4`.
+- [x] T007 Verify TasksProvider loads subtaskIds for each task in `src/renderer/src/contexts/tasks/index.tsx`
+  - **Result**: By design, subtasks are loaded as regular tasks with `parentId` set. UI uses `getSubtasks(parentId, allTasks)` from `subtask-utils.ts` to filter. This is the correct pattern.
+- [x] T008 [P] Verify App.tsx wraps tasks page with TasksProvider correctly
+  - **Result**: TasksProvider wraps entire app content at `App.tsx:431-460`, including TabProvider and all pages.
 
-**Checkpoint**: Foundation ready - all tasks should persist to database
+**Checkpoint**: Foundation ready - all tasks should persist to database ✅
 
 ---
 
