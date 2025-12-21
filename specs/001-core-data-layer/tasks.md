@@ -225,14 +225,14 @@
 
 ### Implementation for Tasks Database
 
-- [ ] T080 [P] Create task query functions in src/shared/db/queries/tasks.ts
-- [ ] T081 [P] Create project query functions in src/shared/db/queries/projects.ts
-- [ ] T082 Implement tasks IPC handlers (full CRUD per tasks-api.ts) in src/main/ipc/tasks-handlers.ts
-- [ ] T083 Update preload script with tasks API in src/preload/index.ts
-- [ ] T084 Create tasks-service.ts client in src/renderer/src/services/tasks-service.ts
-- [ ] T085 Update TasksProvider to use tasks-service instead of local state in src/renderer/src/contexts/tasks/
-- [ ] T086 Seed default inbox project on first vault open in src/main/database/seed.ts
-- [ ] T087 Register tasks handlers in main process in src/main/ipc/index.ts
+- [x] T080 [P] Create task query functions in src/shared/db/queries/tasks.ts
+- [x] T081 [P] Create project query functions in src/shared/db/queries/projects.ts
+- [x] T082 Implement tasks IPC handlers (full CRUD per tasks-api.ts) in src/main/ipc/tasks-handlers.ts
+- [x] T083 Update preload script with tasks API in src/preload/index.ts
+- [x] T084 Create tasks-service.ts client in src/renderer/src/services/tasks-service.ts
+- [x] T085 Update TasksProvider to use tasks-service instead of local state in src/renderer/src/contexts/tasks/
+- [x] T086 Seed default inbox project on first vault open in src/main/database/seed.ts
+- [x] T087 Register tasks handlers in main process in src/main/ipc/index.ts
 
 **Checkpoint**: Tasks UI is connected to real database, data persists between sessions
 

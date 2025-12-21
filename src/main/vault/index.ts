@@ -35,10 +35,12 @@ import {
   runMigrations,
   runIndexMigrations,
   initializeFts,
+  getDatabase,
   getIndexDatabase,
   checkIndexHealth,
   type IndexHealth
 } from '../database'
+import { seedDefaults } from '../database/seed'
 import { VaultChannels } from '@shared/ipc-channels'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { startWatcher, stopWatcher } from './watcher'
@@ -194,6 +196,9 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // Initialize data database
   initDatabase(dataDbPath)
+
+  // Seed default data (inbox project, etc.)
+  seedDefaults(getDatabase())
 
   // Check index database health before proceeding
   const indexHealth = checkIndexHealth(indexDbPath)
