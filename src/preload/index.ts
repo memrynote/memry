@@ -58,7 +58,7 @@ const api = {
     getFolders: () => ipcRenderer.invoke(NotesChannels.invoke.GET_FOLDERS),
     createFolder: (path: string) => ipcRenderer.invoke(NotesChannels.invoke.CREATE_FOLDER, path),
     renameFolder: (oldPath: string, newPath: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.RENAME_FOLDER, oldPath, newPath),
+      ipcRenderer.invoke(NotesChannels.invoke.RENAME_FOLDER, { oldPath, newPath }),
     deleteFolder: (path: string) => ipcRenderer.invoke(NotesChannels.invoke.DELETE_FOLDER, path),
     exists: (titleOrPath: string) => ipcRenderer.invoke(NotesChannels.invoke.EXISTS, titleOrPath),
     openExternal: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.OPEN_EXTERNAL, id),
@@ -159,14 +159,14 @@ const api = {
       position: number
     }) => ipcRenderer.invoke(TasksChannels.invoke.MOVE, input),
     reorder: (taskIds: string[], positions: number[]) =>
-      ipcRenderer.invoke(TasksChannels.invoke.REORDER, taskIds, positions),
+      ipcRenderer.invoke(TasksChannels.invoke.REORDER, { taskIds, positions }),
     duplicate: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.DUPLICATE, id),
 
     // Subtask operations
     getSubtasks: (parentId: string) =>
       ipcRenderer.invoke(TasksChannels.invoke.GET_SUBTASKS, parentId),
     convertToSubtask: (taskId: string, parentId: string) =>
-      ipcRenderer.invoke(TasksChannels.invoke.CONVERT_TO_SUBTASK, taskId, parentId),
+      ipcRenderer.invoke(TasksChannels.invoke.CONVERT_TO_SUBTASK, { taskId, parentId }),
     convertToTask: (taskId: string) =>
       ipcRenderer.invoke(TasksChannels.invoke.CONVERT_TO_TASK, taskId),
 
@@ -189,7 +189,7 @@ const api = {
     listProjects: () => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_LIST),
     archiveProject: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_ARCHIVE, id),
     reorderProjects: (projectIds: string[], positions: number[]) =>
-      ipcRenderer.invoke(TasksChannels.invoke.PROJECT_REORDER, projectIds, positions),
+      ipcRenderer.invoke(TasksChannels.invoke.PROJECT_REORDER, { projectIds, positions }),
 
     // Status operations
     createStatus: (input: {
@@ -199,10 +199,10 @@ const api = {
       isDone?: boolean
     }) => ipcRenderer.invoke(TasksChannels.invoke.STATUS_CREATE, input),
     updateStatus: (id: string, updates: Record<string, unknown>) =>
-      ipcRenderer.invoke(TasksChannels.invoke.STATUS_UPDATE, id, updates),
+      ipcRenderer.invoke(TasksChannels.invoke.STATUS_UPDATE, { id, ...updates }),
     deleteStatus: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.STATUS_DELETE, id),
     reorderStatuses: (statusIds: string[], positions: number[]) =>
-      ipcRenderer.invoke(TasksChannels.invoke.STATUS_REORDER, statusIds, positions),
+      ipcRenderer.invoke(TasksChannels.invoke.STATUS_REORDER, { statusIds, positions }),
     listStatuses: (projectId: string) =>
       ipcRenderer.invoke(TasksChannels.invoke.STATUS_LIST, projectId),
 
@@ -210,16 +210,17 @@ const api = {
     getTags: () => ipcRenderer.invoke(TasksChannels.invoke.GET_TAGS),
 
     // Bulk operations
-    bulkComplete: (ids: string[]) => ipcRenderer.invoke(TasksChannels.invoke.BULK_COMPLETE, ids),
-    bulkDelete: (ids: string[]) => ipcRenderer.invoke(TasksChannels.invoke.BULK_DELETE, ids),
+    bulkComplete: (ids: string[]) => ipcRenderer.invoke(TasksChannels.invoke.BULK_COMPLETE, { ids }),
+    bulkDelete: (ids: string[]) => ipcRenderer.invoke(TasksChannels.invoke.BULK_DELETE, { ids }),
     bulkMove: (ids: string[], projectId: string) =>
-      ipcRenderer.invoke(TasksChannels.invoke.BULK_MOVE, ids, projectId),
-    bulkArchive: (ids: string[]) => ipcRenderer.invoke(TasksChannels.invoke.BULK_ARCHIVE, ids),
+      ipcRenderer.invoke(TasksChannels.invoke.BULK_MOVE, { ids, projectId }),
+    bulkArchive: (ids: string[]) => ipcRenderer.invoke(TasksChannels.invoke.BULK_ARCHIVE, { ids }),
 
     // Stats and views
     getStats: () => ipcRenderer.invoke(TasksChannels.invoke.GET_STATS),
     getToday: () => ipcRenderer.invoke(TasksChannels.invoke.GET_TODAY),
-    getUpcoming: (days?: number) => ipcRenderer.invoke(TasksChannels.invoke.GET_UPCOMING, days),
+    getUpcoming: (days?: number) =>
+      ipcRenderer.invoke(TasksChannels.invoke.GET_UPCOMING, { days: days ?? 7 }),
     getOverdue: () => ipcRenderer.invoke(TasksChannels.invoke.GET_OVERDUE)
   },
 

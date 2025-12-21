@@ -218,6 +218,64 @@ export const StatusCreateSchema = z.object({
   isDone: z.boolean().default(false)
 })
 
+export const StatusUpdateSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1).max(50).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional(),
+  position: z.number().int().optional(),
+  isDefault: z.boolean().optional(),
+  isDone: z.boolean().optional()
+})
+
+// ============================================================================
+// Reorder and Bulk Schemas
+// ============================================================================
+
+export const TaskReorderSchema = z.object({
+  taskIds: z.array(z.string()),
+  positions: z.array(z.number().int())
+})
+
+export const ConvertToSubtaskSchema = z.object({
+  taskId: z.string(),
+  parentId: z.string()
+})
+
+export const ProjectReorderSchema = z.object({
+  projectIds: z.array(z.string()),
+  positions: z.array(z.number().int())
+})
+
+export const StatusReorderSchema = z.object({
+  statusIds: z.array(z.string()),
+  positions: z.array(z.number().int())
+})
+
+export const BulkIdsSchema = z.object({
+  ids: z.array(z.string())
+})
+
+export const BulkMoveSchema = z.object({
+  ids: z.array(z.string()),
+  projectId: z.string()
+})
+
+export const GetUpcomingSchema = z.object({
+  days: z.number().int().min(1).max(365).default(7)
+})
+
+// ============================================================================
+// Folder Schemas (for notes handlers)
+// ============================================================================
+
+export const RenameFolderSchema = z.object({
+  oldPath: z.string(),
+  newPath: z.string()
+})
+
 // ============================================================================
 // Response Types
 // ============================================================================
@@ -258,3 +316,12 @@ export type TaskListInput = z.infer<typeof TaskListSchema>
 export type ProjectCreateInput = z.infer<typeof ProjectCreateSchema>
 export type ProjectUpdateInput = z.infer<typeof ProjectUpdateSchema>
 export type StatusCreateInput = z.infer<typeof StatusCreateSchema>
+export type StatusUpdateInput = z.infer<typeof StatusUpdateSchema>
+export type TaskReorderInput = z.infer<typeof TaskReorderSchema>
+export type ConvertToSubtaskInput = z.infer<typeof ConvertToSubtaskSchema>
+export type ProjectReorderInput = z.infer<typeof ProjectReorderSchema>
+export type StatusReorderInput = z.infer<typeof StatusReorderSchema>
+export type BulkIdsInput = z.infer<typeof BulkIdsSchema>
+export type BulkMoveInput = z.infer<typeof BulkMoveSchema>
+export type GetUpcomingInput = z.infer<typeof GetUpcomingSchema>
+export type RenameFolderInput = z.infer<typeof RenameFolderSchema>

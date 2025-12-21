@@ -15,7 +15,15 @@ import {
   TaskListSchema,
   ProjectCreateSchema,
   ProjectUpdateSchema,
-  StatusCreateSchema
+  StatusCreateSchema,
+  StatusUpdateSchema,
+  TaskReorderSchema,
+  ConvertToSubtaskSchema,
+  ProjectReorderSchema,
+  StatusReorderSchema,
+  BulkIdsSchema,
+  BulkMoveSchema,
+  GetUpcomingSchema
 } from '@shared/contracts/tasks-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
 import { getDatabase } from '../database'
@@ -305,16 +313,19 @@ export function registerTasksHandlers(): void {
   )
 
   // tasks:reorder - Reorder tasks
-  ipcMain.handle(TasksChannels.invoke.REORDER, async (_, taskIds: string[], positions: number[]) => {
-    try {
-      const db = requireDatabase()
-      taskQueries.reorderTasks(db, taskIds, positions)
-      return { success: true }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to reorder tasks'
-      return { success: false, error: message }
-    }
-  })
+  ipcMain.handle(
+    TasksChannels.invoke.REORDER,
+    createValidatedHandler(TaskReorderSchema, async (input) => {
+      try {
+        const db = requireDatabase()
+        taskQueries.reorderTasks(db, input.taskIds, input.positions)
+        return { success: true }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to reorder tasks'
+        return { success: false, error: message }
+      }
+    })
+  )
 
   // tasks:duplicate - Duplicate a task
   ipcMain.handle(
@@ -361,10 +372,10 @@ export function registerTasksHandlers(): void {
   // tasks:convert-to-subtask - Convert a task to a subtask
   ipcMain.handle(
     TasksChannels.invoke.CONVERT_TO_SUBTASK,
-    async (_, taskId: string, parentId: string) => {
+    createValidatedHandler(ConvertToSubtaskSchema, async (input) => {
       try {
         const db = requireDatabase()
-        const task = taskQueries.moveTask(db, taskId, { parentId })
+        const task = taskQueries.moveTask(db, input.taskId, { parentId: input.parentId })
         if (!task) {
           return { success: false, task: null, error: 'Task not found' }
         }
@@ -373,7 +384,7 @@ export function registerTasksHandlers(): void {
         const message = error instanceof Error ? error.message : 'Failed to convert to subtask'
         return { success: false, task: null, error: message }
       }
-    }
+    })
   )
 
   // tasks:convert-to-task - Convert a subtask to a top-level task
@@ -506,16 +517,16 @@ export function registerTasksHandlers(): void {
   // tasks:project-reorder - Reorder projects
   ipcMain.handle(
     TasksChannels.invoke.PROJECT_REORDER,
-    async (_, projectIds: string[], positions: number[]) => {
+    createValidatedHandler(ProjectReorderSchema, async (input) => {
       try {
         const db = requireDatabase()
-        projectQueries.reorderProjects(db, projectIds, positions)
+        projectQueries.reorderProjects(db, input.projectIds, input.positions)
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to reorder projects'
         return { success: false, error: message }
       }
-    }
+    })
   )
 
   // ============================================================================
@@ -552,20 +563,11 @@ export function registerTasksHandlers(): void {
   // tasks:status-update - Update a status
   ipcMain.handle(
     TasksChannels.invoke.STATUS_UPDATE,
-    async (_, id: string, updates: Record<string, unknown>) => {
+    createValidatedHandler(StatusUpdateSchema, async (input) => {
       try {
         const db = requireDatabase()
-        const status = projectQueries.updateStatus(
-          db,
-          id,
-          updates as Partial<{
-            name: string
-            color: string
-            position: number
-            isDefault: boolean
-            isDone: boolean
-          }>
-        )
+        const { id, ...updates } = input
+        const status = projectQueries.updateStatus(db, id, updates)
         if (!status) {
           return { success: false, error: 'Status not found' }
         }
@@ -574,7 +576,7 @@ export function registerTasksHandlers(): void {
         const message = error instanceof Error ? error.message : 'Failed to update status'
         return { success: false, error: message }
       }
-    }
+    })
   )
 
   // tasks:status-delete - Delete a status
@@ -595,16 +597,16 @@ export function registerTasksHandlers(): void {
   // tasks:status-reorder - Reorder statuses
   ipcMain.handle(
     TasksChannels.invoke.STATUS_REORDER,
-    async (_, statusIds: string[], positions: number[]) => {
+    createValidatedHandler(StatusReorderSchema, async (input) => {
       try {
         const db = requireDatabase()
-        projectQueries.reorderStatuses(db, statusIds, positions)
+        projectQueries.reorderStatuses(db, input.statusIds, input.positions)
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to reorder statuses'
         return { success: false, error: message }
       }
-    }
+    })
   )
 
   // tasks:status-list - List statuses for a project
@@ -634,53 +636,65 @@ export function registerTasksHandlers(): void {
   // ============================================================================
 
   // tasks:bulk-complete - Complete multiple tasks
-  ipcMain.handle(TasksChannels.invoke.BULK_COMPLETE, async (_, ids: string[]) => {
-    try {
-      const db = requireDatabase()
-      const count = taskQueries.bulkCompleteTasks(db, ids)
-      return { success: true, count }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to complete tasks'
-      return { success: false, count: 0, error: message }
-    }
-  })
+  ipcMain.handle(
+    TasksChannels.invoke.BULK_COMPLETE,
+    createValidatedHandler(BulkIdsSchema, async (input) => {
+      try {
+        const db = requireDatabase()
+        const count = taskQueries.bulkCompleteTasks(db, input.ids)
+        return { success: true, count }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to complete tasks'
+        return { success: false, count: 0, error: message }
+      }
+    })
+  )
 
   // tasks:bulk-delete - Delete multiple tasks
-  ipcMain.handle(TasksChannels.invoke.BULK_DELETE, async (_, ids: string[]) => {
-    try {
-      const db = requireDatabase()
-      const count = taskQueries.bulkDeleteTasks(db, ids)
-      ids.forEach((id) => emitTaskEvent(TasksChannels.events.DELETED, { id }))
-      return { success: true, count }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to delete tasks'
-      return { success: false, count: 0, error: message }
-    }
-  })
+  ipcMain.handle(
+    TasksChannels.invoke.BULK_DELETE,
+    createValidatedHandler(BulkIdsSchema, async (input) => {
+      try {
+        const db = requireDatabase()
+        const count = taskQueries.bulkDeleteTasks(db, input.ids)
+        input.ids.forEach((id) => emitTaskEvent(TasksChannels.events.DELETED, { id }))
+        return { success: true, count }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to delete tasks'
+        return { success: false, count: 0, error: message }
+      }
+    })
+  )
 
   // tasks:bulk-move - Move multiple tasks to a project
-  ipcMain.handle(TasksChannels.invoke.BULK_MOVE, async (_, ids: string[], projectId: string) => {
-    try {
-      const db = requireDatabase()
-      const count = taskQueries.bulkMoveTasks(db, ids, projectId)
-      return { success: true, count }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to move tasks'
-      return { success: false, count: 0, error: message }
-    }
-  })
+  ipcMain.handle(
+    TasksChannels.invoke.BULK_MOVE,
+    createValidatedHandler(BulkMoveSchema, async (input) => {
+      try {
+        const db = requireDatabase()
+        const count = taskQueries.bulkMoveTasks(db, input.ids, input.projectId)
+        return { success: true, count }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to move tasks'
+        return { success: false, count: 0, error: message }
+      }
+    })
+  )
 
   // tasks:bulk-archive - Archive multiple tasks
-  ipcMain.handle(TasksChannels.invoke.BULK_ARCHIVE, async (_, ids: string[]) => {
-    try {
-      const db = requireDatabase()
-      const count = taskQueries.bulkArchiveTasks(db, ids)
-      return { success: true, count }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to archive tasks'
-      return { success: false, count: 0, error: message }
-    }
-  })
+  ipcMain.handle(
+    TasksChannels.invoke.BULK_ARCHIVE,
+    createValidatedHandler(BulkIdsSchema, async (input) => {
+      try {
+        const db = requireDatabase()
+        const count = taskQueries.bulkArchiveTasks(db, input.ids)
+        return { success: true, count }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to archive tasks'
+        return { success: false, count: 0, error: message }
+      }
+    })
+  )
 
   // ============================================================================
   // Stats and Views
@@ -706,11 +720,14 @@ export function registerTasksHandlers(): void {
   )
 
   // tasks:get-upcoming - Get upcoming tasks
-  ipcMain.handle(TasksChannels.invoke.GET_UPCOMING, async (_, days: number = 7) => {
-    const db = requireDatabase()
-    const tasks = taskQueries.getUpcomingTasks(db, days)
-    return { tasks, total: tasks.length, hasMore: false }
-  })
+  ipcMain.handle(
+    TasksChannels.invoke.GET_UPCOMING,
+    createValidatedHandler(GetUpcomingSchema, async (input) => {
+      const db = requireDatabase()
+      const tasks = taskQueries.getUpcomingTasks(db, input.days)
+      return { tasks, total: tasks.length, hasMore: false }
+    })
+  )
 
   // tasks:get-overdue - Get overdue tasks
   ipcMain.handle(

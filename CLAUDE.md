@@ -197,15 +197,25 @@ src/main/
 ├── store.ts              # electron-store for vault persistence
 ├── vault/
 │   ├── index.ts          # Vault manager (select, open, close)
-│   └── init.ts           # Folder structure creation
+│   ├── init.ts           # Folder structure creation
+│   ├── watcher.ts        # chokidar file watcher
+│   ├── notes.ts          # Note CRUD operations
+│   ├── frontmatter.ts    # YAML frontmatter parsing
+│   ├── file-ops.ts       # Atomic file operations
+│   ├── rename-tracker.ts # UUID-based rename detection
+│   └── indexer.ts        # Initial vault indexing
 ├── ipc/
 │   ├── index.ts          # Handler registration
+│   ├── validate.ts       # Zod validation middleware
 │   ├── vault-handlers.ts # Vault IPC handlers
-│   └── validate.ts       # Zod validation middleware
+│   ├── notes-handlers.ts # Notes IPC handlers
+│   ├── tasks-handlers.ts # Tasks IPC handlers
+│   └── search-handlers.ts # Search IPC handlers
 ├── database/
-│   ├── client.ts         # Drizzle ORM client
+│   ├── client.ts         # Drizzle ORM client with SQLite pragmas
 │   ├── migrate.ts        # Migration runner
-│   └── fts.ts            # FTS5 full-text search
+│   ├── fts.ts            # FTS5 full-text search
+│   └── seed.ts           # Default data seeding
 └── lib/
     ├── errors.ts         # Custom error classes
     ├── paths.ts          # Path utilities
@@ -223,10 +233,48 @@ src/main/
 - Drizzle ORM with better-sqlite3
 - electron-store for settings persistence
 - Zod for runtime validation
+- chokidar for file watching
+- gray-matter for YAML frontmatter parsing
+- nanoid for unique ID generation
+
+## Database Configuration
+
+### SQLite Pragmas
+
+Both databases are configured with optimized SQLite pragmas in `src/main/database/client.ts`:
+
+**data.db (source of truth for tasks/projects)**:
+```typescript
+journal_mode = WAL     // Better concurrency and crash recovery
+foreign_keys = ON      // Referential integrity
+synchronous = NORMAL   // Balance between safety and performance
+busy_timeout = 5000    // Wait 5s for locks
+cache_size = -64000    // 64MB cache
+temp_store = MEMORY    // Temp tables in memory
+```
+
+**index.db (rebuildable cache for notes)**:
+```typescript
+journal_mode = WAL
+synchronous = NORMAL
+busy_timeout = 5000
+cache_size = -128000   // 128MB cache for search
+temp_store = MEMORY
+// No foreign keys (it's a cache)
+```
+
+### Graceful Shutdown
+
+The app performs graceful shutdown on quit (`src/main/index.ts`):
+1. Prevents default quit behavior
+2. Sets 5-second timeout for forced exit
+3. Closes vault (stops file watcher, closes databases)
+4. Exits cleanly
 
 ## Recent Changes
-- 001-core-data-layer: Vault foundation complete (T025-T036)
-  - Vault selection with native folder picker
-  - Database initialization on vault open
-  - IPC infrastructure with Zod validation
-  - React hooks for vault state management
+- 001-core-data-layer: Phase 10 complete (T088-T093)
+  - Graceful shutdown with timeout mechanism
+  - Full Zod validation at all IPC boundaries
+  - SQLite pragma optimization for reliability and performance
+  - Database operation timeout utility
+  - Updated documentation

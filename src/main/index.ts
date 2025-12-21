@@ -3,7 +3,6 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllHandlers } from './ipc'
 import { autoOpenLastVault, closeVault } from './vault'
-import { closeAllDatabases } from './database'
 
 function createWindow(): void {
   // Create the browser window.
@@ -97,13 +96,35 @@ app.whenReady().then(async () => {
   })
 })
 
+// Track if shutdown is already in progress to prevent duplicate handling
+let isShuttingDown = false
+
 // Graceful shutdown: close vault and databases before quitting
-app.on('before-quit', async () => {
+app.on('before-quit', async (event) => {
+  // Prevent duplicate shutdown handling
+  if (isShuttingDown) return
+  isShuttingDown = true
+
+  event.preventDefault()
+
+  console.log('[Shutdown] Starting graceful shutdown...')
+
+  // Set timeout to force exit if shutdown takes too long
+  const shutdownTimeout = setTimeout(() => {
+    console.error('[Shutdown] Timeout - forcing exit')
+    app.exit(1)
+  }, 5000) // 5 second timeout
+
   try {
-    await closeVault()
-    closeAllDatabases()
+    console.log('[Shutdown] Closing vault and stopping watcher...')
+    await closeVault() // This also closes databases
+    console.log('[Shutdown] Cleanup complete')
+    clearTimeout(shutdownTimeout)
+    app.exit(0)
   } catch (error) {
-    console.error('Error during shutdown:', error)
+    console.error('[Shutdown] Error during cleanup:', error)
+    clearTimeout(shutdownTimeout)
+    app.exit(1)
   }
 })
 

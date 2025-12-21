@@ -7,6 +7,7 @@ export {
   closeIndexDatabase,
   closeAllDatabases,
   checkIndexHealth,
+  withTimeout,
   type DrizzleDb,
   type IndexHealth
 } from './client'
