@@ -64,7 +64,7 @@ export const MultiDragOverlay = ({
                       <PriorityBadge priority={task.priority} variant="full" size="sm" />
                     )}
                     {task.dueDate && (
-                      <DueDateBadge dueDate={task.dueDate} variant="compact" />
+                      <DueDateBadge dueDate={task.dueDate} dueTime={task.dueTime} variant="compact" />
                     )}
                   </div>
                 )}

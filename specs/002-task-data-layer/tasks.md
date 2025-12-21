@@ -1,324 +1,337 @@
 # Tasks: Task Management Data Layer
 
 **Input**: Design documents from `/specs/002-task-data-layer/`
-**Prerequisites**: plan.md (complete), spec.md (14 user stories)
+**Prerequisites**: plan.md (required), spec.md (required for user stories)
 
-**Special Context**: Backend is **ALREADY IMPLEMENTED**. Tasks focus on:
-1. Fixing integration gaps between UI and backend
-2. Verifying each user story works end-to-end
-3. Completing minor TODO items in existing code
+**Context**: Backend layer is **ALREADY IMPLEMENTED** (~3000 LOC). Focus is on **verifying integration** and **completing minor gaps**.
 
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (e.g., US1, US2)
+- **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
 - Include exact file paths in descriptions
 
-## Path Conventions (Electron App)
+## Path Conventions
 
-- **Main process**: `src/main/`
-- **Shared code**: `src/shared/`
-- **Renderer**: `src/renderer/src/`
-- **Preload**: `src/preload/`
+```text
+src/
+├── main/                          # Main process (Node.js)
+│   ├── ipc/tasks-handlers.ts      # IPC handlers
+│   └── database/client.ts         # Drizzle ORM client
+├── shared/                        # Shared between main/renderer
+│   ├── db/
+│   │   ├── schema/                # Database schemas
+│   │   └── queries/               # Database queries
+│   └── contracts/tasks-api.ts     # Zod validation schemas
+├── preload/
+│   ├── index.ts                   # Exposes window.api.tasks
+│   └── index.d.ts                 # Type definitions
+└── renderer/src/
+    ├── pages/tasks.tsx            # Main tasks page
+    ├── components/tasks/          # Task components
+    ├── services/tasks-service.ts  # IPC client wrapper
+    ├── contexts/tasks/index.tsx   # React context + DB integration
+    └── hooks/                     # Custom hooks
+```
 
 ---
 
-## Phase 1: Setup (Verification)
+## Phase 1: Setup (Verification Infrastructure)
 
-**Purpose**: Verify existing implementation is functional
+**Purpose**: Establish verification baseline and understand current state
 
-- [x] T001 Run `pnpm typecheck` to verify TypeScript compilation
-  - **Result**: Fixed duplicate export declarations in tasks-service.ts. Remaining errors are unused variable warnings (TS6133) that don't block runtime.
-- [x] T002 [P] Run `pnpm dev` and verify app starts without errors
-  - **Result**: App starts successfully. Dev server at http://localhost:5173/, Electron launched, all IPC handlers registered.
-- [x] T003 [P] Open a vault and verify tasks context initializes (check console logs)
-  - **Result**: Vault initialized with `[Vault] Index health check: healthy`. TasksProvider wraps App (src/renderer/src/App.tsx:431-460).
+- [X] T001 Verify project builds without errors using `pnpm typecheck && pnpm build:mac`
+  - Fixed task-specific type errors (task-utils.ts, tasks.tsx, kanban-board.tsx, etc.)
+  - Pre-existing errors in other features (tabs, journal, notes) documented but out of scope
+- [X] T002 Verify existing database schema matches spec in src/shared/db/schema/tasks.ts
+  - All core fields present; isRepeating/subtaskIds computed (denormalized design)
+- [X] T003 [P] Verify IPC handlers are registered in src/main/ipc/index.ts
+  - registerTasksHandlers() called in registerAllHandlers()
+- [X] T004 [P] Verify preload exposes tasks API in src/preload/index.ts
+  - Comprehensive API: CRUD, actions, subtasks, projects, statuses, bulk ops, views
 
 ---
 
-## Phase 2: Foundational (Integration Gaps)
+## Phase 2: Foundational (Integration Gap Fixes)
 
-**Purpose**: Fix critical integration issues that affect ALL user stories
+**Purpose**: Complete critical integration gaps that MUST be fixed before user story verification
 
-**⚠️ CRITICAL**: These gaps block proper persistence for all features
+**⚠️ CRITICAL**: These gaps block proper functioning of all user stories
 
-- [x] T004 Load statuses per project in `src/renderer/src/contexts/tasks/index.tsx:89` (fix `statuses: []` TODO)
-  - **Result**: Added `dbStatusToUiStatus()` converter. Projects now load statuses via `Promise.all()` after loading base projects. Console log shows total statuses loaded.
-- [x] T005 [P] Implement repeatConfig conversion in `src/renderer/src/contexts/tasks/index.tsx:68` (fix TODO)
-  - **Result**: Added `dbRepeatConfigToUiRepeatConfig()` function that parses JSON and converts date strings to Date objects. Handles all RepeatConfig fields.
-- [x] T006 [P] Add priority level 4 (urgent) to priorityMap in `src/renderer/src/contexts/tasks/index.tsx:39-52`
-  - **Result**: Added `4: 'urgent'` to priorityMap and updated priorityReverseMap to map `urgent: 4`.
-- [x] T007 Verify TasksProvider loads subtaskIds for each task in `src/renderer/src/contexts/tasks/index.tsx`
-  - **Result**: By design, subtasks are loaded as regular tasks with `parentId` set. UI uses `getSubtasks(parentId, allTasks)` from `subtask-utils.ts` to filter. This is the correct pattern.
-- [x] T008 [P] Verify App.tsx wraps tasks page with TasksProvider correctly
-  - **Result**: TasksProvider wraps entire app content at `App.tsx:431-460`, including TabProvider and all pages.
+- [ ] T005 Fix status loading gap - load statuses per project in src/renderer/src/contexts/tasks/index.tsx:89
+- [ ] T006 Implement RepeatConfig conversion in dbTaskToUiTask in src/renderer/src/contexts/tasks/index.tsx:68
+- [ ] T007 Trace and document data flow from App.tsx → TasksProvider → tasks.tsx
+- [ ] T008 [P] Verify TasksProvider properly subscribes to IPC events in src/renderer/src/contexts/tasks/index.tsx
+- [ ] T009 [P] Verify type conversions (priority int↔string, dates) in src/renderer/src/contexts/tasks/index.tsx
 
-**Checkpoint**: Foundation ready - all tasks should persist to database ✅
+**Checkpoint**: Integration gaps fixed - user story verification can now begin
 
 ---
 
 ## Phase 3: User Story 1 - Persist Tasks Locally (Priority: P1) 🎯 MVP
 
-**Goal**: Tasks survive app restarts with zero data loss
+**Goal**: Verify tasks survive app restarts with no data loss
 
-**Independent Test**: Create task → close app → reopen → verify task exists with all fields
+**Independent Test**: Create tasks, close app completely, reopen, verify all tasks appear exactly as saved
 
-### Implementation for User Story 1
+### Verification for User Story 1
 
-- [x] T009 [US1] Verify task creation calls `tasksService.create()` in `src/renderer/src/contexts/tasks/index.tsx`
-  - **Result**: Lines 307-336: `addTask` calls `tasksService.create()` when `isVaultOpen` is true
-- [x] T010 [US1] Verify task update calls `tasksService.update()` in `src/renderer/src/contexts/tasks/index.tsx`
-  - **Result**: Lines 338-366: `updateTask` calls `tasksService.update()` when `isVaultOpen` is true
-- [x] T011 [P] [US1] Verify task deletion calls `tasksService.delete()` in `src/renderer/src/contexts/tasks/index.tsx`
-  - **Result**: Lines 368-383: `deleteTask` calls `tasksService.delete()` when `isVaultOpen` is true
-- [ ] T012 [US1] Test: Create task, quit app (Cmd+Q), reopen, verify task persists
-  - **Note**: Manual testing required - create task in UI, quit app with Cmd+Q, reopen, verify task exists
-- [ ] T013 [US1] Test: Edit task title, restart app, verify edit persisted
-  - **Note**: Manual testing required - edit task title, restart app, verify title change persisted
-- [ ] T014 [P] [US1] Test: Complete task, restart app, verify completion state persisted
-  - **Note**: Manual testing required - mark task complete, restart app, verify still complete
+- [ ] T010 [US1] Verify task creation persists to data.db by checking SQLite directly after create
+- [ ] T011 [US1] Verify task updates persist by modifying task and checking database in src/shared/db/queries/tasks.ts
+- [ ] T012 [US1] Verify task deletion works correctly (soft delete with archivedAt) in src/shared/db/queries/tasks.ts
+- [ ] T013 [US1] Test crash recovery - verify WAL mode and PRAGMA settings in src/main/database/client.ts
+- [ ] T014 [US1] Verify graceful shutdown saves pending changes in src/main/index.ts
 
-**Checkpoint**: Tasks persist across app restarts
+**Checkpoint**: Persistence verified - data survives restarts
 
 ---
 
 ## Phase 4: User Story 2 - Create Tasks with Full Details (Priority: P1)
 
-**Goal**: All task fields (title, description, priority, due date/time, project, status) save correctly
+**Goal**: Verify all task fields are saved and displayed correctly
 
-**Independent Test**: Create task with all fields → verify each field displays correctly
+**Independent Test**: Create task with all fields populated, verify each field is saved and displayed
 
-### Implementation for User Story 2
+### Verification for User Story 2
 
-- [ ] T015 [US2] Verify description field persists in `src/renderer/src/contexts/tasks/index.tsx` addTask
-- [ ] T016 [P] [US2] Verify dueDate/dueTime conversion in dbTaskToUiTask handles both fields
-- [ ] T017 [P] [US2] Verify priority conversion handles all 5 levels (none, low, medium, high, urgent)
-- [ ] T018 [US2] Test: Create task with all fields populated, verify each field saves and loads
-- [ ] T019 [US2] Test: Create minimal task (title only), verify defaults applied
+- [ ] T015 [P] [US2] Verify title and description fields save correctly via tasksService.create in src/renderer/src/services/tasks-service.ts
+- [ ] T016 [P] [US2] Verify dueDate and dueTime fields save and display correctly in task row components
+- [ ] T017 [P] [US2] Verify priority field conversion (string↔int) works bidirectionally in src/renderer/src/contexts/tasks/index.tsx
+- [ ] T018 [US2] Verify projectId and statusId assignment works in src/renderer/src/services/tasks-service.ts
+- [ ] T019 [US2] Verify default values are applied when creating minimal task (title only) in src/shared/db/queries/tasks.ts
 
-**Checkpoint**: All task fields persist correctly
+**Checkpoint**: Task creation with full details verified
 
 ---
 
-## Phase 5: User Story 3 - Projects with Custom Workflows (Priority: P1)
+## Phase 5: User Story 3 - Organize Tasks into Projects (Priority: P1)
 
-**Goal**: Projects have custom statuses, tasks can move through workflow
+**Goal**: Verify custom project workflows function correctly
 
-**Independent Test**: Create project with statuses → add task → move task through statuses
+**Independent Test**: Create project with custom statuses, add tasks, move them through workflow
 
-### Implementation for User Story 3
+### Verification for User Story 3
 
-- [ ] T020 [US3] Verify project creation calls `tasksService.createProject()` in context
-- [ ] T021 [P] [US3] Verify status creation calls `tasksService.createStatus()` for each new status
-- [ ] T022 [US3] Load statuses when loading projects (fix the `statuses: []` gap from T004)
-- [ ] T023 [US3] Test: Create project "Work" with statuses (Backlog, In Progress, Done)
-- [ ] T024 [US3] Test: Add task to project, change status, verify persists
-- [ ] T025 [P] [US3] Test: View Kanban board, verify columns match project statuses
+- [ ] T020 [P] [US3] Verify project creation with custom statuses in src/renderer/src/services/tasks-service.ts
+- [ ] T021 [P] [US3] Verify statuses load per project (fix gap identified in T005) in src/renderer/src/contexts/tasks/index.tsx
+- [ ] T022 [US3] Verify task status changes persist correctly in src/shared/db/queries/tasks.ts
+- [ ] T023 [US3] Verify Kanban view displays correct columns per project in src/renderer/src/components/tasks/kanban/
 
-**Checkpoint**: Projects with custom statuses work end-to-end
+**Checkpoint**: Project workflows verified
 
 ---
 
 ## Phase 6: User Story 4 - Mark Tasks Complete (Priority: P1)
 
-**Goal**: Completing tasks sets completedAt timestamp and persists
+**Goal**: Verify completion workflow and completed view
 
-**Independent Test**: Complete task → verify completedAt → restart app → still completed
+**Independent Test**: Complete a task, verify it moves to completed view with timestamp
 
-### Implementation for User Story 4
+### Verification for User Story 4
 
-- [ ] T026 [US4] Verify `tasksService.complete()` is called when task is completed in context
-- [ ] T027 [P] [US4] Verify `tasksService.uncomplete()` is called when unmarking complete
-- [ ] T028 [US4] Verify completedAt timestamp is set in database and loaded in UI
-- [ ] T029 [US4] Test: Complete task, verify appears in completed view with timestamp
-- [ ] T030 [P] [US4] Test: Uncomplete task, verify returns to active list
+- [ ] T024 [P] [US4] Verify complete operation sets completedAt timestamp in src/renderer/src/services/tasks-service.ts
+- [ ] T025 [P] [US4] Verify uncomplete operation clears completedAt in src/renderer/src/services/tasks-service.ts
+- [ ] T026 [US4] Verify completed tasks appear in completed view in src/renderer/src/pages/tasks.tsx
+- [ ] T027 [US4] Verify completion timestamp is displayed in task detail panel in src/renderer/src/components/tasks/
 
-**Checkpoint**: Task completion works with proper timestamps
+**Checkpoint**: Completion workflow verified
 
 ---
 
-## Phase 7: User Story 5 - Filter, Sort, and Saved Filters (Priority: P1)
+## Phase 7: User Story 5 - Filter, Sort, and Save Filters (Priority: P1)
 
-**Goal**: Filters work and can be saved for reuse
+**Goal**: Verify filtering/sorting works and saved filters persist
 
-**Independent Test**: Apply filter → save filter → reload app → load saved filter → verify same results
+**Independent Test**: Create diverse tasks, verify each filter/sort combination, save/load filters
 
 ### Implementation for User Story 5
 
-- [ ] T031 [US5] Verify local filtering in `src/renderer/src/lib/task-utils.ts` works with DB-loaded tasks
-- [ ] T032 [P] [US5] Verify saved filters persist to localStorage in `src/renderer/src/hooks/use-task-filters.ts`
-- [ ] T033 [US5] Test: Filter by priority "High" → verify only high priority tasks shown
-- [ ] T034 [P] [US5] Test: Filter by due date "Today" → verify only today's tasks shown
-- [ ] T035 [US5] Test: Save filter "Urgent Work", reload app, load filter, verify works
+- [ ] T028 [P] [US5] Verify client-side filtering works correctly in src/renderer/src/lib/task-utils.ts
+- [ ] T029 [P] [US5] Verify sorting by due date, priority, created date in src/renderer/src/lib/task-utils.ts
+- [ ] T030 [US5] Verify saved filters persist to localStorage in src/renderer/src/hooks/use-saved-filters.ts
+- [ ] T031 [US5] Consider migrating saved filters to database for cross-device sync (future) - document decision
+- [ ] T032 [US5] Verify filter handles deleted project gracefully (edge case from spec)
 
-**Checkpoint**: Filtering and saved filters work
+**Checkpoint**: Filtering and saved filters verified
 
 ---
 
 ## Phase 8: User Story 6 - Repeating Tasks (Priority: P2)
 
-**Goal**: Completing repeating task creates next occurrence
+**Goal**: Verify repeating task creation and next instance generation
 
-**Independent Test**: Create daily repeating task → complete → verify next day's instance created
+**Independent Test**: Create daily repeating task, complete it, verify next instance is created
 
 ### Implementation for User Story 6
 
-- [ ] T036 [US6] Complete repeatConfig conversion in context (started in T005)
-- [ ] T037 [US6] Verify repeat logic in `src/renderer/src/lib/repeat-utils.ts` works with persisted tasks
-- [ ] T038 [P] [US6] Verify `calculateNextOccurrence()` uses correct dates
-- [ ] T039 [US6] Test: Create daily repeating task, complete, verify next instance created
-- [ ] T040 [P] [US6] Test: Create weekly task, complete, verify 7 days later instance
-- [ ] T041 [US6] Test: Create task with end date, complete final, verify no new instance
+- [ ] T033 [US6] Complete RepeatConfig type conversion in src/renderer/src/contexts/tasks/index.tsx (relates to T006)
+- [ ] T034 [P] [US6] Verify repeat config is saved to database in src/shared/db/queries/tasks.ts
+- [ ] T035 [US6] Implement next instance creation on complete in src/renderer/src/contexts/tasks/index.tsx
+- [ ] T036 [US6] Verify "stop repeating" action converts to one-time task
+- [ ] T037 [US6] Verify end conditions (after date, after N occurrences) work correctly
 
-**Checkpoint**: Repeating tasks work end-to-end
+**Checkpoint**: Repeating tasks verified
 
 ---
 
 ## Phase 9: User Story 7 - Subtasks (Priority: P2)
 
-**Goal**: Subtasks with single-depth constraint work properly
+**Goal**: Verify subtask creation, ordering, and depth constraint
 
-**Independent Test**: Create parent → add subtasks → complete subtasks → verify parent shows progress
+**Independent Test**: Create parent task with subtasks, complete subtasks, verify depth is limited
 
-### Implementation for User Story 7
+### Verification for User Story 7
 
-- [ ] T042 [US7] Verify `tasksService.getSubtasks()` is called when loading parent task
-- [ ] T043 [P] [US7] Verify subtask creation sets parentId and inherits projectId
-- [ ] T044 [US7] Verify subtask depth validation prevents nested subtasks in `src/renderer/src/lib/subtask-utils.ts`
-- [ ] T045 [US7] Test: Create parent task, add 3 subtasks, verify subtaskIds populated
-- [ ] T046 [P] [US7] Test: Complete 2 of 3 subtasks, verify progress badge shows "2/3"
-- [ ] T047 [US7] Test: Try to add subtask to subtask, verify blocked
+- [ ] T038 [P] [US7] Verify subtask creation with parentId in src/renderer/src/services/tasks-service.ts
+- [ ] T039 [P] [US7] Verify subtask reordering persists in src/shared/db/queries/tasks.ts
+- [ ] T040 [US7] Verify depth constraint (subtasks cannot have subtasks) in src/renderer/src/hooks/use-subtask-management.ts
+- [ ] T041 [US7] Verify parent task deletion prompts for subtask handling
+- [ ] T042 [US7] Verify promote subtask to standalone task works in src/renderer/src/services/tasks-service.ts
 
-**Checkpoint**: Subtasks work with single-depth constraint
+**Checkpoint**: Subtasks verified
 
 ---
 
 ## Phase 10: User Story 8 - Link Tasks to Notes (Priority: P2)
 
-**Goal**: Tasks can link to notes, links persist
+**Goal**: Verify task-note linking works bidirectionally
 
-**Independent Test**: Link task to note → restart app → verify link persists → click link → note opens
+**Independent Test**: Link task to note, verify link works both directions
 
-### Implementation for User Story 8
+### Verification for User Story 8
 
-- [ ] T048 [US8] Verify linkedNoteIds persists in task creation/update in context
-- [ ] T049 [P] [US8] Verify `tasksService.update()` handles linkedNoteIds array
-- [ ] T050 [US8] Test: Link task to note, verify linkedNoteIds saved
-- [ ] T051 [P] [US8] Test: Restart app, verify linked notes still accessible
+- [ ] T043 [P] [US8] Verify linkedNoteIds saves correctly in src/shared/db/schema/task-relations.ts
+- [ ] T044 [P] [US8] Verify sourceNoteId is set when creating task from note
+- [ ] T045 [US8] Verify note displays linked tasks (may require notes integration)
+- [ ] T046 [US8] Verify clicking note link opens the note in a tab
 
-**Checkpoint**: Note linking works
+**Checkpoint**: Note linking verified
 
 ---
 
 ## Phase 11: User Story 9 - Archive Completed Tasks (Priority: P2)
 
-**Goal**: Archived tasks hidden from normal views but accessible
+**Goal**: Verify archiving hides tasks but preserves history
 
-**Independent Test**: Archive task → verify hidden → view archive → verify visible → unarchive → verify restored
+**Independent Test**: Archive tasks, verify hidden from normal views, accessible in archive
 
-### Implementation for User Story 9
+### Verification for User Story 9
 
-- [ ] T052 [US9] Verify `tasksService.archive()` is called when archiving in context
-- [ ] T053 [P] [US9] Verify `tasksService.unarchive()` is called when unarchiving
-- [ ] T054 [US9] Test: Archive completed task, verify hidden from completed view
-- [ ] T055 [P] [US9] Test: View archive, verify task visible
-- [ ] T056 [US9] Test: Unarchive task, verify returns to completed view
+- [ ] T047 [P] [US9] Verify archive operation sets archivedAt timestamp in src/renderer/src/services/tasks-service.ts
+- [ ] T048 [P] [US9] Verify archived tasks hidden from active/completed views in src/renderer/src/pages/tasks.tsx
+- [ ] T049 [US9] Verify archive view shows archived tasks in src/renderer/src/components/tasks/completed/
+- [ ] T050 [US9] Verify unarchive returns task to completed view
 
-**Checkpoint**: Archive/unarchive works
+**Checkpoint**: Archive functionality verified
 
 ---
 
 ## Phase 12: User Story 10 - Undo Accidental Actions (Priority: P2)
 
-**Goal**: Undo restores deleted/completed tasks within 10 seconds
+**Goal**: Verify undo restores deleted/completed tasks
 
-**Independent Test**: Delete task → click undo → verify task restored
+**Independent Test**: Delete task, click undo, verify restored
 
 ### Implementation for User Story 10
 
-- [ ] T057 [US10] Verify undo logic in `src/renderer/src/pages/tasks.tsx` handleDeleteTask
-- [ ] T058 [P] [US10] Verify undo works for bulk delete in `src/renderer/src/hooks/use-bulk-actions.ts`
-- [ ] T059 [US10] Test: Delete task, click undo within 10s, verify restored
-- [ ] T060 [P] [US10] Test: Bulk delete 5 tasks, undo, verify all 5 restored
-- [ ] T061 [US10] Test: Wait 11 seconds after delete, verify undo no longer available
+- [ ] T051 [US10] Verify undo state is maintained in client-side context in src/renderer/src/contexts/tasks/index.tsx
+- [ ] T052 [US10] Verify 10-second timeout for undo expires correctly
+- [ ] T053 [US10] Verify bulk undo restores all affected tasks
+- [ ] T054 [US10] Document that undo is client-side only (no backend support currently)
 
-**Checkpoint**: Undo works within timeout
+**Checkpoint**: Undo functionality verified
 
 ---
 
 ## Phase 13: User Story 11 - Duplicate Tasks (Priority: P3)
 
-**Goal**: Duplicating creates copy with all details except completion state
+**Goal**: Verify task duplication preserves all details except completion
 
-**Independent Test**: Duplicate completed task → verify copy is active with all details
+**Independent Test**: Duplicate task, verify copy has all details except completion state
 
-### Implementation for User Story 11
+### Verification for User Story 11
 
-- [ ] T062 [US11] Verify `tasksService.duplicate()` is called from context or page
-- [ ] T063 [US11] Test: Duplicate task with subtasks, verify all copied
-- [ ] T064 [P] [US11] Test: Duplicate completed task, verify copy is uncompleted
+- [ ] T055 [P] [US11] Verify duplicate operation in src/renderer/src/services/tasks-service.ts
+- [ ] T056 [US11] Verify duplicated task has "Copy of" prefix and is uncompleted
+- [ ] T057 [US11] Verify subtasks are duplicated with parent
 
-**Checkpoint**: Duplication works
+**Checkpoint**: Duplicate verified
 
 ---
 
 ## Phase 14: User Story 12 - Due Date with Time (Priority: P3)
 
-**Goal**: Due times display and sort correctly
+**Goal**: Verify due time is stored and displayed correctly
 
-**Independent Test**: Create two tasks due same day different times → verify earlier time appears first
+**Independent Test**: Set due time, verify displays and sorts correctly
 
-### Implementation for User Story 12
+### Verification for User Story 12
 
-- [ ] T065 [US12] Verify dueTime persists separately from dueDate in context
-- [ ] T066 [US12] Test: Create task due "Today 3:00 PM", verify time displays
-- [ ] T067 [P] [US12] Test: Two tasks same day, 9am and 3pm, verify 9am sorts first
+- [ ] T058 [P] [US12] Verify dueTime field saves correctly in src/shared/db/queries/tasks.ts
+- [ ] T059 [US12] Verify time displays in task row and detail panel
+- [ ] T060 [US12] Verify sorting by due date considers time component
 
-**Checkpoint**: Due times work
+**Checkpoint**: Due time verified
 
 ---
 
-## Phase 15: User Story 13 - Natural Language Task Entry (Priority: P3)
+## Phase 15: User Story 13 - Natural Language Entry (Priority: P3)
 
-**Goal**: Natural language parsed to task fields
+**Goal**: Verify natural language parsing extracts date/priority
 
-**Independent Test**: Type "Buy milk tomorrow !high" → verify title, due date, priority
+**Independent Test**: Type natural language, verify parser extracts correct values
 
-### Implementation for User Story 13
+### Verification for User Story 13
 
-- [ ] T068 [US13] Verify natural language parser in `src/renderer/src/lib/natural-date-parser.ts`
-- [ ] T069 [US13] Test: "Buy milk tomorrow !high" → title "Buy milk", due tomorrow, priority high
-- [ ] T070 [P] [US13] Test: "Call mom next Monday" → due date set to next Monday
+- [ ] T061 [P] [US13] Verify natural date parser in src/renderer/src/lib/natural-date-parser.ts
+- [ ] T062 [US13] Verify priority markers (!high, !low, etc.) are parsed correctly
+- [ ] T063 [US13] Verify parsed values are applied to created task
+- [ ] T064 [US13] Test common phrases: "tomorrow", "next Monday", "in 3 days"
 
-**Checkpoint**: Natural language parsing works
+**Checkpoint**: Natural language entry verified
 
 ---
 
 ## Phase 16: User Story 14 - Drag Tasks in Kanban (Priority: P3)
 
-**Goal**: Dragging task to new column updates status
+**Goal**: Verify drag-drop updates task status
 
-**Independent Test**: Drag task to Done column → verify status updates and completedAt set
+**Independent Test**: Drag task to new column, verify status updates
 
-### Implementation for User Story 14
+### Verification for User Story 14
 
-- [ ] T071 [US14] Verify Kanban drag updates call `tasksService.move()` or `tasksService.update()`
-- [ ] T072 [US14] Test: Drag task from Backlog to In Progress, verify status persists
-- [ ] T073 [P] [US14] Test: Drag task to Done column, verify completedAt timestamp set
+- [ ] T065 [P] [US14] Verify drag-drop handlers in src/renderer/src/components/tasks/kanban/
+- [ ] T066 [US14] Verify status update persists to database on drop
+- [ ] T067 [US14] Verify dragging to Done column sets completedAt
 
-**Checkpoint**: Kanban drag-and-drop works
+**Checkpoint**: Kanban drag-drop verified
 
 ---
 
-## Phase 17: Polish & Cross-Cutting Concerns
+## Phase 17: Bulk Operations Verification
 
-**Purpose**: Improvements affecting multiple user stories
+**Purpose**: Verify all bulk operations use backend correctly
 
-- [ ] T074 Wire bulk operations to use `tasksService.bulk*` methods in `src/renderer/src/hooks/use-bulk-actions.ts`
-- [ ] T075 [P] Add error handling for database failures in context with user-friendly messages
-- [ ] T076 [P] Verify real-time sync works when task updated in one window, reflects in another
-- [ ] T077 Run full typecheck and fix any type errors: `pnpm typecheck`
-- [ ] T078 [P] Document integration architecture in `docs/tasks-system.md` updates section
+- [ ] T068 [P] Verify bulkComplete uses tasksService.bulkComplete in src/renderer/src/pages/tasks.tsx
+- [ ] T069 [P] Verify bulkDelete uses tasksService.bulkDelete in src/renderer/src/pages/tasks.tsx
+- [ ] T070 [P] Verify bulkMove uses tasksService.bulkMove in src/renderer/src/pages/tasks.tsx
+- [ ] T071 Verify bulkArchive uses tasksService.bulkArchive in src/renderer/src/pages/tasks.tsx
+- [ ] T072 Performance test: bulk operations on 50 tasks complete in <500ms
+
+**Checkpoint**: Bulk operations verified
+
+---
+
+## Phase 18: Polish & Cross-Cutting Concerns
+
+**Purpose**: Final verification and documentation
+
+- [ ] T073 [P] Run full typecheck `pnpm typecheck` and fix any errors
+- [ ] T074 [P] Run lint `pnpm lint` and fix any issues
+- [ ] T075 Verify performance: 1000+ tasks with 60fps scrolling
+- [ ] T076 Update docs/implementation-status.md with verification results
+- [ ] T077 Create smoke test checklist for manual QA
+- [ ] T078 Document any remaining gaps or technical debt
 
 ---
 
@@ -326,84 +339,86 @@
 
 ### Phase Dependencies
 
-- **Phase 1 (Setup)**: No dependencies - verification only
-- **Phase 2 (Foundational)**: Depends on Phase 1 - BLOCKS all user stories
-- **Phases 3-16 (User Stories)**: All depend on Phase 2 completion
-  - Can proceed in priority order (P1 → P2 → P3)
-  - Within same priority, can parallelize across developers
-- **Phase 17 (Polish)**: Depends on all P1 stories complete
+- **Setup (Phase 1)**: No dependencies - can start immediately
+- **Foundational (Phase 2)**: Depends on Setup - BLOCKS all user stories
+- **User Stories (Phases 3-16)**: All depend on Foundational phase completion
+  - P1 stories (US1-5) can proceed in priority order
+  - P2 stories (US6-10) can start after P1 verification
+  - P3 stories (US11-14) can start after P2 verification
+- **Bulk Operations (Phase 17)**: Depends on US4, US9 completion
+- **Polish (Phase 18)**: Depends on all story verification complete
 
 ### User Story Dependencies
 
-| Story | Priority | Can Start After | Dependencies on Other Stories |
-|-------|----------|-----------------|-------------------------------|
-| US1 (Persist) | P1 | Phase 2 | None - foundational |
-| US2 (Full Details) | P1 | Phase 2 | None |
-| US3 (Projects) | P1 | Phase 2 | None |
-| US4 (Complete) | P1 | Phase 2 | None |
-| US5 (Filters) | P1 | Phase 2 | None |
-| US6 (Repeating) | P2 | Phase 2 | Depends on US1 working |
-| US7 (Subtasks) | P2 | Phase 2 | Depends on US1 working |
-| US8 (Note Links) | P2 | Phase 2 | None |
-| US9 (Archive) | P2 | Phase 2 | Depends on US4 (complete) |
-| US10 (Undo) | P2 | Phase 2 | None |
-| US11 (Duplicate) | P3 | Phase 2 | Depends on US7 for subtask copy |
-| US12 (Due Time) | P3 | Phase 2 | None |
-| US13 (NL Entry) | P3 | Phase 2 | None |
-| US14 (Kanban Drag) | P3 | Phase 2 | Depends on US3 (projects) |
+- **User Story 1 (P1)**: Can start after Foundational - No dependencies
+- **User Story 2 (P1)**: Can start after Foundational - No dependencies
+- **User Story 3 (P1)**: Can start after Foundational - Relates to US1 (statuses)
+- **User Story 4 (P1)**: Can start after Foundational - Relates to US1 (persistence)
+- **User Story 5 (P1)**: Can start after Foundational - No dependencies
+- **User Story 6 (P2)**: Depends on T006 (RepeatConfig fix) - Core functionality
+- **User Story 7 (P2)**: Can start after Foundational - Independent feature
+- **User Story 8 (P2)**: May need notes system integration
+- **User Story 9 (P2)**: Relates to US4 (completion)
+- **User Story 10 (P2)**: Can start after Foundational - Client-side only
+- **User Story 11 (P3)**: Can start after US7 (subtasks for duplication)
+- **User Story 12 (P3)**: Can start after US2 (task fields)
+- **User Story 13 (P3)**: Can start after US2 (task creation)
+- **User Story 14 (P3)**: Can start after US3 (projects/statuses)
 
 ### Parallel Opportunities
 
-- All Phase 2 tasks marked [P] can run in parallel
-- All P1 user stories can run in parallel after Phase 2
-- Within each story, tasks marked [P] can run in parallel
+- Phase 1: T003 and T004 can run in parallel
+- Phase 2: T008 and T009 can run in parallel
+- Within each User Story: Tasks marked [P] can run in parallel
+- P1 User Stories can be verified by different developers in parallel
 
 ---
 
-## Parallel Example: Phase 2 (Foundational)
+## Parallel Example: Foundational Phase
 
 ```bash
-# These can run in parallel (different files):
-Task T005: "Implement repeatConfig conversion in contexts/tasks/index.tsx:68"
-Task T006: "Add priority level 4 (urgent) to priorityMap in contexts/tasks/index.tsx"
-Task T008: "Verify App.tsx wraps tasks page with TasksProvider correctly"
+# After T005, T006, T007 complete sequentially (they have dependencies):
+Task: "Verify TasksProvider properly subscribes to IPC events" [T008]
+Task: "Verify type conversions (priority int↔string, dates)" [T009]
 ```
 
 ---
 
 ## Implementation Strategy
 
-### MVP First (P1 Stories Only)
+### MVP First (Verification Focus)
 
+Since backend is already implemented:
 1. Complete Phase 1: Setup verification
 2. Complete Phase 2: Fix integration gaps (CRITICAL)
-3. Complete Phases 3-7: All P1 user stories
-4. **STOP and VALIDATE**: Test each P1 story independently
-5. Deploy/demo MVP
+3. Complete Phase 3: User Story 1 (Persistence) - Core functionality
+4. **STOP and VALIDATE**: Run smoke tests
+5. Continue with remaining P1 stories
 
-### Suggested MVP Scope
+### Incremental Verification
 
-**Phase 2 + US1 only**:
-- T004-T008 (fix integration gaps)
-- T009-T014 (verify persistence works)
+1. Fix integration gaps → Gaps resolved
+2. Verify US1 (Persistence) → Core works
+3. Verify US2-5 (Remaining P1) → All P1 features work
+4. Verify US6-10 (P2) → Advanced features work
+5. Verify US11-14 (P3) → All features work
+6. Performance + Polish → Production ready
 
-This proves the data layer works before expanding to other stories.
+### Key Focus Areas
 
-### Incremental Delivery
-
-1. Phase 1-2 → Foundation ready (fixes integration gaps)
-2. Add US1 → Test persistence → **First Demo**
-3. Add US2-US5 → Full P1 feature set → **MVP Release**
-4. Add US6-US10 → P2 features → **v1.1 Release**
-5. Add US11-US14 → P3 features → **v1.2 Release**
+Given the plan.md analysis, prioritize:
+1. **T005**: Status loading gap (blocks US3)
+2. **T006**: RepeatConfig conversion (blocks US6)
+3. **T007**: Data flow documentation (understanding)
+4. **T068-T071**: Bulk operations verification (may not be using backend)
 
 ---
 
 ## Notes
 
-- Backend is already implemented - tasks focus on verification and gap-filling
-- Most tasks are verification/testing rather than new code
-- T004 (load statuses) and T005 (repeatConfig) are the main code changes needed
-- Tests are manual since no automated test suite was requested
-- [P] tasks = different files, no dependencies
-- Each user story should be independently testable after completion
+- Backend is ~3000 LOC already implemented
+- UI is ~1653 LOC in tasks.tsx alone + 144 component files
+- Focus is verification, not implementation
+- Client-side filtering may be intentional for performance (under 10k tasks)
+- Saved filters use localStorage (not database) - document as intentional or future enhancement
+- Undo is client-side only - acceptable for now per spec

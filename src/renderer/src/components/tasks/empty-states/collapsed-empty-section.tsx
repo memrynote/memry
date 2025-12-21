@@ -137,8 +137,6 @@ export const getCollapsedEmptyProps = (
       return { label: "OVERDUE", message: "All caught up!" }
     case "no-date":
       return { label: "NO DATE", message: "No tasks" }
-    default:
-      return { label: type.toUpperCase(), message: "No tasks" }
   }
 }
 

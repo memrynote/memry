@@ -48,6 +48,7 @@ import {
     type TaskFilters,
     type TaskSort,
     type SavedFilter,
+    type CompletionFilterType,
 } from "@/data/tasks-data"
 import { createDefaultTask, generateTaskId, type Task, type Priority } from "@/data/sample-tasks"
 import { addDays } from "@/lib/task-utils"
@@ -347,7 +348,7 @@ export const TasksPage = ({
     // In Projects tab, ignore projectIds filter (already scoped) and include completed by default
     const projectsTabFilters = useMemo(() => {
         if (activeInternalTab !== "projects") return filters
-        return { ...filters, projectIds: [], completion: "all" }
+        return { ...filters, projectIds: [], completion: "all" as CompletionFilterType }
     }, [filters, activeInternalTab])
 
     // Apply advanced filters and sort to base filtered tasks

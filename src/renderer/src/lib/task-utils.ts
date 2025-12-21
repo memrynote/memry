@@ -791,9 +791,9 @@ export const dueDateGroupConfig: Record<keyof TaskGroupByDate, GroupHeaderConfig
 }
 
 export const completionGroupConfig: Record<keyof TaskGroupByCompletion, GroupHeaderConfig> = {
-  today: { id: "today", label: "TODAY", accentColor: "#10b981" },
-  yesterday: { id: "yesterday", label: "YESTERDAY" },
-  earlier: { id: "earlier", label: "EARLIER", isMuted: true },
+  today: { id: "today", label: "TODAY", urgency: "high", accentColor: "#10b981" },
+  yesterday: { id: "yesterday", label: "YESTERDAY", urgency: "normal" },
+  earlier: { id: "earlier", label: "EARLIER", urgency: "low", isMuted: true },
 }
 
 // ============================================================================
@@ -1119,11 +1119,11 @@ export const groupCompletedByPeriod = (tasks: Task[]): CompletedTaskGroups => {
  * Config for completion period headers
  */
 export const completionPeriodConfig: Record<CompletionPeriod, GroupHeaderConfig> = {
-  today: { id: "today", label: "TODAY", accentColor: "#10b981" },
-  yesterday: { id: "yesterday", label: "YESTERDAY" },
-  earlierThisWeek: { id: "earlierThisWeek", label: "EARLIER THIS WEEK" },
-  lastWeek: { id: "lastWeek", label: "LAST WEEK", isMuted: true },
-  older: { id: "older", label: "OLDER", isMuted: true },
+  today: { id: "today", label: "TODAY", urgency: "high", accentColor: "#10b981" },
+  yesterday: { id: "yesterday", label: "YESTERDAY", urgency: "normal" },
+  earlierThisWeek: { id: "earlierThisWeek", label: "EARLIER THIS WEEK", urgency: "normal" },
+  lastWeek: { id: "lastWeek", label: "LAST WEEK", urgency: "low", isMuted: true },
+  older: { id: "older", label: "OLDER", urgency: "low", isMuted: true },
 }
 
 /**
