@@ -1,8 +1,8 @@
 # Notes System Architecture
 
-**Status**: Phase 4 (US2) Complete - External File Change Detection
+**Status**: Phase 6 Complete - Full-Text Search Implemented
 **Branch**: `001-core-data-layer`
-**Tasks**: T037-T054 (GitHub Issues #37-#54)
+**Tasks**: T037-T067 (GitHub Issues #37-#67)
 
 This document describes the notes system implementation for Claude Code reference.
 
@@ -69,9 +69,10 @@ createSnippet(content: string, maxLength?: number): string
 **Features**:
 - Auto-generates UUID if missing (`nanoid(12)`)
 - Auto-sets `created`/`modified` timestamps
-- Preserves custom frontmatter fields
-- Extracts `[[Wiki Links]]` with positions
+- Preserves custom frontmatter fields (via `[key: string]: unknown`)
+- Extracts `[[Wiki Links]]` with positions (supports `[[title]]` and `[[title|display]]`)
 - Tags normalized to lowercase
+- Validates note ID format (lowercase alphanumeric, 12 chars)
 
 ### 2. File Operations
 **File**: `src/main/vault/file-ops.ts`
@@ -117,16 +118,21 @@ getTagsWithCounts(): Promise<Array<{ tag, count }>>
 getNoteLinks(id: string): Promise<NoteLinksResponse>
 getFolders(): Promise<string[]>
 createFolder(folderPath: string): Promise<void>
+renameFolder(oldPath: string, newPath: string): Promise<void>
+deleteFolder(folderPath: string): Promise<void>
 noteExists(titleOrPath: string): Promise<boolean>
 openExternal(id: string): Promise<void>
 revealInFinder(id: string): Promise<void>
 ```
 
 **Key Behaviors**:
-- **Create**: Generates ID, writes file, updates cache, emits event
-- **Update**: Atomic write, updates cache, emits event
-- **Delete**: Removes file, cleans cache (tags, links), emits event
-- **Duplicate UUID**: Detected on read, generates new UUID automatically
+- **Create**: Generates ID, writes file, updates cache, indexes FTS, emits event
+- **Update**: Atomic write, updates cache, syncs FTS content, emits event
+- **Delete**: Removes file, cleans cache (tags, links), removes from FTS, emits event
+- **Rename**: Renames file, updates cache path/title, emits RENAMED event
+- **Move**: Relocates to different folder, updates cache path, maintains ID
+- **Duplicate UUID**: Detected on read, generates new UUID automatically (T046)
+- **Folder Ops**: Create, rename, delete folders (delete is recursive)
 - **Events**: Uses `NotesChannels.events.*` for IPC notifications
 
 ### 4. Database Queries
@@ -187,6 +193,8 @@ Registers all notes IPC channels with Zod validation.
 'notes:get-links'      -> getNoteLinks()
 'notes:get-folders'    -> getFolders()
 'notes:create-folder'  -> createFolder()
+'notes:rename-folder'  -> renameFolder()
+'notes:delete-folder'  -> deleteFolder()
 'notes:exists'         -> noteExists()
 'notes:open-external'  -> openExternal()
 'notes:reveal-in-finder' -> revealInFinder()
@@ -201,7 +209,7 @@ Exposes notes API to renderer process.
 window.api.notes = {
   create, get, getByPath, update, rename, move, delete,
   list, getTags, getLinks, getFolders, createFolder,
-  exists, openExternal, revealInFinder
+  renameFolder, deleteFolder, exists, openExternal, revealInFinder
 }
 
 // Event subscriptions
@@ -255,7 +263,7 @@ const {
 // Additional hooks
 const { tags, isLoading, refresh } = useNoteTags()
 const { outgoing, incoming, isLoading } = useNoteLinks(noteId)
-const { folders, createFolder, refresh } = useNoteFolders()
+const { folders, createFolder, renameFolder, deleteFolder, refresh } = useNoteFolders()
 ```
 
 **Features**:
@@ -263,6 +271,173 @@ const { folders, createFolder, refresh } = useNoteFolders()
 - Subscribes to IPC events automatically
 - Updates state when notes change externally
 - Pagination with `loadMore()`
+
+### 9. Rename Tracker
+**File**: `src/main/vault/rename-tracker.ts`
+
+Detects file renames by matching UUIDs within a 500ms window.
+
+```typescript
+// Key exports
+trackPendingDelete(id, relativePath, onRealDelete): void
+checkForRename(id, newPath): Promise<string | null>
+clearPendingDelete(id): void
+clearAllPendingDeletes(): void
+hasPendingDeletes(): boolean
+getPendingDeleteCount(): number
+```
+
+**How it works**:
+1. When a file is deleted, `trackPendingDelete()` stores the UUID
+2. A 500ms timer starts
+3. If a new file with the same UUID appears, `checkForRename()` detects it
+4. The rename is processed: cache updated, RENAMED event emitted
+5. If no match within 500ms, `onRealDelete()` callback executes
+
+### 10. FTS Module
+**File**: `src/main/database/fts.ts`
+
+FTS5 full-text search with automatic triggers.
+
+```typescript
+// Key exports
+initializeFts(db): void                            // Create table and triggers
+updateFtsContent(db, noteId, content, tags): void  // Update searchable content
+insertFtsNote(db, note): void                      // Insert/replace FTS entry
+deleteFtsNote(db, noteId): void                    // Delete from FTS
+clearFtsTable(db): void                            // Clear all entries
+getFtsCount(db): number                            // Count indexed notes
+ftsNoteExists(db, noteId): boolean                 // Check if indexed
+```
+
+**Important**: FTS triggers sync id/title automatically, but content/tags must be updated manually via `updateFtsContent()`.
+
+### 11. Search Handlers
+**File**: `src/main/ipc/search-handlers.ts`
+
+Complete search IPC layer with recent search tracking.
+
+```typescript
+// IPC Channels (SearchChannels.invoke.*)
+'search:query'         -> Full search with pagination
+'search:quick'         -> Quick search for command palette
+'search:suggestions'   -> Get search suggestions by prefix
+'search:get-recent'    -> Get recent search queries
+'search:clear-recent'  -> Clear recent searches
+'search:add-recent'    -> Add to recent searches
+'search:get-stats'     -> Get search index stats
+'search:rebuild-index' -> Force rebuild search index (TODO)
+'search:notes'         -> Search notes only (optimized)
+'search:find-by-tag'   -> Find notes by tag
+'search:find-backlinks'-> Find notes linking to a note
+```
+
+### 12. Search Hooks
+**File**: `src/renderer/src/hooks/use-search.ts`
+
+React hooks for search state management.
+
+```typescript
+// Main search hook with debouncing
+const {
+  query, setQuery, results, total, hasMore,
+  isLoading, queryTime, error, search, loadMore, clear
+} = useSearch({ debounceMs, autoSearch, limit })
+
+// Quick search for command palette
+const { query, notes, isLoading, setQuery, clear } = useQuickSearch(debounceMs)
+
+// Search index stats and management
+const { stats, isLoading, refresh, rebuildIndex, rebuildProgress } = useSearchStats()
+
+// Recent searches management
+const { recent, isLoading, addRecent, clearRecent, refresh } = useRecentSearches()
+```
+
+### 13. Search Queries
+**File**: `src/shared/db/queries/search.ts`
+
+FTS5 query functions.
+
+```typescript
+// Key exports
+searchNotes(db, query, options): SearchResultInternal[]
+quickSearch(db, query, limit): { notes, tasks }
+getSuggestions(db, prefix, limit): string[]
+findNotesByTag(db, tag): SearchResultInternal[]
+findBacklinks(db, noteId): SearchResultInternal[]
+getSearchableCount(db): number
+isFtsHealthy(db): boolean
+```
+
+## Implementation Details
+
+### Wiki Link Patterns
+The `extractWikiLinks()` function supports two patterns:
+- `[[Note Title]]` - Simple link
+- `[[Note Title|Display Text]]` - Link with custom display text
+
+### Content Hash Algorithm
+Uses djb2 hash for change detection:
+```typescript
+function djb2Hash(str: string): string {
+  let hash = 5381
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i)
+  }
+  return (hash >>> 0).toString(16)
+}
+```
+Used to skip redundant updates when file timestamp changes but content doesn't.
+
+### Duplicate ID Detection (T046)
+When `getNoteById()` finds a note with the same ID at a different path:
+1. Generates a new UUID for the duplicate
+2. Writes the new ID back to the file
+3. Updates the cache
+4. Returns the note with the new ID
+
+This handles edge cases where users copy files or sync conflicts occur.
+
+### Snippet Generation
+`createSnippet()` algorithm:
+1. Remove YAML frontmatter
+2. Strip markdown formatting (headers, bold, italic, links)
+3. Remove code blocks and inline code
+4. Collapse multiple whitespace to single space
+5. Trim to 200 characters at word boundary
+
+### Tag Case Normalization
+Tags are automatically normalized to lowercase during:
+- `extractTags()` in frontmatter processing
+- `setNoteTags()` in database operations
+
+### Link Resolution Strategy
+`resolveNoteByTitle()` uses two-phase resolution:
+1. Exact match on title
+2. Case-insensitive fallback
+
+This ensures `[[My Note]]` links resolve to `My Note.md` or `my note.md`.
+
+### Modified Timestamp Behavior
+- `serializeNote()` updates `modified` timestamp on every write
+- Reading a file does NOT update the modified timestamp
+- Only explicit updates via `updateNote()` or file changes trigger modified update
+
+### Event Source Distinction
+All note events include a `source` field:
+- `'internal'` - Change originated from app API
+- `'external'` - Change detected by file watcher
+
+Used to prevent UI jitter from self-generated events.
+
+### Atomic File Write Pattern
+All file writes use atomic pattern:
+1. Write to temp file: `filename.md.{random-hex}.tmp`
+2. Rename temp file to target path
+3. On error, cleanup temp file
+
+Prevents data corruption if crash occurs during write.
 
 ## IPC Channel Constants
 **File**: `src/shared/ipc-channels.ts`
@@ -677,30 +852,72 @@ Implemented:
 - Updates index.db cache automatically
 - Emits IPC events to all renderer windows
 
+### Phase 5: Rename Tracking (US3) - T055-T059 ✓
+**Status**: Complete
+
+Implemented:
+- `src/main/vault/rename-tracker.ts` - UUID-based rename detection
+- Automatic cache path/title update on rename
+- RENAMED event emission with `source: 'external'`
+
+**Features**:
+- 500ms detection window for rename events
+- chokidar emits 'unlink' then 'add' for renames - tracker matches by UUID
+- Pending delete tracking with timeout-based real delete processing
+- Cache updated with new path and title
+- FTS index updated automatically
+
+```typescript
+// Key exports from rename-tracker.ts
+trackPendingDelete(id: string, relativePath: string, onRealDelete: () => Promise<void>): void
+checkForRename(id: string, newPath: string): Promise<string | null>
+clearPendingDelete(id: string): void
+clearAllPendingDeletes(): void
+hasPendingDeletes(): boolean
+getPendingDeleteCount(): number
+```
+
+### Phase 6: Full-Text Search (US4) - T060-T067 ✓
+**Status**: Complete
+
+Implemented:
+- `src/main/database/fts.ts` - FTS5 virtual table and triggers
+- Automatic index sync via SQLite triggers
+- Search query functions
+
+**FTS5 Virtual Table**:
+```sql
+CREATE VIRTUAL TABLE IF NOT EXISTS fts_notes USING fts5(
+  id UNINDEXED,    -- Note UUID (not searchable)
+  title,           -- Note title (searchable)
+  content,         -- Full note content (searchable)
+  tags,            -- Space-separated tags (searchable)
+  tokenize='porter unicode61'
+);
+```
+
+**Automatic Triggers**:
+- INSERT on note_cache → Creates FTS entry (content/tags empty initially)
+- DELETE on note_cache → Removes FTS entry
+- UPDATE title on note_cache → Updates FTS title
+
+**Manual Content Updates** (required because files are source of truth):
+```typescript
+// Key exports from fts.ts
+initializeFts(db: LibSQLDatabase): void          // Create table and triggers
+updateFtsContent(db, noteId, content, tags): void // Update content/tags
+insertFtsNote(db, note): void                     // Insert complete entry
+deleteFtsNote(db, noteId): void                   // Delete from FTS
+clearFtsTable(db): void                           // Clear all entries
+getFtsCount(db): number                           // Count indexed notes
+ftsNoteExists(db, noteId): boolean                // Check if note in FTS
+```
+
+**Important**: Content and tags are NOT automatically synced via triggers - must call `updateFtsContent()` explicitly after file changes.
+
 ---
 
 ## What's NOT Implemented Yet
-
-### Phase 5: Rename Tracking (US3) - T055-T059
-**Impact**: File renames in Finder break links.
-
-Missing:
-- `src/main/vault/rename-tracker.ts` - UUID-based rename detection
-- Automatic link updates when files renamed
-- RENAMED event from watcher
-
-**Workaround**: Use app's rename function, not Finder.
-
-### Phase 6: Full-Text Search (US4) - T060-T067
-**Impact**: No search functionality.
-
-Missing:
-- FTS5 triggers to sync with note_cache
-- Search query functions
-- Search IPC handlers
-- `use-search.ts` hook
-
-**Workaround**: Use `listNotes()` with tag filters.
 
 ### Phase 7: Indexing Progress (US7) - T068-T070
 **Impact**: No progress indicator for large vaults.
@@ -760,7 +977,14 @@ const updated = await window.api.notes.update({
 })
 console.log('Updated:', updated)
 
-// 6. Delete the note
+// 6. Search notes
+const searchResults = await window.api.search.query({
+  query: 'Hello',
+  limit: 10
+})
+console.log('Search results:', searchResults.results)
+
+// 7. Delete the note
 const deleted = await window.api.notes.delete(result.note.id)
 console.log('Deleted:', deleted)
 ```
@@ -794,20 +1018,28 @@ This is a test.
 | File Operations | `src/main/vault/file-ops.ts` |
 | Note CRUD | `src/main/vault/notes.ts` |
 | File Watcher | `src/main/vault/watcher.ts` |
+| Rename Tracker | `src/main/vault/rename-tracker.ts` |
 | Vault Manager | `src/main/vault/index.ts` |
 | DB Queries | `src/shared/db/queries/notes.ts` |
-| IPC Handlers | `src/main/ipc/notes-handlers.ts` |
+| DB Schema | `src/shared/db/schema/notes-cache.ts` |
+| FTS5 Search | `src/main/database/fts.ts` |
+| Search Queries | `src/shared/db/queries/search.ts` |
+| Search Contract | `src/shared/contracts/search-api.ts` |
+| IPC Handlers (Notes) | `src/main/ipc/notes-handlers.ts` |
+| IPC Handlers (Search) | `src/main/ipc/search-handlers.ts` |
 | IPC Registration | `src/main/ipc/index.ts` |
 | Channel Constants | `src/shared/ipc-channels.ts` |
 | Preload | `src/preload/index.ts` |
 | Preload Types | `src/preload/index.d.ts` |
 | API Contract | `src/shared/contracts/notes-api.ts` |
-| Renderer Service | `src/renderer/src/services/notes-service.ts` |
-| React Hook | `src/renderer/src/hooks/use-notes.ts` |
+| Renderer Service (Notes) | `src/renderer/src/services/notes-service.ts` |
+| Renderer Service (Search) | `src/renderer/src/services/search-service.ts` |
+| React Hook (Notes) | `src/renderer/src/hooks/use-notes.ts` |
+| React Hook (Search) | `src/renderer/src/hooks/use-search.ts` |
 
 ## References
 
 - Spec: `specs/001-core-data-layer/spec.md`
 - Data Model: `specs/001-core-data-layer/data-model.md`
 - API Contract: `specs/001-core-data-layer/contracts/notes-api.ts`
-- Tasks: `specs/001-core-data-layer/tasks.md` (T037-T048)
+- Tasks: `specs/001-core-data-layer/tasks.md` (T037-T067)
