@@ -1,0 +1,260 @@
+/**
+ * Tasks IPC API Contract
+ *
+ * Handles task and project CRUD operations.
+ * Tasks are stored in SQLite (data.db), not as files.
+ */
+
+import { z } from 'zod'
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface RepeatConfig {
+  type: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'
+  interval: number
+  days?: number[] // For weekly: 0=Sun, 1=Mon, etc.
+  dayOfMonth?: number
+  endDate?: string
+}
+
+export interface Task {
+  id: string
+  projectId: string
+  statusId: string | null
+  parentId: string | null
+
+  title: string
+  description: string | null
+  priority: 0 | 1 | 2 | 3
+  position: number
+
+  dueDate: string | null
+  dueTime: string | null
+  startDate: string | null
+
+  repeatConfig: RepeatConfig | null
+  repeatFrom: 'due' | 'completion' | null
+
+  completedAt: string | null
+  archivedAt: string | null
+
+  createdAt: string
+  modifiedAt: string
+
+  // Optionally loaded relations
+  subtasks?: Task[]
+  linkedNoteIds?: string[]
+  tags?: string[]
+}
+
+export interface TaskListItem {
+  id: string
+  projectId: string
+  statusId: string | null
+  parentId: string | null
+  title: string
+  priority: 0 | 1 | 2 | 3
+  position: number
+  dueDate: string | null
+  dueTime: string | null
+  completedAt: string | null
+  hasSubtasks: boolean
+  subtaskCount: number
+  completedSubtaskCount: number
+  tags: string[]
+}
+
+export interface Project {
+  id: string
+  name: string
+  description: string | null
+  color: string
+  icon: string | null
+  position: number
+  isInbox: boolean
+  createdAt: string
+  modifiedAt: string
+  archivedAt: string | null
+}
+
+export interface ProjectWithStats extends Project {
+  taskCount: number
+  completedCount: number
+  overdueCount: number
+}
+
+export interface Status {
+  id: string
+  projectId: string
+  name: string
+  color: string
+  position: number
+  isDefault: boolean
+  isDone: boolean
+  createdAt: string
+}
+
+// ============================================================================
+// Request Schemas
+// ============================================================================
+
+export const TaskCreateSchema = z.object({
+  projectId: z.string(),
+  title: z.string().min(1).max(500),
+  description: z.string().max(10000).nullish(),
+  priority: z.number().int().min(0).max(3).default(0),
+  statusId: z.string().nullish(),
+  parentId: z.string().nullish(),
+  dueDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullish(),
+  dueTime: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .nullish(),
+  startDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullish(),
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  linkedNoteIds: z.array(z.string()).optional(),
+  position: z.number().int().optional()
+})
+
+export const TaskUpdateSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1).max(500).optional(),
+  description: z.string().max(10000).nullish(),
+  priority: z.number().int().min(0).max(3).optional(),
+  projectId: z.string().optional(),
+  statusId: z.string().nullish(),
+  parentId: z.string().nullish(),
+  dueDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullish(),
+  dueTime: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .nullish(),
+  startDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullish(),
+  repeatConfig: z
+    .object({
+      type: z.enum(['daily', 'weekly', 'monthly', 'yearly', 'custom']),
+      interval: z.number().int().min(1),
+      days: z.array(z.number().int().min(0).max(6)).optional(),
+      dayOfMonth: z.number().int().min(1).max(31).optional(),
+      endDate: z.string().optional()
+    })
+    .nullish(),
+  repeatFrom: z.enum(['due', 'completion']).nullish(),
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  linkedNoteIds: z.array(z.string()).optional()
+})
+
+export const TaskCompleteSchema = z.object({
+  id: z.string(),
+  completedAt: z.string().datetime().optional() // Defaults to now
+})
+
+export const TaskMoveSchema = z.object({
+  taskId: z.string(),
+  targetProjectId: z.string().optional(),
+  targetStatusId: z.string().nullish(),
+  targetParentId: z.string().nullish(),
+  position: z.number().int()
+})
+
+export const TaskListSchema = z.object({
+  projectId: z.string().optional(),
+  statusId: z.string().nullish(),
+  parentId: z.string().nullish(),
+  includeCompleted: z.boolean().default(false),
+  includeArchived: z.boolean().default(false),
+  dueBefore: z.string().optional(),
+  dueAfter: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  search: z.string().optional(),
+  sortBy: z.enum(['position', 'dueDate', 'priority', 'created', 'modified']).default('position'),
+  sortOrder: z.enum(['asc', 'desc']).default('asc'),
+  limit: z.number().int().min(1).max(1000).default(100),
+  offset: z.number().int().min(0).default(0)
+})
+
+export const ProjectCreateSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).nullish(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default('#6366f1'),
+  icon: z.string().nullish()
+})
+
+export const ProjectUpdateSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).nullish(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional(),
+  icon: z.string().nullish()
+})
+
+export const StatusCreateSchema = z.object({
+  projectId: z.string(),
+  name: z.string().min(1).max(50),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default('#6b7280'),
+  isDone: z.boolean().default(false)
+})
+
+// ============================================================================
+// Response Types
+// ============================================================================
+
+export interface TaskCreateResponse {
+  success: boolean
+  task: Task | null
+  error?: string
+}
+
+export interface TaskListResponse {
+  tasks: TaskListItem[]
+  total: number
+  hasMore: boolean
+}
+
+export interface ProjectListResponse {
+  projects: ProjectWithStats[]
+}
+
+export interface TaskStats {
+  total: number
+  completed: number
+  overdue: number
+  dueToday: number
+  dueThisWeek: number
+}
+
+// ============================================================================
+// Type inference
+// ============================================================================
+
+export type TaskCreateInput = z.infer<typeof TaskCreateSchema>
+export type TaskUpdateInput = z.infer<typeof TaskUpdateSchema>
+export type TaskCompleteInput = z.infer<typeof TaskCompleteSchema>
+export type TaskMoveInput = z.infer<typeof TaskMoveSchema>
+export type TaskListInput = z.infer<typeof TaskListSchema>
+export type ProjectCreateInput = z.infer<typeof ProjectCreateSchema>
+export type ProjectUpdateInput = z.infer<typeof ProjectUpdateSchema>
+export type StatusCreateInput = z.infer<typeof StatusCreateSchema>

@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // Import channel constants from shared (single source of truth)
-import { VaultChannels, NotesChannels, SearchChannels } from '@shared/ipc-channels'
+import { VaultChannels, NotesChannels, SearchChannels, TasksChannels } from '@shared/ipc-channels'
 
 // Custom APIs for renderer
 const api = {
@@ -94,6 +94,133 @@ const api = {
     findByTag: (tag: string) => ipcRenderer.invoke(SearchChannels.invoke.FIND_BY_TAG, tag),
     findBacklinks: (noteId: string) =>
       ipcRenderer.invoke(SearchChannels.invoke.FIND_BACKLINKS, noteId)
+  },
+
+  // Tasks API
+  tasks: {
+    // Task CRUD
+    create: (input: {
+      projectId: string
+      title: string
+      description?: string | null
+      priority?: number
+      statusId?: string | null
+      parentId?: string | null
+      dueDate?: string | null
+      dueTime?: string | null
+      startDate?: string | null
+      tags?: string[]
+      linkedNoteIds?: string[]
+      position?: number
+    }) => ipcRenderer.invoke(TasksChannels.invoke.CREATE, input),
+    get: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.GET, id),
+    update: (input: {
+      id: string
+      title?: string
+      description?: string | null
+      priority?: number
+      projectId?: string
+      statusId?: string | null
+      parentId?: string | null
+      dueDate?: string | null
+      dueTime?: string | null
+      startDate?: string | null
+      tags?: string[]
+      linkedNoteIds?: string[]
+    }) => ipcRenderer.invoke(TasksChannels.invoke.UPDATE, input),
+    delete: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.DELETE, id),
+    list: (options?: {
+      projectId?: string
+      statusId?: string | null
+      parentId?: string | null
+      includeCompleted?: boolean
+      includeArchived?: boolean
+      dueBefore?: string
+      dueAfter?: string
+      tags?: string[]
+      search?: string
+      sortBy?: 'position' | 'dueDate' | 'priority' | 'created' | 'modified'
+      sortOrder?: 'asc' | 'desc'
+      limit?: number
+      offset?: number
+    }) => ipcRenderer.invoke(TasksChannels.invoke.LIST, options ?? {}),
+
+    // Task actions
+    complete: (input: { id: string; completedAt?: string }) =>
+      ipcRenderer.invoke(TasksChannels.invoke.COMPLETE, input),
+    uncomplete: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.UNCOMPLETE, id),
+    archive: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.ARCHIVE, id),
+    unarchive: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.UNARCHIVE, id),
+    move: (input: {
+      taskId: string
+      targetProjectId?: string
+      targetStatusId?: string | null
+      targetParentId?: string | null
+      position: number
+    }) => ipcRenderer.invoke(TasksChannels.invoke.MOVE, input),
+    reorder: (taskIds: string[], positions: number[]) =>
+      ipcRenderer.invoke(TasksChannels.invoke.REORDER, taskIds, positions),
+    duplicate: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.DUPLICATE, id),
+
+    // Subtask operations
+    getSubtasks: (parentId: string) =>
+      ipcRenderer.invoke(TasksChannels.invoke.GET_SUBTASKS, parentId),
+    convertToSubtask: (taskId: string, parentId: string) =>
+      ipcRenderer.invoke(TasksChannels.invoke.CONVERT_TO_SUBTASK, taskId, parentId),
+    convertToTask: (taskId: string) =>
+      ipcRenderer.invoke(TasksChannels.invoke.CONVERT_TO_TASK, taskId),
+
+    // Project operations
+    createProject: (input: {
+      name: string
+      description?: string | null
+      color?: string
+      icon?: string | null
+    }) => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_CREATE, input),
+    getProject: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_GET, id),
+    updateProject: (input: {
+      id: string
+      name?: string
+      description?: string | null
+      color?: string
+      icon?: string | null
+    }) => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_UPDATE, input),
+    deleteProject: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_DELETE, id),
+    listProjects: () => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_LIST),
+    archiveProject: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_ARCHIVE, id),
+    reorderProjects: (projectIds: string[], positions: number[]) =>
+      ipcRenderer.invoke(TasksChannels.invoke.PROJECT_REORDER, projectIds, positions),
+
+    // Status operations
+    createStatus: (input: {
+      projectId: string
+      name: string
+      color?: string
+      isDone?: boolean
+    }) => ipcRenderer.invoke(TasksChannels.invoke.STATUS_CREATE, input),
+    updateStatus: (id: string, updates: Record<string, unknown>) =>
+      ipcRenderer.invoke(TasksChannels.invoke.STATUS_UPDATE, id, updates),
+    deleteStatus: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.STATUS_DELETE, id),
+    reorderStatuses: (statusIds: string[], positions: number[]) =>
+      ipcRenderer.invoke(TasksChannels.invoke.STATUS_REORDER, statusIds, positions),
+    listStatuses: (projectId: string) =>
+      ipcRenderer.invoke(TasksChannels.invoke.STATUS_LIST, projectId),
+
+    // Tag operations
+    getTags: () => ipcRenderer.invoke(TasksChannels.invoke.GET_TAGS),
+
+    // Bulk operations
+    bulkComplete: (ids: string[]) => ipcRenderer.invoke(TasksChannels.invoke.BULK_COMPLETE, ids),
+    bulkDelete: (ids: string[]) => ipcRenderer.invoke(TasksChannels.invoke.BULK_DELETE, ids),
+    bulkMove: (ids: string[], projectId: string) =>
+      ipcRenderer.invoke(TasksChannels.invoke.BULK_MOVE, ids, projectId),
+    bulkArchive: (ids: string[]) => ipcRenderer.invoke(TasksChannels.invoke.BULK_ARCHIVE, ids),
+
+    // Stats and views
+    getStats: () => ipcRenderer.invoke(TasksChannels.invoke.GET_STATS),
+    getToday: () => ipcRenderer.invoke(TasksChannels.invoke.GET_TODAY),
+    getUpcoming: (days?: number) => ipcRenderer.invoke(TasksChannels.invoke.GET_UPCOMING, days),
+    getOverdue: () => ipcRenderer.invoke(TasksChannels.invoke.GET_OVERDUE)
   },
 
   // Event subscription helpers
@@ -197,6 +324,73 @@ const api = {
     const handler = (): void => callback()
     ipcRenderer.on(SearchChannels.events.INDEX_CORRUPT, handler)
     return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_CORRUPT, handler)
+  },
+
+  // Tasks event subscription helpers
+  onTaskCreated: (callback: (event: { task: unknown }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { task: unknown }): void =>
+      callback(data)
+    ipcRenderer.on(TasksChannels.events.CREATED, handler)
+    return () => ipcRenderer.removeListener(TasksChannels.events.CREATED, handler)
+  },
+
+  onTaskUpdated: (
+    callback: (event: { id: string; task: unknown; changes: unknown }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { id: string; task: unknown; changes: unknown }
+    ): void => callback(data)
+    ipcRenderer.on(TasksChannels.events.UPDATED, handler)
+    return () => ipcRenderer.removeListener(TasksChannels.events.UPDATED, handler)
+  },
+
+  onTaskDeleted: (callback: (event: { id: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { id: string }): void =>
+      callback(data)
+    ipcRenderer.on(TasksChannels.events.DELETED, handler)
+    return () => ipcRenderer.removeListener(TasksChannels.events.DELETED, handler)
+  },
+
+  onTaskCompleted: (callback: (event: { id: string; task: unknown }) => void): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { id: string; task: unknown }
+    ): void => callback(data)
+    ipcRenderer.on(TasksChannels.events.COMPLETED, handler)
+    return () => ipcRenderer.removeListener(TasksChannels.events.COMPLETED, handler)
+  },
+
+  onTaskMoved: (callback: (event: { id: string; task: unknown }) => void): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { id: string; task: unknown }
+    ): void => callback(data)
+    ipcRenderer.on(TasksChannels.events.MOVED, handler)
+    return () => ipcRenderer.removeListener(TasksChannels.events.MOVED, handler)
+  },
+
+  onProjectCreated: (callback: (event: { project: unknown }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { project: unknown }): void =>
+      callback(data)
+    ipcRenderer.on(TasksChannels.events.PROJECT_CREATED, handler)
+    return () => ipcRenderer.removeListener(TasksChannels.events.PROJECT_CREATED, handler)
+  },
+
+  onProjectUpdated: (callback: (event: { id: string; project: unknown }) => void): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { id: string; project: unknown }
+    ): void => callback(data)
+    ipcRenderer.on(TasksChannels.events.PROJECT_UPDATED, handler)
+    return () => ipcRenderer.removeListener(TasksChannels.events.PROJECT_UPDATED, handler)
+  },
+
+  onProjectDeleted: (callback: (event: { id: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { id: string }): void =>
+      callback(data)
+    ipcRenderer.on(TasksChannels.events.PROJECT_DELETED, handler)
+    return () => ipcRenderer.removeListener(TasksChannels.events.PROJECT_DELETED, handler)
   }
 }
 

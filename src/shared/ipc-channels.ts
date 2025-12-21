@@ -134,6 +134,74 @@ export const SearchChannels = {
 } as const
 
 // ============================================================================
+// Tasks Channels
+// ============================================================================
+
+export const TasksChannels = {
+  invoke: {
+    // Task operations
+    CREATE: 'tasks:create',
+    GET: 'tasks:get',
+    UPDATE: 'tasks:update',
+    DELETE: 'tasks:delete',
+    LIST: 'tasks:list',
+    COMPLETE: 'tasks:complete',
+    UNCOMPLETE: 'tasks:uncomplete',
+    ARCHIVE: 'tasks:archive',
+    UNARCHIVE: 'tasks:unarchive',
+    MOVE: 'tasks:move',
+    REORDER: 'tasks:reorder',
+    DUPLICATE: 'tasks:duplicate',
+
+    // Subtask operations
+    GET_SUBTASKS: 'tasks:get-subtasks',
+    CONVERT_TO_SUBTASK: 'tasks:convert-to-subtask',
+    CONVERT_TO_TASK: 'tasks:convert-to-task',
+
+    // Project operations
+    PROJECT_CREATE: 'tasks:project-create',
+    PROJECT_GET: 'tasks:project-get',
+    PROJECT_UPDATE: 'tasks:project-update',
+    PROJECT_DELETE: 'tasks:project-delete',
+    PROJECT_LIST: 'tasks:project-list',
+    PROJECT_ARCHIVE: 'tasks:project-archive',
+    PROJECT_REORDER: 'tasks:project-reorder',
+
+    // Status operations
+    STATUS_CREATE: 'tasks:status-create',
+    STATUS_UPDATE: 'tasks:status-update',
+    STATUS_DELETE: 'tasks:status-delete',
+    STATUS_REORDER: 'tasks:status-reorder',
+    STATUS_LIST: 'tasks:status-list',
+
+    // Tag operations
+    GET_TAGS: 'tasks:get-tags',
+
+    // Bulk operations
+    BULK_COMPLETE: 'tasks:bulk-complete',
+    BULK_DELETE: 'tasks:bulk-delete',
+    BULK_MOVE: 'tasks:bulk-move',
+    BULK_ARCHIVE: 'tasks:bulk-archive',
+
+    // Stats and views
+    GET_STATS: 'tasks:get-stats',
+    GET_TODAY: 'tasks:get-today',
+    GET_UPCOMING: 'tasks:get-upcoming',
+    GET_OVERDUE: 'tasks:get-overdue'
+  },
+  events: {
+    CREATED: 'tasks:created',
+    UPDATED: 'tasks:updated',
+    DELETED: 'tasks:deleted',
+    COMPLETED: 'tasks:completed',
+    MOVED: 'tasks:moved',
+    PROJECT_CREATED: 'tasks:project-created',
+    PROJECT_UPDATED: 'tasks:project-updated',
+    PROJECT_DELETED: 'tasks:project-deleted'
+  }
+} as const
+
+// ============================================================================
 // Type Exports
 // ============================================================================
 
@@ -145,3 +213,6 @@ export type NotesEventChannel = (typeof NotesChannels.events)[keyof typeof Notes
 
 export type SearchInvokeChannel = (typeof SearchChannels.invoke)[keyof typeof SearchChannels.invoke]
 export type SearchEventChannel = (typeof SearchChannels.events)[keyof typeof SearchChannels.events]
+
+export type TasksInvokeChannel = (typeof TasksChannels.invoke)[keyof typeof TasksChannels.invoke]
+export type TasksEventChannel = (typeof TasksChannels.events)[keyof typeof TasksChannels.events]
