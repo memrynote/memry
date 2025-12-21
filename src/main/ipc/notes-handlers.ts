@@ -14,6 +14,7 @@ import {
   NoteMoveSchema,
   NoteListSchema
 } from '@shared/contracts/notes-api'
+import { RenameFolderSchema } from '@shared/contracts/tasks-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
 import {
   createNote,
@@ -175,21 +176,21 @@ export function registerNotesHandlers(): void {
   // notes:rename-folder - Rename a folder
   ipcMain.handle(
     NotesChannels.invoke.RENAME_FOLDER,
-    async (_, oldPath: string, newPath: string) => {
+    createValidatedHandler(RenameFolderSchema, async (input) => {
       try {
-        await renameFolder(oldPath, newPath)
+        await renameFolder(input.oldPath, input.newPath)
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to rename folder'
         return { success: false, error: message }
       }
-    }
+    })
   )
 
   // notes:delete-folder - Delete a folder and all its contents
   ipcMain.handle(
     NotesChannels.invoke.DELETE_FOLDER,
-    async (_, folderPath: string) => {
+    createStringHandler(async (folderPath) => {
       try {
         await deleteFolder(folderPath)
         return { success: true }
@@ -197,7 +198,7 @@ export function registerNotesHandlers(): void {
         const message = error instanceof Error ? error.message : 'Failed to delete folder'
         return { success: false, error: message }
       }
-    }
+    })
   )
 
   // notes:exists - Check if note exists

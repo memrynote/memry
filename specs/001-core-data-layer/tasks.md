@@ -242,12 +242,12 @@
 
 **Purpose**: Final improvements and cleanup
 
-- [ ] T088 Add graceful shutdown: close database and watcher on app quit in src/main/index.ts
-- [ ] T089 Add input validation with Zod at all IPC boundaries in src/main/ipc/validate.ts
-- [ ] T090 Configure WAL mode and foreign keys for both databases in src/main/database/client.ts
-- [ ] T091 Add timeout handling for long-running database operations in src/main/database/client.ts
-- [ ] T092 Run quickstart.md validation steps to verify setup
-- [ ] T093 Update CLAUDE.md with new database commands and architecture notes
+- [x] T088 Add graceful shutdown: close database and watcher on app quit in src/main/index.ts
+- [x] T089 Add input validation with Zod at all IPC boundaries in src/main/ipc/validate.ts
+- [x] T090 Configure WAL mode and foreign keys for both databases in src/main/database/client.ts
+- [x] T091 Add timeout handling for long-running database operations in src/main/database/client.ts
+- [x] T092 Run quickstart.md validation steps to verify setup
+- [x] T093 Update CLAUDE.md with new database commands and architecture notes
 
 ---
 
