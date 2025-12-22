@@ -466,6 +466,86 @@ export interface ProjectDeletedEvent {
   id: string
 }
 
+// Saved Filter types
+export interface DueDateFilter {
+  type:
+    | 'any'
+    | 'none'
+    | 'overdue'
+    | 'today'
+    | 'tomorrow'
+    | 'this-week'
+    | 'next-week'
+    | 'this-month'
+    | 'custom'
+  customStart?: string | null
+  customEnd?: string | null
+}
+
+export interface TaskFiltersConfig {
+  search: string
+  projectIds: string[]
+  priorities: Array<'urgent' | 'high' | 'medium' | 'low' | 'none'>
+  dueDate: DueDateFilter
+  statusIds: string[]
+  completion: 'active' | 'completed' | 'all'
+  repeatType: 'all' | 'repeating' | 'one-time'
+  hasTime: 'all' | 'with-time' | 'without-time'
+}
+
+export interface TaskSortConfig {
+  field: 'dueDate' | 'priority' | 'createdAt' | 'title' | 'project' | 'completedAt'
+  direction: 'asc' | 'desc'
+}
+
+export interface SavedFilterConfig {
+  filters: TaskFiltersConfig
+  sort?: TaskSortConfig
+}
+
+export interface SavedFilter {
+  id: string
+  name: string
+  config: SavedFilterConfig
+  position: number
+  createdAt: string
+}
+
+export interface SavedFilterCreateInput {
+  name: string
+  config: SavedFilterConfig
+}
+
+export interface SavedFilterUpdateInput {
+  id: string
+  name?: string
+  config?: SavedFilterConfig
+  position?: number
+}
+
+export interface SavedFilterListResponse {
+  savedFilters: SavedFilter[]
+}
+
+export interface SavedFilterCreateResponse {
+  success: boolean
+  savedFilter: SavedFilter | null
+  error?: string
+}
+
+export interface SavedFilterUpdatedEvent {
+  id: string
+  savedFilter: SavedFilter
+}
+
+export interface SavedFilterCreatedEvent {
+  savedFilter: SavedFilter
+}
+
+export interface SavedFilterDeletedEvent {
+  id: string
+}
+
 export interface VaultStatus {
   isOpen: boolean
   path: string | null
@@ -597,6 +677,15 @@ export interface SearchClientAPI {
   findBacklinks(noteId: string): Promise<SearchResultNote[]>
 }
 
+// Saved Filters client API interface
+export interface SavedFiltersClientAPI {
+  list(): Promise<SavedFilterListResponse>
+  create(input: SavedFilterCreateInput): Promise<SavedFilterCreateResponse>
+  update(input: SavedFilterUpdateInput): Promise<SavedFilterCreateResponse>
+  delete(id: string): Promise<{ success: boolean; error?: string }>
+  reorder(ids: string[], positions: number[]): Promise<{ success: boolean; error?: string }>
+}
+
 // Window controls API
 interface WindowAPI {
   windowMinimize: () => void
@@ -610,6 +699,7 @@ interface API extends WindowAPI {
   notes: NotesClientAPI
   search: SearchClientAPI
   tasks: TasksClientAPI
+  savedFilters: SavedFiltersClientAPI
   // Vault event subscriptions
   onVaultStatusChanged: (callback: (status: VaultStatus) => void) => () => void
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
@@ -636,6 +726,10 @@ interface API extends WindowAPI {
   onProjectCreated: (callback: (event: ProjectCreatedEvent) => void) => () => void
   onProjectUpdated: (callback: (event: ProjectUpdatedEvent) => void) => () => void
   onProjectDeleted: (callback: (event: ProjectDeletedEvent) => void) => () => void
+  // Saved Filters event subscriptions
+  onSavedFilterCreated: (callback: (event: SavedFilterCreatedEvent) => void) => () => void
+  onSavedFilterUpdated: (callback: (event: SavedFilterUpdatedEvent) => void) => () => void
+  onSavedFilterDeleted: (callback: (event: SavedFilterDeletedEvent) => void) => () => void
 }
 
 declare global {

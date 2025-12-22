@@ -179,13 +179,57 @@ src/
 
 ### Implementation for User Story 5
 
-- [ ] T028 [P] [US5] Verify client-side filtering works correctly in src/renderer/src/lib/task-utils.ts
-- [ ] T029 [P] [US5] Verify sorting by due date, priority, created date in src/renderer/src/lib/task-utils.ts
-- [ ] T030 [US5] Verify saved filters persist to localStorage in src/renderer/src/hooks/use-saved-filters.ts
-- [ ] T031 [US5] Consider migrating saved filters to database for cross-device sync (future) - document decision
-- [ ] T032 [US5] Verify filter handles deleted project gracefully (edge case from spec)
+- [X] T028 [P] [US5] Verify client-side filtering works correctly in src/renderer/src/lib/task-utils.ts
+  - VERIFIED: `applyFiltersAndSort()` function at task-utils.ts:1542-1586 applies all filters:
+    - Search filter (title + description)
+    - Project filter (multi-select)
+    - Priority filter (multi-select)
+    - Due date filter (presets + custom range)
+    - Status filter (for Kanban view)
+    - Completion filter (active/completed/all)
+    - Repeat type filter (repeating/one-time/all)
+    - Has time filter (with-time/without-time/all)
+  - Used by `useFilteredAndSortedTasks` hook via FilterBar in tasks.tsx
 
-**Checkpoint**: Filtering and saved filters verified
+- [X] T029 [P] [US5] Verify sorting by due date, priority, created date in src/renderer/src/lib/task-utils.ts
+  - VERIFIED: `sortTasksAdvanced()` function at task-utils.ts:1481-1537 supports:
+    - dueDate (tasks without due date go to end)
+    - priority (urgent > high > medium > low > none)
+    - createdAt
+    - title (alphabetical)
+    - project (by project name)
+    - completedAt
+  - Supports both ascending and descending direction
+
+- [X] T030 [US5] Verify saved filters persist - UPDATED to use database storage
+  - MIGRATED: `useSavedFilters` hook now uses **database storage** via savedFiltersService
+  - Saved filters stored in SQLite `saved_filters` table
+  - Event-driven updates (onSavedFilterCreated/Updated/Deleted)
+  - localStorage fallback for backwards compatibility
+  - Filter state per view still persisted to localStorage via `useFilterState` hook
+
+- [X] T031 [US5] Migrate saved filters to database for cross-device sync
+  - DECISION: **IMPLEMENTED** - Saved filters now use database storage
+  - IMPLEMENTATION:
+    - `saved_filters` table schema exists in src/shared/db/schema/settings.ts
+    - Query functions in src/shared/db/queries/settings.ts
+    - IPC channels in src/shared/ipc-channels.ts (SavedFiltersChannels)
+    - IPC handlers in src/main/ipc/saved-filters-handlers.ts
+    - Service layer in src/renderer/src/services/saved-filters-service.ts
+    - Hook migrated in src/renderer/src/hooks/use-task-filters.ts
+  - BENEFITS:
+    - Saved filters persist with vault (travels with user's data)
+    - Consistent with tasks/projects data layer
+    - Supports future cross-device sync
+    - localStorage fallback for backwards compatibility
+
+- [X] T032 [US5] Verify filter handles deleted project gracefully (edge case from spec)
+  - FIXED: Updated ActiveFiltersBar at active-filters-bar.tsx:70-82
+  - Now shows "Deleted Project" chip with gray color for orphaned project filters
+  - User can remove the chip to clear the orphaned filter
+  - No tasks will match deleted project ID (correct behavior)
+
+**Checkpoint**: Filtering and saved filters verified ✅
 
 ---
 
