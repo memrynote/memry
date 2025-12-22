@@ -56,7 +56,7 @@ import { createDefaultTask, generateTaskId, type Task, type Priority } from "@/d
 import { addDays } from "@/lib/task-utils"
 import { calculateNextOccurrence, shouldCreateNextOccurrence } from "@/lib/repeat-utils"
 import type { StopRepeatOption } from "@/components/tasks/stop-repeating-dialog"
-import { useFilterState, useSavedFilters, useFilteredAndSortedTasks, useTaskSelection, useBulkActions, useSubtaskManagement } from "@/hooks"
+import { useFilterState, useSavedFilters, useFilteredAndSortedTasks, useTaskSelection, useBulkActions, useSubtaskManagement, useUndoTracker } from "@/hooks"
 import { useTasksContext } from "@/contexts/tasks"
 import { BulkActionToolbar, BulkDeleteDialog, BulkDueDatePicker } from "@/components/tasks/bulk-actions"
 import {
@@ -252,6 +252,9 @@ export const TasksPage = ({
         updateProject: contextUpdateProject,
         deleteProject: contextDeleteProject,
     } = useTasksContext()
+
+    // T051-T054: Undo tracking for Cmd+Z support
+    const { registerUndo } = useUndoTracker()
 
     // Local setter that updates via parent callback
     const setTasks = useCallback((updater: Task[] | ((prev: Task[]) => Task[])) => {
@@ -931,17 +934,21 @@ export const TasksPage = ({
         setIsDetailPanelOpen(false)
         setSelectedTaskId(null)
 
+        // T051-T054: Register undo for Cmd+Z support
+        const undoFn = () => {
+            contextAddTask(deletedTask)
+        }
+        registerUndo(`Delete "${task.title}"`, undoFn)
+
         toast.success("Task deleted", {
             description: `"${task.title}" has been deleted.`,
+            duration: 10000, // T052: 10-second timeout for undo per spec
             action: {
                 label: "Undo",
-                onClick: () => {
-                    // Re-add the task to database on undo
-                    contextAddTask(deletedTask)
-                },
+                onClick: undoFn,
             },
         })
-    }, [tasks, contextDeleteTask, contextAddTask])
+    }, [tasks, contextDeleteTask, contextAddTask, registerUndo])
 
     const handleDuplicateTask = useCallback((taskId: string): void => {
         const task = tasks.find((t) => t.id === taskId)
@@ -1017,6 +1024,7 @@ export const TasksPage = ({
             )
 
             toast.success("Task archived", {
+                duration: 10000, // T052: 10-second timeout for undo per spec
                 action: {
                     label: "Undo",
                     onClick: () => {
@@ -1059,6 +1067,7 @@ export const TasksPage = ({
             setTasks((prev) => prev.filter((t) => t.id !== taskId))
 
             toast.success("Task deleted", {
+                duration: 10000, // T052: 10-second timeout for undo per spec
                 action: {
                     label: "Undo",
                     onClick: () => {

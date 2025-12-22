@@ -30,7 +30,7 @@ import { TabBarWithDrag, TabDragProvider } from "@/components/tabs"
 import { SplitViewContainer } from "@/components/split-view"
 import { ChordIndicator, KeyboardShortcutsDialog } from "@/components/keyboard"
 import { SearchModal } from "@/components/search"
-import { useTabKeyboardShortcuts, useChordShortcuts, useDragHandlers, useTaskOrder, useVault, useSearchShortcut } from "@/hooks"
+import { useTabKeyboardShortcuts, useChordShortcuts, useDragHandlers, useTaskOrder, useVault, useSearchShortcut, useUndoKeyboardShortcut } from "@/hooks"
 import { VaultOnboarding } from "@/components/vault-onboarding"
 
 // Base pages (non-task)
@@ -168,6 +168,7 @@ const AppContent = ({
   useTabKeyboardShortcuts()
   const isChordActive = useChordShortcuts()
   useSearchShortcut(() => onSearchOpenChange(true))
+  useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
 
   // Handle search result selection - open note in tab
   const handleSelectSearchResult = useCallback((noteId: string) => {

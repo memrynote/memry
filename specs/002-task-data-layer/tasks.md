@@ -402,12 +402,31 @@ src/
 
 ### Implementation for User Story 10
 
-- [ ] T051 [US10] Verify undo state is maintained in client-side context in src/renderer/src/contexts/tasks/index.tsx
-- [ ] T052 [US10] Verify 10-second timeout for undo expires correctly
-- [ ] T053 [US10] Verify bulk undo restores all affected tasks
-- [ ] T054 [US10] Document that undo is client-side only (no backend support currently)
+- [X] T051 [US10] Verify undo state is maintained in client-side context in src/renderer/src/contexts/tasks/index.tsx
+  - IMPLEMENTED: Created global undo stack in src/renderer/src/hooks/use-undo.ts
+  - Undo state maintained via closures in toast actions and global undo stack
+  - Supports single and bulk operations
+- [X] T052 [US10] Verify 10-second timeout for undo expires correctly
+  - IMPLEMENTED: Added `duration: 10000` to all toast.success() calls with undo actions
+  - Files updated: use-bulk-actions.ts, use-drag-handlers.ts, use-subtask-management.ts, tasks.tsx
+  - Global undo stack also expires entries after 10 seconds (UNDO_EXPIRY_MS)
+- [X] T053 [US10] Verify bulk undo restores all affected tasks
+  - VERIFIED: use-bulk-actions.ts stores original states in closure before bulk operations
+  - bulkComplete, bulkArchive store previous states and restore on undo click
+  - Global undo stack supports bulk undo via Cmd+Z
+- [X] T054 [US10] Document that undo is client-side only (no backend support currently)
+  - DOCUMENTED: This is a client-side only feature - undo data is stored in memory
+  - Undo data will be lost on page refresh
+  - Undo relies on capturing task state at the time of action (via closures)
+  - This is acceptable per spec - undo is for quick recovery, not historical rollback
+- [X] T055 [US10] Add Cmd+Z keyboard shortcut support for undo (user requested)
+  - IMPLEMENTED: Created useUndoKeyboardShortcut hook in src/renderer/src/hooks/use-undo.ts
+  - Hook called in AppContent component (App.tsx)
+  - Uses global undo stack to track undoable actions
+  - registerUndo() called in handleDeleteTask (tasks.tsx)
+  - Respects input fields - lets native undo work in text inputs
 
-**Checkpoint**: Undo functionality verified
+**Checkpoint**: Undo functionality verified ✅
 
 ---
 
