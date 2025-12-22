@@ -15,6 +15,7 @@ import { StopRepeatingDialog, type StopRepeatOption } from "./stop-repeating-dia
 import { SubtasksSection } from "./detail-panel"
 import { cn } from "@/lib/utils"
 import { getSubtasks, calculateProgress, canHaveSubtasks } from "@/lib/subtask-utils"
+import { notesService } from "@/services/notes-service"
 import type { Task, Priority, RepeatConfig } from "@/data/sample-tasks"
 import type { Project } from "@/data/tasks-data"
 
@@ -235,10 +236,21 @@ export const TaskDetailPanel = ({
   )
 
   const handleNoteClick = useCallback(
-    (noteId: string): void => {
+    async (noteId: string): Promise<void> => {
+      // Try to get the note title for a better tab name
+      let noteTitle = "Note"
+      try {
+        const note = await notesService.get(noteId)
+        if (note) {
+          noteTitle = note.title
+        }
+      } catch {
+        // Fall back to generic title
+      }
+
       openTab({
         type: "note",
-        title: "Loading...",
+        title: noteTitle,
         icon: "file-text",
         path: `/notes/${noteId}`,
         entityId: noteId,
