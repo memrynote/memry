@@ -336,12 +336,31 @@ src/
 
 ### Verification for User Story 8
 
-- [ ] T043 [P] [US8] Verify linkedNoteIds saves correctly in src/shared/db/schema/task-relations.ts
-- [ ] T044 [P] [US8] Verify sourceNoteId is set when creating task from note
-- [ ] T045 [US8] Verify note displays linked tasks (may require notes integration)
-- [ ] T046 [US8] Verify clicking note link opens the note in a tab
+- [X] T043 [P] [US8] Verify linkedNoteIds saves correctly in src/shared/db/schema/task-relations.ts
+  - FIXED: Updated TaskLinksSection, NoteSearchDropdown, TaskMetadata to use real notesService
+  - Added async note fetching with loading states
+  - Frontend now uses actual notes from database instead of sample data
+- [X] T044 [P] [US8] Verify sourceNoteId is set when creating task from note
+  - IMPLEMENTED: Added sourceNoteId column to database schema (src/shared/db/schema/tasks.ts)
+  - Updated TaskCreateSchema in contracts/tasks-api.ts to include sourceNoteId
+  - Updated IPC handler (tasks-handlers.ts) to pass sourceNoteId to insertTask
+  - Updated preload API and types (index.ts, index.d.ts)
+  - Updated services/tasks-service.ts Task interface and TasksClientAPI
+  - Fixed contexts/tasks/index.tsx to use real sourceNoteId from database
+- [X] T045 [US8] Verify note displays linked tasks (may require notes integration)
+  - IMPLEMENTED: Added GET_LINKED_TASKS IPC channel (ipc-channels.ts)
+  - Added IPC handler for tasks:get-linked-tasks (tasks-handlers.ts)
+  - Added preload API method getLinkedTasks (index.ts)
+  - Created useTasksLinkedToNote hook (use-tasks-linked-to-note.ts)
+  - Created LinkedTasksSection component (components/note/linked-tasks/index.tsx)
+  - Integrated LinkedTasksSection in note.tsx below BacklinksSection
+- [X] T046 [US8] Verify clicking note link opens the note in a tab
+  - IMPLEMENTED: Added onNoteClick prop to TaskLinksSection component
+  - Made LinkedNoteItem clickable with onClick handler
+  - Added handleNoteClick callback in TaskDetailPanel using useTabs
+  - Opens note in preview mode with proper tab configuration
 
-**Checkpoint**: Note linking verified
+**Checkpoint**: Note linking verified ✅
 
 ---
 

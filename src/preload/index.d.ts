@@ -270,6 +270,7 @@ export interface Task {
   startDate: string | null
   repeatConfig: RepeatConfig | null
   repeatFrom: 'due' | 'completion' | null
+  sourceNoteId: string | null
   completedAt: string | null
   archivedAt: string | null
   createdAt: string
@@ -660,6 +661,9 @@ export interface TasksClientAPI {
   getToday(): Promise<TaskListResponse>
   getUpcoming(days?: number): Promise<TaskListResponse>
   getOverdue(): Promise<TaskListResponse>
+
+  // Note linking
+  getLinkedTasks(noteId: string): Promise<Task[]>
 }
 
 // Search client API interface

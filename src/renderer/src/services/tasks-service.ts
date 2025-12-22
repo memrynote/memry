@@ -43,6 +43,7 @@ export interface Task {
   startDate: string | null
   repeatConfig: RepeatConfig | null
   repeatFrom: 'due' | 'completion' | null
+  sourceNoteId: string | null
   completedAt: string | null
   archivedAt: string | null
   createdAt: string
@@ -297,6 +298,9 @@ export interface TasksClientAPI {
   getToday(): Promise<TaskListResponse>
   getUpcoming(days?: number): Promise<TaskListResponse>
   getOverdue(): Promise<TaskListResponse>
+
+  // Note linking
+  getLinkedTasks(noteId: string): Promise<Task[]>
 }
 
 /**
@@ -357,7 +361,10 @@ export const tasksService: TasksClientAPI = {
   getStats: () => window.api.tasks.getStats(),
   getToday: () => window.api.tasks.getToday(),
   getUpcoming: (days?: number) => window.api.tasks.getUpcoming(days),
-  getOverdue: () => window.api.tasks.getOverdue()
+  getOverdue: () => window.api.tasks.getOverdue(),
+
+  // Note linking
+  getLinkedTasks: (noteId: string) => window.api.tasks.getLinkedTasks(noteId)
 }
 
 // ============================================================================

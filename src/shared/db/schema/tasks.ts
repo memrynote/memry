@@ -25,6 +25,9 @@ export const tasks = sqliteTable(
     repeatConfig: text('repeat_config', { mode: 'json' }),
     repeatFrom: text('repeat_from'),
 
+    // Note linking
+    sourceNoteId: text('source_note_id'),
+
     completedAt: text('completed_at'),
     archivedAt: text('archived_at'),
 

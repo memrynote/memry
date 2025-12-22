@@ -187,7 +187,10 @@ export const TasksChannels = {
     GET_STATS: 'tasks:get-stats',
     GET_TODAY: 'tasks:get-today',
     GET_UPCOMING: 'tasks:get-upcoming',
-    GET_OVERDUE: 'tasks:get-overdue'
+    GET_OVERDUE: 'tasks:get-overdue',
+
+    // Note linking
+    GET_LINKED_TASKS: 'tasks:get-linked-tasks'
   },
   events: {
     CREATED: 'tasks:created',
