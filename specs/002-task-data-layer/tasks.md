@@ -241,13 +241,45 @@ src/
 
 ### Implementation for User Story 6
 
-- [ ] T033 [US6] Complete RepeatConfig type conversion in src/renderer/src/contexts/tasks/index.tsx (relates to T006)
-- [ ] T034 [P] [US6] Verify repeat config is saved to database in src/shared/db/queries/tasks.ts
-- [ ] T035 [US6] Implement next instance creation on complete in src/renderer/src/contexts/tasks/index.tsx
-- [ ] T036 [US6] Verify "stop repeating" action converts to one-time task
-- [ ] T037 [US6] Verify end conditions (after date, after N occurrences) work correctly
+- [X] T033 [US6] Complete RepeatConfig type conversion in src/renderer/src/contexts/tasks/index.tsx (relates to T006)
+  - VERIFIED: `dbRepeatConfigToUiRepeatConfig` function at contexts/tasks/index.tsx:85-115
+  - Converts database JSON format to UI RepeatConfig with Date objects
+  - UI to DB conversion done in `addTask` and `updateTask` functions
+  - Handles: frequency, interval, daysOfWeek, monthlyType, dayOfMonth, weekOfMonth, dayOfWeekForMonth, endType, endDate, endCount, completedCount, createdAt
 
-**Checkpoint**: Repeating tasks verified
+- [X] T034 [P] [US6] Verify repeat config is saved to database in src/shared/db/queries/tasks.ts
+  - VERIFIED: Schema at schema/tasks.ts:25 stores repeatConfig as JSON
+  - TaskCreateSchema at contracts/tasks-api.ts:152 includes repeatConfig
+  - TaskUpdateSchema at contracts/tasks-api.ts:180 includes repeatConfig
+  - Create handler at tasks-handlers.ts:85 passes repeatConfig to insertTask
+  - Update handler at tasks-handlers.ts:138 spreads updates including repeatConfig
+
+- [X] T035 [US6] Implement next instance creation on complete in src/renderer/src/contexts/tasks/index.tsx
+  - VERIFIED: Full implementation in pages/tasks.tsx handleToggleComplete (lines 814-853)
+  - When completing repeating task:
+    1. Calculates newCompletedCount (line 816)
+    2. Calculates nextDate using calculateNextOccurrence (line 817)
+    3. Checks shouldCreateNextOccurrence (line 818-821)
+    4. Marks current task as done (isRepeating: false, repeatConfig: null) via contextUpdateTask
+    5. Creates next instance with updated completedCount via contextAddTask
+  - contextAddTask correctly converts RepeatConfig for database storage
+
+- [X] T036 [US6] Verify "stop repeating" action converts to one-time task
+  - VERIFIED: handleStopRepeating in pages/tasks.tsx:882-900
+  - Option "delete": calls contextDeleteTask (removes task entirely)
+  - Option "keep" (else): calls contextUpdateTask with { isRepeating: false, repeatConfig: null }
+  - contextUpdateTask correctly passes null repeatConfig to service for database update
+
+- [X] T037 [US6] Verify end conditions (after date, after N occurrences) work correctly
+  - VERIFIED: shouldCreateNextOccurrence in lib/repeat-utils.ts:410-422
+    - endType="never": always returns true
+    - endType="count": returns true if completedCount < endCount
+    - endType="date": returns true if current date is before endDate
+  - calculateNextOccurrence in lib/repeat-utils.ts:141-148 also checks:
+    - Returns null if next date is after endDate
+    - Returns null if completedCount >= endCount
+
+**Checkpoint**: Repeating tasks verified ✅
 
 ---
 
