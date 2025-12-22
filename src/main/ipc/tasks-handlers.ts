@@ -411,7 +411,7 @@ export function registerTasksHandlers(): void {
     })
   )
 
-  // tasks:duplicate - Duplicate a task
+  // tasks:duplicate - Duplicate a task (including subtasks)
   ipcMain.handle(
     TasksChannels.invoke.DUPLICATE,
     createStringHandler(async (id) => {
@@ -441,7 +441,35 @@ export function registerTasksHandlers(): void {
           linkedNoteIds
         }
 
+        // IMPORTANT: Emit parent task FIRST so it exists in state when subtasks arrive
         emitTaskEvent(TasksChannels.events.CREATED, { task: enrichedTask })
+
+        // Duplicate subtasks (if any)
+        const subtasks = taskQueries.getSubtasks(db, id)
+
+        for (const subtask of subtasks) {
+          const newSubtaskId = generateId()
+          // Use duplicateSubtask which sets parentId correctly and keeps original title
+          const duplicatedSubtask = taskQueries.duplicateSubtask(db, subtask.id, newSubtaskId, newId)
+
+          if (duplicatedSubtask) {
+            // Copy subtask tags
+            const subtaskTags = taskQueries.getTaskTags(db, subtask.id)
+            if (subtaskTags.length > 0) {
+              taskQueries.setTaskTags(db, newSubtaskId, subtaskTags)
+            }
+
+            // Copy subtask linked notes
+            const subtaskNoteIds = taskQueries.getTaskNoteIds(db, subtask.id)
+            if (subtaskNoteIds.length > 0) {
+              taskQueries.setTaskNotes(db, newSubtaskId, subtaskNoteIds)
+            }
+
+            emitTaskEvent(TasksChannels.events.CREATED, {
+              task: { ...duplicatedSubtask, linkedNoteIds: subtaskNoteIds }
+            })
+          }
+        }
 
         return { success: true, task: enrichedTask }
       } catch (error) {
