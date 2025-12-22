@@ -434,10 +434,21 @@ export function NotePage({ noteId }: NotePageProps) {
     window.open(href, '_blank', 'noopener,noreferrer')
   }, [])
 
-  const handleInternalLinkClick = useCallback((linkedNoteId: string) => {
+  const handleInternalLinkClick = useCallback(async (linkedNoteId: string) => {
+    // Try to get the note title for a better tab name
+    let noteTitle = 'Note'
+    try {
+      const linkedNote = await getNote(linkedNoteId)
+      if (linkedNote) {
+        noteTitle = linkedNote.title
+      }
+    } catch {
+      // Fall back to generic title
+    }
+
     openTab({
       type: 'note',
-      title: 'Loading...',
+      title: noteTitle,
       icon: 'file-text',
       path: `/notes/${linkedNoteId}`,
       entityId: linkedNoteId,
@@ -446,12 +457,16 @@ export function NotePage({ noteId }: NotePageProps) {
       isPreview: true,
       isDeleted: false,
     })
-  }, [openTab])
+  }, [openTab, getNote])
 
   const handleBacklinkClick = useCallback((backlinkNoteId: string) => {
+    // Look up the title from the backlinks array
+    const backlink = backlinks.find((bl) => bl.noteId === backlinkNoteId)
+    const noteTitle = backlink?.noteTitle || 'Note'
+
     openTab({
       type: 'note',
-      title: 'Loading...',
+      title: noteTitle,
       icon: 'file-text',
       path: `/notes/${backlinkNoteId}`,
       entityId: backlinkNoteId,
@@ -460,7 +475,7 @@ export function NotePage({ noteId }: NotePageProps) {
       isPreview: true,
       isDeleted: false,
     })
-  }, [openTab])
+  }, [openTab, backlinks])
 
   // Handle clicking on a linked task
   const handleLinkedTaskClick = useCallback((taskId: string) => {
