@@ -202,6 +202,25 @@ export const TasksChannels = {
 } as const
 
 // ============================================================================
+// Saved Filters Channels
+// ============================================================================
+
+export const SavedFiltersChannels = {
+  invoke: {
+    LIST: 'saved-filters:list',
+    CREATE: 'saved-filters:create',
+    UPDATE: 'saved-filters:update',
+    DELETE: 'saved-filters:delete',
+    REORDER: 'saved-filters:reorder'
+  },
+  events: {
+    CREATED: 'saved-filters:created',
+    UPDATED: 'saved-filters:updated',
+    DELETED: 'saved-filters:deleted'
+  }
+} as const
+
+// ============================================================================
 // Type Exports
 // ============================================================================
 
@@ -216,3 +235,8 @@ export type SearchEventChannel = (typeof SearchChannels.events)[keyof typeof Sea
 
 export type TasksInvokeChannel = (typeof TasksChannels.invoke)[keyof typeof TasksChannels.invoke]
 export type TasksEventChannel = (typeof TasksChannels.events)[keyof typeof TasksChannels.events]
+
+export type SavedFiltersInvokeChannel =
+  (typeof SavedFiltersChannels.invoke)[keyof typeof SavedFiltersChannels.invoke]
+export type SavedFiltersEventChannel =
+  (typeof SavedFiltersChannels.events)[keyof typeof SavedFiltersChannels.events]

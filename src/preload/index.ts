@@ -2,7 +2,13 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // Import channel constants from shared (single source of truth)
-import { VaultChannels, NotesChannels, SearchChannels, TasksChannels } from '@shared/ipc-channels'
+import {
+  VaultChannels,
+  NotesChannels,
+  SearchChannels,
+  TasksChannels,
+  SavedFiltersChannels
+} from '@shared/ipc-channels'
 
 // Custom APIs for renderer
 const api = {
@@ -224,6 +230,18 @@ const api = {
     getOverdue: () => ipcRenderer.invoke(TasksChannels.invoke.GET_OVERDUE)
   },
 
+  // Saved Filters API
+  savedFilters: {
+    list: () => ipcRenderer.invoke(SavedFiltersChannels.invoke.LIST),
+    create: (input: { name: string; config: unknown }) =>
+      ipcRenderer.invoke(SavedFiltersChannels.invoke.CREATE, input),
+    update: (input: { id: string; name?: string; config?: unknown; position?: number }) =>
+      ipcRenderer.invoke(SavedFiltersChannels.invoke.UPDATE, input),
+    delete: (id: string) => ipcRenderer.invoke(SavedFiltersChannels.invoke.DELETE, { id }),
+    reorder: (ids: string[], positions: number[]) =>
+      ipcRenderer.invoke(SavedFiltersChannels.invoke.REORDER, { ids, positions })
+  },
+
   // Event subscription helpers
   onVaultStatusChanged: (callback: (status: unknown) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, status: unknown): void => callback(status)
@@ -392,6 +410,34 @@ const api = {
       callback(data)
     ipcRenderer.on(TasksChannels.events.PROJECT_DELETED, handler)
     return () => ipcRenderer.removeListener(TasksChannels.events.PROJECT_DELETED, handler)
+  },
+
+  // Saved Filters event subscription helpers
+  onSavedFilterCreated: (callback: (event: { savedFilter: unknown }) => void): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { savedFilter: unknown }
+    ): void => callback(data)
+    ipcRenderer.on(SavedFiltersChannels.events.CREATED, handler)
+    return () => ipcRenderer.removeListener(SavedFiltersChannels.events.CREATED, handler)
+  },
+
+  onSavedFilterUpdated: (
+    callback: (event: { id: string; savedFilter: unknown }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { id: string; savedFilter: unknown }
+    ): void => callback(data)
+    ipcRenderer.on(SavedFiltersChannels.events.UPDATED, handler)
+    return () => ipcRenderer.removeListener(SavedFiltersChannels.events.UPDATED, handler)
+  },
+
+  onSavedFilterDeleted: (callback: (event: { id: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { id: string }): void =>
+      callback(data)
+    ipcRenderer.on(SavedFiltersChannels.events.DELETED, handler)
+    return () => ipcRenderer.removeListener(SavedFiltersChannels.events.DELETED, handler)
   }
 }
 

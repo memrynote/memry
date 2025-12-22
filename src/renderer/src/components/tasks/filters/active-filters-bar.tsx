@@ -67,20 +67,18 @@ export const ActiveFiltersBar = ({
       })
     }
 
-    // Projects
+    // Projects - T032: Handle deleted projects gracefully
     filters.projectIds.forEach((projectId) => {
       const project = projects.find((p) => p.id === projectId)
-      if (project) {
-        result.push({
-          id: `project-${projectId}`,
-          label: project.name,
-          color: project.color,
-          onRemove: () =>
-            onUpdateFilters({
-              projectIds: filters.projectIds.filter((id) => id !== projectId),
-            }),
-        })
-      }
+      result.push({
+        id: `project-${projectId}`,
+        label: project?.name ?? "Deleted Project",
+        color: project?.color ?? "#9ca3af", // Gray for deleted projects
+        onRemove: () =>
+          onUpdateFilters({
+            projectIds: filters.projectIds.filter((id) => id !== projectId),
+          }),
+      })
     })
 
     // Priorities
