@@ -117,6 +117,7 @@ const api = {
       startDate?: string | null
       tags?: string[]
       linkedNoteIds?: string[]
+      sourceNoteId?: string | null
       position?: number
     }) => ipcRenderer.invoke(TasksChannels.invoke.CREATE, input),
     get: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.GET, id),
@@ -227,7 +228,11 @@ const api = {
     getToday: () => ipcRenderer.invoke(TasksChannels.invoke.GET_TODAY),
     getUpcoming: (days?: number) =>
       ipcRenderer.invoke(TasksChannels.invoke.GET_UPCOMING, { days: days ?? 7 }),
-    getOverdue: () => ipcRenderer.invoke(TasksChannels.invoke.GET_OVERDUE)
+    getOverdue: () => ipcRenderer.invoke(TasksChannels.invoke.GET_OVERDUE),
+
+    // Note linking
+    getLinkedTasks: (noteId: string) =>
+      ipcRenderer.invoke(TasksChannels.invoke.GET_LINKED_TASKS, noteId)
   },
 
   // Saved Filters API

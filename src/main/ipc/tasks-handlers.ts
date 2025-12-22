@@ -83,7 +83,8 @@ export function registerTasksHandlers(): void {
           dueTime: input.dueTime ?? null,
           startDate: input.startDate ?? null,
           repeatConfig: input.repeatConfig ?? null,
-          repeatFrom: input.repeatFrom ?? null
+          repeatFrom: input.repeatFrom ?? null,
+          sourceNoteId: input.sourceNoteId ?? null
         })
 
         // Set tags if provided
@@ -96,9 +97,15 @@ export function registerTasksHandlers(): void {
           taskQueries.setTaskNotes(db, id, input.linkedNoteIds)
         }
 
-        emitTaskEvent(TasksChannels.events.CREATED, { task })
+        // Enrich task with linked note IDs for the response
+        const enrichedTask = {
+          ...task,
+          linkedNoteIds: input.linkedNoteIds ?? []
+        }
 
-        return { success: true, task }
+        emitTaskEvent(TasksChannels.events.CREATED, { task: enrichedTask })
+
+        return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to create task'
         return { success: false, task: null, error: message }
@@ -152,9 +159,15 @@ export function registerTasksHandlers(): void {
           taskQueries.setTaskNotes(db, id, linkedNoteIds)
         }
 
-        emitTaskEvent(TasksChannels.events.UPDATED, { id, task, changes: updates })
+        // Enrich task with linked note IDs for the response
+        const enrichedTask = {
+          ...task,
+          linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
+        }
 
-        return { success: true, task }
+        emitTaskEvent(TasksChannels.events.UPDATED, { id, task: enrichedTask, changes: updates })
+
+        return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update task'
         return { success: false, task: null, error: message }
@@ -194,9 +207,11 @@ export function registerTasksHandlers(): void {
       const enrichedTasks = tasks.map((task) => {
         const subtaskCounts = taskQueries.countSubtasks(db, task.id)
         const tags = taskQueries.getTaskTags(db, task.id)
+        const linkedNoteIds = taskQueries.getTaskNoteIds(db, task.id)
         return {
           ...task,
           tags,
+          linkedNoteIds,
           hasSubtasks: subtaskCounts.total > 0,
           subtaskCount: subtaskCounts.total,
           completedSubtaskCount: subtaskCounts.completed
@@ -226,9 +241,14 @@ export function registerTasksHandlers(): void {
           return { success: false, task: null, error: 'Task not found' }
         }
 
-        emitTaskEvent(TasksChannels.events.COMPLETED, { id: input.id, task })
+        const enrichedTask = {
+          ...task,
+          linkedNoteIds: taskQueries.getTaskNoteIds(db, input.id)
+        }
 
-        return { success: true, task }
+        emitTaskEvent(TasksChannels.events.COMPLETED, { id: input.id, task: enrichedTask })
+
+        return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to complete task'
         return { success: false, task: null, error: message }
@@ -247,9 +267,14 @@ export function registerTasksHandlers(): void {
           return { success: false, task: null, error: 'Task not found' }
         }
 
-        emitTaskEvent(TasksChannels.events.UPDATED, { id, task, changes: { completedAt: null } })
+        const enrichedTask = {
+          ...task,
+          linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
+        }
 
-        return { success: true, task }
+        emitTaskEvent(TasksChannels.events.UPDATED, { id, task: enrichedTask, changes: { completedAt: null } })
+
+        return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to uncomplete task'
         return { success: false, task: null, error: message }
@@ -304,9 +329,14 @@ export function registerTasksHandlers(): void {
           return { success: false, task: null, error: 'Task not found' }
         }
 
-        emitTaskEvent(TasksChannels.events.MOVED, { id: input.taskId, task })
+        const enrichedTask = {
+          ...task,
+          linkedNoteIds: taskQueries.getTaskNoteIds(db, input.taskId)
+        }
 
-        return { success: true, task }
+        emitTaskEvent(TasksChannels.events.MOVED, { id: input.taskId, task: enrichedTask })
+
+        return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to move task'
         return { success: false, task: null, error: message }
@@ -348,9 +378,20 @@ export function registerTasksHandlers(): void {
           taskQueries.setTaskTags(db, newId, tags)
         }
 
-        emitTaskEvent(TasksChannels.events.CREATED, { task })
+        // Copy linked notes
+        const linkedNoteIds = taskQueries.getTaskNoteIds(db, id)
+        if (linkedNoteIds.length > 0) {
+          taskQueries.setTaskNotes(db, newId, linkedNoteIds)
+        }
 
-        return { success: true, task }
+        const enrichedTask = {
+          ...task,
+          linkedNoteIds
+        }
+
+        emitTaskEvent(TasksChannels.events.CREATED, { task: enrichedTask })
+
+        return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to duplicate task'
         return { success: false, task: null, error: message }
@@ -381,7 +422,11 @@ export function registerTasksHandlers(): void {
         if (!task) {
           return { success: false, task: null, error: 'Task not found' }
         }
-        return { success: true, task }
+        const enrichedTask = {
+          ...task,
+          linkedNoteIds: taskQueries.getTaskNoteIds(db, input.taskId)
+        }
+        return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to convert to subtask'
         return { success: false, task: null, error: message }
@@ -399,7 +444,11 @@ export function registerTasksHandlers(): void {
         if (!task) {
           return { success: false, task: null, error: 'Task not found' }
         }
-        return { success: true, task }
+        const enrichedTask = {
+          ...task,
+          linkedNoteIds: taskQueries.getTaskNoteIds(db, taskId)
+        }
+        return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to convert to task'
         return { success: false, task: null, error: message }
@@ -717,7 +766,12 @@ export function registerTasksHandlers(): void {
     createHandler(async () => {
       const db = requireDatabase()
       const tasks = taskQueries.getTodayTasks(db)
-      return { tasks, total: tasks.length, hasMore: false }
+      // Enrich with linked note IDs
+      const enrichedTasks = tasks.map((task) => ({
+        ...task,
+        linkedNoteIds: taskQueries.getTaskNoteIds(db, task.id)
+      }))
+      return { tasks: enrichedTasks, total: tasks.length, hasMore: false }
     })
   )
 
@@ -727,7 +781,12 @@ export function registerTasksHandlers(): void {
     createValidatedHandler(GetUpcomingSchema, async (input) => {
       const db = requireDatabase()
       const tasks = taskQueries.getUpcomingTasks(db, input.days)
-      return { tasks, total: tasks.length, hasMore: false }
+      // Enrich with linked note IDs
+      const enrichedTasks = tasks.map((task) => ({
+        ...task,
+        linkedNoteIds: taskQueries.getTaskNoteIds(db, task.id)
+      }))
+      return { tasks: enrichedTasks, total: tasks.length, hasMore: false }
     })
   )
 
@@ -737,7 +796,27 @@ export function registerTasksHandlers(): void {
     createHandler(async () => {
       const db = requireDatabase()
       const tasks = taskQueries.getOverdueTasks(db)
-      return { tasks, total: tasks.length, hasMore: false }
+      // Enrich with linked note IDs
+      const enrichedTasks = tasks.map((task) => ({
+        ...task,
+        linkedNoteIds: taskQueries.getTaskNoteIds(db, task.id)
+      }))
+      return { tasks: enrichedTasks, total: tasks.length, hasMore: false }
+    })
+  )
+
+  // tasks:get-linked-tasks - Get tasks linked to a specific note
+  ipcMain.handle(
+    TasksChannels.invoke.GET_LINKED_TASKS,
+    createStringHandler(async (noteId) => {
+      const db = requireDatabase()
+      const tasks = taskQueries.getTasksLinkedToNote(db, noteId)
+      // Enrich with tags and linked note IDs
+      return tasks.map((task) => ({
+        ...task,
+        tags: taskQueries.getTaskTags(db, task.id),
+        linkedNoteIds: taskQueries.getTaskNoteIds(db, task.id)
+      }))
     })
   )
 

@@ -128,7 +128,7 @@ function dbTaskToUiTask(dbTask: DbTask): Task {
     isRepeating: !!dbTask.repeatConfig,
     repeatConfig, // T005: Now properly converted
     linkedNoteIds: dbTask.linkedNoteIds ?? [],
-    sourceNoteId: null,
+    sourceNoteId: dbTask.sourceNoteId ?? null,
     parentId: dbTask.parentId,
     subtaskIds: [], // T007: Loaded separately via getSubtasks
     createdAt: new Date(dbTask.createdAt),

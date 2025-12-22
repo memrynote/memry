@@ -1,10 +1,11 @@
-import { useState, useMemo } from "react"
-import { Search, FileText, File, Users } from "lucide-react"
+import { useState, useEffect, useCallback, useMemo } from "react"
+import { Search, FileText, Loader2 } from "lucide-react"
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { searchNotes, type Note } from "@/data/sample-notes"
+import { notesService, type NoteListItem } from "@/services/notes-service"
+import type { SearchResultNote } from '@/services/search-service'
 
 // ============================================================================
 // TYPES
@@ -17,19 +18,10 @@ interface NoteSearchDropdownProps {
   className?: string
 }
 
-// ============================================================================
-// NOTE ICON COMPONENT
-// ============================================================================
-
-const NoteIcon = ({ type }: { type: Note["type"] }): React.JSX.Element => {
-  switch (type) {
-    case "document":
-      return <File className="size-4 text-blue-500" aria-hidden="true" />
-    case "meeting":
-      return <Users className="size-4 text-purple-500" aria-hidden="true" />
-    default:
-      return <FileText className="size-4 text-muted-foreground" aria-hidden="true" />
-  }
+// Combined type for both list items and search results
+type NoteItem = {
+  id: string
+  title: string
 }
 
 // ============================================================================
@@ -44,26 +36,63 @@ export const NoteSearchDropdown = ({
 }: NoteSearchDropdownProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [notes, setNotes] = useState<NoteItem[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [debouncedQuery, setDebouncedQuery] = useState("")
 
-  // Search and filter notes
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // Load notes when dropdown opens or search query changes
+  useEffect(() => {
+    if (!isOpen) return
+
+    const loadNotes = async (): Promise<void> => {
+      setIsLoading(true)
+      try {
+        if (debouncedQuery.trim()) {
+          // Use search API when there's a query
+          const results = await window.api.search.searchNotes(debouncedQuery, { limit: 20 })
+          setNotes(results.map((r: SearchResultNote) => ({ id: r.id, title: r.title })))
+        } else {
+          // Load recent notes when no query
+          const response = await notesService.list({ limit: 20, sortBy: "modified", sortOrder: "desc" })
+          setNotes(response.notes.map((n: NoteListItem) => ({ id: n.id, title: n.title })))
+        }
+      } catch (error) {
+        console.error("Failed to load notes:", error)
+        setNotes([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadNotes()
+  }, [isOpen, debouncedQuery])
+
+  // Filter out excluded notes
   const filteredNotes = useMemo(() => {
-    const results = searchNotes(searchQuery)
-    // Exclude already linked notes
-    return results.filter((note) => !excludeNoteIds.includes(note.id))
-  }, [searchQuery, excludeNoteIds])
+    return notes.filter((note) => !excludeNoteIds.includes(note.id))
+  }, [notes, excludeNoteIds])
 
-  const handleSelectNote = (noteId: string): void => {
+  const handleSelectNote = useCallback((noteId: string): void => {
     onSelectNote(noteId)
     setIsOpen(false)
     setSearchQuery("")
-  }
+  }, [onSelectNote])
 
-  const handleOpenChange = (open: boolean): void => {
+  const handleOpenChange = useCallback((open: boolean): void => {
     setIsOpen(open)
     if (!open) {
       setSearchQuery("")
+      setDebouncedQuery("")
     }
-  }
+  }, [])
 
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
@@ -87,7 +116,11 @@ export const NoteSearchDropdown = ({
 
         {/* Results */}
         <div className="max-h-60 overflow-y-auto p-1">
-          {filteredNotes.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center px-3 py-6">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredNotes.length === 0 ? (
             <div className="px-3 py-6 text-center text-sm text-muted-foreground">
               {searchQuery ? "No notes found" : "No notes available"}
             </div>
@@ -102,7 +135,7 @@ export const NoteSearchDropdown = ({
                   "hover:bg-accent focus:bg-accent focus:outline-none"
                 )}
               >
-                <NoteIcon type={note.type} />
+                <FileText className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span className="truncate">{note.title}</span>
               </button>
             ))
@@ -114,4 +147,3 @@ export const NoteSearchDropdown = ({
 }
 
 export default NoteSearchDropdown
-

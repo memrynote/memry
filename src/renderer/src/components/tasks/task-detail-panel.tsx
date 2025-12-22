@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useTabs } from "@/contexts/tabs"
 import { TaskDetailHeader } from "./task-detail-header"
 import { TaskPropertiesGrid } from "./task-properties-grid"
 import { TaskDescription } from "./task-description"
@@ -84,6 +85,7 @@ export const TaskDetailPanel = ({
 }: TaskDetailPanelProps): React.JSX.Element => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isStopRepeatDialogOpen, setIsStopRepeatDialogOpen] = useState(false)
+  const { openTab } = useTabs()
 
   // Calculate subtasks and progress
   const subtasks = useMemo(() => {
@@ -230,6 +232,23 @@ export const TaskDetailPanel = ({
       }
     },
     [task, onUpdateTask]
+  )
+
+  const handleNoteClick = useCallback(
+    (noteId: string): void => {
+      openTab({
+        type: "note",
+        title: "Loading...",
+        icon: "file-text",
+        path: `/notes/${noteId}`,
+        entityId: noteId,
+        isPinned: false,
+        isModified: false,
+        isPreview: true,
+        isDeleted: false,
+      })
+    },
+    [openTab]
   )
 
   const handleDelete = useCallback((): void => {
@@ -458,6 +477,7 @@ export const TaskDetailPanel = ({
                     linkedNoteIds={task.linkedNoteIds}
                     onAddLink={handleAddLink}
                     onRemoveLink={handleRemoveLink}
+                    onNoteClick={handleNoteClick}
                   />
 
                   {/* Divider */}

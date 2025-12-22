@@ -11,7 +11,9 @@ import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, Property, NewProperty } from '@/components/note/info-section'
 import { BacklinksSection, Backlink } from '@/components/note/backlinks'
+import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import { useNotes, useNoteLinks, useNoteTags, type Note } from '@/hooks/use-notes'
+import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { onNoteDeleted, onNoteExternalChange } from '@/services/notes-service'
 import { useTabs } from '@/contexts/tabs'
 import { Loader2 } from 'lucide-react'
@@ -102,6 +104,7 @@ export function NotePage({ noteId }: NotePageProps) {
   // Hooks for data fetching
   const { getNote, updateNote, renameNote } = useNotes({ autoLoad: false })
   const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinks(noteId ?? null)
+  const { tasks: linkedTasks, isLoading: linkedTasksLoading } = useTasksLinkedToNote(noteId ?? null)
   const { tags: allAvailableTags } = useNoteTags()
   const { openTab, setTabDeleted } = useTabs()
 
@@ -153,8 +156,8 @@ export function NotePage({ noteId }: NotePageProps) {
                 id: key,
                 name: key,
                 type: typeof value === 'boolean' ? 'checkbox' :
-                      typeof value === 'number' ? 'number' :
-                      typeof value === 'string' && value.startsWith('http') ? 'url' : 'text',
+                  typeof value === 'number' ? 'number' :
+                    typeof value === 'string' && value.startsWith('http') ? 'url' : 'text',
                 value,
                 isCustom: true
               })
@@ -440,7 +443,8 @@ export function NotePage({ noteId }: NotePageProps) {
       entityId: linkedNoteId,
       isPinned: false,
       isModified: false,
-      isPreview: true
+      isPreview: true,
+      isDeleted: false,
     })
   }, [openTab])
 
@@ -453,7 +457,22 @@ export function NotePage({ noteId }: NotePageProps) {
       entityId: backlinkNoteId,
       isPinned: false,
       isModified: false,
-      isPreview: true
+      isPreview: true,
+      isDeleted: false,
+    })
+  }, [openTab])
+
+  // Handle clicking on a linked task
+  const handleLinkedTaskClick = useCallback((taskId: string) => {
+    openTab({
+      type: 'tasks',
+      title: 'Tasks',
+      icon: 'check-square',
+      path: `/tasks?taskId=${taskId}`,
+      isPinned: false,
+      isModified: false,
+      isPreview: false,
+      isDeleted: false
     })
   }, [openTab])
 
@@ -544,7 +563,7 @@ export function NotePage({ noteId }: NotePageProps) {
           onMouseDown={(e) => {
             const target = e.target as HTMLElement
             if (target.closest('[contenteditable="true"]')?.contains(target) &&
-                target.closest('.bn-block-content')) {
+              target.closest('.bn-block-content')) {
               return
             }
             if (target.closest('button, a, input')) {
@@ -586,6 +605,13 @@ export function NotePage({ noteId }: NotePageProps) {
             initialCount={5}
             collapsible={true}
             onBacklinkClick={handleBacklinkClick}
+          />
+
+          {/* Linked Tasks Section */}
+          <LinkedTasksSection
+            tasks={linkedTasks}
+            isLoading={linkedTasksLoading}
+            onTaskClick={handleLinkedTaskClick}
           />
         </div>
       </div>
