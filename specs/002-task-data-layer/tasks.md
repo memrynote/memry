@@ -291,13 +291,40 @@ src/
 
 ### Verification for User Story 7
 
-- [ ] T038 [P] [US7] Verify subtask creation with parentId in src/renderer/src/services/tasks-service.ts
-- [ ] T039 [P] [US7] Verify subtask reordering persists in src/shared/db/queries/tasks.ts
-- [ ] T040 [US7] Verify depth constraint (subtasks cannot have subtasks) in src/renderer/src/hooks/use-subtask-management.ts
-- [ ] T041 [US7] Verify parent task deletion prompts for subtask handling
-- [ ] T042 [US7] Verify promote subtask to standalone task works in src/renderer/src/services/tasks-service.ts
+- [X] T038 [P] [US7] Verify subtask creation with parentId in src/renderer/src/services/tasks-service.ts
+  - FIXED: Updated `useSubtaskManagement` hook to accept `onAddTask` callback
+  - `handleAddSubtask` and `handleBulkAddSubtasks` now use `contextAddTask` for database persistence
+  - Subtasks created with `parentId` are saved to database via `tasksService.create`
+  - `subtask-utils.ts` updated to return `newTask` and `newTasks` for database operations
 
-**Checkpoint**: Subtasks verified
+- [X] T039 [P] [US7] Verify subtask reordering persists in src/shared/db/queries/tasks.ts
+  - FIXED: Added `onReorderTasks` callback to hook for database persistence
+  - `handleReorderSubtasks` calls `tasksService.reorder(taskIds, positions)`
+  - `subtask-utils.ts` updated to return `reorderedTasks` for position updates
+  - Uses dedicated `tasks:reorder` IPC channel for batch position updates
+
+- [X] T040 [US7] Verify depth constraint (subtasks cannot have subtasks) in src/renderer/src/hooks/use-subtask-management.ts
+  - VERIFIED: `validateSubtaskRelationship` in subtask-utils.ts:147-150 checks:
+    - "Parent cannot be a subtask itself (no nested subtasks)"
+  - `createSubtask` at subtask-utils.ts:256-258 also validates:
+    - "Cannot add subtask to another subtask"
+  - `canHaveSubtasks(task)` at subtask-utils.ts:115-117 returns `task.parentId === null`
+
+- [X] T041 [US7] Verify parent task deletion prompts for subtask handling
+  - VERIFIED: `handleDeleteTask` in use-subtask-management.ts:413-432
+  - Opens delete parent dialog if task has subtasks (line 420-423)
+  - `confirmDeleteParent(keepSubtasks)` handles both options:
+    - keepSubtasks=true: Promotes subtasks to standalone tasks
+    - keepSubtasks=false: Deletes parent and all subtasks
+  - FIXED: Added `onDeleteTask` callback for database persistence
+
+- [X] T042 [US7] Verify promote subtask to standalone task works in src/renderer/src/services/tasks-service.ts
+  - FIXED: `handlePromoteToTask` in use-subtask-management.ts now uses `onUpdateTask`
+  - Sets `parentId: null` to promote subtask to standalone task
+  - Backend: `tasks:convert-to-task` handler calls `taskQueries.moveTask(db, taskId, { parentId: null })`
+  - Also: `confirmDemoteToSubtask` uses `onUpdateTask(taskId, { parentId })` for demoting
+
+**Checkpoint**: Subtasks verified ✅
 
 ---
 

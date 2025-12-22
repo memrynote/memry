@@ -65,6 +65,7 @@ import {
     DeleteAllSubtasksDialog,
 } from "@/components/tasks/dialogs"
 import { getSubtasks } from "@/lib/subtask-utils"
+import { tasksService } from "@/services/tasks-service"
 import type { TaskSelectionType } from "@/App"
 
 // ============================================================================
@@ -471,11 +472,21 @@ export const TasksPage = ({
         }
     }, [selection.isSelectionMode, enterSelectionMode, exitSelectionMode])
 
-    // Subtask management hook
+    // Subtask management hook - T038-T042: Wire to database via context operations
     const subtaskManagement = useSubtaskManagement({
         tasks,
         projects,
         onTasksChange: setTasks,
+        onAddTask: contextAddTask,
+        onUpdateTask: contextUpdateTask,
+        onDeleteTask: contextDeleteTask,
+        onReorderTasks: async (taskIds, positions) => {
+            try {
+                await tasksService.reorder(taskIds, positions)
+            } catch (error) {
+                console.error("[Tasks] Failed to reorder subtasks:", error)
+            }
+        },
     })
 
     // Derived: task counts for header (replaced by tabCounts, kept for potential future use)

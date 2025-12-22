@@ -10,6 +10,9 @@ export interface BulkOperationResult {
   error?: string
   updatedTasks?: Task[]
   affectedCount?: number
+  // For database-aware callbacks
+  completedSubtasks?: Task[]
+  incompleteSubtasks?: Task[]
 }
 
 // ============================================================================
@@ -61,9 +64,8 @@ export const completeAllSubtasks = (
   }
 
   const now = new Date()
-  const incompleteIds = new Set(
-    subtasks.filter((s) => s.completedAt === null).map((s) => s.id)
-  )
+  const incompleteSubtasks = subtasks.filter((s) => s.completedAt === null)
+  const incompleteIds = new Set(incompleteSubtasks.map((s) => s.id))
 
   if (incompleteIds.size === 0) {
     return { success: false, error: "All subtasks are already complete" }
@@ -77,6 +79,7 @@ export const completeAllSubtasks = (
     success: true,
     updatedTasks,
     affectedCount: incompleteIds.size,
+    completedSubtasks: incompleteSubtasks,
   }
 }
 
@@ -101,9 +104,8 @@ export const markAllSubtasksIncomplete = (
     return { success: false, error: "No subtasks to mark incomplete" }
   }
 
-  const completedIds = new Set(
-    subtasks.filter((s) => s.completedAt !== null).map((s) => s.id)
-  )
+  const completedSubtasks = subtasks.filter((s) => s.completedAt !== null)
+  const completedIds = new Set(completedSubtasks.map((s) => s.id))
 
   if (completedIds.size === 0) {
     return { success: false, error: "All subtasks are already incomplete" }
@@ -117,6 +119,7 @@ export const markAllSubtasksIncomplete = (
     success: true,
     updatedTasks,
     affectedCount: completedIds.size,
+    incompleteSubtasks: completedSubtasks, // Return the subtasks that were marked incomplete
   }
 }
 

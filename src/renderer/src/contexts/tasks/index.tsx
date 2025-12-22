@@ -281,8 +281,30 @@ export const TasksProvider = ({
           limit: 1000 // Load up to 1000 tasks
         })
         const uiTasks = tasksResponse.tasks.map(dbTaskToUiTask)
-        setTasksState(uiTasks)
-        onTasksChange?.(uiTasks)
+
+        // T038-T042: Build subtaskIds arrays from parentId relationships
+        // First, collect all subtasks per parent (with their full data for sorting)
+        const subtasksByParent = new Map<string, typeof uiTasks>()
+        for (const task of uiTasks) {
+          if (task.parentId) {
+            const existing = subtasksByParent.get(task.parentId) || []
+            existing.push(task)
+            subtasksByParent.set(task.parentId, existing)
+          }
+        }
+        // Then, populate subtaskIds on parent tasks (sorted by createdAt as fallback for position)
+        const tasksWithSubtaskIds = uiTasks.map((task) => {
+          const subtasks = subtasksByParent.get(task.id)
+          if (!subtasks || subtasks.length === 0) return task
+          // Sort subtasks by createdAt to maintain consistent order
+          const sortedSubtaskIds = subtasks
+            .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+            .map((s) => s.id)
+          return { ...task, subtaskIds: sortedSubtaskIds }
+        })
+
+        setTasksState(tasksWithSubtaskIds)
+        onTasksChange?.(tasksWithSubtaskIds)
 
         setIsLoaded(true)
         console.log('[TasksProvider] Loaded from database:', {
@@ -340,17 +362,62 @@ export const TasksProvider = ({
       const uiTask = dbTaskToUiTask(event.task as DbTask)
       setTasks((prev) => {
         if (prev.some((t) => t.id === uiTask.id)) return prev
+        // T038: If this is a subtask, update parent's subtaskIds
+        if (uiTask.parentId) {
+          const updatedPrev = prev.map((t) =>
+            t.id === uiTask.parentId
+              ? { ...t, subtaskIds: [...t.subtaskIds, uiTask.id] }
+              : t
+          )
+          return [uiTask, ...updatedPrev]
+        }
         return [uiTask, ...prev]
       })
     })
 
     const unsubTaskUpdated = onTaskUpdated((event) => {
       const uiTask = dbTaskToUiTask(event.task as DbTask)
-      setTasks((prev) => prev.map((t) => (t.id === event.id ? uiTask : t)))
+      setTasks((prev) => {
+        const oldTask = prev.find((t) => t.id === event.id)
+        let updated = prev.map((t) => (t.id === event.id ? uiTask : t))
+
+        // T042: Handle parentId changes (promote/demote)
+        if (oldTask && oldTask.parentId !== uiTask.parentId) {
+          // Remove from old parent's subtaskIds
+          if (oldTask.parentId) {
+            updated = updated.map((t) =>
+              t.id === oldTask.parentId
+                ? { ...t, subtaskIds: t.subtaskIds.filter((id) => id !== event.id) }
+                : t
+            )
+          }
+          // Add to new parent's subtaskIds
+          if (uiTask.parentId) {
+            updated = updated.map((t) =>
+              t.id === uiTask.parentId
+                ? { ...t, subtaskIds: [...t.subtaskIds, event.id] }
+                : t
+            )
+          }
+        }
+        return updated
+      })
     })
 
     const unsubTaskDeleted = onTaskDeleted((event) => {
-      setTasks((prev) => prev.filter((t) => t.id !== event.id))
+      setTasks((prev) => {
+        const deletedTask = prev.find((t) => t.id === event.id)
+        let updated = prev.filter((t) => t.id !== event.id)
+        // T041: Remove from parent's subtaskIds if it was a subtask
+        if (deletedTask?.parentId) {
+          updated = updated.map((t) =>
+            t.id === deletedTask.parentId
+              ? { ...t, subtaskIds: t.subtaskIds.filter((id) => id !== event.id) }
+              : t
+          )
+        }
+        return updated
+      })
     })
 
     // T026: Subscribe to task completed events to update completedAt in state
