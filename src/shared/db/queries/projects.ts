@@ -281,6 +281,42 @@ export function getDoneStatus(db: DrizzleDb, projectId: string): Status | undefi
     .get()
 }
 
+/**
+ * Get an equivalent status in a project based on status type.
+ * Returns the first matching status or the default status as fallback.
+ */
+export function getEquivalentStatus(
+  db: DrizzleDb,
+  targetProjectId: string,
+  sourceStatus: Status | undefined
+): Status | undefined {
+  if (!sourceStatus) {
+    // No source status, return default
+    return getDefaultStatus(db, targetProjectId)
+  }
+
+  // If source is a "done" status, find the done status in target project
+  if (sourceStatus.isDone) {
+    const doneStatus = getDoneStatus(db, targetProjectId)
+    if (doneStatus) return doneStatus
+  }
+
+  // If source is the default/todo status, find the default in target project
+  if (sourceStatus.isDefault) {
+    const defaultStatus = getDefaultStatus(db, targetProjectId)
+    if (defaultStatus) return defaultStatus
+  }
+
+  // For in-progress statuses, find a non-default, non-done status
+  // or fall back to default
+  const targetStatuses = getStatusesByProject(db, targetProjectId)
+  const inProgressStatus = targetStatuses.find(s => !s.isDefault && !s.isDone)
+  if (inProgressStatus) return inProgressStatus
+
+  // Final fallback: return the default status
+  return getDefaultStatus(db, targetProjectId)
+}
+
 // ============================================================================
 // Status Actions
 // ============================================================================

@@ -274,10 +274,10 @@ export const TasksProvider = ({
         setProjectsState(projectsWithStatuses)
         onProjectsChange?.(projectsWithStatuses)
 
-        // Load tasks
+        // Load tasks (including completed and archived for full UI support)
         const tasksResponse = await tasksService.list({
-          includeCompleted: false,
-          includeArchived: false,
+          includeCompleted: true,
+          includeArchived: true,
           limit: 1000 // Load up to 1000 tasks
         })
         const uiTasks = tasksResponse.tasks.map(dbTaskToUiTask)
@@ -580,7 +580,67 @@ export const TasksProvider = ({
             return
           }
 
-          // Standard update (no completedAt change)
+          // T047: Handle archive state changes via dedicated endpoints
+          if ('archivedAt' in updates) {
+            if (updates.archivedAt !== null && updates.archivedAt !== undefined) {
+              // Archive the task - use dedicated archive endpoint
+              await tasksService.archive(taskId)
+            } else {
+              // Unarchive the task - use dedicated unarchive endpoint
+              await tasksService.unarchive(taskId)
+            }
+
+            // If there are other updates beyond archivedAt, apply them separately
+            const { archivedAt: _archived, ...otherUpdates } = updates
+            if (Object.keys(otherUpdates).length > 0) {
+              // Convert UI RepeatConfig to service format (Date → string) if provided
+              let repeatConfigForService: Parameters<
+                typeof tasksService.update
+              >[0]['repeatConfig'] = undefined
+              if (otherUpdates.repeatConfig !== undefined) {
+                repeatConfigForService = otherUpdates.repeatConfig
+                  ? {
+                      frequency: otherUpdates.repeatConfig.frequency,
+                      interval: otherUpdates.repeatConfig.interval,
+                      daysOfWeek: otherUpdates.repeatConfig.daysOfWeek,
+                      monthlyType: otherUpdates.repeatConfig.monthlyType,
+                      dayOfMonth: otherUpdates.repeatConfig.dayOfMonth,
+                      weekOfMonth: otherUpdates.repeatConfig.weekOfMonth,
+                      dayOfWeekForMonth: otherUpdates.repeatConfig.dayOfWeekForMonth,
+                      endType: otherUpdates.repeatConfig.endType,
+                      endDate: otherUpdates.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
+                      endCount: otherUpdates.repeatConfig.endCount,
+                      completedCount: otherUpdates.repeatConfig.completedCount,
+                      createdAt: otherUpdates.repeatConfig.createdAt.toISOString()
+                    }
+                  : null
+              }
+
+              await tasksService.update({
+                id: taskId,
+                title: otherUpdates.title,
+                description: otherUpdates.description ?? undefined,
+                priority:
+                  otherUpdates.priority !== undefined
+                    ? priorityReverseMap[otherUpdates.priority]
+                    : undefined,
+                projectId: otherUpdates.projectId,
+                statusId: otherUpdates.statusId ?? undefined,
+                parentId: otherUpdates.parentId ?? undefined,
+                dueDate: otherUpdates.dueDate
+                  ? otherUpdates.dueDate.toISOString().split('T')[0]
+                  : undefined,
+                dueTime: otherUpdates.dueTime ?? undefined,
+                isRepeating: otherUpdates.isRepeating,
+                repeatConfig: repeatConfigForService,
+                linkedNoteIds: otherUpdates.linkedNoteIds
+              })
+            }
+            // Event listeners will update state
+            return
+          }
+
+          // Standard update (no completedAt or archivedAt change)
           // Convert UI RepeatConfig to service format (Date → string) if provided
           let repeatConfigForService: Parameters<typeof tasksService.update>[0]['repeatConfig'] =
             undefined
