@@ -23,6 +23,7 @@ import {
   onTaskCreated,
   onTaskUpdated,
   onTaskDeleted,
+  onTaskCompleted,
   onProjectCreated,
   onProjectUpdated,
   onProjectDeleted,
@@ -352,6 +353,12 @@ export const TasksProvider = ({
       setTasks((prev) => prev.filter((t) => t.id !== event.id))
     })
 
+    // T026: Subscribe to task completed events to update completedAt in state
+    const unsubTaskCompleted = onTaskCompleted((event) => {
+      const uiTask = dbTaskToUiTask(event.task as DbTask)
+      setTasks((prev) => prev.map((t) => (t.id === event.id ? uiTask : t)))
+    })
+
     const unsubProjectCreated = onProjectCreated((event) => {
       const uiProject = dbProjectToUiProject(event.project as DbProject)
       setProjects((prev) => {
@@ -373,6 +380,7 @@ export const TasksProvider = ({
       unsubTaskCreated()
       unsubTaskUpdated()
       unsubTaskDeleted()
+      unsubTaskCompleted()
       unsubProjectCreated()
       unsubProjectUpdated()
       unsubProjectDeleted()
@@ -441,6 +449,71 @@ export const TasksProvider = ({
     async (taskId: string, updates: Partial<Task>) => {
       if (isVaultOpen) {
         try {
+          // T024/T025: Handle completion state changes via dedicated endpoints
+          if ('completedAt' in updates) {
+            if (updates.completedAt !== null && updates.completedAt !== undefined) {
+              // Complete the task - use dedicated complete endpoint
+              const completedAtStr =
+                updates.completedAt instanceof Date
+                  ? updates.completedAt.toISOString()
+                  : updates.completedAt
+              await tasksService.complete({ id: taskId, completedAt: completedAtStr })
+            } else {
+              // Uncomplete the task - use dedicated uncomplete endpoint
+              await tasksService.uncomplete(taskId)
+            }
+
+            // If there are other updates beyond completedAt, apply them separately
+            const { completedAt: _, ...otherUpdates } = updates
+            if (Object.keys(otherUpdates).length > 0) {
+              // Convert UI RepeatConfig to service format (Date → string) if provided
+              let repeatConfigForService: Parameters<
+                typeof tasksService.update
+              >[0]['repeatConfig'] = undefined
+              if (otherUpdates.repeatConfig !== undefined) {
+                repeatConfigForService = otherUpdates.repeatConfig
+                  ? {
+                      frequency: otherUpdates.repeatConfig.frequency,
+                      interval: otherUpdates.repeatConfig.interval,
+                      daysOfWeek: otherUpdates.repeatConfig.daysOfWeek,
+                      monthlyType: otherUpdates.repeatConfig.monthlyType,
+                      dayOfMonth: otherUpdates.repeatConfig.dayOfMonth,
+                      weekOfMonth: otherUpdates.repeatConfig.weekOfMonth,
+                      dayOfWeekForMonth: otherUpdates.repeatConfig.dayOfWeekForMonth,
+                      endType: otherUpdates.repeatConfig.endType,
+                      endDate: otherUpdates.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
+                      endCount: otherUpdates.repeatConfig.endCount,
+                      completedCount: otherUpdates.repeatConfig.completedCount,
+                      createdAt: otherUpdates.repeatConfig.createdAt.toISOString()
+                    }
+                  : null
+              }
+
+              await tasksService.update({
+                id: taskId,
+                title: otherUpdates.title,
+                description: otherUpdates.description ?? undefined,
+                priority:
+                  otherUpdates.priority !== undefined
+                    ? priorityReverseMap[otherUpdates.priority]
+                    : undefined,
+                projectId: otherUpdates.projectId,
+                statusId: otherUpdates.statusId ?? undefined,
+                parentId: otherUpdates.parentId ?? undefined,
+                dueDate: otherUpdates.dueDate
+                  ? otherUpdates.dueDate.toISOString().split('T')[0]
+                  : undefined,
+                dueTime: otherUpdates.dueTime ?? undefined,
+                isRepeating: otherUpdates.isRepeating,
+                repeatConfig: repeatConfigForService,
+                linkedNoteIds: otherUpdates.linkedNoteIds
+              })
+            }
+            // Event listeners will update state
+            return
+          }
+
+          // Standard update (no completedAt change)
           // Convert UI RepeatConfig to service format (Date → string) if provided
           let repeatConfigForService: Parameters<typeof tasksService.update>[0]['repeatConfig'] =
             undefined
