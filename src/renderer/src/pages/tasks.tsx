@@ -17,6 +17,7 @@ import { TasksTabBar, type TasksInternalTab } from "@/components/tasks/tasks-tab
 import { ProjectsTabContent } from "@/components/tasks/projects/projects-tab-content"
 import { ProjectSidebar } from "@/components/tasks/projects/project-sidebar"
 import { AddTaskModal } from "@/components/tasks/add-task-modal"
+import { ProjectModal } from "@/components/tasks/project-modal"
 import { TaskDetailPanel } from "@/components/tasks/task-detail-panel"
 import { KanbanBoard } from "@/components/tasks/kanban"
 import { CalendarView } from "@/components/tasks/calendar"
@@ -241,7 +242,14 @@ export const TasksPage = ({
     onSelectedTaskIdsChange,
 }: TasksPageProps): React.JSX.Element => {
     // Get database-aware task operations from context
-    const { addTask: contextAddTask, updateTask: contextUpdateTask, deleteTask: contextDeleteTask } = useTasksContext()
+    const {
+        addTask: contextAddTask,
+        updateTask: contextUpdateTask,
+        deleteTask: contextDeleteTask,
+        addProject: contextAddProject,
+        updateProject: contextUpdateProject,
+        deleteProject: contextDeleteProject,
+    } = useTasksContext()
 
     // Local setter that updates via parent callback
     const setTasks = useCallback((updater: Task[] | ((prev: Task[]) => Task[])) => {
@@ -310,6 +318,10 @@ export const TasksPage = ({
 
     // Bulk due date picker state
     const [isBulkDueDatePickerOpen, setIsBulkDueDatePickerOpen] = useState(false)
+
+    // Project modal states
+    const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
+    const [editingProject, setEditingProject] = useState<Project | null>(null)
 
     // ========== DERIVED STATE ==========
 
@@ -572,6 +584,59 @@ export const TasksPage = ({
     const handleViewChange = (view: ViewMode): void => {
         setActiveView(view)
     }
+
+    // ========== PROJECT HANDLERS ==========
+
+    const handleCreateProject = useCallback(() => {
+        setEditingProject(null)
+        setIsProjectModalOpen(true)
+    }, [])
+
+    const handleEditProject = useCallback((project: Project) => {
+        setEditingProject(project)
+        setIsProjectModalOpen(true)
+    }, [])
+
+    const handleSaveProject = useCallback(async (project: Project) => {
+        try {
+            if (editingProject) {
+                await contextUpdateProject(project.id, project)
+                toast.success("Project updated")
+            } else {
+                await contextAddProject(project)
+                toast.success("Project created")
+            }
+            setIsProjectModalOpen(false)
+            setEditingProject(null)
+        } catch (error) {
+            console.error("Failed to save project:", error)
+            toast.error("Failed to save project")
+        }
+    }, [editingProject, contextAddProject, contextUpdateProject])
+
+    const handleArchiveProject = useCallback(async (project: Project) => {
+        try {
+            await contextUpdateProject(project.id, { isArchived: true })
+            toast.success("Project archived")
+        } catch (error) {
+            console.error("Failed to archive project:", error)
+            toast.error("Failed to archive project")
+        }
+    }, [contextUpdateProject])
+
+    const handleDeleteProject = useCallback(async (projectId: string) => {
+        try {
+            await contextDeleteProject(projectId)
+            toast.success("Project deleted")
+            // If we were viewing the deleted project, reset selection
+            if (selectedProjectId === projectId) {
+                setSelectedProjectId(null)
+            }
+        } catch (error) {
+            console.error("Failed to delete project:", error)
+            toast.error("Failed to delete project")
+        }
+    }, [contextDeleteProject, selectedProjectId])
 
     // Keyboard shortcuts for filter operations and selection
     useEffect(() => {
@@ -1372,6 +1437,10 @@ export const TasksPage = ({
                             onTaskClick={handleTaskClick}
                             onQuickAdd={handleQuickAdd}
                             onOpenModal={handleOpenAddTaskModal}
+                            onProjectEdit={handleEditProject}
+                            onProjectArchive={handleArchiveProject}
+                            onProjectDelete={handleDeleteProject}
+                            onCreateProject={handleCreateProject}
                             isSelectionMode={selection.isSelectionMode}
                             selectedIds={selection.selectedIds}
                             onToggleSelect={toggleTask}
@@ -1416,6 +1485,10 @@ export const TasksPage = ({
                                 projects={projects}
                                 selectedProjectId={selectedProjectId}
                                 onProjectSelect={setSelectedProjectId}
+                                onProjectEdit={handleEditProject}
+                                onProjectArchive={handleArchiveProject}
+                                onProjectDelete={handleDeleteProject}
+                                onCreateProject={handleCreateProject}
                             />
                             <div className="flex-1 overflow-hidden">
                                 {selectedProjectId ? (
@@ -1475,6 +1548,10 @@ export const TasksPage = ({
                                 projects={projects}
                                 selectedProjectId={selectedProjectId}
                                 onProjectSelect={setSelectedProjectId}
+                                onProjectEdit={handleEditProject}
+                                onProjectArchive={handleArchiveProject}
+                                onProjectDelete={handleDeleteProject}
+                                onCreateProject={handleCreateProject}
                             />
                             <div className="flex-1 overflow-hidden">
                                 {selectedProjectId ? (
@@ -1518,6 +1595,18 @@ export const TasksPage = ({
                 defaultProjectId={addTaskPrefillProjectId || modalDefaultProjectId}
                 defaultDueDate={addTaskPrefillDueDate || modalDefaultDueDate}
                 prefillTitle={addTaskPrefillTitle}
+            />
+
+            {/* Project Modal */}
+            <ProjectModal
+                isOpen={isProjectModalOpen}
+                onClose={() => {
+                    setIsProjectModalOpen(false)
+                    setEditingProject(null)
+                }}
+                onSave={handleSaveProject}
+                onDelete={editingProject ? () => handleDeleteProject(editingProject.id) : undefined}
+                project={editingProject}
             />
 
             {/* Task Detail Panel */}

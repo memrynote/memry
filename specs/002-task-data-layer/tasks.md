@@ -128,12 +128,21 @@ src/
 
 ### Verification for User Story 3
 
-- [ ] T020 [P] [US3] Verify project creation with custom statuses in src/renderer/src/services/tasks-service.ts
-- [ ] T021 [P] [US3] Verify statuses load per project (fix gap identified in T005) in src/renderer/src/contexts/tasks/index.tsx
-- [ ] T022 [US3] Verify task status changes persist correctly in src/shared/db/queries/tasks.ts
-- [ ] T023 [US3] Verify Kanban view displays correct columns per project in src/renderer/src/components/tasks/kanban/
+- [X] T020 [P] [US3] Verify project creation with custom statuses in src/renderer/src/services/tasks-service.ts
+  - COMPLETED: Wired ProjectModal in tasks.tsx with full CRUD handlers
+  - handleCreateProject, handleEditProject, handleSaveProject, handleArchiveProject, handleDeleteProject
+  - Connected to ProjectsTabContent and ProjectSidebar components
+  - Backend createProject handler creates default statuses automatically
+- [X] T021 [P] [US3] Verify statuses load per project (fix gap identified in T005) in src/renderer/src/contexts/tasks/index.tsx
+  - ALREADY VERIFIED in T005: Lines 257-271 load statuses via tasksService.listStatuses()
+- [X] T022 [US3] Verify task status changes persist correctly in src/shared/db/queries/tasks.ts
+  - VERIFIED: updateTask() uses synchronous write with modifiedAt timestamp
+  - handleUpdateTask in tasks.tsx calls contextUpdateTask which persists via IPC
+- [X] T023 [US3] Verify Kanban view displays correct columns per project in src/renderer/src/components/tasks/kanban/
+  - VERIFIED: KanbanBoard receives projects prop with statuses, renders columns per project
+  - Project statuses loaded in TasksProvider context on project load
 
-**Checkpoint**: Project workflows verified
+**Checkpoint**: Project workflows verified ✅
 
 ---
 
