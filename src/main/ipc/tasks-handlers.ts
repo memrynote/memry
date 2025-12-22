@@ -144,6 +144,22 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         const { id, tags, linkedNoteIds, ...updates } = input
 
+        // If projectId is changing, we need to map the status to the new project
+        if (updates.projectId) {
+          const currentTask = taskQueries.getTaskById(db, id)
+          if (currentTask && currentTask.projectId !== updates.projectId) {
+            // Get the current status
+            const currentStatus = currentTask.statusId
+              ? projectQueries.getStatusById(db, currentTask.statusId)
+              : undefined
+            // Find equivalent status in the new project
+            const newStatus = projectQueries.getEquivalentStatus(db, updates.projectId, currentStatus)
+            if (newStatus) {
+              updates.statusId = newStatus.id
+            }
+          }
+        }
+
         const task = taskQueries.updateTask(db, id, updates)
         if (!task) {
           return { success: false, task: null, error: 'Task not found' }
@@ -288,7 +304,17 @@ export function registerTasksHandlers(): void {
     createStringHandler(async (id) => {
       try {
         const db = requireDatabase()
-        taskQueries.archiveTask(db, id)
+        const task = taskQueries.archiveTask(db, id)
+        if (!task) {
+          return { success: false, error: 'Task not found' }
+        }
+        // Enrich task with linked note IDs for the response
+        const enrichedTask = {
+          ...task,
+          linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
+        }
+        // Emit event so frontend can update state
+        emitTaskEvent(TasksChannels.events.UPDATED, { id, task: enrichedTask, changes: { archivedAt: task.archivedAt } })
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to archive task'
@@ -303,7 +329,17 @@ export function registerTasksHandlers(): void {
     createStringHandler(async (id) => {
       try {
         const db = requireDatabase()
-        taskQueries.unarchiveTask(db, id)
+        const task = taskQueries.unarchiveTask(db, id)
+        if (!task) {
+          return { success: false, error: 'Task not found' }
+        }
+        // Enrich task with linked note IDs for the response
+        const enrichedTask = {
+          ...task,
+          linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
+        }
+        // Emit event so frontend can update state
+        emitTaskEvent(TasksChannels.events.UPDATED, { id, task: enrichedTask, changes: { archivedAt: null } })
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to unarchive task'
@@ -318,9 +354,25 @@ export function registerTasksHandlers(): void {
     createValidatedHandler(TaskMoveSchema, async (input) => {
       try {
         const db = requireDatabase()
+
+        // If moving to a different project and no statusId provided, map the status
+        let targetStatusId = input.targetStatusId
+        if (input.targetProjectId && !targetStatusId) {
+          const currentTask = taskQueries.getTaskById(db, input.taskId)
+          if (currentTask && currentTask.projectId !== input.targetProjectId) {
+            const currentStatus = currentTask.statusId
+              ? projectQueries.getStatusById(db, currentTask.statusId)
+              : undefined
+            const newStatus = projectQueries.getEquivalentStatus(db, input.targetProjectId, currentStatus)
+            if (newStatus) {
+              targetStatusId = newStatus.id
+            }
+          }
+        }
+
         const task = taskQueries.moveTask(db, input.taskId, {
           projectId: input.targetProjectId,
-          statusId: input.targetStatusId,
+          statusId: targetStatusId,
           parentId: input.targetParentId,
           position: input.position
         })

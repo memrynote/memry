@@ -27,6 +27,7 @@ import {
     ClearCompletedMenu,
     ArchiveConfirmDialog,
     DeleteCompletedDialog,
+    ArchivedView,
 } from "@/components/tasks/completed"
 import { FilterBar, FilterEmptyState, type FilterBarRef } from "@/components/tasks/filters"
 import { cn } from "@/lib/utils"
@@ -280,8 +281,8 @@ export const TasksPage = ({
     const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false)
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
 
-    // Completed/Archive view states (unused after refactor, kept for potential future use)
-    const [_showArchivedView, _setShowArchivedView] = useState(false)
+    // Completed/Archive view states
+    const [showArchivedView, setShowArchivedView] = useState(false)
     const [isClearMenuOpen, setIsClearMenuOpen] = useState(false)
     const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
     const [archiveDialogVariant, setArchiveDialogVariant] = useState<"all" | "older-than">("all")
@@ -447,19 +448,13 @@ export const TasksPage = ({
         }
     }, [selection.selectedIds, onSelectedTaskIdsChange])
 
-    // Bulk actions hook
+    // Bulk actions hook - use context functions to persist to database
     const bulkActions = useBulkActions({
         selectedIds: selectedTaskIds,
         tasks,
         projects,
-        onUpdateTask: (taskId, updates) => {
-            setTasks((prev) =>
-                prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
-            )
-        },
-        onDeleteTask: (taskId) => {
-            setTasks((prev) => prev.filter((t) => t.id !== taskId))
-        },
+        onUpdateTask: contextUpdateTask,
+        onDeleteTask: contextDeleteTask,
         onComplete: deselectAll,
     })
 
@@ -1075,15 +1070,15 @@ export const TasksPage = ({
         [tasks, setTasks]
     )
 
-    const _handleViewArchived = useCallback((): void => {
-        _setShowArchivedView(true)
+    const handleViewArchived = useCallback((): void => {
+        setShowArchivedView(true)
     }, [])
 
-    const _handleBackFromArchived = useCallback((): void => {
-        _setShowArchivedView(false)
+    const handleBackFromArchived = useCallback((): void => {
+        setShowArchivedView(false)
     }, [])
 
-    const _handleOpenClearMenu = useCallback((): void => {
+    const handleOpenClearMenu = useCallback((): void => {
         setIsClearMenuOpen(true)
     }, [])
 
@@ -1108,31 +1103,22 @@ export const TasksPage = ({
         setIsArchiveDialogOpen(true)
     }, [])
 
-    const handleConfirmArchive = useCallback((): void => {
+    const handleConfirmArchive = useCallback(async (): Promise<void> => {
+        let tasksToArchive: Task[]
         if (archiveDialogVariant === "all") {
-            const completedIds = completedTasksForActions.map((t) => t.id)
-            setTasks((prev) =>
-                prev.map((t) =>
-                    completedIds.includes(t.id)
-                        ? { ...t, archivedAt: new Date() }
-                        : t
-                )
-            )
-            toast.success(`${completedIds.length} task${completedIds.length !== 1 ? "s" : ""} archived`)
+            tasksToArchive = completedTasksForActions
         } else {
-            const olderTasks = getTasksOlderThan(completedTasksForActions, archiveOlderThanDays)
-            const olderIds = olderTasks.map((t) => t.id)
-            setTasks((prev) =>
-                prev.map((t) =>
-                    olderIds.includes(t.id)
-                        ? { ...t, archivedAt: new Date() }
-                        : t
-                )
-            )
-            toast.success(`${olderIds.length} task${olderIds.length !== 1 ? "s" : ""} archived`)
+            tasksToArchive = getTasksOlderThan(completedTasksForActions, archiveOlderThanDays)
         }
+
+        // Archive each task via handleUpdateTask to trigger database save
+        for (const task of tasksToArchive) {
+            await handleUpdateTask(task.id, { archivedAt: new Date() })
+        }
+
+        toast.success(`${tasksToArchive.length} task${tasksToArchive.length !== 1 ? "s" : ""} archived`)
         setIsArchiveDialogOpen(false)
-    }, [archiveDialogVariant, archiveOlderThanDays, completedTasksForActions, setTasks])
+    }, [archiveDialogVariant, archiveOlderThanDays, completedTasksForActions, handleUpdateTask])
 
     const tasksToArchiveCount = useMemo((): number => {
         if (archiveDialogVariant === "all") {
@@ -1146,23 +1132,27 @@ export const TasksPage = ({
         setIsDeleteCompletedDialogOpen(true)
     }, [])
 
-    const _handleDeleteAllArchived = useCallback((): void => {
+    const handleDeleteAllArchived = useCallback((): void => {
         setDeleteCompletedVariant("archived")
         setIsDeleteCompletedDialogOpen(true)
     }, [])
 
-    const handleConfirmDeleteCompleted = useCallback((): void => {
+    const handleConfirmDeleteCompleted = useCallback(async (): Promise<void> => {
+        let tasksToDelete: Task[]
         if (deleteCompletedVariant === "completed") {
-            const completedIds = completedTasksForActions.map((t) => t.id)
-            setTasks((prev) => prev.filter((t) => !completedIds.includes(t.id)))
-            toast.success(`${completedIds.length} task${completedIds.length !== 1 ? "s" : ""} deleted permanently`)
+            tasksToDelete = completedTasksForActions
         } else {
-            const archivedIds = archivedTasksForActions.map((t) => t.id)
-            setTasks((prev) => prev.filter((t) => !archivedIds.includes(t.id)))
-            toast.success(`${archivedIds.length} task${archivedIds.length !== 1 ? "s" : ""} deleted permanently`)
+            tasksToDelete = archivedTasksForActions
         }
+
+        // Delete each task via handleDeleteTask to trigger database delete
+        for (const task of tasksToDelete) {
+            await handleDeleteTask(task.id)
+        }
+
+        toast.success(`${tasksToDelete.length} task${tasksToDelete.length !== 1 ? "s" : ""} deleted permanently`)
         setIsDeleteCompletedDialogOpen(false)
-    }, [deleteCompletedVariant, completedTasksForActions, archivedTasksForActions, setTasks])
+    }, [deleteCompletedVariant, completedTasksForActions, archivedTasksForActions, handleDeleteTask])
 
     const tasksToDeleteCount = useMemo((): number => {
         if (deleteCompletedVariant === "completed") {
@@ -1339,6 +1329,10 @@ export const TasksPage = ({
                             isSelectionMode={selection.isSelectionMode}
                             onToggleSelectionMode={handleToggleSelectionMode}
                             showCompletionToggle={activeInternalTab === "all"}
+                            onViewArchived={activeInternalTab === "all" ? handleViewArchived : undefined}
+                            onArchiveOptions={activeInternalTab === "all" ? handleOpenClearMenu : undefined}
+                            completedCount={completedTasksForActions.length}
+                            archivedCount={archivedTasksForActions.length}
                         />
                     )}
 
@@ -1360,6 +1354,18 @@ export const TasksPage = ({
                             projects={projects}
                             statuses={currentProjectStatuses}
                             showStatusAction={activeView === "kanban" && selectedType === "project"}
+                        />
+                    )}
+
+                    {/* T049: Archived View - shown when viewing archived tasks */}
+                    {showArchivedView && (
+                        <ArchivedView
+                            tasks={tasks}
+                            projects={projects}
+                            onBack={handleBackFromArchived}
+                            onRestore={(taskId) => handleUpdateTask(taskId, { archivedAt: null })}
+                            onDelete={handleDeleteTask}
+                            onDeleteAll={handleDeleteAllArchived}
                         />
                     )}
 
@@ -1655,7 +1661,9 @@ export const TasksPage = ({
                 onArchiveAll={handleArchiveAll}
                 onArchiveOlderThan={handleArchiveOlderThan}
                 onDeleteAll={handleDeleteAllCompleted}
+                onViewArchived={handleViewArchived}
                 completedCount={completedTasksForActions.length}
+                archivedCount={archivedTasksForActions.length}
             />
 
             {/* Archive Confirm Dialog */}

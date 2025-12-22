@@ -372,12 +372,25 @@ src/
 
 ### Verification for User Story 9
 
-- [ ] T047 [P] [US9] Verify archive operation sets archivedAt timestamp in src/renderer/src/services/tasks-service.ts
-- [ ] T048 [P] [US9] Verify archived tasks hidden from active/completed views in src/renderer/src/pages/tasks.tsx
-- [ ] T049 [US9] Verify archive view shows archived tasks in src/renderer/src/components/tasks/completed/
-- [ ] T050 [US9] Verify unarchive returns task to completed view
+- [X] T047 [P] [US9] Verify archive operation sets archivedAt timestamp in src/renderer/src/services/tasks-service.ts
+  - FIXED: Added archivedAt handling in TasksContext.updateTask() (contexts/tasks/index.tsx:583-641)
+  - Uses dedicated tasksService.archive() and tasksService.unarchive() endpoints
+  - Event listeners update state on successful archive/unarchive
+- [X] T048 [P] [US9] Verify archived tasks hidden from active/completed views in src/renderer/src/pages/tasks.tsx
+  - VERIFIED: getCompletedTasks() at task-utils.ts:1027 filters `archivedAt === null`
+  - VERIFIED: getArchivedTasks() at task-utils.ts:1034 filters `archivedAt !== null`
+  - FIXED: TasksContext now loads archived tasks (includeArchived: true)
+- [X] T049 [US9] Verify archive view shows archived tasks in src/renderer/src/components/tasks/completed/
+  - FIXED: Enabled ArchivedView in tasks.tsx (removed underscore prefix from state)
+  - FIXED: Added ArchivedView rendering in JSX (tasks.tsx:1368-1378)
+  - FIXED: Added "View Archived" option to ClearCompletedMenu (clear-completed-menu.tsx)
+  - FIXED: Wired handleViewArchived handler to open archive view
+- [X] T050 [US9] Verify unarchive returns task to completed view
+  - VERIFIED: ArchivedView.onRestore calls handleUpdateTask with { archivedAt: null }
+  - VERIFIED: TasksContext.updateTask detects archivedAt and calls tasksService.unarchive()
+  - VERIFIED: Task reappears in completed list after unarchive (getCompletedTasks filter)
 
-**Checkpoint**: Archive functionality verified
+**Checkpoint**: Archive functionality verified ✅
 
 ---
 
