@@ -104,6 +104,7 @@ export const useBulkActions = ({
     })
 
     toast.success(`${tasksToComplete.length} task${tasksToComplete.length !== 1 ? "s" : ""} completed`, {
+      duration: 10000, // T052: 10-second timeout for undo per spec
       action: {
         label: "Undo",
         onClick: () => {
@@ -290,6 +291,7 @@ export const useBulkActions = ({
     })
 
     toast.success(`${count} task${count !== 1 ? "s" : ""} archived`, {
+      duration: 10000, // T052: 10-second timeout for undo per spec
       action: {
         label: "Undo",
         onClick: () => {
