@@ -773,6 +773,19 @@ export function registerTasksHandlers(): void {
       try {
         const db = requireDatabase()
         const count = taskQueries.bulkCompleteTasks(db, input.ids)
+
+        // Emit COMPLETED event for each task to update UI state
+        for (const id of input.ids) {
+          const task = taskQueries.getTaskById(db, id)
+          if (task) {
+            const enrichedTask = {
+              ...task,
+              linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
+            }
+            emitTaskEvent(TasksChannels.events.COMPLETED, { id, task: enrichedTask })
+          }
+        }
+
         return { success: true, count }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to complete tasks'
@@ -804,6 +817,23 @@ export function registerTasksHandlers(): void {
       try {
         const db = requireDatabase()
         const count = taskQueries.bulkMoveTasks(db, input.ids, input.projectId)
+
+        // Emit UPDATED event for each task to update UI state with new projectId
+        for (const id of input.ids) {
+          const task = taskQueries.getTaskById(db, id)
+          if (task) {
+            const enrichedTask = {
+              ...task,
+              linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
+            }
+            emitTaskEvent(TasksChannels.events.UPDATED, {
+              id,
+              task: enrichedTask,
+              changes: { projectId: input.projectId }
+            })
+          }
+        }
+
         return { success: true, count }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to move tasks'
@@ -819,6 +849,23 @@ export function registerTasksHandlers(): void {
       try {
         const db = requireDatabase()
         const count = taskQueries.bulkArchiveTasks(db, input.ids)
+
+        // Emit UPDATED event for each task to update UI state with archivedAt
+        for (const id of input.ids) {
+          const task = taskQueries.getTaskById(db, id)
+          if (task) {
+            const enrichedTask = {
+              ...task,
+              linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
+            }
+            emitTaskEvent(TasksChannels.events.UPDATED, {
+              id,
+              task: enrichedTask,
+              changes: { archivedAt: task.archivedAt }
+            })
+          }
+        }
+
         return { success: true, count }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to archive tasks'
