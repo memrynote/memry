@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { useDroppable } from "@dnd-kit/core"
 import { AlertTriangle, Star } from "lucide-react"
@@ -5,8 +6,9 @@ import { AlertTriangle, Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SortableTaskRow } from "@/components/tasks/drag-drop"
 import { SortableParentTaskRow } from "@/components/tasks/sortable-parent-task-row"
-import { isTaskCompleted, startOfDay, addDays, type UrgencyLevel } from "@/lib/task-utils"
-import { getTopLevelTasks, getSubtasks, calculateProgress, isSubtask } from "@/lib/subtask-utils"
+import { startOfDay, addDays, type UrgencyLevel } from "@/lib/task-utils"
+import { createLookupContext, isTaskCompletedFast } from "@/lib/lookup-utils"
+import { getTopLevelTasks, getSubtasks, calculateProgress } from "@/lib/subtask-utils"
 import type { Task } from "@/data/sample-tasks"
 import type { Project, Status } from "@/data/tasks-data"
 
@@ -269,6 +271,12 @@ export const TaskGroup = ({
   // Don't render if no top-level tasks
   if (topLevelCount === 0) return null
 
+  // Create lookup context for O(1) project/status lookups
+  const lookupContext = useMemo(
+    () => createLookupContext(projects),
+    [projects]
+  )
+
   // Get urgency-based styles
   const styles = urgencyStyles[urgency]
   const hasUrgentStyling = urgency === "critical" || urgency === "high"
@@ -298,10 +306,12 @@ export const TaskGroup = ({
           hasUrgentStyling && "px-1 pb-1"
         )}>
           {topLevelTasks.map((task) => {
-            const project = projects.find((p) => p.id === task.projectId)
+            // Use lookup context for O(1) project lookup
+            const project = lookupContext.projectMap.get(task.projectId)
             if (!project) return null
 
-            const completed = isTaskCompleted(task, projects)
+            // Use lookup context for O(1) completion check
+            const completed = isTaskCompletedFast(task, lookupContext.completionMap)
             const isCheckedForSelection = selectedIds?.has(task.id) ?? false
             const subtasks = getSubtasks(task.id, allTasks || tasks)
             const progress = calculateProgress(subtasks)

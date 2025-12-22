@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { Plus } from "lucide-react"
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { useDroppable } from "@dnd-kit/core"
@@ -5,6 +6,7 @@ import { useDroppable } from "@dnd-kit/core"
 import { cn } from "@/lib/utils"
 import { SortableTaskRow } from "@/components/tasks/drag-drop"
 import { startOfDay, addDays } from "@/lib/task-utils"
+import { createLookupContext, isTaskCompletedFast } from "@/lib/lookup-utils"
 import type { Task } from "@/data/sample-tasks"
 import type { Project } from "@/data/tasks-data"
 
@@ -125,6 +127,12 @@ export const TaskSection = ({
 
   const targetDate = date !== undefined ? date : getDefaultDate()
 
+  // Create lookup context for O(1) project/status lookups
+  const lookupContext = useMemo(
+    () => createLookupContext(projects),
+    [projects]
+  )
+
   // Set up droppable for section-level drops
   const { setNodeRef, isOver } = useDroppable({
     id: sectionId,
@@ -151,12 +159,9 @@ export const TaskSection = ({
     default: "bg-background",
   }[variant]
 
-  // Determine if task is completed based on its project status
+  // Use lookup context for O(1) completion checks
   const isTaskCompleted = (task: Task): boolean => {
-    const project = projects.find((p) => p.id === task.projectId)
-    if (!project) return false
-    const status = project.statuses.find((s) => s.id === task.statusId)
-    return status?.type === "done"
+    return isTaskCompletedFast(task, lookupContext.completionMap)
   }
 
   return (
@@ -185,7 +190,8 @@ export const TaskSection = ({
         <div className="divide-y divide-border/50">
           {tasks.length > 0 ? (
             tasks.map((task) => {
-              const project = projects.find((p) => p.id === task.projectId)
+              // Use lookup context for O(1) project lookup
+              const project = lookupContext.projectMap.get(task.projectId)
               if (!project) return null
 
               return (
