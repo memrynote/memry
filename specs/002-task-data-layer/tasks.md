@@ -154,12 +154,20 @@ src/
 
 ### Verification for User Story 4
 
-- [ ] T024 [P] [US4] Verify complete operation sets completedAt timestamp in src/renderer/src/services/tasks-service.ts
-- [ ] T025 [P] [US4] Verify uncomplete operation clears completedAt in src/renderer/src/services/tasks-service.ts
-- [ ] T026 [US4] Verify completed tasks appear in completed view in src/renderer/src/pages/tasks.tsx
-- [ ] T027 [US4] Verify completion timestamp is displayed in task detail panel in src/renderer/src/components/tasks/
+- [X] T024 [P] [US4] Verify complete operation sets completedAt timestamp in src/renderer/src/services/tasks-service.ts
+  - FIXED: Context's updateTask now detects completedAt changes and calls tasksService.complete() instead of generic update
+  - Backend handler at tasks-handlers.ts:224 calls taskQueries.completeTask() which sets completedAt timestamp
+- [X] T025 [P] [US4] Verify uncomplete operation clears completedAt in src/renderer/src/services/tasks-service.ts
+  - FIXED: Context's updateTask calls tasksService.uncomplete() when completedAt is set to null
+  - Backend handler at tasks-handlers.ts:245 calls taskQueries.uncompleteTask() which clears completedAt
+- [X] T026 [US4] Verify completed tasks appear in completed view in src/renderer/src/pages/tasks.tsx
+  - FIXED: Added onTaskCompleted event subscription in TasksProvider to update state when tasks are completed
+  - CompletedView at completed-view.tsx:102-105 filters tasks by completedAt !== null
+- [X] T027 [US4] Verify completion timestamp is displayed in task detail panel in src/renderer/src/components/tasks/
+  - VERIFIED: TaskMetadata component at task-metadata.tsx:47 displays "Completed {date}" when completedAt is set
+  - CompletedTaskRow at completed-task-row.tsx:99-119 shows completion time/date in the row
 
-**Checkpoint**: Completion workflow verified
+**Checkpoint**: Completion workflow verified ✅
 
 ---
 
