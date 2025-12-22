@@ -239,6 +239,22 @@ export interface IndexRecoveredEvent {
   duration: number
 }
 
+// RepeatConfig type (matches frontend format for full feature support)
+export interface RepeatConfig {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  interval: number
+  daysOfWeek?: number[]
+  monthlyType?: 'dayOfMonth' | 'weekPattern'
+  dayOfMonth?: number
+  weekOfMonth?: number
+  dayOfWeekForMonth?: number
+  endType: 'never' | 'date' | 'count'
+  endDate?: string | null
+  endCount?: number
+  completedCount: number
+  createdAt: string
+}
+
 // Task types (mirrored from contracts for preload compatibility)
 export interface Task {
   id: string
@@ -247,12 +263,12 @@ export interface Task {
   parentId: string | null
   title: string
   description: string | null
-  priority: 0 | 1 | 2 | 3
+  priority: 0 | 1 | 2 | 3 | 4
   position: number
   dueDate: string | null
   dueTime: string | null
   startDate: string | null
-  repeatConfig: unknown | null
+  repeatConfig: RepeatConfig | null
   repeatFrom: 'due' | 'completion' | null
   completedAt: string | null
   archivedAt: string | null
@@ -317,6 +333,9 @@ export interface TaskCreateInput {
   dueDate?: string | null
   dueTime?: string | null
   startDate?: string | null
+  isRepeating?: boolean
+  repeatConfig?: RepeatConfig | null
+  repeatFrom?: 'due' | 'completion' | null
   tags?: string[]
   linkedNoteIds?: string[]
   position?: number
@@ -333,6 +352,9 @@ export interface TaskUpdateInput {
   dueDate?: string | null
   dueTime?: string | null
   startDate?: string | null
+  isRepeating?: boolean
+  repeatConfig?: RepeatConfig | null
+  repeatFrom?: 'due' | 'completion' | null
   tags?: string[]
   linkedNoteIds?: string[]
 }

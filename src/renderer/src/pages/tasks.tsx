@@ -55,6 +55,7 @@ import { addDays } from "@/lib/task-utils"
 import { calculateNextOccurrence, shouldCreateNextOccurrence } from "@/lib/repeat-utils"
 import type { StopRepeatOption } from "@/components/tasks/stop-repeating-dialog"
 import { useFilterState, useSavedFilters, useFilteredAndSortedTasks, useTaskSelection, useBulkActions, useSubtaskManagement } from "@/hooks"
+import { useTasksContext } from "@/contexts/tasks"
 import { BulkActionToolbar, BulkDeleteDialog, BulkDueDatePicker } from "@/components/tasks/bulk-actions"
 import {
     AllSubtasksCompleteDialog,
@@ -239,6 +240,9 @@ export const TasksPage = ({
     selectedTaskIds: _externalSelectedIds,
     onSelectedTaskIdsChange,
 }: TasksPageProps): React.JSX.Element => {
+    // Get database-aware task operations from context
+    const { addTask: contextAddTask, updateTask: contextUpdateTask, deleteTask: contextDeleteTask } = useTasksContext()
+
     // Local setter that updates via parent callback
     const setTasks = useCallback((updater: Task[] | ((prev: Task[]) => Task[])) => {
         if (typeof updater === "function") {
@@ -645,8 +649,9 @@ export const TasksPage = ({
     }
 
     const handleAddTaskFromModal = useCallback((newTask: Task): void => {
-        setTasks((prev) => [...prev, newTask])
-    }, [setTasks])
+        // Use context addTask to persist to database
+        contextAddTask(newTask)
+    }, [contextAddTask])
 
     // Get default project and due date for the modal based on current selection
     const modalDefaultProjectId = useMemo(() => {
@@ -712,9 +717,10 @@ export const TasksPage = ({
             const newTask = createDefaultTask(projectId, statusId, title, dueDate)
             newTask.priority = priority
 
-            setTasks((prev) => [...prev, newTask])
+            // Use context addTask to persist to database
+            contextAddTask(newTask)
         },
-        [selectedId, selectedType, selectedProject, projects, setTasks]
+        [selectedId, selectedType, selectedProject, projects, contextAddTask]
     )
 
     const handleToggleComplete = useCallback(
@@ -729,14 +735,12 @@ export const TasksPage = ({
             if (!currentStatus) return
 
             if (currentStatus.type === "done") {
+                // Uncomplete: move back to todo status
                 const todoStatus = getDefaultTodoStatus(project)
-                setTasks((prev) =>
-                    prev.map((task) =>
-                        task.id === taskId
-                            ? { ...task, statusId: todoStatus?.id || task.statusId, completedAt: null }
-                            : task
-                    )
-                )
+                contextUpdateTask(taskId, {
+                    statusId: todoStatus?.id || taskToComplete.statusId,
+                    completedAt: null
+                })
                 return
             }
 
@@ -751,43 +755,29 @@ export const TasksPage = ({
                     completedCount: newCompletedCount,
                 })
 
-                // Update tasks in a single setState call to avoid race conditions
-                setTasks((prev) => {
-                    // First, mark the completed task as done
-                    const updatedTasks = prev.map((task) =>
-                        task.id === taskId
-                            ? {
-                                ...task,
-                                statusId: doneStatus?.id || task.statusId,
-                                completedAt: new Date(),
-                                // Mark completed occurrence as non-repeating so it shows in Done section
-                                isRepeating: false,
-                                repeatConfig: null,
-                            }
-                            : task
-                    )
-
-                    // Then, if we should create the next occurrence, add it
-                    if (shouldCreateNext && nextDate) {
-                        const newTask: Task = {
-                            ...taskToComplete,
-                            id: generateTaskId(),
-                            dueDate: nextDate,
-                            statusId: getDefaultTodoStatus(project)?.id || taskToComplete.statusId,
-                            completedAt: null,
-                            createdAt: new Date(),
-                            repeatConfig: {
-                                ...config,
-                                completedCount: newCompletedCount,
-                            },
-                        }
-                        return [...updatedTasks, newTask]
-                    }
-
-                    return updatedTasks
+                // Mark the completed task as done (no longer repeating)
+                contextUpdateTask(taskId, {
+                    statusId: doneStatus?.id || taskToComplete.statusId,
+                    completedAt: new Date(),
+                    isRepeating: false,
+                    repeatConfig: null,
                 })
 
+                // Create the next occurrence if needed
                 if (shouldCreateNext && nextDate) {
+                    const newTask: Task = {
+                        ...taskToComplete,
+                        id: generateTaskId(),
+                        dueDate: nextDate,
+                        statusId: getDefaultTodoStatus(project)?.id || taskToComplete.statusId,
+                        completedAt: null,
+                        createdAt: new Date(),
+                        repeatConfig: {
+                            ...config,
+                            completedCount: newCompletedCount,
+                        },
+                    }
+                    contextAddTask(newTask)
                     toast.success("Task completed!", {
                         description: `Next occurrence: ${formatDateShort(nextDate)}`,
                     })
@@ -797,16 +787,14 @@ export const TasksPage = ({
                     })
                 }
             } else {
-                setTasks((prev) =>
-                    prev.map((task) =>
-                        task.id === taskId
-                            ? { ...task, statusId: doneStatus?.id || task.statusId, completedAt: new Date() }
-                            : task
-                    )
-                )
+                // Simple completion: mark as done
+                contextUpdateTask(taskId, {
+                    statusId: doneStatus?.id || taskToComplete.statusId,
+                    completedAt: new Date()
+                })
             }
         },
-        [tasks, projects, setTasks]
+        [tasks, projects, contextUpdateTask, contextAddTask]
     )
 
     const handleSkipOccurrence = useCallback(
@@ -816,17 +804,14 @@ export const TasksPage = ({
 
             const nextDate = calculateNextOccurrence(task.dueDate, task.repeatConfig)
             if (nextDate) {
-                setTasks((prev) =>
-                    prev.map((t) =>
-                        t.id === taskId ? { ...t, dueDate: nextDate } : t
-                    )
-                )
+                // T-GAP-001: Use contextUpdateTask to persist to database
+                contextUpdateTask(taskId, { dueDate: nextDate })
                 toast.success("Occurrence skipped", {
                     description: `Moved to ${formatDateShort(nextDate)}`,
                 })
             }
         },
-        [tasks, setTasks]
+        [tasks, contextUpdateTask]
     )
 
     const handleStopRepeating = useCallback(
@@ -835,22 +820,18 @@ export const TasksPage = ({
             if (!task) return
 
             if (option === "delete") {
-                setTasks((prev) => prev.filter((t) => t.id !== taskId))
+                // T-GAP-003: Use contextDeleteTask to persist to database
+                contextDeleteTask(taskId)
                 setIsDetailPanelOpen(false)
                 setSelectedTaskId(null)
                 toast.success("Repeating task deleted")
             } else {
-                setTasks((prev) =>
-                    prev.map((t) =>
-                        t.id === taskId
-                            ? { ...t, isRepeating: false, repeatConfig: null }
-                            : t
-                    )
-                )
+                // T-GAP-002: Use contextUpdateTask to persist to database
+                contextUpdateTask(taskId, { isRepeating: false, repeatConfig: null })
                 toast.success("Task will no longer repeat")
             }
         },
-        [tasks, setTasks]
+        [tasks, contextDeleteTask, contextUpdateTask]
     )
 
     const handleTaskClick = useCallback((taskId: string): void => {
@@ -864,10 +845,9 @@ export const TasksPage = ({
     }, [])
 
     const handleUpdateTask = useCallback((taskId: string, updates: Partial<Task>): void => {
-        setTasks((prev) =>
-            prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
-        )
-    }, [setTasks])
+        // Use context updateTask to persist to database
+        contextUpdateTask(taskId, updates)
+    }, [contextUpdateTask])
 
     const handleDeleteTask = useCallback((taskId: string): void => {
         const task = tasks.find((t) => t.id === taskId)
@@ -875,7 +855,8 @@ export const TasksPage = ({
 
         const deletedTask = { ...task }
 
-        setTasks((prev) => prev.filter((t) => t.id !== taskId))
+        // Use context deleteTask to persist to database
+        contextDeleteTask(taskId)
         setIsDetailPanelOpen(false)
         setSelectedTaskId(null)
 
@@ -884,11 +865,12 @@ export const TasksPage = ({
             action: {
                 label: "Undo",
                 onClick: () => {
-                    setTasks((prev) => [...prev, deletedTask])
+                    // Re-add the task to database on undo
+                    contextAddTask(deletedTask)
                 },
             },
         })
-    }, [tasks, setTasks])
+    }, [tasks, contextDeleteTask, contextAddTask])
 
     const handleDuplicateTask = useCallback((taskId: string): void => {
         const task = tasks.find((t) => t.id === taskId)
@@ -906,14 +888,15 @@ export const TasksPage = ({
             completedAt: null,
         }
 
-        setTasks((prev) => [...prev, duplicatedTask])
+        // Use context addTask to persist to database
+        contextAddTask(duplicatedTask)
 
         toast.success("Task duplicated", {
             description: `"${duplicatedTask.title}" has been created.`,
         })
 
         setSelectedTaskId(duplicatedTask.id)
-    }, [tasks, projects, setTasks])
+    }, [tasks, projects, contextAddTask])
 
     const handleAddTaskWithDate = useCallback(
         (date: Date): void => {

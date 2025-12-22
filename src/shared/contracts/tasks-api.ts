@@ -11,12 +11,22 @@ import { z } from 'zod'
 // Types
 // ============================================================================
 
+/**
+ * RepeatConfig - Matches frontend format for full feature support
+ */
 export interface RepeatConfig {
-  type: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'
   interval: number
-  days?: number[] // For weekly: 0=Sun, 1=Mon, etc.
+  daysOfWeek?: number[] // For weekly: 0=Sun, 1=Mon, etc.
+  monthlyType?: 'dayOfMonth' | 'weekPattern'
   dayOfMonth?: number
-  endDate?: string
+  weekOfMonth?: number
+  dayOfWeekForMonth?: number
+  endType: 'never' | 'date' | 'count'
+  endDate?: string | null
+  endCount?: number
+  completedCount: number
+  createdAt: string
 }
 
 export interface Task {
@@ -27,13 +37,14 @@ export interface Task {
 
   title: string
   description: string | null
-  priority: 0 | 1 | 2 | 3
+  priority: 0 | 1 | 2 | 3 | 4
   position: number
 
   dueDate: string | null
   dueTime: string | null
   startDate: string | null
 
+  isRepeating: boolean
   repeatConfig: RepeatConfig | null
   repeatFrom: 'due' | 'completion' | null
 
@@ -55,7 +66,7 @@ export interface TaskListItem {
   statusId: string | null
   parentId: string | null
   title: string
-  priority: 0 | 1 | 2 | 3
+  priority: 0 | 1 | 2 | 3 | 4
   position: number
   dueDate: string | null
   dueTime: string | null
@@ -100,11 +111,29 @@ export interface Status {
 // Request Schemas
 // ============================================================================
 
+/**
+ * RepeatConfigSchema - Zod schema matching frontend RepeatConfig interface
+ */
+export const RepeatConfigSchema = z.object({
+  frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
+  interval: z.number().int().min(1).default(1),
+  daysOfWeek: z.array(z.number().int().min(0).max(6)).optional(),
+  monthlyType: z.enum(['dayOfMonth', 'weekPattern']).optional(),
+  dayOfMonth: z.number().int().min(1).max(31).optional(),
+  weekOfMonth: z.number().int().min(1).max(5).optional(),
+  dayOfWeekForMonth: z.number().int().min(0).max(6).optional(),
+  endType: z.enum(['never', 'date', 'count']),
+  endDate: z.string().nullable().optional(),
+  endCount: z.number().int().min(1).optional(),
+  completedCount: z.number().int().min(0).default(0),
+  createdAt: z.string()
+})
+
 export const TaskCreateSchema = z.object({
   projectId: z.string(),
   title: z.string().min(1).max(500),
   description: z.string().max(10000).nullish(),
-  priority: z.number().int().min(0).max(3).default(0),
+  priority: z.number().int().min(0).max(4).default(0),
   statusId: z.string().nullish(),
   parentId: z.string().nullish(),
   dueDate: z
@@ -119,6 +148,9 @@ export const TaskCreateSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .nullish(),
+  isRepeating: z.boolean().default(false),
+  repeatConfig: RepeatConfigSchema.nullish(),
+  repeatFrom: z.enum(['due', 'completion']).nullish(),
   tags: z.array(z.string().max(50)).max(20).optional(),
   linkedNoteIds: z.array(z.string()).optional(),
   position: z.number().int().optional()
@@ -128,7 +160,7 @@ export const TaskUpdateSchema = z.object({
   id: z.string(),
   title: z.string().min(1).max(500).optional(),
   description: z.string().max(10000).nullish(),
-  priority: z.number().int().min(0).max(3).optional(),
+  priority: z.number().int().min(0).max(4).optional(),
   projectId: z.string().optional(),
   statusId: z.string().nullish(),
   parentId: z.string().nullish(),
@@ -144,15 +176,8 @@ export const TaskUpdateSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .nullish(),
-  repeatConfig: z
-    .object({
-      type: z.enum(['daily', 'weekly', 'monthly', 'yearly', 'custom']),
-      interval: z.number().int().min(1),
-      days: z.array(z.number().int().min(0).max(6)).optional(),
-      dayOfMonth: z.number().int().min(1).max(31).optional(),
-      endDate: z.string().optional()
-    })
-    .nullish(),
+  isRepeating: z.boolean().optional(),
+  repeatConfig: RepeatConfigSchema.nullish(),
   repeatFrom: z.enum(['due', 'completion']).nullish(),
   tags: z.array(z.string().max(50)).max(20).optional(),
   linkedNoteIds: z.array(z.string()).optional()

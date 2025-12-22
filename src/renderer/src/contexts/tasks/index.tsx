@@ -305,55 +305,8 @@ export const TasksProvider = ({
     }
   }, [isVaultOpen])
 
-  // Subscribe to database events for real-time updates
-  useEffect(() => {
-    if (!isVaultOpen) return
-
-    const unsubTaskCreated = onTaskCreated((event) => {
-      const uiTask = dbTaskToUiTask(event.task as DbTask)
-      setTasksState((prev) => {
-        if (prev.some((t) => t.id === uiTask.id)) return prev
-        return [uiTask, ...prev]
-      })
-    })
-
-    const unsubTaskUpdated = onTaskUpdated((event) => {
-      const uiTask = dbTaskToUiTask(event.task as DbTask)
-      setTasksState((prev) => prev.map((t) => (t.id === event.id ? uiTask : t)))
-    })
-
-    const unsubTaskDeleted = onTaskDeleted((event) => {
-      setTasksState((prev) => prev.filter((t) => t.id !== event.id))
-    })
-
-    const unsubProjectCreated = onProjectCreated((event) => {
-      const uiProject = dbProjectToUiProject(event.project as DbProject)
-      setProjectsState((prev) => {
-        if (prev.some((p) => p.id === uiProject.id)) return prev
-        return [...prev, uiProject]
-      })
-    })
-
-    const unsubProjectUpdated = onProjectUpdated((event) => {
-      const uiProject = dbProjectToUiProject(event.project as DbProject)
-      setProjectsState((prev) => prev.map((p) => (p.id === event.id ? uiProject : p)))
-    })
-
-    const unsubProjectDeleted = onProjectDeleted((event) => {
-      setProjectsState((prev) => prev.filter((p) => p.id !== event.id))
-    })
-
-    return () => {
-      unsubTaskCreated()
-      unsubTaskUpdated()
-      unsubTaskDeleted()
-      unsubProjectCreated()
-      unsubProjectUpdated()
-      unsubProjectDeleted()
-    }
-  }, [isVaultOpen])
-
   // Wrapped setters that also call external handlers
+  // NOTE: These must be defined before the IPC event subscription useEffect
   const setTasks = useCallback(
     (updater: Task[] | ((prev: Task[]) => Task[])) => {
       setTasksState((prev) => {
@@ -376,6 +329,56 @@ export const TasksProvider = ({
     [onProjectsChange]
   )
 
+  // Subscribe to database events for real-time updates
+  // IMPORTANT: Use setTasks/setProjects (not setTasksState/setProjectsState)
+  // to propagate changes to App.tsx via onTasksChange/onProjectsChange callbacks
+  useEffect(() => {
+    if (!isVaultOpen) return
+
+    const unsubTaskCreated = onTaskCreated((event) => {
+      const uiTask = dbTaskToUiTask(event.task as DbTask)
+      setTasks((prev) => {
+        if (prev.some((t) => t.id === uiTask.id)) return prev
+        return [uiTask, ...prev]
+      })
+    })
+
+    const unsubTaskUpdated = onTaskUpdated((event) => {
+      const uiTask = dbTaskToUiTask(event.task as DbTask)
+      setTasks((prev) => prev.map((t) => (t.id === event.id ? uiTask : t)))
+    })
+
+    const unsubTaskDeleted = onTaskDeleted((event) => {
+      setTasks((prev) => prev.filter((t) => t.id !== event.id))
+    })
+
+    const unsubProjectCreated = onProjectCreated((event) => {
+      const uiProject = dbProjectToUiProject(event.project as DbProject)
+      setProjects((prev) => {
+        if (prev.some((p) => p.id === uiProject.id)) return prev
+        return [...prev, uiProject]
+      })
+    })
+
+    const unsubProjectUpdated = onProjectUpdated((event) => {
+      const uiProject = dbProjectToUiProject(event.project as DbProject)
+      setProjects((prev) => prev.map((p) => (p.id === event.id ? uiProject : p)))
+    })
+
+    const unsubProjectDeleted = onProjectDeleted((event) => {
+      setProjects((prev) => prev.filter((p) => p.id !== event.id))
+    })
+
+    return () => {
+      unsubTaskCreated()
+      unsubTaskUpdated()
+      unsubTaskDeleted()
+      unsubProjectCreated()
+      unsubProjectUpdated()
+      unsubProjectDeleted()
+    }
+  }, [isVaultOpen, setTasks, setProjects])
+
   const setSelection = useCallback((id: string, type: TaskSelectionType) => {
     setTaskSelectedId(id)
     setTaskSelectedType(type)
@@ -387,6 +390,24 @@ export const TasksProvider = ({
       // If vault is open, save to database - event will update state
       if (isVaultOpen) {
         try {
+          // Convert UI RepeatConfig to service format (Date → string)
+          const repeatConfigForService = task.repeatConfig
+            ? {
+                frequency: task.repeatConfig.frequency,
+                interval: task.repeatConfig.interval,
+                daysOfWeek: task.repeatConfig.daysOfWeek,
+                monthlyType: task.repeatConfig.monthlyType,
+                dayOfMonth: task.repeatConfig.dayOfMonth,
+                weekOfMonth: task.repeatConfig.weekOfMonth,
+                dayOfWeekForMonth: task.repeatConfig.dayOfWeekForMonth,
+                endType: task.repeatConfig.endType,
+                endDate: task.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
+                endCount: task.repeatConfig.endCount,
+                completedCount: task.repeatConfig.completedCount,
+                createdAt: task.repeatConfig.createdAt.toISOString()
+              }
+            : null
+
           await tasksService.create({
             projectId: task.projectId,
             title: task.title,
@@ -396,6 +417,9 @@ export const TasksProvider = ({
             parentId: task.parentId || null,
             dueDate: task.dueDate ? task.dueDate.toISOString().split('T')[0] : null,
             dueTime: task.dueTime || null,
+            isRepeating: task.isRepeating,
+            repeatConfig: repeatConfigForService,
+            repeatFrom: null, // Default to null, can be extended later
             tags: [],
             linkedNoteIds: task.linkedNoteIds
           })
@@ -417,6 +441,28 @@ export const TasksProvider = ({
     async (taskId: string, updates: Partial<Task>) => {
       if (isVaultOpen) {
         try {
+          // Convert UI RepeatConfig to service format (Date → string) if provided
+          let repeatConfigForService: Parameters<typeof tasksService.update>[0]['repeatConfig'] =
+            undefined
+          if (updates.repeatConfig !== undefined) {
+            repeatConfigForService = updates.repeatConfig
+              ? {
+                  frequency: updates.repeatConfig.frequency,
+                  interval: updates.repeatConfig.interval,
+                  daysOfWeek: updates.repeatConfig.daysOfWeek,
+                  monthlyType: updates.repeatConfig.monthlyType,
+                  dayOfMonth: updates.repeatConfig.dayOfMonth,
+                  weekOfMonth: updates.repeatConfig.weekOfMonth,
+                  dayOfWeekForMonth: updates.repeatConfig.dayOfWeekForMonth,
+                  endType: updates.repeatConfig.endType,
+                  endDate: updates.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
+                  endCount: updates.repeatConfig.endCount,
+                  completedCount: updates.repeatConfig.completedCount,
+                  createdAt: updates.repeatConfig.createdAt.toISOString()
+                }
+              : null
+          }
+
           await tasksService.update({
             id: taskId,
             title: updates.title,
@@ -428,6 +474,8 @@ export const TasksProvider = ({
             parentId: updates.parentId ?? undefined,
             dueDate: updates.dueDate ? updates.dueDate.toISOString().split('T')[0] : undefined,
             dueTime: updates.dueTime ?? undefined,
+            isRepeating: updates.isRepeating,
+            repeatConfig: repeatConfigForService,
             linkedNoteIds: updates.linkedNoteIds
           })
           // Event listener will update state

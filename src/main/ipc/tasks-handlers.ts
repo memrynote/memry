@@ -81,7 +81,9 @@ export function registerTasksHandlers(): void {
           position: input.position ?? position,
           dueDate: input.dueDate ?? null,
           dueTime: input.dueTime ?? null,
-          startDate: input.startDate ?? null
+          startDate: input.startDate ?? null,
+          repeatConfig: input.repeatConfig ?? null,
+          repeatFrom: input.repeatFrom ?? null
         })
 
         // Set tags if provided
