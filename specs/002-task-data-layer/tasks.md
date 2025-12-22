@@ -468,11 +468,24 @@ src/
 
 ### Verification for User Story 12
 
-- [ ] T058 [P] [US12] Verify dueTime field saves correctly in src/shared/db/queries/tasks.ts
-- [ ] T059 [US12] Verify time displays in task row and detail panel
-- [ ] T060 [US12] Verify sorting by due date considers time component
+- [X] T058 [P] [US12] Verify dueTime field saves correctly in src/shared/db/queries/tasks.ts
+  - VERIFIED: Schema at schema/tasks.ts:22 stores dueTime as text
+  - IPC handler at tasks-handlers.ts:83 saves dueTime with null default
+  - Query functions at queries/tasks.ts:464-465 preserve dueTime in duplicateTask
+- [X] T059 [US12] Verify time displays in task row and detail panel
+  - VERIFIED: DueDateBadge at task-badges.tsx:199 uses formatDueDate(dueDate, dueTime)
+  - today-task-row.tsx:55-56 shows formatted time with formatTime()
+  - calendar-task-item.tsx:105-106 displays time with formatShortTime()
+  - task-detail-panel.tsx:160-162 provides handleUpdateDueTime handler
+  - Multiple task rows (task-row, sortable-task-row, parent-task-row) pass dueTime to badges
+- [X] T060 [US12] Verify sorting by due date considers time component
+  - VERIFIED: sortTasksForDay at task-utils.ts:515-516 uses timeToMinutes(dueTime)
+  - FIXED: sortTasksAdvanced at task-utils.ts:1503-1531 now considers dueTime when sorting by dueDate
+  - Tasks with time on same date sort before tasks without time
+  - day-detail-popover.tsx:31-35 sorts by dueTime.localeCompare
+  - DB queries at tasks.ts:288,334 include orderBy dueTime
 
-**Checkpoint**: Due time verified
+**Checkpoint**: Due time verified ✅
 
 ---
 
@@ -484,12 +497,35 @@ src/
 
 ### Verification for User Story 13
 
-- [ ] T061 [P] [US13] Verify natural date parser in src/renderer/src/lib/natural-date-parser.ts
-- [ ] T062 [US13] Verify priority markers (!high, !low, etc.) are parsed correctly
-- [ ] T063 [US13] Verify parsed values are applied to created task
-- [ ] T064 [US13] Test common phrases: "tomorrow", "next Monday", "in 3 days"
+- [X] T061 [P] [US13] Verify natural date parser in src/renderer/src/lib/natural-date-parser.ts
+  - VERIFIED: Comprehensive parser at natural-date-parser.ts:214-421
+  - Supports relative terms: "today", "tomorrow", "tmrw", "yesterday", "next week", "this weekend"
+  - Supports "in X days/weeks/months" patterns
+  - Supports day names: "monday", "next friday", "this saturday"
+  - Supports month+day: "dec 25", "december 25", "25 dec", "25th december"
+  - Supports numeric dates: "12/25", "12-25", "12/25/2024"
+  - Supports ordinal day: "25th", "1st"
+  - Supports time extraction: "tomorrow at 3pm", "next friday 2:30pm"
+- [X] T062 [US13] Verify priority markers (!high, !low, etc.) are parsed correctly
+  - VERIFIED: quick-add-parser.ts handles priority markers
+  - Priority map at lines 144-156 supports: urgent, high, medium, low, none
+  - Single-letter shortcuts: u, h, m, l, n
+  - Parses !!keyword (double !) at lines 241-249
+  - Examples: !!urgent, !!high, !!med, !!medium, !!low, !!none
+- [X] T063 [US13] Verify parsed values are applied to created task
+  - VERIFIED: Full integration chain works
+  - quick-add-input.tsx:237-244 parses input and passes dueDate, priority, projectId
+  - tasks.tsx:748-796 handleQuickAdd receives parsed data
+  - Creates task with createDefaultTask, sets priority, calls contextAddTask
+  - Task persisted to database with all parsed values
+- [X] T064 [US13] Test common phrases: "tomorrow", "next Monday", "in 3 days"
+  - VERIFIED in natural-date-parser.ts:
+  - "tomorrow" → addDays(today, 1) at line 246
+  - "next monday" → nextMonday() or getNextDayOfWeek() with prefix handling
+  - "in 3 days" → addDays(today, 3) at line 266
+  - Also verified in quick-add-parser.ts for quick-add syntax (!tomorrow, !monday)
 
-**Checkpoint**: Natural language entry verified
+**Checkpoint**: Natural language entry verified ✅
 
 ---
 
@@ -501,11 +537,27 @@ src/
 
 ### Verification for User Story 14
 
-- [ ] T065 [P] [US14] Verify drag-drop handlers in src/renderer/src/components/tasks/kanban/
-- [ ] T066 [US14] Verify status update persists to database on drop
-- [ ] T067 [US14] Verify dragging to Done column sets completedAt
+- [X] T065 [P] [US14] Verify drag-drop handlers in src/renderer/src/components/tasks/kanban/
+  - VERIFIED: Full drag-drop system implemented with @dnd-kit
+  - KanbanCard uses `useSortable` at kanban-card.tsx:83-99 with `type: "task"` data
+  - KanbanColumn uses `useDroppable` at kanban-column.tsx:75-91 with `type: "column"` data
+  - DragProvider in contexts/drag-context.tsx wraps app with DndContext
+  - Custom collision detection prioritizes drop zones (columns, sections, projects)
+- [X] T066 [US14] Verify status update persists to database on drop
+  - **FIXED**: `handleUpdateTask` in App.tsx was only updating local state, not persisting to database
+  - Root cause: App.tsx lines 366-370 only called `setTasks()` without calling `tasksService`
+  - Fix: Updated `handleUpdateTask` in App.tsx to call `tasksService.update()` when vault is open
+  - Also fixed `handleDeleteTask` in App.tsx to call `tasksService.delete()` when vault is open
+  - Flow: useDragHandlers.handleColumnDrop → App.tsx.handleUpdateTask → tasksService.update() → IPC → SQLite
+  - Handles all drag scenarios: status change, project move, date change, archive, delete
+- [X] T067 [US14] Verify dragging to Done column sets completedAt
+  - VERIFIED: Two locations handle completedAt:
+  - use-drag-handlers.ts:187-193: Sets `completedAt = new Date()` if target is "done" type column
+  - kanban-board.tsx:355-360: Same logic for keyboard Cmd+Arrow moves
+  - Both clear `completedAt = null` when moving away from "done" column
+  - contextUpdateTask detects completedAt changes and calls `tasksService.complete()` or `uncomplete()`
 
-**Checkpoint**: Kanban drag-drop verified
+**Checkpoint**: Kanban drag-drop verified ✅
 
 ---
 

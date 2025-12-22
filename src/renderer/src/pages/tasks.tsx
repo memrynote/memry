@@ -819,6 +819,11 @@ export const TasksPage = ({
             }
 
             const doneStatus = getDefaultDoneStatus(project)
+            const completedAt = new Date()
+
+            // Get subtasks to also complete them
+            const subtasks = getSubtasks(taskId, tasks)
+            const hasSubtasks = subtasks.length > 0
 
             if (taskToComplete.isRepeating && taskToComplete.repeatConfig && taskToComplete.dueDate) {
                 const config = taskToComplete.repeatConfig
@@ -832,10 +837,22 @@ export const TasksPage = ({
                 // Mark the completed task as done (no longer repeating)
                 contextUpdateTask(taskId, {
                     statusId: doneStatus?.id || taskToComplete.statusId,
-                    completedAt: new Date(),
+                    completedAt,
                     isRepeating: false,
                     repeatConfig: null,
                 })
+
+                // Also complete all subtasks
+                if (hasSubtasks) {
+                    subtasks.forEach((subtask) => {
+                        if (!subtask.completedAt) {
+                            contextUpdateTask(subtask.id, {
+                                statusId: doneStatus?.id || subtask.statusId,
+                                completedAt,
+                            })
+                        }
+                    })
+                }
 
                 // Create the next occurrence if needed
                 if (shouldCreateNext && nextDate) {
@@ -864,8 +881,24 @@ export const TasksPage = ({
                 // Simple completion: mark as done
                 contextUpdateTask(taskId, {
                     statusId: doneStatus?.id || taskToComplete.statusId,
-                    completedAt: new Date()
+                    completedAt
                 })
+
+                // Also complete all subtasks
+                if (hasSubtasks) {
+                    const incompleteSubtasks = subtasks.filter(s => !s.completedAt)
+                    incompleteSubtasks.forEach((subtask) => {
+                        contextUpdateTask(subtask.id, {
+                            statusId: doneStatus?.id || subtask.statusId,
+                            completedAt,
+                        })
+                    })
+                    if (incompleteSubtasks.length > 0) {
+                        toast.success("Task completed!", {
+                            description: `Also marked ${incompleteSubtasks.length} subtask(s) as done.`,
+                        })
+                    }
+                }
             }
         },
         [tasks, projects, contextUpdateTask, contextAddTask]

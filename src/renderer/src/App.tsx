@@ -31,6 +31,7 @@ import { SplitViewContainer } from "@/components/split-view"
 import { ChordIndicator, KeyboardShortcutsDialog } from "@/components/keyboard"
 import { SearchModal } from "@/components/search"
 import { useTabKeyboardShortcuts, useChordShortcuts, useDragHandlers, useTaskOrder, useVault, useSearchShortcut, useUndoKeyboardShortcut } from "@/hooks"
+import { tasksService } from "@/services/tasks-service"
 import { VaultOnboarding } from "@/components/vault-onboarding"
 
 // Base pages (non-task)
@@ -362,17 +363,136 @@ function App(): React.JSX.Element {
   // Task order persistence hook
   const taskOrder = useTaskOrder({ persist: true })
 
-  // Task update handler
-  const handleUpdateTask = useCallback((taskId: string, updates: Partial<Task>) => {
+  // Priority conversion map (UI string → DB number)
+  const priorityReverseMap: Record<Task['priority'], number> = {
+    none: 0,
+    low: 1,
+    medium: 2,
+    high: 3,
+    urgent: 4
+  }
+
+  // Task update handler - persists to database when vault is open
+  const handleUpdateTask = useCallback(async (taskId: string, updates: Partial<Task>) => {
+    // Always update local state immediately for responsive UI
     setTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t))
     )
-  }, [])
 
-  // Task delete handler
-  const handleDeleteTask = useCallback((taskId: string) => {
+    // Persist to database if vault is open
+    if (isVaultOpen) {
+      try {
+        // Handle completedAt changes via dedicated endpoints
+        if ('completedAt' in updates) {
+          if (updates.completedAt !== null && updates.completedAt !== undefined) {
+            await tasksService.complete({
+              id: taskId,
+              completedAt: updates.completedAt.toISOString()
+            })
+          } else {
+            await tasksService.uncomplete(taskId)
+          }
+
+          // Handle other updates if present
+          const { completedAt: _completed, ...otherUpdates } = updates
+          if (Object.keys(otherUpdates).length > 0) {
+            let dueDateValue: string | null | undefined = undefined
+            if ('dueDate' in otherUpdates) {
+              dueDateValue = otherUpdates.dueDate
+                ? otherUpdates.dueDate.toISOString().split('T')[0]
+                : null
+            }
+            await tasksService.update({
+              id: taskId,
+              title: otherUpdates.title,
+              description: otherUpdates.description ?? undefined,
+              priority: otherUpdates.priority !== undefined
+                ? priorityReverseMap[otherUpdates.priority]
+                : undefined,
+              projectId: otherUpdates.projectId,
+              statusId: otherUpdates.statusId ?? undefined,
+              dueDate: dueDateValue,
+              dueTime: otherUpdates.dueTime ?? undefined,
+            })
+          }
+          return
+        }
+
+        // Handle archivedAt changes via dedicated endpoints
+        if ('archivedAt' in updates) {
+          if (updates.archivedAt !== null && updates.archivedAt !== undefined) {
+            await tasksService.archive(taskId)
+          } else {
+            await tasksService.unarchive(taskId)
+          }
+
+          // Handle other updates if present
+          const { archivedAt: _archived, ...otherUpdates } = updates
+          if (Object.keys(otherUpdates).length > 0) {
+            let dueDateValue: string | null | undefined = undefined
+            if ('dueDate' in otherUpdates) {
+              dueDateValue = otherUpdates.dueDate
+                ? otherUpdates.dueDate.toISOString().split('T')[0]
+                : null
+            }
+            await tasksService.update({
+              id: taskId,
+              title: otherUpdates.title,
+              description: otherUpdates.description ?? undefined,
+              priority: otherUpdates.priority !== undefined
+                ? priorityReverseMap[otherUpdates.priority]
+                : undefined,
+              projectId: otherUpdates.projectId,
+              statusId: otherUpdates.statusId ?? undefined,
+              dueDate: dueDateValue,
+              dueTime: otherUpdates.dueTime ?? undefined,
+            })
+          }
+          return
+        }
+
+        // Standard update (no completedAt or archivedAt change)
+        // Convert dueDate: undefined = not changing, null = clearing, Date = setting
+        let dueDateValue: string | null | undefined = undefined
+        if ('dueDate' in updates) {
+          dueDateValue = updates.dueDate
+            ? updates.dueDate.toISOString().split('T')[0]
+            : null
+        }
+
+        await tasksService.update({
+          id: taskId,
+          title: updates.title,
+          description: updates.description ?? undefined,
+          priority: updates.priority !== undefined
+            ? priorityReverseMap[updates.priority]
+            : undefined,
+          projectId: updates.projectId,
+          statusId: updates.statusId ?? undefined,
+          dueDate: dueDateValue,
+          dueTime: updates.dueTime ?? undefined,
+        })
+      } catch (error) {
+        console.error('[App] Failed to persist task update:', error)
+        // Local state already updated, error will be visible in logs
+      }
+    }
+  }, [isVaultOpen])
+
+  // Task delete handler - persists to database when vault is open
+  const handleDeleteTask = useCallback(async (taskId: string) => {
+    // Always update local state immediately for responsive UI
     setTasks((prev) => prev.filter((t) => t.id !== taskId))
-  }, [])
+
+    // Persist to database if vault is open
+    if (isVaultOpen) {
+      try {
+        await tasksService.delete(taskId)
+      } catch (error) {
+        console.error('[App] Failed to persist task deletion:', error)
+      }
+    }
+  }, [isVaultOpen])
 
   // Use the comprehensive drag handlers hook
   const { handleDragEnd: taskDragEnd } = useDragHandlers({

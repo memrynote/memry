@@ -1500,13 +1500,35 @@ export const sortTasksAdvanced = (
     let comparison = 0
 
     switch (sort.field) {
-      case "dueDate":
+      case "dueDate": {
         // Tasks without due date go to end
-        if (!a.dueDate && !b.dueDate) comparison = 0
-        else if (!a.dueDate) comparison = 1
-        else if (!b.dueDate) comparison = -1
-        else comparison = a.dueDate.getTime() - b.dueDate.getTime()
+        if (!a.dueDate && !b.dueDate) {
+          comparison = 0
+        } else if (!a.dueDate) {
+          comparison = 1
+        } else if (!b.dueDate) {
+          comparison = -1
+        } else {
+          // Compare dates first
+          comparison = a.dueDate.getTime() - b.dueDate.getTime()
+
+          // If same date, compare by time
+          // Tasks with time come before tasks without time
+          if (comparison === 0) {
+            if (!a.dueTime && !b.dueTime) {
+              comparison = 0
+            } else if (!a.dueTime) {
+              comparison = 1 // Tasks without time go after tasks with time
+            } else if (!b.dueTime) {
+              comparison = -1
+            } else {
+              // Compare time strings (HH:MM format sorts correctly alphabetically)
+              comparison = a.dueTime.localeCompare(b.dueTime)
+            }
+          }
+        }
         break
+      }
 
       case "priority":
         comparison = priorityOrder[a.priority] - priorityOrder[b.priority]
