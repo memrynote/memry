@@ -529,6 +529,7 @@ export const useSubtaskManagement = ({
             if (onUpdateTask) {
               onUpdateTask(parentId, { completedAt: new Date() })
               toast.success("🎉 All subtasks complete! Task marked as done.", {
+                duration: 10000, // T052: 10-second timeout for undo per spec
                 action: {
                   label: "Undo",
                   onClick: () => {

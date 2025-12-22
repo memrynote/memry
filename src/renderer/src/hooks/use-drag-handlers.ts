@@ -360,6 +360,7 @@ export const useDragHandlers = ({
           ? "Task archived"
           : `${taskIds.length} tasks archived`,
         {
+          duration: 10000, // T052: 10-second timeout for undo per spec
           action: {
             label: "Undo",
             onClick: undo,
