@@ -179,7 +179,7 @@ export const ProjectSidebar = ({
     }, [activeProjects, tasks, projects])
 
     return (
-        <div className={cn("w-64 shrink-0 border-r border-border flex flex-col", className)}>
+        <div className={cn("w-64 shrink-0 border-r border-border flex flex-col overflow-hidden", className)}>
             <div className="p-3 border-b border-border flex items-center justify-between">
                 <h3 className="font-medium text-sm text-foreground">Projects</h3>
                 <Button

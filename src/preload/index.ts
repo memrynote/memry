@@ -232,7 +232,10 @@ const api = {
 
     // Note linking
     getLinkedTasks: (noteId: string) =>
-      ipcRenderer.invoke(TasksChannels.invoke.GET_LINKED_TASKS, noteId)
+      ipcRenderer.invoke(TasksChannels.invoke.GET_LINKED_TASKS, noteId),
+
+    // Development/Testing
+    seedPerformanceTest: () => ipcRenderer.invoke('tasks:seed-performance-test')
   },
 
   // Saved Filters API
