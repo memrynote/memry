@@ -1411,7 +1411,7 @@ export const TasksPage = ({
 
                     {/* Content Body - Today Tab */}
                     {activeInternalTab === "today" && (
-                        <div className="relative flex-1 overflow-hidden">
+                        <div className="relative flex flex-1 flex-col overflow-hidden">
                             {/* Decorative Day Watermark */}
                             <div
                                 className="journal-day-watermark pointer-events-none absolute -right-4 top-8 select-none text-[12rem] font-bold leading-none"
@@ -1435,40 +1435,74 @@ export const TasksPage = ({
 
                     {/* Content Body - Upcoming Tab */}
                     {activeInternalTab === "upcoming" && (
-                        <UpcomingView
-                            tasks={filteredTasks}
-                            projects={projects}
-                            selectedTaskId={selectedTaskId}
-                            onToggleComplete={handleToggleComplete}
-                            onUpdateTask={handleUpdateTask}
-                            onTaskClick={handleTaskClick}
-                            onQuickAdd={handleQuickAdd}
-                            onOpenModal={handleOpenAddTaskModal}
-                            onAddTaskWithDate={handleAddTaskWithDate}
-                        />
+                        <div className="flex flex-1 flex-col overflow-hidden">
+                            <UpcomingView
+                                tasks={filteredTasks}
+                                projects={projects}
+                                selectedTaskId={selectedTaskId}
+                                onToggleComplete={handleToggleComplete}
+                                onUpdateTask={handleUpdateTask}
+                                onTaskClick={handleTaskClick}
+                                onQuickAdd={handleQuickAdd}
+                                onOpenModal={handleOpenAddTaskModal}
+                                onAddTaskWithDate={handleAddTaskWithDate}
+                            />
+                        </div>
                     )}
 
                     {/* Content Body - All Tab (List View) */}
                     {activeInternalTab === "all" && activeView === "list" && (
-                        showFilterEmptyState ? (
-                            <FilterEmptyState
-                                filters={filters}
+                        <div className="flex flex-1 flex-col overflow-hidden">
+                            {showFilterEmptyState ? (
+                                <FilterEmptyState
+                                    filters={filters}
+                                    projects={projects}
+                                    onClearFilters={clearFilters}
+                                />
+                            ) : (
+                                <TaskList
+                                    tasks={filteredTasks}
+                                    projects={projects}
+                                    selectedId="all"
+                                    selectedType="view"
+                                    selectedTaskId={selectedTaskId}
+                                    onToggleComplete={handleToggleComplete}
+                                    onUpdateTask={handleUpdateTask}
+                                    onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
+                                    onTaskClick={handleTaskClick}
+                                    onQuickAdd={handleQuickAdd}
+                                    onOpenModal={handleOpenAddTaskModal}
+                                    isSelectionMode={selection.isSelectionMode}
+                                    selectedIds={selection.selectedIds}
+                                    onToggleSelect={toggleTask}
+                                    onShiftSelect={selectRange}
+                                    onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
+                                    onAddSubtask={subtaskManagement.handleAddSubtask}
+                                />
+                            )}
+                        </div>
+                    )}
+
+                    {/* Content Body - Projects Tab */}
+                    {activeInternalTab === "projects" && activeView === "list" && (
+                        <div className="flex flex-1 flex-col overflow-hidden">
+                            <ProjectsTabContent
+                                tasks={tasks}
                                 projects={projects}
-                                onClearFilters={clearFilters}
-                            />
-                        ) : (
-                            <TaskList
-                                tasks={filteredTasks}
-                                projects={projects}
-                                selectedId="all"
-                                selectedType="view"
                                 selectedTaskId={selectedTaskId}
+                                selectedProjectId={selectedProjectId}
+                                onProjectSelect={setSelectedProjectId}
+                                filteredProjectTasks={selectedProjectId ? projectsTabFilteredTasks : undefined}
                                 onToggleComplete={handleToggleComplete}
                                 onUpdateTask={handleUpdateTask}
                                 onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
                                 onTaskClick={handleTaskClick}
                                 onQuickAdd={handleQuickAdd}
                                 onOpenModal={handleOpenAddTaskModal}
+                                onProjectEdit={handleEditProject}
+                                onProjectArchive={handleArchiveProject}
+                                onProjectDelete={handleDeleteProject}
+                                onCreateProject={handleCreateProject}
                                 isSelectionMode={selection.isSelectionMode}
                                 selectedIds={selection.selectedIds}
                                 onToggleSelect={toggleTask}
@@ -1476,67 +1510,41 @@ export const TasksPage = ({
                                 onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
                                 onAddSubtask={subtaskManagement.handleAddSubtask}
                             />
-                        )
-                    )}
-
-                    {/* Content Body - Projects Tab */}
-                    {activeInternalTab === "projects" && activeView === "list" && (
-                        <ProjectsTabContent
-                            tasks={tasks}
-                            projects={projects}
-                            selectedTaskId={selectedTaskId}
-                            selectedProjectId={selectedProjectId}
-                            onProjectSelect={setSelectedProjectId}
-                            filteredProjectTasks={selectedProjectId ? projectsTabFilteredTasks : undefined}
-                            onToggleComplete={handleToggleComplete}
-                            onUpdateTask={handleUpdateTask}
-                            onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
-                            onTaskClick={handleTaskClick}
-                            onQuickAdd={handleQuickAdd}
-                            onOpenModal={handleOpenAddTaskModal}
-                            onProjectEdit={handleEditProject}
-                            onProjectArchive={handleArchiveProject}
-                            onProjectDelete={handleDeleteProject}
-                            onCreateProject={handleCreateProject}
-                            isSelectionMode={selection.isSelectionMode}
-                            selectedIds={selection.selectedIds}
-                            onToggleSelect={toggleTask}
-                            onShiftSelect={selectRange}
-                            onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
-                            onAddSubtask={subtaskManagement.handleAddSubtask}
-                        />
+                        </div>
                     )}
 
                     {/* Kanban View - All Tab */}
                     {activeInternalTab === "all" && activeView === "kanban" && (
-                        showFilterEmptyState ? (
-                            <FilterEmptyState
-                                filters={filters}
-                                projects={projects}
-                                onClearFilters={clearFilters}
-                            />
-                        ) : (
-                            <KanbanBoard
-                                tasks={filteredTasks}
-                                projects={projects}
-                                selectedId="all"
-                                selectedType="view"
-                                selectedTaskId={selectedTaskId}
-                                onUpdateTask={handleUpdateTask}
-                                onTaskClick={handleTaskClick}
-                                onToggleComplete={handleToggleComplete}
-                                onDeleteTask={handleDeleteTask}
-                                onQuickAdd={handleQuickAdd}
-                                isSelectionMode={selection.isSelectionMode}
-                                selectedIds={selection.selectedIds}
-                                onToggleSelect={toggleTask}
-                            />
-                        )
+                        <div className="flex flex-1 flex-col overflow-hidden">
+                            {showFilterEmptyState ? (
+                                <FilterEmptyState
+                                    filters={filters}
+                                    projects={projects}
+                                    onClearFilters={clearFilters}
+                                />
+                            ) : (
+                                <KanbanBoard
+                                    tasks={filteredTasks}
+                                    projects={projects}
+                                    selectedId="all"
+                                    selectedType="view"
+                                    selectedTaskId={selectedTaskId}
+                                    onUpdateTask={handleUpdateTask}
+                                    onTaskClick={handleTaskClick}
+                                    onToggleComplete={handleToggleComplete}
+                                    onDeleteTask={handleDeleteTask}
+                                    onQuickAdd={handleQuickAdd}
+                                    isSelectionMode={selection.isSelectionMode}
+                                    selectedIds={selection.selectedIds}
+                                    onToggleSelect={toggleTask}
+                                />
+                            )}
+                        </div>
                     )}
 
                     {/* Kanban View - Projects Tab */}
                     {activeInternalTab === "projects" && activeView === "kanban" && (
-                        <div className="flex h-full">
+                        <div className="flex flex-1 overflow-hidden">
                             <ProjectSidebar
                                 tasks={tasks}
                                 projects={projects}
@@ -1582,24 +1590,26 @@ export const TasksPage = ({
 
                     {/* Calendar View - All Tab */}
                     {activeInternalTab === "all" && activeView === "calendar" && (
-                        <CalendarView
-                            tasks={filteredTasks}
-                            projects={projects}
-                            selectedId="all"
-                            selectedType="view"
-                            onUpdateTask={handleUpdateTask}
-                            onTaskClick={handleTaskClick}
-                            onAddTaskWithDate={handleAddTaskWithDate}
-                            onToggleComplete={handleToggleComplete}
-                            isSelectionMode={selection.isSelectionMode}
-                            selectedIds={selection.selectedIds}
-                            onToggleSelect={toggleTask}
-                        />
+                        <div className="flex flex-1 flex-col overflow-hidden">
+                            <CalendarView
+                                tasks={filteredTasks}
+                                projects={projects}
+                                selectedId="all"
+                                selectedType="view"
+                                onUpdateTask={handleUpdateTask}
+                                onTaskClick={handleTaskClick}
+                                onAddTaskWithDate={handleAddTaskWithDate}
+                                onToggleComplete={handleToggleComplete}
+                                isSelectionMode={selection.isSelectionMode}
+                                selectedIds={selection.selectedIds}
+                                onToggleSelect={toggleTask}
+                            />
+                        </div>
                     )}
 
                     {/* Calendar View - Projects Tab */}
                     {activeInternalTab === "projects" && activeView === "calendar" && (
-                        <div className="flex h-full">
+                        <div className="flex flex-1 overflow-hidden">
                             <ProjectSidebar
                                 tasks={tasks}
                                 projects={projects}

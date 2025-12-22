@@ -301,6 +301,9 @@ export interface TasksClientAPI {
 
   // Note linking
   getLinkedTasks(noteId: string): Promise<Task[]>
+
+  // Development/Testing
+  seedPerformanceTest(): Promise<{ success: boolean; message: string }>
 }
 
 /**
@@ -364,7 +367,10 @@ export const tasksService: TasksClientAPI = {
   getOverdue: () => window.api.tasks.getOverdue(),
 
   // Note linking
-  getLinkedTasks: (noteId: string) => window.api.tasks.getLinkedTasks(noteId)
+  getLinkedTasks: (noteId: string) => window.api.tasks.getLinkedTasks(noteId),
+
+  // Development/Testing
+  seedPerformanceTest: () => window.api.tasks.seedPerformanceTest()
 }
 
 // ============================================================================

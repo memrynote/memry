@@ -280,7 +280,7 @@ export const ProjectsTabContent = ({
     return (
         <div className={cn("flex h-full", className)}>
             {/* Left panel - Project list */}
-            <div className="w-64 shrink-0 border-r border-border flex flex-col">
+            <div className="w-64 shrink-0 border-r border-border flex flex-col overflow-hidden">
                 <div className="p-3 border-b border-border flex items-center justify-between">
                     <h3 className="font-medium text-sm text-foreground">Projects</h3>
                     <Button
@@ -328,7 +328,7 @@ export const ProjectsTabContent = ({
             </div>
 
             {/* Right panel - Project tasks */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden">
                 {selectedProject ? (
                     <TaskList
                         tasks={visibleProjectTasks}

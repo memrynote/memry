@@ -27,6 +27,7 @@ import {
 } from '@shared/contracts/tasks-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
 import { getDatabase } from '../database'
+import { seedPerformanceTestProject } from '../database/seed'
 import { generateId } from '../lib/id'
 import * as taskQueries from '@shared/db/queries/tasks'
 import * as projectQueries from '@shared/db/queries/projects'
@@ -944,6 +945,21 @@ export function registerTasksHandlers(): void {
         tags: taskQueries.getTaskTags(db, task.id),
         linkedNoteIds: taskQueries.getTaskNoteIds(db, task.id)
       }))
+    })
+  )
+
+  // ============================================================================
+  // Development/Testing
+  // ============================================================================
+
+  // tasks:seed-performance-test - Seed 1000+ tasks for performance testing
+  // DEV ONLY: Used to verify 60fps scrolling with large task lists
+  ipcMain.handle(
+    'tasks:seed-performance-test',
+    createHandler(async () => {
+      const db = requireDatabase()
+      seedPerformanceTestProject(db, 1200)
+      return { success: true, message: 'Seeded performance test project with 1200 tasks' }
     })
   )
 

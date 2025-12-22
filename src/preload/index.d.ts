@@ -664,6 +664,9 @@ export interface TasksClientAPI {
 
   // Note linking
   getLinkedTasks(noteId: string): Promise<Task[]>
+
+  // Development/Testing
+  seedPerformanceTest(): Promise<{ success: boolean; message: string }>
 }
 
 // Search client API interface
