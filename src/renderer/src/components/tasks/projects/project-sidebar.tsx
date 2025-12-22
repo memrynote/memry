@@ -81,7 +81,7 @@ const ProjectListItem = ({
                 isOver && "bg-primary/10 ring-2 ring-primary rounded-md shadow-sm"
             )}
         >
-            {/* Drop indicator when hovering */} 
+            {/* Drop indicator when hovering */}
             {isOver && showAsDropZone && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-primary font-medium">
                     Drop here
