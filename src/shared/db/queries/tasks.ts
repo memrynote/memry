@@ -457,10 +457,48 @@ export function duplicateTask(db: DrizzleDb, id: string, newId: string): Task | 
     projectId: original.projectId,
     statusId: original.statusId,
     parentId: original.parentId,
-    title: `${original.title} (copy)`,
+    title: `Copy of ${original.title}`,
     description: original.description,
     priority: original.priority,
     position: original.position + 1,
+    dueDate: original.dueDate,
+    dueTime: original.dueTime,
+    startDate: original.startDate,
+    repeatConfig: original.repeatConfig,
+    repeatFrom: original.repeatFrom,
+    createdAt: now,
+    modifiedAt: now
+  }
+
+  return insertTask(db, duplicate)
+}
+
+/**
+ * Duplicate a subtask with a new parent.
+ * Unlike duplicateTask, this preserves the original title (no "Copy of" prefix)
+ * and assigns the subtask to a new parent.
+ */
+export function duplicateSubtask(
+  db: DrizzleDb,
+  id: string,
+  newId: string,
+  newParentId: string
+): Task | undefined {
+  const original = getTaskById(db, id)
+  if (!original) {
+    return undefined
+  }
+
+  const now = new Date().toISOString()
+  const duplicate: NewTask = {
+    id: newId,
+    projectId: original.projectId,
+    statusId: original.statusId,
+    parentId: newParentId,
+    title: original.title, // Keep original title for subtasks
+    description: original.description,
+    priority: original.priority,
+    position: original.position,
     dueDate: original.dueDate,
     dueTime: original.dueTime,
     startDate: original.startDate,

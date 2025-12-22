@@ -950,31 +950,29 @@ export const TasksPage = ({
         })
     }, [tasks, contextDeleteTask, contextAddTask, registerUndo])
 
-    const handleDuplicateTask = useCallback((taskId: string): void => {
+    const handleDuplicateTask = useCallback(async (taskId: string): Promise<void> => {
         const task = tasks.find((t) => t.id === taskId)
         if (!task) return
 
-        const project = projects.find((p) => p.id === task.projectId)
-        const defaultStatus = project ? getDefaultTodoStatus(project) : null
+        try {
+            // Use backend service which handles subtask duplication
+            const result = await tasksService.duplicate(taskId)
 
-        const duplicatedTask: Task = {
-            ...task,
-            id: `task-${Date.now()}`,
-            title: `${task.title} (copy)`,
-            statusId: defaultStatus?.id || task.statusId,
-            createdAt: new Date(),
-            completedAt: null,
+            if (result.success && result.task) {
+                toast.success("Task duplicated", {
+                    description: `"${result.task.title}" has been created.`,
+                })
+                setSelectedTaskId(result.task.id)
+            } else {
+                toast.error("Failed to duplicate task", {
+                    description: result.error || "Unknown error",
+                })
+            }
+        } catch (error) {
+            console.error("Failed to duplicate task:", error)
+            toast.error("Failed to duplicate task")
         }
-
-        // Use context addTask to persist to database
-        contextAddTask(duplicatedTask)
-
-        toast.success("Task duplicated", {
-            description: `"${duplicatedTask.title}" has been created.`,
-        })
-
-        setSelectedTaskId(duplicatedTask.id)
-    }, [tasks, projects, contextAddTask])
+    }, [tasks])
 
     const handleAddTaskWithDate = useCallback(
         (date: Date): void => {

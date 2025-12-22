@@ -328,29 +328,24 @@ export const TasksProvider = ({
     }
   }, [isVaultOpen])
 
-  // Wrapped setters that also call external handlers
-  // NOTE: These must be defined before the IPC event subscription useEffect
-  const setTasks = useCallback(
-    (updater: Task[] | ((prev: Task[]) => Task[])) => {
-      setTasksState((prev) => {
-        const newTasks = typeof updater === 'function' ? updater(prev) : updater
-        onTasksChange?.(newTasks)
-        return newTasks
-      })
-    },
-    [onTasksChange]
-  )
+  // Wrapped setters - just update local state
+  // Parent sync happens via useEffect below to avoid "setState during render" errors
+  const setTasks = useCallback((updater: Task[] | ((prev: Task[]) => Task[])) => {
+    setTasksState(updater)
+  }, [])
 
-  const setProjects = useCallback(
-    (updater: Project[] | ((prev: Project[]) => Project[])) => {
-      setProjectsState((prev) => {
-        const newProjects = typeof updater === 'function' ? updater(prev) : updater
-        onProjectsChange?.(newProjects)
-        return newProjects
-      })
-    },
-    [onProjectsChange]
-  )
+  const setProjects = useCallback((updater: Project[] | ((prev: Project[]) => Project[])) => {
+    setProjectsState(updater)
+  }, [])
+
+  // Sync state changes to parent via useEffect (avoids setState during render)
+  useEffect(() => {
+    onTasksChange?.(tasks)
+  }, [tasks, onTasksChange])
+
+  useEffect(() => {
+    onProjectsChange?.(projects)
+  }, [projects, onProjectsChange])
 
   // Subscribe to database events for real-time updates
   // IMPORTANT: Use setTasks/setProjects (not setTasksState/setProjectsState)

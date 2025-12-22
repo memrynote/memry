@@ -438,11 +438,25 @@ src/
 
 ### Verification for User Story 11
 
-- [ ] T055 [P] [US11] Verify duplicate operation in src/renderer/src/services/tasks-service.ts
-- [ ] T056 [US11] Verify duplicated task has "Copy of" prefix and is uncompleted
-- [ ] T057 [US11] Verify subtasks are duplicated with parent
+- [X] T055 [P] [US11] Verify duplicate operation in src/renderer/src/services/tasks-service.ts
+  - VERIFIED: `tasksService.duplicate(id)` at tasks-service.ts:324
+  - Preload exposes `duplicate` at index.ts:170
+  - IPC channel `DUPLICATE` at ipc-channels.ts:154
+  - Handler at tasks-handlers.ts:414-478 calls `taskQueries.duplicateTask`
+  - Query at queries/tasks.ts:448-473 performs the duplication
+- [X] T056 [US11] Verify duplicated task has "Copy of" prefix and is uncompleted
+  - FIXED: Changed title format from `${original.title} (copy)` to `Copy of ${original.title}` in queries/tasks.ts:460
+  - VERIFIED: `completedAt` and `archivedAt` are not included in duplicate, default to `null` (uncompleted)
+- [X] T057 [US11] Verify subtasks are duplicated with parent
+  - IMPLEMENTED: Created `duplicateSubtask()` function in queries/tasks.ts:481-512
+  - New function correctly sets parentId to new parent and preserves original subtask title
+  - Updated tasks-handlers.ts:439-462 to use `duplicateSubtask()` instead of `duplicateTask()`
+  - Gets subtasks via `taskQueries.getSubtasks(db, id)`
+  - Creates duplicates for each subtask with correct parentId from the start
+  - Copies subtask tags and linked notes
+  - Emits CREATED events for each duplicated subtask
 
-**Checkpoint**: Duplicate verified
+**Checkpoint**: Duplicate verified ✅
 
 ---
 
