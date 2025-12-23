@@ -164,11 +164,11 @@
 
 ### Implementation for User Story 2
 
-- [ ] T031 [US2] Create SaveStatus component (Saving.../Saved/Error) in src/renderer/src/components/note/save-status.tsx
-- [ ] T032 [US2] Enhance use-note-editor hook with save state tracking in src/renderer/src/hooks/use-note-editor.ts
-- [ ] T033 [US2] Add save queue for handling rapid edits in src/renderer/src/hooks/use-note-editor.ts
-- [ ] T034 [US2] Handle save errors with toast notification in src/renderer/src/hooks/use-note-editor.ts
-- [ ] T035 [US2] Integrate SaveStatus into note.tsx header in src/renderer/src/pages/note.tsx
+- [x] T031 [US2] Create SaveStatus component (Saving.../Saved/Error) in src/renderer/src/components/note/save-status.tsx
+- [x] T032 [US2] Enhance use-note-editor hook with save state tracking in src/renderer/src/hooks/use-note-editor.ts
+- [x] T033 [US2] Add save queue for handling rapid edits in src/renderer/src/hooks/use-note-editor.ts
+- [x] T034 [US2] Handle save errors with toast notification in src/renderer/src/hooks/use-note-editor.ts
+- [x] T035 [US2] Integrate SaveStatus into note.tsx header in src/renderer/src/pages/note.tsx
 
 **Checkpoint**: User Story 2 complete - auto-save works reliably with status feedback
 
@@ -191,11 +191,22 @@
 
 - [x] T036 [US3] TagsRow component exists with full UI ✅ Already complete
 - [x] T037 [US3] TagInputPopup with autocomplete exists ✅ Already complete
-- [ ] T038 [US3] Wire TagsRow callbacks to updateNote in src/renderer/src/pages/note.tsx
-- [ ] T039 [US3] Connect tag autocomplete to getTags API in src/renderer/src/pages/note.tsx
-- [ ] T040 [US3] Add tag filtering to notes list in src/renderer/src/hooks/use-notes.ts
+- [x] T038 [US3] Wire TagsRow callbacks to updateNote in src/renderer/src/pages/note.tsx
+- [x] T039 [US3] Connect tag autocomplete to getTags API in src/renderer/src/pages/note.tsx
+- [x] T040 [US3] Add tag filtering to notes list in src/renderer/src/hooks/use-notes.ts
 
-**Checkpoint**: User Story 3 complete - tags work with autocomplete and persistence
+### Additional Tasks (Tag Color Persistence & Cross-Note Refresh)
+
+- [x] T040.1 [US3] Create `tagDefinitions` table in src/shared/db/schema/notes-cache.ts
+- [x] T040.2 [US3] Add `getOrCreateTag`, `getAllTagsWithColors`, `ensureTagDefinitions` queries in src/shared/db/queries/notes.ts
+- [x] T040.3 [US3] Update `getTagsWithCounts` to return colors in src/main/vault/notes.ts
+- [x] T040.4 [US3] Emit `notes:tags-changed` event on tag updates in src/main/vault/notes.ts
+- [x] T040.5 [US3] Add `onTagsChanged` event listener in src/preload/index.ts
+- [x] T040.6 [US3] Update `useNoteTags` hook to subscribe to tags-changed event in src/renderer/src/hooks/use-notes.ts
+- [x] T040.7 [US3] Update note.tsx to use backend colors (remove hash function)
+- [x] T040.8 [US3] Generate database migration for tag_definitions table
+
+**Checkpoint**: User Story 3 complete - tags work with autocomplete, persistence, cross-note refresh, and persistent colors ✅ PHASE 5 COMPLETE
 
 ---
 

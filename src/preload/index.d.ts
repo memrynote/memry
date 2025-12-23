@@ -654,7 +654,7 @@ export interface NotesClientAPI {
   move(id: string, newFolder: string): Promise<NoteUpdateResponse>
   delete(id: string): Promise<{ success: boolean; error?: string }>
   list(options?: NoteListOptions): Promise<NoteListResponse>
-  getTags(): Promise<{ tag: string; count: number }[]>
+  getTags(): Promise<{ tag: string; color: string; count: number }[]>
   getLinks(id: string): Promise<NoteLinksResponse>
   getFolders(): Promise<string[]>
   createFolder(path: string): Promise<{ success: boolean; error?: string }>
@@ -786,6 +786,7 @@ interface API extends WindowAPI {
   onNoteRenamed: (callback: (event: NoteRenamedEvent) => void) => () => void
   onNoteMoved: (callback: (event: NoteMovedEvent) => void) => () => void
   onNoteExternalChange: (callback: (event: NoteExternalChangeEvent) => void) => () => void
+  onTagsChanged: (callback: () => void) => () => void
   // Search event subscriptions
   onSearchIndexRebuildStarted: (callback: () => void) => () => void
   onSearchIndexRebuildProgress: (callback: (progress: IndexRebuildProgressEvent) => void) => () => void

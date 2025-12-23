@@ -514,10 +514,11 @@ export function useNotes(options: UseNotesOptions = {}): UseNotesReturn {
 }
 
 /**
- * Hook for getting tags with counts.
+ * Hook for getting tags with counts and colors.
+ * Subscribes to tags-changed events for cross-note autocomplete refresh.
  */
 export function useNoteTags() {
-  const [tags, setTags] = useState<{ tag: string; count: number }[]>([])
+  const [tags, setTags] = useState<{ tag: string; color: string; count: number }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -538,6 +539,15 @@ export function useNoteTags() {
 
   useEffect(() => {
     loadTags()
+
+    // Subscribe to tags-changed events (for cross-note tag refresh)
+    const unsubscribe = window.api.onTagsChanged?.(() => {
+      loadTags()
+    })
+
+    return () => {
+      unsubscribe?.()
+    }
   }, [loadTags])
 
   return {

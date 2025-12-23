@@ -102,9 +102,9 @@ export const notesService: NotesClientAPI = {
   },
 
   /**
-   * Get all tags with their usage counts.
+   * Get all tags with their usage counts and colors.
    */
-  getTags: (): Promise<{ tag: string; count: number }[]> => {
+  getTags: (): Promise<{ tag: string; color: string; count: number }[]> => {
     return window.api.notes.getTags()
   },
 
