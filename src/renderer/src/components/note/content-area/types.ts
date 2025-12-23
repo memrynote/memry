@@ -70,8 +70,8 @@ export interface ContentAreaProps {
   onSelectionChange?: (selection: SelectionInfo) => void
   /** Callback when external link is clicked */
   onLinkClick?: (href: string) => void
-  /** Callback when internal [[wiki-link]] is clicked */
-  onInternalLinkClick?: (noteId: string) => void
+  /** Callback when internal [[wiki-link]] is clicked (note id or title) */
+  onInternalLinkClick?: (noteIdOrTitle: string) => void
   /** Additional CSS classes */
   className?: string
 }

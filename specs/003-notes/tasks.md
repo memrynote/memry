@@ -223,15 +223,30 @@
 
 ### Implementation for User Story 4
 
-- [ ] T041 [P] [US4] Create WikiLink inline content spec in src/renderer/src/components/note/content-area/wiki-link-inline.ts
-- [ ] T042 [US4] Create WikiLinkAutocomplete popover component in src/renderer/src/components/note/wiki-link-autocomplete.tsx
-- [ ] T043 [US4] Integrate wiki-link inline content into BlockNote schema in src/renderer/src/components/note/content-area/ContentArea.tsx
-- [ ] T044 [US4] Implement note title search for autocomplete in src/renderer/src/services/notes-service.ts
-- [ ] T045 [US4] Add aliased link support [[Title|display text]] in wiki-link inline content
-- [ ] T046 [US4] Implement link click handler to open note in new tab in src/renderer/src/components/note/content-area/ContentArea.tsx
-- [ ] T047 [US4] Add "create new note" option for non-existent links in src/renderer/src/components/note/wiki-link-autocomplete.tsx
-- [ ] T048 [US4] Store outgoing links on note save in src/main/vault/notes.ts
-- [ ] T049 [US4] Style wiki links with distinctive appearance in src/renderer/src/assets/base.css
+- [x] T041 [P] [US4] Create WikiLink inline content spec in src/renderer/src/components/note/content-area/wiki-link.tsx
+- [x] T042 [US4] Create WikiLinkAutocomplete popover component in src/renderer/src/components/note/content-area/wiki-link-menu.tsx
+- [x] T043 [US4] Integrate wiki-link inline content into BlockNote schema in src/renderer/src/components/note/content-area/ContentArea.tsx
+- [x] T044 [US4] Implement note title search for autocomplete in ContentArea.tsx (uses notesService.list)
+- [x] T045 [US4] Add aliased link support [[Title|display text]] in wiki-link inline content
+- [x] T046 [US4] Implement link click handler to open note in new tab via wikilink:click event
+- [x] T047 [US4] If no matching note exists it creates wikilink but not the note, it should be created when clicked
+- [x] T048 [US4] Store outgoing links on note save in src/main/vault/notes.ts (already implemented)
+- [x] T049 [US4] Style wiki links with distinctive appearance in src/renderer/src/assets/base.css
+
+How it should work;
+- [ ] T050 [US4] User types a single [ and it should add ] automatically (deferred - BlockNote limitation)
+- [x] T051 [US4] User types [[ and it should open the autocomplete popover (uses SuggestionMenuController)
+- [x] T052 [US4] User can use keyboard to select a suggestion when the popover is visible (BlockNote built-in)
+- [x] T053 [US4] User selects a note from suggestions and it is inserted as a wiki link
+- [x] T054 [US4] User can click on the wiki link to navigate to the note
+- [x] T055 [US4] Typing [[ and starting to type a note title filters the suggestions in real time
+- [x] T056 [US4] If no matching note exists, a "Create new note" option appears at the end
+- [x] T057 [US4] If no matching note exists it creates wikilink but not the note, it should be created when clicked
+- [x] T058 [US4] Wiki links can support aliasing as [[Note Title|display text]] via alias prop
+- [ ] T059 [US4] When editing an existing wiki link, the autocomplete popover can be shown again (deferred - complex)
+- [x] T060 [US4] If the user pastes or manually types a wiki link pattern, it should be recognized via parse function
+
+
 
 **Checkpoint**: User Story 4 complete - wiki links work with autocomplete and navigation
 
@@ -282,13 +297,13 @@
 - [x] T056 [US6] InfoSection component exists with full UI ✅ Already complete
 - [x] T057 [US6] All 8 property editors exist ✅ Already complete
 - [x] T058 [US6] AddPropertyPopup component exists ✅ Already complete
-- [ ] T059 [US6] Wire InfoSection callbacks to updateNote in src/renderer/src/pages/note.tsx
-- [ ] T060 [US6] Connect property changes to frontmatter save in src/renderer/src/hooks/use-note-editor.ts
-- [ ] T061 [US6] Load properties from note frontmatter on mount in src/renderer/src/pages/note.tsx
-- [ ] T062 [US6] Add setProperties IPC usage in src/renderer/src/services/notes-service.ts
-- [ ] T063 [US6] Persist property definitions for reuse in src/renderer/src/hooks/use-property-definitions.ts
+- [x] T059 [US6] Wire InfoSection callbacks to updateNote in src/renderer/src/pages/note.tsx
+- [x] T060 [US6] Connect property changes to frontmatter save in src/renderer/src/hooks/use-note-editor.ts
+- [x] T061 [US6] Load properties from note frontmatter on mount in src/renderer/src/pages/note.tsx
+- [x] T062 [US6] Add setProperties IPC usage in src/renderer/src/services/notes-service.ts
+- [x] T063 [US6] Persist property definitions for reuse in src/renderer/src/hooks/use-property-definitions.ts
 
-**Checkpoint**: User Story 6 complete - custom properties work with all supported types
+**Checkpoint**: User Story 6 complete - custom properties work with all supported types ✅ PHASE 8 COMPLETE
 
 ---
 
@@ -308,11 +323,11 @@
 ### Backend Wiring for User Story 7
 
 - [x] T064 [US7] EmojiPicker component exists ✅ Already complete
-- [ ] T065 [US7] Wire emoji selection to updateNote in src/renderer/src/pages/note.tsx
-- [ ] T066 [US7] Display emoji in notes list items in src/renderer/src/components/notes-tree.tsx
-- [ ] T067 [US7] Persist emoji to frontmatter on selection in src/renderer/src/hooks/use-note-editor.ts
+- [x] T065 [US7] Wire emoji selection to updateNote in src/renderer/src/pages/note.tsx ✅ Already implemented (handleEmojiChange callback)
+- [x] T066 [US7] Display emoji in notes list items in src/renderer/src/components/notes-tree.tsx
+- [x] T067 [US7] Persist emoji to frontmatter on selection in src/renderer/src/hooks/use-note-editor.ts ✅ Already implemented (updateEmoji method)
 
-**Checkpoint**: User Story 7 complete - emoji icons work throughout the UI
+**Checkpoint**: User Story 7 complete - emoji icons work throughout the UI ✅ PHASE 9 COMPLETE
 
 ---
 

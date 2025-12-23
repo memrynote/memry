@@ -788,7 +788,13 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           }
         >
           <TreeExpander />
-          <TreeIcon icon={<FileText className="h-4 w-4 text-muted-foreground" />} />
+          <TreeIcon icon={
+            note.emoji ? (
+              <span className="text-sm leading-none" role="img" aria-label="note icon">{note.emoji}</span>
+            ) : (
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            )
+          } />
           {isBeingRenamed ? (
             <input
               ref={renameInputRef}

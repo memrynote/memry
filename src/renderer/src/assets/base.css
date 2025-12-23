@@ -981,6 +981,31 @@
   );
 }
 
+/* Wiki link styling inside notes */
+.wiki-link {
+  color: rgb(217, 119, 6) !important;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0 2px;
+  border-radius: 4px;
+  background-color: color-mix(in srgb, rgb(245, 158, 11) 12%, transparent);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.wiki-link:hover {
+  background-color: color-mix(in srgb, rgb(245, 158, 11) 24%, transparent);
+  text-decoration: underline;
+}
+
+.dark .wiki-link {
+  color: rgb(251, 191, 36) !important;
+  background-color: color-mix(in srgb, rgb(251, 191, 36) 14%, transparent);
+}
+
+.dark .wiki-link:hover {
+  background-color: color-mix(in srgb, rgb(251, 191, 36) 24%, transparent);
+}
+
 /* Backlink mention highlight - warm amber for wiki-style links */
 .backlink-mention {
   color: rgb(217, 119, 6);

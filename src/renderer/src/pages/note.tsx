@@ -15,7 +15,7 @@ import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import { useNotes, useNoteLinks, useNoteTags, type Note } from '@/hooks/use-notes'
 import { useNoteProperties } from '@/hooks/use-note-properties'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
-import { onNoteDeleted, onNoteExternalChange } from '@/services/notes-service'
+import { notesService, onNoteDeleted, onNoteExternalChange } from '@/services/notes-service'
 import { useTabs } from '@/contexts/tabs'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -104,7 +104,7 @@ function NoteEmptyState() {
 
 export function NotePage({ noteId }: NotePageProps) {
   // Hooks for data fetching
-  const { getNote, updateNote, renameNote } = useNotes({ autoLoad: false })
+  const { createNote, getNote, updateNote, renameNote } = useNotes({ autoLoad: false })
   const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinks(noteId ?? null)
   const { tasks: linkedTasks, isLoading: linkedTasksLoading } = useTasksLinkedToNote(noteId ?? null)
   const { tags: allAvailableTags } = useNoteTags()
@@ -507,30 +507,55 @@ export function NotePage({ noteId }: NotePageProps) {
     window.open(href, '_blank', 'noopener,noreferrer')
   }, [])
 
-  const handleInternalLinkClick = useCallback(async (linkedNoteId: string) => {
-    // Try to get the note title for a better tab name
-    let noteTitle = 'Note'
+  const handleInternalLinkClick = useCallback(async (linkedNoteIdOrTitle: string) => {
+    const target = linkedNoteIdOrTitle?.trim()
+    if (!target) return
+
+    let resolvedId = target
+    let resolvedTitle = 'Note'
+
     try {
-      const linkedNote = await getNote(linkedNoteId)
-      if (linkedNote) {
-        noteTitle = linkedNote.title
+      const byId = await getNote(target)
+      if (byId) {
+        resolvedId = byId.id
+        resolvedTitle = byId.title
+      } else {
+        const listResult = await notesService.list({ sortBy: 'title', limit: 500 })
+        const match = listResult.notes.find(
+          (note) => note.title.toLowerCase() === target.toLowerCase()
+        )
+
+        if (match) {
+          resolvedId = match.id
+          resolvedTitle = match.title
+        } else {
+          const created = await createNote({ title: target })
+          if (!created) {
+            toast.error('Failed to create linked note')
+            return
+          }
+          resolvedId = created.id
+          resolvedTitle = created.title
+        }
       }
-    } catch {
-      // Fall back to generic title
+    } catch (err) {
+      console.error('[NotePage] Failed to resolve wiki link:', err)
+      toast.error('Failed to open linked note')
+      return
     }
 
     openTab({
       type: 'note',
-      title: noteTitle,
+      title: resolvedTitle,
       icon: 'file-text',
-      path: `/notes/${linkedNoteId}`,
-      entityId: linkedNoteId,
+      path: `/notes/${resolvedId}`,
+      entityId: resolvedId,
       isPinned: false,
       isModified: false,
       isPreview: true,
       isDeleted: false,
     })
-  }, [openTab, getNote])
+  }, [openTab, getNote, createNote])
 
   const handleBacklinkClick = useCallback((backlinkNoteId: string) => {
     // Look up the title from the backlinks array
