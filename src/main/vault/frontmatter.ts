@@ -259,6 +259,183 @@ export function generateContentHash(content: string): string {
   return (hash >>> 0).toString(16).padStart(8, '0')
 }
 
+// ============================================================================
+// Properties Extraction (T007, T008)
+// ============================================================================
+
+import type { PropertyType } from '@shared/db/schema/notes-cache'
+
+/**
+ * Reserved frontmatter keys that are NOT properties.
+ */
+const RESERVED_FRONTMATTER_KEYS = new Set([
+  'id',
+  'title',
+  'created',
+  'modified',
+  'tags',
+  'aliases'
+])
+
+/**
+ * Extract custom properties from frontmatter.
+ * T007: Properties are stored under the `properties` key or as top-level keys
+ * (excluding reserved keys like id, title, created, modified, tags, aliases).
+ *
+ * @param frontmatter - Parsed frontmatter object
+ * @returns Record of property names to values
+ */
+export function extractProperties(
+  frontmatter: NoteFrontmatter
+): Record<string, unknown> {
+  // Check for explicit `properties` object first
+  if (frontmatter.properties && typeof frontmatter.properties === 'object') {
+    return frontmatter.properties as Record<string, unknown>
+  }
+
+  // Fall back to extracting non-reserved top-level keys
+  const properties: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(frontmatter)) {
+    if (!RESERVED_FRONTMATTER_KEYS.has(key) && value !== undefined) {
+      properties[key] = value
+    }
+  }
+
+  return properties
+}
+
+/**
+ * Check if a string is a valid ISO 8601 date.
+ */
+function isISODate(value: string): boolean {
+  // Match YYYY-MM-DD or full ISO datetime
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/
+  if (!isoDatePattern.test(value)) {
+    return false
+  }
+  const date = new Date(value)
+  return !isNaN(date.getTime())
+}
+
+/**
+ * Check if a string is a valid URL.
+ */
+function isURL(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Infer property type from a value.
+ * T008: Used when syncing externally-edited properties that don't have
+ * a pre-existing type definition.
+ *
+ * @param name - Property name (used for contextual hints like "rating")
+ * @param value - Property value to infer type from
+ * @returns Inferred property type
+ */
+export function inferPropertyType(name: string, value: unknown): PropertyType {
+  // Boolean -> checkbox
+  if (typeof value === 'boolean') {
+    return 'checkbox'
+  }
+
+  // Number with contextual hints
+  if (typeof value === 'number') {
+    // Check if this looks like a rating (1-5 range and name contains "rating")
+    if (value >= 1 && value <= 5 && name.toLowerCase().includes('rating')) {
+      return 'rating'
+    }
+    return 'number'
+  }
+
+  // Array -> multiselect
+  if (Array.isArray(value)) {
+    return 'multiselect'
+  }
+
+  // String with format detection
+  if (typeof value === 'string') {
+    // Check for ISO date format
+    if (isISODate(value)) {
+      return 'date'
+    }
+    // Check for URL format
+    if (isURL(value)) {
+      return 'url'
+    }
+    return 'text'
+  }
+
+  // Default to text for unknown types
+  return 'text'
+}
+
+/**
+ * Serialize a property value for database storage.
+ * Arrays and objects are JSON-encoded.
+ *
+ * @param value - Property value
+ * @returns String representation for DB storage
+ */
+export function serializePropertyValue(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+  if (typeof value === 'string') {
+    return value
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+  // Arrays and objects get JSON-encoded
+  return JSON.stringify(value)
+}
+
+/**
+ * Deserialize a property value from database storage.
+ *
+ * @param value - Stored string value
+ * @param type - Property type
+ * @returns Parsed value
+ */
+export function deserializePropertyValue(
+  value: string | null,
+  type: PropertyType
+): unknown {
+  if (value === null) {
+    return null
+  }
+
+  switch (type) {
+    case 'number':
+    case 'rating':
+      return Number(value)
+    case 'checkbox':
+      return value === 'true'
+    case 'multiselect':
+      try {
+        return JSON.parse(value)
+      } catch {
+        return []
+      }
+    case 'text':
+    case 'date':
+    case 'url':
+    case 'select':
+    default:
+      return value
+  }
+}
+
+// ============================================================================
+// Snippet Extraction
+// ============================================================================
+
 /**
  * Create a snippet from content for preview purposes.
  *

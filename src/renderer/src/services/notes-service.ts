@@ -11,7 +11,13 @@ import type {
   NoteDeletedEvent,
   NoteRenamedEvent,
   NoteMovedEvent,
-  NoteExternalChangeEvent
+  NoteExternalChangeEvent,
+  PropertyValue,
+  PropertyDefinition,
+  SetPropertiesResponse,
+  CreatePropertyDefinitionInput,
+  CreatePropertyDefinitionResponse,
+  UpdatePropertyDefinitionInput
 } from '../../../preload/index.d'
 
 /**
@@ -155,6 +161,53 @@ export const notesService: NotesClientAPI = {
    */
   revealInFinder: (id: string): Promise<void> => {
     return window.api.notes.revealInFinder(id)
+  },
+
+  // =========================================================================
+  // T021: Properties API
+  // =========================================================================
+
+  /**
+   * Get properties for a note.
+   */
+  getProperties: (noteId: string): Promise<PropertyValue[]> => {
+    return window.api.notes.getProperties(noteId)
+  },
+
+  /**
+   * Set properties for a note.
+   */
+  setProperties: async (
+    noteId: string,
+    properties: Record<string, unknown>
+  ): Promise<SetPropertiesResponse> => {
+    const result = await window.api.notes.setProperties(noteId, properties)
+    return result
+  },
+
+  /**
+   * Get all property definitions.
+   */
+  getPropertyDefinitions: (): Promise<PropertyDefinition[]> => {
+    return window.api.notes.getPropertyDefinitions()
+  },
+
+  /**
+   * Create a new property definition.
+   */
+  createPropertyDefinition: (
+    input: CreatePropertyDefinitionInput
+  ): Promise<CreatePropertyDefinitionResponse> => {
+    return window.api.notes.createPropertyDefinition(input)
+  },
+
+  /**
+   * Update an existing property definition.
+   */
+  updatePropertyDefinition: (
+    input: UpdatePropertyDefinitionInput
+  ): Promise<CreatePropertyDefinitionResponse> => {
+    return window.api.notes.updatePropertyDefinition(input)
   }
 }
 
@@ -226,5 +279,11 @@ export type {
   NoteDeletedEvent,
   NoteRenamedEvent,
   NoteMovedEvent,
-  NoteExternalChangeEvent
+  NoteExternalChangeEvent,
+  PropertyValue,
+  PropertyDefinition,
+  SetPropertiesResponse,
+  CreatePropertyDefinitionInput,
+  CreatePropertyDefinitionResponse,
+  UpdatePropertyDefinitionInput
 }

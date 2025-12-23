@@ -9,10 +9,11 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
-import { InfoSection, Property, NewProperty } from '@/components/note/info-section'
+import { InfoSection, Property, NewProperty, PropertyType } from '@/components/note/info-section'
 import { BacklinksSection, Backlink } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import { useNotes, useNoteLinks, useNoteTags, type Note } from '@/hooks/use-notes'
+import { useNoteProperties } from '@/hooks/use-note-properties'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { onNoteDeleted, onNoteExternalChange } from '@/services/notes-service'
 import { useTabs } from '@/contexts/tabs'
@@ -41,6 +42,23 @@ function getTagColor(tagName: string): Tag['color'] {
     hash = hash & hash
   }
   return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length]
+}
+
+// Default values for property types when creating new properties
+function getDefaultValueForType(type: PropertyType): unknown {
+  switch (type) {
+    case 'checkbox':
+      return false
+    case 'number':
+    case 'rating':
+      return 0
+    case 'multiSelect':
+      return []
+    case 'date':
+      return null
+    default:
+      return ''
+  }
 }
 
 // ============================================================================
@@ -108,6 +126,14 @@ export function NotePage({ noteId }: NotePageProps) {
   const { tags: allAvailableTags } = useNoteTags()
   const { openTab, setTabDeleted } = useTabs()
 
+  // Properties from backend
+  const {
+    properties: backendProperties,
+    updateProperty: updateBackendProperty,
+    addProperty: addBackendProperty,
+    removeProperty: removeBackendProperty
+  } = useNoteProperties(noteId ?? null)
+
   // Local state
   const [note, setNote] = useState<Note | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -123,8 +149,31 @@ export function NotePage({ noteId }: NotePageProps) {
   // Refs for debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Properties (from frontmatter - for future use)
-  const [properties, setProperties] = useState<Property[]>([])
+  // Type mapping for backend PropertyValue → UI Property
+  const mapPropertyType = useCallback((backendType: string): PropertyType => {
+    const typeMap: Record<string, PropertyType> = {
+      'text': 'text',
+      'number': 'number',
+      'checkbox': 'checkbox',
+      'date': 'date',
+      'select': 'select',
+      'multiselect': 'multiSelect',
+      'url': 'url',
+      'rating': 'rating'
+    }
+    return typeMap[backendType] ?? 'text'
+  }, [])
+
+  // Convert backend properties to UI format
+  const properties: Property[] = useMemo(() => {
+    return backendProperties.map((prop) => ({
+      id: prop.name,
+      name: prop.name,
+      type: mapPropertyType(prop.type),
+      value: prop.value,
+      isCustom: true
+    }))
+  }, [backendProperties, mapPropertyType])
 
   // ============================================================================
   // Load Note
@@ -146,25 +195,7 @@ export function NotePage({ noteId }: NotePageProps) {
       if (loadedNote) {
         setNote(loadedNote)
         lastSavedContent.current = loadedNote.content
-
-        // Extract properties from frontmatter (for future use)
-        const frontmatterProps: Property[] = []
-        if (loadedNote.frontmatter) {
-          Object.entries(loadedNote.frontmatter).forEach(([key, value]) => {
-            if (!['id', 'title', 'created', 'modified', 'tags', 'aliases'].includes(key)) {
-              frontmatterProps.push({
-                id: key,
-                name: key,
-                type: typeof value === 'boolean' ? 'checkbox' :
-                  typeof value === 'number' ? 'number' :
-                    typeof value === 'string' && value.startsWith('http') ? 'url' : 'text',
-                value,
-                isCustom: true
-              })
-            }
-          })
-        }
-        setProperties(frontmatterProps)
+        // Properties are now loaded via useNoteProperties hook
       } else {
         setError('Note not found')
       }
@@ -404,30 +435,63 @@ export function NotePage({ noteId }: NotePageProps) {
     }
   }, [noteId, note, updateNote, isDeleted])
 
-  // Property handlers
-  const handlePropertyChange = useCallback((propertyId: string, value: unknown) => {
-    setProperties((prev) =>
-      prev.map((p) => (p.id === propertyId ? { ...p, value } : p))
-    )
-    // TODO: Save to frontmatter
-  }, [])
+  // Property handlers - wired to backend
+  const handlePropertyChange = useCallback(
+    async (propertyId: string, value: unknown) => {
+      console.log('[NotePage] handlePropertyChange called:', { propertyId, value, noteId })
+      if (isDeleted) {
+        toast.error('Cannot update property - this note was deleted')
+        return
+      }
+      try {
+        await updateBackendProperty(propertyId, value)
+        console.log('[NotePage] Property updated successfully')
+      } catch (err) {
+        console.error('[NotePage] Failed to update property:', err)
+        toast.error('Failed to update property')
+      }
+    },
+    [updateBackendProperty, isDeleted, noteId]
+  )
 
-  const handleAddProperty = useCallback((newProp: NewProperty) => {
-    const property: Property = {
-      id: `custom-${Date.now()}`,
-      name: newProp.name,
-      type: newProp.type,
-      value: null,
-      isCustom: true
-    }
-    setProperties((prev) => [...prev, property])
-    // TODO: Save to frontmatter
-  }, [])
+  const handleAddProperty = useCallback(
+    async (newProp: NewProperty) => {
+      console.log('[NotePage] handleAddProperty called:', { newProp, noteId })
+      if (isDeleted) {
+        toast.error('Cannot add property - this note was deleted')
+        return
+      }
+      // Get default value based on type
+      const defaultValue = getDefaultValueForType(newProp.type)
+      console.log('[NotePage] Adding property with default value:', { name: newProp.name, defaultValue })
+      try {
+        await addBackendProperty(newProp.name, defaultValue)
+        console.log('[NotePage] Property added successfully')
+      } catch (err) {
+        console.error('[NotePage] Failed to add property:', err)
+        toast.error('Failed to add property')
+      }
+    },
+    [addBackendProperty, isDeleted, noteId]
+  )
 
-  const handleDeleteProperty = useCallback((propertyId: string) => {
-    setProperties((prev) => prev.filter((p) => p.id !== propertyId))
-    // TODO: Save to frontmatter
-  }, [])
+  const handleDeleteProperty = useCallback(
+    async (propertyId: string) => {
+      console.log('[NotePage] handleDeleteProperty called:', { propertyId, noteId })
+      if (isDeleted) {
+        toast.error('Cannot delete property - this note was deleted')
+        return
+      }
+      try {
+        await removeBackendProperty(propertyId)
+        console.log('[NotePage] Property deleted successfully')
+      } catch (err) {
+        console.error('[NotePage] Failed to delete property:', err)
+        toast.error('Failed to delete property')
+      }
+    },
+    [removeBackendProperty, isDeleted, noteId]
+  )
 
   // Link handlers
   const handleLinkClick = useCallback((href: string) => {
@@ -557,19 +621,18 @@ export function NotePage({ noteId }: NotePageProps) {
             />
           </div>
 
-          {/* Info Section (Properties from frontmatter) */}
-          {properties.length > 0 && (
-            <div>
-              <InfoSection
-                properties={properties}
-                isExpanded={isInfoExpanded}
-                onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
-                onPropertyChange={handlePropertyChange}
-                onAddProperty={handleAddProperty}
-                onDeleteProperty={handleDeleteProperty}
-              />
-            </div>
-          )}
+          {/* Info Section (Properties) - always show for adding new properties */}
+          <div>
+            <InfoSection
+              properties={properties}
+              isExpanded={isInfoExpanded}
+              onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
+              onPropertyChange={handlePropertyChange}
+              onAddProperty={handleAddProperty}
+              onDeleteProperty={handleDeleteProperty}
+              disabled={isDeleted}
+            />
+          </div>
         </div>
 
         {/* Main content - BlockNote Editor with Markdown */}

@@ -15,9 +15,11 @@ import {
   createFrontmatter,
   extractWikiLinks,
   extractTags,
+  extractProperties,
   calculateWordCount,
   generateContentHash,
   createSnippet,
+  inferPropertyType,
   type NoteFrontmatter
 } from './frontmatter'
 import {
@@ -42,11 +44,14 @@ import {
   getNoteTags,
   getAllTags,
   setNoteLinks,
+  setNoteProperties,
+  getNotePropertiesAsRecord,
   getOutgoingLinks,
   getIncomingLinks,
   deleteLinksToNote,
   findDuplicateId,
-  resolveNoteByTitle
+  resolveNoteByTitle,
+  getPropertyType
 } from '@shared/db/queries/notes'
 import { getIndexDatabase, updateFtsContent } from '../database'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
@@ -68,6 +73,7 @@ export interface Note {
   tags: string[]
   aliases: string[]
   wordCount: number
+  properties: Record<string, unknown> // T013: Properties support
 }
 
 export interface NoteListItem {
@@ -87,6 +93,7 @@ export interface NoteCreateInput {
   folder?: string
   tags?: string[]
   template?: string
+  properties?: Record<string, unknown> // T014: Properties support
 }
 
 export interface NoteUpdateInput {
@@ -95,6 +102,7 @@ export interface NoteUpdateInput {
   content?: string
   tags?: string[]
   frontmatter?: Record<string, unknown>
+  properties?: Record<string, unknown> // T013: Properties support
 }
 
 export interface NoteListOptions {
@@ -196,8 +204,15 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   let filePath = generateNotePath(notesDir, input.title, input.folder)
   filePath = await generateUniquePath(filePath)
 
-  // Create frontmatter
+  // Create frontmatter with properties if provided (T014)
   const frontmatter = createFrontmatter(input.title, input.tags)
+
+  // T014: Add properties to frontmatter
+  const properties = input.properties ?? {}
+  if (Object.keys(properties).length > 0) {
+    ;(frontmatter as NoteFrontmatter & { properties: Record<string, unknown> }).properties =
+      properties
+  }
 
   // Serialize content
   const content = input.content ?? ''
@@ -228,6 +243,13 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     setNoteTags(db, frontmatter.id, input.tags)
   }
 
+  // T014: Set properties in cache
+  if (Object.keys(properties).length > 0) {
+    setNoteProperties(db, frontmatter.id, properties, (name, value) =>
+      getPropertyType(db, name, value, inferPropertyType)
+    )
+  }
+
   // Update FTS index with content and tags
   updateFtsContent(db, frontmatter.id, content, input.tags ?? [])
 
@@ -252,7 +274,8 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     modified: new Date(frontmatter.modified),
     tags: input.tags ?? [],
     aliases: frontmatter.aliases ?? [],
-    wordCount
+    wordCount,
+    properties // T014: Include properties in response
   }
 
   // Emit event
@@ -321,6 +344,9 @@ export async function getNoteById(id: string): Promise<Note | null> {
   // Get tags from cache
   const tags = getNoteTags(db, id)
 
+  // T013: Get properties from cache
+  const properties = getNotePropertiesAsRecord(db, id)
+
   return {
     id,
     path: cached.path,
@@ -331,7 +357,8 @@ export async function getNoteById(id: string): Promise<Note | null> {
     modified: new Date(parsed.frontmatter.modified),
     tags,
     aliases: parsed.frontmatter.aliases ?? [],
-    wordCount: cached.wordCount
+    wordCount: cached.wordCount,
+    properties // T013: Include properties
   }
 }
 
@@ -360,6 +387,7 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
   const contentHash = generateContentHash(fileContent)
   const wordCount = calculateWordCount(parsed.content)
   const tags = extractTags(parsed.frontmatter)
+  const properties = extractProperties(parsed.frontmatter) // T013: Extract properties
 
   // Insert into cache
   insertNoteCache(db, {
@@ -376,6 +404,13 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     setNoteTags(db, parsed.frontmatter.id, tags)
   }
 
+  // T013: Set properties in cache
+  if (Object.keys(properties).length > 0) {
+    setNoteProperties(db, parsed.frontmatter.id, properties, (name, value) =>
+      getPropertyType(db, name, value, inferPropertyType)
+    )
+  }
+
   return {
     id: parsed.frontmatter.id,
     path: notePath,
@@ -386,7 +421,8 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     modified: new Date(parsed.frontmatter.modified),
     tags,
     aliases: parsed.frontmatter.aliases ?? [],
-    wordCount
+    wordCount,
+    properties // T013: Include properties
   }
 }
 
@@ -410,14 +446,20 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   const newTitle = input.title ?? existing.title
   const newContent = input.content ?? existing.content
   const newTags = input.tags ?? existing.tags
+  const newProperties = input.properties ?? existing.properties // T013: Properties support
 
   // Update frontmatter
-  const newFrontmatter: NoteFrontmatter = {
+  const newFrontmatter: NoteFrontmatter & { properties?: Record<string, unknown> } = {
     ...existing.frontmatter,
     ...input.frontmatter,
     title: newTitle,
     tags: newTags,
     modified: new Date().toISOString()
+  }
+
+  // T013: Add properties to frontmatter if present
+  if (Object.keys(newProperties).length > 0) {
+    newFrontmatter.properties = newProperties
   }
 
   // Serialize and write
@@ -438,6 +480,13 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
 
   // Update tags
   setNoteTags(db, input.id, newTags)
+
+  // T013: Update properties
+  console.log('[updateNote] Calling setNoteProperties:', { noteId: input.id, newProperties })
+  setNoteProperties(db, input.id, newProperties, (name, value) =>
+    getPropertyType(db, name, value, inferPropertyType)
+  )
+  console.log('[updateNote] setNoteProperties completed')
 
   // Update FTS index with content and tags
   updateFtsContent(db, input.id, newContent, newTags)
@@ -461,13 +510,14 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     modified: new Date(newFrontmatter.modified),
     tags: newTags,
     aliases: newFrontmatter.aliases ?? [],
-    wordCount
+    wordCount,
+    properties: newProperties // T013: Include properties
   }
 
   // Emit event
   emitNoteEvent(NotesChannels.events.UPDATED, {
     id: input.id,
-    changes: { title: newTitle, content: newContent, tags: newTags },
+    changes: { title: newTitle, content: newContent, tags: newTags, properties: newProperties },
     source: 'internal'
   })
 

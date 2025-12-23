@@ -68,7 +68,29 @@ const api = {
     deleteFolder: (path: string) => ipcRenderer.invoke(NotesChannels.invoke.DELETE_FOLDER, path),
     exists: (titleOrPath: string) => ipcRenderer.invoke(NotesChannels.invoke.EXISTS, titleOrPath),
     openExternal: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.OPEN_EXTERNAL, id),
-    revealInFinder: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.REVEAL_IN_FINDER, id)
+    revealInFinder: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.REVEAL_IN_FINDER, id),
+
+    // T019: Properties API
+    getProperties: (noteId: string) =>
+      ipcRenderer.invoke(NotesChannels.invoke.GET_PROPERTIES, noteId),
+    setProperties: (noteId: string, properties: Record<string, unknown>) =>
+      ipcRenderer.invoke(NotesChannels.invoke.SET_PROPERTIES, { noteId, properties }),
+    getPropertyDefinitions: () =>
+      ipcRenderer.invoke(NotesChannels.invoke.GET_PROPERTY_DEFINITIONS),
+    createPropertyDefinition: (input: {
+      name: string
+      type: string
+      options?: string[]
+      defaultValue?: unknown
+      color?: string
+    }) => ipcRenderer.invoke(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, input),
+    updatePropertyDefinition: (input: {
+      name: string
+      type?: string
+      options?: string[]
+      defaultValue?: unknown
+      color?: string
+    }) => ipcRenderer.invoke(NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION, input)
   },
 
   // Search API

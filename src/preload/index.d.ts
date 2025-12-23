@@ -32,6 +32,60 @@ export interface Note {
   tags: string[]
   aliases: string[]
   wordCount: number
+  properties: Record<string, unknown> // T020: Properties support
+}
+
+// T020: Property types
+export type PropertyType =
+  | 'text'
+  | 'number'
+  | 'checkbox'
+  | 'date'
+  | 'select'
+  | 'multiselect'
+  | 'url'
+  | 'rating'
+
+export interface PropertyValue {
+  name: string
+  value: unknown
+  type: PropertyType
+}
+
+export interface PropertyDefinition {
+  name: string
+  type: PropertyType
+  options: string | null // JSON array
+  defaultValue: string | null
+  color: string | null
+  createdAt: string
+}
+
+export interface CreatePropertyDefinitionInput {
+  name: string
+  type: PropertyType
+  options?: string[]
+  defaultValue?: unknown
+  color?: string
+}
+
+export interface UpdatePropertyDefinitionInput {
+  name: string
+  type?: PropertyType
+  options?: string[]
+  defaultValue?: unknown
+  color?: string
+}
+
+export interface SetPropertiesResponse {
+  success: boolean
+  error?: string
+}
+
+export interface CreatePropertyDefinitionResponse {
+  success: boolean
+  definition: PropertyDefinition | null
+  error?: string
 }
 
 export interface NoteListItem {
@@ -606,6 +660,16 @@ export interface NotesClientAPI {
   exists(titleOrPath: string): Promise<boolean>
   openExternal(id: string): Promise<void>
   revealInFinder(id: string): Promise<void>
+  // T020: Properties API
+  getProperties(noteId: string): Promise<PropertyValue[]>
+  setProperties(noteId: string, properties: Record<string, unknown>): Promise<SetPropertiesResponse>
+  getPropertyDefinitions(): Promise<PropertyDefinition[]>
+  createPropertyDefinition(
+    input: CreatePropertyDefinitionInput
+  ): Promise<CreatePropertyDefinitionResponse>
+  updatePropertyDefinition(
+    input: UpdatePropertyDefinitionInput
+  ): Promise<CreatePropertyDefinitionResponse>
 }
 
 // Tasks client API interface

@@ -11,8 +11,12 @@ export default defineConfig({
       viteStaticCopy({
         targets: [
           {
-            src: 'src/main/database/drizzle/*',
-            dest: 'drizzle'
+            src: 'src/main/database/drizzle-data/*',
+            dest: 'drizzle-data'
+          },
+          {
+            src: 'src/main/database/drizzle-index/*',
+            dest: 'drizzle-index'
           }
         ]
       })

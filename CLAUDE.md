@@ -150,16 +150,29 @@ MyVault/
 
 ### Database (Drizzle ORM + SQLite)
 
+The app uses **two separate databases** with isolated schemas:
+
+| Database | Purpose | Schema | Tables |
+|----------|---------|--------|--------|
+| `data.db` | Source of truth for tasks | `data-schema.ts` | projects, statuses, tasks, task_notes, task_tags, inbox_items, settings, saved_filters |
+| `index.db` | Rebuildable cache for notes | `index-schema.ts` | note_cache, note_tags, note_links, note_properties, property_definitions |
+
 ```bash
-pnpm db:generate    # Generate migrations from schema changes
-pnpm db:push        # Push schema to database (dev)
-pnpm db:studio      # Open Drizzle Studio GUI
-pnpm rebuild        # Rebuild native modules (better-sqlite3)
+pnpm db:generate       # Generate migrations for both databases
+pnpm db:generate:data  # Generate migrations for data.db only
+pnpm db:generate:index # Generate migrations for index.db only
+pnpm db:push           # Push schema to both databases (dev)
+pnpm db:push:data      # Push schema to data.db only
+pnpm db:push:index     # Push schema to index.db only
+pnpm db:studio:data    # Open Drizzle Studio for data.db
+pnpm db:studio:index   # Open Drizzle Studio for index.db
+pnpm rebuild           # Rebuild native modules (better-sqlite3)
 ```
 
 **Schema files**: `src/shared/db/schema/`
-- `projects.ts`, `statuses.ts`, `tasks.ts`, `task-relations.ts`
-- `inbox.ts`, `settings.ts`, `notes-cache.ts`
+- `data-schema.ts` - exports task schemas (projects, statuses, tasks, etc.)
+- `index-schema.ts` - exports note cache schemas (note_cache, note_properties, etc.)
+- `index.ts` - exports all for type access
 
 ### IPC Communication (Modern Pattern)
 

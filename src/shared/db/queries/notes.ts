@@ -11,11 +11,17 @@ import {
   noteCache,
   noteTags,
   noteLinks,
+  noteProperties,
+  propertyDefinitions,
   type NoteCache,
   type NewNoteCache,
   type NewNoteTag,
   type NoteLink,
-  type NewNoteLink
+  type NewNoteLink,
+  type NewNoteProperty,
+  type PropertyDefinition,
+  type NewPropertyDefinition,
+  type PropertyType
 } from '../schema/notes-cache'
 import * as schema from '../schema'
 
@@ -405,4 +411,261 @@ export function getNotesModifiedAfter(db: DrizzleDb, date: string): NoteCache[] 
     .from(noteCache)
     .where(sql`${noteCache.modifiedAt} > ${date}`)
     .all()
+}
+
+// ============================================================================
+// Property Operations (T009-T011)
+// ============================================================================
+
+/**
+ * Property value with type information.
+ */
+export interface PropertyValue {
+  name: string
+  value: unknown
+  type: PropertyType
+}
+
+/**
+ * T009: Set properties for a note (replaces existing properties).
+ * Follows the same pattern as setNoteTags.
+ *
+ * @param db - Database instance
+ * @param noteId - Note ID
+ * @param properties - Properties to set (name -> value mapping)
+ * @param getType - Function to get/infer property type
+ */
+export function setNoteProperties(
+  db: DrizzleDb,
+  noteId: string,
+  properties: Record<string, unknown>,
+  getType: (name: string, value: unknown) => PropertyType
+): void {
+
+  // Delete existing properties for this note
+  db.delete(noteProperties).where(eq(noteProperties.noteId, noteId)).run()
+
+  // Insert new properties
+  const entries = Object.entries(properties)
+
+  if (entries.length > 0) {
+    const propertyRecords: NewNoteProperty[] = entries.map(([name, value]) => {
+      const type = getType(name, value)
+      // Ensure property definition exists
+      ensurePropertyDefinition(db, name, type)
+      return {
+        noteId,
+        name,
+        value: serializeValue(value),
+        type
+      }
+    })
+    db.insert(noteProperties).values(propertyRecords).run()
+  } else {
+    console.log('[setNoteProperties] No properties to insert (empty)')
+  }
+}
+
+/**
+ * Serialize a property value for database storage.
+ */
+function serializeValue(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+  if (typeof value === 'string') {
+    return value
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+  return JSON.stringify(value)
+}
+
+/**
+ * T010: Get properties for a note.
+ */
+export function getNoteProperties(db: DrizzleDb, noteId: string): PropertyValue[] {
+  const results = db
+    .select()
+    .from(noteProperties)
+    .where(eq(noteProperties.noteId, noteId))
+    .all()
+
+  return results.map((row) => ({
+    name: row.name,
+    value: deserializeValue(row.value, row.type as PropertyType),
+    type: row.type as PropertyType
+  }))
+}
+
+/**
+ * Deserialize a property value from database storage.
+ */
+function deserializeValue(value: string | null, type: PropertyType): unknown {
+  if (value === null) {
+    return null
+  }
+
+  switch (type) {
+    case 'number':
+    case 'rating':
+      return Number(value)
+    case 'checkbox':
+      return value === 'true'
+    case 'multiselect':
+      try {
+        return JSON.parse(value)
+      } catch {
+        return []
+      }
+    default:
+      return value
+  }
+}
+
+/**
+ * Get properties for a note as a Record.
+ */
+export function getNotePropertiesAsRecord(
+  db: DrizzleDb,
+  noteId: string
+): Record<string, unknown> {
+  const properties = getNoteProperties(db, noteId)
+  const result: Record<string, unknown> = {}
+  for (const prop of properties) {
+    result[prop.name] = prop.value
+  }
+  return result
+}
+
+// ============================================================================
+// Property Definitions (T011)
+// ============================================================================
+
+/**
+ * Get a property definition by name.
+ */
+export function getPropertyDefinition(
+  db: DrizzleDb,
+  name: string
+): PropertyDefinition | undefined {
+  return db
+    .select()
+    .from(propertyDefinitions)
+    .where(eq(propertyDefinitions.name, name))
+    .get()
+}
+
+/**
+ * Insert a new property definition.
+ */
+export function insertPropertyDefinition(
+  db: DrizzleDb,
+  definition: NewPropertyDefinition
+): PropertyDefinition {
+  return db.insert(propertyDefinitions).values(definition).returning().get()
+}
+
+/**
+ * Update an existing property definition.
+ */
+export function updatePropertyDefinition(
+  db: DrizzleDb,
+  name: string,
+  updates: Partial<Omit<PropertyDefinition, 'name' | 'createdAt'>>
+): PropertyDefinition | undefined {
+  return db
+    .update(propertyDefinitions)
+    .set(updates)
+    .where(eq(propertyDefinitions.name, name))
+    .returning()
+    .get()
+}
+
+/**
+ * Delete a property definition.
+ */
+export function deletePropertyDefinition(db: DrizzleDb, name: string): void {
+  db.delete(propertyDefinitions).where(eq(propertyDefinitions.name, name)).run()
+}
+
+/**
+ * Get all property definitions.
+ */
+export function getAllPropertyDefinitions(db: DrizzleDb): PropertyDefinition[] {
+  return db.select().from(propertyDefinitions).all()
+}
+
+/**
+ * Ensure a property definition exists.
+ * If not found, create one with the inferred type.
+ */
+export function ensurePropertyDefinition(
+  db: DrizzleDb,
+  name: string,
+  inferredType: PropertyType
+): PropertyDefinition {
+  const existing = getPropertyDefinition(db, name)
+  if (existing) {
+    return existing
+  }
+  const result = insertPropertyDefinition(db, {
+    name,
+    type: inferredType,
+    options: null,
+    defaultValue: null,
+    color: null
+  })
+  return result
+}
+
+/**
+ * Get the type for a property, using existing definition or inferring.
+ */
+export function getPropertyType(
+  db: DrizzleDb,
+  name: string,
+  value: unknown,
+  inferFn: (name: string, value: unknown) => PropertyType
+): PropertyType {
+  const definition = getPropertyDefinition(db, name)
+  if (definition) {
+    return definition.type as PropertyType
+  }
+  return inferFn(name, value)
+}
+
+/**
+ * Delete all properties for a note.
+ */
+export function deleteNoteProperties(db: DrizzleDb, noteId: string): void {
+  db.delete(noteProperties).where(eq(noteProperties.noteId, noteId)).run()
+}
+
+/**
+ * Filter notes by property value.
+ */
+export function filterNotesByProperty(
+  db: DrizzleDb,
+  propertyName: string,
+  propertyValue: string
+): NoteCache[] {
+  const noteIds = db
+    .select({ noteId: noteProperties.noteId })
+    .from(noteProperties)
+    .where(
+      and(
+        eq(noteProperties.name, propertyName),
+        eq(noteProperties.value, propertyValue)
+      )
+    )
+    .all()
+    .map((r) => r.noteId)
+
+  if (noteIds.length === 0) {
+    return []
+  }
+
+  return db.select().from(noteCache).where(inArray(noteCache.id, noteIds)).all()
 }

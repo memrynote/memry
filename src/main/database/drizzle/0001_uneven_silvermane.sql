@@ -1,1 +1,0 @@
-ALTER TABLE `tasks` ADD `source_note_id` text;

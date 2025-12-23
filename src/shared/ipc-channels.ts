@@ -72,7 +72,17 @@ export const NotesChannels = {
     /** Open note in external editor */
     OPEN_EXTERNAL: 'notes:open-external',
     /** Reveal note in file explorer */
-    REVEAL_IN_FINDER: 'notes:reveal-in-finder'
+    REVEAL_IN_FINDER: 'notes:reveal-in-finder',
+    /** Get properties for a note (T015) */
+    GET_PROPERTIES: 'notes:get-properties',
+    /** Set properties for a note (T016) */
+    SET_PROPERTIES: 'notes:set-properties',
+    /** Get all property definitions (T017) */
+    GET_PROPERTY_DEFINITIONS: 'notes:get-property-definitions',
+    /** Create a property definition (T018) */
+    CREATE_PROPERTY_DEFINITION: 'notes:create-property-definition',
+    /** Update a property definition */
+    UPDATE_PROPERTY_DEFINITION: 'notes:update-property-definition'
   },
   events: {
     /** Note was created (externally or internally) */

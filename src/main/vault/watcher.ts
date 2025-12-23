@@ -16,10 +16,12 @@ import {
   parseNote,
   serializeNote,
   extractTags,
+  extractProperties,
   extractWikiLinks,
   calculateWordCount,
   generateContentHash,
-  createSnippet
+  createSnippet,
+  inferPropertyType
 } from './frontmatter'
 import { safeRead, atomicWrite } from './file-ops'
 import { generateNoteId } from '../lib/id'
@@ -31,7 +33,9 @@ import {
   getNoteCacheById,
   setNoteTags,
   setNoteLinks,
-  resolveNoteByTitle
+  setNoteProperties,
+  resolveNoteByTitle,
+  getPropertyType
 } from '@shared/db/queries/notes'
 import { getIndexDatabase, updateFtsContent } from '../database'
 import { NotesChannels } from '@shared/ipc-channels'
@@ -211,7 +215,6 @@ export class VaultWatcher {
       .on('unlink', (filePath) => this.handleFileDelete(filePath))
       .on('ready', () => {
         this.isReady = true
-        console.log('[Watcher] Initial scan complete, watching for changes')
       })
       .on('error', (err) => {
         const error = err instanceof Error ? err : new Error(String(err))
@@ -315,6 +318,7 @@ export class VaultWatcher {
 
       // Extract metadata
       const tags = extractTags(parsed.frontmatter)
+      const properties = extractProperties(parsed.frontmatter)
       const wikiLinks = extractWikiLinks(parsed.content)
       const wordCount = calculateWordCount(parsed.content)
       const contentHash = generateContentHash(content)
@@ -334,6 +338,13 @@ export class VaultWatcher {
       // Set tags
       if (tags.length > 0) {
         setNoteTags(db, parsed.frontmatter.id, tags)
+      }
+
+      // T012: Set properties with type inference
+      if (Object.keys(properties).length > 0) {
+        setNoteProperties(db, parsed.frontmatter.id, properties, (name, value) =>
+          getPropertyType(db, name, value, inferPropertyType)
+        )
       }
 
       // Update FTS index with content and tags
@@ -363,6 +374,7 @@ export class VaultWatcher {
       // Emit event to renderer
       emitNoteEvent(NotesChannels.events.CREATED, {
         note: noteListItem,
+        properties, // T012: Include properties in event
         source: 'external'
       })
     } catch (error) {
@@ -405,6 +417,7 @@ export class VaultWatcher {
 
       // Extract metadata
       const tags = extractTags(parsed.frontmatter)
+      const properties = extractProperties(parsed.frontmatter)
       const wikiLinks = extractWikiLinks(parsed.content)
       const wordCount = calculateWordCount(parsed.content)
       const snippet = createSnippet(parsed.content)
@@ -421,6 +434,11 @@ export class VaultWatcher {
 
         // Update tags
         setNoteTags(db, cached.id, tags)
+
+        // T012: Update properties with type inference
+        setNoteProperties(db, cached.id, properties, (name, value) =>
+          getPropertyType(db, name, value, inferPropertyType)
+        )
 
         // Update FTS index with content and tags
         updateFtsContent(db, cached.id, parsed.content, tags)
@@ -439,6 +457,7 @@ export class VaultWatcher {
             title,
             content: parsed.content,
             tags,
+            properties, // T012: Include properties in event
             modified: new Date(parsed.frontmatter.modified),
             wordCount,
             snippet
