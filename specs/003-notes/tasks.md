@@ -41,9 +41,23 @@
 ### Database Schema & Migrations
 
 - [ ] T004 Add `emoji` column to noteCache table in src/shared/db/schema/notes-cache.ts
-- [ ] T005 Create noteProperties table schema in src/shared/db/schema/notes-cache.ts
-- [ ] T006 Create propertyDefinitions table schema in src/shared/db/schema/notes-cache.ts
+- [ ] T005 Create noteProperties table (rebuildable cache from frontmatter) in src/shared/db/schema/notes-cache.ts
+- [ ] T006 Create propertyDefinitions table (vault-wide schema, source of truth) in src/shared/db/schema/notes-cache.ts
 - [ ] T007 Generate and apply database migrations with `pnpm db:generate && pnpm db:push`
+
+### Properties Sync Layer (Required for External Edit Support)
+
+> **Design Doc**: See `specs/003-notes/properties-design.md` for full architecture.
+> **Pattern**: Follows existing tag sync pattern - frontmatter = source of truth, DB = cache.
+
+- [ ] T007a Add extractProperties() function in src/main/vault/frontmatter.ts
+- [ ] T007b Add inferPropertyType() utility (type inference for external edits) in src/main/vault/frontmatter.ts
+- [ ] T007c Add setNoteProperties() query function (sync from frontmatter) in src/shared/db/queries/notes.ts
+- [ ] T007d Add getNoteProperties() query function in src/shared/db/queries/notes.ts
+- [ ] T007e Add property definition CRUD functions in src/shared/db/queries/notes.ts
+- [ ] T007f Extend handleFileChange() to sync properties in src/main/vault/watcher.ts
+- [ ] T007g Extend updateNote() to save properties to frontmatter in src/main/vault/notes.ts
+- [ ] T007h Extend createNote() to support initial properties in src/main/vault/notes.ts
 
 ### Contracts & Types
 
@@ -454,3 +468,26 @@ With multiple developers after Foundational:
 - Stop at any checkpoint to validate story independently
 - ~90% of backend infrastructure already exists (see research.md)
 - Focus is on UI integration and remaining IPC handlers
+
+## Architecture Decisions
+
+### Properties Storage (T005-T007h)
+
+**Design Doc**: `specs/003-notes/properties-design.md`
+
+| Component | Storage | Purpose |
+|-----------|---------|---------|
+| Property VALUES | Frontmatter (YAML) | Source of truth - portable, external-edit friendly |
+| Property CACHE | `noteProperties` table | Fast queries, filtering, sorting (rebuildable) |
+| Property SCHEMA | `propertyDefinitions` table | Vault-wide type definitions |
+
+**External Edit Flow**:
+1. User edits frontmatter in VS Code/Obsidian
+2. chokidar detects file change
+3. `handleFileChange()` parses frontmatter
+4. `extractProperties()` extracts properties
+5. `inferPropertyType()` determines/confirms types
+6. `setNoteProperties()` syncs to DB cache
+7. Event emitted with `source: 'external'`
+
+**Type Inference**: When user adds property externally, type is inferred from value (boolean → checkbox, number → number, array → multiselect, ISO string → date, URL → url, else → text).
