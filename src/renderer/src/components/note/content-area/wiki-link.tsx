@@ -22,21 +22,13 @@ export function parseWikiLinkText(text: string): WikiLinkParts | null {
   return { target, alias }
 }
 
-function getInlineContentText(content: Array<{ text?: string }> | undefined): string {
-  if (!content || content.length === 0) return ''
-  return content.map((item) => item.text ?? '').join('')
-}
-
 export function createWikiLinkInlineContent(
   target: string,
-  alias: string,
-  styles: Record<string, boolean | string> = {}
+  alias: string
 ) {
-  const displayText = alias?.trim() || target
   return {
     type: 'wikiLink',
-    props: { target, alias: alias ?? '' },
-    content: [{ type: 'text', text: displayText, styles }]
+    props: { target, alias: alias ?? '' }
   }
 }
 
@@ -47,20 +39,20 @@ export const WikiLink = createInlineContentSpec(
       target: { default: '' },
       alias: { default: '' }
     },
-    content: 'styled'
+    content: 'none'
   },
   {
     render: (inlineContent) => {
       const dom = document.createElement('span')
       dom.className = 'wiki-link'
       dom.setAttribute('data-wiki-link', '')
+      dom.setAttribute('data-target', inlineContent.props.target || '')
+      dom.setAttribute('data-alias', inlineContent.props.alias || '')
       dom.setAttribute('title', inlineContent.props.target || '')
+      dom.setAttribute('contenteditable', 'false')
+      dom.textContent = inlineContent.props.alias || inlineContent.props.target || ''
 
-      const contentDOM = document.createElement('span')
-      contentDOM.className = 'wiki-link-text'
-      dom.appendChild(contentDOM)
-
-      return { dom, contentDOM }
+      return { dom }
     },
     parse: (element) => {
       if (element.hasAttribute('data-wiki-link') || element.hasAttribute('data-target')) {
@@ -77,12 +69,8 @@ export const WikiLink = createInlineContentSpec(
     },
     toExternalHTML: (inlineContent) => {
       const target = inlineContent.props.target || ''
-      const contentText = getInlineContentText(inlineContent.content as Array<{ text?: string }> | undefined)
-      const displayText = contentText || inlineContent.props.alias || target
-      const text =
-        displayText && displayText !== target
-          ? `[[${target}|${displayText}]]`
-          : `[[${target}]]`
+      const alias = inlineContent.props.alias || ''
+      const text = alias && alias !== target ? `[[${target}|${alias}]]` : `[[${target}]]`
 
       const dom = document.createElement('span')
       dom.textContent = text
