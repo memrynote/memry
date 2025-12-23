@@ -368,9 +368,25 @@ export function NotePage({ noteId }: NotePageProps) {
     }
   }, [noteId, note, renameNote, isDeleted])
 
-  const handleEmojiChange = useCallback((_newEmoji: string | null) => {
-    // Emoji handling could be stored in frontmatter in the future
-  }, [])
+  // T026: Handle emoji changes - save to backend
+  const handleEmojiChange = useCallback(async (newEmoji: string | null) => {
+    if (!noteId || !note) return
+
+    if (isDeleted) {
+      toast.error('Cannot update emoji - this note was deleted')
+      return
+    }
+
+    try {
+      const result = await updateNote({ id: noteId, emoji: newEmoji })
+      if (result) {
+        setNote(result)
+      }
+    } catch (err) {
+      console.error('Failed to update emoji:', err)
+      toast.error('Failed to update emoji')
+    }
+  }, [noteId, note, updateNote, isDeleted])
 
   // Tag handlers
   const handleAddTag = useCallback(async (tagId: string) => {
@@ -600,7 +616,7 @@ export function NotePage({ noteId }: NotePageProps) {
                 aria-hidden="true"
               />
               <NoteTitle
-                emoji={null}
+                emoji={note.emoji ?? null}
                 title={note.title}
                 onEmojiChange={handleEmojiChange}
                 onTitleChange={handleTitleChange}

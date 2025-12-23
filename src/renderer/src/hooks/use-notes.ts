@@ -86,6 +86,7 @@ export interface UseNotesReturn {
     content?: string
     tags?: string[]
     frontmatter?: Record<string, unknown>
+    emoji?: string | null // T028: Emoji support
   }) => Promise<Note | null>
   renameNote: (id: string, newTitle: string) => Promise<Note | null>
   moveNote: (id: string, newFolder: string) => Promise<Note | null>
@@ -261,6 +262,7 @@ export function useNotes(options: UseNotesOptions = {}): UseNotesReturn {
       content?: string
       tags?: string[]
       frontmatter?: Record<string, unknown>
+      emoji?: string | null // T028: Emoji support
     }): Promise<Note | null> => {
       setError(null)
 

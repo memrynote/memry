@@ -61,6 +61,7 @@ export const notesService: NotesClientAPI = {
     content?: string
     tags?: string[]
     frontmatter?: Record<string, unknown>
+    emoji?: string | null // T028: Emoji support
   }): Promise<NoteUpdateResponse> => {
     return window.api.notes.update(input)
   },
