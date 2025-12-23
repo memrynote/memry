@@ -236,6 +236,7 @@ src/main/
 - chokidar for file watching
 - gray-matter for YAML frontmatter parsing
 - nanoid for unique ID generation
+- TypeScript 5.9+ (strict mode), Node.js 20+, React 19 (003-notes)
 
 ## Database Configuration
 
@@ -272,6 +273,7 @@ The app performs graceful shutdown on quit (`src/main/index.ts`):
 4. Exits cleanly
 
 ## Recent Changes
+- 003-notes: Added TypeScript 5.9+ (strict mode), Node.js 20+, React 19
 - 001-core-data-layer: Phase 10 complete (T088-T093)
   - Graceful shutdown with timeout mechanism
   - Full Zod validation at all IPC boundaries
