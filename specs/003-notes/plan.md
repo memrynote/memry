@@ -2,19 +2,43 @@
 
 **Branch**: `003-notes` | **Date**: 2025-12-23 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/003-notes/spec.md`
+**Updated**: 2025-12-23 - Aligned with actual codebase state
 
 ## Summary
 
-Implement a rich-text notes system with wiki-style linking, backlinks, tags, custom properties, and auto-save. The system builds on existing 90% complete backend infrastructure (vault operations, IPC handlers, database schemas, file watcher) and requires primarily UI integration and content format finalization.
+Implement a rich-text notes system with wiki-style linking, backlinks, tags, custom properties, and auto-save. The system builds on existing 90% complete backend infrastructure (vault operations, IPC handlers, database schemas, file watcher) and 70% complete UI components.
 
-**Key Technical Approach**: Leverage existing Tiptap editor with wiki-link/tag extensions, store content as markdown files with YAML frontmatter (source of truth), cache metadata in SQLite index.db for fast queries, and use FTS5 for full-text search.
+**Key Technical Approach**: Leverage existing BlockNote editor (Notion-like blocks), store content as markdown files with YAML frontmatter (source of truth), cache metadata in SQLite index.db for fast queries, and use FTS5 for full-text search.
+
+## Current Implementation Status
+
+### Backend (90% Complete)
+- ✅ Note CRUD operations (24 IPC handlers)
+- ✅ Tags management
+- ✅ Wiki link tracking & backlinks
+- ✅ Folder operations
+- ✅ Full-text search (FTS5)
+- ✅ File watching (chokidar)
+- ⚠️ Properties tables (not created)
+- ⚠️ Properties sync layer (not implemented)
+
+### Frontend (70% Complete)
+- ✅ BlockNote editor with markdown support
+- ✅ Title + emoji picker
+- ✅ Tags input with autocomplete UI
+- ✅ Properties panel with 8 type editors
+- ✅ Backlinks UI (demo data)
+- ✅ Outline navigation
+- ⚠️ Wiki link autocomplete (not implemented)
+- ⚠️ SaveStatus component (not created)
+- ⚠️ Backend wiring for properties/backlinks
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9+ (strict mode), Node.js 20+, React 19
 **Primary Dependencies**:
 - Electron 28+ with electron-vite
-- Tiptap (rich text editor with extensions)
+- BlockNote (rich text editor - Notion-like blocks)
 - Drizzle ORM with better-sqlite3
 - chokidar (file watching)
 - gray-matter (frontmatter parsing)
@@ -86,60 +110,61 @@ specs/003-notes/
 ### Source Code (repository root)
 
 ```text
-# Electron application structure (existing)
+# Electron application structure (actual current state)
 src/
 ├── main/                       # Main process (Node.js)
-│   ├── index.ts                # App entry, handler registration
+│   ├── index.ts                # App entry, handler registration ✅
 │   ├── vault/                  # Vault & file operations
-│   │   ├── notes.ts            # Note CRUD (EXISTING - enhance)
-│   │   ├── frontmatter.ts      # YAML parsing (EXISTING)
-│   │   ├── file-ops.ts         # Atomic writes (EXISTING)
-│   │   ├── watcher.ts          # File watching (EXISTING)
-│   │   └── indexer.ts          # Initial indexing (EXISTING)
+│   │   ├── notes.ts            # Note CRUD (26 functions) ✅
+│   │   ├── frontmatter.ts      # YAML parsing ✅
+│   │   ├── file-ops.ts         # Atomic writes ✅
+│   │   ├── watcher.ts          # File watching ✅
+│   │   └── indexer.ts          # Initial indexing ✅
 │   ├── ipc/                    # IPC handlers
-│   │   ├── notes-handlers.ts   # Notes API (EXISTING - enhance)
-│   │   └── search-handlers.ts  # FTS5 search (EXISTING)
+│   │   ├── notes-handlers.ts   # Notes API (24 handlers) ✅
+│   │   └── search-handlers.ts  # FTS5 search ✅
 │   └── database/               # Drizzle ORM
-│       ├── client.ts           # DB initialization (EXISTING)
-│       └── fts.ts              # FTS5 setup (EXISTING)
+│       ├── client.ts           # DB initialization ✅
+│       └── fts.ts              # FTS5 setup ✅
 │
 ├── renderer/src/               # Renderer process (React)
 │   ├── components/
-│   │   ├── note/               # Note UI components (NEW/ENHANCE)
-│   │   │   ├── note-editor.tsx         # Rich text editor
-│   │   │   ├── note-properties.tsx     # Properties panel
-│   │   │   ├── note-backlinks.tsx      # Backlinks panel
-│   │   │   ├── note-outline.tsx        # Heading outline
-│   │   │   └── note-header.tsx         # Title + emoji
-│   │   ├── journal/
-│   │   │   └── extensions/             # Tiptap extensions (EXISTING)
-│   │   │       ├── wiki-link/          # [[Link]] syntax
-│   │   │       └── tag/                # #tag syntax
-│   │   └── notes-tree.tsx              # Folder tree (EXISTING)
+│   │   └── note/               # Note UI components (70% complete)
+│   │       ├── content-area/   # BlockNote editor ✅
+│   │       ├── note-title/     # Title + emoji picker ✅
+│   │       ├── tags-row/       # Tag management UI ✅
+│   │       ├── info-section/   # Properties panel (8 editors) ✅
+│   │       ├── backlinks/      # Backlinks section (demo data) ⚠️
+│   │       ├── related-notes/  # Related notes (demo data) ⚠️
+│   │       ├── linked-tasks/   # Linked tasks ✅
+│   │       ├── ai-agent/       # AI assistant (demo data) ⚠️
+│   │       ├── note-layout.tsx # Main layout ✅
+│   │       ├── outline-edge.tsx # Document outline ✅
+│   │       └── right-sidebar.tsx # Right sidebar ✅
 │   ├── hooks/
-│   │   ├── use-notes.ts                # Notes state (EXISTING - enhance)
-│   │   └── use-note-editor.ts          # Editor state (NEW)
+│   │   ├── use-notes.ts        # Notes state management ✅
+│   │   └── use-note-editor.ts  # Editor state (NEW - needed)
 │   ├── services/
-│   │   └── notes-service.ts            # IPC wrapper (EXISTING)
+│   │   └── notes-service.ts    # IPC wrapper (18 methods) ✅
 │   └── pages/
-│       └── note.tsx                    # Note page (EXISTING - enhance)
+│       └── note.tsx            # Note page ✅
 │
 ├── shared/                     # Shared between processes
-│   ├── contracts/              # Zod schemas
-│   │   └── notes-api.ts        # Note types (EXISTING - enhance)
+│   ├── contracts/
+│   │   └── notes-api.ts        # Note types ✅
 │   ├── db/
 │   │   ├── schema/
-│   │   │   └── notes-cache.ts  # Cache schema (EXISTING)
+│   │   │   └── notes-cache.ts  # Cache schema (needs properties) ⚠️
 │   │   └── queries/
-│   │       └── notes.ts        # Query functions (EXISTING)
-│   └── ipc-channels.ts         # Channel names (EXISTING)
+│   │       └── notes.ts        # Query functions (35 funcs) ✅
+│   └── ipc-channels.ts         # Channel names ✅
 │
 └── preload/
-    ├── index.ts                # Bridge API (EXISTING)
-    └── index.d.ts              # Type declarations (EXISTING)
+    ├── index.ts                # Bridge API ✅
+    └── index.d.ts              # Type declarations ✅
 ```
 
-**Structure Decision**: Electron application with main/renderer/shared/preload structure. Most infrastructure exists from Phase 001-002. This phase primarily adds UI components and enhances existing handlers.
+**Structure Decision**: Electron application with main/renderer/shared/preload structure. Backend infrastructure is 90% complete. Frontend UI components are 70% complete. Remaining work is primarily backend wiring and a few missing features (wiki-link autocomplete, properties tables).
 
 ## Complexity Tracking
 

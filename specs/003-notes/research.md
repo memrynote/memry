@@ -3,6 +3,7 @@
 **Feature**: 003-notes
 **Date**: 2025-12-23
 **Status**: Complete
+**Updated**: 2025-12-23 - Aligned with actual codebase (BlockNote, not Tiptap)
 
 ## Executive Summary
 
@@ -12,22 +13,35 @@ This research consolidates technology decisions for the Memry notes system. The 
 
 ## 1. Rich Text Editor
 
-### Decision: Tiptap (Already Implemented)
+### Decision: BlockNote (Already Implemented)
 
-**Rationale**: Tiptap is already integrated in `src/renderer/src/components/note/content-area/ContentArea.tsx` with wiki-link and tag extensions. Reusing this proven implementation reduces risk.
+**Rationale**: BlockNote is already integrated in `src/renderer/src/components/note/content-area/ContentArea.tsx`. It provides a Notion-like block editing experience with excellent UX.
+
+**Current Implementation**:
+- `@blocknote/core` v0.44.2
+- `@blocknote/react` v0.44.2
+- `@blocknote/shadcn` v0.44.2
 
 **Alternatives Considered**:
 | Option | Pros | Cons | Verdict |
 |--------|------|------|---------|
-| Tiptap | Already integrated, extensible, ProseMirror-based | Learning curve for custom nodes | Rejected |
-| BlockNote | Notion-like blocks, simpler API | Would require migration, less customizable |  **SELECTED**  |
+| **BlockNote** | Notion-like blocks, excellent UX, simpler API | Less mature than Tiptap | **SELECTED** (Already integrated) |
+| Tiptap | Very extensible, ProseMirror-based | More boilerplate, migration needed | Rejected |
 | Lexical (Meta) | Fast, modern | Less mature ecosystem, migration cost | Rejected |
 | Slate.js | Highly customizable | More boilerplate, migration cost | Rejected |
 
-**Implementation Notes**:
-- Existing extensions: StarterKit, Link, Placeholder, WikiLink, Tag
-- Needed extensions: Table, Image, CodeBlock (syntax highlighting)
-- Content stored as Markdown (via Tiptap markdown extension or custom serializer)
+**Existing Features**:
+- Block-based editing (paragraphs, headings, lists, code blocks)
+- Markdown serialization via `editor.blocksToMarkdownLossy()`
+- Markdown parsing via `editor.tryParseMarkdownToBlocks()`
+- Heading extraction for outline navigation
+- Selection formatting toolbar
+- Slash commands for block insertion
+- Link click handling
+
+**Extensions Needed**:
+- Custom WikiLink inline content (using `createInlineContentSpec`)
+- Custom FileBlock for attachments (using `createBlockSpec`)
 
 ---
 
@@ -59,18 +73,10 @@ properties:
 This is [[wiki-linked]] content with #inline-tags.
 ```
 
-**Alternatives Considered**:
-| Option | Pros | Cons | Verdict |
-|--------|------|------|---------|
-| Markdown + YAML | Universal, existing | Requires HTML→MD conversion | **SELECTED** |
-| HTML files | Native Tiptap output | Not human-editable, lock-in | Rejected |
-| JSON (Tiptap doc) | Full fidelity | Not human-readable, lock-in | Rejected |
-| Dual format (MD + HTML) | Best of both | Sync complexity, 2x storage | Rejected |
-
-**Conversion Strategy**:
-- Tiptap → Markdown: Use `@tiptap/extension-markdown` or custom serializer
-- Markdown → Tiptap: Parse on load, reconstruct ProseMirror document
-- Preserve formatting fidelity for: headings, lists, bold, italic, code, links
+**Implementation Notes**:
+- BlockNote → Markdown: Use `editor.blocksToMarkdownLossy()`
+- Markdown → BlockNote: Use `editor.tryParseMarkdownToBlocks()`
+- Frontmatter parsed with `gray-matter`
 
 ---
 
@@ -156,36 +162,29 @@ CREATE VIRTUAL TABLE fts_notes USING fts5(
 - `getIncomingLinks(db, noteId)` returns all notes linking TO this note
 - Context snippets extracted during indexing
 
-**No Changes Needed**: Current implementation meets requirements.
+**Enhancement Needed**: Context snippet extraction is stubbed (returns empty string).
 
 ---
 
 ## 7. Auto-Save Strategy
 
-### Decision: Debounced Save (1 second)
+### Decision: Debounced Save (500ms currently, spec requires 1s)
 
 **Rationale**: Spec FR-003 requires "save automatically 1 second after user stops typing."
 
-**Implementation Pattern**:
+**Current Implementation** (in `note.tsx`):
 ```typescript
-const debouncedSave = useDebouncedCallback(
-  async (content: string) => {
-    await notesService.update({ id: noteId, content })
-  },
-  1000 // 1 second delay
+const debouncedSave = useCallback(
+  debounce(async (markdown: string) => {
+    await updateNote({ id: noteId, content: markdown })
+  }, 500) // TODO: Increase to 1000ms per spec
 )
-
-// On editor change
-editor.on('update', ({ editor }) => {
-  debouncedSave(editor.storage.markdown.getMarkdown())
-})
 ```
 
-**Error Handling**:
-- Show "Saving..." indicator during save
-- Show "Saved" on success (auto-hide after 2s)
-- Show error toast on failure with retry button
-- Queue saves if previous save in progress
+**Enhancement Needed**:
+- Increase debounce to 1000ms
+- Add SaveStatus component (Saving.../Saved/Error)
+- Add save queue for rapid edits
 
 ---
 
@@ -207,16 +206,20 @@ editor.on('update', ({ editor }) => {
 | url | string | URL input with open button |
 | rating | number (1-5) | Star rating |
 
-**Schema Storage**:
-```typescript
-// propertyDefinitions table (index.db)
-{
-  name: string,          // "status", "priority"
-  type: PropertyType,
-  options?: string[],    // For select/multiselect
-  defaultValue?: string
-}
-```
+**Existing UI Components** (in `info-section/editors/`):
+- ✅ TextEditor
+- ✅ LongTextEditor
+- ✅ NumberEditor
+- ✅ DateEditor
+- ✅ CheckboxEditor
+- ✅ SelectEditor
+- ✅ RatingEditor
+- ✅ UrlEditor
+
+**Backend Needed**:
+- `noteProperties` table (cache)
+- `propertyDefinitions` table (schema)
+- Properties sync layer (frontmatter ↔ DB)
 
 ---
 
@@ -235,7 +238,7 @@ editor.on('update', ({ editor }) => {
 1. User drops file on editor
 2. Copy file to attachments folder with unique name
 3. Insert markdown image/link syntax
-4. Render inline for images
+4. Render inline for images (BlockNote handles this)
 
 ---
 
@@ -271,7 +274,27 @@ editor.on('update', ({ editor }) => {
 
 ---
 
-## 12. Future Considerations (Deferred)
+## 12. Existing UI Components Inventory
+
+These components already exist and are UI-complete:
+
+| Component | Location | Status |
+|-----------|----------|--------|
+| NoteLayout | `components/note/note-layout.tsx` | ✅ Complete |
+| RightSidebar | `components/note/right-sidebar.tsx` | ✅ Complete |
+| OutlineEdge | `components/note/outline-edge.tsx` | ✅ Complete |
+| ContentArea | `components/note/content-area/` | ✅ Complete |
+| NoteTitle + Emoji | `components/note/note-title/` | ✅ Complete |
+| TagsRow | `components/note/tags-row/` | ✅ Complete |
+| InfoSection | `components/note/info-section/` | ✅ Complete (8 editors) |
+| BacklinksSection | `components/note/backlinks/` | ⚠️ Demo data |
+| RelatedNotesTab | `components/note/related-notes/` | ⚠️ Demo data |
+| LinkedTasksSection | `components/note/linked-tasks/` | ✅ Wired |
+| AIAgentTab | `components/note/ai-agent/` | ⚠️ Demo data |
+
+---
+
+## 13. Future Considerations (Deferred)
 
 These items are noted but explicitly out of scope for 003-notes:
 
@@ -292,21 +315,24 @@ These items are noted but explicitly out of scope for 003-notes:
 |----------|------------|
 | Store HTML or Markdown? | Markdown (constitution requires editable files) |
 | Rich text → MD fidelity? | Accept minor formatting loss for portability |
-| Tiptap vs BlockNote? | Tiptap (already integrated, more flexible) |
+| Tiptap vs BlockNote? | **BlockNote** (already integrated, Notion-like UX) |
 | Property schema storage? | Separate table, not in frontmatter |
 | Attachment deduplication? | Not needed (unique prefix handles) |
 
 ---
 
-## Dependencies to Install
+## Dependencies (Already Installed)
 
-```bash
-# Already installed (verify versions)
-pnpm add @tiptap/react @tiptap/starter-kit @tiptap/extension-link
-
-# May need to add
-pnpm add @tiptap/extension-code-block-lowlight lowlight
-pnpm add @tiptap/extension-table @tiptap/extension-table-row @tiptap/extension-table-cell @tiptap/extension-table-header
-pnpm add use-debounce
-pnpm add @emoji-mart/react @emoji-mart/data
+```json
+{
+  "@blocknote/core": "^0.44.2",
+  "@blocknote/react": "^0.44.2",
+  "@blocknote/shadcn": "^0.44.2",
+  "@emoji-mart/react": "^1.1.1",
+  "@emoji-mart/data": "^1.2.1",
+  "gray-matter": "^4.0.3",
+  "use-debounce": "^10.0.0"
+}
 ```
+
+**Note**: Tiptap packages may still be installed for journal editor but are NOT used for notes. BlockNote is the notes editor.

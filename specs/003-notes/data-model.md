@@ -3,6 +3,7 @@
 **Feature**: 003-notes
 **Date**: 2025-12-23
 **Status**: Complete
+**Updated**: 2025-12-23 - Added implementation status
 
 ## Overview
 
@@ -431,16 +432,40 @@ ORDER BY count DESC
 
 ---
 
+## Implementation Status
+
+### Implemented (in codebase)
+
+| Entity | Table/File | Status |
+|--------|-----------|--------|
+| Note | `vault/notes/*.md` | ✅ Complete |
+| NoteCache | `note_cache` table | ✅ Complete (missing emoji) |
+| NoteTag | `note_tags` table | ✅ Complete |
+| NoteLink | `note_links` table | ✅ Complete |
+| FtsNote | `fts_notes` virtual table | ✅ Complete |
+| Folder | `vault/notes/*/` | ✅ Complete |
+| Attachment | `vault/attachments/` | ⚠️ Folder exists, no upload handler |
+
+### Not Yet Implemented
+
+| Entity | Table | Task |
+|--------|-------|------|
+| NoteProperty | `note_properties` | T004 |
+| PropertyDefinition | `property_definitions` | T005 |
+| NoteCache.emoji | `emoji` column | T003 |
+
+---
+
 ## Migration Plan
 
 ### New Tables to Create
 
-1. **noteProperties** - Custom property values per note
-2. **propertyDefinitions** - Property schema definitions
+1. **noteProperties** - Custom property values per note (Task T004)
+2. **propertyDefinitions** - Property schema definitions (Task T005)
 
 ### Schema Changes
 
-1. **noteCache** - Add `emoji` column:
+1. **noteCache** - Add `emoji` column (Task T003):
 ```sql
 ALTER TABLE note_cache ADD COLUMN emoji TEXT;
 ```
@@ -448,3 +473,18 @@ ALTER TABLE note_cache ADD COLUMN emoji TEXT;
 ### Data Migration
 
 None required - new columns are optional, existing data remains valid.
+
+---
+
+## Related Files
+
+### Schema Definitions
+- `src/shared/db/schema/notes-cache.ts` - Drizzle schema (needs T003-T005)
+- `src/shared/contracts/notes-api.ts` - Zod validation schemas
+
+### Query Functions
+- `src/shared/db/queries/notes.ts` - 35 query functions implemented
+
+### Vault Operations
+- `src/main/vault/notes.ts` - 26 vault functions implemented
+- `src/main/vault/frontmatter.ts` - YAML parsing (needs extractProperties)
