@@ -85,41 +85,41 @@
 
 ### Database Schema & Migrations
 
-- [ ] T003 Add `emoji` column to noteCache table in src/shared/db/schema/notes-cache.ts
-- [ ] T004 Create noteProperties table (rebuildable cache from frontmatter) in src/shared/db/schema/notes-cache.ts
-- [ ] T005 Create propertyDefinitions table (vault-wide schema, source of truth) in src/shared/db/schema/notes-cache.ts
-- [ ] T006 Generate and apply database migrations with `pnpm db:generate && pnpm db:push`
+- [x] T003 Add `emoji` column to noteCache table in src/shared/db/schema/notes-cache.ts
+- [x] T004 Create noteProperties table (rebuildable cache from frontmatter) in src/shared/db/schema/notes-cache.ts
+- [x] T005 Create propertyDefinitions table (vault-wide schema, source of truth) in src/shared/db/schema/notes-cache.ts
+- [x] T006 Generate and apply database migrations with `pnpm db:generate && pnpm db:push`
 
 ### Properties Sync Layer (Required for External Edit Support)
 
 > **Design Doc**: See `specs/003-notes/properties-design.md` for full architecture.
 > **Pattern**: Follows existing tag sync pattern - frontmatter = source of truth, DB = cache.
 
-- [ ] T007 [P] Add extractProperties() function in src/main/vault/frontmatter.ts
-- [ ] T008 [P] Add inferPropertyType() utility (type inference for external edits) in src/main/vault/frontmatter.ts
-- [ ] T009 Add setNoteProperties() query function (sync from frontmatter) in src/shared/db/queries/notes.ts
-- [ ] T010 Add getNoteProperties() query function in src/shared/db/queries/notes.ts
-- [ ] T011 Add property definition CRUD functions in src/shared/db/queries/notes.ts
-- [ ] T012 Extend handleFileChange() to sync properties in src/main/vault/watcher.ts
-- [ ] T013 Extend updateNote() to save properties to frontmatter in src/main/vault/notes.ts
-- [ ] T014 Extend createNote() to support initial properties in src/main/vault/notes.ts
+- [x] T007 [P] Add extractProperties() function in src/main/vault/frontmatter.ts
+- [x] T008 [P] Add inferPropertyType() utility (type inference for external edits) in src/main/vault/frontmatter.ts
+- [x] T009 Add setNoteProperties() query function (sync from frontmatter) in src/shared/db/queries/notes.ts
+- [x] T010 Add getNoteProperties() query function in src/shared/db/queries/notes.ts
+- [x] T011 Add property definition CRUD functions in src/shared/db/queries/notes.ts
+- [x] T012 Extend handleFileChange() to sync properties in src/main/vault/watcher.ts
+- [x] T013 Extend updateNote() to save properties to frontmatter in src/main/vault/notes.ts
+- [x] T014 Extend createNote() to support initial properties in src/main/vault/notes.ts
 
 ### IPC Extensions for Properties
 
-- [ ] T015 Add getProperties IPC handler in src/main/ipc/notes-handlers.ts
-- [ ] T016 Add setProperties IPC handler in src/main/ipc/notes-handlers.ts
-- [ ] T017 Add getPropertyDefinitions IPC handler in src/main/ipc/notes-handlers.ts
-- [ ] T018 Add createPropertyDefinition IPC handler in src/main/ipc/notes-handlers.ts
-- [ ] T019 Expose properties API in src/preload/index.ts
-- [ ] T020 Update type declarations in src/preload/index.d.ts
+- [x] T015 Add getProperties IPC handler in src/main/ipc/notes-handlers.ts
+- [x] T016 Add setProperties IPC handler in src/main/ipc/notes-handlers.ts
+- [x] T017 Add getPropertyDefinitions IPC handler in src/main/ipc/notes-handlers.ts
+- [x] T018 Add createPropertyDefinition IPC handler in src/main/ipc/notes-handlers.ts
+- [x] T019 Expose properties API in src/preload/index.ts
+- [x] T020 Update type declarations in src/preload/index.d.ts
 
 ### Renderer Services Extension
 
-- [ ] T021 Extend notes-service.ts with properties methods in src/renderer/src/services/notes-service.ts
-- [ ] T022 Create useNoteProperties hook in src/renderer/src/hooks/use-note-properties.ts
-- [ ] T023 Create usePropertyDefinitions hook in src/renderer/src/hooks/use-property-definitions.ts
+- [x] T021 Extend notes-service.ts with properties methods in src/renderer/src/services/notes-service.ts
+- [x] T022 Create useNoteProperties hook in src/renderer/src/hooks/use-note-properties.ts
+- [x] T023 Create usePropertyDefinitions hook in src/renderer/src/hooks/use-property-definitions.ts
 
-**Checkpoint**: Foundation ready - user story implementation can now begin
+**Checkpoint**: Foundation ready - user story implementation can now begin ✅ PHASE 2 COMPLETE
 
 ---
 
