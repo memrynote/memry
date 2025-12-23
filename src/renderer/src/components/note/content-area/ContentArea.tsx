@@ -8,6 +8,7 @@ import { memo, useCallback, useEffect } from 'react'
 import { useCreateBlockNote } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
 import type { Block } from '@blocknote/core'
+import { useTheme } from 'next-themes'
 
 // BlockNote styles
 import '@blocknote/core/fonts/inter.css'
@@ -87,6 +88,10 @@ export const ContentArea = memo(function ContentArea({
   onLinkClick,
   className
 }: ContentAreaProps) {
+  // T030: Get current theme for dark mode support
+  const { resolvedTheme } = useTheme()
+  const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
+
   // Create the BlockNote editor
   const editor = useCreateBlockNote({
     // Configure placeholders
@@ -189,7 +194,7 @@ export const ContentArea = memo(function ContentArea({
           editor={editor}
           editable={editable}
           onChange={handleChange}
-          theme="light"
+          theme={editorTheme}
         />
       </div>
     </div>

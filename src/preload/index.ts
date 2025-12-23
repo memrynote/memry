@@ -45,6 +45,7 @@ const api = {
       content?: string
       tags?: string[]
       frontmatter?: Record<string, unknown>
+      emoji?: string | null // T028: Emoji support
     }) => ipcRenderer.invoke(NotesChannels.invoke.UPDATE, input),
     rename: (id: string, newTitle: string) =>
       ipcRenderer.invoke(NotesChannels.invoke.RENAME, { id, newTitle }),

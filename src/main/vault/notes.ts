@@ -74,6 +74,7 @@ export interface Note {
   aliases: string[]
   wordCount: number
   properties: Record<string, unknown> // T013: Properties support
+  emoji?: string | null // T028: Emoji icon for visual identification
 }
 
 export interface NoteListItem {
@@ -85,6 +86,7 @@ export interface NoteListItem {
   tags: string[]
   wordCount: number
   snippet?: string
+  emoji?: string | null // T028: Emoji icon for visual identification
 }
 
 export interface NoteCreateInput {
@@ -103,6 +105,7 @@ export interface NoteUpdateInput {
   tags?: string[]
   frontmatter?: Record<string, unknown>
   properties?: Record<string, unknown> // T013: Properties support
+  emoji?: string | null // T028: Emoji icon for visual identification
 }
 
 export interface NoteListOptions {
@@ -275,7 +278,8 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     tags: input.tags ?? [],
     aliases: frontmatter.aliases ?? [],
     wordCount,
-    properties // T014: Include properties in response
+    properties, // T014: Include properties in response
+    emoji: null // T028: New notes start without emoji
   }
 
   // Emit event
@@ -358,7 +362,8 @@ export async function getNoteById(id: string): Promise<Note | null> {
     tags,
     aliases: parsed.frontmatter.aliases ?? [],
     wordCount: cached.wordCount,
-    properties // T013: Include properties
+    properties, // T013: Include properties
+    emoji: cached.emoji ?? (parsed.frontmatter as { emoji?: string }).emoji ?? null // T028: Include emoji from cache or frontmatter
   }
 }
 
@@ -388,6 +393,7 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
   const wordCount = calculateWordCount(parsed.content)
   const tags = extractTags(parsed.frontmatter)
   const properties = extractProperties(parsed.frontmatter) // T013: Extract properties
+  const emoji = (parsed.frontmatter as { emoji?: string }).emoji ?? null // T028: Extract emoji
 
   // Insert into cache
   insertNoteCache(db, {
@@ -397,7 +403,8 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     contentHash,
     wordCount,
     createdAt: parsed.frontmatter.created,
-    modifiedAt: parsed.frontmatter.modified
+    modifiedAt: parsed.frontmatter.modified,
+    emoji // T028: Include emoji in cache
   })
 
   if (tags.length > 0) {
@@ -422,7 +429,8 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     tags,
     aliases: parsed.frontmatter.aliases ?? [],
     wordCount,
-    properties // T013: Include properties
+    properties, // T013: Include properties
+    emoji // T028: Include emoji
   }
 }
 
@@ -447,9 +455,11 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   const newContent = input.content ?? existing.content
   const newTags = input.tags ?? existing.tags
   const newProperties = input.properties ?? existing.properties // T013: Properties support
+  // T028: Handle emoji - use input.emoji if provided, otherwise keep existing
+  const newEmoji = input.emoji !== undefined ? input.emoji : existing.emoji
 
   // Update frontmatter
-  const newFrontmatter: NoteFrontmatter & { properties?: Record<string, unknown> } = {
+  const newFrontmatter: NoteFrontmatter & { properties?: Record<string, unknown>; emoji?: string | null } = {
     ...existing.frontmatter,
     ...input.frontmatter,
     title: newTitle,
@@ -460,6 +470,11 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   // T013: Add properties to frontmatter if present
   if (Object.keys(newProperties).length > 0) {
     newFrontmatter.properties = newProperties
+  }
+
+  // T028: Add emoji to frontmatter if present
+  if (newEmoji !== undefined) {
+    newFrontmatter.emoji = newEmoji
   }
 
   // Serialize and write
@@ -475,18 +490,17 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     title: newTitle,
     contentHash,
     wordCount,
-    modifiedAt: newFrontmatter.modified
+    modifiedAt: newFrontmatter.modified,
+    emoji: newEmoji // T028: Update emoji in cache
   })
 
   // Update tags
   setNoteTags(db, input.id, newTags)
 
   // T013: Update properties
-  console.log('[updateNote] Calling setNoteProperties:', { noteId: input.id, newProperties })
   setNoteProperties(db, input.id, newProperties, (name, value) =>
     getPropertyType(db, name, value, inferPropertyType)
   )
-  console.log('[updateNote] setNoteProperties completed')
 
   // Update FTS index with content and tags
   updateFtsContent(db, input.id, newContent, newTags)
@@ -511,13 +525,14 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     tags: newTags,
     aliases: newFrontmatter.aliases ?? [],
     wordCount,
-    properties: newProperties // T013: Include properties
+    properties: newProperties, // T013: Include properties
+    emoji: newEmoji // T028: Include emoji
   }
 
   // Emit event
   emitNoteEvent(NotesChannels.events.UPDATED, {
     id: input.id,
-    changes: { title: newTitle, content: newContent, tags: newTags, properties: newProperties },
+    changes: { title: newTitle, content: newContent, tags: newTags, properties: newProperties, emoji: newEmoji },
     source: 'internal'
   })
 
@@ -732,7 +747,8 @@ export async function listNotes(options: NoteListOptions = {}): Promise<NoteList
         modified: new Date(c.modifiedAt),
         tags,
         wordCount: c.wordCount,
-        snippet
+        snippet,
+        emoji: c.emoji // T028: Include emoji
       }
     })
   )
@@ -752,7 +768,8 @@ function noteToListItem(note: Note): NoteListItem {
     modified: note.modified,
     tags: note.tags,
     wordCount: note.wordCount,
-    snippet: createSnippet(note.content)
+    snippet: createSnippet(note.content),
+    emoji: note.emoji // T028: Include emoji
   }
 }
 

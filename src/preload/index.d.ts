@@ -33,6 +33,7 @@ export interface Note {
   aliases: string[]
   wordCount: number
   properties: Record<string, unknown> // T020: Properties support
+  emoji?: string | null // T028: Emoji icon for visual identification
 }
 
 // T020: Property types
@@ -97,6 +98,7 @@ export interface NoteListItem {
   tags: string[]
   wordCount: number
   snippet?: string
+  emoji?: string | null // T028: Emoji icon for visual identification
 }
 
 export interface NoteCreateInput {
@@ -113,6 +115,7 @@ export interface NoteUpdateInput {
   content?: string
   tags?: string[]
   frontmatter?: Record<string, unknown>
+  emoji?: string | null // T028: Emoji icon for visual identification
 }
 
 export interface NoteListOptions {

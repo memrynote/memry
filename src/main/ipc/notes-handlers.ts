@@ -300,7 +300,7 @@ export function registerNotesHandlers(): void {
       try {
         // Use updateNote to save properties to frontmatter (source of truth)
         // The updateNote function handles both file write and DB cache update
-        const result = await updateNote({
+        await updateNote({
           id: input.noteId,
           properties: input.properties
         })

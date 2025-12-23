@@ -36,6 +36,7 @@ export interface Note {
   tags: string[];
   aliases: string[];
   wordCount: number;
+  emoji?: string | null; // Emoji icon for visual identification
 }
 
 export interface NoteListItem {
@@ -47,6 +48,7 @@ export interface NoteListItem {
   tags: string[];
   wordCount: number;
   snippet?: string; // First 200 chars of content
+  emoji?: string | null; // Emoji icon for visual identification
 }
 
 export interface NoteLink {
@@ -82,6 +84,7 @@ export const NoteUpdateSchema = z.object({
   content: z.string().optional(),
   tags: z.array(z.string().max(50)).max(50).optional(),
   frontmatter: z.record(z.string(), z.unknown()).optional(), // Custom frontmatter fields
+  emoji: z.string().nullable().optional(), // Emoji icon for visual identification
 });
 
 export const NoteRenameSchema = z.object({
