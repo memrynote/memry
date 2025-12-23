@@ -42,7 +42,8 @@ import {
   countNotes,
   setNoteTags,
   getNoteTags,
-  getAllTags,
+  getAllTagsWithColors,
+  ensureTagDefinitions,
   setNoteLinks,
   setNoteProperties,
   getNotePropertiesAsRecord,
@@ -494,7 +495,15 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     emoji: newEmoji // T028: Update emoji in cache
   })
 
-  // Update tags
+  // Update tags and ensure tag definitions exist
+  const tagsChanged =
+    newTags.length !== existing.tags.length ||
+    newTags.some((t) => !existing.tags.includes(t))
+
+  if (tagsChanged) {
+    // Ensure all tags have definitions (creates new tags with auto-assigned colors)
+    ensureTagDefinitions(db, newTags)
+  }
   setNoteTags(db, input.id, newTags)
 
   // T013: Update properties
@@ -529,12 +538,19 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     emoji: newEmoji // T028: Include emoji
   }
 
-  // Emit event
+  // Emit note updated event
   emitNoteEvent(NotesChannels.events.UPDATED, {
     id: input.id,
     changes: { title: newTitle, content: newContent, tags: newTags, properties: newProperties, emoji: newEmoji },
     source: 'internal'
   })
+
+  // Emit tags-changed event if tags were modified (for cross-note autocomplete refresh)
+  if (tagsChanged) {
+    BrowserWindow.getAllWindows().forEach((win) => {
+      win.webContents.send('notes:tags-changed')
+    })
+  }
 
   return note
 }
@@ -778,11 +794,12 @@ function noteToListItem(note: Note): NoteListItem {
 // ============================================================================
 
 /**
- * Get all tags with counts.
+ * Get all tags with counts and colors.
+ * Returns tags sorted by usage count descending.
  */
-export function getTagsWithCounts(): { tag: string; count: number }[] {
+export function getTagsWithCounts(): { tag: string; color: string; count: number }[] {
   const db = getIndexDatabase()
-  return getAllTags(db)
+  return getAllTagsWithColors(db)
 }
 
 /**

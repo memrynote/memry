@@ -341,6 +341,13 @@ const api = {
     return () => ipcRenderer.removeListener(NotesChannels.events.EXTERNAL_CHANGE, handler)
   },
 
+  // Tags changed event (for cross-note tag autocomplete refresh)
+  onTagsChanged: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on('notes:tags-changed', handler)
+    return () => ipcRenderer.removeListener('notes:tags-changed', handler)
+  },
+
   // Search event subscription helpers
   onSearchIndexRebuildStarted: (callback: () => void): (() => void) => {
     const handler = (): void => callback()

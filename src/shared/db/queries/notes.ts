@@ -10,12 +10,14 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   noteCache,
   noteTags,
+  tagDefinitions,
   noteLinks,
   noteProperties,
   propertyDefinitions,
   type NoteCache,
   type NewNoteCache,
   type NewNoteTag,
+  type TagDefinition,
   type NoteLink,
   type NewNoteLink,
   type NewNoteProperty,
@@ -266,6 +268,172 @@ export function findNotesByTag(db: DrizzleDb, tag: string): NoteCache[] {
   }
 
   return db.select().from(noteCache).where(inArray(noteCache.id, noteIds)).all()
+}
+
+// ============================================================================
+// Tag Definition Operations (vault-wide tag registry with colors)
+// ============================================================================
+
+/**
+ * 24-color palette for auto-assigning tag colors.
+ * Colors are soft pastels from tag-colors.ts.
+ */
+const TAG_COLOR_PALETTE = [
+  'rose',
+  'pink',
+  'fuchsia',
+  'purple',
+  'violet',
+  'indigo',
+  'blue',
+  'sky',
+  'cyan',
+  'teal',
+  'emerald',
+  'green',
+  'lime',
+  'yellow',
+  'amber',
+  'orange',
+  'stone',
+  'slate',
+  'gray',
+  'zinc',
+  'neutral',
+  'warm',
+  'red',
+  'coral'
+]
+
+/**
+ * Get or create a tag definition with auto-assigned color.
+ * If tag exists, returns existing definition.
+ * If new, assigns next color from palette using round-robin.
+ */
+export function getOrCreateTag(
+  db: DrizzleDb,
+  name: string
+): { name: string; color: string } {
+  const normalizedName = name.toLowerCase().trim()
+
+  // Check if tag already exists
+  const existing = db
+    .select()
+    .from(tagDefinitions)
+    .where(eq(tagDefinitions.name, normalizedName))
+    .get()
+
+  if (existing) {
+    return { name: existing.name, color: existing.color }
+  }
+
+  // Get count of existing tags for round-robin color assignment
+  const tagCount = db
+    .select({ count: count() })
+    .from(tagDefinitions)
+    .get()?.count ?? 0
+
+  const color = TAG_COLOR_PALETTE[tagCount % TAG_COLOR_PALETTE.length]
+
+  // Insert new tag definition
+  db.insert(tagDefinitions)
+    .values({ name: normalizedName, color })
+    .run()
+
+  return { name: normalizedName, color }
+}
+
+/**
+ * Get all tag definitions with usage counts.
+ * Returns tags sorted by usage count descending.
+ */
+export function getAllTagsWithColors(
+  db: DrizzleDb
+): { tag: string; color: string; count: number }[] {
+  // Get all tag definitions
+  const definitions = db.select().from(tagDefinitions).all()
+  const defMap = new Map(definitions.map((d) => [d.name, d.color]))
+
+  // Get usage counts from noteTags
+  const usageCounts = db
+    .select({
+      tag: noteTags.tag,
+      count: count()
+    })
+    .from(noteTags)
+    .groupBy(noteTags.tag)
+    .all()
+
+  const countMap = new Map(usageCounts.map((u) => [u.tag, u.count]))
+
+  // Combine definitions with counts, including unused tags
+  const results: { tag: string; color: string; count: number }[] = []
+
+  // Add all defined tags (even if unused)
+  for (const def of definitions) {
+    results.push({
+      tag: def.name,
+      color: def.color,
+      count: countMap.get(def.name) ?? 0
+    })
+  }
+
+  // Add any tags in noteTags that don't have definitions (legacy data)
+  // and create definitions for them
+  for (const usage of usageCounts) {
+    if (!defMap.has(usage.tag)) {
+      const { color } = getOrCreateTag(db, usage.tag)
+      results.push({
+        tag: usage.tag,
+        color,
+        count: usage.count
+      })
+    }
+  }
+
+  // Sort by count descending
+  return results.sort((a, b) => b.count - a.count)
+}
+
+/**
+ * Update a tag's color.
+ */
+export function updateTagColor(
+  db: DrizzleDb,
+  name: string,
+  color: string
+): void {
+  const normalizedName = name.toLowerCase().trim()
+  db.update(tagDefinitions)
+    .set({ color })
+    .where(eq(tagDefinitions.name, normalizedName))
+    .run()
+}
+
+/**
+ * Get a single tag definition by name.
+ */
+export function getTagDefinition(
+  db: DrizzleDb,
+  name: string
+): TagDefinition | undefined {
+  const normalizedName = name.toLowerCase().trim()
+  return db
+    .select()
+    .from(tagDefinitions)
+    .where(eq(tagDefinitions.name, normalizedName))
+    .get()
+}
+
+/**
+ * Ensure all tags in an array have definitions (create if missing).
+ * Returns the tags with their colors.
+ */
+export function ensureTagDefinitions(
+  db: DrizzleDb,
+  tags: string[]
+): { name: string; color: string }[] {
+  return tags.map((tag) => getOrCreateTag(db, tag))
 }
 
 // ============================================================================
