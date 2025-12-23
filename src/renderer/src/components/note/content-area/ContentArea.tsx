@@ -117,7 +117,7 @@ function splitTextWithWikiLinks(
       }
     }
 
-    segments.push(createWikiLinkInlineContent(target, alias, styles ?? {}))
+    segments.push(createWikiLinkInlineContent(target, alias))
     didChange = true
     lastIndex = match.index + full.length
   }
@@ -388,9 +388,8 @@ export const ContentArea = memo(function ContentArea({
   const handleWikiLinkSelect = useCallback(
     (item: WikiLinkSuggestionItem) => {
       if (!item.target) return
-      const styles = editor.getActiveStyles()
       editor.insertInlineContent(
-        [createWikiLinkInlineContent(item.target, item.alias ?? '', styles as Record<string, boolean | string>)],
+        [createWikiLinkInlineContent(item.target, item.alias ?? '')],
         { updateSelection: true }
       )
     },
