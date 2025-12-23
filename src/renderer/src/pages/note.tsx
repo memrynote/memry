@@ -28,22 +28,6 @@ interface NotePageProps {
   noteId?: string
 }
 
-// Tag color mapping for consistent colors
-const TAG_COLORS: Tag['color'][] = [
-  'red', 'blue', 'green', 'purple', 'amber',
-  'yellow', 'cyan', 'pink', 'coral', 'stone'
-]
-
-function getTagColor(tagName: string): Tag['color'] {
-  // Generate consistent color based on tag name hash
-  let hash = 0
-  for (let i = 0; i < tagName.length; i++) {
-    hash = ((hash << 5) - hash) + tagName.charCodeAt(i)
-    hash = hash & hash
-  }
-  return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length]
-}
-
 // Default values for property types when creating new properties
 function getDefaultValueForType(type: PropertyType): unknown {
   switch (type) {
@@ -252,19 +236,28 @@ export function NotePage({ noteId }: NotePageProps) {
   // Tags - Convert between string[] and Tag[]
   // ============================================================================
 
+  // Build a lookup map of tag colors from backend
+  const tagColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const t of allAvailableTags) {
+      map.set(t.tag, t.color)
+    }
+    return map
+  }, [allAvailableTags])
+
   const noteTags: Tag[] = useMemo(() => {
     return (note?.tags || []).map((tagName) => ({
       id: tagName,
       name: tagName,
-      color: getTagColor(tagName)
+      color: tagColorMap.get(tagName) ?? 'stone' // Fallback to stone if not found
     }))
-  }, [note?.tags])
+  }, [note?.tags, tagColorMap])
 
   const availableTags: Tag[] = useMemo(() => {
     return allAvailableTags.map((t) => ({
       id: t.tag,
       name: t.tag,
-      color: getTagColor(t.tag)
+      color: t.color // Use color from backend
     }))
   }, [allAvailableTags])
 
