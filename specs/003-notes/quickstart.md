@@ -2,6 +2,7 @@
 
 **Feature**: 003-notes
 **Date**: 2025-12-23
+**Updated**: 2025-12-23 - Aligned with actual codebase
 
 ## Prerequisites
 
@@ -76,8 +77,11 @@ pnpm dev
 | `src/renderer/src/pages/note.tsx` | Note page component |
 | `src/renderer/src/hooks/use-notes.ts` | Notes state management |
 | `src/renderer/src/services/notes-service.ts` | IPC wrapper |
-| `src/renderer/src/components/journal/journal-editor.tsx` | Tiptap editor (to adapt) |
-| `src/renderer/src/components/journal/extensions/wiki-link/` | Wiki link extension |
+| `src/renderer/src/components/note/content-area/ContentArea.tsx` | BlockNote editor |
+| `src/renderer/src/components/note/note-title/NoteTitle.tsx` | Title + emoji |
+| `src/renderer/src/components/note/tags-row/TagsRow.tsx` | Tag management |
+| `src/renderer/src/components/note/info-section/InfoSection.tsx` | Properties panel |
+| `src/renderer/src/components/note/backlinks/BacklinksSection.tsx` | Backlinks display |
 
 ### Shared
 
@@ -86,6 +90,25 @@ pnpm dev
 | `src/shared/contracts/notes-api.ts` | Zod schemas & types |
 | `src/shared/db/schema/notes-cache.ts` | Drizzle table definitions |
 | `src/shared/ipc-channels.ts` | IPC channel constants |
+
+## Existing UI Components
+
+The notes system already has extensive UI components built:
+
+```
+src/renderer/src/components/note/
+├── ai-agent/              # AI Assistant panel (demo data)
+├── backlinks/             # Backlinks section (demo data)
+├── content-area/          # BlockNote-based rich text editor ✅
+├── info-section/          # Properties panel with 8 editors ✅
+├── linked-tasks/          # Tasks linked to note ✅
+├── note-title/            # Title with emoji picker ✅
+├── related-notes/         # Suggested related notes (demo data)
+├── tags-row/              # Tag management ✅
+├── note-layout.tsx        # Main layout wrapper ✅
+├── outline-edge.tsx       # Document outline ✅
+└── right-sidebar.tsx      # Right sidebar container ✅
+```
 
 ## Common Tasks
 
@@ -137,7 +160,33 @@ function NotesView() {
 }
 ```
 
-### 3. Add a New IPC Handler
+### 3. Use the BlockNote Editor
+
+```tsx
+import { ContentArea } from '@/components/note'
+
+function NoteEditor({ noteId }) {
+  const [headings, setHeadings] = useState([])
+
+  const handleMarkdownChange = useCallback((markdown: string) => {
+    // Save to backend
+    notesService.update({ id: noteId, content: markdown })
+  }, [noteId])
+
+  return (
+    <ContentArea
+      initialContent={note.content}
+      contentType="markdown"
+      onMarkdownChange={handleMarkdownChange}
+      onHeadingsChange={setHeadings}
+      placeholder="Start writing..."
+      editable={true}
+    />
+  )
+}
+```
+
+### 4. Add a New IPC Handler
 
 ```typescript
 // 1. Define schema in src/shared/contracts/notes-api.ts
@@ -187,7 +236,7 @@ export const notesService = {
 }
 ```
 
-### 4. Modify the Database Schema
+### 5. Modify the Database Schema
 
 ```typescript
 // 1. Update schema in src/shared/db/schema/notes-cache.ts
@@ -212,7 +261,7 @@ export function updateNoteCacheWithNewField(db, id, value) {
 }
 ```
 
-### 5. Subscribe to Note Events
+### 6. Subscribe to Note Events
 
 ```tsx
 import { useEffect } from 'react'
@@ -241,6 +290,35 @@ function NoteEventListener() {
 
   return null
 }
+```
+
+### 7. Create Custom BlockNote Extension
+
+```typescript
+// For wiki-links (inline content)
+import { createInlineContentSpec } from '@blocknote/core'
+
+const WikiLink = createInlineContentSpec({
+  type: 'wikiLink',
+  propSchema: {
+    target: { default: '' },
+    alias: { default: '' }
+  },
+  content: 'styled'
+})
+
+// For file attachments (block)
+import { createBlockSpec } from '@blocknote/core'
+
+const FileBlock = createBlockSpec({
+  type: 'file',
+  propSchema: {
+    url: { default: '' },
+    name: { default: '' },
+    size: { default: 0 }
+  },
+  content: 'none'
+})
 ```
 
 ## Development Workflow
@@ -349,11 +427,36 @@ const debouncedSave = useDebouncedCallback(
 )
 
 // On editor change
-editor.on('update', ({ editor }) => {
+const handleMarkdownChange = useCallback((markdown: string) => {
   setSaveStatus('saving')
-  debouncedSave(editor.getHTML())
-})
+  debouncedSave(markdown)
+}, [debouncedSave])
 ```
+
+## What's Already Built vs What's Needed
+
+### Backend (90% Complete)
+- ✅ Note CRUD (create, read, update, delete, rename, move)
+- ✅ Tags management
+- ✅ Wiki link tracking & backlinks
+- ✅ Folder operations
+- ✅ Full-text search
+- ✅ File watching
+- ⚠️ Properties tables (not created yet)
+- ⚠️ Properties sync layer (not implemented)
+- ⚠️ Attachment upload handler (not implemented)
+
+### Frontend (70% Complete)
+- ✅ BlockNote editor with markdown support
+- ✅ Title + emoji picker
+- ✅ Tags input with autocomplete UI
+- ✅ Properties panel with 8 type editors
+- ✅ Backlinks UI (needs backend wiring)
+- ✅ Outline navigation
+- ⚠️ Wiki link autocomplete (not implemented)
+- ⚠️ SaveStatus component (not created)
+- ⚠️ Backend wiring for properties
+- ⚠️ Replace demo data in backlinks/related notes
 
 ## Next Steps
 
@@ -362,11 +465,12 @@ After setting up the development environment:
 1. **Explore existing code**: Read through `use-notes.ts` and `notes.ts`
 2. **Run the app**: Create and edit some notes to understand the flow
 3. **Check the spec**: Review `specs/003-notes/spec.md` for requirements
-4. **Start with P1 stories**: Begin with rich text editing and auto-save
+4. **Start with Foundation**: Complete T003-T023 (properties tables + sync layer)
+5. **Wire existing UI**: Connect UI callbacks to backend services
 
 ## Resources
 
-- [Tiptap Documentation](https://tiptap.dev/docs)
+- [BlockNote Documentation](https://www.blocknotejs.org/docs)
 - [Drizzle ORM Documentation](https://orm.drizzle.team/docs/overview)
 - [Electron IPC Guide](https://www.electronjs.org/docs/latest/tutorial/ipc)
 - [Zod Documentation](https://zod.dev)
