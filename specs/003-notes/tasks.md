@@ -341,12 +341,12 @@ How it should work;
 
 ### Implementation for User Story 8
 
-- [ ] T068 [P] [US8] Create attachment upload handler in src/main/vault/attachments.ts
-- [ ] T069 [US8] Add drag-drop zone to BlockNote editor in src/renderer/src/components/note/content-area/ContentArea.tsx
-- [ ] T070 [US8] Implement uploadAttachment IPC handler in src/main/ipc/notes-handlers.ts
-- [ ] T071 [US8] Insert BlockNote image block after upload in src/renderer/src/components/note/content-area/ContentArea.tsx
-- [ ] T072 [US8] Create FileBlock custom block for non-image files in src/renderer/src/components/note/content-area/file-block.ts
-- [ ] T073 [US8] Add file size validation (10MB limit) in src/main/vault/attachments.ts
+- [x] T068 [P] [US8] Create attachment upload handler in src/main/vault/attachments.ts
+- [x] T069 [US8] Add drag-drop zone to BlockNote editor in src/renderer/src/components/note/content-area/ContentArea.tsx
+- [x] T070 [US8] Implement uploadAttachment IPC handler in src/main/ipc/notes-handlers.ts
+- [x] T071 [US8] Insert BlockNote image block after upload in src/renderer/src/components/note/content-area/ContentArea.tsx
+- [x] T072 [US8] Create FileBlock custom block for non-image files in src/renderer/src/components/note/content-area/file-block.tsx
+- [x] T073 [US8] Add file size validation (10MB limit) in src/main/vault/attachments.ts
 
 **Checkpoint**: User Story 8 complete - attachments work with inline image display
 

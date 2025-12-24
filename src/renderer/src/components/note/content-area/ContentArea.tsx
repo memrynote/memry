@@ -4,10 +4,15 @@
  * Uses shadcn/ui components for consistent styling
  */
 
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SuggestionMenuController, useCreateBlockNote } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
-import { BlockNoteSchema, defaultInlineContentSpecs, type Block } from '@blocknote/core'
+import {
+  BlockNoteSchema,
+  defaultInlineContentSpecs,
+  defaultBlockSpecs,
+  type Block
+} from '@blocknote/core'
 import { useTheme } from 'next-themes'
 
 // BlockNote styles
@@ -20,6 +25,7 @@ import { notesService } from '@/services/notes-service'
 import type { ContentAreaProps, HeadingInfo } from './types'
 import { createWikiLinkInlineContent, WikiLink } from './wiki-link'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
+import { createFileBlock, createFileBlockContent, serializeFileBlock, FILE_BLOCK_REGEX } from './file-block'
 
 type NoteSuggestion = {
   id: string
@@ -287,6 +293,7 @@ function normalizeWikiLinks(blocks: Block[]): { blocks: Block[]; didChange: bool
  * - shadcn/ui styling integration
  */
 export const ContentArea = memo(function ContentArea({
+  noteId,
   initialContent,
   contentType = 'html',
   placeholder = "Start writing, or press '/' for commands...",
@@ -302,9 +309,23 @@ export const ContentArea = memo(function ContentArea({
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
 
+  // T069: Drag state for visual feedback
+  const [isDragging, setIsDragging] = useState(false)
+
+  // Ref to hold current noteId for upload function (since editor is created once)
+  const noteIdRef = useRef<string | undefined>(noteId)
+  useEffect(() => {
+    noteIdRef.current = noteId
+  }, [noteId])
+
+  // T069/T071: Schema with FileBlock for attachments
   const schema = useMemo(
     () =>
       BlockNoteSchema.create({
+        blockSpecs: {
+          ...defaultBlockSpecs,
+          file: createFileBlock()
+        },
         inlineContentSpecs: {
           ...defaultInlineContentSpecs,
           wikiLink: WikiLink
@@ -313,9 +334,29 @@ export const ContentArea = memo(function ContentArea({
     []
   )
 
+  // T069: Upload function for BlockNote's built-in file handling
+  // This handles images dropped directly into the editor
+  const uploadFile = useCallback(async (file: File): Promise<string> => {
+    const currentNoteId = noteIdRef.current
+    if (!currentNoteId) {
+      throw new Error('Cannot upload: no note selected')
+    }
+
+    const result = await notesService.uploadAttachment(currentNoteId, file)
+    if (!result.success || !result.path) {
+      throw new Error(result.error || 'Upload failed')
+    }
+
+    return result.path
+  }, [])
+
   // Create the BlockNote editor
   const editor = useCreateBlockNote({
     schema,
+    // Enable data-id attributes on blocks for scroll tracking (T078)
+    setIdAttribute: true,
+    // T069: Configure file upload for images and files
+    uploadFile,
     // Configure placeholders
     placeholders: {
       default: placeholder,
@@ -401,13 +442,38 @@ export const ContentArea = memo(function ContentArea({
     async function loadContent() {
       if (typeof initialContent === 'string' && initialContent.trim()) {
         try {
+          let content = initialContent
+          let fileBlocksToInsert: Array<{ url: string; name: string; size: number; mimeType: string }> = []
+
+          // Extract file block markers from markdown before parsing
+          if (contentType === 'markdown') {
+            const matches = content.matchAll(FILE_BLOCK_REGEX)
+            for (const match of matches) {
+              try {
+                const props = JSON.parse(match[1])
+                fileBlocksToInsert.push(props)
+              } catch {
+                // Skip invalid markers
+              }
+            }
+            // Remove markers from content before parsing
+            content = content.replace(FILE_BLOCK_REGEX, '').trim()
+          }
+
           let blocks
           if (contentType === 'markdown') {
-            blocks = await editor.tryParseMarkdownToBlocks(initialContent)
+            blocks = await editor.tryParseMarkdownToBlocks(content)
           } else {
             // Default to HTML parsing
-            blocks = await editor.tryParseHTMLToBlocks(initialContent)
+            blocks = await editor.tryParseHTMLToBlocks(content)
           }
+
+          // Add file blocks back
+          if (fileBlocksToInsert.length > 0) {
+            const fileBlocks = fileBlocksToInsert.map((props) => createFileBlockContent(props))
+            blocks = [...blocks, ...fileBlocks]
+          }
+
           const normalized = normalizeWikiLinks(blocks)
           editor.replaceBlocks(editor.document, normalized.blocks)
         } catch (error) {
@@ -437,7 +503,19 @@ export const ContentArea = memo(function ContentArea({
     // Notify parent of markdown changes if callback provided
     if (onMarkdownChange) {
       try {
-        const markdown = await editor.blocksToMarkdownLossy(blocks)
+        let markdown = await editor.blocksToMarkdownLossy(blocks)
+
+        // Serialize file blocks to markers (they're lost in markdown conversion)
+        const fileBlocks = (blocks as Block[]).filter((b) => b.type === 'file')
+        if (fileBlocks.length > 0) {
+          // Append file block markers at the end
+          const markers = fileBlocks.map((b) => {
+            const props = b.props as unknown as { url: string; name: string; size: number; mimeType: string }
+            return serializeFileBlock(props)
+          })
+          markdown = markdown + '\n\n' + markers.join('\n')
+        }
+
         onMarkdownChange(markdown)
       } catch (error) {
         console.error('Failed to convert blocks to markdown:', error)
@@ -481,7 +559,7 @@ export const ContentArea = memo(function ContentArea({
         const href = link.getAttribute('href')
         if (href && !href.startsWith('#')) {
           mouseEvent.preventDefault()
-          onLinkClick(href)
+          onLinkClick?.(href)
         }
       }
     }
@@ -495,8 +573,178 @@ export const ContentArea = memo(function ContentArea({
     }
   }, [onLinkClick, onInternalLinkClick])
 
+  // =========================================================================
+  // T069: Drag-Drop Handlers for File Attachments
+  // =========================================================================
+
+  // Check if file is an image that BlockNote should handle
+  const isImageFile = useCallback((file: File): boolean => {
+    const imageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml']
+    return imageTypes.includes(file.type.toLowerCase())
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Only show drag state for file drops, not internal BlockNote drags
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragging(true)
+    }
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Only reset if leaving the container (not entering a child)
+    const relatedTarget = e.relatedTarget as HTMLElement | null
+    if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
+      setIsDragging(false)
+    }
+  }, [])
+
+  // Handle non-image file drops (PDFs, docs, etc.)
+  // Images are handled by BlockNote's built-in uploadFile
+  const handleNonImageDrop = useCallback(
+    async (e: React.DragEvent) => {
+      const files = Array.from(e.dataTransfer.files)
+
+      // Check if any files are non-images (we need to handle those)
+      const nonImageFiles = files.filter((f) => !isImageFile(f))
+
+      // If all files are images, let BlockNote handle them via uploadFile
+      if (nonImageFiles.length === 0) {
+        return false
+      }
+
+      // We have non-image files - prevent BlockNote from trying to handle them
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragging(false)
+
+      // Skip if no noteId (can't upload attachments without a note)
+      if (!noteId) {
+        console.warn('[ContentArea] Cannot upload attachment: no noteId provided')
+        return true
+      }
+
+      // Skip if not editable
+      if (!editable) return true
+
+      // Process each file (both images and non-images)
+      for (const file of files) {
+        try {
+          // Upload via IPC
+          const result = await notesService.uploadAttachment(noteId, file)
+
+          if (!result.success) {
+            console.error('[ContentArea] Upload failed:', result.error)
+            continue
+          }
+
+          // Insert appropriate block based on file type
+          if (result.type === 'image' && result.path) {
+            // Insert image block (BlockNote's built-in image block)
+            editor.insertBlocks(
+              [
+                {
+                  type: 'image',
+                  props: {
+                    url: result.path,
+                    caption: result.name || file.name,
+                    previewWidth: 600
+                  }
+                }
+              ],
+              editor.getTextCursorPosition().block,
+              'after'
+            )
+          } else if (result.path) {
+            // Insert file block (custom FileBlock for PDFs, docs, etc.)
+            editor.insertBlocks(
+              [
+                createFileBlockContent({
+                  url: result.path,
+                  name: result.name || file.name,
+                  size: result.size || file.size,
+                  mimeType: result.mimeType || file.type
+                })
+              ],
+              editor.getTextCursorPosition().block,
+              'after'
+            )
+          }
+        } catch (error) {
+          console.error('[ContentArea] Failed to upload file:', file.name, error)
+        }
+      }
+
+      return true
+    },
+    [noteId, editable, editor, isImageFile]
+  )
+
+  // Use capture phase to intercept drops before BlockNote
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const captureDropHandler = (e: DragEvent) => {
+      const files = Array.from(e.dataTransfer?.files || [])
+      const hasNonImageFiles = files.some((f) => !isImageFile(f))
+
+      if (hasNonImageFiles) {
+        // Prevent BlockNote from handling - we'll handle in React handler
+        e.preventDefault()
+        e.stopPropagation()
+
+        // Create a synthetic React event to trigger our handler
+        handleNonImageDrop({
+          ...e,
+          dataTransfer: e.dataTransfer,
+          preventDefault: () => e.preventDefault(),
+          stopPropagation: () => e.stopPropagation(),
+          currentTarget: container
+        } as unknown as React.DragEvent)
+      }
+    }
+
+    // Use capture phase to intercept before BlockNote's bubbling handler
+    container.addEventListener('drop', captureDropHandler, { capture: true })
+
+    return () => {
+      container.removeEventListener('drop', captureDropHandler, { capture: true })
+    }
+  }, [isImageFile, handleNonImageDrop])
+
+  // Regular drag leave handler for visual feedback
+  const handleDrop = useCallback(() => {
+    setIsDragging(false)
+  }, [])
+
   return (
-    <div className={cn('content-area h-full flex flex-col', className)}>
+    <div
+      ref={containerRef}
+      className={cn(
+        'content-area h-full flex flex-col relative',
+        isDragging && 'ring-2 ring-primary ring-offset-2 bg-primary/5',
+        className
+      )}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
+          <div className="text-center">
+            <div className="text-4xl mb-2">📎</div>
+            <p className="text-lg font-medium text-muted-foreground">Drop files to attach</p>
+          </div>
+        </div>
+      )}
+
       {/* BlockNote Editor */}
       <div className="bn-container flex-1 min-h-[300px]">
         <BlockNoteView

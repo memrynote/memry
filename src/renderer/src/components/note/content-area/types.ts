@@ -50,6 +50,8 @@ export interface SelectionInfo {
  * Props for the ContentArea component (BlockNote-based)
  */
 export interface ContentAreaProps {
+  /** Note ID for attachment uploads (T069) */
+  noteId?: string
   /** Initial content as BlockNote blocks, HTML string, or markdown string */
   initialContent?: Block[] | string
   /** Type of content being passed: 'html', 'markdown', or 'blocks' */

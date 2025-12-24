@@ -17,7 +17,10 @@ import type {
   SetPropertiesResponse,
   CreatePropertyDefinitionInput,
   CreatePropertyDefinitionResponse,
-  UpdatePropertyDefinitionInput
+  UpdatePropertyDefinitionInput,
+  AttachmentResult,
+  AttachmentInfo,
+  DeleteAttachmentResponse
 } from '../../../preload/index.d'
 
 /**
@@ -209,6 +212,38 @@ export const notesService: NotesClientAPI = {
     input: UpdatePropertyDefinitionInput
   ): Promise<CreatePropertyDefinitionResponse> => {
     return window.api.notes.updatePropertyDefinition(input)
+  },
+
+  // =========================================================================
+  // T070: Attachments API
+  // =========================================================================
+
+  /**
+   * Upload an attachment to a note.
+   * @param noteId - The note ID to attach to
+   * @param file - The file to upload
+   * @returns AttachmentResult with path and metadata
+   */
+  uploadAttachment: (noteId: string, file: File): Promise<AttachmentResult> => {
+    return window.api.notes.uploadAttachment(noteId, file)
+  },
+
+  /**
+   * List all attachments for a note.
+   * @param noteId - The note ID
+   * @returns Array of attachment info
+   */
+  listAttachments: (noteId: string): Promise<AttachmentInfo[]> => {
+    return window.api.notes.listAttachments(noteId)
+  },
+
+  /**
+   * Delete an attachment from a note.
+   * @param noteId - The note ID
+   * @param filename - The filename to delete
+   */
+  deleteAttachment: (noteId: string, filename: string): Promise<DeleteAttachmentResponse> => {
+    return window.api.notes.deleteAttachment(noteId, filename)
   }
 }
 
@@ -286,5 +321,8 @@ export type {
   SetPropertiesResponse,
   CreatePropertyDefinitionInput,
   CreatePropertyDefinitionResponse,
-  UpdatePropertyDefinitionInput
+  UpdatePropertyDefinitionInput,
+  AttachmentResult,
+  AttachmentInfo,
+  DeleteAttachmentResponse
 }

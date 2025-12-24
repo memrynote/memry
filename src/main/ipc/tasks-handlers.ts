@@ -27,7 +27,7 @@ import {
 } from '@shared/contracts/tasks-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
 import { getDatabase } from '../database'
-import { seedPerformanceTestProject } from '../database/seed'
+import { seedPerformanceTestProject, seedDemoProjects } from '../database/seed'
 import { generateId } from '../lib/id'
 import * as taskQueries from '@shared/db/queries/tasks'
 import * as projectQueries from '@shared/db/queries/projects'
@@ -960,6 +960,17 @@ export function registerTasksHandlers(): void {
       const db = requireDatabase()
       seedPerformanceTestProject(db, 1200)
       return { success: true, message: 'Seeded performance test project with 1200 tasks' }
+    })
+  )
+
+  // tasks:seed-demo - Seed demo projects for screen recordings
+  // DEV ONLY: Creates 3 demo projects with realistic tasks
+  ipcMain.handle(
+    'tasks:seed-demo',
+    createHandler(async () => {
+      const db = requireDatabase()
+      seedDemoProjects(db)
+      return { success: true, message: 'Seeded 3 demo projects with tasks' }
     })
   )
 

@@ -68,6 +68,7 @@ export const TabContent = ({
             case 'home':
                 return <PlaceholderView title="Home" icon="home" />;
 
+            case 'tasks':
             case 'all-tasks':
             case 'today':
             case 'upcoming':
@@ -78,7 +79,7 @@ export const TabContent = ({
                     // Determine selection based on tab type
                     const selectionId = tab.type === 'project'
                         ? (tab.entityId || 'personal')
-                        : tab.type === 'all-tasks'
+                        : (tab.type === 'all-tasks' || tab.type === 'tasks')
                             ? 'all'
                             : tab.type;
                     const selectionType = tab.type === 'project' ? 'project' : 'view';

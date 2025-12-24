@@ -38,6 +38,11 @@ import {
   revealInFinder
 } from '../vault/notes'
 import {
+  saveAttachment,
+  deleteAttachment,
+  listNoteAttachments
+} from '../vault/attachments'
+import {
   getNoteProperties,
   getAllPropertyDefinitions,
   insertPropertyDefinition,
@@ -69,6 +74,21 @@ const CreatePropertyDefinitionSchema = z.object({
   options: z.array(z.string()).optional(),
   defaultValue: z.unknown().optional(),
   color: z.string().optional()
+})
+
+// ============================================================================
+// Zod Schemas for Attachments (T070)
+// ============================================================================
+
+const UploadAttachmentSchema = z.object({
+  noteId: z.string().min(1),
+  filename: z.string().min(1),
+  data: z.instanceof(ArrayBuffer).or(z.array(z.number()))
+})
+
+const DeleteAttachmentSchema = z.object({
+  noteId: z.string().min(1),
+  filename: z.string().min(1)
 })
 
 const UpdatePropertyDefinitionSchema = z.object({
@@ -361,6 +381,44 @@ export function registerNotesHandlers(): void {
         const message =
           error instanceof Error ? error.message : 'Failed to update property definition'
         return { success: false, definition: null, error: message }
+      }
+    })
+  )
+
+  // =========================================================================
+  // T070: Attachment IPC Handlers
+  // =========================================================================
+
+  // notes:upload-attachment - Upload an attachment to a note
+  ipcMain.handle(
+    NotesChannels.invoke.UPLOAD_ATTACHMENT,
+    createValidatedHandler(UploadAttachmentSchema, async (input) => {
+      // Convert ArrayBuffer or number[] to Buffer
+      const data = Array.isArray(input.data)
+        ? Buffer.from(input.data)
+        : Buffer.from(new Uint8Array(input.data))
+      return saveAttachment(input.noteId, data, input.filename)
+    })
+  )
+
+  // notes:list-attachments - List attachments for a note
+  ipcMain.handle(
+    NotesChannels.invoke.LIST_ATTACHMENTS,
+    createStringHandler(async (noteId) => {
+      return listNoteAttachments(noteId)
+    })
+  )
+
+  // notes:delete-attachment - Delete an attachment
+  ipcMain.handle(
+    NotesChannels.invoke.DELETE_ATTACHMENT,
+    createValidatedHandler(DeleteAttachmentSchema, async (input) => {
+      try {
+        await deleteAttachment(input.noteId, input.filename)
+        return { success: true }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to delete attachment'
+        return { success: false, error: message }
       }
     })
   )

@@ -313,3 +313,533 @@ export function seedPerformanceTestProject(db: DrizzleDb, taskCount: number = 12
   const elapsed = Date.now() - startTime
   console.log(`Seeded ${taskCount} tasks in ${elapsed}ms (${(taskCount / elapsed * 1000).toFixed(0)} tasks/sec)`)
 }
+
+/**
+ * Seed demo projects with realistic tasks for screen recording demos.
+ * Creates 3 projects: Memry Development, Content Creation, and Personal.
+ */
+export function seedDemoProjects(db: DrizzleDb): void {
+  const now = new Date().toISOString()
+  const today = new Date()
+
+  // Helper to get date string offset from today
+  const dateOffset = (days: number): string => {
+    const d = new Date(today)
+    d.setDate(d.getDate() + days)
+    return d.toISOString().split('T')[0]
+  }
+
+  // Check if demo projects exist
+  const existingProjects = db.select().from(projects).all()
+  const hasDemo = existingProjects.some((p) => p.name === 'Memry Development')
+  if (hasDemo) {
+    console.log('Demo projects already exist, skipping seed')
+    return
+  }
+
+  console.log('Seeding demo projects...')
+
+  // ─────────────────────────────────────────────────────────────────
+  // Project 1: Memry Development
+  // ─────────────────────────────────────────────────────────────────
+  const memryProjectId = 'demo-memry-dev'
+  db.insert(projects)
+    .values({
+      id: memryProjectId,
+      name: 'Memry Development',
+      description: 'Building the PKM app',
+      color: '#8b5cf6',
+      icon: '🧠',
+      position: 1,
+      isInbox: false,
+      createdAt: now,
+      modifiedAt: now
+    })
+    .run()
+
+  const memryStatuses = {
+    backlog: `${memryProjectId}-backlog`,
+    inProgress: `${memryProjectId}-in-progress`,
+    review: `${memryProjectId}-review`,
+    done: `${memryProjectId}-done`
+  }
+
+  db.insert(statuses)
+    .values([
+      {
+        id: memryStatuses.backlog,
+        projectId: memryProjectId,
+        name: 'Backlog',
+        color: '#6b7280',
+        position: 0,
+        isDefault: true,
+        isDone: false,
+        createdAt: now
+      },
+      {
+        id: memryStatuses.inProgress,
+        projectId: memryProjectId,
+        name: 'In Progress',
+        color: '#3b82f6',
+        position: 1,
+        isDefault: false,
+        isDone: false,
+        createdAt: now
+      },
+      {
+        id: memryStatuses.review,
+        projectId: memryProjectId,
+        name: 'Review',
+        color: '#f59e0b',
+        position: 2,
+        isDefault: false,
+        isDone: false,
+        createdAt: now
+      },
+      {
+        id: memryStatuses.done,
+        projectId: memryProjectId,
+        name: 'Done',
+        color: '#22c55e',
+        position: 3,
+        isDefault: false,
+        isDone: true,
+        createdAt: now
+      }
+    ])
+    .run()
+
+  db.insert(tasks)
+    .values([
+      // Backlog
+      {
+        id: generateId(),
+        projectId: memryProjectId,
+        statusId: memryStatuses.backlog,
+        title: 'Add AI-powered search',
+        description: 'Implement semantic search using embeddings for better note discovery',
+        priority: 2,
+        position: 0,
+        dueDate: null,
+        createdAt: now,
+        modifiedAt: now
+      },
+      {
+        id: generateId(),
+        projectId: memryProjectId,
+        statusId: memryStatuses.backlog,
+        title: 'Mobile companion app',
+        description: 'Quick capture on iOS/Android that syncs to vault',
+        priority: 1,
+        position: 1,
+        dueDate: null,
+        createdAt: now,
+        modifiedAt: now
+      },
+      {
+        id: generateId(),
+        projectId: memryProjectId,
+        statusId: memryStatuses.backlog,
+        title: 'Plugin system architecture',
+        priority: 1,
+        position: 2,
+        dueDate: null,
+        createdAt: now,
+        modifiedAt: now
+      },
+      // In Progress
+      {
+        id: generateId(),
+        projectId: memryProjectId,
+        statusId: memryStatuses.inProgress,
+        title: 'Implement wiki link autocomplete',
+        description: 'Show suggestions when typing [[ in editor',
+        priority: 3,
+        position: 0,
+        dueDate: dateOffset(1),
+        createdAt: now,
+        modifiedAt: now
+      },
+      {
+        id: generateId(),
+        projectId: memryProjectId,
+        statusId: memryStatuses.inProgress,
+        title: 'Fix tab drag-drop on Windows',
+        priority: 4,
+        position: 1,
+        dueDate: dateOffset(0),
+        dueTime: '17:00',
+        createdAt: now,
+        modifiedAt: now
+      },
+      // Review
+      {
+        id: generateId(),
+        projectId: memryProjectId,
+        statusId: memryStatuses.review,
+        title: 'Refactor vault watcher for performance',
+        description: 'Batch file change events to reduce re-renders',
+        priority: 2,
+        position: 0,
+        dueDate: dateOffset(2),
+        createdAt: now,
+        modifiedAt: now
+      },
+      // Done
+      {
+        id: generateId(),
+        projectId: memryProjectId,
+        statusId: memryStatuses.done,
+        title: 'Setup Drizzle ORM with SQLite',
+        priority: 3,
+        position: 0,
+        completedAt: dateOffset(-3),
+        createdAt: now,
+        modifiedAt: now
+      },
+      {
+        id: generateId(),
+        projectId: memryProjectId,
+        statusId: memryStatuses.done,
+        title: 'Implement split view tabs',
+        priority: 3,
+        position: 1,
+        completedAt: dateOffset(-2),
+        createdAt: now,
+        modifiedAt: now
+      },
+      {
+        id: generateId(),
+        projectId: memryProjectId,
+        statusId: memryStatuses.done,
+        title: 'Add keyboard shortcuts system',
+        priority: 2,
+        position: 2,
+        completedAt: dateOffset(-1),
+        createdAt: now,
+        modifiedAt: now
+      }
+    ])
+    .run()
+
+  // ─────────────────────────────────────────────────────────────────
+  // Project 2: Content Creation
+  // ─────────────────────────────────────────────────────────────────
+  const contentProjectId = 'demo-content'
+  db.insert(projects)
+    .values({
+      id: contentProjectId,
+      name: 'Content Creation',
+      description: 'Twitter, YouTube, Blog posts',
+      color: '#ec4899',
+      icon: '📢',
+      position: 2,
+      isInbox: false,
+      createdAt: now,
+      modifiedAt: now
+    })
+    .run()
+
+  const contentStatuses = {
+    ideas: `${contentProjectId}-ideas`,
+    drafting: `${contentProjectId}-drafting`,
+    scheduled: `${contentProjectId}-scheduled`,
+    published: `${contentProjectId}-published`
+  }
+
+  db.insert(statuses)
+    .values([
+      {
+        id: contentStatuses.ideas,
+        projectId: contentProjectId,
+        name: 'Ideas',
+        color: '#a855f7',
+        position: 0,
+        isDefault: true,
+        isDone: false,
+        createdAt: now
+      },
+      {
+        id: contentStatuses.drafting,
+        projectId: contentProjectId,
+        name: 'Drafting',
+        color: '#f97316',
+        position: 1,
+        isDefault: false,
+        isDone: false,
+        createdAt: now
+      },
+      {
+        id: contentStatuses.scheduled,
+        projectId: contentProjectId,
+        name: 'Scheduled',
+        color: '#06b6d4',
+        position: 2,
+        isDefault: false,
+        isDone: false,
+        createdAt: now
+      },
+      {
+        id: contentStatuses.published,
+        projectId: contentProjectId,
+        name: 'Published',
+        color: '#22c55e',
+        position: 3,
+        isDefault: false,
+        isDone: true,
+        createdAt: now
+      }
+    ])
+    .run()
+
+  db.insert(tasks)
+    .values([
+      // Ideas
+      {
+        id: generateId(),
+        projectId: contentProjectId,
+        statusId: contentStatuses.ideas,
+        title: 'Thread: Building in public lessons',
+        description: 'What I learned from 6 months of building Memry in public',
+        priority: 1,
+        position: 0,
+        createdAt: now,
+        modifiedAt: now
+      },
+      {
+        id: generateId(),
+        projectId: contentProjectId,
+        statusId: contentStatuses.ideas,
+        title: 'Video: Local-first vs Cloud apps',
+        priority: 1,
+        position: 1,
+        createdAt: now,
+        modifiedAt: now
+      },
+      // Drafting
+      {
+        id: generateId(),
+        projectId: contentProjectId,
+        statusId: contentStatuses.drafting,
+        title: 'Tweet: Tab system demo recording',
+        description: 'Show VS Code-style tabs with split view',
+        priority: 3,
+        position: 0,
+        dueDate: dateOffset(2),
+        createdAt: now,
+        modifiedAt: now
+      },
+      {
+        id: generateId(),
+        projectId: contentProjectId,
+        statusId: contentStatuses.drafting,
+        title: 'Blog: Why I chose Electron in 2024',
+        priority: 2,
+        position: 1,
+        dueDate: dateOffset(5),
+        createdAt: now,
+        modifiedAt: now
+      },
+      // Scheduled
+      {
+        id: generateId(),
+        projectId: contentProjectId,
+        statusId: contentStatuses.scheduled,
+        title: 'Tweet: Launch teaser',
+        description: 'Building a PKM app that doesn\'t suck...',
+        priority: 4,
+        position: 0,
+        dueDate: dateOffset(0),
+        dueTime: '10:00',
+        createdAt: now,
+        modifiedAt: now
+      },
+      // Published
+      {
+        id: generateId(),
+        projectId: contentProjectId,
+        statusId: contentStatuses.published,
+        title: 'Tweet: Local-first philosophy',
+        priority: 2,
+        position: 0,
+        completedAt: dateOffset(-2),
+        createdAt: now,
+        modifiedAt: now
+      }
+    ])
+    .run()
+
+  // ─────────────────────────────────────────────────────────────────
+  // Project 3: Personal
+  // ─────────────────────────────────────────────────────────────────
+  const personalProjectId = 'demo-personal'
+  db.insert(projects)
+    .values({
+      id: personalProjectId,
+      name: 'Personal',
+      description: 'Life stuff',
+      color: '#10b981',
+      icon: '🏠',
+      position: 3,
+      isInbox: false,
+      createdAt: now,
+      modifiedAt: now
+    })
+    .run()
+
+  const personalStatuses = {
+    todo: `${personalProjectId}-todo`,
+    doing: `${personalProjectId}-doing`,
+    done: `${personalProjectId}-done`
+  }
+
+  db.insert(statuses)
+    .values([
+      {
+        id: personalStatuses.todo,
+        projectId: personalProjectId,
+        name: 'To Do',
+        color: '#6b7280',
+        position: 0,
+        isDefault: true,
+        isDone: false,
+        createdAt: now
+      },
+      {
+        id: personalStatuses.doing,
+        projectId: personalProjectId,
+        name: 'Doing',
+        color: '#3b82f6',
+        position: 1,
+        isDefault: false,
+        isDone: false,
+        createdAt: now
+      },
+      {
+        id: personalStatuses.done,
+        projectId: personalProjectId,
+        name: 'Done',
+        color: '#22c55e',
+        position: 2,
+        isDefault: false,
+        isDone: true,
+        createdAt: now
+      }
+    ])
+    .run()
+
+  db.insert(tasks)
+    .values([
+      // To Do
+      {
+        id: generateId(),
+        projectId: personalProjectId,
+        statusId: personalStatuses.todo,
+        title: 'Renew gym membership',
+        priority: 1,
+        position: 0,
+        dueDate: dateOffset(7),
+        createdAt: now,
+        modifiedAt: now
+      },
+      {
+        id: generateId(),
+        projectId: personalProjectId,
+        statusId: personalStatuses.todo,
+        title: 'Book dentist appointment',
+        priority: 2,
+        position: 1,
+        dueDate: dateOffset(14),
+        createdAt: now,
+        modifiedAt: now
+      },
+      {
+        id: generateId(),
+        projectId: personalProjectId,
+        statusId: personalStatuses.todo,
+        title: 'Read "Atomic Habits"',
+        priority: 0,
+        position: 2,
+        createdAt: now,
+        modifiedAt: now
+      },
+      // Doing
+      {
+        id: generateId(),
+        projectId: personalProjectId,
+        statusId: personalStatuses.doing,
+        title: 'Plan weekend trip',
+        description: 'Look at Airbnb options for next month',
+        priority: 2,
+        position: 0,
+        dueDate: dateOffset(3),
+        createdAt: now,
+        modifiedAt: now
+      },
+      // Done
+      {
+        id: generateId(),
+        projectId: personalProjectId,
+        statusId: personalStatuses.done,
+        title: 'Pay electricity bill',
+        priority: 3,
+        position: 0,
+        completedAt: dateOffset(-1),
+        createdAt: now,
+        modifiedAt: now
+      },
+      {
+        id: generateId(),
+        projectId: personalProjectId,
+        statusId: personalStatuses.done,
+        title: 'Order new headphones',
+        priority: 1,
+        position: 1,
+        completedAt: dateOffset(-3),
+        createdAt: now,
+        modifiedAt: now
+      }
+    ])
+    .run()
+
+  // ─────────────────────────────────────────────────────────────────
+  // Add some inbox items for demo
+  // ─────────────────────────────────────────────────────────────────
+  db.insert(tasks)
+    .values([
+      {
+        id: generateId(),
+        projectId: 'inbox',
+        statusId: 'inbox-todo',
+        title: 'Research markdown editors',
+        priority: 0,
+        position: 0,
+        createdAt: now,
+        modifiedAt: now
+      },
+      {
+        id: generateId(),
+        projectId: 'inbox',
+        statusId: 'inbox-todo',
+        title: 'Check competitor pricing',
+        priority: 0,
+        position: 1,
+        createdAt: now,
+        modifiedAt: now
+      },
+      {
+        id: generateId(),
+        projectId: 'inbox',
+        statusId: 'inbox-todo',
+        title: 'Reply to email from John',
+        priority: 2,
+        position: 2,
+        dueDate: dateOffset(0),
+        createdAt: now,
+        modifiedAt: now
+      }
+    ])
+    .run()
+
+  console.log('Seeded 3 demo projects with tasks')
+}
