@@ -1194,3 +1194,52 @@
     transparent 100%
   );
 }
+
+/* ============================================
+   Outline Indicator (T078)
+   Heading outline navigation component
+   ============================================ */
+
+/* Entrance animation */
+.outline-indicator {
+  animation: outline-fade-in 0.4s var(--ease-out);
+}
+
+@keyframes outline-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+/* Line hover effect */
+.outline-line:hover {
+  box-shadow: 0 0 8px rgba(28, 25, 23, 0.15);
+}
+
+/* Dark mode adjustments */
+.dark .outline-line {
+  background-color: rgb(168, 162, 158) !important;
+}
+
+.dark .outline-line[style*="rgb(28, 25, 23)"] {
+  background-color: rgb(245, 245, 244) !important;
+}
+
+.dark .vertical-connector {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(87, 83, 78) 8%,
+    rgb(87, 83, 78) 92%,
+    transparent 100%
+  ) !important;
+}
+
+.dark .outline-line:hover {
+  box-shadow: 0 0 8px rgba(245, 245, 244, 0.15);
+}
