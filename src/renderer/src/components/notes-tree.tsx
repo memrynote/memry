@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 /**
  * NotesTree Component
@@ -7,7 +7,7 @@
  * Replaces the hardcoded FileTree with data from useNotes() hook.
  */
 
-import { useMemo, useCallback, useState, useRef, useEffect, type ReactNode } from "react"
+import { useMemo, useCallback, useState, useRef, useEffect, type ReactNode } from 'react'
 import {
   TreeExpander,
   TreeIcon,
@@ -17,10 +17,12 @@ import {
   TreeNodeTrigger,
   TreeProvider,
   TreeView,
-} from "@/components/kibo-ui/tree"
-import { useTabs } from "@/contexts/tabs"
-import { useNotes, useNoteFolders, type NoteListItem } from "@/hooks/use-notes"
-import { notesService } from "@/services/notes-service"
+  type MoveOperation,
+  type DropPosition
+} from '@/components/kibo-ui/tree'
+import { useTabs } from '@/contexts/tabs'
+import { useNotes, useNoteFolders, type NoteListItem } from '@/hooks/use-notes'
+import { notesService } from '@/services/notes-service'
 import {
   FileText,
   Folder,
@@ -33,19 +35,12 @@ import {
   ExternalLink,
   FolderOpen,
   FilePlus,
-  FolderPlus,
-} from "lucide-react"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Button } from "@/components/ui/button"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import {
-  ContextMenuItem,
-  ContextMenuSeparator,
-} from "@/components/ui/context-menu"
+  FolderPlus
+} from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,8 +49,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
 
 // ============================================================================
 // Types
@@ -82,6 +77,39 @@ function getDisplayName(notePath: string): string {
 }
 
 // ============================================================================
+// Drag-Drop Helper Utilities
+// ============================================================================
+
+/**
+ * Extract folder path from note path (removes filename and "notes/" prefix)
+ */
+function extractFolderFromPath(notePath: string): string {
+  const parts = notePath.split('/')
+  parts.pop() // Remove filename
+  // Remove "notes" prefix if present
+  if (parts.length > 0 && parts[0] === 'notes') {
+    return parts.slice(1).join('/')
+  }
+  return parts.join('/')
+}
+
+/**
+ * Get parent folder from folder path
+ */
+function getParentFolder(folderPath: string): string {
+  const parts = folderPath.split('/')
+  parts.pop()
+  return parts.join('/')
+}
+
+/**
+ * Check if moving folder into itself or its descendants (invalid operation)
+ */
+function isDescendantOrSelf(sourcePath: string, targetPath: string): boolean {
+  return targetPath === sourcePath || targetPath.startsWith(sourcePath + '/')
+}
+
+// ============================================================================
 // Tree Building Utilities
 // ============================================================================
 
@@ -94,8 +122,8 @@ function buildTreeFromNotes(notes: NoteListItem[], folders: string[]): TreeStruc
 
   // Initialize folder structure
   folders.forEach((folderPath) => {
-    const parts = folderPath.split("/").filter(Boolean)
-    let currentPath = ""
+    const parts = folderPath.split('/').filter(Boolean)
+    let currentPath = ''
 
     parts.forEach((part) => {
       const parentPath = currentPath
@@ -106,7 +134,7 @@ function buildTreeFromNotes(notes: NoteListItem[], folders: string[]): TreeStruc
           name: part,
           path: currentPath,
           children: [],
-          notes: [],
+          notes: []
         }
         folderMap.set(currentPath, node)
 
@@ -124,16 +152,16 @@ function buildTreeFromNotes(notes: NoteListItem[], folders: string[]): TreeStruc
   // Assign notes to folders
   notes.forEach((note) => {
     // note.path is like "notes/subfolder/note.md" - we need the folder part
-    const pathParts = note.path.split("/")
+    const pathParts = note.path.split('/')
     pathParts.pop() // Remove filename
 
-    if (pathParts.length === 0 || pathParts[0] === "notes") {
+    if (pathParts.length === 0 || pathParts[0] === 'notes') {
       // Root level note (in notes/ folder directly)
       if (pathParts.length <= 1) {
         rootNotes.push(note)
       } else {
         // Note is in a subfolder
-        const folderPath = pathParts.slice(1).join("/") // Remove "notes" prefix
+        const folderPath = pathParts.slice(1).join('/') // Remove "notes" prefix
         if (folderMap.has(folderPath)) {
           folderMap.get(folderPath)!.notes.push(note)
         } else {
@@ -143,7 +171,7 @@ function buildTreeFromNotes(notes: NoteListItem[], folders: string[]): TreeStruc
       }
     } else {
       // Note path doesn't start with "notes/"
-      const folderPath = pathParts.join("/")
+      const folderPath = pathParts.join('/')
       if (folderMap.has(folderPath)) {
         folderMap.get(folderPath)!.notes.push(note)
       } else {
@@ -154,12 +182,12 @@ function buildTreeFromNotes(notes: NoteListItem[], folders: string[]): TreeStruc
 
   // Get root-level folders (no parent)
   const rootFolders = Array.from(folderMap.values()).filter((folder) => {
-    return !folder.path.includes("/")
+    return !folder.path.includes('/')
   })
 
   return {
     folders: rootFolders,
-    rootNotes,
+    rootNotes
   }
 }
 
@@ -179,7 +207,13 @@ function NotesTreeSkeleton() {
   )
 }
 
-function NotesTreeEmpty({ onCreateNote, isCreating }: { onCreateNote: () => void; isCreating: boolean }) {
+function NotesTreeEmpty({
+  onCreateNote,
+  isCreating
+}: {
+  onCreateNote: () => void
+  isCreating: boolean
+}) {
   return (
     <div className="flex flex-col items-center justify-center p-4 text-center text-muted-foreground">
       <FileQuestion className="h-8 w-8 mb-2 opacity-50" />
@@ -223,11 +257,14 @@ interface NotesTreeProps {
 }
 
 export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
-  const { notes, isLoading, error, createNote, deleteNote, renameNote } = useNotes({ autoLoad: true })
+  const { notes, isLoading, error, createNote, deleteNote, renameNote, moveNote } = useNotes({
+    autoLoad: true
+  })
   const { folders, createFolder, refresh: refreshFolders } = useNoteFolders()
   const { openTab, closeTab } = useTabs()
   const [isCreating, setIsCreating] = useState(false)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  const [isMoving, setIsMoving] = useState(false)
 
   // Multi-selection state (controlled mode)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -240,14 +277,14 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
 
   // Inline rename state for notes
   const [renamingNoteId, setRenamingNoteId] = useState<string | null>(null)
-  const [renameValue, setRenameValue] = useState("")
+  const [renameValue, setRenameValue] = useState('')
   const [isRenaming, setIsRenaming] = useState(false)
   const renameInputRef = useRef<HTMLInputElement>(null)
   const treeContainerRef = useRef<HTMLDivElement>(null)
 
   // Inline rename state for folders
   const [renamingFolderPath, setRenamingFolderPath] = useState<string | null>(null)
-  const [folderRenameValue, setFolderRenameValue] = useState("")
+  const [folderRenameValue, setFolderRenameValue] = useState('')
   const [isFolderRenaming, setIsFolderRenaming] = useState(false)
   const folderRenameInputRef = useRef<HTMLInputElement>(null)
 
@@ -281,29 +318,29 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
 
   // Compute target folder from selection (for creating notes/folders in context)
   const targetFolder = useMemo(() => {
-    if (selectedIds.length === 0) return "" // root
+    if (selectedIds.length === 0) return '' // root
 
     const selectedId = selectedIds[0]
 
     // If folder selected, use its path
-    if (selectedId.startsWith("folder-")) {
-      return selectedId.replace("folder-", "")
+    if (selectedId.startsWith('folder-')) {
+      return selectedId.replace('folder-', '')
     }
 
     // If note selected, get its parent folder
     const note = noteMap.get(selectedId)
     if (note) {
-      const parts = note.path.split("/")
+      const parts = note.path.split('/')
       parts.pop() // remove filename
       // If path is "notes/subfolder/file.md", after pop we have ["notes", "subfolder"]
       // We want "subfolder" (remove the "notes" prefix)
-      if (parts.length > 1 && parts[0] === "notes") {
-        return parts.slice(1).join("/")
+      if (parts.length > 1 && parts[0] === 'notes') {
+        return parts.slice(1).join('/')
       }
-      return "" // root notes folder
+      return '' // root notes folder
     }
 
-    return ""
+    return ''
   }, [selectedIds, noteMap])
 
   // Handle note selection - update state and optionally open in tab
@@ -313,20 +350,20 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       setSelectedIds(ids)
 
       // Only open in tab on single note selection (not folders, not multi-select)
-      const noteIds = ids.filter((id) => !id.startsWith("folder-") && id !== "notes-root")
+      const noteIds = ids.filter((id) => !id.startsWith('folder-') && id !== 'notes-root')
       if (noteIds.length === 1) {
         const note = noteMap.get(noteIds[0])
         if (note) {
           openTab({
-            type: "note",
+            type: 'note',
             title: getDisplayName(note.path),
-            icon: "file-text",
+            icon: 'file-text',
             path: `/notes/${note.id}`,
             entityId: note.id,
             isPinned: false,
             isModified: false,
             isPreview: true,
-            isDeleted: false,
+            isDeleted: false
           })
         }
       }
@@ -341,31 +378,31 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     setIsCreating(true)
     try {
       const newNote = await createNote({
-        title: "Untitled",
-        content: "",
-        folder: targetFolder || undefined, // Create in selected folder
+        title: 'Untitled',
+        content: '',
+        folder: targetFolder || undefined // Create in selected folder
       })
 
       if (newNote) {
         // Open the new note in a tab
         openTab({
-          type: "note",
+          type: 'note',
           title: getDisplayName(newNote.path),
-          icon: "file-text",
+          icon: 'file-text',
           path: `/notes/${newNote.id}`,
           entityId: newNote.id,
           isPinned: false,
           isModified: false,
           isPreview: false, // Not preview mode since we're creating it
-          isDeleted: false,
+          isDeleted: false
         })
 
         // Auto-focus rename mode for the new note
         setRenamingNoteId(newNote.id)
-        setRenameValue("Untitled")
+        setRenameValue('Untitled')
       }
     } catch (err) {
-      console.error("Failed to create note:", err)
+      console.error('Failed to create note:', err)
     } finally {
       setIsCreating(false)
     }
@@ -378,10 +415,10 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     setIsCreatingFolder(true)
     try {
       // Generate unique folder name
-      const baseName = "Untitled Folder"
+      const baseName = 'Untitled Folder'
       let folderName = baseName
       let counter = 1
-      const targetPath = targetFolder ? `${targetFolder}/` : ""
+      const targetPath = targetFolder ? `${targetFolder}/` : ''
 
       // Check for existing folders with same name
       while (folders.includes(`${targetPath}${folderName}`)) {
@@ -400,71 +437,77 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         setFolderRenameValue(folderName)
       }
     } catch (err) {
-      console.error("Failed to create folder:", err)
+      console.error('Failed to create folder:', err)
     } finally {
       setIsCreatingFolder(false)
     }
   }, [isCreatingFolder, createFolder, folders, targetFolder, refreshFolders])
 
   // Handle creating a note in a specific folder (from context menu)
-  const handleCreateNoteInFolder = useCallback(async (folderPath: string) => {
-    if (isCreating) return
+  const handleCreateNoteInFolder = useCallback(
+    async (folderPath: string) => {
+      if (isCreating) return
 
-    setIsCreating(true)
-    try {
-      const newNote = await createNote({
-        title: "Untitled",
-        content: "",
-        folder: folderPath || undefined,
-      })
-
-      if (newNote) {
-        openTab({
-          type: "note",
-          title: getDisplayName(newNote.path),
-          icon: "file-text",
-          path: `/notes/${newNote.id}`,
-          entityId: newNote.id,
-          isPinned: false,
-          isModified: false,
-          isPreview: false,
-          isDeleted: false,
+      setIsCreating(true)
+      try {
+        const newNote = await createNote({
+          title: 'Untitled',
+          content: '',
+          folder: folderPath || undefined
         })
+
+        if (newNote) {
+          openTab({
+            type: 'note',
+            title: getDisplayName(newNote.path),
+            icon: 'file-text',
+            path: `/notes/${newNote.id}`,
+            entityId: newNote.id,
+            isPinned: false,
+            isModified: false,
+            isPreview: false,
+            isDeleted: false
+          })
+        }
+      } catch (err) {
+        console.error('Failed to create note:', err)
+      } finally {
+        setIsCreating(false)
       }
-    } catch (err) {
-      console.error("Failed to create note:", err)
-    } finally {
-      setIsCreating(false)
-    }
-  }, [isCreating, createNote, openTab])
+    },
+    [isCreating, createNote, openTab]
+  )
 
   // Handle creating a subfolder in a specific folder (from context menu)
-  const handleCreateSubfolder = useCallback(async (parentPath: string) => {
-    if (isCreatingFolder) return
+  const handleCreateSubfolder = useCallback(
+    async (parentPath: string) => {
+      if (isCreatingFolder) return
 
-    setIsCreatingFolder(true)
-    try {
-      const baseName = "Untitled Folder"
-      let folderName = baseName
-      let counter = 1
-      const targetPath = parentPath ? `${parentPath}/` : ""
+      setIsCreatingFolder(true)
+      try {
+        const baseName = 'Untitled Folder'
+        let folderName = baseName
+        let counter = 1
+        const targetPath = parentPath ? `${parentPath}/` : ''
 
-      while (folders.includes(`${targetPath}${folderName}`)) {
-        folderName = `${baseName} ${counter++}`
+        while (folders.includes(`${targetPath}${folderName}`)) {
+          folderName = `${baseName} ${counter++}`
+        }
+
+        const fullPath = `${targetPath}${folderName}`
+        const success = await createFolder(fullPath)
+
+        if (success) {
+          await refreshFolders()
+        }
+      } catch (err) {
+        console.error('Failed to create folder:', err)
+      } finally {
+        setIsCreatingFolder(false)
       }
-
-      const fullPath = `${targetPath}${folderName}`
-      const success = await createFolder(fullPath)
-
-      if (success) {
-        await refreshFolders()
-      }
-    } catch (err) {
-      console.error("Failed to create folder:", err)
-    } finally {
-      setIsCreatingFolder(false)
-    }
-  }, [isCreatingFolder, createFolder, folders, refreshFolders])
+    },
+    [isCreatingFolder, createFolder, folders, refreshFolders]
+  )
 
   // Context menu action handlers
   const handleRenameClick = useCallback((note: NoteListItem) => {
@@ -472,76 +515,82 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     setRenameValue(getDisplayName(note.path))
   }, [])
 
-  const handleRenameSubmit = useCallback(async (noteId: string, originalPath: string) => {
-    if (!renameValue.trim() || isRenaming) {
-      setRenamingNoteId(null)
-      return
-    }
+  const handleRenameSubmit = useCallback(
+    async (noteId: string, originalPath: string) => {
+      if (!renameValue.trim() || isRenaming) {
+        setRenamingNoteId(null)
+        return
+      }
 
-    const currentName = getDisplayName(originalPath)
-    if (renameValue.trim() === currentName) {
-      setRenamingNoteId(null)
-      return
-    }
+      const currentName = getDisplayName(originalPath)
+      if (renameValue.trim() === currentName) {
+        setRenamingNoteId(null)
+        return
+      }
 
-    setIsRenaming(true)
-    try {
-      await renameNote(noteId, renameValue.trim())
-    } catch (err) {
-      console.error("Failed to rename note:", err)
-    } finally {
-      setIsRenaming(false)
-      setRenamingNoteId(null)
-    }
-  }, [renameValue, isRenaming, renameNote])
+      setIsRenaming(true)
+      try {
+        await renameNote(noteId, renameValue.trim())
+      } catch (err) {
+        console.error('Failed to rename note:', err)
+      } finally {
+        setIsRenaming(false)
+        setRenamingNoteId(null)
+      }
+    },
+    [renameValue, isRenaming, renameNote]
+  )
 
   const handleRenameCancel = useCallback(() => {
     setRenamingNoteId(null)
-    setRenameValue("")
+    setRenameValue('')
   }, [])
 
   // Folder rename handlers
   const handleRenameFolderClick = useCallback((folderPath: string) => {
     setRenamingFolderPath(folderPath)
-    const folderName = folderPath.split("/").pop() || folderPath
+    const folderName = folderPath.split('/').pop() || folderPath
     setFolderRenameValue(folderName)
   }, [])
 
-  const handleFolderRenameSubmit = useCallback(async (oldPath: string) => {
-    if (!folderRenameValue.trim() || isFolderRenaming) {
-      setRenamingFolderPath(null)
-      return
-    }
+  const handleFolderRenameSubmit = useCallback(
+    async (oldPath: string) => {
+      if (!folderRenameValue.trim() || isFolderRenaming) {
+        setRenamingFolderPath(null)
+        return
+      }
 
-    const oldName = oldPath.split("/").pop() || oldPath
-    if (folderRenameValue.trim() === oldName) {
-      setRenamingFolderPath(null)
-      return
-    }
+      const oldName = oldPath.split('/').pop() || oldPath
+      if (folderRenameValue.trim() === oldName) {
+        setRenamingFolderPath(null)
+        return
+      }
 
-    setIsFolderRenaming(true)
-    try {
-      // Build new path: replace last segment with new name
-      const parentPath = oldPath.includes("/")
-        ? oldPath.substring(0, oldPath.lastIndexOf("/"))
-        : ""
-      const newPath = parentPath
-        ? `${parentPath}/${folderRenameValue.trim()}`
-        : folderRenameValue.trim()
+      setIsFolderRenaming(true)
+      try {
+        // Build new path: replace last segment with new name
+        const parentPath = oldPath.includes('/')
+          ? oldPath.substring(0, oldPath.lastIndexOf('/'))
+          : ''
+        const newPath = parentPath
+          ? `${parentPath}/${folderRenameValue.trim()}`
+          : folderRenameValue.trim()
 
-      await notesService.renameFolder(oldPath, newPath)
-      await refreshFolders()
-    } catch (err) {
-      console.error("Failed to rename folder:", err)
-    } finally {
-      setIsFolderRenaming(false)
-      setRenamingFolderPath(null)
-    }
-  }, [folderRenameValue, isFolderRenaming, refreshFolders])
+        await notesService.renameFolder(oldPath, newPath)
+        await refreshFolders()
+      } catch (err) {
+        console.error('Failed to rename folder:', err)
+      } finally {
+        setIsFolderRenaming(false)
+        setRenamingFolderPath(null)
+      }
+    },
+    [folderRenameValue, isFolderRenaming, refreshFolders]
+  )
 
   const handleFolderRenameCancel = useCallback(() => {
     setRenamingFolderPath(null)
-    setFolderRenameValue("")
+    setFolderRenameValue('')
   }, [])
 
   // Delete single note from context menu
@@ -565,9 +614,9 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     const selectedNotes: NoteListItem[] = []
 
     for (const id of selectedIds) {
-      if (id.startsWith("folder-")) {
+      if (id.startsWith('folder-')) {
         // Extract folder path from "folder-path/to/folder" format
-        const folderPath = id.replace("folder-", "")
+        const folderPath = id.replace('folder-', '')
         folderPaths.push(folderPath)
       } else {
         const note = noteMap.get(id)
@@ -613,7 +662,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       setFoldersToDelete([])
       setSelectedIds([]) // Clear selection after delete
     } catch (err) {
-      console.error("Failed to delete items:", err)
+      console.error('Failed to delete items:', err)
     } finally {
       setIsDeleting(false)
     }
@@ -623,7 +672,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     try {
       await notesService.openExternal(note.id)
     } catch (err) {
-      console.error("Failed to open note externally:", err)
+      console.error('Failed to open note externally:', err)
     }
   }, [])
 
@@ -631,9 +680,191 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     try {
       await notesService.revealInFinder(note.id)
     } catch (err) {
-      console.error("Failed to reveal note in Finder:", err)
+      console.error('Failed to reveal note in Finder:', err)
     }
   }, [])
+
+  // ============================================================================
+  // Drag-Drop Move Handlers
+  // ============================================================================
+
+  /**
+   * Calculate the target folder from a drop operation
+   */
+  const calculateTargetFolder = useCallback(
+    (targetId: string, position: DropPosition): string => {
+      // Root drop
+      if (targetId === 'notes-root' || targetId === '') {
+        return ''
+      }
+
+      // Dropped on a folder
+      if (targetId.startsWith('folder-')) {
+        const folderPath = targetId.replace('folder-', '')
+        if (position === 'inside') {
+          return folderPath
+        } else {
+          // Before/after a folder - target is the parent folder
+          return getParentFolder(folderPath)
+        }
+      }
+
+      // Dropped on a note - get that note's folder
+      const targetNote = noteMap.get(targetId)
+      if (targetNote) {
+        return extractFolderFromPath(targetNote.path)
+      }
+
+      return ''
+    },
+    [noteMap]
+  )
+
+  /**
+   * Handle moving a single note to a folder
+   */
+  const handleNoteMove = useCallback(
+    async (noteId: string, targetFolder: string): Promise<boolean> => {
+      // Get the note to check current folder
+      const note = noteMap.get(noteId)
+      if (!note) return false
+
+      // Check if already in target folder
+      const currentFolder = extractFolderFromPath(note.path)
+      if (currentFolder === targetFolder) {
+        return false // No-op
+      }
+
+      try {
+        await moveNote(noteId, targetFolder)
+        return true
+      } catch (err) {
+        console.error('Failed to move note:', err)
+        return false
+      }
+    },
+    [noteMap, moveNote]
+  )
+
+  /**
+   * Handle moving a folder into another folder
+   */
+  const handleFolderMove = useCallback(
+    async (
+      sourceFolderPath: string,
+      targetId: string,
+      position: DropPosition
+    ): Promise<boolean> => {
+      const sourceFolderName = sourceFolderPath.split('/').pop() || sourceFolderPath
+
+      let newPath = ''
+
+      if (targetId === 'notes-root' || targetId === '') {
+        // Move to root level
+        newPath = sourceFolderName
+      } else if (targetId.startsWith('folder-')) {
+        const targetPath = targetId.replace('folder-', '')
+
+        // Prevent invalid moves (into self or descendants)
+        if (isDescendantOrSelf(sourceFolderPath, targetPath)) {
+          console.warn('Cannot move folder into itself or its descendants')
+          return false
+        }
+
+        if (position === 'inside') {
+          // Move into target folder
+          newPath = `${targetPath}/${sourceFolderName}`
+        } else {
+          // Before/after target - move to target's parent
+          const parentFolder = getParentFolder(targetPath)
+          newPath = parentFolder ? `${parentFolder}/${sourceFolderName}` : sourceFolderName
+        }
+      } else {
+        // Dropped on a note - get that note's folder
+        const targetNote = noteMap.get(targetId)
+        if (targetNote) {
+          const targetFolder = extractFolderFromPath(targetNote.path)
+          newPath = targetFolder ? `${targetFolder}/${sourceFolderName}` : sourceFolderName
+        } else {
+          newPath = sourceFolderName
+        }
+      }
+
+      // Skip if already at target
+      if (newPath === sourceFolderPath) {
+        return false
+      }
+
+      try {
+        await notesService.renameFolder(sourceFolderPath, newPath)
+        await refreshFolders()
+        return true
+      } catch (err) {
+        console.error('Failed to move folder:', err)
+        return false
+      }
+    },
+    [noteMap, refreshFolders]
+  )
+
+  /**
+   * Main move handler called when drag-drop completes
+   * Supports multi-selection: all selected items are moved together
+   */
+  const handleMove = useCallback(
+    async (operation: MoveOperation) => {
+      if (isMoving) return // Prevent concurrent moves
+
+      const { draggedId, targetId, position } = operation
+
+      // Don't allow dropping on self
+      if (draggedId === targetId) return
+
+      setIsMoving(true)
+
+      try {
+        // Check if dragged item is part of multi-selection
+        const isPartOfSelection = selectedIds.includes(draggedId)
+        const itemsToMove =
+          isPartOfSelection && selectedIds.length > 1
+            ? selectedIds.filter((id) => id !== targetId) // Exclude target from items to move
+            : [draggedId]
+
+        // Separate notes and folders
+        const notesToMove: string[] = []
+        const foldersToMove: string[] = []
+
+        for (const id of itemsToMove) {
+          if (id.startsWith('folder-')) {
+            foldersToMove.push(id.replace('folder-', ''))
+          } else {
+            notesToMove.push(id)
+          }
+        }
+
+        // Calculate target folder for notes
+        const targetFolder = calculateTargetFolder(targetId, position)
+
+        // Move folders first (to avoid issues if notes are inside folders being moved)
+        for (const folderPath of foldersToMove) {
+          await handleFolderMove(folderPath, targetId, position)
+        }
+
+        // Move notes
+        for (const noteId of notesToMove) {
+          await handleNoteMove(noteId, targetFolder)
+        }
+
+        // Clear selection after successful move
+        if (itemsToMove.length > 1) {
+          setSelectedIds([])
+        }
+      } finally {
+        setIsMoving(false)
+      }
+    },
+    [isMoving, selectedIds, calculateTargetFolder, handleNoteMove, handleFolderMove]
+  )
 
   // Handle Delete key to delete selected notes
   useEffect(() => {
@@ -645,10 +876,10 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       if (renamingNoteId) return
 
       // Delete or Backspace key
-      if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.length > 0) {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length > 0) {
         // Make sure we're focused on the tree, not an input
         const activeElement = document.activeElement
-        if (activeElement?.tagName === "INPUT" || activeElement?.tagName === "TEXTAREA") {
+        if (activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA') {
           return
         }
 
@@ -657,59 +888,62 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       }
     }
 
-    container.addEventListener("keydown", handleKeyDown)
-    return () => container.removeEventListener("keydown", handleKeyDown)
+    container.addEventListener('keydown', handleKeyDown)
+    return () => container.removeEventListener('keydown', handleKeyDown)
   }, [selectedIds, renamingNoteId, handleBulkDelete])
 
   // Render action buttons (must be before early returns to follow Rules of Hooks)
-  const actionButtons = useMemo(() => (
-    <>
-      {/* New Note button */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={handleCreateNote}
-            disabled={isCreating}
-          >
-            {isCreating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <FilePlus className="h-3.5 w-3.5" />
-            )}
-            <span className="sr-only">New Note</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">
-          <p>New note{targetFolder ? ` in ${targetFolder}` : ""}</p>
-        </TooltipContent>
-      </Tooltip>
-      {/* New Folder button */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={handleCreateFolder}
-            disabled={isCreatingFolder}
-          >
-            {isCreatingFolder ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <FolderPlus className="h-3.5 w-3.5" />
-            )}
-            <span className="sr-only">New Folder</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">
-          <p>New folder{targetFolder ? ` in ${targetFolder}` : ""}</p>
-        </TooltipContent>
-      </Tooltip>
-    </>
-  ), [handleCreateNote, handleCreateFolder, isCreating, isCreatingFolder, targetFolder])
+  const actionButtons = useMemo(
+    () => (
+      <>
+        {/* New Note button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={handleCreateNote}
+              disabled={isCreating}
+            >
+              {isCreating ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <FilePlus className="h-3.5 w-3.5" />
+              )}
+              <span className="sr-only">New Note</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>New note{targetFolder ? ` in ${targetFolder}` : ''}</p>
+          </TooltipContent>
+        </Tooltip>
+        {/* New Folder button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={handleCreateFolder}
+              disabled={isCreatingFolder}
+            >
+              {isCreatingFolder ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <FolderPlus className="h-3.5 w-3.5" />
+              )}
+              <span className="sr-only">New Folder</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>New folder{targetFolder ? ` in ${targetFolder}` : ''}</p>
+          </TooltipContent>
+        </Tooltip>
+      </>
+    ),
+    [handleCreateNote, handleCreateFolder, isCreating, isCreatingFolder, targetFolder]
+  )
 
   // Notify parent about action buttons (must be before early returns)
   useEffect(() => {
@@ -739,12 +973,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     const isPartOfSelection = isSelected && hasMultipleSelected
 
     return (
-      <TreeNode
-        key={note.id}
-        nodeId={note.id}
-        level={level}
-        isLast={isLast}
-      >
+      <TreeNode key={note.id} nodeId={note.id} level={level} isLast={isLast}>
         <TreeNodeTrigger
           contextMenuContent={
             <>
@@ -765,10 +994,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
                     Reveal in Finder
                   </ContextMenuItem>
                   <ContextMenuSeparator />
-                  <ContextMenuItem
-                    variant="destructive"
-                    onClick={() => handleDeleteClick(note)}
-                  >
+                  <ContextMenuItem variant="destructive" onClick={() => handleDeleteClick(note)}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete
                   </ContextMenuItem>
@@ -776,10 +1002,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
               )}
               {/* Bulk actions - show when part of multi-select */}
               {isPartOfSelection && (
-                <ContextMenuItem
-                  variant="destructive"
-                  onClick={handleBulkDelete}
-                >
+                <ContextMenuItem variant="destructive" onClick={handleBulkDelete}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete {selectedIds.length} Notes
                 </ContextMenuItem>
@@ -788,13 +1011,17 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           }
         >
           <TreeExpander />
-          <TreeIcon icon={
-            note.emoji ? (
-              <span className="text-sm leading-none" role="img" aria-label="note icon">{note.emoji}</span>
-            ) : (
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            )
-          } />
+          <TreeIcon
+            icon={
+              note.emoji ? (
+                <span className="text-sm leading-none" role="img" aria-label="note icon">
+                  {note.emoji}
+                </span>
+              ) : (
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              )
+            }
+          />
           {isBeingRenamed ? (
             <input
               ref={renameInputRef}
@@ -802,10 +1029,10 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                if (e.key === 'Enter') {
                   e.preventDefault()
                   handleRenameSubmit(note.id, note.path)
-                } else if (e.key === "Escape") {
+                } else if (e.key === 'Escape') {
                   e.preventDefault()
                   handleRenameCancel()
                 }
@@ -825,21 +1052,12 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   }
 
   // Render folder with its contents
-  const renderFolder = (
-    folder: FolderNode,
-    level: number,
-    isLast: boolean
-  ): ReactNode => {
+  const renderFolder = (folder: FolderNode, level: number, isLast: boolean): ReactNode => {
     const hasChildren = folder.children.length > 0 || folder.notes.length > 0
     const isBeingRenamed = renamingFolderPath === folder.path
 
     return (
-      <TreeNode
-        key={folder.path}
-        nodeId={`folder-${folder.path}`}
-        level={level}
-        isLast={isLast}
-      >
+      <TreeNode key={folder.path} nodeId={`folder-${folder.path}`} level={level} isLast={isLast}>
         <TreeNodeTrigger
           contextMenuContent={
             <>
@@ -867,10 +1085,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           }
         >
           <TreeExpander hasChildren={hasChildren} />
-          <TreeIcon
-            hasChildren={hasChildren}
-            icon={<Folder className="h-4 w-4" />}
-          />
+          <TreeIcon hasChildren={hasChildren} icon={<Folder className="h-4 w-4" />} />
           {isBeingRenamed ? (
             <input
               ref={folderRenameInputRef}
@@ -878,10 +1093,10 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
               value={folderRenameValue}
               onChange={(e) => setFolderRenameValue(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                if (e.key === 'Enter') {
                   e.preventDefault()
                   handleFolderRenameSubmit(folder.path)
-                } else if (e.key === "Escape") {
+                } else if (e.key === 'Escape') {
                   e.preventDefault()
                   handleFolderRenameCancel()
                 }
@@ -908,11 +1123,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
             )}
             {/* Render notes in this folder */}
             {folder.notes.map((note, index) =>
-              renderNote(
-                note,
-                level + 1,
-                index === folder.notes.length - 1
-              )
+              renderNote(note, level + 1, index === folder.notes.length - 1)
             )}
           </TreeNodeContent>
         )}
@@ -926,7 +1137,8 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       <TreeProvider
         selectedIds={selectedIds}
         onSelectionChange={handleSelectionChange}
-        draggable={false}
+        draggable={!renamingNoteId && !renamingFolderPath && !isMoving}
+        onMove={handleMove}
         animateExpand={true}
         multiSelect={true}
         indent={16}
@@ -943,11 +1155,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
 
           {/* Root notes after folders */}
           {tree.rootNotes.map((note, index) =>
-            renderNote(
-              note,
-              0,
-              index === tree.rootNotes.length - 1
-            )
+            renderNote(note, 0, index === tree.rootNotes.length - 1)
           )}
         </TreeView>
       </TreeProvider>
@@ -960,8 +1168,8 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
               {(() => {
                 const totalItems = notesToDelete.length + foldersToDelete.length
                 if (totalItems === 1) {
-                  if (foldersToDelete.length === 1) return "Delete Folder"
-                  return "Delete Note"
+                  if (foldersToDelete.length === 1) return 'Delete Folder'
+                  return 'Delete Note'
                 }
                 return `Delete ${totalItems} Items`
               })()}
@@ -973,13 +1181,20 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
                 // Single item
                 if (totalItems === 1) {
                   if (foldersToDelete.length === 1) {
-                    const folderName = foldersToDelete[0].split("/").pop() || foldersToDelete[0]
+                    const folderName = foldersToDelete[0].split('/').pop() || foldersToDelete[0]
                     return (
-                      <>Are you sure you want to delete the folder &quot;{folderName}&quot; and all its contents? This action cannot be undone.</>
+                      <>
+                        Are you sure you want to delete the folder &quot;{folderName}&quot; and all
+                        its contents? This action cannot be undone.
+                      </>
                     )
                   }
                   return (
-                    <>Are you sure you want to delete &quot;{getDisplayName(notesToDelete[0]?.path || "")}&quot;? This action cannot be undone.</>
+                    <>
+                      Are you sure you want to delete &quot;
+                      {getDisplayName(notesToDelete[0]?.path || '')}&quot;? This action cannot be
+                      undone.
+                    </>
                   )
                 }
 
@@ -991,12 +1206,14 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
                       {foldersToDelete.slice(0, 3).map((folderPath) => (
                         <li key={`folder-${folderPath}`} className="flex items-center gap-1">
                           <Folder className="h-3 w-3 inline" />
-                          {folderPath.split("/").pop() || folderPath} (folder)
+                          {folderPath.split('/').pop() || folderPath} (folder)
                         </li>
                       ))}
-                      {notesToDelete.slice(0, 5 - Math.min(foldersToDelete.length, 3)).map((note) => (
-                        <li key={note.id}>{getDisplayName(note.path)}</li>
-                      ))}
+                      {notesToDelete
+                        .slice(0, 5 - Math.min(foldersToDelete.length, 3))
+                        .map((note) => (
+                          <li key={note.id}>{getDisplayName(note.path)}</li>
+                        ))}
                       {totalItems > 5 && (
                         <li className="text-muted-foreground">...and {totalItems - 5} more</li>
                       )}
@@ -1018,8 +1235,10 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Deleting...
                 </>
+              ) : notesToDelete.length + foldersToDelete.length === 1 ? (
+                'Delete'
               ) : (
-                (notesToDelete.length + foldersToDelete.length) === 1 ? "Delete" : `Delete ${notesToDelete.length + foldersToDelete.length}`
+                `Delete ${notesToDelete.length + foldersToDelete.length}`
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
