@@ -14,31 +14,31 @@
 
 ### Existing UI Components (70% Complete)
 
-| Component | Location | Status |
-|-----------|----------|--------|
-| NoteLayout | `components/note/note-layout.tsx` | ✅ UI Complete |
-| RightSidebar | `components/note/right-sidebar.tsx` | ✅ UI Complete |
-| OutlineEdge | `components/note/outline-edge.tsx` | ✅ UI Complete |
-| ContentArea (BlockNote) | `components/note/content-area/ContentArea.tsx` | ✅ UI Complete |
-| NoteTitle + EmojiPicker | `components/note/note-title/` | ✅ UI Complete |
-| TagsRow + TagInput | `components/note/tags-row/` | ✅ UI Complete |
-| InfoSection (Properties) | `components/note/info-section/` | ✅ UI Complete (8 editors) |
-| BacklinksSection | `components/note/backlinks/` | ⚠️ UI with Demo Data |
-| RelatedNotesTab | `components/note/related-notes/` | ⚠️ UI with Demo Data |
-| LinkedTasksSection | `components/note/linked-tasks/` | ✅ Wired to Tasks |
-| AIAgentTab | `components/note/ai-agent/` | ⚠️ UI with Demo Data |
+| Component                | Location                                       | Status                     |
+| ------------------------ | ---------------------------------------------- | -------------------------- |
+| NoteLayout               | `components/note/note-layout.tsx`              | ✅ UI Complete             |
+| RightSidebar             | `components/note/right-sidebar.tsx`            | ✅ UI Complete             |
+| OutlineEdge              | `components/note/outline-edge.tsx`             | ✅ UI Complete             |
+| ContentArea (BlockNote)  | `components/note/content-area/ContentArea.tsx` | ✅ UI Complete             |
+| NoteTitle + EmojiPicker  | `components/note/note-title/`                  | ✅ UI Complete             |
+| TagsRow + TagInput       | `components/note/tags-row/`                    | ✅ UI Complete             |
+| InfoSection (Properties) | `components/note/info-section/`                | ✅ UI Complete (8 editors) |
+| BacklinksSection         | `components/note/backlinks/`                   | ⚠️ UI with Demo Data       |
+| RelatedNotesTab          | `components/note/related-notes/`               | ⚠️ UI with Demo Data       |
+| LinkedTasksSection       | `components/note/linked-tasks/`                | ✅ Wired to Tasks          |
+| AIAgentTab               | `components/note/ai-agent/`                    | ⚠️ UI with Demo Data       |
 
 ### Existing Backend Infrastructure
 
-| Component | Location | Status |
-|-----------|----------|--------|
-| Notes IPC Handlers | `src/main/ipc/notes-handlers.ts` | ✅ 24 handlers |
-| Vault Notes Operations | `src/main/vault/notes.ts` | ✅ 26 functions |
-| Preload Bridge | `src/preload/index.ts` | ✅ Full API exposed |
-| Notes Service | `src/renderer/src/services/notes-service.ts` | ✅ 18 methods |
-| useNotes Hook | `src/renderer/src/hooks/use-notes.ts` | ✅ Complete |
-| Notes Schema | `src/shared/db/schema/notes-cache.ts` | ⚠️ Missing emoji, properties |
-| Notes Queries | `src/shared/db/queries/notes.ts` | ⚠️ Missing properties |
+| Component              | Location                                     | Status                       |
+| ---------------------- | -------------------------------------------- | ---------------------------- |
+| Notes IPC Handlers     | `src/main/ipc/notes-handlers.ts`             | ✅ 24 handlers               |
+| Vault Notes Operations | `src/main/vault/notes.ts`                    | ✅ 26 functions              |
+| Preload Bridge         | `src/preload/index.ts`                       | ✅ Full API exposed          |
+| Notes Service          | `src/renderer/src/services/notes-service.ts` | ✅ 18 methods                |
+| useNotes Hook          | `src/renderer/src/hooks/use-notes.ts`        | ✅ Complete                  |
+| Notes Schema           | `src/shared/db/schema/notes-cache.ts`        | ⚠️ Missing emoji, properties |
+| Notes Queries          | `src/shared/db/queries/notes.ts`             | ⚠️ Missing properties        |
 
 ### What's Missing (Backend Wiring Focus)
 
@@ -130,6 +130,7 @@
 **Status**: ContentArea with BlockNote already exists. Focus on backend wiring.
 
 **Existing Components**:
+
 - ✅ `components/note/content-area/ContentArea.tsx` - Full BlockNote editor
 - ✅ `components/note/note-title/NoteTitle.tsx` - Title + emoji UI
 - ✅ `pages/note.tsx` - Page wrapper with basic save logic
@@ -157,6 +158,7 @@
 **Status**: Basic debounced save (500ms) exists in note.tsx. Focus on status UI.
 
 **Existing Components**:
+
 - ✅ `pages/note.tsx` - Has handleMarkdownChange with 500ms debounce
 - ⚠️ No SaveStatus component yet
 
@@ -181,6 +183,7 @@
 **Status**: TagsRow UI complete with all callbacks. Focus on backend wiring.
 
 **Existing Components**:
+
 - ✅ `components/note/tags-row/TagsRow.tsx` - Full tag UI with add/remove/create
 - ✅ `components/note/tags-row/TagInputPopup.tsx` - Autocomplete popup
 - ✅ `hooks/use-notes.ts` - Has getTags, useNoteTags
@@ -217,6 +220,7 @@
 **Approach**: Create custom BlockNote inline content for wiki-links using createInlineContentSpec
 
 **Existing Components**:
+
 - ✅ `components/note/content-area/ContentArea.tsx` - Base editor (needs wiki-link extension)
 
 **Independent Test**: Type [[, select a note from autocomplete, click the link to navigate.
@@ -234,6 +238,7 @@
 - [x] T049 [US4] Style wiki links with distinctive appearance in src/renderer/src/assets/base.css
 
 How it should work;
+
 - [ ] T050 [US4] User types a single [ and it should add ] automatically (deferred - BlockNote limitation)
 - [x] T051 [US4] User types [[ and it should open the autocomplete popover (uses SuggestionMenuController)
 - [x] T052 [US4] User can use keyboard to select a suggestion when the popover is visible (BlockNote built-in)
@@ -246,8 +251,6 @@ How it should work;
 - [ ] T059 [US4] When editing an existing wiki link, the autocomplete popover can be shown again (deferred - complex)
 - [x] T060 [US4] If the user pastes or manually types a wiki link pattern, it should be recognized via parse function
 
-
-
 **Checkpoint**: User Story 4 complete - wiki links work with autocomplete and navigation
 
 ---
@@ -259,6 +262,7 @@ How it should work;
 **Status**: BacklinksSection UI exists with demo data. Focus on backend wiring.
 
 **Existing Components**:
+
 - ✅ `components/note/backlinks/BacklinksSection.tsx` - Full UI with demo data
 - ✅ `components/note/backlinks/BacklinkCard.tsx` - Card with snippets
 - ✅ `hooks/use-notes.ts` - Has useNoteLinks (outgoing + incoming)
@@ -285,6 +289,7 @@ How it should work;
 **Status**: InfoSection UI complete with all 8 editors. Focus on backend wiring.
 
 **Existing Components**:
+
 - ✅ `components/note/info-section/InfoSection.tsx` - Full properties panel
 - ✅ `components/note/info-section/PropertyRow.tsx` - Property display/edit
 - ✅ `components/note/info-section/AddPropertyPopup.tsx` - Add property modal
@@ -314,6 +319,7 @@ How it should work;
 **Status**: EmojiPicker exists in note-title. Focus on persistence and display.
 
 **Existing Components**:
+
 - ✅ `components/note/note-title/EmojiPicker.tsx` - Full emoji picker UI
 - ✅ `components/note/note-title/EmojiButton.tsx` - Trigger button
 - ✅ Packages installed: `@emoji-mart/react`, `@emoji-mart/data`
@@ -359,6 +365,7 @@ How it should work;
 **Status**: OutlineEdge exists. extractHeadings in ContentArea exists.
 
 **Existing Components**:
+
 - ✅ `components/note/outline-edge.tsx` - Floating outline navigator
 - ✅ `components/note/content-area/ContentArea.tsx` - Has extractHeadings function
 
@@ -380,24 +387,35 @@ How it should work;
 
 **Goal**: Users can organize notes in folders with drag-drop
 
-**Status**: Backend has folder CRUD. Focus on UI integration.
+**Status**: ✅ PHASE 12 COMPLETE - Full folder organization with drag-drop
 
 **Existing Backend**:
+
 - ✅ `notes:create-folder`, `notes:rename-folder`, `notes:delete-folder` IPC handlers
 - ✅ `notes:get-folders` returns folder structure
+- ✅ `notes:move` moves notes between folders
 
 **Independent Test**: Create a folder, move a note into it, verify folder appears in sidebar.
 
 ### Implementation for User Story 10
 
-- [ ] T079 [P] [US10] Create FolderTree component for sidebar in src/renderer/src/components/folder-tree.tsx
-- [ ] T080 [US10] Implement folder creation dialog in src/renderer/src/components/folder-tree.tsx
-- [ ] T081 [US10] Add drag-drop note moving between folders in src/renderer/src/components/folder-tree.tsx
-- [ ] T082 [US10] Implement folder rename functionality in src/renderer/src/components/folder-tree.tsx
-- [ ] T083 [US10] Add folder delete (empty only) functionality in src/renderer/src/components/folder-tree.tsx
-- [ ] T084 [US10] Replace/enhance notes-tree.tsx with FolderTree in sidebar
+- [x] T079 [P] [US10] Create FolderTree component for sidebar - **Implemented in notes-tree.tsx (1033 lines)**
+- [x] T080 [US10] Implement folder creation dialog - **Inline creation via context menu + auto-rename**
+- [x] T081 [US10] Add drag-drop note moving between folders - **Full drag-drop with multi-select support**
+- [x] T082 [US10] Implement folder rename functionality - **Inline editing on double-click or context menu**
+- [x] T083 [US10] Add folder delete functionality - **Recursive delete with confirmation dialog**
+- [x] T084 [US10] Replace/enhance notes-tree.tsx with FolderTree in sidebar - **NotesTree serves as FolderTree**
 
-**Checkpoint**: User Story 10 complete - folder organization works with full CRUD
+**Features Implemented**:
+
+- ✅ Drag notes between folders
+- ✅ Drag folders into other folders
+- ✅ Multi-select drag (Ctrl/Cmd+Click to select multiple, drag all at once)
+- ✅ Visual drop indicators (before/after/inside)
+- ✅ Protection against invalid moves (folder into itself/descendants)
+- ✅ Dragging disabled during rename operations
+
+**Checkpoint**: User Story 10 complete - folder organization works with full CRUD ✅ PHASE 12 COMPLETE
 
 ---
 
@@ -408,6 +426,7 @@ How it should work;
 **Status**: RelatedNotesTab UI exists with demo data. Focus on backend + AI integration.
 
 **Existing Components**:
+
 - ✅ `components/note/related-notes/RelatedNotesTab.tsx` - Full UI with demo data
 - ✅ `components/note/related-notes/RelatedNoteCard.tsx` - Card component
 
@@ -416,10 +435,10 @@ How it should work;
 ### Implementation for User Story 11
 
 - [x] T085 [US11] RelatedNotesTab component exists ✅ Already complete
-- [ ] T086 [US11] Create getRelatedNotes IPC handler (similarity search) in src/main/ipc/notes-handlers.ts
-- [ ] T087 [US11] Implement similarity calculation using FTS5 in src/shared/db/queries/notes.ts
-- [ ] T088 [US11] Replace demo data with real API call in src/renderer/src/components/note/related-notes/RelatedNotesTab.tsx
-- [ ] T089 [US11] Add hide suggestion functionality with persistence in src/renderer/src/components/note/related-notes/RelatedNotesTab.tsx
+- [x] T086 [US11] Create getRelatedNotes IPC handler (similarity search) in src/main/ipc/notes-handlers.ts
+- [x] T087 [US11] Implement similarity calculation using FTS5 in src/shared/db/queries/notes.ts
+- [x] T088 [US11] Replace demo data with real API call in src/renderer/src/components/note/related-notes/RelatedNotesTab.tsx
+- [x] T089 [US11] Add hide suggestion functionality with persistence in src/renderer/src/components/note/related-notes/RelatedNotesTab.tsx
 
 **Checkpoint**: User Story 11 complete - related notes display based on content similarity
 
@@ -459,15 +478,17 @@ How it should work;
 **Goal**: Folders can have default templates that auto-apply when creating notes
 
 **Design**:
+
 - `.folder.md` file in each folder stores template config as YAML frontmatter
 - Template inheritance: child folders inherit parent's template unless overridden
 - Auto-apply: skip template picker when folder has a default template
 
 **`.folder.md` Format**:
+
 ```yaml
 ---
-template: project-note    # Template ID for new notes in this folder
-inherit: true            # Inherit from parent folder (default: true)
+template: project-note # Template ID for new notes in this folder
+inherit: true # Inherit from parent folder (default: true)
 ---
 ```
 
@@ -493,6 +514,7 @@ inherit: true            # Inherit from parent folder (default: true)
 ### Design
 
 **Folder View Features**:
+
 - Click folder in sidebar → Opens folder view in main content area
 - Table view showing all notes with properties as columns
 - Simple filtering by property values
@@ -500,6 +522,7 @@ inherit: true            # Inherit from parent folder (default: true)
 - Inline preview panel on row click (single click = preview, double click = open in tab)
 
 **UI Layout**:
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ 📁 Projects                                          [+ New] [⚙️]      │
@@ -638,30 +661,30 @@ Total MVP Tasks: ~45 tasks
 
 ### Existing UI → Backend Wiring Tasks
 
-| Component | File Path | Wiring Tasks |
-|-----------|-----------|--------------|
-| NoteTitle | `note-title/NoteTitle.tsx` | T026, T065 |
-| EmojiPicker | `note-title/EmojiPicker.tsx` | T065, T066, T067 |
-| ContentArea | `content-area/ContentArea.tsx` | T030, T043, T046 |
-| TagsRow | `tags-row/TagsRow.tsx` | T038, T039 |
-| InfoSection | `info-section/InfoSection.tsx` | T059, T060, T061 |
-| BacklinksSection | `backlinks/BacklinksSection.tsx` | T052, T054 |
-| OutlineEdge | `outline-edge.tsx` | T076, T077, T078 |
-| RelatedNotesTab | `related-notes/RelatedNotesTab.tsx` | T088, T089 |
+| Component        | File Path                           | Wiring Tasks     |
+| ---------------- | ----------------------------------- | ---------------- |
+| NoteTitle        | `note-title/NoteTitle.tsx`          | T026, T065       |
+| EmojiPicker      | `note-title/EmojiPicker.tsx`        | T065, T066, T067 |
+| ContentArea      | `content-area/ContentArea.tsx`      | T030, T043, T046 |
+| TagsRow          | `tags-row/TagsRow.tsx`              | T038, T039       |
+| InfoSection      | `info-section/InfoSection.tsx`      | T059, T060, T061 |
+| BacklinksSection | `backlinks/BacklinksSection.tsx`    | T052, T054       |
+| OutlineEdge      | `outline-edge.tsx`                  | T076, T077, T078 |
+| RelatedNotesTab  | `related-notes/RelatedNotesTab.tsx` | T088, T089       |
 
 ### New Components Required
 
-| Component | File Path | Creation Tasks |
-|-----------|-----------|----------------|
-| SaveStatus | `note/save-status.tsx` | T031 |
-| WikiLinkInline | `content-area/wiki-link-inline.ts` | T041 |
-| WikiLinkAutocomplete | `note/wiki-link-autocomplete.tsx` | T042 |
-| FileBlock | `content-area/file-block.ts` | T072 |
-| FolderTree | `components/folder-tree.tsx` | T079 |
-| RecentNotes | `components/recent-notes.tsx` | T090 |
-| TemplateSelector | `note/template-selector.tsx` | T094 |
-| ExportDialog | `note/export-dialog.tsx` | T098 |
-| VersionHistory | `note/version-history.tsx` | T103 |
+| Component            | File Path                          | Creation Tasks |
+| -------------------- | ---------------------------------- | -------------- |
+| SaveStatus           | `note/save-status.tsx`             | T031           |
+| WikiLinkInline       | `content-area/wiki-link-inline.ts` | T041           |
+| WikiLinkAutocomplete | `note/wiki-link-autocomplete.tsx`  | T042           |
+| FileBlock            | `content-area/file-block.ts`       | T072           |
+| FolderTree           | `components/folder-tree.tsx`       | T079           |
+| RecentNotes          | `components/recent-notes.tsx`      | T090           |
+| TemplateSelector     | `note/template-selector.tsx`       | T094           |
+| ExportDialog         | `note/export-dialog.tsx`           | T098           |
+| VersionHistory       | `note/version-history.tsx`         | T103           |
 
 ---
 
@@ -681,13 +704,14 @@ Total MVP Tasks: ~45 tasks
 
 **Design Doc**: `specs/003-notes/properties-design.md`
 
-| Component | Storage | Purpose |
-|-----------|---------|---------|
-| Property VALUES | Frontmatter (YAML) | Source of truth - portable, external-edit friendly |
-| Property CACHE | `noteProperties` table | Fast queries, filtering, sorting (rebuildable) |
-| Property SCHEMA | `propertyDefinitions` table | Vault-wide type definitions |
+| Component       | Storage                     | Purpose                                            |
+| --------------- | --------------------------- | -------------------------------------------------- |
+| Property VALUES | Frontmatter (YAML)          | Source of truth - portable, external-edit friendly |
+| Property CACHE  | `noteProperties` table      | Fast queries, filtering, sorting (rebuildable)     |
+| Property SCHEMA | `propertyDefinitions` table | Vault-wide type definitions                        |
 
 **External Edit Flow**:
+
 1. User edits frontmatter in VS Code/Obsidian
 2. chokidar detects file change
 3. `handleFileChange()` parses frontmatter
