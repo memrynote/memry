@@ -82,7 +82,13 @@ export const NotesChannels = {
     /** Create a property definition (T018) */
     CREATE_PROPERTY_DEFINITION: 'notes:create-property-definition',
     /** Update a property definition */
-    UPDATE_PROPERTY_DEFINITION: 'notes:update-property-definition'
+    UPDATE_PROPERTY_DEFINITION: 'notes:update-property-definition',
+    /** Upload an attachment to a note (T070) */
+    UPLOAD_ATTACHMENT: 'notes:upload-attachment',
+    /** List attachments for a note */
+    LIST_ATTACHMENTS: 'notes:list-attachments',
+    /** Delete an attachment */
+    DELETE_ATTACHMENT: 'notes:delete-attachment'
   },
   events: {
     /** Note was created (externally or internally) */

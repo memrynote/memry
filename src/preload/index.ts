@@ -91,7 +91,31 @@ const api = {
       options?: string[]
       defaultValue?: unknown
       color?: string
-    }) => ipcRenderer.invoke(NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION, input)
+    }) => ipcRenderer.invoke(NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION, input),
+
+    // T070: Attachments API
+    uploadAttachment: (noteId: string, file: File) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const arrayBuffer = reader.result as ArrayBuffer
+          ipcRenderer
+            .invoke(NotesChannels.invoke.UPLOAD_ATTACHMENT, {
+              noteId,
+              filename: file.name,
+              data: Array.from(new Uint8Array(arrayBuffer))
+            })
+            .then(resolve)
+            .catch(reject)
+        }
+        reader.onerror = () => reject(new Error('Failed to read file'))
+        reader.readAsArrayBuffer(file)
+      })
+    },
+    listAttachments: (noteId: string) =>
+      ipcRenderer.invoke(NotesChannels.invoke.LIST_ATTACHMENTS, noteId),
+    deleteAttachment: (noteId: string, filename: string) =>
+      ipcRenderer.invoke(NotesChannels.invoke.DELETE_ATTACHMENT, { noteId, filename })
   },
 
   // Search API
@@ -258,7 +282,8 @@ const api = {
       ipcRenderer.invoke(TasksChannels.invoke.GET_LINKED_TASKS, noteId),
 
     // Development/Testing
-    seedPerformanceTest: () => ipcRenderer.invoke('tasks:seed-performance-test')
+    seedPerformanceTest: () => ipcRenderer.invoke('tasks:seed-performance-test'),
+    seedDemo: () => ipcRenderer.invoke('tasks:seed-demo')
   },
 
   // Saved Filters API

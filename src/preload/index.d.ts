@@ -89,6 +89,36 @@ export interface CreatePropertyDefinitionResponse {
   error?: string
 }
 
+// T070: Attachment types
+export interface AttachmentResult {
+  success: boolean
+  /** Relative path from note to attachment */
+  path?: string
+  /** Original filename */
+  name?: string
+  /** File size in bytes */
+  size?: number
+  /** MIME type */
+  mimeType?: string
+  /** Category: image or file */
+  type?: 'image' | 'file'
+  /** Error message if failed */
+  error?: string
+}
+
+export interface AttachmentInfo {
+  filename: string
+  path: string
+  size: number
+  mimeType: string
+  type: 'image' | 'file'
+}
+
+export interface DeleteAttachmentResponse {
+  success: boolean
+  error?: string
+}
+
 export interface NoteListItem {
   id: string
   path: string
@@ -673,6 +703,10 @@ export interface NotesClientAPI {
   updatePropertyDefinition(
     input: UpdatePropertyDefinitionInput
   ): Promise<CreatePropertyDefinitionResponse>
+  // T070: Attachments API
+  uploadAttachment(noteId: string, file: File): Promise<AttachmentResult>
+  listAttachments(noteId: string): Promise<AttachmentInfo[]>
+  deleteAttachment(noteId: string, filename: string): Promise<DeleteAttachmentResponse>
 }
 
 // Tasks client API interface
@@ -734,6 +768,7 @@ export interface TasksClientAPI {
 
   // Development/Testing
   seedPerformanceTest(): Promise<{ success: boolean; message: string }>
+  seedDemo(): Promise<{ success: boolean; message: string }>
 }
 
 // Search client API interface

@@ -126,7 +126,7 @@ function SidebarHeaderContent({ teams }: { teams: typeof data.teams }) {
         <TrafficLights compact={isCollapsed} />
       </div>
       <VaultSwitcher />
-      <TeamSwitcher teams={teams} />
+      {/* <TeamSwitcher teams={teams} /> */}
     </SidebarHeader>
   )
 }

@@ -2,6 +2,7 @@ import { ReactNode, useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { OutlineEdge } from './outline-edge'
 import { RightSidebar } from './right-sidebar'
+import { useActiveHeading } from '@/hooks/use-active-heading'
 
 interface HeadingItem {
   id: string
@@ -28,7 +29,7 @@ export function NoteLayout({
   onSidebarToggle
 }: NoteLayoutProps) {
   // Controlled vs uncontrolled sidebar state
-  const [internalSidebarOpen, setInternalSidebarOpen] = useState(true)
+  const [internalSidebarOpen, setInternalSidebarOpen] = useState(false)
   const isSidebarControlled = controlledSidebarOpen !== undefined
   const sidebarOpen = isSidebarControlled ? controlledSidebarOpen : internalSidebarOpen
 
@@ -52,6 +53,12 @@ export function NoteLayout({
     }
   }
 
+  // T078: Track active heading based on scroll position
+  const { activeHeadingId } = useActiveHeading({
+    headings,
+    offset: 120 // Account for header/toolbar height
+  })
+
   return (
     <div className={cn('h-full w-full overflow-hidden flex', className)}>
       {/* Main content area with floating outline edge */}
@@ -67,7 +74,11 @@ export function NoteLayout({
         </div>
 
         {/* Floating outline edge - positioned at right of viewport */}
-        <OutlineEdge headings={headings} onHeadingClick={onHeadingClick} />
+        <OutlineEdge
+          headings={headings}
+          onHeadingClick={onHeadingClick}
+          activeHeadingId={activeHeadingId ?? undefined}
+        />
       </div>
 
       {/* Right sidebar zone */}

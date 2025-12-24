@@ -690,6 +690,7 @@ export function NotePage({ noteId }: NotePageProps) {
         >
           <ContentArea
             key={noteId} // Force re-mount when note changes
+            noteId={noteId} // T069: Required for attachment uploads
             initialContent={note.content}
             contentType="markdown"
             placeholder="Start writing, or press '/' for commands..."

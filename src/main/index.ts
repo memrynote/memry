@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, protocol, net } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllHandlers } from './ipc'
@@ -50,6 +50,20 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
+
+  // Register custom protocol for serving local attachment files
+  // This allows secure access to vault files from the renderer process
+  protocol.handle('memry-file', (request) => {
+    // URL format: memry-file:///absolute/path/to/file
+    const url = new URL(request.url)
+    // The pathname is URL-encoded, need to decode it
+    let filePath = decodeURIComponent(url.pathname)
+    // On Windows, remove the leading slash from /C:/path/to/file
+    if (process.platform === 'win32' && filePath.startsWith('/')) {
+      filePath = filePath.slice(1)
+    }
+    return net.fetch(`file://${filePath}`)
+  })
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
