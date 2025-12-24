@@ -368,11 +368,11 @@ How it should work;
 
 - [x] T074 [US9] OutlineEdge component exists ✅ Already complete
 - [x] T075 [US9] Heading extraction exists in ContentArea ✅ Already complete
-- [ ] T076 [US9] Connect headings from ContentArea to OutlineEdge in src/renderer/src/pages/note.tsx
-- [ ] T077 [US9] Implement scroll-to-heading on outline click in src/renderer/src/components/note/outline-edge.tsx
-- [ ] T078 [US9] Add active heading highlighting based on scroll position in src/renderer/src/components/note/outline-edge.tsx
+- [x] T076 [US9] Connect headings from ContentArea to OutlineEdge in src/renderer/src/pages/note.tsx
+- [x] T077 [US9] Implement scroll-to-heading on outline click in src/renderer/src/components/note/outline-edge.tsx
+- [x] T078 [US9] Add active heading highlighting based on scroll position in src/renderer/src/hooks/use-active-heading.ts
 
-**Checkpoint**: User Story 9 complete - outline navigation works for long notes
+**Checkpoint**: User Story 9 complete - outline navigation works for long notes ✅ PHASE 11 COMPLETE
 
 ---
 
@@ -447,63 +447,132 @@ How it should work;
 
 **Independent Test**: Create a template, create new note from template, verify structure is applied.
 
-### Implementation for User Story 13
+### Core Template Implementation
 
 - [ ] T093 [P] [US13] Create template storage in vault/.memry/templates/ in src/main/vault/templates.ts
 - [ ] T094 [US13] Create TemplateSelector dialog in src/renderer/src/components/note/template-selector.tsx
 - [ ] T095 [US13] Add template CRUD IPC handlers in src/main/ipc/notes-handlers.ts
 - [ ] T096 [US13] Integrate template selection into new note creation flow in src/renderer/src/pages/note.tsx
 
-**Checkpoint**: User Story 13 complete - templates work for quick note creation
+### Folder-Level Templates
+
+**Goal**: Folders can have default templates that auto-apply when creating notes
+
+**Design**:
+- `.folder.md` file in each folder stores template config as YAML frontmatter
+- Template inheritance: child folders inherit parent's template unless overridden
+- Auto-apply: skip template picker when folder has a default template
+
+**`.folder.md` Format**:
+```yaml
+---
+template: project-note    # Template ID for new notes in this folder
+inherit: true            # Inherit from parent folder (default: true)
+---
+```
+
+- [ ] T096.1 [US13] Create FolderConfig type in src/shared/contracts/notes-api.ts
+- [ ] T096.2 [US13] Add readFolderConfig() in src/main/vault/folders.ts
+- [ ] T096.3 [US13] Add writeFolderConfig() in src/main/vault/folders.ts
+- [ ] T096.4 [US13] Implement getFolderTemplate() with inheritance resolution in src/main/vault/folders.ts
+- [ ] T096.5 [US13] Add folder config IPC handlers (get/set) in src/main/ipc/notes-handlers.ts
+- [ ] T096.6 [US13] Update createNote to auto-apply folder template in src/main/vault/notes.ts
+- [ ] T096.7 [US13] Add "Set as folder default" option in TemplateSelector
+- [ ] T096.8 [US13] Auto-add missing template properties to existing notes on folder template change
+
+**Checkpoint**: User Story 13 complete - templates work with folder-level defaults
 
 ---
 
-## Phase 16: User Story 14 - Export Notes (Priority: P3)
+## Phase 16: User Story 14 - Folder View (Priority: P3)
+
+**Goal**: Users can view folder contents as a database-style table with filtering and inline preview
+
+**Independent Test**: Click folder in sidebar, see table view with properties as columns, click row to preview note.
+
+### Design
+
+**Folder View Features**:
+- Click folder in sidebar → Opens folder view in main content area
+- Table view showing all notes with properties as columns
+- Simple filtering by property values
+- Sorting by any column
+- Inline preview panel on row click (single click = preview, double click = open in tab)
+
+**UI Layout**:
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ 📁 Projects                                          [+ New] [⚙️]      │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Filter: [All ▼]  [Status: Active ▼]          Sort: [Modified ▼]        │
+├───────────────────────────────────────────────┬─────────────────────────┤
+│  Table with property columns                  │  Note preview panel     │
+│  (left side, resizable)                       │  (right side)           │
+└───────────────────────────────────────────────┴─────────────────────────┘
+```
+
+### Implementation for User Story 14
+
+- [ ] T097 [P] [US14] Create FolderView page component in src/renderer/src/pages/folder.tsx
+- [ ] T098 [US14] Create FolderTable component with property columns in src/renderer/src/components/folder/folder-table.tsx
+- [ ] T099 [US14] Add column configuration from folder's template properties
+- [ ] T100 [US14] Create FolderPreviewPanel component in src/renderer/src/components/folder/folder-preview.tsx
+- [ ] T101 [US14] Implement simple property filtering (dropdown per column)
+- [ ] T102 [US14] Implement column sorting (click header to sort)
+- [ ] T103 [US14] Add folder view tab type to tab system in src/renderer/src/contexts/tabs/
+- [ ] T104 [US14] Wire folder click in notes-tree to open folder view tab
+- [ ] T105 [US14] Add IPC handler to list notes with properties for folder in src/main/ipc/notes-handlers.ts
+
+**Checkpoint**: User Story 14 complete - folder view works with table, filtering, and preview
+
+---
+
+## Phase 17: User Story 15 - Export Notes (Priority: P3)
 
 **Goal**: Users can export notes as PDF or HTML
 
 **Independent Test**: Export formatted note to PDF, verify output renders correctly.
 
-### Implementation for User Story 14
+### Implementation for User Story 15
 
-- [ ] T097 [P] [US14] Add PDF export using Electron print-to-PDF in src/main/ipc/notes-handlers.ts
-- [ ] T098 [US14] Create ExportDialog with format selection in src/renderer/src/components/note/export-dialog.tsx
-- [ ] T099 [US14] Add HTML export with embedded styles in src/main/ipc/notes-handlers.ts
-- [ ] T100 [US14] Add export button to NotePage header in src/renderer/src/pages/note.tsx
+- [ ] T106 [P] [US15] Add PDF export using Electron print-to-PDF in src/main/ipc/notes-handlers.ts
+- [ ] T107 [US15] Create ExportDialog with format selection in src/renderer/src/components/note/export-dialog.tsx
+- [ ] T108 [US15] Add HTML export with embedded styles in src/main/ipc/notes-handlers.ts
+- [ ] T109 [US15] Add export button to NotePage header in src/renderer/src/pages/note.tsx
 
-**Checkpoint**: User Story 14 complete - export works for PDF and HTML
+**Checkpoint**: User Story 15 complete - export works for PDF and HTML
 
 ---
 
-## Phase 17: User Story 15 - Version History (Priority: P3)
+## Phase 18: User Story 16 - Version History (Priority: P3)
 
 **Goal**: Users can view and restore previous versions of notes
 
 **Independent Test**: Edit note multiple times, view version history, restore previous version.
 
-### Implementation for User Story 15
+### Implementation for User Story 16
 
-- [ ] T101 [P] [US15] Create note_snapshots table in src/shared/db/schema/notes-cache.ts
-- [ ] T102 [US15] Save snapshots on significant edits in src/main/vault/notes.ts
-- [ ] T103 [US15] Create VersionHistory panel in src/renderer/src/components/note/version-history.tsx
-- [ ] T104 [US15] Add version preview and restore functionality in src/renderer/src/components/note/version-history.tsx
-- [ ] T105 [US15] Add version history IPC handlers in src/main/ipc/notes-handlers.ts
+- [ ] T110 [P] [US16] Create note_snapshots table in src/shared/db/schema/notes-cache.ts
+- [ ] T111 [US16] Save snapshots on significant edits in src/main/vault/notes.ts
+- [ ] T112 [US16] Create VersionHistory panel in src/renderer/src/components/note/version-history.tsx
+- [ ] T113 [US16] Add version preview and restore functionality in src/renderer/src/components/note/version-history.tsx
+- [ ] T114 [US16] Add version history IPC handlers in src/main/ipc/notes-handlers.ts
 
-**Checkpoint**: User Story 15 complete - version history with restore capability
+**Checkpoint**: User Story 16 complete - version history with restore capability
 
 ---
 
-## Phase 18: Polish & Cross-Cutting Concerns
+## Phase 20: Polish & Cross-Cutting Concerns
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T106 [P] Accessibility audit - add ARIA labels to all interactive elements
-- [ ] T107 [P] Keyboard navigation for all panels and dialogs
-- [ ] T108 Performance optimization - virtualize long notes list
-- [ ] T109 [P] Error boundary for editor crashes
-- [ ] T110 External edit conflict detection and resolution UI
-- [ ] T111 Run quickstart.md validation scenarios
-- [ ] T112 Update CLAUDE.md with notes system patterns
+- [ ] T115 [P] Accessibility audit - add ARIA labels to all interactive elements
+- [ ] T116 [P] Keyboard navigation for all panels and dialogs
+- [ ] T117 Performance optimization - virtualize long notes list
+- [ ] T118 [P] Error boundary for editor crashes
+- [ ] T119 External edit conflict detection and resolution UI
+- [ ] T120 Run quickstart.md validation scenarios
+- [ ] T121 Update CLAUDE.md with notes system patterns
 
 ---
 
@@ -516,9 +585,9 @@ Phase 1 (Setup) → Already Complete
     ↓
 Phase 2 (Foundation) → BLOCKS all user stories
     ↓
-Phases 3-17 (User Stories) → Can proceed in priority order
+Phases 3-18 (User Stories) → Can proceed in priority order
     ↓
-Phase 18 (Polish) → After all desired stories complete
+Phase 19-20 (Polish) → After all desired stories complete
 ```
 
 ### User Story Dependencies
