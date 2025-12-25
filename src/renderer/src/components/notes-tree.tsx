@@ -51,6 +51,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
+import { TemplateSelector } from '@/components/note/template-selector'
 
 // ============================================================================
 // Types
@@ -209,10 +210,12 @@ function NotesTreeSkeleton() {
 
 function NotesTreeEmpty({
   onCreateNote,
-  isCreating
+  isCreating,
+  children
 }: {
   onCreateNote: () => void
   isCreating: boolean
+  children?: React.ReactNode
 }) {
   return (
     <div className="flex flex-col items-center justify-center p-4 text-center text-muted-foreground">
@@ -233,6 +236,7 @@ function NotesTreeEmpty({
         )}
         New Note
       </Button>
+      {children}
     </div>
   )
 }
@@ -287,6 +291,9 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   const [folderRenameValue, setFolderRenameValue] = useState('')
   const [isFolderRenaming, setIsFolderRenaming] = useState(false)
   const folderRenameInputRef = useRef<HTMLInputElement>(null)
+
+  // Template selector dialog state
+  const [isTemplateSelectorOpen, setIsTemplateSelectorOpen] = useState(false)
 
   // Focus input when note renaming starts
   useEffect(() => {
@@ -371,42 +378,70 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     [noteMap, openTab]
   )
 
-  // Handle creating a new note (in target folder)
-  const handleCreateNote = useCallback(async () => {
+  // Handle creating a new note - opens template selector first
+  const handleCreateNote = useCallback(() => {
     if (isCreating) return
+    setIsTemplateSelectorOpen(true)
+  }, [isCreating])
 
-    setIsCreating(true)
-    try {
-      const newNote = await createNote({
-        title: 'Untitled',
-        content: '',
-        folder: targetFolder || undefined // Create in selected folder
-      })
+  // Handle template selection - creates note with selected template
+  const handleTemplateSelect = useCallback(
+    async (templateId: string | null) => {
+      setIsTemplateSelectorOpen(false)
+      if (isCreating) return
 
-      if (newNote) {
-        // Open the new note in a tab
-        openTab({
-          type: 'note',
-          title: getDisplayName(newNote.path),
-          icon: 'file-text',
-          path: `/notes/${newNote.id}`,
-          entityId: newNote.id,
-          isPinned: false,
-          isModified: false,
-          isPreview: false, // Not preview mode since we're creating it
-          isDeleted: false
+      setIsCreating(true)
+      try {
+        const newNote = await createNote({
+          title: 'Untitled',
+          content: '',
+          folder: targetFolder || undefined, // Create in selected folder
+          template: templateId ?? undefined // Apply template if selected (null means blank note)
         })
 
-        // Auto-focus rename mode for the new note
-        setRenamingNoteId(newNote.id)
-        setRenameValue('Untitled')
+        if (newNote) {
+          // Open the new note in a tab
+          openTab({
+            type: 'note',
+            title: getDisplayName(newNote.path),
+            icon: 'file-text',
+            path: `/notes/${newNote.id}`,
+            entityId: newNote.id,
+            isPinned: false,
+            isModified: false,
+            isPreview: false, // Not preview mode since we're creating it
+            isDeleted: false
+          })
+
+          // Auto-focus rename mode for the new note
+          setRenamingNoteId(newNote.id)
+          setRenameValue('Untitled')
+        }
+      } catch (err) {
+        console.error('Failed to create note:', err)
+      } finally {
+        setIsCreating(false)
       }
-    } catch (err) {
-      console.error('Failed to create note:', err)
-    } finally {
-      setIsCreating(false)
-    }
-  }, [isCreating, createNote, openTab, targetFolder])
+    },
+    [isCreating, createNote, openTab, targetFolder]
+  )
+
+  // Handle setting folder default template
+  const handleSetFolderDefault = useCallback(
+    async (templateId: string) => {
+      if (!targetFolder) return // Can't set default for root
+
+      try {
+        await notesService.setFolderConfig(targetFolder, {
+          template: templateId,
+          inherit: true
+        })
+      } catch (err) {
+        console.error('Failed to set folder default template:', err)
+      }
+    },
+    [targetFolder]
+  )
 
   // Handle creating a new folder (in target folder)
   const handleCreateFolder = useCallback(async () => {
@@ -960,9 +995,20 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     return <NotesTreeError error={error} />
   }
 
-  // Render empty state
-  if (notes.length === 0) {
-    return <NotesTreeEmpty onCreateNote={handleCreateNote} isCreating={isCreating} />
+  // Render empty state (only if no notes AND no folders)
+  if (notes.length === 0 && folders.length === 0) {
+    return (
+      <NotesTreeEmpty onCreateNote={handleCreateNote} isCreating={isCreating}>
+        {/* Template Selector Dialog - needed here too for empty state */}
+        <TemplateSelector
+          isOpen={isTemplateSelectorOpen}
+          onClose={() => setIsTemplateSelectorOpen(false)}
+          onSelect={handleTemplateSelect}
+          folderPath={targetFolder || undefined}
+          onSetFolderDefault={targetFolder ? handleSetFolderDefault : undefined}
+        />
+      </NotesTreeEmpty>
+    )
   }
 
   // Render note item with context menu
@@ -1244,6 +1290,15 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Template Selector Dialog */}
+      <TemplateSelector
+        isOpen={isTemplateSelectorOpen}
+        onClose={() => setIsTemplateSelectorOpen(false)}
+        onSelect={handleTemplateSelect}
+        folderPath={targetFolder || undefined}
+        onSetFolderDefault={targetFolder ? handleSetFolderDefault : undefined}
+      />
     </div>
   )
 }

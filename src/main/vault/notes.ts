@@ -204,22 +204,49 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   const notesDir = getNotesDir()
   const db = getIndexDatabase()
 
+  // T096.6: Apply template if specified or folder has default
+  let templateContent = ''
+  let templateTags: string[] = []
+  let templateProperties: Record<string, unknown> = {}
+
+  // Check for template - explicit or folder default
+  let templateId = input.template
+  if (!templateId && input.folder) {
+    // Check if folder has a default template
+    const { getFolderTemplate } = await import('./folders')
+    templateId = (await getFolderTemplate(input.folder)) ?? undefined
+  }
+
+  if (templateId) {
+    const { getTemplate, applyTemplate } = await import('./templates')
+    const template = await getTemplate(templateId)
+    if (template) {
+      const applied = applyTemplate(template, input.title)
+      templateContent = applied.content
+      templateTags = applied.tags
+      templateProperties = applied.properties
+    }
+  }
+
   // Generate file path
   let filePath = generateNotePath(notesDir, input.title, input.folder)
   filePath = await generateUniquePath(filePath)
 
-  // Create frontmatter with properties if provided (T014)
-  const frontmatter = createFrontmatter(input.title, input.tags)
+  // Merge template tags with input tags (input tags take precedence for duplicates)
+  const mergedTags = [...new Set([...templateTags, ...(input.tags ?? [])])]
 
-  // T014: Add properties to frontmatter
-  const properties = input.properties ?? {}
+  // Create frontmatter with merged tags
+  const frontmatter = createFrontmatter(input.title, mergedTags)
+
+  // T014: Merge properties - input properties override template properties
+  const properties = { ...templateProperties, ...(input.properties ?? {}) }
   if (Object.keys(properties).length > 0) {
     ;(frontmatter as NoteFrontmatter & { properties: Record<string, unknown> }).properties =
       properties
   }
 
-  // Serialize content
-  const content = input.content ?? ''
+  // Serialize content - use input content if provided, otherwise use template content
+  const content = input.content ?? templateContent
   const fileContent = serializeNote(frontmatter, content)
 
   // Write file atomically
@@ -242,9 +269,9 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     modifiedAt: frontmatter.modified
   })
 
-  // Set tags
-  if (input.tags && input.tags.length > 0) {
-    setNoteTags(db, frontmatter.id, input.tags)
+  // Set tags (merged from template and input)
+  if (mergedTags.length > 0) {
+    setNoteTags(db, frontmatter.id, mergedTags)
   }
 
   // T014: Set properties in cache
@@ -255,7 +282,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   }
 
   // Update FTS index with content and tags
-  updateFtsContent(db, frontmatter.id, content, input.tags ?? [])
+  updateFtsContent(db, frontmatter.id, content, mergedTags)
 
   // Extract and set links
   const wikiLinks = extractWikiLinks(content)
@@ -276,10 +303,10 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     frontmatter,
     created: new Date(frontmatter.created),
     modified: new Date(frontmatter.modified),
-    tags: input.tags ?? [],
+    tags: mergedTags,
     aliases: frontmatter.aliases ?? [],
     wordCount,
-    properties, // T014: Include properties in response
+    properties, // T014/T096.6: Include merged properties in response
     emoji: null // T028: New notes start without emoji
   }
 
@@ -460,7 +487,10 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   const newEmoji = input.emoji !== undefined ? input.emoji : existing.emoji
 
   // Update frontmatter
-  const newFrontmatter: NoteFrontmatter & { properties?: Record<string, unknown>; emoji?: string | null } = {
+  const newFrontmatter: NoteFrontmatter & {
+    properties?: Record<string, unknown>
+    emoji?: string | null
+  } = {
     ...existing.frontmatter,
     ...input.frontmatter,
     title: newTitle,
@@ -497,8 +527,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
 
   // Update tags and ensure tag definitions exist
   const tagsChanged =
-    newTags.length !== existing.tags.length ||
-    newTags.some((t) => !existing.tags.includes(t))
+    newTags.length !== existing.tags.length || newTags.some((t) => !existing.tags.includes(t))
 
   if (tagsChanged) {
     // Ensure all tags have definitions (creates new tags with auto-assigned colors)
@@ -541,7 +570,13 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   // Emit note updated event
   emitNoteEvent(NotesChannels.events.UPDATED, {
     id: input.id,
-    changes: { title: newTitle, content: newContent, tags: newTags, properties: newProperties, emoji: newEmoji },
+    changes: {
+      title: newTitle,
+      content: newContent,
+      tags: newTags,
+      properties: newProperties,
+      emoji: newEmoji
+    },
     source: 'internal'
   })
 

@@ -37,11 +37,9 @@ import {
   openExternal,
   revealInFinder
 } from '../vault/notes'
-import {
-  saveAttachment,
-  deleteAttachment,
-  listNoteAttachments
-} from '../vault/attachments'
+import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
+import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault/folders'
+import { SetFolderConfigSchema } from '@shared/contracts/templates-api'
 import {
   getNoteProperties,
   getAllPropertyDefinitions,
@@ -420,6 +418,40 @@ export function registerNotesHandlers(): void {
         const message = error instanceof Error ? error.message : 'Failed to delete attachment'
         return { success: false, error: message }
       }
+    })
+  )
+
+  // =========================================================================
+  // Folder Config IPC Handlers (T096.5)
+  // =========================================================================
+
+  // notes:get-folder-config - Get folder config
+  ipcMain.handle(
+    NotesChannels.invoke.GET_FOLDER_CONFIG,
+    createStringHandler(async (folderPath) => {
+      return readFolderConfig(folderPath)
+    })
+  )
+
+  // notes:set-folder-config - Set folder config
+  ipcMain.handle(
+    NotesChannels.invoke.SET_FOLDER_CONFIG,
+    createValidatedHandler(SetFolderConfigSchema, async (input) => {
+      try {
+        await writeFolderConfig(input.folderPath, input.config)
+        return { success: true }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to set folder config'
+        return { success: false, error: message }
+      }
+    })
+  )
+
+  // notes:get-folder-template - Get resolved folder template (with inheritance)
+  ipcMain.handle(
+    NotesChannels.invoke.GET_FOLDER_TEMPLATE,
+    createStringHandler(async (folderPath) => {
+      return getFolderTemplate(folderPath)
     })
   )
 }
