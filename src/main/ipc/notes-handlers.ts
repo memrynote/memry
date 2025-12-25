@@ -36,8 +36,13 @@ import {
   deleteFolder,
   noteExists,
   openExternal,
-  revealInFinder
+  revealInFinder,
+  // Version history (T114)
+  getVersionHistory,
+  getVersion,
+  restoreVersion
 } from '../vault/notes'
+import { deleteNoteSnapshot } from '@shared/db/queries/notes'
 import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
 import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault/folders'
 import { renderNoteAsHtml, sanitizeFilename } from '../lib/export-utils'
@@ -602,6 +607,55 @@ export function registerNotesHandlers(): void {
         return { success: true, path: result.filePath }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to export HTML'
+        return { success: false, error: message }
+      }
+    })
+  )
+
+  // =========================================================================
+  // T114: Version History IPC Handlers
+  // =========================================================================
+
+  // notes:get-versions - Get version history for a note
+  ipcMain.handle(
+    NotesChannels.invoke.GET_VERSIONS,
+    createStringHandler(async (noteId) => {
+      return getVersionHistory(noteId)
+    })
+  )
+
+  // notes:get-version - Get a specific version with content
+  ipcMain.handle(
+    NotesChannels.invoke.GET_VERSION,
+    createStringHandler(async (snapshotId) => {
+      return getVersion(snapshotId)
+    })
+  )
+
+  // notes:restore-version - Restore note from a previous version
+  ipcMain.handle(
+    NotesChannels.invoke.RESTORE_VERSION,
+    createStringHandler(async (snapshotId) => {
+      try {
+        const note = await restoreVersion(snapshotId)
+        return { success: true, note }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to restore version'
+        return { success: false, note: null, error: message }
+      }
+    })
+  )
+
+  // notes:delete-version - Delete a specific version
+  ipcMain.handle(
+    NotesChannels.invoke.DELETE_VERSION,
+    createStringHandler(async (snapshotId) => {
+      try {
+        const db = getIndexDatabase()
+        deleteNoteSnapshot(db, snapshotId)
+        return { success: true }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to delete version'
         return { success: false, error: message }
       }
     })

@@ -575,13 +575,13 @@ inherit: true # Inherit from parent folder (default: true)
 
 ### Implementation for User Story 16
 
-- [ ] T110 [P] [US16] Create note_snapshots table in src/shared/db/schema/notes-cache.ts
-- [ ] T111 [US16] Save snapshots on significant edits in src/main/vault/notes.ts
-- [ ] T112 [US16] Create VersionHistory panel in src/renderer/src/components/note/version-history.tsx
-- [ ] T113 [US16] Add version preview and restore functionality in src/renderer/src/components/note/version-history.tsx
-- [ ] T114 [US16] Add version history IPC handlers in src/main/ipc/notes-handlers.ts
+- [x] T110 [P] [US16] Create note_snapshots table in src/shared/db/schema/notes-cache.ts
+- [x] T111 [US16] Save snapshots on significant edits in src/main/vault/notes.ts
+- [x] T112 [US16] Create VersionHistory panel in src/renderer/src/components/note/version-history.tsx
+- [x] T113 [US16] Add version preview and restore functionality in src/renderer/src/components/note/version-history.tsx
+- [x] T114 [US16] Add version history IPC handlers in src/main/ipc/notes-handlers.ts
 
-**Checkpoint**: User Story 16 complete - version history with restore capability
+**Checkpoint**: User Story 16 complete - version history with restore capability ✅ PHASE 18 COMPLETE
 
 ---
 

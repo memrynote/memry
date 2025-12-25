@@ -14,6 +14,7 @@ import {
   noteLinks,
   noteProperties,
   propertyDefinitions,
+  noteSnapshots,
   type NoteCache,
   type NewNoteCache,
   type NewNoteTag,
@@ -23,7 +24,10 @@ import {
   type NewNoteProperty,
   type PropertyDefinition,
   type NewPropertyDefinition,
-  type PropertyType
+  type PropertyType,
+  type NoteSnapshot,
+  type NewNoteSnapshot,
+  type SnapshotReason
 } from '../schema/notes-cache'
 import * as schema from '../schema'
 
@@ -84,11 +88,7 @@ export function getNoteCacheByPath(db: DrizzleDb, path: string): NoteCache | und
  * Check if a note exists in cache by ID.
  */
 export function noteCacheExists(db: DrizzleDb, id: string): boolean {
-  const result = db
-    .select({ id: noteCache.id })
-    .from(noteCache)
-    .where(eq(noteCache.id, id))
-    .get()
+  const result = db.select({ id: noteCache.id }).from(noteCache).where(eq(noteCache.id, id)).get()
   return result !== undefined
 }
 
@@ -123,18 +123,8 @@ export interface ListNotesOptions {
 /**
  * List notes from cache with filtering and sorting.
  */
-export function listNotesFromCache(
-  db: DrizzleDb,
-  options: ListNotesOptions = {}
-): NoteCache[] {
-  const {
-    folder,
-    tags,
-    sortBy = 'modified',
-    sortOrder = 'desc',
-    limit = 100,
-    offset = 0
-  } = options
+export function listNotesFromCache(db: DrizzleDb, options: ListNotesOptions = {}): NoteCache[] {
+  const { folder, tags, sortBy = 'modified', sortOrder = 'desc', limit = 100, offset = 0 } = options
 
   // Build conditions
   const conditions: SQL<unknown>[] = []
@@ -158,9 +148,7 @@ export function listNotesFromCache(
       .all()
 
     // Filter to notes that have ALL requested tags
-    noteIdsWithTags = tagResults
-      .filter((r) => r.tagCount === tags.length)
-      .map((r) => r.noteId)
+    noteIdsWithTags = tagResults.filter((r) => r.tagCount === tags.length).map((r) => r.noteId)
 
     if (noteIdsWithTags.length === 0) {
       return [] // No notes match all tags
@@ -310,10 +298,7 @@ const TAG_COLOR_PALETTE = [
  * If tag exists, returns existing definition.
  * If new, assigns next color from palette using round-robin.
  */
-export function getOrCreateTag(
-  db: DrizzleDb,
-  name: string
-): { name: string; color: string } {
+export function getOrCreateTag(db: DrizzleDb, name: string): { name: string; color: string } {
   const normalizedName = name.toLowerCase().trim()
 
   // Check if tag already exists
@@ -328,17 +313,12 @@ export function getOrCreateTag(
   }
 
   // Get count of existing tags for round-robin color assignment
-  const tagCount = db
-    .select({ count: count() })
-    .from(tagDefinitions)
-    .get()?.count ?? 0
+  const tagCount = db.select({ count: count() }).from(tagDefinitions).get()?.count ?? 0
 
   const color = TAG_COLOR_PALETTE[tagCount % TAG_COLOR_PALETTE.length]
 
   // Insert new tag definition
-  db.insert(tagDefinitions)
-    .values({ name: normalizedName, color })
-    .run()
+  db.insert(tagDefinitions).values({ name: normalizedName, color }).run()
 
   return { name: normalizedName, color }
 }
@@ -398,31 +378,17 @@ export function getAllTagsWithColors(
 /**
  * Update a tag's color.
  */
-export function updateTagColor(
-  db: DrizzleDb,
-  name: string,
-  color: string
-): void {
+export function updateTagColor(db: DrizzleDb, name: string, color: string): void {
   const normalizedName = name.toLowerCase().trim()
-  db.update(tagDefinitions)
-    .set({ color })
-    .where(eq(tagDefinitions.name, normalizedName))
-    .run()
+  db.update(tagDefinitions).set({ color }).where(eq(tagDefinitions.name, normalizedName)).run()
 }
 
 /**
  * Get a single tag definition by name.
  */
-export function getTagDefinition(
-  db: DrizzleDb,
-  name: string
-): TagDefinition | undefined {
+export function getTagDefinition(db: DrizzleDb, name: string): TagDefinition | undefined {
   const normalizedName = name.toLowerCase().trim()
-  return db
-    .select()
-    .from(tagDefinitions)
-    .where(eq(tagDefinitions.name, normalizedName))
-    .get()
+  return db.select().from(tagDefinitions).where(eq(tagDefinitions.name, normalizedName)).get()
 }
 
 /**
@@ -488,11 +454,7 @@ export function deleteLinksToNote(db: DrizzleDb, targetId: string): void {
  */
 export function resolveNoteByTitle(db: DrizzleDb, title: string): NoteCache | undefined {
   // First try exact title match
-  let result = db
-    .select()
-    .from(noteCache)
-    .where(eq(noteCache.title, title))
-    .get()
+  let result = db.select().from(noteCache).where(eq(noteCache.title, title)).get()
 
   if (result) {
     return result
@@ -520,12 +482,7 @@ export function updateLinkTargets(db: DrizzleDb, sourceId: string): void {
       if (target) {
         db.update(noteLinks)
           .set({ targetId: target.id })
-          .where(
-            and(
-              eq(noteLinks.sourceId, sourceId),
-              eq(noteLinks.targetTitle, link.targetTitle)
-            )
-          )
+          .where(and(eq(noteLinks.sourceId, sourceId), eq(noteLinks.targetTitle, link.targetTitle)))
           .run()
       }
     }
@@ -609,7 +566,6 @@ export function setNoteProperties(
   properties: Record<string, unknown>,
   getType: (name: string, value: unknown) => PropertyType
 ): void {
-
   // Delete existing properties for this note
   db.delete(noteProperties).where(eq(noteProperties.noteId, noteId)).run()
 
@@ -654,11 +610,7 @@ function serializeValue(value: unknown): string | null {
  * T010: Get properties for a note.
  */
 export function getNoteProperties(db: DrizzleDb, noteId: string): PropertyValue[] {
-  const results = db
-    .select()
-    .from(noteProperties)
-    .where(eq(noteProperties.noteId, noteId))
-    .all()
+  const results = db.select().from(noteProperties).where(eq(noteProperties.noteId, noteId)).all()
 
   return results.map((row) => ({
     name: row.name,
@@ -695,10 +647,7 @@ function deserializeValue(value: string | null, type: PropertyType): unknown {
 /**
  * Get properties for a note as a Record.
  */
-export function getNotePropertiesAsRecord(
-  db: DrizzleDb,
-  noteId: string
-): Record<string, unknown> {
+export function getNotePropertiesAsRecord(db: DrizzleDb, noteId: string): Record<string, unknown> {
   const properties = getNoteProperties(db, noteId)
   const result: Record<string, unknown> = {}
   for (const prop of properties) {
@@ -714,15 +663,8 @@ export function getNotePropertiesAsRecord(
 /**
  * Get a property definition by name.
  */
-export function getPropertyDefinition(
-  db: DrizzleDb,
-  name: string
-): PropertyDefinition | undefined {
-  return db
-    .select()
-    .from(propertyDefinitions)
-    .where(eq(propertyDefinitions.name, name))
-    .get()
+export function getPropertyDefinition(db: DrizzleDb, name: string): PropertyDefinition | undefined {
+  return db.select().from(propertyDefinitions).where(eq(propertyDefinitions.name, name)).get()
 }
 
 /**
@@ -822,12 +764,7 @@ export function filterNotesByProperty(
   const noteIds = db
     .select({ noteId: noteProperties.noteId })
     .from(noteProperties)
-    .where(
-      and(
-        eq(noteProperties.name, propertyName),
-        eq(noteProperties.value, propertyValue)
-      )
-    )
+    .where(and(eq(noteProperties.name, propertyName), eq(noteProperties.value, propertyValue)))
     .all()
     .map((r) => r.noteId)
 
@@ -837,3 +774,161 @@ export function filterNotesByProperty(
 
   return db.select().from(noteCache).where(inArray(noteCache.id, noteIds)).all()
 }
+
+// ============================================================================
+// Note Snapshot Operations (T110-T114: Version History)
+// ============================================================================
+
+/**
+ * Insert a new snapshot for a note.
+ */
+export function insertNoteSnapshot(db: DrizzleDb, snapshot: NewNoteSnapshot): NoteSnapshot {
+  return db.insert(noteSnapshots).values(snapshot).returning().get()
+}
+
+/**
+ * Get all snapshots for a note, ordered by creation date descending.
+ */
+export function getNoteSnapshots(db: DrizzleDb, noteId: string, limit = 50): NoteSnapshot[] {
+  return db
+    .select()
+    .from(noteSnapshots)
+    .where(eq(noteSnapshots.noteId, noteId))
+    .orderBy(desc(noteSnapshots.createdAt))
+    .limit(limit)
+    .all()
+}
+
+/**
+ * Get a single snapshot by ID.
+ */
+export function getNoteSnapshotById(db: DrizzleDb, snapshotId: string): NoteSnapshot | undefined {
+  return db.select().from(noteSnapshots).where(eq(noteSnapshots.id, snapshotId)).get()
+}
+
+/**
+ * Get the most recent snapshot for a note.
+ */
+export function getLatestSnapshot(db: DrizzleDb, noteId: string): NoteSnapshot | undefined {
+  return db
+    .select()
+    .from(noteSnapshots)
+    .where(eq(noteSnapshots.noteId, noteId))
+    .orderBy(desc(noteSnapshots.createdAt))
+    .limit(1)
+    .get()
+}
+
+/**
+ * Check if a snapshot with this content hash already exists for this note.
+ * Used for deduplication - no point saving identical versions.
+ */
+export function snapshotExistsWithHash(
+  db: DrizzleDb,
+  noteId: string,
+  contentHash: string
+): boolean {
+  const result = db
+    .select({ id: noteSnapshots.id })
+    .from(noteSnapshots)
+    .where(and(eq(noteSnapshots.noteId, noteId), eq(noteSnapshots.contentHash, contentHash)))
+    .limit(1)
+    .get()
+  return result !== undefined
+}
+
+/**
+ * Delete a snapshot by ID.
+ */
+export function deleteNoteSnapshot(db: DrizzleDb, snapshotId: string): void {
+  db.delete(noteSnapshots).where(eq(noteSnapshots.id, snapshotId)).run()
+}
+
+/**
+ * Delete all snapshots for a note.
+ */
+export function deleteNoteSnapshots(db: DrizzleDb, noteId: string): void {
+  db.delete(noteSnapshots).where(eq(noteSnapshots.noteId, noteId)).run()
+}
+
+/**
+ * Count snapshots for a note.
+ */
+export function countNoteSnapshots(db: DrizzleDb, noteId: string): number {
+  const result = db
+    .select({ count: count() })
+    .from(noteSnapshots)
+    .where(eq(noteSnapshots.noteId, noteId))
+    .get()
+  return result?.count ?? 0
+}
+
+/**
+ * Prune old snapshots for a note, keeping only the most recent N.
+ * This helps manage storage for frequently edited notes.
+ */
+export function pruneOldSnapshots(db: DrizzleDb, noteId: string, keepCount: number): number {
+  // Get IDs of snapshots to keep
+  const snapshotsToKeep = db
+    .select({ id: noteSnapshots.id })
+    .from(noteSnapshots)
+    .where(eq(noteSnapshots.noteId, noteId))
+    .orderBy(desc(noteSnapshots.createdAt))
+    .limit(keepCount)
+    .all()
+    .map((s) => s.id)
+
+  if (snapshotsToKeep.length === 0) {
+    return 0
+  }
+
+  // Delete all other snapshots for this note
+  const allSnapshots = db
+    .select({ id: noteSnapshots.id })
+    .from(noteSnapshots)
+    .where(eq(noteSnapshots.noteId, noteId))
+    .all()
+
+  const toDelete = allSnapshots.filter((s) => !snapshotsToKeep.includes(s.id))
+
+  if (toDelete.length > 0) {
+    db.delete(noteSnapshots)
+      .where(
+        inArray(
+          noteSnapshots.id,
+          toDelete.map((s) => s.id)
+        )
+      )
+      .run()
+  }
+
+  return toDelete.length
+}
+
+/**
+ * Get snapshot statistics for a note.
+ */
+export function getNoteSnapshotStats(
+  db: DrizzleDb,
+  noteId: string
+): { count: number; oldestDate: string | null; newestDate: string | null } {
+  const snapshots = db
+    .select({ createdAt: noteSnapshots.createdAt })
+    .from(noteSnapshots)
+    .where(eq(noteSnapshots.noteId, noteId))
+    .orderBy(asc(noteSnapshots.createdAt))
+    .all()
+
+  if (snapshots.length === 0) {
+    return { count: 0, oldestDate: null, newestDate: null }
+  }
+
+  return {
+    count: snapshots.length,
+    oldestDate: snapshots[0].createdAt,
+    newestDate: snapshots[snapshots.length - 1].createdAt
+  }
+}
+
+// Re-export types for external use
+export type { NoteSnapshot, NewNoteSnapshot, SnapshotReason }
