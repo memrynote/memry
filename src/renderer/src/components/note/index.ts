@@ -10,3 +10,6 @@ export type { ContentAreaProps, HeadingInfo, SelectionInfo, Block } from './cont
 // Related Notes
 export { RelatedNotesTab } from './related-notes'
 export type { RelatedNote, ReferencedNote, RelatedNotesTabProps } from './related-notes'
+
+// Re-export shared outline panel for convenience
+export { OutlineInfoPanel, type DocumentStats } from '@/components/shared'

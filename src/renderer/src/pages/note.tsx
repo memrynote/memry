@@ -168,6 +168,17 @@ export function NotePage({ noteId }: NotePageProps) {
     }))
   }, [backendProperties, mapPropertyType])
 
+  // Compute document stats for the Info tab in OutlineInfoPanel
+  const documentStats = useMemo(() => {
+    if (!note) return undefined
+    return {
+      wordCount: note.wordCount ?? 0,
+      characterCount: note.content?.length ?? 0,
+      createdAt: note.created ?? null,
+      modifiedAt: note.modified ?? null
+    }
+  }, [note])
+
   // ============================================================================
   // Load Note
   // ============================================================================
@@ -648,7 +659,7 @@ export function NotePage({ noteId }: NotePageProps) {
   }
 
   return (
-    <NoteLayout headings={headings} onHeadingClick={handleHeadingClick}>
+    <NoteLayout headings={headings} onHeadingClick={handleHeadingClick} stats={documentStats}>
       {/* Note content wrapper with relative positioning for action bar */}
       <div className="relative">
         {/* Action bar - positioned at top-right of content area */}

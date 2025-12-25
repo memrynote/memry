@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { OutlineEdge } from './outline-edge'
+import { OutlineInfoPanel, type DocumentStats } from '@/components/shared'
 import { RightSidebar } from './right-sidebar'
 import { useActiveHeading } from '@/hooks/use-active-heading'
 
@@ -18,6 +18,8 @@ interface NoteLayoutProps {
   className?: string
   sidebarOpen?: boolean
   onSidebarToggle?: (isOpen: boolean) => void
+  /** Document statistics for the Info tab */
+  stats?: DocumentStats
 }
 
 export function NoteLayout({
@@ -26,7 +28,8 @@ export function NoteLayout({
   onHeadingClick,
   className,
   sidebarOpen: controlledSidebarOpen,
-  onSidebarToggle
+  onSidebarToggle,
+  stats
 }: NoteLayoutProps) {
   // Controlled vs uncontrolled sidebar state
   const [internalSidebarOpen, setInternalSidebarOpen] = useState(false)
@@ -64,20 +67,17 @@ export function NoteLayout({
       {/* Main content area with floating outline edge */}
       <div className="flex-1 relative">
         {/* Main content zone */}
-        <div
-          className="h-full overflow-y-auto overflow-x-hidden"
-        >
+        <div className="h-full overflow-y-auto overflow-x-hidden">
           {/* Centered content wrapper */}
-          <div className="mx-auto w-full max-w-5xl px-6 md:px-12 lg:px-16 py-8">
-            {children}
-          </div>
+          <div className="mx-auto w-full max-w-5xl px-6 md:px-12 lg:px-16 py-8">{children}</div>
         </div>
 
-        {/* Floating outline edge - positioned at right of viewport */}
-        <OutlineEdge
+        {/* Floating outline panel with Info tab - positioned at right of viewport */}
+        <OutlineInfoPanel
           headings={headings}
           onHeadingClick={onHeadingClick}
           activeHeadingId={activeHeadingId ?? undefined}
+          stats={stats}
         />
       </div>
 

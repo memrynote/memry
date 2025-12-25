@@ -114,15 +114,18 @@ Electron application structure per plan.md:
 
 **Goal**: Display real-time word and character counts while writing
 
-**Independent Test**: Type content, verify counts update in real-time
+**Independent Test**: Type content, verify counts update in real-time; hover outline indicator, see headings and info tabs
 
 ### Implementation for User Story 4
 
-- [ ] T030 [US4] Create WordCountDisplay component in src/renderer/src/components/journal/word-count.tsx (show word count and character count)
-- [ ] T031 [US4] Compute counts from BlockNote content in src/renderer/src/pages/journal.tsx (extract text, count words/chars)
-- [ ] T032 [US4] Add WordCountDisplay to JournalPage footer in src/renderer/src/pages/journal.tsx (subtle position per spec)
+- [x] T030 [US4] Create OutlineInfoPanel component in src/renderer/src/components/shared/outline-info-panel.tsx (tabbed interface with Outline and Info tabs, shows headings list and document stats on hover)
+- [x] T031 [US4] Create DocumentInfoTab component in src/renderer/src/components/shared/document-info-tab.tsx (displays word count, character count, reading time, created/modified dates)
+- [x] T032 [US4] Update NoteLayout to use OutlineInfoPanel with stats prop in src/renderer/src/components/note/note-layout.tsx
+- [x] T033 [US4] Update Note page to compute and pass document stats in src/renderer/src/pages/note.tsx
+- [x] T034 [US4] Add heading extraction to Journal page via onHeadingsChange callback in src/renderer/src/pages/journal.tsx
+- [x] T035 [US4] Add OutlineInfoPanel to Journal page with focus mode hiding in src/renderer/src/pages/journal.tsx
 
-**Checkpoint**: User Story 4 complete - real-time writing statistics displayed
+**Checkpoint**: User Story 4 complete - real-time writing statistics displayed in Info tab, document outline in Outline tab
 
 ---
 
@@ -134,9 +137,9 @@ Electron application structure per plan.md:
 
 ### Implementation for User Story 5
 
-- [ ] T033 [US5] Verify focus mode keyboard shortcut in src/renderer/src/pages/journal.tsx (Cmd+\ toggle already implemented, verify working)
-- [ ] T034 [US5] Verify focus mode localStorage persistence in src/renderer/src/pages/journal.tsx (memry_journal_focus_mode key already implemented)
-- [ ] T035 [US5] Add accessibility attributes for focus mode toggle button in src/renderer/src/pages/journal.tsx (aria-pressed, aria-label)
+- [ ] T036 [US5] Verify focus mode keyboard shortcut in src/renderer/src/pages/journal.tsx (Cmd+\ toggle already implemented, verify working)
+- [ ] T037 [US5] Verify focus mode localStorage persistence in src/renderer/src/pages/journal.tsx (memry_journal_focus_mode key already implemented)
+- [ ] T038 [US5] Add accessibility attributes for focus mode toggle button in src/renderer/src/pages/journal.tsx (aria-pressed, aria-label)
 
 **Checkpoint**: User Story 5 complete - focus mode toggles correctly with keyboard, persists across sessions
 
@@ -150,11 +153,11 @@ Electron application structure per plan.md:
 
 ### Implementation for User Story 6
 
-- [ ] T036 [US6] Implement getDayContext IPC handler in src/main/ipc/journal-handlers.ts (query tasks for date from data.db, compute overdue count)
-- [ ] T037 [US6] Create useDayContext hook in src/renderer/src/hooks/use-journal.ts (load tasks/events for selected date)
-- [ ] T038 [US6] Wire DayContextSidebar to real task data in src/renderer/src/pages/journal.tsx (replace DUMMY_TASKS/DUMMY_EVENTS)
-- [ ] T039 [US6] Implement task completion toggle in sidebar in src/renderer/src/components/journal/day-context-sidebar.tsx (call tasks:update IPC handler)
-- [ ] T040 [US6] Add empty state for dates with no tasks in src/renderer/src/components/journal/day-context-sidebar.tsx (show appropriate message)
+- [ ] T039 [US6] Implement getDayContext IPC handler in src/main/ipc/journal-handlers.ts (query tasks for date from data.db, compute overdue count)
+- [ ] T040 [US6] Create useDayContext hook in src/renderer/src/hooks/use-journal.ts (load tasks/events for selected date)
+- [ ] T041 [US6] Wire DayContextSidebar to real task data in src/renderer/src/pages/journal.tsx (replace DUMMY_TASKS/DUMMY_EVENTS)
+- [ ] T042 [US6] Implement task completion toggle in sidebar in src/renderer/src/components/journal/day-context-sidebar.tsx (call tasks:update IPC handler)
+- [ ] T043 [US6] Add empty state for dates with no tasks in src/renderer/src/components/journal/day-context-sidebar.tsx (show appropriate message)
 
 **Checkpoint**: User Story 6 complete - sidebar shows real tasks, completion syncs with task system
 
@@ -168,12 +171,12 @@ Electron application structure per plan.md:
 
 ### Implementation for User Story 7
 
-- [ ] T041 [US7] Implement getMonthEntries IPC handler in src/main/ipc/journal-handlers.ts (return entries with preview, word count, tags)
-- [ ] T042 [US7] Implement getYearStats IPC handler in src/main/ipc/journal-handlers.ts (return monthly summaries)
-- [ ] T043 [US7] Create useMonthEntries hook in src/renderer/src/hooks/use-journal.ts (load entries for month view)
-- [ ] T044 [US7] Create useYearStats hook in src/renderer/src/hooks/use-journal.ts (load stats for year view)
-- [ ] T045 [US7] Wire JournalMonthView to real data in src/renderer/src/pages/journal.tsx (replace monthEntries dummy data)
-- [ ] T046 [US7] Wire JournalYearView to real data in src/renderer/src/pages/journal.tsx (replace monthStats dummy data)
+- [ ] T044 [US7] Implement getMonthEntries IPC handler in src/main/ipc/journal-handlers.ts (return entries with preview, word count, tags)
+- [ ] T045 [US7] Implement getYearStats IPC handler in src/main/ipc/journal-handlers.ts (return monthly summaries)
+- [ ] T046 [US7] Create useMonthEntries hook in src/renderer/src/hooks/use-journal.ts (load entries for month view)
+- [ ] T047 [US7] Create useYearStats hook in src/renderer/src/hooks/use-journal.ts (load stats for year view)
+- [ ] T048 [US7] Wire JournalMonthView to real data in src/renderer/src/pages/journal.tsx (replace monthEntries dummy data)
+- [ ] T049 [US7] Wire JournalYearView to real data in src/renderer/src/pages/journal.tsx (replace monthStats dummy data)
 
 **Checkpoint**: User Story 7 complete - month and year views display real journal history
 
@@ -187,11 +190,11 @@ Electron application structure per plan.md:
 
 ### Implementation for User Story 8
 
-- [ ] T047 [US8] Create mock AI connections service in src/renderer/src/services/ai-connections-service.ts (returns mock connections after 2s delay)
-- [ ] T048 [US8] Create useAIConnections hook in src/renderer/src/hooks/use-journal.ts (trigger search 2s after typing pause)
-- [ ] T049 [US8] Wire AIConnectionsPanel to useAIConnections hook in src/renderer/src/pages/journal.tsx (replace DUMMY_AI_CONNECTIONS)
-- [ ] T050 [US8] Implement connection click navigation in src/renderer/src/pages/journal.tsx (open related content)
-- [ ] T051 [US8] Add loading and empty states to AIConnectionsPanel in src/renderer/src/components/journal/ai-connections-panel.tsx (show spinner while loading)
+- [ ] T050 [US8] Create mock AI connections service in src/renderer/src/services/ai-connections-service.ts (returns mock connections after 2s delay)
+- [ ] T051 [US8] Create useAIConnections hook in src/renderer/src/hooks/use-journal.ts (trigger search 2s after typing pause)
+- [ ] T052 [US8] Wire AIConnectionsPanel to useAIConnections hook in src/renderer/src/pages/journal.tsx (replace DUMMY_AI_CONNECTIONS)
+- [ ] T053 [US8] Implement connection click navigation in src/renderer/src/pages/journal.tsx (open related content)
+- [ ] T054 [US8] Add loading and empty states to AIConnectionsPanel in src/renderer/src/components/journal/ai-connections-panel.tsx (show spinner while loading)
 
 **Checkpoint**: User Story 8 complete - AI connections panel functional with mock data, ready for real AI integration
 
@@ -205,11 +208,11 @@ Electron application structure per plan.md:
 
 ### Implementation for User Story 9
 
-- [ ] T052 [US9] Define template types in src/shared/contracts/journal-api.ts (JournalTemplate schema with id, name, content)
-- [ ] T053 [US9] Create default templates in src/renderer/src/data/journal-templates.ts (morning pages, reflection, gratitude)
-- [ ] T054 [US9] Create TemplateSelector component in src/renderer/src/components/journal/template-selector.tsx (dropdown/modal to pick template)
-- [ ] T055 [US9] Add template selection to empty entry state in src/renderer/src/pages/journal.tsx (show template options when entry is empty)
-- [ ] T056 [US9] Apply selected template content to editor in src/renderer/src/pages/journal.tsx (populate BlockNote with template)
+- [ ] T055 [US9] Define template types in src/shared/contracts/journal-api.ts (JournalTemplate schema with id, name, content)
+- [ ] T056 [US9] Create default templates in src/renderer/src/data/journal-templates.ts (morning pages, reflection, gratitude)
+- [ ] T057 [US9] Create TemplateSelector component in src/renderer/src/components/journal/template-selector.tsx (dropdown/modal to pick template)
+- [ ] T058 [US9] Add template selection to empty entry state in src/renderer/src/pages/journal.tsx (show template options when entry is empty)
+- [ ] T059 [US9] Apply selected template content to editor in src/renderer/src/pages/journal.tsx (populate BlockNote with template)
 
 **Checkpoint**: User Story 9 complete - users can start entries with predefined templates
 
@@ -223,11 +226,11 @@ Electron application structure per plan.md:
 
 ### Implementation for User Story 10
 
-- [ ] T057 [US10] Add getStreak query to src/shared/db/queries/journal.ts (compute current streak and longest streak from journalCache)
-- [ ] T058 [US10] Implement getStreak IPC handler in src/main/ipc/journal-handlers.ts (return current/longest streak)
-- [ ] T059 [US10] Create useJournalStreak hook in src/renderer/src/hooks/use-journal.ts (load streak data)
-- [ ] T060 [US10] Create StreakDisplay component in src/renderer/src/components/journal/streak-display.tsx (show current streak flame icon and count)
-- [ ] T061 [US10] Add StreakDisplay to JournalPage sidebar in src/renderer/src/pages/journal.tsx (display near calendar)
+- [ ] T060 [US10] Add getStreak query to src/shared/db/queries/journal.ts (compute current streak and longest streak from journalCache)
+- [ ] T061 [US10] Implement getStreak IPC handler in src/main/ipc/journal-handlers.ts (return current/longest streak)
+- [ ] T062 [US10] Create useJournalStreak hook in src/renderer/src/hooks/use-journal.ts (load streak data)
+- [ ] T063 [US10] Create StreakDisplay component in src/renderer/src/components/journal/streak-display.tsx (show current streak flame icon and count)
+- [ ] T064 [US10] Add StreakDisplay to JournalPage sidebar in src/renderer/src/pages/journal.tsx (display near calendar)
 
 **Checkpoint**: User Story 10 complete - streak information motivates consistent journaling
 
@@ -241,12 +244,12 @@ Electron application structure per plan.md:
 
 ### Implementation for User Story 11
 
-- [ ] T062 [US11] Add FTS5 triggers for journal entries in src/main/database/fts.ts (sync journal content to fts_notes table)
-- [ ] T063 [US11] Implement searchEntries IPC handler in src/main/ipc/journal-handlers.ts (FTS5 query with snippet extraction)
-- [ ] T064 [US11] Create useJournalSearch hook in src/renderer/src/hooks/use-journal.ts (debounced search with results)
-- [ ] T065 [US11] Create JournalSearchInput component in src/renderer/src/components/journal/journal-search.tsx (search input with results dropdown)
-- [ ] T066 [US11] Add JournalSearchInput to JournalPage in src/renderer/src/pages/journal.tsx (search trigger in header or sidebar)
-- [ ] T067 [US11] Implement search result click navigation in src/renderer/src/components/journal/journal-search.tsx (navigate to matching entry date)
+- [ ] T065 [US11] Add FTS5 triggers for journal entries in src/main/database/fts.ts (sync journal content to fts_notes table)
+- [ ] T066 [US11] Implement searchEntries IPC handler in src/main/ipc/journal-handlers.ts (FTS5 query with snippet extraction)
+- [ ] T067 [US11] Create useJournalSearch hook in src/renderer/src/hooks/use-journal.ts (debounced search with results)
+- [ ] T068 [US11] Create JournalSearchInput component in src/renderer/src/components/journal/journal-search.tsx (search input with results dropdown)
+- [ ] T069 [US11] Add JournalSearchInput to JournalPage in src/renderer/src/pages/journal.tsx (search trigger in header or sidebar)
+- [ ] T070 [US11] Implement search result click navigation in src/renderer/src/components/journal/journal-search.tsx (navigate to matching entry date)
 
 **Checkpoint**: User Story 11 complete - users can search and find past journal entries
 
@@ -256,15 +259,15 @@ Electron application structure per plan.md:
 
 **Purpose**: Improvements that affect multiple user stories, edge cases, performance
 
-- [ ] T068 [P] Add external file change detection to journal entries in src/main/vault/watcher.ts (emit journal:externalChange event)
-- [ ] T069 [P] Handle external change notification in JournalPage in src/renderer/src/pages/journal.tsx (offer to reload content)
-- [ ] T070 [P] Add error boundary for journal components in src/renderer/src/pages/journal.tsx (graceful error display)
-- [ ] T071 [P] Handle disk full error during auto-save in src/renderer/src/hooks/use-journal.ts (show error toast, retain content in memory)
-- [ ] T072 [P] Add debounced navigation to prevent race conditions in src/renderer/src/pages/journal.tsx (cancel pending saves on rapid date changes)
-- [ ] T073 [P] Add accessibility labels to calendar and sidebar components in src/renderer/src/components/journal/ (ARIA attributes per spec)
-- [ ] T074 [P] Optimize heatmap query for years of data in src/shared/db/queries/journal.ts (ensure <50ms for 365 days per SC-002)
-- [ ] T075 Add journal cache rebuild on vault open in src/main/vault/indexer.ts (scan journal/\*.md, populate journalCache)
-- [ ] T076 Run quickstart.md validation - verify all setup steps work end-to-end
+- [ ] T071 [P] Add external file change detection to journal entries in src/main/vault/watcher.ts (emit journal:externalChange event)
+- [ ] T072 [P] Handle external change notification in JournalPage in src/renderer/src/pages/journal.tsx (offer to reload content)
+- [ ] T073 [P] Add error boundary for journal components in src/renderer/src/pages/journal.tsx (graceful error display)
+- [ ] T074 [P] Handle disk full error during auto-save in src/renderer/src/hooks/use-journal.ts (show error toast, retain content in memory)
+- [ ] T075 [P] Add debounced navigation to prevent race conditions in src/renderer/src/pages/journal.tsx (cancel pending saves on rapid date changes)
+- [ ] T076 [P] Add accessibility labels to calendar and sidebar components in src/renderer/src/components/journal/ (ARIA attributes per spec)
+- [ ] T077 [P] Optimize heatmap query for years of data in src/shared/db/queries/journal.ts (ensure <50ms for 365 days per SC-002)
+- [ ] T078 Add journal cache rebuild on vault open in src/main/vault/indexer.ts (scan journal/\*.md, populate journalCache)
+- [ ] T079 Run quickstart.md validation - verify all setup steps work end-to-end
 
 ---
 
