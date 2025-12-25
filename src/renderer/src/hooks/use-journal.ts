@@ -1,11 +1,13 @@
 /**
  * Journal Hooks
  * React hooks for journal operations in the renderer process.
+ * Uses TanStack Query for caching and data fetching.
  *
  * @module hooks/use-journal
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { JournalEntry, HeatmapEntry } from '../../../preload/index.d'
 import {
   journalService,
@@ -14,6 +16,19 @@ import {
   onJournalExternalChange,
   onJournalEntryCreated
 } from '@/services/journal-service'
+import { addDays, formatDateToISO, parseISODate } from '@/lib/journal-utils'
+
+// =============================================================================
+// Query Keys
+// =============================================================================
+
+export const journalKeys = {
+  all: ['journal'] as const,
+  entries: () => [...journalKeys.all, 'entries'] as const,
+  entry: (date: string) => [...journalKeys.entries(), date] as const,
+  heatmaps: () => [...journalKeys.all, 'heatmaps'] as const,
+  heatmap: (year: number) => [...journalKeys.heatmaps(), year] as const
+}
 
 // =============================================================================
 // Types
@@ -24,6 +39,8 @@ export interface UseJournalEntryResult {
   entry: JournalEntry | null
   /** Loading state */
   isLoading: boolean
+  /** The date that the current entry/null state was loaded for (null if not yet loaded) */
+  loadedForDate: string | null
   /** Error message if loading failed */
   error: string | null
   /** Whether the entry is being saved */
@@ -49,21 +66,27 @@ export interface UseJournalEntryResult {
 /** Debounce delay for auto-save (1 second as per spec FR-004) */
 const AUTO_SAVE_DELAY_MS = 1000
 
+/** Stale time for journal entries (30 seconds) */
+const ENTRY_STALE_TIME = 30 * 1000
+
+/** Number of adjacent dates to prefetch */
+const PREFETCH_DAYS = 1
+
 // =============================================================================
 // useJournalEntry Hook
 // =============================================================================
 
 /**
  * Hook for loading and managing a journal entry.
+ * Uses TanStack Query for caching - revisiting a date within staleTime is instant.
  *
  * @param date - Date in YYYY-MM-DD format
  * @returns Journal entry state and operations
  */
 export function useJournalEntry(date: string): UseJournalEntryResult {
-  // State
-  const [entry, setEntry] = useState<JournalEntry | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+
+  // Local state for mutations
   const [isSaving, setIsSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
 
@@ -72,48 +95,92 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   const pendingTagsRef = useRef<string[] | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentDateRef = useRef(date)
+  const isDirtyRef = useRef(isDirty)
+  // Track if we're currently saving to ignore our own update events
+  const isSavingRef = useRef(false)
+
+  // Keep refs in sync
+  useEffect(() => {
+    isDirtyRef.current = isDirty
+  }, [isDirty])
 
   // Update current date ref when date changes
   useEffect(() => {
     currentDateRef.current = date
-  }, [date])
-
-  // Load entry when date changes
-  const loadEntry = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    setIsDirty(false)
+    // Clear pending changes when date changes
     pendingContentRef.current = null
     pendingTagsRef.current = null
-
-    // Clear any pending save
+    setIsDirty(false)
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current)
       saveTimerRef.current = null
     }
-
-    try {
-      const loadedEntry = await journalService.getEntry(date)
-      // Only update if this is still the current date
-      if (currentDateRef.current === date) {
-        setEntry(loadedEntry)
-      }
-    } catch (err) {
-      if (currentDateRef.current === date) {
-        setError(err instanceof Error ? err.message : 'Failed to load journal entry')
-        setEntry(null)
-      }
-    } finally {
-      if (currentDateRef.current === date) {
-        setIsLoading(false)
-      }
-    }
   }, [date])
 
-  // Load entry on mount and when date changes
+  // Main query for fetching journal entry
+  const {
+    data: entry = null,
+    isLoading,
+    error: queryError,
+    refetch
+  } = useQuery({
+    queryKey: journalKeys.entry(date),
+    queryFn: () => journalService.getEntry(date),
+    staleTime: ENTRY_STALE_TIME,
+    // Keep in cache for 5 minutes after unmount
+    gcTime: 5 * 60 * 1000
+  })
+
+  // Prefetch adjacent dates for smooth navigation
   useEffect(() => {
-    loadEntry()
-  }, [loadEntry])
+    const dateObj = parseISODate(date)
+
+    for (let i = 1; i <= PREFETCH_DAYS; i++) {
+      // Prefetch previous day
+      const prevDate = formatDateToISO(addDays(dateObj, -i))
+      queryClient.prefetchQuery({
+        queryKey: journalKeys.entry(prevDate),
+        queryFn: () => journalService.getEntry(prevDate),
+        staleTime: ENTRY_STALE_TIME
+      })
+
+      // Prefetch next day
+      const nextDate = formatDateToISO(addDays(dateObj, i))
+      queryClient.prefetchQuery({
+        queryKey: journalKeys.entry(nextDate),
+        queryFn: () => journalService.getEntry(nextDate),
+        staleTime: ENTRY_STALE_TIME
+      })
+    }
+  }, [date, queryClient])
+
+  // Mutation for updating entry
+  const updateMutation = useMutation({
+    mutationFn: async (input: { date: string; content?: string; tags?: string[] }) => {
+      return journalService.updateEntry(input)
+    },
+    onSuccess: (updatedEntry) => {
+      // Update the cache with the new entry
+      queryClient.setQueryData(journalKeys.entry(updatedEntry.date), updatedEntry)
+      // Invalidate heatmap for the year
+      const year = parseInt(updatedEntry.date.slice(0, 4), 10)
+      queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
+    }
+  })
+
+  // Mutation for deleting entry
+  const deleteMutation = useMutation({
+    mutationFn: async (dateToDelete: string) => {
+      return journalService.deleteEntry(dateToDelete)
+    },
+    onSuccess: (_, dateToDelete) => {
+      // Remove from cache
+      queryClient.setQueryData(journalKeys.entry(dateToDelete), null)
+      // Invalidate heatmap for the year
+      const year = parseInt(dateToDelete.slice(0, 4), 10)
+      queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
+    }
+  })
 
   // Internal save function
   const performSave = useCallback(async () => {
@@ -126,6 +193,12 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       return
     }
 
+    // Prevent re-entry
+    if (isSavingRef.current) {
+      return
+    }
+
+    isSavingRef.current = true
     setIsSaving(true)
 
     try {
@@ -140,11 +213,10 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         updateInput.tags = tags
       }
 
-      const updatedEntry = await journalService.updateEntry(updateInput)
+      await updateMutation.mutateAsync(updateInput)
 
       // Only update state if we're still on the same date
       if (currentDateRef.current === currentDate) {
-        setEntry(updatedEntry)
         setIsDirty(false)
         pendingContentRef.current = null
         pendingTagsRef.current = null
@@ -152,15 +224,13 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     } catch (err) {
       // Keep the dirty state so user knows there's unsaved content
       console.error('Failed to save journal entry:', err)
-      if (currentDateRef.current === currentDate) {
-        setError(err instanceof Error ? err.message : 'Failed to save')
-      }
     } finally {
+      isSavingRef.current = false
       if (currentDateRef.current === currentDate) {
         setIsSaving(false)
       }
     }
-  }, [])
+  }, [updateMutation])
 
   // Debounced save
   const scheduleSave = useCallback(() => {
@@ -209,18 +279,17 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   // Reload entry
   const reload = useCallback(async () => {
     // Save pending changes first
-    if (isDirty) {
+    if (isDirtyRef.current) {
       await saveNow()
     }
-    await loadEntry()
-  }, [isDirty, saveNow, loadEntry])
+    await refetch()
+  }, [saveNow, refetch])
 
   // Delete entry
   const deleteEntry = useCallback(async (): Promise<boolean> => {
     try {
-      const result = await journalService.deleteEntry(date)
+      const result = await deleteMutation.mutateAsync(date)
       if (result.success) {
-        setEntry(null)
         setIsDirty(false)
         pendingContentRef.current = null
         pendingTagsRef.current = null
@@ -230,39 +299,37 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       console.error('Failed to delete journal entry:', err)
       return false
     }
-  }, [date])
+  }, [date, deleteMutation])
 
-  // Cleanup on unmount or date change - save pending changes
+  // Cleanup on unmount - save pending changes
   useEffect(() => {
     return () => {
       // Clear timer
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current)
-      }
-
-      // Save pending changes synchronously (best effort)
-      if (pendingContentRef.current !== null || pendingTagsRef.current !== null) {
-        // Note: This won't actually wait for the save to complete,
-        // but it will trigger the save request
-        performSave()
+        saveTimerRef.current = null
       }
     }
-  }, [date, performSave])
+  }, [])
 
-  // Subscribe to external updates
+  // Subscribe to external updates - use refs to avoid re-subscribing on state changes
   useEffect(() => {
     const unsubscribeUpdated = onJournalEntryUpdated((event) => {
-      if (event.date === date && currentDateRef.current === date) {
-        // Only update if we don't have pending changes
-        if (!isDirty) {
-          setEntry(event.entry as JournalEntry)
+      // Ignore updates from our own saves
+      if (isSavingRef.current) {
+        return
+      }
+      if (event.date === currentDateRef.current) {
+        // Only update cache if we don't have pending changes
+        if (!isDirtyRef.current) {
+          queryClient.setQueryData(journalKeys.entry(event.date), event.entry as JournalEntry)
         }
       }
     })
 
     const unsubscribeDeleted = onJournalEntryDeleted((event) => {
-      if (event.date === date && currentDateRef.current === date) {
-        setEntry(null)
+      if (event.date === currentDateRef.current) {
+        queryClient.setQueryData(journalKeys.entry(event.date), null)
         setIsDirty(false)
         pendingContentRef.current = null
         pendingTagsRef.current = null
@@ -270,13 +337,13 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     })
 
     const unsubscribeExternal = onJournalExternalChange((event) => {
-      if (event.date === date && currentDateRef.current === date) {
+      if (event.date === currentDateRef.current) {
         if (event.type === 'deleted') {
-          setEntry(null)
+          queryClient.setQueryData(journalKeys.entry(event.date), null)
           setIsDirty(false)
-        } else if (event.type === 'modified' && !isDirty) {
-          // Reload if externally modified and we don't have pending changes
-          loadEntry()
+        } else if (event.type === 'modified' && !isDirtyRef.current) {
+          // Invalidate to trigger refetch
+          queryClient.invalidateQueries({ queryKey: journalKeys.entry(event.date) })
         }
       }
     })
@@ -286,12 +353,16 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       unsubscribeDeleted()
       unsubscribeExternal()
     }
-  }, [date, isDirty, loadEntry])
+  }, [queryClient]) // Only depend on queryClient, use refs for other values
+
+  // Compute loadedForDate - if not loading and we have data (or confirmed null), we're loaded
+  const loadedForDate = isLoading ? null : date
 
   return {
     entry,
     isLoading,
-    error,
+    loadedForDate,
+    error: queryError instanceof Error ? queryError.message : null,
     isSaving,
     isDirty,
     updateContent,
@@ -319,72 +390,49 @@ export interface UseJournalHeatmapResult {
 
 /**
  * Hook for loading heatmap data for a specific year.
+ * Uses TanStack Query for caching.
  * Automatically refreshes when journal entries are created/updated/deleted.
  *
  * @param year - Year to load heatmap data for (e.g., 2024)
  * @returns Heatmap data state
  */
 export function useJournalHeatmap(year: number): UseJournalHeatmapResult {
-  const [data, setData] = useState<HeatmapEntry[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const currentYearRef = useRef(year)
+  const queryClient = useQueryClient()
 
-  // Update current year ref when year changes
-  useEffect(() => {
-    currentYearRef.current = year
-  }, [year])
-
-  // Load heatmap data
-  const loadHeatmap = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const heatmapData = await journalService.getHeatmap(year)
-      // Only update if this is still the current year
-      if (currentYearRef.current === year) {
-        setData(heatmapData)
-      }
-    } catch (err) {
-      if (currentYearRef.current === year) {
-        setError(err instanceof Error ? err.message : 'Failed to load heatmap data')
-        setData([])
-      }
-    } finally {
-      if (currentYearRef.current === year) {
-        setIsLoading(false)
-      }
-    }
-  }, [year])
-
-  // Load heatmap on mount and when year changes
-  useEffect(() => {
-    loadHeatmap()
-  }, [loadHeatmap])
+  // Main query for fetching heatmap data
+  const {
+    data = [],
+    isLoading,
+    error: queryError,
+    refetch
+  } = useQuery({
+    queryKey: journalKeys.heatmap(year),
+    queryFn: () => journalService.getHeatmap(year),
+    staleTime: ENTRY_STALE_TIME,
+    gcTime: 5 * 60 * 1000
+  })
 
   // Subscribe to entry changes to refresh heatmap
   useEffect(() => {
     // Refresh heatmap when entries are created, updated, or deleted
     const unsubscribeCreated = onJournalEntryCreated((event) => {
-      // Check if the event's date is in the current year
       const eventYear = parseInt(event.date.slice(0, 4), 10)
-      if (eventYear === currentYearRef.current) {
-        loadHeatmap()
+      if (eventYear === year) {
+        queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
       }
     })
 
     const unsubscribeUpdated = onJournalEntryUpdated((event) => {
       const eventYear = parseInt(event.date.slice(0, 4), 10)
-      if (eventYear === currentYearRef.current) {
-        loadHeatmap()
+      if (eventYear === year) {
+        queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
       }
     })
 
     const unsubscribeDeleted = onJournalEntryDeleted((event) => {
       const eventYear = parseInt(event.date.slice(0, 4), 10)
-      if (eventYear === currentYearRef.current) {
-        loadHeatmap()
+      if (eventYear === year) {
+        queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
       }
     })
 
@@ -393,13 +441,17 @@ export function useJournalHeatmap(year: number): UseJournalHeatmapResult {
       unsubscribeUpdated()
       unsubscribeDeleted()
     }
-  }, [loadHeatmap])
+  }, [year, queryClient])
+
+  const reload = useCallback(async () => {
+    await refetch()
+  }, [refetch])
 
   return {
     data,
     isLoading,
-    error,
-    reload: loadHeatmap
+    error: queryError instanceof Error ? queryError.message : null,
+    reload
   }
 }
 

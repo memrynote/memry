@@ -8,8 +8,8 @@ import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-reac
 import { DayPicker, getDefaultClassNames } from 'react-day-picker'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
-import { formatDateToISO, parseISODate, getTodayString } from '@/lib/journal-utils'
+
+import { parseISODate, getTodayString } from '@/lib/journal-utils'
 
 // =============================================================================
 // TYPES
@@ -79,11 +79,10 @@ export function JournalCalendar({
     return lookup
   }, [heatmapData])
 
-  // Handle day click
-  const handleDayClick = useCallback(
-    (date: Date) => {
-      const dateStr = formatDateToISO(date)
-      onDayClick(dateStr)
+  // Handle day click - receives ISO date string directly from custom DayButton
+  const handleDayClickWithISODate = useCallback(
+    (isoDate: string) => {
+      onDayClick(isoDate)
     },
     [onDayClick]
   )
@@ -155,7 +154,6 @@ export function JournalCalendar({
           month={displayMonth}
           onMonthChange={setDisplayMonth}
           selected={selectedDateObj}
-          onDayClick={handleDayClick}
           showOutsideDays
           fixedWeeks
           weekStartsOn={1} // Monday
@@ -183,28 +181,15 @@ export function JournalCalendar({
           }}
           components={{
             DayButton: ({ day, modifiers }) => {
-              const dateStr = formatDateToISO(day.date)
+              // Use day.isoDate directly - this is the stable yyyy-MM-dd format
+              // provided by react-day-picker, avoiding timezone issues
+              const dateStr = day.isoDate
               const isToday = dateStr === today
               const isSelected = dateStr === selectedDate
               const heatmapEntry = heatmapLookup.get(dateStr)
               const heatmapLevel = heatmapEntry?.level ?? 0
-              const charCount = heatmapEntry?.characterCount ?? 0
 
-              // Format the date for tooltip display
-              const formattedDate = day.date.toLocaleDateString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-              })
-
-              // Build tooltip content
-              const tooltipText =
-                charCount > 0
-                  ? `${formattedDate}\n${charCount.toLocaleString()} characters`
-                  : `${formattedDate}\nNo entry`
-
-              const dayButton = (
+              return (
                 <button
                   type="button"
                   className={cn(
@@ -218,8 +203,7 @@ export function JournalCalendar({
                     // Outside month
                     modifiers.outside && 'text-muted-foreground/40'
                   )}
-                  onClick={() => handleDayClick(day.date)}
-                  aria-label={`${formattedDate}, ${charCount} characters`}
+                  onClick={() => handleDayClickWithISODate(dateStr)}
                   aria-selected={isSelected}
                 >
                   <span>{day.date.getDate()}</span>
@@ -231,20 +215,6 @@ export function JournalCalendar({
                     />
                   )}
                 </button>
-              )
-
-              // Wrap with tooltip if not an outside day
-              if (modifiers.outside) {
-                return dayButton
-              }
-
-              return (
-                <Tooltip>
-                  <TooltipTrigger asChild>{dayButton}</TooltipTrigger>
-                  <TooltipContent side="top" className="whitespace-pre-line text-center">
-                    {tooltipText}
-                  </TooltipContent>
-                </Tooltip>
               )
             }
           }}

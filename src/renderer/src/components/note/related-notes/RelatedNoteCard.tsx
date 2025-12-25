@@ -26,8 +26,14 @@ export function RelatedNoteCard({
   }
 
   return (
-    <button
+    <div
       onClick={() => onNoteClick(note.noteId)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onNoteClick(note.noteId)
+        }
+      }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
@@ -36,10 +42,12 @@ export function RelatedNoteCard({
         'border border-sidebar-border/20 hover:border-sidebar-border/40',
         'transition-all duration-200',
         'group cursor-pointer relative',
-        'hover:shadow-sm hover:translate-x-0.5'
+        'hover:shadow-sm hover:translate-x-0.5',
+        'focus:outline-none focus:ring-2 focus:ring-sidebar-ring focus:ring-offset-1'
       )}
       aria-label={`Related note: ${note.title}, ${note.similarity}% match`}
       role="listitem"
+      tabIndex={0}
     >
       {/* Top row: Icon + Title + Percentage */}
       <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -116,6 +124,6 @@ export function RelatedNoteCard({
           )} />
         </div>
       </div>
-    </button>
+    </div>
   )
 }

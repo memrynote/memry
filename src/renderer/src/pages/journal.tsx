@@ -16,6 +16,8 @@ import {
   DateBreadcrumb,
   JournalMonthView,
   JournalYearView,
+  SaveStatusIndicator,
+  deriveSaveStatus,
   type AIConnection,
   type ScheduleEvent,
   type DayTask,
@@ -179,30 +181,93 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const {
     entry,
     isLoading: isEntryLoading,
+    loadedForDate,
     error: entryError,
     isSaving,
     isDirty,
     updateContent
   } = useJournalEntry(selectedDate)
 
-  // Track initial content for the editor (only update when date changes, not on every save)
-  const [editorKey, setEditorKey] = useState(selectedDate)
-  const initialContentRef = useRef<string>('')
+  // Track editor state - synchronized with entry loading
+  // We use a combined state to ensure key and content update atomically
+  const [editorState, setEditorState] = useState<{ key: string; content: string }>({
+    key: selectedDate,
+    content: ''
+  })
 
-  // Update editor key and initial content when date changes
+  // Sync editor state when entry finishes loading for the CORRECT date
+  // The key fix: use loadedForDate to know when data is actually for selectedDate
   useEffect(() => {
-    if (selectedDate !== editorKey) {
-      setEditorKey(selectedDate)
-      initialContentRef.current = entry?.content ?? ''
+    // Skip if still loading
+    if (isEntryLoading) {
+      return
     }
-  }, [selectedDate, editorKey, entry?.content])
 
-  // Set initial content when entry loads for the first time
-  useEffect(() => {
-    if (!isEntryLoading && entry) {
-      initialContentRef.current = entry.content
+    // Skip if data is not yet loaded for the selected date
+    // This is the KEY fix - we only proceed when we KNOW the data is for selectedDate
+    if (loadedForDate !== selectedDate) {
+      return
     }
-  }, [isEntryLoading, entry])
+
+    // Skip if editor is already showing this date
+    if (editorState.key === selectedDate) {
+      return
+    }
+
+    // Now we KNOW the data (entry or null) is for the selectedDate
+    if (entry) {
+      setEditorState({
+        key: selectedDate,
+        content: entry.content
+      })
+    } else {
+      setEditorState({
+        key: selectedDate,
+        content: ''
+      })
+    }
+  }, [selectedDate, isEntryLoading, loadedForDate, entry, editorState.key])
+
+  // Handle initial render when entry loads for today
+  useEffect(() => {
+    if (
+      !isEntryLoading &&
+      loadedForDate === selectedDate &&
+      entry &&
+      editorState.key === selectedDate &&
+      editorState.content === '' &&
+      entry.content
+    ) {
+      setEditorState((prev) => ({
+        ...prev,
+        content: entry.content
+      }))
+    }
+  }, [isEntryLoading, loadedForDate, entry, selectedDate, editorState.key, editorState.content])
+
+  // Determine if we should show loading state
+  // Show loading when:
+  // 1. Hook is actively loading, OR
+  // 2. Data hasn't been loaded for the selected date yet
+  const isDataPending = isEntryLoading || loadedForDate !== selectedDate
+
+  // Delayed loading indicator - only show spinner if loading takes > 150ms
+  // This prevents the flash of loading state for cached/fast responses
+  const [showLoadingSpinner, setShowLoadingSpinner] = useState(false)
+
+  useEffect(() => {
+    if (isDataPending) {
+      // Start a timer to show the spinner after 150ms
+      const timer = setTimeout(() => setShowLoadingSpinner(true), 150)
+      return () => clearTimeout(timer)
+    }
+    // Data is ready - hide spinner immediately
+    setShowLoadingSpinner(false)
+    return undefined
+  }, [isDataPending])
+
+  // Final loading state for rendering
+  const showEditorLoading = isDataPending && showLoadingSpinner
 
   // Sync left sidebar with focus mode (hide when focus mode is on)
   const { open: sidebarOpen, setOpen: setSidebarOpen } = useSidebar()
@@ -456,19 +521,14 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 <div className="flex-1 flex items-center justify-end gap-2">
                   {/* Save Status Indicator */}
                   {viewState.type === 'day' && (
-                    <span
-                      className={cn(
-                        'text-xs transition-opacity duration-300',
-                        'opacity-0 journal-animate-in journal-stagger-3',
-                        isSaving
-                          ? 'text-muted-foreground'
-                          : isDirty
-                            ? 'text-muted-foreground/60'
-                            : 'text-muted-foreground/40'
-                      )}
-                    >
-                      {isSaving ? 'Saving...' : isDirty ? 'Unsaved' : entry ? 'Saved' : ''}
-                    </span>
+                    <SaveStatusIndicator
+                      status={deriveSaveStatus({
+                        isSaving,
+                        isDirty,
+                        hasEntry: !!entry
+                      })}
+                      className="opacity-0 journal-animate-in journal-stagger-3"
+                    />
                   )}
 
                   {/* Focus Mode Toggle */}
@@ -554,14 +614,14 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                   }
                 }}
               >
-                {isEntryLoading ? (
+                {showEditorLoading ? (
                   <div className="flex items-center justify-center h-[300px]">
                     <Loader2 className="size-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
                   <ContentArea
-                    key={editorKey}
-                    initialContent={initialContentRef.current}
+                    key={editorState.key}
+                    initialContent={editorState.content}
                     contentType="markdown"
                     placeholder={
                       selectedDate > today

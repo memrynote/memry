@@ -100,11 +100,11 @@ Electron application structure per plan.md:
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Add debounced save to useJournalEntry hook in src/renderer/src/hooks/use-journal.ts (1000ms debounce per FR-004)
-- [ ] T026 [US3] Add isSaving state to useJournalEntry hook in src/renderer/src/hooks/use-journal.ts (track save in progress)
-- [ ] T027 [US3] Create SaveStatusIndicator component in src/renderer/src/components/journal/save-status.tsx (show Saving.../Saved/Error states)
-- [ ] T028 [US3] Add SaveStatusIndicator to JournalPage header in src/renderer/src/pages/journal.tsx (display current save state)
-- [ ] T029 [US3] Add save queue logic to prevent lost saves during rapid edits in src/renderer/src/hooks/use-journal.ts (queue new save if save in progress)
+- [x] T025 [US3] Add debounced save to useJournalEntry hook in src/renderer/src/hooks/use-journal.ts (1000ms debounce per FR-004)
+- [x] T026 [US3] Add isSaving state to useJournalEntry hook in src/renderer/src/hooks/use-journal.ts (track save in progress)
+- [x] T027 [US3] Create SaveStatusIndicator component in src/renderer/src/components/journal/save-status.tsx (show Saving.../Saved/Error states)
+- [x] T028 [US3] Add SaveStatusIndicator to JournalPage header in src/renderer/src/pages/journal.tsx (display current save state)
+- [x] T029 [US3] Add save queue logic to prevent lost saves during rapid edits in src/renderer/src/hooks/use-journal.ts (queue new save if save in progress)
 
 **Checkpoint**: User Story 3 complete - entries auto-save with visual feedback, no data loss
 

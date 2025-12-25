@@ -136,19 +136,34 @@ export function registerJournalHandlers(): void {
         // If entry doesn't exist, create it
         const entry = await writeJournalEntry(input.date, input.content ?? '', input.tags ?? [])
 
-        insertJournalEntry(db, {
-          id: entry.id,
-          date: entry.date,
-          path: getJournalRelativePath(entry.date),
-          wordCount: entry.wordCount,
-          characterCount: entry.characterCount,
-          activityLevel: calculateActivityLevel(entry.characterCount),
-          createdAt: entry.createdAt,
-          modifiedAt: entry.modifiedAt
-        })
+        // Check if there's a stale cache entry (file was deleted but cache wasn't updated)
+        if (cached) {
+          // Update the stale cache entry instead of inserting
+          updateJournalEntry(db, cached.id, {
+            path: getJournalRelativePath(entry.date),
+            wordCount: entry.wordCount,
+            characterCount: entry.characterCount,
+            activityLevel: calculateActivityLevel(entry.characterCount),
+            createdAt: entry.createdAt,
+            modifiedAt: entry.modifiedAt
+          })
+          setJournalTags(db, cached.id, entry.tags)
+        } else {
+          // No stale cache entry, insert fresh
+          insertJournalEntry(db, {
+            id: entry.id,
+            date: entry.date,
+            path: getJournalRelativePath(entry.date),
+            wordCount: entry.wordCount,
+            characterCount: entry.characterCount,
+            activityLevel: calculateActivityLevel(entry.characterCount),
+            createdAt: entry.createdAt,
+            modifiedAt: entry.modifiedAt
+          })
 
-        if (entry.tags.length > 0) {
-          setJournalTags(db, entry.id, entry.tags)
+          if (entry.tags.length > 0) {
+            setJournalTags(db, entry.id, entry.tags)
+          }
         }
 
         emitJournalEvent(JournalChannels.events.ENTRY_CREATED, {
