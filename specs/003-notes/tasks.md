@@ -492,14 +492,14 @@ inherit: true # Inherit from parent folder (default: true)
 ---
 ```
 
-- [ ] T096.1 [US13] Create FolderConfig type in src/shared/contracts/notes-api.ts
-- [ ] T096.2 [US13] Add readFolderConfig() in src/main/vault/folders.ts
-- [ ] T096.3 [US13] Add writeFolderConfig() in src/main/vault/folders.ts
-- [ ] T096.4 [US13] Implement getFolderTemplate() with inheritance resolution in src/main/vault/folders.ts
-- [ ] T096.5 [US13] Add folder config IPC handlers (get/set) in src/main/ipc/notes-handlers.ts
-- [ ] T096.6 [US13] Update createNote to auto-apply folder template in src/main/vault/notes.ts
-- [ ] T096.7 [US13] Add "Set as folder default" option in TemplateSelector
-- [ ] T096.8 [US13] Auto-add missing template properties to existing notes on folder template change
+- [x] T096.1 [US13] Create FolderConfig type in src/shared/contracts/notes-api.ts
+- [x] T096.2 [US13] Add readFolderConfig() in src/main/vault/folders.ts
+- [x] T096.3 [US13] Add writeFolderConfig() in src/main/vault/folders.ts
+- [x] T096.4 [US13] Implement getFolderTemplate() with inheritance resolution in src/main/vault/folders.ts
+- [x] T096.5 [US13] Add folder config IPC handlers (get/set) in src/main/ipc/notes-handlers.ts
+- [x] T096.6 [US13] Update createNote to auto-apply folder template in src/main/vault/notes.ts
+- [x] T096.7 [US13] Add "Set as folder default" option in TemplateSelector
+- [x] T096.8 [US13] Auto-add missing template properties to existing notes on folder template change
 
 **Checkpoint**: User Story 13 complete - templates work with folder-level defaults
 
