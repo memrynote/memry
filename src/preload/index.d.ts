@@ -218,7 +218,7 @@ export interface SnapshotListItem {
 }
 
 export interface SnapshotDetail extends SnapshotListItem {
-  content: string
+  fileContent: string // Full file content (frontmatter + markdown body)
 }
 
 export interface RestoreVersionResponse {

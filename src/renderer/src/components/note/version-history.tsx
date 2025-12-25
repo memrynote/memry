@@ -376,7 +376,7 @@ export function VersionHistory({
                       <ScrollArea className="flex-1">
                         <div className="p-4">
                           <pre className="text-sm whitespace-pre-wrap font-mono text-muted-foreground">
-                            {previewContent.content}
+                            {previewContent.fileContent}
                           </pre>
                         </div>
                       </ScrollArea>

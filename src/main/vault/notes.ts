@@ -6,6 +6,7 @@
  */
 
 import path from 'path'
+import fs from 'fs/promises'
 import { shell } from 'electron'
 import { BrowserWindow } from 'electron'
 import { getStatus, getConfig } from './index'
@@ -516,8 +517,21 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   const newEmoji = input.emoji !== undefined ? input.emoji : existing.emoji
 
   // T111: Create snapshot before significant content changes
+  // Read current file content BEFORE making any changes
   if (input.content !== undefined && input.content !== existing.content) {
-    maybeCreateSignificantSnapshot(input.id, existing.content, newContent, existing.title)
+    try {
+      const absolutePath = toAbsolutePath(existing.path)
+      const currentFileContent = await fs.readFile(absolutePath, 'utf-8')
+      maybeCreateSignificantSnapshot(
+        input.id,
+        currentFileContent,
+        existing.content,
+        newContent,
+        existing.title
+      )
+    } catch (err) {
+      console.error('[Snapshot] Failed to read current file for snapshot:', err)
+    }
   }
 
   // Update frontmatter
@@ -1015,22 +1029,22 @@ export interface SnapshotListItem {
 }
 
 export interface SnapshotDetail extends SnapshotListItem {
-  content: string
+  fileContent: string // Full file content (frontmatter + markdown body)
 }
 
 /**
- * Create a snapshot of the current note state.
- * Used for version history/undo functionality.
+ * Create a snapshot of the current note file.
+ * Saves the complete file content including frontmatter (tags, properties, etc.).
  *
  * @param noteId - The note ID
- * @param content - Current content to snapshot
- * @param title - Current title
+ * @param fileContent - Full file content (frontmatter + markdown)
+ * @param title - Current title (for display in list)
  * @param reason - Why the snapshot was created
  * @param forceCreate - Skip deduplication check
  */
 export function createSnapshot(
   noteId: string,
-  content: string,
+  fileContent: string,
   title: string,
   reason: SnapshotReason,
   forceCreate = false
@@ -1038,10 +1052,11 @@ export function createSnapshot(
   const db = getIndexDatabase()
 
   // Calculate content hash for deduplication
-  const contentHash = generateContentHash(content)
+  const contentHash = generateContentHash(fileContent)
 
   // Skip if identical snapshot already exists (unless forced)
   if (!forceCreate && snapshotExistsWithHash(db, noteId, contentHash)) {
+    console.log('[Snapshot] Skipping - identical snapshot exists')
     return null
   }
 
@@ -1052,18 +1067,23 @@ export function createSnapshot(
       const latestTime = new Date(latest.createdAt).getTime()
       const now = Date.now()
       if (now - latestTime < MIN_SNAPSHOT_INTERVAL_MS) {
+        console.log('[Snapshot] Skipping - too soon since last snapshot')
         return null // Too soon since last snapshot
       }
     }
   }
 
+  // Parse to get word count from markdown body
+  const parsed = parseNote(fileContent)
+  const wordCount = calculateWordCount(parsed.content)
+
   // Create the snapshot
   const snapshot = insertNoteSnapshot(db, {
     id: generateNoteId(), // Reuse nanoid generator
     noteId,
-    content,
+    fileContent,
     title,
-    wordCount: calculateWordCount(content),
+    wordCount,
     contentHash,
     reason
   })
@@ -1084,9 +1104,11 @@ export function createSnapshot(
 /**
  * Create a snapshot before a significant edit.
  * Called automatically by updateNote when content changes significantly.
+ * Takes the current file content (before the new save) to preserve the full state.
  */
 export function maybeCreateSignificantSnapshot(
   noteId: string,
+  currentFileContent: string,
   oldContent: string,
   newContent: string,
   title: string
@@ -1106,7 +1128,7 @@ export function maybeCreateSignificantSnapshot(
   if (wordDiff >= SIGNIFICANT_WORD_CHANGE) {
     console.log('[Snapshot] Creating snapshot for significant change')
     try {
-      const result = createSnapshot(noteId, oldContent, title, SnapshotReasons.SIGNIFICANT)
+      const result = createSnapshot(noteId, currentFileContent, title, SnapshotReasons.SIGNIFICANT)
       console.log('[Snapshot] Snapshot created:', result)
       return result
     } catch (err) {
@@ -1136,7 +1158,7 @@ export function getVersionHistory(noteId: string, limit = 50): SnapshotListItem[
 }
 
 /**
- * Get a specific version/snapshot with full content.
+ * Get a specific version/snapshot with full file content.
  */
 export function getVersion(snapshotId: string): SnapshotDetail | null {
   const db = getIndexDatabase()
@@ -1150,7 +1172,7 @@ export function getVersion(snapshotId: string): SnapshotDetail | null {
     id: snapshot.id,
     noteId: snapshot.noteId,
     title: snapshot.title,
-    content: snapshot.content,
+    fileContent: snapshot.fileContent,
     wordCount: snapshot.wordCount,
     reason: snapshot.reason as SnapshotReason,
     createdAt: snapshot.createdAt
@@ -1160,6 +1182,7 @@ export function getVersion(snapshotId: string): SnapshotDetail | null {
 /**
  * Restore a note from a previous version.
  * Creates a snapshot of current state before restoring.
+ * Restores the full file content including frontmatter (tags, properties, etc.).
  */
 export async function restoreVersion(snapshotId: string): Promise<Note> {
   const db = getIndexDatabase()
@@ -1169,9 +1192,9 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
     throw new NoteError(`Snapshot not found: ${snapshotId}`, NoteErrorCode.NOT_FOUND, snapshotId)
   }
 
-  // Get current note
-  const currentNote = await getNoteById(snapshot.noteId)
-  if (!currentNote) {
+  // Get current note from cache to get the file path
+  const cached = getNoteCacheById(db, snapshot.noteId)
+  if (!cached) {
     throw new NoteError(
       `Note not found: ${snapshot.noteId}`,
       NoteErrorCode.NOT_FOUND,
@@ -1179,29 +1202,77 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
     )
   }
 
+  // Read current file content for creating a backup snapshot
+  const absolutePath = toAbsolutePath(cached.path)
+  const currentFileContent = await fs.readFile(absolutePath, 'utf-8')
+  const currentParsed = parseNote(currentFileContent)
+
   // Create a snapshot of current state before restoring (so user can undo the restore)
   createSnapshot(
-    currentNote.id,
-    currentNote.content,
-    currentNote.title,
-    SnapshotReasons.MANUAL,
+    cached.id,
+    currentFileContent,
+    currentParsed.frontmatter.title ?? cached.title,
+    SnapshotReasons.SIGNIFICANT, // Use SIGNIFICANT since it's auto-created before restore
     true // Force create even if duplicate
   )
 
-  // Restore the note to the snapshot state
-  const restoredNote = await updateNote({
-    id: snapshot.noteId,
-    title: snapshot.title,
-    content: snapshot.content
+  // Parse the snapshot content to extract frontmatter and body
+  const snapshotParsed = parseNote(snapshot.fileContent)
+
+  // Write the snapshot file content directly to disk
+  await atomicWrite(absolutePath, snapshot.fileContent)
+
+  // Update cache with restored data
+  const contentHash = generateContentHash(snapshot.fileContent)
+  const wordCount = calculateWordCount(snapshotParsed.content)
+  const tags = snapshotParsed.frontmatter.tags ?? []
+  const properties = extractProperties(snapshotParsed.frontmatter)
+
+  updateNoteCache(db, cached.id, {
+    title: snapshotParsed.frontmatter.title ?? cached.title,
+    contentHash,
+    wordCount,
+    modifiedAt: new Date().toISOString(),
+    emoji: (snapshotParsed.frontmatter.emoji as string | null) ?? null
   })
+
+  // Update tags
+  ensureTagDefinitions(db, tags)
+  setNoteTags(db, cached.id, tags)
+
+  // Update properties
+  setNoteProperties(db, cached.id, properties, (name, value) =>
+    getPropertyType(db, name, value, inferPropertyType)
+  )
+
+  // Update links
+  const wikiLinks = extractWikiLinks(snapshotParsed.content)
+  const links = wikiLinks.map((title) => {
+    const target = resolveNoteByTitle(db, title)
+    return { targetTitle: title, targetId: target?.id }
+  })
+  setNoteLinks(db, cached.id, links)
+
+  // Build the restored note object
+  const restoredNote: Note = {
+    id: cached.id,
+    path: cached.path,
+    title: snapshotParsed.frontmatter.title ?? cached.title,
+    content: snapshotParsed.content,
+    frontmatter: snapshotParsed.frontmatter,
+    created: new Date(snapshotParsed.frontmatter.created),
+    modified: new Date(),
+    tags,
+    aliases: snapshotParsed.frontmatter.aliases ?? [],
+    wordCount,
+    properties,
+    emoji: (snapshotParsed.frontmatter.emoji as string | null) ?? null
+  }
 
   // Emit event
   emitNoteEvent(NotesChannels.events.UPDATED, {
-    id: snapshot.noteId,
-    changes: {
-      title: snapshot.title,
-      content: snapshot.content
-    },
+    id: cached.id,
+    changes: restoredNote,
     source: 'internal'
   })
 
