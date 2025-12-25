@@ -119,6 +119,92 @@ export interface DeleteAttachmentResponse {
   error?: string
 }
 
+// Template types (Phase 15)
+export type TemplatePropertyType =
+  | 'text'
+  | 'number'
+  | 'checkbox'
+  | 'date'
+  | 'select'
+  | 'multiselect'
+  | 'url'
+  | 'rating'
+
+export interface TemplateProperty {
+  name: string
+  type: TemplatePropertyType
+  value: unknown
+  options?: string[]
+}
+
+export interface Template {
+  id: string
+  name: string
+  description?: string
+  icon?: string | null
+  isBuiltIn: boolean
+  tags: string[]
+  properties: TemplateProperty[]
+  content: string
+  createdAt: string
+  modifiedAt: string
+}
+
+export interface TemplateListItem {
+  id: string
+  name: string
+  description?: string
+  icon?: string | null
+  isBuiltIn: boolean
+}
+
+export interface TemplateCreateInput {
+  name: string
+  description?: string
+  icon?: string | null
+  tags?: string[]
+  properties?: TemplateProperty[]
+  content?: string
+}
+
+export interface TemplateUpdateInput {
+  id: string
+  name?: string
+  description?: string
+  icon?: string | null
+  tags?: string[]
+  properties?: TemplateProperty[]
+  content?: string
+}
+
+export interface TemplateCreateResponse {
+  success: boolean
+  template: Template | null
+  error?: string
+}
+
+export interface TemplateListResponse {
+  templates: TemplateListItem[]
+}
+
+export interface FolderConfig {
+  template?: string
+  inherit?: boolean
+}
+
+export interface TemplateCreatedEvent {
+  template: Template
+}
+
+export interface TemplateUpdatedEvent {
+  id: string
+  template: Template
+}
+
+export interface TemplateDeletedEvent {
+  id: string
+}
+
 export interface NoteListItem {
   id: string
   path: string
@@ -707,6 +793,13 @@ export interface NotesClientAPI {
   uploadAttachment(noteId: string, file: File): Promise<AttachmentResult>
   listAttachments(noteId: string): Promise<AttachmentInfo[]>
   deleteAttachment(noteId: string, filename: string): Promise<DeleteAttachmentResponse>
+  // Folder config API (T096.5)
+  getFolderConfig(folderPath: string): Promise<FolderConfig | null>
+  setFolderConfig(
+    folderPath: string,
+    config: FolderConfig
+  ): Promise<{ success: boolean; error?: string }>
+  getFolderTemplate(folderPath: string): Promise<string | null>
 }
 
 // Tasks client API interface
@@ -733,19 +826,31 @@ export interface TasksClientAPI {
   convertToTask(taskId: string): Promise<TaskCreateResponse>
 
   // Project operations
-  createProject(input: ProjectCreateInput): Promise<{ success: boolean; project: Project | null; error?: string }>
+  createProject(
+    input: ProjectCreateInput
+  ): Promise<{ success: boolean; project: Project | null; error?: string }>
   getProject(id: string): Promise<ProjectWithStatuses | null>
-  updateProject(input: ProjectUpdateInput): Promise<{ success: boolean; project: Project | null; error?: string }>
+  updateProject(
+    input: ProjectUpdateInput
+  ): Promise<{ success: boolean; project: Project | null; error?: string }>
   deleteProject(id: string): Promise<{ success: boolean; error?: string }>
   listProjects(): Promise<ProjectListResponse>
   archiveProject(id: string): Promise<{ success: boolean; error?: string }>
-  reorderProjects(projectIds: string[], positions: number[]): Promise<{ success: boolean; error?: string }>
+  reorderProjects(
+    projectIds: string[],
+    positions: number[]
+  ): Promise<{ success: boolean; error?: string }>
 
   // Status operations
-  createStatus(input: StatusCreateInput): Promise<{ success: boolean; status: Status | null; error?: string }>
+  createStatus(
+    input: StatusCreateInput
+  ): Promise<{ success: boolean; status: Status | null; error?: string }>
   updateStatus(id: string, updates: Partial<Status>): Promise<{ success: boolean; error?: string }>
   deleteStatus(id: string): Promise<{ success: boolean; error?: string }>
-  reorderStatuses(statusIds: string[], positions: number[]): Promise<{ success: boolean; error?: string }>
+  reorderStatuses(
+    statusIds: string[],
+    positions: number[]
+  ): Promise<{ success: boolean; error?: string }>
   listStatuses(projectId: string): Promise<Status[]>
 
   // Tag operations
@@ -754,7 +859,10 @@ export interface TasksClientAPI {
   // Bulk operations
   bulkComplete(ids: string[]): Promise<{ success: boolean; count: number; error?: string }>
   bulkDelete(ids: string[]): Promise<{ success: boolean; count: number; error?: string }>
-  bulkMove(ids: string[], projectId: string): Promise<{ success: boolean; count: number; error?: string }>
+  bulkMove(
+    ids: string[],
+    projectId: string
+  ): Promise<{ success: boolean; count: number; error?: string }>
   bulkArchive(ids: string[]): Promise<{ success: boolean; count: number; error?: string }>
 
   // Stats and views
@@ -781,7 +889,10 @@ export interface SearchClientAPI {
   addRecent(query: string): Promise<void>
   getStats(): Promise<SearchStats>
   rebuildIndex(): Promise<void>
-  searchNotes(query: string, options?: { tags?: string[]; limit?: number }): Promise<SearchResultNote[]>
+  searchNotes(
+    query: string,
+    options?: { tags?: string[]; limit?: number }
+  ): Promise<SearchResultNote[]>
   findByTag(tag: string): Promise<SearchResultNote[]>
   findBacklinks(noteId: string): Promise<SearchResultNote[]>
 }
@@ -793,6 +904,16 @@ export interface SavedFiltersClientAPI {
   update(input: SavedFilterUpdateInput): Promise<SavedFilterCreateResponse>
   delete(id: string): Promise<{ success: boolean; error?: string }>
   reorder(ids: string[], positions: number[]): Promise<{ success: boolean; error?: string }>
+}
+
+// Templates client API interface
+export interface TemplatesClientAPI {
+  list(): Promise<TemplateListResponse>
+  get(id: string): Promise<Template | null>
+  create(input: TemplateCreateInput): Promise<TemplateCreateResponse>
+  update(input: TemplateUpdateInput): Promise<TemplateCreateResponse>
+  delete(id: string): Promise<{ success: boolean; error?: string }>
+  duplicate(id: string, newName: string): Promise<TemplateCreateResponse>
 }
 
 // Window controls API
@@ -809,6 +930,7 @@ interface API extends WindowAPI {
   search: SearchClientAPI
   tasks: TasksClientAPI
   savedFilters: SavedFiltersClientAPI
+  templates: TemplatesClientAPI
   // Vault event subscriptions
   onVaultStatusChanged: (callback: (status: VaultStatus) => void) => () => void
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
@@ -824,8 +946,12 @@ interface API extends WindowAPI {
   onTagsChanged: (callback: () => void) => () => void
   // Search event subscriptions
   onSearchIndexRebuildStarted: (callback: () => void) => () => void
-  onSearchIndexRebuildProgress: (callback: (progress: IndexRebuildProgressEvent) => void) => () => void
-  onSearchIndexRebuildCompleted: (callback: (result: IndexRebuildCompletedEvent) => void) => () => void
+  onSearchIndexRebuildProgress: (
+    callback: (progress: IndexRebuildProgressEvent) => void
+  ) => () => void
+  onSearchIndexRebuildCompleted: (
+    callback: (result: IndexRebuildCompletedEvent) => void
+  ) => () => void
   onSearchIndexCorrupt: (callback: () => void) => () => void
   // Tasks event subscriptions
   onTaskCreated: (callback: (event: TaskCreatedEvent) => void) => () => void
@@ -840,6 +966,10 @@ interface API extends WindowAPI {
   onSavedFilterCreated: (callback: (event: SavedFilterCreatedEvent) => void) => () => void
   onSavedFilterUpdated: (callback: (event: SavedFilterUpdatedEvent) => void) => () => void
   onSavedFilterDeleted: (callback: (event: SavedFilterDeletedEvent) => void) => () => void
+  // Templates event subscriptions
+  onTemplateCreated: (callback: (event: TemplateCreatedEvent) => void) => () => void
+  onTemplateUpdated: (callback: (event: TemplateUpdatedEvent) => void) => () => void
+  onTemplateDeleted: (callback: (event: TemplateDeletedEvent) => void) => () => void
 }
 
 declare global {

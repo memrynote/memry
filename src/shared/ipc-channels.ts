@@ -88,7 +88,13 @@ export const NotesChannels = {
     /** List attachments for a note */
     LIST_ATTACHMENTS: 'notes:list-attachments',
     /** Delete an attachment */
-    DELETE_ATTACHMENT: 'notes:delete-attachment'
+    DELETE_ATTACHMENT: 'notes:delete-attachment',
+    /** Get folder config (template settings) */
+    GET_FOLDER_CONFIG: 'notes:get-folder-config',
+    /** Set folder config (template settings) */
+    SET_FOLDER_CONFIG: 'notes:set-folder-config',
+    /** Get resolved folder template (with inheritance) */
+    GET_FOLDER_TEMPLATE: 'notes:get-folder-template'
   },
   events: {
     /** Note was created (externally or internally) */
@@ -240,6 +246,35 @@ export const SavedFiltersChannels = {
 } as const
 
 // ============================================================================
+// Templates Channels
+// ============================================================================
+
+export const TemplatesChannels = {
+  invoke: {
+    /** List all templates */
+    LIST: 'templates:list',
+    /** Get a template by ID */
+    GET: 'templates:get',
+    /** Create a new template */
+    CREATE: 'templates:create',
+    /** Update an existing template */
+    UPDATE: 'templates:update',
+    /** Delete a template */
+    DELETE: 'templates:delete',
+    /** Duplicate a template */
+    DUPLICATE: 'templates:duplicate'
+  },
+  events: {
+    /** Template was created */
+    CREATED: 'templates:created',
+    /** Template was updated */
+    UPDATED: 'templates:updated',
+    /** Template was deleted */
+    DELETED: 'templates:deleted'
+  }
+} as const
+
+// ============================================================================
 // Type Exports
 // ============================================================================
 
@@ -259,3 +294,8 @@ export type SavedFiltersInvokeChannel =
   (typeof SavedFiltersChannels.invoke)[keyof typeof SavedFiltersChannels.invoke]
 export type SavedFiltersEventChannel =
   (typeof SavedFiltersChannels.events)[keyof typeof SavedFiltersChannels.events]
+
+export type TemplatesInvokeChannel =
+  (typeof TemplatesChannels.invoke)[keyof typeof TemplatesChannels.invoke]
+export type TemplatesEventChannel =
+  (typeof TemplatesChannels.events)[keyof typeof TemplatesChannels.events]
