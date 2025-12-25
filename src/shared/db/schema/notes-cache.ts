@@ -144,11 +144,12 @@ export const noteSnapshots = sqliteTable(
     noteId: text('note_id')
       .notNull()
       .references(() => noteCache.id, { onDelete: 'cascade' }),
-    content: text('content').notNull(), // Full markdown content at snapshot time
-    title: text('title').notNull(), // Title at snapshot time
+    // Column is 'content' in DB but stores full file content (frontmatter + markdown body)
+    fileContent: text('content').notNull(),
+    title: text('title').notNull(), // Title at snapshot time (for display)
     wordCount: integer('word_count').notNull().default(0),
     contentHash: text('content_hash').notNull(), // For deduplication
-    reason: text('reason').notNull(), // 'manual' | 'auto' | 'timer' | 'significant'
+    reason: text('reason').notNull(), // 'auto' | 'significant'
     createdAt: text('created_at')
       .notNull()
       .default(sql`(datetime('now'))`)
