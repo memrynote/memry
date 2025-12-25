@@ -16,7 +16,6 @@ import {
   DateBreadcrumb,
   JournalMonthView,
   JournalYearView,
-  type HeatmapEntry,
   type AIConnection,
   type ScheduleEvent,
   type DayTask,
@@ -34,7 +33,7 @@ import {
   getTimeBasedGreeting,
   getMonthStats
 } from '@/lib/journal-utils'
-import { useJournalEntry } from '@/hooks/use-journal'
+import { useJournalEntry, useJournalHeatmap } from '@/hooks/use-journal'
 
 // =============================================================================
 // DUMMY DATA
@@ -248,29 +247,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Get greeting for today
   const greeting = useMemo(() => (isToday ? getTimeBasedGreeting() : null), [isToday])
 
-  // Generate dummy heatmap data (extended to cover full year for year view)
-  const heatmapData = useMemo(() => {
-    const data: HeatmapEntry[] = []
-    const todayDate = new Date()
-    // Generate data for the past 365 days to cover full year view
-    for (let i = -365; i <= 0; i++) {
-      const date = addDays(todayDate, i)
-      const dateStr = formatDateToISO(date)
-      const charCount = Math.random() > 0.3 ? Math.floor(Math.random() * 1500) : 0
-      const level =
-        charCount === 0
-          ? 0
-          : charCount <= 100
-            ? 1
-            : charCount <= 500
-              ? 2
-              : charCount <= 1000
-                ? 3
-                : 4
-      data.push({ date: dateStr, characterCount: charCount, level: level as 0 | 1 | 2 | 3 | 4 })
-    }
-    return data
-  }, [])
+  // Load real heatmap data from backend
+  const currentYear = useMemo(() => dateParts.year, [dateParts.year])
+  const { data: heatmapData } = useJournalHeatmap(currentYear)
 
   // Generate month stats for year view
   const monthStats = useMemo(() => {

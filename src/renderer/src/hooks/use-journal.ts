@@ -6,12 +6,13 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { JournalEntry } from '../../../preload/index.d'
+import type { JournalEntry, HeatmapEntry } from '../../../preload/index.d'
 import {
   journalService,
   onJournalEntryUpdated,
   onJournalEntryDeleted,
-  onJournalExternalChange
+  onJournalExternalChange,
+  onJournalEntryCreated
 } from '@/services/journal-service'
 
 // =============================================================================
@@ -302,7 +303,108 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
 }
 
 // =============================================================================
+// useJournalHeatmap Hook
+// =============================================================================
+
+export interface UseJournalHeatmapResult {
+  /** Heatmap data for the year */
+  data: HeatmapEntry[]
+  /** Loading state */
+  isLoading: boolean
+  /** Error message if loading failed */
+  error: string | null
+  /** Reload the heatmap data */
+  reload: () => Promise<void>
+}
+
+/**
+ * Hook for loading heatmap data for a specific year.
+ * Automatically refreshes when journal entries are created/updated/deleted.
+ *
+ * @param year - Year to load heatmap data for (e.g., 2024)
+ * @returns Heatmap data state
+ */
+export function useJournalHeatmap(year: number): UseJournalHeatmapResult {
+  const [data, setData] = useState<HeatmapEntry[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const currentYearRef = useRef(year)
+
+  // Update current year ref when year changes
+  useEffect(() => {
+    currentYearRef.current = year
+  }, [year])
+
+  // Load heatmap data
+  const loadHeatmap = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const heatmapData = await journalService.getHeatmap(year)
+      // Only update if this is still the current year
+      if (currentYearRef.current === year) {
+        setData(heatmapData)
+      }
+    } catch (err) {
+      if (currentYearRef.current === year) {
+        setError(err instanceof Error ? err.message : 'Failed to load heatmap data')
+        setData([])
+      }
+    } finally {
+      if (currentYearRef.current === year) {
+        setIsLoading(false)
+      }
+    }
+  }, [year])
+
+  // Load heatmap on mount and when year changes
+  useEffect(() => {
+    loadHeatmap()
+  }, [loadHeatmap])
+
+  // Subscribe to entry changes to refresh heatmap
+  useEffect(() => {
+    // Refresh heatmap when entries are created, updated, or deleted
+    const unsubscribeCreated = onJournalEntryCreated((event) => {
+      // Check if the event's date is in the current year
+      const eventYear = parseInt(event.date.slice(0, 4), 10)
+      if (eventYear === currentYearRef.current) {
+        loadHeatmap()
+      }
+    })
+
+    const unsubscribeUpdated = onJournalEntryUpdated((event) => {
+      const eventYear = parseInt(event.date.slice(0, 4), 10)
+      if (eventYear === currentYearRef.current) {
+        loadHeatmap()
+      }
+    })
+
+    const unsubscribeDeleted = onJournalEntryDeleted((event) => {
+      const eventYear = parseInt(event.date.slice(0, 4), 10)
+      if (eventYear === currentYearRef.current) {
+        loadHeatmap()
+      }
+    })
+
+    return () => {
+      unsubscribeCreated()
+      unsubscribeUpdated()
+      unsubscribeDeleted()
+    }
+  }, [loadHeatmap])
+
+  return {
+    data,
+    isLoading,
+    error,
+    reload: loadHeatmap
+  }
+}
+
+// =============================================================================
 // Export types for external use
 // =============================================================================
 
-export type { JournalEntry }
+export type { JournalEntry, HeatmapEntry }

@@ -82,11 +82,11 @@ Electron application structure per plan.md:
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Implement getHeatmap IPC handler in src/main/ipc/journal-handlers.ts (query journalCache for year, return date/level pairs)
-- [ ] T021 [US2] Create useJournalHeatmap hook in src/renderer/src/hooks/use-journal.ts (load heatmap data for current year)
-- [ ] T022 [US2] Wire JournalCalendar to real heatmap data in src/renderer/src/pages/journal.tsx (replace DUMMY heatmapData with useJournalHeatmap)
-- [ ] T023 [US2] Wire calendar day click to entry loading in src/renderer/src/pages/journal.tsx (load entry when date changes)
-- [ ] T024 [US2] Add tooltip with character count to calendar days in src/renderer/src/components/journal/calendar-heatmap.tsx (show date and character count on hover)
+- [x] T020 [US2] Implement getHeatmap IPC handler in src/main/ipc/journal-handlers.ts (query journalCache for year, return date/level pairs)
+- [x] T021 [US2] Create useJournalHeatmap hook in src/renderer/src/hooks/use-journal.ts (load heatmap data for current year)
+- [x] T022 [US2] Wire JournalCalendar to real heatmap data in src/renderer/src/pages/journal.tsx (replace DUMMY heatmapData with useJournalHeatmap)
+- [x] T023 [US2] Wire calendar day click to entry loading in src/renderer/src/pages/journal.tsx (load entry when date changes)
+- [x] T024 [US2] Add tooltip with character count to calendar days in src/renderer/src/components/journal/calendar-heatmap.tsx (show date and character count on hover)
 
 **Checkpoint**: User Story 2 complete - calendar shows real activity data, clicking days navigates to entries
 
