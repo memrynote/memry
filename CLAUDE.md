@@ -46,6 +46,7 @@ The app uses React Context for state management with several key providers:
 ### Tab System Architecture
 
 The tab system (`contexts/tabs/`) mirrors VS Code behavior:
+
 - **Types**: `TabType` defines content types (inbox, tasks, note, journal, project, etc.)
 - **Split View**: Horizontal splits with resizable panes, layout stored as recursive tree structure
 - **Persistence**: Tab state persisted to localStorage with migrations support
@@ -54,6 +55,7 @@ The tab system (`contexts/tabs/`) mirrors VS Code behavior:
 ### Page Structure
 
 Pages in `src/renderer/src/pages/`:
+
 - `inbox.tsx` - Inbox for quick capture
 - `tasks.tsx` - Task management with multiple views (all, today, upcoming, completed) and kanban/calendar views
 - `journal.tsx` - Daily journaling with date navigation
@@ -62,6 +64,7 @@ Pages in `src/renderer/src/pages/`:
 ### Custom Hooks
 
 Key hooks in `src/renderer/src/hooks/`:
+
 - `use-tab-keyboard-shortcuts.ts` - Tab navigation shortcuts
 - `use-chord-shortcuts.ts` - Multi-key shortcut combinations
 - `use-drag-handlers.ts` - Unified drag-drop handling
@@ -92,6 +95,7 @@ Both `@/` and `@renderer/` resolve to `src/renderer/src/`. Use `@/components`, `
 ## Adding shadcn/ui Components
 
 The project uses shadcn/ui with extended registries (configured in `components.json`):
+
 - @alpine, @tailark, @magicui, @shadcn-form, @kokonutui, @diceui, @basecn, @animateui, @fancycomponents, @kibo-ui, @cult-ui
 
 ```bash
@@ -102,11 +106,15 @@ npx shadcn@latest add @magicui/<component-name>  # From specific registry
 ## IPC Communication Pattern
 
 1. Define handler in `src/main/index.ts`:
+
 ```typescript
-ipcMain.on('channel-name', (event, arg) => { /* handler */ })
+ipcMain.on('channel-name', (event, arg) => {
+  /* handler */
+})
 ```
 
 2. Expose API in `src/preload/index.ts`:
+
 ```typescript
 const api = {
   yourMethod: () => ipcRenderer.send('channel-name')
@@ -132,11 +140,13 @@ const api = {
 The app uses a "vault" model where users select a folder to store all their data. See `docs/vault-architecture.md` for full details.
 
 **Key concepts:**
+
 - **Vault**: User-selected folder containing notes, journals, and `.memry/` hidden folder
 - **data.db**: SQLite database for tasks/projects (source of truth)
 - **index.db**: SQLite database for note cache/FTS (rebuildable from files)
 
 **Vault folder structure:**
+
 ```
 MyVault/
 ├── notes/
@@ -152,10 +162,10 @@ MyVault/
 
 The app uses **two separate databases** with isolated schemas:
 
-| Database | Purpose | Schema | Tables |
-|----------|---------|--------|--------|
-| `data.db` | Source of truth for tasks | `data-schema.ts` | projects, statuses, tasks, task_notes, task_tags, inbox_items, settings, saved_filters |
-| `index.db` | Rebuildable cache for notes | `index-schema.ts` | note_cache, note_tags, note_links, note_properties, property_definitions |
+| Database   | Purpose                     | Schema            | Tables                                                                                 |
+| ---------- | --------------------------- | ----------------- | -------------------------------------------------------------------------------------- |
+| `data.db`  | Source of truth for tasks   | `data-schema.ts`  | projects, statuses, tasks, task_notes, task_tags, inbox_items, settings, saved_filters |
+| `index.db` | Rebuildable cache for notes | `index-schema.ts` | note_cache, note_tags, note_links, note_properties, property_definitions               |
 
 ```bash
 pnpm db:generate       # Generate migrations for both databases
@@ -170,6 +180,7 @@ pnpm rebuild           # Rebuild native modules (better-sqlite3)
 ```
 
 **Schema files**: `src/shared/db/schema/`
+
 - `data-schema.ts` - exports task schemas (projects, statuses, tasks, etc.)
 - `index-schema.ts` - exports note cache schemas (note_cache, note_properties, etc.)
 - `index.ts` - exports all for type access
@@ -179,15 +190,19 @@ pnpm rebuild           # Rebuild native modules (better-sqlite3)
 For request/response operations, use `ipcMain.handle` + `ipcRenderer.invoke`:
 
 1. Define handler in `src/main/ipc/<domain>-handlers.ts`:
+
 ```typescript
 import { ipcMain } from 'electron'
 import { createValidatedHandler } from './validate'
 import { MySchema } from '@shared/contracts/my-api'
 
 export function registerMyHandlers() {
-  ipcMain.handle('my:action', createValidatedHandler(MySchema, async (input) => {
-    return myService.doAction(input)
-  }))
+  ipcMain.handle(
+    'my:action',
+    createValidatedHandler(MySchema, async (input) => {
+      return myService.doAction(input)
+    })
+  )
 }
 ```
 
@@ -242,6 +257,7 @@ src/main/
 - `specs/001-core-data-layer/` - Design documents and contracts
 
 ## Active Technologies
+
 - TypeScript 5.9+ with strict mode
 - Drizzle ORM with better-sqlite3
 - electron-store for settings persistence
@@ -258,21 +274,23 @@ src/main/
 Both databases are configured with optimized SQLite pragmas in `src/main/database/client.ts`:
 
 **data.db (source of truth for tasks/projects)**:
+
 ```typescript
-journal_mode = WAL     // Better concurrency and crash recovery
-foreign_keys = ON      // Referential integrity
-synchronous = NORMAL   // Balance between safety and performance
-busy_timeout = 5000    // Wait 5s for locks
-cache_size = -64000    // 64MB cache
-temp_store = MEMORY    // Temp tables in memory
+journal_mode = WAL // Better concurrency and crash recovery
+foreign_keys = ON // Referential integrity
+synchronous = NORMAL // Balance between safety and performance
+busy_timeout = 5000 // Wait 5s for locks
+cache_size = -64000 // 64MB cache
+temp_store = MEMORY // Temp tables in memory
 ```
 
 **index.db (rebuildable cache for notes)**:
+
 ```typescript
 journal_mode = WAL
 synchronous = NORMAL
 busy_timeout = 5000
-cache_size = -128000   // 128MB cache for search
+cache_size = -128000 // 128MB cache for search
 temp_store = MEMORY
 // No foreign keys (it's a cache)
 ```
@@ -280,12 +298,142 @@ temp_store = MEMORY
 ### Graceful Shutdown
 
 The app performs graceful shutdown on quit (`src/main/index.ts`):
+
 1. Prevents default quit behavior
 2. Sets 5-second timeout for forced exit
 3. Closes vault (stops file watcher, closes databases)
 4. Exits cleanly
 
+## Notes System Architecture
+
+### Overview
+
+The notes system uses a file-first architecture where markdown files are the source of truth. The SQLite database (index.db) acts as a rebuildable cache for fast queries and full-text search.
+
+### Key Components
+
+```
+src/renderer/src/components/note/
+├── content-area/          # BlockNote-based rich text editor
+│   ├── ContentArea.tsx    # Main editor with wiki-links & file blocks
+│   ├── wiki-link.tsx      # [[Wiki Link]] inline content
+│   └── file-block.tsx     # File attachment block
+├── backlinks/             # Backlinks section
+├── info-section/          # Properties panel (8 type editors)
+├── tags-row/              # Tag management
+├── note-title/            # Title with emoji picker
+├── version-history.tsx    # Version history panel
+├── export-dialog.tsx      # Export to PDF/HTML
+└── editor-error-boundary.tsx # Error boundary for editor crashes
+```
+
+### Data Flow
+
+1. **Create/Update Note**: Renderer → IPC → Main → File System → Watcher → DB Cache
+2. **Read Note**: Renderer → IPC → Main → File System (content) + DB (metadata)
+3. **External Edit**: File Watcher → DB Cache Update → IPC Event → Renderer
+
+### Notes Hook Usage
+
+```tsx
+import { useNotes, useNoteLinks, useNoteTags } from '@/hooks/use-notes'
+
+function NotesView() {
+  const { notes, createNote, updateNote, deleteNote } = useNotes({
+    folder: 'projects',
+    tags: ['active'],
+    sortBy: 'modified'
+  })
+
+  const { incoming: backlinks } = useNoteLinks(noteId)
+  const { tags: allTags } = useNoteTags()
+}
+```
+
+### Properties System
+
+Properties are stored in YAML frontmatter and cached in the database:
+
+```yaml
+---
+id: 'abc123'
+title: 'My Note'
+tags: ['project', 'active']
+status: 'in-progress'
+priority: 3
+due: '2025-01-15'
+---
+```
+
+Property types: `text`, `number`, `checkbox`, `date`, `select`, `multiSelect`, `url`, `rating`
+
+### Wiki Links
+
+The editor supports `[[Wiki Link]]` and `[[Note Title|Display Text]]` syntax:
+
+```tsx
+// In ContentArea.tsx, wiki links are rendered as interactive elements
+<WikiLink target="Note Title" alias="Display Text" />
+```
+
+### File Attachments
+
+Files can be dragged into the editor. Images are rendered inline, other files appear as file blocks:
+
+```typescript
+// Upload attachment via IPC
+const result = await notesService.uploadAttachment(noteId, file)
+// Returns: { success, path, type: 'image'|'file', name, size, mimeType }
+```
+
+### Version History
+
+Snapshots are automatically created on significant changes:
+
+```typescript
+// List versions
+const versions = await notesService.getVersions(noteId)
+
+// Restore a version
+await notesService.restoreVersion(snapshotId)
+```
+
+### Performance Optimization
+
+The notes tree uses virtualization for 100+ notes:
+
+```tsx
+// Automatic virtualization threshold
+if (shouldVirtualize(tree)) {
+  return <VirtualizedNotesTree tree={tree} ... />
+}
+```
+
+### Error Handling
+
+The editor is wrapped in an error boundary to catch crashes:
+
+```tsx
+<EditorErrorBoundary noteId={noteId} onRecover={loadNote}>
+  <ContentArea ... />
+</EditorErrorBoundary>
+```
+
+### Accessibility
+
+- ARIA labels on all interactive elements
+- Keyboard navigation in dialogs (Escape to close)
+- Focus trap in modals
+- Screen reader support for editor regions
+
 ## Recent Changes
+
+- 003-notes: Phase 20 complete (T115-T121)
+  - Accessibility audit with ARIA labels
+  - Keyboard navigation for panels/dialogs
+  - Virtualized notes tree for 100+ notes
+  - Error boundary for editor crashes
+  - Updated CLAUDE.md with notes system patterns
 - 003-notes: Added TypeScript 5.9+ (strict mode), Node.js 20+, React 19
 - 001-core-data-layer: Phase 10 complete (T088-T093)
   - Graceful shutdown with timeout mechanism

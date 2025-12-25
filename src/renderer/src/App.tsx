@@ -24,7 +24,7 @@ import { ThemeProvider } from 'next-themes'
 // Tab System imports
 import { TabProvider, useTabs, useActiveTab, getOrderedGroupWidths } from '@/contexts/tabs'
 import { TasksProvider } from '@/contexts/tasks'
-import { TabBarWithDrag, TabDragProvider } from '@/components/tabs'
+import { TabBarWithDrag, TabDragProvider, TabErrorBoundary } from '@/components/tabs'
 import { SplitViewContainer } from '@/components/split-view'
 import { ChordIndicator, KeyboardShortcutsDialog } from '@/components/keyboard'
 import { SearchModal } from '@/components/search'
@@ -564,37 +564,42 @@ function App(): React.JSX.Element {
   }, [])
 
   // Main content with TabProvider and TasksProvider wrapping everything
+  // Wrapped in TabErrorBoundary for graceful error handling
   const mainContent = (
-    <TasksProvider
-      initialTasks={tasks}
-      initialProjects={projectsWithCounts}
-      onTasksChange={handleTasksChange}
-      onProjectsChange={handleProjectsChange}
+    <TabErrorBoundary
+      onError={(error, errorInfo) => console.error('[App] Critical error:', error, errorInfo)}
     >
-      <AIAgentProvider>
-        <TabProvider>
-          <AppSidebar
-            currentPage={currentPage}
-            viewCounts={viewCounts}
-            onOpenSearch={() => setSearchOpen(true)}
-          />
-          <SidebarInset className="flex flex-col">
-            <AppContent
-              tasks={tasks}
-              projects={projectsWithCounts}
-              selectedTaskIds={selectedTaskIds}
-              onTasksChange={handleTasksChange}
-              onSelectionChange={handleTaskSelectionChange}
-              onSelectedTaskIdsChange={handleSelectionChange}
-              searchOpen={searchOpen}
-              onSearchOpenChange={setSearchOpen}
+      <TasksProvider
+        initialTasks={tasks}
+        initialProjects={projectsWithCounts}
+        onTasksChange={handleTasksChange}
+        onProjectsChange={handleProjectsChange}
+      >
+        <AIAgentProvider>
+          <TabProvider>
+            <AppSidebar
+              currentPage={currentPage}
+              viewCounts={viewCounts}
+              onOpenSearch={() => setSearchOpen(true)}
             />
-          </SidebarInset>
-          {/* Drag Overlay - only for task drag to sidebar */}
-          <TaskDragOverlay projects={projectsWithCounts} />
-        </TabProvider>
-      </AIAgentProvider>
-    </TasksProvider>
+            <SidebarInset className="flex flex-col">
+              <AppContent
+                tasks={tasks}
+                projects={projectsWithCounts}
+                selectedTaskIds={selectedTaskIds}
+                onTasksChange={handleTasksChange}
+                onSelectionChange={handleTaskSelectionChange}
+                onSelectedTaskIdsChange={handleSelectionChange}
+                searchOpen={searchOpen}
+                onSearchOpenChange={setSearchOpen}
+              />
+            </SidebarInset>
+            {/* Drag Overlay - only for task drag to sidebar */}
+            <TaskDragOverlay projects={projectsWithCounts} />
+          </TabProvider>
+        </AIAgentProvider>
+      </TasksProvider>
+    </TabErrorBoundary>
   )
 
   // Show onboarding if no vault is open (and not still loading)

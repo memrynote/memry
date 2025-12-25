@@ -589,13 +589,15 @@ inherit: true # Inherit from parent folder (default: true)
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T115 [P] Accessibility audit - add ARIA labels to all interactive elements
-- [ ] T116 [P] Keyboard navigation for all panels and dialogs
-- [ ] T117 Performance optimization - virtualize long notes list
-- [ ] T118 [P] Error boundary for editor crashes
-- [ ] T119 External edit conflict detection and resolution UI
-- [ ] T120 Run quickstart.md validation scenarios
-- [ ] T121 Update CLAUDE.md with notes system patterns
+- [x] T115 [P] Accessibility audit - add ARIA labels to all interactive elements
+- [x] T116 [P] Keyboard navigation for all panels and dialogs
+- [x] T117 Performance optimization - virtualize long notes list
+- [x] T118 [P] Error boundary for editor crashes
+- [ ] ~~T119 External edit conflict detection and resolution UI~~ (REMOVED - feature descoped)
+- [x] T120 Run quickstart.md validation scenarios
+- [x] T121 Update CLAUDE.md with notes system patterns
+
+**Checkpoint**: Phase 20 complete - Polish & Cross-Cutting Concerns ✅ PHASE 20 COMPLETE
 
 ---
 

@@ -39,11 +39,7 @@ import {
 } from '@shared/db/queries/notes'
 import { getIndexDatabase, updateFtsContent } from '../database'
 import { NotesChannels } from '@shared/ipc-channels'
-import {
-  trackPendingDelete,
-  checkForRename,
-  clearAllPendingDeletes
-} from './rename-tracker'
+import { trackPendingDelete, checkForRename, clearAllPendingDeletes } from './rename-tracker'
 
 // ============================================================================
 // Types
@@ -151,10 +147,7 @@ export class VaultWatcher {
     ]
 
     // Create debounced handlers
-    this.debouncedChange = createPathDebouncer(
-      (filePath) => this.handleFileChange(filePath),
-      100
-    )
+    this.debouncedChange = createPathDebouncer((filePath) => this.handleFileChange(filePath), 100)
 
     // Capture exclude patterns for use in ignored function
     const userExcludePatterns = this.excludePatterns

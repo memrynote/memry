@@ -7,7 +7,7 @@
  * @module components/note/version-history
  */
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Sheet,
   SheetContent,
@@ -110,6 +110,37 @@ export function VersionHistory({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [versionToDelete, setVersionToDelete] = useState<string | null>(null)
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false)
+
+  // Ref for focus restoration
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  // Handle keyboard navigation and focus management
+  useEffect(() => {
+    if (!open) return
+
+    // Store current focus for restoration
+    previousFocusRef.current = document.activeElement as HTMLElement
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape to close (unless dialogs are open)
+      if (e.key === 'Escape' && !deleteDialogOpen && !restoreDialogOpen) {
+        e.preventDefault()
+        onOpenChange(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      // Restore focus when closing
+      if (previousFocusRef.current) {
+        requestAnimationFrame(() => {
+          previousFocusRef.current?.focus()
+        })
+      }
+    }
+  }, [open, deleteDialogOpen, restoreDialogOpen, onOpenChange])
 
   /**
    * Load version history for the note.
