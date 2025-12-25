@@ -25,6 +25,7 @@ export type TabType =
   | 'settings'
   | 'collection'
   | 'template-editor' // Template editing (Phase 15)
+  | 'templates' // Template list/management (Phase 15)
 
 /**
  * Singleton tab types - only one instance allowed
@@ -39,7 +40,8 @@ export const SINGLETON_TAB_TYPES: TabType[] = [
   'today', // Legacy
   'upcoming', // Legacy
   'completed', // Legacy
-  'settings'
+  'settings',
+  'templates' // Template list
 ]
 
 /**

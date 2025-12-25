@@ -374,13 +374,10 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
     [isBuiltIn]
   )
 
-  const handleContentChange = useCallback(
-    (markdown: string) => {
-      if (isBuiltIn) return
-      setContent(markdown)
-    },
-    [isBuiltIn]
-  )
+  const handleContentChange = useCallback((markdown: string) => {
+    // Note: isBuiltIn check is handled by ContentArea's editable prop
+    setContent(markdown)
+  }, [])
 
   const handleBack = useCallback(() => {
     if (activeTab) closeTab(activeTab.id)
@@ -494,6 +491,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
             {/* Content editor */}
             <div className="min-h-[300px] border rounded-lg p-4 bg-card">
               <ContentArea
+                key={templateId || 'new'}
                 initialContent={content}
                 contentType="markdown"
                 placeholder="Default content for notes created from this template..."
