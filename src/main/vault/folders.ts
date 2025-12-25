@@ -1,0 +1,199 @@
+/**
+ * Folder configuration operations.
+ * Manages folder-level template settings stored in .folder.md files.
+ *
+ * @module vault/folders
+ */
+
+import path from 'path'
+import fs from 'fs/promises'
+import { existsSync } from 'fs'
+import matter from 'gray-matter'
+import { getStatus, getConfig } from './index'
+import { VaultError, VaultErrorCode } from '../lib/errors'
+import type { FolderConfig } from '@shared/contracts/templates-api'
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const FOLDER_CONFIG_FILE = '.folder.md'
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * Get the vault path, throwing if no vault is open.
+ */
+function getVaultPath(): string {
+  const status = getStatus()
+  if (!status.path) {
+    throw new VaultError('No vault is currently open', VaultErrorCode.NOT_INITIALIZED)
+  }
+  return status.path
+}
+
+/**
+ * Get the notes directory path.
+ */
+function getNotesDir(): string {
+  const vaultPath = getVaultPath()
+  const config = getConfig()
+  return path.join(vaultPath, config.defaultNoteFolder)
+}
+
+/**
+ * Get the absolute path for a folder config file.
+ * @param folderPath - Relative path from notes directory (e.g., "projects/active")
+ */
+function getFolderConfigPath(folderPath: string): string {
+  const notesDir = getNotesDir()
+  // Handle root folder
+  if (!folderPath || folderPath === '' || folderPath === '.') {
+    return path.join(notesDir, FOLDER_CONFIG_FILE)
+  }
+  return path.join(notesDir, folderPath, FOLDER_CONFIG_FILE)
+}
+
+/**
+ * Parse a folder config file.
+ */
+function parseFolderConfig(content: string): FolderConfig {
+  const { data } = matter(content)
+
+  return {
+    template: typeof data.template === 'string' ? data.template : undefined,
+    inherit: data.inherit !== false // Default to true
+  }
+}
+
+/**
+ * Serialize a folder config to file content.
+ */
+function serializeFolderConfig(config: FolderConfig): string {
+  const frontmatter: Record<string, unknown> = {}
+
+  if (config.template) {
+    frontmatter.template = config.template
+  }
+
+  if (config.inherit === false) {
+    frontmatter.inherit = false
+  }
+
+  return matter.stringify('', frontmatter)
+}
+
+// ============================================================================
+// Folder Config Operations
+// ============================================================================
+
+/**
+ * Read folder config from .folder.md file.
+ * @param folderPath - Relative path from notes directory
+ * @returns FolderConfig or null if not found
+ */
+export async function readFolderConfig(folderPath: string): Promise<FolderConfig | null> {
+  const configPath = getFolderConfigPath(folderPath)
+
+  try {
+    if (!existsSync(configPath)) {
+      return null
+    }
+    const content = await fs.readFile(configPath, 'utf-8')
+    return parseFolderConfig(content)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Write folder config to .folder.md file.
+ * @param folderPath - Relative path from notes directory
+ * @param config - Configuration to write
+ */
+export async function writeFolderConfig(folderPath: string, config: FolderConfig): Promise<void> {
+  const configPath = getFolderConfigPath(folderPath)
+
+  // Ensure the folder exists
+  const folderDir = path.dirname(configPath)
+  if (!existsSync(folderDir)) {
+    await fs.mkdir(folderDir, { recursive: true })
+  }
+
+  // If config is empty (no template, inherit=true), delete the file
+  if (!config.template && config.inherit !== false) {
+    if (existsSync(configPath)) {
+      await fs.unlink(configPath)
+    }
+    return
+  }
+
+  const content = serializeFolderConfig(config)
+  await fs.writeFile(configPath, content, 'utf-8')
+}
+
+/**
+ * Get the resolved template for a folder, following inheritance chain.
+ * @param folderPath - Relative path from notes directory
+ * @returns Template ID or null if no template is set
+ */
+export async function getFolderTemplate(folderPath: string): Promise<string | null> {
+  // Normalize folder path
+  let currentPath = folderPath || ''
+  if (currentPath === '.') currentPath = ''
+
+  // Walk up the folder tree
+  while (true) {
+    const config = await readFolderConfig(currentPath)
+
+    if (config) {
+      // If template is set, return it
+      if (config.template) {
+        return config.template
+      }
+
+      // If inherit is explicitly false, stop here
+      if (config.inherit === false) {
+        return null
+      }
+    }
+
+    // If we're at the root notes folder, stop
+    if (!currentPath || currentPath === '' || currentPath === '.') {
+      break
+    }
+
+    // Move to parent folder
+    currentPath = path.dirname(currentPath)
+    if (currentPath === '.') currentPath = ''
+  }
+
+  return null
+}
+
+/**
+ * Set the default template for a folder.
+ * @param folderPath - Relative path from notes directory
+ * @param templateId - Template ID or null to clear
+ */
+export async function setFolderTemplate(
+  folderPath: string,
+  templateId: string | null
+): Promise<void> {
+  const currentConfig = (await readFolderConfig(folderPath)) || {}
+
+  await writeFolderConfig(folderPath, {
+    ...currentConfig,
+    template: templateId || undefined
+  })
+}
+
+/**
+ * Check if a path is the .folder.md config file.
+ * Used by file watcher to ignore these files.
+ */
+export function isFolderConfigFile(filePath: string): boolean {
+  return path.basename(filePath) === FOLDER_CONFIG_FILE
+}

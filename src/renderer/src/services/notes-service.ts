@@ -20,7 +20,8 @@ import type {
   UpdatePropertyDefinitionInput,
   AttachmentResult,
   AttachmentInfo,
-  DeleteAttachmentResponse
+  DeleteAttachmentResponse,
+  FolderConfig
 } from '../../../preload/index.d'
 
 /**
@@ -244,6 +245,38 @@ export const notesService: NotesClientAPI = {
    */
   deleteAttachment: (noteId: string, filename: string): Promise<DeleteAttachmentResponse> => {
     return window.api.notes.deleteAttachment(noteId, filename)
+  },
+
+  // =========================================================================
+  // T096.5: Folder Config API
+  // =========================================================================
+
+  /**
+   * Get folder configuration (default template, inheritance settings).
+   * @param folderPath - The folder path
+   */
+  getFolderConfig: (folderPath: string): Promise<FolderConfig | null> => {
+    return window.api.notes.getFolderConfig(folderPath)
+  },
+
+  /**
+   * Set folder configuration.
+   * @param folderPath - The folder path
+   * @param config - The folder config to set
+   */
+  setFolderConfig: (
+    folderPath: string,
+    config: FolderConfig
+  ): Promise<{ success: boolean; error?: string }> => {
+    return window.api.notes.setFolderConfig(folderPath, config)
+  },
+
+  /**
+   * Get effective template for a folder (considering inheritance).
+   * @param folderPath - The folder path
+   */
+  getFolderTemplate: (folderPath: string): Promise<string | null> => {
+    return window.api.notes.getFolderTemplate(folderPath)
   }
 }
 

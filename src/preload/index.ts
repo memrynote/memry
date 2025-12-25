@@ -7,7 +7,8 @@ import {
   NotesChannels,
   SearchChannels,
   TasksChannels,
-  SavedFiltersChannels
+  SavedFiltersChannels,
+  TemplatesChannels
 } from '@shared/ipc-channels'
 
 // Custom APIs for renderer
@@ -76,8 +77,7 @@ const api = {
       ipcRenderer.invoke(NotesChannels.invoke.GET_PROPERTIES, noteId),
     setProperties: (noteId: string, properties: Record<string, unknown>) =>
       ipcRenderer.invoke(NotesChannels.invoke.SET_PROPERTIES, { noteId, properties }),
-    getPropertyDefinitions: () =>
-      ipcRenderer.invoke(NotesChannels.invoke.GET_PROPERTY_DEFINITIONS),
+    getPropertyDefinitions: () => ipcRenderer.invoke(NotesChannels.invoke.GET_PROPERTY_DEFINITIONS),
     createPropertyDefinition: (input: {
       name: string
       type: string
@@ -115,7 +115,51 @@ const api = {
     listAttachments: (noteId: string) =>
       ipcRenderer.invoke(NotesChannels.invoke.LIST_ATTACHMENTS, noteId),
     deleteAttachment: (noteId: string, filename: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.DELETE_ATTACHMENT, { noteId, filename })
+      ipcRenderer.invoke(NotesChannels.invoke.DELETE_ATTACHMENT, { noteId, filename }),
+
+    // Folder config API (T096.5)
+    getFolderConfig: (folderPath: string) =>
+      ipcRenderer.invoke(NotesChannels.invoke.GET_FOLDER_CONFIG, folderPath),
+    setFolderConfig: (folderPath: string, config: { template?: string; inherit?: boolean }) =>
+      ipcRenderer.invoke(NotesChannels.invoke.SET_FOLDER_CONFIG, { folderPath, config }),
+    getFolderTemplate: (folderPath: string) =>
+      ipcRenderer.invoke(NotesChannels.invoke.GET_FOLDER_TEMPLATE, folderPath)
+  },
+
+  // Templates API
+  templates: {
+    list: () => ipcRenderer.invoke(TemplatesChannels.invoke.LIST),
+    get: (id: string) => ipcRenderer.invoke(TemplatesChannels.invoke.GET, id),
+    create: (input: {
+      name: string
+      description?: string
+      icon?: string | null
+      tags?: string[]
+      properties?: Array<{
+        name: string
+        type: string
+        value: unknown
+        options?: string[]
+      }>
+      content?: string
+    }) => ipcRenderer.invoke(TemplatesChannels.invoke.CREATE, input),
+    update: (input: {
+      id: string
+      name?: string
+      description?: string
+      icon?: string | null
+      tags?: string[]
+      properties?: Array<{
+        name: string
+        type: string
+        value: unknown
+        options?: string[]
+      }>
+      content?: string
+    }) => ipcRenderer.invoke(TemplatesChannels.invoke.UPDATE, input),
+    delete: (id: string) => ipcRenderer.invoke(TemplatesChannels.invoke.DELETE, id),
+    duplicate: (id: string, newName: string) =>
+      ipcRenderer.invoke(TemplatesChannels.invoke.DUPLICATE, { id, newName })
   },
 
   // Search API
@@ -246,12 +290,8 @@ const api = {
       ipcRenderer.invoke(TasksChannels.invoke.PROJECT_REORDER, { projectIds, positions }),
 
     // Status operations
-    createStatus: (input: {
-      projectId: string
-      name: string
-      color?: string
-      isDone?: boolean
-    }) => ipcRenderer.invoke(TasksChannels.invoke.STATUS_CREATE, input),
+    createStatus: (input: { projectId: string; name: string; color?: string; isDone?: boolean }) =>
+      ipcRenderer.invoke(TasksChannels.invoke.STATUS_CREATE, input),
     updateStatus: (id: string, updates: Record<string, unknown>) =>
       ipcRenderer.invoke(TasksChannels.invoke.STATUS_UPDATE, { id, ...updates }),
     deleteStatus: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.STATUS_DELETE, id),
@@ -264,7 +304,8 @@ const api = {
     getTags: () => ipcRenderer.invoke(TasksChannels.invoke.GET_TAGS),
 
     // Bulk operations
-    bulkComplete: (ids: string[]) => ipcRenderer.invoke(TasksChannels.invoke.BULK_COMPLETE, { ids }),
+    bulkComplete: (ids: string[]) =>
+      ipcRenderer.invoke(TasksChannels.invoke.BULK_COMPLETE, { ids }),
     bulkDelete: (ids: string[]) => ipcRenderer.invoke(TasksChannels.invoke.BULK_DELETE, { ids }),
     bulkMove: (ids: string[], projectId: string) =>
       ipcRenderer.invoke(TasksChannels.invoke.BULK_MOVE, { ids, projectId }),
@@ -381,7 +422,12 @@ const api = {
   },
 
   onSearchIndexRebuildProgress: (
-    callback: (progress: { phase: string; current: number; total: number; percentage: number }) => void
+    callback: (progress: {
+      phase: string
+      current: number
+      total: number
+      percentage: number
+    }) => void
   ): (() => void) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
@@ -477,10 +523,8 @@ const api = {
 
   // Saved Filters event subscription helpers
   onSavedFilterCreated: (callback: (event: { savedFilter: unknown }) => void): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { savedFilter: unknown }
-    ): void => callback(data)
+    const handler = (_event: Electron.IpcRendererEvent, data: { savedFilter: unknown }): void =>
+      callback(data)
     ipcRenderer.on(SavedFiltersChannels.events.CREATED, handler)
     return () => ipcRenderer.removeListener(SavedFiltersChannels.events.CREATED, handler)
   },
@@ -501,6 +545,32 @@ const api = {
       callback(data)
     ipcRenderer.on(SavedFiltersChannels.events.DELETED, handler)
     return () => ipcRenderer.removeListener(SavedFiltersChannels.events.DELETED, handler)
+  },
+
+  // Templates event subscription helpers
+  onTemplateCreated: (callback: (event: { template: unknown }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { template: unknown }): void =>
+      callback(data)
+    ipcRenderer.on(TemplatesChannels.events.CREATED, handler)
+    return () => ipcRenderer.removeListener(TemplatesChannels.events.CREATED, handler)
+  },
+
+  onTemplateUpdated: (
+    callback: (event: { id: string; template: unknown }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { id: string; template: unknown }
+    ): void => callback(data)
+    ipcRenderer.on(TemplatesChannels.events.UPDATED, handler)
+    return () => ipcRenderer.removeListener(TemplatesChannels.events.UPDATED, handler)
+  },
+
+  onTemplateDeleted: (callback: (event: { id: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { id: string }): void =>
+      callback(data)
+    ipcRenderer.on(TemplatesChannels.events.DELETED, handler)
+    return () => ipcRenderer.removeListener(TemplatesChannels.events.DELETED, handler)
   }
 }
 

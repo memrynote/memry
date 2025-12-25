@@ -2,7 +2,11 @@ import { registerVaultHandlers, unregisterVaultHandlers } from './vault-handlers
 import { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
 import { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 import { registerTasksHandlers, unregisterTasksHandlers } from './tasks-handlers'
-import { registerSavedFiltersHandlers, unregisterSavedFiltersHandlers } from './saved-filters-handlers'
+import {
+  registerSavedFiltersHandlers,
+  unregisterSavedFiltersHandlers
+} from './saved-filters-handlers'
+import { registerTemplatesHandlers, unregisterTemplatesHandlers } from './templates-handlers'
 
 /**
  * Flag to prevent duplicate handler registration
@@ -42,6 +46,9 @@ export function registerAllHandlers(): void {
   // Register saved filters handlers
   registerSavedFiltersHandlers()
 
+  // Register templates handlers
+  registerTemplatesHandlers()
+
   handlersRegistered = true
   console.log('All IPC handlers registered')
 }
@@ -60,6 +67,7 @@ export function unregisterAllHandlers(): void {
   unregisterSearchHandlers()
   unregisterTasksHandlers()
   unregisterSavedFiltersHandlers()
+  unregisterTemplatesHandlers()
 
   handlersRegistered = false
   console.log('All IPC handlers unregistered')
@@ -77,4 +85,8 @@ export { registerVaultHandlers, unregisterVaultHandlers } from './vault-handlers
 export { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
 export { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 export { registerTasksHandlers, unregisterTasksHandlers } from './tasks-handlers'
-export { registerSavedFiltersHandlers, unregisterSavedFiltersHandlers } from './saved-filters-handlers'
+export {
+  registerSavedFiltersHandlers,
+  unregisterSavedFiltersHandlers
+} from './saved-filters-handlers'
+export { registerTemplatesHandlers, unregisterTemplatesHandlers } from './templates-handlers'

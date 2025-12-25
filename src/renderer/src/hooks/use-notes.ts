@@ -78,6 +78,7 @@ export interface UseNotesReturn {
     content?: string
     folder?: string
     tags?: string[]
+    template?: string
   }) => Promise<Note | null>
   getNote: (id: string) => Promise<Note | null>
   updateNote: (input: {
@@ -214,6 +215,7 @@ export function useNotes(options: UseNotesOptions = {}): UseNotesReturn {
       content?: string
       folder?: string
       tags?: string[]
+      template?: string // Template ID to apply
     }): Promise<Note | null> => {
       setError(null)
 
@@ -442,9 +444,7 @@ export function useNotes(options: UseNotesOptions = {}): UseNotesReturn {
     const unsubRenamed = onNoteRenamed((event) => {
       setNotes((prev) =>
         prev.map((note) =>
-          note.id === event.id
-            ? { ...note, title: event.newTitle, path: event.newPath }
-            : note
+          note.id === event.id ? { ...note, title: event.newTitle, path: event.newPath } : note
         )
       )
 
@@ -641,17 +641,20 @@ export function useNoteFolders() {
     }
   }, [])
 
-  const createFolder = useCallback(async (path: string): Promise<boolean> => {
-    try {
-      const result = await notesService.createFolder(path)
-      if (result.success) {
-        await loadFolders()
+  const createFolder = useCallback(
+    async (path: string): Promise<boolean> => {
+      try {
+        const result = await notesService.createFolder(path)
+        if (result.success) {
+          await loadFolders()
+        }
+        return result.success
+      } catch {
+        return false
       }
-      return result.success
-    } catch {
-      return false
-    }
-  }, [loadFolders])
+    },
+    [loadFolders]
+  )
 
   useEffect(() => {
     loadFolders()
