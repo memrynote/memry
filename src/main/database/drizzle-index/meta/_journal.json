@@ -22,6 +22,13 @@
       "when": 1766665036232,
       "tag": "0002_thin_payback",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1766683424698,
+      "tag": "0003_wakeful_shinobi_shaw",
+      "breakpoints": true
     }
   ]
 }

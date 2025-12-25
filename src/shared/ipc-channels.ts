@@ -311,3 +311,58 @@ export type TemplatesInvokeChannel =
   (typeof TemplatesChannels.invoke)[keyof typeof TemplatesChannels.invoke]
 export type TemplatesEventChannel =
   (typeof TemplatesChannels.events)[keyof typeof TemplatesChannels.events]
+
+// ============================================================================
+// Journal Channels
+// ============================================================================
+
+export const JournalChannels = {
+  invoke: {
+    // Entry CRUD
+    /** Get a journal entry by date */
+    GET_ENTRY: 'journal:getEntry',
+    /** Create a new journal entry */
+    CREATE_ENTRY: 'journal:createEntry',
+    /** Update an existing journal entry */
+    UPDATE_ENTRY: 'journal:updateEntry',
+    /** Delete a journal entry */
+    DELETE_ENTRY: 'journal:deleteEntry',
+
+    // Calendar & Views
+    /** Get heatmap data for a year */
+    GET_HEATMAP: 'journal:getHeatmap',
+    /** Get entries for a specific month */
+    GET_MONTH_ENTRIES: 'journal:getMonthEntries',
+    /** Get stats for all months in a year */
+    GET_YEAR_STATS: 'journal:getYearStats',
+
+    // Context
+    /** Get tasks and events for a specific date */
+    GET_DAY_CONTEXT: 'journal:getDayContext',
+
+    // Tags & Search
+    /** Get all tags used in journal entries */
+    GET_ALL_TAGS: 'journal:getAllTags',
+    /** Search journal entries */
+    SEARCH_ENTRIES: 'journal:searchEntries',
+
+    // Streak
+    /** Get current and longest streak */
+    GET_STREAK: 'journal:getStreak'
+  },
+  events: {
+    /** Journal entry was created */
+    ENTRY_CREATED: 'journal:entryCreated',
+    /** Journal entry was updated */
+    ENTRY_UPDATED: 'journal:entryUpdated',
+    /** Journal entry was deleted */
+    ENTRY_DELETED: 'journal:entryDeleted',
+    /** External change detected to journal file */
+    EXTERNAL_CHANGE: 'journal:externalChange'
+  }
+} as const
+
+export type JournalInvokeChannel =
+  (typeof JournalChannels.invoke)[keyof typeof JournalChannels.invoke]
+export type JournalEventChannel =
+  (typeof JournalChannels.events)[keyof typeof JournalChannels.events]

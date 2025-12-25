@@ -28,11 +28,11 @@ Electron application structure per plan.md:
 
 **Purpose**: Database schema, shared types, and IPC channel registration
 
-- [ ] T001 Copy journal-api.ts contracts from specs/004-journal-system/contracts/ to src/shared/contracts/journal-api.ts
-- [ ] T002 [P] Create journal cache schema in src/shared/db/schema/journal-cache.ts (journalCache, journalTags tables)
-- [ ] T003 [P] Export journal schema from src/shared/db/schema/index.ts
-- [ ] T004 [P] Add journal IPC channel names to src/shared/ipc-channels.ts
-- [ ] T005 Generate database migration for journal tables with `pnpm db:generate:index`
+- [x] T001 Copy journal-api.ts contracts from specs/004-journal-system/contracts/ to src/shared/contracts/journal-api.ts
+- [x] T002 [P] Create journal cache schema in src/shared/db/schema/journal-cache.ts (journalCache, journalTags tables)
+- [x] T003 [P] Export journal schema from src/shared/db/schema/index.ts
+- [x] T004 [P] Add journal IPC channel names to src/shared/ipc-channels.ts
+- [x] T005 Generate database migration for journal tables with `pnpm db:generate:index`
 
 ---
 
