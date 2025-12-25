@@ -312,6 +312,45 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     }
   }, [renamingFolderPath])
 
+  // Load folder template names on mount/folder change
+  useEffect(() => {
+    const loadFolderTemplateNames = async () => {
+      if (folders.length === 0) return
+
+      try {
+        // Fetch templates list once
+        const templatesResponse = await window.api.templates.list()
+        const templatesMap = new Map(
+          templatesResponse.templates.map((t) => [t.id, t.name])
+        )
+
+        // Fetch configs for all folders and build names map
+        const namesMap = new Map<string, string>()
+        await Promise.all(
+          folders.map(async (folderPath) => {
+            try {
+              const config = await notesService.getFolderConfig(folderPath)
+              if (config?.template) {
+                const templateName = templatesMap.get(config.template)
+                if (templateName) {
+                  namesMap.set(folderPath, templateName)
+                }
+              }
+            } catch {
+              // Ignore errors for individual folders
+            }
+          })
+        )
+
+        setFolderTemplateNames(namesMap)
+      } catch (err) {
+        console.error('Failed to load folder template names:', err)
+      }
+    }
+
+    loadFolderTemplateNames()
+  }, [folders])
+
   // Build tree structure from notes and folders
   const tree = useMemo(() => {
     return buildTreeFromNotes(notes, folders)
