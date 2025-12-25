@@ -25,7 +25,12 @@ import { notesService } from '@/services/notes-service'
 import type { ContentAreaProps, HeadingInfo } from './types'
 import { createWikiLinkInlineContent, WikiLink } from './wiki-link'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
-import { createFileBlock, createFileBlockContent, serializeFileBlock, FILE_BLOCK_REGEX } from './file-block'
+import {
+  createFileBlock,
+  createFileBlockContent,
+  serializeFileBlock,
+  FILE_BLOCK_REGEX
+} from './file-block'
 
 type NoteSuggestion = {
   id: string
@@ -50,12 +55,12 @@ function extractHeadings(blocks: Block[]): HeadingInfo[] {
       // Extract text from inline content
       const text = Array.isArray(block.content)
         ? block.content
-          .map((item) => {
-            if (typeof item === 'string') return item
-            if (item && typeof item === 'object' && 'text' in item) return item.text
-            return ''
-          })
-          .join('')
+            .map((item) => {
+              if (typeof item === 'string') return item
+              if (item && typeof item === 'object' && 'text' in item) return item.text
+              return ''
+            })
+            .join('')
         : ''
 
       if (text.trim()) {
@@ -140,9 +145,10 @@ function splitTextWithWikiLinks(
   return { segments, didChange: true }
 }
 
-function normalizeInlineContent(
+function normalizeInlineContent(content: string | Array<any>): {
   content: string | Array<any>
-): { content: string | Array<any>; didChange: boolean } {
+  didChange: boolean
+} {
   if (typeof content === 'string') {
     const { segments, didChange } = splitTextWithWikiLinks(content)
     if (!didChange) return { content, didChange: false }
@@ -318,6 +324,12 @@ export const ContentArea = memo(function ContentArea({
     noteIdRef.current = noteId
   }, [noteId])
 
+  // Track if initial content has been loaded (prevents re-loading on prop changes)
+  const initialContentLoadedRef = useRef(false)
+
+  // Track if content is ready for saving (prevents saving empty content before load completes)
+  const isContentReadyRef = useRef(false)
+
   // T069/T071: Schema with FileBlock for attachments
   const schema = useMemo(
     () =>
@@ -369,124 +381,142 @@ export const ContentArea = memo(function ContentArea({
 
   const notesCacheRef = useRef<{ notes: NoteSuggestion[]; fetchedAt: number } | null>(null)
 
-  const getWikiLinkItems = useCallback(
-    async (query: string): Promise<WikiLinkSuggestionItem[]> => {
-      const now = Date.now()
-      const cache = notesCacheRef.current
-      const shouldRefresh = !cache || now - cache.fetchedAt > 5000
-      if (shouldRefresh) {
-        try {
-          const result = await notesService.list({ limit: 500, sortBy: 'modified' })
-          notesCacheRef.current = {
-            notes: result.notes.map((note) => ({
-              id: note.id,
-              title: note.title,
-              modified: note.modified
-            })),
-            fetchedAt: now
-          }
-        } catch (error) {
-          console.error('[ContentArea] Failed to load wiki link suggestions:', error)
-          notesCacheRef.current = { notes: [], fetchedAt: now }
+  const getWikiLinkItems = useCallback(async (query: string): Promise<WikiLinkSuggestionItem[]> => {
+    const now = Date.now()
+    const cache = notesCacheRef.current
+    const shouldRefresh = !cache || now - cache.fetchedAt > 5000
+    if (shouldRefresh) {
+      try {
+        const result = await notesService.list({ limit: 500, sortBy: 'modified' })
+        notesCacheRef.current = {
+          notes: result.notes.map((note) => ({
+            id: note.id,
+            title: note.title,
+            modified: note.modified
+          })),
+          fetchedAt: now
         }
+      } catch (error) {
+        console.error('[ContentArea] Failed to load wiki link suggestions:', error)
+        notesCacheRef.current = { notes: [], fetchedAt: now }
       }
+    }
 
-      const notes = notesCacheRef.current?.notes ?? []
-      const { search, alias } = splitWikiLinkQuery(query)
-      const filtered = search ? fuzzySearch(notes, search, ['title']) : notes
-      const sorted = filtered.slice(0, 10)
+    const notes = notesCacheRef.current?.notes ?? []
+    const { search, alias } = splitWikiLinkQuery(query)
+    const filtered = search ? fuzzySearch(notes, search, ['title']) : notes
+    const sorted = filtered.slice(0, 10)
 
-      const suggestions: WikiLinkSuggestionItem[] = sorted.map((note) => ({
-        id: note.id,
-        title: note.title,
-        target: note.title,
+    const suggestions: WikiLinkSuggestionItem[] = sorted.map((note) => ({
+      id: note.id,
+      title: note.title,
+      target: note.title,
+      alias,
+      exists: true,
+      type: 'note',
+      lastEdited: note.modified instanceof Date ? note.modified.toISOString() : note.modified
+    }))
+
+    const hasExactMatch = search
+      ? filtered.some((note) => note.title.toLowerCase() === search.toLowerCase())
+      : true
+
+    if (search && !hasExactMatch) {
+      suggestions.push({
+        id: `create:${search}`,
+        title: search,
+        target: search,
         alias,
-        exists: true,
-        type: 'note',
-        lastEdited: note.modified instanceof Date ? note.modified.toISOString() : note.modified
-      }))
+        exists: false,
+        type: 'create'
+      })
+    }
 
-      const hasExactMatch = search
-        ? filtered.some((note) => note.title.toLowerCase() === search.toLowerCase())
-        : true
-
-      if (search && !hasExactMatch) {
-        suggestions.push({
-          id: `create:${search}`,
-          title: search,
-          target: search,
-          alias,
-          exists: false,
-          type: 'create'
-        })
-      }
-
-      return suggestions
-    },
-    []
-  )
+    return suggestions
+  }, [])
 
   const handleWikiLinkSelect = useCallback(
     (item: WikiLinkSuggestionItem) => {
       if (!item.target) return
-      editor.insertInlineContent(
-        [createWikiLinkInlineContent(item.target, item.alias ?? '')],
-        { updateSelection: true }
-      )
+      editor.insertInlineContent([createWikiLinkInlineContent(item.target, item.alias ?? '')], {
+        updateSelection: true
+      })
     },
     [editor]
   )
 
-  // Parse content based on content type
+  // Parse content based on content type (only on initial mount)
+  // We use a ref to prevent re-loading when the parent updates initialContent
+  // This makes ContentArea an "uncontrolled" component for content
   useEffect(() => {
+    // Skip if already loaded (prevents overwriting user edits when parent re-renders)
+    if (initialContentLoadedRef.current) {
+      return
+    }
+    initialContentLoadedRef.current = true
+
     async function loadContent() {
-      if (typeof initialContent === 'string' && initialContent.trim()) {
-        try {
-          let content = initialContent
-          let fileBlocksToInsert: Array<{ url: string; name: string; size: number; mimeType: string }> = []
+      try {
+        if (typeof initialContent === 'string' && initialContent.trim()) {
+          try {
+            let content = initialContent
+            let fileBlocksToInsert: Array<{
+              url: string
+              name: string
+              size: number
+              mimeType: string
+            }> = []
 
-          // Extract file block markers from markdown before parsing
-          if (contentType === 'markdown') {
-            const matches = content.matchAll(FILE_BLOCK_REGEX)
-            for (const match of matches) {
-              try {
-                const props = JSON.parse(match[1])
-                fileBlocksToInsert.push(props)
-              } catch {
-                // Skip invalid markers
+            // Extract file block markers from markdown before parsing
+            if (contentType === 'markdown') {
+              const matches = content.matchAll(FILE_BLOCK_REGEX)
+              for (const match of matches) {
+                try {
+                  const props = JSON.parse(match[1])
+                  fileBlocksToInsert.push(props)
+                } catch {
+                  // Skip invalid markers
+                }
               }
+              // Remove markers from content before parsing
+              content = content.replace(FILE_BLOCK_REGEX, '').trim()
             }
-            // Remove markers from content before parsing
-            content = content.replace(FILE_BLOCK_REGEX, '').trim()
-          }
 
-          let blocks
-          if (contentType === 'markdown') {
-            blocks = await editor.tryParseMarkdownToBlocks(content)
-          } else {
-            // Default to HTML parsing
-            blocks = await editor.tryParseHTMLToBlocks(content)
-          }
+            let blocks
+            if (contentType === 'markdown') {
+              blocks = await editor.tryParseMarkdownToBlocks(content)
+            } else {
+              // Default to HTML parsing
+              blocks = await editor.tryParseHTMLToBlocks(content)
+            }
 
-          // Add file blocks back
-          if (fileBlocksToInsert.length > 0) {
-            const fileBlocks = fileBlocksToInsert.map((props) => createFileBlockContent(props))
-            blocks = [...blocks, ...fileBlocks]
-          }
+            // Add file blocks back
+            if (fileBlocksToInsert.length > 0) {
+              const fileBlocks = fileBlocksToInsert.map((props) => createFileBlockContent(props))
+              blocks = [...blocks, ...fileBlocks]
+            }
 
-          const normalized = normalizeWikiLinks(blocks)
+            const normalized = normalizeWikiLinks(blocks)
+            editor.replaceBlocks(editor.document, normalized.blocks)
+          } catch (error) {
+            console.error(`Failed to parse ${contentType} content:`, error)
+          }
+        } else if (Array.isArray(initialContent) && initialContent.length > 0) {
+          // If it's already blocks, replace the document
+          const normalized = normalizeWikiLinks(initialContent as Block[])
           editor.replaceBlocks(editor.document, normalized.blocks)
-        } catch (error) {
-          console.error(`Failed to parse ${contentType} content:`, error)
         }
-      } else if (Array.isArray(initialContent) && initialContent.length > 0) {
-        // If it's already blocks, replace the document
-        const normalized = normalizeWikiLinks(initialContent as Block[])
-        editor.replaceBlocks(editor.document, normalized.blocks)
+      } finally {
+        // Mark content as ready for saving (prevents race condition where empty content is saved)
+        // Using finally ensures the flag is set even if parsing fails
+        isContentReadyRef.current = true
       }
     }
     loadContent()
-  }, [editor, initialContent, contentType])
+    // Note: We intentionally only depend on editor to run once on mount
+    // The key prop on ContentArea should be used to force re-mount when content source changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor])
 
   // Handle content changes
   const handleChange = useCallback(async () => {
@@ -501,7 +531,8 @@ export const ContentArea = memo(function ContentArea({
     onContentChange?.(blocks as Block[])
 
     // Notify parent of markdown changes if callback provided
-    if (onMarkdownChange) {
+    // Only save if initial content has been loaded (prevents saving empty content from race condition)
+    if (onMarkdownChange && isContentReadyRef.current) {
       try {
         let markdown = await editor.blocksToMarkdownLossy(blocks)
 
@@ -510,7 +541,12 @@ export const ContentArea = memo(function ContentArea({
         if (fileBlocks.length > 0) {
           // Append file block markers at the end
           const markers = fileBlocks.map((b) => {
-            const props = b.props as unknown as { url: string; name: string; size: number; mimeType: string }
+            const props = b.props as unknown as {
+              url: string
+              name: string
+              size: number
+              mimeType: string
+            }
             return serializeFileBlock(props)
           })
           markdown = markdown + '\n\n' + markers.join('\n')
@@ -549,7 +585,9 @@ export const ContentArea = memo(function ContentArea({
         const targetTitle = wikiLink.getAttribute('data-target')?.trim()
         if (targetTitle) {
           mouseEvent.preventDefault()
-          window.dispatchEvent(new CustomEvent('wikilink:click', { detail: { target: targetTitle } }))
+          window.dispatchEvent(
+            new CustomEvent('wikilink:click', { detail: { target: targetTitle } })
+          )
           onInternalLinkClick?.(targetTitle)
           return
         }
@@ -579,7 +617,14 @@ export const ContentArea = memo(function ContentArea({
 
   // Check if file is an image that BlockNote should handle
   const isImageFile = useCallback((file: File): boolean => {
-    const imageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml']
+    const imageTypes = [
+      'image/png',
+      'image/jpeg',
+      'image/jpg',
+      'image/gif',
+      'image/webp',
+      'image/svg+xml'
+    ]
     return imageTypes.includes(file.type.toLowerCase())
   }, [])
 

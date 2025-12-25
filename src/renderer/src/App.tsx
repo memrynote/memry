@@ -1,50 +1,56 @@
-import { useState, useMemo, useCallback } from "react"
-import type { DragEndEvent } from "@dnd-kit/core"
-import { arrayMove } from "@dnd-kit/sortable"
-import { AppSidebar } from "@/components/app-sidebar"
-import { Separator } from "@/components/ui/separator"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { Toaster } from "@/components/ui/sonner"
-import { InboxPage } from "@/pages/inbox"
-import { JournalPage } from "@/pages/journal"
-import { TasksPage } from "@/pages/tasks"
-import { NotePage } from "@/pages/note"
-import { DragProvider, type DragState } from "@/contexts/drag-context"
-import { AIAgentProvider } from "@/contexts/ai-agent-context"
-import { GlobalAIPanel } from "@/components/ai-agent"
-import { TaskDragOverlay } from "@/components/tasks/drag-drop"
-import { initialProjects, taskViews, type Project } from "@/data/tasks-data"
-import { sampleTasks, type Task } from "@/data/sample-tasks"
-import { getFilteredTasks } from "@/lib/task-utils"
-import { ThemeProvider } from "next-themes"
-
+import { useState, useMemo, useCallback } from 'react'
+import type { DragEndEvent } from '@dnd-kit/core'
+import { arrayMove } from '@dnd-kit/sortable'
+import { AppSidebar } from '@/components/app-sidebar'
+import { Separator } from '@/components/ui/separator'
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { Toaster } from '@/components/ui/sonner'
+import { InboxPage } from '@/pages/inbox'
+import { JournalPage } from '@/pages/journal'
+import { TasksPage } from '@/pages/tasks'
+import { NotePage } from '@/pages/note'
+import { SettingsPage } from '@/pages/settings'
+import { TemplatesPage } from '@/pages/templates'
+import { TemplateEditorPage } from '@/pages/template-editor'
+import { DragProvider, type DragState } from '@/contexts/drag-context'
+import { AIAgentProvider } from '@/contexts/ai-agent-context'
+import { GlobalAIPanel } from '@/components/ai-agent'
+import { TaskDragOverlay } from '@/components/tasks/drag-drop'
+import { initialProjects, taskViews, type Project } from '@/data/tasks-data'
+import { sampleTasks, type Task } from '@/data/sample-tasks'
+import { getFilteredTasks } from '@/lib/task-utils'
+import { ThemeProvider } from 'next-themes'
 
 // Tab System imports
-import { TabProvider, useTabs, useActiveTab, getOrderedGroupWidths } from "@/contexts/tabs"
-import { TasksProvider } from "@/contexts/tasks"
-import { TabBarWithDrag, TabDragProvider } from "@/components/tabs"
-import { SplitViewContainer } from "@/components/split-view"
-import { ChordIndicator, KeyboardShortcutsDialog } from "@/components/keyboard"
-import { SearchModal } from "@/components/search"
-import { useTabKeyboardShortcuts, useChordShortcuts, useDragHandlers, useTaskOrder, useVault, useSearchShortcut, useUndoKeyboardShortcut } from "@/hooks"
-import { tasksService } from "@/services/tasks-service"
-import { VaultOnboarding } from "@/components/vault-onboarding"
+import { TabProvider, useTabs, useActiveTab, getOrderedGroupWidths } from '@/contexts/tabs'
+import { TasksProvider } from '@/contexts/tasks'
+import { TabBarWithDrag, TabDragProvider } from '@/components/tabs'
+import { SplitViewContainer } from '@/components/split-view'
+import { ChordIndicator, KeyboardShortcutsDialog } from '@/components/keyboard'
+import { SearchModal } from '@/components/search'
+import {
+  useTabKeyboardShortcuts,
+  useChordShortcuts,
+  useDragHandlers,
+  useTaskOrder,
+  useVault,
+  useSearchShortcut,
+  useUndoKeyboardShortcut
+} from '@/hooks'
+import { tasksService } from '@/services/tasks-service'
+import { VaultOnboarding } from '@/components/vault-onboarding'
 
 // Base pages (non-task)
-export type BasePage = "inbox" | "home" | "journal"
+export type BasePage = 'inbox' | 'home' | 'journal'
 
 // Task view type for navigation within tasks
-export type TaskViewId = "all" | "today" | "upcoming" | "completed"
+export type TaskViewId = 'all' | 'today' | 'upcoming' | 'completed'
 
 // Selection type for tasks page
-export type TaskSelectionType = "view" | "project"
+export type TaskSelectionType = 'view' | 'project'
 
 // Combined page type for routing
-export type AppPage = BasePage | "tasks"
+export type AppPage = BasePage | 'tasks'
 
 // =============================================================================
 // TAB CONTENT RENDERER
@@ -65,7 +71,7 @@ const TabContentRenderer = ({
   selectedTaskIds,
   onTasksChange,
   onSelectionChange,
-  onSelectedTaskIdsChange,
+  onSelectedTaskIdsChange
 }: TabContentRendererProps): React.JSX.Element => {
   const activeTab = useActiveTab()
 
@@ -75,10 +81,10 @@ const TabContentRenderer = ({
 
   // Route based on tab type
   switch (activeTab.type) {
-    case "inbox":
+    case 'inbox':
       return <InboxPage />
     // New unified tasks tab type
-    case "tasks":
+    case 'tasks':
       return (
         <TasksPage
           selectedId="all"
@@ -92,17 +98,18 @@ const TabContentRenderer = ({
         />
       )
     // Legacy task tab types (kept for backwards compatibility)
-    case "all-tasks":
-    case "today":
-    case "upcoming":
-    case "completed":
-    case "project": {
+    case 'all-tasks':
+    case 'today':
+    case 'upcoming':
+    case 'completed':
+    case 'project': {
       // Derive selection from active tab (not from external state)
-      const selectedId = activeTab.type === 'project'
-        ? (activeTab.entityId || 'personal')
-        : activeTab.type === 'all-tasks'
-          ? 'all'
-          : activeTab.type
+      const selectedId =
+        activeTab.type === 'project'
+          ? activeTab.entityId || 'personal'
+          : activeTab.type === 'all-tasks'
+            ? 'all'
+            : activeTab.type
       const selectedType = activeTab.type === 'project' ? 'project' : 'view'
 
       return (
@@ -118,12 +125,17 @@ const TabContentRenderer = ({
         />
       )
     }
-    case "journal":
+    case 'journal':
       return <JournalPage />
-    case "note":
+    case 'note':
       return <NotePage noteId={activeTab.entityId} />
-    case "home":
-
+    case 'settings':
+      return <SettingsPage />
+    case 'templates':
+      return <TemplatesPage />
+    case 'template-editor':
+      return <TemplateEditorPage templateId={activeTab.entityId} />
+    case 'home':
     default:
       // Placeholder for other tab types
       return (
@@ -160,7 +172,7 @@ const AppContent = ({
   onSelectionChange,
   onSelectedTaskIdsChange,
   searchOpen,
-  onSearchOpenChange,
+  onSearchOpenChange
 }: AppContentProps): React.JSX.Element => {
   const { state, openTab } = useTabs()
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
@@ -172,20 +184,23 @@ const AppContent = ({
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
 
   // Handle search result selection - open note in tab
-  const handleSelectSearchResult = useCallback((noteId: string) => {
-    openTab({
-      type: 'note',
-      title: 'Note', // Will be updated when note loads
-      icon: 'file-text',
-      path: `/note/${noteId}`,
-      entityId: noteId,
-      isPinned: false,
-      isModified: false,
-      isPreview: true,
-      isDeleted: false,
-    })
-    onSearchOpenChange(false)
-  }, [openTab, onSearchOpenChange])
+  const handleSelectSearchResult = useCallback(
+    (noteId: string) => {
+      openTab({
+        type: 'note',
+        title: 'Note', // Will be updated when note loads
+        icon: 'file-text',
+        path: `/note/${noteId}`,
+        entityId: noteId,
+        isPinned: false,
+        isModified: false,
+        isPreview: true,
+        isDeleted: false
+      })
+      onSearchOpenChange(false)
+    },
+    [openTab, onSearchOpenChange]
+  )
 
   // Get active group for tab bar
   const activeGroupId = state.activeGroupId
@@ -193,10 +208,7 @@ const AppContent = ({
   const isSplitView = groupIds.length > 1
 
   // Calculate ordered group widths from layout (syncs with split panel ratios)
-  const orderedGroupWidths = useMemo(
-    () => getOrderedGroupWidths(state.layout),
-    [state.layout]
-  )
+  const orderedGroupWidths = useMemo(() => getOrderedGroupWidths(state.layout), [state.layout])
 
   return (
     <TabDragProvider>
@@ -205,10 +217,7 @@ const AppContent = ({
         {/* Sidebar trigger */}
         <div className="flex items-center gap-2 px-2 h-full shrink-0">
           <SidebarTrigger className="-ml-1 no-drag" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
-          />
+          <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
         </div>
 
         {/* Tab Bar(s) - single or split */}
@@ -219,8 +228,9 @@ const AppContent = ({
               <div
                 key={groupId}
                 style={{ width: `${width}%` }}
-                className={`h-full overflow-hidden shrink-0 ${index > 0 ? 'border-l border-gray-300 dark:border-gray-600' : ''
-                  }`}
+                className={`h-full overflow-hidden shrink-0 ${
+                  index > 0 ? 'border-l border-gray-300 dark:border-gray-600' : ''
+                }`}
               >
                 <TabBarWithDrag groupId={groupId} />
               </div>
@@ -254,7 +264,10 @@ const AppContent = ({
             {/* Left spacer - matches header's sidebar trigger area for alignment */}
             <div className="flex items-center gap-2 px-2 shrink-0" aria-hidden="true">
               <div className="size-7 -ml-1" />
-              <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4 invisible" />
+              <Separator
+                orientation="vertical"
+                className="mr-2 data-[orientation=vertical]:h-4 invisible"
+              />
             </div>
 
             {/* Split view container */}
@@ -317,7 +330,7 @@ function App(): React.JSX.Element {
   // Navigation state
   // Note: setCurrentPage is unused because navigation is now handled by tabs
   // currentPage is still used for sidebar highlight state
-  const [currentPage, _setCurrentPage] = useState<AppPage>("inbox")
+  const [currentPage, _setCurrentPage] = useState<AppPage>('inbox')
 
   // Task-related state (lifted from TasksPage)
   const [projects, setProjects] = useState<Project[]>(initialProjects)
@@ -333,7 +346,7 @@ function App(): React.JSX.Element {
   const viewCounts = useMemo(() => {
     const counts: Record<string, number> = {}
     taskViews.forEach((view) => {
-      const filtered = getFilteredTasks(tasks, view.id, "view", projects)
+      const filtered = getFilteredTasks(tasks, view.id, 'view', projects)
       counts[view.id] = filtered.length
     })
     return counts
@@ -345,7 +358,7 @@ function App(): React.JSX.Element {
       const projectTasks = tasks.filter((t) => t.projectId === project.id)
       const incompleteTasks = projectTasks.filter((t) => {
         const status = project.statuses.find((s) => s.id === t.statusId)
-        return status?.type !== "done"
+        return status?.type !== 'done'
       })
       return { ...project, taskCount: incompleteTasks.length }
     })
@@ -373,126 +386,129 @@ function App(): React.JSX.Element {
   }
 
   // Task update handler - persists to database when vault is open
-  const handleUpdateTask = useCallback(async (taskId: string, updates: Partial<Task>) => {
-    // Always update local state immediately for responsive UI
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t))
-    )
+  const handleUpdateTask = useCallback(
+    async (taskId: string, updates: Partial<Task>) => {
+      // Always update local state immediately for responsive UI
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t)))
 
-    // Persist to database if vault is open
-    if (isVaultOpen) {
-      try {
-        // Handle completedAt changes via dedicated endpoints
-        if ('completedAt' in updates) {
-          if (updates.completedAt !== null && updates.completedAt !== undefined) {
-            await tasksService.complete({
-              id: taskId,
-              completedAt: updates.completedAt.toISOString()
-            })
-          } else {
-            await tasksService.uncomplete(taskId)
-          }
-
-          // Handle other updates if present
-          const { completedAt: _completed, ...otherUpdates } = updates
-          if (Object.keys(otherUpdates).length > 0) {
-            let dueDateValue: string | null | undefined = undefined
-            if ('dueDate' in otherUpdates) {
-              dueDateValue = otherUpdates.dueDate
-                ? otherUpdates.dueDate.toISOString().split('T')[0]
-                : null
+      // Persist to database if vault is open
+      if (isVaultOpen) {
+        try {
+          // Handle completedAt changes via dedicated endpoints
+          if ('completedAt' in updates) {
+            if (updates.completedAt !== null && updates.completedAt !== undefined) {
+              await tasksService.complete({
+                id: taskId,
+                completedAt: updates.completedAt.toISOString()
+              })
+            } else {
+              await tasksService.uncomplete(taskId)
             }
-            await tasksService.update({
-              id: taskId,
-              title: otherUpdates.title,
-              description: otherUpdates.description ?? undefined,
-              priority: otherUpdates.priority !== undefined
-                ? priorityReverseMap[otherUpdates.priority]
-                : undefined,
-              projectId: otherUpdates.projectId,
-              statusId: otherUpdates.statusId ?? undefined,
-              dueDate: dueDateValue,
-              dueTime: otherUpdates.dueTime ?? undefined,
-            })
-          }
-          return
-        }
 
-        // Handle archivedAt changes via dedicated endpoints
-        if ('archivedAt' in updates) {
-          if (updates.archivedAt !== null && updates.archivedAt !== undefined) {
-            await tasksService.archive(taskId)
-          } else {
-            await tasksService.unarchive(taskId)
-          }
-
-          // Handle other updates if present
-          const { archivedAt: _archived, ...otherUpdates } = updates
-          if (Object.keys(otherUpdates).length > 0) {
-            let dueDateValue: string | null | undefined = undefined
-            if ('dueDate' in otherUpdates) {
-              dueDateValue = otherUpdates.dueDate
-                ? otherUpdates.dueDate.toISOString().split('T')[0]
-                : null
+            // Handle other updates if present
+            const { completedAt: _completed, ...otherUpdates } = updates
+            if (Object.keys(otherUpdates).length > 0) {
+              let dueDateValue: string | null | undefined = undefined
+              if ('dueDate' in otherUpdates) {
+                dueDateValue = otherUpdates.dueDate
+                  ? otherUpdates.dueDate.toISOString().split('T')[0]
+                  : null
+              }
+              await tasksService.update({
+                id: taskId,
+                title: otherUpdates.title,
+                description: otherUpdates.description ?? undefined,
+                priority:
+                  otherUpdates.priority !== undefined
+                    ? priorityReverseMap[otherUpdates.priority]
+                    : undefined,
+                projectId: otherUpdates.projectId,
+                statusId: otherUpdates.statusId ?? undefined,
+                dueDate: dueDateValue,
+                dueTime: otherUpdates.dueTime ?? undefined
+              })
             }
-            await tasksService.update({
-              id: taskId,
-              title: otherUpdates.title,
-              description: otherUpdates.description ?? undefined,
-              priority: otherUpdates.priority !== undefined
-                ? priorityReverseMap[otherUpdates.priority]
-                : undefined,
-              projectId: otherUpdates.projectId,
-              statusId: otherUpdates.statusId ?? undefined,
-              dueDate: dueDateValue,
-              dueTime: otherUpdates.dueTime ?? undefined,
-            })
+            return
           }
-          return
-        }
 
-        // Standard update (no completedAt or archivedAt change)
-        // Convert dueDate: undefined = not changing, null = clearing, Date = setting
-        let dueDateValue: string | null | undefined = undefined
-        if ('dueDate' in updates) {
-          dueDateValue = updates.dueDate
-            ? updates.dueDate.toISOString().split('T')[0]
-            : null
-        }
+          // Handle archivedAt changes via dedicated endpoints
+          if ('archivedAt' in updates) {
+            if (updates.archivedAt !== null && updates.archivedAt !== undefined) {
+              await tasksService.archive(taskId)
+            } else {
+              await tasksService.unarchive(taskId)
+            }
 
-        await tasksService.update({
-          id: taskId,
-          title: updates.title,
-          description: updates.description ?? undefined,
-          priority: updates.priority !== undefined
-            ? priorityReverseMap[updates.priority]
-            : undefined,
-          projectId: updates.projectId,
-          statusId: updates.statusId ?? undefined,
-          dueDate: dueDateValue,
-          dueTime: updates.dueTime ?? undefined,
-        })
-      } catch (error) {
-        console.error('[App] Failed to persist task update:', error)
-        // Local state already updated, error will be visible in logs
+            // Handle other updates if present
+            const { archivedAt: _archived, ...otherUpdates } = updates
+            if (Object.keys(otherUpdates).length > 0) {
+              let dueDateValue: string | null | undefined = undefined
+              if ('dueDate' in otherUpdates) {
+                dueDateValue = otherUpdates.dueDate
+                  ? otherUpdates.dueDate.toISOString().split('T')[0]
+                  : null
+              }
+              await tasksService.update({
+                id: taskId,
+                title: otherUpdates.title,
+                description: otherUpdates.description ?? undefined,
+                priority:
+                  otherUpdates.priority !== undefined
+                    ? priorityReverseMap[otherUpdates.priority]
+                    : undefined,
+                projectId: otherUpdates.projectId,
+                statusId: otherUpdates.statusId ?? undefined,
+                dueDate: dueDateValue,
+                dueTime: otherUpdates.dueTime ?? undefined
+              })
+            }
+            return
+          }
+
+          // Standard update (no completedAt or archivedAt change)
+          // Convert dueDate: undefined = not changing, null = clearing, Date = setting
+          let dueDateValue: string | null | undefined = undefined
+          if ('dueDate' in updates) {
+            dueDateValue = updates.dueDate ? updates.dueDate.toISOString().split('T')[0] : null
+          }
+
+          await tasksService.update({
+            id: taskId,
+            title: updates.title,
+            description: updates.description ?? undefined,
+            priority:
+              updates.priority !== undefined ? priorityReverseMap[updates.priority] : undefined,
+            projectId: updates.projectId,
+            statusId: updates.statusId ?? undefined,
+            dueDate: dueDateValue,
+            dueTime: updates.dueTime ?? undefined
+          })
+        } catch (error) {
+          console.error('[App] Failed to persist task update:', error)
+          // Local state already updated, error will be visible in logs
+        }
       }
-    }
-  }, [isVaultOpen])
+    },
+    [isVaultOpen]
+  )
 
   // Task delete handler - persists to database when vault is open
-  const handleDeleteTask = useCallback(async (taskId: string) => {
-    // Always update local state immediately for responsive UI
-    setTasks((prev) => prev.filter((t) => t.id !== taskId))
+  const handleDeleteTask = useCallback(
+    async (taskId: string) => {
+      // Always update local state immediately for responsive UI
+      setTasks((prev) => prev.filter((t) => t.id !== taskId))
 
-    // Persist to database if vault is open
-    if (isVaultOpen) {
-      try {
-        await tasksService.delete(taskId)
-      } catch (error) {
-        console.error('[App] Failed to persist task deletion:', error)
+      // Persist to database if vault is open
+      if (isVaultOpen) {
+        try {
+          await tasksService.delete(taskId)
+        } catch (error) {
+          console.error('[App] Failed to persist task deletion:', error)
+        }
       }
-    }
-  }, [isVaultOpen])
+    },
+    [isVaultOpen]
+  )
 
   // Use the comprehensive drag handlers hook
   const { handleDragEnd: taskDragEnd } = useDragHandlers({
@@ -504,7 +520,7 @@ function App(): React.JSX.Element {
       // taskIdsPair is [activeId, overId] from the drag operation
       const [activeId, overId] = taskIdsPair
       taskOrder.reorderByDrag(sectionId, activeId, overId, tasks)
-    },
+    }
   })
 
   // Combined drag-drop handler (task operations + project reordering)
@@ -594,11 +610,7 @@ function App(): React.JSX.Element {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <SidebarProvider>
-        <DragProvider
-          tasks={tasks}
-          selectedIds={selectedTaskIds}
-          onDragEnd={handleDragEnd}
-        >
+        <DragProvider tasks={tasks} selectedIds={selectedTaskIds} onDragEnd={handleDragEnd}>
           {mainContent}
         </DragProvider>
       </SidebarProvider>
