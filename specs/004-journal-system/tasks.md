@@ -137,9 +137,9 @@ Electron application structure per plan.md:
 
 ### Implementation for User Story 5
 
-- [ ] T036 [US5] Verify focus mode keyboard shortcut in src/renderer/src/pages/journal.tsx (Cmd+\ toggle already implemented, verify working)
-- [ ] T037 [US5] Verify focus mode localStorage persistence in src/renderer/src/pages/journal.tsx (memry_journal_focus_mode key already implemented)
-- [ ] T038 [US5] Add accessibility attributes for focus mode toggle button in src/renderer/src/pages/journal.tsx (aria-pressed, aria-label)
+- [x] T036 [US5] Verify focus mode keyboard shortcut in src/renderer/src/pages/journal.tsx (Cmd+\ toggle already implemented, verify working)
+- [x] T037 [US5] Verify focus mode localStorage persistence in src/renderer/src/pages/journal.tsx (memry_journal_focus_mode key already implemented)
+- [x] T038 [US5] Add accessibility attributes for focus mode toggle button in src/renderer/src/pages/journal.tsx (aria-pressed, aria-label)
 
 **Checkpoint**: User Story 5 complete - focus mode toggles correctly with keyboard, persists across sessions
 

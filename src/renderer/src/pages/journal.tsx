@@ -574,6 +574,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           'opacity-0 journal-animate-in journal-stagger-3'
                         )}
                         onClick={() => setFocusMode(!focusMode)}
+                        aria-pressed={focusMode}
+                        aria-label={focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
                         title={focusMode ? 'Exit Focus Mode (Esc)' : 'Enter Focus Mode (⌘\\)'}
                       >
                         {focusMode ? (
