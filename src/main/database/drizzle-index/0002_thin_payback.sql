@@ -1,4 +1,4 @@
-CREATE TABLE `note_snapshots` (
+CREATE TABLE IF NOT EXISTS `note_snapshots` (
 	`id` text PRIMARY KEY NOT NULL,
 	`note_id` text NOT NULL,
 	`content` text NOT NULL,
@@ -10,5 +10,5 @@ CREATE TABLE `note_snapshots` (
 	FOREIGN KEY (`note_id`) REFERENCES `note_cache`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE INDEX `idx_note_snapshots_note_id` ON `note_snapshots` (`note_id`);--> statement-breakpoint
-CREATE INDEX `idx_note_snapshots_created` ON `note_snapshots` (`created_at`);
+CREATE INDEX IF NOT EXISTS `idx_note_snapshots_note_id` ON `note_snapshots` (`note_id`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `idx_note_snapshots_created` ON `note_snapshots` (`created_at`);

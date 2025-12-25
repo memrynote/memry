@@ -89,7 +89,7 @@ export function closeAllDatabases(): void {
 /**
  * Index health status
  */
-export type IndexHealth = 'healthy' | 'corrupt' | 'missing'
+export type IndexHealth = 'healthy' | 'corrupt' | 'missing' | 'migration_failed'
 
 /**
  * Check the health of the index database.
@@ -112,9 +112,9 @@ export function checkIndexHealth(indexDbPath: string): IndexHealth {
 
     try {
       // Check if core tables exist
-      const tables = sqlite
-        .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-        .all() as { name: string }[]
+      const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+        name: string
+      }[]
 
       const requiredTables = ['note_cache', 'note_tags', 'note_links']
       const existingTables = tables.map((t) => t.name)
