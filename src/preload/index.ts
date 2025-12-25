@@ -129,7 +129,16 @@ const api = {
     exportPdf: (input: { noteId: string; includeMetadata?: boolean; pageSize?: string }) =>
       ipcRenderer.invoke(NotesChannels.invoke.EXPORT_PDF, input),
     exportHtml: (input: { noteId: string; includeMetadata?: boolean }) =>
-      ipcRenderer.invoke(NotesChannels.invoke.EXPORT_HTML, input)
+      ipcRenderer.invoke(NotesChannels.invoke.EXPORT_HTML, input),
+
+    // Version History API (T114)
+    getVersions: (noteId: string) => ipcRenderer.invoke(NotesChannels.invoke.GET_VERSIONS, noteId),
+    getVersion: (snapshotId: string) =>
+      ipcRenderer.invoke(NotesChannels.invoke.GET_VERSION, snapshotId),
+    restoreVersion: (snapshotId: string) =>
+      ipcRenderer.invoke(NotesChannels.invoke.RESTORE_VERSION, snapshotId),
+    deleteVersion: (snapshotId: string) =>
+      ipcRenderer.invoke(NotesChannels.invoke.DELETE_VERSION, snapshotId)
   },
 
   // Templates API

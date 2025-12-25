@@ -205,6 +205,28 @@ export interface ExportNoteResponse {
   error?: string
 }
 
+// Version History types (T110-T114)
+export type SnapshotReason = 'manual' | 'auto' | 'timer' | 'significant'
+
+export interface SnapshotListItem {
+  id: string
+  noteId: string
+  title: string
+  wordCount: number
+  reason: SnapshotReason
+  createdAt: string
+}
+
+export interface SnapshotDetail extends SnapshotListItem {
+  content: string
+}
+
+export interface RestoreVersionResponse {
+  success: boolean
+  note: Note | null
+  error?: string
+}
+
 export interface TemplateCreatedEvent {
   template: Template
 }
@@ -816,6 +838,11 @@ export interface NotesClientAPI {
   // Export API (T106, T108)
   exportPdf(input: ExportNoteInput): Promise<ExportNoteResponse>
   exportHtml(input: ExportNoteInput): Promise<ExportNoteResponse>
+  // Version History API (T114)
+  getVersions(noteId: string): Promise<SnapshotListItem[]>
+  getVersion(snapshotId: string): Promise<SnapshotDetail | null>
+  restoreVersion(snapshotId: string): Promise<RestoreVersionResponse>
+  deleteVersion(snapshotId: string): Promise<{ success: boolean; error?: string }>
 }
 
 // Tasks client API interface

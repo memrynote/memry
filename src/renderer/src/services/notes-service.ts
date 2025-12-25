@@ -23,7 +23,11 @@ import type {
   DeleteAttachmentResponse,
   FolderConfig,
   ExportNoteInput,
-  ExportNoteResponse
+  ExportNoteResponse,
+  // Version history types (T114)
+  SnapshotListItem,
+  SnapshotDetail,
+  RestoreVersionResponse
 } from '../../../preload/index.d'
 
 /**
@@ -301,6 +305,44 @@ export const notesService: NotesClientAPI = {
    */
   exportHtml: (input: ExportNoteInput): Promise<ExportNoteResponse> => {
     return window.api.notes.exportHtml(input)
+  },
+
+  // =========================================================================
+  // T114: Version History API
+  // =========================================================================
+
+  /**
+   * Get version history for a note.
+   * Returns list of snapshots ordered by creation date descending.
+   * @param noteId - The note ID
+   */
+  getVersions: (noteId: string): Promise<SnapshotListItem[]> => {
+    return window.api.notes.getVersions(noteId)
+  },
+
+  /**
+   * Get a specific version/snapshot with full content.
+   * @param snapshotId - The snapshot ID
+   */
+  getVersion: (snapshotId: string): Promise<SnapshotDetail | null> => {
+    return window.api.notes.getVersion(snapshotId)
+  },
+
+  /**
+   * Restore a note from a previous version.
+   * Creates a snapshot of current state before restoring.
+   * @param snapshotId - The snapshot ID to restore from
+   */
+  restoreVersion: (snapshotId: string): Promise<RestoreVersionResponse> => {
+    return window.api.notes.restoreVersion(snapshotId)
+  },
+
+  /**
+   * Delete a specific version/snapshot.
+   * @param snapshotId - The snapshot ID to delete
+   */
+  deleteVersion: (snapshotId: string): Promise<{ success: boolean; error?: string }> => {
+    return window.api.notes.deleteVersion(snapshotId)
   }
 }
 
@@ -383,5 +425,9 @@ export type {
   AttachmentInfo,
   DeleteAttachmentResponse,
   ExportNoteInput,
-  ExportNoteResponse
+  ExportNoteResponse,
+  // Version history types (T114)
+  SnapshotListItem,
+  SnapshotDetail,
+  RestoreVersionResponse
 }

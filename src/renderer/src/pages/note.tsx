@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { ExportDialog } from '@/components/note/export-dialog'
+import { VersionHistory } from '@/components/note/version-history'
 import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
@@ -18,7 +19,7 @@ import { useNoteProperties } from '@/hooks/use-note-properties'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteExternalChange } from '@/services/notes-service'
 import { useTabs } from '@/contexts/tabs'
-import { Loader2, MoreHorizontal } from 'lucide-react'
+import { Loader2, MoreHorizontal, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -132,6 +133,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [isInfoExpanded, setIsInfoExpanded] = useState(false)
   const [isDeleted, setIsDeleted] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
 
   // Content tracking for change detection
   const lastSavedContent = useRef<string>('')
@@ -679,6 +681,10 @@ export function NotePage({ noteId }: NotePageProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setIsVersionHistoryOpen(true)}>
+                <History className="mr-2 h-4 w-4" />
+                Version History
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>
                 Export
               </DropdownMenuItem>
@@ -803,6 +809,15 @@ export function NotePage({ noteId }: NotePageProps) {
         onOpenChange={setIsExportDialogOpen}
         noteId={noteId}
         noteTitle={note.title}
+      />
+
+      {/* Version History Panel */}
+      <VersionHistory
+        open={isVersionHistoryOpen}
+        onOpenChange={setIsVersionHistoryOpen}
+        noteId={noteId}
+        noteTitle={note.title}
+        onRestore={loadNote}
       />
     </NoteLayout>
   )

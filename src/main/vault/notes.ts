@@ -52,8 +52,15 @@ import {
   deleteLinksToNote,
   findDuplicateId,
   resolveNoteByTitle,
-  getPropertyType
+  getPropertyType,
+  insertNoteSnapshot,
+  getLatestSnapshot,
+  snapshotExistsWithHash,
+  getNoteSnapshots,
+  getNoteSnapshotById,
+  pruneOldSnapshots
 } from '@shared/db/queries/notes'
+import { SnapshotReasons, type SnapshotReason } from '@shared/db/schema/notes-cache'
 import { getIndexDatabase, updateFtsContent } from '../database'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
@@ -143,6 +150,28 @@ export interface NoteLinksResponse {
   outgoing: NoteLink[]
   incoming: Backlink[]
 }
+
+// ============================================================================
+// Snapshot Configuration
+// ============================================================================
+
+/**
+ * Maximum number of snapshots to keep per note.
+ * Older snapshots are pruned when this limit is exceeded.
+ */
+const MAX_SNAPSHOTS_PER_NOTE = 50
+
+/**
+ * Minimum time between auto-snapshots (in milliseconds).
+ * Prevents excessive snapshot creation during rapid edits.
+ */
+const MIN_SNAPSHOT_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
+
+/**
+ * Minimum word count change to trigger a "significant" snapshot.
+ * Helps capture meaningful changes vs minor edits.
+ */
+const SIGNIFICANT_WORD_CHANGE = 10
 
 // ============================================================================
 // Helpers
@@ -485,6 +514,11 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   const newProperties = input.properties ?? existing.properties // T013: Properties support
   // T028: Handle emoji - use input.emoji if provided, otherwise keep existing
   const newEmoji = input.emoji !== undefined ? input.emoji : existing.emoji
+
+  // T111: Create snapshot before significant content changes
+  if (input.content !== undefined && input.content !== existing.content) {
+    maybeCreateSignificantSnapshot(input.id, existing.content, newContent, existing.title)
+  }
 
   // Update frontmatter
   const newFrontmatter: NoteFrontmatter & {
@@ -965,4 +999,211 @@ export async function revealInFinder(id: string): Promise<void> {
 
   const absolutePath = toAbsolutePath(cached.path)
   shell.showItemInFolder(absolutePath)
+}
+
+// ============================================================================
+// Version History (T110-T114)
+// ============================================================================
+
+export interface SnapshotListItem {
+  id: string
+  noteId: string
+  title: string
+  wordCount: number
+  reason: SnapshotReason
+  createdAt: string
+}
+
+export interface SnapshotDetail extends SnapshotListItem {
+  content: string
+}
+
+/**
+ * Create a snapshot of the current note state.
+ * Used for version history/undo functionality.
+ *
+ * @param noteId - The note ID
+ * @param content - Current content to snapshot
+ * @param title - Current title
+ * @param reason - Why the snapshot was created
+ * @param forceCreate - Skip deduplication check
+ */
+export function createSnapshot(
+  noteId: string,
+  content: string,
+  title: string,
+  reason: SnapshotReason,
+  forceCreate = false
+): SnapshotListItem | null {
+  const db = getIndexDatabase()
+
+  // Calculate content hash for deduplication
+  const contentHash = generateContentHash(content)
+
+  // Skip if identical snapshot already exists (unless forced)
+  if (!forceCreate && snapshotExistsWithHash(db, noteId, contentHash)) {
+    return null
+  }
+
+  // Check minimum interval for auto/timer snapshots
+  if (reason === SnapshotReasons.AUTO || reason === SnapshotReasons.TIMER) {
+    const latest = getLatestSnapshot(db, noteId)
+    if (latest) {
+      const latestTime = new Date(latest.createdAt).getTime()
+      const now = Date.now()
+      if (now - latestTime < MIN_SNAPSHOT_INTERVAL_MS) {
+        return null // Too soon since last snapshot
+      }
+    }
+  }
+
+  // Create the snapshot
+  const snapshot = insertNoteSnapshot(db, {
+    id: generateNoteId(), // Reuse nanoid generator
+    noteId,
+    content,
+    title,
+    wordCount: calculateWordCount(content),
+    contentHash,
+    reason
+  })
+
+  // Prune old snapshots if we have too many
+  pruneOldSnapshots(db, noteId, MAX_SNAPSHOTS_PER_NOTE)
+
+  return {
+    id: snapshot.id,
+    noteId: snapshot.noteId,
+    title: snapshot.title,
+    wordCount: snapshot.wordCount,
+    reason: snapshot.reason as SnapshotReason,
+    createdAt: snapshot.createdAt
+  }
+}
+
+/**
+ * Create a snapshot before a significant edit.
+ * Called automatically by updateNote when content changes significantly.
+ */
+export function maybeCreateSignificantSnapshot(
+  noteId: string,
+  oldContent: string,
+  newContent: string,
+  title: string
+): SnapshotListItem | null {
+  const oldWordCount = calculateWordCount(oldContent)
+  const newWordCount = calculateWordCount(newContent)
+  const wordDiff = Math.abs(newWordCount - oldWordCount)
+
+  console.log('[Snapshot] Word count change:', {
+    oldWordCount,
+    newWordCount,
+    wordDiff,
+    threshold: SIGNIFICANT_WORD_CHANGE
+  })
+
+  // Only create snapshot for significant changes
+  if (wordDiff >= SIGNIFICANT_WORD_CHANGE) {
+    console.log('[Snapshot] Creating snapshot for significant change')
+    try {
+      const result = createSnapshot(noteId, oldContent, title, SnapshotReasons.SIGNIFICANT)
+      console.log('[Snapshot] Snapshot created:', result)
+      return result
+    } catch (err) {
+      console.error('[Snapshot] Failed to create snapshot:', err)
+      return null
+    }
+  }
+
+  return null
+}
+
+/**
+ * Get version history for a note.
+ */
+export function getVersionHistory(noteId: string, limit = 50): SnapshotListItem[] {
+  const db = getIndexDatabase()
+  const snapshots = getNoteSnapshots(db, noteId, limit)
+
+  return snapshots.map((s) => ({
+    id: s.id,
+    noteId: s.noteId,
+    title: s.title,
+    wordCount: s.wordCount,
+    reason: s.reason as SnapshotReason,
+    createdAt: s.createdAt
+  }))
+}
+
+/**
+ * Get a specific version/snapshot with full content.
+ */
+export function getVersion(snapshotId: string): SnapshotDetail | null {
+  const db = getIndexDatabase()
+  const snapshot = getNoteSnapshotById(db, snapshotId)
+
+  if (!snapshot) {
+    return null
+  }
+
+  return {
+    id: snapshot.id,
+    noteId: snapshot.noteId,
+    title: snapshot.title,
+    content: snapshot.content,
+    wordCount: snapshot.wordCount,
+    reason: snapshot.reason as SnapshotReason,
+    createdAt: snapshot.createdAt
+  }
+}
+
+/**
+ * Restore a note from a previous version.
+ * Creates a snapshot of current state before restoring.
+ */
+export async function restoreVersion(snapshotId: string): Promise<Note> {
+  const db = getIndexDatabase()
+  const snapshot = getNoteSnapshotById(db, snapshotId)
+
+  if (!snapshot) {
+    throw new NoteError(`Snapshot not found: ${snapshotId}`, NoteErrorCode.NOT_FOUND, snapshotId)
+  }
+
+  // Get current note
+  const currentNote = await getNoteById(snapshot.noteId)
+  if (!currentNote) {
+    throw new NoteError(
+      `Note not found: ${snapshot.noteId}`,
+      NoteErrorCode.NOT_FOUND,
+      snapshot.noteId
+    )
+  }
+
+  // Create a snapshot of current state before restoring (so user can undo the restore)
+  createSnapshot(
+    currentNote.id,
+    currentNote.content,
+    currentNote.title,
+    SnapshotReasons.MANUAL,
+    true // Force create even if duplicate
+  )
+
+  // Restore the note to the snapshot state
+  const restoredNote = await updateNote({
+    id: snapshot.noteId,
+    title: snapshot.title,
+    content: snapshot.content
+  })
+
+  // Emit event
+  emitNoteEvent(NotesChannels.events.UPDATED, {
+    id: snapshot.noteId,
+    changes: {
+      title: snapshot.title,
+      content: snapshot.content
+    },
+    source: 'internal'
+  })
+
+  return restoredNote
 }

@@ -15,6 +15,13 @@
       "when": 1766506066542,
       "tag": "0001_fuzzy_mandarin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1766665036232,
+      "tag": "0002_thin_payback",
+      "breakpoints": true
     }
   ]
 }

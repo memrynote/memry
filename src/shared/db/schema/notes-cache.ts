@@ -12,7 +12,9 @@ export const noteCache = sqliteTable(
     wordCount: integer('word_count').notNull().default(0),
     createdAt: text('created_at').notNull(),
     modifiedAt: text('modified_at').notNull(),
-    indexedAt: text('indexed_at').notNull().default(sql`(datetime('now'))`)
+    indexedAt: text('indexed_at')
+      .notNull()
+      .default(sql`(datetime('now'))`)
   },
   (table) => [
     index('idx_note_cache_path').on(table.path),
@@ -41,7 +43,9 @@ export const noteTags = sqliteTable(
 export const tagDefinitions = sqliteTable('tag_definitions', {
   name: text('name').primaryKey(),
   color: text('color').notNull(),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`)
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`)
 })
 
 export const noteLinks = sqliteTable(
@@ -90,7 +94,9 @@ export const propertyDefinitions = sqliteTable('property_definitions', {
   options: text('options'), // JSON array for select/multiselect
   defaultValue: text('default_value'),
   color: text('color'),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`)
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`)
 })
 
 // ============================================================================
@@ -126,3 +132,42 @@ export const PropertyTypes = {
 } as const
 
 export type PropertyType = (typeof PropertyTypes)[keyof typeof PropertyTypes]
+
+// ============================================================================
+// T110: Note Snapshots Table (version history)
+// ============================================================================
+
+export const noteSnapshots = sqliteTable(
+  'note_snapshots',
+  {
+    id: text('id').primaryKey(), // nanoid(12) snapshot ID
+    noteId: text('note_id')
+      .notNull()
+      .references(() => noteCache.id, { onDelete: 'cascade' }),
+    content: text('content').notNull(), // Full markdown content at snapshot time
+    title: text('title').notNull(), // Title at snapshot time
+    wordCount: integer('word_count').notNull().default(0),
+    contentHash: text('content_hash').notNull(), // For deduplication
+    reason: text('reason').notNull(), // 'manual' | 'auto' | 'timer' | 'significant'
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`)
+  },
+  (table) => [
+    index('idx_note_snapshots_note_id').on(table.noteId),
+    index('idx_note_snapshots_created').on(table.createdAt)
+  ]
+)
+
+export type NoteSnapshot = typeof noteSnapshots.$inferSelect
+export type NewNoteSnapshot = typeof noteSnapshots.$inferInsert
+
+// Snapshot reason constants
+export const SnapshotReasons = {
+  MANUAL: 'manual', // User explicitly saved a version
+  AUTO: 'auto', // Auto-save triggered snapshot
+  TIMER: 'timer', // Periodic timer (e.g., every 5 minutes of editing)
+  SIGNIFICANT: 'significant' // Significant content change detected
+} as const
+
+export type SnapshotReason = (typeof SnapshotReasons)[keyof typeof SnapshotReasons]

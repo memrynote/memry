@@ -98,7 +98,15 @@ export const NotesChannels = {
     /** Export note as PDF (T106) */
     EXPORT_PDF: 'notes:export-pdf',
     /** Export note as HTML (T108) */
-    EXPORT_HTML: 'notes:export-html'
+    EXPORT_HTML: 'notes:export-html',
+    /** Get version history for a note (T114) */
+    GET_VERSIONS: 'notes:get-versions',
+    /** Get a specific version/snapshot (T114) */
+    GET_VERSION: 'notes:get-version',
+    /** Restore a note from a version (T114) */
+    RESTORE_VERSION: 'notes:restore-version',
+    /** Delete a specific version (T114) */
+    DELETE_VERSION: 'notes:delete-version'
   },
   events: {
     /** Note was created (externally or internally) */
