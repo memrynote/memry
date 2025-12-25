@@ -110,31 +110,28 @@ export function InfoSection({
   }, [properties])
 
   // Handle adding new property
-  const handleAddProperty = useCallback((newProp: NewProperty) => {
-    onAddProperty(newProp)
-  }, [onAddProperty])
+  const handleAddProperty = useCallback(
+    (newProp: NewProperty) => {
+      onAddProperty(newProp)
+    },
+    [onAddProperty]
+  )
 
   return (
-    <div className="mb-4">
+    <div className="mb-4" role="region" aria-label="Note properties">
       {/* Toggle Header */}
       <InfoHeader isExpanded={isExpanded} onToggle={onToggleExpand} />
 
       {/* Collapsible Content */}
       <div
+        id="properties-content"
         className={cn(
           'overflow-hidden transition-all duration-200',
           isExpanded ? 'opacity-100' : 'max-h-0 opacity-0'
         )}
         aria-hidden={!isExpanded}
       >
-        <div
-          className={cn(
-            'mt-2 rounded-lg',
-            'border border-stone-200',
-            'bg-[#fafaf9]',
-            'p-4'
-          )}
-        >
+        <div className={cn('mt-2 rounded-lg', 'border border-stone-200', 'bg-[#fafaf9]', 'p-4')}>
           {/* Section Header */}
           {folderProperties && folderProperties.length > 0 && (
             <div className="mb-3 flex items-center gap-1">
@@ -150,17 +147,13 @@ export function InfoSection({
           )}
 
           {/* Properties List */}
-          <div className="space-y-0.5">
+          <div className="space-y-0.5" role="list" aria-label="Properties list">
             {visibleProperties.map((property) => (
               <PropertyRow
                 key={property.id}
                 property={property}
                 onValueChange={handlePropertyChange(property.id)}
-                onDelete={
-                  property.isCustom
-                    ? handleDeleteProperty(property.id)
-                    : undefined
-                }
+                onDelete={property.isCustom ? handleDeleteProperty(property.id) : undefined}
                 disabled={disabled}
                 autoFocus={property.id === newlyAddedPropertyId}
               />
@@ -178,8 +171,9 @@ export function InfoSection({
                 'transition-colors duration-150',
                 'hover:text-stone-700 hover:underline'
               )}
+              aria-label={`Show ${hiddenProperties.length} more properties`}
             >
-              <ChevronDown className="h-3 w-3" />
+              <ChevronDown className="h-3 w-3" aria-hidden="true" />
               {hiddenProperties.length} more properties
             </button>
           )}
@@ -194,8 +188,9 @@ export function InfoSection({
                 'transition-colors duration-150',
                 'hover:text-stone-700 hover:underline'
               )}
+              aria-label="Show fewer properties"
             >
-              <ChevronUp className="h-3 w-3" />
+              <ChevronUp className="h-3 w-3" aria-hidden="true" />
               Show less
             </button>
           )}
@@ -214,8 +209,10 @@ export function InfoSection({
                 'hover:text-stone-700',
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
+              aria-label="Add a new property to this note"
+              aria-haspopup="dialog"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               Add property
             </button>
           </div>
@@ -223,15 +220,17 @@ export function InfoSection({
       </div>
 
       {/* Portal for AddPropertyPopup - renders at document body level */}
-      {isAddPopupOpen && popupPosition && createPortal(
-        <AddPropertyPopup
-          isOpen={isAddPopupOpen}
-          onClose={handleCloseAddPopup}
-          onAdd={handleAddProperty}
-          position={popupPosition}
-        />,
-        document.body
-      )}
+      {isAddPopupOpen &&
+        popupPosition &&
+        createPortal(
+          <AddPropertyPopup
+            isOpen={isAddPopupOpen}
+            onClose={handleCloseAddPopup}
+            onAdd={handleAddProperty}
+            position={popupPosition}
+          />,
+          document.body
+        )}
     </div>
   )
 }

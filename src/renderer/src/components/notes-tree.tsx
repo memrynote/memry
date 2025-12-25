@@ -55,6 +55,8 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { TemplateSelector } from '@/components/note/template-selector'
+import { VirtualizedNotesTree } from '@/components/virtualized-notes-tree'
+import { shouldVirtualize } from '@/lib/virtualized-tree-utils'
 
 // ============================================================================
 // Types
@@ -320,9 +322,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       try {
         // Fetch templates list once
         const templatesResponse = await window.api.templates.list()
-        const templatesMap = new Map(
-          templatesResponse.templates.map((t) => [t.id, t.name])
-        )
+        const templatesMap = new Map(templatesResponse.templates.map((t) => [t.id, t.name]))
 
         // Fetch configs for all folders and build names map
         const namesMap = new Map<string, string>()
@@ -355,6 +355,11 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   const tree = useMemo(() => {
     return buildTreeFromNotes(notes, folders)
   }, [notes, folders])
+
+  // Check if we should use virtualized rendering (100+ items)
+  const useVirtualization = useMemo(() => {
+    return shouldVirtualize(tree)
+  }, [tree])
 
   // Map of noteId to note for quick lookup
   const noteMap = useMemo(() => {
@@ -1256,33 +1261,44 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   }
 
   return (
-    <div ref={treeContainerRef} className="flex flex-col" tabIndex={-1}>
-      {/* Tree View */}
-      <TreeProvider
-        selectedIds={selectedIds}
-        onSelectionChange={handleSelectionChange}
-        draggable={!renamingNoteId && !renamingFolderPath && !isMoving}
-        onMove={handleMove}
-        animateExpand={true}
-        multiSelect={true}
-        indent={16}
-      >
-        <TreeView>
-          {/* Folders first */}
-          {tree.folders.map((folder, index) =>
-            renderFolder(
-              folder,
-              0,
-              index === tree.folders.length - 1 && tree.rootNotes.length === 0
-            )
-          )}
+    <div ref={treeContainerRef} className="flex flex-col h-full" tabIndex={-1}>
+      {/* Use virtualized tree for 100+ items, otherwise use standard tree */}
+      {useVirtualization ? (
+        <VirtualizedNotesTree
+          tree={tree}
+          selectedIds={selectedIds}
+          onSelectionChange={handleSelectionChange}
+          noteMap={noteMap}
+          isDragDisabled={!!renamingNoteId || !!renamingFolderPath || isMoving}
+          className="flex-1"
+        />
+      ) : (
+        <TreeProvider
+          selectedIds={selectedIds}
+          onSelectionChange={handleSelectionChange}
+          draggable={!renamingNoteId && !renamingFolderPath && !isMoving}
+          onMove={handleMove}
+          animateExpand={true}
+          multiSelect={true}
+          indent={16}
+        >
+          <TreeView>
+            {/* Folders first */}
+            {tree.folders.map((folder, index) =>
+              renderFolder(
+                folder,
+                0,
+                index === tree.folders.length - 1 && tree.rootNotes.length === 0
+              )
+            )}
 
-          {/* Root notes after folders */}
-          {tree.rootNotes.map((note, index) =>
-            renderNote(note, 0, index === tree.rootNotes.length - 1)
-          )}
-        </TreeView>
-      </TreeProvider>
+            {/* Root notes after folders */}
+            {tree.rootNotes.map((note, index) =>
+              renderNote(note, 0, index === tree.rootNotes.length - 1)
+            )}
+          </TreeView>
+        </TreeProvider>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

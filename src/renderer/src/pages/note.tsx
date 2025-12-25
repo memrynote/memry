@@ -8,6 +8,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
+import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
@@ -17,7 +18,7 @@ import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import { useNotes, useNoteLinks, useNoteTags, type Note } from '@/hooks/use-notes'
 import { useNoteProperties } from '@/hooks/use-note-properties'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
-import { notesService, onNoteDeleted, onNoteExternalChange } from '@/services/notes-service'
+import { notesService, onNoteDeleted } from '@/services/notes-service'
 import { useTabs } from '@/contexts/tabs'
 import { Loader2, MoreHorizontal, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -224,19 +225,10 @@ export function NotePage({ noteId }: NotePageProps) {
       }
     }
 
-    const handleExternalChange = (event: { id: string; type: string }) => {
-      if (event.id === noteId && event.type === 'deleted') {
-        setIsDeleted(true)
-        setTabDeleted(noteId, true)
-      }
-    }
-
     const unsubDeleted = onNoteDeleted(handleDeleted)
-    const unsubExternal = onNoteExternalChange(handleExternalChange)
 
     return () => {
       unsubDeleted()
-      unsubExternal()
     }
   }, [noteId, setTabDeleted])
 
@@ -761,18 +753,24 @@ export function NotePage({ noteId }: NotePageProps) {
               }
             }}
           >
-            <ContentArea
-              key={noteId} // Force re-mount when note changes
-              noteId={noteId} // T069: Required for attachment uploads
-              initialContent={note.content}
-              contentType="markdown"
-              placeholder="Start writing, or press '/' for commands..."
-              onContentChange={handleContentChange}
-              onMarkdownChange={handleMarkdownChange}
-              onHeadingsChange={handleHeadingsChange}
-              onLinkClick={handleLinkClick}
-              onInternalLinkClick={handleInternalLinkClick}
-            />
+            <EditorErrorBoundary
+              noteId={noteId}
+              onRecover={loadNote}
+              onError={(error) => console.error('[NotePage] Editor error:', error)}
+            >
+              <ContentArea
+                key={noteId} // Force re-mount when note changes
+                noteId={noteId} // T069: Required for attachment uploads
+                initialContent={note.content}
+                contentType="markdown"
+                placeholder="Start writing, or press '/' for commands..."
+                onContentChange={handleContentChange}
+                onMarkdownChange={handleMarkdownChange}
+                onHeadingsChange={handleHeadingsChange}
+                onLinkClick={handleLinkClick}
+                onInternalLinkClick={handleInternalLinkClick}
+              />
+            </EditorErrorBoundary>
           </div>
 
           {/* Backlinks section */}

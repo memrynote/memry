@@ -7,7 +7,7 @@
  * @module components/note/export-dialog
  */
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -68,6 +68,23 @@ export function ExportDialog({
   // Export state
   const [isExporting, setIsExporting] = useState(false)
   const [exportSuccess, setExportSuccess] = useState(false)
+
+  /**
+   * Handle Escape key to close dialog
+   */
+  useEffect(() => {
+    if (!open) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isExporting) {
+        e.preventDefault()
+        onOpenChange(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, isExporting, onOpenChange])
 
   /**
    * Handle export action

@@ -771,6 +771,9 @@ export const ContentArea = memo(function ContentArea({
   return (
     <div
       ref={containerRef}
+      role="region"
+      aria-label="Note editor"
+      aria-busy={!isContentReadyRef.current}
       className={cn(
         'content-area h-full flex flex-col relative',
         isDragging && 'ring-2 ring-primary ring-offset-2 bg-primary/5',
@@ -782,16 +785,26 @@ export const ContentArea = memo(function ContentArea({
     >
       {/* Drag overlay */}
       {isDragging && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
+        <div
+          className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none"
+          aria-live="polite"
+          aria-label="Drop zone active - release to attach files"
+        >
           <div className="text-center">
-            <div className="text-4xl mb-2">📎</div>
+            <div className="text-4xl mb-2" aria-hidden="true">
+              📎
+            </div>
             <p className="text-lg font-medium text-muted-foreground">Drop files to attach</p>
           </div>
         </div>
       )}
 
       {/* BlockNote Editor */}
-      <div className="bn-container flex-1 min-h-[300px]">
+      <div
+        className="bn-container flex-1 min-h-[300px]"
+        role="application"
+        aria-label="Rich text editor"
+      >
         <BlockNoteView
           editor={editor}
           editable={editable}
