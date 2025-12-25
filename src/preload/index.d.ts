@@ -192,6 +192,19 @@ export interface FolderConfig {
   inherit?: boolean
 }
 
+// Export types (T106, T108)
+export interface ExportNoteInput {
+  noteId: string
+  includeMetadata?: boolean
+  pageSize?: 'A4' | 'Letter' | 'Legal'
+}
+
+export interface ExportNoteResponse {
+  success: boolean
+  path?: string
+  error?: string
+}
+
 export interface TemplateCreatedEvent {
   template: Template
 }
@@ -800,6 +813,9 @@ export interface NotesClientAPI {
     config: FolderConfig
   ): Promise<{ success: boolean; error?: string }>
   getFolderTemplate(folderPath: string): Promise<string | null>
+  // Export API (T106, T108)
+  exportPdf(input: ExportNoteInput): Promise<ExportNoteResponse>
+  exportHtml(input: ExportNoteInput): Promise<ExportNoteResponse>
 }
 
 // Tasks client API interface

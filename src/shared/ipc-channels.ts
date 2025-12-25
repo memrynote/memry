@@ -94,7 +94,11 @@ export const NotesChannels = {
     /** Set folder config (template settings) */
     SET_FOLDER_CONFIG: 'notes:set-folder-config',
     /** Get resolved folder template (with inheritance) */
-    GET_FOLDER_TEMPLATE: 'notes:get-folder-template'
+    GET_FOLDER_TEMPLATE: 'notes:get-folder-template',
+    /** Export note as PDF (T106) */
+    EXPORT_PDF: 'notes:export-pdf',
+    /** Export note as HTML (T108) */
+    EXPORT_HTML: 'notes:export-html'
   },
   events: {
     /** Note was created (externally or internally) */
