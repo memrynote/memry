@@ -536,15 +536,15 @@ inherit: true # Inherit from parent folder (default: true)
 
 ### Implementation for User Story 14
 
-- [ ] T097 [P] [US14] Create FolderView page component in src/renderer/src/pages/folder.tsx
-- [ ] T098 [US14] Create FolderTable component with property columns in src/renderer/src/components/folder/folder-table.tsx
-- [ ] T099 [US14] Add column configuration from folder's template properties
-- [ ] T100 [US14] Create FolderPreviewPanel component in src/renderer/src/components/folder/folder-preview.tsx
-- [ ] T101 [US14] Implement simple property filtering (dropdown per column)
-- [ ] T102 [US14] Implement column sorting (click header to sort)
-- [ ] T103 [US14] Add folder view tab type to tab system in src/renderer/src/contexts/tabs/
-- [ ] T104 [US14] Wire folder click in notes-tree to open folder view tab
-- [ ] T105 [US14] Add IPC handler to list notes with properties for folder in src/main/ipc/notes-handlers.ts
+- [x] T097 [P] [US14] Create FolderView page component in src/renderer/src/pages/folder.tsx
+- [x] T098 [US14] Create FolderTable component with property columns in src/renderer/src/components/folder/folder-table.tsx
+- [x] T099 [US14] Add column configuration from folder's template properties
+- [x] T100 [US14] Create FolderPreviewPanel component in src/renderer/src/components/folder/folder-preview.tsx
+- [x] T101 [US14] Implement simple property filtering (dropdown per column)
+- [x] T102 [US14] Implement column sorting (click header to sort)
+- [x] T103 [US14] Add folder view tab type to tab system in src/renderer/src/contexts/tabs/
+- [x] T104 [US14] Wire folder click in notes-tree to open folder view tab
+- [x] T105 [US14] Add IPC handler to list notes with properties for folder in src/main/ipc/notes-handlers.ts
 
 **Checkpoint**: User Story 14 complete - folder view works with table, filtering, and preview
 
@@ -558,12 +558,12 @@ inherit: true # Inherit from parent folder (default: true)
 
 ### Implementation for User Story 15
 
-- [ ] T106 [P] [US15] Add PDF export using Electron print-to-PDF in src/main/ipc/notes-handlers.ts
-- [ ] T107 [US15] Create ExportDialog with format selection in src/renderer/src/components/note/export-dialog.tsx
-- [ ] T108 [US15] Add HTML export with embedded styles in src/main/ipc/notes-handlers.ts
-- [ ] T109 [US15] Add export button to NotePage header in src/renderer/src/pages/note.tsx
+- [x] T106 [P] [US15] Add PDF export using Electron print-to-PDF in src/main/ipc/notes-handlers.ts
+- [x] T107 [US15] Create ExportDialog with format selection in src/renderer/src/components/note/export-dialog.tsx
+- [x] T108 [US15] Add HTML export with embedded styles in src/main/ipc/notes-handlers.ts
+- [x] T109 [US15] Add export button to NotePage header in src/renderer/src/pages/note.tsx
 
-**Checkpoint**: User Story 15 complete - export works for PDF and HTML
+**Checkpoint**: User Story 15 complete - export works for PDF and HTML ✅ PHASE 17 COMPLETE
 
 ---
 

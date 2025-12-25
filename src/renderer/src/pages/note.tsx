@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { ExportDialog } from '@/components/note/export-dialog'
 import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
@@ -17,7 +18,14 @@ import { useNoteProperties } from '@/hooks/use-note-properties'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteExternalChange } from '@/services/notes-service'
 import { useTabs } from '@/contexts/tabs'
-import { Loader2 } from 'lucide-react'
+import { Loader2, MoreHorizontal } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 
 // ============================================================================
@@ -71,10 +79,7 @@ function NoteErrorState({ error, onRetry }: { error: string; onRetry?: () => voi
         <p className="text-destructive font-medium">Failed to load note</p>
         <p className="text-sm text-muted-foreground">{error}</p>
         {onRetry && (
-          <button
-            onClick={onRetry}
-            className="text-sm text-primary hover:underline"
-          >
+          <button onClick={onRetry} className="text-sm text-primary hover:underline">
             Try again
           </button>
         )}
@@ -126,6 +131,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [headings, setHeadings] = useState<HeadingItem[]>([])
   const [isInfoExpanded, setIsInfoExpanded] = useState(false)
   const [isDeleted, setIsDeleted] = useState(false)
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
 
   // Content tracking for change detection
   const lastSavedContent = useRef<string>('')
@@ -136,14 +142,14 @@ export function NotePage({ noteId }: NotePageProps) {
   // Type mapping for backend PropertyValue → UI Property
   const mapPropertyType = useCallback((backendType: string): PropertyType => {
     const typeMap: Record<string, PropertyType> = {
-      'text': 'text',
-      'number': 'number',
-      'checkbox': 'checkbox',
-      'date': 'date',
-      'select': 'select',
-      'multiselect': 'multiSelect',
-      'url': 'url',
-      'rating': 'rating'
+      text: 'text',
+      number: 'number',
+      checkbox: 'checkbox',
+      date: 'date',
+      select: 'select',
+      multiselect: 'multiSelect',
+      url: 'url',
+      rating: 'rating'
     }
     return typeMap[backendType] ?? 'text'
   }, [])
@@ -276,12 +282,16 @@ export function NotePage({ noteId }: NotePageProps) {
       noteTitle: bl.sourceTitle,
       folder: bl.sourcePath.split('/')[0] || '',
       date: new Date(),
-      mentions: bl.context ? [{
-        id: `mention-${bl.sourceId}`,
-        snippet: bl.context,
-        linkStart: 0,
-        linkEnd: 0
-      }] : []
+      mentions: bl.context
+        ? [
+            {
+              id: `mention-${bl.sourceId}`,
+              snippet: bl.context,
+              linkStart: 0,
+              linkEnd: 0
+            }
+          ]
+        : []
     }))
   }, [rawBacklinks])
 
@@ -308,141 +318,159 @@ export function NotePage({ noteId }: NotePageProps) {
   }, [])
 
   // Debounced save on markdown content change
-  const handleMarkdownChange = useCallback((markdown: string) => {
-    if (!noteId || !note) return
+  const handleMarkdownChange = useCallback(
+    (markdown: string) => {
+      if (!noteId || !note) return
 
-    // Block saves if note was deleted
-    if (isDeleted) {
-      toast.error('Cannot save - this note was deleted')
-      return
-    }
-
-    // Skip if content hasn't changed
-    if (markdown === lastSavedContent.current) return
-
-    // Clear previous timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current)
-    }
-
-    // Debounce save (500ms)
-    saveTimeoutRef.current = setTimeout(async () => {
-      setIsSaving(true)
-      try {
-        await updateNote({ id: noteId, content: markdown })
-        lastSavedContent.current = markdown
-      } catch (err) {
-        console.error('Failed to save note:', err)
-      } finally {
-        setIsSaving(false)
+      // Block saves if note was deleted
+      if (isDeleted) {
+        toast.error('Cannot save - this note was deleted')
+        return
       }
-    }, 500)
-  }, [noteId, note, updateNote, isDeleted])
+
+      // Skip if content hasn't changed
+      if (markdown === lastSavedContent.current) return
+
+      // Clear previous timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+
+      // Debounce save (500ms)
+      saveTimeoutRef.current = setTimeout(async () => {
+        setIsSaving(true)
+        try {
+          await updateNote({ id: noteId, content: markdown })
+          lastSavedContent.current = markdown
+        } catch (err) {
+          console.error('Failed to save note:', err)
+        } finally {
+          setIsSaving(false)
+        }
+      }, 500)
+    },
+    [noteId, note, updateNote, isDeleted]
+  )
 
   const handleContentChange = useCallback((_blocks: Block[]) => {
     // Content change is handled via onMarkdownChange
   }, [])
 
-  const handleTitleChange = useCallback(async (newTitle: string) => {
-    if (!noteId || !note || newTitle === note.title) return
+  const handleTitleChange = useCallback(
+    async (newTitle: string) => {
+      if (!noteId || !note || newTitle === note.title) return
 
-    if (isDeleted) {
-      toast.error('Cannot rename - this note was deleted')
-      return
-    }
-
-    try {
-      const result = await renameNote(noteId, newTitle)
-      if (result) {
-        setNote(result)
+      if (isDeleted) {
+        toast.error('Cannot rename - this note was deleted')
+        return
       }
-    } catch (err) {
-      console.error('Failed to rename note:', err)
-    }
-  }, [noteId, note, renameNote, isDeleted])
+
+      try {
+        const result = await renameNote(noteId, newTitle)
+        if (result) {
+          setNote(result)
+        }
+      } catch (err) {
+        console.error('Failed to rename note:', err)
+      }
+    },
+    [noteId, note, renameNote, isDeleted]
+  )
 
   // T026: Handle emoji changes - save to backend
-  const handleEmojiChange = useCallback(async (newEmoji: string | null) => {
-    if (!noteId || !note) return
+  const handleEmojiChange = useCallback(
+    async (newEmoji: string | null) => {
+      if (!noteId || !note) return
 
-    if (isDeleted) {
-      toast.error('Cannot update emoji - this note was deleted')
-      return
-    }
-
-    try {
-      const result = await updateNote({ id: noteId, emoji: newEmoji })
-      if (result) {
-        setNote(result)
+      if (isDeleted) {
+        toast.error('Cannot update emoji - this note was deleted')
+        return
       }
-    } catch (err) {
-      console.error('Failed to update emoji:', err)
-      toast.error('Failed to update emoji')
-    }
-  }, [noteId, note, updateNote, isDeleted])
+
+      try {
+        const result = await updateNote({ id: noteId, emoji: newEmoji })
+        if (result) {
+          setNote(result)
+        }
+      } catch (err) {
+        console.error('Failed to update emoji:', err)
+        toast.error('Failed to update emoji')
+      }
+    },
+    [noteId, note, updateNote, isDeleted]
+  )
 
   // Tag handlers
-  const handleAddTag = useCallback(async (tagId: string) => {
-    if (!noteId || !note) return
+  const handleAddTag = useCallback(
+    async (tagId: string) => {
+      if (!noteId || !note) return
 
-    if (isDeleted) {
-      toast.error('Cannot add tag - this note was deleted')
-      return
-    }
+      if (isDeleted) {
+        toast.error('Cannot add tag - this note was deleted')
+        return
+      }
 
-    const tagToAdd = availableTags.find((t) => t.id === tagId)
-    if (tagToAdd && !note.tags.includes(tagToAdd.name)) {
-      const newTags = [...note.tags, tagToAdd.name]
+      const tagToAdd = availableTags.find((t) => t.id === tagId)
+      if (tagToAdd && !note.tags.includes(tagToAdd.name)) {
+        const newTags = [...note.tags, tagToAdd.name]
+        try {
+          const result = await updateNote({ id: noteId, tags: newTags })
+          if (result) {
+            setNote(result)
+          }
+        } catch (err) {
+          console.error('Failed to add tag:', err)
+        }
+      }
+    },
+    [noteId, note, availableTags, updateNote, isDeleted]
+  )
+
+  const handleCreateTag = useCallback(
+    async (name: string, _color: string) => {
+      if (!noteId || !note) return
+
+      if (isDeleted) {
+        toast.error('Cannot add tag - this note was deleted')
+        return
+      }
+
+      if (!note.tags.includes(name)) {
+        const newTags = [...note.tags, name]
+        try {
+          const result = await updateNote({ id: noteId, tags: newTags })
+          if (result) {
+            setNote(result)
+          }
+        } catch (err) {
+          console.error('Failed to create tag:', err)
+        }
+      }
+    },
+    [noteId, note, updateNote, isDeleted]
+  )
+
+  const handleRemoveTag = useCallback(
+    async (tagId: string) => {
+      if (!noteId || !note) return
+
+      if (isDeleted) {
+        toast.error('Cannot remove tag - this note was deleted')
+        return
+      }
+
+      const newTags = note.tags.filter((t) => t !== tagId)
       try {
         const result = await updateNote({ id: noteId, tags: newTags })
         if (result) {
           setNote(result)
         }
       } catch (err) {
-        console.error('Failed to add tag:', err)
+        console.error('Failed to remove tag:', err)
       }
-    }
-  }, [noteId, note, availableTags, updateNote, isDeleted])
-
-  const handleCreateTag = useCallback(async (name: string, _color: string) => {
-    if (!noteId || !note) return
-
-    if (isDeleted) {
-      toast.error('Cannot add tag - this note was deleted')
-      return
-    }
-
-    if (!note.tags.includes(name)) {
-      const newTags = [...note.tags, name]
-      try {
-        const result = await updateNote({ id: noteId, tags: newTags })
-        if (result) {
-          setNote(result)
-        }
-      } catch (err) {
-        console.error('Failed to create tag:', err)
-      }
-    }
-  }, [noteId, note, updateNote, isDeleted])
-
-  const handleRemoveTag = useCallback(async (tagId: string) => {
-    if (!noteId || !note) return
-
-    if (isDeleted) {
-      toast.error('Cannot remove tag - this note was deleted')
-      return
-    }
-
-    const newTags = note.tags.filter((t) => t !== tagId)
-    try {
-      const result = await updateNote({ id: noteId, tags: newTags })
-      if (result) {
-        setNote(result)
-      }
-    } catch (err) {
-      console.error('Failed to remove tag:', err)
-    }
-  }, [noteId, note, updateNote, isDeleted])
+    },
+    [noteId, note, updateNote, isDeleted]
+  )
 
   // Property handlers - wired to backend
   const handlePropertyChange = useCallback(
@@ -472,7 +500,10 @@ export function NotePage({ noteId }: NotePageProps) {
       }
       // Get default value based on type
       const defaultValue = getDefaultValueForType(newProp.type)
-      console.log('[NotePage] Adding property with default value:', { name: newProp.name, defaultValue })
+      console.log('[NotePage] Adding property with default value:', {
+        name: newProp.name,
+        defaultValue
+      })
       try {
         await addBackendProperty(newProp.name, defaultValue)
         console.log('[NotePage] Property added successfully')
@@ -507,87 +538,96 @@ export function NotePage({ noteId }: NotePageProps) {
     window.open(href, '_blank', 'noopener,noreferrer')
   }, [])
 
-  const handleInternalLinkClick = useCallback(async (linkedNoteIdOrTitle: string) => {
-    const target = linkedNoteIdOrTitle?.trim()
-    if (!target) return
+  const handleInternalLinkClick = useCallback(
+    async (linkedNoteIdOrTitle: string) => {
+      const target = linkedNoteIdOrTitle?.trim()
+      if (!target) return
 
-    let resolvedId = target
-    let resolvedTitle = 'Note'
+      let resolvedId = target
+      let resolvedTitle = 'Note'
 
-    try {
-      const byId = await getNote(target)
-      if (byId) {
-        resolvedId = byId.id
-        resolvedTitle = byId.title
-      } else {
-        const listResult = await notesService.list({ sortBy: 'title', limit: 500 })
-        const match = listResult.notes.find(
-          (note) => note.title.toLowerCase() === target.toLowerCase()
-        )
-
-        if (match) {
-          resolvedId = match.id
-          resolvedTitle = match.title
+      try {
+        const byId = await getNote(target)
+        if (byId) {
+          resolvedId = byId.id
+          resolvedTitle = byId.title
         } else {
-          const created = await createNote({ title: target })
-          if (!created) {
-            toast.error('Failed to create linked note')
-            return
+          const listResult = await notesService.list({ sortBy: 'title', limit: 500 })
+          const match = listResult.notes.find(
+            (note) => note.title.toLowerCase() === target.toLowerCase()
+          )
+
+          if (match) {
+            resolvedId = match.id
+            resolvedTitle = match.title
+          } else {
+            const created = await createNote({ title: target })
+            if (!created) {
+              toast.error('Failed to create linked note')
+              return
+            }
+            resolvedId = created.id
+            resolvedTitle = created.title
           }
-          resolvedId = created.id
-          resolvedTitle = created.title
         }
+      } catch (err) {
+        console.error('[NotePage] Failed to resolve wiki link:', err)
+        toast.error('Failed to open linked note')
+        return
       }
-    } catch (err) {
-      console.error('[NotePage] Failed to resolve wiki link:', err)
-      toast.error('Failed to open linked note')
-      return
-    }
 
-    openTab({
-      type: 'note',
-      title: resolvedTitle,
-      icon: 'file-text',
-      path: `/notes/${resolvedId}`,
-      entityId: resolvedId,
-      isPinned: false,
-      isModified: false,
-      isPreview: true,
-      isDeleted: false,
-    })
-  }, [openTab, getNote, createNote])
+      openTab({
+        type: 'note',
+        title: resolvedTitle,
+        icon: 'file-text',
+        path: `/notes/${resolvedId}`,
+        entityId: resolvedId,
+        isPinned: false,
+        isModified: false,
+        isPreview: true,
+        isDeleted: false
+      })
+    },
+    [openTab, getNote, createNote]
+  )
 
-  const handleBacklinkClick = useCallback((backlinkNoteId: string) => {
-    // Look up the title from the backlinks array
-    const backlink = backlinks.find((bl) => bl.noteId === backlinkNoteId)
-    const noteTitle = backlink?.noteTitle || 'Note'
+  const handleBacklinkClick = useCallback(
+    (backlinkNoteId: string) => {
+      // Look up the title from the backlinks array
+      const backlink = backlinks.find((bl) => bl.noteId === backlinkNoteId)
+      const noteTitle = backlink?.noteTitle || 'Note'
 
-    openTab({
-      type: 'note',
-      title: noteTitle,
-      icon: 'file-text',
-      path: `/notes/${backlinkNoteId}`,
-      entityId: backlinkNoteId,
-      isPinned: false,
-      isModified: false,
-      isPreview: true,
-      isDeleted: false,
-    })
-  }, [openTab, backlinks])
+      openTab({
+        type: 'note',
+        title: noteTitle,
+        icon: 'file-text',
+        path: `/notes/${backlinkNoteId}`,
+        entityId: backlinkNoteId,
+        isPinned: false,
+        isModified: false,
+        isPreview: true,
+        isDeleted: false
+      })
+    },
+    [openTab, backlinks]
+  )
 
   // Handle clicking on a linked task
-  const handleLinkedTaskClick = useCallback((taskId: string) => {
-    openTab({
-      type: 'tasks',
-      title: 'Tasks',
-      icon: 'check-square',
-      path: `/tasks?taskId=${taskId}`,
-      isPinned: false,
-      isModified: false,
-      isPreview: false,
-      isDeleted: false
-    })
-  }, [openTab])
+  const handleLinkedTaskClick = useCallback(
+    (taskId: string) => {
+      openTab({
+        type: 'tasks',
+        title: 'Tasks',
+        icon: 'check-square',
+        path: `/tasks?taskId=${taskId}`,
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      })
+    },
+    [openTab]
+  )
 
   // ============================================================================
   // Render
@@ -615,119 +655,155 @@ export function NotePage({ noteId }: NotePageProps) {
 
   return (
     <NoteLayout headings={headings} onHeadingClick={handleHeadingClick}>
-      {/* Saving indicator */}
-      {isSaving && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-full border">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          <span>Saving...</span>
-        </div>
-      )}
+      {/* Note content wrapper with relative positioning for action bar */}
+      <div className="relative">
+        {/* Action bar - positioned at top-right of content area */}
+        <div className="absolute top-0 right-0 z-10 flex items-center gap-2">
+          {isSaving && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-full border">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Saving...</span>
+            </div>
+          )}
 
-      {/* Note content */}
-      <div className="space-y-8">
-        <div style={{ paddingInline: "54px" }}>
-          {/* Title section */}
-          <div className="space-y-4">
-            <div className="relative">
-              <div
-                className="absolute -left-8 top-1/2 -translate-y-1/2 w-1 h-12 bg-gradient-to-b from-amber-400/40 via-amber-500/20 to-transparent rounded-full opacity-60"
-                aria-hidden="true"
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 hover:bg-muted/50"
+                disabled={isDeleted}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">More options</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>
+                Export
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Note content */}
+        <div className="space-y-8">
+          <div style={{ paddingInline: '54px' }}>
+            {/* Title section */}
+            <div className="space-y-4">
+              <div className="relative">
+                <div
+                  className="absolute -left-8 top-1/2 -translate-y-1/2 w-1 h-12 bg-gradient-to-b from-amber-400/40 via-amber-500/20 to-transparent rounded-full opacity-60"
+                  aria-hidden="true"
+                />
+                <NoteTitle
+                  emoji={note.emoji ?? null}
+                  title={note.title}
+                  onEmojiChange={handleEmojiChange}
+                  onTitleChange={handleTitleChange}
+                  placeholder="Untitled"
+                />
+              </div>
+            </div>
+
+            {/* Tags section */}
+            <div>
+              <TagsRow
+                tags={noteTags}
+                availableTags={availableTags}
+                recentTags={recentTags}
+                onAddTag={handleAddTag}
+                onCreateTag={handleCreateTag}
+                onRemoveTag={handleRemoveTag}
               />
-              <NoteTitle
-                emoji={note.emoji ?? null}
-                title={note.title}
-                onEmojiChange={handleEmojiChange}
-                onTitleChange={handleTitleChange}
-                placeholder="Untitled"
+            </div>
+
+            {/* Info Section (Properties) - always show for adding new properties */}
+            <div>
+              <InfoSection
+                properties={properties}
+                isExpanded={isInfoExpanded}
+                onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
+                onPropertyChange={handlePropertyChange}
+                onAddProperty={handleAddProperty}
+                onDeleteProperty={handleDeleteProperty}
+                disabled={isDeleted}
               />
             </div>
           </div>
 
-          {/* Tags section */}
-          <div>
-            <TagsRow
-              tags={noteTags}
-              availableTags={availableTags}
-              recentTags={recentTags}
-              onAddTag={handleAddTag}
-              onCreateTag={handleCreateTag}
-              onRemoveTag={handleRemoveTag}
+          {/* Main content - BlockNote Editor with Markdown */}
+          <div
+            className="editor-click-area min-h-[400px] relative"
+            onMouseDown={(e) => {
+              const target = e.target as HTMLElement
+              if (
+                target.closest('[contenteditable="true"]')?.contains(target) &&
+                target.closest('.bn-block-content')
+              ) {
+                return
+              }
+              if (target.closest('button, a, input')) {
+                return
+              }
+              const editor = (e.currentTarget as HTMLElement).querySelector(
+                '.bn-editor [contenteditable="true"]'
+              ) as HTMLElement
+              if (editor) {
+                e.preventDefault()
+                editor.focus()
+              }
+            }}
+          >
+            <ContentArea
+              key={noteId} // Force re-mount when note changes
+              noteId={noteId} // T069: Required for attachment uploads
+              initialContent={note.content}
+              contentType="markdown"
+              placeholder="Start writing, or press '/' for commands..."
+              onContentChange={handleContentChange}
+              onMarkdownChange={handleMarkdownChange}
+              onHeadingsChange={handleHeadingsChange}
+              onLinkClick={handleLinkClick}
+              onInternalLinkClick={handleInternalLinkClick}
             />
           </div>
 
-          {/* Info Section (Properties) - always show for adding new properties */}
-          <div>
-            <InfoSection
-              properties={properties}
-              isExpanded={isInfoExpanded}
-              onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
-              onPropertyChange={handlePropertyChange}
-              onAddProperty={handleAddProperty}
-              onDeleteProperty={handleDeleteProperty}
-              disabled={isDeleted}
+          {/* Backlinks section */}
+          <div className="pt-8 mx-[54px] border-t border-border/30">
+            <div className="flex items-baseline gap-2 mb-4">
+              <span className="font-sans text-xs font-medium uppercase tracking-wider text-text-tertiary/50">
+                References
+              </span>
+              <span className="font-serif text-xs italic text-text-tertiary/30">
+                {backlinks.length} backlink{backlinks.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <BacklinksSection
+              backlinks={backlinks}
+              isLoading={backlinksLoading}
+              initialCount={5}
+              collapsible={true}
+              onBacklinkClick={handleBacklinkClick}
+            />
+
+            {/* Linked Tasks Section */}
+            <LinkedTasksSection
+              tasks={linkedTasks}
+              isLoading={linkedTasksLoading}
+              onTaskClick={handleLinkedTaskClick}
             />
           </div>
-        </div>
-
-        {/* Main content - BlockNote Editor with Markdown */}
-        <div
-          className="editor-click-area min-h-[400px] relative"
-          onMouseDown={(e) => {
-            const target = e.target as HTMLElement
-            if (target.closest('[contenteditable="true"]')?.contains(target) &&
-              target.closest('.bn-block-content')) {
-              return
-            }
-            if (target.closest('button, a, input')) {
-              return
-            }
-            const editor = (e.currentTarget as HTMLElement).querySelector('.bn-editor [contenteditable="true"]') as HTMLElement
-            if (editor) {
-              e.preventDefault()
-              editor.focus()
-            }
-          }}
-        >
-          <ContentArea
-            key={noteId} // Force re-mount when note changes
-            noteId={noteId} // T069: Required for attachment uploads
-            initialContent={note.content}
-            contentType="markdown"
-            placeholder="Start writing, or press '/' for commands..."
-            onContentChange={handleContentChange}
-            onMarkdownChange={handleMarkdownChange}
-            onHeadingsChange={handleHeadingsChange}
-            onLinkClick={handleLinkClick}
-            onInternalLinkClick={handleInternalLinkClick}
-          />
-        </div>
-
-        {/* Backlinks section */}
-        <div className="pt-8 mx-[54px] border-t border-border/30">
-          <div className="flex items-baseline gap-2 mb-4">
-            <span className="font-sans text-xs font-medium uppercase tracking-wider text-text-tertiary/50">
-              References
-            </span>
-            <span className="font-serif text-xs italic text-text-tertiary/30">
-              {backlinks.length} backlink{backlinks.length !== 1 ? 's' : ''}
-            </span>
-          </div>
-          <BacklinksSection
-            backlinks={backlinks}
-            isLoading={backlinksLoading}
-            initialCount={5}
-            collapsible={true}
-            onBacklinkClick={handleBacklinkClick}
-          />
-
-          {/* Linked Tasks Section */}
-          <LinkedTasksSection
-            tasks={linkedTasks}
-            isLoading={linkedTasksLoading}
-            onTaskClick={handleLinkedTaskClick}
-          />
         </div>
       </div>
+
+      {/* Export Dialog */}
+      <ExportDialog
+        open={isExportDialogOpen}
+        onOpenChange={setIsExportDialogOpen}
+        noteId={noteId}
+        noteTitle={note.title}
+      />
     </NoteLayout>
   )
 }

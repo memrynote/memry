@@ -123,7 +123,13 @@ const api = {
     setFolderConfig: (folderPath: string, config: { template?: string; inherit?: boolean }) =>
       ipcRenderer.invoke(NotesChannels.invoke.SET_FOLDER_CONFIG, { folderPath, config }),
     getFolderTemplate: (folderPath: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.GET_FOLDER_TEMPLATE, folderPath)
+      ipcRenderer.invoke(NotesChannels.invoke.GET_FOLDER_TEMPLATE, folderPath),
+
+    // Export API (T106, T108)
+    exportPdf: (input: { noteId: string; includeMetadata?: boolean; pageSize?: string }) =>
+      ipcRenderer.invoke(NotesChannels.invoke.EXPORT_PDF, input),
+    exportHtml: (input: { noteId: string; includeMetadata?: boolean }) =>
+      ipcRenderer.invoke(NotesChannels.invoke.EXPORT_HTML, input)
   },
 
   // Templates API
