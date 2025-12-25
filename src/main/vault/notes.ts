@@ -245,8 +245,8 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
       properties
   }
 
-  // Serialize content - use input content if provided, otherwise use template content
-  const content = input.content ?? templateContent
+  // Serialize content - use input content if provided (and non-empty), otherwise use template content
+  const content = input.content && input.content.trim() ? input.content : templateContent
   const fileContent = serializeNote(frontmatter, content)
 
   // Write file atomically

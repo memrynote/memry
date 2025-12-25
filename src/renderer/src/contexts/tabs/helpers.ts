@@ -105,7 +105,8 @@ const TAB_ICONS: Record<TabType, string> = {
   search: 'search',
   settings: 'settings',
   collection: 'bookmark',
-  'template-editor': 'layout-template'
+  'template-editor': 'layout-template',
+  templates: 'layout-template'
 }
 
 /**

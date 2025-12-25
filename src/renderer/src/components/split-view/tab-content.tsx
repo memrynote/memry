@@ -14,6 +14,7 @@ import { TasksPage } from '@/pages/tasks'
 import { NotePage } from '@/pages/note'
 import { SettingsPage } from '@/pages/settings'
 import { TemplateEditorPage } from '@/pages/template-editor'
+import { TemplatesPage } from '@/pages/templates'
 
 interface TabContentProps {
   /** Tab data */
@@ -124,6 +125,9 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
 
       case 'template-editor':
         return <TemplateEditorPage templateId={tab.entityId} />
+
+      case 'templates':
+        return <TemplatesPage />
 
       case 'collection':
         return (
