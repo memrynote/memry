@@ -62,13 +62,13 @@ Electron application structure per plan.md:
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Implement getEntry IPC handler in src/main/ipc/journal-handlers.ts (read entry from file, return null if not exists)
-- [ ] T014 [US1] Implement createEntry IPC handler in src/main/ipc/journal-handlers.ts (create file with frontmatter, insert into cache)
-- [ ] T015 [US1] Implement updateEntry IPC handler in src/main/ipc/journal-handlers.ts (update file, update cache, compute word/char counts)
-- [ ] T016 [US1] Implement deleteEntry IPC handler in src/main/ipc/journal-handlers.ts (delete file, remove from cache)
-- [ ] T017 [US1] Create useJournalEntry hook in src/renderer/src/hooks/use-journal.ts (load entry by date, loading/error states)
-- [ ] T018 [US1] Wire JournalPage to useJournalEntry hook in src/renderer/src/pages/journal.tsx (replace dummy data, load today's entry on mount)
-- [ ] T019 [US1] Wire ContentArea onChange to journal service in src/renderer/src/pages/journal.tsx (call updateContent on content change)
+- [x] T013 [US1] Implement getEntry IPC handler in src/main/ipc/journal-handlers.ts (read entry from file, return null if not exists)
+- [x] T014 [US1] Implement createEntry IPC handler in src/main/ipc/journal-handlers.ts (create file with frontmatter, insert into cache)
+- [x] T015 [US1] Implement updateEntry IPC handler in src/main/ipc/journal-handlers.ts (update file, update cache, compute word/char counts)
+- [x] T016 [US1] Implement deleteEntry IPC handler in src/main/ipc/journal-handlers.ts (delete file, remove from cache)
+- [x] T017 [US1] Create useJournalEntry hook in src/renderer/src/hooks/use-journal.ts (load entry by date, loading/error states)
+- [x] T018 [US1] Wire JournalPage to useJournalEntry hook in src/renderer/src/pages/journal.tsx (replace dummy data, load today's entry on mount)
+- [x] T019 [US1] Wire ContentArea onChange to journal service in src/renderer/src/pages/journal.tsx (call updateContent on content change)
 
 **Checkpoint**: User Story 1 complete - users can open journal, write content, persist across restarts
 

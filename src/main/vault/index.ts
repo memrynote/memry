@@ -201,7 +201,7 @@ async function openVault(vaultPath: string): Promise<void> {
   seedDefaults(getDatabase())
 
   // Check index database health before proceeding
-  const indexHealth = checkIndexHealth(indexDbPath)
+  let indexHealth: IndexHealth = checkIndexHealth(indexDbPath)
   console.log(`[Vault] Index health check: ${indexHealth}`)
 
   updateStatus({ isIndexing: true, indexProgress: 0 })
@@ -219,14 +219,27 @@ async function openVault(vaultPath: string): Promise<void> {
         duration: rebuildResult.duration
       })
     } else {
-      // Index is healthy - run migrations and normal indexing
-      runIndexMigrations(indexDbPath)
-      initIndexDatabase(indexDbPath)
-      initializeFts(getIndexDatabase())
+      // Index is healthy - try to run migrations
+      try {
+        runIndexMigrations(indexDbPath)
+        initIndexDatabase(indexDbPath)
+        initializeFts(getIndexDatabase())
 
-      // Run indexing to pick up any new/missing notes
-      // This will skip files already in cache, so it's fast for subsequent opens
-      await indexVault(vaultPath)
+        // Run indexing to pick up any new/missing notes
+        // This will skip files already in cache, so it's fast for subsequent opens
+        await indexVault(vaultPath)
+      } catch (migrationError) {
+        // Migration failed (e.g., table already exists) - rebuild index from scratch
+        console.error('[Vault] Migration failed, rebuilding index:', migrationError)
+        const rebuildResult = await rebuildIndex(vaultPath)
+
+        // Notify renderer about recovery
+        emitIndexRecovered({
+          reason: 'migration_failed',
+          filesIndexed: rebuildResult.filesIndexed,
+          duration: rebuildResult.duration
+        })
+      }
     }
   } catch (error) {
     console.error('[Vault] Indexing failed:', error)
