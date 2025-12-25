@@ -5,7 +5,8 @@
  * @module ipc/notes-handlers
  */
 
-import { ipcMain } from 'electron'
+import { ipcMain, dialog, BrowserWindow } from 'electron'
+import * as fs from 'fs/promises'
 import { z } from 'zod'
 import {
   NotesChannels,
@@ -39,6 +40,7 @@ import {
 } from '../vault/notes'
 import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
 import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault/folders'
+import { renderNoteAsHtml, sanitizeFilename } from '../lib/export-utils'
 import { SetFolderConfigSchema } from '@shared/contracts/templates-api'
 import {
   getNoteProperties,
@@ -106,6 +108,16 @@ const UpdatePropertyDefinitionSchema = z.object({
   options: z.array(z.string()).optional(),
   defaultValue: z.unknown().optional(),
   color: z.string().optional()
+})
+
+// ============================================================================
+// Zod Schemas for Export (T106, T108)
+// ============================================================================
+
+const ExportNoteSchema = z.object({
+  noteId: z.string().min(1),
+  includeMetadata: z.boolean().default(true),
+  pageSize: z.enum(['A4', 'Letter', 'Legal']).default('A4')
 })
 
 /**
@@ -452,6 +464,146 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.GET_FOLDER_TEMPLATE,
     createStringHandler(async (folderPath) => {
       return getFolderTemplate(folderPath)
+    })
+  )
+
+  // =========================================================================
+  // T106: PDF Export Handler
+  // =========================================================================
+
+  ipcMain.handle(
+    NotesChannels.invoke.EXPORT_PDF,
+    createValidatedHandler(ExportNoteSchema, async (input) => {
+      try {
+        // Get the note
+        const note = await getNoteById(input.noteId)
+        if (!note) {
+          return { success: false, error: 'Note not found' }
+        }
+
+        // Show save dialog
+        const defaultFilename = `${sanitizeFilename(note.title)}.pdf`
+        const result = await dialog.showSaveDialog({
+          title: 'Export as PDF',
+          defaultPath: defaultFilename,
+          filters: [{ name: 'PDF Document', extensions: ['pdf'] }]
+        })
+
+        if (result.canceled || !result.filePath) {
+          return { success: false, error: 'Export cancelled' }
+        }
+
+        // Generate HTML for the note
+        const html = renderNoteAsHtml(
+          {
+            id: note.id,
+            title: note.title,
+            content: note.content,
+            emoji: note.emoji,
+            tags: note.tags,
+            created: note.created,
+            modified: note.modified
+          },
+          { includeMetadata: input.includeMetadata }
+        )
+
+        // Create a hidden browser window to render the HTML
+        const win = new BrowserWindow({
+          show: false,
+          width: 800,
+          height: 600,
+          webPreferences: {
+            javascript: false // Security: disable JS for export
+          }
+        })
+
+        // Load the HTML content
+        await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+
+        // Wait a moment for content to render
+        await new Promise((resolve) => setTimeout(resolve, 100))
+
+        // Map page size to Electron format
+        const pageSizeMap: Record<string, Electron.PrintToPDFOptions['pageSize']> = {
+          A4: 'A4',
+          Letter: 'Letter',
+          Legal: 'Legal'
+        }
+
+        // Generate PDF
+        const pdfData = await win.webContents.printToPDF({
+          printBackground: true,
+          pageSize: pageSizeMap[input.pageSize] || 'A4',
+          margins: {
+            top: 0.5,
+            bottom: 0.5,
+            left: 0.5,
+            right: 0.5
+          }
+        })
+
+        // Clean up the window
+        win.destroy()
+
+        // Write the PDF file
+        await fs.writeFile(result.filePath, pdfData)
+
+        return { success: true, path: result.filePath }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to export PDF'
+        return { success: false, error: message }
+      }
+    })
+  )
+
+  // =========================================================================
+  // T108: HTML Export Handler
+  // =========================================================================
+
+  ipcMain.handle(
+    NotesChannels.invoke.EXPORT_HTML,
+    createValidatedHandler(ExportNoteSchema, async (input) => {
+      try {
+        // Get the note
+        const note = await getNoteById(input.noteId)
+        if (!note) {
+          return { success: false, error: 'Note not found' }
+        }
+
+        // Show save dialog
+        const defaultFilename = `${sanitizeFilename(note.title)}.html`
+        const result = await dialog.showSaveDialog({
+          title: 'Export as HTML',
+          defaultPath: defaultFilename,
+          filters: [{ name: 'HTML Document', extensions: ['html', 'htm'] }]
+        })
+
+        if (result.canceled || !result.filePath) {
+          return { success: false, error: 'Export cancelled' }
+        }
+
+        // Generate HTML for the note
+        const html = renderNoteAsHtml(
+          {
+            id: note.id,
+            title: note.title,
+            content: note.content,
+            emoji: note.emoji,
+            tags: note.tags,
+            created: note.created,
+            modified: note.modified
+          },
+          { includeMetadata: input.includeMetadata }
+        )
+
+        // Write the HTML file
+        await fs.writeFile(result.filePath, html, 'utf-8')
+
+        return { success: true, path: result.filePath }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to export HTML'
+        return { success: false, error: message }
+      }
     })
   )
 }

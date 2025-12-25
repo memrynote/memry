@@ -21,7 +21,9 @@ import type {
   AttachmentResult,
   AttachmentInfo,
   DeleteAttachmentResponse,
-  FolderConfig
+  FolderConfig,
+  ExportNoteInput,
+  ExportNoteResponse
 } from '../../../preload/index.d'
 
 /**
@@ -277,6 +279,28 @@ export const notesService: NotesClientAPI = {
    */
   getFolderTemplate: (folderPath: string): Promise<string | null> => {
     return window.api.notes.getFolderTemplate(folderPath)
+  },
+
+  // =========================================================================
+  // T106, T108: Export API
+  // =========================================================================
+
+  /**
+   * Export a note as PDF.
+   * Opens a save dialog and exports the note to the selected location.
+   * @param input - Export options including noteId, includeMetadata, and pageSize
+   */
+  exportPdf: (input: ExportNoteInput): Promise<ExportNoteResponse> => {
+    return window.api.notes.exportPdf(input)
+  },
+
+  /**
+   * Export a note as HTML.
+   * Opens a save dialog and exports the note to the selected location.
+   * @param input - Export options including noteId and includeMetadata
+   */
+  exportHtml: (input: ExportNoteInput): Promise<ExportNoteResponse> => {
+    return window.api.notes.exportHtml(input)
   }
 }
 
@@ -357,5 +381,7 @@ export type {
   UpdatePropertyDefinitionInput,
   AttachmentResult,
   AttachmentInfo,
-  DeleteAttachmentResponse
+  DeleteAttachmentResponse,
+  ExportNoteInput,
+  ExportNoteResponse
 }
