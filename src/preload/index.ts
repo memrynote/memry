@@ -8,7 +8,8 @@ import {
   SearchChannels,
   TasksChannels,
   SavedFiltersChannels,
-  TemplatesChannels
+  TemplatesChannels,
+  JournalChannels
 } from '@shared/ipc-channels'
 
 // Custom APIs for renderer
@@ -354,6 +355,37 @@ const api = {
       ipcRenderer.invoke(SavedFiltersChannels.invoke.REORDER, { ids, positions })
   },
 
+  // Journal API
+  journal: {
+    // Entry CRUD
+    getEntry: (date: string) => ipcRenderer.invoke(JournalChannels.invoke.GET_ENTRY, { date }),
+    createEntry: (input: { date: string; content?: string; tags?: string[] }) =>
+      ipcRenderer.invoke(JournalChannels.invoke.CREATE_ENTRY, input),
+    updateEntry: (input: { date: string; content?: string; tags?: string[] }) =>
+      ipcRenderer.invoke(JournalChannels.invoke.UPDATE_ENTRY, input),
+    deleteEntry: (date: string) =>
+      ipcRenderer.invoke(JournalChannels.invoke.DELETE_ENTRY, { date }),
+
+    // Calendar & Views
+    getHeatmap: (year: number) => ipcRenderer.invoke(JournalChannels.invoke.GET_HEATMAP, { year }),
+    getMonthEntries: (year: number, month: number) =>
+      ipcRenderer.invoke(JournalChannels.invoke.GET_MONTH_ENTRIES, { year, month }),
+    getYearStats: (year: number) =>
+      ipcRenderer.invoke(JournalChannels.invoke.GET_YEAR_STATS, { year }),
+
+    // Context
+    getDayContext: (date: string) =>
+      ipcRenderer.invoke(JournalChannels.invoke.GET_DAY_CONTEXT, { date }),
+
+    // Tags & Search
+    getAllTags: () => ipcRenderer.invoke(JournalChannels.invoke.GET_ALL_TAGS),
+    searchEntries: (query: string, limit?: number) =>
+      ipcRenderer.invoke(JournalChannels.invoke.SEARCH_ENTRIES, { query, limit: limit ?? 20 }),
+
+    // Streak
+    getStreak: () => ipcRenderer.invoke(JournalChannels.invoke.GET_STREAK)
+  },
+
   // Event subscription helpers
   onVaultStatusChanged: (callback: (status: unknown) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, status: unknown): void => callback(status)
@@ -586,6 +618,47 @@ const api = {
       callback(data)
     ipcRenderer.on(TemplatesChannels.events.DELETED, handler)
     return () => ipcRenderer.removeListener(TemplatesChannels.events.DELETED, handler)
+  },
+
+  // Journal event subscription helpers
+  onJournalEntryCreated: (
+    callback: (event: { date: string; entry: unknown }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { date: string; entry: unknown }
+    ): void => callback(data)
+    ipcRenderer.on(JournalChannels.events.ENTRY_CREATED, handler)
+    return () => ipcRenderer.removeListener(JournalChannels.events.ENTRY_CREATED, handler)
+  },
+
+  onJournalEntryUpdated: (
+    callback: (event: { date: string; entry: unknown }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { date: string; entry: unknown }
+    ): void => callback(data)
+    ipcRenderer.on(JournalChannels.events.ENTRY_UPDATED, handler)
+    return () => ipcRenderer.removeListener(JournalChannels.events.ENTRY_UPDATED, handler)
+  },
+
+  onJournalEntryDeleted: (callback: (event: { date: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { date: string }): void =>
+      callback(data)
+    ipcRenderer.on(JournalChannels.events.ENTRY_DELETED, handler)
+    return () => ipcRenderer.removeListener(JournalChannels.events.ENTRY_DELETED, handler)
+  },
+
+  onJournalExternalChange: (
+    callback: (event: { date: string; type: 'modified' | 'deleted' }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { date: string; type: 'modified' | 'deleted' }
+    ): void => callback(data)
+    ipcRenderer.on(JournalChannels.events.EXTERNAL_CHANGE, handler)
+    return () => ipcRenderer.removeListener(JournalChannels.events.EXTERNAL_CHANGE, handler)
   }
 }
 

@@ -755,6 +755,103 @@ export interface SavedFilterDeletedEvent {
   id: string
 }
 
+// Journal types (mirrored from contracts for preload compatibility)
+export type ActivityLevel = 0 | 1 | 2 | 3 | 4
+
+export interface JournalEntry {
+  id: string
+  date: string
+  content: string
+  wordCount: number
+  characterCount: number
+  tags: string[]
+  createdAt: string
+  modifiedAt: string
+}
+
+export interface HeatmapEntry {
+  date: string
+  characterCount: number
+  level: ActivityLevel
+}
+
+export interface MonthEntryPreview {
+  date: string
+  preview: string
+  wordCount: number
+  characterCount: number
+  activityLevel: ActivityLevel
+  tags: string[]
+}
+
+export interface MonthStats {
+  year: number
+  month: number
+  entryCount: number
+  totalWordCount: number
+  totalCharacterCount: number
+  averageLevel: number
+}
+
+export interface DayTask {
+  id: string
+  title: string
+  completed: boolean
+  priority?: 'low' | 'medium' | 'high' | 'urgent'
+  isOverdue?: boolean
+}
+
+export interface ScheduleEvent {
+  id: string
+  time: string
+  title: string
+  type: 'meeting' | 'focus' | 'event'
+  attendeeCount?: number
+}
+
+export interface DayContext {
+  date: string
+  tasks: DayTask[]
+  events: ScheduleEvent[]
+  overdueCount: number
+}
+
+export interface JournalSearchResult {
+  date: string
+  snippet: string
+  matchCount: number
+}
+
+export interface JournalStreak {
+  currentStreak: number
+  longestStreak: number
+  lastEntryDate: string | null
+}
+
+export interface JournalTagCount {
+  tag: string
+  count: number
+}
+
+export interface JournalEntryCreatedEvent {
+  date: string
+  entry: JournalEntry
+}
+
+export interface JournalEntryUpdatedEvent {
+  date: string
+  entry: JournalEntry
+}
+
+export interface JournalEntryDeletedEvent {
+  date: string
+}
+
+export interface JournalExternalChangeEvent {
+  date: string
+  type: 'modified' | 'deleted'
+}
+
 export interface VaultStatus {
   isOpen: boolean
   path: string | null
@@ -959,6 +1056,30 @@ export interface TemplatesClientAPI {
   duplicate(id: string, newName: string): Promise<TemplateCreateResponse>
 }
 
+// Journal client API interface
+export interface JournalClientAPI {
+  // Entry CRUD
+  getEntry(date: string): Promise<JournalEntry | null>
+  createEntry(input: { date: string; content?: string; tags?: string[] }): Promise<JournalEntry>
+  updateEntry(input: { date: string; content?: string; tags?: string[] }): Promise<JournalEntry>
+  deleteEntry(date: string): Promise<{ success: boolean }>
+
+  // Calendar & Views
+  getHeatmap(year: number): Promise<HeatmapEntry[]>
+  getMonthEntries(year: number, month: number): Promise<MonthEntryPreview[]>
+  getYearStats(year: number): Promise<MonthStats[]>
+
+  // Context
+  getDayContext(date: string): Promise<DayContext>
+
+  // Tags & Search
+  getAllTags(): Promise<JournalTagCount[]>
+  searchEntries(query: string, limit?: number): Promise<JournalSearchResult[]>
+
+  // Streak
+  getStreak(): Promise<JournalStreak>
+}
+
 // Window controls API
 interface WindowAPI {
   windowMinimize: () => void
@@ -974,6 +1095,7 @@ interface API extends WindowAPI {
   tasks: TasksClientAPI
   savedFilters: SavedFiltersClientAPI
   templates: TemplatesClientAPI
+  journal: JournalClientAPI
   // Vault event subscriptions
   onVaultStatusChanged: (callback: (status: VaultStatus) => void) => () => void
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
@@ -1013,6 +1135,11 @@ interface API extends WindowAPI {
   onTemplateCreated: (callback: (event: TemplateCreatedEvent) => void) => () => void
   onTemplateUpdated: (callback: (event: TemplateUpdatedEvent) => void) => () => void
   onTemplateDeleted: (callback: (event: TemplateDeletedEvent) => void) => () => void
+  // Journal event subscriptions
+  onJournalEntryCreated: (callback: (event: JournalEntryCreatedEvent) => void) => () => void
+  onJournalEntryUpdated: (callback: (event: JournalEntryUpdatedEvent) => void) => () => void
+  onJournalEntryDeleted: (callback: (event: JournalEntryDeletedEvent) => void) => () => void
+  onJournalExternalChange: (callback: (event: JournalExternalChangeEvent) => void) => () => void
 }
 
 declare global {

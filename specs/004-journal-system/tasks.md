@@ -42,13 +42,13 @@ Electron application structure per plan.md:
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 Create journal query functions in src/shared/db/queries/journal.ts (insertJournalEntry, updateJournalEntry, getJournalEntry, deleteJournalEntry, getHeatmapData, getMonthEntries, getYearStats)
-- [ ] T007 Create journal file operations in src/main/vault/journal.ts (readJournalEntry, writeJournalEntry, deleteJournalEntry with atomic writes)
-- [ ] T008 Create journal IPC handlers skeleton in src/main/ipc/journal-handlers.ts (registerJournalHandlers function)
-- [ ] T009 Register journal handlers in src/main/ipc/index.ts (import and call registerJournalHandlers)
-- [ ] T010 [P] Add journal API methods to preload bridge in src/preload/index.ts (getEntry, createEntry, updateEntry, deleteEntry, getHeatmap, getMonthEntries, getYearStats, getDayContext)
-- [ ] T011 [P] Add journal type declarations to src/preload/index.d.ts
-- [ ] T012 Create journal service wrapper in src/renderer/src/services/journal-service.ts (journalService object with all IPC methods)
+- [x] T006 Create journal query functions in src/shared/db/queries/journal.ts (insertJournalEntry, updateJournalEntry, getJournalEntry, deleteJournalEntry, getHeatmapData, getMonthEntries, getYearStats)
+- [x] T007 Create journal file operations in src/main/vault/journal.ts (readJournalEntry, writeJournalEntry, deleteJournalEntry with atomic writes)
+- [x] T008 Create journal IPC handlers skeleton in src/main/ipc/journal-handlers.ts (registerJournalHandlers function)
+- [x] T009 Register journal handlers in src/main/ipc/index.ts (import and call registerJournalHandlers)
+- [x] T010 [P] Add journal API methods to preload bridge in src/preload/index.ts (getEntry, createEntry, updateEntry, deleteEntry, getHeatmap, getMonthEntries, getYearStats, getDayContext)
+- [x] T011 [P] Add journal type declarations to src/preload/index.d.ts
+- [x] T012 Create journal service wrapper in src/renderer/src/services/journal-service.ts (journalService object with all IPC methods)
 
 **Checkpoint**: Foundation ready - journal IPC pipeline complete, user story implementation can begin
 

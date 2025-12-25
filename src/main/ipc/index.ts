@@ -7,6 +7,7 @@ import {
   unregisterSavedFiltersHandlers
 } from './saved-filters-handlers'
 import { registerTemplatesHandlers, unregisterTemplatesHandlers } from './templates-handlers'
+import { registerJournalHandlers, unregisterJournalHandlers } from './journal-handlers'
 
 /**
  * Flag to prevent duplicate handler registration
@@ -49,6 +50,9 @@ export function registerAllHandlers(): void {
   // Register templates handlers
   registerTemplatesHandlers()
 
+  // Register journal handlers
+  registerJournalHandlers()
+
   handlersRegistered = true
   console.log('All IPC handlers registered')
 }
@@ -68,6 +72,7 @@ export function unregisterAllHandlers(): void {
   unregisterTasksHandlers()
   unregisterSavedFiltersHandlers()
   unregisterTemplatesHandlers()
+  unregisterJournalHandlers()
 
   handlersRegistered = false
   console.log('All IPC handlers unregistered')
@@ -90,3 +95,4 @@ export {
   unregisterSavedFiltersHandlers
 } from './saved-filters-handlers'
 export { registerTemplatesHandlers, unregisterTemplatesHandlers } from './templates-handlers'
+export { registerJournalHandlers, unregisterJournalHandlers } from './journal-handlers'
