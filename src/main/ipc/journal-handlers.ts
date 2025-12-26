@@ -47,7 +47,8 @@ import {
   getAllJournalTags,
   getJournalStreak
 } from '@shared/db/queries/journal'
-import { getIndexDatabase } from '../database'
+import { getTasksByDueDate, countOverdueTasksBeforeDate } from '@shared/db/queries/tasks'
+import { getIndexDatabase, getDatabase } from '../database'
 
 // ============================================================================
 // Event Emitters
@@ -328,13 +329,30 @@ export function registerJournalHandlers(): void {
   ipcMain.handle(
     JournalChannels.invoke.GET_DAY_CONTEXT,
     createValidatedHandler(GetDayContextInputSchema, async (input): Promise<DayContext> => {
-      // TODO: Implement task integration in Phase 6 (User Story 6)
-      // For now, return empty context
+      const dataDb = getDatabase()
+
+      // Get tasks due on the specified date (including completed)
+      const dueTasks = getTasksByDueDate(dataDb, input.date, true)
+
+      // Count overdue tasks (due before this date and not completed)
+      const overdueCount = countOverdueTasksBeforeDate(dataDb, input.date)
+
+      // Map tasks to DayTask format
+      const tasks = dueTasks.map((task) => ({
+        id: task.id,
+        title: task.title,
+        completed: task.completedAt !== null,
+        priority: mapPriority(task.priority),
+        isOverdue: false // Tasks due on this specific date are not overdue for this date
+      }))
+
+      // Calendar events are not yet implemented (spec mentions "can be mocked initially")
+      // Return empty events array for now
       return {
         date: input.date,
-        tasks: [],
+        tasks,
         events: [],
-        overdueCount: 0
+        overdueCount
       }
     })
   )
@@ -390,4 +408,27 @@ export function unregisterJournalHandlers(): void {
   Object.values(JournalChannels.invoke).forEach((channel) => {
     ipcMain.removeHandler(channel)
   })
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Map numeric priority (0-4) to string priority for DayTask.
+ * 0 = none (undefined), 1 = low, 2 = medium, 3 = high, 4 = urgent
+ */
+function mapPriority(priority: number): 'low' | 'medium' | 'high' | 'urgent' | undefined {
+  switch (priority) {
+    case 1:
+      return 'low'
+    case 2:
+      return 'medium'
+    case 3:
+      return 'high'
+    case 4:
+      return 'urgent'
+    default:
+      return undefined
+  }
 }

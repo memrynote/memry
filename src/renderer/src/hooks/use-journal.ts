@@ -8,7 +8,14 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { JournalEntry, HeatmapEntry } from '../../../preload/index.d'
+import type {
+  JournalEntry,
+  HeatmapEntry,
+  MonthEntryPreview,
+  MonthStats,
+  DayContext,
+  DayTask
+} from '../../../preload/index.d'
 import {
   journalService,
   onJournalEntryUpdated,
@@ -27,7 +34,14 @@ export const journalKeys = {
   entries: () => [...journalKeys.all, 'entries'] as const,
   entry: (date: string) => [...journalKeys.entries(), date] as const,
   heatmaps: () => [...journalKeys.all, 'heatmaps'] as const,
-  heatmap: (year: number) => [...journalKeys.heatmaps(), year] as const
+  heatmap: (year: number) => [...journalKeys.heatmaps(), year] as const,
+  monthEntries: () => [...journalKeys.all, 'monthEntries'] as const,
+  monthEntriesForMonth: (year: number, month: number) =>
+    [...journalKeys.monthEntries(), year, month] as const,
+  yearStats: () => [...journalKeys.all, 'yearStats'] as const,
+  yearStatsForYear: (year: number) => [...journalKeys.yearStats(), year] as const,
+  dayContext: () => [...journalKeys.all, 'dayContext'] as const,
+  dayContextForDate: (date: string) => [...journalKeys.dayContext(), date] as const
 }
 
 // =============================================================================
@@ -456,7 +470,276 @@ export function useJournalHeatmap(year: number): UseJournalHeatmapResult {
 }
 
 // =============================================================================
+// useMonthEntries Hook
+// =============================================================================
+
+export interface UseMonthEntriesResult {
+  /** Month entries with previews */
+  data: MonthEntryPreview[]
+  /** Loading state */
+  isLoading: boolean
+  /** Error message if loading failed */
+  error: string | null
+  /** Reload the month entries */
+  reload: () => Promise<void>
+}
+
+/**
+ * Hook for loading journal entries for a specific month.
+ * Uses TanStack Query for caching.
+ * Automatically refreshes when journal entries are created/updated/deleted.
+ *
+ * @param year - Year (e.g., 2024)
+ * @param month - Month (1-12, NOT 0-11)
+ * @returns Month entries state
+ */
+export function useMonthEntries(year: number, month: number): UseMonthEntriesResult {
+  const queryClient = useQueryClient()
+
+  // Main query for fetching month entries
+  const {
+    data = [],
+    isLoading,
+    error: queryError,
+    refetch
+  } = useQuery({
+    queryKey: journalKeys.monthEntriesForMonth(year, month),
+    queryFn: () => journalService.getMonthEntries(year, month),
+    staleTime: ENTRY_STALE_TIME,
+    gcTime: 5 * 60 * 1000
+  })
+
+  // Subscribe to entry changes to refresh month entries
+  useEffect(() => {
+    const unsubscribeCreated = onJournalEntryCreated((event) => {
+      const eventYear = parseInt(event.date.slice(0, 4), 10)
+      const eventMonth = parseInt(event.date.slice(5, 7), 10)
+      if (eventYear === year && eventMonth === month) {
+        queryClient.invalidateQueries({
+          queryKey: journalKeys.monthEntriesForMonth(year, month)
+        })
+      }
+    })
+
+    const unsubscribeUpdated = onJournalEntryUpdated((event) => {
+      const eventYear = parseInt(event.date.slice(0, 4), 10)
+      const eventMonth = parseInt(event.date.slice(5, 7), 10)
+      if (eventYear === year && eventMonth === month) {
+        queryClient.invalidateQueries({
+          queryKey: journalKeys.monthEntriesForMonth(year, month)
+        })
+      }
+    })
+
+    const unsubscribeDeleted = onJournalEntryDeleted((event) => {
+      const eventYear = parseInt(event.date.slice(0, 4), 10)
+      const eventMonth = parseInt(event.date.slice(5, 7), 10)
+      if (eventYear === year && eventMonth === month) {
+        queryClient.invalidateQueries({
+          queryKey: journalKeys.monthEntriesForMonth(year, month)
+        })
+      }
+    })
+
+    return () => {
+      unsubscribeCreated()
+      unsubscribeUpdated()
+      unsubscribeDeleted()
+    }
+  }, [year, month, queryClient])
+
+  const reload = useCallback(async () => {
+    await refetch()
+  }, [refetch])
+
+  return {
+    data,
+    isLoading,
+    error: queryError instanceof Error ? queryError.message : null,
+    reload
+  }
+}
+
+// =============================================================================
+// useYearStats Hook
+// =============================================================================
+
+export interface UseYearStatsResult {
+  /** Year statistics by month */
+  data: MonthStats[]
+  /** Loading state */
+  isLoading: boolean
+  /** Error message if loading failed */
+  error: string | null
+  /** Reload the year stats */
+  reload: () => Promise<void>
+}
+
+/**
+ * Hook for loading journal statistics for each month in a year.
+ * Uses TanStack Query for caching.
+ * Automatically refreshes when journal entries are created/updated/deleted.
+ *
+ * @param year - Year (e.g., 2024)
+ * @returns Year stats state
+ */
+export function useYearStats(year: number): UseYearStatsResult {
+  const queryClient = useQueryClient()
+
+  // Main query for fetching year stats
+  const {
+    data = [],
+    isLoading,
+    error: queryError,
+    refetch
+  } = useQuery({
+    queryKey: journalKeys.yearStatsForYear(year),
+    queryFn: () => journalService.getYearStats(year),
+    staleTime: ENTRY_STALE_TIME,
+    gcTime: 5 * 60 * 1000
+  })
+
+  // Subscribe to entry changes to refresh year stats
+  useEffect(() => {
+    const unsubscribeCreated = onJournalEntryCreated((event) => {
+      const eventYear = parseInt(event.date.slice(0, 4), 10)
+      if (eventYear === year) {
+        queryClient.invalidateQueries({ queryKey: journalKeys.yearStatsForYear(year) })
+      }
+    })
+
+    const unsubscribeUpdated = onJournalEntryUpdated((event) => {
+      const eventYear = parseInt(event.date.slice(0, 4), 10)
+      if (eventYear === year) {
+        queryClient.invalidateQueries({ queryKey: journalKeys.yearStatsForYear(year) })
+      }
+    })
+
+    const unsubscribeDeleted = onJournalEntryDeleted((event) => {
+      const eventYear = parseInt(event.date.slice(0, 4), 10)
+      if (eventYear === year) {
+        queryClient.invalidateQueries({ queryKey: journalKeys.yearStatsForYear(year) })
+      }
+    })
+
+    return () => {
+      unsubscribeCreated()
+      unsubscribeUpdated()
+      unsubscribeDeleted()
+    }
+  }, [year, queryClient])
+
+  const reload = useCallback(async () => {
+    await refetch()
+  }, [refetch])
+
+  return {
+    data,
+    isLoading,
+    error: queryError instanceof Error ? queryError.message : null,
+    reload
+  }
+}
+
+// =============================================================================
+// useDayContext Hook
+// =============================================================================
+
+export interface UseDayContextResult {
+  /** Day context with tasks and events */
+  data: DayContext | null
+  /** Tasks for the day (convenience accessor) */
+  tasks: DayTask[]
+  /** Events for the day (convenience accessor) */
+  events: DayContext['events']
+  /** Overdue task count */
+  overdueCount: number
+  /** Loading state */
+  isLoading: boolean
+  /** Error message if loading failed */
+  error: string | null
+  /** Reload the day context */
+  reload: () => Promise<void>
+}
+
+/**
+ * Hook for loading day context (tasks and events) for a specific date.
+ * Uses TanStack Query for caching.
+ * Automatically refreshes when tasks are updated/completed.
+ *
+ * @param date - Date in YYYY-MM-DD format
+ * @returns Day context state with tasks and events
+ */
+export function useDayContext(date: string): UseDayContextResult {
+  const queryClient = useQueryClient()
+
+  // Main query for fetching day context
+  const {
+    data,
+    isLoading,
+    error: queryError,
+    refetch
+  } = useQuery({
+    queryKey: journalKeys.dayContextForDate(date),
+    queryFn: () => journalService.getDayContext(date),
+    staleTime: ENTRY_STALE_TIME,
+    gcTime: 5 * 60 * 1000
+  })
+
+  // Subscribe to task events to refresh day context
+  // Note: Task events are emitted via window.api.onTaskUpdated, etc.
+  useEffect(() => {
+    // Refresh on task events - tasks affecting this date might be updated
+    const unsubscribeTaskUpdated = window.api.onTaskUpdated((event) => {
+      // Refresh if task is due on this date or was due on this date before update
+      if (event.task.dueDate === date || event.changes?.dueDate === date) {
+        queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
+      }
+    })
+
+    const unsubscribeTaskCreated = window.api.onTaskCreated((event) => {
+      if (event.task.dueDate === date) {
+        queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
+      }
+    })
+
+    const unsubscribeTaskDeleted = window.api.onTaskDeleted(() => {
+      // Can't check if task was for this date since it's deleted
+      // Refresh to be safe - this is infrequent
+      queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
+    })
+
+    const unsubscribeTaskCompleted = window.api.onTaskCompleted((event) => {
+      if (event.task.dueDate === date) {
+        queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
+      }
+    })
+
+    return () => {
+      unsubscribeTaskUpdated()
+      unsubscribeTaskCreated()
+      unsubscribeTaskDeleted()
+      unsubscribeTaskCompleted()
+    }
+  }, [date, queryClient])
+
+  const reload = useCallback(async () => {
+    await refetch()
+  }, [refetch])
+
+  return {
+    data: data ?? null,
+    tasks: data?.tasks ?? [],
+    events: data?.events ?? [],
+    overdueCount: data?.overdueCount ?? 0,
+    isLoading,
+    error: queryError instanceof Error ? queryError.message : null,
+    reload
+  }
+}
+
+// =============================================================================
 // Export types for external use
 // =============================================================================
 
-export type { JournalEntry, HeatmapEntry }
+export type { JournalEntry, HeatmapEntry, MonthEntryPreview, MonthStats, DayContext, DayTask }

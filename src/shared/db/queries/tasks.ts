@@ -248,7 +248,10 @@ export function getSubtasks(db: DrizzleDb, parentId: string): Task[] {
 /**
  * Count subtasks of a parent task.
  */
-export function countSubtasks(db: DrizzleDb, parentId: string): { total: number; completed: number } {
+export function countSubtasks(
+  db: DrizzleDb,
+  parentId: string
+): { total: number; completed: number } {
   const result = db
     .select({
       total: count(),
@@ -287,6 +290,59 @@ export function getTodayTasks(db: DrizzleDb): Task[] {
     .where(and(eq(tasks.dueDate, today), isNull(tasks.completedAt), isNull(tasks.archivedAt)))
     .orderBy(asc(tasks.dueTime), asc(tasks.position))
     .all()
+}
+
+/**
+ * Get tasks due on a specific date.
+ * Used by journal day context sidebar.
+ *
+ * @param db - Database instance
+ * @param date - Date in YYYY-MM-DD format
+ * @param includeCompleted - Whether to include completed tasks (default: true)
+ * @returns Tasks due on the specified date, ordered by time and position
+ */
+export function getTasksByDueDate(
+  db: DrizzleDb,
+  date: string,
+  includeCompleted: boolean = true
+): Task[] {
+  const conditions: SQL<unknown>[] = [eq(tasks.dueDate, date), isNull(tasks.archivedAt)]
+
+  if (!includeCompleted) {
+    conditions.push(isNull(tasks.completedAt))
+  }
+
+  return db
+    .select()
+    .from(tasks)
+    .where(and(...conditions))
+    .orderBy(asc(tasks.dueTime), asc(tasks.position))
+    .all()
+}
+
+/**
+ * Count overdue tasks before a specific date.
+ * Used by journal day context sidebar to show overdue badge.
+ *
+ * @param db - Database instance
+ * @param beforeDate - Date in YYYY-MM-DD format (exclusive)
+ * @returns Count of overdue tasks
+ */
+export function countOverdueTasksBeforeDate(db: DrizzleDb, beforeDate: string): number {
+  const result = db
+    .select({ count: count() })
+    .from(tasks)
+    .where(
+      and(
+        isNotNull(tasks.dueDate),
+        sql`${tasks.dueDate} < ${beforeDate}`,
+        isNull(tasks.completedAt),
+        isNull(tasks.archivedAt)
+      )
+    )
+    .get()
+
+  return result?.count ?? 0
 }
 
 /**

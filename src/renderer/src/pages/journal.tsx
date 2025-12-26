@@ -20,7 +20,6 @@ import {
   deriveSaveStatus,
   type AIConnection,
   type ScheduleEvent,
-  type DayTask,
   type JournalViewState
 } from '@/components/journal'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
@@ -35,9 +34,18 @@ import {
   parseISODate,
   addDays,
   getTimeBasedGreeting,
-  getMonthStats
+  getMonthStats,
+  getMonthName,
+  type MonthStat
 } from '@/lib/journal-utils'
-import { useJournalEntry, useJournalHeatmap } from '@/hooks/use-journal'
+import {
+  useJournalEntry,
+  useJournalHeatmap,
+  useMonthEntries,
+  useYearStats,
+  useDayContext
+} from '@/hooks/use-journal'
+import { tasksService } from '@/services/tasks-service'
 
 // =============================================================================
 // DUMMY DATA
@@ -71,25 +79,9 @@ const DUMMY_AI_CONNECTIONS: AIConnection[] = [
   }
 ]
 
-const DUMMY_EVENTS: ScheduleEvent[] = [
-  { id: '1', time: '9:00', title: 'Team Standup', type: 'meeting', attendeeCount: 5 },
-  { id: '2', time: '11:00', title: 'Design Review', type: 'meeting', attendeeCount: 3 },
-  { id: '3', time: '14:00', title: 'Client Call', type: 'meeting', attendeeCount: 2 },
-  { id: '4', time: '16:00', title: 'Deep Work', type: 'focus' }
-]
-
-const DUMMY_TASKS: DayTask[] = [
-  { id: '1', title: 'Review PRs from team', completed: false, priority: 'high' },
-  { id: '2', title: 'Update documentation', completed: false, priority: 'medium' },
-  {
-    id: '3',
-    title: 'Send invoice to client',
-    completed: false,
-    priority: 'urgent',
-    isOverdue: true
-  },
-  { id: '4', title: 'Weekly report', completed: true }
-]
+// Note: Calendar events are not yet implemented (spec mentions "can be mocked initially")
+// Using empty array - will be populated when calendar integration is added
+const EMPTY_EVENTS: ScheduleEvent[] = []
 
 const DUMMY_JOURNAL_BACKLINKS: Backlink[] = [
   {
@@ -192,6 +184,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     isDirty,
     updateContent
   } = useJournalEntry(selectedDate)
+
+  // Day context hook - loads tasks for selected date
+  const { tasks: dayTasks, overdueCount } = useDayContext(selectedDate)
 
   // Track when we've loaded content for the editor
   // Using a counter + ref approach to ensure proper remounting
@@ -308,25 +303,75 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const currentYear = useMemo(() => dateParts.year, [dateParts.year])
   const { data: heatmapData } = useJournalHeatmap(currentYear)
 
-  // Generate month stats for year view
-  const monthStats = useMemo(() => {
-    const year = viewState.type === 'year' ? viewState.year : dateParts.year
-    return getMonthStats(year, heatmapData)
-  }, [viewState, dateParts.year, heatmapData])
+  // Get month and year for the current view
+  const viewMonth = viewState.type === 'month' ? viewState.month : dateParts.monthIndex
+  const viewYear =
+    viewState.type === 'month' || viewState.type === 'year' ? viewState.year : dateParts.year
 
-  // Generate dummy entry data for month view (preview text)
+  // Load real month entries data when in month view
+  const { data: monthEntriesData } = useMonthEntries(viewYear, viewMonth + 1) // +1 because API uses 1-12
+
+  // Load real year stats when in year view
+  const { data: yearStatsData } = useYearStats(viewYear)
+
+  // Transform monthEntriesData to Map for JournalMonthView component
   const monthEntries = useMemo(() => {
     const entries = new Map<string, { preview: string; characterCount: number }>()
-    heatmapData.forEach((entry) => {
-      if (entry.characterCount > 0) {
-        entries.set(entry.date, {
-          preview: 'Sample journal entry content for this day...',
-          characterCount: entry.characterCount
-        })
-      }
+    monthEntriesData.forEach((entry) => {
+      entries.set(entry.date, {
+        preview: entry.preview || '',
+        characterCount: entry.characterCount
+      })
     })
     return entries
-  }, [heatmapData])
+  }, [monthEntriesData])
+
+  // Transform yearStatsData to MonthStat[] for JournalYearView component
+  // If we have real data from the backend, transform it; otherwise use heatmap-based fallback
+  const monthStats: MonthStat[] = useMemo(() => {
+    if (yearStatsData.length > 0) {
+      // Transform backend MonthStats[] to UI MonthStat[]
+      // Backend returns data only for months with entries, so fill all 12 months
+      const statsMap = new Map(yearStatsData.map((s) => [s.month, s]))
+      const result: MonthStat[] = []
+
+      for (let month = 0; month < 12; month++) {
+        const backendStats = statsMap.get(month + 1) // Backend uses 1-12
+        const monthName = getMonthName(month)
+
+        if (backendStats) {
+          // Calculate activity dots from entry count and average level
+          // We'll create 5 dots based on the average level
+          const avgLevel = Math.round(backendStats.averageLevel) as 0 | 1 | 2 | 3 | 4
+          const activityDots: (0 | 1 | 2 | 3 | 4)[] = Array(5).fill(
+            backendStats.entryCount > 0 ? avgLevel : 0
+          )
+
+          result.push({
+            month,
+            monthName,
+            entryCount: backendStats.entryCount,
+            totalChars: backendStats.totalCharacterCount,
+            activityDots
+          })
+        } else {
+          // No entries for this month
+          result.push({
+            month,
+            monthName,
+            entryCount: 0,
+            totalChars: 0,
+            activityDots: [0, 0, 0, 0, 0]
+          })
+        }
+      }
+      return result
+    }
+
+    // Fallback to heatmap-based calculation (for initial render before backend data loads)
+    const year = viewState.type === 'year' ? viewState.year : dateParts.year
+    return getMonthStats(year, heatmapData)
+  }, [yearStatsData, viewState, dateParts.year, heatmapData])
 
   // Track active heading based on scroll position (for outline panel)
   const { activeHeadingId } = useActiveHeading({
@@ -444,6 +489,27 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       }))
     )
   }, [])
+
+  // Handle task completion toggle from DayContextSidebar
+  const handleTaskToggle = useCallback(
+    async (taskId: string) => {
+      // Find the task to determine if it's completed
+      const task = dayTasks.find((t) => t.id === taskId)
+      if (!task) return
+
+      try {
+        if (task.completed) {
+          await tasksService.uncomplete(taskId)
+        } else {
+          await tasksService.complete({ id: taskId })
+        }
+        // Note: The useDayContext hook will auto-refresh via task events
+      } catch (error) {
+        console.error('Failed to toggle task completion:', error)
+      }
+    },
+    [dayTasks]
+  )
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -778,12 +844,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               {isToday ? "Today's Schedule" : 'Schedule'}
             </h3>
             <DayContextSidebar
-              events={isToday ? DUMMY_EVENTS : []}
-              tasks={isToday ? DUMMY_TASKS : []}
-              overdueCount={isToday ? 1 : 0}
+              events={EMPTY_EVENTS}
+              tasks={dayTasks}
+              overdueCount={overdueCount}
               isToday={isToday}
+              isPast={selectedDate < today}
               onTaskClick={(id) => console.log('Task clicked:', id)}
-              onTaskToggle={(id) => console.log('Task toggled:', id)}
+              onTaskToggle={handleTaskToggle}
               onEventClick={(id) => console.log('Event clicked:', id)}
             />
           </section>

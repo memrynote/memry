@@ -153,11 +153,11 @@ Electron application structure per plan.md:
 
 ### Implementation for User Story 6
 
-- [ ] T039 [US6] Implement getDayContext IPC handler in src/main/ipc/journal-handlers.ts (query tasks for date from data.db, compute overdue count)
-- [ ] T040 [US6] Create useDayContext hook in src/renderer/src/hooks/use-journal.ts (load tasks/events for selected date)
-- [ ] T041 [US6] Wire DayContextSidebar to real task data in src/renderer/src/pages/journal.tsx (replace DUMMY_TASKS/DUMMY_EVENTS)
-- [ ] T042 [US6] Implement task completion toggle in sidebar in src/renderer/src/components/journal/day-context-sidebar.tsx (call tasks:update IPC handler)
-- [ ] T043 [US6] Add empty state for dates with no tasks in src/renderer/src/components/journal/day-context-sidebar.tsx (show appropriate message)
+- [x] T039 [US6] Implement getDayContext IPC handler in src/main/ipc/journal-handlers.ts (query tasks for date from data.db, compute overdue count)
+- [x] T040 [US6] Create useDayContext hook in src/renderer/src/hooks/use-journal.ts (load tasks/events for selected date)
+- [x] T041 [US6] Wire DayContextSidebar to real task data in src/renderer/src/pages/journal.tsx (replace DUMMY_TASKS/DUMMY_EVENTS)
+- [x] T042 [US6] Implement task completion toggle in sidebar in src/renderer/src/components/journal/day-context-sidebar.tsx (call tasks:update IPC handler)
+- [x] T043 [US6] Add empty state for dates with no tasks in src/renderer/src/components/journal/day-context-sidebar.tsx (show appropriate message)
 
 **Checkpoint**: User Story 6 complete - sidebar shows real tasks, completion syncs with task system
 
@@ -171,12 +171,12 @@ Electron application structure per plan.md:
 
 ### Implementation for User Story 7
 
-- [ ] T044 [US7] Implement getMonthEntries IPC handler in src/main/ipc/journal-handlers.ts (return entries with preview, word count, tags)
-- [ ] T045 [US7] Implement getYearStats IPC handler in src/main/ipc/journal-handlers.ts (return monthly summaries)
-- [ ] T046 [US7] Create useMonthEntries hook in src/renderer/src/hooks/use-journal.ts (load entries for month view)
-- [ ] T047 [US7] Create useYearStats hook in src/renderer/src/hooks/use-journal.ts (load stats for year view)
-- [ ] T048 [US7] Wire JournalMonthView to real data in src/renderer/src/pages/journal.tsx (replace monthEntries dummy data)
-- [ ] T049 [US7] Wire JournalYearView to real data in src/renderer/src/pages/journal.tsx (replace monthStats dummy data)
+- [x] T044 [US7] Implement getMonthEntries IPC handler in src/main/ipc/journal-handlers.ts (return entries with preview, word count, tags)
+- [x] T045 [US7] Implement getYearStats IPC handler in src/main/ipc/journal-handlers.ts (return monthly summaries)
+- [x] T046 [US7] Create useMonthEntries hook in src/renderer/src/hooks/use-journal.ts (load entries for month view)
+- [x] T047 [US7] Create useYearStats hook in src/renderer/src/hooks/use-journal.ts (load stats for year view)
+- [x] T048 [US7] Wire JournalMonthView to real data in src/renderer/src/pages/journal.tsx (replace monthEntries dummy data)
+- [x] T049 [US7] Wire JournalYearView to real data in src/renderer/src/pages/journal.tsx (replace monthStats dummy data)
 
 **Checkpoint**: User Story 7 complete - month and year views display real journal history
 
@@ -184,7 +184,8 @@ Electron application structure per plan.md:
 
 ## Phase 10: User Story 8 - AI-Suggested Connections (Priority: P2)
 
-**Goal**: Show AI-suggested connections to past entries and notes (mock implementation for now)
+**Goal**: Show AI-suggested connections to past entries and notes (mock implementation fo
+r now)
 
 **Independent Test**: Write content, verify connections panel loads (mock data), clicking connection navigates
 
