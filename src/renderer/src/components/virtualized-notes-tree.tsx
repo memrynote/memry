@@ -9,7 +9,7 @@
 
 import { useRef, useCallback, useMemo, useState, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { FileText, Folder, FolderOpen, ChevronRight, ChevronDown } from 'lucide-react'
+import { FileText, Folder, FolderOpen, ChevronRight, ChevronDown, FilePlus, FolderPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTabs } from '@/contexts/tabs'
 import type { NoteListItem } from '@/hooks/use-notes'
@@ -38,6 +38,10 @@ interface VirtualizedNotesTreeProps {
   onDeleteNote?: (note: NoteListItem) => void
   /** Callback when a folder should be deleted */
   onDeleteFolder?: (folderPath: string) => void
+  /** Callback when creating a note in a folder */
+  onCreateNote?: (folderPath: string) => void
+  /** Callback when creating a subfolder */
+  onCreateFolder?: (folderPath: string) => void
   /** Map of note IDs to notes for quick lookup */
   noteMap: Map<string, NoteListItem>
   /** Whether drag operations are disabled */
@@ -98,9 +102,11 @@ interface FolderRowProps {
   isSelected: boolean
   onToggleExpand: (folderId: string) => void
   onSelect: (folderId: string, event: React.MouseEvent) => void
+  onCreateNote?: (folderPath: string) => void
+  onCreateFolder?: (folderPath: string) => void
 }
 
-function FolderRow({ item, isSelected, onToggleExpand, onSelect }: FolderRowProps) {
+function FolderRow({ item, isSelected, onToggleExpand, onSelect, onCreateNote, onCreateFolder }: FolderRowProps) {
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -127,6 +133,22 @@ function FolderRow({ item, isSelected, onToggleExpand, onSelect }: FolderRowProp
     [item.id, onToggleExpand]
   )
 
+  const handleCreateNoteClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onCreateNote?.(item.folder.path)
+    },
+    [item.folder.path, onCreateNote]
+  )
+
+  const handleCreateFolderClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onCreateFolder?.(item.folder.path)
+    },
+    [item.folder.path, onCreateFolder]
+  )
+
   return (
     <div
       role="treeitem"
@@ -134,7 +156,7 @@ function FolderRow({ item, isSelected, onToggleExpand, onSelect }: FolderRowProp
       aria-selected={isSelected}
       tabIndex={0}
       className={cn(
-        'flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors',
+        'group/folder flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors',
         'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
         isSelected && 'bg-muted'
       )}
@@ -168,7 +190,27 @@ function FolderRow({ item, isSelected, onToggleExpand, onSelect }: FolderRowProp
       )}
 
       {/* Folder name */}
-      <span className="text-sm truncate">{item.folder.name}</span>
+      <span className="text-sm truncate flex-1">{item.folder.name}</span>
+
+      {/* Hover action icons for creating note/folder */}
+      <div className="flex items-center gap-0.5 opacity-0 group-hover/folder:opacity-100 transition-opacity">
+        <button
+          type="button"
+          onClick={handleCreateNoteClick}
+          className="p-0.5 hover:bg-muted rounded"
+          aria-label="Create note in folder"
+        >
+          <FilePlus className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
+        <button
+          type="button"
+          onClick={handleCreateFolderClick}
+          className="p-0.5 hover:bg-muted rounded"
+          aria-label="Create folder"
+        >
+          <FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
+      </div>
     </div>
   )
 }
@@ -241,6 +283,8 @@ export function VirtualizedNotesTree({
   tree,
   selectedIds,
   onSelectionChange,
+  onCreateNote,
+  onCreateFolder,
   noteMap,
   className
 }: VirtualizedNotesTreeProps) {
@@ -388,6 +432,8 @@ export function VirtualizedNotesTree({
                   isSelected={isSelected}
                   onToggleExpand={handleToggleExpand}
                   onSelect={handleSelect}
+                  onCreateNote={onCreateNote}
+                  onCreateFolder={onCreateFolder}
                 />
               ) : (
                 <NoteRow

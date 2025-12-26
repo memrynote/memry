@@ -132,6 +132,9 @@ export function listNotesFromCache(db: DrizzleDb, options: ListNotesOptions = {}
   // Build conditions
   const conditions: SQL<unknown>[] = []
 
+  // Exclude journal entries (they have a date field set)
+  conditions.push(sql`${noteCache.date} IS NULL`)
+
   if (folder) {
     // Match notes in folder (path starts with folder/)
     conditions.push(like(noteCache.path, `${folder}/%`))
@@ -181,16 +184,22 @@ export function listNotesFromCache(db: DrizzleDb, options: ListNotesOptions = {}
 }
 
 /**
- * Count total notes in cache.
+ * Count total notes in cache (excludes journal entries).
  */
 export function countNotes(db: DrizzleDb, folder?: string): number {
-  let query = db.select({ count: count() }).from(noteCache)
+  // Build conditions - always exclude journal entries
+  const conditions: SQL<unknown>[] = [sql`${noteCache.date} IS NULL`]
 
   if (folder) {
-    query = query.where(like(noteCache.path, `${folder}/%`)) as typeof query
+    conditions.push(like(noteCache.path, `${folder}/%`))
   }
 
-  const result = query.get()
+  const result = db
+    .select({ count: count() })
+    .from(noteCache)
+    .where(and(...conditions))
+    .get()
+
   return result?.count ?? 0
 }
 

@@ -5,12 +5,44 @@
  * @module db/queries/settings
  */
 
-import { eq, asc } from 'drizzle-orm'
+import { eq, asc, sql } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import { savedFilters, type SavedFilter, type NewSavedFilter } from '../schema/settings'
+import { settings, savedFilters, type SavedFilter, type NewSavedFilter } from '../schema/settings'
 import * as schema from '../schema'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
+
+// ============================================================================
+// Settings CRUD
+// ============================================================================
+
+/**
+ * Get a setting value by key.
+ */
+export function getSetting(db: DrizzleDb, key: string): string | null {
+  const result = db.select({ value: settings.value }).from(settings).where(eq(settings.key, key)).get()
+  return result?.value ?? null
+}
+
+/**
+ * Set a setting value.
+ */
+export function setSetting(db: DrizzleDb, key: string, value: string): void {
+  db.insert(settings)
+    .values({ key, value, modifiedAt: sql`datetime('now')` })
+    .onConflictDoUpdate({
+      target: settings.key,
+      set: { value, modifiedAt: sql`datetime('now')` }
+    })
+    .run()
+}
+
+/**
+ * Delete a setting by key.
+ */
+export function deleteSetting(db: DrizzleDb, key: string): void {
+  db.delete(settings).where(eq(settings.key, key)).run()
+}
 
 // ============================================================================
 // Saved Filters CRUD

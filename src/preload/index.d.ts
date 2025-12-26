@@ -1091,6 +1091,24 @@ export interface JournalClientAPI {
   getStreak(): Promise<JournalStreak>
 }
 
+// Settings types
+export interface JournalSettings {
+  defaultTemplate: string | null
+}
+
+export interface SettingsChangedEvent {
+  key: string
+  value: unknown
+}
+
+// Settings client API interface
+export interface SettingsClientAPI {
+  get(key: string): Promise<string | null>
+  set(key: string, value: string): Promise<{ success: boolean; error?: string }>
+  getJournalSettings(): Promise<JournalSettings>
+  setJournalSettings(settings: Partial<JournalSettings>): Promise<{ success: boolean; error?: string }>
+}
+
 // Window controls API
 interface WindowAPI {
   windowMinimize: () => void
@@ -1107,6 +1125,7 @@ interface API extends WindowAPI {
   savedFilters: SavedFiltersClientAPI
   templates: TemplatesClientAPI
   journal: JournalClientAPI
+  settings: SettingsClientAPI
   // Vault event subscriptions
   onVaultStatusChanged: (callback: (status: VaultStatus) => void) => () => void
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
@@ -1151,6 +1170,8 @@ interface API extends WindowAPI {
   onJournalEntryUpdated: (callback: (event: JournalEntryUpdatedEvent) => void) => () => void
   onJournalEntryDeleted: (callback: (event: JournalEntryDeletedEvent) => void) => () => void
   onJournalExternalChange: (callback: (event: JournalExternalChangeEvent) => void) => () => void
+  // Settings event subscriptions
+  onSettingsChanged: (callback: (event: SettingsChangedEvent) => void) => () => void
 }
 
 declare global {
