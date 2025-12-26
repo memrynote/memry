@@ -739,7 +739,182 @@ export function useDayContext(date: string): UseDayContextResult {
 }
 
 // =============================================================================
+// useAIConnections Hook
+// =============================================================================
+
+export interface UseAIConnectionsResult {
+  /** AI-suggested connections */
+  connections: AIConnection[]
+  /** Loading state (analyzing content) */
+  isLoading: boolean
+  /** Error message if analysis failed */
+  error: string | null
+  /** Force refresh connections */
+  refresh: () => void
+}
+
+// Import the AI connection type from the panel component
+import type { AIConnection } from '@/components/journal/ai-connections-panel'
+import { getAIConnections, MIN_CONTENT_LENGTH } from '@/services/ai-connections-service'
+
+/** Debounce delay before triggering AI analysis (2 seconds per spec) */
+const AI_ANALYSIS_DEBOUNCE_MS = 2000
+
+/**
+ * Hook for loading AI-suggested connections based on journal content.
+ *
+ * Behavior:
+ * - Waits 2 seconds after typing stops before analyzing
+ * - Only analyzes content with >= 50 characters
+ * - Cancels pending analysis when content changes or component unmounts
+ * - Automatically clears connections when content becomes too short
+ *
+ * @param content - The journal entry content to analyze
+ * @returns AI connections state and refresh function
+ */
+export function useAIConnections(content: string): UseAIConnectionsResult {
+  const [connections, setConnections] = useState<AIConnection[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Refs for tracking state across renders
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastAnalyzedContentRef = useRef<string | null>(null)
+
+  // Analysis function
+  const analyzeContent = useCallback(async (contentToAnalyze: string) => {
+    // Cancel any pending request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+
+    // Skip if content is too short
+    if (contentToAnalyze.length < MIN_CONTENT_LENGTH) {
+      setConnections([])
+      setIsLoading(false)
+      setError(null)
+      lastAnalyzedContentRef.current = null
+      return
+    }
+
+    // Skip if content hasn't changed since last analysis
+    if (contentToAnalyze === lastAnalyzedContentRef.current) {
+      return
+    }
+
+    // Create new abort controller for this request
+    const abortController = new AbortController()
+    abortControllerRef.current = abortController
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const result = await getAIConnections(contentToAnalyze, abortController.signal)
+
+      // Only update state if this request wasn't aborted
+      if (!abortController.signal.aborted) {
+        setConnections(result)
+        setIsLoading(false)
+        lastAnalyzedContentRef.current = contentToAnalyze
+      }
+    } catch (err) {
+      // Ignore abort errors
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return
+      }
+
+      // Only update state if this request wasn't aborted
+      if (!abortController.signal.aborted) {
+        setError(err instanceof Error ? err.message : 'Failed to analyze content')
+        setIsLoading(false)
+      }
+    }
+  }, [])
+
+  // Debounced analysis trigger
+  useEffect(() => {
+    // Clear any pending debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = null
+    }
+
+    // If content is too short, clear connections immediately
+    if (content.length < MIN_CONTENT_LENGTH) {
+      // Cancel any pending analysis
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+        abortControllerRef.current = null
+      }
+      setConnections([])
+      setIsLoading(false)
+      setError(null)
+      lastAnalyzedContentRef.current = null
+      return
+    }
+
+    // Set loading state to indicate we're waiting to analyze
+    // (but only if content has changed from last analysis)
+    if (content !== lastAnalyzedContentRef.current) {
+      // Don't set loading here - we're just debouncing
+      // Loading will be set when actual analysis starts
+    }
+
+    // Schedule analysis after debounce delay
+    debounceTimerRef.current = setTimeout(() => {
+      analyzeContent(content)
+    }, AI_ANALYSIS_DEBOUNCE_MS)
+
+    // Cleanup
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+        debounceTimerRef.current = null
+      }
+    }
+  }, [content, analyzeContent])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Cancel any pending request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      // Clear any pending timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [])
+
+  // Refresh function - forces immediate re-analysis
+  const refresh = useCallback(() => {
+    // Clear cached content to force re-analysis
+    lastAnalyzedContentRef.current = null
+
+    // Cancel pending debounce and analyze immediately
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = null
+    }
+
+    analyzeContent(content)
+  }, [content, analyzeContent])
+
+  return {
+    connections,
+    isLoading,
+    error,
+    refresh
+  }
+}
+
+// =============================================================================
 // Export types for external use
 // =============================================================================
 
 export type { JournalEntry, HeatmapEntry, MonthEntryPreview, MonthStats, DayContext, DayTask }
+export type { AIConnection }

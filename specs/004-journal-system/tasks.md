@@ -184,18 +184,17 @@ Electron application structure per plan.md:
 
 ## Phase 10: User Story 8 - AI-Suggested Connections (Priority: P2)
 
-**Goal**: Show AI-suggested connections to past entries and notes (mock implementation fo
-r now)
+**Goal**: Show AI-suggested connections to past entries and notes (mock implementation for now)
 
 **Independent Test**: Write content, verify connections panel loads (mock data), clicking connection navigates
 
 ### Implementation for User Story 8
 
-- [ ] T050 [US8] Create mock AI connections service in src/renderer/src/services/ai-connections-service.ts (returns mock connections after 2s delay)
-- [ ] T051 [US8] Create useAIConnections hook in src/renderer/src/hooks/use-journal.ts (trigger search 2s after typing pause)
-- [ ] T052 [US8] Wire AIConnectionsPanel to useAIConnections hook in src/renderer/src/pages/journal.tsx (replace DUMMY_AI_CONNECTIONS)
-- [ ] T053 [US8] Implement connection click navigation in src/renderer/src/pages/journal.tsx (open related content)
-- [ ] T054 [US8] Add loading and empty states to AIConnectionsPanel in src/renderer/src/components/journal/ai-connections-panel.tsx (show spinner while loading)
+- [x] T050 [US8] Create mock AI connections service in src/renderer/src/services/ai-connections-service.ts (returns mock connections after 2s delay)
+- [x] T051 [US8] Create useAIConnections hook in src/renderer/src/hooks/use-journal.ts (trigger search 2s after typing pause)
+- [x] T052 [US8] Wire AIConnectionsPanel to useAIConnections hook in src/renderer/src/pages/journal.tsx (replace DUMMY_AI_CONNECTIONS)
+- [x] T053 [US8] Implement connection click navigation in src/renderer/src/pages/journal.tsx (open related content)
+- [x] T054 [US8] Add loading and empty states to AIConnectionsPanel in src/renderer/src/components/journal/ai-connections-panel.tsx (show spinner while loading)
 
 **Checkpoint**: User Story 8 complete - AI connections panel functional with mock data, ready for real AI integration
 
