@@ -177,6 +177,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const today = getTodayString()
   const [selectedDate, setSelectedDate] = useState(today)
   const [focusMode, setFocusMode] = useState(false)
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
 
   // Headings state for outline panel
   const [headings, setHeadings] = useState<HeadingItem[]>([])
@@ -190,7 +192,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     isSaving,
     isDirty,
     updateContent,
-    updateTags
+    updateTags,
+    forceReload
   } = useJournalEntry(selectedDate)
 
   // Day context hook - loads tasks for selected date
@@ -1022,6 +1025,31 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                         )}
                       </Button>
                     )}
+
+                    {/* More Options Menu (3 dots) */}
+                    {viewState.type === 'day' && entry && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-all duration-200"
+                          >
+                            <MoreHorizontal className="size-4" />
+                            <span className="sr-only">More options</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setIsVersionHistoryOpen(true)}>
+                            <History className="mr-2 h-4 w-4" />
+                            Version History
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>
+                            Export
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                 </div>
 
@@ -1322,6 +1350,33 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         journalDefaultTemplateId={journalSettings.defaultTemplate}
         onSetJournalDefault={setJournalDefaultTemplate}
       />
+
+      {/* Export Dialog */}
+      {entry && (
+        <ExportDialog
+          open={isExportDialogOpen}
+          onOpenChange={setIsExportDialogOpen}
+          noteId={entry.id}
+          noteTitle={`Journal - ${formatDateParts(selectedDate).month} ${formatDateParts(selectedDate).day}, ${formatDateParts(selectedDate).year}`}
+        />
+      )}
+
+      {/* Version History Panel */}
+      {entry && (
+        <VersionHistory
+          open={isVersionHistoryOpen}
+          onOpenChange={setIsVersionHistoryOpen}
+          noteId={entry.id}
+          noteTitle={`Journal - ${formatDateParts(selectedDate).month} ${formatDateParts(selectedDate).day}, ${formatDateParts(selectedDate).year}`}
+          onRestore={async () => {
+            // Force reload entry after restore (discards pending changes)
+            await forceReload()
+            // Reset editor load tracking to force remount with new content
+            lastLoadedDateRef.current = null
+            setEditorLoadCount((c) => c + 1)
+          }}
+        />
+      )}
     </div>
   )
 }
