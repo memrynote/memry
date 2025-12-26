@@ -36,6 +36,20 @@
       "when": 1766743885276,
       "tag": "0004_light_rage",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1766748345123,
+      "tag": "0005_mature_deathbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1766754707629,
+      "tag": "0006_flashy_captain_flint",
+      "breakpoints": true
     }
   ]
 }

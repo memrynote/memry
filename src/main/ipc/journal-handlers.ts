@@ -17,7 +17,6 @@ import {
   GetYearStatsInputSchema,
   GetDayContextInputSchema,
   SearchEntriesInputSchema,
-  calculateActivityLevel,
   type JournalEntry,
   type HeatmapEntry,
   type MonthEntryPreview,
@@ -35,20 +34,28 @@ import {
   extractPreview
 } from '../vault/journal'
 import {
-  insertJournalEntry,
-  updateJournalEntry,
-  deleteJournalEntry,
+  // Unified CRUD operations (using note_cache)
+  insertNoteCache,
+  updateNoteCache,
+  deleteNoteCache,
+  getNoteCacheByPath,
+  // Journal-specific queries
   getJournalEntryByDate,
   getHeatmapData,
-  getMonthEntries,
-  getYearStats,
-  setJournalTags,
-  getJournalTags,
-  getAllJournalTags,
+  getJournalMonthEntries,
+  getJournalYearStats,
   getJournalStreak,
-  getJournalProperties,
-  setJournalProperties
-} from '@shared/db/queries/journal'
+  // Tag operations (using note_tags)
+  setNoteTags,
+  getNoteTags,
+  getAllTagsWithColors,
+  // Property operations (using note_properties)
+  getNotePropertiesAsRecord,
+  setNoteProperties,
+  inferPropertyType,
+  // Utilities
+  calculateActivityLevel as calculateActivityLevelFromCharCount
+} from '@shared/db/queries/notes'
 import { getTasksByDueDate, countOverdueTasksBeforeDate } from '@shared/db/queries/tasks'
 import { getIndexDatabase, getDatabase } from '../database'
 
@@ -86,17 +93,13 @@ export function registerJournalHandlers(): void {
       const entry = await readJournalEntry(input.date)
       if (!entry) return null
 
-      // Load properties from cache
+      // Load properties from cache (using unified note_properties)
       const db = getIndexDatabase()
       const cached = getJournalEntryByDate(db, input.date)
       if (cached) {
-        const properties = getJournalProperties(db, cached.id)
-        if (properties.length > 0) {
-          const propsRecord: Record<string, unknown> = {}
-          for (const prop of properties) {
-            propsRecord[prop.name] = prop.value
-          }
-          entry.properties = propsRecord
+        const properties = getNotePropertiesAsRecord(db, cached.id)
+        if (Object.keys(properties).length > 0) {
+          entry.properties = properties
         }
       }
 
@@ -113,26 +116,27 @@ export function registerJournalHandlers(): void {
       // Write to file
       const entry = await writeJournalEntry(input.date, input.content ?? '', input.tags)
 
-      // Insert into cache
-      insertJournalEntry(db, {
+      // Insert into unified note_cache
+      insertNoteCache(db, {
         id: entry.id,
-        date: entry.date,
         path: getJournalRelativePath(entry.date),
+        title: entry.date, // Use date as title for journal entries
+        contentHash: '', // Will be computed on next index
         wordCount: entry.wordCount,
         characterCount: entry.characterCount,
-        activityLevel: calculateActivityLevel(entry.characterCount),
+        date: entry.date, // Set date field for journal entries
         createdAt: entry.createdAt,
         modifiedAt: entry.modifiedAt
       })
 
-      // Set tags in cache
+      // Set tags using unified note_tags
       if (entry.tags.length > 0) {
-        setJournalTags(db, entry.id, entry.tags)
+        setNoteTags(db, entry.id, entry.tags)
       }
 
-      // Set properties in cache
+      // Set properties using unified note_properties
       if (input.properties && Object.keys(input.properties).length > 0) {
-        setJournalProperties(db, entry.id, input.properties)
+        setNoteProperties(db, entry.id, input.properties, inferPropertyType)
         entry.properties = input.properties
       }
 
@@ -152,8 +156,13 @@ export function registerJournalHandlers(): void {
     createValidatedHandler(UpdateEntryInputSchema, async (input): Promise<JournalEntry> => {
       const db = getIndexDatabase()
 
-      // Get existing entry from cache
-      const cached = getJournalEntryByDate(db, input.date)
+      // Get existing entry from unified cache (try by date first, then by path as fallback)
+      const journalPath = getJournalRelativePath(input.date)
+      let cached = getJournalEntryByDate(db, input.date)
+      if (!cached) {
+        // Fallback: check by path (for entries indexed before migration)
+        cached = getNoteCacheByPath(db, journalPath)
+      }
 
       // Read current entry to get existing data
       const existing = await readJournalEntry(input.date)
@@ -161,40 +170,42 @@ export function registerJournalHandlers(): void {
         // If entry doesn't exist, create it
         const entry = await writeJournalEntry(input.date, input.content ?? '', input.tags ?? [])
 
-        // Check if there's a stale cache entry (file was deleted but cache wasn't updated)
+        // Check if there's a cache entry (by date or path)
         if (cached) {
-          // Update the stale cache entry instead of inserting
-          updateJournalEntry(db, cached.id, {
-            path: getJournalRelativePath(entry.date),
+          // Update the existing cache entry (also set date field if missing)
+          updateNoteCache(db, cached.id, {
+            path: journalPath,
+            title: entry.date,
             wordCount: entry.wordCount,
             characterCount: entry.characterCount,
-            activityLevel: calculateActivityLevel(entry.characterCount),
+            date: entry.date, // Ensure date is set
             createdAt: entry.createdAt,
             modifiedAt: entry.modifiedAt
           })
-          setJournalTags(db, cached.id, entry.tags)
+          setNoteTags(db, cached.id, entry.tags)
         } else {
-          // No stale cache entry, insert fresh
-          insertJournalEntry(db, {
+          // No cache entry, insert fresh
+          insertNoteCache(db, {
             id: entry.id,
-            date: entry.date,
-            path: getJournalRelativePath(entry.date),
+            path: journalPath,
+            title: entry.date,
+            contentHash: '',
             wordCount: entry.wordCount,
             characterCount: entry.characterCount,
-            activityLevel: calculateActivityLevel(entry.characterCount),
+            date: entry.date,
             createdAt: entry.createdAt,
             modifiedAt: entry.modifiedAt
           })
 
           if (entry.tags.length > 0) {
-            setJournalTags(db, entry.id, entry.tags)
+            setNoteTags(db, entry.id, entry.tags)
           }
         }
 
         // Set properties if provided
         if (input.properties && Object.keys(input.properties).length > 0) {
           const entryId = cached?.id ?? entry.id
-          setJournalProperties(db, entryId, input.properties)
+          setNoteProperties(db, entryId, input.properties, inferPropertyType)
           entry.properties = input.properties
         }
 
@@ -213,35 +224,37 @@ export function registerJournalHandlers(): void {
       // Write to file
       const entry = await writeJournalEntry(input.date, newContent, newTags)
 
-      // Update cache
+      // Update unified cache
       if (cached) {
-        updateJournalEntry(db, cached.id, {
+        updateNoteCache(db, cached.id, {
           wordCount: entry.wordCount,
           characterCount: entry.characterCount,
-          activityLevel: calculateActivityLevel(entry.characterCount)
+          date: entry.date, // Ensure date is set
+          modifiedAt: entry.modifiedAt
         })
-        setJournalTags(db, cached.id, entry.tags)
+        setNoteTags(db, cached.id, entry.tags)
       } else {
         // Entry exists in file but not in cache - insert it
-        insertJournalEntry(db, {
+        insertNoteCache(db, {
           id: entry.id,
-          date: entry.date,
-          path: getJournalRelativePath(entry.date),
+          path: journalPath,
+          title: entry.date,
+          contentHash: '',
           wordCount: entry.wordCount,
           characterCount: entry.characterCount,
-          activityLevel: calculateActivityLevel(entry.characterCount),
+          date: entry.date,
           createdAt: entry.createdAt,
           modifiedAt: entry.modifiedAt
         })
         if (entry.tags.length > 0) {
-          setJournalTags(db, entry.id, entry.tags)
+          setNoteTags(db, entry.id, entry.tags)
         }
       }
 
       // Update properties if provided
       if (input.properties !== undefined) {
         const entryId = cached?.id ?? entry.id
-        setJournalProperties(db, entryId, input.properties)
+        setNoteProperties(db, entryId, input.properties, inferPropertyType)
         entry.properties = input.properties
       } else if (existing.properties) {
         // Keep existing properties if not updating
@@ -270,9 +283,9 @@ export function registerJournalHandlers(): void {
       // Delete file
       const deleted = await deleteJournalEntryFile(input.date)
 
-      // Delete from cache
+      // Delete from unified cache
       if (cached) {
-        deleteJournalEntry(db, cached.id)
+        deleteNoteCache(db, cached.id)
       }
 
       // Emit event
@@ -311,30 +324,32 @@ export function registerJournalHandlers(): void {
       GetMonthEntriesInputSchema,
       async (input): Promise<MonthEntryPreview[]> => {
         const db = getIndexDatabase()
-        const entries = getMonthEntries(db, input.year, input.month)
+        const entries = getJournalMonthEntries(db, input.year, input.month)
 
         // For each entry, we need to get the preview from the file
         const previews: MonthEntryPreview[] = await Promise.all(
           entries.map(async (entry) => {
-            const tags = getJournalTags(db, entry.id)
+            const tags = getNoteTags(db, entry.id)
 
             // Try to get preview from file
             let preview = ''
             try {
-              const fullEntry = await readJournalEntry(entry.date)
-              if (fullEntry) {
-                preview = extractPreview(fullEntry.content, 100)
+              if (entry.date) {
+                const fullEntry = await readJournalEntry(entry.date)
+                if (fullEntry) {
+                  preview = extractPreview(fullEntry.content, 100)
+                }
               }
             } catch {
               // Ignore preview errors
             }
 
             return {
-              date: entry.date,
+              date: entry.date!,
               preview,
               wordCount: entry.wordCount,
               characterCount: entry.characterCount,
-              activityLevel: entry.activityLevel as 0 | 1 | 2 | 3 | 4,
+              activityLevel: calculateActivityLevelFromCharCount(entry.characterCount),
               tags
             }
           })
@@ -350,7 +365,7 @@ export function registerJournalHandlers(): void {
     JournalChannels.invoke.GET_YEAR_STATS,
     createValidatedHandler(GetYearStatsInputSchema, async (input): Promise<MonthStats[]> => {
       const db = getIndexDatabase()
-      const stats = getYearStats(db, input.year)
+      const stats = getJournalYearStats(db, input.year)
       return stats.map((s) => ({
         year: input.year,
         month: s.month,
@@ -403,11 +418,15 @@ export function registerJournalHandlers(): void {
   // =========================================================================
 
   // journal:getAllTags - Get all tags used in journal entries
+  // Note: Now uses unified tag system (note_tags + tag_definitions)
   ipcMain.handle(
     JournalChannels.invoke.GET_ALL_TAGS,
     createHandler(async (): Promise<GetAllTagsOutput> => {
       const db = getIndexDatabase()
-      return getAllJournalTags(db)
+      // Get all tags with colors from unified system
+      const tagsWithColors = getAllTagsWithColors(db)
+      // Return in expected format (tag + count, without color for backward compat)
+      return tagsWithColors.map((t) => ({ tag: t.tag, count: t.count }))
     })
   )
 

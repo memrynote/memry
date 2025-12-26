@@ -17,10 +17,13 @@ import {
   noteSnapshots,
   type NoteCache,
   type NewNoteCache,
+  type NoteTag,
   type NewNoteTag,
   type TagDefinition,
+  type NewTagDefinition,
   type NoteLink,
   type NewNoteLink,
+  type NoteProperty,
   type NewNoteProperty,
   type PropertyDefinition,
   type NewPropertyDefinition,
@@ -931,4 +934,326 @@ export function getNoteSnapshotStats(
 }
 
 // Re-export types for external use
-export type { NoteSnapshot, NewNoteSnapshot, SnapshotReason }
+export type {
+  NoteCache,
+  NewNoteCache,
+  NoteTag,
+  NewNoteTag,
+  NoteLink,
+  NewNoteLink,
+  NoteProperty,
+  NewNoteProperty,
+  TagDefinition,
+  NewTagDefinition,
+  PropertyDefinition,
+  NewPropertyDefinition,
+  PropertyType,
+  NoteSnapshot,
+  NewNoteSnapshot,
+  SnapshotReason
+}
+
+// ============================================================================
+// Journal Entry Utilities (Unified Infrastructure)
+// ============================================================================
+// Journal entries are notes stored in the journal/ folder with date-based naming.
+// These utilities provide journal-specific operations on the unified note_cache table.
+
+export const JOURNAL_PATH_PREFIX = 'journal/'
+export const JOURNAL_DATE_PATTERN = /^journal\/(\d{4}-\d{2}-\d{2})\.md$/
+
+/**
+ * Check if a path represents a journal entry.
+ * Journal entries are stored at journal/YYYY-MM-DD.md
+ */
+export function isJournalEntry(path: string): boolean {
+  return JOURNAL_DATE_PATTERN.test(path)
+}
+
+/**
+ * Extract date from a journal entry path.
+ * @returns YYYY-MM-DD or null if not a journal path
+ */
+export function extractDateFromPath(path: string): string | null {
+  const match = path.match(JOURNAL_DATE_PATTERN)
+  return match ? match[1] : null
+}
+
+/**
+ * Generate journal path from date.
+ * @param date - YYYY-MM-DD format
+ */
+export function generateJournalPath(date: string): string {
+  return `journal/${date}.md`
+}
+
+/**
+ * Generate journal entry ID from date.
+ * Format: j{YYYY-MM-DD} for backward compatibility with existing data.
+ */
+export function generateJournalId(date: string): string {
+  return `j${date}`
+}
+
+/**
+ * Activity level type for heatmap display.
+ * 0 = empty, 1 = minimal, 2 = light, 3 = moderate, 4 = heavy
+ */
+export type ActivityLevel = 0 | 1 | 2 | 3 | 4
+
+/**
+ * Calculate activity level from character count.
+ * Used for heatmap display - computed on-demand, not stored.
+ */
+export function calculateActivityLevel(characterCount: number): ActivityLevel {
+  if (characterCount === 0) return 0
+  if (characterCount <= 100) return 1
+  if (characterCount <= 500) return 2
+  if (characterCount <= 1000) return 3
+  return 4
+}
+
+// ============================================================================
+// Journal Cache Queries (using unified note_cache table)
+// ============================================================================
+
+/**
+ * Get a journal entry by date.
+ * Uses the date column in note_cache.
+ */
+export function getJournalEntryByDate(db: DrizzleDb, date: string): NoteCache | undefined {
+  return db.select().from(noteCache).where(eq(noteCache.date, date)).get()
+}
+
+/**
+ * Check if a journal entry exists for a date.
+ */
+export function journalEntryExistsByDate(db: DrizzleDb, date: string): boolean {
+  const result = db
+    .select({ id: noteCache.id })
+    .from(noteCache)
+    .where(eq(noteCache.date, date))
+    .get()
+  return result !== undefined
+}
+
+/**
+ * Get heatmap data for a year.
+ * Returns entries with date, characterCount, and computed activity level.
+ */
+export function getHeatmapData(
+  db: DrizzleDb,
+  year: number
+): { date: string; characterCount: number; level: ActivityLevel }[] {
+  const yearPrefix = `${year}-`
+  return db
+    .select({
+      date: noteCache.date,
+      characterCount: noteCache.characterCount
+    })
+    .from(noteCache)
+    .where(and(sql`${noteCache.date} IS NOT NULL`, like(noteCache.date, `${yearPrefix}%`)))
+    .orderBy(noteCache.date)
+    .all()
+    .map((row) => ({
+      date: row.date!,
+      characterCount: row.characterCount,
+      level: calculateActivityLevel(row.characterCount)
+    }))
+}
+
+/**
+ * Get journal entries for a specific month.
+ * Used for month view display.
+ */
+export function getJournalMonthEntries(db: DrizzleDb, year: number, month: number): NoteCache[] {
+  const monthStr = String(month).padStart(2, '0')
+  const monthPrefix = `${year}-${monthStr}-`
+  return db
+    .select()
+    .from(noteCache)
+    .where(and(sql`${noteCache.date} IS NOT NULL`, like(noteCache.date, `${monthPrefix}%`)))
+    .orderBy(desc(noteCache.date))
+    .all()
+}
+
+/**
+ * Get statistics for each month in a year.
+ * Used for year view display.
+ */
+export function getJournalYearStats(
+  db: DrizzleDb,
+  year: number
+): {
+  month: number
+  entryCount: number
+  totalWordCount: number
+  totalCharacterCount: number
+  averageLevel: number
+}[] {
+  const yearPrefix = `${year}-`
+
+  return db
+    .select({
+      month: sql<number>`CAST(substr(${noteCache.date}, 6, 2) AS INTEGER)`,
+      entryCount: sql<number>`COUNT(*)`,
+      totalWordCount: sql<number>`COALESCE(SUM(${noteCache.wordCount}), 0)`,
+      totalCharacterCount: sql<number>`COALESCE(SUM(${noteCache.characterCount}), 0)`,
+      averageLevel: sql<number>`COALESCE(AVG(CASE
+        WHEN ${noteCache.characterCount} = 0 THEN 0
+        WHEN ${noteCache.characterCount} <= 100 THEN 1
+        WHEN ${noteCache.characterCount} <= 500 THEN 2
+        WHEN ${noteCache.characterCount} <= 1000 THEN 3
+        ELSE 4
+      END), 0)`
+    })
+    .from(noteCache)
+    .where(and(sql`${noteCache.date} IS NOT NULL`, like(noteCache.date, `${yearPrefix}%`)))
+    .groupBy(sql`substr(${noteCache.date}, 6, 2)`)
+    .all()
+    .map((e) => ({
+      month: e.month,
+      entryCount: e.entryCount,
+      totalWordCount: e.totalWordCount,
+      totalCharacterCount: e.totalCharacterCount,
+      averageLevel: Math.round(e.averageLevel * 100) / 100
+    }))
+}
+
+/**
+ * Calculate current and longest journaling streak.
+ * A streak is consecutive days with journal entries.
+ */
+export function getJournalStreak(db: DrizzleDb): {
+  currentStreak: number
+  longestStreak: number
+  lastEntryDate: string | null
+} {
+  // Get all entry dates in descending order (only journal entries)
+  const entries = db
+    .select({ date: noteCache.date })
+    .from(noteCache)
+    .where(sql`${noteCache.date} IS NOT NULL`)
+    .orderBy(desc(noteCache.date))
+    .all()
+
+  if (entries.length === 0) {
+    return { currentStreak: 0, longestStreak: 0, lastEntryDate: null }
+  }
+
+  const lastEntryDate = entries[0].date!
+  const dates = new Set(entries.map((e) => e.date!))
+
+  // Calculate current streak (from today or last entry backwards)
+  let currentStreak = 0
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Start from today and go backwards
+  let checkDate = new Date(today)
+
+  // If today doesn't have an entry, start from the last entry date
+  const todayStr = checkDate.toISOString().split('T')[0]
+  if (!dates.has(todayStr)) {
+    // Check if last entry was yesterday (streak still valid)
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = yesterday.toISOString().split('T')[0]
+
+    if (dates.has(yesterdayStr)) {
+      checkDate = yesterday
+    } else {
+      // Streak is broken, current streak is 0
+      currentStreak = 0
+    }
+  }
+
+  // Count consecutive days backwards
+  if (currentStreak === 0 && dates.has(checkDate.toISOString().split('T')[0])) {
+    while (dates.has(checkDate.toISOString().split('T')[0])) {
+      currentStreak++
+      checkDate.setDate(checkDate.getDate() - 1)
+    }
+  }
+
+  // Calculate longest streak
+  let longestStreak = 0
+  let tempStreak = 0
+  let prevDate: Date | null = null
+
+  // Sort dates ascending for longest streak calculation
+  const sortedDates = Array.from(dates).sort()
+
+  for (const dateStr of sortedDates) {
+    const currentDate = new Date(dateStr + 'T00:00:00.000Z')
+
+    if (prevDate === null) {
+      tempStreak = 1
+    } else {
+      const diffDays = Math.round(
+        (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
+      )
+
+      if (diffDays === 1) {
+        tempStreak++
+      } else {
+        tempStreak = 1
+      }
+    }
+
+    longestStreak = Math.max(longestStreak, tempStreak)
+    prevDate = currentDate
+  }
+
+  return { currentStreak, longestStreak, lastEntryDate }
+}
+
+/**
+ * List all journal entries (for calendar views).
+ * Returns entries with date field populated (journal entries only).
+ */
+export function listJournalEntries(db: DrizzleDb): NoteCache[] {
+  return db
+    .select()
+    .from(noteCache)
+    .where(sql`${noteCache.date} IS NOT NULL`)
+    .orderBy(desc(noteCache.date))
+    .all()
+}
+
+/**
+ * Count total journal entries.
+ */
+export function countJournalEntries(db: DrizzleDb): number {
+  const result = db
+    .select({ count: count() })
+    .from(noteCache)
+    .where(sql`${noteCache.date} IS NOT NULL`)
+    .get()
+  return result?.count ?? 0
+}
+
+/**
+ * Clear journal entries from cache (for rebuild).
+ * Only deletes entries with date field set (journal entries).
+ */
+export function clearJournalCache(db: DrizzleDb): void {
+  db.delete(noteCache)
+    .where(sql`${noteCache.date} IS NOT NULL`)
+    .run()
+}
+
+/**
+ * Infer property type from value.
+ * Used for journal properties.
+ */
+export function inferPropertyType(value: unknown): PropertyType {
+  if (typeof value === 'boolean') return 'checkbox'
+  if (typeof value === 'number') return 'number'
+  if (Array.isArray(value)) return 'multiselect'
+  if (typeof value === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}/.test(value)) return 'date'
+    if (/^https?:\/\//.test(value)) return 'url'
+  }
+  return 'text'
+}

@@ -10,6 +10,10 @@ export const noteCache = sqliteTable(
     emoji: text('emoji'), // T003: Emoji icon for visual identification
     contentHash: text('content_hash').notNull(),
     wordCount: integer('word_count').notNull().default(0),
+    // Unified: characterCount for activity level calculation (journal + notes)
+    characterCount: integer('character_count').notNull().default(0),
+    // Unified: date field for journal entries (YYYY-MM-DD), null for regular notes
+    date: text('date'),
     createdAt: text('created_at').notNull(),
     modifiedAt: text('modified_at').notNull(),
     indexedAt: text('indexed_at')
@@ -18,7 +22,9 @@ export const noteCache = sqliteTable(
   },
   (table) => [
     index('idx_note_cache_path').on(table.path),
-    index('idx_note_cache_modified').on(table.modifiedAt)
+    index('idx_note_cache_modified').on(table.modifiedAt),
+    // Index for journal date-based queries (heatmap, calendar)
+    index('idx_note_cache_date').on(table.date)
   ]
 )
 

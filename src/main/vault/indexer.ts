@@ -36,7 +36,8 @@ import {
   setNoteTags,
   setNoteLinks,
   resolveNoteByTitle,
-  countNotes
+  countNotes,
+  extractDateFromPath
 } from '@shared/db/queries/notes'
 
 // ============================================================================
@@ -150,7 +151,11 @@ async function indexFile(
     const tags = extractTags(parsed.frontmatter)
     const wikiLinks = extractWikiLinks(parsed.content)
     const wordCount = calculateWordCount(parsed.content)
+    const characterCount = parsed.content.length
     const contentHash = generateContentHash(content)
+
+    // Check if this is a journal entry (journal/YYYY-MM-DD.md)
+    const date = extractDateFromPath(relativePath)
 
     // Insert into cache
     try {
@@ -160,10 +165,12 @@ async function indexFile(
         title: parsed.frontmatter.title ?? path.basename(relativePath, '.md'),
         contentHash,
         wordCount,
+        characterCount,
+        date,
         createdAt: parsed.frontmatter.created,
         modifiedAt: parsed.frontmatter.modified
       })
-      console.log(`[Indexer] Indexed: ${relativePath}`)
+      console.log(`[Indexer] Indexed: ${relativePath}${date ? ` (journal: ${date})` : ''}`)
     } catch (insertError) {
       console.error(`[Indexer] Insert failed for ${relativePath}:`, insertError)
       return 'error'
