@@ -18,7 +18,6 @@ import {
   JournalYearView,
   SaveStatusIndicator,
   deriveSaveStatus,
-  type AIConnection,
   type ScheduleEvent,
   type JournalViewState
 } from '@/components/journal'
@@ -43,41 +42,16 @@ import {
   useJournalHeatmap,
   useMonthEntries,
   useYearStats,
-  useDayContext
+  useDayContext,
+  useAIConnections,
+  type AIConnection
 } from '@/hooks/use-journal'
 import { tasksService } from '@/services/tasks-service'
+import { parseConnectionDate } from '@/services/ai-connections-service'
 
 // =============================================================================
-// DUMMY DATA
+// CONSTANTS
 // =============================================================================
-
-const DUMMY_AI_CONNECTIONS: AIConnection[] = [
-  {
-    id: 'conn-1',
-    type: 'journal',
-    date: 'Nov 15, 2024',
-    preview:
-      'Also discussed Project Alpha timeline with the team today. Sarah mentioned concerns about...',
-    score: 0.92,
-    matchedKeywords: ['Project Alpha', 'timeline', 'team']
-  },
-  {
-    id: 'conn-2',
-    type: 'note',
-    title: 'Meeting Notes - Q3 Planning',
-    preview: 'Key decisions about resource allocation and hiring plans for the next quarter...',
-    score: 0.87,
-    matchedKeywords: ['decisions', 'hiring', 'Q3']
-  },
-  {
-    id: 'conn-3',
-    type: 'journal',
-    date: 'Oct 28, 2024',
-    preview: "Feeling optimistic about the project direction after today's review session...",
-    score: 0.78,
-    matchedKeywords: ['project', 'review']
-  }
-]
 
 // Note: Calendar events are not yet implemented (spec mentions "can be mocked initially")
 // Using empty array - will be populated when calendar integration is added
@@ -187,6 +161,14 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   // Day context hook - loads tasks for selected date
   const { tasks: dayTasks, overdueCount } = useDayContext(selectedDate)
+
+  // AI connections hook - analyzes entry content and finds related entries/notes
+  const {
+    connections: aiConnections,
+    isLoading: isAILoading,
+    error: aiError,
+    refresh: refreshAIConnections
+  } = useAIConnections(entry?.content ?? '')
 
   // Track when we've loaded content for the editor
   // Using a counter + ref approach to ensure proper remounting
@@ -509,6 +491,25 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       }
     },
     [dayTasks]
+  )
+
+  // Handle AI connection click - navigate to related content
+  const handleConnectionClick = useCallback(
+    (connection: AIConnection) => {
+      if (connection.type === 'journal' && connection.date) {
+        // Parse the human-readable date (e.g., "Nov 15, 2024") to ISO format
+        const isoDate = parseConnectionDate(connection.date)
+        if (isoDate) {
+          navigateToDay(isoDate)
+        } else {
+          console.warn('Could not parse connection date:', connection.date)
+        }
+      } else if (connection.type === 'note' && connection.title) {
+        // Log for now - will integrate with notes navigation in future
+        console.log('Navigate to note:', connection.title)
+      }
+    },
+    [navigateToDay]
   )
 
   // Keyboard shortcuts
@@ -859,10 +860,12 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           <section className="relative opacity-0 journal-animate-in journal-stagger-3">
             <h3 className="journal-section-label mb-3">Connected Thoughts</h3>
             <AIConnectionsPanel
-              connections={DUMMY_AI_CONNECTIONS}
-              isLoading={false}
-              onConnectionClick={(conn) => console.log('Connection clicked:', conn)}
-              onRefresh={() => console.log('Refresh connections')}
+              connections={aiConnections}
+              isLoading={isAILoading}
+              error={aiError}
+              isNewUser={!entry && aiConnections.length === 0}
+              onConnectionClick={handleConnectionClick}
+              onRefresh={refreshAIConnections}
               maxItems={3}
             />
           </section>
