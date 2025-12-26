@@ -37,9 +37,19 @@ import {
   ChevronRight,
   Settings as SettingsIcon,
   FolderOpen,
-  Palette
+  Palette,
+  BookOpen,
+  Info
 } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { useTemplates } from '@/hooks/use-templates'
+import { useJournalSettings } from '@/hooks/use-journal-settings'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -48,7 +58,7 @@ import { cn } from '@/lib/utils'
 // Types
 // ============================================================================
 
-type SettingsSection = 'general' | 'templates' | 'vault' | 'appearance'
+type SettingsSection = 'general' | 'templates' | 'journal' | 'vault' | 'appearance'
 
 // ============================================================================
 // Main Component
@@ -80,6 +90,12 @@ export function SettingsPage() {
             onClick={() => setActiveSection('templates')}
           />
           <SettingsNavItem
+            icon={<BookOpen className="w-4 h-4" />}
+            label="Journal"
+            isActive={activeSection === 'journal'}
+            onClick={() => setActiveSection('journal')}
+          />
+          <SettingsNavItem
             icon={<FolderOpen className="w-4 h-4" />}
             label="Vault"
             isActive={activeSection === 'vault'}
@@ -100,6 +116,7 @@ export function SettingsPage() {
           <div className="p-6 max-w-3xl">
             {activeSection === 'general' && <GeneralSettings />}
             {activeSection === 'templates' && <TemplatesSettings />}
+            {activeSection === 'journal' && <JournalSettings />}
             {activeSection === 'vault' && <VaultSettings />}
             {activeSection === 'appearance' && <AppearanceSettings />}
           </div>
@@ -417,6 +434,103 @@ function TemplateListItem({ template, onEdit, onDuplicate, onDelete }: TemplateL
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+    </div>
+  )
+}
+
+// ============================================================================
+// Journal Settings
+// ============================================================================
+
+function JournalSettings() {
+  const { templates, isLoading: isLoadingTemplates } = useTemplates()
+  const { settings, setDefaultTemplate, isLoading: isLoadingSettings } = useJournalSettings()
+
+  const handleTemplateChange = useCallback(
+    async (value: string) => {
+      const templateId = value === 'none' ? null : value
+      const success = await setDefaultTemplate(templateId)
+      if (success) {
+        toast.success(
+          templateId ? 'Default template updated' : 'Default template cleared'
+        )
+      } else {
+        toast.error('Failed to update default template')
+      }
+    },
+    [setDefaultTemplate]
+  )
+
+  // Find the current default template name for display
+  const defaultTemplateName = settings.defaultTemplate
+    ? templates.find((t) => t.id === settings.defaultTemplate)?.name
+    : null
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold">Journal</h3>
+        <p className="text-sm text-muted-foreground">
+          Journal settings and preferences
+        </p>
+      </div>
+
+      <Separator />
+
+      {/* Default Template Setting */}
+      <div className="space-y-4">
+        <div>
+          <label className="text-sm font-medium">Default Template</label>
+          <p className="text-sm text-muted-foreground mt-1">
+            New journal entries will start with this template. You can always change it when creating an entry.
+          </p>
+        </div>
+
+        <Select
+          value={settings.defaultTemplate ?? 'none'}
+          onValueChange={handleTemplateChange}
+          disabled={isLoadingTemplates || isLoadingSettings}
+        >
+          <SelectTrigger className="w-full max-w-xs">
+            <SelectValue placeholder="Select a template">
+              {isLoadingSettings ? (
+                'Loading...'
+              ) : settings.defaultTemplate ? (
+                defaultTemplateName ?? 'Unknown template'
+              ) : (
+                'None (ask each time)'
+              )}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">
+              <span className="flex items-center gap-2">
+                None (ask each time)
+              </span>
+            </SelectItem>
+            {templates.map((template) => (
+              <SelectItem key={template.id} value={template.id}>
+                <span className="flex items-center gap-2">
+                  {template.icon && <span>{template.icon}</span>}
+                  {template.name}
+                  {template.isBuiltIn && (
+                    <Lock className="w-3 h-3 text-muted-foreground ml-1" />
+                  )}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Info hint */}
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+          <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+          <p className="text-muted-foreground">
+            When a default template is set, new journal entries will be created with the template content automatically.
+            A small indicator will appear letting you change the template or start blank.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

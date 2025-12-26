@@ -328,6 +328,14 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
 
   // Subscribe to external updates - use refs to avoid re-subscribing on state changes
   useEffect(() => {
+    // Listen for newly created entries (e.g., from template application)
+    const unsubscribeCreated = onJournalEntryCreated((event) => {
+      if (event.date === currentDateRef.current) {
+        // Update cache with the new entry
+        queryClient.setQueryData(journalKeys.entry(event.date), event.entry as JournalEntry)
+      }
+    })
+
     const unsubscribeUpdated = onJournalEntryUpdated((event) => {
       // Ignore updates from our own saves
       if (isSavingRef.current) {
@@ -363,6 +371,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     })
 
     return () => {
+      unsubscribeCreated()
       unsubscribeUpdated()
       unsubscribeDeleted()
       unsubscribeExternal()
