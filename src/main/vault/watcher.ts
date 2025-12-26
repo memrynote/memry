@@ -35,7 +35,8 @@ import {
   setNoteLinks,
   setNoteProperties,
   resolveNoteByTitle,
-  getPropertyType
+  getPropertyType,
+  extractDateFromPath
 } from '@shared/db/queries/notes'
 import { getIndexDatabase, updateFtsContent } from '../database'
 import { NotesChannels } from '@shared/ipc-channels'
@@ -314,8 +315,12 @@ export class VaultWatcher {
       const properties = extractProperties(parsed.frontmatter)
       const wikiLinks = extractWikiLinks(parsed.content)
       const wordCount = calculateWordCount(parsed.content)
+      const characterCount = parsed.content.length
       const contentHash = generateContentHash(content)
       const snippet = createSnippet(parsed.content)
+
+      // Check if this is a journal entry (journal/YYYY-MM-DD.md)
+      const date = extractDateFromPath(relativePath)
 
       // Insert into cache
       insertNoteCache(db, {
@@ -324,6 +329,8 @@ export class VaultWatcher {
         title: parsed.frontmatter.title ?? path.basename(relativePath, '.md'),
         contentHash,
         wordCount,
+        characterCount,
+        date,
         createdAt: parsed.frontmatter.created,
         modifiedAt: parsed.frontmatter.modified
       })
@@ -413,6 +420,7 @@ export class VaultWatcher {
       const properties = extractProperties(parsed.frontmatter)
       const wikiLinks = extractWikiLinks(parsed.content)
       const wordCount = calculateWordCount(parsed.content)
+      const characterCount = parsed.content.length
       const snippet = createSnippet(parsed.content)
       const title = parsed.frontmatter.title ?? path.basename(relativePath, '.md')
 
@@ -422,6 +430,7 @@ export class VaultWatcher {
           title,
           contentHash,
           wordCount,
+          characterCount,
           modifiedAt: parsed.frontmatter.modified
         })
 

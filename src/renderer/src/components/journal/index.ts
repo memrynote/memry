@@ -20,3 +20,6 @@ export * from './journal-year-view'
 
 // Save Status
 export * from './save-status'
+
+// Template Indicator
+export * from './default-template-indicator'

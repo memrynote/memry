@@ -1237,7 +1237,34 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
               className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
             />
           ) : (
-            <TreeLabel>{folder.name}</TreeLabel>
+            <div className="group/folder flex flex-1 items-center">
+              <TreeLabel className="flex-1">{folder.name}</TreeLabel>
+              {/* Hover action icons for creating note/folder */}
+              <div className="flex items-center gap-0.5 opacity-0 group-hover/folder:opacity-100 transition-opacity ml-auto">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleCreateNoteInFolder(folder.path)
+                  }}
+                  className="p-0.5 hover:bg-muted rounded"
+                  aria-label="Create note in folder"
+                >
+                  <FilePlus className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleCreateSubfolder(folder.path)
+                  }}
+                  className="p-0.5 hover:bg-muted rounded"
+                  aria-label="Create folder"
+                >
+                  <FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
           )}
         </TreeNodeTrigger>
         {hasChildren && (
@@ -1268,6 +1295,8 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           tree={tree}
           selectedIds={selectedIds}
           onSelectionChange={handleSelectionChange}
+          onCreateNote={handleCreateNoteInFolder}
+          onCreateFolder={handleCreateSubfolder}
           noteMap={noteMap}
           isDragDisabled={!!renamingNoteId || !!renamingFolderPath || isMoving}
           className="flex-1"

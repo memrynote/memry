@@ -366,3 +366,29 @@ export type JournalInvokeChannel =
   (typeof JournalChannels.invoke)[keyof typeof JournalChannels.invoke]
 export type JournalEventChannel =
   (typeof JournalChannels.events)[keyof typeof JournalChannels.events]
+
+// ============================================================================
+// Settings Channels
+// ============================================================================
+
+export const SettingsChannels = {
+  invoke: {
+    /** Get a setting by key */
+    GET: 'settings:get',
+    /** Set a setting value */
+    SET: 'settings:set',
+    /** Get journal settings */
+    GET_JOURNAL_SETTINGS: 'settings:getJournalSettings',
+    /** Set journal settings */
+    SET_JOURNAL_SETTINGS: 'settings:setJournalSettings'
+  },
+  events: {
+    /** Settings changed */
+    CHANGED: 'settings:changed'
+  }
+} as const
+
+export type SettingsInvokeChannel =
+  (typeof SettingsChannels.invoke)[keyof typeof SettingsChannels.invoke]
+export type SettingsEventChannel =
+  (typeof SettingsChannels.events)[keyof typeof SettingsChannels.events]

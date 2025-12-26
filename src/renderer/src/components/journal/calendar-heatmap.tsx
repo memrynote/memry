@@ -180,7 +180,7 @@ export function JournalCalendar({
             today: '' // We handle today styling in custom component
           }}
           components={{
-            DayButton: ({ day, modifiers }) => {
+            DayButton: ({ day, modifiers, ...buttonProps }) => {
               // Use day.isoDate directly - this is the stable yyyy-MM-dd format
               // provided by react-day-picker, avoiding timezone issues
               const dateStr = day.isoDate
@@ -191,6 +191,7 @@ export function JournalCalendar({
 
               return (
                 <button
+                  {...buttonProps}
                   type="button"
                   className={cn(
                     'flex flex-col items-center justify-center gap-0.5 w-full h-full rounded-md',
@@ -203,7 +204,12 @@ export function JournalCalendar({
                     // Outside month
                     modifiers.outside && 'text-muted-foreground/40'
                   )}
-                  onClick={() => handleDayClickWithISODate(dateStr)}
+                  onClick={(e) => {
+                    // Call DayPicker's built-in handler first
+                    buttonProps.onClick?.(e)
+                    // Then trigger our custom navigation
+                    handleDayClickWithISODate(dateStr)
+                  }}
                   aria-selected={isSelected}
                 >
                   <span>{day.date.getDate()}</span>

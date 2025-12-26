@@ -9,7 +9,8 @@ import {
   TasksChannels,
   SavedFiltersChannels,
   TemplatesChannels,
-  JournalChannels
+  JournalChannels,
+  SettingsChannels
 } from '@shared/ipc-channels'
 
 // Custom APIs for renderer
@@ -386,6 +387,16 @@ const api = {
     getStreak: () => ipcRenderer.invoke(JournalChannels.invoke.GET_STREAK)
   },
 
+  // Settings API
+  settings: {
+    get: (key: string) => ipcRenderer.invoke(SettingsChannels.invoke.GET, key),
+    set: (key: string, value: string) =>
+      ipcRenderer.invoke(SettingsChannels.invoke.SET, { key, value }),
+    getJournalSettings: () => ipcRenderer.invoke(SettingsChannels.invoke.GET_JOURNAL_SETTINGS),
+    setJournalSettings: (settings: { defaultTemplate?: string | null }) =>
+      ipcRenderer.invoke(SettingsChannels.invoke.SET_JOURNAL_SETTINGS, settings)
+  },
+
   // Event subscription helpers
   onVaultStatusChanged: (callback: (status: unknown) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, status: unknown): void => callback(status)
@@ -659,6 +670,18 @@ const api = {
     ): void => callback(data)
     ipcRenderer.on(JournalChannels.events.EXTERNAL_CHANGE, handler)
     return () => ipcRenderer.removeListener(JournalChannels.events.EXTERNAL_CHANGE, handler)
+  },
+
+  // Settings event subscription helpers
+  onSettingsChanged: (
+    callback: (event: { key: string; value: unknown }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { key: string; value: unknown }
+    ): void => callback(data)
+    ipcRenderer.on(SettingsChannels.events.CHANGED, handler)
+    return () => ipcRenderer.removeListener(SettingsChannels.events.CHANGED, handler)
   }
 }
 

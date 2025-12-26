@@ -37,6 +37,12 @@ interface TemplateSelectorProps {
   folderPath?: string
   /** Callback when "Set as folder default" is selected */
   onSetFolderDefault?: (templateId: string) => void
+  /** Whether this is a journal context (shows "Set as journal default" option) */
+  isJournalContext?: boolean
+  /** Current journal default template ID */
+  journalDefaultTemplateId?: string | null
+  /** Callback when "Set as journal default" is selected */
+  onSetJournalDefault?: (templateId: string) => void
 }
 
 export function TemplateSelector({
@@ -44,12 +50,16 @@ export function TemplateSelector({
   onClose,
   onSelect,
   folderPath,
-  onSetFolderDefault
+  onSetFolderDefault,
+  isJournalContext = false,
+  journalDefaultTemplateId,
+  onSetJournalDefault
 }: TemplateSelectorProps) {
   const { templates, isLoading } = useTemplates()
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>('blank')
   const [setAsFolderDefault, setSetAsFolderDefault] = useState(false)
+  const [setAsJournalDefault, setSetAsJournalDefault] = useState(false)
 
   // Filter templates based on search
   const filteredTemplates = useMemo(() => {
@@ -81,11 +91,17 @@ export function TemplateSelector({
       onSetFolderDefault(selectedId)
     }
 
+    // Set as journal default if checkbox is checked
+    if (setAsJournalDefault && selectedId && onSetJournalDefault) {
+      onSetJournalDefault(selectedId)
+    }
+
     // Reset state
     setSearch('')
     setSelectedId('blank')
     setSetAsFolderDefault(false)
-  }, [selectedId, setAsFolderDefault, onSelect, onSetFolderDefault])
+    setSetAsJournalDefault(false)
+  }, [selectedId, setAsFolderDefault, setAsJournalDefault, onSelect, onSetFolderDefault, onSetJournalDefault])
 
   const handleClose = useCallback(() => {
     setSearch('')
@@ -223,16 +239,34 @@ export function TemplateSelector({
           )}
         >
           <div className="flex items-center justify-between">
-            {/* Set as folder default checkbox */}
-            {folderPath && onSetFolderDefault ? (
-              <LabeledCheckbox
-                checked={setAsFolderDefault}
-                onCheckedChange={setSetAsFolderDefault}
-                label="Set as folder default"
-              />
-            ) : (
-              <div />
-            )}
+            {/* Set as default checkboxes */}
+            <div className="flex flex-col gap-1.5">
+              {/* Folder default checkbox - for notes */}
+              {folderPath && onSetFolderDefault && (
+                <LabeledCheckbox
+                  checked={setAsFolderDefault}
+                  onCheckedChange={setSetAsFolderDefault}
+                  label="Set as folder default"
+                />
+              )}
+              {/* Journal default checkbox - for journal context */}
+              {isJournalContext && onSetJournalDefault && selectedId && selectedId !== 'blank' && (
+                <LabeledCheckbox
+                  checked={setAsJournalDefault}
+                  onCheckedChange={setSetAsJournalDefault}
+                  label={
+                    journalDefaultTemplateId === selectedId
+                      ? 'Current journal default'
+                      : 'Set as journal default'
+                  }
+                  disabled={journalDefaultTemplateId === selectedId}
+                />
+              )}
+              {/* Empty div for spacing when no checkbox is shown */}
+              {!folderPath && !onSetFolderDefault && (!isJournalContext || !onSetJournalDefault) && (
+                <div />
+              )}
+            </div>
 
             <div className="flex gap-2.5">
               <Button
@@ -244,7 +278,7 @@ export function TemplateSelector({
               </Button>
               <PrimaryActionButton onClick={handleSelect}>
                 <PenLine className="w-4 h-4" />
-                Create Note
+                {isJournalContext ? 'Use Template' : 'Create Note'}
               </PrimaryActionButton>
             </div>
           </div>

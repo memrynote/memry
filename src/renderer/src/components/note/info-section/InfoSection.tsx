@@ -122,16 +122,12 @@ export function InfoSection({
       {/* Toggle Header */}
       <InfoHeader isExpanded={isExpanded} onToggle={onToggleExpand} />
 
-      {/* Collapsible Content */}
-      <div
-        id="properties-content"
-        className={cn(
-          'overflow-hidden transition-all duration-200',
-          isExpanded ? 'opacity-100' : 'max-h-0 opacity-0'
-        )}
-        aria-hidden={!isExpanded}
-      >
-        <div className={cn('mt-2 rounded-lg', 'border border-stone-200', 'bg-[#fafaf9]', 'p-4')}>
+      {/* Collapsible Content - Only rendered when expanded to prevent focus trap */}
+      {isExpanded && (
+        <div
+          id="properties-content"
+          className={cn('mt-2 rounded-lg', 'border border-stone-200', 'bg-[#fafaf9]', 'p-4')}
+        >
           {/* Section Header */}
           {folderProperties && folderProperties.length > 0 && (
             <div className="mb-3 flex items-center gap-1">
@@ -217,7 +213,7 @@ export function InfoSection({
             </button>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Portal for AddPropertyPopup - renders at document body level */}
       {isAddPopupOpen &&

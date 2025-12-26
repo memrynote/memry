@@ -7,7 +7,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Sun, Sunrise, Sunset, Moon, Maximize2, Minimize2, Loader2, FileText } from 'lucide-react'
+import {
+  Sun,
+  Sunrise,
+  Sunset,
+  Moon,
+  Maximize2,
+  Minimize2,
+  Loader2,
+  FileText,
+  MoreHorizontal,
+  History
+} from 'lucide-react'
 import { useSidebar } from '@/components/ui/sidebar'
 import {
   JournalCalendar,
@@ -18,6 +29,7 @@ import {
   JournalYearView,
   SaveStatusIndicator,
   deriveSaveStatus,
+  DefaultTemplateIndicator,
   type ScheduleEvent,
   type JournalViewState
 } from '@/components/journal'
@@ -36,7 +48,16 @@ import { useActiveHeading } from '@/hooks/use-active-heading'
 import { useNoteTags } from '@/hooks/use-notes'
 import { useJournalProperties } from '@/hooks/use-journal-properties'
 import { useTemplates } from '@/hooks/use-templates'
+import { useJournalSettings } from '@/hooks/use-journal-settings'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { ExportDialog } from '@/components/note/export-dialog'
+import { VersionHistory } from '@/components/note/version-history'
 import {
   formatDateToISO,
   formatDateParts,
@@ -191,7 +212,27 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   // Template selector state
   const [showTemplateSelector, setShowTemplateSelector] = useState(false)
-  const { getTemplate } = useTemplates({ autoLoad: false })
+  const { templates, getTemplate } = useTemplates({ autoLoad: true })
+
+  // Journal settings (default template)
+  const { settings: journalSettings, setDefaultTemplate: setJournalDefaultTemplate } =
+    useJournalSettings()
+
+  // Track if we're auto-applying the default template
+  const [isApplyingDefaultTemplate, setIsApplyingDefaultTemplate] = useState(false)
+  const hasAppliedDefaultForDateRef = useRef<string | null>(null)
+
+  // Get default template info for the indicator
+  const defaultTemplateInfo = useMemo(() => {
+    if (!journalSettings.defaultTemplate) return null
+    const template = templates.find((t) => t.id === journalSettings.defaultTemplate)
+    if (!template) return null
+    return {
+      id: template.id,
+      name: template.name,
+      icon: template.icon
+    }
+  }, [journalSettings.defaultTemplate, templates])
 
   // AI connections hook - analyzes entry content and finds related entries/notes
   const {
@@ -715,6 +756,94 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [selectedDate, getTemplate]
   )
 
+  // Auto-apply default template when navigating to a new date with no entry
+  const handleApplyDefaultTemplate = useCallback(async () => {
+    if (!defaultTemplateInfo?.id) return
+    if (hasAppliedDefaultForDateRef.current === selectedDate) return
+
+    setIsApplyingDefaultTemplate(true)
+    hasAppliedDefaultForDateRef.current = selectedDate
+
+    try {
+      const template = await getTemplate(defaultTemplateInfo.id)
+      if (!template) {
+        console.error('[JournalPage] Default template not found:', defaultTemplateInfo.id)
+        setIsApplyingDefaultTemplate(false)
+        return
+      }
+
+      // Apply template: replace {{title}} placeholder with the date
+      const parts = formatDateParts(selectedDate)
+      const dateTitle = `${parts.month} ${parts.day}, ${parts.year}`
+      const content = template.content.replace(/\{\{title\}\}/g, dateTitle)
+
+      // Convert template properties array to record
+      const properties: Record<string, unknown> = {}
+      if (template.properties) {
+        for (const prop of template.properties) {
+          properties[prop.name] = prop.value
+        }
+      }
+
+      await journalService.createEntry({
+        date: selectedDate,
+        content,
+        tags: template.tags ?? [],
+        properties
+      })
+
+      // Force editor remount to show the new content
+      lastLoadedDateRef.current = null
+      setEditorLoadCount((c) => c + 1)
+    } catch (err) {
+      console.error('[JournalPage] Failed to apply default template:', err)
+    } finally {
+      setIsApplyingDefaultTemplate(false)
+    }
+  }, [selectedDate, defaultTemplateInfo?.id, getTemplate])
+
+  // Handle start blank - create empty entry
+  const handleStartBlank = useCallback(async () => {
+    hasAppliedDefaultForDateRef.current = selectedDate
+    try {
+      await journalService.createEntry({
+        date: selectedDate,
+        content: ''
+      })
+      // Force editor remount
+      lastLoadedDateRef.current = null
+      setEditorLoadCount((c) => c + 1)
+    } catch (err) {
+      console.error('[JournalPage] Failed to create blank entry:', err)
+    }
+  }, [selectedDate])
+
+  // Auto-apply default template when navigating to a date with no entry
+  useEffect(() => {
+    // Only auto-apply if:
+    // 1. Not loading
+    // 2. No entry exists for this date
+    // 3. Default template is set
+    // 4. Haven't already applied for this date
+    if (
+      !isEntryLoading &&
+      loadedForDate === selectedDate &&
+      !entry &&
+      defaultTemplateInfo?.id &&
+      hasAppliedDefaultForDateRef.current !== selectedDate
+    ) {
+      // Auto-apply the default template
+      handleApplyDefaultTemplate()
+    }
+  }, [
+    isEntryLoading,
+    loadedForDate,
+    selectedDate,
+    entry,
+    defaultTemplateInfo?.id,
+    handleApplyDefaultTemplate
+  ])
+
   // Handle task completion toggle from DayContextSidebar
   const handleTaskToggle = useCallback(
     async (taskId: string) => {
@@ -818,7 +947,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             )}
           >
             {/* Header - Centered Breadcrumb Navigation */}
-            <header className={cn('relative mb-8 lg:mb-12', 'journal-animate-in')}>
+            <header className={cn('relative mb-8 lg:mb-12', '')}>
               {/* Content layer */}
               <div className="relative z-10">
                 {/* Top bar with greeting (left), breadcrumb (center), focus toggle (right) */}
@@ -834,7 +963,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           'dark:from-amber-950/30 dark:to-orange-950/20',
                           'journal-greeting-glow',
                           'transition-all duration-300',
-                          'opacity-0 journal-animate-in journal-stagger-1'
+                          ''
                         )}
                       >
                         {getGreetingIcon(greeting.icon)}
@@ -853,7 +982,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                     onBackClick={navigateBack}
                     onPreviousDay={handlePreviousDay}
                     onNextDay={handleNextDay}
-                    className="opacity-0 journal-animate-in journal-stagger-2"
                   />
 
                   {/* Right side - Save Status + Focus Mode Toggle */}
@@ -866,7 +994,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           isDirty,
                           hasEntry: !!entry
                         })}
-                        className="opacity-0 journal-animate-in journal-stagger-3"
                       />
                     )}
 
@@ -881,7 +1008,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           'hover:bg-foreground/5',
                           'transition-all duration-200',
                           focusMode && 'bg-foreground/5 text-foreground',
-                          'opacity-0 journal-animate-in journal-stagger-3'
+                          ''
                         )}
                         onClick={() => setFocusMode(!focusMode)}
                         aria-pressed={focusMode}
@@ -900,14 +1027,14 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
                 {/* Month view subtitle */}
                 {viewState.type === 'month' && (
-                  <p className="text-center font-serif text-sm text-muted-foreground/60 italic mt-2 opacity-0 journal-animate-in journal-stagger-3">
+                  <p className="text-center font-serif text-sm text-muted-foreground/60 italic mt-2 ">
                     All journal entries for this month
                   </p>
                 )}
 
                 {/* Year view subtitle */}
                 {viewState.type === 'year' && (
-                  <p className="text-center font-serif text-sm text-muted-foreground/60 italic mt-2 opacity-0 journal-animate-in journal-stagger-3">
+                  <p className="text-center font-serif text-sm text-muted-foreground/60 italic mt-2 ">
                     Select a month to view entries
                   </p>
                 )}
@@ -927,45 +1054,54 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               <>
                 {/* Template Prompt - Show when there's no entry and not loading */}
                 {!isEntryLoading && !entry && !focusMode && (
-                  <div className="mb-6 opacity-0 journal-animate-in journal-stagger-2">
-                    <button
-                      onClick={() => setShowTemplateSelector(true)}
-                      className={cn(
-                        'w-full flex items-center gap-3 px-4 py-3 rounded-lg',
-                        'border border-dashed border-amber-300/50 dark:border-amber-700/50',
-                        'bg-gradient-to-r from-amber-50/50 to-orange-50/30',
-                        'dark:from-amber-950/20 dark:to-orange-950/10',
-                        'hover:border-amber-400/60 dark:hover:border-amber-600/60',
-                        'hover:from-amber-50/70 hover:to-orange-50/50',
-                        'dark:hover:from-amber-950/30 dark:hover:to-orange-950/20',
-                        'transition-all duration-200',
-                        'text-left group'
-                      )}
-                    >
-                      <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/30 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/30 shadow-sm">
-                        <FileText className="w-4 h-4 text-amber-700 dark:text-amber-400" />
-                      </div>
-                      <div className="flex-1">
-                        <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                          Start with a template
+                  <div className="mb-6 ">
+                    {/* Default template is set - show indicator and auto-apply */}
+                    {defaultTemplateInfo ? (
+                      <DefaultTemplateIndicator
+                        templateName={defaultTemplateInfo.name}
+                        templateIcon={defaultTemplateInfo.icon}
+                        isCreating={isApplyingDefaultTemplate}
+                        onChangeTemplate={() => setShowTemplateSelector(true)}
+                        onStartBlank={handleStartBlank}
+                      />
+                    ) : (
+                      /* No default template - show original prompt */
+                      <button
+                        onClick={() => setShowTemplateSelector(true)}
+                        className={cn(
+                          'w-full flex items-center gap-3 px-4 py-3 rounded-lg',
+                          'border border-dashed border-amber-300/50 dark:border-amber-700/50',
+                          'bg-gradient-to-r from-amber-50/50 to-orange-50/30',
+                          'dark:from-amber-950/20 dark:to-orange-950/10',
+                          'hover:border-amber-400/60 dark:hover:border-amber-600/60',
+                          'hover:from-amber-50/70 hover:to-orange-50/50',
+                          'dark:hover:from-amber-950/30 dark:hover:to-orange-950/20',
+                          'transition-all duration-200',
+                          'text-left group'
+                        )}
+                      >
+                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/30 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/30 shadow-sm">
+                          <FileText className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+                        </div>
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                            Start with a template
+                          </span>
+                          <p className="text-xs text-amber-600/70 dark:text-amber-400/60 mt-0.5">
+                            Morning pages, daily reflection, gratitude journal, and more
+                          </p>
+                        </div>
+                        <span className="text-xs text-amber-500/60 dark:text-amber-400/50 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
+                          Choose template
                         </span>
-                        <p className="text-xs text-amber-600/70 dark:text-amber-400/60 mt-0.5">
-                          Morning pages, daily reflection, gratitude journal, and more
-                        </p>
-                      </div>
-                      <span className="text-xs text-amber-500/60 dark:text-amber-400/50 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
-                        Choose template
-                      </span>
-                    </button>
+                      </button>
+                    )}
                   </div>
                 )}
 
                 {/* Tags Section - Hidden in focus mode */}
                 {!focusMode && entry && (
-                  <div
-                    className="mb-4 opacity-0 journal-animate-in journal-stagger-2"
-                    style={{ paddingLeft: '24px' }}
-                  >
+                  <div className="mb-4 " style={{ paddingLeft: '24px' }}>
                     <TagsRow
                       tags={journalTags}
                       availableTags={availableTags}
@@ -979,10 +1115,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
                 {/* Properties Section - Hidden in focus mode */}
                 {!focusMode && entry && (
-                  <div
-                    className="mb-4 opacity-0 journal-animate-in journal-stagger-2"
-                    style={{ paddingLeft: '24px' }}
-                  >
+                  <div className="mb-4 " style={{ paddingLeft: '24px' }}>
                     <InfoSection
                       properties={properties}
                       isExpanded={isInfoExpanded}
@@ -997,7 +1130,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 <div
                   className={cn(
                     'editor-click-area min-h-[300px] relative',
-                    'opacity-0 journal-animate-in journal-stagger-3',
+                    '',
                     // Notebook margin line (only when not in focus mode)
                     !focusMode && 'journal-margin-line pl-6 lg:pl-8'
                   )}
@@ -1050,7 +1183,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 </div>
 
                 {/* Backlinks Section */}
-                <div className="opacity-0 journal-animate-in journal-stagger-4 mt-8">
+                <div className=" mt-8">
                   <BacklinksSection
                     backlinks={DUMMY_JOURNAL_BACKLINKS}
                     isLoading={false}
@@ -1064,28 +1197,24 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
             {viewState.type === 'month' && (
               /* Month View - List of all entries */
-              <div className="opacity-0 journal-animate-scale">
-                <JournalMonthView
-                  year={viewState.year}
-                  month={viewState.month}
-                  entries={monthEntries}
-                  heatmapData={heatmapData}
-                  onDayClick={navigateToDay}
-                  className="flex-1"
-                />
-              </div>
+              <JournalMonthView
+                year={viewState.year}
+                month={viewState.month}
+                entries={monthEntries}
+                heatmapData={heatmapData}
+                onDayClick={navigateToDay}
+                className="flex-1"
+              />
             )}
 
             {viewState.type === 'year' && (
               /* Year View - Grid of month cards */
-              <div className="opacity-0 journal-animate-scale">
-                <JournalYearView
-                  year={viewState.year}
-                  monthStats={monthStats}
-                  onMonthClick={(month) => navigateToMonth(viewState.year, month)}
-                  className="flex-1"
-                />
-              </div>
+              <JournalYearView
+                year={viewState.year}
+                monthStats={monthStats}
+                onMonthClick={(month) => navigateToMonth(viewState.year, month)}
+                className="flex-1"
+              />
             )}
           </div>
         </div>
@@ -1141,7 +1270,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           />
 
           {/* Mini Calendar */}
-          <section className="relative opacity-0 journal-animate-in journal-stagger-1">
+          <section className="relative ">
             <h3 className="journal-section-label mb-3">Calendar</h3>
             <JournalCalendar
               selectedDate={selectedDate}
@@ -1152,7 +1281,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           </section>
 
           {/* Day Context - Events & Tasks */}
-          <section className="relative opacity-0 journal-animate-in journal-stagger-2">
+          <section className="relative ">
             <h3 className="journal-section-label mb-3">
               {isToday ? "Today's Schedule" : 'Schedule'}
             </h3>
@@ -1169,7 +1298,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           </section>
 
           {/* AI Connections */}
-          <section className="relative opacity-0 journal-animate-in journal-stagger-3">
+          <section className="relative ">
             <h3 className="journal-section-label mb-3">Connected Thoughts</h3>
             <AIConnectionsPanel
               connections={aiConnections}
@@ -1189,6 +1318,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         isOpen={showTemplateSelector}
         onClose={() => setShowTemplateSelector(false)}
         onSelect={handleTemplateSelect}
+        isJournalContext
+        journalDefaultTemplateId={journalSettings.defaultTemplate}
+        onSetJournalDefault={setJournalDefaultTemplate}
       />
     </div>
   )
