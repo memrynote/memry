@@ -78,6 +78,31 @@ export const journalTags = sqliteTable(
 )
 
 // ============================================================================
+// Journal Properties Table
+// ============================================================================
+
+/**
+ * Properties for journal entries.
+ * Stores custom properties like mood, weather, location, etc.
+ */
+export const journalProperties = sqliteTable(
+  'journal_properties',
+  {
+    entryId: text('entry_id')
+      .notNull()
+      .references(() => journalCache.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    value: text('value').notNull(), // JSON-stringified value
+    type: text('type').notNull() // text, number, checkbox, date, select, multiselect, url, rating
+  },
+  (table) => [
+    primaryKey({ columns: [table.entryId, table.name] }),
+    index('idx_journal_props_entry').on(table.entryId),
+    index('idx_journal_props_name').on(table.name)
+  ]
+)
+
+// ============================================================================
 // Type Exports
 // ============================================================================
 
@@ -85,3 +110,5 @@ export type JournalCache = typeof journalCache.$inferSelect
 export type InsertJournalCache = typeof journalCache.$inferInsert
 export type JournalTag = typeof journalTags.$inferSelect
 export type InsertJournalTag = typeof journalTags.$inferInsert
+export type JournalProperty = typeof journalProperties.$inferSelect
+export type InsertJournalProperty = typeof journalProperties.$inferInsert

@@ -5,14 +5,16 @@
  * @module db/queries/journal
  */
 
-import { eq, desc, like, sql, count } from 'drizzle-orm'
+import { eq, desc, like, sql, count, and } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   journalCache,
   journalTags,
+  journalProperties,
   type JournalCache,
   type InsertJournalCache,
-  type InsertJournalTag
+  type InsertJournalTag,
+  type InsertJournalProperty
 } from '../schema/journal-cache'
 import * as schema from '../schema'
 
@@ -206,6 +208,109 @@ export function getAllJournalTags(db: DrizzleDb): { tag: string; count: number }
     .groupBy(journalTags.tag)
     .orderBy(desc(sql`COUNT(*)`))
     .all()
+}
+
+// ============================================================================
+// Properties Management
+// ============================================================================
+
+/**
+ * Get all properties for a journal entry.
+ */
+export function getJournalProperties(
+  db: DrizzleDb,
+  entryId: string
+): { name: string; value: unknown; type: string }[] {
+  const rows = db
+    .select()
+    .from(journalProperties)
+    .where(eq(journalProperties.entryId, entryId))
+    .all()
+
+  return rows.map((r) => ({
+    name: r.name,
+    value: JSON.parse(r.value),
+    type: r.type
+  }))
+}
+
+/**
+ * Set all properties for a journal entry (replaces existing).
+ */
+export function setJournalProperties(
+  db: DrizzleDb,
+  entryId: string,
+  properties: Record<string, unknown>
+): void {
+  // Delete existing properties
+  db.delete(journalProperties).where(eq(journalProperties.entryId, entryId)).run()
+
+  // Insert new properties
+  const entries = Object.entries(properties)
+  if (entries.length > 0) {
+    const propRows: InsertJournalProperty[] = entries.map(([name, value]) => ({
+      entryId,
+      name,
+      value: JSON.stringify(value),
+      type: inferPropertyType(value)
+    }))
+    db.insert(journalProperties).values(propRows).run()
+  }
+}
+
+/**
+ * Update a single property for a journal entry.
+ */
+export function updateJournalProperty(
+  db: DrizzleDb,
+  entryId: string,
+  name: string,
+  value: unknown
+): void {
+  const existing = db
+    .select()
+    .from(journalProperties)
+    .where(and(eq(journalProperties.entryId, entryId), eq(journalProperties.name, name)))
+    .get()
+
+  if (existing) {
+    db.update(journalProperties)
+      .set({ value: JSON.stringify(value), type: inferPropertyType(value) })
+      .where(and(eq(journalProperties.entryId, entryId), eq(journalProperties.name, name)))
+      .run()
+  } else {
+    db.insert(journalProperties)
+      .values({
+        entryId,
+        name,
+        value: JSON.stringify(value),
+        type: inferPropertyType(value)
+      })
+      .run()
+  }
+}
+
+/**
+ * Remove a property from a journal entry.
+ */
+export function removeJournalProperty(db: DrizzleDb, entryId: string, name: string): void {
+  db.delete(journalProperties)
+    .where(and(eq(journalProperties.entryId, entryId), eq(journalProperties.name, name)))
+    .run()
+}
+
+/**
+ * Infer property type from value.
+ */
+function inferPropertyType(value: unknown): string {
+  if (typeof value === 'boolean') return 'checkbox'
+  if (typeof value === 'number') return 'number'
+  if (Array.isArray(value)) return 'multiselect'
+  if (typeof value === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}/.test(value)) return 'date'
+    if (/^https?:\/\//.test(value)) return 'url'
+  }
+  return 'text'
 }
 
 // ============================================================================

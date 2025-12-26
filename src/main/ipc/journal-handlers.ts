@@ -45,7 +45,9 @@ import {
   setJournalTags,
   getJournalTags,
   getAllJournalTags,
-  getJournalStreak
+  getJournalStreak,
+  getJournalProperties,
+  setJournalProperties
 } from '@shared/db/queries/journal'
 import { getTasksByDueDate, countOverdueTasksBeforeDate } from '@shared/db/queries/tasks'
 import { getIndexDatabase, getDatabase } from '../database'
@@ -82,6 +84,22 @@ export function registerJournalHandlers(): void {
     createValidatedHandler(GetEntryInputSchema, async (input): Promise<JournalEntry | null> => {
       // Read from file (source of truth)
       const entry = await readJournalEntry(input.date)
+      if (!entry) return null
+
+      // Load properties from cache
+      const db = getIndexDatabase()
+      const cached = getJournalEntryByDate(db, input.date)
+      if (cached) {
+        const properties = getJournalProperties(db, cached.id)
+        if (properties.length > 0) {
+          const propsRecord: Record<string, unknown> = {}
+          for (const prop of properties) {
+            propsRecord[prop.name] = prop.value
+          }
+          entry.properties = propsRecord
+        }
+      }
+
       return entry
     })
   )
@@ -110,6 +128,12 @@ export function registerJournalHandlers(): void {
       // Set tags in cache
       if (entry.tags.length > 0) {
         setJournalTags(db, entry.id, entry.tags)
+      }
+
+      // Set properties in cache
+      if (input.properties && Object.keys(input.properties).length > 0) {
+        setJournalProperties(db, entry.id, input.properties)
+        entry.properties = input.properties
       }
 
       // Emit event
@@ -167,6 +191,13 @@ export function registerJournalHandlers(): void {
           }
         }
 
+        // Set properties if provided
+        if (input.properties && Object.keys(input.properties).length > 0) {
+          const entryId = cached?.id ?? entry.id
+          setJournalProperties(db, entryId, input.properties)
+          entry.properties = input.properties
+        }
+
         emitJournalEvent(JournalChannels.events.ENTRY_CREATED, {
           date: entry.date,
           entry
@@ -205,6 +236,16 @@ export function registerJournalHandlers(): void {
         if (entry.tags.length > 0) {
           setJournalTags(db, entry.id, entry.tags)
         }
+      }
+
+      // Update properties if provided
+      if (input.properties !== undefined) {
+        const entryId = cached?.id ?? entry.id
+        setJournalProperties(db, entryId, input.properties)
+        entry.properties = input.properties
+      } else if (existing.properties) {
+        // Keep existing properties if not updating
+        entry.properties = existing.properties
       }
 
       // Emit event

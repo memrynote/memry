@@ -200,19 +200,33 @@ Electron application structure per plan.md:
 
 ---
 
-## Phase 11: User Story 9 - Journal Templates (Priority: P3)
+## Phase 11: User Story 9 - Journal Templates with Tags & Properties (Priority: P3)
 
-**Goal**: Provide templates for different entry types to help start writing
+**Goal**: Provide templates for different entry types, and add tags/properties support to journal entries
 
-**Independent Test**: Select a template when creating entry, verify template content appears in editor
+**Independent Test**: Select a template when creating entry, verify template content/tags/properties appear; verify tags and properties can be added/edited on entries
 
-### Implementation for User Story 9
+### Implementation for User Story 9 (Revised - Reuse Existing Infrastructure)
 
-- [ ] T055 [US9] Define template types in src/shared/contracts/journal-api.ts (JournalTemplate schema with id, name, content)
-- [ ] T056 [US9] Create default templates in src/renderer/src/data/journal-templates.ts (morning pages, reflection, gratitude)
-- [ ] T057 [US9] Create TemplateSelector component in src/renderer/src/components/journal/template-selector.tsx (dropdown/modal to pick template)
-- [ ] T058 [US9] Add template selection to empty entry state in src/renderer/src/pages/journal.tsx (show template options when entry is empty)
-- [ ] T059 [US9] Apply selected template content to editor in src/renderer/src/pages/journal.tsx (populate BlockNote with template)
+**Backend - Journal Properties Support**:
+
+- [x] T055-R [US9] Add journalProperties table schema in src/shared/db/schema/journal-cache.ts (entryId, name, value, type)
+- [x] T056-R [US9] Generate database migration for journalProperties with `pnpm db:generate:index`
+- [x] T057-R [US9] Update JournalEntry schema to include properties in src/shared/contracts/journal-api.ts
+- [x] T058-R [US9] Add journal properties query functions in src/shared/db/queries/journal.ts (get/set/update/remove)
+- [x] T059-R [US9] Update journal IPC handlers to handle properties in create/update/get operations
+
+**Frontend - Tags & Properties UI**:
+
+- [x] T060-R [US9] Create useJournalProperties hook in src/renderer/src/hooks/use-journal-properties.ts
+- [x] T061-R [US9] Add TagsRow component to JournalPage in src/renderer/src/pages/journal.tsx (reuse existing notes TagsRow)
+- [x] T062-R [US9] Add InfoSection (properties) component to JournalPage (reuse existing notes InfoSection)
+
+**Templates**:
+
+- [x] T063-R [US9] Add journal-specific built-in templates to src/main/vault/templates.ts (morning-pages, daily-reflection, gratitude-journal, weekly-review)
+- [x] T064-R [US9] Add template selection UI to empty journal entry in src/renderer/src/pages/journal.tsx (reuse existing TemplateSelector component)
+- [x] T065-R [US9] Implement template application for journal entries in src/renderer/src/pages/journal.tsx (apply content, tags, properties)
 
 **Checkpoint**: User Story 9 complete - users can start entries with predefined templates
 

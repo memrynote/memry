@@ -147,6 +147,126 @@ Brief description of the project...
 
 - 
 `
+  },
+  // ===========================================================================
+  // Journal Templates
+  // ===========================================================================
+  {
+    id: 'morning-pages',
+    name: 'Morning Pages',
+    description: 'Stream of consciousness writing to start your day',
+    icon: '🌅',
+    isBuiltIn: true,
+    tags: ['morning', 'reflection'],
+    properties: [
+      {
+        name: 'mood',
+        type: 'select',
+        value: 'neutral',
+        options: ['great', 'good', 'neutral', 'low', 'difficult']
+      }
+    ],
+    content: `# Morning Pages
+
+Write freely for the next few minutes. Don't worry about grammar, spelling, or making sense. Just let your thoughts flow...
+
+---
+
+`
+  },
+  {
+    id: 'daily-reflection',
+    name: 'Daily Reflection',
+    description: 'End-of-day reflection and gratitude',
+    icon: '🌆',
+    isBuiltIn: true,
+    tags: ['reflection', 'gratitude'],
+    properties: [
+      {
+        name: 'mood',
+        type: 'select',
+        value: 'neutral',
+        options: ['great', 'good', 'neutral', 'low', 'difficult']
+      },
+      { name: 'energy', type: 'rating', value: 3 }
+    ],
+    content: `# Daily Reflection
+
+## What went well today?
+
+- 
+
+## What could have gone better?
+
+- 
+
+## What am I grateful for?
+
+1. 
+2. 
+3. 
+
+## What did I learn?
+
+`
+  },
+  {
+    id: 'gratitude-journal',
+    name: 'Gratitude Journal',
+    description: 'Focus on what you appreciate',
+    icon: '🙏',
+    isBuiltIn: true,
+    tags: ['gratitude'],
+    properties: [],
+    content: `# Gratitude
+
+Today I am grateful for:
+
+1. 
+2. 
+3. 
+4. 
+5. 
+
+---
+
+*One moment that made me smile:*
+
+`
+  },
+  {
+    id: 'weekly-review',
+    name: 'Weekly Review',
+    description: 'Reflect on your week and plan ahead',
+    icon: '📅',
+    isBuiltIn: true,
+    tags: ['weekly', 'review', 'planning'],
+    properties: [{ name: 'weekNumber', type: 'number', value: 0 }],
+    content: `# Weekly Review
+
+## Wins This Week
+
+- 
+
+## Challenges Faced
+
+- 
+
+## Lessons Learned
+
+- 
+
+## Next Week's Focus
+
+1. 
+2. 
+3. 
+
+## Energy & Wellbeing Check
+
+How do I feel about this week overall?
+
+`
   }
 ]
 

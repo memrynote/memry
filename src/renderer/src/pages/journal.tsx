@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Sun, Sunrise, Sunset, Moon, Maximize2, Minimize2, Loader2 } from 'lucide-react'
+import { Sun, Sunrise, Sunset, Moon, Maximize2, Minimize2, Loader2, FileText } from 'lucide-react'
 import { useSidebar } from '@/components/ui/sidebar'
 import {
   JournalCalendar,
@@ -23,8 +23,19 @@ import {
 } from '@/components/journal'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
 import { BacklinksSection, type Backlink } from '@/components/note/backlinks'
+import { TemplateSelector } from '@/components/note/template-selector'
+import { TagsRow, type Tag } from '@/components/note/tags-row'
+import {
+  InfoSection,
+  type Property,
+  type NewProperty,
+  type PropertyType
+} from '@/components/note/info-section'
 import { OutlineInfoPanel, type HeadingItem } from '@/components/shared'
 import { useActiveHeading } from '@/hooks/use-active-heading'
+import { useNoteTags } from '@/hooks/use-notes'
+import { useJournalProperties } from '@/hooks/use-journal-properties'
+import { useTemplates } from '@/hooks/use-templates'
 import { Button } from '@/components/ui/button'
 import {
   formatDateToISO,
@@ -48,6 +59,7 @@ import {
 } from '@/hooks/use-journal'
 import { tasksService } from '@/services/tasks-service'
 import { parseConnectionDate } from '@/services/ai-connections-service'
+import { journalService } from '@/services/journal-service'
 
 // =============================================================================
 // CONSTANTS
@@ -156,11 +168,30 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     error: entryError,
     isSaving,
     isDirty,
-    updateContent
+    updateContent,
+    updateTags
   } = useJournalEntry(selectedDate)
 
   // Day context hook - loads tasks for selected date
   const { tasks: dayTasks, overdueCount } = useDayContext(selectedDate)
+
+  // Tags hook - get available tags from the system
+  const { tags: allAvailableTags } = useNoteTags()
+
+  // Properties hook - manage journal entry properties
+  const {
+    properties: backendProperties,
+    updateProperty: updateBackendProperty,
+    addProperty: addBackendProperty,
+    removeProperty: removeBackendProperty
+  } = useJournalProperties(entry?.date ?? null, entry?.properties)
+
+  // State for InfoSection expansion
+  const [isInfoExpanded, setIsInfoExpanded] = useState(false)
+
+  // Template selector state
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false)
+  const { getTemplate } = useTemplates({ autoLoad: false })
 
   // AI connections hook - analyzes entry content and finds related entries/notes
   const {
@@ -373,6 +404,68 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   }, [entry])
 
   // ==========================================================================
+  // TAGS & PROPERTIES COMPUTATIONS
+  // ==========================================================================
+
+  // Build a lookup map of tag colors from backend
+  const tagColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const t of allAvailableTags) {
+      map.set(t.tag, t.color)
+    }
+    return map
+  }, [allAvailableTags])
+
+  // Convert entry tags to Tag[] format for TagsRow
+  const journalTags: Tag[] = useMemo(() => {
+    return (entry?.tags || []).map((tagName) => ({
+      id: tagName,
+      name: tagName,
+      color: tagColorMap.get(tagName) ?? 'stone'
+    }))
+  }, [entry?.tags, tagColorMap])
+
+  // Convert available tags to Tag[] format
+  const availableTags: Tag[] = useMemo(() => {
+    return allAvailableTags.map((t) => ({
+      id: t.tag,
+      name: t.tag,
+      color: t.color
+    }))
+  }, [allAvailableTags])
+
+  // Recent tags for quick access
+  const recentTags = useMemo(() => {
+    return availableTags.slice(0, 4)
+  }, [availableTags])
+
+  // Type mapping for backend PropertyValue to UI Property
+  const mapPropertyType = useCallback((backendType: string): PropertyType => {
+    const typeMap: Record<string, PropertyType> = {
+      text: 'text',
+      number: 'number',
+      checkbox: 'checkbox',
+      date: 'date',
+      select: 'select',
+      multiselect: 'multiSelect',
+      url: 'url',
+      rating: 'rating'
+    }
+    return typeMap[backendType] ?? 'text'
+  }, [])
+
+  // Convert backend properties to UI format
+  const properties: Property[] = useMemo(() => {
+    return backendProperties.map((prop) => ({
+      id: prop.name,
+      name: prop.name,
+      type: mapPropertyType(prop.type),
+      value: prop.value,
+      isCustom: true
+    }))
+  }, [backendProperties, mapPropertyType])
+
+  // ==========================================================================
   // NAVIGATION CALLBACKS
   // ==========================================================================
 
@@ -471,6 +564,156 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       }))
     )
   }, [])
+
+  // ==========================================================================
+  // TAG HANDLERS
+  // ==========================================================================
+
+  const handleAddTag = useCallback(
+    (tagId: string) => {
+      const tagToAdd = availableTags.find((t) => t.id === tagId)
+      if (tagToAdd && entry && !entry.tags.includes(tagToAdd.name)) {
+        const newTags = [...entry.tags, tagToAdd.name]
+        updateTags(newTags)
+      }
+    },
+    [availableTags, entry, updateTags]
+  )
+
+  const handleCreateTag = useCallback(
+    (name: string, _color: string) => {
+      if (entry && !entry.tags.includes(name)) {
+        const newTags = [...entry.tags, name]
+        updateTags(newTags)
+      }
+    },
+    [entry, updateTags]
+  )
+
+  const handleRemoveTag = useCallback(
+    (tagId: string) => {
+      if (entry) {
+        const newTags = entry.tags.filter((t) => t !== tagId)
+        updateTags(newTags)
+      }
+    },
+    [entry, updateTags]
+  )
+
+  // ==========================================================================
+  // PROPERTY HANDLERS
+  // ==========================================================================
+
+  // Default values for property types when creating new properties
+  const getDefaultValueForType = useCallback((type: PropertyType): unknown => {
+    switch (type) {
+      case 'checkbox':
+        return false
+      case 'number':
+      case 'rating':
+        return 0
+      case 'multiSelect':
+        return []
+      case 'date':
+        return null
+      default:
+        return ''
+    }
+  }, [])
+
+  const handlePropertyChange = useCallback(
+    async (propertyId: string, value: unknown) => {
+      try {
+        await updateBackendProperty(propertyId, value)
+      } catch (err) {
+        console.error('[JournalPage] Failed to update property:', err)
+      }
+    },
+    [updateBackendProperty]
+  )
+
+  const handleAddProperty = useCallback(
+    async (newProp: NewProperty) => {
+      const defaultValue = getDefaultValueForType(newProp.type)
+      try {
+        await addBackendProperty(newProp.name, defaultValue)
+      } catch (err) {
+        console.error('[JournalPage] Failed to add property:', err)
+      }
+    },
+    [addBackendProperty, getDefaultValueForType]
+  )
+
+  const handleDeleteProperty = useCallback(
+    async (propertyId: string) => {
+      try {
+        await removeBackendProperty(propertyId)
+      } catch (err) {
+        console.error('[JournalPage] Failed to delete property:', err)
+      }
+    },
+    [removeBackendProperty]
+  )
+
+  // ==========================================================================
+  // TEMPLATE HANDLERS
+  // ==========================================================================
+
+  const handleTemplateSelect = useCallback(
+    async (templateId: string | null) => {
+      setShowTemplateSelector(false)
+
+      if (!templateId || templateId === 'blank') {
+        // User selected blank template or cancelled - create empty entry
+        try {
+          await journalService.createEntry({ date: selectedDate, content: '' })
+          // Force editor remount to show the new entry
+          lastLoadedDateRef.current = null
+          setEditorLoadCount((c) => c + 1)
+        } catch (err) {
+          console.error('[JournalPage] Failed to create blank entry:', err)
+        }
+        return
+      }
+
+      // Get the full template
+      const template = await getTemplate(templateId)
+      if (!template) {
+        console.error('[JournalPage] Template not found:', templateId)
+        return
+      }
+
+      // Apply template: replace {{title}} placeholder with the date
+      const parts = formatDateParts(selectedDate)
+      const dateTitle = `${parts.month} ${parts.day}, ${parts.year}`
+      const content = template.content.replace(/\{\{title\}\}/g, dateTitle)
+
+      // Convert template properties array to record
+      const properties: Record<string, unknown> = {}
+      if (template.properties) {
+        for (const prop of template.properties) {
+          properties[prop.name] = prop.value
+        }
+      }
+
+      try {
+        // Create the journal entry with template content, tags, and properties
+        await journalService.createEntry({
+          date: selectedDate,
+          content,
+          tags: template.tags ?? [],
+          properties
+        })
+
+        // Force editor remount to show the new content
+        lastLoadedDateRef.current = null
+        setEditorLoadCount((c) => c + 1)
+      } catch (err) {
+        console.error('[JournalPage] Failed to apply template:', err)
+      }
+    },
+    [selectedDate, getTemplate]
+  )
 
   // Handle task completion toggle from DayContextSidebar
   const handleTaskToggle = useCallback(
@@ -682,6 +925,75 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             {viewState.type === 'day' && (
               /* Journal Editor - Main Writing Area (BlockNote) + Backlinks */
               <>
+                {/* Template Prompt - Show when there's no entry and not loading */}
+                {!isEntryLoading && !entry && !focusMode && (
+                  <div className="mb-6 opacity-0 journal-animate-in journal-stagger-2">
+                    <button
+                      onClick={() => setShowTemplateSelector(true)}
+                      className={cn(
+                        'w-full flex items-center gap-3 px-4 py-3 rounded-lg',
+                        'border border-dashed border-amber-300/50 dark:border-amber-700/50',
+                        'bg-gradient-to-r from-amber-50/50 to-orange-50/30',
+                        'dark:from-amber-950/20 dark:to-orange-950/10',
+                        'hover:border-amber-400/60 dark:hover:border-amber-600/60',
+                        'hover:from-amber-50/70 hover:to-orange-50/50',
+                        'dark:hover:from-amber-950/30 dark:hover:to-orange-950/20',
+                        'transition-all duration-200',
+                        'text-left group'
+                      )}
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/30 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/30 shadow-sm">
+                        <FileText className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                          Start with a template
+                        </span>
+                        <p className="text-xs text-amber-600/70 dark:text-amber-400/60 mt-0.5">
+                          Morning pages, daily reflection, gratitude journal, and more
+                        </p>
+                      </div>
+                      <span className="text-xs text-amber-500/60 dark:text-amber-400/50 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
+                        Choose template
+                      </span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Tags Section - Hidden in focus mode */}
+                {!focusMode && entry && (
+                  <div
+                    className="mb-4 opacity-0 journal-animate-in journal-stagger-2"
+                    style={{ paddingLeft: '24px' }}
+                  >
+                    <TagsRow
+                      tags={journalTags}
+                      availableTags={availableTags}
+                      recentTags={recentTags}
+                      onAddTag={handleAddTag}
+                      onCreateTag={handleCreateTag}
+                      onRemoveTag={handleRemoveTag}
+                    />
+                  </div>
+                )}
+
+                {/* Properties Section - Hidden in focus mode */}
+                {!focusMode && entry && (
+                  <div
+                    className="mb-4 opacity-0 journal-animate-in journal-stagger-2"
+                    style={{ paddingLeft: '24px' }}
+                  >
+                    <InfoSection
+                      properties={properties}
+                      isExpanded={isInfoExpanded}
+                      onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
+                      onPropertyChange={handlePropertyChange}
+                      onAddProperty={handleAddProperty}
+                      onDeleteProperty={handleDeleteProperty}
+                    />
+                  </div>
+                )}
+
                 <div
                   className={cn(
                     'editor-click-area min-h-[300px] relative',
@@ -871,6 +1183,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           </section>
         </div>
       </aside>
+
+      {/* Template Selector Dialog */}
+      <TemplateSelector
+        isOpen={showTemplateSelector}
+        onClose={() => setShowTemplateSelector(false)}
+        onSelect={handleTemplateSelect}
+      />
     </div>
   )
 }
