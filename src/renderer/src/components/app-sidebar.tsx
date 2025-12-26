@@ -1,24 +1,13 @@
-"use client"
+'use client'
 
-import * as React from "react"
-import { useMemo, useState } from "react"
-import {
-  AudioWaveform,
-  BookOpen,
-  Command,
-  GalleryVerticalEnd,
-  Home,
-  Inbox,
-  ListTodo,
-  Plus,
-  Search,
-} from "lucide-react"
+import * as React from 'react'
+import { useMemo, useState, useCallback } from 'react'
+import { BookOpen, Home, Inbox, ListTodo, Plus, Search } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { TeamSwitcher } from "@/components/team-switcher"
-import { VaultSwitcher } from "@/components/vault-switcher"
-import { TrafficLights } from "@/components/traffic-lights"
-import { Kbd, KbdGroup } from "@/components/ui/kbd"
+import { cn } from '@/lib/utils'
+import { VaultSwitcher } from '@/components/vault-switcher'
+import { TrafficLights } from '@/components/traffic-lights'
+import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import {
   Sidebar,
   SidebarContent,
@@ -30,30 +19,34 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
-  useSidebar,
-} from "@/components/ui/sidebar"
-import { SidebarSection } from "@/components/sidebar-section"
-import { NotesTree } from "@/components/notes-tree"
-import { useSidebarNavigation } from "@/hooks/use-sidebar-navigation"
-import type { SidebarItem, TabType } from "@/contexts/tabs/types"
-import type { AppPage } from "@/App"
+  useSidebar
+} from '@/components/ui/sidebar'
+import { SidebarSection } from '@/components/sidebar-section'
+import { NotesTree } from '@/components/notes-tree'
+import { SidebarTagList } from '@/components/sidebar/sidebar-tag-list'
+import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import type { SidebarItem, TabType } from '@/contexts/tabs/types'
+import type { AppPage } from '@/App'
+import type { BookmarkWithItem } from '@/hooks/use-bookmarks'
+import { BookmarkItemTypes } from '@shared/contracts/bookmarks-api'
 
 // Quick actions data with soft utility colors
 const quickActions = [
   {
-    title: "Search",
+    title: 'Search',
     icon: Search,
-    kbd: "⌘ P",
-    iconColor: "text-soft-slate",
-    action: "search" as const,
+    kbd: '⌘ P',
+    iconColor: 'text-soft-slate',
+    action: 'search' as const
   },
   {
-    title: "New",
+    title: 'New',
     icon: Plus,
-    kbd: "⌘ N",
-    iconColor: "text-soft-sage",
-    action: "new" as const,
-  },
+    kbd: '⌘ N',
+    iconColor: 'text-soft-sage',
+    action: 'new' as const
+  }
 ]
 
 // Main navigation data - now includes Tasks
@@ -63,70 +56,48 @@ const mainNav: {
   icon: typeof Inbox
   iconColor: string
 }[] = [
-    {
-      title: "Inbox",
-      page: "inbox",
-      icon: Inbox,
-      iconColor: "text-accent-cyan",
-    },
-    {
-      title: "Home",
-      page: "home",
-      icon: Home,
-      iconColor: "text-accent-green",
-    },
-    {
-      title: "Journal",
-      page: "journal",
-      icon: BookOpen,
-      iconColor: "text-accent-purple",
-    },
-    {
-      title: "Tasks",
-      page: "tasks",
-      icon: ListTodo,
-      iconColor: "text-accent-orange",
-    },
-  ]
+  {
+    title: 'Inbox',
+    page: 'inbox',
+    icon: Inbox,
+    iconColor: 'text-accent-cyan'
+  },
+  {
+    title: 'Home',
+    page: 'home',
+    icon: Home,
+    iconColor: 'text-accent-green'
+  },
+  {
+    title: 'Journal',
+    page: 'journal',
+    icon: BookOpen,
+    iconColor: 'text-accent-purple'
+  },
+  {
+    title: 'Tasks',
+    page: 'tasks',
+    icon: ListTodo,
+    iconColor: 'text-accent-orange'
+  }
+]
 
-// Team data
-const data = {
-  teams: [
-    {
-      name: "Kaan",
-      logo: GalleryVerticalEnd,
-      plan: "Enterprise",
-    },
-    {
-      name: "Acme Corp.",
-      logo: AudioWaveform,
-      plan: "Startup",
-    },
-    {
-      name: "Evil Corp.",
-      logo: Command,
-      plan: "Free",
-    },
-  ],
-}
-
-function SidebarHeaderContent({ teams }: { teams: typeof data.teams }) {
+function SidebarHeaderContent() {
   const { state } = useSidebar()
-  const isCollapsed = state === "collapsed"
+  const isCollapsed = state === 'collapsed'
 
   return (
     <SidebarHeader>
       {/* Drag region + Traffic lights for macOS */}
       <div
         className={cn(
-          "drag-region flex items-center h-8 shrink-0 transition-all duration-200",
-          isCollapsed ? "justify-center px-0" : "justify-start px-2"
+          'drag-region flex items-center h-8 shrink-0 transition-all duration-200',
+          isCollapsed ? 'justify-center px-0' : 'justify-start px-2'
         )}
       >
         <TrafficLights compact={isCollapsed} />
       </div>
       <VaultSwitcher />
-      {/* <TeamSwitcher teams={teams} /> */}
     </SidebarHeader>
   )
 }
@@ -137,18 +108,13 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   onOpenSearch?: () => void
 }
 
-export function AppSidebar({
-  currentPage,
-  viewCounts,
-  onOpenSearch,
-  ...props
-}: AppSidebarProps) {
+export function AppSidebar({ currentPage, viewCounts, onOpenSearch, ...props }: AppSidebarProps) {
   // State to hold action buttons from NotesTree
   const [notesActions, setNotesActions] = useState<React.ReactNode>(null)
 
   // Calculate today's tasks count for Tasks badge in sidebar
   const todayTasksCount = useMemo(() => {
-    return viewCounts["today"] || 0
+    return viewCounts['today'] || 0
   }, [viewCounts])
 
   // Tab navigation hook
@@ -159,31 +125,62 @@ export function AppSidebar({
 
     // Map page to tab type and title
     const pageToTabType: Record<AppPage, TabType> = {
-      inbox: "inbox",
-      home: "home",
-      journal: "journal",
-      tasks: "tasks", // New unified tasks tab type
+      inbox: 'inbox',
+      home: 'home',
+      journal: 'journal',
+      tasks: 'tasks' // New unified tasks tab type
     }
     const pageToTitle: Record<AppPage, string> = {
-      inbox: "Inbox",
-      home: "Home",
-      journal: "Journal",
-      tasks: "Tasks",
+      inbox: 'Inbox',
+      home: 'Home',
+      journal: 'Journal',
+      tasks: 'Tasks'
     }
 
     // Open as tab in active pane
     const item: SidebarItem = {
       type: pageToTabType[page],
       title: pageToTitle[page],
-      path: `/${page}`,
+      path: `/${page}`
     }
     openSidebarItem(item)
   }
 
+  // Handle tag click - filter notes by tag
+  const handleTagClick = useCallback((tag: string) => {
+    // TODO: Implement tag filtering - for now, open Home with tag filter
+    // This could open a search results view or filter the current view
+    console.log('Tag clicked:', tag)
+  }, [])
+
+  // Handle bookmark click - navigate to bookmarked item
+  const handleBookmarkClick = useCallback(
+    (bookmark: BookmarkWithItem) => {
+      // Map bookmark item type to tab type
+      const itemTypeToTabType: Record<string, TabType> = {
+        [BookmarkItemTypes.NOTE]: 'note',
+        [BookmarkItemTypes.JOURNAL]: 'journal',
+        [BookmarkItemTypes.TASK]: 'tasks'
+      }
+
+      const tabType = itemTypeToTabType[bookmark.itemType] || 'note'
+
+      // Open the bookmarked item in a tab
+      const item: SidebarItem = {
+        type: tabType,
+        title: bookmark.itemTitle || 'Untitled',
+        path: bookmark.itemMeta?.path || `/${bookmark.itemType}/${bookmark.itemId}`,
+        entityId: bookmark.itemId
+      }
+      openSidebarItem(item)
+    },
+    [openSidebarItem]
+  )
+
   return (
     <>
       <Sidebar collapsible="icon" {...props}>
-        <SidebarHeaderContent teams={data.teams} />
+        <SidebarHeaderContent />
         <SidebarContent>
           {/* Quick Actions: Search & New */}
           <SidebarGroup>
@@ -192,9 +189,9 @@ export function AppSidebar({
                 <SidebarMenuItem key={action.title}>
                   <SidebarMenuButton
                     tooltip={action.title}
-                    onClick={action.action === "search" ? onOpenSearch : undefined}
+                    onClick={action.action === 'search' ? onOpenSearch : undefined}
                   >
-                    <action.icon className={cn("size-4", action.iconColor)} />
+                    <action.icon className={cn('size-4', action.iconColor)} />
                     <span>{action.title}</span>
                     <KbdGroup className="ml-auto">
                       <Kbd>{action.kbd}</Kbd>
@@ -217,11 +214,11 @@ export function AppSidebar({
                     isActive={currentPage === item.page}
                     onClick={handleNavClick(item.page)}
                   >
-                    <item.icon className={cn("size-4", item.iconColor)} />
+                    <item.icon className={cn('size-4', item.iconColor)} />
                     <span>{item.title}</span>
                   </SidebarMenuButton>
                   {/* Show today's task count badge for Tasks */}
-                  {item.page === "tasks" && todayTasksCount > 0 && (
+                  {item.page === 'tasks' && todayTasksCount > 0 && (
                     <SidebarMenuBadge>{todayTasksCount}</SidebarMenuBadge>
                   )}
                 </SidebarMenuItem>
@@ -231,8 +228,23 @@ export function AppSidebar({
 
           <SidebarSeparator className="w-auto!" />
 
+          {/* TAGS Section - Collapsible */}
+          <SidebarSection id="tags" label="Tags" defaultExpanded={false}>
+            <SidebarTagList maxVisible={6} onTagClick={handleTagClick} />
+          </SidebarSection>
+
+          {/* BOOKMARKS Section - Collapsible */}
+          <SidebarSection id="bookmarks" label="Bookmarks" defaultExpanded={false}>
+            <SidebarBookmarkList maxVisible={6} onBookmarkClick={handleBookmarkClick} />
+          </SidebarSection>
+
           {/* COLLECTIONS Section - Collapsible with actions */}
-          <SidebarSection id="collections" label="Collections" defaultExpanded={false} actions={notesActions}>
+          <SidebarSection
+            id="collections"
+            label="Collections"
+            defaultExpanded={false}
+            actions={notesActions}
+          >
             <NotesTree onActionsReady={setNotesActions} />
           </SidebarSection>
         </SidebarContent>
