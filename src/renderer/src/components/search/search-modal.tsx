@@ -10,7 +10,7 @@ import { SearchResultItem } from './search-result-item'
 export interface SearchModalProps {
   isOpen: boolean
   onClose: () => void
-  onSelectNote: (noteId: string) => void
+  onSelectNote: (noteId: string, path: string) => void
 }
 
 export function SearchModal({ isOpen, onClose, onSelectNote }: SearchModalProps) {
@@ -47,19 +47,25 @@ export function SearchModal({ isOpen, onClose, onSelectNote }: SearchModalProps)
   }, [selectedIndex, itemCount])
 
   // Handle selecting a recent search
-  const handleSelectRecent = useCallback((recentQuery: string) => {
-    setQuery(recentQuery)
-    setSelectedIndex(0)
-  }, [setQuery])
+  const handleSelectRecent = useCallback(
+    (recentQuery: string) => {
+      setQuery(recentQuery)
+      setSelectedIndex(0)
+    },
+    [setQuery]
+  )
 
   // Handle selecting a note (adds to recent)
-  const handleSelect = useCallback((noteId: string) => {
-    if (query.trim()) {
-      addRecent(query.trim())
-    }
-    onSelectNote(noteId)
-    onClose()
-  }, [query, addRecent, onSelectNote, onClose])
+  const handleSelect = useCallback(
+    (noteId: string, path: string) => {
+      if (query.trim()) {
+        addRecent(query.trim())
+      }
+      onSelectNote(noteId, path)
+      onClose()
+    },
+    [query, addRecent, onSelectNote, onClose]
+  )
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
@@ -78,7 +84,7 @@ export function SearchModal({ isOpen, onClose, onSelectNote }: SearchModalProps)
           if (showRecent && recent[selectedIndex]) {
             handleSelectRecent(recent[selectedIndex])
           } else if (notes[selectedIndex]) {
-            handleSelect(notes[selectedIndex].id)
+            handleSelect(notes[selectedIndex].id, notes[selectedIndex].path)
           }
           break
         case 'Escape':
@@ -111,9 +117,7 @@ export function SearchModal({ isOpen, onClose, onSelectNote }: SearchModalProps)
             className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 h-12 text-base"
             aria-label="Search notes"
           />
-          {isLoading && (
-            <Loader2 className="size-4 text-muted-foreground animate-spin shrink-0" />
-          )}
+          {isLoading && <Loader2 className="size-4 text-muted-foreground animate-spin shrink-0" />}
         </div>
 
         {/* Results */}
@@ -145,9 +149,10 @@ export function SearchModal({ isOpen, onClose, onSelectNote }: SearchModalProps)
                     className={`
                       w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-left text-sm
                       transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring
-                      ${index === selectedIndex
-                        ? 'bg-accent text-accent-foreground'
-                        : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                      ${
+                        index === selectedIndex
+                          ? 'bg-accent text-accent-foreground'
+                          : 'hover:bg-muted text-muted-foreground hover:text-foreground'
                       }
                     `}
                     role="option"
@@ -161,7 +166,8 @@ export function SearchModal({ isOpen, onClose, onSelectNote }: SearchModalProps)
             )}
 
             {/* Search Results */}
-            {!showRecent && notes.length > 0 && (
+            {!showRecent &&
+              notes.length > 0 &&
               notes.map((note, index) => (
                 <SearchResultItem
                   key={note.id}
@@ -171,10 +177,9 @@ export function SearchModal({ isOpen, onClose, onSelectNote }: SearchModalProps)
                   snippet={note.snippet}
                   tags={note.tags}
                   isSelected={index === selectedIndex}
-                  onClick={() => handleSelect(note.id)}
+                  onClick={() => handleSelect(note.id, note.path)}
                 />
-              ))
-            )}
+              ))}
 
             {/* No Results */}
             {!showRecent && query.trim() && notes.length === 0 && !isLoading && (
@@ -199,12 +204,21 @@ export function SearchModal({ isOpen, onClose, onSelectNote }: SearchModalProps)
         {(notes.length > 0 || showRecent) && (
           <div className="flex items-center justify-between px-3 py-2 border-t text-xs text-muted-foreground bg-muted/30">
             <div className="flex items-center gap-3">
-              <span><kbd className="px-1.5 py-0.5 rounded bg-muted">↑↓</kbd> navigate</span>
-              <span><kbd className="px-1.5 py-0.5 rounded bg-muted">↵</kbd> {showRecent ? 'search' : 'open'}</span>
-              <span><kbd className="px-1.5 py-0.5 rounded bg-muted">esc</kbd> close</span>
+              <span>
+                <kbd className="px-1.5 py-0.5 rounded bg-muted">↑↓</kbd> navigate
+              </span>
+              <span>
+                <kbd className="px-1.5 py-0.5 rounded bg-muted">↵</kbd>{' '}
+                {showRecent ? 'search' : 'open'}
+              </span>
+              <span>
+                <kbd className="px-1.5 py-0.5 rounded bg-muted">esc</kbd> close
+              </span>
             </div>
             {!showRecent && notes.length > 0 && (
-              <span>{notes.length} result{notes.length !== 1 ? 's' : ''}</span>
+              <span>
+                {notes.length} result{notes.length !== 1 ? 's' : ''}
+              </span>
             )}
           </div>
         )}

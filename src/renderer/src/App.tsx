@@ -183,20 +183,41 @@ const AppContent = ({
   useSearchShortcut(() => onSearchOpenChange(true))
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
 
-  // Handle search result selection - open note in tab
+  // Handle search result selection - open note or journal in appropriate tab
   const handleSelectSearchResult = useCallback(
-    (noteId: string) => {
-      openTab({
-        type: 'note',
-        title: 'Note', // Will be updated when note loads
-        icon: 'file-text',
-        path: `/note/${noteId}`,
-        entityId: noteId,
-        isPinned: false,
-        isModified: false,
-        isPreview: true,
-        isDeleted: false
-      })
+    (noteId: string, path: string) => {
+      // Check if this is a journal entry (pattern: journal/YYYY-MM-DD.md)
+      const journalDateMatch = path.match(/^journal\/(\d{4}-\d{2}-\d{2})\.md$/)
+
+      if (journalDateMatch) {
+        // Open journal tab with the specific date
+        const date = journalDateMatch[1]
+        openTab({
+          type: 'journal',
+          title: 'Journal',
+          icon: 'book-open',
+          path: '/journal',
+          entityId: undefined,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false,
+          viewState: { date }
+        })
+      } else {
+        // Regular note - open in note tab
+        openTab({
+          type: 'note',
+          title: 'Note', // Will be updated when note loads
+          icon: 'file-text',
+          path: `/note/${noteId}`,
+          entityId: noteId,
+          isPinned: false,
+          isModified: false,
+          isPreview: true,
+          isDeleted: false
+        })
+      }
       onSearchOpenChange(false)
     },
     [openTab, onSearchOpenChange]

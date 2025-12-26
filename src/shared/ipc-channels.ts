@@ -392,3 +392,47 @@ export type SettingsInvokeChannel =
   (typeof SettingsChannels.invoke)[keyof typeof SettingsChannels.invoke]
 export type SettingsEventChannel =
   (typeof SettingsChannels.events)[keyof typeof SettingsChannels.events]
+
+// ============================================================================
+// Bookmarks Channels
+// ============================================================================
+
+export const BookmarksChannels = {
+  invoke: {
+    /** Create a new bookmark */
+    CREATE: 'bookmarks:create',
+    /** Delete a bookmark by ID */
+    DELETE: 'bookmarks:delete',
+    /** Get a bookmark by ID */
+    GET: 'bookmarks:get',
+    /** List bookmarks with optional filters */
+    LIST: 'bookmarks:list',
+    /** Check if an item is bookmarked */
+    IS_BOOKMARKED: 'bookmarks:is-bookmarked',
+    /** Toggle bookmark status (create or delete) */
+    TOGGLE: 'bookmarks:toggle',
+    /** Reorder bookmarks */
+    REORDER: 'bookmarks:reorder',
+    /** List bookmarks by item type */
+    LIST_BY_TYPE: 'bookmarks:list-by-type',
+    /** Get bookmark for a specific item */
+    GET_BY_ITEM: 'bookmarks:get-by-item',
+    /** Delete multiple bookmarks */
+    BULK_DELETE: 'bookmarks:bulk-delete',
+    /** Create multiple bookmarks */
+    BULK_CREATE: 'bookmarks:bulk-create'
+  },
+  events: {
+    /** Bookmark was created */
+    CREATED: 'bookmarks:created',
+    /** Bookmark was deleted */
+    DELETED: 'bookmarks:deleted',
+    /** Bookmarks were reordered */
+    REORDERED: 'bookmarks:reordered'
+  }
+} as const
+
+export type BookmarksInvokeChannel =
+  (typeof BookmarksChannels.invoke)[keyof typeof BookmarksChannels.invoke]
+export type BookmarksEventChannel =
+  (typeof BookmarksChannels.events)[keyof typeof BookmarksChannels.events]

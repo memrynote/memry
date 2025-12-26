@@ -81,6 +81,7 @@ import {
 import { tasksService } from '@/services/tasks-service'
 import { parseConnectionDate } from '@/services/ai-connections-service'
 import { journalService } from '@/services/journal-service'
+import { useActiveTab } from '@/contexts/tabs'
 
 // =============================================================================
 // CONSTANTS
@@ -174,8 +175,12 @@ interface JournalPageProps {
 }
 
 export function JournalPage({ className }: JournalPageProps): React.JSX.Element {
+  const activeTab = useActiveTab()
   const today = getTodayString()
-  const [selectedDate, setSelectedDate] = useState(today)
+
+  // Get initial date from tab viewState (e.g., from search navigation) or default to today
+  const initialDate = (activeTab?.viewState?.date as string) || today
+  const [selectedDate, setSelectedDate] = useState(initialDate)
   const [focusMode, setFocusMode] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
@@ -343,8 +348,20 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Sync date when navigating from search (tab viewState changes externally)
+  // This effect fires when a user clicks a journal entry in search results,
+  // which updates the tab's viewState with the target date
+  useEffect(() => {
+    const tabDate = activeTab?.viewState?.date as string
+    if (tabDate && tabDate !== selectedDate) {
+      setSelectedDate(tabDate)
+      // Also update the local viewState to show day view for that date
+      setViewState({ type: 'day', date: tabDate })
+    }
+  }, [activeTab?.viewState?.date]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // View state for breadcrumb navigation
-  const [viewState, setViewState] = useState<JournalViewState>({ type: 'day', date: selectedDate })
+  const [viewState, setViewState] = useState<JournalViewState>({ type: 'day', date: initialDate })
 
   // Calculate if selected date is today
   const isToday = selectedDate === today

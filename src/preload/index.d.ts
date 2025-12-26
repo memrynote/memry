@@ -1091,6 +1091,92 @@ export interface JournalClientAPI {
   getStreak(): Promise<JournalStreak>
 }
 
+// Bookmark types
+export interface Bookmark {
+  id: string
+  itemType: string
+  itemId: string
+  position: number
+  createdAt: string
+}
+
+export interface BookmarkItemMeta {
+  path?: string
+  emoji?: string
+  tags?: string[]
+}
+
+export interface BookmarkWithItem extends Bookmark {
+  itemTitle: string | null
+  itemExists: boolean
+  itemMeta?: BookmarkItemMeta
+}
+
+export interface BookmarkListOptions {
+  itemType?: string
+  sortBy?: 'position' | 'createdAt'
+  sortOrder?: 'asc' | 'desc'
+  limit?: number
+  offset?: number
+}
+
+export interface BookmarkCreateResponse {
+  success: boolean
+  bookmark: Bookmark | null
+  error?: string
+}
+
+export interface BookmarkToggleResponse {
+  success: boolean
+  isBookmarked: boolean
+  bookmark: Bookmark | null
+  error?: string
+}
+
+export interface BookmarkListResponse {
+  bookmarks: BookmarkWithItem[]
+  total: number
+  hasMore: boolean
+}
+
+export interface BookmarkDeleteResponse {
+  success: boolean
+  error?: string
+}
+
+export interface BookmarkCreatedEvent {
+  bookmark: Bookmark
+}
+
+export interface BookmarkDeletedEvent {
+  id: string
+  itemType: string
+  itemId: string
+}
+
+export interface BookmarksReorderedEvent {
+  bookmarkIds: string[]
+}
+
+// Bookmarks client API interface
+export interface BookmarksClientAPI {
+  create(input: { itemType: string; itemId: string }): Promise<BookmarkCreateResponse>
+  delete(id: string): Promise<BookmarkDeleteResponse>
+  get(id: string): Promise<Bookmark | null>
+  list(options?: BookmarkListOptions): Promise<BookmarkListResponse>
+  isBookmarked(input: { itemType: string; itemId: string }): Promise<boolean>
+  toggle(input: { itemType: string; itemId: string }): Promise<BookmarkToggleResponse>
+  reorder(bookmarkIds: string[]): Promise<{ success: boolean; error?: string }>
+  listByType(itemType: string): Promise<BookmarkListResponse>
+  getByItem(input: { itemType: string; itemId: string }): Promise<Bookmark | null>
+  bulkDelete(
+    bookmarkIds: string[]
+  ): Promise<{ success: boolean; deletedCount: number; error?: string }>
+  bulkCreate(
+    items: Array<{ itemType: string; itemId: string }>
+  ): Promise<{ success: boolean; createdCount: number; error?: string }>
+}
+
 // Settings types
 export interface JournalSettings {
   defaultTemplate: string | null
@@ -1106,7 +1192,9 @@ export interface SettingsClientAPI {
   get(key: string): Promise<string | null>
   set(key: string, value: string): Promise<{ success: boolean; error?: string }>
   getJournalSettings(): Promise<JournalSettings>
-  setJournalSettings(settings: Partial<JournalSettings>): Promise<{ success: boolean; error?: string }>
+  setJournalSettings(
+    settings: Partial<JournalSettings>
+  ): Promise<{ success: boolean; error?: string }>
 }
 
 // Window controls API
@@ -1126,6 +1214,7 @@ interface API extends WindowAPI {
   templates: TemplatesClientAPI
   journal: JournalClientAPI
   settings: SettingsClientAPI
+  bookmarks: BookmarksClientAPI
   // Vault event subscriptions
   onVaultStatusChanged: (callback: (status: VaultStatus) => void) => () => void
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
@@ -1172,6 +1261,10 @@ interface API extends WindowAPI {
   onJournalExternalChange: (callback: (event: JournalExternalChangeEvent) => void) => () => void
   // Settings event subscriptions
   onSettingsChanged: (callback: (event: SettingsChangedEvent) => void) => () => void
+  // Bookmarks event subscriptions
+  onBookmarkCreated: (callback: (event: BookmarkCreatedEvent) => void) => () => void
+  onBookmarkDeleted: (callback: (event: BookmarkDeletedEvent) => void) => () => void
+  onBookmarksReordered: (callback: (event: BookmarksReorderedEvent) => void) => () => void
 }
 
 declare global {

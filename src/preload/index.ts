@@ -10,7 +10,8 @@ import {
   SavedFiltersChannels,
   TemplatesChannels,
   JournalChannels,
-  SettingsChannels
+  SettingsChannels,
+  BookmarksChannels
 } from '@shared/ipc-channels'
 
 // Custom APIs for renderer
@@ -397,6 +398,46 @@ const api = {
       ipcRenderer.invoke(SettingsChannels.invoke.SET_JOURNAL_SETTINGS, settings)
   },
 
+  // Bookmarks API
+  bookmarks: {
+    /** Create a new bookmark */
+    create: (input: { itemType: string; itemId: string }) =>
+      ipcRenderer.invoke(BookmarksChannels.invoke.CREATE, input),
+    /** Delete a bookmark by ID */
+    delete: (id: string) => ipcRenderer.invoke(BookmarksChannels.invoke.DELETE, id),
+    /** Get a bookmark by ID */
+    get: (id: string) => ipcRenderer.invoke(BookmarksChannels.invoke.GET, id),
+    /** List bookmarks with optional filters */
+    list: (options?: {
+      itemType?: string
+      sortBy?: 'position' | 'createdAt'
+      sortOrder?: 'asc' | 'desc'
+      limit?: number
+      offset?: number
+    }) => ipcRenderer.invoke(BookmarksChannels.invoke.LIST, options ?? {}),
+    /** Check if an item is bookmarked */
+    isBookmarked: (input: { itemType: string; itemId: string }) =>
+      ipcRenderer.invoke(BookmarksChannels.invoke.IS_BOOKMARKED, input),
+    /** Toggle bookmark status (create or delete) */
+    toggle: (input: { itemType: string; itemId: string }) =>
+      ipcRenderer.invoke(BookmarksChannels.invoke.TOGGLE, input),
+    /** Reorder bookmarks */
+    reorder: (bookmarkIds: string[]) =>
+      ipcRenderer.invoke(BookmarksChannels.invoke.REORDER, { bookmarkIds }),
+    /** List bookmarks by item type */
+    listByType: (itemType: string) =>
+      ipcRenderer.invoke(BookmarksChannels.invoke.LIST_BY_TYPE, itemType),
+    /** Get bookmark for a specific item */
+    getByItem: (input: { itemType: string; itemId: string }) =>
+      ipcRenderer.invoke(BookmarksChannels.invoke.GET_BY_ITEM, input),
+    /** Delete multiple bookmarks */
+    bulkDelete: (bookmarkIds: string[]) =>
+      ipcRenderer.invoke(BookmarksChannels.invoke.BULK_DELETE, { bookmarkIds }),
+    /** Create multiple bookmarks */
+    bulkCreate: (items: Array<{ itemType: string; itemId: string }>) =>
+      ipcRenderer.invoke(BookmarksChannels.invoke.BULK_CREATE, { items })
+  },
+
   // Event subscription helpers
   onVaultStatusChanged: (callback: (status: unknown) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, status: unknown): void => callback(status)
@@ -673,15 +714,39 @@ const api = {
   },
 
   // Settings event subscription helpers
-  onSettingsChanged: (
-    callback: (event: { key: string; value: unknown }) => void
-  ): (() => void) => {
+  onSettingsChanged: (callback: (event: { key: string; value: unknown }) => void): (() => void) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
       data: { key: string; value: unknown }
     ): void => callback(data)
     ipcRenderer.on(SettingsChannels.events.CHANGED, handler)
     return () => ipcRenderer.removeListener(SettingsChannels.events.CHANGED, handler)
+  },
+
+  // Bookmarks event subscription helpers
+  onBookmarkCreated: (callback: (event: { bookmark: unknown }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { bookmark: unknown }): void =>
+      callback(data)
+    ipcRenderer.on(BookmarksChannels.events.CREATED, handler)
+    return () => ipcRenderer.removeListener(BookmarksChannels.events.CREATED, handler)
+  },
+
+  onBookmarkDeleted: (
+    callback: (event: { id: string; itemType: string; itemId: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { id: string; itemType: string; itemId: string }
+    ): void => callback(data)
+    ipcRenderer.on(BookmarksChannels.events.DELETED, handler)
+    return () => ipcRenderer.removeListener(BookmarksChannels.events.DELETED, handler)
+  },
+
+  onBookmarksReordered: (callback: (event: { bookmarkIds: string[] }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { bookmarkIds: string[] }): void =>
+      callback(data)
+    ipcRenderer.on(BookmarksChannels.events.REORDERED, handler)
+    return () => ipcRenderer.removeListener(BookmarksChannels.events.REORDERED, handler)
   }
 }
 
