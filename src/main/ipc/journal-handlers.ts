@@ -31,8 +31,10 @@ import {
   writeJournalEntry,
   deleteJournalEntryFile,
   getJournalRelativePath,
-  extractPreview
+  extractPreview,
+  serializeJournalEntry
 } from '../vault/journal'
+import { maybeCreateSignificantSnapshot } from '../vault/notes'
 import {
   // Unified CRUD operations (using note_cache)
   insertNoteCache,
@@ -220,6 +222,34 @@ export function registerJournalHandlers(): void {
       // Merge updates
       const newContent = input.content ?? existing.content
       const newTags = input.tags ?? existing.tags
+
+      // Create snapshot before significant content changes (T111)
+      // Use the entry ID from cache or existing entry
+      const entryId = cached?.id ?? existing.id
+      if (input.content !== undefined && input.content !== existing.content) {
+        try {
+          // Create the current file content (before save) for snapshot
+          const currentFileContent = serializeJournalEntry(
+            {
+              id: existing.id,
+              date: existing.date,
+              created: existing.createdAt,
+              modified: existing.modifiedAt,
+              tags: existing.tags
+            },
+            existing.content
+          )
+          maybeCreateSignificantSnapshot(
+            entryId,
+            currentFileContent,
+            existing.content,
+            newContent,
+            `Journal - ${input.date}`
+          )
+        } catch (err) {
+          console.error('[Journal Snapshot] Failed to create snapshot:', err)
+        }
+      }
 
       // Write to file
       const entry = await writeJournalEntry(input.date, newContent, newTags)

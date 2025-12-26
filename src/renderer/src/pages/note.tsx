@@ -826,7 +826,15 @@ export function NotePage({ noteId }: NotePageProps) {
         onOpenChange={setIsVersionHistoryOpen}
         noteId={noteId}
         noteTitle={note.title}
-        onRestore={loadNote}
+        onRestore={() => {
+          // Clear any pending save to prevent overwriting restored content
+          if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current)
+            saveTimeoutRef.current = null
+          }
+          // Reload note with restored content
+          loadNote()
+        }}
       />
     </NoteLayout>
   )

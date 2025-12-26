@@ -69,6 +69,8 @@ export interface UseJournalEntryResult {
   saveNow: () => Promise<void>
   /** Reload the entry from server */
   reload: () => Promise<void>
+  /** Force reload from server, discarding any pending changes (for version restore) */
+  forceReload: () => Promise<void>
   /** Delete the entry */
   deleteEntry: () => Promise<boolean>
 }
@@ -299,6 +301,21 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     await refetch()
   }, [saveNow, refetch])
 
+  // Force reload entry (discard pending changes) - used after version restore
+  const forceReload = useCallback(async () => {
+    // Clear any pending save timer
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    // Discard pending changes
+    pendingContentRef.current = null
+    pendingTagsRef.current = null
+    setIsDirty(false)
+    // Force refetch from server
+    await refetch()
+  }, [refetch])
+
   // Delete entry
   const deleteEntry = useCallback(async (): Promise<boolean> => {
     try {
@@ -392,6 +409,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     updateTags,
     saveNow,
     reload,
+    forceReload,
     deleteEntry
   }
 }
