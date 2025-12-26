@@ -29,6 +29,13 @@
       "when": 1766683424698,
       "tag": "0003_wakeful_shinobi_shaw",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1766743885276,
+      "tag": "0004_light_rage",
+      "breakpoints": true
     }
   ]
 }

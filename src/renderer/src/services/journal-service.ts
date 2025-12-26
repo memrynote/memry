@@ -41,6 +41,7 @@ export const journalService: JournalClientAPI = {
     date: string
     content?: string
     tags?: string[]
+    properties?: Record<string, unknown>
   }): Promise<JournalEntry> => {
     return window.api.journal.createEntry(input)
   },
@@ -55,6 +56,7 @@ export const journalService: JournalClientAPI = {
     date: string
     content?: string
     tags?: string[]
+    properties?: Record<string, unknown>
   }): Promise<JournalEntry> => {
     return window.api.journal.updateEntry(input)
   },

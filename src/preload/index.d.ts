@@ -765,6 +765,7 @@ export interface JournalEntry {
   wordCount: number
   characterCount: number
   tags: string[]
+  properties?: Record<string, unknown>
   createdAt: string
   modifiedAt: string
 }
@@ -1060,8 +1061,18 @@ export interface TemplatesClientAPI {
 export interface JournalClientAPI {
   // Entry CRUD
   getEntry(date: string): Promise<JournalEntry | null>
-  createEntry(input: { date: string; content?: string; tags?: string[] }): Promise<JournalEntry>
-  updateEntry(input: { date: string; content?: string; tags?: string[] }): Promise<JournalEntry>
+  createEntry(input: {
+    date: string
+    content?: string
+    tags?: string[]
+    properties?: Record<string, unknown>
+  }): Promise<JournalEntry>
+  updateEntry(input: {
+    date: string
+    content?: string
+    tags?: string[]
+    properties?: Record<string, unknown>
+  }): Promise<JournalEntry>
   deleteEntry(date: string): Promise<{ success: boolean }>
 
   // Calendar & Views

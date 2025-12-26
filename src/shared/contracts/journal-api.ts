@@ -36,6 +36,7 @@ export const JournalEntrySchema = z.object({
   wordCount: z.number().int().nonnegative(),
   characterCount: z.number().int().nonnegative(),
   tags: z.array(z.string()),
+  properties: z.record(z.string(), z.unknown()).optional(), // Custom properties (mood, energy, etc.)
   createdAt: z.string(), // ISO timestamp
   modifiedAt: z.string() // ISO timestamp
 })
@@ -180,7 +181,8 @@ export type GetEntryOutput = z.infer<typeof GetEntryOutputSchema>
 export const CreateEntryInputSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
   content: z.string().default(''),
-  tags: z.array(z.string()).default([])
+  tags: z.array(z.string()).default([]),
+  properties: z.record(z.string(), z.unknown()).optional()
 })
 
 export type CreateEntryInput = z.infer<typeof CreateEntryInputSchema>
@@ -194,7 +196,8 @@ export type CreateEntryOutput = z.infer<typeof CreateEntryOutputSchema>
 export const UpdateEntryInputSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
   content: z.string().optional(),
-  tags: z.array(z.string()).optional()
+  tags: z.array(z.string()).optional(),
+  properties: z.record(z.string(), z.unknown()).optional()
 })
 
 export type UpdateEntryInput = z.infer<typeof UpdateEntryInputSchema>
