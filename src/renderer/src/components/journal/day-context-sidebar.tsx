@@ -100,10 +100,14 @@ export const DayContextSidebar = memo(function DayContextSidebar({
   }
 
   return (
-    <div className={cn('flex flex-col gap-4', className)}>
+    <div
+      className={cn('flex flex-col gap-4', className)}
+      role="complementary"
+      aria-label="Day context: tasks and schedule"
+    >
       {/* Schedule Section */}
       <ContextSection
-        icon={<Calendar className="size-4" />}
+        icon={<Calendar className="size-4" aria-hidden="true" />}
         title={isToday ? "Today's Schedule" : 'Schedule'}
         count={events.length}
         countLabel={events.length === 1 ? 'event' : 'events'}
@@ -112,7 +116,7 @@ export const DayContextSidebar = memo(function DayContextSidebar({
         isEmpty={events.length === 0}
         emptyMessage={getEventsEmptyMessage()}
       >
-        <div className="flex flex-col">
+        <div className="flex flex-col" role="list" aria-label="Schedule events">
           {events.map((event, index) => (
             <EventItem
               key={event.id}
@@ -126,7 +130,7 @@ export const DayContextSidebar = memo(function DayContextSidebar({
 
       {/* Tasks Section */}
       <ContextSection
-        icon={<CheckCircle2 className="size-4" />}
+        icon={<CheckCircle2 className="size-4" aria-hidden="true" />}
         title={isToday ? "Today's Tasks" : 'Tasks'}
         count={pendingTasks}
         countLabel="to do"
@@ -136,7 +140,7 @@ export const DayContextSidebar = memo(function DayContextSidebar({
         isEmpty={tasks.length === 0}
         emptyMessage={getTasksEmptyMessage()}
       >
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-0.5" role="list" aria-label="Tasks">
           {tasks.map((task) => (
             <TaskItem
               key={task.id}
@@ -187,6 +191,9 @@ function ContextSection({
   emptyMessage,
   children
 }: ContextSectionProps): React.JSX.Element {
+  const sectionId = `section-${title.replace(/\s+/g, '-').toLowerCase()}`
+  const contentId = `${sectionId}-content`
+
   return (
     <div className="rounded-lg border border-border/40 bg-card/50 overflow-hidden">
       {/* Header */}
@@ -198,6 +205,9 @@ function ContextSection({
           'hover:bg-muted/30 transition-colors',
           'text-left'
         )}
+        aria-expanded={isExpanded}
+        aria-controls={contentId}
+        id={sectionId}
       >
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground">{icon}</span>
@@ -236,7 +246,7 @@ function ContextSection({
 
       {/* Content */}
       {isExpanded && (
-        <div className="px-3 pb-3">
+        <div className="px-3 pb-3" id={contentId} role="region" aria-labelledby={sectionId}>
           {isEmpty ? (
             <p className="text-xs text-muted-foreground/70 py-2 text-center">{emptyMessage}</p>
           ) : (
@@ -331,6 +341,15 @@ function TaskItem({ task, onClick, onToggle }: TaskItemProps): React.JSX.Element
     }
   }
 
+  const getPriorityLabel = (priority?: string) => {
+    if (!priority || priority === 'none') return ''
+    return `, ${priority} priority`
+  }
+
+  const statusLabel = task.completed ? 'Completed' : 'Not completed'
+  const overdueLabel = task.isOverdue && !task.completed ? ', overdue' : ''
+  const ariaLabel = `${task.title}. ${statusLabel}${getPriorityLabel(task.priority)}${overdueLabel}`
+
   return (
     <div
       className={cn(
@@ -338,6 +357,7 @@ function TaskItem({ task, onClick, onToggle }: TaskItemProps): React.JSX.Element
         'hover:bg-muted/30 rounded-md transition-colors',
         'group'
       )}
+      role="listitem"
     >
       {/* Checkbox */}
       <button
@@ -346,11 +366,13 @@ function TaskItem({ task, onClick, onToggle }: TaskItemProps): React.JSX.Element
           onToggle?.()
         }}
         className="flex-shrink-0 p-0.5"
+        aria-label={`Mark "${task.title}" as ${task.completed ? 'not completed' : 'completed'}`}
+        aria-pressed={task.completed}
       >
         {task.completed ? (
-          <CheckCircle2 className="size-4 text-green-500" />
+          <CheckCircle2 className="size-4 text-green-500" aria-hidden="true" />
         ) : (
-          <Circle className={cn('size-4', getPriorityColor(task.priority))} />
+          <Circle className={cn('size-4', getPriorityColor(task.priority))} aria-hidden="true" />
         )}
       </button>
 
@@ -361,6 +383,7 @@ function TaskItem({ task, onClick, onToggle }: TaskItemProps): React.JSX.Element
           'flex-1 text-left text-sm truncate',
           task.completed ? 'text-muted-foreground line-through' : 'text-foreground'
         )}
+        aria-label={ariaLabel}
       >
         {task.title}
       </button>
@@ -378,7 +401,9 @@ function TaskItem({ task, onClick, onToggle }: TaskItemProps): React.JSX.Element
       )}
 
       {/* Overdue indicator */}
-      {task.isOverdue && !task.completed && <Clock className="size-3 text-red-500 flex-shrink-0" />}
+      {task.isOverdue && !task.completed && (
+        <Clock className="size-3 text-red-500 flex-shrink-0" aria-hidden="true" />
+      )}
     </div>
   )
 }

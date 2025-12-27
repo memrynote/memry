@@ -23,3 +23,6 @@ export * from './save-status'
 
 // Template Indicator
 export * from './default-template-indicator'
+
+// Error Boundary
+export * from './journal-error-boundary'

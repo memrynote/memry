@@ -61,6 +61,10 @@ export interface UseJournalEntryResult {
   isSaving: boolean
   /** Whether there are unsaved changes */
   isDirty: boolean
+  /** Error message if last save failed (e.g., disk full) */
+  saveError: string | null
+  /** Counter that increments when external updates are received (for editor remounting) */
+  externalUpdateCount: number
   /** Update the entry content (triggers auto-save) */
   updateContent: (content: string) => void
   /** Update the entry tags */
@@ -73,6 +77,10 @@ export interface UseJournalEntryResult {
   forceReload: () => Promise<void>
   /** Delete the entry */
   deleteEntry: () => Promise<boolean>
+  /** Retry the last failed save operation */
+  retrySave: () => Promise<void>
+  /** Dismiss the save error */
+  dismissSaveError: () => void
 }
 
 // =============================================================================
@@ -105,6 +113,8 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   // Local state for mutations
   const [isSaving, setIsSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [externalUpdateCount, setExternalUpdateCount] = useState(0)
 
   // Refs for pending changes and debounce timer
   const pendingContentRef = useRef<string | null>(null)
@@ -120,17 +130,45 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     isDirtyRef.current = isDirty
   }, [isDirty])
 
+  // Ref to track the previous date for save-before-navigation
+  const previousDateRef = useRef<string | null>(null)
+
   // Update current date ref when date changes
+  // IMPORTANT: This effect handles navigation by:
+  // 1. Saving any pending content for the OLD date (prevents data loss)
+  // 2. Clearing state for the new date
   useEffect(() => {
-    currentDateRef.current = date
-    // Clear pending changes when date changes
-    pendingContentRef.current = null
-    pendingTagsRef.current = null
-    setIsDirty(false)
+    const oldDate = previousDateRef.current
+    const pendingContent = pendingContentRef.current
+    const pendingTags = pendingTagsRef.current
+
+    // Clear the timer first
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current)
       saveTimerRef.current = null
     }
+
+    // If there are pending changes for the old date, save them before switching
+    if (oldDate && oldDate !== date && (pendingContent !== null || pendingTags !== null)) {
+      // Save pending content for the old date (fire-and-forget)
+      const saveInput: { date: string; content?: string; tags?: string[] } = { date: oldDate }
+      if (pendingContent !== null) saveInput.content = pendingContent
+      if (pendingTags !== null) saveInput.tags = pendingTags
+
+      // Perform save for the old date asynchronously using the service directly
+      journalService.updateEntry(saveInput).catch((err) => {
+        console.error(`[useJournalEntry] Failed to save pending changes for ${oldDate}:`, err)
+        // Note: We don't set save error here as we've already navigated away
+      })
+    }
+
+    // Update refs for the new date
+    currentDateRef.current = date
+    previousDateRef.current = date
+    pendingContentRef.current = null
+    pendingTagsRef.current = null
+    setIsDirty(false)
+    setSaveError(null) // Clear any save errors from previous date
   }, [date])
 
   // Main query for fetching journal entry
@@ -234,12 +272,24 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       // Only update state if we're still on the same date
       if (currentDateRef.current === currentDate) {
         setIsDirty(false)
+        setSaveError(null) // Clear any previous save error
         pendingContentRef.current = null
         pendingTagsRef.current = null
       }
     } catch (err) {
       // Keep the dirty state so user knows there's unsaved content
       console.error('Failed to save journal entry:', err)
+      // Set save error for UI feedback
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save journal entry'
+      // Check for disk-related errors
+      const isDiskError =
+        errorMessage.includes('ENOSPC') ||
+        errorMessage.includes('disk') ||
+        errorMessage.includes('space') ||
+        errorMessage.includes('write')
+      if (currentDateRef.current === currentDate) {
+        setSaveError(isDiskError ? 'Unable to save: disk may be full' : errorMessage)
+      }
     } finally {
       isSavingRef.current = false
       if (currentDateRef.current === currentDate) {
@@ -332,6 +382,17 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     }
   }, [date, deleteMutation])
 
+  // Retry the last failed save
+  const retrySave = useCallback(async () => {
+    setSaveError(null)
+    await performSave()
+  }, [performSave])
+
+  // Dismiss save error
+  const dismissSaveError = useCallback(() => {
+    setSaveError(null)
+  }, [])
+
   // Cleanup on unmount - save pending changes
   useEffect(() => {
     return () => {
@@ -354,13 +415,26 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     })
 
     const unsubscribeUpdated = onJournalEntryUpdated((event) => {
-      // Ignore updates from our own saves
-      if (isSavingRef.current) {
+      const isExternal = (event as { source?: string }).source === 'external'
+
+      // For external updates, always update (file changed outside app)
+      // For internal updates, ignore if we're saving (to avoid loops)
+      if (!isExternal && isSavingRef.current) {
         return
       }
+
       if (event.date === currentDateRef.current) {
-        // Only update cache if we don't have pending changes
-        if (!isDirtyRef.current) {
+        // For external changes, always update and remount editor
+        // For internal changes, only update if not dirty
+        if (isExternal) {
+          queryClient.setQueryData(journalKeys.entry(event.date), event.entry as JournalEntry)
+          // Clear dirty state since external content is authoritative
+          setIsDirty(false)
+          pendingContentRef.current = null
+          pendingTagsRef.current = null
+          // Increment to trigger editor remount
+          setExternalUpdateCount((c) => c + 1)
+        } else if (!isDirtyRef.current) {
           queryClient.setQueryData(journalKeys.entry(event.date), event.entry as JournalEntry)
         }
       }
@@ -405,12 +479,16 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     error: queryError instanceof Error ? queryError.message : null,
     isSaving,
     isDirty,
+    saveError,
+    externalUpdateCount,
     updateContent,
     updateTags,
     saveNow,
     reload,
     forceReload,
-    deleteEntry
+    deleteEntry,
+    retrySave,
+    dismissSaveError
   }
 }
 

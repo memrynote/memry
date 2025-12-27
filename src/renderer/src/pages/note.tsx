@@ -18,7 +18,7 @@ import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import { useNotes, useNoteLinks, useNoteTags, type Note } from '@/hooks/use-notes'
 import { useNoteProperties } from '@/hooks/use-note-properties'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
-import { notesService, onNoteDeleted } from '@/services/notes-service'
+import { notesService, onNoteDeleted, onNoteUpdated } from '@/services/notes-service'
 import { useTabs } from '@/contexts/tabs'
 import { Loader2, MoreHorizontal, History, Bookmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -139,6 +139,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [isDeleted, setIsDeleted] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
+  const [externalUpdateCount, setExternalUpdateCount] = useState(0)
 
   // Content tracking for change detection
   const lastSavedContent = useRef<string>('')
@@ -246,6 +247,50 @@ export function NotePage({ noteId }: NotePageProps) {
       unsubDeleted()
     }
   }, [noteId, setTabDeleted])
+
+  // Listen for external note updates (file changed outside app)
+  // Track if we're currently saving to ignore our own updates
+  const isSavingRef = useRef(false)
+  useEffect(() => {
+    isSavingRef.current = isSaving
+  }, [isSaving])
+
+  useEffect(() => {
+    if (!noteId) return
+
+    const handleUpdated = (event: { id: string; changes: Partial<Note>; source?: string }) => {
+      // Only handle external updates for this note
+      if (event.id !== noteId) return
+      // Ignore our own saves (source won't be 'external')
+      if (event.source !== 'external') return
+      // Ignore if we're currently saving
+      if (isSavingRef.current) return
+
+      // Update local state with new content from external change
+      setNote((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          ...event.changes,
+          content: event.changes.content ?? prev.content
+        }
+      })
+
+      // Update lastSavedContent to prevent false dirty detection
+      if (event.changes.content !== undefined) {
+        lastSavedContent.current = event.changes.content
+      }
+
+      // Increment counter to force editor remount with new content
+      setExternalUpdateCount((c) => c + 1)
+    }
+
+    const unsubUpdated = onNoteUpdated(handleUpdated)
+
+    return () => {
+      unsubUpdated()
+    }
+  }, [noteId])
 
   // ============================================================================
   // Tags - Convert between string[] and Tag[]
@@ -787,7 +832,7 @@ export function NotePage({ noteId }: NotePageProps) {
               onError={(error) => console.error('[NotePage] Editor error:', error)}
             >
               <ContentArea
-                key={noteId} // Force re-mount when note changes
+                key={`${noteId}-${externalUpdateCount}`} // Force re-mount when note changes or external update
                 noteId={noteId} // T069: Required for attachment uploads
                 initialContent={note.content}
                 contentType="markdown"

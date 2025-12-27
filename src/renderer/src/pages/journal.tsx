@@ -31,6 +31,7 @@ import {
   SaveStatusIndicator,
   deriveSaveStatus,
   DefaultTemplateIndicator,
+  JournalErrorBoundary,
   type ScheduleEvent,
   type JournalViewState
 } from '@/components/journal'
@@ -59,6 +60,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
+import { toast } from 'sonner'
 import {
   formatDateToISO,
   formatDateParts,
@@ -198,10 +200,33 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     error: entryError,
     isSaving,
     isDirty,
+    saveError,
+    externalUpdateCount,
     updateContent,
     updateTags,
-    forceReload
+    forceReload,
+    retrySave,
+    dismissSaveError
   } = useJournalEntry(selectedDate)
+
+  // Show toast when save error occurs
+  useEffect(() => {
+    if (saveError) {
+      toast.error(saveError, {
+        description: 'Your content is still in memory. Click to retry saving.',
+        action: {
+          label: 'Retry',
+          onClick: () => {
+            retrySave()
+          }
+        },
+        duration: Infinity, // Keep until dismissed or retry succeeds
+        onDismiss: () => {
+          dismissSaveError()
+        }
+      })
+    }
+  }, [saveError, retrySave, dismissSaveError])
 
   // Day context hook - loads tasks for selected date
   const { tasks: dayTasks, overdueCount } = useDayContext(selectedDate)
@@ -290,13 +315,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   }, [selectedDate])
 
   // Editor state derived directly from entry
-  // Key includes loadCount to force remount when content loads
+  // Key includes loadCount and externalUpdateCount to force remount when content loads or is externally updated
   const editorState = useMemo(
     () => ({
-      key: `${selectedDate}-${editorLoadCount}`,
+      key: `${selectedDate}-${editorLoadCount}-${externalUpdateCount}`,
       content: entry?.content ?? ''
     }),
-    [selectedDate, editorLoadCount, entry?.content]
+    [selectedDate, editorLoadCount, externalUpdateCount, entry?.content]
   )
 
   // Determine if we should show loading state
@@ -945,479 +970,494 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     localStorage.setItem('memry_journal_focus_mode', focusMode.toString())
   }, [focusMode])
 
+  // Handle error boundary recovery
+  const handleErrorRecover = useCallback(() => {
+    // Force reload entry
+    lastLoadedDateRef.current = null
+    setEditorLoadCount((c) => c + 1)
+  }, [])
+
   return (
-    <div
-      className={cn(
-        'flex h-full w-full overflow-hidden bg-background',
-        'transition-all duration-500 ease-out',
-        className
-      )}
+    <JournalErrorBoundary
+      date={selectedDate}
+      onRecover={handleErrorRecover}
+      onError={(error, errorInfo) => {
+        console.error('[JournalPage] Error caught by boundary:', error, errorInfo)
+      }}
     >
-      {/* Main Content Area - Journal Writing */}
-      <main
+      <div
         className={cn(
-          'flex-1 min-w-0 h-full relative',
+          'flex h-full w-full overflow-hidden bg-background',
           'transition-all duration-500 ease-out',
-          focusMode ? 'journal-focus-paper' : ''
+          className
         )}
       >
-        {/* Scrollable content area */}
-        <div className={cn('h-full overflow-y-auto', focusMode ? 'px-8' : 'px-6 lg:px-8')}>
-          <div
-            className={cn(
-              'mx-auto min-h-full flex flex-col',
-              'transition-all duration-500 ease-out',
-              focusMode ? 'max-w-xl' : 'max-w-2xl',
-              focusMode ? 'py-20 lg:py-28' : 'py-10 lg:py-16'
-            )}
-          >
-            {/* Header - Centered Breadcrumb Navigation */}
-            <header className={cn('relative mb-8 lg:mb-12', '')}>
-              {/* Content layer */}
-              <div className="relative z-10">
-                {/* Top bar with greeting (left), breadcrumb (center), focus toggle (right) */}
-                <div className="flex items-center justify-between gap-4">
-                  {/* Left side - Greeting (only for today in day view, hidden in focus mode) */}
-                  <div className="flex-1 flex justify-start">
-                    {viewState.type === 'day' && greeting && !focusMode && (
-                      <div
-                        className={cn(
-                          'hidden sm:flex items-center gap-2',
-                          'px-3 py-1.5 rounded-lg',
-                          'bg-gradient-to-r from-amber-50/80 to-orange-50/60',
-                          'dark:from-amber-950/30 dark:to-orange-950/20',
-                          'journal-greeting-glow',
-                          'transition-all duration-300',
-                          ''
-                        )}
-                      >
-                        {getGreetingIcon(greeting.icon)}
-                        <span className="text-sm font-medium text-amber-800/80 dark:text-amber-200/80">
-                          {greeting.greeting}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Center - Breadcrumb Navigation */}
-                  <DateBreadcrumb
-                    viewState={viewState}
-                    onMonthClick={navigateToMonth}
-                    onYearClick={navigateToYear}
-                    onBackClick={navigateBack}
-                    onPreviousDay={handlePreviousDay}
-                    onNextDay={handleNextDay}
-                  />
-
-                  {/* Right side - Save Status + Focus Mode Toggle */}
-                  <div className="flex-1 flex items-center justify-end gap-2">
-                    {/* Save Status Indicator */}
-                    {viewState.type === 'day' && (
-                      <SaveStatusIndicator
-                        status={deriveSaveStatus({
-                          isSaving,
-                          isDirty,
-                          hasEntry: !!entry
-                        })}
-                      />
-                    )}
-
-                    {/* Focus Mode Toggle */}
-                    {viewState.type === 'day' && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                          'size-8 rounded-lg',
-                          'text-muted-foreground/60 hover:text-foreground',
-                          'hover:bg-foreground/5',
-                          'transition-all duration-200',
-                          focusMode && 'bg-foreground/5 text-foreground',
-                          ''
-                        )}
-                        onClick={() => setFocusMode(!focusMode)}
-                        aria-pressed={focusMode}
-                        aria-label={focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
-                        title={focusMode ? 'Exit Focus Mode (Esc)' : 'Enter Focus Mode (⌘\\)'}
-                      >
-                        {focusMode ? (
-                          <Minimize2 className="size-4" />
-                        ) : (
-                          <Maximize2 className="size-4" />
-                        )}
-                      </Button>
-                    )}
-
-                    {/* Bookmark Button */}
-                    {viewState.type === 'day' && entry && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-all duration-200"
-                        onClick={toggleBookmark}
-                        title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
-                      >
-                        <Bookmark
-                          className={`size-4 ${isBookmarked ? 'fill-current text-amber-500' : ''}`}
-                        />
-                        <span className="sr-only">
-                          {isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
-                        </span>
-                      </Button>
-                    )}
-
-                    {/* More Options Menu (3 dots) */}
-                    {viewState.type === 'day' && entry && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-all duration-200"
-                          >
-                            <MoreHorizontal className="size-4" />
-                            <span className="sr-only">More options</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setIsVersionHistoryOpen(true)}>
-                            <History className="mr-2 h-4 w-4" />
-                            Version History
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>
-                            Export
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </div>
-                </div>
-
-                {/* Month view subtitle */}
-                {viewState.type === 'month' && (
-                  <p className="text-center font-serif text-sm text-muted-foreground/60 italic mt-2 ">
-                    All journal entries for this month
-                  </p>
-                )}
-
-                {/* Year view subtitle */}
-                {viewState.type === 'year' && (
-                  <p className="text-center font-serif text-sm text-muted-foreground/60 italic mt-2 ">
-                    Select a month to view entries
-                  </p>
-                )}
-              </div>
-            </header>
-
-            {/* Error Banner */}
-            {entryError && (
-              <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                <span className="font-medium">Error:</span> {entryError}
-              </div>
-            )}
-
-            {/* Conditional Content Rendering */}
-            {viewState.type === 'day' && (
-              /* Journal Editor - Main Writing Area (BlockNote) + Backlinks */
-              <>
-                {/* Template Prompt - Show when there's no entry and not loading */}
-                {!isEntryLoading && !entry && !focusMode && (
-                  <div className="mb-6 ">
-                    {/* Default template is set - show indicator and auto-apply */}
-                    {defaultTemplateInfo ? (
-                      <DefaultTemplateIndicator
-                        templateName={defaultTemplateInfo.name}
-                        templateIcon={defaultTemplateInfo.icon}
-                        isCreating={isApplyingDefaultTemplate}
-                        onChangeTemplate={() => setShowTemplateSelector(true)}
-                        onStartBlank={handleStartBlank}
-                      />
-                    ) : (
-                      /* No default template - show original prompt */
-                      <button
-                        onClick={() => setShowTemplateSelector(true)}
-                        className={cn(
-                          'w-full flex items-center gap-3 px-4 py-3 rounded-lg',
-                          'border border-dashed border-amber-300/50 dark:border-amber-700/50',
-                          'bg-gradient-to-r from-amber-50/50 to-orange-50/30',
-                          'dark:from-amber-950/20 dark:to-orange-950/10',
-                          'hover:border-amber-400/60 dark:hover:border-amber-600/60',
-                          'hover:from-amber-50/70 hover:to-orange-50/50',
-                          'dark:hover:from-amber-950/30 dark:hover:to-orange-950/20',
-                          'transition-all duration-200',
-                          'text-left group'
-                        )}
-                      >
-                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/30 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/30 shadow-sm">
-                          <FileText className="w-4 h-4 text-amber-700 dark:text-amber-400" />
-                        </div>
-                        <div className="flex-1">
-                          <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                            Start with a template
-                          </span>
-                          <p className="text-xs text-amber-600/70 dark:text-amber-400/60 mt-0.5">
-                            Morning pages, daily reflection, gratitude journal, and more
-                          </p>
-                        </div>
-                        <span className="text-xs text-amber-500/60 dark:text-amber-400/50 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
-                          Choose template
-                        </span>
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* Tags Section - Hidden in focus mode */}
-                {!focusMode && entry && (
-                  <div className="mb-4 " style={{ paddingLeft: '24px' }}>
-                    <TagsRow
-                      tags={journalTags}
-                      availableTags={availableTags}
-                      recentTags={recentTags}
-                      onAddTag={handleAddTag}
-                      onCreateTag={handleCreateTag}
-                      onRemoveTag={handleRemoveTag}
-                    />
-                  </div>
-                )}
-
-                {/* Properties Section - Hidden in focus mode */}
-                {!focusMode && entry && (
-                  <div className="mb-4 " style={{ paddingLeft: '24px' }}>
-                    <InfoSection
-                      properties={properties}
-                      isExpanded={isInfoExpanded}
-                      onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
-                      onPropertyChange={handlePropertyChange}
-                      onAddProperty={handleAddProperty}
-                      onDeleteProperty={handleDeleteProperty}
-                    />
-                  </div>
-                )}
-
-                <div
-                  className={cn(
-                    'editor-click-area min-h-[300px] relative',
-                    '',
-                    // Notebook margin line (only when not in focus mode)
-                    !focusMode && 'journal-margin-line pl-6 lg:pl-8'
-                  )}
-                  onMouseDown={(e) => {
-                    const target = e.target as HTMLElement
-                    // If clicking directly on editable text, let it work normally
-                    if (
-                      target.closest('[contenteditable="true"]')?.contains(target) &&
-                      target.closest('.bn-block-content')
-                    ) {
-                      return
-                    }
-                    // If clicking on buttons or links, let it work normally
-                    if (target.closest('button, a, input')) {
-                      return
-                    }
-                    // Focus editor for all other clicks (empty areas)
-                    const editor = (e.currentTarget as HTMLElement).querySelector(
-                      '.bn-editor [contenteditable="true"]'
-                    ) as HTMLElement
-                    if (editor) {
-                      e.preventDefault()
-                      editor.focus()
-                    }
-                  }}
-                >
-                  {showEditorLoading ? (
-                    <div className="flex items-center justify-center h-[300px]">
-                      <Loader2 className="size-6 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : (
-                    <ContentArea
-                      key={editorState.key}
-                      initialContent={editorState.content}
-                      contentType="markdown"
-                      placeholder={
-                        selectedDate > today
-                          ? 'What are you planning...'
-                          : isToday
-                            ? "What's on your mind today..."
-                            : 'Reflect on this day...'
-                      }
-                      onContentChange={handleContentChange}
-                      onMarkdownChange={handleMarkdownChange}
-                      onHeadingsChange={handleHeadingsChange}
-                      onLinkClick={handleLinkClick}
-                      onInternalLinkClick={handleInternalLinkClick}
-                    />
-                  )}
-                </div>
-
-                {/* Backlinks Section */}
-                <div className=" mt-8">
-                  <BacklinksSection
-                    backlinks={DUMMY_JOURNAL_BACKLINKS}
-                    isLoading={false}
-                    initialCount={5}
-                    collapsible={true}
-                    onBacklinkClick={handleBacklinkClick}
-                  />
-                </div>
-              </>
-            )}
-
-            {viewState.type === 'month' && (
-              /* Month View - List of all entries */
-              <JournalMonthView
-                year={viewState.year}
-                month={viewState.month}
-                entries={monthEntries}
-                heatmapData={heatmapData}
-                onDayClick={navigateToDay}
-                className="flex-1"
-              />
-            )}
-
-            {viewState.type === 'year' && (
-              /* Year View - Grid of month cards */
-              <JournalYearView
-                year={viewState.year}
-                monthStats={monthStats}
-                onMonthClick={(month) => navigateToMonth(viewState.year, month)}
-                className="flex-1"
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Floating outline panel with Info tab - only show in day view, hidden in focus mode */}
-        {viewState.type === 'day' && !focusMode && (
-          <OutlineInfoPanel
-            headings={headings}
-            onHeadingClick={handleHeadingClick}
-            activeHeadingId={activeHeadingId ?? undefined}
-            stats={documentStats}
-          />
-        )}
-      </main>
-
-      {/* Right Sidebar - Context Panel */}
-      <aside
-        className={cn(
-          'shrink-0 h-full overflow-hidden',
-          'border-l border-border/30',
-          'journal-sidebar-gradient',
-          // Hide on smaller screens
-          'hidden lg:block',
-          // Smooth transition for width and opacity
-          'transition-[width,opacity] duration-500 ease-out',
-          // Collapsed state
-          focusMode || viewState.type !== 'day'
-            ? 'w-0 opacity-0 border-l-0'
-            : 'w-[320px] xl:w-[360px] opacity-100'
-        )}
-      >
-        <div
+        {/* Main Content Area - Journal Writing */}
+        <main
           className={cn(
-            'h-full overflow-y-auto scrollbar-thin',
-            'p-5 xl:p-6',
-            'flex flex-col gap-6',
-            'w-[320px] xl:w-[360px]',
-            // Fade content
-            'transition-opacity duration-500 ease-out',
-            focusMode || viewState.type !== 'day' ? 'opacity-0' : 'opacity-100'
+            'flex-1 min-w-0 h-full relative',
+            'transition-all duration-500 ease-out',
+            focusMode ? 'journal-focus-paper' : ''
           )}
         >
-          {/* Decorative corner accent */}
+          {/* Scrollable content area */}
+          <div className={cn('h-full overflow-y-auto', focusMode ? 'px-8' : 'px-6 lg:px-8')}>
+            <div
+              className={cn(
+                'mx-auto min-h-full flex flex-col',
+                'transition-all duration-500 ease-out',
+                focusMode ? 'max-w-xl' : 'max-w-2xl',
+                focusMode ? 'py-20 lg:py-28' : 'py-10 lg:py-16'
+              )}
+            >
+              {/* Header - Centered Breadcrumb Navigation */}
+              <header className={cn('relative mb-8 lg:mb-12', '')}>
+                {/* Content layer */}
+                <div className="relative z-10">
+                  {/* Top bar with greeting (left), breadcrumb (center), focus toggle (right) */}
+                  <div className="flex items-center justify-between gap-4">
+                    {/* Left side - Greeting (only for today in day view, hidden in focus mode) */}
+                    <div className="flex-1 flex justify-start">
+                      {viewState.type === 'day' && greeting && !focusMode && (
+                        <div
+                          className={cn(
+                            'hidden sm:flex items-center gap-2',
+                            'px-3 py-1.5 rounded-lg',
+                            'bg-gradient-to-r from-amber-50/80 to-orange-50/60',
+                            'dark:from-amber-950/30 dark:to-orange-950/20',
+                            'journal-greeting-glow',
+                            'transition-all duration-300',
+                            ''
+                          )}
+                        >
+                          {getGreetingIcon(greeting.icon)}
+                          <span className="text-sm font-medium text-amber-800/80 dark:text-amber-200/80">
+                            {greeting.greeting}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Center - Breadcrumb Navigation */}
+                    <DateBreadcrumb
+                      viewState={viewState}
+                      onMonthClick={navigateToMonth}
+                      onYearClick={navigateToYear}
+                      onBackClick={navigateBack}
+                      onPreviousDay={handlePreviousDay}
+                      onNextDay={handleNextDay}
+                    />
+
+                    {/* Right side - Save Status + Focus Mode Toggle */}
+                    <div className="flex-1 flex items-center justify-end gap-2">
+                      {/* Save Status Indicator */}
+                      {viewState.type === 'day' && (
+                        <SaveStatusIndicator
+                          status={deriveSaveStatus({
+                            isSaving,
+                            isDirty,
+                            hasEntry: !!entry
+                          })}
+                        />
+                      )}
+
+                      {/* Focus Mode Toggle */}
+                      {viewState.type === 'day' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            'size-8 rounded-lg',
+                            'text-muted-foreground/60 hover:text-foreground',
+                            'hover:bg-foreground/5',
+                            'transition-all duration-200',
+                            focusMode && 'bg-foreground/5 text-foreground',
+                            ''
+                          )}
+                          onClick={() => setFocusMode(!focusMode)}
+                          aria-pressed={focusMode}
+                          aria-label={focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
+                          title={focusMode ? 'Exit Focus Mode (Esc)' : 'Enter Focus Mode (⌘\\)'}
+                        >
+                          {focusMode ? (
+                            <Minimize2 className="size-4" />
+                          ) : (
+                            <Maximize2 className="size-4" />
+                          )}
+                        </Button>
+                      )}
+
+                      {/* Bookmark Button */}
+                      {viewState.type === 'day' && entry && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-all duration-200"
+                          onClick={toggleBookmark}
+                          title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+                        >
+                          <Bookmark
+                            className={`size-4 ${isBookmarked ? 'fill-current text-amber-500' : ''}`}
+                          />
+                          <span className="sr-only">
+                            {isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+                          </span>
+                        </Button>
+                      )}
+
+                      {/* More Options Menu (3 dots) */}
+                      {viewState.type === 'day' && entry && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-all duration-200"
+                            >
+                              <MoreHorizontal className="size-4" />
+                              <span className="sr-only">More options</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setIsVersionHistoryOpen(true)}>
+                              <History className="mr-2 h-4 w-4" />
+                              Version History
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>
+                              Export
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Month view subtitle */}
+                  {viewState.type === 'month' && (
+                    <p className="text-center font-serif text-sm text-muted-foreground/60 italic mt-2 ">
+                      All journal entries for this month
+                    </p>
+                  )}
+
+                  {/* Year view subtitle */}
+                  {viewState.type === 'year' && (
+                    <p className="text-center font-serif text-sm text-muted-foreground/60 italic mt-2 ">
+                      Select a month to view entries
+                    </p>
+                  )}
+                </div>
+              </header>
+
+              {/* Error Banner */}
+              {entryError && (
+                <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                  <span className="font-medium">Error:</span> {entryError}
+                </div>
+              )}
+
+              {/* Conditional Content Rendering */}
+              {viewState.type === 'day' && (
+                /* Journal Editor - Main Writing Area (BlockNote) + Backlinks */
+                <>
+                  {/* Template Prompt - Show when there's no entry and not loading */}
+                  {!isEntryLoading && !entry && !focusMode && (
+                    <div className="mb-6 ">
+                      {/* Default template is set - show indicator and auto-apply */}
+                      {defaultTemplateInfo ? (
+                        <DefaultTemplateIndicator
+                          templateName={defaultTemplateInfo.name}
+                          templateIcon={defaultTemplateInfo.icon}
+                          isCreating={isApplyingDefaultTemplate}
+                          onChangeTemplate={() => setShowTemplateSelector(true)}
+                          onStartBlank={handleStartBlank}
+                        />
+                      ) : (
+                        /* No default template - show original prompt */
+                        <button
+                          onClick={() => setShowTemplateSelector(true)}
+                          className={cn(
+                            'w-full flex items-center gap-3 px-4 py-3 rounded-lg',
+                            'border border-dashed border-amber-300/50 dark:border-amber-700/50',
+                            'bg-gradient-to-r from-amber-50/50 to-orange-50/30',
+                            'dark:from-amber-950/20 dark:to-orange-950/10',
+                            'hover:border-amber-400/60 dark:hover:border-amber-600/60',
+                            'hover:from-amber-50/70 hover:to-orange-50/50',
+                            'dark:hover:from-amber-950/30 dark:hover:to-orange-950/20',
+                            'transition-all duration-200',
+                            'text-left group'
+                          )}
+                        >
+                          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/30 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/30 shadow-sm">
+                            <FileText className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+                          </div>
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                              Start with a template
+                            </span>
+                            <p className="text-xs text-amber-600/70 dark:text-amber-400/60 mt-0.5">
+                              Morning pages, daily reflection, gratitude journal, and more
+                            </p>
+                          </div>
+                          <span className="text-xs text-amber-500/60 dark:text-amber-400/50 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
+                            Choose template
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tags Section - Hidden in focus mode */}
+                  {!focusMode && entry && (
+                    <div className="mb-4 " style={{ paddingLeft: '24px' }}>
+                      <TagsRow
+                        tags={journalTags}
+                        availableTags={availableTags}
+                        recentTags={recentTags}
+                        onAddTag={handleAddTag}
+                        onCreateTag={handleCreateTag}
+                        onRemoveTag={handleRemoveTag}
+                      />
+                    </div>
+                  )}
+
+                  {/* Properties Section - Hidden in focus mode */}
+                  {!focusMode && entry && (
+                    <div className="mb-4 " style={{ paddingLeft: '24px' }}>
+                      <InfoSection
+                        properties={properties}
+                        isExpanded={isInfoExpanded}
+                        onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
+                        onPropertyChange={handlePropertyChange}
+                        onAddProperty={handleAddProperty}
+                        onDeleteProperty={handleDeleteProperty}
+                      />
+                    </div>
+                  )}
+
+                  <div
+                    className={cn(
+                      'editor-click-area min-h-[300px] relative',
+                      '',
+                      // Notebook margin line (only when not in focus mode)
+                      !focusMode && 'journal-margin-line pl-6 lg:pl-8'
+                    )}
+                    onMouseDown={(e) => {
+                      const target = e.target as HTMLElement
+                      // If clicking directly on editable text, let it work normally
+                      if (
+                        target.closest('[contenteditable="true"]')?.contains(target) &&
+                        target.closest('.bn-block-content')
+                      ) {
+                        return
+                      }
+                      // If clicking on buttons or links, let it work normally
+                      if (target.closest('button, a, input')) {
+                        return
+                      }
+                      // Focus editor for all other clicks (empty areas)
+                      const editor = (e.currentTarget as HTMLElement).querySelector(
+                        '.bn-editor [contenteditable="true"]'
+                      ) as HTMLElement
+                      if (editor) {
+                        e.preventDefault()
+                        editor.focus()
+                      }
+                    }}
+                  >
+                    {showEditorLoading ? (
+                      <div className="flex items-center justify-center h-[300px]">
+                        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : (
+                      <ContentArea
+                        key={editorState.key}
+                        initialContent={editorState.content}
+                        contentType="markdown"
+                        placeholder={
+                          selectedDate > today
+                            ? 'What are you planning...'
+                            : isToday
+                              ? "What's on your mind today..."
+                              : 'Reflect on this day...'
+                        }
+                        onContentChange={handleContentChange}
+                        onMarkdownChange={handleMarkdownChange}
+                        onHeadingsChange={handleHeadingsChange}
+                        onLinkClick={handleLinkClick}
+                        onInternalLinkClick={handleInternalLinkClick}
+                      />
+                    )}
+                  </div>
+
+                  {/* Backlinks Section */}
+                  <div className=" mt-8">
+                    <BacklinksSection
+                      backlinks={DUMMY_JOURNAL_BACKLINKS}
+                      isLoading={false}
+                      initialCount={5}
+                      collapsible={true}
+                      onBacklinkClick={handleBacklinkClick}
+                    />
+                  </div>
+                </>
+              )}
+
+              {viewState.type === 'month' && (
+                /* Month View - List of all entries */
+                <JournalMonthView
+                  year={viewState.year}
+                  month={viewState.month}
+                  entries={monthEntries}
+                  heatmapData={heatmapData}
+                  onDayClick={navigateToDay}
+                  className="flex-1"
+                />
+              )}
+
+              {viewState.type === 'year' && (
+                /* Year View - Grid of month cards */
+                <JournalYearView
+                  year={viewState.year}
+                  monthStats={monthStats}
+                  onMonthClick={(month) => navigateToMonth(viewState.year, month)}
+                  className="flex-1"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Floating outline panel with Info tab - only show in day view, hidden in focus mode */}
+          {viewState.type === 'day' && !focusMode && (
+            <OutlineInfoPanel
+              headings={headings}
+              onHeadingClick={handleHeadingClick}
+              activeHeadingId={activeHeadingId ?? undefined}
+              stats={documentStats}
+            />
+          )}
+        </main>
+
+        {/* Right Sidebar - Context Panel */}
+        <aside
+          className={cn(
+            'shrink-0 h-full overflow-hidden',
+            'border-l border-border/30',
+            'journal-sidebar-gradient',
+            // Hide on smaller screens
+            'hidden lg:block',
+            // Smooth transition for width and opacity
+            'transition-[width,opacity] duration-500 ease-out',
+            // Collapsed state
+            focusMode || viewState.type !== 'day'
+              ? 'w-0 opacity-0 border-l-0'
+              : 'w-[320px] xl:w-[360px] opacity-100'
+          )}
+        >
           <div
             className={cn(
-              'absolute top-0 right-0 w-24 h-24',
-              'bg-gradient-to-bl from-amber-500/[0.04] to-transparent',
-              'dark:from-amber-400/[0.03]',
-              'rounded-bl-[60px]',
-              'pointer-events-none'
+              'h-full overflow-y-auto scrollbar-thin',
+              'p-5 xl:p-6',
+              'flex flex-col gap-6',
+              'w-[320px] xl:w-[360px]',
+              // Fade content
+              'transition-opacity duration-500 ease-out',
+              focusMode || viewState.type !== 'day' ? 'opacity-0' : 'opacity-100'
             )}
-            aria-hidden="true"
+          >
+            {/* Decorative corner accent */}
+            <div
+              className={cn(
+                'absolute top-0 right-0 w-24 h-24',
+                'bg-gradient-to-bl from-amber-500/[0.04] to-transparent',
+                'dark:from-amber-400/[0.03]',
+                'rounded-bl-[60px]',
+                'pointer-events-none'
+              )}
+              aria-hidden="true"
+            />
+
+            {/* Mini Calendar */}
+            <section className="relative ">
+              <h3 className="journal-section-label mb-3">Calendar</h3>
+              <JournalCalendar
+                selectedDate={selectedDate}
+                onDayClick={handleDayClick}
+                onTodayClick={handleTodayClick}
+                heatmapData={heatmapData}
+              />
+            </section>
+
+            {/* Day Context - Events & Tasks */}
+            <section className="relative ">
+              <h3 className="journal-section-label mb-3">
+                {isToday ? "Today's Schedule" : 'Schedule'}
+              </h3>
+              <DayContextSidebar
+                events={EMPTY_EVENTS}
+                tasks={dayTasks}
+                overdueCount={overdueCount}
+                isToday={isToday}
+                isPast={selectedDate < today}
+                onTaskClick={(id) => console.log('Task clicked:', id)}
+                onTaskToggle={handleTaskToggle}
+                onEventClick={(id) => console.log('Event clicked:', id)}
+              />
+            </section>
+
+            {/* AI Connections */}
+            <section className="relative ">
+              <h3 className="journal-section-label mb-3">Connected Thoughts</h3>
+              <AIConnectionsPanel
+                connections={aiConnections}
+                isLoading={isAILoading}
+                error={aiError}
+                isNewUser={!entry && aiConnections.length === 0}
+                onConnectionClick={handleConnectionClick}
+                onRefresh={refreshAIConnections}
+                maxItems={3}
+              />
+            </section>
+          </div>
+        </aside>
+
+        {/* Template Selector Dialog */}
+        <TemplateSelector
+          isOpen={showTemplateSelector}
+          onClose={() => setShowTemplateSelector(false)}
+          onSelect={handleTemplateSelect}
+          isJournalContext
+          journalDefaultTemplateId={journalSettings.defaultTemplate}
+          onSetJournalDefault={setJournalDefaultTemplate}
+        />
+
+        {/* Export Dialog */}
+        {entry && (
+          <ExportDialog
+            open={isExportDialogOpen}
+            onOpenChange={setIsExportDialogOpen}
+            noteId={entry.id}
+            noteTitle={`Journal - ${formatDateParts(selectedDate).month} ${formatDateParts(selectedDate).day}, ${formatDateParts(selectedDate).year}`}
           />
+        )}
 
-          {/* Mini Calendar */}
-          <section className="relative ">
-            <h3 className="journal-section-label mb-3">Calendar</h3>
-            <JournalCalendar
-              selectedDate={selectedDate}
-              onDayClick={handleDayClick}
-              onTodayClick={handleTodayClick}
-              heatmapData={heatmapData}
-            />
-          </section>
-
-          {/* Day Context - Events & Tasks */}
-          <section className="relative ">
-            <h3 className="journal-section-label mb-3">
-              {isToday ? "Today's Schedule" : 'Schedule'}
-            </h3>
-            <DayContextSidebar
-              events={EMPTY_EVENTS}
-              tasks={dayTasks}
-              overdueCount={overdueCount}
-              isToday={isToday}
-              isPast={selectedDate < today}
-              onTaskClick={(id) => console.log('Task clicked:', id)}
-              onTaskToggle={handleTaskToggle}
-              onEventClick={(id) => console.log('Event clicked:', id)}
-            />
-          </section>
-
-          {/* AI Connections */}
-          <section className="relative ">
-            <h3 className="journal-section-label mb-3">Connected Thoughts</h3>
-            <AIConnectionsPanel
-              connections={aiConnections}
-              isLoading={isAILoading}
-              error={aiError}
-              isNewUser={!entry && aiConnections.length === 0}
-              onConnectionClick={handleConnectionClick}
-              onRefresh={refreshAIConnections}
-              maxItems={3}
-            />
-          </section>
-        </div>
-      </aside>
-
-      {/* Template Selector Dialog */}
-      <TemplateSelector
-        isOpen={showTemplateSelector}
-        onClose={() => setShowTemplateSelector(false)}
-        onSelect={handleTemplateSelect}
-        isJournalContext
-        journalDefaultTemplateId={journalSettings.defaultTemplate}
-        onSetJournalDefault={setJournalDefaultTemplate}
-      />
-
-      {/* Export Dialog */}
-      {entry && (
-        <ExportDialog
-          open={isExportDialogOpen}
-          onOpenChange={setIsExportDialogOpen}
-          noteId={entry.id}
-          noteTitle={`Journal - ${formatDateParts(selectedDate).month} ${formatDateParts(selectedDate).day}, ${formatDateParts(selectedDate).year}`}
-        />
-      )}
-
-      {/* Version History Panel */}
-      {entry && (
-        <VersionHistory
-          open={isVersionHistoryOpen}
-          onOpenChange={setIsVersionHistoryOpen}
-          noteId={entry.id}
-          noteTitle={`Journal - ${formatDateParts(selectedDate).month} ${formatDateParts(selectedDate).day}, ${formatDateParts(selectedDate).year}`}
-          onRestore={async () => {
-            // Force reload entry after restore (discards pending changes)
-            await forceReload()
-            // Reset editor load tracking to force remount with new content
-            lastLoadedDateRef.current = null
-            setEditorLoadCount((c) => c + 1)
-          }}
-        />
-      )}
-    </div>
+        {/* Version History Panel */}
+        {entry && (
+          <VersionHistory
+            open={isVersionHistoryOpen}
+            onOpenChange={setIsVersionHistoryOpen}
+            noteId={entry.id}
+            noteTitle={`Journal - ${formatDateParts(selectedDate).month} ${formatDateParts(selectedDate).day}, ${formatDateParts(selectedDate).year}`}
+            onRestore={async () => {
+              // Force reload entry after restore (discards pending changes)
+              await forceReload()
+              // Reset editor load tracking to force remount with new content
+              lastLoadedDateRef.current = null
+              setEditorLoadCount((c) => c + 1)
+            }}
+          />
+        )}
+      </div>
+    </JournalErrorBoundary>
   )
 }
 
