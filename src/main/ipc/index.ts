@@ -10,6 +10,7 @@ import { registerTemplatesHandlers, unregisterTemplatesHandlers } from './templa
 import { registerJournalHandlers, unregisterJournalHandlers } from './journal-handlers'
 import { registerSettingsHandlers, unregisterSettingsHandlers } from './settings-handlers'
 import { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
+import { registerTagsHandlers } from './tags-handlers'
 
 /**
  * Flag to prevent duplicate handler registration
@@ -61,6 +62,9 @@ export function registerAllHandlers(): void {
   // Register bookmarks handlers
   registerBookmarksHandlers()
 
+  // Register tags handlers
+  registerTagsHandlers()
+
   handlersRegistered = true
   console.log('All IPC handlers registered')
 }
@@ -108,3 +112,4 @@ export { registerTemplatesHandlers, unregisterTemplatesHandlers } from './templa
 export { registerJournalHandlers, unregisterJournalHandlers } from './journal-handlers'
 export { registerSettingsHandlers, unregisterSettingsHandlers } from './settings-handlers'
 export { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
+export { registerTagsHandlers } from './tags-handlers'

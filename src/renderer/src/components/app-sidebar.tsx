@@ -25,7 +25,9 @@ import { SidebarSection } from '@/components/sidebar-section'
 import { NotesTree } from '@/components/notes-tree'
 import { SidebarTagList } from '@/components/sidebar/sidebar-tag-list'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
+import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import { SidebarDrillDownProvider, useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import type { SidebarItem, TabType } from '@/contexts/tabs/types'
 import type { AppPage } from '@/App'
 import type { BookmarkWithItem } from '@/hooks/use-bookmarks'
@@ -109,6 +111,22 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 export function AppSidebar({ currentPage, viewCounts, onOpenSearch, ...props }: AppSidebarProps) {
+  return (
+    <SidebarDrillDownProvider>
+      <AppSidebarInner
+        currentPage={currentPage}
+        viewCounts={viewCounts}
+        onOpenSearch={onOpenSearch}
+        {...props}
+      />
+    </SidebarDrillDownProvider>
+  )
+}
+
+/**
+ * Inner sidebar component that has access to the drill-down context.
+ */
+function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: AppSidebarProps) {
   // State to hold action buttons from NotesTree
   const [notesActions, setNotesActions] = useState<React.ReactNode>(null)
 
@@ -120,6 +138,9 @@ export function AppSidebar({ currentPage, viewCounts, onOpenSearch, ...props }: 
   // Tab navigation hook
   const { openSidebarItem } = useSidebarNavigation()
 
+  // Drill-down context for tag navigation
+  const { openTag } = useSidebarDrillDown()
+
   const handleNavClick = (page: AppPage) => (e: React.MouseEvent) => {
     e.preventDefault()
 
@@ -128,7 +149,7 @@ export function AppSidebar({ currentPage, viewCounts, onOpenSearch, ...props }: 
       inbox: 'inbox',
       home: 'home',
       journal: 'journal',
-      tasks: 'tasks' // New unified tasks tab type
+      tasks: 'tasks'
     }
     const pageToTitle: Record<AppPage, string> = {
       inbox: 'Inbox',
@@ -146,12 +167,13 @@ export function AppSidebar({ currentPage, viewCounts, onOpenSearch, ...props }: 
     openSidebarItem(item)
   }
 
-  // Handle tag click - filter notes by tag
-  const handleTagClick = useCallback((tag: string) => {
-    // TODO: Implement tag filtering - for now, open Home with tag filter
-    // This could open a search results view or filter the current view
-    console.log('Tag clicked:', tag)
-  }, [])
+  // Handle tag click - open tag drill-down view
+  const handleTagClick = useCallback(
+    (tag: string, color: string) => {
+      openTag(tag, color)
+    },
+    [openTag]
+  )
 
   // Handle bookmark click - navigate to bookmarked item
   const handleBookmarkClick = useCallback(
@@ -177,79 +199,84 @@ export function AppSidebar({ currentPage, viewCounts, onOpenSearch, ...props }: 
     [openSidebarItem]
   )
 
-  return (
+  // Main sidebar content (shown when not drilling down)
+  const mainContent = (
     <>
-      <Sidebar collapsible="icon" {...props}>
-        <SidebarHeaderContent />
-        <SidebarContent>
-          {/* Quick Actions: Search & New */}
-          <SidebarGroup>
-            <SidebarMenu>
-              {quickActions.map((action) => (
-                <SidebarMenuItem key={action.title}>
-                  <SidebarMenuButton
-                    tooltip={action.title}
-                    onClick={action.action === 'search' ? onOpenSearch : undefined}
-                  >
-                    <action.icon className={cn('size-4', action.iconColor)} />
-                    <span>{action.title}</span>
-                    <KbdGroup className="ml-auto">
-                      <Kbd>{action.kbd}</Kbd>
-                    </KbdGroup>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
+      {/* Quick Actions: Search & New */}
+      <SidebarGroup>
+        <SidebarMenu>
+          {quickActions.map((action) => (
+            <SidebarMenuItem key={action.title}>
+              <SidebarMenuButton
+                tooltip={action.title}
+                onClick={action.action === 'search' ? onOpenSearch : undefined}
+              >
+                <action.icon className={cn('size-4', action.iconColor)} />
+                <span>{action.title}</span>
+                <KbdGroup className="ml-auto">
+                  <Kbd>{action.kbd}</Kbd>
+                </KbdGroup>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroup>
 
-          <SidebarSeparator className="w-auto!" />
+      <SidebarSeparator className="w-auto!" />
 
-          {/* Main Navigation: Inbox, Home, Journal, Tasks */}
-          <SidebarGroup>
-            <SidebarMenu>
-              {mainNav.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    tooltip={item.title}
-                    isActive={currentPage === item.page}
-                    onClick={handleNavClick(item.page)}
-                  >
-                    <item.icon className={cn('size-4', item.iconColor)} />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                  {/* Show today's task count badge for Tasks */}
-                  {item.page === 'tasks' && todayTasksCount > 0 && (
-                    <SidebarMenuBadge>{todayTasksCount}</SidebarMenuBadge>
-                  )}
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
+      {/* Main Navigation: Inbox, Home, Journal, Tasks */}
+      <SidebarGroup>
+        <SidebarMenu>
+          {mainNav.map((item) => (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton
+                tooltip={item.title}
+                isActive={currentPage === item.page}
+                onClick={handleNavClick(item.page)}
+              >
+                <item.icon className={cn('size-4', item.iconColor)} />
+                <span>{item.title}</span>
+              </SidebarMenuButton>
+              {/* Show today's task count badge for Tasks */}
+              {item.page === 'tasks' && todayTasksCount > 0 && (
+                <SidebarMenuBadge>{todayTasksCount}</SidebarMenuBadge>
+              )}
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroup>
 
-          <SidebarSeparator className="w-auto!" />
+      <SidebarSeparator className="w-auto!" />
 
-          {/* TAGS Section - Collapsible */}
-          <SidebarSection id="tags" label="Tags" defaultExpanded={false}>
-            <SidebarTagList maxVisible={6} onTagClick={handleTagClick} />
-          </SidebarSection>
+      {/* COLLECTIONS Section - Collapsible with actions */}
+      <SidebarSection
+        id="collections"
+        label="Collections"
+        defaultExpanded={false}
+        actions={notesActions}
+      >
+        <NotesTree onActionsReady={setNotesActions} />
+      </SidebarSection>
 
-          {/* BOOKMARKS Section - Collapsible */}
-          <SidebarSection id="bookmarks" label="Bookmarks" defaultExpanded={false}>
-            <SidebarBookmarkList maxVisible={6} onBookmarkClick={handleBookmarkClick} />
-          </SidebarSection>
+      {/* BOOKMARKS Section - Collapsible */}
+      <SidebarSection id="bookmarks" label="Bookmarks" defaultExpanded={false}>
+        <SidebarBookmarkList maxVisible={6} onBookmarkClick={handleBookmarkClick} />
+      </SidebarSection>
 
-          {/* COLLECTIONS Section - Collapsible with actions */}
-          <SidebarSection
-            id="collections"
-            label="Collections"
-            defaultExpanded={false}
-            actions={notesActions}
-          >
-            <NotesTree onActionsReady={setNotesActions} />
-          </SidebarSection>
-        </SidebarContent>
-        <SidebarRail />
-      </Sidebar>
+      {/* TAGS Section - Collapsible */}
+      <SidebarSection id="tags" label="Tags" defaultExpanded={false}>
+        <SidebarTagList maxVisible={6} onTagClick={handleTagClick} />
+      </SidebarSection>
     </>
+  )
+
+  return (
+    <Sidebar collapsible="icon" {...props}>
+      <SidebarHeaderContent />
+      <SidebarContent className="flex flex-col overflow-hidden">
+        <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
+      </SidebarContent>
+      <SidebarRail />
+    </Sidebar>
   )
 }

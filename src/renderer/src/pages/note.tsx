@@ -20,7 +20,7 @@ import { useNoteProperties } from '@/hooks/use-note-properties'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted } from '@/services/notes-service'
 import { useTabs } from '@/contexts/tabs'
-import { Loader2, MoreHorizontal, History } from 'lucide-react'
+import { Loader2, MoreHorizontal, History, Bookmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
+import { useIsBookmarked } from '@/hooks/use-bookmarks'
 
 // ============================================================================
 // Types
@@ -124,6 +125,9 @@ export function NotePage({ noteId }: NotePageProps) {
     addProperty: addBackendProperty,
     removeProperty: removeBackendProperty
   } = useNoteProperties(noteId ?? null)
+
+  // Bookmark state
+  const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('note', noteId ?? '')
 
   // Local state
   const [note, setNote] = useState<Note | null>(null)
@@ -670,6 +674,19 @@ export function NotePage({ noteId }: NotePageProps) {
               <span>Saving...</span>
             </div>
           )}
+
+          {/* Bookmark Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hover:bg-muted/50"
+            onClick={toggleBookmark}
+            disabled={isDeleted || !noteId}
+            title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+          >
+            <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-current text-amber-500' : ''}`} />
+            <span className="sr-only">{isBookmarked ? 'Remove bookmark' : 'Add bookmark'}</span>
+          </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

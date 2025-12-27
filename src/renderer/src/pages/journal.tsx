@@ -17,7 +17,8 @@ import {
   Loader2,
   FileText,
   MoreHorizontal,
-  History
+  History,
+  Bookmark
 } from 'lucide-react'
 import { useSidebar } from '@/components/ui/sidebar'
 import {
@@ -82,6 +83,7 @@ import { tasksService } from '@/services/tasks-service'
 import { parseConnectionDate } from '@/services/ai-connections-service'
 import { journalService } from '@/services/journal-service'
 import { useActiveTab } from '@/contexts/tabs'
+import { useIsBookmarked } from '@/hooks/use-bookmarks'
 
 // =============================================================================
 // CONSTANTS
@@ -225,6 +227,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Journal settings (default template)
   const { settings: journalSettings, setDefaultTemplate: setJournalDefaultTemplate } =
     useJournalSettings()
+
+  // Bookmark state for journal entry
+  const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('journal', entry?.date ?? '')
 
   // Track if we're auto-applying the default template
   const [isApplyingDefaultTemplate, setIsApplyingDefaultTemplate] = useState(false)
@@ -1040,6 +1045,24 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                         ) : (
                           <Maximize2 className="size-4" />
                         )}
+                      </Button>
+                    )}
+
+                    {/* Bookmark Button */}
+                    {viewState.type === 'day' && entry && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-all duration-200"
+                        onClick={toggleBookmark}
+                        title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+                      >
+                        <Bookmark
+                          className={`size-4 ${isBookmarked ? 'fill-current text-amber-500' : ''}`}
+                        />
+                        <span className="sr-only">
+                          {isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+                        </span>
                       </Button>
                     )}
 

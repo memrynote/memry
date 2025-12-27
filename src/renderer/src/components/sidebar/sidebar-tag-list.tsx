@@ -15,8 +15,8 @@ import { getTagColors } from '@/components/note/tags-row/tag-colors'
 interface SidebarTagListProps {
   /** Maximum number of tags to show before "Show more" */
   maxVisible?: number
-  /** Callback when a tag is clicked */
-  onTagClick?: (tag: string) => void
+  /** Callback when a tag is clicked (tag name and color) */
+  onTagClick?: (tag: string, color: string) => void
   /** Currently selected tag (for highlighting) */
   selectedTag?: string | null
   /** Custom class name */
@@ -40,9 +40,9 @@ export function SidebarTagList({
   const visibleTags = showAll ? sortedTags : sortedTags.slice(0, maxVisible)
   const hasMore = sortedTags.length > maxVisible
 
-  const handleTagClick = (tagName: string) => (e: React.MouseEvent) => {
+  const handleTagClick = (tagName: string, tagColor: string) => (e: React.MouseEvent) => {
     e.preventDefault()
-    onTagClick?.(tagName)
+    onTagClick?.(tagName, tagColor)
   }
 
   if (isLoading) {
@@ -83,7 +83,7 @@ export function SidebarTagList({
             <SidebarMenuButton
               tooltip={`${tag.tag} (${tag.count})`}
               isActive={isSelected}
-              onClick={handleTagClick(tag.tag)}
+              onClick={handleTagClick(tag.tag, tag.color)}
               className="group"
             >
               {/* Tag color dot */}

@@ -516,6 +516,7 @@ export function useNotes(options: UseNotesOptions = {}): UseNotesReturn {
 /**
  * Hook for getting tags with counts and colors.
  * Subscribes to tags-changed events for cross-note autocomplete refresh.
+ * Gracefully handles case when no vault is open.
  */
 export function useNoteTags() {
   const [tags, setTags] = useState<{ tag: string; color: string; count: number }[]>([])
@@ -531,7 +532,12 @@ export function useNoteTags() {
       setTags(result)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load tags'
-      setError(message)
+      // Don't set error for "not initialized" - vault not open yet
+      if (message.includes('not initialized') || message.includes('No vault')) {
+        setTags([])
+      } else {
+        setError(message)
+      }
     } finally {
       setIsLoading(false)
     }
@@ -545,8 +551,16 @@ export function useNoteTags() {
       loadTags()
     })
 
+    // Also subscribe to vault status changes to reload when vault opens
+    const unsubscribeVault = window.api.onVaultStatusChanged?.((status) => {
+      if (status?.isOpen) {
+        loadTags()
+      }
+    })
+
     return () => {
       unsubscribe?.()
+      unsubscribeVault?.()
     }
   }, [loadTags])
 
