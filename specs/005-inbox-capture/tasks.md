@@ -24,10 +24,10 @@
 
 **Purpose**: Project initialization, dependencies, and basic structure
 
-- [ ] T001 Install new dependencies (metascraper, pdf-parse, pdfjs-dist, sharp, openai) per plan.md
-- [ ] T002 [P] Create src/main/inbox/ directory structure with index.ts module exports
-- [ ] T003 [P] Create src/main/lib/url-utils.ts with URL validation and parsing utilities
-- [ ] T004 [P] Add environment variable handling for OPENAI_API_KEY in src/main/index.ts
+- [x] T001 Install new dependencies (metascraper, pdf-parse, pdfjs-dist, sharp, openai) per plan.md
+- [x] T002 [P] Create src/main/inbox/ directory structure with index.ts module exports
+- [x] T003 [P] Create src/main/lib/url-utils.ts with URL validation and parsing utilities
+- [x] T004 [P] Add environment variable handling for OPENAI_API_KEY in src/main/index.ts
 
 ---
 

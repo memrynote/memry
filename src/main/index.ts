@@ -4,6 +4,60 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllHandlers } from './ipc'
 import { autoOpenLastVault, closeVault } from './vault'
 
+// ============================================================================
+// Environment Configuration
+// ============================================================================
+
+/**
+ * Environment configuration for external services
+ */
+interface EnvironmentConfig {
+  /** OpenAI API key for transcription and AI suggestions */
+  openaiApiKey: string | undefined
+  /** Whisper model to use for transcription */
+  whisperModel: string
+  /** Embedding model to use for AI suggestions */
+  embeddingModel: string
+}
+
+/**
+ * Global environment configuration
+ * Loaded once at startup, accessible throughout main process
+ */
+export const envConfig: EnvironmentConfig = {
+  openaiApiKey: undefined,
+  whisperModel: 'whisper-1',
+  embeddingModel: 'text-embedding-3-small'
+}
+
+/**
+ * Load and validate environment variables for external services
+ */
+function loadEnvironmentConfig(): void {
+  // OpenAI API Key - required for voice transcription and AI suggestions
+  envConfig.openaiApiKey = process.env.OPENAI_API_KEY
+
+  if (!envConfig.openaiApiKey) {
+    console.warn(
+      '[Config] OPENAI_API_KEY not set. Voice transcription and AI suggestions will be disabled.'
+    )
+  } else {
+    console.log('[Config] OpenAI API key loaded successfully')
+  }
+
+  // Optional: Override default models
+  if (process.env.OPENAI_WHISPER_MODEL) {
+    envConfig.whisperModel = process.env.OPENAI_WHISPER_MODEL
+  }
+
+  if (process.env.OPENAI_EMBEDDING_MODEL) {
+    envConfig.embeddingModel = process.env.OPENAI_EMBEDDING_MODEL
+  }
+}
+
+// Load environment config early
+loadEnvironmentConfig()
+
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
