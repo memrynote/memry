@@ -817,12 +817,6 @@ export interface DayContext {
   overdueCount: number
 }
 
-export interface JournalSearchResult {
-  date: string
-  snippet: string
-  matchCount: number
-}
-
 export interface JournalStreak {
   currentStreak: number
   longestStreak: number
@@ -1083,9 +1077,8 @@ export interface JournalClientAPI {
   // Context
   getDayContext(date: string): Promise<DayContext>
 
-  // Tags & Search
+  // Tags
   getAllTags(): Promise<JournalTagCount[]>
-  searchEntries(query: string, limit?: number): Promise<JournalSearchResult[]>
 
   // Streak
   getStreak(): Promise<JournalStreak>

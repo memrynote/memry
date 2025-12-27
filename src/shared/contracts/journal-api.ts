@@ -280,27 +280,6 @@ export const GetAllTagsOutputSchema = z.array(
 
 export type GetAllTagsOutput = z.infer<typeof GetAllTagsOutputSchema>
 
-// --- Search Entries ---
-
-export const SearchEntriesInputSchema = z.object({
-  query: z.string().min(1),
-  limit: z.number().int().positive().default(20)
-})
-
-export type SearchEntriesInput = z.infer<typeof SearchEntriesInputSchema>
-
-export const SearchResultSchema = z.object({
-  date: z.string(),
-  snippet: z.string(),
-  matchCount: z.number().int().nonnegative()
-})
-
-export type SearchResult = z.infer<typeof SearchResultSchema>
-
-export const SearchEntriesOutputSchema = z.array(SearchResultSchema)
-
-export type SearchEntriesOutput = z.infer<typeof SearchEntriesOutputSchema>
-
 // =============================================================================
 // IPC Channel Names
 // =============================================================================
@@ -320,9 +299,8 @@ export const JOURNAL_IPC_CHANNELS = {
   // Context
   GET_DAY_CONTEXT: 'journal:getDayContext',
 
-  // Tags & Search
+  // Tags
   GET_ALL_TAGS: 'journal:getAllTags',
-  SEARCH_ENTRIES: 'journal:searchEntries',
 
   // Events (main → renderer)
   ENTRY_UPDATED: 'journal:entryUpdated',

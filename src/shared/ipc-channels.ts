@@ -376,11 +376,9 @@ export const JournalChannels = {
     /** Get tasks and events for a specific date */
     GET_DAY_CONTEXT: 'journal:getDayContext',
 
-    // Tags & Search
+    // Tags
     /** Get all tags used in journal entries */
     GET_ALL_TAGS: 'journal:getAllTags',
-    /** Search journal entries */
-    SEARCH_ENTRIES: 'journal:searchEntries',
 
     // Streak
     /** Get current and longest streak */

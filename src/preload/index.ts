@@ -380,10 +380,8 @@ const api = {
     getDayContext: (date: string) =>
       ipcRenderer.invoke(JournalChannels.invoke.GET_DAY_CONTEXT, { date }),
 
-    // Tags & Search
+    // Tags
     getAllTags: () => ipcRenderer.invoke(JournalChannels.invoke.GET_ALL_TAGS),
-    searchEntries: (query: string, limit?: number) =>
-      ipcRenderer.invoke(JournalChannels.invoke.SEARCH_ENTRIES, { query, limit: limit ?? 20 }),
 
     // Streak
     getStreak: () => ipcRenderer.invoke(JournalChannels.invoke.GET_STREAK)
