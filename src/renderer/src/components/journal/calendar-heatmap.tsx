@@ -109,13 +109,28 @@ export function JournalCalendar({
 
   const defaultClassNames = getDefaultClassNames()
 
+  // Activity level descriptions for accessibility
+  const getActivityDescription = (level: number, charCount: number): string => {
+    if (level === 0) return 'No journal entry'
+    if (level === 1) return `Light activity (${charCount} characters)`
+    if (level === 2) return `Moderate activity (${charCount} characters)`
+    if (level === 3) return `Good activity (${charCount} characters)`
+    return `High activity (${charCount} characters)`
+  }
+
   return (
-    <div className={cn('rounded-lg border border-border/40 bg-card', className)}>
+    <div
+      className={cn('rounded-lg border border-border/40 bg-card', className)}
+      role="region"
+      aria-label="Journal calendar with activity heatmap"
+    >
       {/* Custom Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
         <div className="flex items-center gap-2">
-          <CalendarIcon className="size-4 text-muted-foreground" />
-          <span className="text-sm font-medium">{monthYearDisplay}</span>
+          <CalendarIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+          <span className="text-sm font-medium" id="calendar-heading">
+            {monthYearDisplay}
+          </span>
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -141,6 +156,7 @@ export function JournalCalendar({
             size="sm"
             className="h-7 px-2 text-xs ml-1"
             onClick={handleTodayClick}
+            aria-label="Go to today"
           >
             Today
           </Button>
@@ -189,6 +205,20 @@ export function JournalCalendar({
               const heatmapEntry = heatmapLookup.get(dateStr)
               const heatmapLevel = heatmapEntry?.level ?? 0
 
+              // Generate accessible label for the day
+              const dateLabel = day.date.toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric'
+              })
+              const activityLabel = getActivityDescription(
+                heatmapLevel,
+                heatmapEntry?.characterCount ?? 0
+              )
+              const ariaLabel = isToday
+                ? `${dateLabel} (Today). ${activityLabel}`
+                : `${dateLabel}. ${activityLabel}`
+
               return (
                 <button
                   {...buttonProps}
@@ -211,13 +241,16 @@ export function JournalCalendar({
                     handleDayClickWithISODate(dateStr)
                   }}
                   aria-selected={isSelected}
+                  aria-label={ariaLabel}
+                  aria-current={isToday ? 'date' : undefined}
                 >
-                  <span>{day.date.getDate()}</span>
+                  <span aria-hidden="true">{day.date.getDate()}</span>
                   {/* Heatmap dot */}
                   {heatmapLevel > 0 && !modifiers.outside && (
                     <span
                       className="size-1.5 rounded-full"
                       style={{ backgroundColor: HEATMAP_COLORS[heatmapLevel] }}
+                      aria-hidden="true"
                     />
                   )}
                 </button>

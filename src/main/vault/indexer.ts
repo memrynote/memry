@@ -37,6 +37,7 @@ import {
   setNoteLinks,
   resolveNoteByTitle,
   countNotes,
+  countJournalEntries,
   extractDateFromPath
 } from '@shared/db/queries/notes'
 
@@ -273,10 +274,12 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
     `[Indexer] Indexing complete: ${result.indexed} indexed, ${result.skipped} skipped, ${result.errors} errors`
   )
 
-  // Verify count
+  // Verify counts (notes and journal entries are counted separately)
   const db = getIndexDatabase()
   const totalNotes = countNotes(db)
+  const journalCount = countJournalEntries(db)
   console.log(`[Indexer] Total notes in cache: ${totalNotes}`)
+  console.log(`[Indexer] Total journal entries in cache: ${journalCount}`)
 
   return result
 }

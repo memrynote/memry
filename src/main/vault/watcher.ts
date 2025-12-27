@@ -39,7 +39,7 @@ import {
   extractDateFromPath
 } from '@shared/db/queries/notes'
 import { getIndexDatabase, updateFtsContent } from '../database'
-import { NotesChannels } from '@shared/ipc-channels'
+import { NotesChannels, JournalChannels } from '@shared/ipc-channels'
 import { trackPendingDelete, checkForRename, clearAllPendingDeletes } from './rename-tracker'
 
 // ============================================================================
@@ -103,12 +103,39 @@ function createPathDebouncer(
 // ============================================================================
 
 /**
- * Emit note event to all renderer windows.
+ * Emit event to all renderer windows.
  */
-function emitNoteEvent(channel: string, payload: unknown): void {
+function emitEvent(channel: string, payload: unknown): void {
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send(channel, payload)
   })
+}
+
+/**
+ * Check if a path is a journal entry (in the journal folder with YYYY-MM-DD.md pattern).
+ */
+function isJournalPath(relativePath: string, journalFolder: string): boolean {
+  // Get the directory part of the path
+  const lastSlash = relativePath.lastIndexOf('/')
+  const dir = lastSlash >= 0 ? relativePath.substring(0, lastSlash) : ''
+  const filename = lastSlash >= 0 ? relativePath.substring(lastSlash + 1) : relativePath
+
+  // Check if file is directly in the journal folder
+  if (dir !== journalFolder) {
+    return false
+  }
+
+  // Check for YYYY-MM-DD.md pattern
+  const datePattern = /^\d{4}-\d{2}-\d{2}\.md$/
+  return datePattern.test(filename)
+}
+
+/**
+ * Extract date from journal path (YYYY-MM-DD).
+ */
+function extractJournalDate(relativePath: string): string {
+  const filename = relativePath.substring(relativePath.lastIndexOf('/') + 1)
+  return filename.replace('.md', '')
 }
 
 // ============================================================================
@@ -372,11 +399,30 @@ export class VaultWatcher {
       }
 
       // Emit event to renderer
-      emitNoteEvent(NotesChannels.events.CREATED, {
+      emitEvent(NotesChannels.events.CREATED, {
         note: noteListItem,
         properties, // T012: Include properties in event
         source: 'external'
       })
+
+      // Also emit journal event if this is a journal entry
+      const config = getConfig()
+      if (isJournalPath(relativePath, config.journalFolder)) {
+        const journalDate = extractJournalDate(relativePath)
+        emitEvent(JournalChannels.events.ENTRY_CREATED, {
+          date: journalDate,
+          entry: {
+            date: journalDate,
+            content: parsed.content,
+            tags,
+            wordCount,
+            characterCount,
+            modified: new Date(parsed.frontmatter.modified),
+            created: new Date(parsed.frontmatter.created)
+          },
+          source: 'external'
+        })
+      }
     } catch (error) {
       console.error('[Watcher] Error handling file add:', error)
       this.onError?.(error instanceof Error ? error : new Error(String(error)))
@@ -452,8 +498,8 @@ export class VaultWatcher {
         })
         setNoteLinks(db, cached.id, links)
 
-        // Emit update event
-        emitNoteEvent(NotesChannels.events.UPDATED, {
+        // Emit update event for notes
+        emitEvent(NotesChannels.events.UPDATED, {
           id: cached.id,
           changes: {
             title,
@@ -466,6 +512,25 @@ export class VaultWatcher {
           },
           source: 'external'
         })
+
+        // Also emit journal event if this is a journal entry
+        const config = getConfig()
+        if (isJournalPath(relativePath, config.journalFolder)) {
+          const journalDate = extractJournalDate(relativePath)
+          emitEvent(JournalChannels.events.ENTRY_UPDATED, {
+            date: journalDate,
+            entry: {
+              date: journalDate,
+              content: parsed.content,
+              tags,
+              wordCount,
+              characterCount,
+              modified: new Date(parsed.frontmatter.modified),
+              created: new Date(parsed.frontmatter.created)
+            },
+            source: 'external'
+          })
+        }
       } else {
         // File not in cache, treat as add
         await this.handleFileAdd(absolutePath)
@@ -497,6 +562,11 @@ export class VaultWatcher {
         return
       }
 
+      // Capture config for use in callback
+      const config = getConfig()
+      const isJournal = isJournalPath(relativePath, config.journalFolder)
+      const journalDate = isJournal ? extractJournalDate(relativePath) : null
+
       // Track as pending delete - wait for potential rename (matching 'add' event)
       trackPendingDelete(cached.id, relativePath, async () => {
         // This callback runs if no rename is detected within 500ms
@@ -504,11 +574,19 @@ export class VaultWatcher {
         deleteNoteCache(db, cached.id)
 
         // Emit delete event
-        emitNoteEvent(NotesChannels.events.DELETED, {
+        emitEvent(NotesChannels.events.DELETED, {
           id: cached.id,
           path: relativePath,
           source: 'external'
         })
+
+        // Also emit journal event if this is a journal entry
+        if (isJournal && journalDate) {
+          emitEvent(JournalChannels.events.ENTRY_DELETED, {
+            date: journalDate,
+            source: 'external'
+          })
+        }
       })
     } catch (error) {
       console.error('[Watcher] Error handling file delete:', error)
