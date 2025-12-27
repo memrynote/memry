@@ -11,7 +11,8 @@ import {
   TemplatesChannels,
   JournalChannels,
   SettingsChannels,
-  BookmarksChannels
+  BookmarksChannels,
+  TagsChannels
 } from '@shared/ipc-channels'
 
 // Custom APIs for renderer
@@ -438,6 +439,33 @@ const api = {
       ipcRenderer.invoke(BookmarksChannels.invoke.BULK_CREATE, { items })
   },
 
+  // Tags API (for sidebar drill-down)
+  tags: {
+    /** Get notes for a specific tag with pinned status */
+    getNotesByTag: (input: {
+      tag: string
+      sortBy?: 'modified' | 'created' | 'title'
+      sortOrder?: 'asc' | 'desc'
+    }) => ipcRenderer.invoke(TagsChannels.invoke.GET_NOTES_BY_TAG, input),
+    /** Pin a note to a tag */
+    pinNoteToTag: (input: { noteId: string; tag: string }) =>
+      ipcRenderer.invoke(TagsChannels.invoke.PIN_NOTE_TO_TAG, input),
+    /** Unpin a note from a tag */
+    unpinNoteFromTag: (input: { noteId: string; tag: string }) =>
+      ipcRenderer.invoke(TagsChannels.invoke.UNPIN_NOTE_FROM_TAG, input),
+    /** Rename a tag across all notes */
+    renameTag: (input: { oldName: string; newName: string }) =>
+      ipcRenderer.invoke(TagsChannels.invoke.RENAME_TAG, input),
+    /** Update tag color */
+    updateTagColor: (input: { tag: string; color: string }) =>
+      ipcRenderer.invoke(TagsChannels.invoke.UPDATE_TAG_COLOR, input),
+    /** Delete a tag from all notes */
+    deleteTag: (tag: string) => ipcRenderer.invoke(TagsChannels.invoke.DELETE_TAG, tag),
+    /** Remove tag from a specific note */
+    removeTagFromNote: (input: { noteId: string; tag: string }) =>
+      ipcRenderer.invoke(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, input)
+  },
+
   // Event subscription helpers
   onVaultStatusChanged: (callback: (status: unknown) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, status: unknown): void => callback(status)
@@ -747,6 +775,53 @@ const api = {
       callback(data)
     ipcRenderer.on(BookmarksChannels.events.REORDERED, handler)
     return () => ipcRenderer.removeListener(BookmarksChannels.events.REORDERED, handler)
+  },
+
+  // Tags event subscription helpers
+  onTagRenamed: (
+    callback: (event: { oldName: string; newName: string; affectedNotes: number }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { oldName: string; newName: string; affectedNotes: number }
+    ): void => callback(data)
+    ipcRenderer.on(TagsChannels.events.RENAMED, handler)
+    return () => ipcRenderer.removeListener(TagsChannels.events.RENAMED, handler)
+  },
+
+  onTagColorUpdated: (callback: (event: { tag: string; color: string }) => void): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { tag: string; color: string }
+    ): void => callback(data)
+    ipcRenderer.on(TagsChannels.events.COLOR_UPDATED, handler)
+    return () => ipcRenderer.removeListener(TagsChannels.events.COLOR_UPDATED, handler)
+  },
+
+  onTagDeleted: (
+    callback: (event: { tag: string; affectedNotes: number }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { tag: string; affectedNotes: number }
+    ): void => callback(data)
+    ipcRenderer.on(TagsChannels.events.DELETED, handler)
+    return () => ipcRenderer.removeListener(TagsChannels.events.DELETED, handler)
+  },
+
+  onTagNotesChanged: (
+    callback: (event: {
+      tag: string
+      noteId: string
+      action: 'pinned' | 'unpinned' | 'removed' | 'added'
+    }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { tag: string; noteId: string; action: 'pinned' | 'unpinned' | 'removed' | 'added' }
+    ): void => callback(data)
+    ipcRenderer.on(TagsChannels.events.NOTES_CHANGED, handler)
+    return () => ipcRenderer.removeListener(TagsChannels.events.NOTES_CHANGED, handler)
   }
 }
 

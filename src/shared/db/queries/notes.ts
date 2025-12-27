@@ -270,6 +270,189 @@ export function findNotesByTag(db: DrizzleDb, tag: string): NoteCache[] {
   return db.select().from(noteCache).where(inArray(noteCache.id, noteIds)).all()
 }
 
+/**
+ * Note with tag-specific info (pinned status).
+ */
+export interface NoteWithTagInfo extends NoteCache {
+  isPinned: boolean
+  pinnedAt: string | null
+}
+
+/**
+ * Find notes with a specific tag, including pinned status.
+ * Returns pinned notes first (sorted by pinnedAt), then unpinned notes.
+ */
+export function findNotesWithTagInfo(
+  db: DrizzleDb,
+  tag: string,
+  options: {
+    sortBy?: 'modified' | 'created' | 'title'
+    sortOrder?: 'asc' | 'desc'
+  } = {}
+): NoteWithTagInfo[] {
+  const { sortBy = 'modified', sortOrder = 'desc' } = options
+  const normalizedTag = tag.toLowerCase()
+
+  // Get note IDs and pinned status for this tag
+  const tagRecords = db
+    .select({
+      noteId: noteTags.noteId,
+      pinnedAt: noteTags.pinnedAt
+    })
+    .from(noteTags)
+    .where(eq(noteTags.tag, normalizedTag))
+    .all()
+
+  if (tagRecords.length === 0) {
+    return []
+  }
+
+  const noteIds = tagRecords.map((r) => r.noteId)
+  const pinnedMap = new Map(tagRecords.map((r) => [r.noteId, r.pinnedAt]))
+
+  // Get the notes
+  const notes = db.select().from(noteCache).where(inArray(noteCache.id, noteIds)).all()
+
+  // Add pinned info
+  const notesWithInfo: NoteWithTagInfo[] = notes.map((note) => ({
+    ...note,
+    isPinned: pinnedMap.get(note.id) !== null,
+    pinnedAt: pinnedMap.get(note.id) ?? null
+  }))
+
+  // Sort: pinned first (by pinnedAt), then rest by specified sort
+  const pinned = notesWithInfo.filter((n) => n.isPinned)
+  const unpinned = notesWithInfo.filter((n) => !n.isPinned)
+
+  // Sort pinned by pinnedAt
+  pinned.sort((a, b) => {
+    const aTime = a.pinnedAt ? new Date(a.pinnedAt).getTime() : 0
+    const bTime = b.pinnedAt ? new Date(b.pinnedAt).getTime() : 0
+    return aTime - bTime // Oldest pinned first
+  })
+
+  // Sort unpinned by specified sort
+  const sortFn = (a: NoteCache, b: NoteCache) => {
+    let aVal: string | number
+    let bVal: string | number
+
+    switch (sortBy) {
+      case 'title':
+        aVal = a.title.toLowerCase()
+        bVal = b.title.toLowerCase()
+        break
+      case 'created':
+        aVal = new Date(a.createdAt).getTime()
+        bVal = new Date(b.createdAt).getTime()
+        break
+      default:
+        aVal = new Date(a.modifiedAt).getTime()
+        bVal = new Date(b.modifiedAt).getTime()
+    }
+
+    if (sortOrder === 'asc') {
+      return aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+    }
+    return aVal > bVal ? -1 : aVal < bVal ? 1 : 0
+  }
+
+  unpinned.sort(sortFn)
+
+  return [...pinned, ...unpinned]
+}
+
+/**
+ * Pin a note to a tag.
+ */
+export function pinNoteToTag(db: DrizzleDb, noteId: string, tag: string): void {
+  const normalizedTag = tag.toLowerCase()
+  const now = new Date().toISOString()
+
+  db.update(noteTags)
+    .set({ pinnedAt: now })
+    .where(and(eq(noteTags.noteId, noteId), eq(noteTags.tag, normalizedTag)))
+    .run()
+}
+
+/**
+ * Unpin a note from a tag.
+ */
+export function unpinNoteFromTag(db: DrizzleDb, noteId: string, tag: string): void {
+  const normalizedTag = tag.toLowerCase()
+
+  db.update(noteTags)
+    .set({ pinnedAt: null })
+    .where(and(eq(noteTags.noteId, noteId), eq(noteTags.tag, normalizedTag)))
+    .run()
+}
+
+/**
+ * Rename a tag across all notes.
+ * Updates both note_tags and tag_definitions tables.
+ */
+export function renameTag(db: DrizzleDb, oldName: string, newName: string): number {
+  const normalizedOld = oldName.toLowerCase().trim()
+  const normalizedNew = newName.toLowerCase().trim()
+
+  if (normalizedOld === normalizedNew) {
+    return 0
+  }
+
+  // Update note_tags
+  const result = db
+    .update(noteTags)
+    .set({ tag: normalizedNew })
+    .where(eq(noteTags.tag, normalizedOld))
+    .run()
+
+  // Update tag_definitions - first check if new name exists
+  const existingNew = db
+    .select()
+    .from(tagDefinitions)
+    .where(eq(tagDefinitions.name, normalizedNew))
+    .get()
+
+  if (existingNew) {
+    // New tag already exists, just delete the old definition
+    db.delete(tagDefinitions).where(eq(tagDefinitions.name, normalizedOld)).run()
+  } else {
+    // Rename the definition
+    db.update(tagDefinitions)
+      .set({ name: normalizedNew })
+      .where(eq(tagDefinitions.name, normalizedOld))
+      .run()
+  }
+
+  return result.changes
+}
+
+/**
+ * Delete a tag from all notes.
+ * Removes from both note_tags and tag_definitions tables.
+ */
+export function deleteTag(db: DrizzleDb, tag: string): number {
+  const normalizedTag = tag.toLowerCase().trim()
+
+  // Delete from note_tags
+  const result = db.delete(noteTags).where(eq(noteTags.tag, normalizedTag)).run()
+
+  // Delete from tag_definitions
+  db.delete(tagDefinitions).where(eq(tagDefinitions.name, normalizedTag)).run()
+
+  return result.changes
+}
+
+/**
+ * Remove a tag from a specific note.
+ */
+export function removeTagFromNote(db: DrizzleDb, noteId: string, tag: string): void {
+  const normalizedTag = tag.toLowerCase().trim()
+
+  db.delete(noteTags)
+    .where(and(eq(noteTags.noteId, noteId), eq(noteTags.tag, normalizedTag)))
+    .run()
+}
+
 // ============================================================================
 // Tag Definition Operations (vault-wide tag registry with colors)
 // ============================================================================

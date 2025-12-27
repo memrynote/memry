@@ -1177,6 +1177,78 @@ export interface BookmarksClientAPI {
   ): Promise<{ success: boolean; createdCount: number; error?: string }>
 }
 
+// Tags types (for sidebar drill-down)
+export interface TagNoteItem {
+  id: string
+  path: string
+  title: string
+  created: string
+  modified: string
+  tags: string[]
+  wordCount: number
+  isPinned: boolean
+  pinnedAt: string | null
+  emoji?: string | null
+}
+
+export interface GetNotesByTagResponse {
+  tag: string
+  color: string
+  count: number
+  pinnedNotes: TagNoteItem[]
+  unpinnedNotes: TagNoteItem[]
+}
+
+export interface TagOperationResponse {
+  success: boolean
+  error?: string
+}
+
+export interface RenameTagResponse extends TagOperationResponse {
+  affectedNotes?: number
+}
+
+export interface DeleteTagResponse extends TagOperationResponse {
+  affectedNotes?: number
+}
+
+export interface TagRenamedEvent {
+  oldName: string
+  newName: string
+  affectedNotes: number
+}
+
+export interface TagColorUpdatedEvent {
+  tag: string
+  color: string
+}
+
+export interface TagDeletedEvent {
+  tag: string
+  affectedNotes: number
+}
+
+export interface TagNotesChangedEvent {
+  tag: string
+  noteId: string
+  action: 'pinned' | 'unpinned' | 'removed' | 'added'
+}
+
+// Tags client API interface
+export interface TagsClientAPI {
+  getNotesByTag(input: {
+    tag: string
+    sortBy?: 'modified' | 'created' | 'title'
+    sortOrder?: 'asc' | 'desc'
+  }): Promise<GetNotesByTagResponse>
+  pinNoteToTag(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
+  unpinNoteFromTag(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
+  renameTag(input: { oldName: string; newName: string }): Promise<RenameTagResponse>
+  updateTagColor(input: { tag: string; color: string }): Promise<TagOperationResponse>
+  deleteTag(tag: string): Promise<DeleteTagResponse>
+  removeTagFromNote(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
+}
+
 // Settings types
 export interface JournalSettings {
   defaultTemplate: string | null
@@ -1215,6 +1287,7 @@ interface API extends WindowAPI {
   journal: JournalClientAPI
   settings: SettingsClientAPI
   bookmarks: BookmarksClientAPI
+  tags: TagsClientAPI
   // Vault event subscriptions
   onVaultStatusChanged: (callback: (status: VaultStatus) => void) => () => void
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
@@ -1265,6 +1338,11 @@ interface API extends WindowAPI {
   onBookmarkCreated: (callback: (event: BookmarkCreatedEvent) => void) => () => void
   onBookmarkDeleted: (callback: (event: BookmarkDeletedEvent) => void) => () => void
   onBookmarksReordered: (callback: (event: BookmarksReorderedEvent) => void) => () => void
+  // Tags event subscriptions
+  onTagRenamed: (callback: (event: TagRenamedEvent) => void) => () => void
+  onTagColorUpdated: (callback: (event: TagColorUpdatedEvent) => void) => () => void
+  onTagDeleted: (callback: (event: TagDeletedEvent) => void) => () => void
+  onTagNotesChanged: (callback: (event: TagNotesChangedEvent) => void) => () => void
 }
 
 declare global {

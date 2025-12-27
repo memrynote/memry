@@ -125,6 +125,42 @@ export const NotesChannels = {
 } as const
 
 // ============================================================================
+// Tags Channels (Tag Management & Drill-Down)
+// ============================================================================
+
+export const TagsChannels = {
+  invoke: {
+    /** Get notes for a specific tag with pinned info */
+    GET_NOTES_BY_TAG: 'tags:get-notes-by-tag',
+    /** Pin a note to a tag */
+    PIN_NOTE_TO_TAG: 'tags:pin-note-to-tag',
+    /** Unpin a note from a tag */
+    UNPIN_NOTE_FROM_TAG: 'tags:unpin-note-from-tag',
+    /** Rename a tag across all notes */
+    RENAME_TAG: 'tags:rename',
+    /** Update tag color */
+    UPDATE_TAG_COLOR: 'tags:update-color',
+    /** Delete a tag from all notes */
+    DELETE_TAG: 'tags:delete',
+    /** Remove tag from a specific note */
+    REMOVE_TAG_FROM_NOTE: 'tags:remove-from-note'
+  },
+  events: {
+    /** Tag was renamed */
+    RENAMED: 'tags:renamed',
+    /** Tag color was updated */
+    COLOR_UPDATED: 'tags:color-updated',
+    /** Tag was deleted */
+    DELETED: 'tags:deleted',
+    /** Notes for a tag changed (pin/unpin, add/remove) */
+    NOTES_CHANGED: 'tags:notes-changed'
+  }
+} as const
+
+export type TagsInvokeChannel = (typeof TagsChannels.invoke)[keyof typeof TagsChannels.invoke]
+export type TagsEventChannel = (typeof TagsChannels.events)[keyof typeof TagsChannels.events]
+
+// ============================================================================
 // Search Channels
 // ============================================================================
 

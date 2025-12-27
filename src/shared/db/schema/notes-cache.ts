@@ -34,11 +34,14 @@ export const noteTags = sqliteTable(
     noteId: text('note_id')
       .notNull()
       .references(() => noteCache.id, { onDelete: 'cascade' }),
-    tag: text('tag').notNull()
+    tag: text('tag').notNull(),
+    // When the note was pinned to this tag (null = not pinned)
+    pinnedAt: text('pinned_at')
   },
   (table) => [
     primaryKey({ columns: [table.noteId, table.tag] }),
-    index('idx_note_tags_tag').on(table.tag)
+    index('idx_note_tags_tag').on(table.tag),
+    index('idx_note_tags_pinned').on(table.pinnedAt)
   ]
 )
 
