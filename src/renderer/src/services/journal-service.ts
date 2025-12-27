@@ -6,7 +6,6 @@ import type {
   MonthStats,
   DayContext,
   JournalTagCount,
-  JournalSearchResult,
   JournalStreak,
   JournalEntryCreatedEvent,
   JournalEntryUpdatedEvent,
@@ -125,16 +124,6 @@ export const journalService: JournalClientAPI = {
    */
   getAllTags: (): Promise<JournalTagCount[]> => {
     return window.api.journal.getAllTags()
-  },
-
-  /**
-   * Search journal entries.
-   * @param query - Search query
-   * @param limit - Maximum number of results (default 20)
-   * @returns Array of search results
-   */
-  searchEntries: (query: string, limit?: number): Promise<JournalSearchResult[]> => {
-    return window.api.journal.searchEntries(query, limit)
   },
 
   // =========================================================================

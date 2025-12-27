@@ -16,14 +16,12 @@ import {
   GetMonthEntriesInputSchema,
   GetYearStatsInputSchema,
   GetDayContextInputSchema,
-  SearchEntriesInputSchema,
   type JournalEntry,
   type HeatmapEntry,
   type MonthEntryPreview,
   type MonthStats,
   type DayContext,
-  type GetAllTagsOutput,
-  type SearchResult
+  type GetAllTagsOutput
 } from '@shared/contracts/journal-api'
 import { createValidatedHandler, createHandler } from './validate'
 import {
@@ -457,16 +455,6 @@ export function registerJournalHandlers(): void {
       const tagsWithColors = getAllTagsWithColors(db)
       // Return in expected format (tag + count, without color for backward compat)
       return tagsWithColors.map((t) => ({ tag: t.tag, count: t.count }))
-    })
-  )
-
-  // journal:searchEntries - Search journal entries
-  ipcMain.handle(
-    JournalChannels.invoke.SEARCH_ENTRIES,
-    createValidatedHandler(SearchEntriesInputSchema, async (_input): Promise<SearchResult[]> => {
-      // TODO: Implement FTS search in Phase 13 (User Story 11)
-      // For now, return empty results
-      return []
     })
   )
 

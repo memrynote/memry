@@ -119,12 +119,10 @@ async function indexFile(
     }
 
     const parsed = parseNote(content, relativePath)
-    console.log(`[Indexer] Parsed file: ${relativePath}, id: ${parsed.frontmatter.id}, title: ${parsed.frontmatter.title}`)
 
     // Check if already in cache by path
     const existingByPath = getNoteCacheByPath(db, relativePath)
     if (existingByPath) {
-      console.log(`[Indexer] Skipping (already cached by path): ${relativePath}`)
       return 'skipped'
     }
 
