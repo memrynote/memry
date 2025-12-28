@@ -543,6 +543,14 @@ const api = {
       ipcRenderer.invoke(InboxChannels.invoke.SET_STALE_THRESHOLD, days)
   },
 
+  // Quick Capture API (global shortcut window)
+  quickCapture: {
+    /** Close the quick capture window */
+    close: (): void => ipcRenderer.send('quick-capture:close'),
+    /** Get current clipboard text content */
+    getClipboard: (): Promise<string> => ipcRenderer.invoke('quick-capture:get-clipboard')
+  },
+
   // Tags API (for sidebar drill-down)
   tags: {
     /** Get notes for a specific tag with pinned status */

@@ -1,4 +1,14 @@
-import { app, shell, BrowserWindow, ipcMain, protocol, net } from 'electron'
+import {
+  app,
+  shell,
+  BrowserWindow,
+  ipcMain,
+  protocol,
+  net,
+  globalShortcut,
+  clipboard,
+  screen
+} from 'electron'
 import { join } from 'path'
 import { config } from 'dotenv'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -130,13 +140,33 @@ app.whenReady().then(async () => {
       filePath = filePath.slice(1)
     }
 
-    try {
-      // Check if file exists before fetching to avoid noisy errors
-      const { existsSync } = await import('fs')
-      if (!existsSync(filePath)) {
-        // Return empty response for missing files (e.g., null thumbnails)
-        return new Response(null, { status: 404, statusText: 'Not Found' })
+    // Check if file exists before fetching to avoid noisy errors
+    const { existsSync } = await import('fs')
+    if (!existsSync(filePath)) {
+      // Return empty 1x1 transparent PNG for missing image files (null thumbnails)
+      // This avoids console errors and broken image icons
+      if (
+        filePath.endsWith('.png') ||
+        filePath.endsWith('.jpg') ||
+        filePath.endsWith('.jpeg') ||
+        filePath.endsWith('.gif') ||
+        filePath.endsWith('.webp')
+      ) {
+        // 1x1 transparent PNG
+        const transparentPng = Buffer.from(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+          'base64'
+        )
+        return new Response(transparentPng, {
+          status: 200,
+          headers: { 'Content-Type': 'image/png' }
+        })
       }
+      // Return 404 for other missing files
+      return new Response(null, { status: 404, statusText: 'Not Found' })
+    }
+
+    try {
       return net.fetch(`file://${filePath}`)
     } catch {
       // Return 404 for any errors
@@ -174,8 +204,20 @@ app.whenReady().then(async () => {
     win?.close()
   })
 
+  // Quick Capture IPC handlers
+  ipcMain.on('quick-capture:close', () => {
+    closeQuickCaptureWindow()
+  })
+
+  ipcMain.handle('quick-capture:get-clipboard', () => {
+    return clipboard.readText()
+  })
+
   // Register all IPC handlers (vault, notes, tasks, search)
   registerAllHandlers()
+
+  // Register global shortcut for quick capture (Cmd+Shift+Space)
+  registerQuickCaptureShortcut()
 
   // Auto-open the last vault if one was previously open
   await autoOpenLastVault()
@@ -188,6 +230,134 @@ app.whenReady().then(async () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
+
+// ============================================================================
+// Quick Capture Window (Global Shortcut: Cmd+Shift+Space)
+// ============================================================================
+
+/** Reference to the quick capture window instance */
+let quickCaptureWindow: BrowserWindow | null = null
+
+/**
+ * Show the quick capture window centered on screen.
+ * Creates a new window if one doesn't exist, or focuses the existing one.
+ */
+function showQuickCaptureWindow(): void {
+  // If window already exists, just focus it
+  if (quickCaptureWindow && !quickCaptureWindow.isDestroyed()) {
+    quickCaptureWindow.focus()
+    return
+  }
+
+  // Get the primary display's work area to center the window
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize
+
+  const windowWidth = 480
+  const windowHeight = 200
+
+  // Calculate center position
+  const x = Math.round((screenWidth - windowWidth) / 2)
+  const y = Math.round((screenHeight - windowHeight) / 2)
+
+  quickCaptureWindow = new BrowserWindow({
+    width: windowWidth,
+    height: windowHeight,
+    x,
+    y,
+    alwaysOnTop: true,
+    frame: false,
+    resizable: false,
+    skipTaskbar: true,
+    show: false,
+    transparent: false,
+    hasShadow: true,
+    vibrancy: process.platform === 'darwin' ? 'popover' : undefined,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  // Load the quick capture route
+  // Note: Hash routing is used to pass the route to the renderer
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    // In dev mode, append hash to the Vite dev server URL
+    const devUrl = process.env['ELECTRON_RENDERER_URL']
+    // Remove trailing slash if present to avoid double slashes
+    const baseUrl = devUrl.endsWith('/') ? devUrl.slice(0, -1) : devUrl
+    const url = `${baseUrl}/#/quick-capture`
+    console.log('[QuickCapture] Loading URL:', url)
+    quickCaptureWindow.loadURL(url)
+  } else {
+    // In production, load the HTML file with hash
+    const filePath = join(__dirname, '../renderer/index.html')
+    console.log('[QuickCapture] Loading file:', filePath)
+    quickCaptureWindow.loadFile(filePath, {
+      hash: 'quick-capture'
+    })
+  }
+
+  // Handle load failures
+  quickCaptureWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+    console.error('[QuickCapture] Failed to load:', errorCode, errorDescription)
+  })
+
+  // Show window when ready
+  quickCaptureWindow.once('ready-to-show', () => {
+    quickCaptureWindow?.show()
+    quickCaptureWindow?.focus()
+  })
+
+  // Close when window loses focus (clicking outside)
+  quickCaptureWindow.on('blur', () => {
+    // Small delay to allow for click handling within the window
+    setTimeout(() => {
+      if (quickCaptureWindow && !quickCaptureWindow.isDestroyed()) {
+        quickCaptureWindow.close()
+      }
+    }, 100)
+  })
+
+  // Clean up reference when window is closed
+  quickCaptureWindow.on('closed', () => {
+    quickCaptureWindow = null
+  })
+}
+
+/**
+ * Close the quick capture window if it exists
+ */
+function closeQuickCaptureWindow(): void {
+  if (quickCaptureWindow && !quickCaptureWindow.isDestroyed()) {
+    quickCaptureWindow.close()
+  }
+}
+
+/**
+ * Register the global shortcut for quick capture
+ */
+function registerQuickCaptureShortcut(): void {
+  const shortcut = 'CommandOrControl+Shift+Space'
+
+  const registered = globalShortcut.register(shortcut, () => {
+    console.log('[QuickCapture] Global shortcut triggered')
+    showQuickCaptureWindow()
+  })
+
+  if (registered) {
+    console.log(`[QuickCapture] Global shortcut registered: ${shortcut}`)
+  } else {
+    console.warn(
+      `[QuickCapture] Failed to register global shortcut: ${shortcut}. ` +
+        'It may be in use by another application.'
+    )
+  }
+}
+
+// ============================================================================
+// Shutdown Handling
+// ============================================================================
 
 // Track if shutdown is already in progress to prevent duplicate handling
 let isShuttingDown = false
@@ -228,6 +398,12 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+// Unregister all global shortcuts when the app is about to quit
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
+  console.log('[QuickCapture] Global shortcuts unregistered')
 })
 
 // In this file you can include the rest of your app's specific main process

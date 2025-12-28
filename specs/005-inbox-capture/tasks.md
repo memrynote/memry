@@ -243,12 +243,12 @@
 
 ### Implementation for User Story 9
 
-- [ ] T094 [P] [US9] Register global shortcut (Cmd+Shift+Space) in src/main/index.ts
-- [ ] T095 [US9] Create quick capture window in src/main/index.ts
-- [ ] T096 [US9] Create quick capture mini window component in src/renderer/src/components/quick-capture.tsx
-- [ ] T097 [US9] Auto-detect clipboard URL content in quick capture window
-- [ ] T098 [US9] Handle Escape to close and Enter to submit in quick capture
-- [ ] T099 [US9] Send capture request from quick capture window to main process
+- [x] T094 [P] [US9] Register global shortcut (Cmd+Shift+Space) in src/main/index.ts
+- [x] T095 [US9] Create quick capture window in src/main/index.ts
+- [x] T096 [US9] Create quick capture mini window component in src/renderer/src/components/quick-capture.tsx
+- [x] T097 [US9] Auto-detect clipboard URL content in quick capture window
+- [x] T098 [US9] Handle Escape to close and Enter to submit in quick capture
+- [x] T099 [US9] Send capture request from quick capture window to main process
 
 **Checkpoint**: Global capture shortcut is fully functional
 
