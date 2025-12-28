@@ -66,7 +66,14 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   // Animation states for transitions
   const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set())
   const [isEmptyStateExiting, _setIsEmptyStateExiting] = useState(false)
-  const [showEmptyState, setShowEmptyState] = useState(items.length === 0)
+  const [showEmptyState, setShowEmptyState] = useState(false)
+
+  // Sync empty state with actual items (after loading completes)
+  useEffect(() => {
+    if (!isLoading) {
+      setShowEmptyState(items.length === 0)
+    }
+  }, [items.length, isLoading])
 
   // Selection state for bulk mode
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())

@@ -541,6 +541,10 @@ export const InboxChannels = {
     /** Retry transcription for a voice item */
     RETRY_TRANSCRIPTION: 'inbox:retry-transcription',
 
+    // Metadata
+    /** Retry metadata fetch for a link item */
+    RETRY_METADATA: 'inbox:retry-metadata',
+
     // Stats
     /** Get inbox statistics */
     GET_STATS: 'inbox:get-stats',

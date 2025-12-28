@@ -695,6 +695,25 @@ export function useRetryTranscription() {
 }
 
 // =============================================================================
+// Metadata Mutations
+// =============================================================================
+
+/**
+ * Hook for retrying metadata fetch on a link item.
+ */
+export function useRetryMetadata() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (itemId: string) => inboxService.retryMetadata(itemId),
+    onSuccess: (_, itemId) => {
+      queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+    }
+  })
+}
+
+// =============================================================================
 // Processing Error Subscription Hook
 // =============================================================================
 
@@ -735,6 +754,7 @@ export function useInboxOperations() {
   const bulkTag = useBulkTagInboxItems()
   const fileAllStale = useFileAllStale()
   const retryTranscription = useRetryTranscription()
+  const retryMetadata = useRetryMetadata()
 
   return {
     // Capture
@@ -773,6 +793,10 @@ export function useInboxOperations() {
 
     // Transcription
     retryTranscription: retryTranscription.mutateAsync,
-    isRetryTranscriptionPending: retryTranscription.isPending
+    isRetryTranscriptionPending: retryTranscription.isPending,
+
+    // Metadata
+    retryMetadata: retryMetadata.mutateAsync,
+    isRetryMetadataPending: retryMetadata.isPending
   }
 }

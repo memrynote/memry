@@ -529,6 +529,10 @@ const api = {
     retryTranscription: (itemId: string) =>
       ipcRenderer.invoke(InboxChannels.invoke.RETRY_TRANSCRIPTION, itemId),
 
+    // Metadata
+    retryMetadata: (itemId: string) =>
+      ipcRenderer.invoke(InboxChannels.invoke.RETRY_METADATA, itemId),
+
     // Stats
     getStats: () => ipcRenderer.invoke(InboxChannels.invoke.GET_STATS),
     getPatterns: () => ipcRenderer.invoke(InboxChannels.invoke.GET_PATTERNS),
