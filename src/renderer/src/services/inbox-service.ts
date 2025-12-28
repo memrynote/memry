@@ -376,6 +376,19 @@ export const inboxService = {
   },
 
   // =========================================================================
+  // Metadata
+  // =========================================================================
+
+  /**
+   * Retry metadata fetch for a link item.
+   * @param itemId - Link item ID
+   * @returns Success status
+   */
+  retryMetadata: (itemId: string): Promise<{ success: boolean; error?: string }> => {
+    return window.api.inbox.retryMetadata(itemId)
+  },
+
+  // =========================================================================
   // Stats & Analytics
   // =========================================================================
 

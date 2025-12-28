@@ -1484,6 +1484,9 @@ export interface InboxClientAPI {
   // Transcription
   retryTranscription(itemId: string): Promise<{ success: boolean; error?: string }>
 
+  // Metadata
+  retryMetadata(itemId: string): Promise<{ success: boolean; error?: string }>
+
   // Stats
   getStats(): Promise<InboxStats>
   getPatterns(): Promise<InboxCapturePattern>

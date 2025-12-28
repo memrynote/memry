@@ -29,7 +29,12 @@ import { getDatabase } from '../database'
 import { generateId } from '../lib/id'
 import { inboxItems, inboxItemTags } from '@shared/db/schema/inbox'
 import { eq, desc, asc, and, isNull, sql } from 'drizzle-orm'
-import { resolveAttachmentUrl, deleteInboxAttachments } from '../inbox/attachments'
+import {
+  resolveAttachmentUrl,
+  deleteInboxAttachments,
+  getItemAttachmentsDir
+} from '../inbox/attachments'
+import { fetchUrlMetadata, downloadImage } from '../inbox/metadata'
 
 // ============================================================================
 // Constants
@@ -40,6 +45,128 @@ const DEFAULT_STALE_DAYS = 7
 
 /** Current stale threshold (can be changed via settings) */
 let staleThresholdDays = DEFAULT_STALE_DAYS
+
+/** Retry delay for metadata fetch (5 seconds) */
+const METADATA_RETRY_DELAY = 5000
+
+// ============================================================================
+// Background Metadata Fetch
+// ============================================================================
+
+/**
+ * Fetch URL metadata in background and update the inbox item
+ *
+ * @param itemId - The inbox item ID to update
+ * @param url - The URL to fetch metadata from
+ * @param retryCount - Current retry count (auto-retry once on failure)
+ */
+async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 0): Promise<void> {
+  let db: ReturnType<typeof getDatabase>
+
+  try {
+    db = requireDatabase()
+  } catch {
+    console.warn('[Metadata] No database available, skipping metadata fetch')
+    return
+  }
+
+  try {
+    // Update status to processing
+    db.update(inboxItems)
+      .set({
+        processingStatus: 'processing',
+        modifiedAt: new Date().toISOString()
+      })
+      .where(eq(inboxItems.id, itemId))
+      .run()
+
+    // Fetch metadata
+    console.log(`[Metadata] Fetching metadata for ${url}`)
+    const metadata = await fetchUrlMetadata(url)
+    console.log(`[Metadata] Extracted: title="${metadata.title}", hasImage=${!!metadata.image}`)
+
+    // Download image if available
+    let thumbnailPath: string | null = null
+    if (metadata.image) {
+      const attachmentsDir = getItemAttachmentsDir(itemId)
+      const imageName = await downloadImage(metadata.image, attachmentsDir)
+      if (imageName) {
+        // Store relative path: inbox/{itemId}/thumbnail.ext
+        thumbnailPath = `inbox/${itemId}/${imageName}`
+        console.log(`[Metadata] Downloaded thumbnail: ${thumbnailPath}`)
+      }
+    }
+
+    // Update item with metadata
+    const now = new Date().toISOString()
+    db.update(inboxItems)
+      .set({
+        title: metadata.title || url,
+        content: metadata.description || null,
+        thumbnailPath,
+        processingStatus: 'complete',
+        processingError: null,
+        modifiedAt: now,
+        metadata: {
+          url,
+          fetchStatus: 'complete',
+          ...metadata
+        }
+      })
+      .where(eq(inboxItems.id, itemId))
+      .run()
+
+    // Emit success event
+    emitInboxEvent(InboxChannels.events.METADATA_COMPLETE, {
+      id: itemId,
+      metadata: {
+        title: metadata.title,
+        description: metadata.description,
+        image: metadata.image,
+        thumbnailPath
+      }
+    })
+
+    console.log(`[Metadata] Successfully updated item ${itemId}`)
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error(`[Metadata] Error fetching metadata for ${url}:`, errorMessage)
+
+    // Auto-retry once after delay
+    if (retryCount < 1) {
+      console.log(`[Metadata] Scheduling retry for ${itemId} in ${METADATA_RETRY_DELAY}ms`)
+      setTimeout(() => {
+        fetchAndUpdateMetadata(itemId, url, retryCount + 1).catch(console.error)
+      }, METADATA_RETRY_DELAY)
+      return
+    }
+
+    // Update item with error status
+    try {
+      db.update(inboxItems)
+        .set({
+          processingStatus: 'failed',
+          processingError: errorMessage,
+          modifiedAt: new Date().toISOString(),
+          metadata: {
+            url,
+            fetchStatus: 'failed',
+            error: errorMessage
+          }
+        })
+        .where(eq(inboxItems.id, itemId))
+        .run()
+
+      // Emit error event
+      emitInboxEvent(InboxChannels.events.PROCESSING_ERROR, {
+        id: itemId,
+        error: errorMessage
+      })
+    } catch (dbError) {
+      console.error('[Metadata] Failed to update error status:', dbError)
+    }
+  }
+}
 
 // ============================================================================
 // Helpers
@@ -203,7 +330,7 @@ async function handleCaptureText(input: unknown): Promise<CaptureResponse> {
 }
 
 /**
- * Capture a URL (stub - full implementation in Phase 3)
+ * Capture a URL with background metadata extraction
  */
 async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
   try {
@@ -213,8 +340,7 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
     const id = generateId()
     const now = new Date().toISOString()
 
-    // For now, create a basic link item without metadata fetch
-    // Full metadata fetch will be implemented in Phase 3
+    // Create link item with pending status
     db.insert(inboxItems)
       .values({
         id,
@@ -254,7 +380,15 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
     const tags = getItemTags(db, id)
     const item = toInboxItem(created, tags)
 
+    // Emit captured event immediately (UI shows pending state)
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
+
+    // Trigger background metadata fetch (don't await - non-blocking)
+    setImmediate(() => {
+      fetchAndUpdateMetadata(id, parsed.url).catch((err) => {
+        console.error('[Inbox] Background metadata fetch error:', err)
+      })
+    })
 
     return { success: true, item }
   } catch (error) {
@@ -687,6 +821,50 @@ async function stubRetryTranscription(): Promise<{ success: boolean; error?: str
   return { success: false, error: 'Not implemented yet' }
 }
 
+/**
+ * Retry metadata fetch for a link item
+ */
+async function handleRetryMetadata(itemId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const db = requireDatabase()
+
+    const item = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
+    if (!item) {
+      return { success: false, error: 'Item not found' }
+    }
+
+    if (item.type !== 'link') {
+      return { success: false, error: 'Item is not a link' }
+    }
+
+    if (!item.sourceUrl) {
+      return { success: false, error: 'Item has no source URL' }
+    }
+
+    // Reset status to pending
+    db.update(inboxItems)
+      .set({
+        processingStatus: 'pending',
+        processingError: null,
+        modifiedAt: new Date().toISOString()
+      })
+      .where(eq(inboxItems.id, itemId))
+      .run()
+
+    // Trigger background fetch (start fresh with retryCount = 0)
+    setImmediate(() => {
+      fetchAndUpdateMetadata(itemId, item.sourceUrl!, 0).catch((err) => {
+        console.error('[Inbox] Retry metadata fetch error:', err)
+      })
+    })
+
+    return { success: true }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return { success: false, error: message }
+  }
+}
+
 async function stubGetPatterns(): Promise<CapturePattern> {
   return {
     timeHeatmap: [],
@@ -743,6 +921,9 @@ export function registerInboxHandlers(): void {
   // Transcription handlers
   ipcMain.handle(InboxChannels.invoke.RETRY_TRANSCRIPTION, () => stubRetryTranscription())
 
+  // Metadata handlers
+  ipcMain.handle(InboxChannels.invoke.RETRY_METADATA, (_, id) => handleRetryMetadata(id))
+
   // Stats handlers
   ipcMain.handle(InboxChannels.invoke.GET_STATS, () => handleGetStats())
   ipcMain.handle(InboxChannels.invoke.GET_PATTERNS, () => stubGetPatterns())
@@ -798,6 +979,9 @@ export function unregisterInboxHandlers(): void {
 
   // Transcription
   ipcMain.removeHandler(InboxChannels.invoke.RETRY_TRANSCRIPTION)
+
+  // Metadata
+  ipcMain.removeHandler(InboxChannels.invoke.RETRY_METADATA)
 
   // Stats
   ipcMain.removeHandler(InboxChannels.invoke.GET_STATS)
