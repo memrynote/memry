@@ -25,7 +25,6 @@ import { EmptyState } from '@/components/empty-state/empty-state'
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
 import { SRAnnouncer } from '@/components/sr-announcer'
 import { CaptureInput } from '@/components/capture-input'
-import { UNSORTED_FOLDER_ID } from '@/data/filing-data'
 import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
 import { getStaleItems, getNonStaleItems } from '@/lib/stale-utils'
 import { cn } from '@/lib/utils'
@@ -838,21 +837,17 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       setHasFilingHistory(true)
 
       try {
-        // Use bulk file API to file to Unsorted folder
-        const result = await window.api.inbox.bulkFile({
-          itemIds: staleIds,
-          destination: { type: 'folder', path: UNSORTED_FOLDER_ID },
-          tags: []
-        })
+        // Use dedicated fileAllStale API - it handles finding stale items server-side
+        const result = await window.api.inbox.fileAllStale()
 
         if (result.success || result.processedCount > 0) {
           queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
           addToast({
-            message: `Filed ${result.processedCount} items to Unsorted`,
+            message: `Filed ${result.processedCount} stale items to Unsorted`,
             type: 'success'
           })
         } else {
-          throw new Error('Failed to file items')
+          throw new Error('Failed to file stale items')
         }
       } catch (error) {
         // Revert optimistic delete on error

@@ -153,15 +153,15 @@
 
 ### Implementation for User Story 5
 
-- [ ] T056 [P] [US5] Implement bulkFile function in src/main/inbox/filing.ts
-- [ ] T057 [P] [US5] Implement bulkDelete function in src/main/inbox/capture.ts
-- [ ] T058 [US5] Add BULK_FILE IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T059 [US5] Add BULK_DELETE IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T060 [US5] Add bulk methods to src/renderer/src/services/inbox-service.ts
-- [ ] T061 [US5] Connect BulkActionBar to real API in src/renderer/src/components/bulk/bulk-action-bar.tsx
-- [ ] T062 [US5] Connect BulkFilePanel to real API in src/renderer/src/components/bulk/bulk-file-panel.tsx
-- [ ] T063 [US5] Update handleBulkFileComplete with real IPC in src/renderer/src/pages/inbox.tsx
-- [ ] T064 [US5] Update handleBulkDeleteConfirm with real IPC in src/renderer/src/pages/inbox.tsx
+- [x] T056 [P] [US5] Implement bulkFile function in src/main/inbox/filing.ts
+- [x] T057 [P] [US5] Implement bulkDelete function in src/main/inbox/capture.ts
+- [x] T058 [US5] Add BULK_FILE IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T059 [US5] Add BULK_DELETE IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T060 [US5] Add bulk methods to src/renderer/src/services/inbox-service.ts
+- [x] T061 [US5] Connect BulkActionBar to real API in src/renderer/src/components/bulk/bulk-action-bar.tsx
+- [x] T062 [US5] Connect BulkFilePanel to real API in src/renderer/src/components/bulk/bulk-file-panel.tsx
+- [x] T063 [US5] Update handleBulkFileComplete with real IPC in src/renderer/src/pages/inbox.tsx
+- [x] T064 [US5] Update handleBulkDeleteConfirm with real IPC in src/renderer/src/pages/inbox.tsx
 
 **Checkpoint**: Bulk operations are fully functional - MVP COMPLETE
 
@@ -222,14 +222,14 @@
 
 ### Implementation for User Story 8
 
-- [ ] T086 [P] [US8] Add isStale computed field to list query in src/main/ipc/inbox-handlers.ts
-- [ ] T087 [P] [US8] Create src/main/inbox/stats.ts with stale detection logic
-- [ ] T088 [US8] Add GET_STALE_THRESHOLD IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T089 [US8] Add SET_STALE_THRESHOLD IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T090 [US8] Implement FILE_ALL_STALE IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T091 [US8] Add stale threshold methods to src/renderer/src/services/inbox-service.ts
-- [ ] T092 [US8] Update stale styling in list/card view components (already exists, verify works)
-- [ ] T093 [US8] Connect "File all stale" button to real API in src/renderer/src/pages/inbox.tsx
+- [x] T086 [P] [US8] Add isStale computed field to list query in src/main/ipc/inbox-handlers.ts
+- [x] T087 [P] [US8] Create src/main/inbox/stats.ts with stale detection logic
+- [x] T088 [US8] Add GET_STALE_THRESHOLD IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T089 [US8] Add SET_STALE_THRESHOLD IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T090 [US8] Implement FILE_ALL_STALE IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T091 [US8] Add stale threshold methods to src/renderer/src/services/inbox-service.ts
+- [x] T092 [US8] Update stale styling in list/card view components (already exists, verify works)
+- [x] T093 [US8] Connect "File all stale" button to real API in src/renderer/src/pages/inbox.tsx
 
 **Checkpoint**: Stale item highlighting is fully functional
 
