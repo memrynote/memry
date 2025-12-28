@@ -1,9 +1,9 @@
-import { useState, useMemo } from "react"
-import { Search, Folder, Check, ChevronRight, ChevronDown } from "lucide-react"
+import { useState, useMemo } from 'react'
+import { Search, Folder, Check, ChevronRight, ChevronDown, Plus } from 'lucide-react'
 
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
-import type { Folder as FolderType } from "@/types"
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+import type { Folder as FolderType } from '@/types'
 
 interface FolderItemProps {
   folder: FolderType
@@ -17,7 +17,7 @@ const FolderItem = ({ folder, isSelected, onSelect }: FolderItemProps): React.JS
   }
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === "Enter" || e.key === " ") {
+    if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       onSelect(folder)
     }
@@ -26,11 +26,9 @@ const FolderItem = ({ folder, isSelected, onSelect }: FolderItemProps): React.JS
   return (
     <div
       className={cn(
-        "flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer",
-        "transition-all duration-[var(--duration-instant)] ease-[var(--ease-out)]",
-        isSelected
-          ? "bg-primary text-primary-foreground"
-          : "hover:bg-muted"
+        'flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer',
+        'transition-all duration-[var(--duration-instant)] ease-[var(--ease-out)]',
+        isSelected ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
       )}
       role="option"
       aria-selected={isSelected}
@@ -43,9 +41,9 @@ const FolderItem = ({ folder, isSelected, onSelect }: FolderItemProps): React.JS
       {isSelected && (
         <Check
           className={cn(
-            "size-4 shrink-0",
-            "animate-in zoom-in-75 duration-[var(--duration-fast)]",
-            "motion-reduce:animate-none"
+            'size-4 shrink-0',
+            'animate-in zoom-in-75 duration-[var(--duration-fast)]',
+            'motion-reduce:animate-none'
           )}
           aria-hidden="true"
         />
@@ -65,7 +63,7 @@ const FolderSection = ({
   title,
   folders,
   selectedId,
-  onSelect,
+  onSelect
 }: FolderSectionProps): React.JSX.Element | null => {
   if (folders.length === 0) return null
 
@@ -101,9 +99,9 @@ const FolderSelector = ({
   suggestedFolders,
   recentFolders,
   selectedFolder,
-  onSelect,
+  onSelect
 }: FolderSelectorProps): React.JSX.Element => {
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState('')
   const [isAllExpanded, setIsAllExpanded] = useState(false)
 
   // Filter folders based on search query
@@ -112,8 +110,7 @@ const FolderSelector = ({
     const query = searchQuery.toLowerCase()
     return folders.filter(
       (folder) =>
-        folder.name.toLowerCase().includes(query) ||
-        folder.path.toLowerCase().includes(query)
+        folder.name.toLowerCase().includes(query) || folder.path.toLowerCase().includes(query)
     )
   }, [folders, searchQuery])
 
@@ -140,16 +137,14 @@ const FolderSelector = ({
       {selectedFolder && (
         <div
           className={cn(
-            "flex items-center gap-2 px-3 py-2 rounded-md",
-            "bg-primary/10 border border-primary/20",
-            "animate-in fade-in-0 duration-[var(--duration-fast)]",
-            "motion-reduce:animate-none"
+            'flex items-center gap-2 px-3 py-2 rounded-md',
+            'bg-primary/10 border border-primary/20',
+            'animate-in fade-in-0 duration-[var(--duration-fast)]',
+            'motion-reduce:animate-none'
           )}
         >
           <Folder className="size-4 text-primary" aria-hidden="true" />
-          <span className="text-sm font-medium text-primary">
-            {selectedFolder.path}
-          </span>
+          <span className="text-sm font-medium text-primary">{selectedFolder.path}</span>
           <Check className="size-4 text-primary ml-auto" aria-hidden="true" />
         </div>
       )}
@@ -175,19 +170,58 @@ const FolderSelector = ({
         {isSearching ? (
           // Search Results
           <div className="space-y-0.5" role="listbox" aria-label="Search results">
-            {filteredFolders.length > 0 ? (
-              filteredFolders.map((folder) => (
-                <FolderItem
-                  key={folder.id}
-                  folder={folder}
-                  isSelected={selectedFolder?.id === folder.id}
-                  onSelect={onSelect}
-                />
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground px-3 py-2">
-                No folders found
-              </p>
+            {filteredFolders.length > 0
+              ? filteredFolders.map((folder) => (
+                  <FolderItem
+                    key={folder.id}
+                    folder={folder}
+                    isSelected={selectedFolder?.id === folder.id}
+                    onSelect={onSelect}
+                  />
+                ))
+              : null}
+
+            {/* Show "Create new folder" option when searching */}
+            {searchQuery.trim() && (
+              <div
+                className={cn(
+                  'flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer',
+                  'transition-all duration-[var(--duration-instant)] ease-[var(--ease-out)]',
+                  selectedFolder?.path === searchQuery.trim()
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-muted border border-dashed border-muted-foreground/30'
+                )}
+                role="option"
+                aria-selected={selectedFolder?.path === searchQuery.trim()}
+                tabIndex={0}
+                onClick={() => {
+                  const newFolder: FolderType = {
+                    id: searchQuery.trim(),
+                    name: searchQuery.trim().split('/').pop() || searchQuery.trim(),
+                    path: searchQuery.trim()
+                  }
+                  onSelect(newFolder)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    const newFolder: FolderType = {
+                      id: searchQuery.trim(),
+                      name: searchQuery.trim().split('/').pop() || searchQuery.trim(),
+                      path: searchQuery.trim()
+                    }
+                    onSelect(newFolder)
+                  }
+                }}
+              >
+                <Plus className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="flex-1 text-sm">
+                  Create "<span className="font-medium">{searchQuery.trim()}</span>"
+                </span>
+                {selectedFolder?.path === searchQuery.trim() && (
+                  <Check className="size-4 shrink-0" aria-hidden="true" />
+                )}
+              </div>
             )}
           </div>
         ) : (
@@ -214,9 +248,9 @@ const FolderSelector = ({
                 type="button"
                 onClick={handleToggleAll}
                 className={cn(
-                  "flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1",
-                  "text-muted-foreground/70 hover:text-muted-foreground",
-                  "transition-colors duration-[var(--duration-instant)]"
+                  'flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1',
+                  'text-muted-foreground/70 hover:text-muted-foreground',
+                  'transition-colors duration-[var(--duration-instant)]'
                 )}
                 aria-expanded={isAllExpanded}
               >
@@ -248,4 +282,3 @@ const FolderSelector = ({
 }
 
 export { FolderSelector }
-

@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link, FileText, Image, Mic, Check, Loader2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
@@ -7,12 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { FolderSelector } from '@/components/filing/folder-selector'
 import { TagInput } from '@/components/filing/tag-input'
-import {
-  sampleFolders,
-  getSuggestedFolders,
-  getRecentFolders,
-  suggestedTags
-} from '@/data/filing-data'
+import { suggestedTags } from '@/data/filing-data'
 import type { InboxItem, InboxItemListItem, InboxItemType, Folder } from '@/types'
 
 // Bulk file panel can work with either full or list item types
@@ -67,6 +63,31 @@ const BulkFilePanel = ({
   const [isLoading, setIsLoading] = useState(false)
 
   const itemCount = items.length
+
+  // Fetch real folders from vault
+  const { data: vaultFolders = [] } = useQuery({
+    queryKey: ['vault', 'folders'],
+    queryFn: async () => {
+      const paths = await window.api.notes.getFolders()
+      // Add root folder option and convert paths to Folder objects
+      const folders: Folder[] = [{ id: '', name: 'Notes (root)', path: '' }]
+      for (const path of paths) {
+        if (path) {
+          folders.push({
+            id: path,
+            name: path.split('/').pop() || path,
+            path: path,
+            parent: path.includes('/') ? path.split('/').slice(0, -1).join('/') : undefined
+          })
+        }
+      }
+      return folders
+    },
+    enabled: isOpen // Only fetch when panel is open
+  })
+
+  // Get first 3 folders as suggested
+  const suggestedFolders = useMemo(() => vaultFolders.slice(0, 3), [vaultFolders])
 
   // Reset state when panel opens
   useEffect(() => {
@@ -164,9 +185,9 @@ const BulkFilePanel = ({
 
           {/* Folder Selection */}
           <FolderSelector
-            folders={sampleFolders}
-            suggestedFolders={getSuggestedFolders()}
-            recentFolders={getRecentFolders()}
+            folders={vaultFolders}
+            suggestedFolders={suggestedFolders}
+            recentFolders={[]} // TODO: Track recent folders in filing history
             selectedFolder={selectedFolder}
             onSelect={handleFolderSelect}
           />

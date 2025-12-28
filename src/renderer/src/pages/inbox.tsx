@@ -5,11 +5,14 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { List, Grid, Check, Loader2, AlertCircle } from 'lucide-react'
+import { List, Grid, Check, Loader2, AlertCircle, Archive } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ToastContainer, type Toast } from '@/components/ui/toast'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { ListView } from '@/components/list-view'
 import { CardView } from '@/components/card-view'
 import { FilingPanel } from '@/components/filing/filing-panel'
@@ -22,12 +25,18 @@ import { EmptyState } from '@/components/empty-state/empty-state'
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
 import { SRAnnouncer } from '@/components/sr-announcer'
 import { CaptureInput } from '@/components/capture-input'
-import { sampleFolders, UNSORTED_FOLDER_ID } from '@/data/filing-data'
+import { UNSORTED_FOLDER_ID } from '@/data/filing-data'
 import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
 import { getStaleItems, getNonStaleItems } from '@/lib/stale-utils'
 import { cn } from '@/lib/utils'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
-import { useInboxList, useDeleteInboxItem, useBulkDeleteInboxItems } from '@/hooks/use-inbox'
+import {
+  useInboxList,
+  useDeleteInboxItem,
+  useBulkDeleteInboxItems,
+  useFileInboxItem,
+  inboxKeys
+} from '@/hooks/use-inbox'
 import type { InboxItemListItem } from '@/types'
 
 type ViewMode = 'list' | 'card'
@@ -42,9 +51,21 @@ interface InboxPageProps {
 export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [showFiledItems, setShowFiledItems] = useState(false)
+  const queryClient = useQueryClient()
 
   // Backend data hooks
-  const { items: backendItems, isLoading, error, refetch } = useInboxList()
+  const {
+    items: backendItems,
+    isLoading,
+    error,
+    refetch
+  } = useInboxList({
+    includeFiled: showFiledItems
+  })
+
+  // File mutation
+  const fileItemMutation = useFileInboxItem()
 
   // Delete mutations
   const deleteItemMutation = useDeleteInboxItem()
@@ -318,21 +339,19 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   }, [])
 
   // Handle filing complete with animation
-  // TODO: Wire to real filing backend when available
   const handleFilingComplete = useCallback(
-    (itemId: string, folderId: string, _tags: string[], _linkedNoteIds: string[]): void => {
+    (itemId: string, folderId: string, tags: string[], linkedNoteIds: string[]): void => {
       const filedItem = items.find((item) => item.id === itemId)
       if (!filedItem) return
 
-      const folder = sampleFolders.find((f) => f.id === folderId)
       const willBeEmpty = items.length === 1
 
       // Start exit animation
       setExitingItemIds((prev) => new Set(prev).add(itemId))
 
-      // After exit animation, remove item via backend delete (for now)
+      // After exit animation, file item via backend
       setTimeout(async () => {
-        // Add to pending deletes for optimistic UI
+        // Add to pending deletes for optimistic UI (item will be filtered out when filed)
         setPendingDeleteIds((prev) => new Set(prev).add(itemId))
 
         // Clear exiting state
@@ -354,21 +373,38 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         setHasFilingHistory(true)
 
         // If this was the last item, show empty state after a brief pause
-        if (willBeEmpty) {
+        if (willBeEmpty && !showFiledItems) {
           setTimeout(() => {
             setShowEmptyState(true)
           }, 200)
         }
 
         try {
-          // For now, just delete the item - real filing will be implemented later
-          await deleteItemMutation.mutateAsync(itemId)
-          addToast({
-            message: `Filed to ${folder?.name || 'folder'}`,
-            type: 'success'
+          // Determine destination type based on linkedNoteIds
+          const destination =
+            linkedNoteIds.length > 0
+              ? { type: 'note' as const, noteId: linkedNoteIds[0] }
+              : { type: 'folder' as const, path: folderId }
+
+          const result = await fileItemMutation.mutateAsync({
+            itemId,
+            destination,
+            tags
           })
-        } catch {
-          // Revert optimistic delete on error
+
+          if (result.success) {
+            // Invalidate queries to refresh the list
+            queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+            addToast({
+              message:
+                linkedNoteIds.length > 0 ? 'Linked to note' : `Filed to ${folderId || 'Notes'}`,
+              type: 'success'
+            })
+          } else {
+            throw new Error(result.error || 'Failed to file')
+          }
+        } catch (error) {
+          // Revert optimistic UI on error
           setPendingDeleteIds((prev) => {
             const next = new Set(prev)
             next.delete(itemId)
@@ -376,29 +412,27 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           })
           setItemsProcessedToday((prev) => Math.max(0, prev - 1))
           addToast({
-            message: 'Failed to file item',
+            message: error instanceof Error ? error.message : 'Failed to file item',
             type: 'error'
           })
         }
       }, 200)
     },
-    [items, addToast, deleteItemMutation]
+    [items, addToast, fileItemMutation, queryClient, showFiledItems]
   )
 
   // Handle Quick-File (inline keyboard filing from List View) with animation
-  // TODO: Wire to real filing backend when available
   const handleQuickFile = useCallback(
     (itemId: string, folderId: string): void => {
       const filedItem = items.find((item) => item.id === itemId)
       if (!filedItem) return
 
-      const folder = sampleFolders.find((f) => f.id === folderId)
       const willBeEmpty = items.length === 1
 
       // Start exit animation
       setExitingItemIds((prev) => new Set(prev).add(itemId))
 
-      // After exit animation, remove item via backend delete (for now)
+      // After exit animation, file item via backend
       setTimeout(async () => {
         // Add to pending deletes for optimistic UI
         setPendingDeleteIds((prev) => new Set(prev).add(itemId))
@@ -422,21 +456,30 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         setHasFilingHistory(true)
 
         // If this was the last item, show empty state after a brief pause
-        if (willBeEmpty) {
+        if (willBeEmpty && !showFiledItems) {
           setTimeout(() => {
             setShowEmptyState(true)
           }, 200)
         }
 
         try {
-          // For now, just delete the item - real filing will be implemented later
-          await deleteItemMutation.mutateAsync(itemId)
-          addToast({
-            message: `Filed to ${folder?.name || 'folder'}`,
-            type: 'success'
+          const result = await fileItemMutation.mutateAsync({
+            itemId,
+            destination: { type: 'folder', path: folderId },
+            tags: []
           })
-        } catch {
-          // Revert optimistic delete on error
+
+          if (result.success) {
+            queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+            addToast({
+              message: `Filed to ${folderId || 'Notes'}`,
+              type: 'success'
+            })
+          } else {
+            throw new Error(result.error || 'Failed to file')
+          }
+        } catch (error) {
+          // Revert optimistic UI on error
           setPendingDeleteIds((prev) => {
             const next = new Set(prev)
             next.delete(itemId)
@@ -444,13 +487,13 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           })
           setItemsProcessedToday((prev) => Math.max(0, prev - 1))
           addToast({
-            message: 'Failed to file item',
+            message: error instanceof Error ? error.message : 'Failed to file item',
             type: 'error'
           })
         }
       }, 200)
     },
-    [items, addToast, deleteItemMutation]
+    [items, addToast, fileItemMutation, queryClient, showFiledItems]
   )
 
   // Handle preview action - toggle preview panel
@@ -573,10 +616,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   }, [])
 
   // Handle bulk file complete
-  // TODO: Wire to real filing backend when available
   const handleBulkFileComplete = useCallback(
-    async (itemIds: string[], folderId: string, _tags: string[]): Promise<void> => {
-      const folder = sampleFolders.find((f) => f.id === folderId)
+    async (itemIds: string[], folderId: string, tags: string[]): Promise<void> => {
       const processedCount = itemIds.length
 
       // Add to pending deletes for optimistic UI
@@ -594,13 +635,30 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       setHasFilingHistory(true)
 
       try {
-        // For now, bulk delete the items - real filing will be implemented later
-        await bulkDeleteMutation.mutateAsync({ itemIds })
-        addToast({
-          message: `Filed ${itemIds.length} items to ${folder?.name || 'folder'}`,
-          type: 'success'
+        // Use bulk file API
+        const result = await window.api.inbox.bulkFile({
+          itemIds,
+          destination: { type: 'folder', path: folderId },
+          tags
         })
-      } catch {
+
+        if (result.success) {
+          queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+          addToast({
+            message: `Filed ${itemIds.length} items to ${folderId || 'Notes'}`,
+            type: 'success'
+          })
+        } else if (result.errors.length > 0) {
+          // Partial success
+          queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+          addToast({
+            message: `Filed ${result.processedCount} of ${itemIds.length} items`,
+            type: 'success'
+          })
+        } else {
+          throw new Error('Failed to file items')
+        }
+      } catch (error) {
         // Revert optimistic delete on error
         setPendingDeleteIds((prev) => {
           const next = new Set(prev)
@@ -609,12 +667,12 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         })
         setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
         addToast({
-          message: 'Failed to file items',
+          message: error instanceof Error ? error.message : 'Failed to file items',
           type: 'error'
         })
       }
     },
-    [addToast, bulkDeleteMutation]
+    [addToast, queryClient]
   )
 
   // Handle bulk tag all
@@ -734,18 +792,16 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   // === STALE ITEMS HANDLERS ===
 
   // Handle "File all to Unsorted" action for stale items
-  // TODO: Wire to real filing backend when available
   const handleFileAllStaleToUnsorted = useCallback((): void => {
     if (staleItems.length === 0) return
 
-    const unsortedFolder = sampleFolders.find((f) => f.id === UNSORTED_FOLDER_ID)
     const processedCount = staleItems.length
     const staleIds = staleItems.map((i) => i.id)
 
     // Start exit animation for all stale items
     setExitingItemIds(new Set(staleIds))
 
-    // After animation, delete via backend
+    // After animation, file via backend
     setTimeout(async () => {
       // Add to pending deletes for optimistic UI
       setPendingDeleteIds((prev) => {
@@ -769,13 +825,23 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       setHasFilingHistory(true)
 
       try {
-        // For now, bulk delete - real filing will be implemented later
-        await bulkDeleteMutation.mutateAsync({ itemIds: staleIds })
-        addToast({
-          message: `Filed ${processedCount} items to ${unsortedFolder?.name || 'Unsorted'}`,
-          type: 'success'
+        // Use bulk file API to file to Unsorted folder
+        const result = await window.api.inbox.bulkFile({
+          itemIds: staleIds,
+          destination: { type: 'folder', path: UNSORTED_FOLDER_ID },
+          tags: []
         })
-      } catch {
+
+        if (result.success || result.processedCount > 0) {
+          queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+          addToast({
+            message: `Filed ${result.processedCount} items to Unsorted`,
+            type: 'success'
+          })
+        } else {
+          throw new Error('Failed to file items')
+        }
+      } catch (error) {
         // Revert optimistic delete on error
         setPendingDeleteIds((prev) => {
           const next = new Set(prev)
@@ -784,12 +850,12 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         })
         setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
         addToast({
-          message: 'Failed to file stale items',
+          message: error instanceof Error ? error.message : 'Failed to file stale items',
           type: 'error'
         })
       }
     }, 200)
-  }, [staleItems, addToast, bulkDeleteMutation])
+  }, [staleItems, addToast, queryClient])
 
   // Handle "Review one by one" action for stale items
   // Simple version: select all stale items to enter bulk mode
@@ -968,6 +1034,23 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                     <Grid className="size-4" />
                   </ToggleGroupItem>
                 </ToggleGroup>
+
+                {/* Show filed items toggle */}
+                <div className="flex items-center gap-2 ml-4 pl-4 border-l border-border/40">
+                  <Switch
+                    id="show-filed"
+                    checked={showFiledItems}
+                    onCheckedChange={setShowFiledItems}
+                    className="scale-90"
+                  />
+                  <Label
+                    htmlFor="show-filed"
+                    className="text-xs text-muted-foreground/70 cursor-pointer whitespace-nowrap"
+                  >
+                    <Archive className="inline-block size-3 mr-1" />
+                    Show filed
+                  </Label>
+                </div>
               </div>
             </div>
           )}

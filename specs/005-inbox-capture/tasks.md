@@ -63,19 +63,19 @@
 
 ### Implementation for User Story 1
 
-- [ ] T018 [P] [US1] Create src/main/inbox/metadata.ts with metascraper setup
-- [ ] T019 [P] [US1] Implement fetchUrlMetadata function in src/main/inbox/metadata.ts
-- [ ] T020 [US1] Add URL detection logic in src/main/inbox/capture.ts
-- [ ] T021 [US1] Implement captureLink handler in src/main/inbox/capture.ts
-- [ ] T022 [US1] Add CAPTURE_LINK IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T023 [US1] Add LIST IPC handler for inbox items in src/main/ipc/inbox-handlers.ts
-- [ ] T024 [US1] Add GET IPC handler for single item in src/main/ipc/inbox-handlers.ts
-- [ ] T025 [US1] Implement retry logic for failed metadata fetches in src/main/inbox/metadata.ts
-- [ ] T026 [US1] Add captureLink method to src/renderer/src/services/inbox-service.ts
-- [ ] T027 [US1] Update useInbox hook to fetch real data in src/renderer/src/hooks/use-inbox.ts
-- [ ] T028 [US1] Replace sampleInboxItems with useInbox hook in src/renderer/src/pages/inbox.tsx
-- [ ] T029 [US1] Add loading state for metadata fetch in src/renderer/src/pages/inbox.tsx
-- [ ] T030 [US1] Add error state with retry button for failed fetches in src/renderer/src/pages/inbox.tsx
+- [x] T018 [P] [US1] Create src/main/inbox/metadata.ts with metascraper setup
+- [x] T019 [P] [US1] Implement fetchUrlMetadata function in src/main/inbox/metadata.ts
+- [x] T020 [US1] Add URL detection logic in src/main/inbox/capture.ts
+- [x] T021 [US1] Implement captureLink handler in src/main/inbox/capture.ts
+- [x] T022 [US1] Add CAPTURE_LINK IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T023 [US1] Add LIST IPC handler for inbox items in src/main/ipc/inbox-handlers.ts
+- [x] T024 [US1] Add GET IPC handler for single item in src/main/ipc/inbox-handlers.ts
+- [x] T025 [US1] Implement retry logic for failed metadata fetches in src/main/inbox/metadata.ts
+- [x] T026 [US1] Add captureLink method to src/renderer/src/services/inbox-service.ts
+- [x] T027 [US1] Update useInbox hook to fetch real data in src/renderer/src/hooks/use-inbox.ts
+- [x] T028 [US1] Replace sampleInboxItems with useInbox hook in src/renderer/src/pages/inbox.tsx
+- [x] T029 [US1] Add loading state for metadata fetch in src/renderer/src/pages/inbox.tsx
+- [x] T030 [US1] Add error state with retry button for failed fetches in src/renderer/src/pages/inbox.tsx
 
 **Checkpoint**: Link capture with metadata extraction is fully functional
 
@@ -89,13 +89,13 @@
 
 ### Implementation for User Story 2
 
-- [ ] T031 [P] [US2] Implement captureText handler in src/main/inbox/capture.ts
-- [ ] T032 [US2] Add CAPTURE_TEXT IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T033 [US2] Add text/URL auto-detection in capture input component
-- [ ] T034 [US2] Add captureText method to src/renderer/src/services/inbox-service.ts
-- [ ] T035 [US2] Create capture input component with Enter key handling in src/renderer/src/components/capture-input.tsx
-- [ ] T036 [US2] Integrate capture input into InboxPage in src/renderer/src/pages/inbox.tsx
-- [ ] T037 [US2] Add optimistic UI update when capturing text in src/renderer/src/hooks/use-inbox.ts
+- [x] T031 [P] [US2] Implement captureText handler in src/main/inbox/capture.ts
+- [x] T032 [US2] Add CAPTURE_TEXT IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T033 [US2] Add text/URL auto-detection in capture input component
+- [x] T034 [US2] Add captureText method to src/renderer/src/services/inbox-service.ts
+- [x] T035 [US2] Create capture input component with Enter key handling in src/renderer/src/components/capture-input.tsx
+- [x] T036 [US2] Integrate capture input into InboxPage in src/renderer/src/pages/inbox.tsx
+- [x] T037 [US2] Add optimistic UI update when capturing text in src/renderer/src/hooks/use-inbox.ts
 
 **Checkpoint**: Text note capture is fully functional
 
@@ -460,6 +460,24 @@
 - [ ] T182 Performance optimization: lazy load thumbnails on scroll
 - [ ] T183 Remove sample data file src/renderer/src/data/sample-inbox-items.ts after migration
 - [ ] T184 Verify quickstart.md validation steps work correctly
+
+---
+
+## Phase 22: Mixed-Content Folders Enhancement (Future)
+
+**Purpose**: Support storing non-markdown files (PDF, images, audio) directly in note folders
+
+**Background**: Currently, attachments are stored in `attachments/inbox/{itemId}/` and linked in notes.
+This enhancement would allow files to be stored alongside .md files in the same folder structure.
+
+- [ ] T185 [P] Design folder structure for mixed content (md, pdf, images, audio coexisting)
+- [ ] T186 Update folder view components to display non-markdown files
+- [ ] T187 Add option in filing to "Move file to folder" instead of "Create note with link"
+- [ ] T188 Update attachment path resolution for items stored in note folders
+- [ ] T189 Implement file rename/move for non-markdown assets in folders
+- [ ] T190 Add thumbnail generation for files displayed in folder view
+
+**Checkpoint**: Files can be stored directly in note folders without wrapper notes
 
 ---
 
