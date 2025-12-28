@@ -1,32 +1,47 @@
-import { useRef, useEffect } from "react"
-import { Link, FileText, Image, Mic, Play, Globe } from "lucide-react"
+import { useRef, useEffect } from 'react'
+import { Link, FileText, Image, Mic, Play, Globe, Scissors, FileIcon, Share2 } from 'lucide-react'
 
-import { Checkbox } from "@/components/ui/checkbox"
-import { QuickActions } from "@/components/quick-actions"
-import { AgeIndicator } from "@/components/stale/age-indicator"
-import { formatTimestamp, formatDuration, extractDomain } from "@/lib/inbox-utils"
-import { cn } from "@/lib/utils"
-import type { InboxItem, InboxItemType } from "@/types"
+import { Checkbox } from '@/components/ui/checkbox'
+import { QuickActions } from '@/components/quick-actions'
+import { AgeIndicator } from '@/components/stale/age-indicator'
+import { formatTimestamp, formatDuration, extractDomain } from '@/lib/inbox-utils'
+import { cn } from '@/lib/utils'
+import type { InboxItemListItem, InboxItemType } from '@/types'
+
+// Type alias for convenience (backend type)
+type InboxItem = InboxItemListItem
 
 // Icon component based on item type
-const TypeIcon = ({ type, className }: { type: InboxItemType; className?: string }): React.JSX.Element => {
-  const iconClass = className || "size-4 text-[var(--muted-foreground)]"
+const TypeIcon = ({
+  type,
+  className
+}: {
+  type: InboxItemType
+  className?: string
+}): React.JSX.Element => {
+  const iconClass = className || 'size-4 text-[var(--muted-foreground)]'
 
   switch (type) {
-    case "link":
+    case 'link':
       return <Link className={iconClass} aria-hidden="true" />
-    case "note":
+    case 'note':
       return <FileText className={iconClass} aria-hidden="true" />
-    case "image":
+    case 'image':
       return <Image className={iconClass} aria-hidden="true" />
-    case "voice":
+    case 'voice':
       return <Mic className={iconClass} aria-hidden="true" />
+    case 'clip':
+      return <Scissors className={iconClass} aria-hidden="true" />
+    case 'pdf':
+      return <FileIcon className={iconClass} aria-hidden="true" />
+    case 'social':
+      return <Share2 className={iconClass} aria-hidden="true" />
   }
 }
 
 // Card content components (simplified versions from card-view.tsx)
 const LinkCardContent = ({ item }: { item: InboxItem }): React.JSX.Element => {
-  const domain = item.url ? extractDomain(item.url) : "unknown"
+  const domain = item.sourceUrl ? extractDomain(item.sourceUrl) : 'unknown'
   return (
     <div className="flex flex-col items-center justify-center h-full gap-2">
       <div className="size-10 rounded-lg bg-[var(--muted)] flex items-center justify-center">
@@ -59,7 +74,7 @@ const ImageCardContent = (): React.JSX.Element => {
 }
 
 const VoiceCardContent = ({ item }: { item: InboxItem }): React.JSX.Element => {
-  const duration = item.duration ? formatDuration(item.duration) : "0:00"
+  const duration = item.duration ? formatDuration(item.duration) : '0:00'
   return (
     <div className="flex flex-col items-center justify-center h-full gap-3">
       <div className="flex items-center gap-2">
@@ -82,23 +97,26 @@ const VoiceCardContent = ({ item }: { item: InboxItem }): React.JSX.Element => {
           ))}
         </div>
       </div>
-      <span className="text-sm font-medium text-[var(--foreground)] tabular-nums">
-        {duration}
-      </span>
+      <span className="text-sm font-medium text-[var(--foreground)] tabular-nums">{duration}</span>
     </div>
   )
 }
 
 const CardContent = ({ item }: { item: InboxItem }): React.JSX.Element => {
   switch (item.type) {
-    case "link":
+    case 'link':
       return <LinkCardContent item={item} />
-    case "note":
+    case 'note':
       return <NoteCardContent item={item} />
-    case "image":
+    case 'image':
       return <ImageCardContent />
-    case "voice":
+    case 'voice':
       return <VoiceCardContent item={item} />
+    case 'clip':
+    case 'pdf':
+    case 'social':
+    default:
+      return <NoteCardContent item={item} />
   }
 }
 
@@ -128,14 +146,14 @@ export const StaleCard = ({
   onPreview,
   onDelete,
   onFocus,
-  onSelectionToggle,
+  onSelectionToggle
 }: StaleCardProps): React.JSX.Element => {
   const cardRef = useRef<HTMLDivElement>(null)
 
   // Scroll into view when focused
   useEffect(() => {
     if (isFocused && cardRef.current) {
-      cardRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" })
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
   }, [isFocused])
 
@@ -148,7 +166,7 @@ export const StaleCard = ({
     onSelectionToggle(item.id, e.shiftKey)
   }
 
-  const handleCheckboxChange = (_checked: boolean | "indeterminate"): void => {
+  const handleCheckboxChange = (_checked: boolean | 'indeterminate'): void => {
     // Handled in handleCheckboxClick for shift-key support
   }
 
@@ -156,18 +174,18 @@ export const StaleCard = ({
     <div
       ref={cardRef}
       className={cn(
-        "group relative flex flex-col rounded-lg border bg-[var(--card)] shadow-sm cursor-pointer overflow-hidden",
-        "transition-all duration-200 ease-out",
+        'group relative flex flex-col rounded-lg border bg-[var(--card)] shadow-sm cursor-pointer overflow-hidden',
+        'transition-all duration-200 ease-out',
         // Exit animation
         isExiting
-          ? "opacity-0 scale-95 motion-reduce:opacity-0 motion-reduce:scale-100"
-          : "opacity-100 scale-100",
+          ? 'opacity-0 scale-95 motion-reduce:opacity-0 motion-reduce:scale-100'
+          : 'opacity-100 scale-100',
         // Selection/focus states with amber tint for stale items
         !isExiting && isSelected
-          ? "border-[var(--primary)] ring-2 ring-[var(--primary)]/30 shadow-lg"
+          ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/30 shadow-lg'
           : !isExiting && isFocused
-            ? "border-amber-500/50 ring-2 ring-amber-500/30 ring-offset-1 ring-offset-[var(--background)] shadow-lg"
-            : "border-amber-500/20 hover:shadow-lg hover:border-amber-500/40 hover:scale-[1.01]"
+            ? 'border-amber-500/50 ring-2 ring-amber-500/30 ring-offset-1 ring-offset-[var(--background)] shadow-lg'
+            : 'border-amber-500/20 hover:shadow-lg hover:border-amber-500/40 hover:scale-[1.01]'
       )}
       role="article"
       tabIndex={isFocused ? 0 : -1}
@@ -177,14 +195,16 @@ export const StaleCard = ({
       data-item-id={item.id}
     >
       {/* Checkbox - always visible in bulk mode, otherwise on hover/focus */}
-      <div className={cn(
-        "absolute top-2 left-2 z-10 transition-opacity duration-150",
-        isSelected || isInBulkMode
-          ? "opacity-100"
-          : isFocused
-            ? "opacity-100"
-            : "opacity-0 group-hover:opacity-100"
-      )}>
+      <div
+        className={cn(
+          'absolute top-2 left-2 z-10 transition-opacity duration-150',
+          isSelected || isInBulkMode
+            ? 'opacity-100'
+            : isFocused
+              ? 'opacity-100'
+              : 'opacity-0 group-hover:opacity-100'
+        )}
+      >
         <Checkbox
           id={`stale-card-${item.id}`}
           checked={isSelected}
@@ -199,7 +219,7 @@ export const StaleCard = ({
       <div className="flex items-center justify-between px-3 py-2 border-b border-amber-500/10 bg-amber-500/5">
         <TypeIcon type={item.type} />
         <span className="text-[10px] text-[var(--muted-foreground)] tabular-nums">
-          {formatTimestamp(item.timestamp, "OLDER")}
+          {formatTimestamp(item.createdAt, 'OLDER')}
         </span>
       </div>
 
@@ -209,14 +229,12 @@ export const StaleCard = ({
       </div>
 
       {/* Bottom: Title - hidden on hover when actions show (unless in bulk mode) */}
-      <div className={cn(
-        "px-3 py-2 border-t border-amber-500/10 bg-amber-500/5 transition-opacity duration-100",
-        isInBulkMode
-          ? ""
-          : isFocused
-            ? "hidden"
-            : "group-hover:hidden"
-      )}>
+      <div
+        className={cn(
+          'px-3 py-2 border-t border-amber-500/10 bg-amber-500/5 transition-opacity duration-100',
+          isInBulkMode ? '' : isFocused ? 'hidden' : 'group-hover:hidden'
+        )}
+      >
         <p className="text-sm font-medium text-[var(--foreground)] line-clamp-2 leading-snug">
           {item.title}
         </p>
@@ -224,10 +242,12 @@ export const StaleCard = ({
 
       {/* Quick Actions overlay - visible on hover or focus (hidden in bulk mode) */}
       {!isInBulkMode && (
-        <div className={cn(
-          "px-3 py-2 border-t border-amber-500/10 bg-amber-500/10 items-center justify-center transition-opacity duration-100 ease-out",
-          isFocused ? "flex" : "hidden group-hover:flex"
-        )}>
+        <div
+          className={cn(
+            'px-3 py-2 border-t border-amber-500/10 bg-amber-500/10 items-center justify-center transition-opacity duration-100 ease-out',
+            isFocused ? 'flex' : 'hidden group-hover:flex'
+          )}
+        >
           <QuickActions
             itemId={item.id}
             onFile={onFile}
@@ -245,4 +265,3 @@ export const StaleCard = ({
     </div>
   )
 }
-

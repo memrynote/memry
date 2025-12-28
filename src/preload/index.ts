@@ -12,7 +12,8 @@ import {
   JournalChannels,
   SettingsChannels,
   BookmarksChannels,
-  TagsChannels
+  TagsChannels,
+  InboxChannels
 } from '@shared/ipc-channels'
 
 // Custom APIs for renderer
@@ -437,6 +438,107 @@ const api = {
       ipcRenderer.invoke(BookmarksChannels.invoke.BULK_CREATE, { items })
   },
 
+  // Inbox API
+  inbox: {
+    // Capture
+    captureText: (input: { content: string; title?: string; tags?: string[] }) =>
+      ipcRenderer.invoke(InboxChannels.invoke.CAPTURE_TEXT, input),
+    captureLink: (input: { url: string; tags?: string[] }) =>
+      ipcRenderer.invoke(InboxChannels.invoke.CAPTURE_LINK, input),
+    captureImage: (input: {
+      data: ArrayBuffer
+      filename: string
+      mimeType: string
+      tags?: string[]
+    }) => ipcRenderer.invoke(InboxChannels.invoke.CAPTURE_IMAGE, input),
+    captureVoice: (input: {
+      data: ArrayBuffer
+      duration: number
+      format: string
+      transcribe?: boolean
+      tags?: string[]
+    }) => ipcRenderer.invoke(InboxChannels.invoke.CAPTURE_VOICE, input),
+    captureClip: (input: {
+      html: string
+      text: string
+      sourceUrl: string
+      sourceTitle: string
+      tags?: string[]
+    }) => ipcRenderer.invoke(InboxChannels.invoke.CAPTURE_CLIP, input),
+    capturePdf: (input: {
+      data: ArrayBuffer
+      filename: string
+      extractText?: boolean
+      tags?: string[]
+    }) => ipcRenderer.invoke(InboxChannels.invoke.CAPTURE_PDF, input),
+
+    // CRUD
+    get: (id: string) => ipcRenderer.invoke(InboxChannels.invoke.GET, id),
+    list: (options?: {
+      type?: string
+      includeFiled?: boolean
+      includeSnoozed?: boolean
+      sortBy?: 'created' | 'modified' | 'title'
+      sortOrder?: 'asc' | 'desc'
+      limit?: number
+      offset?: number
+    }) => ipcRenderer.invoke(InboxChannels.invoke.LIST, options ?? {}),
+    update: (input: { id: string; title?: string; content?: string }) =>
+      ipcRenderer.invoke(InboxChannels.invoke.UPDATE, input),
+    delete: (id: string) => ipcRenderer.invoke(InboxChannels.invoke.DELETE, id),
+
+    // Filing
+    file: (input: {
+      itemId: string
+      destination: { type: string; path?: string; noteId?: string; noteTitle?: string }
+      tags?: string[]
+    }) => ipcRenderer.invoke(InboxChannels.invoke.FILE, input),
+    getSuggestions: (itemId: string) =>
+      ipcRenderer.invoke(InboxChannels.invoke.GET_SUGGESTIONS, itemId),
+    convertToNote: (itemId: string) =>
+      ipcRenderer.invoke(InboxChannels.invoke.CONVERT_TO_NOTE, itemId),
+    linkToNote: (itemId: string, noteId: string) =>
+      ipcRenderer.invoke(InboxChannels.invoke.LINK_TO_NOTE, itemId, noteId),
+
+    // Tags
+    addTag: (itemId: string, tag: string) =>
+      ipcRenderer.invoke(InboxChannels.invoke.ADD_TAG, itemId, tag),
+    removeTag: (itemId: string, tag: string) =>
+      ipcRenderer.invoke(InboxChannels.invoke.REMOVE_TAG, itemId, tag),
+    getTags: () => ipcRenderer.invoke(InboxChannels.invoke.GET_TAGS),
+
+    // Snooze
+    snooze: (input: { itemId: string; snoozeUntil: string; reason?: string }) =>
+      ipcRenderer.invoke(InboxChannels.invoke.SNOOZE, input),
+    unsnooze: (itemId: string) => ipcRenderer.invoke(InboxChannels.invoke.UNSNOOZE, itemId),
+    getSnoozed: () => ipcRenderer.invoke(InboxChannels.invoke.GET_SNOOZED),
+
+    // Bulk operations
+    bulkFile: (input: {
+      itemIds: string[]
+      destination: { type: string; path?: string; noteId?: string }
+      tags?: string[]
+    }) => ipcRenderer.invoke(InboxChannels.invoke.BULK_FILE, input),
+    bulkDelete: (input: { itemIds: string[] }) =>
+      ipcRenderer.invoke(InboxChannels.invoke.BULK_DELETE, input),
+    bulkTag: (input: { itemIds: string[]; tags: string[] }) =>
+      ipcRenderer.invoke(InboxChannels.invoke.BULK_TAG, input),
+    fileAllStale: () => ipcRenderer.invoke(InboxChannels.invoke.FILE_ALL_STALE),
+
+    // Transcription
+    retryTranscription: (itemId: string) =>
+      ipcRenderer.invoke(InboxChannels.invoke.RETRY_TRANSCRIPTION, itemId),
+
+    // Stats
+    getStats: () => ipcRenderer.invoke(InboxChannels.invoke.GET_STATS),
+    getPatterns: () => ipcRenderer.invoke(InboxChannels.invoke.GET_PATTERNS),
+
+    // Settings
+    getStaleThreshold: () => ipcRenderer.invoke(InboxChannels.invoke.GET_STALE_THRESHOLD),
+    setStaleThreshold: (days: number) =>
+      ipcRenderer.invoke(InboxChannels.invoke.SET_STALE_THRESHOLD, days)
+  },
+
   // Tags API (for sidebar drill-down)
   tags: {
     /** Get notes for a specific tag with pinned status */
@@ -820,6 +922,92 @@ const api = {
     ): void => callback(data)
     ipcRenderer.on(TagsChannels.events.NOTES_CHANGED, handler)
     return () => ipcRenderer.removeListener(TagsChannels.events.NOTES_CHANGED, handler)
+  },
+
+  // Inbox event subscription helpers
+  onInboxCaptured: (callback: (event: { item: unknown }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { item: unknown }): void =>
+      callback(data)
+    ipcRenderer.on(InboxChannels.events.CAPTURED, handler)
+    return () => ipcRenderer.removeListener(InboxChannels.events.CAPTURED, handler)
+  },
+
+  onInboxUpdated: (callback: (event: { id: string; changes: unknown }) => void): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { id: string; changes: unknown }
+    ): void => callback(data)
+    ipcRenderer.on(InboxChannels.events.UPDATED, handler)
+    return () => ipcRenderer.removeListener(InboxChannels.events.UPDATED, handler)
+  },
+
+  onInboxDeleted: (callback: (event: { id: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { id: string }): void =>
+      callback(data)
+    ipcRenderer.on(InboxChannels.events.DELETED, handler)
+    return () => ipcRenderer.removeListener(InboxChannels.events.DELETED, handler)
+  },
+
+  onInboxFiled: (
+    callback: (event: { id: string; filedTo: string; filedAction: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { id: string; filedTo: string; filedAction: string }
+    ): void => callback(data)
+    ipcRenderer.on(InboxChannels.events.FILED, handler)
+    return () => ipcRenderer.removeListener(InboxChannels.events.FILED, handler)
+  },
+
+  onInboxSnoozed: (
+    callback: (event: { id: string; snoozeUntil: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { id: string; snoozeUntil: string }
+    ): void => callback(data)
+    ipcRenderer.on(InboxChannels.events.SNOOZED, handler)
+    return () => ipcRenderer.removeListener(InboxChannels.events.SNOOZED, handler)
+  },
+
+  onInboxSnoozeDue: (callback: (event: { items: unknown[] }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { items: unknown[] }): void =>
+      callback(data)
+    ipcRenderer.on(InboxChannels.events.SNOOZE_DUE, handler)
+    return () => ipcRenderer.removeListener(InboxChannels.events.SNOOZE_DUE, handler)
+  },
+
+  onInboxTranscriptionComplete: (
+    callback: (event: { id: string; transcription: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { id: string; transcription: string }
+    ): void => callback(data)
+    ipcRenderer.on(InboxChannels.events.TRANSCRIPTION_COMPLETE, handler)
+    return () => ipcRenderer.removeListener(InboxChannels.events.TRANSCRIPTION_COMPLETE, handler)
+  },
+
+  onInboxMetadataComplete: (
+    callback: (event: { id: string; metadata: unknown }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { id: string; metadata: unknown }
+    ): void => callback(data)
+    ipcRenderer.on(InboxChannels.events.METADATA_COMPLETE, handler)
+    return () => ipcRenderer.removeListener(InboxChannels.events.METADATA_COMPLETE, handler)
+  },
+
+  onInboxProcessingError: (
+    callback: (event: { id: string; operation: string; error: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { id: string; operation: string; error: string }
+    ): void => callback(data)
+    ipcRenderer.on(InboxChannels.events.PROCESSING_ERROR, handler)
+    return () => ipcRenderer.removeListener(InboxChannels.events.PROCESSING_ERROR, handler)
   }
 }
 

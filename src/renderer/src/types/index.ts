@@ -8,64 +8,104 @@ export interface TreeDataItem {
   iconColor?: string
   disabled?: boolean
   draggable?: boolean
-  customIcon?: string      // Kullanıcının seçtiği ikon adı (lucide icon name)
-  inheritedIcon?: string   // Parent'tan gelen ikon adı
+  customIcon?: string // Kullanıcının seçtiği ikon adı (lucide icon name)
+  inheritedIcon?: string // Parent'tan gelen ikon adı
 }
 
-// Inbox item types
-export type InboxItemType = "link" | "note" | "image" | "voice"
+// Re-export inbox types from preload (backend types)
+export type {
+  InboxItemType,
+  InboxItem,
+  InboxItemListItem,
+  InboxListResponse,
+  InboxCaptureResponse,
+  InboxFileResponse,
+  InboxBulkResponse,
+  InboxStats,
+  InboxProcessingStatus,
+  InboxFilingAction
+} from '../../../preload/index.d'
 
-// Preview content types for each item type
-export interface LinkPreviewContent {
+// Metadata types for type-specific content
+export interface LinkMetadata {
+  url: string
+  siteName?: string
+  description?: string
   excerpt?: string
   heroImage?: string | null
-  highlightedText?: string
+  favicon?: string | null
+  author?: string
+  publishedDate?: string
+  fetchedAt?: string
+  fetchStatus?: 'success' | 'partial' | 'failed' | 'pending'
 }
 
-export interface NotePreviewContent {
-  fullText: string
-}
-
-export interface ImagePreviewContent {
-  imageUrl?: string
-  dimensions?: { width: number; height: number }
-  fileSize?: string
+export interface ImageMetadata {
+  originalFilename: string
+  format: string
+  width: number
+  height: number
+  fileSize: number
+  hasExif: boolean
   caption?: string
 }
 
-export interface VoicePreviewContent {
-  audioUrl?: string
-  transcription?: string
-  transcriptionAuto?: boolean
+export interface VoiceMetadata {
+  duration: number
+  format: string
+  fileSize: number
+  sampleRate?: number
 }
 
-export type PreviewContent =
-  | LinkPreviewContent
-  | NotePreviewContent
-  | ImagePreviewContent
-  | VoicePreviewContent
-
-export interface InboxItem {
-  id: string
-  type: InboxItemType
-  title: string
-  timestamp: Date
-  url?: string        // only for type "link"
-  duration?: number   // only for type "voice" (seconds)
-  content?: string    // only for type "note" (preview text)
-  previewContent?: PreviewContent
+export interface ClipMetadata {
+  sourceUrl: string
+  sourceTitle: string
+  quotedText: string
+  selectionContext?: string
+  capturedImages: string[]
+  hasFormatting: boolean
 }
+
+export interface PdfMetadata {
+  originalFilename: string
+  pageCount: number
+  fileSize: number
+  extractedTitle?: string
+  author?: string
+  creationDate?: string
+  textExcerpt?: string
+  hasText: boolean
+}
+
+export interface SocialMetadata {
+  platform: 'twitter' | 'linkedin' | 'mastodon' | 'bluesky' | 'threads' | 'other'
+  postUrl: string
+  authorName: string
+  authorHandle: string
+  authorAvatar?: string
+  postContent: string
+  timestamp?: string
+  mediaUrls: string[]
+}
+
+export type InboxMetadata =
+  | LinkMetadata
+  | ImageMetadata
+  | VoiceMetadata
+  | ClipMetadata
+  | PdfMetadata
+  | SocialMetadata
 
 // Filing system types
 export interface Folder {
   id: string
   name: string
-  path: string        // Full path like "Work / Project Alpha"
-  parent?: string     // Parent folder name for hierarchy
+  path: string // Full path like "Work / Project Alpha"
+  parent?: string // Parent folder name for hierarchy
 }
 
 export interface LinkedNote {
   id: string
   title: string
-  type: "note" | "folder"
+  type: 'note' | 'folder'
 }

@@ -37,19 +37,19 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 Extend inbox schema in src/shared/db/schema/inbox.ts with all columns from data-model.md
-- [ ] T006 Add inbox_item_tags table schema in src/shared/db/schema/inbox.ts
-- [ ] T007 Add filing_history table schema in src/shared/db/schema/inbox.ts
-- [ ] T008 Add inbox_stats table schema in src/shared/db/schema/inbox.ts
-- [ ] T009 Run drizzle-kit generate to create migration for extended inbox schema
-- [ ] T010 Add InboxChannels to src/shared/ipc-channels.ts (from contracts/inbox-api.ts)
-- [ ] T011 Copy inbox-api.ts contract to src/shared/contracts/inbox-api.ts
-- [ ] T012 Create src/main/inbox/attachments.ts for inbox attachment management
-- [ ] T013 Create basic src/main/ipc/inbox-handlers.ts with handler registration
-- [ ] T014 Register inbox IPC handlers in src/main/ipc/index.ts
-- [ ] T015 Add inbox API to preload in src/preload/index.ts
-- [ ] T016 Create src/renderer/src/services/inbox-service.ts IPC client
-- [ ] T017 Create src/renderer/src/hooks/use-inbox.ts base hook structure
+- [x] T005 Extend inbox schema in src/shared/db/schema/inbox.ts with all columns from data-model.md
+- [x] T006 Add inbox_item_tags table schema in src/shared/db/schema/inbox.ts
+- [x] T007 Add filing_history table schema in src/shared/db/schema/inbox.ts
+- [x] T008 Add inbox_stats table schema in src/shared/db/schema/inbox.ts
+- [x] T009 Run drizzle-kit generate to create migration for extended inbox schema
+- [x] T010 Add InboxChannels to src/shared/ipc-channels.ts (from contracts/inbox-api.ts)
+- [x] T011 Copy inbox-api.ts contract to src/shared/contracts/inbox-api.ts
+- [x] T012 Create src/main/inbox/attachments.ts for inbox attachment management
+- [x] T013 Create basic src/main/ipc/inbox-handlers.ts with handler registration
+- [x] T014 Register inbox IPC handlers in src/main/ipc/index.ts
+- [x] T015 Add inbox API to preload in src/preload/index.ts
+- [x] T016 Create src/renderer/src/services/inbox-service.ts IPC client
+- [x] T017 Create src/renderer/src/hooks/use-inbox.ts base hook structure
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 

@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect } from 'react'
 import {
   Link,
   FileText,
@@ -7,62 +7,64 @@ import {
   Calendar,
   Globe,
   Clock,
-  FileIcon,
-  Ruler,
+  Scissors,
+  FileIcon as FileIconLucide,
+  Share2,
   Trash2,
-  Folder,
-} from "lucide-react"
+  Folder
+} from 'lucide-react'
 
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@/components/ui/sheet"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { LinkPreview } from "@/components/preview/link-preview"
-import { NotePreview } from "@/components/preview/note-preview"
-import { ImagePreview } from "@/components/preview/image-preview"
-import { VoicePreview } from "@/components/preview/voice-preview"
-import { extractDomain } from "@/lib/inbox-utils"
-import type { InboxItem, InboxItemType, ImagePreviewContent } from "@/types"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
+import { extractDomain } from '@/lib/inbox-utils'
+import type { InboxItem, InboxItemListItem, InboxItemType } from '@/types'
+
+// Preview panel can work with either full or list item types
+type PreviewItem = InboxItem | InboxItemListItem
 
 // Type icon component
 const TypeIcon = ({ type }: { type: InboxItemType }): React.JSX.Element => {
-  const iconClass = "size-5 text-[var(--muted-foreground)]"
+  const iconClass = 'size-5 text-[var(--muted-foreground)]'
 
   switch (type) {
-    case "link":
+    case 'link':
       return <Link className={iconClass} aria-hidden="true" />
-    case "note":
+    case 'note':
       return <FileText className={iconClass} aria-hidden="true" />
-    case "image":
+    case 'image':
       return <Image className={iconClass} aria-hidden="true" />
-    case "voice":
+    case 'voice':
       return <Mic className={iconClass} aria-hidden="true" />
+    case 'clip':
+      return <Scissors className={iconClass} aria-hidden="true" />
+    case 'pdf':
+      return <FileIconLucide className={iconClass} aria-hidden="true" />
+    case 'social':
+      return <Share2 className={iconClass} aria-hidden="true" />
+    default:
+      return <FileText className={iconClass} aria-hidden="true" />
   }
 }
 
 // Metadata component
 interface PreviewMetadataProps {
-  item: InboxItem
+  item: PreviewItem
 }
 
 const PreviewMetadata = ({ item }: PreviewMetadataProps): React.JSX.Element => {
-  const formatDate = (date: Date): string => {
+  const formatDate = (date: Date | string): string => {
+    const d = date instanceof Date ? date : new Date(date)
     const now = new Date()
-    const isToday = date.toDateString() === now.toDateString()
+    const isToday = d.toDateString() === now.toDateString()
 
     const yesterday = new Date(now)
     yesterday.setDate(yesterday.getDate() - 1)
-    const isYesterday = date.toDateString() === yesterday.toDateString()
+    const isYesterday = d.toDateString() === yesterday.toDateString()
 
-    const timeStr = date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
+    const timeStr = d.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
     })
 
     if (isToday) {
@@ -71,127 +73,170 @@ const PreviewMetadata = ({ item }: PreviewMetadataProps): React.JSX.Element => {
     if (isYesterday) {
       return `yesterday at ${timeStr}`
     }
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }) + ` at ${timeStr}`
+    return (
+      d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }) + ` at ${timeStr}`
+    )
   }
 
-  const renderMetadataByType = (): React.JSX.Element => {
-    switch (item.type) {
-      case "link":
-        return (
-          <>
-            <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-              <Calendar className="size-4" aria-hidden="true" />
-              <span>Captured {formatDate(item.timestamp)}</span>
-            </div>
-            {item.url && (
-              <div className="flex items-center gap-2 text-sm">
-                <Globe className="size-4 text-[var(--muted-foreground)]" aria-hidden="true" />
-                <a
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[var(--primary)] hover:underline"
-                >
-                  {extractDomain(item.url)}
-                </a>
-              </div>
-            )}
-          </>
-        )
-
-      case "note":
-        const noteContent = item.previewContent as { fullText?: string } | undefined
-        const wordCount = noteContent?.fullText
-          ? noteContent.fullText.split(/\s+/).filter(Boolean).length
-          : item.content?.split(/\s+/).filter(Boolean).length || 0
-        return (
-          <>
-            <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-              <Calendar className="size-4" aria-hidden="true" />
-              <span>Captured {formatDate(item.timestamp)}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-              <FileText className="size-4" aria-hidden="true" />
-              <span>{wordCount} words · Personal note</span>
-            </div>
-          </>
-        )
-
-      case "image":
-        const imageContent = item.previewContent as ImagePreviewContent | undefined
-        return (
-          <>
-            <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-              <Calendar className="size-4" aria-hidden="true" />
-              <span>Captured {formatDate(item.timestamp)}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-              {imageContent?.dimensions && (
-                <>
-                  <Ruler className="size-4" aria-hidden="true" />
-                  <span>
-                    {imageContent.dimensions.width} × {imageContent.dimensions.height}
-                  </span>
-                  <span className="text-[var(--border)]">·</span>
-                </>
-              )}
-              {imageContent?.fileSize && <span>{imageContent.fileSize}</span>}
-            </div>
-          </>
-        )
-
-      case "voice":
-        return (
-          <>
-            <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-              <Calendar className="size-4" aria-hidden="true" />
-              <span>Captured {formatDate(item.timestamp)}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-              <Clock className="size-4" aria-hidden="true" />
-              <span>
-                Duration: {Math.floor((item.duration || 0) / 60)}:
-                {((item.duration || 0) % 60).toString().padStart(2, "0")}
-              </span>
-            </div>
-          </>
-        )
+  // Get duration - on list items it's a direct property, on full items it's in metadata
+  let duration: number | null = null
+  if ('duration' in item && typeof item.duration === 'number') {
+    duration = item.duration
+  } else if ('metadata' in item) {
+    const metadata = item.metadata as Record<string, unknown> | null
+    if (typeof metadata?.duration === 'number') {
+      duration = metadata.duration
     }
   }
 
   return (
     <div className="px-6 py-3 bg-[var(--muted)]/30 space-y-1 border-b border-[var(--border)]">
-      {renderMetadataByType()}
+      {/* Common: Capture date */}
+      <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
+        <Calendar className="size-4" aria-hidden="true" />
+        <span>Captured {formatDate(item.createdAt)}</span>
+      </div>
+
+      {/* Link: Show URL */}
+      {item.type === 'link' && item.sourceUrl !== null && (
+        <div className="flex items-center gap-2 text-sm">
+          <Globe className="size-4 text-[var(--muted-foreground)]" aria-hidden="true" />
+          <a
+            href={item.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--primary)] hover:underline truncate"
+          >
+            {extractDomain(item.sourceUrl)}
+          </a>
+        </div>
+      )}
+
+      {/* Note: Word count */}
+      {item.type === 'note' && item.content && (
+        <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
+          <FileText className="size-4" aria-hidden="true" />
+          <span>{item.content.split(/\s+/).filter(Boolean).length} words</span>
+        </div>
+      )}
+
+      {/* Voice: Show duration */}
+      {item.type === 'voice' && duration !== null && (
+        <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
+          <Clock className="size-4" aria-hidden="true" />
+          <span>
+            Duration: {Math.floor(duration / 60)}:{(duration % 60).toString().padStart(2, '0')}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
 
-// Content router component
+// Simple content renderer
 interface PreviewContentProps {
-  item: InboxItem
+  item: PreviewItem
 }
 
 const PreviewContent = ({ item }: PreviewContentProps): React.JSX.Element => {
+  // For now, show a simple preview based on available data
   switch (item.type) {
-    case "link":
-      return <LinkPreview item={item} />
-    case "note":
-      return <NotePreview item={item} />
-    case "image":
-      return <ImagePreview item={item} />
-    case "voice":
-      return <VoicePreview item={item} />
+    case 'link':
+      return (
+        <div className="space-y-4">
+          {item.thumbnailUrl && (
+            <img
+              src={item.thumbnailUrl}
+              alt=""
+              className="w-full rounded-lg object-cover max-h-[200px]"
+            />
+          )}
+          <p className="text-sm text-[var(--muted-foreground)]">
+            {item.content || 'No description available.'}
+          </p>
+          {item.sourceUrl && (
+            <a
+              href={item.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-[var(--primary)] hover:underline"
+            >
+              <Globe className="size-4" />
+              Open in browser
+            </a>
+          )}
+        </div>
+      )
+
+    case 'note':
+      return (
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+          <p className="whitespace-pre-wrap">{item.content}</p>
+        </div>
+      )
+
+    case 'image':
+      return (
+        <div className="space-y-4">
+          {item.thumbnailUrl ? (
+            <img
+              src={item.thumbnailUrl}
+              alt={item.title}
+              className="w-full rounded-lg object-contain max-h-[400px]"
+            />
+          ) : (
+            <div className="flex items-center justify-center h-[200px] bg-[var(--muted)] rounded-lg">
+              <Image className="size-12 text-[var(--muted-foreground)]" />
+            </div>
+          )}
+        </div>
+      )
+
+    case 'voice':
+      return (
+        <div className="space-y-4">
+          {/* Simple audio player placeholder */}
+          <div className="flex items-center gap-4 p-4 bg-[var(--muted)] rounded-lg">
+            <div className="size-12 rounded-full bg-[var(--primary)] flex items-center justify-center">
+              <Mic className="size-6 text-[var(--primary-foreground)]" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium">{item.title}</p>
+              <p className="text-sm text-[var(--muted-foreground)]">Voice memo</p>
+            </div>
+          </div>
+          {/* Transcription if available (only on full InboxItem) */}
+          {'transcription' in item && item.transcription && (
+            <div className="p-4 bg-[var(--muted)]/50 rounded-lg">
+              <p className="text-xs font-medium text-[var(--muted-foreground)] mb-2">
+                Transcription
+              </p>
+              <p className="text-sm">{item.transcription}</p>
+            </div>
+          )}
+        </div>
+      )
+
+    case 'clip':
+    case 'pdf':
+    case 'social':
+    default:
+      return (
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+          <p className="whitespace-pre-wrap">{item.content || 'No content available.'}</p>
+        </div>
+      )
   }
 }
 
 // Main Preview Panel component
 interface PreviewPanelProps {
   isOpen: boolean
-  item: InboxItem | null
+  item: PreviewItem | null
   onClose: () => void
   onFile: (id: string) => void
   onDelete: (id: string) => void
@@ -202,7 +247,7 @@ const PreviewPanel = ({
   item,
   onClose,
   onFile,
-  onDelete,
+  onDelete
 }: PreviewPanelProps): React.JSX.Element => {
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -210,12 +255,9 @@ const PreviewPanel = ({
       if (!isOpen) return
 
       // Space or Escape to close
-      if (e.key === " " || e.key === "Escape") {
+      if (e.key === ' ' || e.key === 'Escape') {
         // Don't close if typing in an input
-        if (
-          e.target instanceof HTMLInputElement ||
-          e.target instanceof HTMLTextAreaElement
-        ) {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
           return
         }
         e.preventDefault()
@@ -223,8 +265,8 @@ const PreviewPanel = ({
       }
     }
 
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, onClose])
 
   const handleOpenChange = (open: boolean): void => {
@@ -246,14 +288,9 @@ const PreviewPanel = ({
     }
   }
 
-  const isMac = typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0
-
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
-      <SheetContent
-        side="right"
-        className="w-[520px] sm:max-w-[520px] flex flex-col p-0"
-      >
+      <SheetContent side="right" className="w-[520px] sm:max-w-[520px] flex flex-col p-0">
         {item && (
           <>
             {/* Header */}
@@ -302,4 +339,3 @@ const PreviewPanel = ({
 }
 
 export { PreviewPanel }
-

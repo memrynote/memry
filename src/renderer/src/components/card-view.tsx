@@ -1,38 +1,53 @@
-import { useState, useEffect, useCallback, useRef } from "react"
-import { Link, FileText, Image, Mic, Play, Globe } from "lucide-react"
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Link, FileText, Image, Mic, Play, Globe, Scissors, FileIcon, Share2 } from 'lucide-react'
 
-import { Checkbox } from "@/components/ui/checkbox"
-import { QuickActions } from "@/components/quick-actions"
-import { StaleSection } from "@/components/stale/stale-section"
+import { Checkbox } from '@/components/ui/checkbox'
+import { QuickActions } from '@/components/quick-actions'
+import { StaleSection } from '@/components/stale/stale-section'
 import {
   groupItemsByTimePeriod,
   formatTimestamp,
   formatDuration,
   extractDomain,
-  type TimePeriod,
-} from "@/lib/inbox-utils"
-import { cn } from "@/lib/utils"
-import type { InboxItem, InboxItemType } from "@/types"
+  type TimePeriod
+} from '@/lib/inbox-utils'
+import { cn } from '@/lib/utils'
+import type { InboxItemListItem, InboxItemType } from '@/types'
+
+// Use InboxItemListItem for card views
+type InboxItem = InboxItemListItem
 
 // Icon component based on item type
-const TypeIcon = ({ type, className }: { type: InboxItemType; className?: string }): React.JSX.Element => {
-  const iconClass = className || "size-4 text-[var(--muted-foreground)]"
+const TypeIcon = ({
+  type,
+  className
+}: {
+  type: InboxItemType
+  className?: string
+}): React.JSX.Element => {
+  const iconClass = className || 'size-4 text-[var(--muted-foreground)]'
 
   switch (type) {
-    case "link":
+    case 'link':
       return <Link className={iconClass} aria-hidden="true" />
-    case "note":
+    case 'note':
       return <FileText className={iconClass} aria-hidden="true" />
-    case "image":
+    case 'image':
       return <Image className={iconClass} aria-hidden="true" />
-    case "voice":
+    case 'voice':
       return <Mic className={iconClass} aria-hidden="true" />
+    case 'clip':
+      return <Scissors className={iconClass} aria-hidden="true" />
+    case 'pdf':
+      return <FileIcon className={iconClass} aria-hidden="true" />
+    case 'social':
+      return <Share2 className={iconClass} aria-hidden="true" />
   }
 }
 
 // Link card content - shows domain and favicon placeholder
 const LinkCardContent = ({ item }: { item: InboxItem }): React.JSX.Element => {
-  const domain = item.url ? extractDomain(item.url) : "unknown"
+  const domain = item.sourceUrl ? extractDomain(item.sourceUrl) : 'unknown'
 
   return (
     <div className="flex flex-col items-center justify-center h-full gap-2">
@@ -70,7 +85,7 @@ const ImageCardContent = (): React.JSX.Element => {
 
 // Voice card content - waveform and duration
 const VoiceCardContent = ({ item }: { item: InboxItem }): React.JSX.Element => {
-  const duration = item.duration ? formatDuration(item.duration) : "0:00"
+  const duration = item.duration ? formatDuration(item.duration) : '0:00'
 
   return (
     <div className="flex flex-col items-center justify-center h-full gap-3">
@@ -97,9 +112,7 @@ const VoiceCardContent = ({ item }: { item: InboxItem }): React.JSX.Element => {
         </div>
       </div>
       {/* Duration */}
-      <span className="text-sm font-medium text-[var(--foreground)] tabular-nums">
-        {duration}
-      </span>
+      <span className="text-sm font-medium text-[var(--foreground)] tabular-nums">{duration}</span>
     </div>
   )
 }
@@ -107,14 +120,19 @@ const VoiceCardContent = ({ item }: { item: InboxItem }): React.JSX.Element => {
 // Card content renderer based on item type
 const CardContent = ({ item }: { item: InboxItem }): React.JSX.Element => {
   switch (item.type) {
-    case "link":
+    case 'link':
       return <LinkCardContent item={item} />
-    case "note":
+    case 'note':
       return <NoteCardContent item={item} />
-    case "image":
+    case 'image':
       return <ImageCardContent />
-    case "voice":
+    case 'voice':
       return <VoiceCardContent item={item} />
+    case 'clip':
+    case 'pdf':
+    case 'social':
+    default:
+      return <NoteCardContent item={item} />
   }
 }
 
@@ -144,14 +162,14 @@ const InboxCard = ({
   onPreview,
   onDelete,
   onFocus,
-  onSelectionToggle,
+  onSelectionToggle
 }: InboxCardProps): React.JSX.Element => {
   const cardRef = useRef<HTMLDivElement>(null)
 
   // Scroll into view when focused
   useEffect(() => {
     if (isFocused && cardRef.current) {
-      cardRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" })
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
   }, [isFocused])
 
@@ -164,7 +182,7 @@ const InboxCard = ({
     onSelectionToggle(item.id, e.shiftKey)
   }
 
-  const handleCheckboxChange = (checked: boolean | "indeterminate"): void => {
+  const handleCheckboxChange = (_checked: boolean | 'indeterminate'): void => {
     // This is called when clicking the checkbox directly
     // The actual toggle is handled in handleCheckboxClick for shift-key support
   }
@@ -173,17 +191,17 @@ const InboxCard = ({
     <div
       ref={cardRef}
       className={cn(
-        "group relative flex flex-col rounded-lg border bg-card shadow-sm cursor-pointer overflow-hidden",
+        'group relative flex flex-col rounded-lg border bg-card shadow-sm cursor-pointer overflow-hidden',
         // Smooth transitions using animation tokens with hover lift
-        "transition-[transform,box-shadow,border-color,opacity] duration-[var(--duration-fast)] ease-[var(--ease-out)]",
+        'transition-[transform,box-shadow,border-color,opacity] duration-[var(--duration-fast)] ease-[var(--ease-out)]',
         // Exit animation using CSS class
-        isExiting && "card-removing",
+        isExiting && 'card-removing',
         // Selection/focus states (only apply when not exiting)
         !isExiting && isSelected
-          ? "border-primary ring-2 ring-primary/30 shadow-lg -translate-y-0.5"
+          ? 'border-primary ring-2 ring-primary/30 shadow-lg -translate-y-0.5'
           : !isExiting && isFocused
-            ? "border-ring ring-2 ring-ring ring-offset-1 ring-offset-background shadow-lg"
-            : "border-border hover:shadow-[var(--shadow-card-hover)] hover:border-border/80 hover:-translate-y-1"
+            ? 'border-ring ring-2 ring-ring ring-offset-1 ring-offset-background shadow-lg'
+            : 'border-border hover:shadow-[var(--shadow-card-hover)] hover:border-border/80 hover:-translate-y-1'
       )}
       role="article"
       tabIndex={isFocused ? 0 : -1}
@@ -193,14 +211,16 @@ const InboxCard = ({
       data-item-id={item.id}
     >
       {/* Checkbox - always visible in bulk mode, otherwise on hover/focus */}
-      <div className={cn(
-        "absolute top-2 left-2 z-10 transition-opacity duration-[var(--duration-instant)] ease-[var(--ease-out)]",
-        isSelected || isInBulkMode
-          ? "opacity-100"
-          : isFocused
-            ? "opacity-100"
-            : "opacity-0 group-hover:opacity-100"
-      )}>
+      <div
+        className={cn(
+          'absolute top-2 left-2 z-10 transition-opacity duration-[var(--duration-instant)] ease-[var(--ease-out)]',
+          isSelected || isInBulkMode
+            ? 'opacity-100'
+            : isFocused
+              ? 'opacity-100'
+              : 'opacity-0 group-hover:opacity-100'
+        )}
+      >
         <Checkbox
           id={`card-${item.id}`}
           checked={isSelected}
@@ -215,7 +235,7 @@ const InboxCard = ({
       <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]/50 bg-[var(--muted)]/30">
         <TypeIcon type={item.type} />
         <span className="text-[10px] text-[var(--muted-foreground)] tabular-nums">
-          {formatTimestamp(item.timestamp, period)}
+          {formatTimestamp(item.createdAt, period)}
         </span>
       </div>
 
@@ -225,14 +245,12 @@ const InboxCard = ({
       </div>
 
       {/* Bottom: Title - hidden on hover when actions show (unless in bulk mode) */}
-      <div className={cn(
-        "px-3 py-2 border-t border-[var(--border)]/50 bg-[var(--muted)]/20 transition-opacity duration-100",
-        isInBulkMode
-          ? ""
-          : isFocused
-            ? "hidden"
-            : "group-hover:hidden"
-      )}>
+      <div
+        className={cn(
+          'px-3 py-2 border-t border-[var(--border)]/50 bg-[var(--muted)]/20 transition-opacity duration-100',
+          isInBulkMode ? '' : isFocused ? 'hidden' : 'group-hover:hidden'
+        )}
+      >
         <p className="text-sm font-medium text-[var(--foreground)] line-clamp-2 leading-snug">
           {item.title}
         </p>
@@ -240,11 +258,15 @@ const InboxCard = ({
 
       {/* Quick Actions overlay - visible on hover or focus (hidden in bulk mode) */}
       {!isInBulkMode && (
-        <div className={cn(
-          "px-3 py-2 border-t border-border/50 bg-muted/40 items-center justify-center",
-          "transition-opacity duration-[var(--duration-instant)] ease-[var(--ease-out)]",
-          isFocused ? "flex opacity-100" : "hidden group-hover:flex opacity-0 group-hover:opacity-100"
-        )}>
+        <div
+          className={cn(
+            'px-3 py-2 border-t border-border/50 bg-muted/40 items-center justify-center',
+            'transition-opacity duration-[var(--duration-instant)] ease-[var(--ease-out)]',
+            isFocused
+              ? 'flex opacity-100'
+              : 'hidden group-hover:flex opacity-0 group-hover:opacity-100'
+          )}
+        >
           <QuickActions
             itemId={item.id}
             onFile={onFile}
@@ -297,8 +319,9 @@ const CardView = ({
   onReviewStale,
   focusedItemId: controlledFocusedItemId,
   onFocusedItemChange,
-  isPreviewOpen = false,
+  isPreviewOpen: _isPreviewOpen = false
 }: CardViewProps): React.JSX.Element => {
+  void _isPreviewOpen // Reserved for future use
   const containerRef = useRef<HTMLDivElement>(null)
   const groupedItems = groupItemsByTimePeriod(items)
 
@@ -312,14 +335,18 @@ const CardView = ({
   const [internalFocusedItemId, setInternalFocusedItemId] = useState<string | null>(
     flatItems[0]?.id || null
   )
-  const focusedItemId = controlledFocusedItemId !== undefined ? controlledFocusedItemId : internalFocusedItemId
+  const focusedItemId =
+    controlledFocusedItemId !== undefined ? controlledFocusedItemId : internalFocusedItemId
 
-  const setFocusedItemId = useCallback((id: string | null): void => {
-    if (controlledFocusedItemId === undefined) {
-      setInternalFocusedItemId(id)
-    }
-    onFocusedItemChange?.(id)
-  }, [controlledFocusedItemId, onFocusedItemChange])
+  const setFocusedItemId = useCallback(
+    (id: string | null): void => {
+      if (controlledFocusedItemId === undefined) {
+        setInternalFocusedItemId(id)
+      }
+      onFocusedItemChange?.(id)
+    },
+    [controlledFocusedItemId, onFocusedItemChange]
+  )
 
   const isInBulkMode = selectedItemIds.size > 0
 
@@ -333,7 +360,7 @@ const CardView = ({
 
   // Grid navigation - assume 3 columns on large screens, 2 on medium, 1 on small
   const getColumnsCount = (): number => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       if (window.innerWidth >= 1024) return 3
       if (window.innerWidth >= 640) return 2
       return 1
@@ -342,43 +369,43 @@ const CardView = ({
   }
 
   // Handle selection toggle with shift-click support
-  const handleSelectionToggle = useCallback((id: string, shiftKey: boolean): void => {
-    const newSelection = new Set(selectedItemIds)
+  const handleSelectionToggle = useCallback(
+    (id: string, shiftKey: boolean): void => {
+      const newSelection = new Set(selectedItemIds)
 
-    if (shiftKey && lastSelectedIdRef.current) {
-      // Range selection
-      const lastIndex = flatItems.findIndex((i) => i.id === lastSelectedIdRef.current)
-      const currentIndex = flatItems.findIndex((i) => i.id === id)
+      if (shiftKey && lastSelectedIdRef.current) {
+        // Range selection
+        const lastIndex = flatItems.findIndex((i) => i.id === lastSelectedIdRef.current)
+        const currentIndex = flatItems.findIndex((i) => i.id === id)
 
-      if (lastIndex !== -1 && currentIndex !== -1) {
-        const start = Math.min(lastIndex, currentIndex)
-        const end = Math.max(lastIndex, currentIndex)
+        if (lastIndex !== -1 && currentIndex !== -1) {
+          const start = Math.min(lastIndex, currentIndex)
+          const end = Math.max(lastIndex, currentIndex)
 
-        for (let i = start; i <= end; i++) {
-          newSelection.add(flatItems[i].id)
+          for (let i = start; i <= end; i++) {
+            newSelection.add(flatItems[i].id)
+          }
+        }
+      } else {
+        // Toggle single item
+        if (newSelection.has(id)) {
+          newSelection.delete(id)
+        } else {
+          newSelection.add(id)
         }
       }
-    } else {
-      // Toggle single item
-      if (newSelection.has(id)) {
-        newSelection.delete(id)
-      } else {
-        newSelection.add(id)
-      }
-    }
 
-    lastSelectedIdRef.current = id
-    onSelectionChange(newSelection)
-  }, [selectedItemIds, flatItems, onSelectionChange])
+      lastSelectedIdRef.current = id
+      onSelectionChange(newSelection)
+    },
+    [selectedItemIds, flatItems, onSelectionChange]
+  )
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
     (e: KeyboardEvent): void => {
       // Ignore if typing in input
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return
       }
 
@@ -386,15 +413,15 @@ const CardView = ({
       const columns = getColumnsCount()
 
       switch (e.key) {
-        case " ": // Space key toggles preview
+        case ' ': // Space key toggles preview
           e.preventDefault()
           if (focusedItemId) {
             onPreview(focusedItemId)
           }
           break
 
-        case "x":
-        case "X":
+        case 'x':
+        case 'X':
           // Toggle selection on focused item
           if (focusedItemId) {
             e.preventDefault()
@@ -402,8 +429,8 @@ const CardView = ({
           }
           break
 
-        case "ArrowDown":
-        case "j":
+        case 'ArrowDown':
+        case 'j':
           e.preventDefault()
           // Move down by one row (columns count)
           if (currentIndex + columns < flatItems.length) {
@@ -421,8 +448,8 @@ const CardView = ({
           }
           break
 
-        case "ArrowUp":
-        case "k":
+        case 'ArrowUp':
+        case 'k':
           e.preventDefault()
           // Move up by one row (columns count)
           if (currentIndex - columns >= 0) {
@@ -440,8 +467,8 @@ const CardView = ({
           }
           break
 
-        case "ArrowRight":
-        case "l":
+        case 'ArrowRight':
+        case 'l':
           e.preventDefault()
           // Move to next item
           if (currentIndex < flatItems.length - 1) {
@@ -453,8 +480,8 @@ const CardView = ({
           }
           break
 
-        case "ArrowLeft":
-        case "h":
+        case 'ArrowLeft':
+        case 'h':
           e.preventDefault()
           // Move to previous item
           if (currentIndex > 0) {
@@ -466,7 +493,7 @@ const CardView = ({
           }
           break
 
-        case "Home":
+        case 'Home':
           // Jump to first item
           e.preventDefault()
           if (flatItems.length > 0) {
@@ -474,7 +501,7 @@ const CardView = ({
           }
           break
 
-        case "End":
+        case 'End':
           // Jump to last item
           e.preventDefault()
           if (flatItems.length > 0) {
@@ -482,7 +509,7 @@ const CardView = ({
           }
           break
 
-        case "PageDown":
+        case 'PageDown':
           // Jump 10 items down
           e.preventDefault()
           if (flatItems.length > 0) {
@@ -491,7 +518,7 @@ const CardView = ({
           }
           break
 
-        case "PageUp":
+        case 'PageUp':
           // Jump 10 items up
           e.preventDefault()
           if (flatItems.length > 0) {
@@ -500,8 +527,8 @@ const CardView = ({
           }
           break
 
-        case "Delete":
-        case "Backspace":
+        case 'Delete':
+        case 'Backspace':
           // Delete focused item
           e.preventDefault()
           if (focusedItemId) {
@@ -509,19 +536,19 @@ const CardView = ({
           }
           break
 
-        case "o":
-        case "O":
+        case 'o':
+        case 'O':
           // Open link in new tab
           if (focusedItemId) {
             const focusedItem = flatItems.find((i) => i.id === focusedItemId)
-            if (focusedItem?.type === "link" && focusedItem.url) {
+            if (focusedItem?.type === 'link' && focusedItem.sourceUrl) {
               e.preventDefault()
-              window.open(focusedItem.url, "_blank", "noopener,noreferrer")
+              window.open(focusedItem.sourceUrl, '_blank', 'noopener,noreferrer')
             }
           }
           break
 
-        case "Enter":
+        case 'Enter':
           // Open Filing Panel for focused item
           if (focusedItemId) {
             e.preventDefault()
@@ -529,7 +556,7 @@ const CardView = ({
           }
           break
 
-        case "Escape":
+        case 'Escape':
           // Deselect all in bulk mode
           if (isInBulkMode) {
             e.preventDefault()
@@ -537,8 +564,8 @@ const CardView = ({
           }
           break
 
-        case "a":
-        case "A":
+        case 'a':
+        case 'A':
           // Select all with Cmd/Ctrl+A
           if (e.metaKey || e.ctrlKey) {
             e.preventDefault()
@@ -548,26 +575,34 @@ const CardView = ({
           break
       }
     },
-    [flatItems, focusedItemId, onPreview, onFile, onDelete, setFocusedItemId, handleSelectionToggle, isInBulkMode, onSelectionChange]
+    [
+      flatItems,
+      focusedItemId,
+      onPreview,
+      onFile,
+      onDelete,
+      setFocusedItemId,
+      handleSelectionToggle,
+      isInBulkMode,
+      onSelectionChange
+    ]
   )
 
   // Add keyboard listener
   useEffect(() => {
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
-  const handleItemFocus = useCallback((id: string): void => {
-    setFocusedItemId(id)
-  }, [setFocusedItemId])
+  const handleItemFocus = useCallback(
+    (id: string): void => {
+      setFocusedItemId(id)
+    },
+    [setFocusedItemId]
+  )
 
   return (
-    <div
-      ref={containerRef}
-      className="space-y-8"
-      role="list"
-      aria-label="Inbox items"
-    >
+    <div ref={containerRef} className="space-y-8" role="list" aria-label="Inbox items">
       {/* Stale Items Section - appears at top when there are stale items */}
       {staleItems.length > 0 && onFileAllStale && onReviewStale && (
         <StaleSection

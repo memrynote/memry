@@ -1,34 +1,45 @@
-import { useState, useEffect, useCallback, useRef } from "react"
-import { Link, FileText, Image, Mic } from "lucide-react"
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Link, FileText, Image, Mic, Scissors, FileIcon, Share2 } from 'lucide-react'
 
-import { Checkbox } from "@/components/ui/checkbox"
-import { QuickActions } from "@/components/quick-actions"
-import { InlineQuickFile } from "@/components/inline-quick-file"
-import { QuickFileDropdown, getFilteredFolders } from "@/components/quick-file-dropdown"
-import { StaleSection } from "@/components/stale/stale-section"
-import { sampleFolders } from "@/data/filing-data"
+import { Checkbox } from '@/components/ui/checkbox'
+import { QuickActions } from '@/components/quick-actions'
+import { InlineQuickFile } from '@/components/inline-quick-file'
+import { QuickFileDropdown, getFilteredFolders } from '@/components/quick-file-dropdown'
+import { StaleSection } from '@/components/stale/stale-section'
+import { sampleFolders } from '@/data/filing-data'
 import {
   groupItemsByTimePeriod,
   formatTimestamp,
   formatDuration,
-  type TimePeriod,
-} from "@/lib/inbox-utils"
-import { cn } from "@/lib/utils"
-import type { InboxItem, InboxItemType, Folder } from "@/types"
+  type TimePeriod
+} from '@/lib/inbox-utils'
+import { cn } from '@/lib/utils'
+import type { InboxItemListItem, InboxItemType, Folder } from '@/types'
+
+// Type alias for convenience (backend type used throughout)
+type InboxItem = InboxItemListItem
 
 // Icon component based on item type
 const TypeIcon = ({ type }: { type: InboxItemType }): React.JSX.Element => {
-  const iconClass = "size-4 text-[var(--muted-foreground)]"
+  const iconClass = 'size-4 text-[var(--muted-foreground)]'
 
   switch (type) {
-    case "link":
+    case 'link':
       return <Link className={iconClass} aria-hidden="true" />
-    case "note":
+    case 'note':
       return <FileText className={iconClass} aria-hidden="true" />
-    case "image":
+    case 'image':
       return <Image className={iconClass} aria-hidden="true" />
-    case "voice":
+    case 'voice':
       return <Mic className={iconClass} aria-hidden="true" />
+    case 'clip':
+      return <Scissors className={iconClass} aria-hidden="true" />
+    case 'pdf':
+      return <FileIcon className={iconClass} aria-hidden="true" />
+    case 'social':
+      return <Share2 className={iconClass} aria-hidden="true" />
+    default:
+      return <FileText className={iconClass} aria-hidden="true" />
   }
 }
 
@@ -76,14 +87,14 @@ const InboxItemRow = ({
   onQuickFileCancel,
   onQuickFileArrowDown,
   onQuickFileArrowUp,
-  onQuickFileFolderSelect,
+  onQuickFileFolderSelect
 }: InboxItemRowProps): React.JSX.Element => {
   // Compute filtered folders for number key shortcuts
   const filteredFolders = getFilteredFolders(sampleFolders, quickFileQuery, 5)
 
   // Format title for voice memos
   const displayTitle =
-    item.type === "voice" && item.duration
+    item.type === 'voice' && item.duration
       ? `${item.title} · ${formatDuration(item.duration)}`
       : item.title
 
@@ -96,7 +107,7 @@ const InboxItemRow = ({
     onSelectionToggle(item.id, e.shiftKey)
   }
 
-  const handleCheckboxChange = (checked: boolean | "indeterminate"): void => {
+  const handleCheckboxChange = (_checked: boolean | 'indeterminate'): void => {
     // This is called when clicking the checkbox directly
     // The actual toggle is handled in handleCheckboxClick for shift-key support
   }
@@ -104,17 +115,17 @@ const InboxItemRow = ({
   return (
     <div
       className={cn(
-        "group relative flex items-center gap-3 py-2 px-3 rounded-md cursor-pointer",
+        'group relative flex items-center gap-3 py-2 px-3 rounded-md cursor-pointer',
         // Smooth transitions using animation tokens
-        "transition-[background-color,box-shadow,opacity,transform] duration-[var(--duration-instant)] ease-[var(--ease-out)]",
+        'transition-[background-color,box-shadow,opacity,transform] duration-[var(--duration-instant)] ease-[var(--ease-out)]',
         // Exit animation with height collapse
-        isExiting && "item-removing",
+        isExiting && 'item-removing',
         // Selection/focus states with smooth transitions (using inset ring to prevent overflow)
         isSelected
-          ? "bg-primary/10 ring-1 ring-inset ring-primary/30"
+          ? 'bg-primary/10 ring-1 ring-inset ring-primary/30'
           : isFocused
-            ? "bg-muted ring-2 ring-inset ring-primary/50"
-            : "hover:bg-muted"
+            ? 'bg-muted ring-2 ring-inset ring-primary/50'
+            : 'hover:bg-muted'
       )}
       role="listitem"
       tabIndex={isFocused ? 0 : -1}
@@ -129,14 +140,14 @@ const InboxItemRow = ({
         checked={isSelected}
         onCheckedChange={handleCheckboxChange}
         className={cn(
-          "shrink-0 transition-opacity duration-[var(--duration-instant)] ease-[var(--ease-out)]",
+          'shrink-0 transition-opacity duration-[var(--duration-instant)] ease-[var(--ease-out)]',
           isSelected
-            ? "opacity-100"
+            ? 'opacity-100'
             : isInBulkMode
-              ? "opacity-80"
+              ? 'opacity-80'
               : isFocused
-                ? "opacity-100"
-                : "opacity-60 group-hover:opacity-100"
+                ? 'opacity-100'
+                : 'opacity-60 group-hover:opacity-100'
         )}
         aria-label={`Select ${displayTitle}`}
         onClick={handleCheckboxClick}
@@ -181,12 +192,17 @@ const InboxItemRow = ({
           </span>
 
           {/* Timestamp - fades out on hover when actions show (unless in bulk mode) */}
-          <span className={cn(
-            "shrink-0 text-xs text-muted-foreground tabular-nums",
-            "transition-opacity duration-[var(--duration-instant)] ease-[var(--ease-in)]",
-            isInBulkMode ? "opacity-100" : "group-hover:opacity-0"
-          )}>
-            {formatTimestamp(item.timestamp, period)}
+          <span
+            className={cn(
+              'shrink-0 text-xs text-muted-foreground tabular-nums',
+              'transition-opacity duration-[var(--duration-instant)] ease-[var(--ease-in)]',
+              isInBulkMode ? 'opacity-100' : 'group-hover:opacity-0'
+            )}
+          >
+            {formatTimestamp(
+              item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt),
+              period
+            )}
           </span>
 
           {/* Quick Actions - slide in from right on hover (hidden in bulk mode) */}
@@ -248,7 +264,7 @@ const ListView = ({
   onReviewStale,
   focusedItemId: controlledFocusedItemId,
   onFocusedItemChange,
-  isPreviewOpen = false,
+  isPreviewOpen = false
 }: ListViewProps): React.JSX.Element => {
   const containerRef = useRef<HTMLDivElement>(null)
   const groupedItems = groupItemsByTimePeriod(items)
@@ -263,17 +279,21 @@ const ListView = ({
   const [internalFocusedItemId, setInternalFocusedItemId] = useState<string | null>(
     flatItems[0]?.id || null
   )
-  const focusedItemId = controlledFocusedItemId !== undefined ? controlledFocusedItemId : internalFocusedItemId
+  const focusedItemId =
+    controlledFocusedItemId !== undefined ? controlledFocusedItemId : internalFocusedItemId
 
-  const setFocusedItemId = useCallback((id: string | null): void => {
-    if (controlledFocusedItemId === undefined) {
-      setInternalFocusedItemId(id)
-    }
-    onFocusedItemChange?.(id)
-  }, [controlledFocusedItemId, onFocusedItemChange])
+  const setFocusedItemId = useCallback(
+    (id: string | null): void => {
+      if (controlledFocusedItemId === undefined) {
+        setInternalFocusedItemId(id)
+      }
+      onFocusedItemChange?.(id)
+    },
+    [controlledFocusedItemId, onFocusedItemChange]
+  )
 
   const [quickFileItemId, setQuickFileItemId] = useState<string | null>(null)
-  const [quickFileQuery, setQuickFileQuery] = useState("")
+  const [quickFileQuery, setQuickFileQuery] = useState('')
   const [highlightedIndex, setHighlightedIndex] = useState(0)
 
   const isInBulkMode = selectedItemIds.size > 0
@@ -295,34 +315,37 @@ const ListView = ({
   }, [quickFileQuery])
 
   // Handle selection toggle with shift-click support
-  const handleSelectionToggle = useCallback((id: string, shiftKey: boolean): void => {
-    const newSelection = new Set(selectedItemIds)
+  const handleSelectionToggle = useCallback(
+    (id: string, shiftKey: boolean): void => {
+      const newSelection = new Set(selectedItemIds)
 
-    if (shiftKey && lastSelectedIdRef.current) {
-      // Range selection
-      const lastIndex = flatItems.findIndex((i) => i.id === lastSelectedIdRef.current)
-      const currentIndex = flatItems.findIndex((i) => i.id === id)
+      if (shiftKey && lastSelectedIdRef.current) {
+        // Range selection
+        const lastIndex = flatItems.findIndex((i) => i.id === lastSelectedIdRef.current)
+        const currentIndex = flatItems.findIndex((i) => i.id === id)
 
-      if (lastIndex !== -1 && currentIndex !== -1) {
-        const start = Math.min(lastIndex, currentIndex)
-        const end = Math.max(lastIndex, currentIndex)
+        if (lastIndex !== -1 && currentIndex !== -1) {
+          const start = Math.min(lastIndex, currentIndex)
+          const end = Math.max(lastIndex, currentIndex)
 
-        for (let i = start; i <= end; i++) {
-          newSelection.add(flatItems[i].id)
+          for (let i = start; i <= end; i++) {
+            newSelection.add(flatItems[i].id)
+          }
+        }
+      } else {
+        // Toggle single item
+        if (newSelection.has(id)) {
+          newSelection.delete(id)
+        } else {
+          newSelection.add(id)
         }
       }
-    } else {
-      // Toggle single item
-      if (newSelection.has(id)) {
-        newSelection.delete(id)
-      } else {
-        newSelection.add(id)
-      }
-    }
 
-    lastSelectedIdRef.current = id
-    onSelectionChange(newSelection)
-  }, [selectedItemIds, flatItems, onSelectionChange])
+      lastSelectedIdRef.current = id
+      onSelectionChange(newSelection)
+    },
+    [selectedItemIds, flatItems, onSelectionChange]
+  )
 
   // Quick-File folder select handler (moved before handleKeyDown for use in keyboard shortcuts)
   const handleQuickFileFolderSelect = useCallback(
@@ -339,7 +362,7 @@ const ListView = ({
 
         // Close Quick-File
         setQuickFileItemId(null)
-        setQuickFileQuery("")
+        setQuickFileQuery('')
       }
     },
     [quickFileItemId, onQuickFile, flatItems, setFocusedItemId]
@@ -349,25 +372,22 @@ const ListView = ({
   const handleKeyDown = useCallback(
     (e: KeyboardEvent): void => {
       // Ignore if typing in input (except for Quick-File input which handles its own keys)
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return
       }
 
       const currentIndex = flatItems.findIndex((i) => i.id === focusedItemId)
 
       switch (e.key) {
-        case " ": // Space key toggles preview
+        case ' ': // Space key toggles preview
           e.preventDefault()
           if (focusedItemId && !quickFileItemId) {
             onPreview(focusedItemId)
           }
           break
 
-        case "x":
-        case "X":
+        case 'x':
+        case 'X':
           // Toggle selection on focused item
           if (focusedItemId) {
             e.preventDefault()
@@ -375,8 +395,8 @@ const ListView = ({
           }
           break
 
-        case "ArrowDown":
-        case "j":
+        case 'ArrowDown':
+        case 'j':
           e.preventDefault()
           if (quickFileItemId) return // Let Quick-File handle arrows when active
           if (currentIndex < flatItems.length - 1) {
@@ -389,8 +409,8 @@ const ListView = ({
           }
           break
 
-        case "ArrowUp":
-        case "k":
+        case 'ArrowUp':
+        case 'k':
           e.preventDefault()
           if (quickFileItemId) return // Let Quick-File handle arrows when active
           if (currentIndex > 0) {
@@ -403,7 +423,7 @@ const ListView = ({
           }
           break
 
-        case "Home":
+        case 'Home':
           // Jump to first item (Cmd+Up also handled below)
           e.preventDefault()
           if (quickFileItemId) return
@@ -412,7 +432,7 @@ const ListView = ({
           }
           break
 
-        case "End":
+        case 'End':
           // Jump to last item (Cmd+Down also handled below)
           e.preventDefault()
           if (quickFileItemId) return
@@ -421,7 +441,7 @@ const ListView = ({
           }
           break
 
-        case "PageDown":
+        case 'PageDown':
           // Jump 10 items down
           e.preventDefault()
           if (quickFileItemId) return
@@ -431,7 +451,7 @@ const ListView = ({
           }
           break
 
-        case "PageUp":
+        case 'PageUp':
           // Jump 10 items up
           e.preventDefault()
           if (quickFileItemId) return
@@ -441,8 +461,8 @@ const ListView = ({
           }
           break
 
-        case "Delete":
-        case "Backspace":
+        case 'Delete':
+        case 'Backspace':
           // Delete focused item (or selected items in bulk mode)
           e.preventDefault()
           if (quickFileItemId) return
@@ -451,23 +471,23 @@ const ListView = ({
           }
           break
 
-        case "o":
-        case "O":
+        case 'o':
+        case 'O':
           // Open link in new tab
           if (focusedItemId && !quickFileItemId) {
             const focusedItem = flatItems.find((i) => i.id === focusedItemId)
-            if (focusedItem?.type === "link" && focusedItem.url) {
+            if (focusedItem?.type === 'link' && focusedItem.sourceUrl) {
               e.preventDefault()
-              window.open(focusedItem.url, "_blank", "noopener,noreferrer")
+              window.open(focusedItem.sourceUrl, '_blank', 'noopener,noreferrer')
             }
           }
           break
 
-        case "1":
-        case "2":
-        case "3":
-        case "4":
-        case "5":
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
           // Number keys for Quick-File folder selection
           if (quickFileItemId && filteredFolders.length > 0) {
             const index = parseInt(e.key, 10) - 1
@@ -478,19 +498,19 @@ const ListView = ({
           }
           break
 
-        case ".":
-        case "f":
-        case "F":
+        case '.':
+        case 'f':
+        case 'F':
           // Activate Quick-File on focused item
           if (focusedItemId && !quickFileItemId && !isInBulkMode) {
             e.preventDefault()
             setQuickFileItemId(focusedItemId)
-            setQuickFileQuery("")
+            setQuickFileQuery('')
             setHighlightedIndex(0)
           }
           break
 
-        case "Enter":
+        case 'Enter':
           // If preview is open, close preview and open Filing Panel
           if (isPreviewOpen && focusedItemId) {
             e.preventDefault()
@@ -498,20 +518,20 @@ const ListView = ({
           }
           break
 
-        case "Escape":
+        case 'Escape':
           // Cancel Quick-File or deselect all
           if (quickFileItemId) {
             e.preventDefault()
             setQuickFileItemId(null)
-            setQuickFileQuery("")
+            setQuickFileQuery('')
           } else if (isInBulkMode) {
             e.preventDefault()
             onSelectionChange(new Set())
           }
           break
 
-        case "a":
-        case "A":
+        case 'a':
+        case 'A':
           // Select all with Cmd/Ctrl+A
           if (e.metaKey || e.ctrlKey) {
             e.preventDefault()
@@ -521,13 +541,27 @@ const ListView = ({
           break
       }
     },
-    [flatItems, focusedItemId, quickFileItemId, filteredFolders, onPreview, onFile, onDelete, isPreviewOpen, setFocusedItemId, handleSelectionToggle, handleQuickFileFolderSelect, isInBulkMode, onSelectionChange]
+    [
+      flatItems,
+      focusedItemId,
+      quickFileItemId,
+      filteredFolders,
+      onPreview,
+      onFile,
+      onDelete,
+      isPreviewOpen,
+      setFocusedItemId,
+      handleSelectionToggle,
+      handleQuickFileFolderSelect,
+      isInBulkMode,
+      onSelectionChange
+    ]
   )
 
   // Add keyboard listener
   useEffect(() => {
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
   // Click outside to cancel Quick-File
@@ -538,13 +572,13 @@ const ListView = ({
         const itemRow = target.closest(`[data-item-id="${quickFileItemId}"]`)
         if (!itemRow) {
           setQuickFileItemId(null)
-          setQuickFileQuery("")
+          setQuickFileQuery('')
         }
       }
     }
 
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [quickFileItemId])
 
   // Quick-File handlers
@@ -566,20 +600,18 @@ const ListView = ({
 
       // Close Quick-File
       setQuickFileItemId(null)
-      setQuickFileQuery("")
+      setQuickFileQuery('')
     }
   }, [quickFileItemId, filteredFolders, highlightedIndex, onQuickFile, flatItems, setFocusedItemId])
 
   const handleQuickFileCancel = useCallback((): void => {
     setQuickFileItemId(null)
-    setQuickFileQuery("")
+    setQuickFileQuery('')
   }, [])
 
   const handleQuickFileArrowDown = useCallback((): void => {
     if (filteredFolders.length > 0) {
-      setHighlightedIndex((prev) =>
-        prev < filteredFolders.length - 1 ? prev + 1 : prev
-      )
+      setHighlightedIndex((prev) => (prev < filteredFolders.length - 1 ? prev + 1 : prev))
     }
   }, [filteredFolders.length])
 
@@ -589,22 +621,20 @@ const ListView = ({
     }
   }, [filteredFolders.length])
 
-  const handleItemFocus = useCallback((id: string): void => {
-    setFocusedItemId(id)
-    // Close Quick-File if clicking different item
-    if (quickFileItemId && quickFileItemId !== id) {
-      setQuickFileItemId(null)
-      setQuickFileQuery("")
-    }
-  }, [quickFileItemId, setFocusedItemId])
+  const handleItemFocus = useCallback(
+    (id: string): void => {
+      setFocusedItemId(id)
+      // Close Quick-File if clicking different item
+      if (quickFileItemId && quickFileItemId !== id) {
+        setQuickFileItemId(null)
+        setQuickFileQuery('')
+      }
+    },
+    [quickFileItemId, setFocusedItemId]
+  )
 
   return (
-    <div
-      ref={containerRef}
-      className="space-y-6"
-      role="list"
-      aria-label="Inbox items"
-    >
+    <div ref={containerRef} className="space-y-6" role="list" aria-label="Inbox items">
       {/* Stale Items Section - appears at top when there are stale items */}
       {staleItems.length > 0 && onFileAllStale && onReviewStale && (
         <StaleSection

@@ -11,6 +11,7 @@ import { registerJournalHandlers, unregisterJournalHandlers } from './journal-ha
 import { registerSettingsHandlers, unregisterSettingsHandlers } from './settings-handlers'
 import { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
 import { registerTagsHandlers } from './tags-handlers'
+import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 
 /**
  * Flag to prevent duplicate handler registration
@@ -65,6 +66,9 @@ export function registerAllHandlers(): void {
   // Register tags handlers
   registerTagsHandlers()
 
+  // Register inbox handlers
+  registerInboxHandlers()
+
   handlersRegistered = true
   console.log('All IPC handlers registered')
 }
@@ -87,6 +91,7 @@ export function unregisterAllHandlers(): void {
   unregisterJournalHandlers()
   unregisterSettingsHandlers()
   unregisterBookmarksHandlers()
+  unregisterInboxHandlers()
 
   handlersRegistered = false
   console.log('All IPC handlers unregistered')
@@ -113,3 +118,4 @@ export { registerJournalHandlers, unregisterJournalHandlers } from './journal-ha
 export { registerSettingsHandlers, unregisterSettingsHandlers } from './settings-handlers'
 export { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
 export { registerTagsHandlers } from './tags-handlers'
+export { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'

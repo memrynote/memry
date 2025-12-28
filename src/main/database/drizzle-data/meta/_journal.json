@@ -15,6 +15,13 @@
       "when": 1766785945784,
       "tag": "0001_married_shadow_king",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1766870407964,
+      "tag": "0002_broken_sleeper",
+      "breakpoints": true
     }
   ]
 }

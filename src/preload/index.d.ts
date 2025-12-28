@@ -1242,6 +1242,257 @@ export interface TagsClientAPI {
   removeTagFromNote(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
 }
 
+// Inbox types
+export type InboxItemType = 'link' | 'note' | 'image' | 'voice' | 'clip' | 'pdf' | 'social'
+export type InboxProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
+export type InboxFilingAction = 'folder' | 'note' | 'linked'
+
+export interface InboxItem {
+  id: string
+  type: InboxItemType
+  title: string
+  content: string | null
+  createdAt: Date
+  modifiedAt: Date
+  filedAt: Date | null
+  filedTo: string | null
+  filedAction: InboxFilingAction | null
+  snoozedUntil: Date | null
+  snoozeReason: string | null
+  processingStatus: InboxProcessingStatus
+  processingError: string | null
+  metadata: unknown
+  attachmentPath: string | null
+  attachmentUrl: string | null
+  thumbnailPath: string | null
+  thumbnailUrl: string | null
+  transcription: string | null
+  transcriptionStatus: InboxProcessingStatus | null
+  sourceUrl: string | null
+  sourceTitle: string | null
+  tags: string[]
+  isStale: boolean
+}
+
+export interface InboxItemListItem {
+  id: string
+  type: InboxItemType
+  title: string
+  content: string | null
+  createdAt: Date
+  thumbnailUrl: string | null
+  sourceUrl: string | null
+  tags: string[]
+  isStale: boolean
+  processingStatus: InboxProcessingStatus
+  duration?: number
+  excerpt?: string
+  pageCount?: number
+}
+
+export interface InboxListResponse {
+  items: InboxItemListItem[]
+  total: number
+  hasMore: boolean
+}
+
+export interface InboxCaptureResponse {
+  success: boolean
+  item: InboxItem | null
+  error?: string
+}
+
+export interface InboxFileResponse {
+  success: boolean
+  filedTo: string | null
+  noteId?: string
+  error?: string
+}
+
+export interface InboxBulkResponse {
+  success: boolean
+  processedCount: number
+  errors: Array<{ itemId: string; error: string }>
+}
+
+export interface InboxFilingSuggestion {
+  destination: {
+    type: 'folder' | 'note' | 'new-note'
+    path?: string
+    noteId?: string
+    noteTitle?: string
+  }
+  confidence: number
+  reason: string
+  suggestedTags: string[]
+}
+
+export interface InboxSuggestionsResponse {
+  suggestions: InboxFilingSuggestion[]
+}
+
+export interface InboxStats {
+  totalItems: number
+  itemsByType: Record<InboxItemType, number>
+  staleCount: number
+  snoozedCount: number
+  processedToday: number
+  capturedToday: number
+  avgTimeToProcess: number
+}
+
+export interface InboxCapturePattern {
+  timeHeatmap: number[][]
+  typeDistribution: Array<{
+    type: InboxItemType
+    count: number
+    percentage: number
+    trend: 'up' | 'down' | 'stable'
+  }>
+  topDomains: Array<{ domain: string; count: number }>
+  topTags: Array<{ tag: string; count: number }>
+}
+
+export interface InboxCapturedEvent {
+  item: InboxItemListItem
+}
+
+export interface InboxUpdatedEvent {
+  id: string
+  changes: Partial<InboxItem>
+}
+
+export interface InboxDeletedEvent {
+  id: string
+}
+
+export interface InboxFiledEvent {
+  id: string
+  filedTo: string
+  filedAction: string
+}
+
+export interface InboxSnoozedEvent {
+  id: string
+  snoozeUntil: string
+}
+
+export interface InboxSnoozeDueEvent {
+  items: InboxItemListItem[]
+}
+
+export interface InboxTranscriptionCompleteEvent {
+  id: string
+  transcription: string
+}
+
+export interface InboxMetadataCompleteEvent {
+  id: string
+  metadata: unknown
+}
+
+export interface InboxProcessingErrorEvent {
+  id: string
+  operation: string
+  error: string
+}
+
+// Inbox client API interface
+export interface InboxClientAPI {
+  // Capture
+  captureText(input: {
+    content: string
+    title?: string
+    tags?: string[]
+  }): Promise<InboxCaptureResponse>
+  captureLink(input: { url: string; tags?: string[] }): Promise<InboxCaptureResponse>
+  captureImage(input: {
+    data: ArrayBuffer
+    filename: string
+    mimeType: string
+    tags?: string[]
+  }): Promise<InboxCaptureResponse>
+  captureVoice(input: {
+    data: ArrayBuffer
+    duration: number
+    format: string
+    transcribe?: boolean
+    tags?: string[]
+  }): Promise<InboxCaptureResponse>
+  captureClip(input: {
+    html: string
+    text: string
+    sourceUrl: string
+    sourceTitle: string
+    tags?: string[]
+  }): Promise<InboxCaptureResponse>
+  capturePdf(input: {
+    data: ArrayBuffer
+    filename: string
+    extractText?: boolean
+    tags?: string[]
+  }): Promise<InboxCaptureResponse>
+
+  // CRUD
+  get(id: string): Promise<InboxItem | null>
+  list(options?: {
+    type?: string
+    includeFiled?: boolean
+    includeSnoozed?: boolean
+    sortBy?: 'created' | 'modified' | 'title'
+    sortOrder?: 'asc' | 'desc'
+    limit?: number
+    offset?: number
+  }): Promise<InboxListResponse>
+  update(input: { id: string; title?: string; content?: string }): Promise<InboxCaptureResponse>
+  delete(id: string): Promise<{ success: boolean; error?: string }>
+
+  // Filing
+  file(input: {
+    itemId: string
+    destination: { type: string; path?: string; noteId?: string; noteTitle?: string }
+    tags?: string[]
+  }): Promise<InboxFileResponse>
+  getSuggestions(itemId: string): Promise<InboxSuggestionsResponse>
+  convertToNote(itemId: string): Promise<InboxFileResponse>
+  linkToNote(itemId: string, noteId: string): Promise<{ success: boolean; error?: string }>
+
+  // Tags
+  addTag(itemId: string, tag: string): Promise<{ success: boolean; error?: string }>
+  removeTag(itemId: string, tag: string): Promise<{ success: boolean; error?: string }>
+  getTags(): Promise<Array<{ tag: string; count: number }>>
+
+  // Snooze
+  snooze(input: {
+    itemId: string
+    snoozeUntil: string
+    reason?: string
+  }): Promise<{ success: boolean; error?: string }>
+  unsnooze(itemId: string): Promise<{ success: boolean; error?: string }>
+  getSnoozed(): Promise<InboxItem[]>
+
+  // Bulk operations
+  bulkFile(input: {
+    itemIds: string[]
+    destination: { type: string; path?: string; noteId?: string }
+    tags?: string[]
+  }): Promise<InboxBulkResponse>
+  bulkDelete(input: { itemIds: string[] }): Promise<InboxBulkResponse>
+  bulkTag(input: { itemIds: string[]; tags: string[] }): Promise<InboxBulkResponse>
+  fileAllStale(): Promise<InboxBulkResponse>
+
+  // Transcription
+  retryTranscription(itemId: string): Promise<{ success: boolean; error?: string }>
+
+  // Stats
+  getStats(): Promise<InboxStats>
+  getPatterns(): Promise<InboxCapturePattern>
+
+  // Settings
+  getStaleThreshold(): Promise<number>
+  setStaleThreshold(days: number): Promise<{ success: boolean }>
+}
+
 // Settings types
 export interface JournalSettings {
   defaultTemplate: string | null
@@ -1281,6 +1532,7 @@ interface API extends WindowAPI {
   settings: SettingsClientAPI
   bookmarks: BookmarksClientAPI
   tags: TagsClientAPI
+  inbox: InboxClientAPI
   // Vault event subscriptions
   onVaultStatusChanged: (callback: (status: VaultStatus) => void) => () => void
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
@@ -1336,6 +1588,24 @@ interface API extends WindowAPI {
   onTagColorUpdated: (callback: (event: TagColorUpdatedEvent) => void) => () => void
   onTagDeleted: (callback: (event: TagDeletedEvent) => void) => () => void
   onTagNotesChanged: (callback: (event: TagNotesChangedEvent) => void) => () => void
+  // Inbox event subscriptions
+  onInboxCaptured: (callback: (event: { item: unknown }) => void) => () => void
+  onInboxUpdated: (callback: (event: { id: string; changes: unknown }) => void) => () => void
+  onInboxDeleted: (callback: (event: { id: string }) => void) => () => void
+  onInboxFiled: (
+    callback: (event: { id: string; filedTo: string; filedAction: string }) => void
+  ) => () => void
+  onInboxSnoozed: (callback: (event: { id: string; snoozeUntil: string }) => void) => () => void
+  onInboxSnoozeDue: (callback: (event: { items: unknown[] }) => void) => () => void
+  onInboxTranscriptionComplete: (
+    callback: (event: { id: string; transcription: string }) => void
+  ) => () => void
+  onInboxMetadataComplete: (
+    callback: (event: { id: string; metadata: unknown }) => void
+  ) => () => void
+  onInboxProcessingError: (
+    callback: (event: { id: string; operation: string; error: string }) => void
+  ) => () => void
 }
 
 declare global {

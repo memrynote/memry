@@ -1,13 +1,16 @@
-import { AlertTriangle } from "lucide-react"
+import { AlertTriangle } from 'lucide-react'
 
-import { StaleItemRow } from "@/components/stale/stale-item-row"
-import { StaleCard } from "@/components/stale/stale-card"
-import { StaleActionFooter } from "@/components/stale/stale-action-footer"
-import { STALE_THRESHOLD_DAYS } from "@/lib/stale-utils"
-import { cn } from "@/lib/utils"
-import type { InboxItem } from "@/types"
+import { StaleItemRow } from '@/components/stale/stale-item-row'
+import { StaleCard } from '@/components/stale/stale-card'
+import { StaleActionFooter } from '@/components/stale/stale-action-footer'
+import { STALE_THRESHOLD_DAYS } from '@/lib/stale-utils'
+import { cn } from '@/lib/utils'
+import type { InboxItemListItem } from '@/types'
 
-type ViewMode = "list" | "card"
+// Type alias for convenience (backend type)
+type InboxItem = InboxItemListItem
+
+type ViewMode = 'list' | 'card'
 
 interface StaleSectionHeaderProps {
   itemCount: number
@@ -19,7 +22,7 @@ interface StaleSectionHeaderProps {
  */
 const StaleSectionHeader = ({
   itemCount,
-  threshold = STALE_THRESHOLD_DAYS,
+  threshold = STALE_THRESHOLD_DAYS
 }: StaleSectionHeaderProps): React.JSX.Element => {
   return (
     <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-500/20">
@@ -28,7 +31,7 @@ const StaleSectionHeader = ({
         Needs attention
       </h2>
       <span className="text-xs text-[var(--muted-foreground)]">
-        · {itemCount} item{itemCount !== 1 ? "s" : ""} older than {threshold} days
+        · {itemCount} item{itemCount !== 1 ? 's' : ''} older than {threshold} days
       </span>
     </div>
   )
@@ -66,7 +69,7 @@ export const StaleSection = ({
   onSelectionToggle,
   onFileAllToUnsorted,
   onReviewOneByOne,
-  className,
+  className
 }: StaleSectionProps): React.JSX.Element | null => {
   if (items.length === 0) {
     return null
@@ -77,8 +80,8 @@ export const StaleSection = ({
   return (
     <section
       className={cn(
-        "rounded-lg border border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/5 mb-6",
-        "animate-in fade-in duration-300",
+        'rounded-lg border border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/5 mb-6',
+        'animate-in fade-in duration-300',
         className
       )}
       aria-labelledby="stale-section-header"
@@ -87,11 +90,8 @@ export const StaleSection = ({
       <StaleSectionHeader itemCount={items.length} />
 
       {/* Items */}
-      <div className={cn(
-        "p-2",
-        viewMode === "card" && "px-3 py-3"
-      )}>
-        {viewMode === "list" ? (
+      <div className={cn('p-2', viewMode === 'card' && 'px-3 py-3')}>
+        {viewMode === 'list' ? (
           <div className="space-y-0.5">
             {items.map((item) => (
               <StaleItemRow
@@ -141,4 +141,3 @@ export const StaleSection = ({
 }
 
 export { StaleSectionHeader }
-

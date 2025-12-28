@@ -1,80 +1,99 @@
-import { useState, useEffect, useCallback, useMemo } from "react"
-import { Link, FileText, Image, Mic, Globe, Check, Loader2 } from "lucide-react"
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Link, FileText, Image, Mic, Globe, Check, Loader2 } from 'lucide-react'
 
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@/components/ui/sheet"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { FolderSelector } from "@/components/filing/folder-selector"
-import { TagInput } from "@/components/filing/tag-input"
-import { LinkSearch } from "@/components/filing/link-search"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { FolderSelector } from '@/components/filing/folder-selector'
+import { TagInput } from '@/components/filing/tag-input'
+import { LinkSearch } from '@/components/filing/link-search'
 import {
   sampleFolders,
   getSuggestedFolders,
   getRecentFolders,
   suggestedTags,
-  existingNotes,
-} from "@/data/filing-data"
-import { extractDomain } from "@/lib/inbox-utils"
-import { isMac, isInputFocused } from "@/hooks/use-keyboard-shortcuts"
-import type { InboxItem, InboxItemType, Folder, LinkedNote } from "@/types"
+  existingNotes
+} from '@/data/filing-data'
+import { extractDomain } from '@/lib/inbox-utils'
+import { isMac, isInputFocused } from '@/hooks/use-keyboard-shortcuts'
+import type { InboxItem, InboxItemListItem, InboxItemType, Folder, LinkedNote } from '@/types'
+
+// Filing panel can work with either full or list item types
+type FilingItem = InboxItem | InboxItemListItem
 
 // Item preview icon component
 const ItemTypeIcon = ({ type }: { type: InboxItemType }): React.JSX.Element => {
-  const iconClass = "size-5 text-[var(--muted-foreground)]"
+  const iconClass = 'size-5 text-[var(--muted-foreground)]'
 
   switch (type) {
-    case "link":
+    case 'link':
       return <Link className={iconClass} aria-hidden="true" />
-    case "note":
+    case 'note':
       return <FileText className={iconClass} aria-hidden="true" />
-    case "image":
+    case 'image':
       return <Image className={iconClass} aria-hidden="true" />
-    case "voice":
+    case 'voice':
       return <Mic className={iconClass} aria-hidden="true" />
+    case 'clip':
+    case 'pdf':
+    case 'social':
+    default:
+      return <FileText className={iconClass} aria-hidden="true" />
   }
 }
 
 // Item preview component
 interface ItemPreviewProps {
-  item: InboxItem
+  item: FilingItem
 }
 
 const ItemPreview = ({ item }: ItemPreviewProps): React.JSX.Element => {
   const getSubtitle = (): string => {
+    // Get duration - on list items it's a direct property, on full items it's in metadata
+    let duration = 0
+    if ('duration' in item && typeof item.duration === 'number') {
+      duration = item.duration
+    } else if ('metadata' in item) {
+      const metadata = item.metadata as Record<string, unknown> | null
+      if (typeof metadata?.duration === 'number') {
+        duration = metadata.duration
+      }
+    }
+
     switch (item.type) {
-      case "link":
-        return item.url ? extractDomain(item.url) : ""
-      case "note":
-        return item.content?.slice(0, 50) || ""
-      case "image":
-        return "Image file"
-      case "voice":
-        return item.duration ? `${Math.floor(item.duration / 60)}:${(item.duration % 60).toString().padStart(2, "0")}` : "Voice memo"
+      case 'link':
+        return item.sourceUrl ? extractDomain(item.sourceUrl) : ''
+      case 'note':
+        return item.content?.slice(0, 50) || ''
+      case 'image':
+        return 'Image file'
+      case 'voice':
+        return duration > 0
+          ? `${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, '0')}`
+          : 'Voice memo'
+      case 'clip':
+        return 'Web clip'
+      case 'pdf':
+        return 'PDF document'
+      case 'social':
+        return 'Social post'
+      default:
+        return ''
     }
   }
 
   return (
     <div className="flex items-start gap-3 p-3 rounded-lg bg-[var(--muted)]/30 border border-[var(--border)]/50">
       <div className="size-10 rounded-lg bg-[var(--muted)] flex items-center justify-center shrink-0">
-        {item.type === "link" ? (
+        {item.type === 'link' ? (
           <Globe className="size-5 text-[var(--muted-foreground)]" aria-hidden="true" />
         ) : (
           <ItemTypeIcon type={item.type} />
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-[var(--foreground)] truncate">
-          {item.title}
-        </p>
-        <p className="text-xs text-[var(--muted-foreground)] truncate">
-          {getSubtitle()}
-        </p>
+        <p className="text-sm font-medium text-[var(--foreground)] truncate">{item.title}</p>
+        <p className="text-xs text-[var(--muted-foreground)] truncate">{getSubtitle()}</p>
       </div>
     </div>
   )
@@ -82,17 +101,12 @@ const ItemPreview = ({ item }: ItemPreviewProps): React.JSX.Element => {
 
 interface FilingPanelProps {
   isOpen: boolean
-  item: InboxItem | null
+  item: FilingItem | null
   onClose: () => void
   onFile: (itemId: string, folderId: string, tags: string[], linkedNoteIds: string[]) => void
 }
 
-const FilingPanel = ({
-  isOpen,
-  item,
-  onClose,
-  onFile,
-}: FilingPanelProps): React.JSX.Element => {
+const FilingPanel = ({ isOpen, item, onClose, onFile }: FilingPanelProps): React.JSX.Element => {
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null)
   const [tags, setTags] = useState<string[]>([])
   const [linkedNotes, setLinkedNotes] = useState<LinkedNote[]>([])
@@ -119,7 +133,7 @@ const FilingPanel = ({
       if (isInputFocused()) return
 
       // Cmd/Ctrl + Enter to file
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault()
         if (selectedFolder && item) {
           handleFileItem()
@@ -137,8 +151,8 @@ const FilingPanel = ({
       }
     }
 
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, selectedFolder, item, suggestedFoldersForShortcut])
 
   const handleFolderSelect = useCallback((folder: Folder): void => {
@@ -178,17 +192,14 @@ const FilingPanel = ({
     }
   }
 
-  const modifierKeyDisplay = isMac ? "⌘" : "Ctrl+"
+  const modifierKeyDisplay = isMac ? '⌘' : 'Ctrl+'
   const keyboardHint = `${modifierKeyDisplay}⏎ file · 1-5 folder · Esc close`
 
   const canFile = selectedFolder !== null && !isLoading
 
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
-      <SheetContent
-        side="right"
-        className="w-[420px] sm:max-w-[420px] flex flex-col p-0"
-      >
+      <SheetContent side="right" className="w-[420px] sm:max-w-[420px] flex flex-col p-0">
         {/* Header */}
         <SheetHeader className="px-6 py-4 border-b border-[var(--border)] shrink-0">
           <SheetTitle className="text-lg font-semibold">File Item</SheetTitle>
@@ -213,11 +224,7 @@ const FilingPanel = ({
           <Separator />
 
           {/* Tags */}
-          <TagInput
-            tags={tags}
-            suggestedTags={suggestedTags}
-            onTagsChange={handleTagsChange}
-          />
+          <TagInput tags={tags} suggestedTags={suggestedTags} onTagsChange={handleTagsChange} />
 
           <Separator />
 
@@ -231,12 +238,7 @@ const FilingPanel = ({
 
         {/* Footer */}
         <SheetFooter className="px-6 py-4 border-t border-[var(--border)] shrink-0 flex-col gap-3">
-          <Button
-            onClick={handleFileItem}
-            disabled={!canFile}
-            className="w-full"
-            size="lg"
-          >
+          <Button onClick={handleFileItem} disabled={!canFile} className="w-full" size="lg">
             {isLoading ? (
               <>
                 <Loader2 className="size-4 animate-spin mr-2" aria-hidden="true" />
@@ -249,9 +251,7 @@ const FilingPanel = ({
               </>
             )}
           </Button>
-          <p className="text-xs text-[var(--muted-foreground)] text-center">
-            {keyboardHint}
-          </p>
+          <p className="text-xs text-[var(--muted-foreground)] text-center">{keyboardHint}</p>
         </SheetFooter>
       </SheetContent>
     </Sheet>
@@ -259,4 +259,3 @@ const FilingPanel = ({
 }
 
 export { FilingPanel }
-

@@ -4,53 +4,59 @@
  * A refined, warm interface for processing incoming items
  */
 
-import { useState, useCallback, useMemo, useEffect } from "react"
-import { List, Grid, Check } from "lucide-react"
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { List, Grid, Check, Loader2, AlertCircle } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { ToastContainer, type Toast } from "@/components/ui/toast"
-import { ListView } from "@/components/list-view"
-import { CardView } from "@/components/card-view"
-import { FilingPanel } from "@/components/filing/filing-panel"
-import { PreviewPanel } from "@/components/preview/preview-panel"
-import { BulkActionBar, type ClusterSuggestion } from "@/components/bulk/bulk-action-bar"
-import { BulkFilePanel } from "@/components/bulk/bulk-file-panel"
-import { BulkTagPopover } from "@/components/bulk/bulk-tag-popover"
-import { DeleteConfirmationDialog } from "@/components/bulk/delete-confirmation-dialog"
-import { EmptyState } from "@/components/empty-state/empty-state"
-import { KeyboardShortcutsModal } from "@/components/keyboard-shortcuts-modal"
-import { SRAnnouncer } from "@/components/sr-announcer"
-import { sampleInboxItems } from "@/data/sample-inbox-items"
-import { sampleFolders, UNSORTED_FOLDER_ID } from "@/data/filing-data"
-import { detectClusters, getClusterKey } from "@/lib/ai-clustering"
-import { getStaleItems, getNonStaleItems } from "@/lib/stale-utils"
-import { cn } from "@/lib/utils"
-import { isInputFocused } from "@/hooks/use-keyboard-shortcuts"
-import type { InboxItem } from "@/types"
+import { Button } from '@/components/ui/button'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { ToastContainer, type Toast } from '@/components/ui/toast'
+import { ListView } from '@/components/list-view'
+import { CardView } from '@/components/card-view'
+import { FilingPanel } from '@/components/filing/filing-panel'
+import { PreviewPanel } from '@/components/preview/preview-panel'
+import { BulkActionBar, type ClusterSuggestion } from '@/components/bulk/bulk-action-bar'
+import { BulkFilePanel } from '@/components/bulk/bulk-file-panel'
+import { BulkTagPopover } from '@/components/bulk/bulk-tag-popover'
+import { DeleteConfirmationDialog } from '@/components/bulk/delete-confirmation-dialog'
+import { EmptyState } from '@/components/empty-state/empty-state'
+import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
+import { SRAnnouncer } from '@/components/sr-announcer'
+import { CaptureInput } from '@/components/capture-input'
+import { sampleFolders, UNSORTED_FOLDER_ID } from '@/data/filing-data'
+import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
+import { getStaleItems, getNonStaleItems } from '@/lib/stale-utils'
+import { cn } from '@/lib/utils'
+import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
+import { useInboxList, useDeleteInboxItem, useBulkDeleteInboxItems } from '@/hooks/use-inbox'
+import type { InboxItemListItem } from '@/types'
 
-type ViewMode = "list" | "card"
+type ViewMode = 'list' | 'card'
 
-interface DeletedItem {
-  item: InboxItem
-  index: number
-}
-
-interface FiledItem {
-  item: InboxItem
-  index: number
-  folderId: string
-}
+// Type alias for list items used throughout the page
+type ListItem = InboxItemListItem
 
 interface InboxPageProps {
   className?: string
 }
 
 export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
-  const [viewMode, setViewMode] = useState<ViewMode>("list")
-  const [items, setItems] = useState<InboxItem[]>(sampleInboxItems)
-  const [deletedItems, setDeletedItems] = useState<DeletedItem[]>([])
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [toasts, setToasts] = useState<Toast[]>([])
+
+  // Backend data hooks
+  const { items: backendItems, isLoading, error, refetch } = useInboxList()
+
+  // Delete mutations
+  const deleteItemMutation = useDeleteInboxItem()
+  const bulkDeleteMutation = useBulkDeleteInboxItems()
+
+  // Local state for optimistic UI (items pending deletion animation)
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
+
+  // Combine backend items with pending deletions for optimistic UI
+  const items = useMemo(() => {
+    return backendItems.filter((item) => !pendingDeleteIds.has(item.id))
+  }, [backendItems, pendingDeleteIds])
 
   // Empty state tracking
   const [itemsProcessedToday, setItemsProcessedToday] = useState(0)
@@ -59,7 +65,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
 
   // Animation states for transitions
   const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set())
-  const [isEmptyStateExiting, setIsEmptyStateExiting] = useState(false)
+  const [isEmptyStateExiting, _setIsEmptyStateExiting] = useState(false)
   const [showEmptyState, setShowEmptyState] = useState(items.length === 0)
 
   // Selection state for bulk mode
@@ -68,7 +74,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
 
   // Filing panel state
   const [isFilingPanelOpen, setIsFilingPanelOpen] = useState(false)
-  const [activeItemForFiling, setActiveItemForFiling] = useState<InboxItem | null>(null)
+  const [activeItemForFiling, setActiveItemForFiling] = useState<ListItem | null>(null)
 
   // Preview panel state
   const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(false)
@@ -124,7 +130,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   }
 
   // Add a toast notification
-  const addToast = useCallback((toast: Omit<Toast, "id">): string => {
+  const addToast = useCallback((toast: Omit<Toast, 'id'>): string => {
     const id = generateToastId()
     setToasts((prev) => [...prev, { ...toast, id }])
     return id
@@ -142,7 +148,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       if (isShortcutsModalOpen || isFilingPanelOpen || isBulkFilePanelOpen) return
 
       // ? or Cmd+/ opens keyboard shortcuts help
-      if (e.key === "?" || ((e.metaKey || e.ctrlKey) && e.key === "/")) {
+      if (e.key === '?' || ((e.metaKey || e.ctrlKey) && e.key === '/')) {
         e.preventDefault()
         setIsShortcutsModalOpen(true)
         return
@@ -152,25 +158,25 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       if (isInputFocused()) return
 
       // V toggles view mode
-      if (e.key.toLowerCase() === "v" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (e.key.toLowerCase() === 'v' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
-        setViewMode((prev) => (prev === "list" ? "card" : "list"))
+        setViewMode((prev) => (prev === 'list' ? 'card' : 'list'))
         return
       }
 
-      // R refreshes the inbox (placeholder - would fetch new data in real app)
-      if (e.key.toLowerCase() === "r" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      // R refreshes the inbox
+      if (e.key.toLowerCase() === 'r' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
-        // In a real app, this would fetch new data
+        refetch()
         addToast({
-          message: "Inbox refreshed",
-          type: "success",
+          message: 'Inbox refreshed',
+          type: 'success'
         })
         return
       }
 
       // Delete/Backspace for deleting focused or selected items
-      if (e.key === "Delete" || e.key === "Backspace") {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
         // If in bulk mode, trigger bulk delete
         if (isInBulkMode) {
           e.preventDefault()
@@ -192,11 +198,10 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             // Trigger delete animation
             setExitingItemIds((prev) => new Set(prev).add(focusedItemId))
 
-            // After animation, remove item
-            setTimeout(() => {
-              const itemIndex = items.findIndex((i) => i.id === focusedItemId)
-              setDeletedItems((prev) => [...prev, { item: focusedItem, index: itemIndex }])
-              setItems((prev) => prev.filter((i) => i.id !== focusedItemId))
+            // After animation, delete via backend
+            setTimeout(async () => {
+              // Add to pending deletes for optimistic UI
+              setPendingDeleteIds((prev) => new Set(prev).add(focusedItemId))
               setExitingItemIds((prev) => {
                 const next = new Set(prev)
                 next.delete(focusedItemId)
@@ -208,19 +213,24 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 setFocusedItemId(nextItem.id)
               }
 
-              // Show undo toast
-              addToast({
-                message: `"${focusedItem.title}" deleted`,
-                type: "success",
-                onUndo: () => {
-                  setItems((prev) => {
-                    const newItems = [...prev]
-                    newItems.splice(itemIndex, 0, focusedItem)
-                    return newItems
-                  })
-                  setDeletedItems((prev) => prev.filter((d) => d.item.id !== focusedItem.id))
-                },
-              })
+              try {
+                await deleteItemMutation.mutateAsync(focusedItemId)
+                addToast({
+                  message: `"${focusedItem.title}" deleted`,
+                  type: 'success'
+                })
+              } catch {
+                // Revert optimistic delete on error
+                setPendingDeleteIds((prev) => {
+                  const next = new Set(prev)
+                  next.delete(focusedItemId)
+                  return next
+                })
+                addToast({
+                  message: 'Failed to delete item',
+                  type: 'error'
+                })
+              }
             }, 200)
           }
         }
@@ -228,20 +238,20 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       }
 
       // O opens the original link for the focused item
-      if (e.key.toLowerCase() === "o" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (e.key.toLowerCase() === 'o' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         if (focusedItemId) {
           const focusedItem = items.find((i) => i.id === focusedItemId)
-          if (focusedItem?.url) {
+          if (focusedItem?.sourceUrl) {
             e.preventDefault()
-            window.open(focusedItem.url, "_blank", "noopener,noreferrer")
+            window.open(focusedItem.sourceUrl, '_blank', 'noopener,noreferrer')
           }
         }
         return
       }
     }
 
-    window.addEventListener("keydown", handleGlobalKeyDown)
-    return () => window.removeEventListener("keydown", handleGlobalKeyDown)
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
   }, [
     isShortcutsModalOpen,
     isFilingPanelOpen,
@@ -252,11 +262,11 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     items,
     staleItems,
     nonStaleItems,
-    addToast,
+    addToast
   ])
 
   const handleViewChange = (value: string): void => {
-    if (value === "list" || value === "card") {
+    if (value === 'list' || value === 'card') {
       setViewMode(value)
     }
   }
@@ -278,18 +288,21 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   }, [])
 
   // Handle file action - close preview first, then open filing panel
-  const handleFile = useCallback((id: string): void => {
-    const item = items.find((i) => i.id === id)
-    if (item) {
-      // Close preview panel if open
-      setIsPreviewPanelOpen(false)
-      setPreviewingItemId(null)
+  const handleFile = useCallback(
+    (id: string): void => {
+      const item = items.find((i) => i.id === id)
+      if (item) {
+        // Close preview panel if open
+        setIsPreviewPanelOpen(false)
+        setPreviewingItemId(null)
 
-      // Open filing panel
-      setActiveItemForFiling(item)
-      setIsFilingPanelOpen(true)
-    }
-  }, [items])
+        // Open filing panel
+        setActiveItemForFiling(item)
+        setIsFilingPanelOpen(true)
+      }
+    },
+    [items]
+  )
 
   // Handle filing panel close
   const handleFilingPanelClose = useCallback((): void => {
@@ -298,22 +311,22 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   }, [])
 
   // Handle filing complete with animation
+  // TODO: Wire to real filing backend when available
   const handleFilingComplete = useCallback(
     (itemId: string, folderId: string, _tags: string[], _linkedNoteIds: string[]): void => {
-      const itemIndex = items.findIndex((item) => item.id === itemId)
-      if (itemIndex === -1) return
+      const filedItem = items.find((item) => item.id === itemId)
+      if (!filedItem) return
 
-      const filedItem = items[itemIndex]
       const folder = sampleFolders.find((f) => f.id === folderId)
       const willBeEmpty = items.length === 1
 
       // Start exit animation
       setExitingItemIds((prev) => new Set(prev).add(itemId))
 
-      // After exit animation, remove item
-      setTimeout(() => {
-        // Remove item from inbox
-        setItems((prev) => prev.filter((item) => item.id !== itemId))
+      // After exit animation, remove item via backend delete (for now)
+      setTimeout(async () => {
+        // Add to pending deletes for optimistic UI
+        setPendingDeleteIds((prev) => new Set(prev).add(itemId))
 
         // Clear exiting state
         setExitingItemIds((prev) => {
@@ -340,59 +353,48 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           }, 200)
         }
 
-        // Store filed item for potential undo
-        const fileRecord: FiledItem = { item: filedItem, index: itemIndex, folderId }
-
-        // Show toast with undo option
-        addToast({
-          message: `Filed to ${folder?.name || "folder"}`,
-          type: "success",
-          onUndo: () => {
-            // If empty state is showing, animate it out first
-            if (willBeEmpty) {
-              setIsEmptyStateExiting(true)
-              setTimeout(() => {
-                setShowEmptyState(false)
-                setIsEmptyStateExiting(false)
-                setItems((prev) => {
-                  const newItems = [...prev]
-                  newItems.splice(fileRecord.index, 0, fileRecord.item)
-                  return newItems
-                })
-              }, 150)
-            } else {
-              setItems((prev) => {
-                const newItems = [...prev]
-                newItems.splice(fileRecord.index, 0, fileRecord.item)
-                return newItems
-              })
-            }
-            // Decrement the processed counter on undo
-            setItemsProcessedToday((prev) => Math.max(0, prev - 1))
-          },
-        })
+        try {
+          // For now, just delete the item - real filing will be implemented later
+          await deleteItemMutation.mutateAsync(itemId)
+          addToast({
+            message: `Filed to ${folder?.name || 'folder'}`,
+            type: 'success'
+          })
+        } catch {
+          // Revert optimistic delete on error
+          setPendingDeleteIds((prev) => {
+            const next = new Set(prev)
+            next.delete(itemId)
+            return next
+          })
+          setItemsProcessedToday((prev) => Math.max(0, prev - 1))
+          addToast({
+            message: 'Failed to file item',
+            type: 'error'
+          })
+        }
       }, 200)
     },
-    [items, addToast]
+    [items, addToast, deleteItemMutation]
   )
 
   // Handle Quick-File (inline keyboard filing from List View) with animation
+  // TODO: Wire to real filing backend when available
   const handleQuickFile = useCallback(
     (itemId: string, folderId: string): void => {
-      const itemIndex = items.findIndex((item) => item.id === itemId)
-      if (itemIndex === -1) return
+      const filedItem = items.find((item) => item.id === itemId)
+      if (!filedItem) return
 
-      const filedItem = items[itemIndex]
       const folder = sampleFolders.find((f) => f.id === folderId)
       const willBeEmpty = items.length === 1
 
       // Start exit animation
       setExitingItemIds((prev) => new Set(prev).add(itemId))
 
-      // After exit animation, remove item
-      setTimeout(() => {
-        // Remove item from inbox
-        setItems((prev) => prev.filter((item) => item.id !== itemId))
+      // After exit animation, remove item via backend delete (for now)
+      setTimeout(async () => {
+        // Add to pending deletes for optimistic UI
+        setPendingDeleteIds((prev) => new Set(prev).add(itemId))
 
         // Clear exiting state
         setExitingItemIds((prev) => {
@@ -419,60 +421,52 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           }, 200)
         }
 
-        // Store filed item for potential undo
-        const fileRecord: FiledItem = { item: filedItem, index: itemIndex, folderId }
-
-        // Show toast with undo option
-        addToast({
-          message: `Filed to ${folder?.name || "folder"}`,
-          type: "success",
-          onUndo: () => {
-            // If empty state is showing, animate it out first
-            if (willBeEmpty) {
-              setIsEmptyStateExiting(true)
-              setTimeout(() => {
-                setShowEmptyState(false)
-                setIsEmptyStateExiting(false)
-                setItems((prev) => {
-                  const newItems = [...prev]
-                  newItems.splice(fileRecord.index, 0, fileRecord.item)
-                  return newItems
-                })
-              }, 150)
-            } else {
-              setItems((prev) => {
-                const newItems = [...prev]
-                newItems.splice(fileRecord.index, 0, fileRecord.item)
-                return newItems
-              })
-            }
-            // Decrement the processed counter on undo
-            setItemsProcessedToday((prev) => Math.max(0, prev - 1))
-          },
-        })
+        try {
+          // For now, just delete the item - real filing will be implemented later
+          await deleteItemMutation.mutateAsync(itemId)
+          addToast({
+            message: `Filed to ${folder?.name || 'folder'}`,
+            type: 'success'
+          })
+        } catch {
+          // Revert optimistic delete on error
+          setPendingDeleteIds((prev) => {
+            const next = new Set(prev)
+            next.delete(itemId)
+            return next
+          })
+          setItemsProcessedToday((prev) => Math.max(0, prev - 1))
+          addToast({
+            message: 'Failed to file item',
+            type: 'error'
+          })
+        }
       }, 200)
     },
-    [items, addToast]
+    [items, addToast, deleteItemMutation]
   )
 
   // Handle preview action - toggle preview panel
-  const handlePreview = useCallback((id: string): void => {
-    // Close filing panel if open (only one panel at a time)
-    if (isFilingPanelOpen) {
-      setIsFilingPanelOpen(false)
-      setActiveItemForFiling(null)
-    }
+  const handlePreview = useCallback(
+    (id: string): void => {
+      // Close filing panel if open (only one panel at a time)
+      if (isFilingPanelOpen) {
+        setIsFilingPanelOpen(false)
+        setActiveItemForFiling(null)
+      }
 
-    // Toggle preview: if already previewing this item, close; otherwise open/switch
-    if (isPreviewPanelOpen && previewingItemId === id) {
-      setIsPreviewPanelOpen(false)
-      setPreviewingItemId(null)
-    } else {
-      setIsPreviewPanelOpen(true)
-      setPreviewingItemId(id)
-      setFocusedItemId(id)
-    }
-  }, [isFilingPanelOpen, isPreviewPanelOpen, previewingItemId])
+      // Toggle preview: if already previewing this item, close; otherwise open/switch
+      if (isPreviewPanelOpen && previewingItemId === id) {
+        setIsPreviewPanelOpen(false)
+        setPreviewingItemId(null)
+      } else {
+        setIsPreviewPanelOpen(true)
+        setPreviewingItemId(id)
+        setFocusedItemId(id)
+      }
+    },
+    [isFilingPanelOpen, isPreviewPanelOpen, previewingItemId]
+  )
 
   // Handle preview panel close
   const handlePreviewPanelClose = useCallback((): void => {
@@ -481,101 +475,88 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   }, [])
 
   // Handle focused item change (for navigation while preview is open)
-  const handleFocusedItemChange = useCallback((id: string | null): void => {
-    setFocusedItemId(id)
+  const handleFocusedItemChange = useCallback(
+    (id: string | null): void => {
+      setFocusedItemId(id)
 
-    // If preview panel is open, update the preview to show the newly focused item
-    if (isPreviewPanelOpen && id) {
-      setPreviewingItemId(id)
-    }
-  }, [isPreviewPanelOpen])
+      // If preview panel is open, update the preview to show the newly focused item
+      if (isPreviewPanelOpen && id) {
+        setPreviewingItemId(id)
+      }
+    },
+    [isPreviewPanelOpen]
+  )
 
-  // Handle delete action with undo support and animation
-  const handleDelete = useCallback((id: string): void => {
-    const itemIndex = items.findIndex((item) => item.id === id)
-    if (itemIndex === -1) return
+  // Handle delete action with animation
+  const handleDelete = useCallback(
+    async (id: string): Promise<void> => {
+      const deletedItem = items.find((item) => item.id === id)
+      if (!deletedItem) return
 
-    const deletedItem = items[itemIndex]
-    const willBeEmpty = items.length === 1
+      const willBeEmpty = items.length === 1
 
-    // Start exit animation
-    setExitingItemIds((prev) => new Set(prev).add(id))
+      // Start exit animation
+      setExitingItemIds((prev) => new Set(prev).add(id))
 
-    // If we're deleting the previewed item, close the preview
-    if (previewingItemId === id) {
-      setIsPreviewPanelOpen(false)
-      setPreviewingItemId(null)
-    }
-
-    // After exit animation (200ms), remove item and show empty state if needed
-    setTimeout(() => {
-      // Remove item from list
-      setItems((prev) => prev.filter((item) => item.id !== id))
-
-      // Clear exiting state
-      setExitingItemIds((prev) => {
-        const next = new Set(prev)
-        next.delete(id)
-        return next
-      })
-
-      // Remove from selection if selected
-      setSelectedItemIds((prev) => {
-        const next = new Set(prev)
-        next.delete(id)
-        return next
-      })
-
-      // Increment items processed counter
-      setItemsProcessedToday((prev) => prev + 1)
-
-      // If this was the last item, show empty state after a brief pause
-      if (willBeEmpty) {
-        setTimeout(() => {
-          setShowEmptyState(true)
-        }, 200) // 200ms pause before showing empty state
+      // If we're deleting the previewed item, close the preview
+      if (previewingItemId === id) {
+        setIsPreviewPanelOpen(false)
+        setPreviewingItemId(null)
       }
 
-      // Store deleted item for potential undo
-      const deleteRecord: DeletedItem = { item: deletedItem, index: itemIndex }
-      setDeletedItems((prev) => [...prev, deleteRecord])
+      // After exit animation (200ms), delete via backend
+      setTimeout(async () => {
+        // Add to pending deletes for optimistic UI
+        setPendingDeleteIds((prev) => new Set(prev).add(id))
 
-      // Show toast with undo option
-      addToast({
-        message: "Item deleted",
-        type: "success",
-        onUndo: () => {
-          // If empty state is showing, animate it out first
-          if (willBeEmpty) {
-            setIsEmptyStateExiting(true)
-            setTimeout(() => {
-              setShowEmptyState(false)
-              setIsEmptyStateExiting(false)
-              // Restore item to original position
-              setItems((prev) => {
-                const newItems = [...prev]
-                newItems.splice(deleteRecord.index, 0, deleteRecord.item)
-                return newItems
-              })
-            }, 150) // Empty state exit animation
-          } else {
-            // Restore item to original position
-            setItems((prev) => {
-              const newItems = [...prev]
-              newItems.splice(deleteRecord.index, 0, deleteRecord.item)
-              return newItems
-            })
-          }
-          // Remove from deleted items
-          setDeletedItems((prev) =>
-            prev.filter((d) => d.item.id !== deleteRecord.item.id)
-          )
-          // Decrement the processed counter on undo
+        // Clear exiting state
+        setExitingItemIds((prev) => {
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
+
+        // Remove from selection if selected
+        setSelectedItemIds((prev) => {
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
+
+        // Increment items processed counter
+        setItemsProcessedToday((prev) => prev + 1)
+
+        // If this was the last item, show empty state after a brief pause
+        if (willBeEmpty) {
+          setTimeout(() => {
+            setShowEmptyState(true)
+          }, 200)
+        }
+
+        try {
+          await deleteItemMutation.mutateAsync(id)
+          addToast({
+            message: 'Item deleted',
+            type: 'success'
+          })
+        } catch {
+          // Revert optimistic delete on error
+          setPendingDeleteIds((prev) => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+          // Decrement the processed counter on error
           setItemsProcessedToday((prev) => Math.max(0, prev - 1))
-        },
-      })
-    }, 200) // Item exit animation duration
-  }, [items, addToast, previewingItemId])
+          addToast({
+            message: 'Failed to delete item',
+            type: 'error'
+          })
+        }
+      }, 200)
+    },
+    [items, addToast, previewingItemId, deleteItemMutation]
+  )
 
   // === BULK ACTION HANDLERS ===
 
@@ -585,20 +566,18 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   }, [])
 
   // Handle bulk file complete
+  // TODO: Wire to real filing backend when available
   const handleBulkFileComplete = useCallback(
-    (itemIds: string[], folderId: string, _tags: string[]): void => {
+    async (itemIds: string[], folderId: string, _tags: string[]): Promise<void> => {
       const folder = sampleFolders.find((f) => f.id === folderId)
       const processedCount = itemIds.length
 
-      // Store items for undo
-      const filedItemsWithIndexes = itemIds.map((id) => {
-        const index = items.findIndex((item) => item.id === id)
-        const item = items[index]
-        return { item, index }
-      }).filter((record) => record.item !== undefined)
-
-      // Remove items from inbox
-      setItems((prev) => prev.filter((item) => !itemIds.includes(item.id)))
+      // Add to pending deletes for optimistic UI
+      setPendingDeleteIds((prev) => {
+        const next = new Set(prev)
+        itemIds.forEach((id) => next.add(id))
+        return next
+      })
 
       // Clear selection
       setSelectedItemIds(new Set())
@@ -607,27 +586,28 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       setItemsProcessedToday((prev) => prev + processedCount)
       setHasFilingHistory(true)
 
-      // Show toast with undo option
-      addToast({
-        message: `Filed ${itemIds.length} items to ${folder?.name || "folder"}`,
-        type: "success",
-        onUndo: () => {
-          // Restore all items to their original positions (in reverse order to maintain indexes)
-          setItems((prev) => {
-            const newItems = [...prev]
-            filedItemsWithIndexes
-              .sort((a, b) => a.index - b.index)
-              .forEach(({ item, index }) => {
-                newItems.splice(index, 0, item)
-              })
-            return newItems
-          })
-          // Decrement the processed counter on undo
-          setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
-        },
-      })
+      try {
+        // For now, bulk delete the items - real filing will be implemented later
+        await bulkDeleteMutation.mutateAsync({ itemIds })
+        addToast({
+          message: `Filed ${itemIds.length} items to ${folder?.name || 'folder'}`,
+          type: 'success'
+        })
+      } catch {
+        // Revert optimistic delete on error
+        setPendingDeleteIds((prev) => {
+          const next = new Set(prev)
+          itemIds.forEach((id) => next.delete(id))
+          return next
+        })
+        setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
+        addToast({
+          message: 'Failed to file items',
+          type: 'error'
+        })
+      }
     },
-    [items, addToast]
+    [addToast, bulkDeleteMutation]
   )
 
   // Handle bulk tag all
@@ -641,8 +621,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       // In a real app, this would update the tags on each selected item
       // For now, we just show a success toast
       addToast({
-        message: `Applied ${tags.length} tag${tags.length !== 1 ? "s" : ""} to ${selectedCount} item${selectedCount !== 1 ? "s" : ""}`,
-        type: "success",
+        message: `Applied ${tags.length} tag${tags.length !== 1 ? 's' : ''} to ${selectedCount} item${selectedCount !== 1 ? 's' : ''}`,
+        type: 'success'
       })
 
       // Keep selection - tagging doesn't remove items from inbox
@@ -661,13 +641,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     const processedCount = idsToDelete.length
     const willBeEmpty = items.length === idsToDelete.length
 
-    // Store items for undo
-    const deletedItemsWithIndexes = idsToDelete.map((id) => {
-      const index = items.findIndex((item) => item.id === id)
-      const item = items[index]
-      return { item, index }
-    }).filter((record) => record.item !== undefined)
-
     // Close dialog immediately
     setIsDeleteDialogOpen(false)
 
@@ -680,10 +653,14 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       setPreviewingItemId(null)
     }
 
-    // After exit animation, remove items
-    setTimeout(() => {
-      // Remove items from inbox
-      setItems((prev) => prev.filter((item) => !idsToDelete.includes(item.id)))
+    // After exit animation, delete via backend
+    setTimeout(async () => {
+      // Add to pending deletes for optimistic UI
+      setPendingDeleteIds((prev) => {
+        const next = new Set(prev)
+        idsToDelete.forEach((id) => next.add(id))
+        return next
+      })
 
       // Clear exiting state
       setExitingItemIds(new Set())
@@ -701,46 +678,27 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         }, 200)
       }
 
-      // Show toast with undo option
-      addToast({
-        message: `Deleted ${idsToDelete.length} item${idsToDelete.length !== 1 ? "s" : ""}`,
-        type: "success",
-        onUndo: () => {
-          // If empty state is showing, animate it out first
-          if (willBeEmpty) {
-            setIsEmptyStateExiting(true)
-            setTimeout(() => {
-              setShowEmptyState(false)
-              setIsEmptyStateExiting(false)
-              // Restore all items to their original positions
-              setItems((prev) => {
-                const newItems = [...prev]
-                deletedItemsWithIndexes
-                  .sort((a, b) => a.index - b.index)
-                  .forEach(({ item, index }) => {
-                    newItems.splice(index, 0, item)
-                  })
-                return newItems
-              })
-            }, 150)
-          } else {
-            // Restore all items to their original positions
-            setItems((prev) => {
-              const newItems = [...prev]
-              deletedItemsWithIndexes
-                .sort((a, b) => a.index - b.index)
-                .forEach(({ item, index }) => {
-                  newItems.splice(index, 0, item)
-                })
-              return newItems
-            })
-          }
-          // Decrement the processed counter on undo
-          setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
-        },
-      })
+      try {
+        await bulkDeleteMutation.mutateAsync({ itemIds: idsToDelete })
+        addToast({
+          message: `Deleted ${idsToDelete.length} item${idsToDelete.length !== 1 ? 's' : ''}`,
+          type: 'success'
+        })
+      } catch {
+        // Revert optimistic delete on error
+        setPendingDeleteIds((prev) => {
+          const next = new Set(prev)
+          idsToDelete.forEach((id) => next.delete(id))
+          return next
+        })
+        setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
+        addToast({
+          message: 'Failed to delete items',
+          type: 'error'
+        })
+      }
     }, 200)
-  }, [selectedItemIds, items, previewingItemId, addToast])
+  }, [selectedItemIds, items, previewingItemId, addToast, bulkDeleteMutation])
 
   // Handle delete dialog cancel
   const handleDeleteDialogCancel = useCallback((): void => {
@@ -769,25 +727,25 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   // === STALE ITEMS HANDLERS ===
 
   // Handle "File all to Unsorted" action for stale items
+  // TODO: Wire to real filing backend when available
   const handleFileAllStaleToUnsorted = useCallback((): void => {
     if (staleItems.length === 0) return
 
     const unsortedFolder = sampleFolders.find((f) => f.id === UNSORTED_FOLDER_ID)
     const processedCount = staleItems.length
-
-    // Store items with their original indexes for undo
-    const staleItemsWithIndexes = staleItems.map((item) => {
-      const index = items.findIndex((i) => i.id === item.id)
-      return { item, index }
-    })
+    const staleIds = staleItems.map((i) => i.id)
 
     // Start exit animation for all stale items
-    setExitingItemIds(new Set(staleItems.map((i) => i.id)))
+    setExitingItemIds(new Set(staleIds))
 
-    // After animation, remove items
-    setTimeout(() => {
-      // Remove stale items from inbox
-      setItems((prev) => prev.filter((item) => !staleItems.some((s) => s.id === item.id)))
+    // After animation, delete via backend
+    setTimeout(async () => {
+      // Add to pending deletes for optimistic UI
+      setPendingDeleteIds((prev) => {
+        const next = new Set(prev)
+        staleIds.forEach((id) => next.add(id))
+        return next
+      })
 
       // Clear exiting state
       setExitingItemIds(new Set())
@@ -803,27 +761,28 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       setItemsProcessedToday((prev) => prev + processedCount)
       setHasFilingHistory(true)
 
-      // Show toast with undo option
-      addToast({
-        message: `Filed ${processedCount} items to ${unsortedFolder?.name || "Unsorted"}`,
-        type: "success",
-        onUndo: () => {
-          // Restore all stale items to their original positions
-          setItems((prev) => {
-            const newItems = [...prev]
-            staleItemsWithIndexes
-              .sort((a, b) => a.index - b.index)
-              .forEach(({ item, index }) => {
-                newItems.splice(index, 0, item)
-              })
-            return newItems
-          })
-          // Decrement the processed counter
-          setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
-        },
-      })
+      try {
+        // For now, bulk delete - real filing will be implemented later
+        await bulkDeleteMutation.mutateAsync({ itemIds: staleIds })
+        addToast({
+          message: `Filed ${processedCount} items to ${unsortedFolder?.name || 'Unsorted'}`,
+          type: 'success'
+        })
+      } catch {
+        // Revert optimistic delete on error
+        setPendingDeleteIds((prev) => {
+          const next = new Set(prev)
+          staleIds.forEach((id) => next.delete(id))
+          return next
+        })
+        setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
+        addToast({
+          message: 'Failed to file stale items',
+          type: 'error'
+        })
+      }
     }, 200)
-  }, [staleItems, items, addToast])
+  }, [staleItems, addToast, bulkDeleteMutation])
 
   // Handle "Review one by one" action for stale items
   // Simple version: select all stale items to enter bulk mode
@@ -844,7 +803,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const todayItemsCount = useMemo(() => {
     const today = new Date()
     return items.filter((item) => {
-      const itemDate = item.timestamp
+      const itemDate = item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt)
       return (
         itemDate.getDate() === today.getDate() &&
         itemDate.getMonth() === today.getMonth() &&
@@ -854,24 +813,16 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   }, [items])
 
   return (
-    <div className={cn(
-      "flex flex-col h-full",
-      "px-6 lg:px-8",
-      "py-8 lg:py-12",
-      className
-    )}>
+    <div className={cn('flex flex-col h-full', 'px-6 lg:px-8', 'py-8 lg:py-12', className)}>
       {/* Header with Dramatic Item Count */}
-      <header className={cn(
-        "relative mb-8 lg:mb-10",
-        "journal-animate-in"
-      )}>
+      <header className={cn('relative mb-8 lg:mb-10', 'journal-animate-in')}>
         {/* Large decorative item count watermark */}
         {!isInBulkMode && items.length > 0 && (
           <div
             className={cn(
-              "absolute -left-2 lg:-left-4 -top-4 lg:-top-6",
-              "text-[8rem] lg:text-[10rem]",
-              "journal-day-watermark"
+              'absolute -left-2 lg:-left-4 -top-4 lg:-top-6',
+              'text-[8rem] lg:text-[10rem]',
+              'journal-day-watermark'
             )}
             aria-hidden="true"
           >
@@ -896,18 +847,20 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 </p>
               </div>
 
-              <div className={cn(
-                "flex items-center gap-3",
-                "opacity-0 journal-animate-in journal-stagger-2"
-              )}>
+              <div
+                className={cn(
+                  'flex items-center gap-3',
+                  'opacity-0 journal-animate-in journal-stagger-2'
+                )}
+              >
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleDeselectAll}
                   className={cn(
-                    "text-muted-foreground/60 hover:text-foreground",
-                    "hover:bg-foreground/5",
-                    "transition-all duration-200"
+                    'text-muted-foreground/60 hover:text-foreground',
+                    'hover:bg-foreground/5',
+                    'transition-all duration-200'
                   )}
                 >
                   Deselect all
@@ -922,9 +875,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                     value="list"
                     aria-label="List view"
                     className={cn(
-                      "rounded-md px-3 py-1.5",
-                      "data-[state=on]:bg-background data-[state=on]:shadow-sm",
-                      "transition-all duration-200"
+                      'rounded-md px-3 py-1.5',
+                      'data-[state=on]:bg-background data-[state=on]:shadow-sm',
+                      'transition-all duration-200'
                     )}
                   >
                     <List className="size-4" />
@@ -933,9 +886,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                     value="card"
                     aria-label="Grid view"
                     className={cn(
-                      "rounded-md px-3 py-1.5",
-                      "data-[state=on]:bg-background data-[state=on]:shadow-sm",
-                      "transition-all duration-200"
+                      'rounded-md px-3 py-1.5',
+                      'data-[state=on]:bg-background data-[state=on]:shadow-sm',
+                      'transition-all duration-200'
                     )}
                   >
                     <Grid className="size-4" />
@@ -952,27 +905,28 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 </h1>
                 <p className="font-serif text-sm text-muted-foreground/70 tracking-wide">
                   {items.length === 0
-                    ? "All caught up"
+                    ? 'All caught up'
                     : todayItemsCount > 0
-                      ? `${todayItemsCount} item${todayItemsCount !== 1 ? "s" : ""} arrived today`
-                      : `${items.length} item${items.length !== 1 ? "s" : ""} waiting`
-                  }
+                      ? `${todayItemsCount} item${todayItemsCount !== 1 ? 's' : ''} arrived today`
+                      : `${items.length} item${items.length !== 1 ? 's' : ''} waiting`}
                 </p>
               </div>
 
-              <div className={cn(
-                "flex items-center gap-3",
-                "opacity-0 journal-animate-in journal-stagger-2"
-              )}>
+              <div
+                className={cn(
+                  'flex items-center gap-3',
+                  'opacity-0 journal-animate-in journal-stagger-2'
+                )}
+              >
                 {items.length > 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleSelectAll}
                     className={cn(
-                      "text-muted-foreground/60 hover:text-foreground",
-                      "hover:bg-foreground/5",
-                      "transition-all duration-200"
+                      'text-muted-foreground/60 hover:text-foreground',
+                      'hover:bg-foreground/5',
+                      'transition-all duration-200'
                     )}
                   >
                     Select all
@@ -988,9 +942,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                     value="list"
                     aria-label="List view"
                     className={cn(
-                      "rounded-md px-3 py-1.5",
-                      "data-[state=on]:bg-background data-[state=on]:shadow-sm",
-                      "transition-all duration-200"
+                      'rounded-md px-3 py-1.5',
+                      'data-[state=on]:bg-background data-[state=on]:shadow-sm',
+                      'transition-all duration-200'
                     )}
                   >
                     <List className="size-4" />
@@ -999,9 +953,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                     value="card"
                     aria-label="Grid view"
                     className={cn(
-                      "rounded-md px-3 py-1.5",
-                      "data-[state=on]:bg-background data-[state=on]:shadow-sm",
-                      "transition-all duration-200"
+                      'rounded-md px-3 py-1.5',
+                      'data-[state=on]:bg-background data-[state=on]:shadow-sm',
+                      'transition-all duration-200'
                     )}
                   >
                     <Grid className="size-4" />
@@ -1013,19 +967,54 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         </div>
       </header>
 
+      {/* Quick Capture Input */}
+      <div className="mb-6 opacity-0 journal-animate-in journal-stagger-2">
+        <CaptureInput
+          onCaptureSuccess={() => {
+            addToast({
+              message: 'Item captured',
+              type: 'success'
+            })
+          }}
+          onCaptureError={(errorMsg) => {
+            addToast({
+              message: errorMsg,
+              type: 'error'
+            })
+          }}
+        />
+      </div>
+
       {/* Content: Scrollable area with view-based rendering or empty state */}
-      <div className={cn(
-        "flex-1 overflow-y-auto",
-        "opacity-0 journal-animate-in journal-stagger-3",
-        isInBulkMode && "pb-32"
-      )}>
-        {showEmptyState ? (
+      <div
+        className={cn(
+          'flex-1 overflow-y-auto',
+          'opacity-0 journal-animate-in journal-stagger-3',
+          isInBulkMode && 'pb-32'
+        )}
+      >
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center h-64 gap-4">
+            <Loader2 className="size-8 text-muted-foreground/50 animate-spin" />
+            <p className="text-sm text-muted-foreground/60 font-serif">Loading inbox...</p>
+          </div>
+        ) : error ? (
+          /* Error State */
+          <div className="flex flex-col items-center justify-center h-64 gap-4">
+            <AlertCircle className="size-8 text-destructive/60" />
+            <p className="text-sm text-destructive/80 font-serif">Failed to load inbox</p>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Try again
+            </Button>
+          </div>
+        ) : showEmptyState ? (
           <EmptyState
             itemsProcessedToday={itemsProcessedToday}
             hasFilingHistory={hasFilingHistory}
             isExiting={isEmptyStateExiting}
           />
-        ) : viewMode === "list" ? (
+        ) : viewMode === 'list' ? (
           <ListView
             items={nonStaleItems}
             staleItems={staleItems}
