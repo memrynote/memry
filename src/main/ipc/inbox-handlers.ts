@@ -105,8 +105,8 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
       const attachmentsDir = getItemAttachmentsDir(itemId)
       const imageName = await downloadImage(metadata.image, attachmentsDir)
       if (imageName) {
-        // Store relative path: inbox/{itemId}/thumbnail.ext
-        thumbnailPath = `inbox/${itemId}/${imageName}`
+        // Store relative path from vault root: attachments/inbox/{itemId}/thumbnail.ext
+        thumbnailPath = `attachments/inbox/${itemId}/${imageName}`
         console.log(`[Metadata] Downloaded thumbnail: ${thumbnailPath}`)
       }
     }

@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import {
   useInboxList,
+  useInboxItem,
   useDeleteInboxItem,
   useBulkDeleteInboxItems,
   useFileInboxItem,
@@ -132,11 +133,16 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     return items.filter((item) => selectedItemIds.has(item.id))
   }, [items, selectedItemIds])
 
-  // Get the item being previewed
+  // Fetch full item data for preview (includes attachmentUrl, transcription, etc.)
+  const { item: fullPreviewItem, isLoading: isPreviewLoading } = useInboxItem(previewingItemId)
+
+  // Get the item being previewed - prefer full item data when available
   const previewingItem = useMemo(() => {
     if (!previewingItemId) return null
+    // Use full item if loaded, fallback to list item for immediate display
+    if (fullPreviewItem) return fullPreviewItem
     return items.find((item) => item.id === previewingItemId) || null
-  }, [previewingItemId, items])
+  }, [previewingItemId, fullPreviewItem, items])
 
   // AI clustering suggestion
   const aiSuggestion = useMemo((): ClusterSuggestion | null => {
@@ -1387,6 +1393,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       <PreviewPanel
         isOpen={isPreviewPanelOpen}
         item={previewingItem}
+        isLoading={isPreviewLoading}
         onClose={handlePreviewPanelClose}
         onFile={handleFile}
         onDelete={handleDelete}

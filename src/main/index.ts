@@ -27,6 +27,21 @@ if (envResult.error) {
   config()
 }
 
+// Register custom protocol as privileged before app is ready
+// This enables streaming support for audio/video elements
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'memry-file',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      stream: true, // Required for audio/video streaming
+      bypassCSP: false
+    }
+  }
+])
+
 // ============================================================================
 // Environment Configuration
 // ============================================================================
