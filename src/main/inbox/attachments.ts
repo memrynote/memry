@@ -225,8 +225,10 @@ export async function storeInboxAttachment(
     await ensureDir(itemDir)
 
     // Generate unique filename
+    // Remove existing extension from filename to avoid double extensions
     const ext = getExtensionFromMimeType(mimeType)
-    const safeFilename = sanitizeFilename(filename)
+    const filenameWithoutExt = filename.replace(/\.[^.]+$/, '')
+    const safeFilename = sanitizeFilename(filenameWithoutExt)
     const prefix = generatePrefix()
     const storedFilename = `${prefix}-${safeFilename}.${ext}`
 
@@ -414,7 +416,19 @@ export function resolveAttachmentUrl(relativePath: string | null): string | null
     const fullPath = path.join(vaultPath, relativePath)
 
     // Use custom protocol for security
-    return `memry-file:///${fullPath}`
+    // On POSIX systems, paths start with /, so we need memry-file:// + /path
+    // On Windows, paths are like C:\path, so we need memry-file:/// + path
+    let url: string
+    if (process.platform === 'win32') {
+      url = `memry-file:///${fullPath.replace(/\\/g, '/')}`
+    } else {
+      url = `memry-file://${fullPath}`
+    }
+
+    // Debug logging
+    console.log(`[Attachments] resolveAttachmentUrl: ${relativePath} -> ${url}`)
+
+    return url
   } catch {
     return null
   }

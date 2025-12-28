@@ -262,12 +262,12 @@
 
 ### Implementation for User Story 10
 
-- [ ] T100 [P] [US10] Add full content field to GET response in src/main/ipc/inbox-handlers.ts
-- [ ] T101 [US10] Fetch full metadata for preview in src/renderer/src/hooks/use-inbox.ts
-- [ ] T102 [US10] Connect PreviewPanel to real item data in src/renderer/src/components/preview/preview-panel.tsx
-- [ ] T103 [US10] Render link content in reader-friendly format in preview
-- [ ] T104 [US10] Display full-size image in preview
-- [ ] T105 [US10] Add audio player for voice items in preview
+- [x] T100 [P] [US10] Add full content field to GET response in src/main/ipc/inbox-handlers.ts
+- [x] T101 [US10] Fetch full metadata for preview in src/renderer/src/hooks/use-inbox.ts
+- [x] T102 [US10] Connect PreviewPanel to real item data in src/renderer/src/components/preview/preview-panel.tsx
+- [x] T103 [US10] Render link content in reader-friendly format in preview
+- [x] T104 [US10] Display full-size image in preview
+- [x] T105 [US10] Add audio player for voice items in preview
 
 **Checkpoint**: Item preview is fully functional
 
