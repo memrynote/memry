@@ -37,16 +37,21 @@ import {
 import { fetchUrlMetadata, downloadImage } from '../inbox/metadata'
 import { fileToFolder, convertToNote, linkToNote, bulkFileToFolder } from '../inbox/filing'
 import { FileItemSchema, BulkFileSchema, BulkTagSchema } from '@shared/contracts/inbox-api'
+import {
+  getStaleThreshold as getStaleThresholdDays,
+  setStaleThreshold as setStaleThresholdDays,
+  isStale as checkIsStale,
+  getStaleItemIds,
+  countStaleItems,
+  incrementDeletedCount,
+  incrementProcessedCount,
+  getTodayActivity,
+  getAverageTimeToProcess
+} from '../inbox/stats'
 
 // ============================================================================
 // Constants
 // ============================================================================
-
-/** Default stale threshold in days */
-const DEFAULT_STALE_DAYS = 7
-
-/** Current stale threshold (can be changed via settings) */
-let staleThresholdDays = DEFAULT_STALE_DAYS
 
 /** Retry delay for metadata fetch (5 seconds) */
 const METADATA_RETRY_DELAY = 5000
@@ -196,12 +201,10 @@ function requireDatabase() {
 
 /**
  * Check if an item is stale (older than threshold)
+ * Wrapper around the stats module function
  */
 function isStale(createdAt: string): boolean {
-  const created = new Date(createdAt)
-  const now = new Date()
-  const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
-  return diffDays > staleThresholdDays
+  return checkIsStale(createdAt)
 }
 
 /**
@@ -542,6 +545,9 @@ async function handleDelete(id: string): Promise<{ success: boolean; error?: str
     // Delete item
     db.delete(inboxItems).where(eq(inboxItems.id, id)).run()
 
+    // Update stats
+    incrementDeletedCount()
+
     emitInboxEvent(InboxChannels.events.DELETED, { id })
 
     return { success: true }
@@ -697,22 +703,8 @@ async function handleGetStats(): Promise<InboxStats> {
     itemsByType[row.type] = row.count
   }
 
-  // Stale count
-  const staleDate = new Date()
-  staleDate.setDate(staleDate.getDate() - staleThresholdDays)
-  const staleDateStr = staleDate.toISOString()
-
-  const staleResult = db
-    .select({ count: sql<number>`count(*)` })
-    .from(inboxItems)
-    .where(
-      and(
-        isNull(inboxItems.filedAt),
-        isNull(inboxItems.snoozedUntil),
-        sql`${inboxItems.createdAt} < ${staleDateStr}`
-      )
-    )
-    .get()
+  // Stale count - use stats module
+  const staleCount = countStaleItems()
 
   // Snoozed count
   const snoozedResult = db
@@ -721,14 +713,18 @@ async function handleGetStats(): Promise<InboxStats> {
     .where(sql`${inboxItems.snoozedUntil} IS NOT NULL`)
     .get()
 
+  // Get today's activity from stats module
+  const { capturedToday, processedToday } = getTodayActivity()
+  const avgTimeToProcess = getAverageTimeToProcess()
+
   return {
     totalItems: totalResult?.count || 0,
     itemsByType: itemsByType as InboxStats['itemsByType'],
-    staleCount: staleResult?.count || 0,
+    staleCount,
     snoozedCount: snoozedResult?.count || 0,
-    processedToday: 0, // TODO: Implement with inbox_stats table
-    capturedToday: 0, // TODO: Implement with inbox_stats table
-    avgTimeToProcess: 0 // TODO: Implement with filing_history table
+    processedToday,
+    capturedToday,
+    avgTimeToProcess
   }
 }
 
@@ -736,14 +732,14 @@ async function handleGetStats(): Promise<InboxStats> {
  * Get stale threshold
  */
 async function handleGetStaleThreshold(): Promise<number> {
-  return staleThresholdDays
+  return getStaleThresholdDays()
 }
 
 /**
  * Set stale threshold
  */
 async function handleSetStaleThreshold(days: number): Promise<{ success: boolean }> {
-  staleThresholdDays = Math.max(1, Math.min(365, days))
+  setStaleThresholdDays(days)
   return { success: true }
 }
 
@@ -933,11 +929,37 @@ async function handleBulkTag(input: unknown): Promise<BulkResponse> {
   }
 }
 
-async function stubFileAllStale(): Promise<BulkResponse> {
-  return {
-    success: false,
-    processedCount: 0,
-    errors: [{ itemId: '', error: 'Not implemented yet' }]
+/**
+ * File all stale items to Unsorted folder
+ */
+async function handleFileAllStale(): Promise<BulkResponse> {
+  try {
+    const staleIds = getStaleItemIds()
+
+    if (staleIds.length === 0) {
+      return {
+        success: true,
+        processedCount: 0,
+        errors: []
+      }
+    }
+
+    // Use bulk file to folder (Unsorted)
+    const result = await bulkFileToFolder(staleIds, 'Unsorted', [])
+
+    // Update stats for processed items
+    if (result.processedCount > 0) {
+      incrementProcessedCount(result.processedCount)
+    }
+
+    return result
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return {
+      success: false,
+      processedCount: 0,
+      errors: [{ itemId: '', error: message }]
+    }
   }
 }
 
@@ -1042,7 +1064,7 @@ export function registerInboxHandlers(): void {
   ipcMain.handle(InboxChannels.invoke.BULK_FILE, (_, input) => handleBulkFile(input))
   ipcMain.handle(InboxChannels.invoke.BULK_DELETE, (_, input) => handleBulkDelete(input))
   ipcMain.handle(InboxChannels.invoke.BULK_TAG, (_, input) => handleBulkTag(input))
-  ipcMain.handle(InboxChannels.invoke.FILE_ALL_STALE, () => stubFileAllStale())
+  ipcMain.handle(InboxChannels.invoke.FILE_ALL_STALE, () => handleFileAllStale())
 
   // Transcription handlers
   ipcMain.handle(InboxChannels.invoke.RETRY_TRANSCRIPTION, () => stubRetryTranscription())

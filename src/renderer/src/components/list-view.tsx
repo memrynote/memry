@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, FileText, Image, Mic, Scissors, FileIcon, Share2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 
 import { Checkbox } from '@/components/ui/checkbox'
 import { QuickActions } from '@/components/quick-actions'
 import { InlineQuickFile } from '@/components/inline-quick-file'
 import { QuickFileDropdown, getFilteredFolders } from '@/components/quick-file-dropdown'
 import { StaleSection } from '@/components/stale/stale-section'
-import { sampleFolders } from '@/data/filing-data'
 import {
   groupItemsByTimePeriod,
   formatTimestamp,
@@ -54,6 +54,7 @@ interface InboxItemRowProps {
   quickFileQuery: string
   quickFileHighlightedIndex: number
   isExiting?: boolean
+  folders: Folder[]
   onFile: (id: string) => void
   onPreview: (id: string) => void
   onDelete: (id: string) => void
@@ -77,6 +78,7 @@ const InboxItemRow = ({
   quickFileQuery,
   quickFileHighlightedIndex,
   isExiting = false,
+  folders,
   onFile,
   onPreview,
   onDelete,
@@ -90,7 +92,7 @@ const InboxItemRow = ({
   onQuickFileFolderSelect
 }: InboxItemRowProps): React.JSX.Element => {
   // Compute filtered folders for number key shortcuts
-  const filteredFolders = getFilteredFolders(sampleFolders, quickFileQuery, 5)
+  const filteredFolders = getFilteredFolders(folders, quickFileQuery, 5)
 
   // Format title for voice memos
   const displayTitle =
@@ -178,7 +180,7 @@ const InboxItemRow = ({
 
           {/* Dropdown */}
           <QuickFileDropdown
-            folders={sampleFolders}
+            folders={folders}
             query={quickFileQuery}
             highlightedIndex={quickFileHighlightedIndex}
             onSelect={onQuickFileFolderSelect}
@@ -275,6 +277,27 @@ const ListView = ({
   // Track last selected item for shift-click range selection
   const lastSelectedIdRef = useRef<string | null>(null)
 
+  // Fetch real folders from vault for quick-file feature
+  const { data: vaultFolders = [] } = useQuery({
+    queryKey: ['vault', 'folders'],
+    queryFn: async () => {
+      const paths = await window.api.notes.getFolders()
+      // Add root folder option and convert paths to Folder objects
+      const folders: Folder[] = [{ id: '', name: 'Notes (root)', path: '' }]
+      for (const path of paths) {
+        if (path) {
+          folders.push({
+            id: path,
+            name: path.split('/').pop() || path,
+            path: path,
+            parent: path.includes('/') ? path.split('/').slice(0, -1).join('/') : undefined
+          })
+        }
+      }
+      return folders
+    }
+  })
+
   // State - use controlled focus if provided, otherwise internal state
   const [internalFocusedItemId, setInternalFocusedItemId] = useState<string | null>(
     flatItems[0]?.id || null
@@ -307,7 +330,7 @@ const ListView = ({
   }, [flatItems, focusedItemId, setFocusedItemId])
 
   // Get filtered folders for current query
-  const filteredFolders = getFilteredFolders(sampleFolders, quickFileQuery, 5)
+  const filteredFolders = getFilteredFolders(vaultFolders, quickFileQuery, 5)
 
   // Reset highlighted index when query changes
   useEffect(() => {
@@ -673,6 +696,7 @@ const ListView = ({
                 quickFileQuery={quickFileQuery}
                 quickFileHighlightedIndex={highlightedIndex}
                 isExiting={exitingItemIds.has(item.id)}
+                folders={vaultFolders}
                 onFile={onFile}
                 onPreview={onPreview}
                 onDelete={onDelete}

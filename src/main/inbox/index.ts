@@ -22,9 +22,24 @@ export { resolveAttachmentUrl, getInboxAttachmentsDir, deleteInboxAttachments } 
 export { fileToFolder, convertToNote, linkToNote, bulkFileToFolder } from './filing'
 export type { FileResponse } from './filing'
 
+// Phase 10: Stats and stale detection
+export {
+  getStaleThreshold,
+  setStaleThreshold,
+  isStale,
+  getStaleCutoffDate,
+  getStaleItemIds,
+  countStaleItems,
+  incrementCaptureCount,
+  incrementProcessedCount,
+  incrementDeletedCount,
+  getTodayStats,
+  getTodayActivity,
+  getAverageTimeToProcess
+} from './stats'
+
 // Future phases will add exports for:
 // - capture.ts: captureText, captureLink, captureImage, captureVoice, capturePdf, captureClip
 // - transcription.ts: transcribeAudio
 // - suggestions.ts: getFilingSuggestions
 // - snooze.ts: snoozeItem, unsnoozeItem
-// - stats.ts: getInboxStats, getCapturePatterns
