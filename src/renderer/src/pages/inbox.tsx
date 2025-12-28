@@ -682,17 +682,30 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
 
   // Handle bulk tag apply
   const handleBulkTagApply = useCallback(
-    (tags: string[]): void => {
-      // In a real app, this would update the tags on each selected item
-      // For now, we just show a success toast
-      addToast({
-        message: `Applied ${tags.length} tag${tags.length !== 1 ? 's' : ''} to ${selectedCount} item${selectedCount !== 1 ? 's' : ''}`,
-        type: 'success'
-      })
+    async (tags: string[]): Promise<void> => {
+      const itemIds = Array.from(selectedItemIds)
 
+      try {
+        const result = await window.api.inbox.bulkTag({ itemIds, tags })
+
+        if (result.success || result.processedCount > 0) {
+          queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+          addToast({
+            message: `Applied ${tags.length} tag${tags.length !== 1 ? 's' : ''} to ${result.processedCount} item${result.processedCount !== 1 ? 's' : ''}`,
+            type: 'success'
+          })
+        } else {
+          throw new Error('Failed to apply tags')
+        }
+      } catch (error) {
+        addToast({
+          message: error instanceof Error ? error.message : 'Failed to apply tags',
+          type: 'error'
+        })
+      }
       // Keep selection - tagging doesn't remove items from inbox
     },
-    [addToast, selectedCount]
+    [selectedItemIds, queryClient, addToast]
   )
 
   // Handle bulk delete all

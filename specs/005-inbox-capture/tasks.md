@@ -109,17 +109,17 @@
 
 ### Implementation for User Story 3
 
-- [ ] T038 [P] [US3] Create src/main/inbox/filing.ts with filing operations
-- [ ] T039 [US3] Implement fileToFolder function in src/main/inbox/filing.ts
-- [ ] T040 [US3] Implement convertToNote function in src/main/inbox/filing.ts
-- [ ] T041 [US3] Implement linkToNote function in src/main/inbox/filing.ts
-- [ ] T042 [US3] Add FILE IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T043 [US3] Add CONVERT_TO_NOTE IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T044 [US3] Add LINK_TO_NOTE IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T045 [US3] Create filing_history record on file operations in src/main/inbox/filing.ts
-- [ ] T046 [US3] Add file methods to src/renderer/src/services/inbox-service.ts
-- [ ] T047 [US3] Connect FilingPanel to real API in src/renderer/src/components/filing/filing-panel.tsx
-- [ ] T048 [US3] Add handleFilingComplete with real IPC calls in src/renderer/src/pages/inbox.tsx
+- [x] T038 [P] [US3] Create src/main/inbox/filing.ts with filing operations
+- [x] T039 [US3] Implement fileToFolder function in src/main/inbox/filing.ts
+- [x] T040 [US3] Implement convertToNote function in src/main/inbox/filing.ts
+- [x] T041 [US3] Implement linkToNote function in src/main/inbox/filing.ts
+- [x] T042 [US3] Add FILE IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T043 [US3] Add CONVERT_TO_NOTE IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T044 [US3] Add LINK_TO_NOTE IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T045 [US3] Create filing_history record on file operations in src/main/inbox/filing.ts
+- [x] T046 [US3] Add file methods to src/renderer/src/services/inbox-service.ts
+- [x] T047 [US3] Connect FilingPanel to real API in src/renderer/src/components/filing/filing-panel.tsx
+- [x] T048 [US3] Add handleFilingComplete with real IPC calls in src/renderer/src/pages/inbox.tsx
 - [ ] T049 [US3] Move inbox attachments to notes folder on convert in src/main/inbox/filing.ts
 
 **Checkpoint**: Filing to folders and converting to notes is fully functional
@@ -134,11 +134,11 @@
 
 ### Implementation for User Story 4
 
-- [ ] T050 [P] [US4] Implement deleteItem function in src/main/inbox/capture.ts
-- [ ] T051 [US4] Add DELETE IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T052 [US4] Delete inbox attachments on item delete in src/main/inbox/attachments.ts
-- [ ] T053 [US4] Add delete method to src/renderer/src/services/inbox-service.ts
-- [ ] T054 [US4] Connect delete button to real API in src/renderer/src/pages/inbox.tsx
+- [x] T050 [P] [US4] Implement deleteItem function in src/main/inbox/capture.ts
+- [x] T051 [US4] Add DELETE IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T052 [US4] Delete inbox attachments on item delete in src/main/inbox/attachments.ts
+- [x] T053 [US4] Add delete method to src/renderer/src/services/inbox-service.ts
+- [x] T054 [US4] Connect delete button to real API in src/renderer/src/pages/inbox.tsx
 - [ ] T055 [US4] Update inbox stats on delete (increment deleted_count) in src/main/inbox/stats.ts
 
 **Checkpoint**: Item deletion is fully functional

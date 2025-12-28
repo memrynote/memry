@@ -255,10 +255,15 @@ export const inboxService = {
    * Link an inbox item to an existing note.
    * @param itemId - Inbox item ID
    * @param noteId - Target note ID
+   * @param tags - Additional tags to add to the created note
    * @returns Success status
    */
-  linkToNote: (itemId: string, noteId: string): Promise<{ success: boolean; error?: string }> => {
-    return window.api.inbox.linkToNote(itemId, noteId)
+  linkToNote: (
+    itemId: string,
+    noteId: string,
+    tags?: string[]
+  ): Promise<{ success: boolean; error?: string }> => {
+    return window.api.inbox.linkToNote(itemId, noteId, tags)
   },
 
   // =========================================================================

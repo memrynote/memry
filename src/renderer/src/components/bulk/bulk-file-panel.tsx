@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { FolderSelector } from '@/components/filing/folder-selector'
-import { TagInput } from '@/components/filing/tag-input'
-import { suggestedTags } from '@/data/filing-data'
+import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import type { InboxItem, InboxItemListItem, InboxItemType, Folder } from '@/types'
 
 // Bulk file panel can work with either full or list item types
@@ -86,16 +85,28 @@ const BulkFilePanel = ({
     enabled: isOpen // Only fetch when panel is open
   })
 
+  // Calculate common tags across all selected items
+  const commonTags = useMemo(() => {
+    if (items.length === 0) return []
+    // Get tags from first item
+    const firstItemTags = new Set(items[0].tags || [])
+    // Filter to only tags that exist in ALL items
+    return [...firstItemTags].filter((tag) =>
+      items.every((item) => (item.tags || []).includes(tag))
+    )
+  }, [items])
+
   // Get first 3 folders as suggested
   const suggestedFolders = useMemo(() => vaultFolders.slice(0, 3), [vaultFolders])
 
-  // Reset state when panel opens
+  // Reset state when panel opens, pre-populate with common tags
   useEffect(() => {
     if (isOpen) {
       setSelectedFolder(null)
-      setTags([])
+      // Pre-populate with common tags shared by all selected items
+      setTags(commonTags)
     }
-  }, [isOpen])
+  }, [isOpen, commonTags])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -195,7 +206,7 @@ const BulkFilePanel = ({
           <Separator />
 
           {/* Tags */}
-          <TagInput tags={tags} suggestedTags={suggestedTags} onTagsChange={handleTagsChange} />
+          <TagAutocomplete tags={tags} onTagsChange={handleTagsChange} showSections={true} />
 
           <Separator />
 

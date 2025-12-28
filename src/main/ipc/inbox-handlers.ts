@@ -36,7 +36,7 @@ import {
 } from '../inbox/attachments'
 import { fetchUrlMetadata, downloadImage } from '../inbox/metadata'
 import { fileToFolder, convertToNote, linkToNote, bulkFileToFolder } from '../inbox/filing'
-import { FileItemSchema, BulkFileSchema } from '@shared/contracts/inbox-api'
+import { FileItemSchema, BulkFileSchema, BulkTagSchema } from '@shared/contracts/inbox-api'
 
 // ============================================================================
 // Constants
@@ -784,7 +784,7 @@ async function handleFile(input: unknown): Promise<FileResponse> {
         if (!destination.noteId) {
           return { success: false, filedTo: null, error: 'Note ID required for linking' }
         }
-        const result = await linkToNote(itemId, destination.noteId)
+        const result = await linkToNote(itemId, destination.noteId, tags)
         return {
           success: result.success,
           filedTo: destination.noteId,
@@ -817,9 +817,10 @@ async function handleConvertToNote(itemId: string): Promise<FileResponse> {
  */
 async function handleLinkToNote(
   itemId: string,
-  noteId: string
+  noteId: string,
+  tags: string[] = []
 ): Promise<{ success: boolean; error?: string }> {
-  return linkToNote(itemId, noteId)
+  return linkToNote(itemId, noteId, tags)
 }
 
 async function stubSnooze(): Promise<{ success: boolean; error?: string }> {
@@ -861,11 +862,74 @@ async function handleBulkFile(input: unknown): Promise<BulkResponse> {
   }
 }
 
-async function stubBulkTag(): Promise<BulkResponse> {
-  return {
-    success: false,
-    processedCount: 0,
-    errors: [{ itemId: '', error: 'Not implemented yet' }]
+/**
+ * Bulk add tags to multiple items
+ */
+async function handleBulkTag(input: unknown): Promise<BulkResponse> {
+  try {
+    const parsed = BulkTagSchema.parse(input)
+    const { itemIds, tags } = parsed
+    const db = requireDatabase()
+
+    let processedCount = 0
+    const errors: Array<{ itemId: string; error: string }> = []
+
+    for (const itemId of itemIds) {
+      try {
+        // Check if item exists
+        const item = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
+        if (!item) {
+          errors.push({ itemId, error: 'Item not found' })
+          continue
+        }
+
+        // Add each tag (skip if already exists)
+        for (const tag of tags) {
+          const normalizedTag = tag.trim().toLowerCase()
+          if (!normalizedTag) continue
+
+          const existing = db
+            .select()
+            .from(inboxItemTags)
+            .where(and(eq(inboxItemTags.itemId, itemId), eq(inboxItemTags.tag, normalizedTag)))
+            .get()
+
+          if (!existing) {
+            db.insert(inboxItemTags)
+              .values({
+                id: generateId(),
+                itemId,
+                tag: normalizedTag
+              })
+              .run()
+          }
+        }
+        processedCount++
+      } catch (error) {
+        errors.push({
+          itemId,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
+      }
+    }
+
+    // Emit update events for each item
+    for (const itemId of itemIds) {
+      emitInboxEvent(InboxChannels.events.UPDATED, { id: itemId, changes: { tags } })
+    }
+
+    return {
+      success: errors.length === 0,
+      processedCount,
+      errors
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return {
+      success: false,
+      processedCount: 0,
+      errors: [{ itemId: '', error: message }]
+    }
   }
 }
 
@@ -960,8 +1024,8 @@ export function registerInboxHandlers(): void {
   ipcMain.handle(InboxChannels.invoke.FILE, (_, input) => handleFile(input))
   ipcMain.handle(InboxChannels.invoke.GET_SUGGESTIONS, () => stubGetSuggestions())
   ipcMain.handle(InboxChannels.invoke.CONVERT_TO_NOTE, (_, itemId) => handleConvertToNote(itemId))
-  ipcMain.handle(InboxChannels.invoke.LINK_TO_NOTE, (_, itemId, noteId) =>
-    handleLinkToNote(itemId, noteId)
+  ipcMain.handle(InboxChannels.invoke.LINK_TO_NOTE, (_, itemId, noteId, tags) =>
+    handleLinkToNote(itemId, noteId, tags || [])
   )
 
   // Tag handlers
@@ -977,7 +1041,7 @@ export function registerInboxHandlers(): void {
   // Bulk handlers
   ipcMain.handle(InboxChannels.invoke.BULK_FILE, (_, input) => handleBulkFile(input))
   ipcMain.handle(InboxChannels.invoke.BULK_DELETE, (_, input) => handleBulkDelete(input))
-  ipcMain.handle(InboxChannels.invoke.BULK_TAG, () => stubBulkTag())
+  ipcMain.handle(InboxChannels.invoke.BULK_TAG, (_, input) => handleBulkTag(input))
   ipcMain.handle(InboxChannels.invoke.FILE_ALL_STALE, () => stubFileAllStale())
 
   // Transcription handlers

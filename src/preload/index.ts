@@ -497,8 +497,8 @@ const api = {
       ipcRenderer.invoke(InboxChannels.invoke.GET_SUGGESTIONS, itemId),
     convertToNote: (itemId: string) =>
       ipcRenderer.invoke(InboxChannels.invoke.CONVERT_TO_NOTE, itemId),
-    linkToNote: (itemId: string, noteId: string) =>
-      ipcRenderer.invoke(InboxChannels.invoke.LINK_TO_NOTE, itemId, noteId),
+    linkToNote: (itemId: string, noteId: string, tags?: string[]) =>
+      ipcRenderer.invoke(InboxChannels.invoke.LINK_TO_NOTE, itemId, noteId, tags || []),
 
     // Tags
     addTag: (itemId: string, tag: string) =>

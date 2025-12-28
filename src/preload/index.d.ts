@@ -1455,7 +1455,11 @@ export interface InboxClientAPI {
   }): Promise<InboxFileResponse>
   getSuggestions(itemId: string): Promise<InboxSuggestionsResponse>
   convertToNote(itemId: string): Promise<InboxFileResponse>
-  linkToNote(itemId: string, noteId: string): Promise<{ success: boolean; error?: string }>
+  linkToNote(
+    itemId: string,
+    noteId: string,
+    tags?: string[]
+  ): Promise<{ success: boolean; error?: string }>
 
   // Tags
   addTag(itemId: string, tag: string): Promise<{ success: boolean; error?: string }>

@@ -6,9 +6,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/com
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { FolderSelector } from '@/components/filing/folder-selector'
-import { TagInput } from '@/components/filing/tag-input'
+import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { LinkSearch } from '@/components/filing/link-search'
-import { suggestedTags } from '@/data/filing-data'
 import { extractDomain } from '@/lib/inbox-utils'
 import { isMac, isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import type { InboxItem, InboxItemListItem, InboxItemType, Folder, LinkedNote } from '@/types'
@@ -129,20 +128,23 @@ const FilingPanel = ({ isOpen, item, onClose, onFile }: FilingPanelProps): React
     enabled: isOpen // Only fetch when panel is open
   })
 
+  // No longer need to fetch tags separately - TagAutocomplete handles this
+
   // Get first 3 folders as suggested (could be AI-powered in the future)
   const suggestedFolders = useMemo(() => vaultFolders.slice(0, 3), [vaultFolders])
 
   // Get suggested folders for number shortcuts
   const suggestedFoldersForShortcut = useMemo(() => suggestedFolders, [suggestedFolders])
 
-  // Reset state when panel opens with new item
+  // Load existing item tags when panel opens with new item
   useEffect(() => {
     if (isOpen && item) {
       setSelectedFolder(null)
-      setTags([])
+      // Load existing tags from the item
+      setTags(item.tags || [])
       setLinkedNotes([])
     }
-  }, [isOpen, item?.id])
+  }, [isOpen, item?.id, item?.tags])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -244,7 +246,7 @@ const FilingPanel = ({ isOpen, item, onClose, onFile }: FilingPanelProps): React
           <Separator />
 
           {/* Tags */}
-          <TagInput tags={tags} suggestedTags={suggestedTags} onTagsChange={handleTagsChange} />
+          <TagAutocomplete tags={tags} onTagsChange={handleTagsChange} showSections={true} />
 
           <Separator />
 

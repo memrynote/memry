@@ -434,10 +434,12 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
  *
  * @param itemId - Inbox item ID
  * @param noteId - Target note ID
+ * @param tags - Additional tags to add to the created note
  */
 export async function linkToNote(
   itemId: string,
-  noteId: string
+  noteId: string,
+  tags: string[] = []
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const db = requireDatabase()
@@ -460,8 +462,9 @@ export async function linkToNote(
     }
 
     // First, create a new note from the inbox item (so we can wikilink to it)
+    // Merge existing tags + new tags + 'inbox' tag
     const existingTags = getItemTags(db, itemId)
-    const mergedTags = [...new Set([...existingTags, 'inbox'])]
+    const mergedTags = [...new Set([...existingTags, ...tags, 'inbox'])]
 
     const inboxNoteTitle = generateNoteTitle(item)
     const inboxNoteContent = generateNoteContent(item)
