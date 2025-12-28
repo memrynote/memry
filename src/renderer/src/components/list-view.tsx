@@ -1,8 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Link, FileText, Image, Mic, Scissors, FileIcon, Share2 } from 'lucide-react'
+import {
+  Link,
+  FileText,
+  Image,
+  Mic,
+  Scissors,
+  FileIcon,
+  Share2,
+  Loader2,
+  AlertCircle,
+  RotateCcw
+} from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { Checkbox } from '@/components/ui/checkbox'
+import { Button } from '@/components/ui/button'
 import { QuickActions } from '@/components/quick-actions'
 import { InlineQuickFile } from '@/components/inline-quick-file'
 import { QuickFileDropdown, getFilteredFolders } from '@/components/quick-file-dropdown'
@@ -14,6 +26,7 @@ import {
   type TimePeriod
 } from '@/lib/inbox-utils'
 import { cn } from '@/lib/utils'
+import { useRetryTranscription } from '@/hooks/use-inbox'
 import type { InboxItemListItem, InboxItemType, Folder } from '@/types'
 
 // Type alias for convenience (backend type used throughout)
@@ -41,6 +54,75 @@ const TypeIcon = ({ type }: { type: InboxItemType }): React.JSX.Element => {
     default:
       return <FileText className={iconClass} aria-hidden="true" />
   }
+}
+
+// Transcription status badge for voice items
+interface TranscriptionStatusProps {
+  item: InboxItem
+  onRetry?: (itemId: string) => void
+}
+
+const TranscriptionStatus = ({
+  item,
+  onRetry
+}: TranscriptionStatusProps): React.JSX.Element | null => {
+  // Only show for voice items
+  if (item.type !== 'voice') {
+    return null
+  }
+
+  const status = item.transcriptionStatus
+
+  // If transcription is complete, show truncated text
+  if (status === 'complete' && item.transcription) {
+    const truncated =
+      item.transcription.length > 60
+        ? item.transcription.substring(0, 60) + '...'
+        : item.transcription
+
+    return (
+      <span className="text-xs text-muted-foreground/70 italic truncate max-w-[200px]">
+        "{truncated}"
+      </span>
+    )
+  }
+
+  // Pending or processing - show spinner
+  if (status === 'pending' || status === 'processing') {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
+        <Loader2 className="size-3 animate-spin" />
+        <span>Transcribing...</span>
+      </span>
+    )
+  }
+
+  // Failed - show error with retry button
+  if (status === 'failed') {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-destructive/70">
+        <AlertCircle className="size-3" />
+        <span>Transcription failed</span>
+        {onRetry && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-5 px-1.5 text-xs"
+            onClick={(e) => {
+              e.stopPropagation()
+              onRetry(item.id)
+            }}
+          >
+            <RotateCcw className="size-3 mr-1" />
+            Retry
+          </Button>
+        )}
+      </span>
+    )
+  }
+
+  // No transcription requested or null status
+  return null
 }
 
 // Thumbnail component for image items in list view
@@ -93,6 +175,7 @@ interface InboxItemRowProps {
   onQuickFileArrowDown: () => void
   onQuickFileArrowUp: () => void
   onQuickFileFolderSelect: (folder: Folder) => void
+  onRetryTranscription?: (id: string) => void
 }
 
 const InboxItemRow = ({
@@ -116,6 +199,7 @@ const InboxItemRow = ({
   onQuickFileCancel,
   onQuickFileArrowDown,
   onQuickFileArrowUp,
+  onRetryTranscription,
   onQuickFileFolderSelect
 }: InboxItemRowProps): React.JSX.Element => {
   // Compute filtered folders for number key shortcuts
@@ -219,10 +303,12 @@ const InboxItemRow = ({
         </>
       ) : (
         <>
-          {/* Title - truncates with ellipsis */}
-          <span className="flex-1 text-sm text-[var(--foreground)] truncate min-w-0">
-            {displayTitle}
-          </span>
+          {/* Title and transcription status */}
+          <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+            <span className="text-sm text-[var(--foreground)] truncate">{displayTitle}</span>
+            {/* Voice transcription status */}
+            <TranscriptionStatus item={item} onRetry={onRetryTranscription} />
+          </div>
 
           {/* Timestamp - fades out on hover when actions show (unless in bulk mode) */}
           <span
@@ -301,6 +387,17 @@ const ListView = ({
 }: ListViewProps): React.JSX.Element => {
   const containerRef = useRef<HTMLDivElement>(null)
   const groupedItems = groupItemsByTimePeriod(items)
+
+  // Hook for retrying failed transcriptions
+  const retryTranscription = useRetryTranscription()
+
+  // Handle retry transcription
+  const handleRetryTranscription = useCallback(
+    (itemId: string) => {
+      retryTranscription.mutate(itemId)
+    },
+    [retryTranscription]
+  )
 
   // Flatten all items (stale + regular) for keyboard navigation
   const flatItems = [...staleItems, ...groupedItems.flatMap((group) => group.items)]
@@ -739,6 +836,7 @@ const ListView = ({
                 onQuickFileArrowDown={handleQuickFileArrowDown}
                 onQuickFileArrowUp={handleQuickFileArrowUp}
                 onQuickFileFolderSelect={handleQuickFileFolderSelect}
+                onRetryTranscription={handleRetryTranscription}
               />
             ))}
           </div>

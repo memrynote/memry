@@ -1,15 +1,17 @@
 /**
  * Capture Input Component
  *
- * A refined input for quickly capturing text notes or links to the inbox.
+ * A refined input for quickly capturing text notes, links, and voice memos to the inbox.
  * Auto-detects URLs vs plain text and uses the appropriate capture method.
+ * Includes voice recording with automatic transcription.
  * Matches the contemplative editorial design of the Journal page.
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Send, Loader2, Link, FileText } from 'lucide-react'
+import { Send, Loader2, Link, FileText, Mic } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useCaptureText, useCaptureLink } from '@/hooks/use-inbox'
+import { useCaptureText, useCaptureLink, useCaptureVoice } from '@/hooks/use-inbox'
+import { VoiceRecorder } from './voice-recorder'
 
 interface CaptureInputProps {
   onCaptureSuccess?: () => void
@@ -56,12 +58,14 @@ export function CaptureInput({
 }: CaptureInputProps): React.JSX.Element {
   const [value, setValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const captureText = useCaptureText()
   const captureLink = useCaptureLink()
+  const captureVoice = useCaptureVoice()
 
-  const isCapturing = captureText.isPending || captureLink.isPending
+  const isCapturing = captureText.isPending || captureLink.isPending || captureVoice.isPending
   const isUrl = isLikelyUrl(value)
 
   // Auto-resize textarea
@@ -122,6 +126,66 @@ export function CaptureInput({
     [handleSubmit]
   )
 
+  /**
+   * Handle voice recording completion
+   */
+  const handleRecordingComplete = useCallback(
+    async (audioBlob: Blob, duration: number) => {
+      setIsRecording(false)
+
+      try {
+        // Convert Blob to ArrayBuffer
+        const arrayBuffer = await audioBlob.arrayBuffer()
+
+        // Capture voice memo
+        const result = await captureVoice.mutateAsync({
+          data: arrayBuffer,
+          duration,
+          format: 'webm',
+          transcribe: true
+        })
+
+        if (result.success) {
+          onCaptureSuccess?.()
+        } else {
+          onCaptureError?.(result.error || 'Failed to capture voice memo')
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Voice capture failed'
+        onCaptureError?.(message)
+      }
+    },
+    [captureVoice, onCaptureSuccess, onCaptureError]
+  )
+
+  /**
+   * Handle voice recording cancellation
+   */
+  const handleRecordingCancel = useCallback(() => {
+    setIsRecording(false)
+  }, [])
+
+  /**
+   * Start voice recording
+   */
+  const handleMicClick = useCallback(() => {
+    setIsRecording(true)
+  }, [])
+
+  // Show voice recorder when recording
+  if (isRecording) {
+    return (
+      <div className={cn('relative group', 'transition-all duration-300', className)}>
+        <VoiceRecorder
+          onRecordingComplete={handleRecordingComplete}
+          onCancel={handleRecordingCancel}
+          maxDuration={300}
+          className="w-full"
+        />
+      </div>
+    )
+  }
+
   return (
     <div className={cn('relative group', 'transition-all duration-300', className)}>
       {/* Input container with editorial styling */}
@@ -175,6 +239,24 @@ export function CaptureInput({
           )}
           aria-label="Capture input"
         />
+
+        {/* Microphone button for voice recording */}
+        <button
+          onClick={handleMicClick}
+          disabled={isCapturing}
+          className={cn(
+            'mt-0.5 flex-shrink-0',
+            'p-1.5 rounded-lg',
+            'text-muted-foreground/50',
+            'transition-all duration-200',
+            'hover:bg-foreground/5 hover:text-foreground/70',
+            'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent'
+          )}
+          aria-label="Record voice memo"
+          title="Record voice memo"
+        >
+          <Mic className="size-4" aria-hidden="true" />
+        </button>
 
         {/* Submit button */}
         <button

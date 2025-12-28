@@ -41,6 +41,8 @@ import {
 } from '../inbox/attachments'
 import { fetchUrlMetadata, downloadImage } from '../inbox/metadata'
 import { fileToFolder, convertToNote, linkToNote, bulkFileToFolder } from '../inbox/filing'
+import { captureVoice } from '../inbox/capture'
+import { retryTranscription } from '../inbox/transcription'
 import { FileItemSchema, BulkFileSchema, BulkTagSchema } from '@shared/contracts/inbox-api'
 import {
   getStaleThreshold as getStaleThresholdDays,
@@ -272,7 +274,10 @@ function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]): InboxI
     // Type-specific fields
     duration: metadata?.duration as number | undefined,
     excerpt: metadata?.excerpt as string | undefined,
-    pageCount: metadata?.pageCount as number | undefined
+    pageCount: metadata?.pageCount as number | undefined,
+    // Voice transcription fields
+    transcription: row.transcription,
+    transcriptionStatus: row.transcriptionStatus as InboxItemListItem['transcriptionStatus']
   }
 }
 
@@ -931,8 +936,73 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
   }
 }
 
-async function stubCaptureVoice(): Promise<CaptureResponse> {
-  return { success: false, item: null, error: 'Not implemented yet' }
+/**
+ * Capture a voice memo
+ *
+ * Handles voice recording capture with optional transcription.
+ * Audio is stored in vault/attachments/inbox/{itemId}/ and
+ * transcription is triggered asynchronously via OpenAI Whisper.
+ */
+async function handleCaptureVoice(input: unknown): Promise<CaptureResponse> {
+  try {
+    // Input must be an object with data property
+    if (!input || typeof input !== 'object') {
+      return { success: false, item: null, error: 'Invalid voice capture input' }
+    }
+
+    const rawInput = input as Record<string, unknown>
+
+    // Convert data to Buffer - IPC serialization may convert Buffer/ArrayBuffer
+    // to Uint8Array or plain object with numeric keys
+    let audioBuffer: Buffer
+    const rawData = rawInput.data
+
+    if (Buffer.isBuffer(rawData)) {
+      audioBuffer = rawData
+    } else if (rawData instanceof Uint8Array) {
+      audioBuffer = Buffer.from(rawData)
+    } else if (rawData instanceof ArrayBuffer) {
+      audioBuffer = Buffer.from(rawData)
+    } else if (typeof rawData === 'object' && rawData !== null) {
+      // Handle plain object from IPC serialization
+      const data = rawData as Record<string, unknown>
+      if (data.type === 'Buffer' && Array.isArray(data.data)) {
+        // Electron serializes Buffer as {type: 'Buffer', data: [bytes...]}
+        audioBuffer = Buffer.from(data.data as number[])
+      } else {
+        // Plain object with numeric keys
+        const values = Object.values(data).filter((v): v is number => typeof v === 'number')
+        if (values.length === 0) {
+          return {
+            success: false,
+            item: null,
+            error: 'Invalid audio data format: empty or non-numeric data'
+          }
+        }
+        audioBuffer = Buffer.from(values)
+      }
+    } else {
+      return { success: false, item: null, error: 'Invalid audio data format' }
+    }
+
+    // Validate we have actual audio data
+    if (audioBuffer.length === 0) {
+      return { success: false, item: null, error: 'Empty audio data' }
+    }
+
+    // Call captureVoice with converted Buffer
+    return await captureVoice({
+      data: audioBuffer,
+      duration: rawInput.duration as number,
+      format: rawInput.format as 'webm' | 'mp3' | 'wav',
+      transcribe: rawInput.transcribe as boolean | undefined,
+      tags: rawInput.tags as string[] | undefined
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[Voice] Capture failed:', message)
+    return { success: false, item: null, error: message }
+  }
 }
 
 async function stubCaptureClip(): Promise<CaptureResponse> {
@@ -1143,8 +1213,25 @@ async function handleFileAllStale(): Promise<BulkResponse> {
   }
 }
 
-async function stubRetryTranscription(): Promise<{ success: boolean; error?: string }> {
-  return { success: false, error: 'Not implemented yet' }
+/**
+ * Retry transcription for a failed voice memo
+ *
+ * Resets the transcription status and triggers a new transcription attempt.
+ */
+async function handleRetryTranscription(
+  itemId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const result = await retryTranscription(itemId)
+    return {
+      success: result.success,
+      error: result.error
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[Transcription] Retry failed:', message)
+    return { success: false, error: message }
+  }
 }
 
 /**
@@ -1212,7 +1299,7 @@ export function registerInboxHandlers(): void {
   ipcMain.handle(InboxChannels.invoke.CAPTURE_TEXT, (_, input) => handleCaptureText(input))
   ipcMain.handle(InboxChannels.invoke.CAPTURE_LINK, (_, input) => handleCaptureLink(input))
   ipcMain.handle(InboxChannels.invoke.CAPTURE_IMAGE, (_, input) => handleCaptureImage(input))
-  ipcMain.handle(InboxChannels.invoke.CAPTURE_VOICE, () => stubCaptureVoice())
+  ipcMain.handle(InboxChannels.invoke.CAPTURE_VOICE, (_, input) => handleCaptureVoice(input))
   ipcMain.handle(InboxChannels.invoke.CAPTURE_CLIP, () => stubCaptureClip())
   ipcMain.handle(InboxChannels.invoke.CAPTURE_PDF, () => stubCapturePdf())
 
@@ -1247,7 +1334,9 @@ export function registerInboxHandlers(): void {
   ipcMain.handle(InboxChannels.invoke.FILE_ALL_STALE, () => handleFileAllStale())
 
   // Transcription handlers
-  ipcMain.handle(InboxChannels.invoke.RETRY_TRANSCRIPTION, () => stubRetryTranscription())
+  ipcMain.handle(InboxChannels.invoke.RETRY_TRANSCRIPTION, (_, itemId) =>
+    handleRetryTranscription(itemId)
+  )
 
   // Metadata handlers
   ipcMain.handle(InboxChannels.invoke.RETRY_METADATA, (_, id) => handleRetryMetadata(id))

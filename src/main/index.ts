@@ -1,8 +1,21 @@
 import { app, shell, BrowserWindow, ipcMain, protocol, net } from 'electron'
 import { join } from 'path'
+import { config } from 'dotenv'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllHandlers } from './ipc'
 import { autoOpenLastVault, closeVault } from './vault'
+
+// Load .env file from project root (must be before any env access)
+// In development, load from project root; in production, from app resources
+const envPath = app.isPackaged
+  ? join(process.resourcesPath, '.env')
+  : join(app.getAppPath(), '.env')
+
+const envResult = config({ path: envPath })
+if (envResult.error) {
+  // Try loading from current working directory as fallback
+  config()
+}
 
 // ============================================================================
 // Environment Configuration
@@ -107,7 +120,7 @@ app.whenReady().then(async () => {
 
   // Register custom protocol for serving local attachment files
   // This allows secure access to vault files from the renderer process
-  protocol.handle('memry-file', (request) => {
+  protocol.handle('memry-file', async (request) => {
     // URL format: memry-file:///absolute/path/to/file
     const url = new URL(request.url)
     // The pathname is URL-encoded, need to decode it
@@ -116,7 +129,19 @@ app.whenReady().then(async () => {
     if (process.platform === 'win32' && filePath.startsWith('/')) {
       filePath = filePath.slice(1)
     }
-    return net.fetch(`file://${filePath}`)
+
+    try {
+      // Check if file exists before fetching to avoid noisy errors
+      const { existsSync } = await import('fs')
+      if (!existsSync(filePath)) {
+        // Return empty response for missing files (e.g., null thumbnails)
+        return new Response(null, { status: 404, statusText: 'Not Found' })
+      }
+      return net.fetch(`file://${filePath}`)
+    } catch {
+      // Return 404 for any errors
+      return new Response(null, { status: 404, statusText: 'Not Found' })
+    }
   })
 
   // Default open or close DevTools by F12 in development
