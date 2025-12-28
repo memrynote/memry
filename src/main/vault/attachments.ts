@@ -10,6 +10,7 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { customAlphabet } from 'nanoid'
 import { ensureDirectory, sanitizeFilename } from './file-ops'
+import { toMemryFileUrl } from '../lib/paths'
 import { getStatus } from './index'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 
@@ -212,11 +213,7 @@ export function getRelativeAttachmentPath(noteId: string, filename: string): str
 export function getAbsoluteAttachmentUrl(vaultPath: string, noteId: string, filename: string): string {
   const absolutePath = path.join(vaultPath, 'attachments', noteId, filename)
   // Use custom memry-file:// protocol for secure file access
-  // On Windows, we need to handle the path differently
-  if (process.platform === 'win32') {
-    return `memry-file:///${absolutePath.replace(/\\/g, '/')}`
-  }
-  return `memry-file://${absolutePath}`
+  return toMemryFileUrl(absolutePath)
 }
 
 /**

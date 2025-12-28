@@ -281,15 +281,15 @@
 
 ### Implementation for User Story 11
 
-- [ ] T106 [P] [US11] Implement addTag function in src/main/inbox/capture.ts
-- [ ] T107 [P] [US11] Implement removeTag function in src/main/inbox/capture.ts
-- [ ] T108 [US11] Add ADD_TAG IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T109 [US11] Add REMOVE_TAG IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T110 [US11] Add GET_TAGS IPC handler (for autocomplete) in src/main/ipc/inbox-handlers.ts
-- [ ] T111 [US11] Add tag methods to src/renderer/src/services/inbox-service.ts
-- [ ] T112 [US11] Create tag input component with autocomplete in src/renderer/src/components/tag-input.tsx
-- [ ] T113 [US11] Add tag editing to item detail/preview
-- [ ] T114 [US11] Preserve tags when filing items in src/main/inbox/filing.ts
+- [x] T106 [P] [US11] Implement addTag function in src/main/inbox/capture.ts (Note: implemented in inbox-handlers.ts:575-612)
+- [x] T107 [P] [US11] Implement removeTag function in src/main/inbox/capture.ts (Note: implemented in inbox-handlers.ts:617-632)
+- [x] T108 [US11] Add ADD_TAG IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T109 [US11] Add REMOVE_TAG IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T110 [US11] Add GET_TAGS IPC handler (for autocomplete) in src/main/ipc/inbox-handlers.ts
+- [x] T111 [US11] Add tag methods to src/renderer/src/services/inbox-service.ts
+- [x] T112 [US11] Create tag input component with autocomplete in src/renderer/src/components/tag-input.tsx (Note: TagAutocomplete in filing/tag-autocomplete.tsx)
+- [x] T113 [US11] Add tag editing to item detail/preview
+- [x] T114 [US11] Preserve tags when filing items in src/main/inbox/filing.ts
 
 **Checkpoint**: Tagging is fully functional
 
