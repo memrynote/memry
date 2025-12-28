@@ -35,6 +35,8 @@ import {
   getItemAttachmentsDir
 } from '../inbox/attachments'
 import { fetchUrlMetadata, downloadImage } from '../inbox/metadata'
+import { fileToFolder, convertToNote, linkToNote, bulkFileToFolder } from '../inbox/filing'
+import { FileItemSchema, BulkFileSchema } from '@shared/contracts/inbox-api'
 
 // ============================================================================
 // Constants
@@ -765,20 +767,59 @@ async function stubCapturePdf(): Promise<CaptureResponse> {
   return { success: false, item: null, error: 'Not implemented yet' }
 }
 
-async function stubFile(): Promise<FileResponse> {
-  return { success: false, filedTo: null, error: 'Not implemented yet' }
+/**
+ * File an inbox item to a destination (folder, new note, or existing note)
+ */
+async function handleFile(input: unknown): Promise<FileResponse> {
+  try {
+    const parsed = FileItemSchema.parse(input)
+    const { itemId, destination, tags } = parsed
+
+    switch (destination.type) {
+      case 'folder':
+        return fileToFolder(itemId, destination.path || '', tags)
+      case 'new-note':
+        return convertToNote(itemId)
+      case 'note':
+        if (!destination.noteId) {
+          return { success: false, filedTo: null, error: 'Note ID required for linking' }
+        }
+        const result = await linkToNote(itemId, destination.noteId)
+        return {
+          success: result.success,
+          filedTo: destination.noteId,
+          noteId: destination.noteId,
+          error: result.error
+        }
+      default:
+        return { success: false, filedTo: null, error: 'Invalid destination type' }
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return { success: false, filedTo: null, error: message }
+  }
 }
 
 async function stubGetSuggestions(): Promise<SuggestionsResponse> {
+  // TODO: Implement AI-powered suggestions in Phase 17
   return { suggestions: [] }
 }
 
-async function stubConvertToNote(): Promise<FileResponse> {
-  return { success: false, filedTo: null, error: 'Not implemented yet' }
+/**
+ * Convert an inbox item to a standalone note
+ */
+async function handleConvertToNote(itemId: string): Promise<FileResponse> {
+  return convertToNote(itemId)
 }
 
-async function stubLinkToNote(): Promise<{ success: boolean; error?: string }> {
-  return { success: false, error: 'Not implemented yet' }
+/**
+ * Link an inbox item to an existing note
+ */
+async function handleLinkToNote(
+  itemId: string,
+  noteId: string
+): Promise<{ success: boolean; error?: string }> {
+  return linkToNote(itemId, noteId)
 }
 
 async function stubSnooze(): Promise<{ success: boolean; error?: string }> {
@@ -793,11 +834,30 @@ async function stubGetSnoozed(): Promise<InboxItem[]> {
   return []
 }
 
-async function stubBulkFile(): Promise<BulkResponse> {
-  return {
-    success: false,
-    processedCount: 0,
-    errors: [{ itemId: '', error: 'Not implemented yet' }]
+/**
+ * Bulk file multiple items to a folder
+ */
+async function handleBulkFile(input: unknown): Promise<BulkResponse> {
+  try {
+    const parsed = BulkFileSchema.parse(input)
+    const { itemIds, destination, tags } = parsed
+
+    if (destination.type !== 'folder') {
+      return {
+        success: false,
+        processedCount: 0,
+        errors: [{ itemId: '', error: 'Bulk filing only supports folder destination' }]
+      }
+    }
+
+    return bulkFileToFolder(itemIds, destination.path || '', tags)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return {
+      success: false,
+      processedCount: 0,
+      errors: [{ itemId: '', error: message }]
+    }
   }
 }
 
@@ -897,10 +957,12 @@ export function registerInboxHandlers(): void {
   ipcMain.handle(InboxChannels.invoke.DELETE, (_, id) => handleDelete(id))
 
   // Filing handlers
-  ipcMain.handle(InboxChannels.invoke.FILE, () => stubFile())
+  ipcMain.handle(InboxChannels.invoke.FILE, (_, input) => handleFile(input))
   ipcMain.handle(InboxChannels.invoke.GET_SUGGESTIONS, () => stubGetSuggestions())
-  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_NOTE, () => stubConvertToNote())
-  ipcMain.handle(InboxChannels.invoke.LINK_TO_NOTE, () => stubLinkToNote())
+  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_NOTE, (_, itemId) => handleConvertToNote(itemId))
+  ipcMain.handle(InboxChannels.invoke.LINK_TO_NOTE, (_, itemId, noteId) =>
+    handleLinkToNote(itemId, noteId)
+  )
 
   // Tag handlers
   ipcMain.handle(InboxChannels.invoke.ADD_TAG, (_, itemId, tag) => handleAddTag(itemId, tag))
@@ -913,7 +975,7 @@ export function registerInboxHandlers(): void {
   ipcMain.handle(InboxChannels.invoke.GET_SNOOZED, () => stubGetSnoozed())
 
   // Bulk handlers
-  ipcMain.handle(InboxChannels.invoke.BULK_FILE, () => stubBulkFile())
+  ipcMain.handle(InboxChannels.invoke.BULK_FILE, (_, input) => handleBulkFile(input))
   ipcMain.handle(InboxChannels.invoke.BULK_DELETE, (_, input) => handleBulkDelete(input))
   ipcMain.handle(InboxChannels.invoke.BULK_TAG, () => stubBulkTag())
   ipcMain.handle(InboxChannels.invoke.FILE_ALL_STALE, () => stubFileAllStale())

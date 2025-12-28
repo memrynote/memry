@@ -18,10 +18,13 @@ export type { UrlMetadata } from './metadata'
 // Phase 2: Attachment management
 export { resolveAttachmentUrl, getInboxAttachmentsDir, deleteInboxAttachments } from './attachments'
 
+// Phase 5: Filing operations
+export { fileToFolder, convertToNote, linkToNote, bulkFileToFolder } from './filing'
+export type { FileResponse } from './filing'
+
 // Future phases will add exports for:
 // - capture.ts: captureText, captureLink, captureImage, captureVoice, capturePdf, captureClip
 // - transcription.ts: transcribeAudio
-// - filing.ts: fileToFolder, convertToNote, linkToNote
 // - suggestions.ts: getFilingSuggestions
 // - snooze.ts: snoozeItem, unsnoozeItem
 // - stats.ts: getInboxStats, getCapturePatterns

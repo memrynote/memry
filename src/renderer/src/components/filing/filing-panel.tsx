@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link, FileText, Image, Mic, Globe, Check, Loader2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
@@ -7,13 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import { FolderSelector } from '@/components/filing/folder-selector'
 import { TagInput } from '@/components/filing/tag-input'
 import { LinkSearch } from '@/components/filing/link-search'
-import {
-  sampleFolders,
-  getSuggestedFolders,
-  getRecentFolders,
-  suggestedTags,
-  existingNotes
-} from '@/data/filing-data'
+import { suggestedTags } from '@/data/filing-data'
 import { extractDomain } from '@/lib/inbox-utils'
 import { isMac, isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import type { InboxItem, InboxItemListItem, InboxItemType, Folder, LinkedNote } from '@/types'
@@ -112,8 +107,33 @@ const FilingPanel = ({ isOpen, item, onClose, onFile }: FilingPanelProps): React
   const [linkedNotes, setLinkedNotes] = useState<LinkedNote[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
+  // Fetch real folders from vault
+  const { data: vaultFolders = [] } = useQuery({
+    queryKey: ['vault', 'folders'],
+    queryFn: async () => {
+      const paths = await window.api.notes.getFolders()
+      // Add root folder option and convert paths to Folder objects
+      const folders: Folder[] = [{ id: '', name: 'Notes (root)', path: '' }]
+      for (const path of paths) {
+        if (path) {
+          folders.push({
+            id: path,
+            name: path.split('/').pop() || path,
+            path: path,
+            parent: path.includes('/') ? path.split('/').slice(0, -1).join('/') : undefined
+          })
+        }
+      }
+      return folders
+    },
+    enabled: isOpen // Only fetch when panel is open
+  })
+
+  // Get first 3 folders as suggested (could be AI-powered in the future)
+  const suggestedFolders = useMemo(() => vaultFolders.slice(0, 3), [vaultFolders])
+
   // Get suggested folders for number shortcuts
-  const suggestedFoldersForShortcut = useMemo(() => getSuggestedFolders(), [])
+  const suggestedFoldersForShortcut = useMemo(() => suggestedFolders, [suggestedFolders])
 
   // Reset state when panel opens with new item
   useEffect(() => {
@@ -214,9 +234,9 @@ const FilingPanel = ({ isOpen, item, onClose, onFile }: FilingPanelProps): React
 
           {/* Folder Selection */}
           <FolderSelector
-            folders={sampleFolders}
-            suggestedFolders={getSuggestedFolders()}
-            recentFolders={getRecentFolders()}
+            folders={vaultFolders}
+            suggestedFolders={suggestedFolders}
+            recentFolders={[]} // TODO: Track recent folders in filing history
             selectedFolder={selectedFolder}
             onSelect={handleFolderSelect}
           />
@@ -229,11 +249,7 @@ const FilingPanel = ({ isOpen, item, onClose, onFile }: FilingPanelProps): React
           <Separator />
 
           {/* Link to Notes */}
-          <LinkSearch
-            availableNotes={existingNotes}
-            linkedNotes={linkedNotes}
-            onLinkedNotesChange={handleLinkedNotesChange}
-          />
+          <LinkSearch linkedNotes={linkedNotes} onLinkedNotesChange={handleLinkedNotesChange} />
         </div>
 
         {/* Footer */}
