@@ -38,8 +38,13 @@ export {
   getAverageTimeToProcess
 } from './stats'
 
+// Phase 9: Voice capture and transcription
+export { captureVoice } from './capture'
+export type { CaptureVoiceInput } from './capture'
+export { transcribeAudio, retryTranscription, isTranscriptionAvailable } from './transcription'
+export type { TranscriptionResult } from './transcription'
+
 // Future phases will add exports for:
-// - capture.ts: captureText, captureLink, captureImage, captureVoice, capturePdf, captureClip
-// - transcription.ts: transcribeAudio
+// - capture.ts: captureImage, capturePdf, captureClip
 // - suggestions.ts: getFilingSuggestions
 // - snooze.ts: snoozeItem, unsnoozeItem

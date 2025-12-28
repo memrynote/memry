@@ -167,6 +167,10 @@ export interface InboxItemListItem {
   duration?: number // Voice
   excerpt?: string // Link/Clip
   pageCount?: number // PDF
+
+  // Voice transcription fields
+  transcription?: string | null // Transcription text (for voice items)
+  transcriptionStatus?: ProcessingStatus | null // Transcription status (for voice items)
 }
 
 export interface FilingDestination {

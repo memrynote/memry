@@ -197,18 +197,18 @@
 
 ### Implementation for User Story 7
 
-- [ ] T074 [P] [US7] Create src/main/inbox/transcription.ts with Whisper API integration
-- [ ] T075 [P] [US7] Implement captureVoice handler in src/main/inbox/capture.ts
-- [ ] T076 [US7] Add CAPTURE_VOICE IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T077 [US7] Store audio file in vault/attachments/inbox/{itemId}/ directory
-- [ ] T078 [US7] Implement async transcription with status updates in src/main/inbox/transcription.ts
-- [ ] T079 [US7] Add RETRY_TRANSCRIPTION IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T080 [US7] Emit TRANSCRIPTION_COMPLETE event when done in src/main/inbox/transcription.ts
-- [ ] T081 [US7] Add captureVoice method to src/renderer/src/services/inbox-service.ts
-- [ ] T082 [US7] Create voice recording component in src/renderer/src/components/voice-recorder.tsx
-- [ ] T083 [US7] Add recording controls to capture area in src/renderer/src/pages/inbox.tsx
-- [ ] T084 [US7] Display transcription status (pending/processing/complete/failed) in list item
-- [ ] T085 [US7] Add retry transcription button for failed items
+- [x] T074 [P] [US7] Create src/main/inbox/transcription.ts with Whisper API integration
+- [x] T075 [P] [US7] Implement captureVoice handler in src/main/inbox/capture.ts
+- [x] T076 [US7] Add CAPTURE_VOICE IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T077 [US7] Store audio file in vault/attachments/inbox/{itemId}/ directory
+- [x] T078 [US7] Implement async transcription with status updates in src/main/inbox/transcription.ts
+- [x] T079 [US7] Add RETRY_TRANSCRIPTION IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T080 [US7] Emit TRANSCRIPTION_COMPLETE event when done in src/main/inbox/transcription.ts
+- [x] T081 [US7] Add captureVoice method to src/renderer/src/services/inbox-service.ts
+- [x] T082 [US7] Create voice recording component in src/renderer/src/components/voice-recorder.tsx
+- [x] T083 [US7] Add recording controls to capture area in src/renderer/src/pages/inbox.tsx
+- [x] T084 [US7] Display transcription status (pending/processing/complete/failed) in list item
+- [x] T085 [US7] Add retry transcription button for failed items
 
 **Checkpoint**: Voice capture with transcription is fully functional
 

@@ -1288,6 +1288,9 @@ export interface InboxItemListItem {
   duration?: number
   excerpt?: string
   pageCount?: number
+  // Voice transcription fields
+  transcription?: string | null
+  transcriptionStatus?: InboxProcessingStatus | null
 }
 
 export interface InboxListResponse {

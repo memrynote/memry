@@ -22,6 +22,7 @@ import {
   onInboxProcessingError,
   type CaptureTextInput,
   type CaptureLinkInput,
+  type CaptureVoiceInput,
   type InboxListInput,
   type InboxUpdateInput,
   type FileItemInput,
@@ -455,6 +456,22 @@ export function useCaptureLink() {
 
   return useMutation({
     mutationFn: (input: CaptureLinkInput) => inboxService.captureLink(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+    }
+  })
+}
+
+/**
+ * Hook for capturing a voice memo.
+ * Handles audio blob conversion and triggers transcription.
+ */
+export function useCaptureVoice() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (input: CaptureVoiceInput) => inboxService.captureVoice(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
       queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })

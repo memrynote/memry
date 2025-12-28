@@ -87,6 +87,7 @@
     "clsx": "^2.1.1",
     "cobe": "^0.6.5",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "electron-store": "^11.0.2",
     "electron-updater": "^6.3.9",
