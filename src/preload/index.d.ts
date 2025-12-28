@@ -1503,6 +1503,14 @@ export interface InboxClientAPI {
   setStaleThreshold(days: number): Promise<{ success: boolean }>
 }
 
+// Quick Capture types
+export interface QuickCaptureClientAPI {
+  /** Close the quick capture window */
+  close(): void
+  /** Get current clipboard text content */
+  getClipboard(): Promise<string>
+}
+
 // Settings types
 export interface JournalSettings {
   defaultTemplate: string | null
@@ -1543,6 +1551,7 @@ interface API extends WindowAPI {
   bookmarks: BookmarksClientAPI
   tags: TagsClientAPI
   inbox: InboxClientAPI
+  quickCapture: QuickCaptureClientAPI
   // Vault event subscriptions
   onVaultStatusChanged: (callback: (status: VaultStatus) => void) => () => void
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
