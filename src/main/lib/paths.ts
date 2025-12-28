@@ -99,3 +99,17 @@ export function ensureMarkdownExtension(filePath: string): string {
   }
   return filePath + '.md'
 }
+
+/**
+ * Builds a memry-file:// URL from a local file path.
+ */
+export function toMemryFileUrl(filePath: string): string {
+  const normalized = path.normalize(filePath)
+
+  if (process.platform === 'win32') {
+    return `memry-file:///${normalized.replace(/\\/g, '/')}`
+  }
+
+  const absolutePath = normalized.startsWith('/') ? normalized : `/${normalized}`
+  return `memry-file://${absolutePath}`
+}

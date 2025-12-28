@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import {
   Link,
   FileText,
@@ -20,7 +20,8 @@ import {
   Pause,
   Copy,
   Check,
-  User
+  User,
+  Tag
 } from 'lucide-react'
 
 import {
@@ -34,8 +35,10 @@ import {
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Separator } from '@/components/ui/separator'
+import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { extractDomain } from '@/lib/inbox-utils'
-import { useRetryTranscription } from '@/hooks/use-inbox'
+import { useRetryTranscription, useAddInboxTag, useRemoveInboxTag } from '@/hooks/use-inbox'
 import type {
   InboxItem,
   InboxItemListItem,
@@ -631,7 +634,72 @@ const PreviewContent = ({
   }
 }
 
+// =============================================================================
+// Preview Tags Component - Inline tag editing
+// =============================================================================
+
+interface PreviewTagsProps {
+  itemId: string
+  tags: string[]
+}
+
+const PreviewTags = ({ itemId, tags }: PreviewTagsProps): React.JSX.Element => {
+  const [localTags, setLocalTags] = useState<string[]>(tags)
+  const addTagMutation = useAddInboxTag()
+  const removeTagMutation = useRemoveInboxTag()
+
+  // Sync local tags when prop changes (e.g., after mutation success)
+  useEffect(() => {
+    setLocalTags(tags)
+  }, [tags])
+
+  const handleTagsChange = useCallback(
+    (newTags: string[]) => {
+      // Find added tags
+      const addedTags = newTags.filter((t) => !localTags.includes(t))
+      // Find removed tags
+      const removedTags = localTags.filter((t) => !newTags.includes(t))
+
+      // Optimistically update local state
+      setLocalTags(newTags)
+
+      // Apply changes to backend
+      addedTags.forEach((tag) => {
+        addTagMutation.mutate({ itemId, tag })
+      })
+      removedTags.forEach((tag) => {
+        removeTagMutation.mutate({ itemId, tag })
+      })
+    },
+    [itemId, localTags, addTagMutation, removeTagMutation]
+  )
+
+  const isPending = addTagMutation.isPending || removeTagMutation.isPending
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Tag className="size-4 text-[var(--muted-foreground)]" aria-hidden="true" />
+        <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
+          Tags
+        </span>
+        {isPending && <Loader2 className="size-3 animate-spin text-[var(--muted-foreground)]" />}
+      </div>
+      <TagAutocomplete
+        tags={localTags}
+        onTagsChange={handleTagsChange}
+        placeholder="Add tags to this item..."
+        showSections={true}
+        className="pt-0"
+      />
+    </div>
+  )
+}
+
+// =============================================================================
 // Main Preview Panel component
+// =============================================================================
+
 interface PreviewPanelProps {
   isOpen: boolean
   item: PreviewItem | null
@@ -731,7 +799,13 @@ const PreviewPanel = ({
             <PreviewMetadata item={item} />
 
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+              {/* Tags Section */}
+              <PreviewTags itemId={item.id} tags={item.tags || []} />
+
+              <Separator />
+
+              {/* Content */}
               <PreviewContent
                 item={item}
                 onRetryTranscription={handleRetryTranscription}

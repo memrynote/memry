@@ -12,6 +12,7 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { customAlphabet } from 'nanoid'
 import { getStatus } from '../vault'
+import { toMemryFileUrl } from '../lib/paths'
 
 // ============================================================================
 // Constants
@@ -416,14 +417,7 @@ export function resolveAttachmentUrl(relativePath: string | null): string | null
     const fullPath = path.join(vaultPath, relativePath)
 
     // Use custom protocol for security
-    // On POSIX systems, paths start with /, so we need memry-file:// + /path
-    // On Windows, paths are like C:\path, so we need memry-file:/// + path
-    let url: string
-    if (process.platform === 'win32') {
-      url = `memry-file:///${fullPath.replace(/\\/g, '/')}`
-    } else {
-      url = `memry-file://${fullPath}`
-    }
+    const url = toMemryFileUrl(fullPath)
 
     // Debug logging
     console.log(`[Attachments] resolveAttachmentUrl: ${relativePath} -> ${url}`)
