@@ -139,7 +139,7 @@
 - [x] T052 [US4] Delete inbox attachments on item delete in src/main/inbox/attachments.ts
 - [x] T053 [US4] Add delete method to src/renderer/src/services/inbox-service.ts
 - [x] T054 [US4] Connect delete button to real API in src/renderer/src/pages/inbox.tsx
-- [ ] T055 [US4] Update inbox stats on delete (increment deleted_count) in src/main/inbox/stats.ts
+- [x] T055 [US4] Update inbox stats on delete (increment deleted_count) in src/main/inbox/stats.ts
 
 **Checkpoint**: Item deletion is fully functional
 
@@ -175,15 +175,15 @@
 
 ### Implementation for User Story 6
 
-- [ ] T065 [P] [US6] Implement captureImage handler in src/main/inbox/capture.ts
-- [ ] T066 [P] [US6] Add thumbnail generation with sharp in src/main/inbox/capture.ts
-- [ ] T067 [US6] Add CAPTURE_IMAGE IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T068 [US6] Store image file in vault/attachments/inbox/{itemId}/ directory
-- [ ] T069 [US6] Extract image metadata (dimensions, format) using sharp
-- [ ] T070 [US6] Add captureImage method to src/renderer/src/services/inbox-service.ts
-- [ ] T071 [US6] Add drag-drop handler to InboxPage in src/renderer/src/pages/inbox.tsx
-- [ ] T072 [US6] Add clipboard paste handler (Cmd+V) for images in src/renderer/src/pages/inbox.tsx
-- [ ] T073 [US6] Display image thumbnail in inbox list item component
+- [x] T065 [P] [US6] Implement captureImage handler in src/main/ipc/inbox-handlers.ts (inline, not capture.ts)
+- [x] T066 [P] [US6] Add thumbnail generation with sharp in src/main/ipc/inbox-handlers.ts
+- [x] T067 [US6] Add CAPTURE_IMAGE IPC handler in src/main/ipc/inbox-handlers.ts
+- [x] T068 [US6] Store image file in vault/attachments/inbox/{itemId}/ directory
+- [x] T069 [US6] Extract image metadata (dimensions, format) using sharp
+- [x] T070 [US6] Add captureImage method to src/renderer/src/services/inbox-service.ts (already existed)
+- [x] T071 [US6] Add drag-drop handler to InboxPage in src/renderer/src/pages/inbox.tsx
+- [x] T072 [US6] Add clipboard paste handler (Cmd+V) for images in src/renderer/src/pages/inbox.tsx
+- [x] T073 [US6] Display image thumbnail in inbox list item component (card-view.tsx and list-view.tsx)
 
 **Checkpoint**: Image capture with thumbnails is fully functional
 

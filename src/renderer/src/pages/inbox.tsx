@@ -25,6 +25,7 @@ import { EmptyState } from '@/components/empty-state/empty-state'
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
 import { SRAnnouncer } from '@/components/sr-announcer'
 import { CaptureInput } from '@/components/capture-input'
+import { inboxService } from '@/services/inbox-service'
 import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
 import { getStaleItems, getNonStaleItems } from '@/lib/stale-utils'
 import { cn } from '@/lib/utils'
@@ -87,6 +88,10 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set())
   const [isEmptyStateExiting, _setIsEmptyStateExiting] = useState(false)
   const [showEmptyState, setShowEmptyState] = useState(false)
+
+  // Drag-drop state for image capture
+  const [isDraggingOver, setIsDraggingOver] = useState(false)
+  const [isCapturingImage, setIsCapturingImage] = useState(false)
 
   // Sync empty state with actual items (after loading completes)
   useEffect(() => {
@@ -880,6 +885,146 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     }
   }, [staleItems])
 
+  // === IMAGE CAPTURE HANDLERS ===
+
+  // Allowed image MIME types for drag-drop and paste
+  const ALLOWED_IMAGE_TYPES = [
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+    'image/svg+xml'
+  ]
+
+  // Handle image capture (shared between drag-drop and paste)
+  const handleImageCapture = useCallback(
+    async (file: File): Promise<void> => {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        addToast({
+          message: `Unsupported image type: ${file.type}`,
+          type: 'error'
+        })
+        return
+      }
+
+      // Check file size (max 50MB)
+      const MAX_SIZE = 50 * 1024 * 1024
+      if (file.size > MAX_SIZE) {
+        addToast({
+          message: 'Image too large (max 50MB)',
+          type: 'error'
+        })
+        return
+      }
+
+      setIsCapturingImage(true)
+
+      try {
+        // Read file as ArrayBuffer and convert to Uint8Array for IPC transfer
+        const arrayBuffer = await file.arrayBuffer()
+
+        const result = await inboxService.captureImage({
+          data: arrayBuffer,
+          filename: file.name,
+          mimeType: file.type
+        })
+
+        if (result.success) {
+          addToast({
+            message: 'Image captured',
+            type: 'success'
+          })
+        } else {
+          throw new Error(result.error || 'Failed to capture image')
+        }
+      } catch (error) {
+        addToast({
+          message: error instanceof Error ? error.message : 'Failed to capture image',
+          type: 'error'
+        })
+      } finally {
+        setIsCapturingImage(false)
+      }
+    },
+    [addToast]
+  )
+
+  // Handle drag over event
+  const handleDragOver = useCallback((e: React.DragEvent): void => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    // Check if dragging files
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDraggingOver(true)
+      e.dataTransfer.dropEffect = 'copy'
+    }
+  }, [])
+
+  // Handle drag leave event
+  const handleDragLeave = useCallback((e: React.DragEvent): void => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    // Only clear if leaving the drop zone entirely
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX
+    const y = e.clientY
+
+    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+      setIsDraggingOver(false)
+    }
+  }, [])
+
+  // Handle drop event
+  const handleDrop = useCallback(
+    async (e: React.DragEvent): Promise<void> => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDraggingOver(false)
+
+      const files = Array.from(e.dataTransfer.files)
+      const imageFiles = files.filter((file) => file.type.startsWith('image/'))
+
+      if (imageFiles.length === 0) {
+        // No image files dropped - could be text or other files
+        return
+      }
+
+      // Process each image file
+      for (const file of imageFiles) {
+        await handleImageCapture(file)
+      }
+    },
+    [handleImageCapture]
+  )
+
+  // Handle clipboard paste for images
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent): Promise<void> => {
+      // Skip if we're in an input field
+      if (isInputFocused()) return
+
+      const items = e.clipboardData?.items
+      if (!items) return
+
+      // Look for image items in clipboard
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault()
+          const file = item.getAsFile()
+          if (file) {
+            await handleImageCapture(file)
+          }
+          return // Only handle first image
+        }
+      }
+    }
+
+    window.addEventListener('paste', handlePaste)
+    return () => window.removeEventListener('paste', handlePaste)
+  }, [handleImageCapture])
+
   // Calculate today's items count for header
   const todayItemsCount = useMemo(() => {
     const today = new Date()
@@ -894,7 +1039,53 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   }, [items])
 
   return (
-    <div className={cn('flex flex-col h-full', 'px-6 lg:px-8', 'py-8 lg:py-12', className)}>
+    <div
+      className={cn(
+        'flex flex-col h-full relative',
+        'px-6 lg:px-8',
+        'py-8 lg:py-12',
+        isDraggingOver && 'ring-2 ring-primary/50 ring-inset bg-primary/5',
+        className
+      )}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drop zone overlay */}
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
+          <div className="flex flex-col items-center gap-3 p-8 rounded-xl border-2 border-dashed border-primary/50 bg-background/90">
+            <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <svg
+                className="size-6 text-primary"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <p className="text-sm font-medium text-foreground">Drop image to capture</p>
+            <p className="text-xs text-muted-foreground">PNG, JPEG, GIF, WebP, SVG</p>
+          </div>
+        </div>
+      )}
+
+      {/* Loading overlay for image capture */}
+      {isCapturingImage && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="size-8 text-primary animate-spin" />
+            <p className="text-sm text-muted-foreground">Capturing image...</p>
+          </div>
+        </div>
+      )}
+
       {/* Header with Dramatic Item Count */}
       <header className={cn('relative mb-8 lg:mb-10', 'journal-animate-in')}>
         {/* Large decorative item count watermark */}

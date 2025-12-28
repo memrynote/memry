@@ -12,6 +12,7 @@ import { InboxChannels } from '@shared/ipc-channels'
 import {
   CaptureTextSchema,
   CaptureLinkSchema,
+  CaptureImageSchema,
   InboxListSchema,
   InboxUpdateSchema,
   BulkDeleteSchema,
@@ -23,8 +24,10 @@ import {
   type BulkResponse,
   type SuggestionsResponse,
   type InboxStats,
-  type CapturePattern
+  type CapturePattern,
+  type ImageMetadata
 } from '@shared/contracts/inbox-api'
+import sharp from 'sharp'
 import { getDatabase } from '../database'
 import { generateId } from '../lib/id'
 import { inboxItems, inboxItemTags } from '@shared/db/schema/inbox'
@@ -32,7 +35,9 @@ import { eq, desc, asc, and, isNull, sql } from 'drizzle-orm'
 import {
   resolveAttachmentUrl,
   deleteInboxAttachments,
-  getItemAttachmentsDir
+  getItemAttachmentsDir,
+  storeInboxAttachment,
+  storeThumbnail
 } from '../inbox/attachments'
 import { fetchUrlMetadata, downloadImage } from '../inbox/metadata'
 import { fileToFolder, convertToNote, linkToNote, bulkFileToFolder } from '../inbox/filing'
@@ -747,8 +752,183 @@ async function handleSetStaleThreshold(days: number): Promise<{ success: boolean
 // Stub Handlers (To be implemented in later phases)
 // ============================================================================
 
-async function stubCaptureImage(): Promise<CaptureResponse> {
-  return { success: false, item: null, error: 'Not implemented yet' }
+/**
+ * Capture an image with thumbnail generation
+ *
+ * Accepts image data, validates format, extracts metadata,
+ * generates thumbnail, and creates inbox item.
+ */
+async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
+  try {
+    const parsed = CaptureImageSchema.parse(input)
+    const db = requireDatabase()
+
+    const id = generateId()
+    const now = new Date().toISOString()
+
+    // Convert data to Buffer for sharp processing
+    // IPC serialization may convert Buffer/ArrayBuffer to Uint8Array or plain object with numeric keys
+    let imageBuffer: Buffer
+    if (Buffer.isBuffer(parsed.data)) {
+      imageBuffer = parsed.data
+    } else if (parsed.data instanceof Uint8Array) {
+      imageBuffer = Buffer.from(parsed.data)
+    } else if (parsed.data instanceof ArrayBuffer) {
+      imageBuffer = Buffer.from(parsed.data)
+    } else if (typeof parsed.data === 'object' && parsed.data !== null) {
+      // Handle plain object from IPC serialization (has numeric keys like {0: 255, 1: 216, ...})
+      // Check if it looks like a serialized buffer (has 'type' and 'data' properties from Buffer.toJSON())
+      const data = parsed.data as Record<string, unknown>
+      if (data.type === 'Buffer' && Array.isArray(data.data)) {
+        // Electron serializes Buffer as {type: 'Buffer', data: [bytes...]}
+        imageBuffer = Buffer.from(data.data as number[])
+      } else {
+        // Plain object with numeric keys
+        const values = Object.values(data).filter((v): v is number => typeof v === 'number')
+        if (values.length === 0) {
+          return {
+            success: false,
+            item: null,
+            error: 'Invalid image data format: empty or non-numeric data'
+          }
+        }
+        imageBuffer = Buffer.from(values)
+      }
+    } else {
+      return {
+        success: false,
+        item: null,
+        error: 'Invalid image data format'
+      }
+    }
+
+    // Validate we have actual image data
+    if (imageBuffer.length === 0) {
+      return {
+        success: false,
+        item: null,
+        error: 'Empty image data'
+      }
+    }
+
+    // Extract image metadata using sharp
+    let metadata: sharp.Metadata
+    try {
+      metadata = await sharp(imageBuffer).metadata()
+    } catch (err) {
+      console.error('[Image] Failed to read image metadata:', err)
+      return {
+        success: false,
+        item: null,
+        error: 'Invalid or corrupted image file'
+      }
+    }
+
+    // Validate image has dimensions
+    if (!metadata.width || !metadata.height) {
+      return {
+        success: false,
+        item: null,
+        error: 'Could not determine image dimensions'
+      }
+    }
+
+    // Store the original image
+    const storeResult = await storeInboxAttachment(
+      id,
+      imageBuffer,
+      parsed.filename,
+      parsed.mimeType
+    )
+
+    if (!storeResult.success) {
+      return {
+        success: false,
+        item: null,
+        error: storeResult.error || 'Failed to store image'
+      }
+    }
+
+    // Generate thumbnail (max 400x400, JPEG for smaller size)
+    let thumbnailPath: string | null = null
+    try {
+      const thumbnailBuffer = await sharp(imageBuffer)
+        .resize(400, 400, {
+          fit: 'inside',
+          withoutEnlargement: true
+        })
+        .jpeg({ quality: 80 })
+        .toBuffer()
+
+      const thumbnailResult = await storeThumbnail(id, thumbnailBuffer, 'jpg')
+      if (thumbnailResult.success && thumbnailResult.thumbnailPath) {
+        thumbnailPath = thumbnailResult.thumbnailPath
+      }
+    } catch (err) {
+      // Thumbnail generation failed - not fatal, continue without thumbnail
+      console.warn('[Image] Failed to generate thumbnail:', err)
+    }
+
+    // Build image metadata for database
+    const imageMetadata: ImageMetadata = {
+      originalFilename: parsed.filename,
+      format: metadata.format || 'unknown',
+      width: metadata.width,
+      height: metadata.height,
+      fileSize: imageBuffer.length,
+      hasExif: !!(metadata.exif || metadata.icc)
+    }
+
+    // Insert inbox item
+    db.insert(inboxItems)
+      .values({
+        id,
+        type: 'image',
+        title: parsed.filename.replace(/\.[^.]+$/, ''), // Remove extension for title
+        content: null,
+        createdAt: now,
+        modifiedAt: now,
+        processingStatus: 'complete',
+        attachmentPath: storeResult.path || null,
+        thumbnailPath,
+        metadata: imageMetadata
+      })
+      .run()
+
+    // Insert tags if provided
+    if (parsed.tags && parsed.tags.length > 0) {
+      for (const tag of parsed.tags) {
+        db.insert(inboxItemTags)
+          .values({
+            id: generateId(),
+            itemId: id,
+            tag,
+            createdAt: now
+          })
+          .run()
+      }
+    }
+
+    // Fetch the created item
+    const created = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
+    if (!created) {
+      return { success: false, item: null, error: 'Failed to create item' }
+    }
+
+    const tags = getItemTags(db, id)
+    const item = toInboxItem(created, tags)
+
+    // Emit captured event
+    emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
+
+    console.log(`[Image] Captured image: ${parsed.filename} (${metadata.width}x${metadata.height})`)
+
+    return { success: true, item }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[Image] Capture failed:', message)
+    return { success: false, item: null, error: message }
+  }
 }
 
 async function stubCaptureVoice(): Promise<CaptureResponse> {
@@ -1031,7 +1211,7 @@ export function registerInboxHandlers(): void {
   // Capture handlers
   ipcMain.handle(InboxChannels.invoke.CAPTURE_TEXT, (_, input) => handleCaptureText(input))
   ipcMain.handle(InboxChannels.invoke.CAPTURE_LINK, (_, input) => handleCaptureLink(input))
-  ipcMain.handle(InboxChannels.invoke.CAPTURE_IMAGE, () => stubCaptureImage())
+  ipcMain.handle(InboxChannels.invoke.CAPTURE_IMAGE, (_, input) => handleCaptureImage(input))
   ipcMain.handle(InboxChannels.invoke.CAPTURE_VOICE, () => stubCaptureVoice())
   ipcMain.handle(InboxChannels.invoke.CAPTURE_CLIP, () => stubCaptureClip())
   ipcMain.handle(InboxChannels.invoke.CAPTURE_PDF, () => stubCapturePdf())

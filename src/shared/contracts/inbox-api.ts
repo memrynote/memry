@@ -220,8 +220,24 @@ export const CaptureLinkSchema = z.object({
   tags: z.array(z.string().max(50)).max(20).optional()
 })
 
+// Custom validator for binary data that may be Buffer, Uint8Array, ArrayBuffer, or serialized object
+const binaryDataSchema = z.custom<Buffer | Uint8Array | ArrayBuffer | Record<string, number>>(
+  (val) => {
+    if (val instanceof Buffer || val instanceof Uint8Array || val instanceof ArrayBuffer) {
+      return true
+    }
+    // Accept plain object with numeric values (serialized buffer from IPC)
+    if (typeof val === 'object' && val !== null) {
+      const values = Object.values(val)
+      return values.length > 0 && values.every((v) => typeof v === 'number')
+    }
+    return false
+  },
+  { message: 'Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer)' }
+)
+
 export const CaptureImageSchema = z.object({
-  data: z.instanceof(Buffer),
+  data: binaryDataSchema,
   filename: z.string().min(1).max(255),
   mimeType: z.enum(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']),
   tags: z.array(z.string().max(50)).max(20).optional()

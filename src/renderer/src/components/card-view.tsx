@@ -74,8 +74,31 @@ const NoteCardContent = ({ item }: { item: InboxItem }): React.JSX.Element => {
   )
 }
 
-// Image card content - placeholder thumbnail
-const ImageCardContent = (): React.JSX.Element => {
+// Image card content - shows thumbnail or placeholder
+const ImageCardContent = ({ item }: { item: InboxItem }): React.JSX.Element => {
+  const [imageError, setImageError] = useState(false)
+
+  // Reset error state if thumbnail URL changes
+  useEffect(() => {
+    setImageError(false)
+  }, [item.thumbnailUrl])
+
+  // Show actual thumbnail if available
+  if (item.thumbnailUrl && !imageError) {
+    return (
+      <div className="h-full rounded-md overflow-hidden">
+        <img
+          src={item.thumbnailUrl}
+          alt={item.title}
+          className="w-full h-full object-cover"
+          onError={() => setImageError(true)}
+          loading="lazy"
+        />
+      </div>
+    )
+  }
+
+  // Fallback to placeholder icon
   return (
     <div className="h-full bg-[var(--muted)] rounded-md flex items-center justify-center">
       <Image className="size-8 text-[var(--muted-foreground)]/50" aria-hidden="true" />
@@ -125,7 +148,7 @@ const CardContent = ({ item }: { item: InboxItem }): React.JSX.Element => {
     case 'note':
       return <NoteCardContent item={item} />
     case 'image':
-      return <ImageCardContent />
+      return <ImageCardContent item={item} />
     case 'voice':
       return <VoiceCardContent item={item} />
     case 'clip':

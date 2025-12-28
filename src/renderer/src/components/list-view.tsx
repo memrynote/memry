@@ -43,6 +43,33 @@ const TypeIcon = ({ type }: { type: InboxItemType }): React.JSX.Element => {
   }
 }
 
+// Thumbnail component for image items in list view
+const ItemThumbnail = ({ item }: { item: InboxItem }): React.JSX.Element | null => {
+  const [imageError, setImageError] = useState(false)
+
+  // Reset error state if thumbnail URL changes
+  useEffect(() => {
+    setImageError(false)
+  }, [item.thumbnailUrl])
+
+  // Only show thumbnail for image items with a valid URL
+  if (item.type !== 'image' || !item.thumbnailUrl || imageError) {
+    return null
+  }
+
+  return (
+    <div className="size-8 rounded overflow-hidden bg-muted shrink-0">
+      <img
+        src={item.thumbnailUrl}
+        alt=""
+        className="w-full h-full object-cover"
+        onError={() => setImageError(true)}
+        loading="lazy"
+      />
+    </div>
+  )
+}
+
 // Individual item row component
 interface InboxItemRowProps {
   item: InboxItem
@@ -155,8 +182,12 @@ const InboxItemRow = ({
         onClick={handleCheckboxClick}
       />
 
-      {/* Type Icon */}
-      <TypeIcon type={item.type} />
+      {/* Type Icon or Thumbnail for images */}
+      {item.type === 'image' && item.thumbnailUrl ? (
+        <ItemThumbnail item={item} />
+      ) : (
+        <TypeIcon type={item.type} />
+      )}
 
       {/* Content area - shows title or Quick-File input */}
       {isQuickFileActive ? (
