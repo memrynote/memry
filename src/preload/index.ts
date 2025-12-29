@@ -538,6 +538,8 @@ const api = {
       ipcRenderer.invoke(InboxChannels.invoke.SNOOZE, input),
     unsnooze: (itemId: string) => ipcRenderer.invoke(InboxChannels.invoke.UNSNOOZE, itemId),
     getSnoozed: () => ipcRenderer.invoke(InboxChannels.invoke.GET_SNOOZED),
+    bulkSnooze: (input: { itemIds: string[]; snoozeUntil: string; reason?: string }) =>
+      ipcRenderer.invoke(InboxChannels.invoke.BULK_SNOOZE, input),
 
     // Bulk operations
     bulkFile: (input: {

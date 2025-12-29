@@ -419,9 +419,6 @@ export function resolveAttachmentUrl(relativePath: string | null): string | null
     // Use custom protocol for security
     const url = toMemryFileUrl(fullPath)
 
-    // Debug logging
-    console.log(`[Attachments] resolveAttachmentUrl: ${relativePath} -> ${url}`)
-
     return url
   } catch {
     return null

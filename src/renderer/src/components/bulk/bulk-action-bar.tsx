@@ -1,7 +1,8 @@
-import { Folder, Tag, Trash2 } from 'lucide-react'
+import { Folder, Tag, Trash2, Clock } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { AIClusterSuggestion } from '@/components/bulk/ai-cluster-suggestion'
+import { SnoozePicker } from '@/components/snooze'
 import { cn } from '@/lib/utils'
 import type { InboxItemListItem } from '@/types'
 
@@ -14,6 +15,7 @@ interface BulkActionBarProps {
   selectedCount: number
   onFileAll: () => void
   onTagAll: () => void
+  onSnoozeAll?: (snoozeUntil: string) => void
   onDeleteAll: () => void
   aiSuggestion: ClusterSuggestion | null
   onAddSuggestionToSelection: () => void
@@ -24,6 +26,7 @@ const BulkActionBar = ({
   selectedCount,
   onFileAll,
   onTagAll,
+  onSnoozeAll,
   onDeleteAll,
   aiSuggestion,
   onAddSuggestionToSelection,
@@ -52,6 +55,21 @@ const BulkActionBar = ({
             <Tag className="size-4" aria-hidden="true" />
             Tag all
           </Button>
+
+          {/* Snooze all - with dropdown picker */}
+          {onSnoozeAll && (
+            <SnoozePicker
+              onSnooze={onSnoozeAll}
+              size="default"
+              variant="outline"
+              trigger={
+                <Button variant="outline" className="gap-2">
+                  <Clock className="size-4" aria-hidden="true" />
+                  Snooze all
+                </Button>
+              }
+            />
+          )}
 
           <Button
             variant="outline"

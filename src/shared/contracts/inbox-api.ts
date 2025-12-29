@@ -171,6 +171,10 @@ export interface InboxItemListItem {
   // Voice transcription fields
   transcription?: string | null // Transcription text (for voice items)
   transcriptionStatus?: ProcessingStatus | null // Transcription status (for voice items)
+
+  // Snooze fields (optional - only present for snoozed items)
+  snoozedUntil?: Date // When the snooze expires
+  snoozeReason?: string // User-provided reason for snoozing
 }
 
 export interface FilingDestination {

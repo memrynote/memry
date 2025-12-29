@@ -53,7 +53,20 @@ export {
 } from './social'
 export type { SocialExtractionResult } from './social'
 
+// Phase 18: Snooze functionality
+export {
+  snoozeItem,
+  unsnoozeItem,
+  getSnoozedItems,
+  getDueSnoozeItems,
+  bulkSnoozeItems,
+  checkDueItemsOnStartup,
+  startSnoozeScheduler,
+  stopSnoozeScheduler,
+  isSchedulerActive
+} from './snooze'
+export type { SnoozeInput, SnoozeResult, SnoozedItem } from './snooze'
+
 // Future phases will add exports for:
 // - capture.ts: captureImage, capturePdf, captureClip
 // - suggestions.ts: getFilingSuggestions
-// - snooze.ts: snoozeItem, unsnoozeItem

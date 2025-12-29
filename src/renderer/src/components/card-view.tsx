@@ -1,10 +1,22 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Link, FileText, Image, Mic, Play, Globe, Scissors, FileIcon, Share2 } from 'lucide-react'
+import {
+  Link,
+  FileText,
+  Image,
+  Mic,
+  Play,
+  Globe,
+  Scissors,
+  FileIcon,
+  Share2,
+  Clock
+} from 'lucide-react'
 
 import { Checkbox } from '@/components/ui/checkbox'
 import { QuickActions } from '@/components/quick-actions'
 import { SocialCardContent } from '@/components/social-card'
 import { StaleSection } from '@/components/stale/stale-section'
+import { formatSnoozeReturn } from '@/components/snooze'
 import {
   groupItemsByTimePeriod,
   formatTimestamp,
@@ -185,6 +197,7 @@ interface InboxCardProps {
   onFile: (id: string) => void
   onPreview: (id: string) => void
   onDelete: (id: string) => void
+  onSnooze?: (id: string, snoozeUntil: string) => void
   onFocus: (id: string) => void
   onSelectionToggle: (id: string, shiftKey: boolean) => void
 }
@@ -199,6 +212,7 @@ const InboxCard = ({
   onFile,
   onPreview,
   onDelete,
+  onSnooze,
   onFocus,
   onSelectionToggle
 }: InboxCardProps): React.JSX.Element => {
@@ -269,12 +283,23 @@ const InboxCard = ({
         />
       </div>
 
-      {/* Top Bar: Icon + Timestamp */}
+      {/* Top Bar: Icon + Timestamp + Snooze Badge */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]/50 bg-[var(--muted)]/30">
         <TypeIcon type={item.type} />
-        <span className="text-[10px] text-[var(--muted-foreground)] tabular-nums">
-          {formatTimestamp(item.createdAt, period)}
-        </span>
+        <div className="flex items-center gap-2">
+          {/* Snooze badge - shown when item is snoozed */}
+          {item.snoozedUntil && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+              <Clock className="size-2.5" aria-hidden="true" />
+              {formatSnoozeReturn(
+                item.snoozedUntil instanceof Date ? item.snoozedUntil : new Date(item.snoozedUntil)
+              )}
+            </span>
+          )}
+          <span className="text-[10px] text-[var(--muted-foreground)] tabular-nums">
+            {formatTimestamp(item.createdAt, period)}
+          </span>
+        </div>
       </div>
 
       {/* Content Area - fixed height */}
@@ -310,6 +335,7 @@ const InboxCard = ({
             onFile={onFile}
             onPreview={onPreview}
             onDelete={onDelete}
+            onSnooze={onSnooze}
             variant="card"
           />
         </div>
@@ -336,6 +362,7 @@ interface CardViewProps {
   onFile: (id: string) => void
   onPreview: (id: string) => void
   onDelete: (id: string) => void
+  onSnooze?: (id: string, snoozeUntil: string) => void
   onSelectionChange: (selectedIds: Set<string>) => void
   onFileAllStale?: () => void
   onReviewStale?: () => void
@@ -352,6 +379,7 @@ const CardView = ({
   onFile,
   onPreview,
   onDelete,
+  onSnooze,
   onSelectionChange,
   onFileAllStale,
   onReviewStale,
@@ -679,6 +707,7 @@ const CardView = ({
                 onFile={onFile}
                 onPreview={onPreview}
                 onDelete={onDelete}
+                onSnooze={onSnooze}
                 onFocus={handleItemFocus}
                 onSelectionToggle={handleSelectionToggle}
               />

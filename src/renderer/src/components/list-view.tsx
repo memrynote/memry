@@ -9,7 +9,8 @@ import {
   Share2,
   Loader2,
   AlertCircle,
-  RotateCcw
+  RotateCcw,
+  Clock
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
@@ -19,6 +20,7 @@ import { QuickActions } from '@/components/quick-actions'
 import { InlineQuickFile } from '@/components/inline-quick-file'
 import { QuickFileDropdown, getFilteredFolders } from '@/components/quick-file-dropdown'
 import { StaleSection } from '@/components/stale/stale-section'
+import { formatSnoozeReturn } from '@/components/snooze'
 import {
   groupItemsByTimePeriod,
   formatTimestamp,
@@ -167,6 +169,7 @@ interface InboxItemRowProps {
   onFile: (id: string) => void
   onPreview: (id: string) => void
   onDelete: (id: string) => void
+  onSnooze?: (id: string, snoozeUntil: string) => void
   onFocus: (id: string) => void
   onSelectionToggle: (id: string, shiftKey: boolean) => void
   onQuickFileQueryChange: (query: string) => void
@@ -192,6 +195,7 @@ const InboxItemRow = ({
   onFile,
   onPreview,
   onDelete,
+  onSnooze,
   onFocus,
   onSelectionToggle,
   onQuickFileQueryChange,
@@ -305,7 +309,20 @@ const InboxItemRow = ({
         <>
           {/* Title and transcription status */}
           <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-            <span className="text-sm text-[var(--foreground)] truncate">{displayTitle}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-[var(--foreground)] truncate">{displayTitle}</span>
+              {/* Snooze badge - shown when item is snoozed */}
+              {item.snoozedUntil && (
+                <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                  <Clock className="size-3" aria-hidden="true" />
+                  {formatSnoozeReturn(
+                    item.snoozedUntil instanceof Date
+                      ? item.snoozedUntil
+                      : new Date(item.snoozedUntil)
+                  )}
+                </span>
+              )}
+            </div>
             {/* Voice transcription status */}
             <TranscriptionStatus item={item} onRetry={onRetryTranscription} />
           </div>
@@ -332,6 +349,7 @@ const InboxItemRow = ({
                 onFile={onFile}
                 onPreview={onPreview}
                 onDelete={onDelete}
+                onSnooze={onSnooze}
                 variant="row"
               />
             </div>
@@ -360,6 +378,7 @@ interface ListViewProps {
   onFile: (id: string) => void
   onPreview: (id: string) => void
   onDelete: (id: string) => void
+  onSnooze?: (id: string, snoozeUntil: string) => void
   onQuickFile: (itemId: string, folderId: string) => void
   onSelectionChange: (selectedIds: Set<string>) => void
   onFileAllStale?: () => void
@@ -377,6 +396,7 @@ const ListView = ({
   onFile,
   onPreview,
   onDelete,
+  onSnooze,
   onQuickFile,
   onSelectionChange,
   onFileAllStale,
@@ -828,6 +848,7 @@ const ListView = ({
                 onFile={onFile}
                 onPreview={onPreview}
                 onDelete={onDelete}
+                onSnooze={onSnooze}
                 onFocus={handleItemFocus}
                 onSelectionToggle={handleSelectionToggle}
                 onQuickFileQueryChange={handleQuickFileQueryChange}
