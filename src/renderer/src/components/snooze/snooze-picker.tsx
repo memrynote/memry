@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { snoozePresets, formatSnoozeTime } from './snooze-presets'
 
 // ============================================================================
@@ -142,7 +143,7 @@ export function SnoozePicker({
   return (
     <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>{trigger || defaultTrigger}</DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
         {!showCustomPicker ? (
           <>
             {/* Preset Options */}
@@ -260,49 +261,54 @@ export interface QuickSnoozeButtonProps {
   onSnooze: (snoozeUntil: string) => void
   /** Button label */
   label?: string
+  /** Whether to show the label text (default: true) */
+  showLabel?: boolean
   /** Whether the button is disabled */
   disabled?: boolean
 }
 
 /**
- * A simple snooze button that snoozes to "later today" by default
- * Click for quick snooze, hold or right-click for options
+ * A snooze button that opens a dropdown with preset options
+ * Click to open the dropdown and select a snooze time
  */
 export function QuickSnoozeButton({
   onSnooze,
   label = 'Snooze',
+  showLabel = true,
   disabled = false
 }: QuickSnoozeButtonProps) {
-  const handleQuickSnooze = () => {
-    const preset = snoozePresets.find((p) => p.id === 'later-today')
-    if (preset) {
-      onSnooze(preset.getTime().toISOString())
-    }
+  const button = (
+    <Button
+      variant="ghost"
+      size="sm"
+      disabled={disabled}
+      onClick={(e) => {
+        // Stop propagation to prevent row selection
+        e.stopPropagation()
+      }}
+      className={showLabel ? undefined : 'p-1.5 h-auto'}
+      aria-label="Snooze"
+    >
+      <Clock className={showLabel ? 'h-4 w-4 mr-1' : 'h-4 w-4'} />
+      {showLabel && label}
+    </Button>
+  )
+
+  // When showing label, just use the button directly
+  // When icon-only, wrap the entire SnoozePicker in a Tooltip
+  if (showLabel) {
+    return <SnoozePicker onSnooze={onSnooze} disabled={disabled} trigger={button} />
   }
 
   return (
-    <SnoozePicker
-      onSnooze={onSnooze}
-      disabled={disabled}
-      trigger={
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={disabled}
-          onClick={(e) => {
-            // Quick snooze on simple click
-            if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
-              e.preventDefault()
-              e.stopPropagation()
-              handleQuickSnooze()
-            }
-          }}
-        >
-          <Clock className="h-4 w-4 mr-1" />
-          {label}
-        </Button>
-      }
-    />
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex">
+          <SnoozePicker onSnooze={onSnooze} disabled={disabled} trigger={button} />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">Snooze</TooltipContent>
+    </Tooltip>
   )
 }
 

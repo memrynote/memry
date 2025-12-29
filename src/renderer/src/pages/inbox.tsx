@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { List, Grid, Check, Loader2, AlertCircle, Archive, Clock } from 'lucide-react'
+import { List, Grid, Check, Loader2, AlertCircle, Clock } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'
@@ -52,7 +52,6 @@ interface InboxPageProps {
 export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [toasts, setToasts] = useState<Toast[]>([])
-  const [showFiledItems, setShowFiledItems] = useState(false)
   const [showSnoozedItems, setShowSnoozedItems] = useState(false)
   const queryClient = useQueryClient()
 
@@ -63,7 +62,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     error,
     refetch
   } = useInboxList({
-    includeFiled: showFiledItems,
     includeSnoozed: showSnoozedItems
   })
 
@@ -421,7 +419,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         setHasFilingHistory(true)
 
         // If this was the last item, show empty state after a brief pause
-        if (willBeEmpty && !showFiledItems) {
+        if (willBeEmpty) {
           setTimeout(() => {
             setShowEmptyState(true)
           }, 200)
@@ -466,7 +464,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         }
       }, 200)
     },
-    [items, addToast, fileItemMutation, queryClient, showFiledItems]
+    [items, addToast, fileItemMutation, queryClient]
   )
 
   // Handle Quick-File (inline keyboard filing from List View) with animation
@@ -504,7 +502,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         setHasFilingHistory(true)
 
         // If this was the last item, show empty state after a brief pause
-        if (willBeEmpty && !showFiledItems) {
+        if (willBeEmpty) {
           setTimeout(() => {
             setShowEmptyState(true)
           }, 200)
@@ -541,7 +539,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         }
       }, 200)
     },
-    [items, addToast, fileItemMutation, queryClient, showFiledItems]
+    [items, addToast, fileItemMutation, queryClient]
   )
 
   // Handle preview action - toggle preview panel
@@ -702,6 +700,12 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         try {
           const result = await inboxService.snooze({ itemId: id, snoozeUntil })
           if (result.success) {
+            // Clear from pendingDeleteIds so item can appear when "Show snoozed" is toggled
+            setPendingDeleteIds((prev) => {
+              const next = new Set(prev)
+              next.delete(id)
+              return next
+            })
             queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
 
             // Format the snooze time for the toast message
@@ -978,6 +982,12 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           })
 
           if (result.success || result.processedCount > 0) {
+            // Clear from pendingDeleteIds so items can appear when "Show snoozed" is toggled
+            setPendingDeleteIds((prev) => {
+              const next = new Set(prev)
+              idsToSnooze.forEach((id) => next.delete(id))
+              return next
+            })
             queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
 
             // Format the snooze time for the toast message
@@ -1441,25 +1451,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                   </ToggleGroupItem>
                 </ToggleGroup>
 
-                {/* Show filed items toggle */}
-                <div className="flex items-center gap-2 ml-4 pl-4 border-l border-border/40">
-                  <Switch
-                    id="show-filed"
-                    checked={showFiledItems}
-                    onCheckedChange={setShowFiledItems}
-                    className="scale-90"
-                  />
-                  <Label
-                    htmlFor="show-filed"
-                    className="text-xs text-muted-foreground/70 cursor-pointer whitespace-nowrap"
-                  >
-                    <Archive className="inline-block size-3 mr-1" />
-                    Show filed
-                  </Label>
-                </div>
-
                 {/* Show snoozed items toggle */}
-                <div className="flex items-center gap-2 ml-2">
+                <div className="flex items-center gap-2 ml-4 pl-4 border-l border-border/40">
                   <Switch
                     id="show-snoozed"
                     checked={showSnoozedItems}
@@ -1533,7 +1526,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             staleItems={staleItems}
             selectedItemIds={selectedItemIds}
             exitingItemIds={exitingItemIds}
-            onFile={handleFile}
             onPreview={handlePreview}
             onDelete={handleDelete}
             onSnooze={handleSnooze}
@@ -1551,7 +1543,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             staleItems={staleItems}
             selectedItemIds={selectedItemIds}
             exitingItemIds={exitingItemIds}
-            onFile={handleFile}
             onPreview={handlePreview}
             onDelete={handleDelete}
             onSnooze={handleSnooze}

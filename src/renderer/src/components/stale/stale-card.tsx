@@ -126,8 +126,6 @@ interface StaleCardProps {
   isSelected: boolean
   isInBulkMode: boolean
   isExiting?: boolean
-  onFile: (id: string) => void
-  onPreview: (id: string) => void
   onDelete: (id: string) => void
   onFocus: (id: string) => void
   onSelectionToggle: (id: string, shiftKey: boolean) => void
@@ -142,8 +140,6 @@ export const StaleCard = ({
   isSelected,
   isInBulkMode,
   isExiting = false,
-  onFile,
-  onPreview,
   onDelete,
   onFocus,
   onSelectionToggle
@@ -248,13 +244,7 @@ export const StaleCard = ({
             isFocused ? 'flex' : 'hidden group-hover:flex'
           )}
         >
-          <QuickActions
-            itemId={item.id}
-            onFile={onFile}
-            onPreview={onPreview}
-            onDelete={onDelete}
-            variant="card"
-          />
+          <QuickActions itemId={item.id} onDelete={onDelete} variant="card" />
         </div>
       )}
 

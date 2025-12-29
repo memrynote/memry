@@ -66,7 +66,6 @@ export interface CapturePdfInput {
 
 export interface InboxListInput {
   type?: 'link' | 'note' | 'image' | 'voice' | 'clip' | 'pdf' | 'social'
-  includeFiled?: boolean
   includeSnoozed?: boolean
   sortBy?: 'created' | 'modified' | 'title'
   sortOrder?: 'asc' | 'desc'

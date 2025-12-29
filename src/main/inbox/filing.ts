@@ -246,6 +246,7 @@ function generateInboxCaptureEntry(item: InboxItemRow, noteTitle: string): strin
 
 /**
  * Mark inbox item as filed (update DB, don't delete)
+ * Also clears any snooze status since the item is now filed
  */
 async function markItemAsFiled(
   itemId: string,
@@ -260,7 +261,10 @@ async function markItemAsFiled(
       filedAt: now,
       filedTo,
       filedAction,
-      modifiedAt: now
+      modifiedAt: now,
+      // Clear snooze status when filing - allows re-snoozing if item is restored
+      snoozedUntil: null,
+      snoozeReason: null
     })
     .where(eq(inboxItems.id, itemId))
     .run()

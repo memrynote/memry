@@ -43,8 +43,6 @@ interface StaleSectionProps {
   selectedItemIds: Set<string>
   exitingItemIds?: Set<string>
   focusedItemId: string | null
-  onFile: (id: string) => void
-  onPreview: (id: string) => void
   onDelete: (id: string) => void
   onFocus: (id: string) => void
   onSelectionToggle: (id: string, shiftKey: boolean) => void
@@ -62,8 +60,6 @@ export const StaleSection = ({
   selectedItemIds,
   exitingItemIds = new Set(),
   focusedItemId,
-  onFile,
-  onPreview,
   onDelete,
   onFocus,
   onSelectionToggle,
@@ -101,8 +97,6 @@ export const StaleSection = ({
                 isSelected={selectedItemIds.has(item.id)}
                 isInBulkMode={isInBulkMode}
                 isExiting={exitingItemIds.has(item.id)}
-                onFile={onFile}
-                onPreview={onPreview}
                 onDelete={onDelete}
                 onFocus={onFocus}
                 onSelectionToggle={onSelectionToggle}
@@ -119,8 +113,6 @@ export const StaleSection = ({
                 isSelected={selectedItemIds.has(item.id)}
                 isInBulkMode={isInBulkMode}
                 isExiting={exitingItemIds.has(item.id)}
-                onFile={onFile}
-                onPreview={onPreview}
                 onDelete={onDelete}
                 onFocus={onFocus}
                 onSelectionToggle={onSelectionToggle}

@@ -18,15 +18,14 @@ import {
   Share2,
   Loader2,
   AlertCircle,
-  RotateCcw,
-  Clock
+  RotateCcw
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { QuickActions } from '@/components/quick-actions'
 import { InlineQuickFile } from '@/components/inline-quick-file'
 import { QuickFileDropdown, getFilteredFolders } from '@/components/quick-file-dropdown'
-import { formatSnoozeReturn } from '@/components/snooze'
+import { SnoozeCountdown } from '@/components/snooze'
 import { formatTimestamp, formatDuration, type TimePeriod } from '@/lib/inbox-utils'
 import { cn } from '@/lib/utils'
 import type { InboxItemListItem, InboxItemType, Folder } from '@/types'
@@ -221,7 +220,10 @@ export function InboxListSection({
 
   return (
     <InboxListContext.Provider value={{ selectedIds, focusedId, isInBulkMode, onSelect, onFocus }}>
-      <section className={className} aria-labelledby={`section-${title.toLowerCase().replace(/\s/g, '-')}`}>
+      <section
+        className={className}
+        aria-labelledby={`section-${title.toLowerCase().replace(/\s/g, '-')}`}
+      >
         <button
           type="button"
           onClick={() => collapsible && setIsCollapsed(!isCollapsed)}
@@ -241,9 +243,7 @@ export function InboxListSection({
               )}
             />
           )}
-          {icon && (
-            <span className="text-amber-600 dark:text-amber-500">{icon}</span>
-          )}
+          {icon && <span className="text-amber-600 dark:text-amber-500">{icon}</span>}
           <h3
             className={cn(
               'text-xs font-semibold uppercase tracking-wider text-muted-foreground/60',
@@ -285,7 +285,6 @@ export interface InboxListItemProps {
   /** Available folders for Quick-File */
   folders?: Folder[]
   /** Callbacks */
-  onFile: (id: string) => void
   onPreview: (id: string) => void
   onDelete: (id: string) => void
   onSnooze?: (id: string, snoozeUntil: string) => void
@@ -308,7 +307,6 @@ export function InboxListItem({
   quickFileQuery = '',
   quickFileHighlightedIndex = 0,
   folders = [],
-  onFile,
   onPreview,
   onDelete,
   onSnooze,
@@ -334,6 +332,7 @@ export function InboxListItem({
 
   const handleClick = (): void => {
     onFocus(item.id)
+    onPreview(item.id)
   }
 
   const handleCheckboxClick = (e: React.MouseEvent): void => {
@@ -360,10 +359,8 @@ export function InboxListItem({
           'ring-1 ring-inset ring-amber-200 dark:ring-amber-800/50'
         ],
         // Focused state (not selected)
-        !isSelected && isFocused && [
-          'bg-muted',
-          'ring-2 ring-inset ring-amber-400/50 dark:ring-amber-600/50'
-        ],
+        !isSelected &&
+          isFocused && ['bg-muted', 'ring-2 ring-inset ring-amber-400/50 dark:ring-amber-600/50'],
         className
       )}
       role="listitem"
@@ -444,29 +441,17 @@ export function InboxListItem({
               <span className={cn('font-medium text-sm truncate', 'text-foreground/90')}>
                 {displayTitle}
               </span>
-              {/* Snooze badge with warm styling */}
-              {item.snoozedUntil && (
-                <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                  <Clock className="w-2.5 h-2.5" aria-hidden="true" />
-                  {formatSnoozeReturn(
-                    item.snoozedUntil instanceof Date
-                      ? item.snoozedUntil
-                      : new Date(item.snoozedUntil)
-                  )}
-                </span>
-              )}
+              {/* Snooze badge with warm styling - live countdown */}
+              <SnoozeCountdown
+                snoozedUntil={item.snoozedUntil}
+                className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+              />
             </div>
             <TranscriptionStatus item={item} onRetry={onRetryTranscription} />
           </div>
 
           {/* Timestamp - fades out on hover when actions show */}
-          <span
-            className={cn(
-              'shrink-0 text-xs text-muted-foreground/60 tabular-nums',
-              'transition-opacity duration-150',
-              isInBulkMode ? 'opacity-100' : 'group-hover:opacity-0'
-            )}
-          >
+          <span className={cn('shrink-0 text-xs text-muted-foreground/60 tabular-nums')}>
             {formatTimestamp(
               item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt),
               period
@@ -478,8 +463,6 @@ export function InboxListItem({
             <div className="shrink-0 quick-actions-reveal">
               <QuickActions
                 itemId={item.id}
-                onFile={onFile}
-                onPreview={onPreview}
                 onDelete={onDelete}
                 onSnooze={onSnooze}
                 variant="row"

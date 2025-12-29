@@ -20,7 +20,6 @@ interface CardViewProps {
   staleItems?: InboxItem[]
   selectedItemIds: Set<string>
   exitingItemIds?: Set<string>
-  onFile: (id: string) => void
   onPreview: (id: string) => void
   onDelete: (id: string) => void
   onSnooze?: (id: string, snoozeUntil: string) => void
@@ -37,7 +36,6 @@ const CardView = ({
   staleItems = [],
   selectedItemIds,
   exitingItemIds = new Set(),
-  onFile,
   onPreview,
   onDelete,
   onSnooze,
@@ -262,10 +260,7 @@ const CardView = ({
           break
 
         case 'Enter':
-          if (focusedItemId) {
-            e.preventDefault()
-            onFile(focusedItemId)
-          }
+          // Preview is opened on click, Enter does nothing special now
           break
 
         case 'Escape':
@@ -289,7 +284,6 @@ const CardView = ({
       flatItems,
       focusedItemId,
       onPreview,
-      onFile,
       onDelete,
       setFocusedItemId,
       handleSelectionToggle,
@@ -320,8 +314,6 @@ const CardView = ({
           selectedItemIds={selectedItemIds}
           exitingItemIds={exitingItemIds}
           focusedItemId={focusedItemId}
-          onFile={onFile}
-          onPreview={onPreview}
           onDelete={onDelete}
           onFocus={handleItemFocus}
           onSelectionToggle={handleSelectionToggle}
@@ -347,7 +339,6 @@ const CardView = ({
               item={item}
               period={group.period}
               isExiting={exitingItemIds.has(item.id)}
-              onFile={onFile}
               onPreview={onPreview}
               onDelete={onDelete}
               onSnooze={onSnooze}

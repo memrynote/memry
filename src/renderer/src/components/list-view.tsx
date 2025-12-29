@@ -23,7 +23,6 @@ interface ListViewProps {
   staleItems?: InboxItem[]
   selectedItemIds: Set<string>
   exitingItemIds?: Set<string>
-  onFile: (id: string) => void
   onPreview: (id: string) => void
   onDelete: (id: string) => void
   onSnooze?: (id: string, snoozeUntil: string) => void
@@ -41,7 +40,6 @@ const ListView = ({
   staleItems = [],
   selectedItemIds,
   exitingItemIds = new Set(),
-  onFile,
   onPreview,
   onDelete,
   onSnooze,
@@ -51,8 +49,9 @@ const ListView = ({
   onReviewStale,
   focusedItemId: controlledFocusedItemId,
   onFocusedItemChange,
-  isPreviewOpen = false
+  isPreviewOpen: _isPreviewOpen = false
 }: ListViewProps): React.JSX.Element => {
+  void _isPreviewOpen // Reserved for future use
   const containerRef = useRef<HTMLDivElement>(null)
   const groupedItems = groupItemsByTimePeriod(items)
 
@@ -312,10 +311,7 @@ const ListView = ({
           break
 
         case 'Enter':
-          if (isPreviewOpen && focusedItemId) {
-            e.preventDefault()
-            onFile(focusedItemId)
-          }
+          // Preview is opened on click, Enter does nothing special now
           break
 
         case 'Escape':
@@ -345,9 +341,7 @@ const ListView = ({
       quickFileItemId,
       filteredFolders,
       onPreview,
-      onFile,
       onDelete,
-      isPreviewOpen,
       setFocusedItemId,
       handleSelectionToggle,
       handleQuickFileFolderSelect,
@@ -437,8 +431,6 @@ const ListView = ({
           selectedItemIds={selectedItemIds}
           exitingItemIds={exitingItemIds}
           focusedItemId={focusedItemId}
-          onFile={onFile}
-          onPreview={onPreview}
           onDelete={onDelete}
           onFocus={handleItemFocus}
           onSelectionToggle={handleSelectionToggle}
@@ -468,7 +460,6 @@ const ListView = ({
               quickFileQuery={quickFileQuery}
               quickFileHighlightedIndex={highlightedIndex}
               folders={vaultFolders}
-              onFile={onFile}
               onPreview={onPreview}
               onDelete={onDelete}
               onSnooze={onSnooze}
@@ -484,7 +475,10 @@ const ListView = ({
 
           {/* Visual separator between sections (except last) */}
           {groupIndex < groupedItems.length - 1 && (
-            <div className="h-px bg-gradient-to-r from-border/30 to-transparent mt-4" aria-hidden="true" />
+            <div
+              className="h-px bg-gradient-to-r from-border/30 to-transparent mt-4"
+              aria-hidden="true"
+            />
           )}
         </InboxListSection>
       ))}

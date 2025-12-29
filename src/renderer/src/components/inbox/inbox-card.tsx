@@ -7,22 +7,11 @@
  */
 
 import { useState, useEffect, useRef, createContext, useContext } from 'react'
-import {
-  Link,
-  FileText,
-  Image,
-  Mic,
-  Play,
-  Globe,
-  Scissors,
-  FileIcon,
-  Share2,
-  Clock
-} from 'lucide-react'
+import { Link, FileText, Image, Mic, Play, Globe, Scissors, FileIcon, Share2 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { QuickActions } from '@/components/quick-actions'
 import { SocialCardContent } from '@/components/social-card'
-import { formatSnoozeReturn } from '@/components/snooze'
+import { SnoozeCountdown } from '@/components/snooze'
 import { formatTimestamp, formatDuration, extractDomain, type TimePeriod } from '@/lib/inbox-utils'
 import { cn } from '@/lib/utils'
 import type { InboxItemListItem, InboxItemType } from '@/types'
@@ -291,7 +280,6 @@ export interface InboxCardProps {
   /** Whether the item is exiting (animating out) */
   isExiting?: boolean
   /** Callbacks */
-  onFile: (id: string) => void
   onPreview: (id: string) => void
   onDelete: (id: string) => void
   onSnooze?: (id: string, snoozeUntil: string) => void
@@ -303,7 +291,6 @@ export function InboxCard({
   item,
   period,
   isExiting = false,
-  onFile,
   onPreview,
   onDelete,
   onSnooze,
@@ -323,6 +310,7 @@ export function InboxCard({
 
   const handleClick = (): void => {
     onFocus(item.id)
+    onPreview(item.id)
   }
 
   const handleCheckboxClick = (e: React.MouseEvent): void => {
@@ -339,27 +327,30 @@ export function InboxCard({
         // Exit animation
         isExiting && 'card-removing',
         // Selection state - warm amber glow
-        !isExiting && isSelected && [
+        !isExiting &&
+        isSelected && [
           'border-amber-300 dark:border-amber-700',
           'ring-2 ring-amber-200/50 dark:ring-amber-800/50',
           'shadow-lg shadow-amber-500/10',
           '-translate-y-0.5'
         ],
         // Focused state (not selected)
-        !isExiting && !isSelected && isFocused && [
+        !isExiting &&
+        !isSelected &&
+        isFocused && [
           'border-amber-400/50 dark:border-amber-600/50',
           'ring-2 ring-amber-300/30 dark:ring-amber-700/30',
           'shadow-lg'
         ],
         // Default hover state
         !isExiting &&
-          !isSelected &&
-          !isFocused && [
-            'border-border/60',
-            'shadow-sm',
-            'hover:shadow-md hover:border-amber-200/50 dark:hover:border-amber-800/50',
-            'hover:-translate-y-1'
-          ],
+        !isSelected &&
+        !isFocused && [
+          'border-border/60',
+          'shadow-sm',
+          'hover:shadow-md hover:border-amber-200/50 dark:hover:border-amber-800/50',
+          'hover:-translate-y-1'
+        ],
         className
       )}
       role="article"
@@ -381,7 +372,7 @@ export function InboxCard({
         <Checkbox
           id={`inbox-card-${item.id}`}
           checked={isSelected}
-          onCheckedChange={() => {}}
+          onCheckedChange={() => { }}
           className={cn(
             'bg-background/90 shadow-sm',
             'border-muted-foreground/30',
@@ -405,14 +396,7 @@ export function InboxCard({
           <TypeIcon type={item.type} className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500" />
         </div>
         <div className="flex items-center gap-2">
-          {item.snoozedUntil && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
-              <Clock className="w-2.5 h-2.5" aria-hidden="true" />
-              {formatSnoozeReturn(
-                item.snoozedUntil instanceof Date ? item.snoozedUntil : new Date(item.snoozedUntil)
-              )}
-            </span>
-          )}
+          <SnoozeCountdown snoozedUntil={item.snoozedUntil} />
           <span className="text-[10px] text-muted-foreground/60 tabular-nums">
             {formatTimestamp(item.createdAt, period)}
           </span>
@@ -450,14 +434,7 @@ export function InboxCard({
               : 'hidden group-hover:flex opacity-0 group-hover:opacity-100'
           )}
         >
-          <QuickActions
-            itemId={item.id}
-            onFile={onFile}
-            onPreview={onPreview}
-            onDelete={onDelete}
-            onSnooze={onSnooze}
-            variant="card"
-          />
+          <QuickActions itemId={item.id} onDelete={onDelete} onSnooze={onSnooze} variant="card" />
         </div>
       )}
     </div>

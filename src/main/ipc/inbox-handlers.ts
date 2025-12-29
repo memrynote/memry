@@ -457,7 +457,10 @@ function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]): InboxI
     pageCount: metadata?.pageCount as number | undefined,
     // Voice transcription fields
     transcription: row.transcription,
-    transcriptionStatus: row.transcriptionStatus as InboxItemListItem['transcriptionStatus']
+    transcriptionStatus: row.transcriptionStatus as InboxItemListItem['transcriptionStatus'],
+    // Snooze fields
+    snoozedUntil: row.snoozedUntil ? new Date(row.snoozedUntil) : undefined,
+    snoozeReason: row.snoozeReason ?? undefined
   }
 }
 
@@ -650,10 +653,8 @@ async function handleList(input: unknown): Promise<InboxListResponse> {
     conditions.push(eq(inboxItems.type, options.type))
   }
 
-  // Exclude filed items unless requested
-  if (!options.includeFiled) {
-    conditions.push(isNull(inboxItems.filedAt))
-  }
+  // Always exclude filed items (filed items are no longer in the inbox)
+  conditions.push(isNull(inboxItems.filedAt))
 
   // Exclude snoozed items unless requested
   if (!options.includeSnoozed) {

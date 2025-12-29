@@ -483,7 +483,6 @@ const api = {
     get: (id: string) => ipcRenderer.invoke(InboxChannels.invoke.GET, id),
     list: (options?: {
       type?: string
-      includeFiled?: boolean
       includeSnoozed?: boolean
       sortBy?: 'created' | 'modified' | 'title'
       sortOrder?: 'asc' | 'desc'

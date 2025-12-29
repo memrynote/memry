@@ -17,6 +17,7 @@ import { generateId } from '../lib/id'
 import { getSetting } from '@shared/db/queries/settings'
 import { listNotesFromCache } from '@shared/db/queries/notes'
 import { getNoteById } from '../vault/notes'
+import { getConfig } from '../vault'
 import { SettingsChannels } from '@shared/ipc-channels'
 import {
   generateEmbedding as generateLocalEmbedding,
@@ -378,14 +379,39 @@ async function findSimilarNotes(content: string, limit: number = 5): Promise<Sim
 }
 
 /**
- * Get folder path from note path
+ * Get folder path from note path, relative to the notes directory.
+ * Note paths are stored relative to vault root (e.g., "notes/kaan/test.md"),
+ * but folder paths for filing should be relative to notes dir (e.g., "kaan").
+ *
+ * Also handles corrupted paths like "notes/notes/kaan" from previous bugs.
  */
 function getFolderFromPath(notePath: string): string {
-  const parts = notePath.split('/')
-  if (parts.length <= 1) {
+  const config = getConfig()
+  const noteFolder = config.defaultNoteFolder // e.g., "notes"
+
+  // Extract folder part (remove filename)
+  let folderPath = notePath.split('/').slice(0, -1).join('/')
+
+  if (folderPath.length <= 0) {
     return '' // Root folder
   }
-  return parts.slice(0, -1).join('/')
+
+  // Strip the notes folder prefix - may need multiple passes for corrupted paths
+  // e.g., "notes/notes/kaan" -> "notes/kaan" -> "kaan"
+  let prevPath = ''
+  while (folderPath !== prevPath) {
+    prevPath = folderPath
+
+    if (folderPath === noteFolder) {
+      folderPath = '' // Root of notes folder
+      break
+    }
+    if (folderPath.startsWith(noteFolder + '/')) {
+      folderPath = folderPath.slice(noteFolder.length + 1)
+    }
+  }
+
+  return folderPath
 }
 
 // ============================================================================
@@ -413,8 +439,10 @@ function getFilingPatterns(itemType: string): FilingPattern[] {
       .limit(10)
       .all()
 
+    // Convert full note paths to folder paths relative to notes directory
+    // filedTo contains paths like "notes/kaan/my-note.md", we need "kaan"
     return patterns.map((p) => ({
-      destination: p.destination,
+      destination: getFolderFromPath(p.destination),
       action: p.action,
       count: p.count,
       tags: (p.tags as string[]) || []
@@ -443,7 +471,9 @@ function getRecentFilingDestinations(limit: number = 5): { path: string; count: 
       .limit(limit)
       .all()
 
-    return recent.map((r) => ({ path: r.path, count: r.count }))
+    // Convert full note paths to folder paths relative to notes directory
+    // filedTo contains paths like "notes/kaan/my-note.md", we need "kaan"
+    return recent.map((r) => ({ path: getFolderFromPath(r.path), count: r.count }))
   } catch {
     return []
   }

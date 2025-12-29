@@ -276,7 +276,6 @@ export const CapturePdfSchema = z.object({
 
 export const InboxListSchema = z.object({
   type: z.enum(['link', 'note', 'image', 'voice', 'clip', 'pdf', 'social']).optional(),
-  includeFiled: z.boolean().default(false),
   includeSnoozed: z.boolean().default(false),
   sortBy: z.enum(['created', 'modified', 'title']).default('created'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),

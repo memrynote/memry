@@ -310,7 +310,7 @@ export function formatSnoozeDuration(date: Date): string {
 
 /**
  * Format a snooze time for display in list items
- * Shows relative time like "Returns in 2 days" or "Returns tomorrow"
+ * Shows remaining time like "4h left", "1d left", "1w left"
  */
 export function formatSnoozeReturn(date: Date): string {
   const now = new Date()
@@ -321,19 +321,18 @@ export function formatSnoozeReturn(date: Date): string {
     return 'Due now'
   }
 
-  const diffMins = Math.round(diffMs / (1000 * 60))
-  const diffHours = Math.round(diffMs / (1000 * 60 * 60))
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+  const diffMins = Math.floor(diffMs / (1000 * 60))
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const diffWeeks = Math.floor(diffDays / 7)
 
   if (diffMins < 60) {
-    return `Returns in ${diffMins}m`
+    return `${diffMins}m left`
   } else if (diffHours < 24) {
-    return `Returns in ${diffHours}h`
-  } else if (diffDays === 1) {
-    return 'Returns tomorrow'
+    return `${diffHours}h left`
   } else if (diffDays < 7) {
-    return `Returns in ${diffDays} days`
+    return `${diffDays}d left`
   } else {
-    return `Returns ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+    return `${diffWeeks}w left`
   }
 }

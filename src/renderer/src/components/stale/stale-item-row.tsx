@@ -38,8 +38,6 @@ interface StaleItemRowProps {
   isSelected: boolean
   isInBulkMode: boolean
   isExiting?: boolean
-  onFile: (id: string) => void
-  onPreview: (id: string) => void
   onDelete: (id: string) => void
   onFocus: (id: string) => void
   onSelectionToggle: (id: string, shiftKey: boolean) => void
@@ -54,8 +52,6 @@ export const StaleItemRow = ({
   isSelected,
   isInBulkMode,
   isExiting = false,
-  onFile,
-  onPreview,
   onDelete,
   onFocus,
   onSelectionToggle
@@ -145,13 +141,7 @@ export const StaleItemRow = ({
                 isFocused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
               )}
             >
-              <QuickActions
-                itemId={item.id}
-                onFile={onFile}
-                onPreview={onPreview}
-                onDelete={onDelete}
-                variant="row"
-              />
+              <QuickActions itemId={item.id} onDelete={onDelete} variant="row" />
             </div>
           )}
         </div>

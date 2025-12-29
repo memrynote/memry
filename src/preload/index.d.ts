@@ -1443,7 +1443,6 @@ export interface InboxClientAPI {
   get(id: string): Promise<InboxItem | null>
   list(options?: {
     type?: string
-    includeFiled?: boolean
     includeSnoozed?: boolean
     sortBy?: 'created' | 'modified' | 'title'
     sortOrder?: 'asc' | 'desc'
