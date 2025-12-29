@@ -86,6 +86,14 @@ export interface SocialMetadata {
   postContent: string
   timestamp?: string
   mediaUrls: string[]
+  metrics?: {
+    likes?: number
+    reposts?: number
+    replies?: number
+  }
+  isThread?: boolean
+  threadId?: string
+  extractionStatus?: 'pending' | 'full' | 'partial' | 'failed'
 }
 
 export type InboxMetadata =

@@ -345,13 +345,13 @@
 
 ### Implementation for User Story 14
 
-- [ ] T131 [P] [US14] Create src/main/inbox/social.ts with social platform detection
-- [ ] T132 [US14] Implement Twitter/X extraction using oEmbed in src/main/inbox/social.ts
-- [ ] T133 [US14] Add platform-specific metadata extraction for supported platforms
-- [ ] T134 [US14] Integrate social detection into link capture flow in src/main/inbox/capture.ts
-- [ ] T135 [US14] Create social post display component in src/renderer/src/components/social-card.tsx
-- [ ] T136 [US14] Display author avatar, handle, and formatted text in social card
-- [ ] T137 [US14] Handle graceful fallback when social extraction fails
+- [x] T131 [P] [US14] Create src/main/inbox/social.ts with social platform detection
+- [x] T132 [US14] Implement Twitter/X extraction using oEmbed in src/main/inbox/social.ts
+- [x] T133 [US14] Add platform-specific metadata extraction for supported platforms
+- [x] T134 [US14] Integrate social detection into link capture flow in src/main/inbox/capture.ts
+- [x] T135 [US14] Create social post display component in src/renderer/src/components/social-card.tsx
+- [x] T136 [US14] Display author avatar, handle, and formatted text in social card
+- [x] T137 [US14] Handle graceful fallback when social extraction fails
 
 **Checkpoint**: Social post capture is fully functional
 

@@ -44,6 +44,15 @@ export type { CaptureVoiceInput } from './capture'
 export { transcribeAudio, retryTranscription, isTranscriptionAvailable } from './transcription'
 export type { TranscriptionResult } from './transcription'
 
+// Phase 16: Social media post extraction
+export {
+  extractSocialPost,
+  detectSocialPlatform,
+  isSocialPost,
+  createFallbackSocialMetadata
+} from './social'
+export type { SocialExtractionResult } from './social'
+
 // Future phases will add exports for:
 // - capture.ts: captureImage, capturePdf, captureClip
 // - suggestions.ts: getFilingSuggestions

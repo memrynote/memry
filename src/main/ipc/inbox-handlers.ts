@@ -41,6 +41,13 @@ import {
 } from '../inbox/attachments'
 import { fetchUrlMetadata, downloadImage } from '../inbox/metadata'
 import { fileToFolder, convertToNote, linkToNote, bulkFileToFolder } from '../inbox/filing'
+import {
+  extractSocialPost,
+  detectSocialPlatform,
+  isSocialPost,
+  createFallbackSocialMetadata
+} from '../inbox/social'
+import type { SocialMetadata } from '@shared/contracts/inbox-api'
 import { captureVoice } from '../inbox/capture'
 import { retryTranscription } from '../inbox/transcription'
 import { FileItemSchema, BulkFileSchema, BulkTagSchema } from '@shared/contracts/inbox-api'
@@ -178,6 +185,176 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
       })
     } catch (dbError) {
       console.error('[Metadata] Failed to update error status:', dbError)
+    }
+  }
+}
+
+// ============================================================================
+// Background Social Post Extraction
+// ============================================================================
+
+/**
+ * Fetch social post metadata in background and update the inbox item
+ *
+ * Uses platform-specific extractors (oEmbed for Twitter, API for Bluesky, etc.)
+ * Falls back to regular metadata extraction if social extraction fails.
+ *
+ * @param itemId - The inbox item ID to update
+ * @param url - The social media post URL
+ * @param retryCount - Current retry count (auto-retry once on failure)
+ */
+async function fetchAndUpdateSocialMetadata(
+  itemId: string,
+  url: string,
+  retryCount = 0
+): Promise<void> {
+  let db: ReturnType<typeof getDatabase>
+
+  try {
+    db = requireDatabase()
+  } catch {
+    console.warn('[Social] No database available, skipping social metadata fetch')
+    return
+  }
+
+  const platform = detectSocialPlatform(url)
+  console.log(`[Social] Fetching ${platform} metadata for ${url}`)
+
+  try {
+    // Update status to processing
+    db.update(inboxItems)
+      .set({
+        processingStatus: 'processing',
+        modifiedAt: new Date().toISOString()
+      })
+      .where(eq(inboxItems.id, itemId))
+      .run()
+
+    // Attempt social extraction
+    const result = await extractSocialPost(url)
+
+    if (result.success && result.metadata) {
+      const metadata = result.metadata
+
+      // Build title from author and platform
+      let title = metadata.authorName || metadata.authorHandle || url
+      if (metadata.platform !== 'other') {
+        const platformName = metadata.platform.charAt(0).toUpperCase() + metadata.platform.slice(1)
+        if (metadata.authorHandle) {
+          title = `${platformName} post by ${metadata.authorHandle}`
+        } else if (metadata.authorName) {
+          title = `${platformName} post by ${metadata.authorName}`
+        } else {
+          title = `${platformName} post`
+        }
+      }
+
+      // Use post content as description, truncated
+      const content = metadata.postContent
+        ? metadata.postContent.substring(0, 500) + (metadata.postContent.length > 500 ? '...' : '')
+        : null
+
+      // Update item with social metadata
+      const now = new Date().toISOString()
+      db.update(inboxItems)
+        .set({
+          title,
+          content,
+          processingStatus: 'complete',
+          processingError: null,
+          modifiedAt: now,
+          metadata: metadata as SocialMetadata
+        })
+        .where(eq(inboxItems.id, itemId))
+        .run()
+
+      // Emit success event
+      emitInboxEvent(InboxChannels.events.METADATA_COMPLETE, {
+        id: itemId,
+        metadata
+      })
+
+      console.log(`[Social] Successfully updated social item ${itemId}: ${title}`)
+    } else {
+      // Social extraction failed, try regular metadata as fallback
+      console.log(
+        `[Social] Social extraction failed, falling back to regular metadata: ${result.error}`
+      )
+
+      // Try regular metadata extraction
+      try {
+        const regularMetadata = await fetchUrlMetadata(url)
+
+        // Use regular metadata with social fallback
+        const fallbackSocial = createFallbackSocialMetadata(url, platform || 'other', result.error)
+
+        // Merge regular metadata into social metadata
+        const mergedMetadata: SocialMetadata = {
+          ...fallbackSocial,
+          postContent: regularMetadata.description || '',
+          extractionStatus: 'partial'
+        }
+
+        const now = new Date().toISOString()
+        db.update(inboxItems)
+          .set({
+            title: regularMetadata.title || url,
+            content: regularMetadata.description || null,
+            processingStatus: 'complete',
+            processingError: null,
+            modifiedAt: now,
+            metadata: mergedMetadata
+          })
+          .where(eq(inboxItems.id, itemId))
+          .run()
+
+        emitInboxEvent(InboxChannels.events.METADATA_COMPLETE, {
+          id: itemId,
+          metadata: mergedMetadata
+        })
+
+        console.log(`[Social] Used fallback metadata for ${itemId}`)
+      } catch (fallbackError) {
+        throw new Error(
+          `Social extraction failed: ${result.error}; Fallback also failed: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown'}`
+        )
+      }
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error(`[Social] Error fetching social metadata for ${url}:`, errorMessage)
+
+    // Auto-retry once after delay
+    if (retryCount < 1) {
+      console.log(`[Social] Scheduling retry for ${itemId} in ${METADATA_RETRY_DELAY}ms`)
+      setTimeout(() => {
+        fetchAndUpdateSocialMetadata(itemId, url, retryCount + 1).catch(console.error)
+      }, METADATA_RETRY_DELAY)
+      return
+    }
+
+    // Update item with error status but still store as social type with fallback metadata
+    try {
+      const fallbackMetadata = createFallbackSocialMetadata(url, platform || 'other', errorMessage)
+
+      db.update(inboxItems)
+        .set({
+          processingStatus: 'failed',
+          processingError: errorMessage,
+          modifiedAt: new Date().toISOString(),
+          metadata: fallbackMetadata
+        })
+        .where(eq(inboxItems.id, itemId))
+        .run()
+
+      // Emit error event
+      emitInboxEvent(InboxChannels.events.PROCESSING_ERROR, {
+        id: itemId,
+        operation: 'metadata',
+        error: errorMessage
+      })
+    } catch (dbError) {
+      console.error('[Social] Failed to update error status:', dbError)
     }
   }
 }
@@ -346,6 +523,9 @@ async function handleCaptureText(input: unknown): Promise<CaptureResponse> {
 
 /**
  * Capture a URL with background metadata extraction
+ *
+ * Automatically detects social media posts (Twitter, Bluesky, Mastodon, etc.)
+ * and uses specialized extraction for richer metadata display.
  */
 async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
   try {
@@ -355,21 +535,41 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
     const id = generateId()
     const now = new Date().toISOString()
 
-    // Create link item with pending status
+    // Detect if this is a social media post
+    const platform = detectSocialPlatform(parsed.url)
+    const isSocial = platform !== null && isSocialPost(parsed.url)
+    const itemType = isSocial ? 'social' : 'link'
+
+    console.log(
+      `[Capture] URL detected as ${itemType}${platform ? ` (${platform})` : ''}: ${parsed.url}`
+    )
+
+    // Create item with pending status
+    // For social posts, we set type to 'social' for specialized UI handling
     db.insert(inboxItems)
       .values({
         id,
-        type: 'link',
+        type: itemType,
         title: parsed.url, // Will be updated when metadata is fetched
         content: null,
         sourceUrl: parsed.url,
         createdAt: now,
         modifiedAt: now,
         processingStatus: 'pending', // Metadata fetch is pending
-        metadata: {
-          url: parsed.url,
-          fetchStatus: 'pending'
-        }
+        metadata: isSocial
+          ? {
+              platform: platform || 'other',
+              postUrl: parsed.url,
+              authorName: '',
+              authorHandle: '',
+              postContent: '',
+              mediaUrls: [],
+              extractionStatus: 'pending' as const
+            }
+          : {
+              url: parsed.url,
+              fetchStatus: 'pending'
+            }
       })
       .run()
 
@@ -399,10 +599,17 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
 
     // Trigger background metadata fetch (don't await - non-blocking)
+    // Use specialized social extraction for social posts
     setImmediate(() => {
-      fetchAndUpdateMetadata(id, parsed.url).catch((err) => {
-        console.error('[Inbox] Background metadata fetch error:', err)
-      })
+      if (isSocial) {
+        fetchAndUpdateSocialMetadata(id, parsed.url).catch((err) => {
+          console.error('[Inbox] Background social metadata fetch error:', err)
+        })
+      } else {
+        fetchAndUpdateMetadata(id, parsed.url).catch((err) => {
+          console.error('[Inbox] Background metadata fetch error:', err)
+        })
+      }
     })
 
     return { success: true, item }
