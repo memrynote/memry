@@ -3,6 +3,7 @@ export {
   initIndexDatabase,
   getDatabase,
   getIndexDatabase,
+  getRawIndexDatabase,
   closeDatabase,
   closeIndexDatabase,
   closeAllDatabases,

@@ -1526,9 +1526,16 @@ export interface JournalSettings {
 }
 
 export interface AISettings {
-  openaiApiKey: string | null
   enabled: boolean
-  embeddingModel: string
+}
+
+export interface AIModelStatus {
+  name: string
+  dimension: number
+  loaded: boolean
+  loading: boolean
+  error: string | null
+  embeddingCount?: number
 }
 
 export interface SettingsChangedEvent {
@@ -1539,7 +1546,9 @@ export interface SettingsChangedEvent {
 export interface EmbeddingProgressEvent {
   current: number
   total: number
-  phase: 'scanning' | 'embedding' | 'complete'
+  phase: 'downloading' | 'loading' | 'ready' | 'error' | 'scanning' | 'embedding' | 'complete'
+  status?: string
+  progress?: number
 }
 
 // Settings client API interface
@@ -1550,11 +1559,17 @@ export interface SettingsClientAPI {
   setJournalSettings(
     settings: Partial<JournalSettings>
   ): Promise<{ success: boolean; error?: string }>
-  // AI Settings
+  // AI Settings (local model - no API key needed)
   getAISettings(): Promise<AISettings>
   setAISettings(settings: Partial<AISettings>): Promise<{ success: boolean; error?: string }>
-  testAIConnection(): Promise<{ success: boolean; error?: string }>
-  reindexEmbeddings(): Promise<{ success: boolean; error?: string }>
+  getAIModelStatus(): Promise<AIModelStatus>
+  loadAIModel(): Promise<{ success: boolean; error?: string; message?: string }>
+  reindexEmbeddings(): Promise<{
+    success: boolean
+    computed?: number
+    skipped?: number
+    error?: string
+  }>
 }
 
 // Window controls API

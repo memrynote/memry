@@ -44,9 +44,7 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
-  RefreshCw,
-  Eye,
-  EyeOff
+  RefreshCw
 } from 'lucide-react'
 import {
   Select,
@@ -547,89 +545,83 @@ function JournalSettings() {
 // AI Settings
 // ============================================================================
 
+interface AIModelStatus {
+  name: string
+  dimension: number
+  loaded: boolean
+  loading: boolean
+  error: string | null
+  embeddingCount?: number
+}
+
 function AISettings() {
-  const [settings, setSettings] = useState<{
-    openaiApiKey: string | null
-    enabled: boolean
-    embeddingModel: string
-  }>({
-    openaiApiKey: null,
-    enabled: false,
-    embeddingModel: 'text-embedding-3-small'
-  })
+  const [settings, setSettings] = useState<{ enabled: boolean }>({ enabled: false })
+  const [modelStatus, setModelStatus] = useState<AIModelStatus | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [isTesting, setIsTesting] = useState(false)
+  const [isLoadingModel, setIsLoadingModel] = useState(false)
   const [isReindexing, setIsReindexing] = useState(false)
-  const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null)
   const [reindexProgress, setReindexProgress] = useState<{
     current: number
     total: number
     phase: string
   } | null>(null)
-  const [apiKeyInput, setApiKeyInput] = useState('')
-  const [showApiKey, setShowApiKey] = useState(false)
 
-  // Load settings on mount
+  // Load settings and model status on mount
   useEffect(() => {
-    const loadSettings = async (): Promise<void> => {
+    const loadData = async (): Promise<void> => {
       try {
-        const aiSettings = await window.api.settings.getAISettings()
+        const [aiSettings, status] = await Promise.all([
+          window.api.settings.getAISettings(),
+          window.api.settings.getAIModelStatus()
+        ])
         setSettings(aiSettings)
-        // Only show masked version if key exists
-        if (aiSettings.openaiApiKey) {
-          setApiKeyInput('sk-****************************')
-        }
+        setModelStatus(status)
       } catch (error) {
         console.error('Failed to load AI settings:', error)
       } finally {
         setIsLoading(false)
       }
     }
-    loadSettings()
+    loadData()
   }, [])
 
   // Subscribe to embedding progress events
   useEffect(() => {
     const unsubscribe = window.api.onEmbeddingProgress((event) => {
-      setReindexProgress(event)
-      if (event.phase === 'complete') {
-        setTimeout(() => {
-          setIsReindexing(false)
-          setReindexProgress(null)
-        }, 1000)
+      // Handle model loading progress
+      if (event.phase === 'downloading' || event.phase === 'loading') {
+        setIsLoadingModel(true)
+        setReindexProgress({
+          current: event.progress ?? 0,
+          total: 100,
+          phase: event.phase
+        })
+      } else if (event.phase === 'ready') {
+        setIsLoadingModel(false)
+        setReindexProgress(null)
+        // Refresh model status
+        window.api.settings.getAIModelStatus().then(setModelStatus)
+      } else if (event.phase === 'error') {
+        setIsLoadingModel(false)
+        setReindexProgress(null)
+        setModelStatus((prev) =>
+          prev ? { ...prev, error: event.status ?? 'Unknown error' } : null
+        )
+      } else {
+        // Handle reindexing progress
+        setReindexProgress(event)
+        if (event.phase === 'complete') {
+          setTimeout(() => {
+            setIsReindexing(false)
+            setReindexProgress(null)
+            // Refresh model status to get updated embedding count
+            window.api.settings.getAIModelStatus().then(setModelStatus)
+          }, 1000)
+        }
       }
     })
     return unsubscribe
   }, [])
-
-  const handleSaveApiKey = useCallback(async () => {
-    // Don't save if it's the masked placeholder
-    if (apiKeyInput.startsWith('sk-****')) {
-      toast.info('Enter a new API key to update')
-      return
-    }
-
-    setIsSaving(true)
-    try {
-      const result = await window.api.settings.setAISettings({
-        openaiApiKey: apiKeyInput || null
-      })
-      if (result.success) {
-        toast.success('API key saved')
-        setSettings((prev) => ({ ...prev, openaiApiKey: apiKeyInput || null }))
-        if (apiKeyInput) {
-          setApiKeyInput('sk-****************************')
-        }
-      } else {
-        toast.error(result.error || 'Failed to save API key')
-      }
-    } catch (error) {
-      toast.error('Failed to save API key')
-    } finally {
-      setIsSaving(false)
-    }
-  }, [apiKeyInput])
 
   const handleToggleEnabled = useCallback(async (enabled: boolean) => {
     try {
@@ -645,22 +637,22 @@ function AISettings() {
     }
   }, [])
 
-  const handleTestConnection = useCallback(async () => {
-    setIsTesting(true)
-    setTestResult(null)
+  const handleLoadModel = useCallback(async () => {
+    setIsLoadingModel(true)
     try {
-      const result = await window.api.settings.testAIConnection()
-      setTestResult(result)
+      const result = await window.api.settings.loadAIModel()
       if (result.success) {
-        toast.success('Connection successful!')
+        toast.success(result.message || 'Model loaded successfully')
+        // Refresh model status
+        const status = await window.api.settings.getAIModelStatus()
+        setModelStatus(status)
       } else {
-        toast.error(result.error || 'Connection failed')
+        toast.error(result.error || 'Failed to load model')
       }
     } catch (error) {
-      setTestResult({ success: false, error: 'Connection test failed' })
-      toast.error('Connection test failed')
+      toast.error('Failed to load model')
     } finally {
-      setIsTesting(false)
+      setIsLoadingModel(false)
     }
   }, [])
 
@@ -670,9 +662,10 @@ function AISettings() {
     try {
       const result = await window.api.settings.reindexEmbeddings()
       if (result.success) {
-        toast.success('Embeddings reindexed successfully')
+        toast.success(
+          `Embeddings reindexed: ${result.computed ?? 0} computed, ${result.skipped ?? 0} skipped`
+        )
         setIsReindexing(false)
-
       } else {
         toast.error(result.error || 'Failed to reindex embeddings')
         setIsReindexing(false)
@@ -701,7 +694,8 @@ function AISettings() {
       <div>
         <h3 className="text-lg font-semibold">AI Assistant</h3>
         <p className="text-sm text-muted-foreground">
-          Configure AI-powered features like smart filing suggestions
+          Configure AI-powered features like smart filing suggestions. All AI processing runs
+          locally on your device.
         </p>
       </div>
 
@@ -715,97 +709,100 @@ function AISettings() {
             Use AI to suggest folders and tags when filing items
           </p>
         </div>
-        <Switch
-          id="ai-enabled"
-          checked={settings.enabled}
-          onCheckedChange={handleToggleEnabled}
-          disabled={!settings.openaiApiKey}
-        />
+        <Switch id="ai-enabled" checked={settings.enabled} onCheckedChange={handleToggleEnabled} />
       </div>
 
       <Separator />
 
-      {/* OpenAI API Key */}
+      {/* Local Model Status */}
       <div className="space-y-4">
         <div>
-          <Label htmlFor="api-key">OpenAI API Key</Label>
+          <Label>Local Embedding Model</Label>
           <p className="text-sm text-muted-foreground mt-1">
-            Required for AI-powered suggestions. Get your key from{' '}
-            <a
-              href="https://platform.openai.com/api-keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              OpenAI
-            </a>
+            Embeddings are generated locally using the all-MiniLM-L6-v2 model. No data is sent to
+            external servers.
           </p>
         </div>
 
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Input
-              id="api-key"
-              type={showApiKey ? 'text' : 'password'}
-              value={apiKeyInput}
-              onChange={(e) => setApiKeyInput(e.target.value)}
-              placeholder="sk-..."
-              className="pr-10"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="absolute right-0 top-0 h-full px-3"
-              onClick={() => setShowApiKey(!showApiKey)}
-            >
-              {showApiKey ? (
-                <EyeOff className="w-4 h-4 text-muted-foreground" />
+        {/* Model Info Card */}
+        <div className="rounded-lg border p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-muted-foreground" />
+              <span className="font-medium">{modelStatus?.name || 'all-MiniLM-L6-v2'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {modelStatus?.loaded ? (
+                <span className="flex items-center gap-1 text-sm text-green-600">
+                  <CheckCircle className="w-4 h-4" />
+                  Loaded
+                </span>
+              ) : modelStatus?.loading || isLoadingModel ? (
+                <span className="flex items-center gap-1 text-sm text-amber-600">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading...
+                </span>
               ) : (
-                <Eye className="w-4 h-4 text-muted-foreground" />
+                <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <XCircle className="w-4 h-4" />
+                  Not loaded
+                </span>
               )}
-            </Button>
+            </div>
           </div>
-          <Button onClick={handleSaveApiKey} disabled={isSaving}>
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
-          </Button>
+
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-muted-foreground">Dimensions:</span>
+              <span className="ml-2">{modelStatus?.dimension || 384}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Embeddings:</span>
+              <span className="ml-2">{modelStatus?.embeddingCount ?? 0}</span>
+            </div>
+          </div>
+
+          {modelStatus?.error && (
+            <div className="text-sm text-red-600 flex items-center gap-1">
+              <XCircle className="w-4 h-4" />
+              {modelStatus.error}
+            </div>
+          )}
+
+          {!modelStatus?.loaded && !isLoadingModel && (
+            <Button onClick={handleLoadModel} className="w-full">
+              Download & Load Model
+            </Button>
+          )}
+
+          {isLoadingModel && reindexProgress && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>
+                  {reindexProgress.phase === 'downloading'
+                    ? 'Downloading model...'
+                    : 'Loading model...'}
+                </span>
+                <span>{Math.round(reindexProgress.current)}%</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-300"
+                  style={{ width: `${reindexProgress.current}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Test Connection */}
-        {settings.openaiApiKey && (
-          <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={handleTestConnection} disabled={isTesting}>
-              {isTesting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Testing...
-                </>
-              ) : (
-                'Test Connection'
-              )}
-            </Button>
-            {testResult && (
-              <span
-                className={cn(
-                  'flex items-center gap-1 text-sm',
-                  testResult.success ? 'text-green-600' : 'text-red-600'
-                )}
-              >
-                {testResult.success ? (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    Connected
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="w-4 h-4" />
-                    {testResult.error || 'Failed'}
-                  </>
-                )}
-              </span>
-            )}
-          </div>
-        )}
+        {/* Info hint */}
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+          <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+          <p className="text-muted-foreground">
+            The model (~23MB) will be downloaded once and cached locally. All embedding generation
+            happens on your device for complete privacy.
+          </p>
+        </div>
       </div>
 
       <Separator />
@@ -823,7 +820,7 @@ function AISettings() {
         <Button
           variant="outline"
           onClick={handleReindexEmbeddings}
-          disabled={isReindexing || !settings.openaiApiKey || !settings.enabled}
+          disabled={isReindexing || !modelStatus?.loaded || !settings.enabled}
         >
           {isReindexing ? (
             <>
@@ -838,30 +835,33 @@ function AISettings() {
           )}
         </Button>
 
-        {reindexProgress && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>
-                {reindexProgress.phase === 'scanning'
-                  ? 'Scanning notes...'
-                  : reindexProgress.phase === 'embedding'
-                    ? 'Generating embeddings...'
-                    : 'Complete!'}
-              </span>
-              <span>
-                {reindexProgress.current} / {reindexProgress.total}
-              </span>
+        {isReindexing &&
+          reindexProgress &&
+          reindexProgress.phase !== 'downloading' &&
+          reindexProgress.phase !== 'loading' && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>
+                  {reindexProgress.phase === 'scanning'
+                    ? 'Scanning notes...'
+                    : reindexProgress.phase === 'embedding'
+                      ? 'Generating embeddings...'
+                      : 'Complete!'}
+                </span>
+                <span>
+                  {reindexProgress.current} / {reindexProgress.total}
+                </span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-300"
+                  style={{
+                    width: `${reindexProgress.total > 0 ? (reindexProgress.current / reindexProgress.total) * 100 : 0}%`
+                  }}
+                />
+              </div>
             </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary transition-all duration-300"
-                style={{
-                  width: `${reindexProgress.total > 0 ? (reindexProgress.current / reindexProgress.total) * 100 : 0}%`
-                }}
-              />
-            </div>
-          </div>
-        )}
+          )}
 
         {/* Info hint */}
         <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">

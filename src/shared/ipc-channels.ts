@@ -415,12 +415,14 @@ export const SettingsChannels = {
     GET_JOURNAL_SETTINGS: 'settings:getJournalSettings',
     /** Set journal settings */
     SET_JOURNAL_SETTINGS: 'settings:setJournalSettings',
-    /** Get AI settings */
+    /** Get AI settings (enabled flag) */
     GET_AI_SETTINGS: 'settings:getAISettings',
     /** Set AI settings */
     SET_AI_SETTINGS: 'settings:setAISettings',
-    /** Test OpenAI API connection */
-    TEST_AI_CONNECTION: 'settings:testAIConnection',
+    /** Get AI model status (loaded, loading, error, etc.) */
+    GET_AI_MODEL_STATUS: 'settings:getAIModelStatus',
+    /** Load AI embedding model */
+    LOAD_AI_MODEL: 'settings:loadAIModel',
     /** Trigger re-indexing of note embeddings */
     REINDEX_EMBEDDINGS: 'settings:reindexEmbeddings'
   },

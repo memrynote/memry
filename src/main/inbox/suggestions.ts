@@ -1,17 +1,16 @@
 /**
  * AI-Powered Filing Suggestions
  *
- * Provides smart filing suggestions using OpenAI embeddings
- * and content similarity analysis. Learns from filing history
- * to improve suggestions over time.
+ * Provides smart filing suggestions using local embeddings (all-MiniLM-L6-v2)
+ * and sqlite-vec for efficient vector similarity search.
+ * Learns from filing history to improve suggestions over time.
  *
  * @module inbox/suggestions
  */
 
 import { BrowserWindow } from 'electron'
-import { getDatabase, getIndexDatabase } from '../database'
+import { getDatabase, getIndexDatabase, getRawIndexDatabase } from '../database'
 import { inboxItems, filingHistory, suggestionFeedback } from '@shared/db/schema/inbox'
-import { noteEmbeddings, CHARS_PER_TOKEN } from '@shared/db/schema/embeddings'
 import { noteCache } from '@shared/db/schema/notes-cache'
 import { eq, desc, sql } from 'drizzle-orm'
 import { generateId } from '../lib/id'
@@ -19,16 +18,16 @@ import { getSetting } from '@shared/db/queries/settings'
 import { listNotesFromCache } from '@shared/db/queries/notes'
 import { getNoteById } from '../vault/notes'
 import { SettingsChannels } from '@shared/ipc-channels'
+import {
+  generateEmbedding as generateLocalEmbedding,
+  isModelLoaded,
+  initEmbeddingModel
+} from '../lib/embeddings'
 import type { FilingSuggestion } from '@shared/contracts/inbox-api'
 
 // ============================================================================
 // Types
 // ============================================================================
-
-interface EmbeddingResult {
-  embedding: number[]
-  tokensUsed: number
-}
 
 interface SimilarNote {
   noteId: string
@@ -44,27 +43,25 @@ interface FilingPattern {
   tags: string[]
 }
 
+interface VecSearchResult {
+  note_id: string
+  distance: number
+}
+
 // ============================================================================
 // Constants
 // ============================================================================
 
-const AI_SETTINGS_KEYS = {
-  OPENAI_API_KEY: 'ai.openaiApiKey',
-  ENABLED: 'ai.enabled',
-  EMBEDDING_MODEL: 'ai.embeddingModel'
-}
+const AI_SETTINGS_KEY = 'ai.enabled'
 
-/** Minimum similarity score to include in suggestions (0-1) */
-const MIN_SIMILARITY_THRESHOLD = 0.3
+/** Maximum cosine distance to include in suggestions (lower = more similar) */
+const MAX_DISTANCE_THRESHOLD = 1.0
 
 /** Maximum number of suggestions to return */
 const MAX_SUGGESTIONS = 3
 
 /** Minimum content length to generate embedding */
 const MIN_CONTENT_LENGTH = 10
-
-/** Maximum characters for embedding input */
-const MAX_EMBEDDING_CHARS = 8000 * CHARS_PER_TOKEN
 
 // ============================================================================
 // Helper Functions
@@ -93,127 +90,99 @@ function requireIndexDatabase() {
 }
 
 /**
- * Check if AI is enabled and API key is configured
+ * Get raw SQLite database for vec0 queries
  */
-function getAIConfig(): { apiKey: string; model: string } | null {
+function requireRawIndexDatabase() {
+  try {
+    return getRawIndexDatabase()
+  } catch {
+    throw new Error('No vault is open. Please open a vault first.')
+  }
+}
+
+/**
+ * Check if AI is enabled
+ */
+function isAIEnabled(): boolean {
   try {
     const db = getDatabase()
-    const apiKey = getSetting(db, AI_SETTINGS_KEYS.OPENAI_API_KEY)
-    const enabled = getSetting(db, AI_SETTINGS_KEYS.ENABLED)
-    const model = getSetting(db, AI_SETTINGS_KEYS.EMBEDDING_MODEL) || 'text-embedding-3-small'
-
-    if (!apiKey || enabled === 'false') {
-      return null
-    }
-
-    return { apiKey, model }
+    const enabled = getSetting(db, AI_SETTINGS_KEY)
+    return enabled !== 'false' // Default to true
   } catch {
-    return null
+    return false
   }
 }
 
 /**
  * Emit progress event to all windows
  */
-function emitProgress(computed: number, total: number, status: string): void {
+function emitProgress(current: number, total: number, phase: string): void {
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send(SettingsChannels.events.EMBEDDING_PROGRESS, {
-      computed,
+      current,
       total,
-      status
+      phase
     })
   })
 }
 
 // ============================================================================
-// Embedding Functions
+// Vector Storage (sqlite-vec)
 // ============================================================================
 
 /**
- * Generate embedding for text using OpenAI API
- *
- * @param text - The text to embed
- * @returns Embedding vector and tokens used, or null on error
+ * Store embedding for a note in vec_notes virtual table
  */
-export async function generateEmbedding(text: string): Promise<EmbeddingResult | null> {
-  const config = getAIConfig()
-  if (!config) {
-    console.log('[Suggestions] AI not configured, skipping embedding')
-    return null
-  }
+export function storeNoteEmbedding(noteId: string, embedding: Float32Array): void {
+  const rawDb = requireRawIndexDatabase()
 
-  if (!text || text.length < MIN_CONTENT_LENGTH) {
-    console.log('[Suggestions] Text too short for embedding')
-    return null
-  }
+  // Delete existing embedding if any
+  rawDb.prepare('DELETE FROM vec_notes WHERE note_id = ?').run(noteId)
 
-  // Truncate if too long
-  const truncatedText = text.substring(0, MAX_EMBEDDING_CHARS)
+  // Insert new embedding
+  rawDb.prepare('INSERT INTO vec_notes (note_id, embedding) VALUES (?, ?)').run(noteId, embedding)
+}
 
+/**
+ * Delete embedding for a note
+ */
+export function deleteNoteEmbedding(noteId: string): void {
   try {
-    const { default: OpenAI } = await import('openai')
-    const openai = new OpenAI({ apiKey: config.apiKey })
+    const rawDb = requireRawIndexDatabase()
+    rawDb.prepare('DELETE FROM vec_notes WHERE note_id = ?').run(noteId)
+  } catch {
+    // Ignore errors - embedding might not exist
+  }
+}
 
-    const response = await openai.embeddings.create({
-      model: config.model,
-      input: truncatedText
-    })
+/**
+ * Check if note has an embedding
+ */
+export function hasEmbedding(noteId: string): boolean {
+  try {
+    const rawDb = requireRawIndexDatabase()
+    const result = rawDb
+      .prepare('SELECT 1 FROM vec_notes WHERE note_id = ? LIMIT 1')
+      .get(noteId) as { '1': number } | undefined
+    return result !== undefined
+  } catch {
+    return false
+  }
+}
 
-    return {
-      embedding: response.data[0].embedding,
-      tokensUsed: response.usage?.total_tokens || 0
+/**
+ * Get count of stored embeddings
+ */
+export function getEmbeddingCount(): number {
+  try {
+    const rawDb = requireRawIndexDatabase()
+    const result = rawDb.prepare('SELECT COUNT(*) as count FROM vec_notes').get() as {
+      count: number
     }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Suggestions] Embedding generation failed:', message)
-    return null
-  }
-}
-
-/**
- * Calculate cosine similarity between two embedding vectors
- *
- * @param a - First embedding vector
- * @param b - Second embedding vector
- * @returns Similarity score between 0 and 1
- */
-export function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length !== b.length) {
-    console.error('[Suggestions] Vector dimension mismatch:', a.length, 'vs', b.length)
+    return result?.count || 0
+  } catch {
     return 0
   }
-
-  let dotProduct = 0
-  let normA = 0
-  let normB = 0
-
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i]
-    normA += a[i] * a[i]
-    normB += b[i] * b[i]
-  }
-
-  if (normA === 0 || normB === 0) {
-    return 0
-  }
-
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB))
-}
-
-/**
- * Convert Buffer to Float32Array embedding
- */
-function bufferToEmbedding(buffer: Buffer): number[] {
-  const float32Array = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4)
-  return Array.from(float32Array)
-}
-
-/**
- * Convert embedding to Buffer for storage
- */
-function embeddingToBuffer(embedding: number[]): Buffer {
-  const float32Array = new Float32Array(embedding)
-  return Buffer.from(float32Array.buffer)
 }
 
 // ============================================================================
@@ -221,75 +190,14 @@ function embeddingToBuffer(embedding: number[]): Buffer {
 // ============================================================================
 
 /**
- * Get stored embedding for a note
- */
-export function getNoteEmbedding(noteId: string): number[] | null {
-  try {
-    const indexDb = requireIndexDatabase()
-    const row = indexDb.select().from(noteEmbeddings).where(eq(noteEmbeddings.noteId, noteId)).get()
-
-    if (!row) return null
-
-    return bufferToEmbedding(row.embedding)
-  } catch {
-    return null
-  }
-}
-
-/**
- * Store embedding for a note
- */
-export function storeNoteEmbedding(
-  noteId: string,
-  embedding: number[],
-  contentHash: string,
-  model: string
-): void {
-  const indexDb = requireIndexDatabase()
-
-  indexDb
-    .insert(noteEmbeddings)
-    .values({
-      noteId,
-      embedding: embeddingToBuffer(embedding),
-      contentHash,
-      model,
-      computedAt: new Date().toISOString()
-    })
-    .onConflictDoUpdate({
-      target: noteEmbeddings.noteId,
-      set: {
-        embedding: embeddingToBuffer(embedding),
-        contentHash,
-        model,
-        computedAt: new Date().toISOString()
-      }
-    })
-    .run()
-}
-
-/**
- * Check if note needs embedding update
- */
-function needsEmbeddingUpdate(noteId: string, currentHash: string): boolean {
-  try {
-    const indexDb = requireIndexDatabase()
-    const existing = indexDb
-      .select({ contentHash: noteEmbeddings.contentHash })
-      .from(noteEmbeddings)
-      .where(eq(noteEmbeddings.noteId, noteId))
-      .get()
-
-    return !existing || existing.contentHash !== currentHash
-  } catch {
-    return true
-  }
-}
-
-/**
  * Compute and store embedding for a single note
  */
 export async function updateNoteEmbedding(noteId: string): Promise<boolean> {
+  // Check if AI is enabled
+  if (!isAIEnabled()) {
+    return false
+  }
+
   try {
     const note = await getNoteById(noteId)
     if (!note) {
@@ -297,39 +205,21 @@ export async function updateNoteEmbedding(noteId: string): Promise<boolean> {
       return false
     }
 
-    // Check if update needed
-    const indexDb = requireIndexDatabase()
-    const cached = indexDb
-      .select({ contentHash: noteCache.contentHash })
-      .from(noteCache)
-      .where(eq(noteCache.id, noteId))
-      .get()
-
-    if (!cached) {
-      console.log(`[Suggestions] Note not in cache: ${noteId}`)
+    // Skip if content is too short
+    if (!note.content || note.content.length < MIN_CONTENT_LENGTH) {
+      console.log(`[Suggestions] Content too short for: ${noteId}`)
       return false
     }
 
-    if (!needsEmbeddingUpdate(noteId, cached.contentHash)) {
-      console.log(`[Suggestions] Embedding up to date: ${noteId}`)
-      return true
-    }
-
-    // Generate embedding
-    const result = await generateEmbedding(note.content)
-    if (!result) {
+    // Generate embedding using local model
+    const embedding = await generateLocalEmbedding(note.content)
+    if (!embedding) {
+      console.log(`[Suggestions] Failed to generate embedding for: ${noteId}`)
       return false
     }
 
-    // Store embedding
-    const config = getAIConfig()
-    storeNoteEmbedding(
-      noteId,
-      result.embedding,
-      cached.contentHash,
-      config?.model || 'text-embedding-3-small'
-    )
-
+    // Store in vec_notes
+    storeNoteEmbedding(noteId, embedding)
     console.log(`[Suggestions] Updated embedding for: ${note.title}`)
     return true
   } catch (error) {
@@ -349,29 +239,36 @@ export async function reindexAllEmbeddings(): Promise<{
   skipped: number
   error?: string
 }> {
-  const config = getAIConfig()
-  if (!config) {
-    return { success: false, computed: 0, skipped: 0, error: 'AI not configured' }
+  if (!isAIEnabled()) {
+    return { success: false, computed: 0, skipped: 0, error: 'AI is disabled' }
+  }
+
+  // Ensure model is loaded
+  if (!isModelLoaded()) {
+    const loaded = await initEmbeddingModel()
+    if (!loaded) {
+      return { success: false, computed: 0, skipped: 0, error: 'Failed to load embedding model' }
+    }
   }
 
   try {
     const indexDb = requireIndexDatabase()
+    const rawDb = requireRawIndexDatabase()
     const notes = listNotesFromCache(indexDb, { limit: 10000 })
 
     let computed = 0
     let skipped = 0
     const total = notes.length
 
-    emitProgress(0, total, 'Starting embedding indexing...')
+    emitProgress(0, total, 'scanning')
+
+    // Clear existing embeddings for clean reindex
+    rawDb.prepare('DELETE FROM vec_notes').run()
+
+    emitProgress(0, total, 'embedding')
 
     for (let i = 0; i < notes.length; i++) {
       const noteItem = notes[i]
-
-      // Check if update needed
-      if (!needsEmbeddingUpdate(noteItem.id, noteItem.contentHash)) {
-        skipped++
-        continue
-      }
 
       // Get full note content
       const note = await getNoteById(noteItem.id)
@@ -381,28 +278,23 @@ export async function reindexAllEmbeddings(): Promise<{
       }
 
       // Generate embedding
-      const result = await generateEmbedding(note.content)
-      if (!result) {
+      const embedding = await generateLocalEmbedding(note.content)
+      if (!embedding) {
         skipped++
         continue
       }
 
       // Store embedding
-      storeNoteEmbedding(noteItem.id, result.embedding, noteItem.contentHash, config.model)
+      storeNoteEmbedding(noteItem.id, embedding)
       computed++
 
-      // Emit progress every 10 notes
-      if (computed % 10 === 0) {
-        emitProgress(computed + skipped, total, `Indexed ${computed} notes...`)
-      }
-
-      // Small delay to avoid rate limiting
-      if (computed % 50 === 0) {
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Emit progress every 5 notes
+      if ((computed + skipped) % 5 === 0) {
+        emitProgress(computed + skipped, total, 'embedding')
       }
     }
 
-    emitProgress(total, total, `Complete: ${computed} indexed, ${skipped} skipped`)
+    emitProgress(total, total, 'complete')
     console.log(`[Suggestions] Reindex complete: ${computed} computed, ${skipped} skipped`)
 
     return { success: true, computed, skipped }
@@ -414,66 +306,75 @@ export async function reindexAllEmbeddings(): Promise<{
 }
 
 // ============================================================================
-// Similarity Search
+// Similarity Search (sqlite-vec)
 // ============================================================================
 
 /**
- * Find notes similar to the given content
+ * Find notes similar to the given content using sqlite-vec KNN search
  */
 async function findSimilarNotes(content: string, limit: number = 5): Promise<SimilarNote[]> {
   // Generate embedding for the content
-  const result = await generateEmbedding(content)
-  if (!result) {
+  const embedding = await generateLocalEmbedding(content)
+  if (!embedding) {
     return []
   }
 
-  const contentEmbedding = result.embedding
-  const indexDb = requireIndexDatabase()
+  try {
+    const rawDb = requireRawIndexDatabase()
+    const indexDb = requireIndexDatabase()
 
-  // Get all note embeddings
-  const embeddings = indexDb
-    .select({
-      noteId: noteEmbeddings.noteId,
-      embedding: noteEmbeddings.embedding
-    })
-    .from(noteEmbeddings)
-    .all()
+    // Use sqlite-vec KNN search with cosine distance
+    // Lower distance = more similar (cosine distance ranges from 0 to 2)
+    const results = rawDb
+      .prepare(
+        `
+      SELECT note_id, distance
+      FROM vec_notes
+      WHERE embedding MATCH ?
+        AND k = ?
+      ORDER BY distance
+    `
+      )
+      .all(embedding, limit) as VecSearchResult[]
 
-  if (embeddings.length === 0) {
-    console.log('[Suggestions] No note embeddings found')
-    return []
-  }
+    if (results.length === 0) {
+      console.log('[Suggestions] No similar notes found')
+      return []
+    }
 
-  // Calculate similarity for each note
-  const similarities: SimilarNote[] = []
+    // Convert to SimilarNote format with note info
+    const similarities: SimilarNote[] = []
 
-  for (const row of embeddings) {
-    const noteEmbedding = bufferToEmbedding(row.embedding)
-    const score = cosineSimilarity(contentEmbedding, noteEmbedding)
+    for (const row of results) {
+      // Skip if distance is too high (not similar enough)
+      if (row.distance > MAX_DISTANCE_THRESHOLD) continue
 
-    if (score >= MIN_SIMILARITY_THRESHOLD) {
-      // Get note info
+      // Get note info from cache
       const noteInfo = indexDb
         .select({ path: noteCache.path, title: noteCache.title })
         .from(noteCache)
-        .where(eq(noteCache.id, row.noteId))
+        .where(eq(noteCache.id, row.note_id))
         .get()
 
       if (noteInfo) {
+        // Convert distance to similarity score (0-1, higher = more similar)
+        // Cosine distance ranges from 0 (identical) to 2 (opposite)
+        const similarityScore = 1 - row.distance / 2
+
         similarities.push({
-          noteId: row.noteId,
+          noteId: row.note_id,
           notePath: noteInfo.path,
           noteTitle: noteInfo.title,
-          score
+          score: similarityScore
         })
       }
     }
+
+    return similarities
+  } catch (error) {
+    console.error('[Suggestions] Similarity search failed:', error)
+    return []
   }
-
-  // Sort by similarity score descending
-  similarities.sort((a, b) => b.score - a.score)
-
-  return similarities.slice(0, limit)
 }
 
 /**
@@ -556,18 +457,22 @@ function getRecentFilingDestinations(limit: number = 5): { path: string; count: 
  * Get filing suggestions for an inbox item
  *
  * Uses:
- * 1. Embedding similarity with existing notes
+ * 1. Embedding similarity with existing notes (via sqlite-vec)
  * 2. Filing history patterns
- * 3. Tag matching
+ * 3. Recent filing destinations
  *
  * @param itemId - The inbox item ID
  * @returns Array of filing suggestions
  */
 export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]> {
-  const config = getAIConfig()
-  if (!config) {
-    console.log('[Suggestions] AI not configured, returning empty suggestions')
+  if (!isAIEnabled()) {
+    console.log('[Suggestions] AI disabled, returning empty suggestions')
     return []
+  }
+
+  // Check if model is loaded (don't block on loading)
+  if (!isModelLoaded()) {
+    console.log('[Suggestions] Model not loaded, returning history-based suggestions only')
   }
 
   try {
@@ -585,8 +490,8 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
     // Build content for similarity search
     const content = [item.title, item.content].filter(Boolean).join('\n\n')
 
-    // 1. Find similar notes and suggest their folders
-    if (content.length >= MIN_CONTENT_LENGTH) {
+    // 1. Find similar notes and suggest their folders (only if model is loaded)
+    if (isModelLoaded() && content.length >= MIN_CONTENT_LENGTH) {
       const similarNotes = await findSimilarNotes(content, 5)
 
       for (const note of similarNotes) {
@@ -684,7 +589,7 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
  * @param itemType - Type of item
  * @param suggestedTo - What was suggested
  * @param actualTo - What user chose
- * @param confidence - Confidence of suggestion (0-100)
+ * @param confidence - Confidence of suggestion (0-1)
  * @param suggestedTags - Tags that were suggested
  * @param actualTags - Tags that were applied
  */

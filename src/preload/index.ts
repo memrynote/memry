@@ -396,14 +396,12 @@ const api = {
     getJournalSettings: () => ipcRenderer.invoke(SettingsChannels.invoke.GET_JOURNAL_SETTINGS),
     setJournalSettings: (settings: { defaultTemplate?: string | null }) =>
       ipcRenderer.invoke(SettingsChannels.invoke.SET_JOURNAL_SETTINGS, settings),
-    // AI Settings
+    // AI Settings (simplified - no API key needed, uses local model)
     getAISettings: () => ipcRenderer.invoke(SettingsChannels.invoke.GET_AI_SETTINGS),
-    setAISettings: (settings: {
-      openaiApiKey?: string | null
-      enabled?: boolean
-      embeddingModel?: string
-    }) => ipcRenderer.invoke(SettingsChannels.invoke.SET_AI_SETTINGS, settings),
-    testAIConnection: () => ipcRenderer.invoke(SettingsChannels.invoke.TEST_AI_CONNECTION),
+    setAISettings: (settings: { enabled?: boolean }) =>
+      ipcRenderer.invoke(SettingsChannels.invoke.SET_AI_SETTINGS, settings),
+    getAIModelStatus: () => ipcRenderer.invoke(SettingsChannels.invoke.GET_AI_MODEL_STATUS),
+    loadAIModel: () => ipcRenderer.invoke(SettingsChannels.invoke.LOAD_AI_MODEL),
     reindexEmbeddings: () => ipcRenderer.invoke(SettingsChannels.invoke.REINDEX_EMBEDDINGS)
   },
 

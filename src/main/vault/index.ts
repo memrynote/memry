@@ -45,6 +45,7 @@ import { VaultChannels } from '@shared/ipc-channels'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { startWatcher, stopWatcher } from './watcher'
 import { indexVault, rebuildIndex } from './indexer'
+import { initEmbeddingModel, isModelLoaded, isModelLoading } from '../lib/embeddings'
 
 /**
  * Current vault status
@@ -257,6 +258,15 @@ async function openVault(vaultPath: string): Promise<void> {
     path: vaultPath,
     error: null
   })
+
+  // Start loading embedding model in background (non-blocking)
+  // This ensures the model is ready when user needs AI suggestions
+  if (!isModelLoaded() && !isModelLoading()) {
+    console.log('[Vault] Starting background embedding model load...')
+    initEmbeddingModel().catch((err) => {
+      console.error('[Vault] Background embedding model load failed:', err)
+    })
+  }
 }
 
 /**
