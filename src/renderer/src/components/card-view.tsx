@@ -3,6 +3,7 @@ import { Link, FileText, Image, Mic, Play, Globe, Scissors, FileIcon, Share2 } f
 
 import { Checkbox } from '@/components/ui/checkbox'
 import { QuickActions } from '@/components/quick-actions'
+import { SocialCardContent } from '@/components/social-card'
 import { StaleSection } from '@/components/stale/stale-section'
 import {
   groupItemsByTimePeriod,
@@ -140,6 +141,19 @@ const VoiceCardContent = ({ item }: { item: InboxItem }): React.JSX.Element => {
   )
 }
 
+// Social card content - uses dedicated social card component
+const SocialCardContentWrapper = ({ item }: { item: InboxItem }): React.JSX.Element => {
+  return (
+    <SocialCardContent
+      title={item.title}
+      content={item.content}
+      sourceUrl={item.sourceUrl}
+      processingStatus={item.processingStatus}
+      variant="card"
+    />
+  )
+}
+
 // Card content renderer based on item type
 const CardContent = ({ item }: { item: InboxItem }): React.JSX.Element => {
   switch (item.type) {
@@ -151,9 +165,10 @@ const CardContent = ({ item }: { item: InboxItem }): React.JSX.Element => {
       return <ImageCardContent item={item} />
     case 'voice':
       return <VoiceCardContent item={item} />
+    case 'social':
+      return <SocialCardContentWrapper item={item} />
     case 'clip':
     case 'pdf':
-    case 'social':
     default:
       return <NoteCardContent item={item} />
   }
