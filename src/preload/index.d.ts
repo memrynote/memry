@@ -1291,6 +1291,9 @@ export interface InboxItemListItem {
   // Voice transcription fields
   transcription?: string | null
   transcriptionStatus?: InboxProcessingStatus | null
+  // Snooze fields (optional - only present for snoozed items)
+  snoozedUntil?: Date
+  snoozeReason?: string
 }
 
 export interface InboxListResponse {
@@ -1495,6 +1498,11 @@ export interface InboxClientAPI {
   }): Promise<InboxBulkResponse>
   bulkDelete(input: { itemIds: string[] }): Promise<InboxBulkResponse>
   bulkTag(input: { itemIds: string[]; tags: string[] }): Promise<InboxBulkResponse>
+  bulkSnooze(input: {
+    itemIds: string[]
+    snoozeUntil: string
+    reason?: string
+  }): Promise<InboxBulkResponse>
   fileAllStale(): Promise<InboxBulkResponse>
 
   // Transcription

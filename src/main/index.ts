@@ -14,6 +14,7 @@ import { config } from 'dotenv'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllHandlers } from './ipc'
 import { autoOpenLastVault, closeVault } from './vault'
+import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 
 // Load .env file from project root (must be before any env access)
 // In development, load from project root; in production, from app resources
@@ -237,6 +238,16 @@ app.whenReady().then(async () => {
   // Auto-open the last vault if one was previously open
   await autoOpenLastVault()
 
+  // Start the snooze scheduler for inbox items
+  // This checks for due items on startup and then every minute
+  try {
+    checkDueItemsOnStartup()
+    startSnoozeScheduler()
+  } catch (error) {
+    // Snooze scheduler is non-critical - log and continue
+    console.warn('[Snooze] Failed to start scheduler:', error)
+  }
+
   createWindow()
 
   app.on('activate', function () {
@@ -394,6 +405,10 @@ app.on('before-quit', async (event) => {
   }, 5000) // 5 second timeout
 
   try {
+    // Stop the snooze scheduler
+    console.log('[Shutdown] Stopping snooze scheduler...')
+    stopSnoozeScheduler()
+
     console.log('[Shutdown] Closing vault and stopping watcher...')
     await closeVault() // This also closes databases
     console.log('[Shutdown] Cleanup complete')

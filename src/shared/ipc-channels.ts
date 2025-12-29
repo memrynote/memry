@@ -540,6 +540,8 @@ export const InboxChannels = {
     UNSNOOZE: 'inbox:unsnooze',
     /** Get all snoozed items */
     GET_SNOOZED: 'inbox:get-snoozed',
+    /** Bulk snooze multiple items */
+    BULK_SNOOZE: 'inbox:bulk-snooze',
 
     // Bulk operations
     /** Bulk file multiple items */

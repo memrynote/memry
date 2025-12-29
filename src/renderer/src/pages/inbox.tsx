@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { List, Grid, Check, Loader2, AlertCircle, Archive } from 'lucide-react'
+import { List, Grid, Check, Loader2, AlertCircle, Archive, Clock } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'
@@ -25,7 +25,7 @@ import { EmptyState } from '@/components/empty-state/empty-state'
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
 import { SRAnnouncer } from '@/components/sr-announcer'
 import { CaptureInput } from '@/components/capture-input'
-import { inboxService } from '@/services/inbox-service'
+import { inboxService, onInboxSnoozeDue } from '@/services/inbox-service'
 import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
 import { getStaleItems, getNonStaleItems } from '@/lib/stale-utils'
 import { cn } from '@/lib/utils'
@@ -53,6 +53,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [toasts, setToasts] = useState<Toast[]>([])
   const [showFiledItems, setShowFiledItems] = useState(false)
+  const [showSnoozedItems, setShowSnoozedItems] = useState(false)
   const queryClient = useQueryClient()
 
   // Backend data hooks
@@ -62,7 +63,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     error,
     refetch
   } = useInboxList({
-    includeFiled: showFiledItems
+    includeFiled: showFiledItems,
+    includeSnoozed: showSnoozedItems
   })
 
   // File mutation
@@ -178,6 +180,42 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const removeToast = useCallback((id: string): void => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id))
   }, [])
+
+  // Subscribe to snooze due events (items becoming active again)
+  useEffect(() => {
+    const unsubscribe = onInboxSnoozeDue((event) => {
+      const { items: dueItems } = event
+      if (dueItems.length > 0) {
+        // Refresh the inbox list
+        queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+
+        // Show desktop notification
+        if ('Notification' in window && Notification.permission === 'granted') {
+          const count = dueItems.length
+          const title = count === 1 ? dueItems[0].title : `${count} snoozed items`
+          const body =
+            count === 1 ? 'Your snoozed item is ready for review' : 'Your snoozed items are ready'
+          new Notification(title, { body, icon: '/icon.png' })
+        }
+
+        // Show toast notification
+        addToast({
+          message:
+            dueItems.length === 1
+              ? `"${dueItems[0].title}" is back from snooze`
+              : `${dueItems.length} snoozed items are back`,
+          type: 'info'
+        })
+      }
+    })
+
+    // Request notification permission if not already granted
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+
+    return () => unsubscribe()
+  }, [queryClient, addToast])
 
   // Global keyboard shortcuts handler
   useEffect(() => {
@@ -618,6 +656,87 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     [items, addToast, previewingItemId, deleteItemMutation]
   )
 
+  // Handle snooze action with animation
+  const handleSnooze = useCallback(
+    async (id: string, snoozeUntil: string): Promise<void> => {
+      const snoozedItem = items.find((item) => item.id === id)
+      if (!snoozedItem) return
+
+      const willBeEmpty = items.length === 1
+
+      // Start exit animation
+      setExitingItemIds((prev) => new Set(prev).add(id))
+
+      // If we're snoozing the previewed item, close the preview
+      if (previewingItemId === id) {
+        setIsPreviewPanelOpen(false)
+        setPreviewingItemId(null)
+      }
+
+      // After exit animation (200ms), snooze via backend
+      setTimeout(async () => {
+        // Add to pending deletes for optimistic UI (snoozed items disappear from view)
+        setPendingDeleteIds((prev) => new Set(prev).add(id))
+
+        // Clear exiting state
+        setExitingItemIds((prev) => {
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
+
+        // Remove from selection if selected
+        setSelectedItemIds((prev) => {
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
+
+        // If this was the last item, show empty state after a brief pause
+        if (willBeEmpty) {
+          setTimeout(() => {
+            setShowEmptyState(true)
+          }, 200)
+        }
+
+        try {
+          const result = await inboxService.snooze({ itemId: id, snoozeUntil })
+          if (result.success) {
+            queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+
+            // Format the snooze time for the toast message
+            const snoozeDate = new Date(snoozeUntil)
+            const timeString = snoozeDate.toLocaleString('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit'
+            })
+            addToast({
+              message: `Snoozed until ${timeString}`,
+              type: 'success'
+            })
+          } else {
+            throw new Error(result.error || 'Failed to snooze')
+          }
+        } catch (error) {
+          // Revert optimistic UI on error
+          setPendingDeleteIds((prev) => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+          addToast({
+            message: error instanceof Error ? error.message : 'Failed to snooze item',
+            type: 'error'
+          })
+        }
+      }, 200)
+    },
+    [items, addToast, previewingItemId, queryClient]
+  )
+
   // === BULK ACTION HANDLERS ===
 
   // Handle bulk file all
@@ -811,6 +930,88 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     const key = getClusterKey(aiSuggestion)
     setDismissedSuggestionKeys((prev) => new Set(prev).add(key))
   }, [aiSuggestion])
+
+  // Handle bulk snooze all
+  const handleBulkSnoozeAll = useCallback(
+    async (snoozeUntil: string): Promise<void> => {
+      const idsToSnooze = Array.from(selectedItemIds)
+      if (idsToSnooze.length === 0) return
+
+      const willBeEmpty = items.length === idsToSnooze.length
+
+      // Start exit animation for all items
+      setExitingItemIds(new Set(idsToSnooze))
+
+      // Close the preview if any snoozed item was being previewed
+      if (previewingItemId && idsToSnooze.includes(previewingItemId)) {
+        setIsPreviewPanelOpen(false)
+        setPreviewingItemId(null)
+      }
+
+      // After exit animation, snooze via backend
+      setTimeout(async () => {
+        // Add to pending deletes for optimistic UI (snoozed items disappear from view)
+        setPendingDeleteIds((prev) => {
+          const next = new Set(prev)
+          idsToSnooze.forEach((id) => next.add(id))
+          return next
+        })
+
+        // Clear exiting state
+        setExitingItemIds(new Set())
+
+        // Clear selection
+        setSelectedItemIds(new Set())
+
+        // If this removed all items, show empty state after a brief pause
+        if (willBeEmpty) {
+          setTimeout(() => {
+            setShowEmptyState(true)
+          }, 200)
+        }
+
+        try {
+          // Use bulk snooze API
+          const result = await window.api.inbox.bulkSnooze({
+            itemIds: idsToSnooze,
+            snoozeUntil
+          })
+
+          if (result.success || result.processedCount > 0) {
+            queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+
+            // Format the snooze time for the toast message
+            const snoozeDate = new Date(snoozeUntil)
+            const timeString = snoozeDate.toLocaleString('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit'
+            })
+            addToast({
+              message: `Snoozed ${result.processedCount} item${result.processedCount !== 1 ? 's' : ''} until ${timeString}`,
+              type: 'success'
+            })
+          } else {
+            throw new Error('Failed to snooze items')
+          }
+        } catch (error) {
+          // Revert optimistic UI on error
+          setPendingDeleteIds((prev) => {
+            const next = new Set(prev)
+            idsToSnooze.forEach((id) => next.delete(id))
+            return next
+          })
+          addToast({
+            message: error instanceof Error ? error.message : 'Failed to snooze items',
+            type: 'error'
+          })
+        }
+      }, 200)
+    },
+    [selectedItemIds, items, previewingItemId, addToast, queryClient]
+  )
 
   // === STALE ITEMS HANDLERS ===
 
@@ -1256,6 +1457,23 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                     Show filed
                   </Label>
                 </div>
+
+                {/* Show snoozed items toggle */}
+                <div className="flex items-center gap-2 ml-2">
+                  <Switch
+                    id="show-snoozed"
+                    checked={showSnoozedItems}
+                    onCheckedChange={setShowSnoozedItems}
+                    className="scale-90"
+                  />
+                  <Label
+                    htmlFor="show-snoozed"
+                    className="text-xs text-muted-foreground/70 cursor-pointer whitespace-nowrap"
+                  >
+                    <Clock className="inline-block size-3 mr-1" />
+                    Show snoozed
+                  </Label>
+                </div>
               </div>
             </div>
           )}
@@ -1318,6 +1536,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             onFile={handleFile}
             onPreview={handlePreview}
             onDelete={handleDelete}
+            onSnooze={handleSnooze}
             onQuickFile={handleQuickFile}
             onSelectionChange={handleSelectionChange}
             onFileAllStale={handleFileAllStaleToUnsorted}
@@ -1335,6 +1554,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             onFile={handleFile}
             onPreview={handlePreview}
             onDelete={handleDelete}
+            onSnooze={handleSnooze}
             onSelectionChange={handleSelectionChange}
             onFileAllStale={handleFileAllStaleToUnsorted}
             onReviewStale={handleReviewStaleItems}
@@ -1351,6 +1571,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         onFileAll={handleBulkFileAll}
         onTagAll={handleBulkTagAll}
         onDeleteAll={handleBulkDeleteAll}
+        onSnoozeAll={handleBulkSnoozeAll}
         aiSuggestion={aiSuggestion}
         onAddSuggestionToSelection={handleAddSuggestionToSelection}
         onDismissSuggestion={handleDismissSuggestion}

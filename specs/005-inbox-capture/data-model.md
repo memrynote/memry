@@ -472,6 +472,10 @@ interface CapturePdfRequest {
 │  │  inbox_stats  │  (aggregated daily statistics)                   │
 │  └───────────────┘                                                  │
 │                                                                      │
+│  ┌───────────────┐                                                  │
+│  │   reminders   │  (cross-feature: notes, journal, highlights)     │
+│  └───────────────┘                                                  │
+│                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -505,6 +509,42 @@ interface CapturePdfRequest {
 │               └──► Link to Note ────► Add reference in note         │
 │                                       Keep or move attachments       │
 │                                       Set filedAction='linked'       │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                       Reminders Architecture                         │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌─────────────────┐                                                │
+│  │    reminders    │                                                │
+│  └────────┬────────┘                                                │
+│           │                                                          │
+│           │ targetType + targetId                                    │
+│           │                                                          │
+│     ┌─────┴─────┬──────────────┐                                    │
+│     ▼           ▼              ▼                                    │
+│  ┌──────┐   ┌─────────┐   ┌───────────┐                             │
+│  │ note │   │ journal │   │ highlight │                             │
+│  └──────┘   └─────────┘   └───────────┘                             │
+│     │           │              │                                    │
+│     │           │              │ stores text + position             │
+│     │           │              │ for inline display                 │
+│     ▼           ▼              ▼                                    │
+│  ┌──────────────────────────────────────┐                           │
+│  │           Reminder Scheduler          │                          │
+│  │  - Checks every 1 minute              │                          │
+│  │  - Emits REMINDER_DUE events          │                          │
+│  │  - Handles snooze and dismiss         │                          │
+│  └──────────────────────────────────────┘                           │
+│                      │                                               │
+│                      ▼                                               │
+│  ┌──────────────────────────────────────┐                           │
+│  │       Desktop Notification            │                          │
+│  │  - Shows target title + highlight     │                          │
+│  │  - Click to open target               │                          │
+│  │  - Snooze options                     │                          │
+│  └──────────────────────────────────────┘                           │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -577,6 +617,346 @@ CREATE TABLE IF NOT EXISTS inbox_stats (
   deleted_count INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_inbox_stats_date ON inbox_stats(date);
+```
+
+---
+
+---
+
+### reminders Table (Cross-Feature)
+
+Reminders for notes, journal entries, and highlighted text. While defined in the inbox spec for organizational purposes, this table supports the entire PKM system.
+
+**Location**: `src/shared/db/schema/reminders.ts`
+
+```typescript
+// src/shared/db/schema/reminders.ts
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
+
+export const reminderTargetType = {
+  NOTE: 'note',
+  JOURNAL: 'journal',
+  HIGHLIGHT: 'highlight'
+} as const
+
+export type ReminderTargetType = (typeof reminderTargetType)[keyof typeof reminderTargetType]
+
+export const reminderStatus = {
+  PENDING: 'pending',
+  TRIGGERED: 'triggered',
+  DISMISSED: 'dismissed',
+  SNOOZED: 'snoozed'
+} as const
+
+export type ReminderStatus = (typeof reminderStatus)[keyof typeof reminderStatus]
+
+export const reminders = sqliteTable(
+  'reminders',
+  {
+    id: text('id').primaryKey(),
+    targetType: text('target_type').notNull(), // ReminderTargetType
+    targetId: text('target_id').notNull(), // noteId, journalEntryId, or highlightId
+
+    // Reminder timing
+    remindAt: text('remind_at').notNull(), // ISO datetime
+
+    // Optional context for highlights
+    highlightText: text('highlight_text'), // The highlighted text (for display)
+    highlightStart: integer('highlight_start'), // Character offset start
+    highlightEnd: integer('highlight_end'), // Character offset end
+
+    // Reminder metadata
+    title: text('title'), // Custom reminder title (optional)
+    note: text('note'), // User note about why they set reminder
+
+    // Status tracking
+    status: text('status').notNull().default('pending'), // ReminderStatus
+    triggeredAt: text('triggered_at'), // When reminder was shown
+    dismissedAt: text('dismissed_at'), // When user dismissed
+    snoozedUntil: text('snoozed_until'), // If snoozed, when to remind again
+
+    // Timestamps
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    modifiedAt: text('modified_at')
+      .notNull()
+      .default(sql`(datetime('now'))`)
+  },
+  (table) => [
+    index('idx_reminders_target').on(table.targetType, table.targetId),
+    index('idx_reminders_remind_at').on(table.remindAt),
+    index('idx_reminders_status').on(table.status)
+  ]
+)
+
+export type Reminder = typeof reminders.$inferSelect
+export type NewReminder = typeof reminders.$inferInsert
+```
+
+---
+
+## Reminder TypeScript Interfaces
+
+### Reminder Full Interface
+
+```typescript
+// For frontend/API use
+interface ReminderFull {
+  id: string
+  targetType: ReminderTargetType
+  targetId: string
+
+  // Timing
+  remindAt: Date
+
+  // Highlight context (only for 'highlight' type)
+  highlightText: string | null
+  highlightStart: number | null
+  highlightEnd: number | null
+
+  // Metadata
+  title: string | null
+  note: string | null
+
+  // Status
+  status: ReminderStatus
+  triggeredAt: Date | null
+  dismissedAt: Date | null
+  snoozedUntil: Date | null
+
+  // Timestamps
+  createdAt: Date
+  modifiedAt: Date
+
+  // Computed/loaded (from join)
+  targetTitle: string // Note title, journal date, or parent note title for highlights
+  targetPreview: string // Excerpt or highlight text
+}
+```
+
+### Reminder Request Types
+
+```typescript
+// Create reminder for a note
+interface CreateNoteReminderRequest {
+  noteId: string
+  remindAt: string // ISO datetime
+  title?: string
+  note?: string
+}
+
+// Create reminder for a journal entry
+interface CreateJournalReminderRequest {
+  journalEntryId: string
+  remindAt: string
+  title?: string
+  note?: string
+}
+
+// Create reminder for a highlight
+interface CreateHighlightReminderRequest {
+  noteId: string // Parent note
+  highlightText: string // Selected text
+  highlightStart: number // Character offset
+  highlightEnd: number // Character offset
+  remindAt: string
+  title?: string
+  note?: string
+}
+
+// Update reminder
+interface UpdateReminderRequest {
+  id: string
+  remindAt?: string
+  title?: string
+  note?: string
+}
+
+// Snooze reminder
+interface SnoozeReminderRequest {
+  id: string
+  snoozeUntil: string // ISO datetime
+}
+
+// List reminders with filters
+interface ListRemindersRequest {
+  targetType?: ReminderTargetType
+  targetId?: string
+  status?: ReminderStatus | ReminderStatus[]
+  fromDate?: string
+  toDate?: string
+  limit?: number
+  offset?: number
+}
+```
+
+---
+
+## Reminder Migration SQL
+
+```sql
+-- Migration: 006_reminders.sql
+-- Creates reminders table for notes, journal, and highlight reminders
+
+CREATE TABLE IF NOT EXISTS reminders (
+  id TEXT PRIMARY KEY,
+  target_type TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+
+  remind_at TEXT NOT NULL,
+
+  highlight_text TEXT,
+  highlight_start INTEGER,
+  highlight_end INTEGER,
+
+  title TEXT,
+  note TEXT,
+
+  status TEXT NOT NULL DEFAULT 'pending',
+  triggered_at TEXT,
+  dismissed_at TEXT,
+  snoozed_until TEXT,
+
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  modified_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_reminders_target ON reminders(target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_reminders_remind_at ON reminders(remind_at);
+CREATE INDEX IF NOT EXISTS idx_reminders_status ON reminders(status);
+```
+
+---
+
+## Reminder Validation Schemas (Zod)
+
+```typescript
+import { z } from 'zod'
+
+export const ReminderTargetTypeSchema = z.enum(['note', 'journal', 'highlight'])
+export const ReminderStatusSchema = z.enum(['pending', 'triggered', 'dismissed', 'snoozed'])
+
+export const CreateNoteReminderSchema = z.object({
+  noteId: z.string().min(1),
+  remindAt: z.string().datetime(),
+  title: z.string().max(200).optional(),
+  note: z.string().max(1000).optional()
+})
+
+export const CreateJournalReminderSchema = z.object({
+  journalEntryId: z.string().min(1),
+  remindAt: z.string().datetime(),
+  title: z.string().max(200).optional(),
+  note: z.string().max(1000).optional()
+})
+
+export const CreateHighlightReminderSchema = z
+  .object({
+    noteId: z.string().min(1),
+    highlightText: z.string().min(1).max(5000),
+    highlightStart: z.number().int().min(0),
+    highlightEnd: z.number().int().min(0),
+    remindAt: z.string().datetime(),
+    title: z.string().max(200).optional(),
+    note: z.string().max(1000).optional()
+  })
+  .refine((data) => data.highlightEnd > data.highlightStart, {
+    message: 'highlightEnd must be greater than highlightStart'
+  })
+
+export const UpdateReminderSchema = z.object({
+  id: z.string().min(1),
+  remindAt: z.string().datetime().optional(),
+  title: z.string().max(200).optional(),
+  note: z.string().max(1000).optional()
+})
+
+export const SnoozeReminderSchema = z.object({
+  id: z.string().min(1),
+  snoozeUntil: z.string().datetime()
+})
+
+export const ListRemindersSchema = z.object({
+  targetType: ReminderTargetTypeSchema.optional(),
+  targetId: z.string().optional(),
+  status: z.union([ReminderStatusSchema, z.array(ReminderStatusSchema)]).optional(),
+  fromDate: z.string().datetime().optional(),
+  toDate: z.string().datetime().optional(),
+  limit: z.number().int().min(1).max(200).default(50),
+  offset: z.number().int().min(0).default(0)
+})
+```
+
+---
+
+## Reminder Example Data
+
+### Note Reminder
+
+```json
+{
+  "id": "rem_note_a1b2c3",
+  "targetType": "note",
+  "targetId": "note_xyz789",
+  "remindAt": "2025-01-15T09:00:00Z",
+  "highlightText": null,
+  "highlightStart": null,
+  "highlightEnd": null,
+  "title": "Review research findings",
+  "note": "Check if conclusions still hold after more data",
+  "status": "pending",
+  "triggeredAt": null,
+  "dismissedAt": null,
+  "snoozedUntil": null,
+  "createdAt": "2025-12-29T10:30:00Z",
+  "modifiedAt": "2025-12-29T10:30:00Z"
+}
+```
+
+### Journal Reminder (Reflection)
+
+```json
+{
+  "id": "rem_journal_d4e5f6",
+  "targetType": "journal",
+  "targetId": "journal_2025-12-29",
+  "remindAt": "2026-01-29T09:00:00Z",
+  "highlightText": null,
+  "highlightStart": null,
+  "highlightEnd": null,
+  "title": "1 month reflection",
+  "note": "How did the new year's resolution go?",
+  "status": "pending",
+  "triggeredAt": null,
+  "dismissedAt": null,
+  "snoozedUntil": null,
+  "createdAt": "2025-12-29T14:00:00Z",
+  "modifiedAt": "2025-12-29T14:00:00Z"
+}
+```
+
+### Highlight Reminder
+
+```json
+{
+  "id": "rem_highlight_g7h8i9",
+  "targetType": "highlight",
+  "targetId": "note_abc123",
+  "remindAt": "2025-01-05T10:00:00Z",
+  "highlightText": "The key insight here is that spaced repetition improves retention by 40%",
+  "highlightStart": 1234,
+  "highlightEnd": 1312,
+  "title": null,
+  "note": "Test this with my own learning",
+  "status": "pending",
+  "triggeredAt": null,
+  "dismissedAt": null,
+  "snoozedUntil": null,
+  "createdAt": "2025-12-29T11:45:00Z",
+  "modifiedAt": "2025-12-29T11:45:00Z"
+}
 ```
 
 ---

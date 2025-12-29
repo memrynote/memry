@@ -63,6 +63,8 @@ import {
   getTodayActivity,
   getAverageTimeToProcess
 } from '../inbox/stats'
+import { snoozeItem, unsnoozeItem, getSnoozedItems, bulkSnoozeItems } from '../inbox/snooze'
+import type { SnoozeInput, SnoozedItem } from '../inbox/snooze'
 
 // ============================================================================
 // Constants
@@ -1316,16 +1318,97 @@ async function handleLinkToNote(
   return linkToNote(itemId, noteId, tags)
 }
 
-async function stubSnooze(): Promise<{ success: boolean; error?: string }> {
-  return { success: false, error: 'Not implemented yet' }
+/**
+ * Snooze an inbox item until a specified time
+ */
+async function handleSnooze(input: unknown): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!input || typeof input !== 'object') {
+      return { success: false, error: 'Invalid snooze input' }
+    }
+
+    const snoozeInput = input as SnoozeInput
+    if (!snoozeInput.itemId || !snoozeInput.snoozeUntil) {
+      return { success: false, error: 'itemId and snoozeUntil are required' }
+    }
+
+    const result = snoozeItem(snoozeInput)
+    return { success: result.success, error: result.error }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return { success: false, error: message }
+  }
 }
 
-async function stubUnsnooze(): Promise<{ success: boolean; error?: string }> {
-  return { success: false, error: 'Not implemented yet' }
+/**
+ * Unsnooze an inbox item immediately
+ */
+async function handleUnsnooze(itemId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!itemId) {
+      return { success: false, error: 'itemId is required' }
+    }
+
+    const result = unsnoozeItem(itemId)
+    return { success: result.success, error: result.error }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return { success: false, error: message }
+  }
 }
 
-async function stubGetSnoozed(): Promise<InboxItem[]> {
-  return []
+/**
+ * Get all snoozed items
+ */
+async function handleGetSnoozed(): Promise<SnoozedItem[]> {
+  try {
+    return getSnoozedItems()
+  } catch (error) {
+    console.error('[Snooze] Error getting snoozed items:', error)
+    return []
+  }
+}
+
+/**
+ * Bulk snooze multiple items
+ */
+async function handleBulkSnooze(input: unknown): Promise<{
+  success: boolean
+  processedCount: number
+  errors: Array<{ itemId: string; error: string }>
+}> {
+  try {
+    if (!input || typeof input !== 'object') {
+      return { success: false, processedCount: 0, errors: [{ itemId: '', error: 'Invalid input' }] }
+    }
+
+    const { itemIds, snoozeUntil, reason } = input as {
+      itemIds: string[]
+      snoozeUntil: string
+      reason?: string
+    }
+
+    if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
+      return {
+        success: false,
+        processedCount: 0,
+        errors: [{ itemId: '', error: 'itemIds array is required' }]
+      }
+    }
+
+    if (!snoozeUntil) {
+      return {
+        success: false,
+        processedCount: 0,
+        errors: [{ itemId: '', error: 'snoozeUntil is required' }]
+      }
+    }
+
+    return bulkSnoozeItems(itemIds, snoozeUntil, reason)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return { success: false, processedCount: 0, errors: [{ itemId: '', error: message }] }
+  }
 }
 
 /**
@@ -1583,9 +1666,10 @@ export function registerInboxHandlers(): void {
   ipcMain.handle(InboxChannels.invoke.GET_TAGS, () => handleGetTags())
 
   // Snooze handlers
-  ipcMain.handle(InboxChannels.invoke.SNOOZE, () => stubSnooze())
-  ipcMain.handle(InboxChannels.invoke.UNSNOOZE, () => stubUnsnooze())
-  ipcMain.handle(InboxChannels.invoke.GET_SNOOZED, () => stubGetSnoozed())
+  ipcMain.handle(InboxChannels.invoke.SNOOZE, (_, input) => handleSnooze(input))
+  ipcMain.handle(InboxChannels.invoke.UNSNOOZE, (_, itemId) => handleUnsnooze(itemId))
+  ipcMain.handle(InboxChannels.invoke.GET_SNOOZED, () => handleGetSnoozed())
+  ipcMain.handle(InboxChannels.invoke.BULK_SNOOZE, (_, input) => handleBulkSnooze(input))
 
   // Bulk handlers
   ipcMain.handle(InboxChannels.invoke.BULK_FILE, (_, input) => handleBulkFile(input))
@@ -1648,6 +1732,7 @@ export function unregisterInboxHandlers(): void {
   ipcMain.removeHandler(InboxChannels.invoke.SNOOZE)
   ipcMain.removeHandler(InboxChannels.invoke.UNSNOOZE)
   ipcMain.removeHandler(InboxChannels.invoke.GET_SNOOZED)
+  ipcMain.removeHandler(InboxChannels.invoke.BULK_SNOOZE)
 
   // Bulk
   ipcMain.removeHandler(InboxChannels.invoke.BULK_FILE)

@@ -381,25 +381,102 @@
 
 ## Phase 18: User Story 16 - Remind Me Later / Snooze (Priority: P2)
 
-**Goal**: Snooze items to resurface at specified time
+**Goal**: Snooze inbox items to resurface at specified time
 
 **Independent Test**: Snooze item, verify hidden, wait for time, verify reappears
 
+**Key Concept**: Snooze is for inbox items only — it hides the item temporarily and resurfaces it later. This is different from reminders (Phase 23) which notify about passive content like notes.
+
 ### Implementation for User Story 16
 
-- [ ] T147 [P] [US16] Create src/main/inbox/snooze.ts with snooze logic
+#### Backend - Snooze Service
+
+- [ ] T147 [P] [US16] Create src/main/inbox/snooze.ts with snooze service class
 - [ ] T148 [US16] Implement snoozeItem function in src/main/inbox/snooze.ts
+  - Updates `snoozed_until` and `snooze_reason` columns
+  - Validates snooze time is in the future
+  - Supports preset durations: laterToday, tomorrow, nextWeek, custom
 - [ ] T149 [US16] Implement unsnoozeItem function in src/main/inbox/snooze.ts
-- [ ] T150 [US16] Add snooze due check on app startup in src/main/inbox/snooze.ts
-- [ ] T151 [US16] Add periodic snooze check (every 1 minute) in src/main/index.ts
-- [ ] T152 [US16] Add SNOOZE IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T153 [US16] Add UNSNOOZE IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T154 [US16] Add GET_SNOOZED IPC handler in src/main/ipc/inbox-handlers.ts
-- [ ] T155 [US16] Emit SNOOZE_DUE event when snoozed items become due
-- [ ] T156 [US16] Add snooze methods to src/renderer/src/services/inbox-service.ts
-- [ ] T157 [US16] Create snooze picker component in src/renderer/src/components/snooze-picker.tsx
-- [ ] T158 [US16] Add snooze button to item actions
-- [ ] T159 [US16] Add "Snoozed" filter option to inbox list
+  - Clears `snoozed_until` and `snooze_reason`
+  - Item immediately returns to inbox view
+- [ ] T150 [US16] Implement getSnoozedItems function in src/main/inbox/snooze.ts
+  - Returns all items where `snoozed_until` is set and in the future
+  - Ordered by snooze due time ascending
+- [ ] T151 [US16] Implement getDueSnoozeItems function in src/main/inbox/snooze.ts
+  - Returns items where `snoozed_until <= now`
+  - Used by the periodic check to surface due items
+
+#### Backend - Snooze Scheduler
+
+- [ ] T152 [US16] Add snooze due check on app startup in src/main/inbox/snooze.ts
+  - Process any items that became due while app was closed
+  - Clear their snooze status so they appear in inbox
+- [ ] T153 [US16] Create snooze scheduler in src/main/inbox/snooze.ts
+  - Checks for due items every 1 minute
+  - Emits event when items become due
+- [ ] T154 [US16] Register snooze scheduler in src/main/index.ts
+  - Start scheduler on app ready
+  - Stop scheduler on app quit
+
+#### Backend - IPC Handlers
+
+- [ ] T155 [US16] Add SNOOZE IPC handler in src/main/ipc/inbox-handlers.ts
+  - Input: itemId, snoozeUntil (ISO string), reason (optional)
+  - Returns: updated inbox item
+- [ ] T156 [US16] Add UNSNOOZE IPC handler in src/main/ipc/inbox-handlers.ts
+  - Input: itemId
+  - Returns: updated inbox item
+- [ ] T157 [US16] Add GET_SNOOZED IPC handler in src/main/ipc/inbox-handlers.ts
+  - Input: none
+  - Returns: array of snoozed items with their due times
+- [ ] T158 [US16] Emit SNOOZE_DUE event when snoozed items become due
+  - Includes item count and item details
+  - Triggers notification in renderer
+
+#### Frontend - Service Layer
+
+- [ ] T159 [US16] Add snooze methods to src/renderer/src/services/inbox-service.ts
+  - snoozeItem(itemId, snoozeUntil, reason?)
+  - unsnoozeItem(itemId)
+  - getSnoozedItems()
+- [ ] T160 [US16] Add snooze event listener in src/renderer/src/services/inbox-service.ts
+  - Listen for SNOOZE_DUE events
+  - Refresh inbox list when items become due
+
+#### Frontend - Snooze Picker Component
+
+- [ ] T161 [US16] Create src/renderer/src/components/snooze/snooze-picker.tsx
+  - Dropdown with preset options:
+    - Later Today (3 hours from now or 6pm, whichever is later)
+    - Tomorrow (9am)
+    - Next Week (Monday 9am)
+    - Pick Date & Time (custom datetime picker)
+  - Shows selected snooze time preview before confirming
+- [ ] T162 [US16] Create src/renderer/src/components/snooze/snooze-presets.ts
+  - Helper functions for calculating preset snooze times
+  - laterToday(), tomorrow(), nextWeek(), thisWeekend()
+- [ ] T163 [US16] Style snooze picker to match existing UI components
+
+#### Frontend - Integration
+
+- [ ] T164 [US16] Add snooze button to item actions in card-view.tsx and list-view.tsx
+  - Clock/bell icon
+  - Opens snooze picker on click
+- [ ] T165 [US16] Add "Snoozed" filter option to inbox filter dropdown
+  - Shows only snoozed items when selected
+  - Each item shows when it will resurface
+- [ ] T166 [US16] Add snooze badge to snoozed items in list
+  - Shows "Snoozed until [date]" or "Returns in 2 days"
+- [ ] T167 [US16] Update useInbox hook to exclude snoozed items from main view by default
+- [ ] T168 [US16] Add desktop notification when snoozed items become due
+  - "X items have returned to your inbox"
+  - Clicking notification opens inbox
+
+#### Frontend - Bulk Snooze
+
+- [ ] T169 [US16] Add bulk snooze option to BulkActionBar
+  - Opens snooze picker for multiple items
+  - All selected items get same snooze time
 
 **Checkpoint**: Snooze functionality is fully functional
 
@@ -463,6 +540,223 @@
 
 ---
 
+## Phase 23: Reminder System for Notes, Journal & Highlights (Priority: P2)
+
+**Goal**: Allow users to set reminders on notes, journal entries, and highlighted text to be notified at a future time
+
+**Independent Test**: Set reminder on note, wait for time, verify notification appears with link to content
+
+**Key Concept**: Reminders are for proactive "revisit this later" on passive content (notes, journal). This is different from snooze (Phase 18) which hides and resurfaces inbox items.
+
+### User Stories for Reminders
+
+**US-R1**: As a user, I want to set a reminder on a note so I can be notified to revisit it later
+**US-R2**: As a user, I want to set a reminder on a journal entry so I can reflect on it at a future date
+**US-R3**: As a user, I want to highlight text and set a reminder on that highlight so I can be reminded of specific passages
+**US-R4**: As a user, I want to see all my upcoming reminders in one place so I can manage them
+
+### Data Model
+
+#### reminders Table (New)
+
+- [ ] T191 [P] [US-R1] Create src/shared/db/schema/reminders.ts with reminders table:
+
+  ```typescript
+  reminders = sqliteTable('reminders', {
+    id: text('id').primaryKey(),
+    targetType: text('target_type').notNull(), // 'note' | 'journal' | 'highlight'
+    targetId: text('target_id').notNull(), // noteId, journalEntryId, or highlightId
+
+    // Reminder timing
+    remindAt: text('remind_at').notNull(), // ISO datetime
+
+    // Optional context for highlights
+    highlightText: text('highlight_text'), // The highlighted text (for display)
+    highlightStart: integer('highlight_start'), // Character offset start
+    highlightEnd: integer('highlight_end'), // Character offset end
+
+    // Reminder metadata
+    title: text('title'), // Custom reminder title (optional)
+    note: text('note'), // User note about why they set reminder
+
+    // Status tracking
+    status: text('status').default('pending'), // 'pending' | 'triggered' | 'dismissed' | 'snoozed'
+    triggeredAt: text('triggered_at'), // When reminder was shown
+    dismissedAt: text('dismissed_at'), // When user dismissed
+    snoozedUntil: text('snoozed_until'), // If snoozed, when to remind again
+
+    // Timestamps
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    modifiedAt: text('modified_at')
+      .notNull()
+      .default(sql`(datetime('now'))`)
+  })
+  ```
+
+- [ ] T192 [US-R1] Add indexes for reminders table (target_id, remind_at, status)
+- [ ] T193 [US-R1] Run drizzle-kit generate to create migration
+
+### Backend - Reminder Service
+
+- [ ] T194 [P] [US-R1] Create src/main/lib/reminders.ts with ReminderService class
+- [ ] T195 [US-R1] Implement createReminder function
+  - Validates remind time is in the future
+  - Supports note, journal, and highlight target types
+  - For highlights: stores text and position offsets
+- [ ] T196 [US-R1] Implement updateReminder function
+  - Change remind time or add/update note
+- [ ] T197 [US-R1] Implement deleteReminder function
+- [ ] T198 [US-R1] Implement getReminder function (single)
+- [ ] T199 [US-R1] Implement listReminders function
+  - Filter by status, target type, date range
+  - Sort by remind_at ascending
+- [ ] T200 [US-R4] Implement getUpcomingReminders function
+  - Returns pending reminders ordered by remind time
+  - Optionally limit to next N days
+- [ ] T201 [US-R1] Implement getDueReminders function
+  - Returns reminders where remind_at <= now and status = 'pending'
+- [ ] T202 [US-R1] Implement dismissReminder function
+  - Sets status to 'dismissed' with timestamp
+- [ ] T203 [US-R1] Implement snoozeReminder function
+  - Sets snoozed_until and keeps status as 'pending'
+
+### Backend - Reminder Scheduler
+
+- [ ] T204 [US-R1] Create reminder scheduler in src/main/lib/reminders.ts
+  - Checks for due reminders every 1 minute
+  - Emits REMINDER_DUE event with reminder details
+- [ ] T205 [US-R1] Add reminder check on app startup
+  - Process any reminders that became due while app was closed
+- [ ] T206 [US-R1] Register reminder scheduler in src/main/index.ts
+  - Start on app ready, stop on app quit
+
+### Backend - IPC Handlers
+
+- [ ] T207 [P] [US-R1] Add ReminderChannels to src/shared/ipc-channels.ts
+  ```typescript
+  ReminderChannels = {
+    CREATE: 'reminder:create',
+    UPDATE: 'reminder:update',
+    DELETE: 'reminder:delete',
+    GET: 'reminder:get',
+    LIST: 'reminder:list',
+    GET_UPCOMING: 'reminder:get-upcoming',
+    DISMISS: 'reminder:dismiss',
+    SNOOZE: 'reminder:snooze',
+    DUE: 'reminder:due' // Event channel
+  }
+  ```
+- [ ] T208 [US-R1] Create src/main/ipc/reminder-handlers.ts with all handlers
+- [ ] T209 [US-R1] Register reminder IPC handlers in src/main/ipc/index.ts
+- [ ] T210 [US-R1] Add reminder API to preload in src/preload/index.ts
+
+### Frontend - Service Layer
+
+- [ ] T211 [US-R1] Create src/renderer/src/services/reminder-service.ts
+  - createReminder(targetType, targetId, remindAt, options?)
+  - updateReminder(id, updates)
+  - deleteReminder(id)
+  - getReminder(id)
+  - listReminders(filters?)
+  - getUpcomingReminders(days?)
+  - dismissReminder(id)
+  - snoozeReminder(id, snoozeUntil)
+- [ ] T212 [US-R1] Add reminder event listener for REMINDER_DUE events
+
+### Frontend - Reminder Picker Component
+
+- [ ] T213 [US-R1] Create src/renderer/src/components/reminder/reminder-picker.tsx
+  - Similar to snooze picker with presets:
+    - Tomorrow (9am)
+    - Next Week (Monday 9am)
+    - In 1 Month
+    - Pick Date & Time
+  - Optional note field for context
+- [ ] T214 [US-R1] Create src/renderer/src/components/reminder/reminder-presets.ts
+  - Helper functions for common reminder times
+- [ ] T215 [US-R1] Style reminder picker to match existing UI
+
+### Frontend - Note Reminders Integration
+
+- [ ] T216 [US-R1] Add "Set Reminder" button to note header/actions in NotePage
+  - Bell icon that opens reminder picker
+- [ ] T217 [US-R1] Show reminder indicator on notes that have active reminders
+  - Small bell badge with tooltip showing when
+- [ ] T218 [US-R1] Add reminder context menu option on right-click in note
+- [ ] T219 [US-R1] Create src/renderer/src/hooks/use-note-reminders.ts
+  - Fetch reminders for current note
+  - Create/update/delete reminders
+
+### Frontend - Highlight Reminders Integration
+
+- [ ] T220 [P] [US-R3] Create src/renderer/src/components/reminder/highlight-reminder-popover.tsx
+  - Appears when user selects text and clicks "Remind me"
+  - Shows selected text preview
+  - Contains reminder picker
+- [ ] T221 [US-R3] Add "Set Reminder" option to text selection context menu in editor
+  - Only appears when text is selected
+  - Captures selection text and position
+- [ ] T222 [US-R3] Implement highlight position tracking
+  - Store character offsets for highlight
+  - Handle position updates when note content changes (best effort)
+- [ ] T223 [US-R3] Display highlight indicators in note for text with reminders
+  - Subtle underline or background color
+  - Tooltip showing reminder details
+- [ ] T224 [US-R3] When reminder triggers for highlight, scroll to and highlight the text
+
+### Frontend - Journal Reminders Integration
+
+- [ ] T225 [US-R2] Add "Set Reminder" button to journal entry actions
+  - "Reflect on this in X days" preset options:
+    - In 1 week
+    - In 1 month
+    - In 3 months
+    - In 1 year (anniversary)
+- [ ] T226 [US-R2] Show reminder indicator on journal entries with active reminders
+- [ ] T227 [US-R2] Create src/renderer/src/hooks/use-journal-reminders.ts
+
+### Frontend - Reminders List View
+
+- [ ] T228 [US-R4] Create src/renderer/src/components/reminder/reminders-list.tsx
+  - Shows all upcoming reminders grouped by:
+    - Today
+    - Tomorrow
+    - This Week
+    - Later
+  - Each item shows: target title, reminder time, optional note
+  - Actions: Edit, Snooze, Dismiss, Go to target
+- [ ] T229 [US-R4] Add reminders list to sidebar or as modal/panel
+  - Access via bell icon in header
+- [ ] T230 [US-R4] Show reminder count badge on bell icon when reminders exist
+
+### Frontend - Notifications
+
+- [ ] T231 [US-R1] Create desktop notification when reminder is due
+  - Title: "Reminder: [target title]"
+  - Body: highlight text or custom note
+  - Click action: Open target in app
+- [ ] T232 [US-R1] Create in-app notification toast for due reminders
+  - Shows briefly, click to navigate
+- [ ] T233 [US-R1] Add snooze options to notification
+  - "Snooze 1 hour", "Snooze until tomorrow"
+
+### Edge Cases & Polish
+
+- [ ] T234 [US-R3] Handle highlight reminder when note content changes significantly
+  - Try to find closest matching text
+  - If not found, show warning but still trigger reminder
+- [ ] T235 [US-R1] Handle reminder for deleted note/journal
+  - Show reminder with "Content no longer exists" message
+  - Allow dismissing
+- [ ] T236 [US-R1] Add bulk dismiss option for past-due reminders
+- [ ] T237 [US-R1] Add recurring reminder option (daily, weekly, monthly) - Future enhancement marker
+
+**Checkpoint**: Reminder system for notes, journal, and highlights is fully functional
+
+---
+
 ## Phase 22: Mixed-Content Folders Enhancement (Future)
 
 **Purpose**: Support storing non-markdown files (PDF, images, audio) directly in note folders
@@ -491,6 +785,10 @@ This enhancement would allow files to be stored alongside .md files in the same 
   - User stories can proceed in priority order (P1 first, then P2, then P3)
   - Or in parallel if team capacity allows
 - **Polish (Phase 21)**: Depends on all desired user stories being complete
+- **Phase 23 (Reminders)**: Depends on:
+  - Notes system (003-notes) for note reminders
+  - Journal system (004-journal) for journal reminders
+  - Can be implemented independently of inbox (Phase 18 Snooze)
 
 ### User Story Dependencies
 
@@ -502,6 +800,16 @@ All user stories depend only on Foundational phase. Stories are designed to be i
 - **US4 (Delete)**: Requires US1 or US2 (needs items to delete)
 - **US5 (Bulk)**: Requires US1 or US2 (needs items for bulk ops)
 - **US6-US18**: Foundation only (can run in parallel with US1-US5)
+
+### Snooze vs Reminder Dependencies
+
+These are independent features:
+
+- **Phase 18 (Snooze)**: Inbox-only feature, no external dependencies
+- **Phase 23 (Reminders)**: Cross-feature, depends on notes/journal existing
+  - **US-R1 (Note Reminders)**: Requires notes system (003)
+  - **US-R2 (Journal Reminders)**: Requires journal system (004)
+  - **US-R3 (Highlight Reminders)**: Requires notes editor with selection support
 
 ### Within Each User Story
 
@@ -592,11 +900,23 @@ After MVP:
 | Foundation | -            | Medium     | 1 day    |
 | US1-US5    | P1 MVP       | Medium     | 4 days   |
 | US6-US10   | P2 Core      | Medium     | 4 days   |
-| US11-US16  | P2 Advanced  | High       | 5 days   |
+| US11-US15  | P2 Advanced  | High       | 4 days   |
+| US16       | P2 Snooze    | Medium     | 2 days   |
 | US17-US18  | P3 Analytics | Medium     | 2 days   |
+| Phase 23   | P2 Reminders | High       | 4 days   |
 | Polish     | -            | Low        | 1 day    |
 
-**Total: ~17.5 days (3.5 weeks)**
+**Total: ~22.5 days (4.5 weeks)**
+
+### Snooze vs Reminders Breakdown
+
+| Feature     | Scope               | Complexity | Estimate |
+| ----------- | ------------------- | ---------- | -------- |
+| US16 Snooze | Inbox items only    | Medium     | 2 days   |
+| US-R1       | Note reminders      | Medium     | 1 day    |
+| US-R2       | Journal reminders   | Low        | 0.5 day  |
+| US-R3       | Highlight reminders | High       | 1.5 days |
+| US-R4       | Reminders list view | Medium     | 1 day    |
 
 ---
 
