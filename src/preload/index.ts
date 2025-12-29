@@ -395,7 +395,16 @@ const api = {
       ipcRenderer.invoke(SettingsChannels.invoke.SET, { key, value }),
     getJournalSettings: () => ipcRenderer.invoke(SettingsChannels.invoke.GET_JOURNAL_SETTINGS),
     setJournalSettings: (settings: { defaultTemplate?: string | null }) =>
-      ipcRenderer.invoke(SettingsChannels.invoke.SET_JOURNAL_SETTINGS, settings)
+      ipcRenderer.invoke(SettingsChannels.invoke.SET_JOURNAL_SETTINGS, settings),
+    // AI Settings
+    getAISettings: () => ipcRenderer.invoke(SettingsChannels.invoke.GET_AI_SETTINGS),
+    setAISettings: (settings: {
+      openaiApiKey?: string | null
+      enabled?: boolean
+      embeddingModel?: string
+    }) => ipcRenderer.invoke(SettingsChannels.invoke.SET_AI_SETTINGS, settings),
+    testAIConnection: () => ipcRenderer.invoke(SettingsChannels.invoke.TEST_AI_CONNECTION),
+    reindexEmbeddings: () => ipcRenderer.invoke(SettingsChannels.invoke.REINDEX_EMBEDDINGS)
   },
 
   // Bookmarks API
@@ -495,6 +504,25 @@ const api = {
     }) => ipcRenderer.invoke(InboxChannels.invoke.FILE, input),
     getSuggestions: (itemId: string) =>
       ipcRenderer.invoke(InboxChannels.invoke.GET_SUGGESTIONS, itemId),
+    trackSuggestion: (input: {
+      itemId: string
+      itemType: string
+      suggestedTo: string
+      actualTo: string
+      confidence: number
+      suggestedTags?: string[]
+      actualTags?: string[]
+    }) =>
+      ipcRenderer.invoke(
+        InboxChannels.invoke.TRACK_SUGGESTION,
+        input.itemId,
+        input.itemType,
+        input.suggestedTo,
+        input.actualTo,
+        input.confidence,
+        input.suggestedTags || [],
+        input.actualTags || []
+      ),
     convertToNote: (itemId: string) =>
       ipcRenderer.invoke(InboxChannels.invoke.CONVERT_TO_NOTE, itemId),
     linkToNote: (itemId: string, noteId: string, tags?: string[]) =>
@@ -861,6 +889,17 @@ const api = {
     ): void => callback(data)
     ipcRenderer.on(SettingsChannels.events.CHANGED, handler)
     return () => ipcRenderer.removeListener(SettingsChannels.events.CHANGED, handler)
+  },
+
+  onEmbeddingProgress: (
+    callback: (event: { current: number; total: number; phase: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { current: number; total: number; phase: string }
+    ): void => callback(data)
+    ipcRenderer.on(SettingsChannels.events.EMBEDDING_PROGRESS, handler)
+    return () => ipcRenderer.removeListener(SettingsChannels.events.EMBEDDING_PROGRESS, handler)
   },
 
   // Bookmarks event subscription helpers

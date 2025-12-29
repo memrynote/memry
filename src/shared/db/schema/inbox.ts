@@ -295,3 +295,56 @@ export const inboxStats = sqliteTable(
 
 export type InboxStats = typeof inboxStats.$inferSelect
 export type NewInboxStats = typeof inboxStats.$inferInsert
+
+// ============================================================================
+// suggestion_feedback Table
+// ============================================================================
+
+/**
+ * Tracks user feedback on AI filing suggestions.
+ * Used to improve suggestion accuracy over time.
+ */
+export const suggestionFeedback = sqliteTable(
+  'suggestion_feedback',
+  {
+    /** Unique identifier */
+    id: text('id').primaryKey(),
+
+    /** The inbox item that was being filed */
+    itemId: text('item_id').notNull(),
+
+    /** Item type for pattern analysis */
+    itemType: text('item_type').notNull(),
+
+    /** The destination that was suggested */
+    suggestedTo: text('suggested_to').notNull(),
+
+    /** The destination that was actually chosen */
+    actualTo: text('actual_to').notNull(),
+
+    /** Whether the suggestion was accepted (suggested == actual) */
+    accepted: integer('accepted', { mode: 'boolean' }).notNull(),
+
+    /** Confidence score of the suggestion (0-100) */
+    confidence: integer('confidence').notNull(),
+
+    /** Tags suggested */
+    suggestedTags: text('suggested_tags', { mode: 'json' }),
+
+    /** Tags actually applied */
+    actualTags: text('actual_tags', { mode: 'json' }),
+
+    /** When the feedback was recorded */
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`)
+  },
+  (table) => [
+    index('idx_suggestion_feedback_item_type').on(table.itemType),
+    index('idx_suggestion_feedback_accepted').on(table.accepted),
+    index('idx_suggestion_feedback_created').on(table.createdAt)
+  ]
+)
+
+export type SuggestionFeedback = typeof suggestionFeedback.$inferSelect
+export type NewSuggestionFeedback = typeof suggestionFeedback.$inferInsert
