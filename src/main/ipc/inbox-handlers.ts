@@ -50,6 +50,7 @@ import {
 import type { SocialMetadata } from '@shared/contracts/inbox-api'
 import { captureVoice } from '../inbox/capture'
 import { retryTranscription } from '../inbox/transcription'
+import { getSuggestions, trackSuggestionFeedback } from '../inbox/suggestions'
 import { FileItemSchema, BulkFileSchema, BulkTagSchema } from '@shared/contracts/inbox-api'
 import {
   getStaleThreshold as getStaleThresholdDays,
@@ -1253,9 +1254,48 @@ async function handleFile(input: unknown): Promise<FileResponse> {
   }
 }
 
-async function stubGetSuggestions(): Promise<SuggestionsResponse> {
-  // TODO: Implement AI-powered suggestions in Phase 17
-  return { suggestions: [] }
+/**
+ * Get AI-powered filing suggestions for an inbox item
+ */
+async function handleGetSuggestions(itemId: string): Promise<SuggestionsResponse> {
+  try {
+    const suggestions = await getSuggestions(itemId)
+    return { suggestions }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[Suggestions] Failed to get suggestions:', message)
+    return { suggestions: [] } // Empty fallback on error
+  }
+}
+
+/**
+ * Track suggestion feedback (accepted/rejected)
+ */
+async function handleTrackSuggestion(
+  itemId: string,
+  itemType: string,
+  suggestedTo: string,
+  actualTo: string,
+  confidence: number,
+  suggestedTags: string[] = [],
+  actualTags: string[] = []
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    trackSuggestionFeedback(
+      itemId,
+      itemType,
+      suggestedTo,
+      actualTo,
+      confidence,
+      suggestedTags,
+      actualTags
+    )
+    return { success: true }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[Suggestions] Failed to track feedback:', message)
+    return { success: false, error: message }
+  }
 }
 
 /**
@@ -1518,7 +1558,20 @@ export function registerInboxHandlers(): void {
 
   // Filing handlers
   ipcMain.handle(InboxChannels.invoke.FILE, (_, input) => handleFile(input))
-  ipcMain.handle(InboxChannels.invoke.GET_SUGGESTIONS, () => stubGetSuggestions())
+  ipcMain.handle(InboxChannels.invoke.GET_SUGGESTIONS, (_, itemId) => handleGetSuggestions(itemId))
+  ipcMain.handle(
+    InboxChannels.invoke.TRACK_SUGGESTION,
+    (_, itemId, itemType, suggestedTo, actualTo, confidence, suggestedTags, actualTags) =>
+      handleTrackSuggestion(
+        itemId,
+        itemType,
+        suggestedTo,
+        actualTo,
+        confidence,
+        suggestedTags,
+        actualTags
+      )
+  )
   ipcMain.handle(InboxChannels.invoke.CONVERT_TO_NOTE, (_, itemId) => handleConvertToNote(itemId))
   ipcMain.handle(InboxChannels.invoke.LINK_TO_NOTE, (_, itemId, noteId, tags) =>
     handleLinkToNote(itemId, noteId, tags || [])
@@ -1582,6 +1635,7 @@ export function unregisterInboxHandlers(): void {
   // Filing
   ipcMain.removeHandler(InboxChannels.invoke.FILE)
   ipcMain.removeHandler(InboxChannels.invoke.GET_SUGGESTIONS)
+  ipcMain.removeHandler(InboxChannels.invoke.TRACK_SUGGESTION)
   ipcMain.removeHandler(InboxChannels.invoke.CONVERT_TO_NOTE)
   ipcMain.removeHandler(InboxChannels.invoke.LINK_TO_NOTE)
 

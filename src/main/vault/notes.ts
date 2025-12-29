@@ -66,6 +66,7 @@ import { getIndexDatabase, updateFtsContent } from '../database'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@shared/contracts/notes-api'
+import { updateNoteEmbedding } from '../inbox/suggestions'
 
 // ============================================================================
 // Types
@@ -344,6 +345,11 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   emitNoteEvent(NotesChannels.events.CREATED, {
     note: noteToListItem(note),
     source: 'internal'
+  })
+
+  // Update embedding asynchronously (non-blocking)
+  updateNoteEmbedding(note.id).catch((err) => {
+    console.log(`[Notes] Failed to update embedding for new note ${note.id}:`, err)
   })
 
   return note
@@ -632,6 +638,13 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   if (tagsChanged) {
     BrowserWindow.getAllWindows().forEach((win) => {
       win.webContents.send('notes:tags-changed')
+    })
+  }
+
+  // Update embedding asynchronously if content changed (non-blocking)
+  if (input.content !== undefined) {
+    updateNoteEmbedding(input.id).catch((err) => {
+      console.log(`[Notes] Failed to update embedding for note ${input.id}:`, err)
     })
   }
 

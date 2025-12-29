@@ -41,6 +41,7 @@ import {
 import { getIndexDatabase, updateFtsContent } from '../database'
 import { NotesChannels, JournalChannels } from '@shared/ipc-channels'
 import { trackPendingDelete, checkForRename, clearAllPendingDeletes } from './rename-tracker'
+import { updateNoteEmbedding } from '../inbox/suggestions'
 
 // ============================================================================
 // Types
@@ -405,6 +406,14 @@ export class VaultWatcher {
         source: 'external'
       })
 
+      // Update embedding asynchronously for AI suggestions (non-blocking)
+      updateNoteEmbedding(parsed.frontmatter.id).catch((err) => {
+        console.log(
+          `[Watcher] Failed to update embedding for new file ${parsed.frontmatter.id}:`,
+          err
+        )
+      })
+
       // Also emit journal event if this is a journal entry
       const config = getConfig()
       if (isJournalPath(relativePath, config.journalFolder)) {
@@ -511,6 +520,11 @@ export class VaultWatcher {
             snippet
           },
           source: 'external'
+        })
+
+        // Update embedding asynchronously for AI suggestions (non-blocking)
+        updateNoteEmbedding(cached.id).catch((err) => {
+          console.log(`[Watcher] Failed to update embedding for ${cached.id}:`, err)
         })
 
         // Also emit journal event if this is a journal entry

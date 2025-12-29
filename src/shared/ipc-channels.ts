@@ -414,11 +414,21 @@ export const SettingsChannels = {
     /** Get journal settings */
     GET_JOURNAL_SETTINGS: 'settings:getJournalSettings',
     /** Set journal settings */
-    SET_JOURNAL_SETTINGS: 'settings:setJournalSettings'
+    SET_JOURNAL_SETTINGS: 'settings:setJournalSettings',
+    /** Get AI settings */
+    GET_AI_SETTINGS: 'settings:getAISettings',
+    /** Set AI settings */
+    SET_AI_SETTINGS: 'settings:setAISettings',
+    /** Test OpenAI API connection */
+    TEST_AI_CONNECTION: 'settings:testAIConnection',
+    /** Trigger re-indexing of note embeddings */
+    REINDEX_EMBEDDINGS: 'settings:reindexEmbeddings'
   },
   events: {
     /** Settings changed */
-    CHANGED: 'settings:changed'
+    CHANGED: 'settings:changed',
+    /** Embedding indexing progress */
+    EMBEDDING_PROGRESS: 'settings:embeddingProgress'
   }
 } as const
 
@@ -506,6 +516,8 @@ export const InboxChannels = {
     FILE: 'inbox:file',
     /** Get filing suggestions for an item */
     GET_SUGGESTIONS: 'inbox:get-suggestions',
+    /** Track suggestion feedback (accepted/rejected) */
+    TRACK_SUGGESTION: 'inbox:track-suggestion',
     /** Convert an item to a full note */
     CONVERT_TO_NOTE: 'inbox:convert-to-note',
     /** Link an item to an existing note */

@@ -6,8 +6,10 @@
  * This database can be safely deleted and rebuilt from files.
  *
  * Journal entries are stored in note_cache with the `date` column set.
+ * Note embeddings are stored for AI-powered filing suggestions.
  *
  * @module db/schema/index-schema
  */
 
 export * from './notes-cache'
+export * from './embeddings'

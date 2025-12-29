@@ -1463,6 +1463,15 @@ export interface InboxClientAPI {
     noteId: string,
     tags?: string[]
   ): Promise<{ success: boolean; error?: string }>
+  trackSuggestion(input: {
+    itemId: string
+    itemType: string
+    suggestedTo: string
+    actualTo: string
+    confidence: number
+    suggestedTags?: string[]
+    actualTags?: string[]
+  }): Promise<{ success: boolean; error?: string }>
 
   // Tags
   addTag(itemId: string, tag: string): Promise<{ success: boolean; error?: string }>
@@ -1516,9 +1525,21 @@ export interface JournalSettings {
   defaultTemplate: string | null
 }
 
+export interface AISettings {
+  openaiApiKey: string | null
+  enabled: boolean
+  embeddingModel: string
+}
+
 export interface SettingsChangedEvent {
   key: string
   value: unknown
+}
+
+export interface EmbeddingProgressEvent {
+  current: number
+  total: number
+  phase: 'scanning' | 'embedding' | 'complete'
 }
 
 // Settings client API interface
@@ -1529,6 +1550,11 @@ export interface SettingsClientAPI {
   setJournalSettings(
     settings: Partial<JournalSettings>
   ): Promise<{ success: boolean; error?: string }>
+  // AI Settings
+  getAISettings(): Promise<AISettings>
+  setAISettings(settings: Partial<AISettings>): Promise<{ success: boolean; error?: string }>
+  testAIConnection(): Promise<{ success: boolean; error?: string }>
+  reindexEmbeddings(): Promise<{ success: boolean; error?: string }>
 }
 
 // Window controls API
@@ -1598,6 +1624,7 @@ interface API extends WindowAPI {
   onJournalExternalChange: (callback: (event: JournalExternalChangeEvent) => void) => () => void
   // Settings event subscriptions
   onSettingsChanged: (callback: (event: SettingsChangedEvent) => void) => () => void
+  onEmbeddingProgress: (callback: (event: EmbeddingProgressEvent) => void) => () => void
   // Bookmarks event subscriptions
   onBookmarkCreated: (callback: (event: BookmarkCreatedEvent) => void) => () => void
   onBookmarkDeleted: (callback: (event: BookmarkDeletedEvent) => void) => () => void

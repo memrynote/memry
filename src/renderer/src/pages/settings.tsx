@@ -5,7 +5,7 @@
  * Opens as a singleton tab.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -39,7 +39,14 @@ import {
   FolderOpen,
   Palette,
   BookOpen,
-  Info
+  Info,
+  Brain,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+  Eye,
+  EyeOff
 } from 'lucide-react'
 import {
   Select,
@@ -48,6 +55,8 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { useTemplates } from '@/hooks/use-templates'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
 import { useTabs } from '@/contexts/tabs'
@@ -58,7 +67,7 @@ import { cn } from '@/lib/utils'
 // Types
 // ============================================================================
 
-type SettingsSection = 'general' | 'templates' | 'journal' | 'vault' | 'appearance'
+type SettingsSection = 'general' | 'templates' | 'journal' | 'vault' | 'appearance' | 'ai'
 
 // ============================================================================
 // Main Component
@@ -107,6 +116,12 @@ export function SettingsPage() {
             isActive={activeSection === 'appearance'}
             onClick={() => setActiveSection('appearance')}
           />
+          <SettingsNavItem
+            icon={<Brain className="w-4 h-4" />}
+            label="AI Assistant"
+            isActive={activeSection === 'ai'}
+            onClick={() => setActiveSection('ai')}
+          />
         </nav>
       </div>
 
@@ -119,6 +134,7 @@ export function SettingsPage() {
             {activeSection === 'journal' && <JournalSettings />}
             {activeSection === 'vault' && <VaultSettings />}
             {activeSection === 'appearance' && <AppearanceSettings />}
+            {activeSection === 'ai' && <AISettings />}
           </div>
         </ScrollArea>
       </div>
@@ -451,9 +467,7 @@ function JournalSettings() {
       const templateId = value === 'none' ? null : value
       const success = await setDefaultTemplate(templateId)
       if (success) {
-        toast.success(
-          templateId ? 'Default template updated' : 'Default template cleared'
-        )
+        toast.success(templateId ? 'Default template updated' : 'Default template cleared')
       } else {
         toast.error('Failed to update default template')
       }
@@ -470,9 +484,7 @@ function JournalSettings() {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold">Journal</h3>
-        <p className="text-sm text-muted-foreground">
-          Journal settings and preferences
-        </p>
+        <p className="text-sm text-muted-foreground">Journal settings and preferences</p>
       </div>
 
       <Separator />
@@ -482,7 +494,8 @@ function JournalSettings() {
         <div>
           <label className="text-sm font-medium">Default Template</label>
           <p className="text-sm text-muted-foreground mt-1">
-            New journal entries will start with this template. You can always change it when creating an entry.
+            New journal entries will start with this template. You can always change it when
+            creating an entry.
           </p>
         </div>
 
@@ -493,29 +506,23 @@ function JournalSettings() {
         >
           <SelectTrigger className="w-full max-w-xs">
             <SelectValue placeholder="Select a template">
-              {isLoadingSettings ? (
-                'Loading...'
-              ) : settings.defaultTemplate ? (
-                defaultTemplateName ?? 'Unknown template'
-              ) : (
-                'None (ask each time)'
-              )}
+              {isLoadingSettings
+                ? 'Loading...'
+                : settings.defaultTemplate
+                  ? (defaultTemplateName ?? 'Unknown template')
+                  : 'None (ask each time)'}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">
-              <span className="flex items-center gap-2">
-                None (ask each time)
-              </span>
+              <span className="flex items-center gap-2">None (ask each time)</span>
             </SelectItem>
             {templates.map((template) => (
               <SelectItem key={template.id} value={template.id}>
                 <span className="flex items-center gap-2">
                   {template.icon && <span>{template.icon}</span>}
                   {template.name}
-                  {template.isBuiltIn && (
-                    <Lock className="w-3 h-3 text-muted-foreground ml-1" />
-                  )}
+                  {template.isBuiltIn && <Lock className="w-3 h-3 text-muted-foreground ml-1" />}
                 </span>
               </SelectItem>
             ))}
@@ -526,8 +533,342 @@ function JournalSettings() {
         <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
           <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
           <p className="text-muted-foreground">
-            When a default template is set, new journal entries will be created with the template content automatically.
-            A small indicator will appear letting you change the template or start blank.
+            When a default template is set, new journal entries will be created with the template
+            content automatically. A small indicator will appear letting you change the template or
+            start blank.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// AI Settings
+// ============================================================================
+
+function AISettings() {
+  const [settings, setSettings] = useState<{
+    openaiApiKey: string | null
+    enabled: boolean
+    embeddingModel: string
+  }>({
+    openaiApiKey: null,
+    enabled: false,
+    embeddingModel: 'text-embedding-3-small'
+  })
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isTesting, setIsTesting] = useState(false)
+  const [isReindexing, setIsReindexing] = useState(false)
+  const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null)
+  const [reindexProgress, setReindexProgress] = useState<{
+    current: number
+    total: number
+    phase: string
+  } | null>(null)
+  const [apiKeyInput, setApiKeyInput] = useState('')
+  const [showApiKey, setShowApiKey] = useState(false)
+
+  // Load settings on mount
+  useEffect(() => {
+    const loadSettings = async (): Promise<void> => {
+      try {
+        const aiSettings = await window.api.settings.getAISettings()
+        setSettings(aiSettings)
+        // Only show masked version if key exists
+        if (aiSettings.openaiApiKey) {
+          setApiKeyInput('sk-****************************')
+        }
+      } catch (error) {
+        console.error('Failed to load AI settings:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadSettings()
+  }, [])
+
+  // Subscribe to embedding progress events
+  useEffect(() => {
+    const unsubscribe = window.api.onEmbeddingProgress((event) => {
+      setReindexProgress(event)
+      if (event.phase === 'complete') {
+        setTimeout(() => {
+          setIsReindexing(false)
+          setReindexProgress(null)
+        }, 1000)
+      }
+    })
+    return unsubscribe
+  }, [])
+
+  const handleSaveApiKey = useCallback(async () => {
+    // Don't save if it's the masked placeholder
+    if (apiKeyInput.startsWith('sk-****')) {
+      toast.info('Enter a new API key to update')
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const result = await window.api.settings.setAISettings({
+        openaiApiKey: apiKeyInput || null
+      })
+      if (result.success) {
+        toast.success('API key saved')
+        setSettings((prev) => ({ ...prev, openaiApiKey: apiKeyInput || null }))
+        if (apiKeyInput) {
+          setApiKeyInput('sk-****************************')
+        }
+      } else {
+        toast.error(result.error || 'Failed to save API key')
+      }
+    } catch (error) {
+      toast.error('Failed to save API key')
+    } finally {
+      setIsSaving(false)
+    }
+  }, [apiKeyInput])
+
+  const handleToggleEnabled = useCallback(async (enabled: boolean) => {
+    try {
+      const result = await window.api.settings.setAISettings({ enabled })
+      if (result.success) {
+        setSettings((prev) => ({ ...prev, enabled }))
+        toast.success(enabled ? 'AI features enabled' : 'AI features disabled')
+      } else {
+        toast.error(result.error || 'Failed to update setting')
+      }
+    } catch (error) {
+      toast.error('Failed to update setting')
+    }
+  }, [])
+
+  const handleTestConnection = useCallback(async () => {
+    setIsTesting(true)
+    setTestResult(null)
+    try {
+      const result = await window.api.settings.testAIConnection()
+      setTestResult(result)
+      if (result.success) {
+        toast.success('Connection successful!')
+      } else {
+        toast.error(result.error || 'Connection failed')
+      }
+    } catch (error) {
+      setTestResult({ success: false, error: 'Connection test failed' })
+      toast.error('Connection test failed')
+    } finally {
+      setIsTesting(false)
+    }
+  }, [])
+
+  const handleReindexEmbeddings = useCallback(async () => {
+    setIsReindexing(true)
+    setReindexProgress({ current: 0, total: 0, phase: 'scanning' })
+    try {
+      const result = await window.api.settings.reindexEmbeddings()
+      if (result.success) {
+        toast.success('Embeddings reindexed successfully')
+        setIsReindexing(false)
+
+      } else {
+        toast.error(result.error || 'Failed to reindex embeddings')
+        setIsReindexing(false)
+        setReindexProgress(null)
+      }
+    } catch (error) {
+      toast.error('Failed to reindex embeddings')
+      setIsReindexing(false)
+      setReindexProgress(null)
+    }
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold">AI Assistant</h3>
+          <p className="text-sm text-muted-foreground">Loading settings...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold">AI Assistant</h3>
+        <p className="text-sm text-muted-foreground">
+          Configure AI-powered features like smart filing suggestions
+        </p>
+      </div>
+
+      <Separator />
+
+      {/* Enable/Disable AI */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-0.5">
+          <Label htmlFor="ai-enabled">Enable AI Features</Label>
+          <p className="text-sm text-muted-foreground">
+            Use AI to suggest folders and tags when filing items
+          </p>
+        </div>
+        <Switch
+          id="ai-enabled"
+          checked={settings.enabled}
+          onCheckedChange={handleToggleEnabled}
+          disabled={!settings.openaiApiKey}
+        />
+      </div>
+
+      <Separator />
+
+      {/* OpenAI API Key */}
+      <div className="space-y-4">
+        <div>
+          <Label htmlFor="api-key">OpenAI API Key</Label>
+          <p className="text-sm text-muted-foreground mt-1">
+            Required for AI-powered suggestions. Get your key from{' '}
+            <a
+              href="https://platform.openai.com/api-keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              OpenAI
+            </a>
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Input
+              id="api-key"
+              type={showApiKey ? 'text' : 'password'}
+              value={apiKeyInput}
+              onChange={(e) => setApiKeyInput(e.target.value)}
+              placeholder="sk-..."
+              className="pr-10"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 h-full px-3"
+              onClick={() => setShowApiKey(!showApiKey)}
+            >
+              {showApiKey ? (
+                <EyeOff className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <Eye className="w-4 h-4 text-muted-foreground" />
+              )}
+            </Button>
+          </div>
+          <Button onClick={handleSaveApiKey} disabled={isSaving}>
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+          </Button>
+        </div>
+
+        {/* Test Connection */}
+        {settings.openaiApiKey && (
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={handleTestConnection} disabled={isTesting}>
+              {isTesting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Testing...
+                </>
+              ) : (
+                'Test Connection'
+              )}
+            </Button>
+            {testResult && (
+              <span
+                className={cn(
+                  'flex items-center gap-1 text-sm',
+                  testResult.success ? 'text-green-600' : 'text-red-600'
+                )}
+              >
+                {testResult.success ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Connected
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="w-4 h-4" />
+                    {testResult.error || 'Failed'}
+                  </>
+                )}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      <Separator />
+
+      {/* Reindex Embeddings */}
+      <div className="space-y-4">
+        <div>
+          <Label>Embedding Index</Label>
+          <p className="text-sm text-muted-foreground mt-1">
+            Rebuild the AI embeddings index for all notes. This enables better similarity matching
+            for filing suggestions.
+          </p>
+        </div>
+
+        <Button
+          variant="outline"
+          onClick={handleReindexEmbeddings}
+          disabled={isReindexing || !settings.openaiApiKey || !settings.enabled}
+        >
+          {isReindexing ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              Reindexing...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Rebuild Index
+            </>
+          )}
+        </Button>
+
+        {reindexProgress && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>
+                {reindexProgress.phase === 'scanning'
+                  ? 'Scanning notes...'
+                  : reindexProgress.phase === 'embedding'
+                    ? 'Generating embeddings...'
+                    : 'Complete!'}
+              </span>
+              <span>
+                {reindexProgress.current} / {reindexProgress.total}
+              </span>
+            </div>
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-300"
+                style={{
+                  width: `${reindexProgress.total > 0 ? (reindexProgress.current / reindexProgress.total) * 100 : 0}%`
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Info hint */}
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+          <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+          <p className="text-muted-foreground">
+            The embedding index is built automatically when notes are created or modified. Use this
+            button to rebuild from scratch if suggestions seem inaccurate.
           </p>
         </div>
       </div>

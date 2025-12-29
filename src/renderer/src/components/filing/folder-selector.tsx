@@ -1,12 +1,19 @@
 import { useState, useMemo } from 'react'
-import { Search, Folder, Check, ChevronRight, ChevronDown, Plus } from 'lucide-react'
+import { Search, Folder, Check, ChevronRight, ChevronDown, Plus, Sparkles } from 'lucide-react'
 
 import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { Folder as FolderType } from '@/types'
 
+// Extended folder type with AI metadata
+interface AIFolderType extends FolderType {
+  aiConfidence?: number
+  aiReason?: string
+}
+
 interface FolderItemProps {
-  folder: FolderType
+  folder: AIFolderType
   isSelected: boolean
   onSelect: (folder: FolderType) => void
 }
@@ -23,7 +30,9 @@ const FolderItem = ({ folder, isSelected, onSelect }: FolderItemProps): React.JS
     }
   }
 
-  return (
+  const hasAISuggestion = folder.aiConfidence !== undefined && folder.aiConfidence > 0
+
+  const content = (
     <div
       className={cn(
         'flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer',
@@ -37,7 +46,13 @@ const FolderItem = ({ folder, isSelected, onSelect }: FolderItemProps): React.JS
       onKeyDown={handleKeyDown}
     >
       <Folder className="size-4 shrink-0" aria-hidden="true" />
-      <span className="flex-1 text-sm truncate">{folder.path}</span>
+      <span className="flex-1 text-sm truncate">{folder.path || 'Notes'}</span>
+      {hasAISuggestion && (
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Sparkles className="size-3 text-yellow-500" aria-hidden="true" />
+          <span>{Math.round(folder.aiConfidence! * 100)}%</span>
+        </span>
+      )}
       {isSelected && (
         <Check
           className={cn(
@@ -50,11 +65,27 @@ const FolderItem = ({ folder, isSelected, onSelect }: FolderItemProps): React.JS
       )}
     </div>
   )
+
+  // Wrap with tooltip if AI suggestion has a reason
+  if (hasAISuggestion && folder.aiReason) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>{content}</TooltipTrigger>
+          <TooltipContent side="right" className="max-w-xs">
+            <p className="text-sm">{folder.aiReason}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
+  return content
 }
 
 interface FolderSectionProps {
   title: string
-  folders: FolderType[]
+  folders: AIFolderType[]
   selectedId: string | null
   onSelect: (folder: FolderType) => void
 }
@@ -88,8 +119,8 @@ const FolderSection = ({
 
 interface FolderSelectorProps {
   folders: FolderType[]
-  suggestedFolders: FolderType[]
-  recentFolders: FolderType[]
+  suggestedFolders: AIFolderType[]
+  recentFolders: AIFolderType[]
   selectedFolder: FolderType | null
   onSelect: (folder: FolderType) => void
 }

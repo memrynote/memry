@@ -243,6 +243,24 @@ export const inboxService = {
   },
 
   /**
+   * Track whether a suggestion was accepted or rejected.
+   * Used to improve future suggestions.
+   * @param input - Suggestion tracking input
+   * @returns Success status
+   */
+  trackSuggestion: (input: {
+    itemId: string
+    itemType: string
+    suggestedTo: string
+    actualTo: string
+    confidence: number
+    suggestedTags?: string[]
+    actualTags?: string[]
+  }): Promise<{ success: boolean; error?: string }> => {
+    return window.api.inbox.trackSuggestion(input)
+  },
+
+  /**
    * Convert an inbox item directly to a note.
    * @param itemId - Item ID
    * @returns File response with new note ID

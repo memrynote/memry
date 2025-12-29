@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Link, FileText, Image, Mic, Globe, Check, Loader2 } from 'lucide-react'
+import { Link, FileText, Image, Mic, Globe, Check, Loader2, Sparkles, Info } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { FolderSelector } from '@/components/filing/folder-selector'
 import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { LinkSearch } from '@/components/filing/link-search'
@@ -128,10 +129,60 @@ const FilingPanel = ({ isOpen, item, onClose, onFile }: FilingPanelProps): React
     enabled: isOpen // Only fetch when panel is open
   })
 
-  // No longer need to fetch tags separately - TagAutocomplete handles this
+  // Fetch AI-powered filing suggestions
+  const { data: aiSuggestions = [], isLoading: isLoadingAISuggestions } = useQuery({
+    queryKey: ['inbox', 'suggestions', item?.id],
+    queryFn: async () => {
+      if (!item?.id) return []
+      try {
+        const response = await window.api.inbox.getSuggestions(item.id)
+        return response.suggestions || []
+      } catch (error) {
+        console.error('Failed to fetch AI suggestions:', error)
+        return []
+      }
+    },
+    enabled: isOpen && !!item?.id,
+    staleTime: 30000 // Cache for 30 seconds
+  })
 
-  // Get first 3 folders as suggested (could be AI-powered in the future)
-  const suggestedFolders = useMemo(() => vaultFolders.slice(0, 3), [vaultFolders])
+  // Convert AI suggestions to folder objects with confidence metadata
+  const suggestedFolders = useMemo(() => {
+    if (aiSuggestions.length > 0) {
+      // Convert AI suggestions to Folder objects, keeping AI metadata
+      return aiSuggestions
+        .filter((s) => s.destination.type === 'folder' && s.destination.path)
+        .slice(0, 5)
+        .map((s) => {
+          const path = s.destination.path || ''
+          return {
+            id: path,
+            name: path.split('/').pop() || path || 'Notes',
+            path: path,
+            // Store AI metadata for display
+            aiConfidence: s.confidence,
+            aiReason: s.reason
+          } as Folder & { aiConfidence?: number; aiReason?: string }
+        })
+    }
+    // Fallback to first 3 folders if no AI suggestions
+    return vaultFolders.slice(0, 3)
+  }, [aiSuggestions, vaultFolders])
+
+  // Get suggested tags from AI
+  const suggestedTags = useMemo(() => {
+    if (aiSuggestions.length > 0) {
+      // Collect unique tags from all suggestions
+      const tagSet = new Set<string>()
+      for (const suggestion of aiSuggestions) {
+        for (const tag of suggestion.suggestedTags || []) {
+          tagSet.add(tag)
+        }
+      }
+      return Array.from(tagSet)
+    }
+    return []
+  }, [aiSuggestions])
 
   // Get suggested folders for number shortcuts
   const suggestedFoldersForShortcut = useMemo(() => suggestedFolders, [suggestedFolders])
@@ -145,6 +196,13 @@ const FilingPanel = ({ isOpen, item, onClose, onFile }: FilingPanelProps): React
       setLinkedNotes([])
     }
   }, [isOpen, item?.id, item?.tags])
+
+  // Auto-add suggested tags from AI when they load (if item has no tags)
+  useEffect(() => {
+    if (suggestedTags.length > 0 && tags.length === 0) {
+      // Don't auto-add, but we'll show them as suggestions in TagAutocomplete
+    }
+  }, [suggestedTags, tags.length])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -197,6 +255,27 @@ const FilingPanel = ({ isOpen, item, onClose, onFile }: FilingPanelProps): React
     // Simulate a brief delay for filing
     await new Promise((resolve) => setTimeout(resolve, 300))
 
+    // Track suggestion feedback if AI suggestions were available
+    if (aiSuggestions.length > 0) {
+      const topSuggestion = aiSuggestions[0]
+      const suggestedPath = topSuggestion?.destination?.path || ''
+
+      // Track the suggestion feedback asynchronously (don't block filing)
+      window.api.inbox
+        .trackSuggestion({
+          itemId: item.id,
+          itemType: item.type,
+          suggestedTo: suggestedPath,
+          actualTo: selectedFolder.id,
+          confidence: topSuggestion?.confidence || 0,
+          suggestedTags: topSuggestion?.suggestedTags || [],
+          actualTags: tags
+        })
+        .catch((error) => {
+          console.error('Failed to track suggestion:', error)
+        })
+    }
+
     onFile(
       item.id,
       selectedFolder.id,
@@ -233,6 +312,34 @@ const FilingPanel = ({ isOpen, item, onClose, onFile }: FilingPanelProps): React
           {item && <ItemPreview item={item} />}
 
           <Separator />
+
+          {/* AI Suggestions Indicator */}
+          {isLoadingAISuggestions && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              <span>Loading AI suggestions...</span>
+            </div>
+          )}
+
+          {aiSuggestions.length > 0 && !isLoadingAISuggestions && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Sparkles className="size-4 text-yellow-500" />
+              <span>AI-powered suggestions available</span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="size-4 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xs">
+                    <p>
+                      Suggestions are based on content similarity with your existing notes and
+                      filing patterns.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          )}
 
           {/* Folder Selection */}
           <FolderSelector
