@@ -2,6 +2,7 @@
  * Settings IPC Handlers
  *
  * Handles IPC requests for app settings, including journal settings and AI settings.
+ * AI uses local embeddings with all-MiniLM-L6-v2 model (no API key required).
  *
  * @module main/ipc/settings-handlers
  */
@@ -10,6 +11,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 import { SettingsChannels } from '@shared/ipc-channels'
 import { getDatabase } from '../database'
 import { getSetting, setSetting, deleteSetting } from '@shared/db/queries/settings'
+import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from '../lib/embeddings'
 
 // ============================================================================
 // Settings Keys
@@ -17,9 +19,7 @@ import { getSetting, setSetting, deleteSetting } from '@shared/db/queries/settin
 
 const SETTINGS_KEYS = {
   JOURNAL_DEFAULT_TEMPLATE: 'journal.defaultTemplate',
-  AI_OPENAI_API_KEY: 'ai.openaiApiKey',
-  AI_ENABLED: 'ai.enabled',
-  AI_EMBEDDING_MODEL: 'ai.embeddingModel'
+  AI_ENABLED: 'ai.enabled'
 } as const
 
 // ============================================================================
@@ -31,20 +31,25 @@ export interface JournalSettings {
 }
 
 // ============================================================================
-// AI Settings Interface
+// AI Settings Interface (Simplified - no API key needed)
 // ============================================================================
 
 export interface AISettings {
-  openaiApiKey: string | null
   enabled: boolean
-  embeddingModel: string
+}
+
+export interface AIModelStatus {
+  name: string
+  dimension: number
+  loaded: boolean
+  loading: boolean
+  error: string | null
+  embeddingCount?: number
 }
 
 /** Default AI settings values */
 const DEFAULT_AI_SETTINGS: AISettings = {
-  openaiApiKey: null,
-  enabled: true,
-  embeddingModel: 'text-embedding-3-small'
+  enabled: true
 }
 
 // ============================================================================
@@ -139,21 +144,17 @@ export function registerSettingsHandlers(): void {
     }
   )
 
-  // Get AI settings
+  // Get AI settings (simplified - just enabled flag)
   ipcMain.handle(SettingsChannels.invoke.GET_AI_SETTINGS, async () => {
     const db = getDbOrNull()
     if (!db) {
       return DEFAULT_AI_SETTINGS
     }
 
-    const openaiApiKey = getSetting(db, SETTINGS_KEYS.AI_OPENAI_API_KEY)
     const enabledStr = getSetting(db, SETTINGS_KEYS.AI_ENABLED)
-    const embeddingModel = getSetting(db, SETTINGS_KEYS.AI_EMBEDDING_MODEL)
 
     return {
-      openaiApiKey: openaiApiKey || null,
-      enabled: enabledStr !== 'false', // Default to true
-      embeddingModel: embeddingModel || DEFAULT_AI_SETTINGS.embeddingModel
+      enabled: enabledStr !== 'false' // Default to true
     }
   })
 
@@ -166,20 +167,8 @@ export function registerSettingsHandlers(): void {
         return { success: false, error: 'No vault open' }
       }
 
-      if (settings.openaiApiKey !== undefined) {
-        if (settings.openaiApiKey === null || settings.openaiApiKey === '') {
-          deleteSetting(db, SETTINGS_KEYS.AI_OPENAI_API_KEY)
-        } else {
-          setSetting(db, SETTINGS_KEYS.AI_OPENAI_API_KEY, settings.openaiApiKey)
-        }
-      }
-
       if (settings.enabled !== undefined) {
         setSetting(db, SETTINGS_KEYS.AI_ENABLED, settings.enabled ? 'true' : 'false')
-      }
-
-      if (settings.embeddingModel !== undefined) {
-        setSetting(db, SETTINGS_KEYS.AI_EMBEDDING_MODEL, settings.embeddingModel)
       }
 
       // Emit settings changed event
@@ -194,34 +183,45 @@ export function registerSettingsHandlers(): void {
     }
   )
 
-  // Test AI connection
-  ipcMain.handle(SettingsChannels.invoke.TEST_AI_CONNECTION, async () => {
-    const db = getDbOrNull()
-    if (!db) {
-      return { success: false, error: 'No vault open' }
+  // Get AI model status
+  ipcMain.handle(SettingsChannels.invoke.GET_AI_MODEL_STATUS, async () => {
+    const modelInfo = getModelInfo()
+
+    // Get embedding count if database is available
+    let embeddingCount = 0
+    try {
+      const { getEmbeddingCount } = await import('../inbox/suggestions')
+      embeddingCount = getEmbeddingCount()
+    } catch {
+      // Ignore - database might not be open
     }
 
-    const apiKey = getSetting(db, SETTINGS_KEYS.AI_OPENAI_API_KEY)
-    if (!apiKey) {
-      return { success: false, error: 'No API key configured' }
+    return {
+      ...modelInfo,
+      embeddingCount
+    } as AIModelStatus
+  })
+
+  // Load AI model
+  ipcMain.handle(SettingsChannels.invoke.LOAD_AI_MODEL, async () => {
+    if (isModelLoaded()) {
+      return { success: true, message: 'Model already loaded' }
+    }
+
+    if (isModelLoading()) {
+      return { success: false, error: 'Model is already loading' }
     }
 
     try {
-      // Dynamic import to avoid loading OpenAI when not needed
-      const { default: OpenAI } = await import('openai')
-      const openai = new OpenAI({ apiKey })
-
-      // Test with a minimal embedding request
-      await openai.embeddings.create({
-        model: 'text-embedding-3-small',
-        input: 'test',
-        dimensions: 256 // Use smaller dimension for test
-      })
-
-      return { success: true }
+      const success = await initEmbeddingModel()
+      if (success) {
+        return { success: true }
+      } else {
+        const info = getModelInfo()
+        return { success: false, error: info.error || 'Failed to load model' }
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
-      console.error('[AI] Connection test failed:', message)
       return { success: false, error: message }
     }
   })
@@ -253,7 +253,8 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.SET_JOURNAL_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_AI_SETTINGS)
-  ipcMain.removeHandler(SettingsChannels.invoke.TEST_AI_CONNECTION)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_AI_MODEL_STATUS)
+  ipcMain.removeHandler(SettingsChannels.invoke.LOAD_AI_MODEL)
   ipcMain.removeHandler(SettingsChannels.invoke.REINDEX_EMBEDDINGS)
 
   console.log('Settings IPC handlers unregistered')

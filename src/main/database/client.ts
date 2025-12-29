@@ -2,6 +2,8 @@ import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import Database from 'better-sqlite3'
 import { existsSync } from 'fs'
 import * as schema from '@shared/db/schema'
+import * as sqliteVec from 'sqlite-vec'
+import { EMBEDDING_DIMENSION } from '../lib/embeddings'
 
 export type DrizzleDb = BetterSQLite3Database<typeof schema>
 
@@ -55,6 +57,23 @@ export function initIndexDatabase(dbPath: string): DrizzleDb {
   // Store temp tables in memory
   sqliteIndexDb.pragma('temp_store = MEMORY')
 
+  // Load sqlite-vec extension for vector search
+  sqliteVec.load(sqliteIndexDb)
+  console.log(
+    '[Database] sqlite-vec loaded, version:',
+    sqliteIndexDb.prepare('SELECT vec_version()').get()
+  )
+
+  // Create vec0 virtual table for note embeddings (not managed by Drizzle)
+  // Uses cosine distance metric for similarity search
+  sqliteIndexDb.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS vec_notes USING vec0(
+      note_id TEXT PRIMARY KEY,
+      embedding float[${EMBEDDING_DIMENSION}] distance_metric=cosine
+    )
+  `)
+  console.log('[Database] vec_notes virtual table ready')
+
   indexDb = drizzle(sqliteIndexDb, { schema })
   return indexDb
 }
@@ -67,6 +86,15 @@ export function getDatabase(): DrizzleDb {
 export function getIndexDatabase(): DrizzleDb {
   if (!indexDb) throw new Error('Index database not initialized')
   return indexDb
+}
+
+/**
+ * Get the raw better-sqlite3 connection for the index database.
+ * Used for direct sqlite-vec queries on vec_notes virtual table.
+ */
+export function getRawIndexDatabase(): Database.Database {
+  if (!sqliteIndexDb) throw new Error('Index database not initialized')
+  return sqliteIndexDb
 }
 
 export function closeDatabase(): void {
