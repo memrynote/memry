@@ -1,44 +1,29 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+/**
+ * Content Section for Inbox Detail Panel
+ * Displays type-specific content previews (link, image, voice, text)
+ */
+
+import { useRef, useState } from 'react'
 import {
-  Link,
-  FileText,
+  Globe,
   Image,
   Mic,
+  FileText,
   Calendar,
-  Globe,
   Clock,
-  Scissors,
-  FileIcon as FileIconLucide,
-  Share2,
-  Trash2,
-  Folder,
-  Loader2,
-  AlertCircle,
-  RefreshCw,
+  User,
   ExternalLink,
   Play,
   Pause,
   Copy,
   Check,
-  User,
-  Tag
+  Loader2,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react'
-
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-  SheetDescription
-} from '@/components/ui/sheet'
-import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Separator } from '@/components/ui/separator'
-import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { extractDomain } from '@/lib/inbox-utils'
-import { useRetryTranscription, useAddInboxTag, useRemoveInboxTag } from '@/hooks/use-inbox'
 import type {
   InboxItem,
   InboxItemListItem,
@@ -48,16 +33,70 @@ import type {
   VoiceMetadata
 } from '@/types'
 
-// Preview panel can work with either full or list item types
-type PreviewItem = InboxItem | InboxItemListItem
+// Content section can work with either full or list item types
+type ContentItem = InboxItem | InboxItemListItem
 
-// Type icon component
-const TypeIcon = ({ type }: { type: InboxItemType }): React.JSX.Element => {
-  const iconClass = 'size-5 text-[var(--muted-foreground)]'
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+const formatDuration = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+const formatDate = (date: Date | string): string => {
+  const d = date instanceof Date ? date : new Date(date)
+  const now = new Date()
+  const isToday = d.toDateString() === now.toDateString()
+
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const isYesterday = d.toDateString() === yesterday.toDateString()
+
+  const timeStr = d.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  })
+
+  if (isToday) {
+    return `today at ${timeStr}`
+  }
+  if (isYesterday) {
+    return `yesterday at ${timeStr}`
+  }
+  return (
+    d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    }) + ` at ${timeStr}`
+  )
+}
+
+// =============================================================================
+// Type Icon Component
+// =============================================================================
+
+interface TypeIconProps {
+  type: InboxItemType
+  className?: string
+}
+
+export const TypeIcon = ({ type, className = 'size-5' }: TypeIconProps): React.JSX.Element => {
+  const iconClass = `${className} text-[var(--muted-foreground)]`
 
   switch (type) {
     case 'link':
-      return <Link className={iconClass} aria-hidden="true" />
+      return <Globe className={iconClass} aria-hidden="true" />
     case 'note':
       return <FileText className={iconClass} aria-hidden="true" />
     case 'image':
@@ -65,32 +104,18 @@ const TypeIcon = ({ type }: { type: InboxItemType }): React.JSX.Element => {
     case 'voice':
       return <Mic className={iconClass} aria-hidden="true" />
     case 'clip':
-      return <Scissors className={iconClass} aria-hidden="true" />
     case 'pdf':
-      return <FileIconLucide className={iconClass} aria-hidden="true" />
     case 'social':
-      return <Share2 className={iconClass} aria-hidden="true" />
     default:
       return <FileText className={iconClass} aria-hidden="true" />
   }
 }
 
-// Helper to format file size
-const formatFileSize = (bytes: number): string => {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
+// =============================================================================
+// Loading Skeleton
+// =============================================================================
 
-// Helper to format duration
-const formatDuration = (seconds: number): string => {
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
-
-// Loading skeleton component
-const PreviewSkeleton = (): React.JSX.Element => (
+export const ContentSkeleton = (): React.JSX.Element => (
   <div className="space-y-4 p-6">
     <Skeleton className="h-[200px] w-full rounded-lg" />
     <Skeleton className="h-4 w-3/4" />
@@ -103,42 +128,15 @@ const PreviewSkeleton = (): React.JSX.Element => (
   </div>
 )
 
-// Metadata component
-interface PreviewMetadataProps {
-  item: PreviewItem
+// =============================================================================
+// Metadata Component
+// =============================================================================
+
+interface ContentMetadataProps {
+  item: ContentItem
 }
 
-const PreviewMetadata = ({ item }: PreviewMetadataProps): React.JSX.Element => {
-  const formatDate = (date: Date | string): string => {
-    const d = date instanceof Date ? date : new Date(date)
-    const now = new Date()
-    const isToday = d.toDateString() === now.toDateString()
-
-    const yesterday = new Date(now)
-    yesterday.setDate(yesterday.getDate() - 1)
-    const isYesterday = d.toDateString() === yesterday.toDateString()
-
-    const timeStr = d.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    })
-
-    if (isToday) {
-      return `today at ${timeStr}`
-    }
-    if (isYesterday) {
-      return `yesterday at ${timeStr}`
-    }
-    return (
-      d.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      }) + ` at ${timeStr}`
-    )
-  }
-
+export const ContentMetadata = ({ item }: ContentMetadataProps): React.JSX.Element => {
   // Get duration - on list items it's a direct property, on full items it's in metadata
   let duration: number | null = null
   if ('duration' in item && typeof item.duration === 'number') {
@@ -204,21 +202,17 @@ const PreviewMetadata = ({ item }: PreviewMetadataProps): React.JSX.Element => {
   )
 }
 
+// =============================================================================
 // Link Preview Content
+// =============================================================================
+
 interface LinkPreviewProps {
   item: InboxItem | InboxItemListItem
 }
 
 const LinkPreview = ({ item }: LinkPreviewProps): React.JSX.Element => {
   const metadata = 'metadata' in item ? (item.metadata as LinkMetadata | null) : null
-  // Use hero image from metadata, fall back to thumbnail
   const heroImage = metadata?.heroImage || item.thumbnailUrl
-
-  // Debug: log hero image URL
-  useEffect(() => {
-    console.log('[LinkPreview] thumbnailUrl:', item.thumbnailUrl)
-    console.log('[LinkPreview] heroImage:', heroImage)
-  }, [item.thumbnailUrl, heroImage])
 
   return (
     <div className="space-y-4">
@@ -229,10 +223,7 @@ const LinkPreview = ({ item }: LinkPreviewProps): React.JSX.Element => {
             src={heroImage}
             alt=""
             className="w-full object-cover max-h-[280px]"
-            onLoad={() => console.log('[LinkPreview] Image loaded successfully')}
             onError={(e) => {
-              console.error('[LinkPreview] Image failed to load:', heroImage)
-              // Hide on error
               e.currentTarget.style.display = 'none'
             }}
           />
@@ -296,14 +287,16 @@ const LinkPreview = ({ item }: LinkPreviewProps): React.JSX.Element => {
   )
 }
 
+// =============================================================================
 // Image Preview Content
+// =============================================================================
+
 interface ImagePreviewProps {
   item: InboxItem | InboxItemListItem
 }
 
 const ImagePreview = ({ item }: ImagePreviewProps): React.JSX.Element => {
   const metadata = 'metadata' in item ? (item.metadata as ImageMetadata | null) : null
-  // Prefer full attachment URL, fall back to thumbnail
   const imageUrl = ('attachmentUrl' in item && item.attachmentUrl) || item.thumbnailUrl
 
   return (
@@ -313,7 +306,7 @@ const ImagePreview = ({ item }: ImagePreviewProps): React.JSX.Element => {
           <img
             src={imageUrl}
             alt={item.title}
-            className="w-full object-contain max-h-[500px] mx-auto"
+            className="w-full object-contain max-h-[400px] mx-auto"
           />
         </div>
       ) : (
@@ -327,7 +320,7 @@ const ImagePreview = ({ item }: ImagePreviewProps): React.JSX.Element => {
         <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-[var(--muted-foreground)] px-1">
           {metadata.width && metadata.height && (
             <span className="flex items-center gap-1">
-              <span className="font-medium">{metadata.width}</span> ×{' '}
+              <span className="font-medium">{metadata.width}</span> x{' '}
               <span className="font-medium">{metadata.height}</span> px
             </span>
           )}
@@ -344,7 +337,10 @@ const ImagePreview = ({ item }: ImagePreviewProps): React.JSX.Element => {
   )
 }
 
+// =============================================================================
 // Voice Preview Content with Audio Player
+// =============================================================================
+
 interface VoicePreviewProps {
   item: InboxItem | InboxItemListItem
   onRetryTranscription?: () => void
@@ -365,13 +361,6 @@ const VoicePreview = ({
 
   const metadata = 'metadata' in item ? (item.metadata as VoiceMetadata | null) : null
   const audioUrl = 'attachmentUrl' in item ? item.attachmentUrl : null
-
-  // Debug: log audio URL
-  useEffect(() => {
-    if (audioUrl) {
-      console.log('[VoicePreview] Audio URL:', audioUrl)
-    }
-  }, [audioUrl])
   const transcription = 'transcription' in item ? item.transcription : null
   const transcriptionStatus = 'transcriptionStatus' in item ? item.transcriptionStatus : null
 
@@ -586,9 +575,12 @@ const VoicePreview = ({
   )
 }
 
-// Simple content renderer for other types
+// =============================================================================
+// Simple Text Content
+// =============================================================================
+
 interface SimpleContentProps {
-  item: PreviewItem
+  item: ContentItem
 }
 
 const SimpleContent = ({ item }: SimpleContentProps): React.JSX.Element => {
@@ -599,18 +591,21 @@ const SimpleContent = ({ item }: SimpleContentProps): React.JSX.Element => {
   )
 }
 
-// Main content dispatcher
-interface PreviewContentProps {
-  item: PreviewItem
+// =============================================================================
+// Main Content Section Component
+// =============================================================================
+
+interface ContentSectionProps {
+  item: ContentItem
   onRetryTranscription?: () => void
   isRetrying?: boolean
 }
 
-const PreviewContent = ({
+export const ContentSection = ({
   item,
   onRetryTranscription,
   isRetrying
-}: PreviewContentProps): React.JSX.Element => {
+}: ContentSectionProps): React.JSX.Element => {
   switch (item.type) {
     case 'link':
       return <LinkPreview item={item} />
@@ -633,217 +628,3 @@ const PreviewContent = ({
       return <SimpleContent item={item} />
   }
 }
-
-// =============================================================================
-// Preview Tags Component - Inline tag editing
-// =============================================================================
-
-interface PreviewTagsProps {
-  itemId: string
-  tags: string[]
-}
-
-const PreviewTags = ({ itemId, tags }: PreviewTagsProps): React.JSX.Element => {
-  const [localTags, setLocalTags] = useState<string[]>(tags)
-  const addTagMutation = useAddInboxTag()
-  const removeTagMutation = useRemoveInboxTag()
-
-  // Sync local tags when prop changes (e.g., after mutation success)
-  useEffect(() => {
-    setLocalTags(tags)
-  }, [tags])
-
-  const handleTagsChange = useCallback(
-    (newTags: string[]) => {
-      // Find added tags
-      const addedTags = newTags.filter((t) => !localTags.includes(t))
-      // Find removed tags
-      const removedTags = localTags.filter((t) => !newTags.includes(t))
-
-      // Optimistically update local state
-      setLocalTags(newTags)
-
-      // Apply changes to backend
-      addedTags.forEach((tag) => {
-        addTagMutation.mutate({ itemId, tag })
-      })
-      removedTags.forEach((tag) => {
-        removeTagMutation.mutate({ itemId, tag })
-      })
-    },
-    [itemId, localTags, addTagMutation, removeTagMutation]
-  )
-
-  const isPending = addTagMutation.isPending || removeTagMutation.isPending
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <Tag className="size-4 text-[var(--muted-foreground)]" aria-hidden="true" />
-        <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
-          Tags
-        </span>
-        {isPending && <Loader2 className="size-3 animate-spin text-[var(--muted-foreground)]" />}
-      </div>
-      <TagAutocomplete
-        tags={localTags}
-        onTagsChange={handleTagsChange}
-        placeholder="Add tags to this item..."
-        showSections={true}
-        className="pt-0"
-      />
-    </div>
-  )
-}
-
-// =============================================================================
-// Main Preview Panel component
-// =============================================================================
-
-interface PreviewPanelProps {
-  isOpen: boolean
-  item: PreviewItem | null
-  isLoading?: boolean
-  onClose: () => void
-  onFile: (id: string) => void
-  onDelete: (id: string) => void
-}
-
-const PreviewPanel = ({
-  isOpen,
-  item,
-  isLoading = false,
-  onClose,
-  onFile,
-  onDelete
-}: PreviewPanelProps): React.JSX.Element => {
-  // Retry transcription mutation
-  const retryTranscriptionMutation = useRetryTranscription()
-
-  // Handle keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      if (!isOpen) return
-
-      // Space or Escape to close
-      if (e.key === ' ' || e.key === 'Escape') {
-        // Don't close if typing in an input
-        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-          return
-        }
-        e.preventDefault()
-        onClose()
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
-
-  const handleOpenChange = (open: boolean): void => {
-    if (!open) {
-      onClose()
-    }
-  }
-
-  const handleFile = (): void => {
-    if (item) {
-      onFile(item.id)
-    }
-  }
-
-  const handleDelete = (): void => {
-    if (item) {
-      onDelete(item.id)
-      onClose()
-    }
-  }
-
-  const handleRetryTranscription = (): void => {
-    if (item) {
-      retryTranscriptionMutation.mutate(item.id)
-    }
-  }
-
-  return (
-    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
-      <SheetContent
-        side="right"
-        className="w-[520px] sm:max-w-[520px] flex flex-col p-0"
-        aria-describedby={item ? undefined : 'preview-panel-description'}
-      >
-        {isLoading ? (
-          <>
-            {/* Hidden title/description for accessibility when loading */}
-            <VisuallyHidden.Root>
-              <SheetTitle>Loading preview</SheetTitle>
-              <SheetDescription id="preview-panel-description">
-                Loading item preview...
-              </SheetDescription>
-            </VisuallyHidden.Root>
-            <PreviewSkeleton />
-          </>
-        ) : item ? (
-          <>
-            {/* Header */}
-            <SheetHeader className="px-6 py-4 border-b border-[var(--border)] shrink-0">
-              <div className="flex items-start gap-3">
-                <TypeIcon type={item.type} />
-                <SheetTitle className="text-lg font-semibold flex-1 line-clamp-2">
-                  {item.title}
-                </SheetTitle>
-              </div>
-            </SheetHeader>
-
-            {/* Metadata */}
-            <PreviewMetadata item={item} />
-
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-              {/* Tags Section */}
-              <PreviewTags itemId={item.id} tags={item.tags || []} />
-
-              <Separator />
-
-              {/* Content */}
-              <PreviewContent
-                item={item}
-                onRetryTranscription={handleRetryTranscription}
-                isRetrying={retryTranscriptionMutation.isPending}
-              />
-            </div>
-
-            {/* Footer */}
-            <SheetFooter className="px-6 py-4 border-t border-[var(--border)] shrink-0">
-              <div className="flex items-center justify-between w-full">
-                <Button
-                  variant="ghost"
-                  onClick={handleDelete}
-                  className="text-[var(--muted-foreground)] hover:text-red-500 hover:bg-red-500/10"
-                >
-                  <Trash2 className="size-4 mr-2" aria-hidden="true" />
-                  Delete
-                </Button>
-                <Button onClick={handleFile}>
-                  <Folder className="size-4 mr-2" aria-hidden="true" />
-                  File
-                </Button>
-              </div>
-              <p className="text-xs text-[var(--muted-foreground)] text-center w-full mt-3">
-                Space to close
-              </p>
-            </SheetFooter>
-          </>
-        ) : (
-          // Hidden title/description for accessibility when no item
-          <VisuallyHidden.Root>
-            <SheetTitle>Preview panel</SheetTitle>
-            <SheetDescription>No item selected for preview</SheetDescription>
-          </VisuallyHidden.Root>
-        )}
-      </SheetContent>
-    </Sheet>
-  )
-}
-
-export { PreviewPanel }

@@ -15,8 +15,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { ListView } from '@/components/list-view'
 import { CardView } from '@/components/card-view'
-import { FilingPanel } from '@/components/filing/filing-panel'
-import { PreviewPanel } from '@/components/preview/preview-panel'
+import { InboxDetailPanel } from '@/components/inbox-detail'
 import { BulkActionBar, type ClusterSuggestion } from '@/components/bulk/bulk-action-bar'
 import { BulkFilePanel } from '@/components/bulk/bulk-file-panel'
 import { BulkTagPopover } from '@/components/bulk/bulk-tag-popover'
@@ -38,12 +37,8 @@ import {
   useFileInboxItem,
   inboxKeys
 } from '@/hooks/use-inbox'
-import type { InboxItemListItem } from '@/types'
 
 type ViewMode = 'list' | 'card'
-
-// Type alias for list items used throughout the page
-type ListItem = InboxItemListItem
 
 interface InboxPageProps {
   className?: string
@@ -105,13 +100,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
   const [dismissedSuggestionKeys, setDismissedSuggestionKeys] = useState<Set<string>>(new Set())
 
-  // Filing panel state
-  const [isFilingPanelOpen, setIsFilingPanelOpen] = useState(false)
-  const [activeItemForFiling, setActiveItemForFiling] = useState<ListItem | null>(null)
-
-  // Preview panel state
-  const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(false)
-  const [previewingItemId, setPreviewingItemId] = useState<string | null>(null)
+  // Unified detail panel state (replaces separate preview + filing panels)
+  const [activeDetailItemId, setActiveDetailItemId] = useState<string | null>(null)
+  const isDetailPanelOpen = activeDetailItemId !== null
 
   // Bulk action panel states
   const [isBulkFilePanelOpen, setIsBulkFilePanelOpen] = useState(false)
@@ -133,16 +124,16 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     return items.filter((item) => selectedItemIds.has(item.id))
   }, [items, selectedItemIds])
 
-  // Fetch full item data for preview (includes attachmentUrl, transcription, etc.)
-  const { item: fullPreviewItem, isLoading: isPreviewLoading } = useInboxItem(previewingItemId)
+  // Fetch full item data for detail panel (includes attachmentUrl, transcription, etc.)
+  const { item: fullDetailItem, isLoading: isDetailLoading } = useInboxItem(activeDetailItemId)
 
-  // Get the item being previewed - prefer full item data when available
-  const previewingItem = useMemo(() => {
-    if (!previewingItemId) return null
+  // Get the item being viewed - prefer full item data when available
+  const activeDetailItem = useMemo(() => {
+    if (!activeDetailItemId) return null
     // Use full item if loaded, fallback to list item for immediate display
-    if (fullPreviewItem) return fullPreviewItem
-    return items.find((item) => item.id === previewingItemId) || null
-  }, [previewingItemId, fullPreviewItem, items])
+    if (fullDetailItem) return fullDetailItem
+    return items.find((item) => item.id === activeDetailItemId) || null
+  }, [activeDetailItemId, fullDetailItem, items])
 
   // AI clustering suggestion
   const aiSuggestion = useMemo((): ClusterSuggestion | null => {
@@ -219,7 +210,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent): void => {
       // Skip if modal is open or typing in an input
-      if (isShortcutsModalOpen || isFilingPanelOpen || isBulkFilePanelOpen) return
+      if (isShortcutsModalOpen || isDetailPanelOpen || isBulkFilePanelOpen) return
 
       // ? or Cmd+/ opens keyboard shortcuts help
       if (e.key === '?' || ((e.metaKey || e.ctrlKey) && e.key === '/')) {
@@ -259,7 +250,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         }
 
         // If single item is focused, delete it
-        if (focusedItemId && !isPreviewPanelOpen) {
+        if (focusedItemId && !isDetailPanelOpen) {
           e.preventDefault()
           // Find the focused item and trigger delete
           const focusedItem = items.find((i) => i.id === focusedItemId)
@@ -328,11 +319,10 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
   }, [
     isShortcutsModalOpen,
-    isFilingPanelOpen,
+    isDetailPanelOpen,
     isBulkFilePanelOpen,
     isInBulkMode,
     focusedItemId,
-    isPreviewPanelOpen,
     items,
     staleItems,
     nonStaleItems,
@@ -361,27 +351,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     setSelectedItemIds(new Set())
   }, [])
 
-  // Handle file action - close preview first, then open filing panel
-  const handleFile = useCallback(
-    (id: string): void => {
-      const item = items.find((i) => i.id === id)
-      if (item) {
-        // Close preview panel if open
-        setIsPreviewPanelOpen(false)
-        setPreviewingItemId(null)
-
-        // Open filing panel
-        setActiveItemForFiling(item)
-        setIsFilingPanelOpen(true)
-      }
-    },
-    [items]
-  )
-
-  // Handle filing panel close
-  const handleFilingPanelClose = useCallback((): void => {
-    setIsFilingPanelOpen(false)
-    setActiveItemForFiling(null)
+  // Handle detail panel close
+  const handleDetailPanelClose = useCallback((): void => {
+    setActiveDetailItemId(null)
   }, [])
 
   // Handle filing complete with animation
@@ -542,45 +514,31 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     [items, addToast, fileItemMutation, queryClient]
   )
 
-  // Handle preview action - toggle preview panel
+  // Handle preview action - toggle detail panel
   const handlePreview = useCallback(
     (id: string): void => {
-      // Close filing panel if open (only one panel at a time)
-      if (isFilingPanelOpen) {
-        setIsFilingPanelOpen(false)
-        setActiveItemForFiling(null)
-      }
-
-      // Toggle preview: if already previewing this item, close; otherwise open/switch
-      if (isPreviewPanelOpen && previewingItemId === id) {
-        setIsPreviewPanelOpen(false)
-        setPreviewingItemId(null)
+      // Toggle: if already viewing this item, close; otherwise open/switch
+      if (isDetailPanelOpen && activeDetailItemId === id) {
+        setActiveDetailItemId(null)
       } else {
-        setIsPreviewPanelOpen(true)
-        setPreviewingItemId(id)
+        setActiveDetailItemId(id)
         setFocusedItemId(id)
       }
     },
-    [isFilingPanelOpen, isPreviewPanelOpen, previewingItemId]
+    [isDetailPanelOpen, activeDetailItemId]
   )
 
-  // Handle preview panel close
-  const handlePreviewPanelClose = useCallback((): void => {
-    setIsPreviewPanelOpen(false)
-    setPreviewingItemId(null)
-  }, [])
-
-  // Handle focused item change (for navigation while preview is open)
+  // Handle focused item change (for navigation while detail panel is open)
   const handleFocusedItemChange = useCallback(
     (id: string | null): void => {
       setFocusedItemId(id)
 
-      // If preview panel is open, update the preview to show the newly focused item
-      if (isPreviewPanelOpen && id) {
-        setPreviewingItemId(id)
+      // If detail panel is open, update to show the newly focused item
+      if (isDetailPanelOpen && id) {
+        setActiveDetailItemId(id)
       }
     },
-    [isPreviewPanelOpen]
+    [isDetailPanelOpen]
   )
 
   // Handle delete action with animation
@@ -594,10 +552,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       // Start exit animation
       setExitingItemIds((prev) => new Set(prev).add(id))
 
-      // If we're deleting the previewed item, close the preview
-      if (previewingItemId === id) {
-        setIsPreviewPanelOpen(false)
-        setPreviewingItemId(null)
+      // If we're deleting the item being viewed, close the detail panel
+      if (activeDetailItemId === id) {
+        setActiveDetailItemId(null)
       }
 
       // After exit animation (200ms), delete via backend
@@ -651,7 +608,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         }
       }, 200)
     },
-    [items, addToast, previewingItemId, deleteItemMutation]
+    [items, addToast, activeDetailItemId, deleteItemMutation]
   )
 
   // Handle snooze action with animation
@@ -665,10 +622,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       // Start exit animation
       setExitingItemIds((prev) => new Set(prev).add(id))
 
-      // If we're snoozing the previewed item, close the preview
-      if (previewingItemId === id) {
-        setIsPreviewPanelOpen(false)
-        setPreviewingItemId(null)
+      // If we're snoozing the item being viewed, close the detail panel
+      if (activeDetailItemId === id) {
+        setActiveDetailItemId(null)
       }
 
       // After exit animation (200ms), snooze via backend
@@ -738,7 +694,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         }
       }, 200)
     },
-    [items, addToast, previewingItemId, queryClient]
+    [items, addToast, activeDetailItemId, queryClient]
   )
 
   // === BULK ACTION HANDLERS ===
@@ -858,10 +814,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     // Start exit animation for all items
     setExitingItemIds(new Set(idsToDelete))
 
-    // Close the preview if any deleted item was being previewed
-    if (previewingItemId && idsToDelete.includes(previewingItemId)) {
-      setIsPreviewPanelOpen(false)
-      setPreviewingItemId(null)
+    // Close the detail panel if any deleted item was being viewed
+    if (activeDetailItemId && idsToDelete.includes(activeDetailItemId)) {
+      setActiveDetailItemId(null)
     }
 
     // After exit animation, delete via backend
@@ -909,7 +864,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         })
       }
     }, 200)
-  }, [selectedItemIds, items, previewingItemId, addToast, bulkDeleteMutation])
+  }, [selectedItemIds, items, activeDetailItemId, addToast, bulkDeleteMutation])
 
   // Handle delete dialog cancel
   const handleDeleteDialogCancel = useCallback((): void => {
@@ -946,10 +901,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       // Start exit animation for all items
       setExitingItemIds(new Set(idsToSnooze))
 
-      // Close the preview if any snoozed item was being previewed
-      if (previewingItemId && idsToSnooze.includes(previewingItemId)) {
-        setIsPreviewPanelOpen(false)
-        setPreviewingItemId(null)
+      // Close the detail panel if any snoozed item was being viewed
+      if (activeDetailItemId && idsToSnooze.includes(activeDetailItemId)) {
+        setActiveDetailItemId(null)
       }
 
       // After exit animation, snooze via backend
@@ -1020,7 +974,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         }
       }, 200)
     },
-    [selectedItemIds, items, previewingItemId, addToast, queryClient]
+    [selectedItemIds, items, activeDetailItemId, addToast, queryClient]
   )
 
   // === STALE ITEMS HANDLERS ===
@@ -1535,7 +1489,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             onReviewStale={handleReviewStaleItems}
             focusedItemId={focusedItemId}
             onFocusedItemChange={handleFocusedItemChange}
-            isPreviewOpen={isPreviewPanelOpen}
+            isPreviewOpen={isDetailPanelOpen}
           />
         ) : (
           <CardView
@@ -1551,7 +1505,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             onReviewStale={handleReviewStaleItems}
             focusedItemId={focusedItemId}
             onFocusedItemChange={handleFocusedItemChange}
-            isPreviewOpen={isPreviewPanelOpen}
+            isPreviewOpen={isDetailPanelOpen}
           />
         )}
       </div>
@@ -1593,21 +1547,13 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         onCancel={handleDeleteDialogCancel}
       />
 
-      {/* Filing Panel */}
-      <FilingPanel
-        isOpen={isFilingPanelOpen}
-        item={activeItemForFiling}
-        onClose={handleFilingPanelClose}
+      {/* Unified Detail Panel (Preview + Filing) */}
+      <InboxDetailPanel
+        isOpen={isDetailPanelOpen}
+        item={activeDetailItem}
+        isLoading={isDetailLoading}
+        onClose={handleDetailPanelClose}
         onFile={handleFilingComplete}
-      />
-
-      {/* Preview Panel */}
-      <PreviewPanel
-        isOpen={isPreviewPanelOpen}
-        item={previewingItem}
-        isLoading={isPreviewLoading}
-        onClose={handlePreviewPanelClose}
-        onFile={handleFile}
         onDelete={handleDelete}
       />
 
