@@ -161,14 +161,22 @@ export const inboxItems = sqliteTable(
     sourceUrl: text('source_url'),
 
     /** Original page title for clips */
-    sourceTitle: text('source_title')
+    sourceTitle: text('source_title'),
+
+    // ========================================================================
+    // Archive Status
+    // ========================================================================
+
+    /** When the item was archived (soft delete) */
+    archivedAt: text('archived_at')
   },
   (table) => [
     index('idx_inbox_items_type').on(table.type),
     index('idx_inbox_items_created').on(table.createdAt),
     index('idx_inbox_items_filed').on(table.filedAt),
     index('idx_inbox_items_snoozed').on(table.snoozedUntil),
-    index('idx_inbox_items_processing').on(table.processingStatus)
+    index('idx_inbox_items_processing').on(table.processingStatus),
+    index('idx_inbox_items_archived').on(table.archivedAt)
   ]
 )
 
@@ -298,8 +306,8 @@ export const inboxStats = sqliteTable(
     /** Count of items processed (filed) */
     processedCount: integer('processed_count').default(0),
 
-    /** Count of items deleted */
-    deletedCount: integer('deleted_count').default(0)
+    /** Count of items archived */
+    archivedCount: integer('archived_count').default(0)
   },
   (table) => [index('idx_inbox_stats_date').on(table.date)]
 )

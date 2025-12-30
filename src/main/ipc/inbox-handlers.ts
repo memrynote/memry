@@ -15,7 +15,7 @@ import {
   CaptureImageSchema,
   InboxListSchema,
   InboxUpdateSchema,
-  BulkDeleteSchema,
+  BulkArchiveSchema,
   type CaptureResponse,
   type InboxListResponse,
   type InboxItem,
@@ -34,7 +34,6 @@ import { inboxItems, inboxItemTags } from '@shared/db/schema/inbox'
 import { eq, desc, asc, and, isNull, sql } from 'drizzle-orm'
 import {
   resolveAttachmentUrl,
-  deleteInboxAttachments,
   getItemAttachmentsDir,
   storeInboxAttachment,
   storeThumbnail
@@ -58,7 +57,7 @@ import {
   isStale as checkIsStale,
   getStaleItemIds,
   countStaleItems,
-  incrementDeletedCount,
+  incrementArchivedCount,
   incrementProcessedCount,
   getTodayActivity,
   getAverageTimeToProcess
@@ -419,6 +418,7 @@ function toInboxItem(row: typeof inboxItems.$inferSelect, tags: string[]): Inbox
     snoozedUntil: row.snoozedUntil ? new Date(row.snoozedUntil) : null,
     snoozeReason: row.snoozeReason,
     viewedAt: row.viewedAt ? new Date(row.viewedAt) : null,
+    archivedAt: row.archivedAt ? new Date(row.archivedAt) : null,
     processingStatus: (row.processingStatus || 'complete') as InboxItem['processingStatus'],
     processingError: row.processingError,
     metadata: row.metadata as InboxItem['metadata'],
@@ -667,6 +667,9 @@ async function handleList(input: unknown): Promise<InboxListResponse> {
     conditions.push(isNull(inboxItems.snoozedUntil))
   }
 
+  // Always exclude archived items
+  conditions.push(isNull(inboxItems.archivedAt))
+
   // Build query
   let query = db.select().from(inboxItems)
 
@@ -752,9 +755,9 @@ async function handleUpdate(input: unknown): Promise<CaptureResponse> {
 }
 
 /**
- * Delete an inbox item
+ * Archive an inbox item (soft delete)
  */
-async function handleDelete(id: string): Promise<{ success: boolean; error?: string }> {
+async function handleArchive(id: string): Promise<{ success: boolean; error?: string }> {
   try {
     const db = requireDatabase()
 
@@ -763,19 +766,16 @@ async function handleDelete(id: string): Promise<{ success: boolean; error?: str
       return { success: false, error: 'Item not found' }
     }
 
-    // Delete attachments
-    await deleteInboxAttachments(id)
-
-    // Delete tags (cascade should handle this, but be explicit)
-    db.delete(inboxItemTags).where(eq(inboxItemTags.itemId, id)).run()
-
-    // Delete item
-    db.delete(inboxItems).where(eq(inboxItems.id, id)).run()
+    // Set archivedAt timestamp (soft delete - keep attachments and tags)
+    db.update(inboxItems)
+      .set({ archivedAt: new Date().toISOString() })
+      .where(eq(inboxItems.id, id))
+      .run()
 
     // Update stats
-    incrementDeletedCount()
+    incrementArchivedCount()
 
-    emitInboxEvent(InboxChannels.events.DELETED, { id })
+    emitInboxEvent(InboxChannels.events.ARCHIVED, { id })
 
     return { success: true }
   } catch (error) {
@@ -869,15 +869,15 @@ async function handleGetTags(): Promise<Array<{ tag: string; count: number }>> {
 }
 
 /**
- * Bulk delete items
+ * Bulk archive items
  */
-async function handleBulkDelete(input: unknown): Promise<BulkResponse> {
-  const parsed = BulkDeleteSchema.parse(input)
+async function handleBulkArchive(input: unknown): Promise<BulkResponse> {
+  const parsed = BulkArchiveSchema.parse(input)
   const errors: Array<{ itemId: string; error: string }> = []
   let processedCount = 0
 
   for (const itemId of parsed.itemIds) {
-    const result = await handleDelete(itemId)
+    const result = await handleArchive(itemId)
     if (result.success) {
       processedCount++
     } else {
@@ -898,11 +898,13 @@ async function handleBulkDelete(input: unknown): Promise<BulkResponse> {
 async function handleGetStats(): Promise<InboxStats> {
   const db = requireDatabase()
 
-  // Total items (not filed, not snoozed)
+  // Total items (not filed, not snoozed, not archived)
   const totalResult = db
     .select({ count: sql<number>`count(*)` })
     .from(inboxItems)
-    .where(and(isNull(inboxItems.filedAt), isNull(inboxItems.snoozedUntil)))
+    .where(
+      and(isNull(inboxItems.filedAt), isNull(inboxItems.snoozedUntil), isNull(inboxItems.archivedAt))
+    )
     .get()
 
   // Items by type
@@ -912,7 +914,9 @@ async function handleGetStats(): Promise<InboxStats> {
       count: sql<number>`count(*)`
     })
     .from(inboxItems)
-    .where(and(isNull(inboxItems.filedAt), isNull(inboxItems.snoozedUntil)))
+    .where(
+      and(isNull(inboxItems.filedAt), isNull(inboxItems.snoozedUntil), isNull(inboxItems.archivedAt))
+    )
     .groupBy(inboxItems.type)
     .all()
 
@@ -933,11 +937,11 @@ async function handleGetStats(): Promise<InboxStats> {
   // Stale count - use stats module
   const staleCount = countStaleItems()
 
-  // Snoozed count
+  // Snoozed count (exclude archived)
   const snoozedResult = db
     .select({ count: sql<number>`count(*)` })
     .from(inboxItems)
-    .where(sql`${inboxItems.snoozedUntil} IS NOT NULL`)
+    .where(and(sql`${inboxItems.snoozedUntil} IS NOT NULL`, isNull(inboxItems.archivedAt)))
     .get()
 
   // Get today's activity from stats module
@@ -1690,7 +1694,7 @@ export function registerInboxHandlers(): void {
   ipcMain.handle(InboxChannels.invoke.GET, (_, id) => handleGet(id))
   ipcMain.handle(InboxChannels.invoke.LIST, (_, input) => handleList(input))
   ipcMain.handle(InboxChannels.invoke.UPDATE, (_, input) => handleUpdate(input))
-  ipcMain.handle(InboxChannels.invoke.DELETE, (_, id) => handleDelete(id))
+  ipcMain.handle(InboxChannels.invoke.ARCHIVE, (_, id) => handleArchive(id))
 
   // Filing handlers
   ipcMain.handle(InboxChannels.invoke.FILE, (_, input) => handleFile(input))
@@ -1729,7 +1733,7 @@ export function registerInboxHandlers(): void {
 
   // Bulk handlers
   ipcMain.handle(InboxChannels.invoke.BULK_FILE, (_, input) => handleBulkFile(input))
-  ipcMain.handle(InboxChannels.invoke.BULK_DELETE, (_, input) => handleBulkDelete(input))
+  ipcMain.handle(InboxChannels.invoke.BULK_ARCHIVE, (_, input) => handleBulkArchive(input))
   ipcMain.handle(InboxChannels.invoke.BULK_TAG, (_, input) => handleBulkTag(input))
   ipcMain.handle(InboxChannels.invoke.FILE_ALL_STALE, () => handleFileAllStale())
 
@@ -1770,7 +1774,7 @@ export function unregisterInboxHandlers(): void {
   ipcMain.removeHandler(InboxChannels.invoke.GET)
   ipcMain.removeHandler(InboxChannels.invoke.LIST)
   ipcMain.removeHandler(InboxChannels.invoke.UPDATE)
-  ipcMain.removeHandler(InboxChannels.invoke.DELETE)
+  ipcMain.removeHandler(InboxChannels.invoke.ARCHIVE)
 
   // Filing
   ipcMain.removeHandler(InboxChannels.invoke.FILE)
@@ -1795,7 +1799,7 @@ export function unregisterInboxHandlers(): void {
 
   // Bulk
   ipcMain.removeHandler(InboxChannels.invoke.BULK_FILE)
-  ipcMain.removeHandler(InboxChannels.invoke.BULK_DELETE)
+  ipcMain.removeHandler(InboxChannels.invoke.BULK_ARCHIVE)
   ipcMain.removeHandler(InboxChannels.invoke.BULK_TAG)
   ipcMain.removeHandler(InboxChannels.invoke.FILE_ALL_STALE)
 

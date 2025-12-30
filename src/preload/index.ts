@@ -492,7 +492,7 @@ const api = {
     }) => ipcRenderer.invoke(InboxChannels.invoke.LIST, options ?? {}),
     update: (input: { id: string; title?: string; content?: string }) =>
       ipcRenderer.invoke(InboxChannels.invoke.UPDATE, input),
-    delete: (id: string) => ipcRenderer.invoke(InboxChannels.invoke.DELETE, id),
+    archive: (id: string) => ipcRenderer.invoke(InboxChannels.invoke.ARCHIVE, id),
 
     // Filing
     file: (input: {
@@ -550,8 +550,8 @@ const api = {
       destination: { type: string; path?: string; noteId?: string }
       tags?: string[]
     }) => ipcRenderer.invoke(InboxChannels.invoke.BULK_FILE, input),
-    bulkDelete: (input: { itemIds: string[] }) =>
-      ipcRenderer.invoke(InboxChannels.invoke.BULK_DELETE, input),
+    bulkArchive: (input: { itemIds: string[] }) =>
+      ipcRenderer.invoke(InboxChannels.invoke.BULK_ARCHIVE, input),
     bulkTag: (input: { itemIds: string[]; tags: string[] }) =>
       ipcRenderer.invoke(InboxChannels.invoke.BULK_TAG, input),
     fileAllStale: () => ipcRenderer.invoke(InboxChannels.invoke.FILE_ALL_STALE),
@@ -1055,11 +1055,11 @@ const api = {
     return () => ipcRenderer.removeListener(InboxChannels.events.UPDATED, handler)
   },
 
-  onInboxDeleted: (callback: (event: { id: string }) => void): (() => void) => {
+  onInboxArchived: (callback: (event: { id: string }) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, data: { id: string }): void =>
       callback(data)
-    ipcRenderer.on(InboxChannels.events.DELETED, handler)
-    return () => ipcRenderer.removeListener(InboxChannels.events.DELETED, handler)
+    ipcRenderer.on(InboxChannels.events.ARCHIVED, handler)
+    return () => ipcRenderer.removeListener(InboxChannels.events.ARCHIVED, handler)
   },
 
   onInboxFiled: (

@@ -11,11 +11,13 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Send, Loader2, Link, FileText, Mic } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCaptureText, useCaptureLink, useCaptureVoice } from '@/hooks/use-inbox'
+import { type DisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
 import { VoiceRecorder } from './voice-recorder'
 
 interface CaptureInputProps {
   onCaptureSuccess?: () => void
   onCaptureError?: (error: string) => void
+  density?: DisplayDensity
   className?: string
 }
 
@@ -54,12 +56,16 @@ function normalizeUrl(text: string): string {
 export function CaptureInput({
   onCaptureSuccess,
   onCaptureError,
+  density = 'comfortable',
   className
 }: CaptureInputProps): React.JSX.Element {
   const [value, setValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Get density-specific config
+  const densityConfig = DENSITY_CONFIG[density]
 
   const captureText = useCaptureText()
   const captureLink = useCaptureLink()
@@ -191,11 +197,12 @@ export function CaptureInput({
       {/* Input container with editorial styling */}
       <div
         className={cn(
-          'relative flex items-start gap-3',
-          'px-4 py-3',
+          'relative flex items-start',
+          densityConfig.captureGap,
+          densityConfig.capturePadding,
           'bg-muted/20 hover:bg-muted/30',
           'border border-border/40',
-          'rounded-xl',
+          densityConfig.captureRadius,
           'transition-all duration-200',
           isFocused && 'bg-muted/40 border-border/60 shadow-sm'
         )}

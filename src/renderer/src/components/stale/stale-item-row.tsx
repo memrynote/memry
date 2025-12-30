@@ -5,6 +5,7 @@ import { QuickActions } from '@/components/quick-actions'
 import { AgeIndicator } from '@/components/stale/age-indicator'
 import { formatTimestamp } from '@/lib/inbox-utils'
 import { cn } from '@/lib/utils'
+import { type DisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
 import type { InboxItemListItem, InboxItemType } from '@/types'
 
 // Type alias for convenience (backend type)
@@ -29,6 +30,8 @@ const TypeIcon = ({ type }: { type: InboxItemType }): React.JSX.Element => {
       return <FileIcon className={iconClass} aria-hidden="true" />
     case 'social':
       return <Share2 className={iconClass} aria-hidden="true" />
+    default:
+      return <FileText className={iconClass} aria-hidden="true" />
   }
 }
 
@@ -38,7 +41,8 @@ interface StaleItemRowProps {
   isSelected: boolean
   isInBulkMode: boolean
   isExiting?: boolean
-  onDelete: (id: string) => void
+  density?: DisplayDensity
+  onArchive: (id: string) => void
   onFocus: (id: string) => void
   onSelectionToggle: (id: string, shiftKey: boolean) => void
 }
@@ -52,10 +56,12 @@ export const StaleItemRow = ({
   isSelected,
   isInBulkMode,
   isExiting = false,
-  onDelete,
+  density = 'comfortable',
+  onArchive,
   onFocus,
   onSelectionToggle
 }: StaleItemRowProps): React.JSX.Element => {
+  const densityConfig = DENSITY_CONFIG[density]
   const handleClick = (): void => {
     onFocus(item.id)
   }
@@ -72,7 +78,9 @@ export const StaleItemRow = ({
   return (
     <div
       className={cn(
-        'group relative flex flex-col gap-0.5 py-2 px-3 rounded-md cursor-pointer',
+        'group relative flex flex-col gap-0.5 cursor-pointer',
+        densityConfig.itemPadding,
+        densityConfig.itemRadius,
         'transition-[background-color,box-shadow] duration-150 ease-out',
         // Exit animation
         isExiting
@@ -93,7 +101,7 @@ export const StaleItemRow = ({
       data-item-id={item.id}
     >
       {/* Top row: checkbox, icon, title, timestamp */}
-      <div className="flex items-center gap-3">
+      <div className={cn('flex items-center', densityConfig.itemGap)}>
         {/* Checkbox */}
         <Checkbox
           id={`stale-item-${item.id}`}
@@ -141,7 +149,7 @@ export const StaleItemRow = ({
                 isFocused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
               )}
             >
-              <QuickActions itemId={item.id} onDelete={onDelete} variant="row" />
+              <QuickActions itemId={item.id} onArchive={onArchive} variant="row" />
             </div>
           )}
         </div>

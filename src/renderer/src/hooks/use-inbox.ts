@@ -13,7 +13,7 @@ import {
   inboxService,
   onInboxCaptured,
   onInboxUpdated,
-  onInboxDeleted,
+  onInboxArchived,
   onInboxFiled,
   onInboxSnoozed,
   onInboxSnoozeDue,
@@ -27,7 +27,7 @@ import {
   type InboxUpdateInput,
   type FileItemInput,
   type SnoozeInput,
-  type BulkDeleteInput,
+  type BulkArchiveInput,
   type BulkTagInput
 } from '@/services/inbox-service'
 
@@ -165,7 +165,7 @@ export function useInboxList(options: UseInboxListOptions = {}): UseInboxListRes
       queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
     })
 
-    const unsubDeleted = onInboxDeleted(() => {
+    const unsubArchived = onInboxArchived(() => {
       queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
       queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     })
@@ -183,7 +183,7 @@ export function useInboxList(options: UseInboxListOptions = {}): UseInboxListRes
     return () => {
       unsubCaptured()
       unsubUpdated()
-      unsubDeleted()
+      unsubArchived()
       unsubFiled()
       unsubSnoozeDue()
     }
@@ -232,7 +232,7 @@ export function useInboxItem(id: string | null): UseInboxItemResult {
       }
     })
 
-    const unsubDeleted = onInboxDeleted((event) => {
+    const unsubArchived = onInboxArchived((event) => {
       if (event.id === id) {
         queryClient.setQueryData(inboxKeys.item(id), null)
       }
@@ -252,7 +252,7 @@ export function useInboxItem(id: string | null): UseInboxItemResult {
 
     return () => {
       unsubUpdated()
-      unsubDeleted()
+      unsubArchived()
       unsubTranscription()
       unsubMetadata()
     }
@@ -290,7 +290,7 @@ export function useInboxStats(): UseInboxStatsResult {
       queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     })
 
-    const unsubDeleted = onInboxDeleted(() => {
+    const unsubArchived = onInboxArchived(() => {
       queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     })
 
@@ -300,7 +300,7 @@ export function useInboxStats(): UseInboxStatsResult {
 
     return () => {
       unsubCaptured()
-      unsubDeleted()
+      unsubArchived()
       unsubFiled()
     }
   }, [queryClient])
@@ -499,13 +499,13 @@ export function useUpdateInboxItem() {
 }
 
 /**
- * Hook for deleting an inbox item.
+ * Hook for archiving an inbox item.
  */
-export function useDeleteInboxItem() {
+export function useArchiveInboxItem() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: string) => inboxService.delete(id),
+    mutationFn: (id: string) => inboxService.archive(id),
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: inboxKeys.item(id) })
       queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
@@ -646,13 +646,13 @@ export function useUnsnoozeInboxItem() {
 // =============================================================================
 
 /**
- * Hook for bulk deleting inbox items.
+ * Hook for bulk archiving inbox items.
  */
-export function useBulkDeleteInboxItems() {
+export function useBulkArchiveInboxItems() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (input: BulkDeleteInput) => inboxService.bulkDelete(input),
+    mutationFn: (input: BulkArchiveInput) => inboxService.bulkArchive(input),
     onSuccess: (_, { itemIds }) => {
       itemIds.forEach((id) => {
         queryClient.removeQueries({ queryKey: inboxKeys.item(id) })
@@ -760,14 +760,14 @@ export function useInboxOperations() {
   const captureText = useCaptureText()
   const captureLink = useCaptureLink()
   const updateItem = useUpdateInboxItem()
-  const deleteItem = useDeleteInboxItem()
+  const archiveItem = useArchiveInboxItem()
   const fileItem = useFileInboxItem()
   const convertToNote = useConvertToNote()
   const addTag = useAddInboxTag()
   const removeTag = useRemoveInboxTag()
   const snoozeItem = useSnoozeInboxItem()
   const unsnoozeItem = useUnsnoozeInboxItem()
-  const bulkDelete = useBulkDeleteInboxItems()
+  const bulkArchive = useBulkArchiveInboxItems()
   const bulkTag = useBulkTagInboxItems()
   const fileAllStale = useFileAllStale()
   const retryTranscription = useRetryTranscription()
@@ -782,9 +782,9 @@ export function useInboxOperations() {
 
     // CRUD
     updateItem: updateItem.mutateAsync,
-    deleteItem: deleteItem.mutateAsync,
+    archiveItem: archiveItem.mutateAsync,
     isUpdatePending: updateItem.isPending,
-    isDeletePending: deleteItem.isPending,
+    isArchivePending: archiveItem.isPending,
 
     // Filing
     fileItem: fileItem.mutateAsync,
@@ -801,10 +801,10 @@ export function useInboxOperations() {
     unsnoozeItem: unsnoozeItem.mutateAsync,
 
     // Bulk
-    bulkDelete: bulkDelete.mutateAsync,
+    bulkArchive: bulkArchive.mutateAsync,
     bulkTag: bulkTag.mutateAsync,
     fileAllStale: fileAllStale.mutateAsync,
-    isBulkDeletePending: bulkDelete.isPending,
+    isBulkArchivePending: bulkArchive.isPending,
     isBulkTagPending: bulkTag.isPending,
     isFileAllStalePending: fileAllStale.isPending,
 

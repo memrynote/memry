@@ -14,6 +14,7 @@ import { StaleSection } from '@/components/stale/stale-section'
 import { getFilteredFolders } from '@/components/quick-file-dropdown'
 import { groupItemsByTimePeriod } from '@/lib/inbox-utils'
 import { useRetryTranscription } from '@/hooks/use-inbox'
+import { type DisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
 import type { InboxItemListItem, Folder } from '@/types'
 
 type InboxItem = InboxItemListItem
@@ -23,8 +24,9 @@ interface ListViewProps {
   staleItems?: InboxItem[]
   selectedItemIds: Set<string>
   exitingItemIds?: Set<string>
+  density?: DisplayDensity
   onPreview: (id: string) => void
-  onDelete: (id: string) => void
+  onArchive: (id: string) => void
   onSnooze?: (id: string, snoozeUntil: string) => void
   onQuickFile: (itemId: string, folderId: string) => void
   onSelectionChange: (selectedIds: Set<string>) => void
@@ -40,8 +42,9 @@ const ListView = ({
   staleItems = [],
   selectedItemIds,
   exitingItemIds = new Set(),
+  density = 'comfortable',
   onPreview,
-  onDelete,
+  onArchive,
   onSnooze,
   onQuickFile,
   onSelectionChange,
@@ -54,6 +57,7 @@ const ListView = ({
   void _isPreviewOpen // Reserved for future use
   const containerRef = useRef<HTMLDivElement>(null)
   const groupedItems = groupItemsByTimePeriod(items)
+  const densityConfig = DENSITY_CONFIG[density]
 
   // Hook for retrying failed transcriptions
   const retryTranscription = useRetryTranscription()
@@ -270,7 +274,7 @@ const ListView = ({
           e.preventDefault()
           if (quickFileItemId) return
           if (focusedItemId) {
-            onDelete(focusedItemId)
+            onArchive(focusedItemId)
           }
           break
 
@@ -341,7 +345,7 @@ const ListView = ({
       quickFileItemId,
       filteredFolders,
       onPreview,
-      onDelete,
+      onArchive,
       setFocusedItemId,
       handleSelectionToggle,
       handleQuickFileFolderSelect,
@@ -422,7 +426,12 @@ const ListView = ({
   )
 
   return (
-    <div ref={containerRef} className="space-y-6" role="list" aria-label="Inbox items">
+    <div
+      ref={containerRef}
+      className={densityConfig.sectionSpacing}
+      role="list"
+      aria-label="Inbox items"
+    >
       {/* Stale Items Section - appears at top when there are stale items */}
       {staleItems.length > 0 && onFileAllStale && onReviewStale && (
         <StaleSection
@@ -430,7 +439,8 @@ const ListView = ({
           selectedItemIds={selectedItemIds}
           exitingItemIds={exitingItemIds}
           focusedItemId={focusedItemId}
-          onDelete={onDelete}
+          density={density}
+          onArchive={onArchive}
           onFocus={handleItemFocus}
           onSelectionToggle={handleSelectionToggle}
           onFileAllToUnsorted={onFileAllStale}
@@ -446,6 +456,7 @@ const ListView = ({
           count={group.items.length}
           selectedIds={selectedItemIds}
           focusedId={focusedItemId}
+          density={density}
           onSelect={handleSelectionToggle}
           onFocus={handleItemFocus}
         >
@@ -460,7 +471,7 @@ const ListView = ({
               quickFileHighlightedIndex={highlightedIndex}
               folders={vaultFolders}
               onPreview={onPreview}
-              onDelete={onDelete}
+              onArchive={onArchive}
               onSnooze={onSnooze}
               onQuickFileQueryChange={handleQuickFileQueryChange}
               onQuickFileSubmit={handleQuickFileSubmit}

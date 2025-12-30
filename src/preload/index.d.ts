@@ -1373,7 +1373,7 @@ export interface InboxUpdatedEvent {
   changes: Partial<InboxItem>
 }
 
-export interface InboxDeletedEvent {
+export interface InboxArchivedEvent {
   id: string
 }
 
@@ -1455,7 +1455,7 @@ export interface InboxClientAPI {
     offset?: number
   }): Promise<InboxListResponse>
   update(input: { id: string; title?: string; content?: string }): Promise<InboxCaptureResponse>
-  delete(id: string): Promise<{ success: boolean; error?: string }>
+  archive(id: string): Promise<{ success: boolean; error?: string }>
 
   // Filing
   file(input: {
@@ -1503,7 +1503,7 @@ export interface InboxClientAPI {
     destination: { type: string; path?: string; noteId?: string }
     tags?: string[]
   }): Promise<InboxBulkResponse>
-  bulkDelete(input: { itemIds: string[] }): Promise<InboxBulkResponse>
+  bulkArchive(input: { itemIds: string[] }): Promise<InboxBulkResponse>
   bulkTag(input: { itemIds: string[]; tags: string[] }): Promise<InboxBulkResponse>
   bulkSnooze(input: {
     itemIds: string[]
@@ -1821,7 +1821,7 @@ interface API extends WindowAPI {
   // Inbox event subscriptions
   onInboxCaptured: (callback: (event: { item: unknown }) => void) => () => void
   onInboxUpdated: (callback: (event: { id: string; changes: unknown }) => void) => () => void
-  onInboxDeleted: (callback: (event: { id: string }) => void) => () => void
+  onInboxArchived: (callback: (event: { id: string }) => void) => () => void
   onInboxFiled: (
     callback: (event: { id: string; filedTo: string; filedAction: string }) => void
   ) => () => void

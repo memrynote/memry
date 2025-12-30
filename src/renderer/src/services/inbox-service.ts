@@ -107,7 +107,7 @@ export interface BulkFileInput {
   tags?: string[]
 }
 
-export interface BulkDeleteInput {
+export interface BulkArchiveInput {
   itemIds: string[]
 }
 
@@ -212,12 +212,12 @@ export const inboxService = {
   },
 
   /**
-   * Delete an inbox item.
+   * Archive an inbox item (soft delete).
    * @param id - Item ID
    * @returns Success status
    */
-  delete: (id: string): Promise<{ success: boolean; error?: string }> => {
-    return window.api.inbox.delete(id)
+  archive: (id: string): Promise<{ success: boolean; error?: string }> => {
+    return window.api.inbox.archive(id)
   },
 
   // =========================================================================
@@ -374,12 +374,12 @@ export const inboxService = {
   },
 
   /**
-   * Delete multiple items at once.
-   * @param input - Bulk delete input
+   * Archive multiple items at once.
+   * @param input - Bulk archive input
    * @returns Bulk response with results
    */
-  bulkDelete: (input: BulkDeleteInput): Promise<BulkResponse> => {
-    return window.api.inbox.bulkDelete(input)
+  bulkArchive: (input: BulkArchiveInput): Promise<BulkResponse> => {
+    return window.api.inbox.bulkArchive(input)
   },
 
   /**
@@ -494,12 +494,12 @@ export function onInboxUpdated(
 }
 
 /**
- * Subscribe to inbox item deleted events.
+ * Subscribe to inbox item archived events.
  * @param callback - Callback function
  * @returns Unsubscribe function
  */
-export function onInboxDeleted(callback: (event: { id: string }) => void): () => void {
-  return window.api.onInboxDeleted(callback)
+export function onInboxArchived(callback: (event: { id: string }) => void): () => void {
+  return window.api.onInboxArchived(callback)
 }
 
 /**

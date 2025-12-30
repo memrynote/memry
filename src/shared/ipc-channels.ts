@@ -510,8 +510,8 @@ export const InboxChannels = {
     LIST: 'inbox:list',
     /** Update an inbox item */
     UPDATE: 'inbox:update',
-    /** Delete an inbox item */
-    DELETE: 'inbox:delete',
+    /** Archive an inbox item (soft delete) */
+    ARCHIVE: 'inbox:archive',
 
     // Filing operations
     /** File an item to a folder or note */
@@ -550,8 +550,8 @@ export const InboxChannels = {
     // Bulk operations
     /** Bulk file multiple items */
     BULK_FILE: 'inbox:bulk-file',
-    /** Bulk delete multiple items */
-    BULK_DELETE: 'inbox:bulk-delete',
+    /** Bulk archive multiple items */
+    BULK_ARCHIVE: 'inbox:bulk-archive',
     /** Bulk tag multiple items */
     BULK_TAG: 'inbox:bulk-tag',
     /** File all stale items to unsorted */
@@ -582,8 +582,8 @@ export const InboxChannels = {
     CAPTURED: 'inbox:captured',
     /** Item was updated */
     UPDATED: 'inbox:updated',
-    /** Item was deleted */
-    DELETED: 'inbox:deleted',
+    /** Item was archived */
+    ARCHIVED: 'inbox:archived',
     /** Item was filed */
     FILED: 'inbox:filed',
     /** Item was snoozed */
