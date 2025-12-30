@@ -14,6 +14,7 @@ import { StaleSection } from '@/components/stale/stale-section'
 import { getFilteredFolders } from '@/components/quick-file-dropdown'
 import { groupItemsByTimePeriod } from '@/lib/inbox-utils'
 import { useRetryTranscription } from '@/hooks/use-inbox'
+import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import { type DisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
 import type { InboxItemListItem, Folder } from '@/types'
 
@@ -52,9 +53,8 @@ const ListView = ({
   onReviewStale,
   focusedItemId: controlledFocusedItemId,
   onFocusedItemChange,
-  isPreviewOpen: _isPreviewOpen = false
+  isPreviewOpen = false
 }: ListViewProps): React.JSX.Element => {
-  void _isPreviewOpen // Reserved for future use
   const containerRef = useRef<HTMLDivElement>(null)
   const groupedItems = groupItemsByTimePeriod(items)
   const densityConfig = DENSITY_CONFIG[density]
@@ -187,7 +187,8 @@ const ListView = ({
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
     (e: KeyboardEvent): void => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      // Skip shortcuts when preview/detail panel is open or typing in an input/editor
+      if (isPreviewOpen || isInputFocused()) {
         return
       }
 
@@ -350,7 +351,8 @@ const ListView = ({
       handleSelectionToggle,
       handleQuickFileFolderSelect,
       isInBulkMode,
-      onSelectionChange
+      onSelectionChange,
+      isPreviewOpen
     ]
   )
 

@@ -39,6 +39,9 @@ export * from './use-vault'
 export * from './use-search'
 export * from './use-search-shortcut'
 
+// New note
+export * from './use-new-note-shortcut'
+
 // Undo
 export * from './use-undo'
 

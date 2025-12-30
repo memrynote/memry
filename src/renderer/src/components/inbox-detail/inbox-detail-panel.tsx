@@ -10,7 +10,7 @@
  * - Footer: Delete/File buttons with keyboard shortcuts
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Archive, Check, Loader2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
@@ -32,7 +32,7 @@ import {
   TypeIcon
 } from './content-section'
 import { FilingSection, useFilingState } from './filing-section'
-import { useRetryTranscription } from '@/hooks/use-inbox'
+import { useRetryTranscription, useUpdateInboxItem } from '@/hooks/use-inbox'
 import { isMac, isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import type { InboxItem, InboxItemListItem, Folder } from '@/types'
 
@@ -66,6 +66,9 @@ export const InboxDetailPanel = ({
 }: InboxDetailPanelProps): React.JSX.Element => {
   // Retry transcription mutation
   const retryTranscriptionMutation = useRetryTranscription()
+
+  // Update item mutation for content editing
+  const updateItemMutation = useUpdateInboxItem()
 
   // Filing state management
   const {
@@ -215,6 +218,36 @@ export const InboxDetailPanel = ({
     }
   }, [item, retryTranscriptionMutation])
 
+  // Debounce timer for content changes
+  const contentChangeTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Handle content change (debounced save - 500ms delay)
+  const handleContentChange = useCallback(
+    (content: string): void => {
+      if (!item) return
+
+      // Clear any pending save
+      if (contentChangeTimerRef.current) {
+        clearTimeout(contentChangeTimerRef.current)
+      }
+
+      // Debounce the save
+      contentChangeTimerRef.current = setTimeout(() => {
+        updateItemMutation.mutate({ id: item.id, content })
+      }, 500)
+    },
+    [item, updateItemMutation]
+  )
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (contentChangeTimerRef.current) {
+        clearTimeout(contentChangeTimerRef.current)
+      }
+    }
+  }, [])
+
   // Handle folder selection
   const handleFolderSelect = useCallback(
     (folder: Folder): void => {
@@ -275,6 +308,7 @@ export const InboxDetailPanel = ({
                     item={item}
                     onRetryTranscription={handleRetryTranscription}
                     isRetrying={retryTranscriptionMutation.isPending}
+                    onContentChange={handleContentChange}
                   />
                 </div>
               </div>

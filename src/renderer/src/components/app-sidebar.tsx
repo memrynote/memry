@@ -27,6 +27,8 @@ import { SidebarTagList } from '@/components/sidebar/sidebar-tag-list'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import { useTabs } from '@/contexts/tabs'
+import { notesService } from '@/services/notes-service'
 import { SidebarDrillDownProvider, useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useInboxList } from '@/hooks/use-inbox'
 import type { SidebarItem, TabType } from '@/contexts/tabs/types'
@@ -147,10 +149,40 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
   }, [inboxItems])
 
   // Tab navigation hook
-  const { openSidebarItem } = useSidebarNavigation()
+  const { openSidebarItem, isActiveItem } = useSidebarNavigation()
+
+  // Tab context for opening new notes
+  const { openTab } = useTabs()
 
   // Drill-down context for tag navigation
   const { openTag } = useSidebarDrillDown()
+
+  // Handle creating a new note
+  const handleNewNote = useCallback(async () => {
+    try {
+      const result = await notesService.create({
+        title: 'Untitled Note',
+        content: '',
+        folder: 'notes'
+      })
+
+      if (result.success && result.note) {
+        openTab({
+          type: 'note',
+          title: result.note.title || 'Untitled Note',
+          icon: 'file-text',
+          path: `/note/${result.note.id}`,
+          entityId: result.note.id,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false
+        })
+      }
+    } catch (error) {
+      console.error('Failed to create new note:', error)
+    }
+  }, [openTab])
 
   const handleNavClick = (page: AppPage) => (e: React.MouseEvent) => {
     e.preventDefault()
@@ -220,7 +252,13 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
             <SidebarMenuItem key={action.title}>
               <SidebarMenuButton
                 tooltip={action.title}
-                onClick={action.action === 'search' ? onOpenSearch : undefined}
+                onClick={
+                  action.action === 'search'
+                    ? onOpenSearch
+                    : action.action === 'new'
+                      ? handleNewNote
+                      : undefined
+                }
               >
                 <action.icon className={cn('size-4', action.iconColor)} />
                 <span>{action.title}</span>
@@ -239,11 +277,18 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
       {/* Main Navigation: Inbox, Home, Journal, Tasks */}
       <SidebarGroup>
         <SidebarMenu>
-          {mainNav.map((item) => (
+          {mainNav.map((item) => {
+            // Create SidebarItem to check active state from tab system
+            const sidebarItem: SidebarItem = {
+              type: item.page as TabType,
+              title: item.title,
+              path: `/${item.page}`
+            }
+            return (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 tooltip={item.title}
-                isActive={currentPage === item.page}
+                isActive={isActiveItem(sidebarItem)}
                 onClick={handleNavClick(item.page)}
               >
                 <item.icon className={cn('size-4', item.iconColor)} />
@@ -258,7 +303,8 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
                 <SidebarMenuBadge>{todayTasksCount}</SidebarMenuBadge>
               )}
             </SidebarMenuItem>
-          ))}
+            )
+          })}
         </SidebarMenu>
       </SidebarGroup>
 

@@ -28,8 +28,6 @@ import {
   DateBreadcrumb,
   JournalMonthView,
   JournalYearView,
-  SaveStatusIndicator,
-  deriveSaveStatus,
   DefaultTemplateIndicator,
   JournalErrorBoundary,
   type ScheduleEvent,
@@ -199,8 +197,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     isLoading: isEntryLoading,
     loadedForDate,
     error: entryError,
-    isSaving,
-    isDirty,
     saveError,
     externalUpdateCount,
     updateContent,
@@ -1049,19 +1045,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                       onNextDay={handleNextDay}
                     />
 
-                    {/* Right side - Save Status + Focus Mode Toggle */}
+                    {/* Right side - Focus Mode Toggle */}
                     <div className="flex-1 flex items-center justify-end gap-2">
-                      {/* Save Status Indicator */}
-                      {viewState.type === 'day' && (
-                        <SaveStatusIndicator
-                          status={deriveSaveStatus({
-                            isSaving,
-                            isDirty,
-                            hasEntry: !!entry
-                          })}
-                        />
-                      )}
-
                       {/* Focus Mode Toggle */}
                       {viewState.type === 'day' && (
                         <Button

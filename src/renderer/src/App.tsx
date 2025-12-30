@@ -35,10 +35,12 @@ import {
   useTaskOrder,
   useVault,
   useSearchShortcut,
+  useNewNoteShortcut,
   useUndoKeyboardShortcut,
   useReminderNotifications
 } from '@/hooks'
 import { tasksService } from '@/services/tasks-service'
+import { notesService } from '@/services/notes-service'
 import { VaultOnboarding } from '@/components/vault-onboarding'
 
 // Base pages (non-task)
@@ -178,10 +180,38 @@ const AppContent = ({
   const { state, openTab } = useTabs()
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
 
+  // Handle creating a new note
+  const handleNewNote = useCallback(async () => {
+    try {
+      const result = await notesService.create({
+        title: 'Untitled',
+        content: '',
+        folder: 'notes'
+      })
+
+      if (result.success && result.note) {
+        openTab({
+          type: 'note',
+          title: result.note.title || 'Untitled',
+          icon: 'file-text',
+          path: `/note/${result.note.id}`,
+          entityId: result.note.id,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false
+        })
+      }
+    } catch (error) {
+      console.error('Failed to create new note:', error)
+    }
+  }, [openTab])
+
   // Keyboard shortcuts
   useTabKeyboardShortcuts()
   const isChordActive = useChordShortcuts()
   useSearchShortcut(() => onSearchOpenChange(true))
+  useNewNoteShortcut(handleNewNote)
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
 
@@ -251,9 +281,8 @@ const AppContent = ({
               <div
                 key={groupId}
                 style={{ width: `${width}%` }}
-                className={`h-full overflow-hidden shrink-0 ${
-                  index > 0 ? 'border-l border-gray-300 dark:border-gray-600' : ''
-                }`}
+                className={`h-full overflow-hidden shrink-0 ${index > 0 ? 'border-l border-gray-300 dark:border-gray-600' : ''
+                  }`}
               >
                 <TabBarWithDrag groupId={groupId} />
               </div>

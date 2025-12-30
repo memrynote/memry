@@ -26,7 +26,9 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { useBookmarks, type BookmarkWithItem } from '@/hooks/use-bookmarks'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { BookmarkItemTypes } from '@shared/contracts/bookmarks-api'
+import type { SidebarItem, TabType } from '@/contexts/tabs/types'
 
 interface SidebarBookmarkListProps {
   /** Maximum number of bookmarks to show before "Show more" */
@@ -77,6 +79,13 @@ function getBookmarkIconColor(itemType: string): string {
   }
 }
 
+// Map bookmark item type to tab type
+const bookmarkItemTypeToTabType: Record<string, TabType> = {
+  [BookmarkItemTypes.NOTE]: 'note',
+  [BookmarkItemTypes.JOURNAL]: 'journal',
+  [BookmarkItemTypes.TASK]: 'tasks'
+}
+
 export function SidebarBookmarkList({
   maxVisible = 8,
   onBookmarkClick,
@@ -86,6 +95,7 @@ export function SidebarBookmarkList({
     sortBy: 'position',
     sortOrder: 'asc'
   })
+  const { isActiveItem } = useSidebarNavigation()
   const [showAll, setShowAll] = React.useState(false)
 
   // Filter to only existing items
@@ -142,11 +152,21 @@ export function SidebarBookmarkList({
         const title = bookmark.itemTitle || 'Untitled'
         const emoji = bookmark.itemMeta?.emoji
 
+        // Create SidebarItem to check active state from tab system
+        const tabType = bookmarkItemTypeToTabType[bookmark.itemType] || 'note'
+        const sidebarItem: SidebarItem = {
+          type: tabType,
+          title,
+          path: bookmark.itemMeta?.path || `/${bookmark.itemType}/${bookmark.itemId}`,
+          entityId: bookmark.itemId
+        }
+
         return (
           <SidebarMenuItem key={bookmark.id}>
             <SidebarMenuButton
               tooltip={title}
               onClick={handleBookmarkClick(bookmark)}
+              isActive={isActiveItem(sidebarItem)}
               className="group pr-8"
             >
               {/* Icon or emoji */}
