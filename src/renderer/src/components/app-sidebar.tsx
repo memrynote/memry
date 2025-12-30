@@ -162,8 +162,7 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
     try {
       const result = await notesService.create({
         title: 'Untitled Note',
-        content: '',
-        folder: 'notes'
+        content: ''
       })
 
       if (result.success && result.note) {

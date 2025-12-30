@@ -185,8 +185,7 @@ const AppContent = ({
     try {
       const result = await notesService.create({
         title: 'Untitled',
-        content: '',
-        folder: 'notes'
+        content: ''
       })
 
       if (result.success && result.note) {
