@@ -1535,6 +1535,15 @@ export interface QuickCaptureClientAPI {
   getClipboard(): Promise<string>
 }
 
+// Native context menu types
+export interface ContextMenuItem {
+  id: string
+  label: string
+  accelerator?: string
+  disabled?: boolean
+  type?: 'normal' | 'separator'
+}
+
 // Settings types
 export interface JournalSettings {
   defaultTemplate: string | null
@@ -1762,6 +1771,8 @@ interface API extends WindowAPI {
   inbox: InboxClientAPI
   reminders: RemindersClientAPI
   quickCapture: QuickCaptureClientAPI
+  /** Show a native OS context menu and return the selected item id, or null if dismissed */
+  showContextMenu: (items: ContextMenuItem[]) => Promise<string | null>
   // Vault event subscriptions
   onVaultStatusChanged: (callback: (status: VaultStatus) => void) => () => void
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void

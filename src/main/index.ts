@@ -7,7 +7,9 @@ import {
   net,
   globalShortcut,
   clipboard,
-  screen
+  screen,
+  Menu,
+  MenuItem
 } from 'electron'
 import { join } from 'path'
 import { config } from 'dotenv'
@@ -229,6 +231,58 @@ app.whenReady().then(async () => {
   ipcMain.handle('quick-capture:get-clipboard', () => {
     return clipboard.readText()
   })
+
+  // Native context menu handler
+  ipcMain.handle(
+    'context-menu:show',
+    async (
+      _event,
+      items: Array<{
+        id: string
+        label: string
+        accelerator?: string
+        disabled?: boolean
+        type?: 'normal' | 'separator'
+      }>
+    ) => {
+      return new Promise<string | null>((resolve) => {
+        const menu = new Menu()
+        let resolved = false
+
+        for (const item of items) {
+          if (item.type === 'separator') {
+            menu.append(new MenuItem({ type: 'separator' }))
+          } else {
+            menu.append(
+              new MenuItem({
+                label: item.label,
+                accelerator: item.accelerator,
+                enabled: !item.disabled,
+                click: () => {
+                  if (!resolved) {
+                    resolved = true
+                    resolve(item.id)
+                  }
+                }
+              })
+            )
+          }
+        }
+
+        // Handle menu closing without selection
+        menu.once('menu-will-close', () => {
+          setTimeout(() => {
+            if (!resolved) {
+              resolved = true
+              resolve(null)
+            }
+          }, 100)
+        })
+
+        menu.popup()
+      })
+    }
+  )
 
   // Register all IPC handlers (vault, notes, tasks, search)
   registerAllHandlers()

@@ -582,6 +582,17 @@ const api = {
     getClipboard: (): Promise<string> => ipcRenderer.invoke('quick-capture:get-clipboard')
   },
 
+  // Native context menu
+  showContextMenu: (
+    items: Array<{
+      id: string
+      label: string
+      accelerator?: string
+      disabled?: boolean
+      type?: 'normal' | 'separator'
+    }>
+  ): Promise<string | null> => ipcRenderer.invoke('context-menu:show', items),
+
   // Tags API (for sidebar drill-down)
   tags: {
     /** Get notes for a specific tag with pinned status */

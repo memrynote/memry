@@ -1,172 +1,124 @@
 /**
  * Tab Context Menu
- * Right-click context menu for individual tabs
+ * Native OS context menu for individual tabs
  */
 
-import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuSeparator,
-    ContextMenuShortcut,
-    ContextMenuTrigger,
-} from '@/components/ui/context-menu';
-import type { Tab } from '@/contexts/tabs/types';
-import { useTabs } from '@/contexts/tabs';
+import type { Tab } from '@/contexts/tabs/types'
+import { useTabs } from '@/contexts/tabs'
+import { useCallback } from 'react'
 
 interface TabContextMenuProps {
-    /** Tab data */
-    tab: Tab;
-    /** Group ID this tab belongs to */
-    groupId: string;
-    /** Children to wrap */
-    children: React.ReactNode;
+  /** Tab data */
+  tab: Tab
+  /** Group ID this tab belongs to */
+  groupId: string
+  /** Children to wrap */
+  children: React.ReactNode
 }
 
 /**
- * Context menu for tab actions (close, pin, split, etc.)
+ * Context menu wrapper that shows a native OS context menu on right-click
  */
 export const TabContextMenu = ({
-    tab,
-    groupId,
-    children,
+  tab,
+  groupId,
+  children
 }: TabContextMenuProps): React.JSX.Element => {
-    const { closeTab, closeOtherTabs, closeTabsToRight, closeAllTabs, dispatch, state } = useTabs();
+  const { closeTab, closeOtherTabs, closeTabsToRight, closeAllTabs, dispatch, state } = useTabs()
 
-    const group = state.tabGroups[groupId];
-    const tabIndex = group?.tabs.findIndex((t) => t.id === tab.id) ?? -1;
-    const hasTabsToRight = tabIndex < (group?.tabs.length ?? 0) - 1;
-    const hasOtherTabs = (group?.tabs.length ?? 0) > 1;
+  const group = state.tabGroups[groupId]
+  const tabIndex = group?.tabs.findIndex((t) => t.id === tab.id) ?? -1
+  const hasTabsToRight = tabIndex < (group?.tabs.length ?? 0) - 1
+  const hasOtherTabs = (group?.tabs.length ?? 0) > 1
 
-    // Handlers
-    const handleClose = (): void => {
-        closeTab(tab.id, groupId);
-    };
+  const handleContextMenu = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault()
 
-    const handleCloseOthers = (): void => {
-        closeOtherTabs(tab.id, groupId);
-    };
+      const menuItems = [
+        { id: 'close', label: 'Close', accelerator: 'CmdOrCtrl+W' },
+        { id: 'close-others', label: 'Close Others', disabled: !hasOtherTabs },
+        { id: 'close-right', label: 'Close to the Right', disabled: !hasTabsToRight },
+        { id: 'close-all', label: 'Close All' },
+        { id: 'sep1', label: '', type: 'separator' as const },
+        { id: 'pin', label: tab.isPinned ? 'Unpin Tab' : 'Pin Tab' },
+        { id: 'duplicate', label: 'Duplicate Tab' },
+        { id: 'sep2', label: '', type: 'separator' as const },
+        { id: 'split-right', label: 'Split Right', accelerator: 'CmdOrCtrl+\\' },
+        { id: 'split-down', label: 'Split Down' },
+        { id: 'sep3', label: '', type: 'separator' as const },
+        { id: 'copy-path', label: 'Copy Path' },
+        { id: 'reveal', label: 'Reveal in Sidebar' }
+      ]
 
-    const handleCloseToRight = (): void => {
-        closeTabsToRight(tab.id, groupId);
-    };
+      const selectedId = await window.api.showContextMenu(menuItems)
 
-    const handleCloseAll = (): void => {
-        closeAllTabs(groupId);
-    };
-
-    const handlePin = (): void => {
-        dispatch({
+      switch (selectedId) {
+        case 'close':
+          closeTab(tab.id, groupId)
+          break
+        case 'close-others':
+          closeOtherTabs(tab.id, groupId)
+          break
+        case 'close-right':
+          closeTabsToRight(tab.id, groupId)
+          break
+        case 'close-all':
+          closeAllTabs(groupId)
+          break
+        case 'pin':
+          dispatch({
             type: tab.isPinned ? 'UNPIN_TAB' : 'PIN_TAB',
-            payload: { tabId: tab.id, groupId },
-        });
-    };
-
-    const handleDuplicate = (): void => {
-        dispatch({
+            payload: { tabId: tab.id, groupId }
+          })
+          break
+        case 'duplicate':
+          dispatch({
             type: 'OPEN_TAB',
             payload: {
-                tab: {
-                    ...tab,
-                    isPinned: false,
-                    isPreview: false,
-                    isModified: false,
-                },
-                groupId,
-            },
-        });
-    };
-
-    const handleSplitRight = (): void => {
-        dispatch({
+              tab: { ...tab, isPinned: false, isPreview: false, isModified: false },
+              groupId
+            }
+          })
+          break
+        case 'split-right':
+          dispatch({
             type: 'MOVE_TAB_TO_NEW_SPLIT',
-            payload: {
-                tabId: tab.id,
-                fromGroupId: groupId,
-                direction: 'right',
-            },
-        });
-    };
-
-    const handleSplitDown = (): void => {
-        dispatch({
+            payload: { tabId: tab.id, fromGroupId: groupId, direction: 'right' }
+          })
+          break
+        case 'split-down':
+          dispatch({
             type: 'MOVE_TAB_TO_NEW_SPLIT',
-            payload: {
-                tabId: tab.id,
-                fromGroupId: groupId,
-                direction: 'down',
-            },
-        });
-    };
-
-    const handleCopyPath = (): void => {
-        navigator.clipboard.writeText(tab.path);
-    };
-
-    const handleRevealInSidebar = (): void => {
-        // Emit custom event for sidebar to handle
-        window.dispatchEvent(
+            payload: { tabId: tab.id, fromGroupId: groupId, direction: 'horizontal' }
+          })
+          break
+        case 'copy-path':
+          navigator.clipboard.writeText(tab.path)
+          break
+        case 'reveal':
+          window.dispatchEvent(
             new CustomEvent('reveal-in-sidebar', {
-                detail: { path: tab.path, entityId: tab.entityId },
+              detail: { path: tab.path, entityId: tab.entityId }
             })
-        );
-    };
+          )
+          break
+      }
+    },
+    [
+      tab,
+      groupId,
+      hasOtherTabs,
+      hasTabsToRight,
+      closeTab,
+      closeOtherTabs,
+      closeTabsToRight,
+      closeAllTabs,
+      dispatch
+    ]
+  )
 
-    return (
-        <ContextMenu>
-            <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-            <ContextMenuContent className="w-56">
-                {/* Close actions */}
-                <ContextMenuItem onClick={handleClose}>
-                    Close
-                    <ContextMenuShortcut>⌘W</ContextMenuShortcut>
-                </ContextMenuItem>
-                <ContextMenuItem onClick={handleCloseOthers} disabled={!hasOtherTabs}>
-                    Close Others
-                </ContextMenuItem>
-                <ContextMenuItem onClick={handleCloseToRight} disabled={!hasTabsToRight}>
-                    Close to the Right
-                </ContextMenuItem>
-                <ContextMenuItem onClick={handleCloseAll}>
-                    Close All
-                </ContextMenuItem>
+  return <div onContextMenu={handleContextMenu}>{children}</div>
+}
 
-                <ContextMenuSeparator />
-
-                {/* Tab actions */}
-                <ContextMenuItem onClick={handlePin}>
-                    {tab.isPinned ? 'Unpin Tab' : 'Pin Tab'}
-                </ContextMenuItem>
-                <ContextMenuItem onClick={handleDuplicate}>
-                    Duplicate Tab
-                </ContextMenuItem>
-
-                <ContextMenuSeparator />
-
-                {/* Split actions */}
-                <ContextMenuItem onClick={handleSplitRight}>
-                    Split Right
-                    <ContextMenuShortcut>⌘\</ContextMenuShortcut>
-                </ContextMenuItem>
-                <ContextMenuItem onClick={handleSplitDown}>
-                    Split Down
-                </ContextMenuItem>
-                <ContextMenuItem disabled>
-                    Move to New Window
-                </ContextMenuItem>
-
-                <ContextMenuSeparator />
-
-                {/* Utility actions */}
-                <ContextMenuItem onClick={handleCopyPath}>
-                    Copy Path
-                </ContextMenuItem>
-                <ContextMenuItem onClick={handleRevealInSidebar}>
-                    Reveal in Sidebar
-                </ContextMenuItem>
-            </ContextMenuContent>
-        </ContextMenu>
-    );
-};
-
-export default TabContextMenu;
+export default TabContextMenu
