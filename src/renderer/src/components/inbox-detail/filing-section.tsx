@@ -238,6 +238,7 @@ export const FilingSection = ({
   className
 }: FilingSectionProps): React.JSX.Element => {
   const [showAllFolders, setShowAllFolders] = useState(false)
+  const [folderSearch, setFolderSearch] = useState('')
 
   // Fetch real folders from vault
   const { data: vaultFolders = [] } = useQuery({
@@ -300,6 +301,19 @@ export const FilingSection = ({
 
   const hasAISuggestions = aiSuggestions.length > 0
 
+  // Filter folders based on search query
+  const filteredFolders = useMemo(() => {
+    if (!folderSearch.trim()) return vaultFolders
+    const query = folderSearch.toLowerCase()
+    return vaultFolders.filter(
+      (f) => f.name.toLowerCase().includes(query) || f.path.toLowerCase().includes(query)
+    )
+  }, [vaultFolders, folderSearch])
+
+  // Check if selected folder is from "Other" dropdown (not a suggested chip)
+  const isSelectedFromOther =
+    selectedFolder && !suggestedFolders.some((f) => f.id === selectedFolder.id)
+
   return (
     <div className={cn('space-y-3', className)}>
       {/* Header Row */}
@@ -333,42 +347,68 @@ export const FilingSection = ({
         ))}
 
         {/* Other Folder Dropdown */}
-        <Popover open={showAllFolders} onOpenChange={setShowAllFolders}>
+        <Popover
+          open={showAllFolders}
+          onOpenChange={(open) => {
+            setShowAllFolders(open)
+            if (!open) setFolderSearch('')
+          }}
+        >
           <PopoverTrigger asChild>
             <Button
-              variant="outline"
+              variant={isSelectedFromOther ? 'default' : 'outline'}
               size="sm"
               className="h-7 px-2 text-xs"
             >
-              Other
+              {isSelectedFromOther ? (
+                <>
+                  <Folder className="size-3 mr-1" />
+                  <span className="truncate max-w-[100px]">{selectedFolder.name}</span>
+                </>
+              ) : (
+                'Other'
+              )}
               <ChevronDown className="size-3 ml-1" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-56 p-2" align="start">
+            <Input
+              placeholder="Search folders..."
+              value={folderSearch}
+              onChange={(e) => setFolderSearch(e.target.value)}
+              className="h-8 text-xs mb-2"
+              autoFocus
+            />
             <ScrollArea className="max-h-48">
-              <div className="space-y-1">
-                {vaultFolders.map((folder) => (
-                  <button
-                    key={folder.id}
-                    onClick={() => {
-                      onFolderSelect(folder)
-                      setShowAllFolders(false)
-                    }}
-                    className={cn(
-                      'w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded text-left',
-                      selectedFolder?.id === folder.id
-                        ? 'bg-primary/10 text-primary'
-                        : 'hover:bg-accent'
-                    )}
-                  >
-                    <Folder className="size-3 shrink-0" />
-                    <span className="truncate flex-1">{folder.name}</span>
-                    {selectedFolder?.id === folder.id && (
-                      <Check className="size-3 shrink-0" />
-                    )}
-                  </button>
-                ))}
-              </div>
+              {filteredFolders.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-2">
+                  No folders found
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {filteredFolders.map((folder) => (
+                    <button
+                      key={folder.id}
+                      onClick={() => {
+                        onFolderSelect(folder)
+                        setShowAllFolders(false)
+                      }}
+                      className={cn(
+                        'w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded text-left',
+                        selectedFolder?.id === folder.id
+                          ? 'bg-primary/10 text-primary'
+                          : 'hover:bg-accent'
+                      )}
+                    >
+                      <Folder className="size-3 shrink-0" />
+                      <span className="truncate flex-1">{folder.name}</span>
+                      {selectedFolder?.id === folder.id && (
+                        <Check className="size-3 shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </ScrollArea>
           </PopoverContent>
         </Popover>
