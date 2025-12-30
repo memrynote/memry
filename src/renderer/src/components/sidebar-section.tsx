@@ -45,6 +45,22 @@ export const SidebarSection = ({
     }
   })
 
+  // Listen for external changes to localStorage (e.g., from reveal-in-sidebar)
+  React.useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === storageKey && event.newValue !== null) {
+        try {
+          setIsExpanded(JSON.parse(event.newValue))
+        } catch {
+          // Ignore parse errors
+        }
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [storageKey])
+
   const handleOpenChange = (open: boolean): void => {
     setIsExpanded(open)
     try {

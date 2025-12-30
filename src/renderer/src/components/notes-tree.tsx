@@ -17,6 +17,7 @@ import {
   TreeNodeTrigger,
   TreeProvider,
   TreeView,
+  useTree,
   type MoveOperation,
   type DropPosition
 } from '@/components/kibo-ui/tree'
@@ -1007,6 +1008,94 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     return () => container.removeEventListener('keydown', handleKeyDown)
   }, [selectedIds, renamingNoteId, handleBulkDelete])
 
+  // State for pending reveal request (set from outside, handled inside TreeProvider)
+  const [pendingRevealNoteId, setPendingRevealNoteId] = useState<string | null>(null)
+
+  // Handle "Reveal in Sidebar" events from tab context menu
+  useEffect(() => {
+    const handleRevealInSidebar = (event: CustomEvent<{ path: string; entityId?: string }>) => {
+      const { entityId } = event.detail
+
+      // Find the note by entityId
+      if (!entityId) return
+      const note = noteMap.get(entityId)
+      if (!note) return
+
+      // Expand the Collections section in sidebar by updating localStorage
+      try {
+        localStorage.setItem('sidebar-section-collections-expanded', 'true')
+        // Dispatch storage event to trigger re-render in SidebarSection
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'sidebar-section-collections-expanded',
+          newValue: 'true'
+        }))
+      } catch {
+        // Ignore localStorage errors
+      }
+
+      // Set pending reveal - will be handled by RevealHandler inside TreeProvider
+      setPendingRevealNoteId(entityId)
+    }
+
+    window.addEventListener('reveal-in-sidebar', handleRevealInSidebar as EventListener)
+    return () => {
+      window.removeEventListener('reveal-in-sidebar', handleRevealInSidebar as EventListener)
+    }
+  }, [noteMap])
+
+  // Helper component that runs inside TreeProvider to handle folder expansion
+  const RevealHandler = useCallback(() => {
+    const { expandNode } = useTree()
+
+    useEffect(() => {
+      if (!pendingRevealNoteId) return
+
+      const note = noteMap.get(pendingRevealNoteId)
+      if (!note) {
+        setPendingRevealNoteId(null)
+        return
+      }
+
+      // Extract folder path from note path to expand parent folders
+      const pathParts = note.path.split('/')
+      pathParts.pop() // Remove filename
+
+      // If note is in a subfolder, expand all parent folders
+      if (pathParts.length > 1) {
+        const folderParts = pathParts.slice(1) // Remove "notes" prefix
+        let currentPath = ''
+        for (const part of folderParts) {
+          currentPath = currentPath ? `${currentPath}/${part}` : part
+          // Expand this folder
+          expandNode(`folder-${currentPath}`)
+        }
+      }
+
+      // Select the note and scroll to it
+      setTimeout(() => {
+        setSelectedIds([pendingRevealNoteId])
+
+        // Scroll the note into view
+        setTimeout(() => {
+          const element = document.querySelector(`[data-tree-node-id="${pendingRevealNoteId}"]`)
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            // Add a brief highlight effect
+            element.classList.add('bg-accent')
+            setTimeout(() => {
+              element.classList.remove('bg-accent')
+            }, 2000)
+          }
+        }, 100)
+
+        // Clear pending reveal
+        setPendingRevealNoteId(null)
+      }, 50)
+    }, [pendingRevealNoteId, expandNode])
+
+    return null
+  }, [pendingRevealNoteId, noteMap])
+
   // Render action buttons (must be before early returns to follow Rules of Hooks)
   const actionButtons = useMemo(
     () => (
@@ -1311,6 +1400,8 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           multiSelect={true}
           indent={16}
         >
+          {/* Handle reveal-in-sidebar requests */}
+          <RevealHandler />
           <TreeView>
             {/* Folders first */}
             {tree.folders.map((folder, index) =>
