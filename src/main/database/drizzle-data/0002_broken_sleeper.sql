@@ -31,7 +31,7 @@ CREATE TABLE `inbox_stats` (
 	`capture_count_pdf` integer DEFAULT 0,
 	`capture_count_social` integer DEFAULT 0,
 	`processed_count` integer DEFAULT 0,
-	`deleted_count` integer DEFAULT 0
+	`archived_count` integer DEFAULT 0
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `inbox_stats_date_unique` ON `inbox_stats` (`date`);--> statement-breakpoint
@@ -57,7 +57,8 @@ CREATE TABLE `__new_inbox_items` (
 	`transcription` text,
 	`transcription_status` text,
 	`source_url` text,
-	`source_title` text
+	`source_title` text,
+	`archived_at` text
 );
 --> statement-breakpoint
 INSERT INTO `__new_inbox_items`("id", "type", "title", "content", "created_at", "modified_at", "filed_at", "metadata") SELECT "id", "type", COALESCE("content", 'Untitled'), "content", "created_at", "created_at", "filed_at", "metadata" FROM `inbox_items`;--> statement-breakpoint
@@ -68,4 +69,5 @@ CREATE INDEX `idx_inbox_items_type` ON `inbox_items` (`type`);--> statement-brea
 CREATE INDEX `idx_inbox_items_created` ON `inbox_items` (`created_at`);--> statement-breakpoint
 CREATE INDEX `idx_inbox_items_filed` ON `inbox_items` (`filed_at`);--> statement-breakpoint
 CREATE INDEX `idx_inbox_items_snoozed` ON `inbox_items` (`snoozed_until`);--> statement-breakpoint
-CREATE INDEX `idx_inbox_items_processing` ON `inbox_items` (`processing_status`);
+CREATE INDEX `idx_inbox_items_processing` ON `inbox_items` (`processing_status`);--> statement-breakpoint
+CREATE INDEX `idx_inbox_items_archived` ON `inbox_items` (`archived_at`);

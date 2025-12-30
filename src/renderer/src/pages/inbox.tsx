@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { Check, Loader2, AlertCircle, Clock } from 'lucide-react'
+import { Check, Loader2, AlertCircle, Clock, AlignJustify, LayoutGrid } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { useTabs } from '@/contexts/tabs'
@@ -13,12 +13,14 @@ import { Button } from '@/components/ui/button'
 import { ToastContainer, type Toast } from '@/components/ui/toast'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ListView } from '@/components/list-view'
 import { InboxDetailPanel } from '@/components/inbox-detail'
 import { BulkActionBar, type ClusterSuggestion } from '@/components/bulk/bulk-action-bar'
 import { BulkFilePanel } from '@/components/bulk/bulk-file-panel'
 import { BulkTagPopover } from '@/components/bulk/bulk-tag-popover'
-import { DeleteConfirmationDialog } from '@/components/bulk/delete-confirmation-dialog'
+import { ArchiveConfirmationDialog } from '@/components/bulk/archive-confirmation-dialog'
 import { EmptyState } from '@/components/empty-state/empty-state'
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
 import { SRAnnouncer } from '@/components/sr-announcer'
@@ -29,11 +31,12 @@ import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
 import { getStaleItems, getNonStaleItems } from '@/lib/stale-utils'
 import { cn } from '@/lib/utils'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
+import { useDisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
 import {
   useInboxList,
   useInboxItem,
-  useDeleteInboxItem,
-  useBulkDeleteInboxItems,
+  useArchiveInboxItem,
+  useBulkArchiveInboxItems,
   useFileInboxItem,
   inboxKeys
 } from '@/hooks/use-inbox'
@@ -48,6 +51,10 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const queryClient = useQueryClient()
   const { openTab } = useTabs()
 
+  // Display density preference (comfortable vs compact)
+  const { density, setDensity } = useDisplayDensity()
+  const densityConfig = DENSITY_CONFIG[density]
+
   // Backend data hooks
   const {
     items: backendItems,
@@ -61,17 +68,17 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   // File mutation
   const fileItemMutation = useFileInboxItem()
 
-  // Delete mutations
-  const deleteItemMutation = useDeleteInboxItem()
-  const bulkDeleteMutation = useBulkDeleteInboxItems()
+  // Archive mutations
+  const archiveItemMutation = useArchiveInboxItem()
+  const bulkArchiveMutation = useBulkArchiveInboxItems()
 
-  // Local state for optimistic UI (items pending deletion animation)
-  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
+  // Local state for optimistic UI (items pending archive animation)
+  const [pendingArchiveIds, setPendingArchiveIds] = useState<Set<string>>(new Set())
 
-  // Combine backend items with pending deletions for optimistic UI
+  // Combine backend items with pending archives for optimistic UI
   const items = useMemo(() => {
-    return backendItems.filter((item) => !pendingDeleteIds.has(item.id))
-  }, [backendItems, pendingDeleteIds])
+    return backendItems.filter((item) => !pendingArchiveIds.has(item.id))
+  }, [backendItems, pendingArchiveIds])
 
   // Empty state tracking
   const [itemsProcessedToday, setItemsProcessedToday] = useState(0)
@@ -105,7 +112,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   // Bulk action panel states
   const [isBulkFilePanelOpen, setIsBulkFilePanelOpen] = useState(false)
   const [isBulkTagPopoverOpen, setIsBulkTagPopoverOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
 
   // Keyboard shortcuts modal state
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false)
@@ -236,7 +243,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         // If in bulk mode, trigger bulk delete
         if (isInBulkMode) {
           e.preventDefault()
-          setIsDeleteDialogOpen(true)
+          setIsArchiveDialogOpen(true)
           return
         }
 
@@ -257,7 +264,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             // After animation, delete via backend
             setTimeout(async () => {
               // Add to pending deletes for optimistic UI
-              setPendingDeleteIds((prev) => new Set(prev).add(focusedItemId))
+              setPendingArchiveIds((prev) => new Set(prev).add(focusedItemId))
               setExitingItemIds((prev) => {
                 const next = new Set(prev)
                 next.delete(focusedItemId)
@@ -270,20 +277,20 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
               }
 
               try {
-                await deleteItemMutation.mutateAsync(focusedItemId)
+                await archiveItemMutation.mutateAsync(focusedItemId)
                 addToast({
-                  message: `"${focusedItem.title}" deleted`,
+                  message: `"${focusedItem.title}" archived`,
                   type: 'success'
                 })
               } catch {
-                // Revert optimistic delete on error
-                setPendingDeleteIds((prev) => {
+                // Revert optimistic archive on error
+                setPendingArchiveIds((prev) => {
                   const next = new Set(prev)
                   next.delete(focusedItemId)
                   return next
                 })
                 addToast({
-                  message: 'Failed to delete item',
+                  message: 'Failed to archive item',
                   type: 'error'
                 })
               }
@@ -355,7 +362,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       // After exit animation, file item via backend
       setTimeout(async () => {
         // Add to pending deletes for optimistic UI (item will be filtered out when filed)
-        setPendingDeleteIds((prev) => new Set(prev).add(itemId))
+        setPendingArchiveIds((prev) => new Set(prev).add(itemId))
 
         // Clear exiting state
         setExitingItemIds((prev) => {
@@ -413,7 +420,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           }
         } catch (error) {
           // Revert optimistic UI on error
-          setPendingDeleteIds((prev) => {
+          setPendingArchiveIds((prev) => {
             const next = new Set(prev)
             next.delete(itemId)
             return next
@@ -443,7 +450,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       // After exit animation, file item via backend
       setTimeout(async () => {
         // Add to pending deletes for optimistic UI
-        setPendingDeleteIds((prev) => new Set(prev).add(itemId))
+        setPendingArchiveIds((prev) => new Set(prev).add(itemId))
 
         // Clear exiting state
         setExitingItemIds((prev) => {
@@ -488,7 +495,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           }
         } catch (error) {
           // Revert optimistic UI on error
-          setPendingDeleteIds((prev) => {
+          setPendingArchiveIds((prev) => {
             const next = new Set(prev)
             next.delete(itemId)
             return next
@@ -593,7 +600,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   )
 
   // Handle delete action with animation
-  const handleDelete = useCallback(
+  const handleArchive = useCallback(
     async (id: string): Promise<void> => {
       const deletedItem = items.find((item) => item.id === id)
       if (!deletedItem) return
@@ -611,7 +618,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       // After exit animation (200ms), delete via backend
       setTimeout(async () => {
         // Add to pending deletes for optimistic UI
-        setPendingDeleteIds((prev) => new Set(prev).add(id))
+        setPendingArchiveIds((prev) => new Set(prev).add(id))
 
         // Clear exiting state
         setExitingItemIds((prev) => {
@@ -638,14 +645,14 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         }
 
         try {
-          await deleteItemMutation.mutateAsync(id)
+          await archiveItemMutation.mutateAsync(id)
           addToast({
-            message: 'Item deleted',
+            message: 'Item archived',
             type: 'success'
           })
         } catch {
-          // Revert optimistic delete on error
-          setPendingDeleteIds((prev) => {
+          // Revert optimistic archive on error
+          setPendingArchiveIds((prev) => {
             const next = new Set(prev)
             next.delete(id)
             return next
@@ -653,13 +660,13 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           // Decrement the processed counter on error
           setItemsProcessedToday((prev) => Math.max(0, prev - 1))
           addToast({
-            message: 'Failed to delete item',
+            message: 'Failed to archive item',
             type: 'error'
           })
         }
       }, 200)
     },
-    [items, addToast, activeDetailItemId, deleteItemMutation]
+    [items, addToast, activeDetailItemId, archiveItemMutation]
   )
 
   // Handle snooze action with animation
@@ -681,7 +688,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       // After exit animation (200ms), snooze via backend
       setTimeout(async () => {
         // Add to pending deletes for optimistic UI (snoozed items disappear from view)
-        setPendingDeleteIds((prev) => new Set(prev).add(id))
+        setPendingArchiveIds((prev) => new Set(prev).add(id))
 
         // Clear exiting state
         setExitingItemIds((prev) => {
@@ -707,8 +714,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         try {
           const result = await inboxService.snooze({ itemId: id, snoozeUntil })
           if (result.success) {
-            // Clear from pendingDeleteIds so item can appear when "Show snoozed" is toggled
-            setPendingDeleteIds((prev) => {
+            // Clear from pendingArchiveIds so item can appear when "Show snoozed" is toggled
+            setPendingArchiveIds((prev) => {
               const next = new Set(prev)
               next.delete(id)
               return next
@@ -733,7 +740,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           }
         } catch (error) {
           // Revert optimistic UI on error
-          setPendingDeleteIds((prev) => {
+          setPendingArchiveIds((prev) => {
             const next = new Set(prev)
             next.delete(id)
             return next
@@ -761,7 +768,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       const processedCount = itemIds.length
 
       // Add to pending deletes for optimistic UI
-      setPendingDeleteIds((prev) => {
+      setPendingArchiveIds((prev) => {
         const next = new Set(prev)
         itemIds.forEach((id) => next.add(id))
         return next
@@ -800,7 +807,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         }
       } catch (error) {
         // Revert optimistic delete on error
-        setPendingDeleteIds((prev) => {
+        setPendingArchiveIds((prev) => {
           const next = new Set(prev)
           itemIds.forEach((id) => next.delete(id))
           return next
@@ -849,33 +856,33 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   )
 
   // Handle bulk delete all
-  const handleBulkDeleteAll = useCallback((): void => {
-    setIsDeleteDialogOpen(true)
+  const handleBulkArchiveAll = useCallback((): void => {
+    setIsArchiveDialogOpen(true)
   }, [])
 
   // Handle bulk delete confirm with animation
-  const handleBulkDeleteConfirm = useCallback((): void => {
-    const idsToDelete = Array.from(selectedItemIds)
-    const processedCount = idsToDelete.length
-    const willBeEmpty = items.length === idsToDelete.length
+  const handleBulkArchiveConfirm = useCallback((): void => {
+    const idsToArchive = Array.from(selectedItemIds)
+    const processedCount = idsToArchive.length
+    const willBeEmpty = items.length === idsToArchive.length
 
     // Close dialog immediately
-    setIsDeleteDialogOpen(false)
+    setIsArchiveDialogOpen(false)
 
     // Start exit animation for all items
-    setExitingItemIds(new Set(idsToDelete))
+    setExitingItemIds(new Set(idsToArchive))
 
     // Close the detail panel if any deleted item was being viewed
-    if (activeDetailItemId && idsToDelete.includes(activeDetailItemId)) {
+    if (activeDetailItemId && idsToArchive.includes(activeDetailItemId)) {
       setActiveDetailItemId(null)
     }
 
     // After exit animation, delete via backend
     setTimeout(async () => {
       // Add to pending deletes for optimistic UI
-      setPendingDeleteIds((prev) => {
+      setPendingArchiveIds((prev) => {
         const next = new Set(prev)
-        idsToDelete.forEach((id) => next.add(id))
+        idsToArchive.forEach((id) => next.add(id))
         return next
       })
 
@@ -896,30 +903,30 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       }
 
       try {
-        await bulkDeleteMutation.mutateAsync({ itemIds: idsToDelete })
+        await bulkArchiveMutation.mutateAsync({ itemIds: idsToArchive })
         addToast({
-          message: `Deleted ${idsToDelete.length} item${idsToDelete.length !== 1 ? 's' : ''}`,
+          message: `Archived ${idsToArchive.length} item${idsToArchive.length !== 1 ? 's' : ''}`,
           type: 'success'
         })
       } catch {
-        // Revert optimistic delete on error
-        setPendingDeleteIds((prev) => {
+        // Revert optimistic archive on error
+        setPendingArchiveIds((prev) => {
           const next = new Set(prev)
-          idsToDelete.forEach((id) => next.delete(id))
+          idsToArchive.forEach((id) => next.delete(id))
           return next
         })
         setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
         addToast({
-          message: 'Failed to delete items',
+          message: 'Failed to archive items',
           type: 'error'
         })
       }
     }, 200)
-  }, [selectedItemIds, items, activeDetailItemId, addToast, bulkDeleteMutation])
+  }, [selectedItemIds, items, activeDetailItemId, addToast, bulkArchiveMutation])
 
-  // Handle delete dialog cancel
-  const handleDeleteDialogCancel = useCallback((): void => {
-    setIsDeleteDialogOpen(false)
+  // Handle archive dialog cancel
+  const handleArchiveDialogCancel = useCallback((): void => {
+    setIsArchiveDialogOpen(false)
   }, [])
 
   // Handle AI suggestion - add to selection
@@ -960,7 +967,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       // After exit animation, snooze via backend
       setTimeout(async () => {
         // Add to pending deletes for optimistic UI (snoozed items disappear from view)
-        setPendingDeleteIds((prev) => {
+        setPendingArchiveIds((prev) => {
           const next = new Set(prev)
           idsToSnooze.forEach((id) => next.add(id))
           return next
@@ -987,8 +994,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           })
 
           if (result.success || result.processedCount > 0) {
-            // Clear from pendingDeleteIds so items can appear when "Show snoozed" is toggled
-            setPendingDeleteIds((prev) => {
+            // Clear from pendingArchiveIds so items can appear when "Show snoozed" is toggled
+            setPendingArchiveIds((prev) => {
               const next = new Set(prev)
               idsToSnooze.forEach((id) => next.delete(id))
               return next
@@ -1013,7 +1020,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           }
         } catch (error) {
           // Revert optimistic UI on error
-          setPendingDeleteIds((prev) => {
+          setPendingArchiveIds((prev) => {
             const next = new Set(prev)
             idsToSnooze.forEach((id) => next.delete(id))
             return next
@@ -1043,7 +1050,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     // After animation, file via backend
     setTimeout(async () => {
       // Add to pending deletes for optimistic UI
-      setPendingDeleteIds((prev) => {
+      setPendingArchiveIds((prev) => {
         const next = new Set(prev)
         staleIds.forEach((id) => next.add(id))
         return next
@@ -1078,7 +1085,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         }
       } catch (error) {
         // Revert optimistic delete on error
-        setPendingDeleteIds((prev) => {
+        setPendingArchiveIds((prev) => {
           const next = new Set(prev)
           staleIds.forEach((id) => next.delete(id))
           return next
@@ -1264,8 +1271,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     <div
       className={cn(
         'flex flex-col h-full relative',
-        'px-6 lg:px-8',
-        'py-8 lg:py-12',
+        // Density-aware padding
+        densityConfig.pagePadding,
         isDraggingOver && 'ring-2 ring-primary/50 ring-inset bg-primary/5',
         className
       )}
@@ -1309,13 +1316,14 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       )}
 
       {/* Header with Dramatic Item Count */}
-      <header className={cn('relative mb-8 lg:mb-10', 'journal-animate-in')}>
+      <header className={cn('relative', densityConfig.headerMargin, 'journal-animate-in')}>
         {/* Large decorative item count watermark */}
         {!isInBulkMode && items.length > 0 && (
           <div
             className={cn(
-              'absolute -left-2 lg:-left-4 -top-4 lg:-top-6',
-              'text-[8rem] lg:text-[10rem]',
+              'absolute',
+              densityConfig.watermarkOffset,
+              densityConfig.watermarkSize,
               'journal-day-watermark'
             )}
             aria-hidden="true"
@@ -1408,6 +1416,54 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                     Show snoozed
                   </Label>
                 </div>
+
+                {/* Display density toggle */}
+                <div className="flex items-center">
+                  <ToggleGroup
+                    type="single"
+                    value={density}
+                    onValueChange={(value) => {
+                      if (value) setDensity(value as 'comfortable' | 'compact')
+                    }}
+                    size="sm"
+                    className="bg-muted/30 rounded-md p-0.5"
+                  >
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <ToggleGroupItem
+                          value="comfortable"
+                          aria-label="Comfortable view"
+                          className={cn(
+                            'h-7 w-7 p-0',
+                            'data-[state=on]:bg-background data-[state=on]:shadow-sm'
+                          )}
+                        >
+                          <LayoutGrid className="size-3.5" />
+                        </ToggleGroupItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs">
+                        Comfortable
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <ToggleGroupItem
+                          value="compact"
+                          aria-label="Compact view"
+                          className={cn(
+                            'h-7 w-7 p-0',
+                            'data-[state=on]:bg-background data-[state=on]:shadow-sm'
+                          )}
+                        >
+                          <AlignJustify className="size-3.5" />
+                        </ToggleGroupItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs">
+                        Compact
+                      </TooltipContent>
+                    </Tooltip>
+                  </ToggleGroup>
+                </div>
               </div>
             </div>
           )}
@@ -1415,8 +1471,14 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       </header>
 
       {/* Quick Capture Input */}
-      <div className="mb-6 opacity-0 journal-animate-in journal-stagger-2">
+      <div
+        className={cn(
+          densityConfig.captureMargin,
+          'opacity-0 journal-animate-in journal-stagger-2'
+        )}
+      >
         <CaptureInput
+          density={density}
           onCaptureSuccess={() => {
             addToast({
               message: 'Item captured',
@@ -1467,8 +1529,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             staleItems={staleItems}
             selectedItemIds={selectedItemIds}
             exitingItemIds={exitingItemIds}
+            density={density}
             onPreview={handlePreview}
-            onDelete={handleDelete}
+            onArchive={handleArchive}
             onSnooze={handleSnooze}
             onQuickFile={handleQuickFile}
             onSelectionChange={handleSelectionChange}
@@ -1486,7 +1549,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         selectedCount={selectedCount}
         onFileAll={handleBulkFileAll}
         onTagAll={handleBulkTagAll}
-        onDeleteAll={handleBulkDeleteAll}
+        onArchiveAll={handleBulkArchiveAll}
         onSnoozeAll={handleBulkSnoozeAll}
         aiSuggestion={aiSuggestion}
         onAddSuggestionToSelection={handleAddSuggestionToSelection}
@@ -1510,12 +1573,12 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         onApplyTags={handleBulkTagApply}
       />
 
-      {/* Delete Confirmation Dialog */}
-      <DeleteConfirmationDialog
-        isOpen={isDeleteDialogOpen}
+      {/* Archive Confirmation Dialog */}
+      <ArchiveConfirmationDialog
+        isOpen={isArchiveDialogOpen}
         itemCount={selectedCount}
-        onConfirm={handleBulkDeleteConfirm}
-        onCancel={handleDeleteDialogCancel}
+        onConfirm={handleBulkArchiveConfirm}
+        onCancel={handleArchiveDialogCancel}
       />
 
       {/* Unified Detail Panel (Preview + Filing) */}
@@ -1525,7 +1588,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         isLoading={isDetailLoading}
         onClose={handleDetailPanelClose}
         onFile={handleFilingComplete}
-        onDelete={handleDelete}
+        onArchive={handleArchive}
       />
 
       {/* Toast notifications */}

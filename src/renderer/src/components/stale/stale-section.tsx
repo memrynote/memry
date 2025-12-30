@@ -4,6 +4,7 @@ import { StaleItemRow } from '@/components/stale/stale-item-row'
 import { StaleActionFooter } from '@/components/stale/stale-action-footer'
 import { STALE_THRESHOLD_DAYS } from '@/lib/stale-utils'
 import { cn } from '@/lib/utils'
+import { type DisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
 import type { InboxItemListItem } from '@/types'
 
 // Type alias for convenience (backend type)
@@ -39,7 +40,8 @@ interface StaleSectionProps {
   selectedItemIds: Set<string>
   exitingItemIds?: Set<string>
   focusedItemId: string | null
-  onDelete: (id: string) => void
+  density?: DisplayDensity
+  onArchive: (id: string) => void
   onFocus: (id: string) => void
   onSelectionToggle: (id: string, shiftKey: boolean) => void
   onFileAllToUnsorted: () => void
@@ -55,13 +57,15 @@ export const StaleSection = ({
   selectedItemIds,
   exitingItemIds = new Set(),
   focusedItemId,
-  onDelete,
+  density = 'comfortable',
+  onArchive,
   onFocus,
   onSelectionToggle,
   onFileAllToUnsorted,
   onReviewOneByOne,
   className
 }: StaleSectionProps): React.JSX.Element | null => {
+  const densityConfig = DENSITY_CONFIG[density]
   if (items.length === 0) {
     return null
   }
@@ -71,7 +75,9 @@ export const StaleSection = ({
   return (
     <section
       className={cn(
-        'rounded-lg border border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/5 mb-6',
+        'border border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/5',
+        densityConfig.itemRadius,
+        densityConfig.captureMargin,
         'animate-in fade-in duration-300',
         className
       )}
@@ -91,7 +97,8 @@ export const StaleSection = ({
               isSelected={selectedItemIds.has(item.id)}
               isInBulkMode={isInBulkMode}
               isExiting={exitingItemIds.has(item.id)}
-              onDelete={onDelete}
+              density={density}
+              onArchive={onArchive}
               onFocus={onFocus}
               onSelectionToggle={onSelectionToggle}
             />

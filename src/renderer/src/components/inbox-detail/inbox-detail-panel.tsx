@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Trash2, Check, Loader2 } from 'lucide-react'
+import { Archive, Check, Loader2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import {
@@ -49,7 +49,7 @@ interface InboxDetailPanelProps {
   isLoading?: boolean
   onClose: () => void
   onFile: (itemId: string, folderId: string, tags: string[], linkedNoteIds: string[]) => void
-  onDelete: (id: string) => void
+  onArchive: (id: string) => void
 }
 
 // =============================================================================
@@ -62,7 +62,7 @@ export const InboxDetailPanel = ({
   isLoading = false,
   onClose,
   onFile,
-  onDelete
+  onArchive
 }: InboxDetailPanelProps): React.JSX.Element => {
   // Retry transcription mutation
   const retryTranscriptionMutation = useRetryTranscription()
@@ -200,13 +200,13 @@ export const InboxDetailPanel = ({
     onClose()
   }, [selectedFolder, item, tags, linkedNotes, aiSuggestions, onFile, onClose])
 
-  // Handle delete
-  const handleDelete = useCallback((): void => {
+  // Handle archive
+  const handleArchive = useCallback((): void => {
     if (item) {
-      onDelete(item.id)
+      onArchive(item.id)
       onClose()
     }
-  }, [item, onDelete, onClose])
+  }, [item, onArchive, onClose])
 
   // Handle retry transcription
   const handleRetryTranscription = useCallback((): void => {
@@ -300,11 +300,11 @@ export const InboxDetailPanel = ({
                 <div className="flex items-center justify-between w-full gap-3">
                   <Button
                     variant="ghost"
-                    onClick={handleDelete}
-                    className="text-[var(--muted-foreground)] hover:text-red-500 hover:bg-red-500/10"
+                    onClick={handleArchive}
+                    className="text-[var(--muted-foreground)]"
                   >
-                    <Trash2 className="size-4 mr-2" aria-hidden="true" />
-                    Delete
+                    <Archive className="size-4 mr-2" aria-hidden="true" />
+                    Archive
                   </Button>
                   <Button
                     onClick={handleFileItem}

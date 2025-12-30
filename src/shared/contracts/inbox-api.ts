@@ -150,6 +150,9 @@ export interface InboxItem {
   // Viewed (for reminder items)
   viewedAt: Date | null
 
+  // Archive
+  archivedAt: Date | null
+
   // Processing
   processingStatus: ProcessingStatus
   processingError: string | null
@@ -348,7 +351,7 @@ export const BulkFileSchema = z.object({
   tags: z.array(z.string().max(50)).max(20).optional()
 })
 
-export const BulkDeleteSchema = z.object({
+export const BulkArchiveSchema = z.object({
   itemIds: z.array(z.string()).min(1).max(100)
 })
 
@@ -427,7 +430,7 @@ export interface InboxHandlers {
   [InboxChannels.invoke.UPDATE]: (
     input: z.infer<typeof InboxUpdateSchema>
   ) => Promise<CaptureResponse>
-  [InboxChannels.invoke.DELETE]: (id: string) => Promise<{ success: boolean; error?: string }>
+  [InboxChannels.invoke.ARCHIVE]: (id: string) => Promise<{ success: boolean; error?: string }>
 
   // Filing
   [InboxChannels.invoke.FILE]: (input: z.infer<typeof FileItemSchema>) => Promise<FileResponse>
@@ -463,8 +466,8 @@ export interface InboxHandlers {
 
   // Bulk
   [InboxChannels.invoke.BULK_FILE]: (input: z.infer<typeof BulkFileSchema>) => Promise<BulkResponse>
-  [InboxChannels.invoke.BULK_DELETE]: (
-    input: z.infer<typeof BulkDeleteSchema>
+  [InboxChannels.invoke.BULK_ARCHIVE]: (
+    input: z.infer<typeof BulkArchiveSchema>
   ) => Promise<BulkResponse>
   [InboxChannels.invoke.BULK_TAG]: (input: z.infer<typeof BulkTagSchema>) => Promise<BulkResponse>
   [InboxChannels.invoke.FILE_ALL_STALE]: () => Promise<BulkResponse>
@@ -496,7 +499,7 @@ export interface InboxUpdatedEvent {
   changes: Partial<InboxItem>
 }
 
-export interface InboxDeletedEvent {
+export interface InboxArchivedEvent {
   id: string
 }
 
@@ -580,7 +583,7 @@ export interface InboxClientAPI {
   get(id: string): Promise<InboxItem | null>
   list(options?: z.infer<typeof InboxListSchema>): Promise<InboxListResponse>
   update(input: z.infer<typeof InboxUpdateSchema>): Promise<CaptureResponse>
-  delete(id: string): Promise<{ success: boolean; error?: string }>
+  archive(id: string): Promise<{ success: boolean; error?: string }>
 
   // Filing
   file(input: z.infer<typeof FileItemSchema>): Promise<FileResponse>
@@ -603,7 +606,7 @@ export interface InboxClientAPI {
 
   // Bulk
   bulkFile(input: z.infer<typeof BulkFileSchema>): Promise<BulkResponse>
-  bulkDelete(input: z.infer<typeof BulkDeleteSchema>): Promise<BulkResponse>
+  bulkArchive(input: z.infer<typeof BulkArchiveSchema>): Promise<BulkResponse>
   bulkTag(input: z.infer<typeof BulkTagSchema>): Promise<BulkResponse>
   fileAllStale(): Promise<BulkResponse>
 

@@ -1,4 +1,4 @@
-import { Folder, Tag, Trash2, Clock } from 'lucide-react'
+import { Folder, Tag, Archive, Clock } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { AIClusterSuggestion } from '@/components/bulk/ai-cluster-suggestion'
@@ -16,7 +16,7 @@ interface BulkActionBarProps {
   onFileAll: () => void
   onTagAll: () => void
   onSnoozeAll?: (snoozeUntil: string) => void
-  onDeleteAll: () => void
+  onArchiveAll: () => void
   aiSuggestion: ClusterSuggestion | null
   onAddSuggestionToSelection: () => void
   onDismissSuggestion: () => void
@@ -27,7 +27,7 @@ const BulkActionBar = ({
   onFileAll,
   onTagAll,
   onSnoozeAll,
-  onDeleteAll,
+  onArchiveAll,
   aiSuggestion,
   onAddSuggestionToSelection,
   onDismissSuggestion
@@ -73,11 +73,11 @@ const BulkActionBar = ({
 
           <Button
             variant="outline"
-            onClick={onDeleteAll}
-            className="gap-2 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/50"
+            onClick={onArchiveAll}
+            className="gap-2"
           >
-            <Trash2 className="size-4" aria-hidden="true" />
-            Delete all
+            <Archive className="size-4" aria-hidden="true" />
+            Archive all
           </Button>
         </div>
 

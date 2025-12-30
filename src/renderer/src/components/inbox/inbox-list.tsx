@@ -31,6 +31,11 @@ import { QuickFileDropdown, getFilteredFolders } from '@/components/quick-file-d
 import { SnoozeCountdown } from '@/components/snooze'
 import { formatTimestamp, formatDuration, type TimePeriod } from '@/lib/inbox-utils'
 import { cn } from '@/lib/utils'
+import {
+  type DisplayDensity,
+  DENSITY_CONFIG,
+  type DensityConfig
+} from '@/hooks/use-display-density'
 import type { InboxItemListItem, InboxItemType, Folder } from '@/types'
 
 type InboxItem = InboxItemListItem
@@ -43,6 +48,7 @@ interface InboxListContextValue {
   selectedIds: Set<string>
   focusedId: string | null
   isInBulkMode: boolean
+  densityConfig: DensityConfig
   onSelect: (id: string, shiftKey: boolean) => void
   onFocus: (id: string) => void
 }
@@ -206,6 +212,8 @@ export interface InboxListSectionProps {
   selectedIds: Set<string>
   /** Currently focused item ID */
   focusedId: string | null
+  /** Display density preference */
+  density?: DisplayDensity
   /** Callback when an item is selected (with shift key support) */
   onSelect: (id: string, shiftKey: boolean) => void
   /** Callback when an item is focused */
@@ -224,6 +232,7 @@ export function InboxListSection({
   defaultCollapsed = false,
   selectedIds,
   focusedId,
+  density = 'comfortable',
   onSelect,
   onFocus,
   children,
@@ -231,9 +240,12 @@ export function InboxListSection({
 }: InboxListSectionProps) {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
   const isInBulkMode = selectedIds.size > 0
+  const densityConfig = DENSITY_CONFIG[density]
 
   return (
-    <InboxListContext.Provider value={{ selectedIds, focusedId, isInBulkMode, onSelect, onFocus }}>
+    <InboxListContext.Provider
+      value={{ selectedIds, focusedId, isInBulkMode, densityConfig, onSelect, onFocus }}
+    >
       <section
         className={className}
         aria-labelledby={`section-${title.toLowerCase().replace(/\s/g, '-')}`}
@@ -242,7 +254,8 @@ export function InboxListSection({
           type="button"
           onClick={() => collapsible && setIsCollapsed(!isCollapsed)}
           className={cn(
-            'flex items-center gap-2 mb-2.5 w-full text-left',
+            'flex items-center gap-2 w-full text-left',
+            densityConfig.sectionHeaderMargin,
             collapsible && 'cursor-pointer group'
           )}
           disabled={!collapsible}
@@ -260,7 +273,8 @@ export function InboxListSection({
           {icon && <span className="text-amber-600 dark:text-amber-500">{icon}</span>}
           <h3
             className={cn(
-              'text-xs font-semibold uppercase tracking-wider text-muted-foreground/60',
+              densityConfig.sectionTitleSize,
+              'font-semibold uppercase tracking-wider text-muted-foreground/60',
               collapsible && 'group-hover:text-amber-600 dark:group-hover:text-amber-500',
               'transition-colors'
             )}
@@ -268,7 +282,9 @@ export function InboxListSection({
             {title}
           </h3>
           {count !== undefined && (
-            <span className="text-xs text-muted-foreground/40 tabular-nums">{count}</span>
+            <span className={cn(densityConfig.metaSize, 'text-muted-foreground/40 tabular-nums')}>
+              {count}
+            </span>
           )}
           <div className="flex-1 h-px bg-gradient-to-r from-amber-200/30 dark:from-amber-800/30 to-transparent" />
         </button>
@@ -300,7 +316,7 @@ export interface InboxListItemProps {
   folders?: Folder[]
   /** Callbacks */
   onPreview: (id: string) => void
-  onDelete: (id: string) => void
+  onArchive: (id: string) => void
   onSnooze?: (id: string, snoozeUntil: string) => void
   onQuickFileQueryChange?: (query: string) => void
   onQuickFileSubmit?: () => void
@@ -322,7 +338,7 @@ export function InboxListItem({
   quickFileHighlightedIndex = 0,
   folders = [],
   onPreview,
-  onDelete,
+  onArchive,
   onSnooze,
   onQuickFileQueryChange,
   onQuickFileSubmit,
@@ -333,7 +349,7 @@ export function InboxListItem({
   onRetryTranscription,
   className
 }: InboxListItemProps) {
-  const { selectedIds, focusedId, isInBulkMode, onSelect, onFocus } = useInboxList()
+  const { selectedIds, focusedId, isInBulkMode, densityConfig, onSelect, onFocus } = useInboxList()
   const isSelected = selectedIds.has(item.id)
   const isFocused = focusedId === item.id
 
@@ -364,8 +380,10 @@ export function InboxListItem({
     <div
       className={cn(
         'group relative w-full',
-        'flex items-center gap-3',
-        'px-3 py-2.5 rounded-lg',
+        'flex items-center',
+        densityConfig.itemGap,
+        densityConfig.itemPadding,
+        densityConfig.itemRadius,
         'transition-all duration-150 ease-out',
         'cursor-pointer',
         // Exit animation
@@ -407,7 +425,8 @@ export function InboxListItem({
             'border-muted-foreground/30',
             'data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600',
             'dark:data-[state=checked]:bg-amber-500 dark:data-[state=checked]:border-amber-500',
-            'transition-colors'
+            'transition-colors',
+            densityConfig.checkboxSize
           )}
           aria-label={`Select ${displayTitle}`}
           onClick={handleCheckboxClick}
@@ -417,7 +436,9 @@ export function InboxListItem({
       {/* Icon or Thumbnail */}
       <div
         className={cn(
-          'flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center',
+          'flex-shrink-0 flex items-center justify-center',
+          densityConfig.iconSize,
+          densityConfig.itemRadius,
           'transition-colors duration-150',
           isSelected ? 'bg-amber-100 dark:bg-amber-900/40' : 'bg-muted/60 dark:bg-muted/40',
           'group-hover:bg-muted dark:group-hover:bg-muted/60'
@@ -433,7 +454,12 @@ export function InboxListItem({
       {/* Content area - shows title or Quick-File input */}
       {isQuickFileActive && onQuickFileFolderSelect ? (
         <>
-          <span className="text-sm text-foreground/90 truncate max-w-[40%] shrink-0 font-medium">
+          <span
+            className={cn(
+              densityConfig.titleSize,
+              'text-foreground/90 truncate max-w-[40%] shrink-0 font-medium'
+            )}
+          >
             {displayTitle}
           </span>
           <InlineQuickFile
@@ -460,7 +486,8 @@ export function InboxListItem({
             <div className="flex items-center gap-2">
               <span
                 className={cn(
-                  'font-medium text-sm truncate',
+                  'font-medium truncate',
+                  densityConfig.titleSize,
                   isReminderViewed ? 'text-muted-foreground/60' : 'text-foreground/90'
                 )}
               >
@@ -489,7 +516,9 @@ export function InboxListItem({
           </div>
 
           {/* Timestamp - fades out on hover when actions show */}
-          <span className={cn('shrink-0 text-xs text-muted-foreground/60 tabular-nums')}>
+          <span
+            className={cn('shrink-0 text-muted-foreground/60 tabular-nums', densityConfig.metaSize)}
+          >
             {formatTimestamp(
               item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt),
               period
@@ -501,7 +530,7 @@ export function InboxListItem({
             <div className="shrink-0 quick-actions-reveal">
               <QuickActions
                 itemId={item.id}
-                onDelete={onDelete}
+                onArchive={onArchive}
                 onSnooze={onSnooze}
                 variant="row"
               />

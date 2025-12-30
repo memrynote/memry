@@ -32,7 +32,7 @@ export {
   countStaleItems,
   incrementCaptureCount,
   incrementProcessedCount,
-  incrementDeletedCount,
+  incrementArchivedCount,
   getTodayStats,
   getTodayActivity,
   getAverageTimeToProcess

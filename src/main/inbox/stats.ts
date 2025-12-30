@@ -83,6 +83,7 @@ export function getStaleItemIds(): string[] {
         and(
           isNull(inboxItems.filedAt),
           isNull(inboxItems.snoozedUntil),
+          isNull(inboxItems.archivedAt),
           lt(inboxItems.createdAt, staleCutoff)
         )
       )
@@ -111,6 +112,7 @@ export function countStaleItems(): number {
         and(
           isNull(inboxItems.filedAt),
           isNull(inboxItems.snoozedUntil),
+          isNull(inboxItems.archivedAt),
           lt(inboxItems.createdAt, staleCutoff)
         )
       )
@@ -156,7 +158,7 @@ function getOrCreateTodayStats(db: ReturnType<typeof getDatabase>): typeof inbox
         captureCountPdf: 0,
         captureCountSocial: 0,
         processedCount: 0,
-        deletedCount: 0
+        archivedCount: 0
       })
       .run()
 
@@ -225,23 +227,23 @@ export function incrementProcessedCount(count = 1): void {
 }
 
 /**
- * Increment the deleted count for today
- * @param count - Number of items deleted (default: 1)
+ * Increment the archived count for today
+ * @param count - Number of items archived (default: 1)
  */
-export function incrementDeletedCount(count = 1): void {
+export function incrementArchivedCount(count = 1): void {
   try {
     const db = getDatabase()
     const stats = getOrCreateTodayStats(db)
 
-    const currentValue = stats.deletedCount || 0
+    const currentValue = stats.archivedCount || 0
     db.update(inboxStats)
-      .set({ deletedCount: currentValue + count })
+      .set({ archivedCount: currentValue + count })
       .where(eq(inboxStats.id, stats.id))
       .run()
 
-    console.log(`[Stats] Incremented deletedCount to ${currentValue + count}`)
+    console.log(`[Stats] Incremented archivedCount to ${currentValue + count}`)
   } catch (error) {
-    console.warn('[Stats] Failed to increment deleted count:', error)
+    console.warn('[Stats] Failed to increment archived count:', error)
   }
 }
 
