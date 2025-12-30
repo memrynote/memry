@@ -1316,7 +1316,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       )}
 
       {/* Header with Dramatic Item Count */}
-      <header className={cn('relative', densityConfig.headerMargin, 'journal-animate-in')}>
+      <header className={cn('relative', densityConfig.headerMargin)}>
         {/* Large decorative item count watermark */}
         {!isInBulkMode && items.length > 0 && (
           <div
@@ -1337,7 +1337,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           {isInBulkMode ? (
             /* Bulk Selection Header */
             <div className="flex items-start justify-between gap-6">
-              <div className="opacity-0 journal-animate-in journal-stagger-1">
+              <div>
                 <div className="flex items-center gap-3 mb-1">
                   <Check className="size-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
                   <h1 className="font-display text-2xl lg:text-3xl font-normal tracking-tight text-foreground/90">
@@ -1356,8 +1356,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 className={cn(
                   'text-muted-foreground/60 hover:text-foreground',
                   'hover:bg-foreground/5',
-                  'transition-all duration-200',
-                  'opacity-0 journal-animate-in journal-stagger-2'
+                  'transition-all duration-200'
                 )}
               >
                 Deselect all
@@ -1366,7 +1365,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           ) : (
             /* Normal Header */
             <div className="flex items-start justify-between gap-6">
-              <div className="opacity-0 journal-animate-in journal-stagger-1">
+              <div>
                 <h1 className="font-display text-2xl lg:text-3xl font-normal tracking-tight text-foreground/90 mb-1">
                   Inbox
                 </h1>
@@ -1379,12 +1378,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 </p>
               </div>
 
-              <div
-                className={cn(
-                  'flex items-center gap-3',
-                  'opacity-0 journal-animate-in journal-stagger-2'
-                )}
-              >
+              <div className="flex items-center gap-3">
                 {items.length > 0 && (
                   <Button
                     variant="ghost"
@@ -1471,12 +1465,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       </header>
 
       {/* Quick Capture Input */}
-      <div
-        className={cn(
-          densityConfig.captureMargin,
-          'opacity-0 journal-animate-in journal-stagger-2'
-        )}
-      >
+      <div className={densityConfig.captureMargin}>
         <CaptureInput
           density={density}
           onCaptureSuccess={() => {
@@ -1498,7 +1487,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       <div
         className={cn(
           'flex-1 overflow-y-auto',
-          'opacity-0 journal-animate-in journal-stagger-3',
           isInBulkMode && 'pb-32'
         )}
       >

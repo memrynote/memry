@@ -31,7 +31,7 @@ export function RightSidebar({
           'fixed lg:relative right-0 top-0 h-full w-80 bg-sidebar',
           'border-l border-sidebar-border/50 shadow-sm',
           'transition-transform duration-200 ease-out z-50',
-          'flex flex-col journal-animate-in',
+          'flex flex-col',
           isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0',
           !isOpen && 'lg:w-0 lg:border-0 lg:shadow-none',
           className
