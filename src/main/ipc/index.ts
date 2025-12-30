@@ -12,6 +12,7 @@ import { registerSettingsHandlers, unregisterSettingsHandlers } from './settings
 import { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
 import { registerTagsHandlers } from './tags-handlers'
 import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
+import { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 
 /**
  * Flag to prevent duplicate handler registration
@@ -69,6 +70,9 @@ export function registerAllHandlers(): void {
   // Register inbox handlers
   registerInboxHandlers()
 
+  // Register reminder handlers
+  registerReminderHandlers()
+
   handlersRegistered = true
   console.log('All IPC handlers registered')
 }
@@ -92,6 +96,7 @@ export function unregisterAllHandlers(): void {
   unregisterSettingsHandlers()
   unregisterBookmarksHandlers()
   unregisterInboxHandlers()
+  unregisterReminderHandlers()
 
   handlersRegistered = false
   console.log('All IPC handlers unregistered')
@@ -119,3 +124,4 @@ export { registerSettingsHandlers, unregisterSettingsHandlers } from './settings
 export { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
 export { registerTagsHandlers } from './tags-handlers'
 export { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
+export { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'

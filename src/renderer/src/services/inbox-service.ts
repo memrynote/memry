@@ -85,6 +85,7 @@ export interface FileItemInput {
     type: 'folder' | 'note' | 'new-note'
     path?: string
     noteId?: string
+    noteIds?: string[] // Support multiple notes
     noteTitle?: string
   }
   tags?: string[]
@@ -346,6 +347,20 @@ export const inboxService = {
   },
 
   // =========================================================================
+  // Viewed (for reminder items)
+  // =========================================================================
+
+  /**
+   * Mark an inbox item as viewed.
+   * Used for reminder items when the user opens the target.
+   * @param itemId - Item ID to mark as viewed
+   * @returns Success status
+   */
+  markViewed: (itemId: string): Promise<{ success: boolean; error?: string }> => {
+    return window.api.inbox.markViewed(itemId)
+  },
+
+  // =========================================================================
   // Bulk Operations
   // =========================================================================
 
@@ -570,7 +585,8 @@ export function getInboxItemIcon(type: InboxItem['type']): string {
     voice: 'Mic',
     clip: 'Scissors',
     pdf: 'FileText',
-    social: 'Share2'
+    social: 'Share2',
+    reminder: 'Bell'
   }
   return icons[type] || 'File'
 }
@@ -588,7 +604,8 @@ export function getInboxItemColor(type: InboxItem['type']): string {
     voice: 'text-red-500',
     clip: 'text-green-500',
     pdf: 'text-orange-500',
-    social: 'text-cyan-500'
+    social: 'text-cyan-500',
+    reminder: 'text-amber-500'
   }
   return colors[type] || 'text-muted-foreground'
 }

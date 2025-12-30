@@ -18,8 +18,11 @@ import {
   Share2,
   Loader2,
   AlertCircle,
-  RotateCcw
+  RotateCcw,
+  Bell,
+  CheckCircle2
 } from 'lucide-react'
+import type { ReminderMetadata } from '@shared/contracts/inbox-api'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { QuickActions } from '@/components/quick-actions'
@@ -58,7 +61,12 @@ function useInboxList() {
 // Type Icon - matches the inbox item type
 // ============================================================================
 
-const TypeIcon = ({ type }: { type: InboxItemType }): React.JSX.Element => {
+interface TypeIconProps {
+  type: InboxItemType
+  isViewed?: boolean
+}
+
+const TypeIcon = ({ type, isViewed }: TypeIconProps): React.JSX.Element => {
   const iconClass = 'w-4 h-4 text-muted-foreground/60'
 
   switch (type) {
@@ -76,6 +84,12 @@ const TypeIcon = ({ type }: { type: InboxItemType }): React.JSX.Element => {
       return <FileIcon className={iconClass} aria-hidden="true" />
     case 'social':
       return <Share2 className={iconClass} aria-hidden="true" />
+    case 'reminder':
+      return isViewed ? (
+        <CheckCircle2 className="w-4 h-4 text-green-500/70" aria-hidden="true" />
+      ) : (
+        <Bell className="w-4 h-4 text-amber-500" aria-hidden="true" />
+      )
     default:
       return <FileText className={iconClass} aria-hidden="true" />
   }
@@ -325,10 +339,16 @@ export function InboxListItem({
 
   const filteredFolders = getFilteredFolders(folders, quickFileQuery, 5)
 
+  // For reminder items, show the target title from metadata
+  const reminderMetadata = item.type === 'reminder' ? (item.metadata as ReminderMetadata) : null
+  const isReminderViewed = item.type === 'reminder' && !!item.viewedAt
+
   const displayTitle =
     item.type === 'voice' && item.duration
       ? `${item.title} · ${formatDuration(item.duration)}`
-      : item.title
+      : item.type === 'reminder' && reminderMetadata?.targetTitle
+        ? reminderMetadata.targetTitle
+        : item.title
 
   const handleClick = (): void => {
     onFocus(item.id)
@@ -406,7 +426,7 @@ export function InboxListItem({
         {item.type === 'image' && item.thumbnailUrl ? (
           <ItemThumbnail item={item} />
         ) : (
-          <TypeIcon type={item.type} />
+          <TypeIcon type={item.type} isViewed={isReminderViewed} />
         )}
       </div>
 
@@ -438,9 +458,27 @@ export function InboxListItem({
           {/* Title and metadata */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className={cn('font-medium text-sm truncate', 'text-foreground/90')}>
+              <span
+                className={cn(
+                  'font-medium text-sm truncate',
+                  isReminderViewed ? 'text-muted-foreground/60' : 'text-foreground/90'
+                )}
+              >
                 {displayTitle}
               </span>
+              {/* Reminder badge for reminder items */}
+              {item.type === 'reminder' && reminderMetadata && (
+                <span
+                  className={cn(
+                    'shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full',
+                    isReminderViewed
+                      ? 'bg-muted text-muted-foreground'
+                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                  )}
+                >
+                  {isReminderViewed ? 'Viewed' : 'Reminder'}
+                </span>
+              )}
               {/* Snooze badge with warm styling - live countdown */}
               <SnoozeCountdown
                 snoozedUntil={item.snoozedUntil}

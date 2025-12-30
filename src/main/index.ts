@@ -15,6 +15,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllHandlers } from './ipc'
 import { autoOpenLastVault, closeVault } from './vault'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
+import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 
 // Load .env file from project root (must be before any env access)
 // In development, load from project root; in production, from app resources
@@ -248,6 +249,15 @@ app.whenReady().then(async () => {
     console.warn('[Snooze] Failed to start scheduler:', error)
   }
 
+  // Start the reminder scheduler for notes/journal/highlights
+  // This checks for due reminders on startup and then every minute
+  try {
+    startReminderScheduler()
+  } catch (error) {
+    // Reminder scheduler is non-critical - log and continue
+    console.warn('[Reminders] Failed to start scheduler:', error)
+  }
+
   createWindow()
 
   app.on('activate', function () {
@@ -408,6 +418,10 @@ app.on('before-quit', async (event) => {
     // Stop the snooze scheduler
     console.log('[Shutdown] Stopping snooze scheduler...')
     stopSnoozeScheduler()
+
+    // Stop the reminder scheduler
+    console.log('[Shutdown] Stopping reminder scheduler...')
+    stopReminderScheduler()
 
     console.log('[Shutdown] Closing vault and stopping watcher...')
     await closeVault() // This also closes databases

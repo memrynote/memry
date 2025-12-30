@@ -19,7 +19,7 @@ import { useNotes, useNoteLinks, useNoteTags, type Note } from '@/hooks/use-note
 import { useNoteProperties } from '@/hooks/use-note-properties'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated } from '@/services/notes-service'
-import { useTabs } from '@/contexts/tabs'
+import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { Loader2, MoreHorizontal, History, Bookmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
+import { NoteReminderButton } from '@/components/note/note-reminder-button'
 
 // ============================================================================
 // Types
@@ -117,6 +118,25 @@ export function NotePage({ noteId }: NotePageProps) {
   const { tasks: linkedTasks, isLoading: linkedTasksLoading } = useTasksLinkedToNote(noteId ?? null)
   const { tags: allAvailableTags } = useNoteTags()
   const { openTab, setTabDeleted } = useTabs()
+  const activeTab = useActiveTab()
+
+  // Extract highlight info from tab viewState (from reminder navigation)
+  const initialHighlight = useMemo(() => {
+    const viewState = activeTab?.viewState as {
+      highlightStart?: number
+      highlightEnd?: number
+      highlightText?: string
+    } | undefined
+
+    if (viewState?.highlightText) {
+      return {
+        text: viewState.highlightText,
+        start: viewState.highlightStart,
+        end: viewState.highlightEnd
+      }
+    }
+    return undefined
+  }, [activeTab?.viewState])
 
   // Properties from backend
   const {
@@ -720,6 +740,14 @@ export function NotePage({ noteId }: NotePageProps) {
             </div>
           )}
 
+          {/* Reminder Button */}
+          {noteId && (
+            <NoteReminderButton
+              noteId={noteId}
+              disabled={isDeleted}
+            />
+          )}
+
           {/* Bookmark Button */}
           <Button
             variant="ghost"
@@ -842,6 +870,7 @@ export function NotePage({ noteId }: NotePageProps) {
                 onHeadingsChange={handleHeadingsChange}
                 onLinkClick={handleLinkClick}
                 onInternalLinkClick={handleInternalLinkClick}
+                initialHighlight={initialHighlight}
               />
             </EditorErrorBoundary>
           </div>

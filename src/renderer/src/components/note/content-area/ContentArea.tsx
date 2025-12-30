@@ -31,6 +31,11 @@ import {
   serializeFileBlock,
   FILE_BLOCK_REGEX
 } from './file-block'
+import {
+  HighlightReminderPopover,
+  useTextSelection,
+  type HighlightSelection
+} from '@/components/reminder'
 
 type NoteSuggestion = {
   id: string
@@ -309,7 +314,8 @@ export const ContentArea = memo(function ContentArea({
   onHeadingsChange,
   onLinkClick,
   onInternalLinkClick,
-  className
+  className,
+  initialHighlight
 }: ContentAreaProps) {
   // T030: Get current theme for dark mode support
   const { resolvedTheme } = useTheme()
@@ -317,6 +323,10 @@ export const ContentArea = memo(function ContentArea({
 
   // T069: Drag state for visual feedback
   const [isDragging, setIsDragging] = useState(false)
+
+  // T220-T222: Text selection state for highlight reminders
+  const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
+  const editorContainerRef = useRef<HTMLDivElement>(null)
 
   // Ref to hold current noteId for upload function (since editor is created once)
   const noteIdRef = useRef<string | undefined>(noteId)
@@ -768,6 +778,63 @@ export const ContentArea = memo(function ContentArea({
     setIsDragging(false)
   }, [])
 
+  // T220-T222: Track text selection for highlight reminders
+  useTextSelection({
+    containerRef: editorContainerRef,
+    onSelectionChange: setHighlightSelection,
+    minLength: 10, // Require at least 10 characters
+    enabled: editable && !!noteId
+  })
+
+  // Clear selection when reminder is created
+  const handleHighlightReminderCreated = useCallback(() => {
+    setHighlightSelection(null)
+    window.getSelection()?.removeAllRanges()
+  }, [])
+
+  // Scroll to and highlight text when navigating from a reminder
+  useEffect(() => {
+    if (!initialHighlight?.text || !editorContainerRef.current) return
+
+    // Wait for content to be loaded
+    const scrollToHighlight = (): void => {
+      const container = editorContainerRef.current
+      if (!container) return
+
+      const searchText = initialHighlight.text
+      const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null)
+      let node: Text | null
+
+      while ((node = walker.nextNode() as Text | null)) {
+        const nodeText = node.textContent || ''
+        const index = nodeText.toLowerCase().indexOf(searchText.toLowerCase())
+
+        if (index !== -1) {
+          // Found the text - scroll into view
+          const parentElement = node.parentElement
+          if (parentElement) {
+            parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+            // Apply temporary highlight using CSS
+            const originalBg = parentElement.style.backgroundColor
+            parentElement.style.backgroundColor = 'rgba(251, 191, 36, 0.4)' // amber-400 with 40% opacity
+            parentElement.style.transition = 'background-color 0.3s ease'
+
+            // Remove highlight after 3 seconds
+            setTimeout(() => {
+              parentElement.style.backgroundColor = originalBg
+            }, 3000)
+          }
+          break
+        }
+      }
+    }
+
+    // Delay to ensure content is rendered
+    const timeoutId = setTimeout(scrollToHighlight, 500)
+    return () => clearTimeout(timeoutId)
+  }, [initialHighlight])
+
   return (
     <div
       ref={containerRef}
@@ -801,7 +868,8 @@ export const ContentArea = memo(function ContentArea({
 
       {/* BlockNote Editor */}
       <div
-        className="bn-container flex-1 min-h-[300px]"
+        ref={editorContainerRef}
+        className="bn-container flex-1 min-h-[300px] relative"
         role="application"
         aria-label="Rich text editor"
       >
@@ -818,6 +886,17 @@ export const ContentArea = memo(function ContentArea({
             onItemClick={handleWikiLinkSelect}
           />
         </BlockNoteView>
+
+        {/* T220-T222: Highlight reminder popover */}
+        {noteId && highlightSelection && (
+          <HighlightReminderPopover
+            noteId={noteId}
+            selection={highlightSelection}
+            onClose={() => setHighlightSelection(null)}
+            onReminderCreated={handleHighlightReminderCreated}
+            containerRef={editorContainerRef}
+          />
+        )}
       </div>
     </div>
   )

@@ -40,7 +40,7 @@ import {
   storeThumbnail
 } from '../inbox/attachments'
 import { fetchUrlMetadata, downloadImage } from '../inbox/metadata'
-import { fileToFolder, convertToNote, linkToNote, bulkFileToFolder } from '../inbox/filing'
+import { fileToFolder, convertToNote, linkToNote, linkToNotes, bulkFileToFolder } from '../inbox/filing'
 import {
   extractSocialPost,
   detectSocialPlatform,
@@ -418,6 +418,7 @@ function toInboxItem(row: typeof inboxItems.$inferSelect, tags: string[]): Inbox
     filedAction: row.filedAction as InboxItem['filedAction'],
     snoozedUntil: row.snoozedUntil ? new Date(row.snoozedUntil) : null,
     snoozeReason: row.snoozeReason,
+    viewedAt: row.viewedAt ? new Date(row.viewedAt) : null,
     processingStatus: (row.processingStatus || 'complete') as InboxItem['processingStatus'],
     processingError: row.processingError,
     metadata: row.metadata as InboxItem['metadata'],
@@ -439,6 +440,7 @@ function toInboxItem(row: typeof inboxItems.$inferSelect, tags: string[]): Inbox
  */
 function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]): InboxItemListItem {
   const metadata = row.metadata as Record<string, unknown> | null
+  const isReminder = row.type === 'reminder'
 
   return {
     id: row.id,
@@ -460,7 +462,11 @@ function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]): InboxI
     transcriptionStatus: row.transcriptionStatus as InboxItemListItem['transcriptionStatus'],
     // Snooze fields
     snoozedUntil: row.snoozedUntil ? new Date(row.snoozedUntil) : undefined,
-    snoozeReason: row.snoozeReason ?? undefined
+    snoozeReason: row.snoozeReason ?? undefined,
+    // Viewed field (for reminder items)
+    viewedAt: row.viewedAt ? new Date(row.viewedAt) : undefined,
+    // Metadata (for reminder items - includes target info)
+    metadata: isReminder ? (metadata as unknown as InboxItemListItem['metadata']) : undefined
   }
 }
 
@@ -1225,7 +1231,7 @@ async function stubCapturePdf(): Promise<CaptureResponse> {
 }
 
 /**
- * File an inbox item to a destination (folder, new note, or existing note)
+ * File an inbox item to a destination (folder, new note, or existing note(s))
  */
 async function handleFile(input: unknown): Promise<FileResponse> {
   try {
@@ -1237,17 +1243,27 @@ async function handleFile(input: unknown): Promise<FileResponse> {
         return fileToFolder(itemId, destination.path || '', tags)
       case 'new-note':
         return convertToNote(itemId)
-      case 'note':
-        if (!destination.noteId) {
-          return { success: false, filedTo: null, error: 'Note ID required for linking' }
+      case 'note': {
+        // Support both single noteId and multiple noteIds
+        const noteIds = destination.noteIds?.length
+          ? destination.noteIds
+          : destination.noteId
+            ? [destination.noteId]
+            : []
+
+        if (noteIds.length === 0) {
+          return { success: false, filedTo: null, error: 'At least one note ID required for linking' }
         }
-        const result = await linkToNote(itemId, destination.noteId, tags)
+
+        // Pass folder path so the inbox note is created in the selected folder
+        const result = await linkToNotes(itemId, noteIds, tags, destination.path)
         return {
           success: result.success,
-          filedTo: destination.noteId,
-          noteId: destination.noteId,
+          filedTo: noteIds[0],
+          noteId: noteIds[0],
           error: result.error
         }
+      }
       default:
         return { success: false, filedTo: null, error: 'Invalid destination type' }
     }
@@ -1354,6 +1370,42 @@ async function handleUnsnooze(itemId: string): Promise<{ success: boolean; error
     return { success: result.success, error: result.error }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
+    return { success: false, error: message }
+  }
+}
+
+/**
+ * Mark an inbox item as viewed (for reminder items)
+ */
+async function handleMarkViewed(itemId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!itemId) {
+      return { success: false, error: 'itemId is required' }
+    }
+
+    const db = requireDatabase()
+    const now = new Date().toISOString()
+
+    // Update the viewedAt field
+    db.update(inboxItems)
+      .set({
+        viewedAt: now,
+        modifiedAt: now
+      })
+      .where(eq(inboxItems.id, itemId))
+      .run()
+
+    // Emit updated event
+    emitInboxEvent(InboxChannels.events.UPDATED, {
+      id: itemId,
+      changes: { viewedAt: now }
+    })
+
+    console.log(`[Inbox] Marked item ${itemId} as viewed`)
+    return { success: true }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    console.error(`[Inbox] Failed to mark item ${itemId} as viewed:`, message)
     return { success: false, error: message }
   }
 }
@@ -1672,6 +1724,9 @@ export function registerInboxHandlers(): void {
   ipcMain.handle(InboxChannels.invoke.GET_SNOOZED, () => handleGetSnoozed())
   ipcMain.handle(InboxChannels.invoke.BULK_SNOOZE, (_, input) => handleBulkSnooze(input))
 
+  // Viewed handlers (for reminder items)
+  ipcMain.handle(InboxChannels.invoke.MARK_VIEWED, (_, itemId) => handleMarkViewed(itemId))
+
   // Bulk handlers
   ipcMain.handle(InboxChannels.invoke.BULK_FILE, (_, input) => handleBulkFile(input))
   ipcMain.handle(InboxChannels.invoke.BULK_DELETE, (_, input) => handleBulkDelete(input))
@@ -1734,6 +1789,9 @@ export function unregisterInboxHandlers(): void {
   ipcMain.removeHandler(InboxChannels.invoke.UNSNOOZE)
   ipcMain.removeHandler(InboxChannels.invoke.GET_SNOOZED)
   ipcMain.removeHandler(InboxChannels.invoke.BULK_SNOOZE)
+
+  // Viewed
+  ipcMain.removeHandler(InboxChannels.invoke.MARK_VIEWED)
 
   // Bulk
   ipcMain.removeHandler(InboxChannels.invoke.BULK_FILE)

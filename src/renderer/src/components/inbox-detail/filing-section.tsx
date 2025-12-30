@@ -1,22 +1,39 @@
 /**
- * Filing Section for Inbox Detail Panel
- * Provides folder selection, tags, and note linking controls
- * Designed to be sticky at the bottom of the panel
+ * Compact Filing Section for Inbox Detail Panel
+ * Provides folder selection, tags, and note linking in a compact layout
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Folder, Tag, Link2, Sparkles, Info, Loader2 } from 'lucide-react'
+import {
+  Folder,
+  Link2,
+  Sparkles,
+  Loader2,
+  ChevronDown,
+  Check,
+  X,
+  Plus
+} from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
-import { Separator } from '@/components/ui/separator'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { FolderSelector } from '@/components/filing/folder-selector'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover'
+import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
-import { LinkSearch } from '@/components/filing/link-search'
+import { cn } from '@/lib/utils'
 import type { InboxItem, InboxItemListItem, Folder as FolderType, LinkedNote } from '@/types'
 
 // Filing section can work with either full or list item types
 type FilingItem = InboxItem | InboxItemListItem
+
+// Extended folder type with AI metadata
+type SuggestedFolder = FolderType & { aiConfidence?: number; aiReason?: string }
 
 // =============================================================================
 // Types
@@ -34,6 +51,179 @@ interface FilingSectionProps {
 }
 
 // =============================================================================
+// Compact Folder Chip Component
+// =============================================================================
+
+interface FolderChipProps {
+  folder: SuggestedFolder
+  index: number
+  isSelected: boolean
+  onClick: () => void
+}
+
+const FolderChip = ({ folder, index, isSelected, onClick }: FolderChipProps): React.JSX.Element => {
+  const confidence = folder.aiConfidence ? Math.round(folder.aiConfidence * 100) : null
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors',
+        'border hover:bg-accent',
+        isSelected
+          ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90'
+          : 'bg-background border-border text-foreground'
+      )}
+    >
+      <span className="text-[10px] font-bold opacity-60">{index + 1}</span>
+      <span className="truncate max-w-[100px]">{folder.name || 'Notes'}</span>
+      {confidence && !isSelected && (
+        <span className="text-[10px] opacity-50">{confidence}%</span>
+      )}
+      {isSelected && <Check className="size-3" />}
+    </button>
+  )
+}
+
+// =============================================================================
+// Compact Link Input Component
+// =============================================================================
+
+interface CompactLinkInputProps {
+  linkedNotes: LinkedNote[]
+  onLinkedNotesChange: (notes: LinkedNote[]) => void
+}
+
+const CompactLinkInput = ({
+  linkedNotes,
+  onLinkedNotesChange
+}: CompactLinkInputProps): React.JSX.Element => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Fetch notes for search
+  const { data: searchResults = [] } = useQuery({
+    queryKey: ['notes', 'search', searchQuery],
+    queryFn: async () => {
+      if (!searchQuery || searchQuery.length < 2) return []
+      const results = await window.api.search.searchNotes(searchQuery, { limit: 10 })
+      return results.map((note) => ({
+        id: note.id,
+        title: note.title,
+        type: 'note' as const
+      }))
+    },
+    enabled: searchQuery.length >= 2
+  })
+
+  // Filter out already linked notes from search results
+  const availableResults = searchResults.filter(
+    (note) => !linkedNotes.find((n) => n.id === note.id)
+  )
+
+  const handleSelectNote = (note: LinkedNote): void => {
+    if (!linkedNotes.find((n) => n.id === note.id)) {
+      onLinkedNotesChange([...linkedNotes, note])
+    }
+    // Keep popover open and clear search for adding more notes
+    setSearchQuery('')
+  }
+
+  const handleRemoveNote = (noteId: string): void => {
+    onLinkedNotesChange(linkedNotes.filter((n) => n.id !== noteId))
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {linkedNotes.map((note) => (
+        <Badge
+          key={note.id}
+          variant="outline"
+          className="text-xs px-2 py-0.5 gap-1"
+        >
+          <Link2 className="size-3" />
+          <span className="truncate max-w-[80px]">{note.title}</span>
+          <button
+            onClick={() => handleRemoveNote(note.id)}
+            className="hover:text-destructive"
+          >
+            <X className="size-3" />
+          </button>
+        </Badge>
+      ))}
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <Plus className="size-3 mr-1" />
+            Link
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64 p-2" align="start">
+          <Input
+            placeholder="Search notes..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 text-xs mb-2"
+            autoFocus
+          />
+          <ScrollArea className="max-h-48">
+            {/* Show linked notes count */}
+            {linkedNotes.length > 0 && (
+              <p className="text-[10px] text-muted-foreground px-2 py-1 border-b mb-1">
+                {linkedNotes.length} note{linkedNotes.length > 1 ? 's' : ''} linked
+              </p>
+            )}
+
+            {searchQuery.length >= 2 ? (
+              availableResults.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-2">
+                  {searchResults.length > 0 ? 'All matches already linked' : 'No notes found'}
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {availableResults.map((note) => (
+                    <button
+                      key={note.id}
+                      onClick={() => handleSelectNote(note)}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
+                    >
+                      <Link2 className="size-3 shrink-0" />
+                      <span className="truncate flex-1">{note.title}</span>
+                      <Plus className="size-3 shrink-0 text-muted-foreground" />
+                    </button>
+                  ))}
+                </div>
+              )
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-2">
+                Type to search notes...
+              </p>
+            )}
+          </ScrollArea>
+
+          {/* Done button when notes are linked */}
+          {linkedNotes.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsOpen(false)}
+              className="w-full mt-2 h-7 text-xs"
+            >
+              <Check className="size-3 mr-1" />
+              Done
+            </Button>
+          )}
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}
+
+// =============================================================================
 // Filing Section Component
 // =============================================================================
 
@@ -47,12 +237,13 @@ export const FilingSection = ({
   onLinkedNotesChange,
   className
 }: FilingSectionProps): React.JSX.Element => {
+  const [showAllFolders, setShowAllFolders] = useState(false)
+
   // Fetch real folders from vault
   const { data: vaultFolders = [] } = useQuery({
     queryKey: ['vault', 'folders'],
     queryFn: async () => {
       const paths = await window.api.notes.getFolders()
-      // Add root folder option and convert paths to Folder objects
       const folders: FolderType[] = [{ id: '', name: 'Notes (root)', path: '' }]
       for (const path of paths) {
         if (path) {
@@ -83,15 +274,15 @@ export const FilingSection = ({
       }
     },
     enabled: item !== null && !!item?.id,
-    staleTime: 30000 // Cache for 30 seconds
+    staleTime: 30000
   })
 
   // Convert AI suggestions to folder objects with confidence metadata
-  const suggestedFolders = useMemo(() => {
+  const suggestedFolders = useMemo((): SuggestedFolder[] => {
     if (aiSuggestions.length > 0) {
       return aiSuggestions
         .filter((s) => s.destination.type === 'folder' && s.destination.path)
-        .slice(0, 5)
+        .slice(0, 3) // Show max 3 suggestions
         .map((s) => {
           const path = s.destination.path || ''
           return {
@@ -100,90 +291,113 @@ export const FilingSection = ({
             path: path,
             aiConfidence: s.confidence,
             aiReason: s.reason
-          } as FolderType & { aiConfidence?: number; aiReason?: string }
+          }
         })
     }
     // Fallback to first 3 folders if no AI suggestions
-    return vaultFolders.slice(0, 3)
+    return vaultFolders.slice(0, 3).map((f) => ({ ...f }))
   }, [aiSuggestions, vaultFolders])
 
+  const hasAISuggestions = aiSuggestions.length > 0
+
   return (
-    <div className={className}>
-      {/* Section Header with AI indicator */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-[var(--foreground)]">File to Notes</h3>
-
-        {/* AI Suggestions Indicator */}
-        {isLoadingAISuggestions && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+    <div className={cn('space-y-3', className)}>
+      {/* Header Row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <Folder className="size-3.5" />
+          <span>File to</span>
+        </div>
+        {isLoadingAISuggestions ? (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Loader2 className="size-3 animate-spin" />
-            <span>Loading suggestions...</span>
           </div>
-        )}
-
-        {aiSuggestions.length > 0 && !isLoadingAISuggestions && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-help">
-                  <Sparkles className="size-3 text-yellow-500" />
-                  <span>AI suggestions</span>
-                  <Info className="size-3" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="left" className="max-w-xs">
-                <p>
-                  Suggestions are based on content similarity with your existing notes and filing
-                  patterns.
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
+        ) : hasAISuggestions ? (
+          <div className="flex items-center gap-1 text-xs text-yellow-600 dark:text-yellow-500">
+            <Sparkles className="size-3" />
+            <span>AI</span>
+          </div>
+        ) : null}
       </div>
 
-      <div className="space-y-4">
-        {/* Folder Selection */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
-            <Folder className="size-3.5" aria-hidden="true" />
-            <span className="font-medium uppercase tracking-wide">Destination</span>
-          </div>
-          <FolderSelector
-            folders={vaultFolders}
-            suggestedFolders={suggestedFolders}
-            recentFolders={[]}
-            selectedFolder={selectedFolder}
-            onSelect={onFolderSelect}
+      {/* Folder Suggestions as Chips */}
+      <div className="flex flex-wrap items-center gap-2">
+        {suggestedFolders.map((folder, index) => (
+          <FolderChip
+            key={folder.id || `folder-${index}`}
+            folder={folder}
+            index={index}
+            isSelected={selectedFolder?.id === folder.id}
+            onClick={() => onFolderSelect(folder)}
           />
-        </div>
+        ))}
 
-        <Separator className="my-3" />
+        {/* Other Folder Dropdown */}
+        <Popover open={showAllFolders} onOpenChange={setShowAllFolders}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+            >
+              Other
+              <ChevronDown className="size-3 ml-1" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-2" align="start">
+            <ScrollArea className="max-h-48">
+              <div className="space-y-1">
+                {vaultFolders.map((folder) => (
+                  <button
+                    key={folder.id}
+                    onClick={() => {
+                      onFolderSelect(folder)
+                      setShowAllFolders(false)
+                    }}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded text-left',
+                      selectedFolder?.id === folder.id
+                        ? 'bg-primary/10 text-primary'
+                        : 'hover:bg-accent'
+                    )}
+                  >
+                    <Folder className="size-3 shrink-0" />
+                    <span className="truncate flex-1">{folder.name}</span>
+                    {selectedFolder?.id === folder.id && (
+                      <Check className="size-3 shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </ScrollArea>
+          </PopoverContent>
+        </Popover>
+      </div>
 
-        {/* Tags */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
-            <Tag className="size-3.5" aria-hidden="true" />
-            <span className="font-medium uppercase tracking-wide">Tags</span>
-          </div>
+      {/* Tags & Links Row - Side by Side */}
+      <div className="grid grid-cols-2 gap-4 pt-2">
+        {/* Tags - Using existing TagAutocomplete */}
+        <div className="min-w-0">
           <TagAutocomplete
             tags={tags}
             onTagsChange={onTagsChange}
             placeholder="Add tags..."
-            showSections={true}
-            className="pt-0"
+            showSections={false}
+            maxSuggestions={5}
+            className="[&>div:first-child]:hidden [&>div]:space-y-1.5"
           />
         </div>
 
-        <Separator className="my-3" />
-
-        {/* Link to Notes */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
-            <Link2 className="size-3.5" aria-hidden="true" />
-            <span className="font-medium uppercase tracking-wide">Link to notes</span>
+        {/* Links */}
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+            <Link2 className="size-3" />
+            <span>Links</span>
           </div>
-          <LinkSearch linkedNotes={linkedNotes} onLinkedNotesChange={onLinkedNotesChange} />
+          <CompactLinkInput
+            linkedNotes={linkedNotes}
+            onLinkedNotesChange={onLinkedNotesChange}
+          />
         </div>
       </div>
     </div>

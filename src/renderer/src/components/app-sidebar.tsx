@@ -7,6 +7,7 @@ import { BookOpen, Home, Inbox, ListTodo, Plus, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { VaultSwitcher } from '@/components/vault-switcher'
 import { TrafficLights } from '@/components/traffic-lights'
+import { RemindersPanel } from '@/components/reminder'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import {
   Sidebar,
@@ -28,6 +29,7 @@ import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { SidebarDrillDownProvider, useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
+import { useInboxList } from '@/hooks/use-inbox'
 import type { SidebarItem, TabType } from '@/contexts/tabs/types'
 import type { AppPage } from '@/App'
 import type { BookmarkWithItem } from '@/hooks/use-bookmarks'
@@ -135,6 +137,16 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
     return viewCounts['today'] || 0
   }, [viewCounts])
 
+  // Get inbox items count (unfiled items + unviewed reminders)
+  const { items: inboxItems } = useInboxList({ includeSnoozed: false })
+  const inboxCount = useMemo(() => {
+    if (!inboxItems) return 0
+    // Count all items (unfiled by default) but for reminders, only count unviewed ones
+    return inboxItems.filter(
+      (item) => item.type !== 'reminder' || !item.viewedAt
+    ).length
+  }, [inboxItems])
+
   // Tab navigation hook
   const { openSidebarItem } = useSidebarNavigation()
 
@@ -219,6 +231,15 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
+
+          {/* Reminders - Bell icon with panel */}
+          <SidebarMenuItem>
+            <RemindersPanel
+              variant="ghost"
+              size="default"
+              className="w-full justify-start gap-2 px-2 py-1.5 h-8 font-normal text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            />
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarGroup>
 
@@ -237,6 +258,10 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
                 <item.icon className={cn('size-4', item.iconColor)} />
                 <span>{item.title}</span>
               </SidebarMenuButton>
+              {/* Show inbox count badge for Inbox */}
+              {item.page === 'inbox' && inboxCount > 0 && (
+                <SidebarMenuBadge>{inboxCount}</SidebarMenuBadge>
+              )}
               {/* Show today's task count badge for Tasks */}
               {item.page === 'tasks' && todayTasksCount > 0 && (
                 <SidebarMenuBadge>{todayTasksCount}</SidebarMenuBadge>

@@ -10,6 +10,17 @@ import { X, Plus, Clock, TrendingUp } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { useAllTags, type TagWithMeta } from '@/hooks/use-all-tags'
+import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors'
+
+// Hash function to get consistent color for a tag name
+function getColorForTag(tagName: string): string {
+  let hash = 0
+  for (let i = 0; i < tagName.length; i++) {
+    hash = tagName.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const index = Math.abs(hash) % COLOR_NAMES.length
+  return COLOR_NAMES[index]
+}
 
 // =============================================================================
 // TagPill Component
@@ -21,6 +32,9 @@ interface TagPillProps {
 }
 
 const TagPill = ({ tag, onRemove }: TagPillProps): React.JSX.Element => {
+  const colorName = getColorForTag(tag)
+  const colors = getTagColors(colorName)
+
   const handleRemove = (e: React.MouseEvent): void => {
     e.stopPropagation()
     onRemove(tag)
@@ -36,20 +50,20 @@ const TagPill = ({ tag, onRemove }: TagPillProps): React.JSX.Element => {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
-        'bg-primary text-primary-foreground',
+        'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium',
         'tag-pill-enter motion-reduce:animate-none'
       )}
+      style={{
+        backgroundColor: colors.background,
+        color: colors.text
+      }}
     >
       {tag}
       <button
         type="button"
         onClick={handleRemove}
         onKeyDown={handleKeyDown}
-        className={cn(
-          'hover:bg-primary-foreground/20 rounded-full p-0.5',
-          'transition-colors duration-[var(--duration-instant)]'
-        )}
+        className="rounded-full p-0.5 transition-opacity hover:opacity-70"
         aria-label={`Remove tag ${tag}`}
       >
         <X className="size-3" aria-hidden="true" />
@@ -112,6 +126,9 @@ interface QuickTagButtonProps {
 }
 
 const QuickTagButton = ({ tag, onAdd, disabled }: QuickTagButtonProps): React.JSX.Element => {
+  const colorName = getColorForTag(tag)
+  const colors = getTagColors(colorName)
+
   return (
     <button
       type="button"
@@ -119,11 +136,13 @@ const QuickTagButton = ({ tag, onAdd, disabled }: QuickTagButtonProps): React.JS
       disabled={disabled}
       className={cn(
         'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
-        'transition-colors duration-[var(--duration-instant)]',
-        disabled
-          ? 'bg-muted/50 text-muted-foreground/50 cursor-not-allowed'
-          : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer'
+        'transition-opacity duration-[var(--duration-instant)]',
+        disabled ? 'opacity-40 cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'
       )}
+      style={{
+        backgroundColor: disabled ? undefined : `${colors.background}80`, // 50% opacity
+        color: disabled ? undefined : colors.text
+      }}
     >
       <Plus className="size-3" aria-hidden="true" />
       {tag}

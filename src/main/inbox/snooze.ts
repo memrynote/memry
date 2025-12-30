@@ -123,6 +123,7 @@ function toInboxItem(row: typeof inboxItems.$inferSelect, tags: string[]): Inbox
     filedAction: row.filedAction as InboxItem['filedAction'],
     snoozedUntil: row.snoozedUntil ? new Date(row.snoozedUntil) : null,
     snoozeReason: row.snoozeReason,
+    viewedAt: row.viewedAt ? new Date(row.viewedAt) : null,
     processingStatus: (row.processingStatus || 'complete') as InboxItem['processingStatus'],
     processingError: row.processingError,
     metadata: row.metadata as InboxItem['metadata'],

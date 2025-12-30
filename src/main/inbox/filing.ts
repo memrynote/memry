@@ -353,8 +353,6 @@ export async function fileToFolder(
       tags: mergedTags
     })
 
-    console.log(`[Filing] Created note: ${note.id} in folder: ${folderPath || 'root'}`)
-
     // Mark inbox item as filed
     await markItemAsFiled(itemId, note.path, 'folder')
 
@@ -439,14 +437,39 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
  * @param itemId - Inbox item ID
  * @param noteId - Target note ID
  * @param tags - Additional tags to add to the created note
+ * @param folderPath - Optional folder path for the created inbox note
  */
 export async function linkToNote(
   itemId: string,
   noteId: string,
-  tags: string[] = []
+  tags: string[] = [],
+  folderPath?: string
 ): Promise<{ success: boolean; error?: string }> {
+  // Delegate to linkToNotes with single note
+  return linkToNotes(itemId, [noteId], tags, folderPath)
+}
+
+/**
+ * Link an inbox item to multiple existing notes
+ * Creates an inbox note and appends wikilinks to "## Inbox Captures" section of all target notes
+ *
+ * @param itemId - Inbox item ID
+ * @param noteIds - Array of target note IDs
+ * @param tags - Additional tags to add to the created note
+ * @param folderPath - Optional folder path for the created inbox note
+ */
+export async function linkToNotes(
+  itemId: string,
+  noteIds: string[],
+  tags: string[] = [],
+  folderPath?: string
+): Promise<{ success: boolean; error?: string; linkedCount?: number }> {
   try {
     const db = requireDatabase()
+
+    if (!noteIds || noteIds.length === 0) {
+      return { success: false, error: 'At least one note ID is required' }
+    }
 
     // Get inbox item
     const item = getInboxItem(db, itemId)
@@ -459,13 +482,22 @@ export async function linkToNote(
       return { success: false, error: 'Item has already been filed' }
     }
 
-    // Get target note
-    const targetNote = await getNoteById(noteId)
-    if (!targetNote) {
-      return { success: false, error: 'Target note not found' }
+    // Ensure folder exists if specified
+    if (folderPath) {
+      await ensureFolderExists(folderPath)
     }
 
-    // First, create a new note from the inbox item (so we can wikilink to it)
+    // Validate all target notes exist first
+    const targetNotes: Array<{ id: string; content: string; path: string }> = []
+    for (const noteId of noteIds) {
+      const targetNote = await getNoteById(noteId)
+      if (!targetNote) {
+        return { success: false, error: `Target note not found: ${noteId}` }
+      }
+      targetNotes.push({ id: noteId, content: targetNote.content, path: targetNote.path })
+    }
+
+    // Create a new note from the inbox item (so we can wikilink to it)
     // Merge existing tags + new tags + 'inbox' tag
     const existingTags = getItemTags(db, itemId)
     const mergedTags = [...new Set([...existingTags, ...tags, 'inbox'])]
@@ -473,46 +505,49 @@ export async function linkToNote(
     const inboxNoteTitle = generateNoteTitle(item)
     const inboxNoteContent = generateNoteContent(item)
 
-    // Create the inbox note (we need this so the wikilink has a target)
+    // Create the inbox note in the specified folder (we need this so the wikilink has a target)
     await createNote({
       title: inboxNoteTitle,
       content: inboxNoteContent,
+      folder: folderPath || undefined,
       tags: mergedTags
     })
 
     // Generate the wikilink entry
     const captureEntry = generateInboxCaptureEntry(item, inboxNoteTitle)
-
-    // Check if target note already has an "## Inbox Captures" section
-    let updatedContent = targetNote.content
     const inboxCapturesRegex = /^## Inbox Captures$/m
 
-    if (inboxCapturesRegex.test(updatedContent)) {
-      // Append to existing section
-      updatedContent = updatedContent.replace(/^(## Inbox Captures)$/m, `$1\n${captureEntry}`)
-    } else {
-      // Add new section at the end
-      updatedContent = `${updatedContent.trimEnd()}\n\n## Inbox Captures\n\n${captureEntry}`
+    // Add wikilink to ALL target notes
+    for (const targetNote of targetNotes) {
+      let updatedContent = targetNote.content
+
+      if (inboxCapturesRegex.test(updatedContent)) {
+        // Append to existing section
+        updatedContent = updatedContent.replace(/^(## Inbox Captures)$/m, `$1\n${captureEntry}`)
+      } else {
+        // Add new section at the end
+        updatedContent = `${updatedContent.trimEnd()}\n\n## Inbox Captures\n\n${captureEntry}`
+      }
+
+      // Update target note
+      await updateNote({
+        id: targetNote.id,
+        content: updatedContent
+      })
+
+      console.log(`[Filing] Linked inbox item to note: ${targetNote.id}`)
     }
 
-    // Update target note
-    await updateNote({
-      id: noteId,
-      content: updatedContent
-    })
-
-    console.log(`[Filing] Linked inbox item to note: ${noteId}`)
-
-    // Mark inbox item as filed (linked to target note)
-    await markItemAsFiled(itemId, targetNote.path, 'linked')
+    // Mark inbox item as filed (linked to first target note for reference)
+    await markItemAsFiled(itemId, targetNotes[0].path, 'linked')
 
     // Record filing history
-    await recordFilingHistory(item.type, item.content, targetNote.path, 'linked', mergedTags)
+    await recordFilingHistory(item.type, item.content, targetNotes[0].path, 'linked', mergedTags)
 
-    return { success: true }
+    return { success: true, linkedCount: targetNotes.length }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Filing] Error linking to note:', message)
+    console.error('[Filing] Error linking to notes:', message)
     return { success: false, error: message }
   }
 }

@@ -35,7 +35,8 @@ import {
   useTaskOrder,
   useVault,
   useSearchShortcut,
-  useUndoKeyboardShortcut
+  useUndoKeyboardShortcut,
+  useReminderNotifications
 } from '@/hooks'
 import { tasksService } from '@/services/tasks-service'
 import { VaultOnboarding } from '@/components/vault-onboarding'
@@ -182,6 +183,7 @@ const AppContent = ({
   const isChordActive = useChordShortcuts()
   useSearchShortcut(() => onSearchOpenChange(true))
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
+  useReminderNotifications() // T231-T233: In-app toast notifications for reminders
 
   // Handle search result selection - open note or journal in appropriate tab
   const handleSelectSearchResult = useCallback(

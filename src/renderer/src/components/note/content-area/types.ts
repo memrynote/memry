@@ -49,6 +49,16 @@ export interface SelectionInfo {
 /**
  * Props for the ContentArea component (BlockNote-based)
  */
+/** Highlight info for scrolling to and highlighting text from reminders */
+export interface HighlightInfo {
+  /** Text to highlight */
+  text: string
+  /** Character start position (optional, for more precise matching) */
+  start?: number
+  /** Character end position (optional, for more precise matching) */
+  end?: number
+}
+
 export interface ContentAreaProps {
   /** Note ID for attachment uploads (T069) */
   noteId?: string
@@ -76,6 +86,8 @@ export interface ContentAreaProps {
   onInternalLinkClick?: (noteIdOrTitle: string) => void
   /** Additional CSS classes */
   className?: string
+  /** Initial highlight info to scroll to and highlight (from reminder navigation) */
+  initialHighlight?: HighlightInfo
 }
 
 // =============================================================================

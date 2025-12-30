@@ -24,7 +24,8 @@ export const inboxItemType = {
   VOICE: 'voice',
   CLIP: 'clip',
   PDF: 'pdf',
-  SOCIAL: 'social'
+  SOCIAL: 'social',
+  REMINDER: 'reminder'
 } as const
 
 export type InboxItemType = (typeof inboxItemType)[keyof typeof inboxItemType]
@@ -66,7 +67,7 @@ export const inboxItems = sqliteTable(
     /** Unique identifier (e.g., inbox_lnk_abc123) */
     id: text('id').primaryKey(),
 
-    /** Item type: link, note, image, voice, clip, pdf, social */
+    /** Item type: link, note, image, voice, clip, pdf, social, reminder */
     type: text('type').notNull(),
 
     /** Display title (auto-generated or user-provided) */
@@ -107,6 +108,13 @@ export const inboxItems = sqliteTable(
 
     /** User-provided reason for snoozing */
     snoozeReason: text('snooze_reason'),
+
+    // ========================================================================
+    // Viewed Status (for reminder items)
+    // ========================================================================
+
+    /** When the item was viewed/opened (for reminder items) */
+    viewedAt: text('viewed_at'),
 
     // ========================================================================
     // Processing Status
@@ -283,6 +291,9 @@ export const inboxStats = sqliteTable(
 
     /** Count of captured social posts */
     captureCountSocial: integer('capture_count_social').default(0),
+
+    /** Count of reminder items added to inbox */
+    captureCountReminder: integer('capture_count_reminder').default(0),
 
     /** Count of items processed (filed) */
     processedCount: integer('processed_count').default(0),

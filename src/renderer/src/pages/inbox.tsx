@@ -8,6 +8,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { List, Grid, Check, Loader2, AlertCircle, Clock } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
+import { useTabs } from '@/contexts/tabs'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ToastContainer, type Toast } from '@/components/ui/toast'
@@ -25,6 +26,7 @@ import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
 import { SRAnnouncer } from '@/components/sr-announcer'
 import { CaptureInput } from '@/components/capture-input'
 import { inboxService, onInboxSnoozeDue } from '@/services/inbox-service'
+import type { ReminderMetadata } from '@shared/contracts/inbox-api'
 import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
 import { getStaleItems, getNonStaleItems } from '@/lib/stale-utils'
 import { cn } from '@/lib/utils'
@@ -49,6 +51,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [showSnoozedItems, setShowSnoozedItems] = useState(false)
   const queryClient = useQueryClient()
+  const { openTab } = useTabs()
 
   // Backend data hooks
   const {
@@ -399,9 +402,10 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
 
         try {
           // Determine destination type based on linkedNoteIds
+          // Always include folder path so the note is created in the right location
           const destination =
             linkedNoteIds.length > 0
-              ? { type: 'note' as const, noteId: linkedNoteIds[0] }
+              ? { type: 'note' as const, noteIds: linkedNoteIds, path: folderId }
               : { type: 'folder' as const, path: folderId }
 
           const result = await fileItemMutation.mutateAsync({
@@ -415,7 +419,11 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
             addToast({
               message:
-                linkedNoteIds.length > 0 ? 'Linked to note' : `Filed to ${folderId || 'Notes'}`,
+                linkedNoteIds.length > 1
+                  ? `Linked to ${linkedNoteIds.length} notes`
+                  : linkedNoteIds.length === 1
+                    ? 'Linked to note'
+                    : `Filed to ${folderId || 'Notes'}`,
               type: 'success'
             })
           } else {
@@ -514,9 +522,70 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     [items, addToast, fileItemMutation, queryClient]
   )
 
-  // Handle preview action - toggle detail panel
+  // Handle opening a reminder target in a tab
+  const openReminderTarget = useCallback(
+    async (item: (typeof items)[0]): Promise<void> => {
+      const metadata = item.metadata as ReminderMetadata | undefined
+      if (!metadata) return
+
+      // Mark the item as viewed
+      await inboxService.markViewed(item.id)
+
+      // Open the target based on type
+      switch (metadata.targetType) {
+        case 'note':
+        case 'highlight':
+          openTab({
+            type: 'note',
+            title: metadata.targetTitle || 'Note',
+            icon: 'file-text',
+            path: `/notes/${metadata.targetId}`,
+            entityId: metadata.targetId,
+            isPinned: false,
+            isModified: false,
+            isPreview: true,
+            isDeleted: false,
+            // For highlights, pass scroll position info
+            viewState:
+              metadata.targetType === 'highlight'
+                ? {
+                    highlightStart: metadata.highlightStart,
+                    highlightEnd: metadata.highlightEnd,
+                    highlightText: metadata.highlightText
+                  }
+                : undefined
+          })
+          break
+        case 'journal':
+          openTab({
+            type: 'journal',
+            title: 'Journal',
+            icon: 'book-open',
+            path: '/journal',
+            isPinned: false,
+            isModified: false,
+            isPreview: false,
+            isDeleted: false,
+            viewState: { date: metadata.targetId }
+          })
+          break
+      }
+    },
+    [openTab]
+  )
+
+  // Handle preview action - toggle detail panel or open reminder target
   const handlePreview = useCallback(
     (id: string): void => {
+      const item = items.find((i) => i.id === id)
+      if (!item) return
+
+      // For reminder items, open the target directly instead of showing detail panel
+      if (item.type === 'reminder') {
+        openReminderTarget(item)
+        return
+      }
+
       // Toggle: if already viewing this item, close; otherwise open/switch
       if (isDetailPanelOpen && activeDetailItemId === id) {
         setActiveDetailItemId(null)
@@ -525,7 +594,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         setFocusedItemId(id)
       }
     },
-    [isDetailPanelOpen, activeDetailItemId]
+    [isDetailPanelOpen, activeDetailItemId, items, openReminderTarget]
   )
 
   // Handle focused item change (for navigation while detail panel is open)

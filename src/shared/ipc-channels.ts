@@ -543,6 +543,10 @@ export const InboxChannels = {
     /** Bulk snooze multiple items */
     BULK_SNOOZE: 'inbox:bulk-snooze',
 
+    // Viewed operations (for reminder items)
+    /** Mark an inbox item as viewed */
+    MARK_VIEWED: 'inbox:mark-viewed',
+
     // Bulk operations
     /** Bulk file multiple items */
     BULK_FILE: 'inbox:bulk-file',
@@ -597,3 +601,57 @@ export const InboxChannels = {
 
 export type InboxInvokeChannel = (typeof InboxChannels.invoke)[keyof typeof InboxChannels.invoke]
 export type InboxEventChannel = (typeof InboxChannels.events)[keyof typeof InboxChannels.events]
+
+// ============================================================================
+// Reminder Channels
+// ============================================================================
+
+export const ReminderChannels = {
+  invoke: {
+    /** Create a new reminder */
+    CREATE: 'reminder:create',
+    /** Update an existing reminder */
+    UPDATE: 'reminder:update',
+    /** Delete a reminder */
+    DELETE: 'reminder:delete',
+    /** Get a reminder by ID */
+    GET: 'reminder:get',
+    /** List reminders with filters */
+    LIST: 'reminder:list',
+    /** Get upcoming reminders */
+    GET_UPCOMING: 'reminder:get-upcoming',
+    /** Get due reminders */
+    GET_DUE: 'reminder:get-due',
+    /** Get reminders for a specific target */
+    GET_FOR_TARGET: 'reminder:get-for-target',
+    /** Dismiss a reminder */
+    DISMISS: 'reminder:dismiss',
+    /** Snooze a reminder */
+    SNOOZE: 'reminder:snooze',
+    /** Bulk dismiss reminders */
+    BULK_DISMISS: 'reminder:bulk-dismiss',
+    /** Count pending reminders */
+    COUNT_PENDING: 'reminder:count-pending'
+  },
+  events: {
+    /** Reminder was created */
+    CREATED: 'reminder:created',
+    /** Reminder was updated */
+    UPDATED: 'reminder:updated',
+    /** Reminder was deleted */
+    DELETED: 'reminder:deleted',
+    /** Reminder became due */
+    DUE: 'reminder:due',
+    /** Reminder was dismissed */
+    DISMISSED: 'reminder:dismissed',
+    /** Reminder was snoozed */
+    SNOOZED: 'reminder:snoozed',
+    /** Desktop notification was clicked - navigate to reminder target */
+    CLICKED: 'reminder:clicked'
+  }
+} as const
+
+export type ReminderInvokeChannel =
+  (typeof ReminderChannels.invoke)[keyof typeof ReminderChannels.invoke]
+export type ReminderEventChannel =
+  (typeof ReminderChannels.events)[keyof typeof ReminderChannels.events]

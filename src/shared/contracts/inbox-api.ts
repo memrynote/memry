@@ -17,7 +17,7 @@ export { InboxChannels }
 // Type Definitions
 // ============================================================================
 
-export type InboxItemType = 'link' | 'note' | 'image' | 'voice' | 'clip' | 'pdf' | 'social'
+export type InboxItemType = 'link' | 'note' | 'image' | 'voice' | 'clip' | 'pdf' | 'social' | 'reminder'
 export type ProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
 export type FilingAction = 'folder' | 'note' | 'linked'
 
@@ -96,6 +96,27 @@ export interface SocialMetadata {
   extractionStatus: 'full' | 'partial' | 'failed'
 }
 
+export interface ReminderMetadata {
+  /** The reminder ID from the reminders table */
+  reminderId: string
+  /** The type of target: note, journal, or highlight */
+  targetType: 'note' | 'journal' | 'highlight'
+  /** The target ID (noteId or journal date YYYY-MM-DD) */
+  targetId: string
+  /** The resolved title of the target */
+  targetTitle: string | null
+  /** When the reminder was set to trigger (ISO datetime) */
+  remindAt: string
+  /** Highlight text (for highlight reminders) */
+  highlightText?: string
+  /** Character start position (for highlights) */
+  highlightStart?: number
+  /** Character end position (for highlights) */
+  highlightEnd?: number
+  /** User's note/description for the reminder */
+  reminderNote?: string
+}
+
 export type InboxMetadata =
   | LinkMetadata
   | ImageMetadata
@@ -103,6 +124,7 @@ export type InboxMetadata =
   | ClipMetadata
   | PdfMetadata
   | SocialMetadata
+  | ReminderMetadata
 
 // ============================================================================
 // Entity Types
@@ -124,6 +146,9 @@ export interface InboxItem {
   // Snooze
   snoozedUntil: Date | null
   snoozeReason: string | null
+
+  // Viewed (for reminder items)
+  viewedAt: Date | null
 
   // Processing
   processingStatus: ProcessingStatus
@@ -175,6 +200,12 @@ export interface InboxItemListItem {
   // Snooze fields (optional - only present for snoozed items)
   snoozedUntil?: Date // When the snooze expires
   snoozeReason?: string // User-provided reason for snoozing
+
+  // Viewed (for reminder items)
+  viewedAt?: Date // When the item was opened/viewed
+
+  // Reminder-specific metadata (for reminder items)
+  metadata?: ReminderMetadata // Reminder target info
 }
 
 export interface FilingDestination {
@@ -275,7 +306,7 @@ export const CapturePdfSchema = z.object({
 })
 
 export const InboxListSchema = z.object({
-  type: z.enum(['link', 'note', 'image', 'voice', 'clip', 'pdf', 'social']).optional(),
+  type: z.enum(['link', 'note', 'image', 'voice', 'clip', 'pdf', 'social', 'reminder']).optional(),
   includeSnoozed: z.boolean().default(false),
   sortBy: z.enum(['created', 'modified', 'title']).default('created'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
@@ -294,7 +325,8 @@ export const FileItemSchema = z.object({
   destination: z.object({
     type: z.enum(['folder', 'note', 'new-note']),
     path: z.string().optional(),
-    noteId: z.string().optional(),
+    noteId: z.string().optional(), // Single note (backward compat)
+    noteIds: z.array(z.string()).optional(), // Multiple notes
     noteTitle: z.string().max(200).optional()
   }),
   tags: z.array(z.string().max(50)).max(20).optional()
@@ -323,6 +355,10 @@ export const BulkDeleteSchema = z.object({
 export const BulkTagSchema = z.object({
   itemIds: z.array(z.string()).min(1).max(100),
   tags: z.array(z.string().max(50)).min(1).max(20)
+})
+
+export const MarkViewedSchema = z.object({
+  itemId: z.string()
 })
 
 // ============================================================================
@@ -419,6 +455,11 @@ export interface InboxHandlers {
   ) => Promise<{ success: boolean; error?: string }>
   [InboxChannels.invoke.UNSNOOZE]: (itemId: string) => Promise<{ success: boolean; error?: string }>
   [InboxChannels.invoke.GET_SNOOZED]: () => Promise<InboxItem[]>
+
+  // Viewed (for reminder items)
+  [InboxChannels.invoke.MARK_VIEWED]: (
+    itemId: string
+  ) => Promise<{ success: boolean; error?: string }>
 
   // Bulk
   [InboxChannels.invoke.BULK_FILE]: (input: z.infer<typeof BulkFileSchema>) => Promise<BulkResponse>
@@ -556,6 +597,9 @@ export interface InboxClientAPI {
   snooze(input: z.infer<typeof SnoozeSchema>): Promise<{ success: boolean; error?: string }>
   unsnooze(itemId: string): Promise<{ success: boolean; error?: string }>
   getSnoozed(): Promise<InboxItem[]>
+
+  // Viewed (for reminder items)
+  markViewed(itemId: string): Promise<{ success: boolean; error?: string }>
 
   // Bulk
   bulkFile(input: z.infer<typeof BulkFileSchema>): Promise<BulkResponse>

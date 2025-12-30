@@ -1243,7 +1243,7 @@ export interface TagsClientAPI {
 }
 
 // Inbox types
-export type InboxItemType = 'link' | 'note' | 'image' | 'voice' | 'clip' | 'pdf' | 'social'
+export type InboxItemType = 'link' | 'note' | 'image' | 'voice' | 'clip' | 'pdf' | 'social' | 'reminder'
 export type InboxProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
 export type InboxFilingAction = 'folder' | 'note' | 'linked'
 
@@ -1259,6 +1259,7 @@ export interface InboxItem {
   filedAction: InboxFilingAction | null
   snoozedUntil: Date | null
   snoozeReason: string | null
+  viewedAt: Date | null
   processingStatus: InboxProcessingStatus
   processingError: string | null
   metadata: unknown
@@ -1294,6 +1295,10 @@ export interface InboxItemListItem {
   // Snooze fields (optional - only present for snoozed items)
   snoozedUntil?: Date
   snoozeReason?: string
+  // Viewed field (for reminder items)
+  viewedAt?: Date
+  // Metadata (for reminder items - includes target info)
+  metadata?: unknown
 }
 
 export interface InboxListResponse {
@@ -1489,6 +1494,9 @@ export interface InboxClientAPI {
   unsnooze(itemId: string): Promise<{ success: boolean; error?: string }>
   getSnoozed(): Promise<InboxItem[]>
 
+  // Viewed (for reminder items)
+  markViewed(itemId: string): Promise<{ success: boolean; error?: string }>
+
   // Bulk operations
   bulkFile(input: {
     itemIds: string[]
@@ -1558,6 +1566,159 @@ export interface EmbeddingProgressEvent {
   progress?: number
 }
 
+// Reminder types
+export type ReminderTargetType = 'note' | 'journal' | 'highlight'
+export type ReminderStatus = 'pending' | 'triggered' | 'dismissed' | 'snoozed'
+
+export interface Reminder {
+  id: string
+  targetType: ReminderTargetType
+  targetId: string
+  remindAt: string
+  highlightText: string | null
+  highlightStart: number | null
+  highlightEnd: number | null
+  title: string | null
+  note: string | null
+  status: ReminderStatus
+  triggeredAt: string | null
+  dismissedAt: string | null
+  snoozedUntil: string | null
+  createdAt: string
+  modifiedAt: string
+}
+
+export interface ReminderWithTarget extends Reminder {
+  targetTitle: string | null
+  targetExists: boolean
+  highlightExists?: boolean
+}
+
+export interface CreateReminderInput {
+  targetType: ReminderTargetType
+  targetId: string
+  remindAt: string
+  title?: string
+  note?: string
+  highlightText?: string
+  highlightStart?: number
+  highlightEnd?: number
+}
+
+export interface UpdateReminderInput {
+  id: string
+  remindAt?: string
+  title?: string | null
+  note?: string | null
+}
+
+export interface SnoozeReminderInput {
+  id: string
+  snoozeUntil: string
+}
+
+export interface ListRemindersInput {
+  targetType?: ReminderTargetType
+  targetId?: string
+  status?: ReminderStatus | ReminderStatus[]
+  fromDate?: string
+  toDate?: string
+  limit?: number
+  offset?: number
+}
+
+export interface ReminderListResponse {
+  reminders: ReminderWithTarget[]
+  total: number
+  hasMore: boolean
+}
+
+export interface ReminderCreateResponse {
+  success: boolean
+  reminder: Reminder | null
+  error?: string
+}
+
+export interface ReminderUpdateResponse {
+  success: boolean
+  reminder: Reminder | null
+  error?: string
+}
+
+export interface ReminderDeleteResponse {
+  success: boolean
+  error?: string
+}
+
+export interface ReminderDismissResponse {
+  success: boolean
+  reminder: Reminder | null
+  error?: string
+}
+
+export interface ReminderSnoozeResponse {
+  success: boolean
+  reminder: Reminder | null
+  error?: string
+}
+
+export interface BulkDismissResponse {
+  success: boolean
+  dismissedCount: number
+  error?: string
+}
+
+// Reminder event types
+export interface ReminderCreatedEvent {
+  reminder: Reminder
+}
+
+export interface ReminderUpdatedEvent {
+  reminder: Reminder
+}
+
+export interface ReminderDeletedEvent {
+  id: string
+  targetType: string
+  targetId: string
+}
+
+export interface ReminderDueEvent {
+  reminders: ReminderWithTarget[]
+  count: number
+}
+
+export interface ReminderDismissedEvent {
+  reminder: Reminder
+}
+
+export interface ReminderSnoozedEvent {
+  reminder: Reminder
+}
+
+export interface ReminderClickedEvent {
+  reminder: ReminderWithTarget
+}
+
+// Reminders client API interface
+export interface RemindersClientAPI {
+  create(input: CreateReminderInput): Promise<ReminderCreateResponse>
+  update(input: UpdateReminderInput): Promise<ReminderUpdateResponse>
+  delete(id: string): Promise<ReminderDeleteResponse>
+  get(id: string): Promise<ReminderWithTarget | null>
+  list(options?: ListRemindersInput): Promise<ReminderListResponse>
+  getUpcoming(days?: number): Promise<ReminderListResponse>
+  getDue(): Promise<ReminderWithTarget[]>
+  getForTarget(input: {
+    targetType: ReminderTargetType
+    targetId: string
+  }): Promise<Reminder[]>
+  countPending(): Promise<number>
+  dismiss(id: string): Promise<ReminderDismissResponse>
+  snooze(input: SnoozeReminderInput): Promise<ReminderSnoozeResponse>
+  bulkDismiss(input: { reminderIds: string[] }): Promise<BulkDismissResponse>
+}
+
 // Settings client API interface
 export interface SettingsClientAPI {
   get(key: string): Promise<string | null>
@@ -1599,6 +1760,7 @@ interface API extends WindowAPI {
   bookmarks: BookmarksClientAPI
   tags: TagsClientAPI
   inbox: InboxClientAPI
+  reminders: RemindersClientAPI
   quickCapture: QuickCaptureClientAPI
   // Vault event subscriptions
   onVaultStatusChanged: (callback: (status: VaultStatus) => void) => () => void
@@ -1674,6 +1836,14 @@ interface API extends WindowAPI {
   onInboxProcessingError: (
     callback: (event: { id: string; operation: string; error: string }) => void
   ) => () => void
+  // Reminder event subscriptions
+  onReminderCreated: (callback: (event: ReminderCreatedEvent) => void) => () => void
+  onReminderUpdated: (callback: (event: ReminderUpdatedEvent) => void) => () => void
+  onReminderDeleted: (callback: (event: ReminderDeletedEvent) => void) => () => void
+  onReminderDue: (callback: (event: ReminderDueEvent) => void) => () => void
+  onReminderDismissed: (callback: (event: ReminderDismissedEvent) => void) => () => void
+  onReminderSnoozed: (callback: (event: ReminderSnoozedEvent) => void) => () => void
+  onReminderClicked: (callback: (event: ReminderClickedEvent) => void) => () => void
 }
 
 declare global {

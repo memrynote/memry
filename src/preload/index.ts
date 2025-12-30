@@ -13,7 +13,8 @@ import {
   SettingsChannels,
   BookmarksChannels,
   TagsChannels,
-  InboxChannels
+  InboxChannels,
+  ReminderChannels
 } from '@shared/ipc-channels'
 
 // Custom APIs for renderer
@@ -540,6 +541,9 @@ const api = {
     bulkSnooze: (input: { itemIds: string[]; snoozeUntil: string; reason?: string }) =>
       ipcRenderer.invoke(InboxChannels.invoke.BULK_SNOOZE, input),
 
+    // Viewed (for reminder items)
+    markViewed: (itemId: string) => ipcRenderer.invoke(InboxChannels.invoke.MARK_VIEWED, itemId),
+
     // Bulk operations
     bulkFile: (input: {
       itemIds: string[]
@@ -603,6 +607,66 @@ const api = {
     /** Remove tag from a specific note */
     removeTagFromNote: (input: { noteId: string; tag: string }) =>
       ipcRenderer.invoke(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, input)
+  },
+
+  // Reminders API
+  reminders: {
+    /** Create a new reminder */
+    create: (input: {
+      targetType: 'note' | 'journal' | 'highlight'
+      targetId: string
+      remindAt: string
+      title?: string
+      note?: string
+      highlightText?: string
+      highlightStart?: number
+      highlightEnd?: number
+    }) => ipcRenderer.invoke(ReminderChannels.invoke.CREATE, input),
+
+    /** Update an existing reminder */
+    update: (input: { id: string; remindAt?: string; title?: string | null; note?: string | null }) =>
+      ipcRenderer.invoke(ReminderChannels.invoke.UPDATE, input),
+
+    /** Delete a reminder */
+    delete: (id: string) => ipcRenderer.invoke(ReminderChannels.invoke.DELETE, id),
+
+    /** Get a reminder by ID */
+    get: (id: string) => ipcRenderer.invoke(ReminderChannels.invoke.GET, id),
+
+    /** List reminders with optional filters */
+    list: (options?: {
+      targetType?: 'note' | 'journal' | 'highlight'
+      targetId?: string
+      status?: string | string[]
+      fromDate?: string
+      toDate?: string
+      limit?: number
+      offset?: number
+    }) => ipcRenderer.invoke(ReminderChannels.invoke.LIST, options ?? {}),
+
+    /** Get upcoming reminders (next N days) */
+    getUpcoming: (days?: number) => ipcRenderer.invoke(ReminderChannels.invoke.GET_UPCOMING, days),
+
+    /** Get due reminders */
+    getDue: () => ipcRenderer.invoke(ReminderChannels.invoke.GET_DUE),
+
+    /** Get reminders for a specific target */
+    getForTarget: (input: { targetType: 'note' | 'journal' | 'highlight'; targetId: string }) =>
+      ipcRenderer.invoke(ReminderChannels.invoke.GET_FOR_TARGET, input),
+
+    /** Count pending reminders (for badge) */
+    countPending: () => ipcRenderer.invoke(ReminderChannels.invoke.COUNT_PENDING),
+
+    /** Dismiss a reminder */
+    dismiss: (id: string) => ipcRenderer.invoke(ReminderChannels.invoke.DISMISS, id),
+
+    /** Snooze a reminder to a later time */
+    snooze: (input: { id: string; snoozeUntil: string }) =>
+      ipcRenderer.invoke(ReminderChannels.invoke.SNOOZE, input),
+
+    /** Bulk dismiss multiple reminders */
+    bulkDismiss: (input: { reminderIds: string[] }) =>
+      ipcRenderer.invoke(ReminderChannels.invoke.BULK_DISMISS, input)
   },
 
   // Event subscription helpers
@@ -1058,6 +1122,63 @@ const api = {
     ): void => callback(data)
     ipcRenderer.on(InboxChannels.events.PROCESSING_ERROR, handler)
     return () => ipcRenderer.removeListener(InboxChannels.events.PROCESSING_ERROR, handler)
+  },
+
+  // Reminder event subscription helpers
+  onReminderCreated: (callback: (event: { reminder: unknown }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { reminder: unknown }): void =>
+      callback(data)
+    ipcRenderer.on(ReminderChannels.events.CREATED, handler)
+    return () => ipcRenderer.removeListener(ReminderChannels.events.CREATED, handler)
+  },
+
+  onReminderUpdated: (callback: (event: { reminder: unknown }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { reminder: unknown }): void =>
+      callback(data)
+    ipcRenderer.on(ReminderChannels.events.UPDATED, handler)
+    return () => ipcRenderer.removeListener(ReminderChannels.events.UPDATED, handler)
+  },
+
+  onReminderDeleted: (
+    callback: (event: { id: string; targetType: string; targetId: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { id: string; targetType: string; targetId: string }
+    ): void => callback(data)
+    ipcRenderer.on(ReminderChannels.events.DELETED, handler)
+    return () => ipcRenderer.removeListener(ReminderChannels.events.DELETED, handler)
+  },
+
+  onReminderDue: (callback: (event: { reminders: unknown[]; count: number }) => void): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { reminders: unknown[]; count: number }
+    ): void => callback(data)
+    ipcRenderer.on(ReminderChannels.events.DUE, handler)
+    return () => ipcRenderer.removeListener(ReminderChannels.events.DUE, handler)
+  },
+
+  onReminderDismissed: (callback: (event: { reminder: unknown }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { reminder: unknown }): void =>
+      callback(data)
+    ipcRenderer.on(ReminderChannels.events.DISMISSED, handler)
+    return () => ipcRenderer.removeListener(ReminderChannels.events.DISMISSED, handler)
+  },
+
+  onReminderSnoozed: (callback: (event: { reminder: unknown }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { reminder: unknown }): void =>
+      callback(data)
+    ipcRenderer.on(ReminderChannels.events.SNOOZED, handler)
+    return () => ipcRenderer.removeListener(ReminderChannels.events.SNOOZED, handler)
+  },
+
+  /** Subscribe to desktop notification click events - navigates to reminder target */
+  onReminderClicked: (callback: (event: { reminder: unknown }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { reminder: unknown }): void =>
+      callback(data)
+    ipcRenderer.on(ReminderChannels.events.CLICKED, handler)
+    return () => ipcRenderer.removeListener(ReminderChannels.events.CLICKED, handler)
   }
 }
 

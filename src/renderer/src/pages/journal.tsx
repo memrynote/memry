@@ -86,6 +86,7 @@ import { parseConnectionDate } from '@/services/ai-connections-service'
 import { journalService } from '@/services/journal-service'
 import { useActiveTab } from '@/contexts/tabs'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
+import { JournalReminderButton } from '@/components/journal/journal-reminder-button'
 
 // =============================================================================
 // CONSTANTS
@@ -1085,6 +1086,14 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             <Maximize2 className="size-4" />
                           )}
                         </Button>
+                      )}
+
+                      {/* Reminder Button */}
+                      {viewState.type === 'day' && entry && (
+                        <JournalReminderButton
+                          journalDate={entry.date}
+                          disabled={false}
+                        />
                       )}
 
                       {/* Bookmark Button */}

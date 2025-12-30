@@ -186,9 +186,12 @@ export const InboxDetailPanel = ({
         })
     }
 
+    // Use path for folder location - prefer path, fallback to id
+    const folderPath = selectedFolder.path ?? selectedFolder.id ?? ''
+
     onFile(
       item.id,
-      selectedFolder.id,
+      folderPath,
       tags,
       linkedNotes.map((n) => n.id)
     )
@@ -263,33 +266,37 @@ export const InboxDetailPanel = ({
             {/* Metadata Bar */}
             <ContentMetadata item={item} />
 
-            {/* Scrollable Content Area */}
-            <div className="flex-1 min-h-0 overflow-y-auto">
-              <div className="px-6 py-6">
-                <ContentSection
-                  item={item}
-                  onRetryTranscription={handleRetryTranscription}
-                  isRetrying={retryTranscriptionMutation.isPending}
-                />
+            {/* Main Content Area - 60/40 Split */}
+            <div className="flex-1 min-h-0 flex flex-col">
+              {/* Scrollable Content Area - 60% */}
+              <div className="flex-[6] min-h-0 overflow-y-auto border-b border-[var(--border)]">
+                <div className="px-6 py-4">
+                  <ContentSection
+                    item={item}
+                    onRetryTranscription={handleRetryTranscription}
+                    isRetrying={retryTranscriptionMutation.isPending}
+                  />
+                </div>
+              </div>
+
+              {/* Filing Section - 40% */}
+              <div className="flex-[4] min-h-0 overflow-y-auto bg-[var(--muted)]/30">
+                <div className="px-6 py-4">
+                  <FilingSection
+                    item={item}
+                    selectedFolder={selectedFolder}
+                    tags={tags}
+                    linkedNotes={linkedNotes}
+                    onFolderSelect={handleFolderSelect}
+                    onTagsChange={setTags}
+                    onLinkedNotesChange={setLinkedNotes}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Sticky Filing Section */}
-            <div className="shrink-0 border-t border-[var(--border)] bg-[var(--background)] max-h-[45vh] flex flex-col">
-              <div className="px-6 py-4 overflow-y-auto flex-1 min-h-0">
-                <FilingSection
-                  item={item}
-                  selectedFolder={selectedFolder}
-                  tags={tags}
-                  linkedNotes={linkedNotes}
-                  onFolderSelect={handleFolderSelect}
-                  onTagsChange={setTags}
-                  onLinkedNotesChange={setLinkedNotes}
-                />
-              </div>
-
-              {/* Footer with Actions */}
-              <SheetFooter className="px-6 py-4 border-t border-[var(--border)] flex-col gap-3">
+            {/* Footer with Actions */}
+            <SheetFooter className="shrink-0 px-6 py-3 border-t border-[var(--border)] flex-col gap-2">
                 <div className="flex items-center justify-between w-full gap-3">
                   <Button
                     variant="ghost"
@@ -320,8 +327,7 @@ export const InboxDetailPanel = ({
                 <p className="text-xs text-[var(--muted-foreground)] text-center w-full">
                   {keyboardHint}
                 </p>
-              </SheetFooter>
-            </div>
+            </SheetFooter>
           </>
         ) : (
           // Hidden title/description for accessibility when no item
