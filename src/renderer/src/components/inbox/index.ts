@@ -14,12 +14,3 @@ export {
   type InboxListSectionProps,
   type InboxListItemProps
 } from './inbox-list'
-
-export {
-  InboxCardSection,
-  InboxCard,
-  TypeIcon as CardTypeIcon,
-  CardContent,
-  type InboxCardSectionProps,
-  type InboxCardProps
-} from './inbox-card'

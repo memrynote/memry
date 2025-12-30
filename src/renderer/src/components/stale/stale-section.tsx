@@ -1,7 +1,6 @@
 import { AlertTriangle } from 'lucide-react'
 
 import { StaleItemRow } from '@/components/stale/stale-item-row'
-import { StaleCard } from '@/components/stale/stale-card'
 import { StaleActionFooter } from '@/components/stale/stale-action-footer'
 import { STALE_THRESHOLD_DAYS } from '@/lib/stale-utils'
 import { cn } from '@/lib/utils'
@@ -9,8 +8,6 @@ import type { InboxItemListItem } from '@/types'
 
 // Type alias for convenience (backend type)
 type InboxItem = InboxItemListItem
-
-type ViewMode = 'list' | 'card'
 
 interface StaleSectionHeaderProps {
   itemCount: number
@@ -39,7 +36,6 @@ const StaleSectionHeader = ({
 
 interface StaleSectionProps {
   items: InboxItem[]
-  viewMode: ViewMode
   selectedItemIds: Set<string>
   exitingItemIds?: Set<string>
   focusedItemId: string | null
@@ -56,7 +52,6 @@ interface StaleSectionProps {
  */
 export const StaleSection = ({
   items,
-  viewMode,
   selectedItemIds,
   exitingItemIds = new Set(),
   focusedItemId,
@@ -86,40 +81,22 @@ export const StaleSection = ({
       <StaleSectionHeader itemCount={items.length} />
 
       {/* Items */}
-      <div className={cn('p-2', viewMode === 'card' && 'px-3 py-3')}>
-        {viewMode === 'list' ? (
-          <div className="space-y-0.5">
-            {items.map((item) => (
-              <StaleItemRow
-                key={item.id}
-                item={item}
-                isFocused={focusedItemId === item.id}
-                isSelected={selectedItemIds.has(item.id)}
-                isInBulkMode={isInBulkMode}
-                isExiting={exitingItemIds.has(item.id)}
-                onDelete={onDelete}
-                onFocus={onFocus}
-                onSelectionToggle={onSelectionToggle}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {items.map((item) => (
-              <StaleCard
-                key={item.id}
-                item={item}
-                isFocused={focusedItemId === item.id}
-                isSelected={selectedItemIds.has(item.id)}
-                isInBulkMode={isInBulkMode}
-                isExiting={exitingItemIds.has(item.id)}
-                onDelete={onDelete}
-                onFocus={onFocus}
-                onSelectionToggle={onSelectionToggle}
-              />
-            ))}
-          </div>
-        )}
+      <div className="p-2">
+        <div className="space-y-0.5">
+          {items.map((item) => (
+            <StaleItemRow
+              key={item.id}
+              item={item}
+              isFocused={focusedItemId === item.id}
+              isSelected={selectedItemIds.has(item.id)}
+              isInBulkMode={isInBulkMode}
+              isExiting={exitingItemIds.has(item.id)}
+              onDelete={onDelete}
+              onFocus={onFocus}
+              onSelectionToggle={onSelectionToggle}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Action Footer */}
