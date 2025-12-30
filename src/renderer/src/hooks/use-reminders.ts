@@ -33,9 +33,7 @@ export const reminderKeys = {
   all: ['reminders'] as const,
   lists: () => [...reminderKeys.all, 'list'] as const,
   list: (options?: ListRemindersInput) => [...reminderKeys.lists(), options] as const,
-  upcoming: (days?: number) => [...reminderKeys.all, 'upcoming', days] as const,
   due: () => [...reminderKeys.all, 'due'] as const,
-  count: () => [...reminderKeys.all, 'count'] as const,
   forTarget: (targetType: ReminderTargetType, targetId: string) =>
     [...reminderKeys.all, 'target', targetType, targetId] as const,
   detail: (id: string) => [...reminderKeys.all, 'detail', id] as const
@@ -62,18 +60,15 @@ export function useReminders(options?: ListRemindersInput) {
     const unsubs = [
       onReminderCreated(() => {
         queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
-        queryClient.invalidateQueries({ queryKey: reminderKeys.count() })
       }),
       onReminderUpdated(() => {
         queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
       }),
       onReminderDeleted(() => {
         queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
-        queryClient.invalidateQueries({ queryKey: reminderKeys.count() })
       }),
       onReminderDismissed(() => {
         queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
-        queryClient.invalidateQueries({ queryKey: reminderKeys.count() })
       }),
       onReminderSnoozed(() => {
         queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
@@ -93,45 +88,6 @@ export function useReminders(options?: ListRemindersInput) {
   }
 }
 
-/**
- * Hook for getting upcoming reminders
- */
-export function useUpcomingReminders(days = 7) {
-  const queryClient = useQueryClient()
-
-  const query = useQuery({
-    queryKey: reminderKeys.upcoming(days),
-    queryFn: () => reminderService.getUpcoming(days),
-    staleTime: 30 * 1000
-  })
-
-  // Subscribe to events for real-time updates
-  useEffect(() => {
-    const unsubs = [
-      onReminderCreated(() => {
-        queryClient.invalidateQueries({ queryKey: reminderKeys.upcoming(days) })
-      }),
-      onReminderDeleted(() => {
-        queryClient.invalidateQueries({ queryKey: reminderKeys.upcoming(days) })
-      }),
-      onReminderDismissed(() => {
-        queryClient.invalidateQueries({ queryKey: reminderKeys.upcoming(days) })
-      }),
-      onReminderSnoozed(() => {
-        queryClient.invalidateQueries({ queryKey: reminderKeys.upcoming(days) })
-      })
-    ]
-
-    return () => unsubs.forEach((unsub) => unsub())
-  }, [queryClient, days])
-
-  return {
-    reminders: query.data?.reminders ?? [],
-    total: query.data?.total ?? 0,
-    isLoading: query.isLoading,
-    error: query.error
-  }
-}
 
 /**
  * Hook for getting reminders for a specific target (note, journal, highlight)
@@ -191,40 +147,6 @@ export function useRemindersForTarget(targetType: ReminderTargetType, targetId: 
   }
 }
 
-/**
- * Hook for getting pending reminder count (for badge display)
- */
-export function usePendingReminderCount() {
-  const queryClient = useQueryClient()
-
-  const query = useQuery({
-    queryKey: reminderKeys.count(),
-    queryFn: () => reminderService.countPending(),
-    staleTime: 30 * 1000
-  })
-
-  // Subscribe to events for real-time updates
-  useEffect(() => {
-    const unsubs = [
-      onReminderCreated(() => {
-        queryClient.invalidateQueries({ queryKey: reminderKeys.count() })
-      }),
-      onReminderDeleted(() => {
-        queryClient.invalidateQueries({ queryKey: reminderKeys.count() })
-      }),
-      onReminderDismissed(() => {
-        queryClient.invalidateQueries({ queryKey: reminderKeys.count() })
-      })
-    ]
-
-    return () => unsubs.forEach((unsub) => unsub())
-  }, [queryClient])
-
-  return {
-    count: query.data ?? 0,
-    isLoading: query.isLoading
-  }
-}
 
 /**
  * Hook for subscribing to due reminders (for notifications)
@@ -252,7 +174,6 @@ export function useCreateReminder() {
     mutationFn: (input: CreateReminderInput) => reminderService.create(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: reminderKeys.count() })
     }
   })
 }
@@ -281,7 +202,6 @@ export function useDeleteReminder() {
     mutationFn: (id: string) => reminderService.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: reminderKeys.count() })
     }
   })
 }
@@ -296,7 +216,6 @@ export function useDismissReminder() {
     mutationFn: (id: string) => reminderService.dismiss(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: reminderKeys.count() })
     }
   })
 }
@@ -315,17 +234,3 @@ export function useSnoozeReminder() {
   })
 }
 
-/**
- * Hook for bulk dismissing reminders
- */
-export function useBulkDismissReminders() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (reminderIds: string[]) => reminderService.bulkDismiss(reminderIds),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: reminderKeys.count() })
-    }
-  })
-}
