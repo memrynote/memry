@@ -5,17 +5,15 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { List, Grid, Check, Loader2, AlertCircle, Clock } from 'lucide-react'
+import { Check, Loader2, AlertCircle, Clock } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { useTabs } from '@/contexts/tabs'
 import { Button } from '@/components/ui/button'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ToastContainer, type Toast } from '@/components/ui/toast'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { ListView } from '@/components/list-view'
-import { CardView } from '@/components/card-view'
 import { InboxDetailPanel } from '@/components/inbox-detail'
 import { BulkActionBar, type ClusterSuggestion } from '@/components/bulk/bulk-action-bar'
 import { BulkFilePanel } from '@/components/bulk/bulk-file-panel'
@@ -40,14 +38,11 @@ import {
   inboxKeys
 } from '@/hooks/use-inbox'
 
-type ViewMode = 'list' | 'card'
-
 interface InboxPageProps {
   className?: string
 }
 
 export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [toasts, setToasts] = useState<Toast[]>([])
   const [showSnoozedItems, setShowSnoozedItems] = useState(false)
   const queryClient = useQueryClient()
@@ -225,13 +220,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       // Skip other shortcuts if in an input field
       if (isInputFocused()) return
 
-      // V toggles view mode
-      if (e.key.toLowerCase() === 'v' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault()
-        setViewMode((prev) => (prev === 'list' ? 'card' : 'list'))
-        return
-      }
-
       // R refreshes the inbox
       if (e.key.toLowerCase() === 'r' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
@@ -331,12 +319,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     nonStaleItems,
     addToast
   ])
-
-  const handleViewChange = (value: string): void => {
-    if (value === 'list' || value === 'card') {
-      setViewMode(value)
-    }
-  }
 
   // Handle selection change
   const handleSelectionChange = useCallback((newSelection: Set<string>): void => {
@@ -1359,54 +1341,19 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 </p>
               </div>
 
-              <div
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDeselectAll}
                 className={cn(
-                  'flex items-center gap-3',
+                  'text-muted-foreground/60 hover:text-foreground',
+                  'hover:bg-foreground/5',
+                  'transition-all duration-200',
                   'opacity-0 journal-animate-in journal-stagger-2'
                 )}
               >
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleDeselectAll}
-                  className={cn(
-                    'text-muted-foreground/60 hover:text-foreground',
-                    'hover:bg-foreground/5',
-                    'transition-all duration-200'
-                  )}
-                >
-                  Deselect all
-                </Button>
-                <ToggleGroup
-                  type="single"
-                  value={viewMode}
-                  onValueChange={handleViewChange}
-                  className="gap-0.5 p-1 rounded-lg bg-muted/30"
-                >
-                  <ToggleGroupItem
-                    value="list"
-                    aria-label="List view"
-                    className={cn(
-                      'rounded-md px-3 py-1.5',
-                      'data-[state=on]:bg-background data-[state=on]:shadow-sm',
-                      'transition-all duration-200'
-                    )}
-                  >
-                    <List className="size-4" />
-                  </ToggleGroupItem>
-                  <ToggleGroupItem
-                    value="card"
-                    aria-label="Grid view"
-                    className={cn(
-                      'rounded-md px-3 py-1.5',
-                      'data-[state=on]:bg-background data-[state=on]:shadow-sm',
-                      'transition-all duration-200'
-                    )}
-                  >
-                    <Grid className="size-4" />
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </div>
+                Deselect all
+              </Button>
             </div>
           ) : (
             /* Normal Header */
@@ -1444,38 +1391,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                     Select all
                   </Button>
                 )}
-                <ToggleGroup
-                  type="single"
-                  value={viewMode}
-                  onValueChange={handleViewChange}
-                  className="gap-0.5 p-1 rounded-lg bg-muted/30"
-                >
-                  <ToggleGroupItem
-                    value="list"
-                    aria-label="List view"
-                    className={cn(
-                      'rounded-md px-3 py-1.5',
-                      'data-[state=on]:bg-background data-[state=on]:shadow-sm',
-                      'transition-all duration-200'
-                    )}
-                  >
-                    <List className="size-4" />
-                  </ToggleGroupItem>
-                  <ToggleGroupItem
-                    value="card"
-                    aria-label="Grid view"
-                    className={cn(
-                      'rounded-md px-3 py-1.5',
-                      'data-[state=on]:bg-background data-[state=on]:shadow-sm',
-                      'transition-all duration-200'
-                    )}
-                  >
-                    <Grid className="size-4" />
-                  </ToggleGroupItem>
-                </ToggleGroup>
 
                 {/* Show snoozed items toggle */}
-                <div className="flex items-center gap-2 ml-4 pl-4 border-l border-border/40">
+                <div className="flex items-center gap-2">
                   <Switch
                     id="show-snoozed"
                     checked={showSnoozedItems}
@@ -1543,7 +1461,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             hasFilingHistory={hasFilingHistory}
             isExiting={isEmptyStateExiting}
           />
-        ) : viewMode === 'list' ? (
+        ) : (
           <ListView
             items={nonStaleItems}
             staleItems={staleItems}
@@ -1553,22 +1471,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             onDelete={handleDelete}
             onSnooze={handleSnooze}
             onQuickFile={handleQuickFile}
-            onSelectionChange={handleSelectionChange}
-            onFileAllStale={handleFileAllStaleToUnsorted}
-            onReviewStale={handleReviewStaleItems}
-            focusedItemId={focusedItemId}
-            onFocusedItemChange={handleFocusedItemChange}
-            isPreviewOpen={isDetailPanelOpen}
-          />
-        ) : (
-          <CardView
-            items={nonStaleItems}
-            staleItems={staleItems}
-            selectedItemIds={selectedItemIds}
-            exitingItemIds={exitingItemIds}
-            onPreview={handlePreview}
-            onDelete={handleDelete}
-            onSnooze={handleSnooze}
             onSelectionChange={handleSelectionChange}
             onFileAllStale={handleFileAllStaleToUnsorted}
             onReviewStale={handleReviewStaleItems}

@@ -427,7 +427,6 @@ const ListView = ({
       {staleItems.length > 0 && onFileAllStale && onReviewStale && (
         <StaleSection
           items={staleItems}
-          viewMode="list"
           selectedItemIds={selectedItemIds}
           exitingItemIds={exitingItemIds}
           focusedItemId={focusedItemId}
