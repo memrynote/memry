@@ -31,7 +31,7 @@ export function SidebarDrillDownContainer({
       {/* Main sidebar content */}
       <div
         className={cn(
-          'absolute inset-0 transition-transform duration-200 ease-out',
+          'absolute inset-0 transition-transform duration-200 ease-out overflow-y-auto',
           !isMainView && 'pointer-events-none',
           animationDirection === 'left' && !isMainView && '-translate-x-full',
           animationDirection === 'right' && !isMainView && 'translate-x-0',
@@ -44,7 +44,7 @@ export function SidebarDrillDownContainer({
       {/* Detail view */}
       <div
         className={cn(
-          'absolute inset-0 transition-transform duration-200 ease-out bg-sidebar',
+          'absolute inset-0 transition-transform duration-200 ease-out bg-sidebar overflow-y-auto',
           isMainView && 'pointer-events-none',
           animationDirection === 'left' && !isMainView && 'translate-x-0',
           animationDirection === 'right' && !isMainView && 'translate-x-full',
