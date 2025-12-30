@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractDomain } from '@/lib/inbox-utils'
+import { InboxContentEditor } from './inbox-content-editor'
 import type {
   InboxItem,
   InboxItemListItem,
@@ -576,18 +577,22 @@ const VoicePreview = ({
 }
 
 // =============================================================================
-// Simple Text Content
+// Simple Text Content (Editable with BlockNote)
 // =============================================================================
 
 interface SimpleContentProps {
   item: ContentItem
+  onContentChange?: (content: string) => void
 }
 
-const SimpleContent = ({ item }: SimpleContentProps): React.JSX.Element => {
+const SimpleContent = ({ item, onContentChange }: SimpleContentProps): React.JSX.Element => {
   return (
-    <div className="prose prose-sm dark:prose-invert max-w-none">
-      <p className="whitespace-pre-wrap">{item.content || 'No content available.'}</p>
-    </div>
+    <InboxContentEditor
+      initialContent={item.content}
+      onContentChange={onContentChange}
+      editable={true}
+      placeholder="Edit your captured text..."
+    />
   )
 }
 
@@ -599,18 +604,21 @@ interface ContentSectionProps {
   item: ContentItem
   onRetryTranscription?: () => void
   isRetrying?: boolean
+  /** Callback when content is edited */
+  onContentChange?: (content: string) => void
 }
 
 export const ContentSection = ({
   item,
   onRetryTranscription,
-  isRetrying
+  isRetrying,
+  onContentChange
 }: ContentSectionProps): React.JSX.Element => {
   switch (item.type) {
     case 'link':
       return <LinkPreview item={item} />
     case 'note':
-      return <SimpleContent item={item} />
+      return <SimpleContent item={item} onContentChange={onContentChange} />
     case 'image':
       return <ImagePreview item={item} />
     case 'voice':
@@ -625,6 +633,6 @@ export const ContentSection = ({
     case 'pdf':
     case 'social':
     default:
-      return <SimpleContent item={item} />
+      return <SimpleContent item={item} onContentChange={onContentChange} />
   }
 }

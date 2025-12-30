@@ -153,7 +153,6 @@ export function NotePage({ noteId }: NotePageProps) {
   const [note, setNote] = useState<Note | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
   const [headings, setHeadings] = useState<HeadingItem[]>([])
   const [isInfoExpanded, setIsInfoExpanded] = useState(false)
   const [isDeleted, setIsDeleted] = useState(false)
@@ -271,9 +270,6 @@ export function NotePage({ noteId }: NotePageProps) {
   // Listen for external note updates (file changed outside app)
   // Track if we're currently saving to ignore our own updates
   const isSavingRef = useRef(false)
-  useEffect(() => {
-    isSavingRef.current = isSaving
-  }, [isSaving])
 
   useEffect(() => {
     if (!noteId) return
@@ -412,14 +408,14 @@ export function NotePage({ noteId }: NotePageProps) {
 
       // Debounce save (500ms)
       saveTimeoutRef.current = setTimeout(async () => {
-        setIsSaving(true)
+        isSavingRef.current = true
         try {
           await updateNote({ id: noteId, content: markdown })
           lastSavedContent.current = markdown
         } catch (err) {
           console.error('Failed to save note:', err)
         } finally {
-          setIsSaving(false)
+          isSavingRef.current = false
         }
       }, 500)
     },
@@ -733,13 +729,6 @@ export function NotePage({ noteId }: NotePageProps) {
       <div className="relative">
         {/* Action bar - positioned at top-right of content area */}
         <div className="absolute top-0 right-0 z-10 flex items-center gap-2">
-          {isSaving && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-full border">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Saving...</span>
-            </div>
-          )}
-
           {/* Reminder Button */}
           {noteId && (
             <NoteReminderButton
@@ -877,14 +866,6 @@ export function NotePage({ noteId }: NotePageProps) {
 
           {/* Backlinks section */}
           <div className="pt-8 mx-[54px] border-t border-border/30">
-            <div className="flex items-baseline gap-2 mb-4">
-              <span className="font-sans text-xs font-medium uppercase tracking-wider text-text-tertiary/50">
-                References
-              </span>
-              <span className="font-serif text-xs italic text-text-tertiary/30">
-                {backlinks.length} backlink{backlinks.length !== 1 ? 's' : ''}
-              </span>
-            </div>
             <BacklinksSection
               backlinks={backlinks}
               isLoading={backlinksLoading}
