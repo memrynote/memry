@@ -6,8 +6,6 @@
 
 export { ReminderPicker } from './reminder-picker'
 export type { ReminderPickerProps } from './reminder-picker'
-export { RemindersList } from './reminders-list'
-export { RemindersPanel, RemindersBellButton } from './reminders-panel'
 export {
   HighlightReminderPopover,
   useTextSelection,

@@ -7,7 +7,6 @@ import { BookOpen, Home, Inbox, ListTodo, Plus, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { VaultSwitcher } from '@/components/vault-switcher'
 import { TrafficLights } from '@/components/traffic-lights'
-import { RemindersPanel } from '@/components/reminder'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import {
   Sidebar,
@@ -232,14 +231,6 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
             </SidebarMenuItem>
           ))}
 
-          {/* Reminders - Bell icon with panel */}
-          <SidebarMenuItem>
-            <RemindersPanel
-              variant="ghost"
-              size="default"
-              className="w-full justify-start gap-2 px-2 py-1.5 h-8 font-normal text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            />
-          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarGroup>
 
