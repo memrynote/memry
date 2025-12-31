@@ -45,11 +45,21 @@ import {
 } from './property-cell'
 import { SortableColumnHeader } from './sortable-column-header'
 
+/**
+ * Sort order configuration (matches .folder.md format)
+ */
+export interface OrderConfig {
+  property: string
+  direction: 'asc' | 'desc'
+}
+
 interface FolderTableViewProps {
   /** Notes to display */
   notes: NoteWithProperties[]
   /** Column configuration */
   columns: ColumnConfig[]
+  /** Initial sort order from saved config */
+  initialSorting?: OrderConfig[]
   /** Called when a note is clicked to open it */
   onNoteOpen?: (noteId: string) => void
   /** Called when a folder cell is clicked */
@@ -60,6 +70,8 @@ interface FolderTableViewProps {
   onColumnsChange?: (columns: ColumnConfig[]) => void
   /** Called when display name changes for a column */
   onDisplayNameChange?: (columnId: string, displayName: string) => void
+  /** Called when sort order changes */
+  onSortingChange?: (sorting: OrderConfig[]) => void
   /** Column IDs to highlight (from column selector search) */
   highlightedColumns?: string[]
   /** Loading state */
@@ -86,21 +98,49 @@ function getColumnType(columnId: string): PropertyType {
 }
 
 /**
+ * Convert OrderConfig[] (from .folder.md) to TanStack SortingState
+ */
+function orderConfigToSortingState(order?: OrderConfig[]): SortingState {
+  if (!order || order.length === 0) {
+    return []
+  }
+  return order.map((o) => ({
+    id: o.property,
+    desc: o.direction === 'desc'
+  }))
+}
+
+/**
+ * Convert TanStack SortingState to OrderConfig[] (for .folder.md)
+ */
+function sortingStateToOrderConfig(sorting: SortingState): OrderConfig[] {
+  return sorting.map((s) => ({
+    property: s.id,
+    direction: s.desc ? 'desc' : 'asc'
+  }))
+}
+
+/**
  * Table view for folder notes using TanStack Table.
  */
 export function FolderTableView({
   notes,
   columns: columnConfig,
+  initialSorting,
   onNoteOpen,
   onFolderClick,
   onTagClick,
   onColumnsChange,
   onDisplayNameChange,
+  onSortingChange,
   highlightedColumns = [],
   isLoading,
   className
 }: FolderTableViewProps): React.JSX.Element {
-  const [sorting, setSorting] = useState<SortingState>([])
+  // Convert initial sorting from OrderConfig[] to SortingState
+  const [sorting, setSorting] = useState<SortingState>(() =>
+    orderConfigToSortingState(initialSorting)
+  )
 
   // Create a map of column configs for quick lookup
   const columnConfigMap = useMemo(() => {
@@ -120,6 +160,23 @@ export function FolderTableView({
       onColumnsChange(updatedColumns)
     },
     [columnConfig, onColumnsChange]
+  )
+
+  // Handle sorting change - update local state and notify parent
+  const handleSortingChange = useCallback(
+    (updater: SortingState | ((old: SortingState) => SortingState)) => {
+      setSorting((oldSorting) => {
+        const newSorting = typeof updater === 'function' ? updater(oldSorting) : updater
+
+        // Notify parent of sorting change (for persistence)
+        if (onSortingChange) {
+          onSortingChange(sortingStateToOrderConfig(newSorting))
+        }
+
+        return newSorting
+      })
+    },
+    [onSortingChange]
   )
 
   // Memoized cell renderer for title column
@@ -268,7 +325,7 @@ export function FolderTableView({
     data: notes,
     columns,
     state: { sorting },
-    onSortingChange: setSorting,
+    onSortingChange: handleSortingChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),

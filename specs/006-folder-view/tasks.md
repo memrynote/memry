@@ -321,18 +321,18 @@
 
 **Purpose**: Column-based sorting with persistence
 
-- [ ] T062 Implement single-column sort:
+- [x] T062 Implement single-column sort:
   - Click header to sort ascending
   - Click again for descending
   - Click again to clear sort
-- [ ] T063 Implement multi-column sort:
+- [x] T063 Implement multi-column sort:
   - Shift+click to add sort column
   - Show sort order number on headers
   - Support order: [{property, direction}, ...] array
-- [ ] T064 Persist sort configuration to .folder.md view.order
-- [ ] T065 Apply initial sort from saved config on load
+- [x] T064 Persist sort configuration to .folder.md view.order
+- [x] T065 Apply initial sort from saved config on load
 
-**Checkpoint**: Sorting works and persists
+**Checkpoint**: Sorting works and persists ✅
 
 ---
 
