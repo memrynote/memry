@@ -47,28 +47,36 @@ export function TitleInput({
     }
   }, [autoFocus])
 
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const newValue = e.target.value
-      setLocalValue(newValue)
-      onChange(newValue)
-    },
-    [onChange]
-  )
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value
+    setLocalValue(newValue)
+    // Don't call onChange on every keystroke - only update local state
+    // The actual save happens on blur
+  }, [])
 
-  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Enter saves and blurs
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      textareaRef.current?.blur()
+  const handleBlur = useCallback(() => {
+    // Only trigger onChange if value actually changed
+    if (localValue !== value) {
+      onChange(localValue)
     }
-    // Escape reverts and blurs
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      setLocalValue(value)
-      textareaRef.current?.blur()
-    }
-  }, [value])
+  }, [localValue, value, onChange])
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      // Enter saves and blurs
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        textareaRef.current?.blur()
+      }
+      // Escape reverts and blurs
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setLocalValue(value)
+        textareaRef.current?.blur()
+      }
+    },
+    [value]
+  )
 
   return (
     <textarea
@@ -76,6 +84,7 @@ export function TitleInput({
       value={localValue}
       onChange={handleChange}
       onKeyDown={handleKeyDown}
+      onBlur={handleBlur}
       placeholder={placeholder}
       disabled={disabled}
       rows={1}
