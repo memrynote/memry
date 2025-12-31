@@ -29,6 +29,8 @@ interface ColumnHeaderProps {
   onWidthChange?: (columnId: string, width: number) => void
   /** Called when display name changes */
   onDisplayNameChange?: (columnId: string, displayName: string) => void
+  /** Whether this column is highlighted (from column selector search) */
+  isHighlighted?: boolean
   /** Additional CSS classes */
   className?: string
 }
@@ -61,6 +63,7 @@ export function ColumnHeader({
   totalSortedColumns = 0,
   onWidthChange,
   onDisplayNameChange,
+  isHighlighted = false,
   className
 }: ColumnHeaderProps): React.JSX.Element {
   // Edit mode state
@@ -252,6 +255,7 @@ export function ColumnHeader({
         'select-none relative group',
         canSort && !isEditing && 'cursor-pointer hover:bg-muted/50',
         header.column.getIsResizing() && 'bg-muted/30',
+        isHighlighted && 'bg-primary/10 text-primary',
         className
       )}
       style={{ width: header.getSize() }}

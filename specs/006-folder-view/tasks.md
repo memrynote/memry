@@ -286,18 +286,18 @@
 
 **Purpose**: Add/remove columns from view
 
-- [ ] T055 Create `src/renderer/src/components/folder-view/column-selector.tsx`:
+- [x] T055 Create `src/renderer/src/components/folder-view/column-selector.tsx`:
   - Dropdown button in toolbar
   - List of available columns (visible + hidden)
   - Checkboxes to toggle visibility
   - Grouped: Built-in columns, Property columns, Formula columns
-- [ ] T056 Add "Add Property Column" section:
+- [x] T056 Add "Add Property Column" section:
   - Search/filter available properties
   - Show usage count for each property
   - Click to add column with default config
-- [ ] T057 Persist column visibility changes to .folder.md view config
+- [x] T057 Persist column visibility changes to .folder.md view config
 
-**Checkpoint**: Users can add/remove columns
+**Checkpoint**: Users can add/remove columns ✅
 
 ---
 

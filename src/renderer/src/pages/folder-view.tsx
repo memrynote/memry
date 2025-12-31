@@ -5,13 +5,14 @@
  * Similar to Obsidian Bases - supports multiple views, filtering, and sorting.
  */
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { ArrowLeft, Folder, LayoutGrid, List, Plus, Settings2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useTabs } from '@/contexts/tabs'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
+import { FolderViewToolbar } from '@/components/folder-view/folder-view-toolbar'
 import { useFolderView } from '@/hooks/use-folder-view'
 import { DEFAULT_COLUMNS } from '@shared/contracts/folder-view-api'
 
@@ -36,8 +37,35 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     error,
     setActiveViewIndex,
     updateColumns,
-    updateDisplayName
+    updateDisplayName,
+    availableProperties,
+    builtInColumns
   } = useFolderView({ folderPath: folderPath ?? '' })
+
+  // Column search state for highlighting
+  const [columnSearchQuery, setColumnSearchQuery] = useState('')
+
+  // Compute which columns should be highlighted based on search query
+  const highlightedColumns = useMemo(() => {
+    if (!columnSearchQuery) return []
+    const query = columnSearchQuery.toLowerCase()
+
+    // Get visible column IDs
+    const visibleIds = (activeView?.columns ?? DEFAULT_COLUMNS).map((c) => c.id)
+
+    // Find matching built-in columns
+    const builtInMatches = builtInColumns
+      .filter((col) => col.displayName.toLowerCase().includes(query))
+      .map((col) => col.id)
+
+    // Find matching property columns
+    const propMatches = availableProperties
+      .filter((prop) => prop.name.toLowerCase().includes(query))
+      .map((prop) => prop.name)
+
+    // Only return columns that are currently visible
+    return [...builtInMatches, ...propMatches].filter((id) => visibleIds.includes(id))
+  }, [columnSearchQuery, builtInColumns, availableProperties, activeView])
 
   // Get folder display name
   const folderName = useMemo(() => {
@@ -177,6 +205,15 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         </Button>
       </header>
 
+      {/* Toolbar */}
+      <FolderViewToolbar
+        columns={activeView?.columns ?? DEFAULT_COLUMNS}
+        builtInColumns={builtInColumns}
+        availableProperties={availableProperties}
+        onColumnsChange={updateColumns}
+        onColumnSearchChange={setColumnSearchQuery}
+      />
+
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         {error ? (
@@ -194,6 +231,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             onTagClick={handleTagClick}
             onColumnsChange={updateColumns}
             onDisplayNameChange={updateDisplayName}
+            highlightedColumns={highlightedColumns}
             className="h-full"
           />
         )}
