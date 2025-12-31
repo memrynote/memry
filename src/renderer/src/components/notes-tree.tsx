@@ -402,6 +402,28 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       // Keep all IDs including folders for context-aware creation
       setSelectedIds(ids)
 
+      // Check for folder selection first (open folder view)
+      const folderIds = ids.filter((id) => id.startsWith('folder-') && id !== 'notes-root')
+      if (folderIds.length === 1) {
+        const folderPath = folderIds[0].replace('folder-', '')
+        // Skip root folder - don't open view for it
+        if (folderPath && folderPath !== '') {
+          const folderName = folderPath.split('/').pop() || 'Folder'
+          openTab({
+            type: 'folder',
+            title: folderName,
+            icon: 'folder',
+            path: `/folder/${encodeURIComponent(folderPath)}`,
+            entityId: folderPath,
+            isPinned: false,
+            isModified: false,
+            isPreview: true,
+            isDeleted: false
+          })
+          return
+        }
+      }
+
       // Only open in tab on single note selection (not folders, not multi-select)
       const noteIds = ids.filter((id) => !id.startsWith('folder-') && id !== 'notes-root')
       if (noteIds.length === 1) {
@@ -1025,10 +1047,12 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       try {
         localStorage.setItem('sidebar-section-collections-expanded', 'true')
         // Dispatch storage event to trigger re-render in SidebarSection
-        window.dispatchEvent(new StorageEvent('storage', {
-          key: 'sidebar-section-collections-expanded',
-          newValue: 'true'
-        }))
+        window.dispatchEvent(
+          new StorageEvent('storage', {
+            key: 'sidebar-section-collections-expanded',
+            newValue: 'true'
+          })
+        )
       } catch {
         // Ignore localStorage errors
       }

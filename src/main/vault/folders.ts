@@ -58,28 +58,64 @@ function getFolderConfigPath(folderPath: string): string {
 
 /**
  * Parse a folder config file.
+ * Supports both template configuration and view configuration (Folder View/Bases).
  */
 function parseFolderConfig(content: string): FolderConfig {
   const { data } = matter(content)
 
   return {
+    // Template configuration
     template: typeof data.template === 'string' ? data.template : undefined,
-    inherit: data.inherit !== false // Default to true
+    inherit: data.inherit !== false, // Default to true
+
+    // View configuration (Folder View / Bases feature)
+    views: Array.isArray(data.views) ? data.views : undefined,
+    formulas:
+      data.formulas && typeof data.formulas === 'object'
+        ? (data.formulas as Record<string, string>)
+        : undefined,
+    properties:
+      data.properties && typeof data.properties === 'object'
+        ? (data.properties as FolderConfig['properties'])
+        : undefined,
+    summaries:
+      data.summaries && typeof data.summaries === 'object'
+        ? (data.summaries as FolderConfig['summaries'])
+        : undefined
   }
 }
 
 /**
  * Serialize a folder config to file content.
+ * Supports both template configuration and view configuration (Folder View/Bases).
  */
 function serializeFolderConfig(config: FolderConfig): string {
   const frontmatter: Record<string, unknown> = {}
 
+  // Template configuration
   if (config.template) {
     frontmatter.template = config.template
   }
 
   if (config.inherit === false) {
     frontmatter.inherit = false
+  }
+
+  // View configuration (Folder View / Bases feature)
+  if (config.views && config.views.length > 0) {
+    frontmatter.views = config.views
+  }
+
+  if (config.formulas && Object.keys(config.formulas).length > 0) {
+    frontmatter.formulas = config.formulas
+  }
+
+  if (config.properties && Object.keys(config.properties).length > 0) {
+    frontmatter.properties = config.properties
+  }
+
+  if (config.summaries && Object.keys(config.summaries).length > 0) {
+    frontmatter.summaries = config.summaries
   }
 
   return matter.stringify('', frontmatter)
@@ -122,8 +158,16 @@ export async function writeFolderConfig(folderPath: string, config: FolderConfig
     await fs.mkdir(folderDir, { recursive: true })
   }
 
-  // If config is empty (no template, inherit=true), delete the file
-  if (!config.template && config.inherit !== false) {
+  // Check if config has any meaningful content
+  const hasTemplateConfig = config.template || config.inherit === false
+  const hasViewConfig =
+    (config.views && config.views.length > 0) ||
+    (config.formulas && Object.keys(config.formulas).length > 0) ||
+    (config.properties && Object.keys(config.properties).length > 0) ||
+    (config.summaries && Object.keys(config.summaries).length > 0)
+
+  // If config is empty, delete the file
+  if (!hasTemplateConfig && !hasViewConfig) {
     if (existsSync(configPath)) {
       await fs.unlink(configPath)
     }

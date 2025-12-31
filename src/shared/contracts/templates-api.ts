@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod'
+import type { ViewConfig, PropertyDisplay, SummaryConfig } from './folder-view-api'
 
 // ============================================================================
 // Types
@@ -62,11 +63,24 @@ export interface TemplateListItem {
 }
 
 /**
- * Folder configuration for default templates
+ * Folder configuration for default templates and view settings.
+ * Stored in .folder.md files in each folder.
  */
 export interface FolderConfig {
-  template?: string // Template ID
-  inherit?: boolean // Default: true - inherit from parent folder
+  /** Default template ID for new notes in this folder */
+  template?: string
+  /** Whether to inherit template from parent folder (default: true) */
+  inherit?: boolean
+
+  // View configuration (Folder View / Bases feature)
+  /** Named views for this folder (table, grid, etc.) */
+  views?: ViewConfig[]
+  /** Computed column formulas */
+  formulas?: Record<string, string>
+  /** Property display overrides */
+  properties?: Record<string, PropertyDisplay>
+  /** Column summary configurations */
+  summaries?: Record<string, SummaryConfig>
 }
 
 // ============================================================================

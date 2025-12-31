@@ -14,7 +14,8 @@ import {
   BookmarksChannels,
   TagsChannels,
   InboxChannels,
-  ReminderChannels
+  ReminderChannels,
+  FolderViewChannels
 } from '@shared/ipc-channels'
 
 // Custom APIs for renderer
@@ -635,8 +636,12 @@ const api = {
     }) => ipcRenderer.invoke(ReminderChannels.invoke.CREATE, input),
 
     /** Update an existing reminder */
-    update: (input: { id: string; remindAt?: string; title?: string | null; note?: string | null }) =>
-      ipcRenderer.invoke(ReminderChannels.invoke.UPDATE, input),
+    update: (input: {
+      id: string
+      remindAt?: string
+      title?: string | null
+      note?: string | null
+    }) => ipcRenderer.invoke(ReminderChannels.invoke.UPDATE, input),
 
     /** Delete a reminder */
     delete: (id: string) => ipcRenderer.invoke(ReminderChannels.invoke.DELETE, id),
@@ -1161,7 +1166,9 @@ const api = {
     return () => ipcRenderer.removeListener(ReminderChannels.events.DELETED, handler)
   },
 
-  onReminderDue: (callback: (event: { reminders: unknown[]; count: number }) => void): (() => void) => {
+  onReminderDue: (
+    callback: (event: { reminders: unknown[]; count: number }) => void
+  ): (() => void) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
       data: { reminders: unknown[]; count: number }
@@ -1190,6 +1197,47 @@ const api = {
       callback(data)
     ipcRenderer.on(ReminderChannels.events.CLICKED, handler)
     return () => ipcRenderer.removeListener(ReminderChannels.events.CLICKED, handler)
+  },
+
+  // Folder View API (Bases-like database view)
+  folderView: {
+    /** Get folder view configuration */
+    getConfig: (folderPath: string) =>
+      ipcRenderer.invoke(FolderViewChannels.invoke.GET_CONFIG, { folderPath }),
+    /** Set/update folder view configuration */
+    setConfig: (folderPath: string, config: Record<string, unknown>) =>
+      ipcRenderer.invoke(FolderViewChannels.invoke.SET_CONFIG, { folderPath, config }),
+    /** Get all views for a folder */
+    getViews: (folderPath: string) =>
+      ipcRenderer.invoke(FolderViewChannels.invoke.GET_VIEWS, { folderPath }),
+    /** Add or update a single view */
+    setView: (folderPath: string, view: Record<string, unknown>) =>
+      ipcRenderer.invoke(FolderViewChannels.invoke.SET_VIEW, { folderPath, view }),
+    /** Delete a view by name */
+    deleteView: (folderPath: string, viewName: string) =>
+      ipcRenderer.invoke(FolderViewChannels.invoke.DELETE_VIEW, { folderPath, viewName }),
+    /** List notes in folder with property values */
+    listWithProperties: (options: {
+      folderPath: string
+      properties?: string[]
+      limit?: number
+      offset?: number
+    }) => ipcRenderer.invoke(FolderViewChannels.invoke.LIST_WITH_PROPERTIES, options),
+    /** Get available properties for column selector */
+    getAvailableProperties: (folderPath: string) =>
+      ipcRenderer.invoke(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, { folderPath })
+  },
+
+  // Folder View event subscription helpers
+  onFolderViewConfigUpdated: (
+    callback: (event: { path: string; source: 'internal' | 'external' }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { path: string; source: 'internal' | 'external' }
+    ): void => callback(data)
+    ipcRenderer.on(FolderViewChannels.events.CONFIG_UPDATED, handler)
+    return () => ipcRenderer.removeListener(FolderViewChannels.events.CONFIG_UPDATED, handler)
   }
 }
 

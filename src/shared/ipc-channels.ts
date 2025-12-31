@@ -655,3 +655,35 @@ export type ReminderInvokeChannel =
   (typeof ReminderChannels.invoke)[keyof typeof ReminderChannels.invoke]
 export type ReminderEventChannel =
   (typeof ReminderChannels.events)[keyof typeof ReminderChannels.events]
+
+// ============================================================================
+// Folder View Channels (Bases-like database view)
+// ============================================================================
+
+export const FolderViewChannels = {
+  invoke: {
+    /** Get folder view configuration (reads .folder.md) */
+    GET_CONFIG: 'folder-view:get-config',
+    /** Set/update folder view configuration (writes .folder.md) */
+    SET_CONFIG: 'folder-view:set-config',
+    /** Get all views for a folder */
+    GET_VIEWS: 'folder-view:get-views',
+    /** Add or update a single view */
+    SET_VIEW: 'folder-view:set-view',
+    /** Delete a view by name */
+    DELETE_VIEW: 'folder-view:delete-view',
+    /** List notes in folder with property values */
+    LIST_WITH_PROPERTIES: 'folder-view:list-with-properties',
+    /** Get available properties for column selector */
+    GET_AVAILABLE_PROPERTIES: 'folder-view:get-available-properties'
+  },
+  events: {
+    /** Folder view config was updated (external file change) */
+    CONFIG_UPDATED: 'folder-view:config-updated'
+  }
+} as const
+
+export type FolderViewInvokeChannel =
+  (typeof FolderViewChannels.invoke)[keyof typeof FolderViewChannels.invoke]
+export type FolderViewEventChannel =
+  (typeof FolderViewChannels.events)[keyof typeof FolderViewChannels.events]

@@ -20,6 +20,7 @@ export type TabType =
   | 'completed' // Legacy - kept for backwards compatibility
   | 'project' // Legacy - kept for backwards compatibility
   | 'note'
+  | 'folder' // Folder view (Bases-like database view)
   | 'journal'
   | 'search'
   | 'settings'

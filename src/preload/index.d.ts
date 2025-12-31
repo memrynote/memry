@@ -1243,7 +1243,15 @@ export interface TagsClientAPI {
 }
 
 // Inbox types
-export type InboxItemType = 'link' | 'note' | 'image' | 'voice' | 'clip' | 'pdf' | 'social' | 'reminder'
+export type InboxItemType =
+  | 'link'
+  | 'note'
+  | 'image'
+  | 'voice'
+  | 'clip'
+  | 'pdf'
+  | 'social'
+  | 'reminder'
 export type InboxProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
 export type InboxFilingAction = 'folder' | 'note' | 'linked'
 
@@ -1718,14 +1726,109 @@ export interface RemindersClientAPI {
   list(options?: ListRemindersInput): Promise<ReminderListResponse>
   getUpcoming(days?: number): Promise<ReminderListResponse>
   getDue(): Promise<ReminderWithTarget[]>
-  getForTarget(input: {
-    targetType: ReminderTargetType
-    targetId: string
-  }): Promise<Reminder[]>
+  getForTarget(input: { targetType: ReminderTargetType; targetId: string }): Promise<Reminder[]>
   countPending(): Promise<number>
   dismiss(id: string): Promise<ReminderDismissResponse>
   snooze(input: SnoozeReminderInput): Promise<ReminderSnoozeResponse>
   bulkDismiss(input: { reminderIds: string[] }): Promise<BulkDismissResponse>
+}
+
+// Folder View types (Bases-like database view)
+export interface FolderViewColumn {
+  id: string
+  width?: number
+  displayName?: string
+  showSummary?: boolean
+}
+
+export interface FolderViewConfig {
+  path: string
+  template?: string
+  inherit?: boolean
+  views?: FolderViewView[]
+  formulas?: Record<string, string>
+  properties?: Record<string, unknown>
+  summaries?: Record<string, unknown>
+}
+
+export interface FolderViewView {
+  name: string
+  type: 'table' | 'grid' | 'list' | 'kanban'
+  default?: boolean
+  columns?: FolderViewColumn[]
+  filters?: unknown
+  order?: Array<{ property: string; direction: 'asc' | 'desc' }>
+  groupBy?: unknown
+  limit?: number
+  showSummaries?: boolean
+}
+
+export interface FolderViewNote {
+  id: string
+  path: string
+  title: string
+  emoji: string | null
+  folder: string
+  tags: string[]
+  created: string
+  modified: string
+  wordCount: number
+  properties: Record<string, unknown>
+}
+
+export interface FolderViewAvailableProperty {
+  name: string
+  type: string
+  usageCount: number
+}
+
+export interface FolderViewGetConfigResponse {
+  config: FolderViewConfig
+  isDefault: boolean
+}
+
+export interface FolderViewGetViewsResponse {
+  views: FolderViewView[]
+  defaultIndex: number
+}
+
+export interface FolderViewListResponse {
+  notes: FolderViewNote[]
+  total: number
+  hasMore: boolean
+}
+
+export interface FolderViewAvailablePropertiesResponse {
+  builtIn: Array<{ id: string; displayName: string; type: string }>
+  properties: FolderViewAvailableProperty[]
+  formulas: Array<{ id: string; expression: string }>
+}
+
+export interface FolderViewConfigUpdatedEvent {
+  path: string
+  source: 'internal' | 'external'
+}
+
+// Folder View client API interface
+export interface FolderViewClientAPI {
+  getConfig(folderPath: string): Promise<FolderViewGetConfigResponse>
+  setConfig(
+    folderPath: string,
+    config: Record<string, unknown>
+  ): Promise<{ success: boolean; error?: string }>
+  getViews(folderPath: string): Promise<FolderViewGetViewsResponse>
+  setView(
+    folderPath: string,
+    view: Record<string, unknown>
+  ): Promise<{ success: boolean; error?: string }>
+  deleteView(folderPath: string, viewName: string): Promise<{ success: boolean; error?: string }>
+  listWithProperties(options: {
+    folderPath: string
+    properties?: string[]
+    limit?: number
+    offset?: number
+  }): Promise<FolderViewListResponse>
+  getAvailableProperties(folderPath: string): Promise<FolderViewAvailablePropertiesResponse>
 }
 
 // Settings client API interface
@@ -1771,6 +1874,7 @@ interface API extends WindowAPI {
   inbox: InboxClientAPI
   reminders: RemindersClientAPI
   quickCapture: QuickCaptureClientAPI
+  folderView: FolderViewClientAPI
   /** Show a native OS context menu and return the selected item id, or null if dismissed */
   showContextMenu: (items: ContextMenuItem[]) => Promise<string | null>
   // Vault event subscriptions
@@ -1855,6 +1959,8 @@ interface API extends WindowAPI {
   onReminderDismissed: (callback: (event: ReminderDismissedEvent) => void) => () => void
   onReminderSnoozed: (callback: (event: ReminderSnoozedEvent) => void) => () => void
   onReminderClicked: (callback: (event: ReminderClickedEvent) => void) => () => void
+  // Folder View event subscriptions
+  onFolderViewConfigUpdated: (callback: (event: FolderViewConfigUpdatedEvent) => void) => () => void
 }
 
 declare global {

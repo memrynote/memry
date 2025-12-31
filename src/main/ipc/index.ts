@@ -13,6 +13,7 @@ import { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookma
 import { registerTagsHandlers } from './tags-handlers'
 import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 import { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
+import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
 
 /**
  * Flag to prevent duplicate handler registration
@@ -73,6 +74,9 @@ export function registerAllHandlers(): void {
   // Register reminder handlers
   registerReminderHandlers()
 
+  // Register folder view handlers
+  registerFolderViewHandlers()
+
   handlersRegistered = true
   console.log('All IPC handlers registered')
 }
@@ -97,6 +101,7 @@ export function unregisterAllHandlers(): void {
   unregisterBookmarksHandlers()
   unregisterInboxHandlers()
   unregisterReminderHandlers()
+  unregisterFolderViewHandlers()
 
   handlersRegistered = false
   console.log('All IPC handlers unregistered')
@@ -125,3 +130,4 @@ export { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookma
 export { registerTagsHandlers } from './tags-handlers'
 export { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 export { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
+export { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
