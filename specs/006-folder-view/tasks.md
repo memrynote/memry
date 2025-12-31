@@ -380,12 +380,12 @@
 
 **Purpose**: Quick search across all visible columns
 
-- [ ] T073 Add search input to toolbar
-- [ ] T074 Implement global filter using TanStack Table globalFilter
-- [ ] T075 Highlight matching text in cells (optional enhancement)
-- [ ] T076 Debounce search input (200ms)
+- [x] T073 Add search input to toolbar
+- [x] T074 Implement global filter using TanStack Table globalFilter
+- [x] T075 Highlight matching text in cells (optional enhancement)
+- [x] T076 Debounce search input (200ms)
 
-**Checkpoint**: Global search filters table
+**Checkpoint**: Global search filters table ✅
 
 ---
 

@@ -5,8 +5,32 @@
  * Similar to Obsidian Bases - supports multiple views, filtering, and sorting.
  */
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { ArrowLeft, Folder, LayoutGrid, List, Plus, Settings2 } from 'lucide-react'
+
+// ============================================================================
+// Debounce Hook
+// ============================================================================
+
+/**
+ * Hook to debounce a value by a specified delay.
+ * Used for search input to avoid excessive filtering while typing.
+ */
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
+
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [value, delay])
+
+  return debouncedValue
+}
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -48,6 +72,10 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
 
   // Column search state for highlighting
   const [columnSearchQuery, setColumnSearchQuery] = useState('')
+
+  // Global search state with debounce (T073, T076)
+  const [searchQuery, setSearchQuery] = useState('')
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 200)
 
   // Compute which columns should be highlighted based on search query
   const highlightedColumns = useMemo(() => {
@@ -221,6 +249,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         builtInColumns={builtInColumns}
         availableProperties={availableProperties}
         filters={activeView?.filters as FilterExpression | undefined}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
         onColumnsChange={updateColumns}
         onFiltersChange={updateFilters}
         onColumnSearchChange={setColumnSearchQuery}
@@ -239,6 +269,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             notes={notes}
             columns={activeView?.columns ?? DEFAULT_COLUMNS}
             initialSorting={activeView?.order}
+            globalFilter={debouncedSearchQuery}
+            highlightQuery={debouncedSearchQuery}
             onNoteOpen={handleNoteOpen}
             onFolderClick={handleFolderClick}
             onTagClick={handleTagClick}

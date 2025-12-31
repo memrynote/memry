@@ -5,7 +5,7 @@
  * Positioned between the header and the table.
  */
 
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { ColumnSelector, type AvailableProperty, type BuiltInColumnInfo } from './column-selector'
@@ -27,6 +27,10 @@ interface FolderViewToolbarProps {
   formulas?: Array<{ id: string; expression: string }>
   /** Current filter expression */
   filters?: FilterExpression
+  /** Current global search query */
+  searchQuery: string
+  /** Called when global search query changes */
+  onSearchChange: (query: string) => void
   /** Called when columns change */
   onColumnsChange: (columns: ColumnConfig[]) => void
   /** Called when filters change */
@@ -50,6 +54,8 @@ export function FolderViewToolbar({
   availableProperties,
   formulas,
   filters,
+  searchQuery,
+  onSearchChange,
   onColumnsChange,
   onFiltersChange,
   onColumnSearchChange,
@@ -83,10 +89,25 @@ export function FolderViewToolbar({
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Search Input (placeholder for Phase 15) */}
+      {/* Global Search Input */}
       <div className="relative w-64">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search notes..." className="h-8 pl-8 text-sm" disabled />
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search notes..."
+          className="h-8 pl-8 pr-8 text-sm"
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => onSearchChange('')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Clear search"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
     </div>
   )

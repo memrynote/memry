@@ -29,6 +29,8 @@ interface PropertyCellProps {
   value: unknown
   /** Property type */
   type: PropertyType
+  /** Query to highlight in text values */
+  highlightQuery?: string
   /** Additional CSS classes */
   className?: string
 }
@@ -40,6 +42,8 @@ interface TitleCellProps {
   emoji?: string | null
   /** Click handler (opens note) */
   onClick?: () => void
+  /** Query to highlight in title */
+  highlightQuery?: string
   /** Additional CSS classes */
   className?: string
 }
@@ -58,6 +62,8 @@ interface TagsCellProps {
   tags: string[]
   /** Click handler for individual tag */
   onTagClick?: (tag: string) => void
+  /** Query to highlight in tags */
+  highlightQuery?: string
   /** Additional CSS classes */
   className?: string
 }
@@ -91,6 +97,35 @@ function formatDate(dateStr: string): string {
 }
 
 /**
+ * Highlight matching text in a string.
+ * Returns React elements with highlighted portions wrapped in <mark>.
+ * Recursively highlights all occurrences.
+ */
+function highlightText(text: string, query: string): React.ReactNode {
+  if (!query || !text) return text
+
+  const lowerText = text.toLowerCase()
+  const lowerQuery = query.toLowerCase()
+  const index = lowerText.indexOf(lowerQuery)
+
+  if (index === -1) return text
+
+  const before = text.slice(0, index)
+  const match = text.slice(index, index + query.length)
+  const after = text.slice(index + query.length)
+
+  return (
+    <>
+      {before}
+      <mark className="bg-yellow-200 dark:bg-yellow-500/30 text-inherit rounded-sm px-0.5">
+        {match}
+      </mark>
+      {highlightText(after, query)}
+    </>
+  )
+}
+
+/**
  * Get a color class for a tag based on its name (deterministic).
  */
 function getTagColor(tag: string): string {
@@ -119,7 +154,12 @@ function getTagColor(tag: string): string {
 /**
  * Renders a property value based on its type.
  */
-export function PropertyCell({ value, type, className }: PropertyCellProps): React.JSX.Element {
+export function PropertyCell({
+  value,
+  type,
+  highlightQuery,
+  className
+}: PropertyCellProps): React.JSX.Element {
   if (value === null || value === undefined || value === '') {
     return <span className={cn('text-muted-foreground/50', className)}>—</span>
   }
@@ -150,7 +190,9 @@ export function PropertyCell({ value, type, className }: PropertyCellProps): Rea
 
     case 'text':
     default:
-      return <TextCell value={String(value)} className={className} />
+      return (
+        <TextCell value={String(value)} highlightQuery={highlightQuery} className={className} />
+      )
   }
 }
 
@@ -163,14 +205,16 @@ export function PropertyCell({ value, type, className }: PropertyCellProps): Rea
  */
 export function TextCell({
   value,
+  highlightQuery,
   className
 }: {
   value: string
+  highlightQuery?: string
   className?: string
 }): React.JSX.Element {
   return (
     <span className={cn('truncate block', className)} title={value}>
-      {value}
+      {highlightQuery ? highlightText(value, highlightQuery) : value}
     </span>
   )
 }
@@ -348,7 +392,13 @@ export function RatingCell({
  * T049: Title cell - emoji + title, clickable
  * Single click opens note in permanent tab
  */
-export function TitleCell({ title, emoji, onClick, className }: TitleCellProps): React.JSX.Element {
+export function TitleCell({
+  title,
+  emoji,
+  onClick,
+  highlightQuery,
+  className
+}: TitleCellProps): React.JSX.Element {
   return (
     <button
       type="button"
@@ -368,7 +418,9 @@ export function TitleCell({ title, emoji, onClick, className }: TitleCellProps):
       ) : (
         <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
       )}
-      <span className="truncate font-medium">{title}</span>
+      <span className="truncate font-medium">
+        {highlightQuery ? highlightText(title, highlightQuery) : title}
+      </span>
     </button>
   )
 }
@@ -405,32 +457,41 @@ export function FolderCell({ path, onClick, className }: FolderCellProps): React
 /**
  * T051: Tags cell - multiple colored tag badges
  */
-export function TagsCell({ tags, onTagClick, className }: TagsCellProps): React.JSX.Element {
+export function TagsCell({
+  tags,
+  onTagClick,
+  highlightQuery,
+  className
+}: TagsCellProps): React.JSX.Element {
   if (!tags || tags.length === 0) {
     return <span className="text-muted-foreground/50">—</span>
   }
 
   return (
     <div className={cn('flex flex-wrap gap-1', className)}>
-      {tags.slice(0, 3).map((tag) => (
-        <button
-          key={tag}
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onTagClick?.(tag)
-          }}
-          className={cn(
-            'inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium',
-            'transition-opacity hover:opacity-80',
-            'focus:outline-none focus:ring-1 focus:ring-primary/50',
-            getTagColor(tag)
-          )}
-          title={tag}
-        >
-          #{tag}
-        </button>
-      ))}
+      {tags.slice(0, 3).map((tag) => {
+        const shouldHighlight =
+          highlightQuery && tag.toLowerCase().includes(highlightQuery.toLowerCase())
+        return (
+          <button
+            key={tag}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onTagClick?.(tag)
+            }}
+            className={cn(
+              'inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium',
+              'transition-opacity hover:opacity-80',
+              'focus:outline-none focus:ring-1 focus:ring-primary/50',
+              getTagColor(tag)
+            )}
+            title={tag}
+          >
+            #{shouldHighlight ? highlightText(tag, highlightQuery) : tag}
+          </button>
+        )
+      })}
       {tags.length > 3 && (
         <span
           className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground"

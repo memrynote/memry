@@ -14,7 +14,8 @@ import {
   flexRender,
   type ColumnDef,
   type SortingState,
-  type CellContext
+  type CellContext,
+  type FilterFn
 } from '@tanstack/react-table'
 import {
   DndContext,
@@ -60,6 +61,10 @@ interface FolderTableViewProps {
   columns: ColumnConfig[]
   /** Initial sort order from saved config */
   initialSorting?: OrderConfig[]
+  /** Global search filter string */
+  globalFilter?: string
+  /** Query string to highlight in cells */
+  highlightQuery?: string
   /** Called when a note is clicked to open it */
   onNoteOpen?: (noteId: string) => void
   /** Called when a folder cell is clicked */
@@ -78,6 +83,24 @@ interface FolderTableViewProps {
   isLoading?: boolean
   /** Additional CSS classes */
   className?: string
+}
+
+/**
+ * Custom global filter function that searches across all visible columns.
+ * Case-insensitive substring matching.
+ */
+const globalFilterFn: FilterFn<NoteWithProperties> = (row, columnId, filterValue) => {
+  const value = row.getValue(columnId)
+  if (value === null || value === undefined) return false
+
+  const searchValue = String(filterValue).toLowerCase()
+
+  // Handle arrays (tags)
+  if (Array.isArray(value)) {
+    return value.some((item) => String(item).toLowerCase().includes(searchValue))
+  }
+
+  return String(value).toLowerCase().includes(searchValue)
 }
 
 /**
@@ -127,6 +150,8 @@ export function FolderTableView({
   notes,
   columns: columnConfig,
   initialSorting,
+  globalFilter,
+  highlightQuery,
   onNoteOpen,
   onFolderClick,
   onTagClick,
@@ -184,10 +209,15 @@ export function FolderTableView({
     (info: CellContext<NoteWithProperties, unknown>) => {
       const note = info.row.original
       return (
-        <TitleCell title={note.title} emoji={note.emoji} onClick={() => onNoteOpen?.(note.id)} />
+        <TitleCell
+          title={note.title}
+          emoji={note.emoji}
+          onClick={() => onNoteOpen?.(note.id)}
+          highlightQuery={highlightQuery}
+        />
       )
     },
-    [onNoteOpen]
+    [onNoteOpen, highlightQuery]
   )
 
   // Memoized cell renderer for folder column
@@ -212,9 +242,9 @@ export function FolderTableView({
   const renderTagsCell = useCallback(
     (info: CellContext<NoteWithProperties, unknown>) => {
       const note = info.row.original
-      return <TagsCell tags={note.tags} onTagClick={onTagClick} />
+      return <TagsCell tags={note.tags} onTagClick={onTagClick} highlightQuery={highlightQuery} />
     },
-    [onTagClick]
+    [onTagClick, highlightQuery]
   )
 
   // Memoized cell renderer for date columns
@@ -236,9 +266,9 @@ export function FolderTableView({
     (columnId: string) => (info: CellContext<NoteWithProperties, unknown>) => {
       const value = info.getValue()
       const type = getColumnType(columnId)
-      return <PropertyCell value={value} type={type} />
+      return <PropertyCell value={value} type={type} highlightQuery={highlightQuery} />
     },
-    []
+    [highlightQuery]
   )
 
   // Build TanStack column definitions from config
@@ -324,8 +354,12 @@ export function FolderTableView({
   const table = useReactTable({
     data: notes,
     columns,
-    state: { sorting },
+    state: {
+      sorting,
+      globalFilter: globalFilter ?? ''
+    },
     onSortingChange: handleSortingChange,
+    globalFilterFn: globalFilterFn,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -406,6 +440,19 @@ export function FolderTableView({
         <div className="text-center">
           <div className="text-muted-foreground mb-2">No notes in this folder</div>
           <p className="text-sm text-muted-foreground/60">Create a new note to get started</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Check if global filter resulted in no matches
+  const filteredRowCount = table.getFilteredRowModel().rows.length
+  if (filteredRowCount === 0 && globalFilter) {
+    return (
+      <div className={cn('flex items-center justify-center h-64', className)}>
+        <div className="text-center">
+          <div className="text-muted-foreground mb-2">No notes match "{globalFilter}"</div>
+          <p className="text-sm text-muted-foreground/60">Try a different search term</p>
         </div>
       </div>
     )
