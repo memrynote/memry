@@ -2,6 +2,8 @@
 
 This guide provides step-by-step validation for the Folder View feature.
 
+**Storage**: Configuration is stored in `.folder.md` files (YAML frontmatter), not in a database table.
+
 ---
 
 ## Prerequisites
@@ -29,45 +31,59 @@ ls -la src/renderer/src/pages/folder-view.tsx
 
 ---
 
-## Phase 2: Database Validation
+## Phase 2: .folder.md Schema Validation
 
-### T004-T007: Schema and Migration
+### T004-T011: Schema Extension and Cache
 
 ```bash
-# Check migration was generated
-ls -la src/main/database/migrations/
+# Verify .folder.md can be parsed with view fields
+cat notes/[folder-name]/.folder.md
 
-# Verify table exists (after running app once)
-sqlite3 ~/.memry/vaults/[vault-name]/index.db ".schema folder_view_config"
+# Example expected content:
+# ---
+# template: default
+# views:
+#   - name: "Default"
+#     type: table
+#     columns:
+#       - id: title
+#         width: 250
+# ---
+
+# If using cache, verify cache table exists (optional)
+sqlite3 ~/.memry/vaults/[vault-name]/index.db ".schema folder_view_cache"
 ```
 
-**Expected**: Migration file exists, table schema matches data-model.md.
+**Expected**: .folder.md files can store view configuration in YAML frontmatter.
 
 ---
 
 ## Phase 3-5: Backend Validation
 
-### T008-T021: IPC and Service Layer
+### T012-T028: IPC and Service Layer
 
 1. Open Developer Tools (Cmd+Option+I)
 2. In Console, run:
 
 ```javascript
-// Test getConfig
+// Test getConfig - reads from .folder.md
 await window.api.folderView.getConfig('projects')
-// Expected: { config: {...}, isDefault: true } for new folder
+// Expected: { views: [...], isDefault: true/false }
 
-// Test setConfig
-await window.api.folderView.setConfig({
-  path: 'projects',
-  viewType: 'table',
-  columns: [...],
-  sortColumn: null,
-  sortOrder: 'desc',
-  filters: [],
-  groupBy: null
+// Test setConfig - writes to .folder.md
+await window.api.folderView.setView('projects', {
+  name: 'Default',
+  type: 'table',
+  columns: [
+    { id: 'title', width: 250 },
+    { id: 'modified', width: 130 }
+  ],
+  order: [{ property: 'modified', direction: 'desc' }]
 })
-// Expected: { success: true, config: {...} }
+// Expected: { success: true }
+
+// Verify .folder.md was updated
+// Check file: vault/notes/projects/.folder.md
 
 // Test listWithProperties
 await window.api.folderView.listWithProperties({ folderPath: 'projects' })
@@ -78,11 +94,38 @@ await window.api.folderView.getAvailableProperties('projects')
 // Expected: { builtIn: [...], properties: [...] }
 ```
 
+### Verify .folder.md File
+
+After running setConfig, check the file manually:
+
+```bash
+cat vault/notes/projects/.folder.md
+```
+
+Expected content:
+
+```yaml
+---
+template: default
+views:
+  - name: 'Default'
+    type: table
+    columns:
+      - id: title
+        width: 250
+      - id: modified
+        width: 130
+    order:
+      - property: modified
+        direction: desc
+---
+```
+
 ---
 
 ## Phase 6: Tab Integration Validation
 
-### T022-T024: Folder Click Opens Tab
+### T029-T031: Folder Click Opens Tab
 
 1. Open sidebar with notes tree
 2. Click on a folder (not root "Notes")
@@ -97,7 +140,7 @@ await window.api.folderView.getAvailableProperties('projects')
 
 ## Phase 7-8: Basic Table Validation
 
-### T025-T032: Table Displays Notes
+### T032-T039: Table Displays Notes
 
 1. Click a folder with notes
 2. Verify:
@@ -112,7 +155,7 @@ await window.api.folderView.getAvailableProperties('projects')
 
 ## Phase 9: Cell Rendering Validation
 
-### T033-T044: Property Types Render Correctly
+### T040-T051: Property Types Render Correctly
 
 Create notes with various property types and verify:
 
@@ -132,7 +175,7 @@ Create notes with various property types and verify:
 
 ## Phase 10: Column Header Validation
 
-### T045-T047: Interactive Headers
+### T052-T054: Interactive Headers
 
 1. **Sorting**: Click column header
    - First click: Sort ascending (▲)
@@ -142,23 +185,25 @@ Create notes with various property types and verify:
 2. **Resizing**: Drag column border
    - Width changes during drag
    - Width persists after release
+   - **Verify**: Check `.folder.md` file updated with new width
 
 3. **Display Name Edit**: Double-click header
    - Input appears
    - Type new name
    - Press Enter to save
-   - Verify name persisted
+   - **Verify**: Check `.folder.md` properties section updated
 
 ---
 
 ## Phase 11-12: Column Management Validation
 
-### T048-T054: Add/Remove/Reorder Columns
+### T055-T061: Add/Remove/Reorder Columns
 
 1. **Add Column**:
    - Click column selector dropdown
    - Select a hidden column
    - Verify column appears in table
+   - **Verify**: `.folder.md` updated with new column
 
 2. **Remove Column**:
    - Click column selector
@@ -169,107 +214,166 @@ Create notes with various property types and verify:
    - Drag column header
    - Drop in new position
    - Verify order persisted
+   - **Verify**: `.folder.md` columns array order changed
 
 ---
 
 ## Phase 13-14: Sort and Filter Validation
 
-### T055-T064: Sorting and Filtering
+### T062-T072: Sorting and Filtering
 
 1. **Sort**:
    - Click "Modified" header
    - Verify rows reorder by date
-   - Refresh page, verify sort persisted
+   - Close and reopen tab
+   - **Verify**: Sort persisted in `.folder.md` view.order
 
 2. **Filter**:
    - Click filter button
-   - Add filter: "title contains test"
+   - Add filter: "status == done"
+   - Add nested filter with OR
    - Verify only matching notes shown
-   - Clear filter, verify all notes return
+   - **Verify**: Filter saved to `.folder.md` view.filters
 
 ---
 
-## Phase 15-17: Search and Navigation
+## Phase 15-16: Search and Multiple Views
 
-### T065-T076: Search and Keyboard
+### T073-T081: Search and Views
 
 1. **Search**:
    - Type in search box
    - Verify table filters in real-time
 
-2. **Keyboard**:
+2. **Multiple Views**:
+   - Click "+ New View" button
+   - Name the view "Active Only"
+   - Configure different columns/filters
+   - Switch between views using tabs
+   - **Verify**: Both views saved to `.folder.md`
+
+---
+
+## Phase 17-19: Navigation and Performance
+
+### T082-T093: Keyboard and Virtualization
+
+1. **Keyboard**:
    - Press ↓ to move selection down
    - Press ↑ to move selection up
    - Press Enter to open note in new tab
    - Press Escape to clear selection
 
-3. **Context Menu**:
+2. **Context Menu**:
    - Right-click a row
    - Verify menu appears with actions
    - Click "Open in new tab"
 
----
-
-## Phase 18-19: Performance and States
-
-### T077-T084: Large Folder and Empty States
-
-1. **Large Folder** (100+ notes):
+3. **Large Folder** (100+ notes):
    - Scroll through table
    - Verify smooth scrolling (virtualization)
    - Verify no lag
 
-2. **Empty Folder**:
+---
+
+## Phase 20-21: States and Toolbar
+
+### T094-T101: Empty States and Actions
+
+1. **Empty Folder**:
    - Click empty folder
    - Verify "No notes" message
    - Click "Create note" button
 
-3. **Filtered Empty**:
+2. **Filtered Empty**:
    - Apply filter that matches nothing
    - Verify "No notes match filters" message
    - Click "Clear filters"
 
----
-
-## Phase 20-21: Actions and Edge Cases
-
-### T085-T096: Toolbar and Edge Cases
-
-1. **New Note**:
+3. **New Note**:
    - Click "New Note" button
    - Verify note created in folder
    - Verify note opened in tab
 
-2. **Folder Rename**:
-   - Rename folder in sidebar
-   - Verify folder view updates
-   - Verify config preserved
+---
 
-3. **Folder Delete**:
+## Phase 25: Edge Cases Validation
+
+### T115-T123: Edge Cases
+
+1. **Folder Rename**:
+   - Rename folder in sidebar
+   - Verify folder view updates title
+   - Verify `.folder.md` moved with folder (automatic)
+   - View config should still work
+
+2. **Folder Delete**:
    - Delete folder (with confirmation)
    - Verify tab closes or shows error
+   - `.folder.md` deleted automatically with folder
+
+3. **External .folder.md Edit**:
+   - Manually edit `.folder.md` file in text editor
+   - Add a new view or change column width
+   - Return to app
+   - Verify changes reflected (may need refresh)
 
 ---
 
 ## Full Feature Checklist
 
+### Core Features
+
 - [ ] Folder click opens table view
 - [ ] Notes display with properties
 - [ ] Built-in columns work (title, folder, tags, dates)
 - [ ] Custom property columns work
-- [ ] Column resize persists
-- [ ] Column reorder persists
-- [ ] Display name edit persists
+
+### Column Customization
+
+- [ ] Column resize persists to `.folder.md`
+- [ ] Column reorder persists to `.folder.md`
+- [ ] Display name edit persists to `.folder.md`
+
+### Sorting & Filtering
+
 - [ ] Sorting works and persists
-- [ ] Filtering works and persists
+- [ ] Multi-column sorting works
+- [ ] Filtering with AND/OR/NOT works
+- [ ] Filters persist to `.folder.md`
 - [ ] Global search works
+
+### Multiple Views
+
+- [ ] Can create named views
+- [ ] View switcher works
+- [ ] Each view has independent config
+- [ ] All views saved to `.folder.md`
+
+### Navigation
+
 - [ ] Double-click opens note in new tab
 - [ ] Keyboard navigation works
 - [ ] Context menu works
+
+### States
+
 - [ ] Empty state displays correctly
-- [ ] Large folders perform well
-- [ ] Folder rename updates config
-- [ ] Folder delete cleans up config
+- [ ] Loading state shows skeleton
+- [ ] Large folders perform well (virtualization)
+
+### Persistence
+
+- [ ] Config survives app restart
+- [ ] Config survives vault reindex
+- [ ] `.folder.md` can be manually edited
+- [ ] Config syncs with vault (Dropbox/Git)
+
+### Edge Cases
+
+- [ ] Folder rename preserves config
+- [ ] Folder delete cleans up properly
+- [ ] External file changes detected
 
 ---
 
@@ -279,16 +383,32 @@ Create notes with various property types and verify:
 
 1. Check console for errors
 2. Verify folder path is correct (not including "notes/")
-3. Check database has folder_view_config table
+3. Try creating a new `.folder.md` manually with valid YAML
 
 ### Columns not persisting
 
-1. Check setConfig is being called
-2. Verify config is saved to database
-3. Check getConfig returns saved config
+1. Check if `.folder.md` file exists in the folder
+2. Verify file is writable (permissions)
+3. Check YAML syntax is valid
+4. Look for errors in console during save
+
+### .folder.md not updating
+
+1. Verify debounce completed (wait 300ms after action)
+2. Check file watcher isn't blocking writes
+3. Try manual save via dev console: `window.api.folderView.setView(...)`
 
 ### Performance issues
 
-1. Verify virtualization is enabled
+1. Verify virtualization is enabled (check 100+ rows)
 2. Check for excessive re-renders in React DevTools
-3. Limit initial property fetch to visible columns
+3. Verify cache is working (if implemented)
+4. Limit columns to reduce property fetching
+
+### Sync conflicts
+
+If using Dropbox/Git and `.folder.md` has conflicts:
+
+1. Manually resolve YAML conflicts
+2. Ensure valid YAML structure
+3. Reload folder view in app

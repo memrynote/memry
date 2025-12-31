@@ -3,6 +3,9 @@
  *
  * Handles folder view configuration and note listing with properties.
  * Provides database-like table view for folders similar to Obsidian Bases.
+ *
+ * STORAGE: Configuration is stored in .folder.md files (YAML frontmatter),
+ * NOT in a database table. This ensures portability and sync-friendliness.
  */
 
 import { z } from 'zod'
@@ -13,17 +16,23 @@ import { z } from 'zod'
 
 export const FolderViewChannels = {
   invoke: {
-    /** Get folder view configuration */
+    /** Get folder view configuration (reads .folder.md) */
     GET_CONFIG: 'folder-view:get-config',
-    /** Set/update folder view configuration */
+    /** Set/update folder view configuration (writes .folder.md) */
     SET_CONFIG: 'folder-view:set-config',
+    /** Get all views for a folder */
+    GET_VIEWS: 'folder-view:get-views',
+    /** Add or update a single view */
+    SET_VIEW: 'folder-view:set-view',
+    /** Delete a view by name */
+    DELETE_VIEW: 'folder-view:delete-view',
     /** List notes in folder with property values */
     LIST_WITH_PROPERTIES: 'folder-view:list-with-properties',
     /** Get available properties for column selector */
     GET_AVAILABLE_PROPERTIES: 'folder-view:get-available-properties'
   },
   events: {
-    /** Folder view config was updated */
+    /** Folder view config was updated (external file change) */
     CONFIG_UPDATED: 'folder-view:config-updated'
   }
 } as const
@@ -56,45 +65,40 @@ export type PropertyType = (typeof PropertyTypes)[keyof typeof PropertyTypes]
 
 /**
  * Configuration for a single column in the table view.
+ * Stored in .folder.md view.columns array.
  */
 export interface ColumnConfig {
   /**
    * Column identifier.
    * Built-in: 'title', 'folder', 'tags', 'created', 'modified', 'wordCount'
    * Property: any custom property name (e.g., 'status', 'priority')
+   * Formula: 'formula.{name}' for computed columns
    */
   id: string
-
-  /**
-   * Display name shown in column header.
-   * User-customizable (e.g., "release_date" → "Release Date")
-   */
-  displayName: string
 
   /**
    * Column width in pixels.
    * Persisted when user resizes columns.
    */
-  width: number
+  width?: number
 
   /**
-   * Whether column is visible in the view.
+   * Override display name for this column in this view.
+   * Takes precedence over properties.{id}.displayName
    */
-  visible: boolean
+  displayName?: string
 
   /**
-   * Column order (0 = leftmost).
-   * Persisted when user reorders columns.
+   * Show summary for this column (if showSummaries is true for view)
    */
-  order: number
+  showSummary?: boolean
 }
 
 export const ColumnConfigSchema = z.object({
   id: z.string().min(1),
-  displayName: z.string().min(1),
-  width: z.number().int().min(50).max(800).default(150),
-  visible: z.boolean().default(true),
-  order: z.number().int().min(0)
+  width: z.number().int().min(50).max(800).optional(),
+  displayName: z.string().optional(),
+  showSummary: z.boolean().optional()
 })
 
 /**
@@ -114,165 +118,269 @@ export type BuiltInColumn = (typeof BUILT_IN_COLUMNS)[number]
  * Default columns shown when folder view is first opened.
  */
 export const DEFAULT_COLUMNS: ColumnConfig[] = [
-  { id: 'title', displayName: 'Title', width: 250, visible: true, order: 0 },
-  { id: 'folder', displayName: 'Folder', width: 120, visible: true, order: 1 },
-  { id: 'tags', displayName: 'Tags', width: 150, visible: true, order: 2 },
-  { id: 'modified', displayName: 'Modified', width: 130, visible: true, order: 3 },
-  { id: 'created', displayName: 'Created', width: 130, visible: false, order: 4 },
-  { id: 'wordCount', displayName: 'Words', width: 80, visible: false, order: 5 }
+  { id: 'title', width: 250 },
+  { id: 'folder', width: 120 },
+  { id: 'tags', width: 150 },
+  { id: 'modified', width: 130 }
 ]
 
 // ============================================================================
-// Filter Configuration
+// Filter Expression (AND/OR/NOT support)
 // ============================================================================
 
 /**
- * Filter operators by property type.
+ * Filter expression supporting complex nested AND/OR/NOT logic.
+ * Stored in .folder.md view.filters
+ *
+ * Examples:
+ * - Simple: 'status == "done"'
+ * - AND: { and: ['status != "done"', 'priority >= 3'] }
+ * - OR: { or: ['status == "urgent"', 'priority >= 5'] }
+ * - NOT: { not: 'status == "archived"' }
+ * - Nested: { and: ['status != "done"', { or: ['priority >= 3', 'formula.is_overdue == true'] }] }
+ */
+export type FilterExpression =
+  | string // Simple expression: 'status == "done"'
+  | { and: FilterExpression[] } // All must match
+  | { or: FilterExpression[] } // Any must match
+  | { not: FilterExpression } // Negate
+
+// Zod schema for filter expression (recursive)
+const baseFilterSchema = z.string()
+export const FilterExpressionSchema: z.ZodType<FilterExpression> = z.lazy(() =>
+  z.union([
+    baseFilterSchema,
+    z.object({ and: z.array(FilterExpressionSchema) }),
+    z.object({ or: z.array(FilterExpressionSchema) }),
+    z.object({ not: FilterExpressionSchema })
+  ])
+)
+
+/**
+ * Filter operators available in expressions.
  */
 export const FilterOperators = {
-  // Text operators
-  equals: 'equals',
-  notEquals: 'notEquals',
-  contains: 'contains',
-  notContains: 'notContains',
-  startsWith: 'startsWith',
-  endsWith: 'endsWith',
-
-  // Number/Date operators
-  gt: 'gt',
-  gte: 'gte',
-  lt: 'lt',
-  lte: 'lte',
-
-  // Presence operators
-  isEmpty: 'isEmpty',
-  isNotEmpty: 'isNotEmpty',
-
-  // Checkbox operators
-  isChecked: 'isChecked',
-  isUnchecked: 'isUnchecked'
+  // Equality
+  EQUALS: '==',
+  NOT_EQUALS: '!=',
+  // Comparison
+  GT: '>',
+  GTE: '>=',
+  LT: '<',
+  LTE: '<=',
+  // String/Array
+  CONTAINS: 'contains',
+  NOT_CONTAINS: 'notContains',
+  STARTS_WITH: 'startsWith',
+  ENDS_WITH: 'endsWith',
+  // Presence
+  IS_EMPTY: 'isEmpty',
+  IS_NOT_EMPTY: 'isNotEmpty',
+  // Regex
+  MATCHES: 'matches'
 } as const
 
-export type FilterOperator = (typeof FilterOperators)[keyof typeof FilterOperators]
+// ============================================================================
+// Order Configuration (Multi-column sorting)
+// ============================================================================
 
 /**
- * Operators available for each property type.
+ * Sort configuration for a column.
+ * Stored in .folder.md view.order array
  */
-export const OperatorsByType: Record<PropertyType, FilterOperator[]> = {
-  text: [
-    'equals',
-    'notEquals',
-    'contains',
-    'notContains',
-    'startsWith',
-    'endsWith',
-    'isEmpty',
-    'isNotEmpty'
-  ],
-  number: ['equals', 'notEquals', 'gt', 'gte', 'lt', 'lte', 'isEmpty', 'isNotEmpty'],
-  checkbox: ['isChecked', 'isUnchecked'],
-  date: ['equals', 'notEquals', 'gt', 'gte', 'lt', 'lte', 'isEmpty', 'isNotEmpty'],
-  select: ['equals', 'notEquals', 'isEmpty', 'isNotEmpty'],
-  multiselect: ['contains', 'notContains', 'isEmpty', 'isNotEmpty'],
-  url: ['equals', 'contains', 'isEmpty', 'isNotEmpty'],
-  rating: ['equals', 'gte', 'lte', 'isEmpty', 'isNotEmpty']
-}
-
-/**
- * Configuration for a single filter condition.
- */
-export interface FilterConfig {
-  /** Property to filter on (built-in or custom property name) */
+export interface OrderConfig {
+  /** Property or formula to sort by */
   property: string
 
-  /** Filter operator */
-  operator: FilterOperator
-
-  /** Value to compare against (type depends on property type) */
-  value: unknown
+  /** Sort direction */
+  direction: 'asc' | 'desc'
 }
 
-export const FilterConfigSchema = z.object({
+export const OrderConfigSchema = z.object({
   property: z.string().min(1),
-  operator: z.enum([
-    'equals',
-    'notEquals',
-    'contains',
-    'notContains',
-    'startsWith',
-    'endsWith',
-    'gt',
-    'gte',
-    'lt',
-    'lte',
-    'isEmpty',
-    'isNotEmpty',
-    'isChecked',
-    'isUnchecked'
-  ]),
-  value: z.unknown()
+  direction: z.enum(['asc', 'desc'])
 })
 
 // ============================================================================
-// View Types
-// ============================================================================
-
-export const ViewTypes = {
-  TABLE: 'table',
-  GRID: 'grid',
-  LIST: 'list',
-  KANBAN: 'kanban'
-} as const
-
-export type ViewType = (typeof ViewTypes)[keyof typeof ViewTypes]
-
-// ============================================================================
-// Folder View Configuration
+// Group By Configuration
 // ============================================================================
 
 /**
- * Full configuration for a folder view.
+ * Grouping configuration for table/kanban views.
+ * Stored in .folder.md view.groupBy
+ */
+export interface GroupByConfig {
+  /** Property to group by */
+  property: string
+
+  /** Group sort direction */
+  direction?: 'asc' | 'desc'
+
+  /** Start with groups collapsed */
+  collapsed?: boolean
+
+  /** Show group summaries */
+  showSummary?: boolean
+}
+
+export const GroupByConfigSchema = z.object({
+  property: z.string().min(1),
+  direction: z.enum(['asc', 'desc']).optional(),
+  collapsed: z.boolean().optional(),
+  showSummary: z.boolean().optional()
+})
+
+// ============================================================================
+// Property Display Configuration
+// ============================================================================
+
+/**
+ * Custom display settings for a property.
+ * Stored in .folder.md properties.{name}
+ */
+export interface PropertyDisplay {
+  /** Custom display name for column header */
+  displayName?: string
+
+  /** Show color for select/status properties */
+  color?: boolean
+
+  /** Date format for date properties */
+  dateFormat?: string
+
+  /** Number format */
+  numberFormat?: string
+
+  /** Hide from column selector */
+  hidden?: boolean
+}
+
+export const PropertyDisplaySchema = z.object({
+  displayName: z.string().optional(),
+  color: z.boolean().optional(),
+  dateFormat: z.string().optional(),
+  numberFormat: z.string().optional(),
+  hidden: z.boolean().optional()
+})
+
+// ============================================================================
+// Summary Configuration
+// ============================================================================
+
+/**
+ * Column aggregation configuration.
+ * Stored in .folder.md summaries.{property}
+ */
+export interface SummaryConfig {
+  /** Aggregation type */
+  type: 'sum' | 'average' | 'min' | 'max' | 'count' | 'countBy' | 'countUnique' | 'custom'
+
+  /** Display label */
+  label?: string
+
+  /** Custom expression (for type: 'custom') */
+  expression?: string
+}
+
+export const SummaryConfigSchema = z.object({
+  type: z.enum(['sum', 'average', 'min', 'max', 'count', 'countBy', 'countUnique', 'custom']),
+  label: z.string().optional(),
+  expression: z.string().optional()
+})
+
+// ============================================================================
+// View Configuration
+// ============================================================================
+
+/**
+ * A single view definition.
+ * Stored in .folder.md views[] array
+ */
+export interface ViewConfig {
+  /** View name (displayed in view switcher) */
+  name: string
+
+  /** View type */
+  type: 'table' | 'grid' | 'list' | 'kanban'
+
+  /** Is this the default view? */
+  default?: boolean
+
+  /** Column definitions */
+  columns?: ColumnConfig[]
+
+  /** Filter expression (supports AND/OR/NOT) */
+  filters?: FilterExpression
+
+  /** Sort order (multi-column) */
+  order?: OrderConfig[]
+
+  /** Grouping configuration */
+  groupBy?: GroupByConfig
+
+  /** Row limit */
+  limit?: number
+
+  /** Show summary row */
+  showSummaries?: boolean
+}
+
+export const ViewConfigSchema = z.object({
+  name: z.string().min(1),
+  type: z.enum(['table', 'grid', 'list', 'kanban']).default('table'),
+  default: z.boolean().optional(),
+  columns: z.array(ColumnConfigSchema).optional(),
+  filters: FilterExpressionSchema.optional(),
+  order: z.array(OrderConfigSchema).optional(),
+  groupBy: GroupByConfigSchema.optional(),
+  limit: z.number().int().min(1).max(10000).optional(),
+  showSummaries: z.boolean().optional()
+})
+
+// ============================================================================
+// Folder Config (extends existing FolderConfig)
+// ============================================================================
+
+/**
+ * Complete folder configuration including views.
+ * Stored in .folder.md YAML frontmatter
  */
 export interface FolderViewConfig {
-  /** Folder path relative to notes/ (e.g., "projects", "projects/2024") */
+  /** Folder path relative to notes/ */
   path: string
 
-  /** View mode (currently only 'table' is implemented) */
-  viewType: ViewType
+  // Existing fields (from templates-api.ts)
+  template?: string
+  inherit?: boolean
 
-  /** Column configurations */
-  columns: ColumnConfig[]
-
-  /** Column to sort by (null = default modified desc) */
-  sortColumn: string | null
-
-  /** Sort direction */
-  sortOrder: 'asc' | 'desc'
-
-  /** Active filters */
-  filters: FilterConfig[]
-
-  /** Property to group by (for future kanban view) */
-  groupBy: string | null
-
-  /** When config was created */
-  createdAt: string
-
-  /** When config was last modified */
-  updatedAt: string
+  // View configuration
+  formulas?: Record<string, string>
+  properties?: Record<string, PropertyDisplay>
+  summaries?: Record<string, SummaryConfig>
+  views?: ViewConfig[]
 }
 
 export const FolderViewConfigSchema = z.object({
   path: z.string(),
-  viewType: z.enum(['table', 'grid', 'list', 'kanban']).default('table'),
-  columns: z.array(ColumnConfigSchema),
-  sortColumn: z.string().nullable(),
-  sortOrder: z.enum(['asc', 'desc']).default('desc'),
-  filters: z.array(FilterConfigSchema),
-  groupBy: z.string().nullable(),
-  createdAt: z.string().optional(),
-  updatedAt: z.string().optional()
+  template: z.string().optional(),
+  inherit: z.boolean().optional(),
+  formulas: z.record(z.string(), z.string()).optional(),
+  properties: z.record(z.string(), PropertyDisplaySchema).optional(),
+  summaries: z.record(z.string(), SummaryConfigSchema).optional(),
+  views: z.array(ViewConfigSchema).optional()
 })
+
+// ============================================================================
+// Default View
+// ============================================================================
+
+export const DEFAULT_VIEW: ViewConfig = {
+  name: 'Default',
+  type: 'table',
+  default: true,
+  columns: DEFAULT_COLUMNS,
+  order: [{ property: 'modified', direction: 'desc' }]
+}
 
 // ============================================================================
 // Note with Properties
@@ -344,18 +452,29 @@ export const GetConfigRequestSchema = z.object({
   folderPath: z.string()
 })
 
-export const SetConfigRequestSchema = FolderViewConfigSchema
+export const SetConfigRequestSchema = z.object({
+  folderPath: z.string(),
+  config: FolderViewConfigSchema.partial()
+})
+
+export const GetViewsRequestSchema = z.object({
+  folderPath: z.string()
+})
+
+export const SetViewRequestSchema = z.object({
+  folderPath: z.string(),
+  view: ViewConfigSchema
+})
+
+export const DeleteViewRequestSchema = z.object({
+  folderPath: z.string(),
+  viewName: z.string()
+})
 
 export const ListWithPropertiesRequestSchema = z.object({
   folderPath: z.string(),
   /** Property IDs to fetch (in addition to built-in fields) */
   properties: z.array(z.string()).optional(),
-  /** Sort by column */
-  sortColumn: z.string().optional(),
-  /** Sort direction */
-  sortOrder: z.enum(['asc', 'desc']).optional(),
-  /** Active filters */
-  filters: z.array(FilterConfigSchema).optional(),
   /** Pagination limit */
   limit: z.number().int().min(1).max(1000).default(500),
   /** Pagination offset */
@@ -378,7 +497,22 @@ export interface GetConfigResponse {
 
 export interface SetConfigResponse {
   success: boolean
-  config: FolderViewConfig
+  error?: string
+}
+
+export interface GetViewsResponse {
+  views: ViewConfig[]
+  /** Index of the default view */
+  defaultIndex: number
+}
+
+export interface SetViewResponse {
+  success: boolean
+  error?: string
+}
+
+export interface DeleteViewResponse {
+  success: boolean
   error?: string
 }
 
@@ -398,6 +532,12 @@ export interface GetAvailablePropertiesResponse {
 
   /** Custom properties found in folder */
   properties: AvailableProperty[]
+
+  /** Formulas defined in .folder.md */
+  formulas: Array<{
+    id: string
+    expression: string
+  }>
 }
 
 // ============================================================================
@@ -412,6 +552,18 @@ export interface FolderViewHandlers {
   [FolderViewChannels.invoke.SET_CONFIG]: (
     input: z.infer<typeof SetConfigRequestSchema>
   ) => Promise<SetConfigResponse>
+
+  [FolderViewChannels.invoke.GET_VIEWS]: (
+    input: z.infer<typeof GetViewsRequestSchema>
+  ) => Promise<GetViewsResponse>
+
+  [FolderViewChannels.invoke.SET_VIEW]: (
+    input: z.infer<typeof SetViewRequestSchema>
+  ) => Promise<SetViewResponse>
+
+  [FolderViewChannels.invoke.DELETE_VIEW]: (
+    input: z.infer<typeof DeleteViewRequestSchema>
+  ) => Promise<DeleteViewResponse>
 
   [FolderViewChannels.invoke.LIST_WITH_PROPERTIES]: (
     input: z.infer<typeof ListWithPropertiesRequestSchema>
@@ -429,31 +581,44 @@ export interface FolderViewHandlers {
 /**
  * Folder view service client interface for renderer process.
  *
+ * Configuration is stored in .folder.md files, ensuring portability
+ * and sync-friendliness across devices.
+ *
  * @example
  * ```typescript
  * const folderView = window.api.folderView;
  *
- * // Get config for a folder
- * const { config, isDefault } = await folderView.getConfig('projects');
+ * // Get all views for a folder (reads .folder.md)
+ * const { views, defaultIndex } = await folderView.getViews('projects');
+ *
+ * // Add/update a view (writes .folder.md)
+ * await folderView.setView('projects', {
+ *   name: 'Active Only',
+ *   type: 'table',
+ *   columns: [{ id: 'title', width: 250 }],
+ *   filters: { and: ['status != "done"', 'status != "archived"'] },
+ *   order: [{ property: 'priority', direction: 'desc' }]
+ * });
  *
  * // List notes with properties
  * const { notes, total } = await folderView.listWithProperties({
- *   folderPath: 'projects',
- *   sortColumn: 'modified',
- *   sortOrder: 'desc'
+ *   folderPath: 'projects'
  * });
  *
- * // Update column configuration
- * await folderView.setConfig({
- *   ...config,
- *   columns: [...config.columns, newColumn]
- * });
+ * // Get available properties for column selector
+ * const { builtIn, properties, formulas } = await folderView.getAvailableProperties('projects');
  * ```
  */
 export interface FolderViewClientAPI {
   getConfig(folderPath: string): Promise<GetConfigResponse>
 
-  setConfig(config: FolderViewConfig): Promise<SetConfigResponse>
+  setConfig(folderPath: string, config: Partial<FolderViewConfig>): Promise<SetConfigResponse>
+
+  getViews(folderPath: string): Promise<GetViewsResponse>
+
+  setView(folderPath: string, view: ViewConfig): Promise<SetViewResponse>
+
+  deleteView(folderPath: string, viewName: string): Promise<DeleteViewResponse>
 
   listWithProperties(
     options: z.infer<typeof ListWithPropertiesRequestSchema>
@@ -467,6 +632,9 @@ export interface FolderViewClientAPI {
 // ============================================================================
 
 export interface ConfigUpdatedEvent {
+  /** Folder path that was updated */
   path: string
-  config: FolderViewConfig
+
+  /** Source of the update */
+  source: 'internal' | 'external'
 }
