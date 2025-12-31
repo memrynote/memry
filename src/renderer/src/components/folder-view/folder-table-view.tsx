@@ -5,7 +5,7 @@
  * Supports column resizing, sorting, and property display.
  */
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useState } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -16,7 +16,22 @@ import {
   type SortingState,
   type CellContext
 } from '@tanstack/react-table'
-import { useState } from 'react'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  arrayMove,
+  sortableKeyboardCoordinates
+} from '@dnd-kit/sortable'
+import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
 import type { NoteWithProperties, ColumnConfig } from '@shared/contracts/folder-view-api'
 import { cn } from '@/lib/utils'
 import {
@@ -28,7 +43,7 @@ import {
   PropertyCell,
   type PropertyType
 } from './property-cell'
-import { ColumnHeader } from './column-header'
+import { SortableColumnHeader } from './sortable-column-header'
 
 interface FolderTableViewProps {
   /** Notes to display */
@@ -260,6 +275,54 @@ export function FolderTableView({
     columnResizeMode: 'onChange'
   })
 
+  // ============================================================================
+  // Drag and Drop for Column Reordering
+  // ============================================================================
+
+  // Configure sensors for drag detection
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5 // Require 5px movement before drag starts
+      }
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates
+    })
+  )
+
+  // Get column IDs for SortableContext
+  const columnIds = useMemo(() => columnConfig.map((col) => col.id), [columnConfig])
+
+  /**
+   * Handle drag end - reorder columns and persist
+   */
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event
+
+      if (!over || active.id === over.id) {
+        return
+      }
+
+      const oldIndex = columnConfig.findIndex((col) => col.id === active.id)
+      const newIndex = columnConfig.findIndex((col) => col.id === over.id)
+
+      if (oldIndex === -1 || newIndex === -1) {
+        return
+      }
+
+      // Reorder columns using arrayMove
+      const newColumns = arrayMove(columnConfig, oldIndex, newIndex)
+
+      // Persist the new order
+      if (onColumnsChange) {
+        onColumnsChange(newColumns)
+      }
+    },
+    [columnConfig, onColumnsChange]
+  )
+
   // Get sorted columns count for multi-sort display
   const sortedColumnsCount = sorting.length
 
@@ -292,55 +355,68 @@ export function FolderTableView({
   }
 
   return (
-    <div className={cn('w-full overflow-auto', className)}>
-      <table className="w-full border-collapse text-sm">
-        <thead className="sticky top-0 z-10 bg-background border-b">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                const config = columnConfigMap.get(header.column.id) || {
-                  id: header.column.id
-                }
-                return (
-                  <ColumnHeader
-                    key={header.id}
-                    header={header}
-                    columnConfig={config}
-                    sortIndex={getSortIndex(header.column.id)}
-                    totalSortedColumns={sortedColumnsCount}
-                    onWidthChange={handleWidthChange}
-                    onDisplayNameChange={onDisplayNameChange}
-                    isHighlighted={highlightedColumns.includes(header.column.id)}
-                  />
-                )
-              })}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <tr
-              key={row.id}
-              className={cn('border-b border-border/50', 'hover:bg-muted/30', 'transition-colors')}
-              onDoubleClick={() => onNoteOpen?.(row.original.id)}
-            >
-              {row.getVisibleCells().map((cell) => (
-                <td
-                  key={cell.id}
-                  className="px-3 py-2"
-                  style={{
-                    width: cell.column.getSize(),
-                    maxWidth: cell.column.getSize()
-                  }}
-                >
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      modifiers={[restrictToHorizontalAxis]}
+      onDragEnd={handleDragEnd}
+    >
+      <div className={cn('w-full overflow-auto', className)}>
+        <table className="w-full border-collapse text-sm">
+          <thead className="sticky top-0 z-10 bg-background border-b">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id}>
+                <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
+                  {headerGroup.headers.map((header) => {
+                    const config = columnConfigMap.get(header.column.id) || {
+                      id: header.column.id
+                    }
+                    return (
+                      <SortableColumnHeader
+                        key={header.id}
+                        header={header}
+                        columnConfig={config}
+                        sortIndex={getSortIndex(header.column.id)}
+                        totalSortedColumns={sortedColumnsCount}
+                        onWidthChange={handleWidthChange}
+                        onDisplayNameChange={onDisplayNameChange}
+                        isHighlighted={highlightedColumns.includes(header.column.id)}
+                      />
+                    )
+                  })}
+                </SortableContext>
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map((row) => (
+              <tr
+                key={row.id}
+                className={cn(
+                  'border-b border-border/50',
+                  'hover:bg-muted/30',
+                  'transition-colors'
+                )}
+                onDoubleClick={() => onNoteOpen?.(row.original.id)}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <td
+                    key={cell.id}
+                    className="px-3 py-2"
+                    style={{
+                      width: cell.column.getSize(),
+                      maxWidth: cell.column.getSize()
+                    }}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </DndContext>
   )
 }
 

@@ -305,15 +305,15 @@
 
 **Purpose**: Drag-and-drop column reorder
 
-- [ ] T058 Add drag handles to column headers
-- [ ] T059 Implement column drag-and-drop using @dnd-kit:
+- [x] T058 Add drag handles to column headers
+- [x] T059 Implement column drag-and-drop using @dnd-kit:
   - DndContext wrapper
   - SortableContext for columns
   - useSortable hook per column
-- [ ] T060 Update column order in .folder.md on drop
-- [ ] T061 Visual feedback during drag (placeholder, opacity)
+- [x] T060 Update column order in .folder.md on drop
+- [x] T061 Visual feedback during drag (placeholder, opacity)
 
-**Checkpoint**: Columns can be reordered by dragging
+**Checkpoint**: Columns can be reordered by dragging ✅
 
 ---
 

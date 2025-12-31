@@ -1,33 +1,21 @@
 /**
- * Column Header Component
+ * Sortable Column Header Component
  *
- * Interactive column header for folder table view with:
- * - Sorting: Click to toggle, Shift+click for multi-sort
- * - Resize: Drag right edge to resize column
- * - Display name editing: Double-click to edit inline
+ * A table header cell (<th>) with drag-to-reorder functionality.
+ * Uses @dnd-kit for drag-and-drop support.
+ *
+ * IMPORTANT: This renders a <th> element directly (not wrapped in a div)
+ * to maintain proper table structure.
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useSortable } from '@dnd-kit/sortable'
 import type { Header } from '@tanstack/react-table'
 import type { NoteWithProperties, ColumnConfig } from '@shared/contracts/folder-view-api'
 import { GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// ============================================================================
-// Types
-// ============================================================================
-
-/**
- * Props for drag handle passed from SortableColumnHeader
- */
-export interface DragHandleProps {
-  /** Drag listeners from useSortable */
-  listeners?: Record<string, unknown>
-  /** Drag attributes from useSortable */
-  attributes?: Record<string, unknown>
-}
-
-interface ColumnHeaderProps {
+interface SortableColumnHeaderProps {
   /** TanStack Table header object */
   header: Header<NoteWithProperties, unknown>
   /** Column configuration from view config */
@@ -42,47 +30,39 @@ interface ColumnHeaderProps {
   onDisplayNameChange?: (columnId: string, displayName: string) => void
   /** Whether this column is highlighted (from column selector search) */
   isHighlighted?: boolean
-  /** Props for the drag handle (from SortableColumnHeader) */
-  dragHandleProps?: DragHandleProps
-  /** Whether the column is currently being dragged */
-  isDragging?: boolean
-  /** Additional CSS classes */
-  className?: string
 }
-
-// ============================================================================
-// Utility Functions
-// ============================================================================
 
 /**
  * Capitalize first letter and add spaces before capitals (for camelCase)
  */
 function formatColumnName(str: string): string {
   if (!str) return str
-  // Handle camelCase by adding space before capitals
   const spaced = str.replace(/([A-Z])/g, ' $1').trim()
   return spaced.charAt(0).toUpperCase() + spaced.slice(1)
 }
 
-// ============================================================================
-// Component
-// ============================================================================
-
 /**
- * Interactive column header with sorting, resize, and inline editing.
+ * Sortable table header cell with dnd-kit integration.
+ * Renders a <th> element directly to maintain proper table structure.
  */
-export function ColumnHeader({
+export function SortableColumnHeader({
   header,
   columnConfig,
   sortIndex,
   totalSortedColumns = 0,
   onWidthChange,
   onDisplayNameChange,
-  isHighlighted = false,
-  dragHandleProps,
-  isDragging = false,
-  className
-}: ColumnHeaderProps): React.JSX.Element {
+  isHighlighted = false
+}: SortableColumnHeaderProps): React.JSX.Element {
+  // Sortable hook
+  const { attributes, listeners, setNodeRef, transition, isDragging, isOver } = useSortable({
+    id: columnConfig.id,
+    data: {
+      type: 'column',
+      columnConfig
+    }
+  })
+
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
@@ -95,75 +75,60 @@ export function ColumnHeader({
   // Get column info
   const column = header.column
   const columnId = column.id
-  const sortDirection = column.getIsSorted() // 'asc' | 'desc' | false
+  const sortDirection = column.getIsSorted()
   const canSort = column.getCanSort()
 
-  // Display name: use config displayName, or format the column ID
+  // Display name
   const displayName = columnConfig.displayName || formatColumnName(columnId)
 
+  // Styles for the header cell
+  // NOTE: We intentionally do NOT apply CSS transforms to table cells
+  // as it breaks table layout. Instead, we use opacity for visual feedback.
+  const style: React.CSSProperties = {
+    width: header.getSize(),
+    // Only apply transition for smooth width changes during resize
+    transition: transition || undefined
+  }
+
   // ============================================================================
-  // Sort Handling (T052)
+  // Sort Handling
   // ============================================================================
 
-  /**
-   * Handle click on header to toggle sort.
-   * - Click: Toggle sort (none → asc → desc → none)
-   * - Shift+click: Add to multi-sort
-   */
   const handleSortClick = useCallback(
     (event: React.MouseEvent) => {
-      if (!canSort) return
-
-      // Don't sort if we're editing or clicking the resize handle
-      if (isEditing) return
-
-      // Use TanStack's built-in multi-sort support
-      // Second parameter is `isMulti` - true when shift is held
+      if (!canSort || isEditing) return
       column.toggleSorting(undefined, event.shiftKey)
     },
     [column, canSort, isEditing]
   )
 
   // ============================================================================
-  // Resize Handling (T053)
+  // Resize Handling
   // ============================================================================
 
-  /**
-   * Handle resize start - track initial width
-   */
   const handleResizeStart = useCallback(() => {
     isResizingRef.current = true
     resizeStartWidthRef.current = column.getSize()
   }, [column])
 
-  /**
-   * Handle resize end - emit width change if changed
-   */
   const handleResizeEnd = useCallback(() => {
     if (isResizingRef.current) {
       isResizingRef.current = false
       const newWidth = column.getSize()
-
-      // Only emit if width actually changed
       if (newWidth !== resizeStartWidthRef.current && onWidthChange) {
         onWidthChange(columnId, newWidth)
       }
     }
   }, [column, columnId, onWidthChange])
 
-  /**
-   * Custom resize handler that wraps TanStack's handler
-   */
   const handleResize = useCallback(
     (event: React.MouseEvent | React.TouchEvent) => {
       event.stopPropagation()
       handleResizeStart()
 
-      // Get TanStack's resize handler
       const tanstackHandler = header.getResizeHandler()
       tanstackHandler(event)
 
-      // Listen for mouseup/touchend to detect resize end
       const handleEnd = () => {
         handleResizeEnd()
         document.removeEventListener('mouseup', handleEnd)
@@ -177,12 +142,9 @@ export function ColumnHeader({
   )
 
   // ============================================================================
-  // Display Name Editing (T054)
+  // Display Name Editing
   // ============================================================================
 
-  /**
-   * Enter edit mode on double-click
-   */
   const handleDoubleClick = useCallback(
     (event: React.MouseEvent) => {
       event.stopPropagation()
@@ -193,30 +155,19 @@ export function ColumnHeader({
     [displayName]
   )
 
-  /**
-   * Save the edited display name
-   */
   const saveDisplayName = useCallback(() => {
     const trimmedValue = editValue.trim()
     setIsEditing(false)
-
-    // Only save if value changed and is not empty
     if (trimmedValue && trimmedValue !== displayName && onDisplayNameChange) {
       onDisplayNameChange(columnId, trimmedValue)
     }
   }, [editValue, displayName, columnId, onDisplayNameChange])
 
-  /**
-   * Cancel editing and revert
-   */
   const cancelEdit = useCallback(() => {
     setIsEditing(false)
     setEditValue('')
   }, [])
 
-  /**
-   * Handle key events in edit input
-   */
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === 'Enter') {
@@ -230,14 +181,10 @@ export function ColumnHeader({
     [saveDisplayName, cancelEdit]
   )
 
-  /**
-   * Handle blur on edit input - save changes
-   */
   const handleBlur = useCallback(() => {
     saveDisplayName()
   }, [saveDisplayName])
 
-  // Focus input when entering edit mode
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus()
@@ -249,14 +196,10 @@ export function ColumnHeader({
   // Render
   // ============================================================================
 
-  // Sort indicator
   const renderSortIndicator = () => {
     if (!sortDirection) return null
-
     const arrow = sortDirection === 'asc' ? '▲' : '▼'
-    // Show sort index as superscript only when multi-sorting (more than 1 column sorted)
     const showIndex = totalSortedColumns > 1 && sortIndex !== undefined
-
     return (
       <span className="ml-1 text-muted-foreground/70 whitespace-nowrap">
         {arrow}
@@ -267,39 +210,39 @@ export function ColumnHeader({
 
   return (
     <th
+      ref={setNodeRef}
+      style={style}
       className={cn(
         'px-3 py-2 text-left font-medium text-muted-foreground',
         'select-none relative group',
         canSort && !isEditing && 'cursor-pointer hover:bg-muted/50',
         header.column.getIsResizing() && 'bg-muted/30',
         isHighlighted && 'bg-primary/10 text-primary',
-        isDragging && 'opacity-50',
-        className
+        isDragging && 'opacity-50 z-50',
+        // Drop indicator - blue line on left side
+        isOver &&
+          'before:absolute before:left-0 before:top-1 before:bottom-1 before:w-0.5 before:bg-primary before:rounded-full before:z-20'
       )}
-      style={{ width: header.getSize() }}
       onClick={handleSortClick}
     >
       <div className="flex items-center gap-1 min-w-0">
         {/* Drag handle - visible on hover */}
-        {dragHandleProps && (
-          <div
-            {...(dragHandleProps.listeners as React.HTMLAttributes<HTMLDivElement>)}
-            {...(dragHandleProps.attributes as React.HTMLAttributes<HTMLDivElement>)}
-            onClick={(e) => e.stopPropagation()}
-            className={cn(
-              'flex-shrink-0 cursor-grab active:cursor-grabbing',
-              'opacity-0 group-hover:opacity-100 transition-opacity',
-              'text-muted-foreground/50 hover:text-muted-foreground',
-              '-ml-1 mr-0.5'
-            )}
-            title="Drag to reorder column"
-          >
-            <GripVertical className="h-4 w-4" />
-          </div>
-        )}
+        <div
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          className={cn(
+            'flex-shrink-0 cursor-grab active:cursor-grabbing',
+            'opacity-0 group-hover:opacity-100 transition-opacity',
+            'text-muted-foreground/50 hover:text-muted-foreground',
+            '-ml-1 mr-0.5'
+          )}
+          title="Drag to reorder column"
+        >
+          <GripVertical className="h-4 w-4" />
+        </div>
 
         {isEditing ? (
-          // Edit mode: inline input
           <input
             ref={inputRef}
             type="text"
@@ -315,7 +258,6 @@ export function ColumnHeader({
             )}
           />
         ) : (
-          // Display mode: column name with double-click to edit
           <span
             className="truncate"
             onDoubleClick={handleDoubleClick}
@@ -343,4 +285,4 @@ export function ColumnHeader({
   )
 }
 
-export default ColumnHeader
+export default SortableColumnHeader
