@@ -6,4 +6,19 @@
  */
 
 export { FolderTableView } from './folder-table-view'
-export { PropertyCell } from './property-cell'
+export {
+  PropertyCell,
+  TextCell,
+  NumberCell,
+  CheckboxCell,
+  DateCell,
+  SelectCell,
+  MultiSelectCell,
+  UrlCell,
+  RatingCell,
+  TitleCell,
+  FolderCell,
+  TagsCell,
+  WordCountCell,
+  type PropertyType
+} from './property-cell'

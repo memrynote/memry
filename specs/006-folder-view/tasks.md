@@ -242,19 +242,19 @@
 **Purpose**: Render different property types appropriately
 
 - [x] T040 Create `src/renderer/src/components/folder-view/property-cell.tsx` base component
-- [ ] T041 [P] Implement TextCell - plain text with ellipsis overflow
-- [ ] T042 [P] Implement NumberCell - right-aligned, formatted number
-- [ ] T043 [P] Implement CheckboxCell - green checkmark or gray X icon
-- [ ] T044 [P] Implement DateCell - relative date format (Today, Yesterday, Dec 25)
-- [ ] T045 [P] Implement SelectCell - colored badge
-- [ ] T046 [P] Implement MultiSelectCell - multiple colored badges
-- [ ] T047 [P] Implement UrlCell - clickable link with external icon
-- [ ] T048 [P] Implement RatingCell - star rating display (★★★☆☆)
-- [ ] T049 Implement TitleCell - emoji + title, clickable
-- [ ] T050 Implement FolderCell - relative folder path display
-- [ ] T051 Implement TagsCell - multiple tag badges
+- [x] T041 [P] Implement TextCell - plain text with ellipsis overflow
+- [x] T042 [P] Implement NumberCell - right-aligned, formatted number
+- [x] T043 [P] Implement CheckboxCell - green checkmark or gray X icon
+- [x] T044 [P] Implement DateCell - relative date format (Today, Yesterday, Dec 25)
+- [x] T045 [P] Implement SelectCell - colored badge
+- [x] T046 [P] Implement MultiSelectCell - multiple colored badges
+- [x] T047 [P] Implement UrlCell - clickable link with external icon
+- [x] T048 [P] Implement RatingCell - star rating display (★★★☆☆)
+- [x] T049 Implement TitleCell - emoji + title, clickable
+- [x] T050 Implement FolderCell - relative folder path display
+- [x] T051 Implement TagsCell - multiple tag badges
 
-**Checkpoint**: All property types render correctly
+**Checkpoint**: All property types render correctly ✅
 
 ---
 

@@ -45,7 +45,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     return parts.slice(0, -1).join('/')
   }, [folderPath])
 
-  // Handle opening a note
+  // Handle opening a note (single click opens permanent tab)
   const handleNoteOpen = (noteId: string) => {
     const note = notes.find((n) => n.id === noteId)
     if (note) {
@@ -61,6 +61,31 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         isDeleted: false
       })
     }
+  }
+
+  // Handle clicking a subfolder
+  const handleFolderClick = (subfolderPath: string) => {
+    // Combine current folder path with subfolder
+    const fullPath = folderPath ? `${folderPath}${subfolderPath}` : subfolderPath.slice(1)
+    const folderName = subfolderPath.split('/').pop() || 'Folder'
+
+    openTab({
+      type: 'folder',
+      title: folderName,
+      icon: 'folder',
+      path: `/folder/${encodeURIComponent(fullPath)}`,
+      entityId: fullPath,
+      isPinned: false,
+      isModified: false,
+      isPreview: true,
+      isDeleted: false
+    })
+  }
+
+  // Handle clicking a tag
+  const handleTagClick = (tag: string) => {
+    // TODO: Open search/filter for this tag
+    console.log('Tag clicked:', tag)
   }
 
   // Handle navigating to parent folder
@@ -156,6 +181,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             notes={notes}
             columns={activeView?.columns ?? DEFAULT_COLUMNS}
             onNoteOpen={handleNoteOpen}
+            onFolderClick={handleFolderClick}
+            onTagClick={handleTagClick}
             className="h-full"
           />
         )}
