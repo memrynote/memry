@@ -6,6 +6,8 @@
  */
 
 export { FolderTableView } from './folder-table-view'
+export { ColumnHeader, type DragHandleProps } from './column-header'
+export { SortableColumnHeader } from './sortable-column-header'
 export {
   PropertyCell,
   TextCell,
