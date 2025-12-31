@@ -5,12 +5,12 @@
  * Positioned between the header and the table.
  */
 
-import { Filter, Search } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { ColumnSelector, type AvailableProperty, type BuiltInColumnInfo } from './column-selector'
-import type { ColumnConfig } from '@shared/contracts/folder-view-api'
+import { FilterBuilder } from './filter-builder'
+import type { ColumnConfig, FilterExpression } from '@shared/contracts/folder-view-api'
 
 // ============================================================================
 // Types
@@ -25,8 +25,12 @@ interface FolderViewToolbarProps {
   availableProperties: AvailableProperty[]
   /** Formulas defined in folder config (future) */
   formulas?: Array<{ id: string; expression: string }>
+  /** Current filter expression */
+  filters?: FilterExpression
   /** Called when columns change */
   onColumnsChange: (columns: ColumnConfig[]) => void
+  /** Called when filters change */
+  onFiltersChange: (filters: FilterExpression | undefined) => void
   /** Called when column search changes (for table highlighting) */
   onColumnSearchChange?: (query: string) => void
   /** Additional CSS classes */
@@ -45,7 +49,9 @@ export function FolderViewToolbar({
   builtInColumns,
   availableProperties,
   formulas,
+  filters,
   onColumnsChange,
+  onFiltersChange,
   onColumnSearchChange,
   className
 }: FolderViewToolbarProps): React.JSX.Element {
@@ -66,11 +72,13 @@ export function FolderViewToolbar({
         onSearchChange={onColumnSearchChange}
       />
 
-      {/* Filter Button (placeholder for Phase 14) */}
-      <Button variant="outline" size="sm" className="gap-1.5" disabled>
-        <Filter className="h-4 w-4" />
-        <span>Filter</span>
-      </Button>
+      {/* Filter Builder */}
+      <FilterBuilder
+        filters={filters}
+        availableProperties={availableProperties}
+        builtInColumns={builtInColumns}
+        onFiltersChange={onFiltersChange}
+      />
 
       {/* Spacer */}
       <div className="flex-1" />

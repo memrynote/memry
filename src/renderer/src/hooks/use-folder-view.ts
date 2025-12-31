@@ -5,8 +5,10 @@
  * Handles view configuration, note listing with properties, and column management.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { DEFAULT_COLUMNS, BUILT_IN_COLUMNS } from '@shared/contracts/folder-view-api'
+import type { FilterExpression } from '@shared/contracts/folder-view-api'
+import { evaluateFilter } from '@/lib/filter-evaluator'
 
 // ============================================================================
 // Types (mirrored from preload for renderer use)
@@ -24,7 +26,7 @@ export interface ViewConfig {
   type: 'table' | 'grid' | 'list' | 'kanban'
   default?: boolean
   columns?: ColumnConfig[]
-  filters?: unknown
+  filters?: FilterExpression | unknown // Allow unknown for API compatibility
   order?: Array<{ property: string; direction: 'asc' | 'desc' }>
   groupBy?: unknown
   limit?: number
@@ -110,10 +112,14 @@ interface UseFolderViewResult {
   updateSorting: (order: Array<{ property: string; direction: 'asc' | 'desc' }>) => Promise<void>
   /** Update display name for a property/column */
   updateDisplayName: (columnId: string, displayName: string) => Promise<void>
+  /** Update filter expression for current view */
+  updateFilters: (filters: FilterExpression | undefined) => Promise<void>
   /** Load more notes (pagination) */
   loadMore: () => Promise<void>
   /** Refresh all data */
   refresh: () => Promise<void>
+  /** Total unfiltered note count (for "showing X of Y") */
+  unfilteredCount: number
 }
 
 // ============================================================================
@@ -131,7 +137,6 @@ export function useFolderView({
   const [views, setViews] = useState<ViewConfig[]>([DEFAULT_VIEW])
   const [activeViewIndex, setActiveViewIndex] = useState(0)
   const [notes, setNotes] = useState<NoteWithProperties[]>([])
-  const [totalNotes, setTotalNotes] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [availableProperties, setAvailableProperties] = useState<AvailableProperty[]>([])
   const [builtInColumns, setBuiltInColumns] = useState<
@@ -215,7 +220,6 @@ export function useFolderView({
           setNotes(result.notes)
         }
 
-        setTotalNotes(result.total)
         setHasMore(result.hasMore)
         offsetRef.current = offset + result.notes.length
       } catch (err) {
@@ -345,6 +349,31 @@ export function useFolderView({
   )
 
   /**
+   * Update filter expression for current view
+   */
+  const updateFilters = useCallback(
+    async (filters: FilterExpression | undefined) => {
+      await updateView({ filters })
+    },
+    [updateView]
+  )
+
+  /**
+   * Client-side filtered notes based on active view's filters
+   */
+  const filteredNotes = useMemo(() => {
+    const filters = activeView?.filters as FilterExpression | undefined
+    if (!filters) return notes
+
+    try {
+      return notes.filter((note) => evaluateFilter(note, filters))
+    } catch (err) {
+      console.error('[useFolderView] Filter evaluation error:', err)
+      return notes // Return all notes on error
+    }
+  }, [notes, activeView?.filters])
+
+  /**
    * Update display name for a property/column.
    * Updates both the column config displayName and properties.{id}.displayName
    */
@@ -450,8 +479,9 @@ export function useFolderView({
     views,
     activeViewIndex,
     activeView,
-    notes,
-    totalNotes,
+    notes: filteredNotes,
+    totalNotes: filteredNotes.length,
+    unfilteredCount: notes.length,
     hasMore,
     availableProperties,
     builtInColumns,
@@ -467,6 +497,7 @@ export function useFolderView({
     deleteView,
     updateColumns,
     updateSorting,
+    updateFilters,
     updateDisplayName,
     loadMore,
     refresh

@@ -14,7 +14,7 @@ import { useTabs } from '@/contexts/tabs'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { FolderViewToolbar } from '@/components/folder-view/folder-view-toolbar'
 import { useFolderView } from '@/hooks/use-folder-view'
-import { DEFAULT_COLUMNS } from '@shared/contracts/folder-view-api'
+import { DEFAULT_COLUMNS, type FilterExpression } from '@shared/contracts/folder-view-api'
 
 interface FolderViewPageProps {
   /** Folder path relative to notes/ */
@@ -33,11 +33,14 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     activeViewIndex,
     activeView,
     notes,
+    totalNotes,
+    unfilteredCount,
     isLoading,
     error,
     setActiveViewIndex,
     updateColumns,
     updateSorting,
+    updateFilters,
     updateDisplayName,
     availableProperties,
     builtInColumns
@@ -162,7 +165,13 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
 
         {/* Note count */}
         <span className="text-sm text-muted-foreground">
-          {isLoading ? <Skeleton className="h-4 w-16" /> : `${notes.length} notes`}
+          {isLoading ? (
+            <Skeleton className="h-4 w-16" />
+          ) : totalNotes < unfilteredCount ? (
+            `${totalNotes} of ${unfilteredCount} notes`
+          ) : (
+            `${totalNotes} notes`
+          )}
         </span>
 
         {/* Spacer */}
@@ -211,7 +220,9 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         columns={activeView?.columns ?? DEFAULT_COLUMNS}
         builtInColumns={builtInColumns}
         availableProperties={availableProperties}
+        filters={activeView?.filters as FilterExpression | undefined}
         onColumnsChange={updateColumns}
+        onFiltersChange={updateFilters}
         onColumnSearchChange={setColumnSearchQuery}
       />
 

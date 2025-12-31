@@ -342,13 +342,13 @@
 
 ### Filter UI
 
-- [ ] T066 Create `src/renderer/src/components/folder-view/filter-builder.tsx`:
+- [x] T066 Create `src/renderer/src/components/folder-view/filter-builder.tsx`:
   - Dropdown button in toolbar
   - Visual filter tree builder
   - Add filter group (AND/OR)
   - Add filter condition
-  - Nesting support
-- [ ] T067 Create `src/renderer/src/components/folder-view/filter-row.tsx`:
+  - Nesting support (up to 2-3 levels)
+- [x] T067 Create `src/renderer/src/components/folder-view/filter-row.tsx`:
   - Property selector dropdown
   - Operator selector (based on property type)
   - Value input (type-appropriate)
@@ -357,22 +357,22 @@
 
 ### Filter Logic
 
-- [ ] T068 Create `src/renderer/src/lib/filter-evaluator.ts`:
+- [x] T068 Create `src/renderer/src/lib/filter-evaluator.ts`:
   - evaluateFilter(note, filterExpression) function
   - Support AND, OR, NOT nesting
   - Support all operators per type
-- [ ] T069 Implement filter operators per property type:
+- [x] T069 Implement filter operators per property type:
   - Text: ==, !=, contains, startsWith, endsWith, isEmpty
   - Number: ==, !=, >, >=, <, <=
   - Checkbox: isChecked, isUnchecked
   - Date: ==, before, after, isEmpty
   - Select: ==, !=
   - Tags/Array: contains, isEmpty
-- [ ] T070 Apply filters client-side using filter evaluator
-- [ ] T071 Persist filters to .folder.md view.filters
-- [ ] T072 Show active filter indicator on filter button
+- [x] T070 Apply filters client-side using filter evaluator
+- [x] T071 Persist filters to .folder.md view.filters
+- [x] T072 Show active filter indicator on filter button
 
-**Checkpoint**: Advanced filtering works and persists
+**Checkpoint**: Advanced filtering works and persists ✅
 
 ---
 
