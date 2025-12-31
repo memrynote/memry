@@ -65,6 +65,7 @@ const TYPE_TO_ICON: Record<TabType, string> = {
   completed: 'check-circle',
   project: 'folder',
   note: 'file-text',
+  folder: 'folder', // Folder view 
   journal: 'book-open',
   search: 'search',
   settings: 'settings',

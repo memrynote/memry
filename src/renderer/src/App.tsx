@@ -9,6 +9,7 @@ import { InboxPage } from '@/pages/inbox'
 import { JournalPage } from '@/pages/journal'
 import { TasksPage } from '@/pages/tasks'
 import { NotePage } from '@/pages/note'
+import { FolderViewPage } from '@/pages/folder-view'
 import { SettingsPage } from '@/pages/settings'
 import { TemplatesPage } from '@/pages/templates'
 import { TemplateEditorPage } from '@/pages/template-editor'
@@ -138,6 +139,8 @@ const TabContentRenderer = ({
       return <TemplatesPage />
     case 'template-editor':
       return <TemplateEditorPage templateId={activeTab.entityId} />
+    case 'folder':
+      return <FolderViewPage folderPath={activeTab.entityId} />
     case 'home':
     default:
       // Placeholder for other tab types
@@ -280,8 +283,9 @@ const AppContent = ({
               <div
                 key={groupId}
                 style={{ width: `${width}%` }}
-                className={`h-full overflow-hidden shrink-0 ${index > 0 ? 'border-l border-gray-300 dark:border-gray-600' : ''
-                  }`}
+                className={`h-full overflow-hidden shrink-0 ${
+                  index > 0 ? 'border-l border-gray-300 dark:border-gray-600' : ''
+                }`}
               >
                 <TabBarWithDrag groupId={groupId} />
               </div>
