@@ -101,6 +101,7 @@ const TAB_ICONS: Record<TabType, string> = {
   completed: 'check-circle',
   project: 'folder',
   note: 'file-text',
+  folder: 'folder', // Folder view (Bases-like database view)
   journal: 'book-open',
   search: 'search',
   settings: 'settings',

@@ -207,20 +207,12 @@ export function registerFolderViewHandlers(): void {
         try {
           db = getDataDb()
         } catch {
-          console.log('[folder-view] Database not initialized')
           return { notes: [], total: 0, hasMore: false }
         }
 
         // Build path pattern for LIKE query
         // folderPath is like "projects" -> match "notes/projects/%"
         const pathPattern = input.folderPath ? `notes/${input.folderPath}/%` : 'notes/%'
-
-        console.log('[folder-view] LIST_WITH_PROPERTIES:', {
-          folderPath: input.folderPath,
-          pathPattern,
-          limit: input.limit,
-          offset: input.offset
-        })
 
         // Query notes in folder (exclude journal entries where date IS NOT NULL)
         const notesResult = await db
@@ -239,13 +231,10 @@ export function registerFolderViewHandlers(): void {
           .offset(input.offset)
           .orderBy(noteCache.modifiedAt)
 
-        console.log('[folder-view] Query returned', notesResult.length, 'notes')
-
         const hasMore = notesResult.length > input.limit
         const notes = notesResult.slice(0, input.limit)
 
         if (notes.length === 0) {
-          console.log('[folder-view] No notes found')
           return { notes: [], total: 0, hasMore: false }
         }
 

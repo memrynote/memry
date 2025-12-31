@@ -211,7 +211,7 @@
 ### Page Component
 
 - [ ] T034 Implement `src/renderer/src/pages/folder-view.tsx`:
-  - FolderViewPage component with folderPath prop
+  - FolderViewPage component with folderPath propFtab
   - Header with folder name, note count, back button (for nested)
   - View switcher (tabs for multiple views)
   - Toolbar placeholder

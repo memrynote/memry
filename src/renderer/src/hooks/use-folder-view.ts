@@ -197,16 +197,12 @@ export function useFolderView({
           .filter((c) => !BUILT_IN_COLUMNS.includes(c.id as (typeof BUILT_IN_COLUMNS)[number]))
           .map((c) => c.id)
 
-        console.log('[useFolderView] Fetching notes for folder:', folderPath)
-
         const result = await window.api.folderView.listWithProperties({
           folderPath,
           properties: propertyIds,
           limit: pageSize,
           offset
         })
-
-        console.log('[useFolderView] Got result:', result)
 
         if (append) {
           setNotes((prev) => [...prev, ...result.notes])
