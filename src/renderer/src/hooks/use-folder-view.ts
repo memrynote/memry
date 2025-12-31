@@ -55,7 +55,8 @@ const DEFAULT_VIEW: ViewConfig = {
   name: 'Default',
   type: 'table',
   default: true,
-  columns: DEFAULT_COLUMNS
+  columns: DEFAULT_COLUMNS,
+  order: [{ property: 'modified', direction: 'desc' }]
 }
 
 // ============================================================================
@@ -105,6 +106,8 @@ interface UseFolderViewResult {
   deleteView: (viewName: string) => Promise<void>
   /** Update column configuration for current view */
   updateColumns: (columns: ColumnConfig[]) => Promise<void>
+  /** Update sort order for current view */
+  updateSorting: (order: Array<{ property: string; direction: 'asc' | 'desc' }>) => Promise<void>
   /** Update display name for a property/column */
   updateDisplayName: (columnId: string, displayName: string) => Promise<void>
   /** Load more notes (pagination) */
@@ -332,6 +335,16 @@ export function useFolderView({
   )
 
   /**
+   * Update sort order for current view
+   */
+  const updateSorting = useCallback(
+    async (order: Array<{ property: string; direction: 'asc' | 'desc' }>) => {
+      await updateView({ order })
+    },
+    [updateView]
+  )
+
+  /**
    * Update display name for a property/column.
    * Updates both the column config displayName and properties.{id}.displayName
    */
@@ -453,6 +466,7 @@ export function useFolderView({
     addView,
     deleteView,
     updateColumns,
+    updateSorting,
     updateDisplayName,
     loadMore,
     refresh

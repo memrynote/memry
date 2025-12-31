@@ -5,7 +5,7 @@
  * Displays notes in a table format with sortable columns and filters.
  */
 
-export { FolderTableView } from './folder-table-view'
+export { FolderTableView, type OrderConfig } from './folder-table-view'
 export { ColumnHeader, type DragHandleProps } from './column-header'
 export { SortableColumnHeader } from './sortable-column-header'
 export {

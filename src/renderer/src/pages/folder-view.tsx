@@ -37,6 +37,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     error,
     setActiveViewIndex,
     updateColumns,
+    updateSorting,
     updateDisplayName,
     availableProperties,
     builtInColumns
@@ -226,10 +227,12 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
           <FolderTableView
             notes={notes}
             columns={activeView?.columns ?? DEFAULT_COLUMNS}
+            initialSorting={activeView?.order}
             onNoteOpen={handleNoteOpen}
             onFolderClick={handleFolderClick}
             onTagClick={handleTagClick}
             onColumnsChange={updateColumns}
+            onSortingChange={updateSorting}
             onDisplayNameChange={updateDisplayName}
             highlightedColumns={highlightedColumns}
             className="h-full"
