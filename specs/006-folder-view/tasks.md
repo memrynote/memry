@@ -26,11 +26,11 @@
 
 **Purpose**: Install dependencies and prepare project structure
 
-- [ ] T001 [P] Install @tanstack/react-table dependency: `pnpm add @tanstack/react-table`
-- [ ] T002 [P] Create `src/renderer/src/components/folder-view/` directory structure
-- [ ] T003 [P] Create `src/renderer/src/pages/folder-view.tsx` empty placeholder component
+- [x] T001 [P] Install @tanstack/react-table dependency: `pnpm add @tanstack/react-table`
+- [x] T002 [P] Create `src/renderer/src/components/folder-view/` directory structure
+- [x] T003 [P] Create `src/renderer/src/pages/folder-view.tsx` empty placeholder component
 
-**Checkpoint**: Dependencies installed, directories created
+**Checkpoint**: Dependencies installed, directories created ✅
 
 ---
 
@@ -42,12 +42,12 @@
 
 ### Schema Extension
 
-- [ ] T004 Update `FolderConfig` interface in `src/shared/contracts/templates-api.ts`:
+- [x] T004 Update `FolderConfig` interface in `src/shared/contracts/templates-api.ts`:
   - Add `views?: ViewConfig[]` field
   - Add `formulas?: Record<string, string>` field
   - Add `properties?: Record<string, PropertyDisplay>` field
   - Add `summaries?: Record<string, SummaryConfig>` field
-- [ ] T005 Create `src/shared/contracts/folder-view-api.ts` with full type definitions:
+- [x] T005 Create `src/shared/contracts/folder-view-api.ts` with full type definitions:
   - ViewConfig interface (name, type, columns, filters, order, groupBy)
   - ColumnConfig interface (id, width, displayName)
   - FilterExpression type (string | {and} | {or} | {not})
@@ -56,8 +56,8 @@
   - PropertyDisplay interface
   - SummaryConfig interface
   - NoteWithProperties interface
-- [ ] T006 Update `parseFolderConfig` in `src/main/vault/folders.ts` to parse view fields
-- [ ] T007 Update `serializeFolderConfig` in `src/main/vault/folders.ts` to serialize view fields
+- [x] T006 Update `parseFolderConfig` in `src/main/vault/folders.ts` to parse view fields
+- [x] T007 Update `serializeFolderConfig` in `src/main/vault/folders.ts` to serialize view fields
 
 ### Cache Table (Optional Performance Optimization)
 
@@ -67,7 +67,7 @@
 - [ ] T010 Run `pnpm db:generate:index` to create migration
 - [ ] T011 Run `pnpm db:push:index` to apply migration (development)
 
-**Checkpoint**: .folder.md can store view configuration
+**Checkpoint**: .folder.md can store view configuration ✅
 
 ---
 
@@ -75,7 +75,7 @@
 
 **Purpose**: Define API contracts and IPC channel constants
 
-- [ ] T012 [P] Add FolderViewChannels to `src/shared/ipc-channels.ts`:
+- [x] T012 [P] Add FolderViewChannels to `src/shared/ipc-channels.ts`:
   - GET_CONFIG: 'folder-view:get-config'
   - SET_CONFIG: 'folder-view:set-config'
   - LIST_WITH_PROPERTIES: 'folder-view:list-with-properties'
@@ -83,14 +83,14 @@
   - GET_VIEWS: 'folder-view:get-views'
   - SET_VIEW: 'folder-view:set-view'
   - DELETE_VIEW: 'folder-view:delete-view'
-- [ ] T013 [P] Add Zod validation schemas to `src/shared/contracts/folder-view-api.ts`:
+- [x] T013 [P] Add Zod validation schemas to `src/shared/contracts/folder-view-api.ts`:
   - ViewConfigSchema
   - ColumnConfigSchema
   - FilterExpressionSchema
   - OrderConfigSchema
   - Request/Response types
 
-**Checkpoint**: API contracts are defined
+**Checkpoint**: API contracts are defined ✅
 
 ---
 
@@ -111,30 +111,30 @@
 
 ### IPC Handlers
 
-- [ ] T016 Create `src/main/ipc/folder-view-handlers.ts` with handler structure
-- [ ] T017 Implement GET_CONFIG handler:
+- [x] T016 Create `src/main/ipc/folder-view-handlers.ts` with handler structure
+- [x] T017 Implement GET_CONFIG handler:
   - Read .folder.md
   - Return views array or default view if none
-- [ ] T018 Implement SET_CONFIG handler:
+- [x] T018 Implement SET_CONFIG handler:
   - Validate config
   - Write to .folder.md
   - Update cache (if using)
-- [ ] T019 Implement LIST_WITH_PROPERTIES handler:
+- [x] T019 Implement LIST_WITH_PROPERTIES handler:
   - Query notes in folder (recursive with LIKE)
   - Join with note_properties
   - Compute relative folder path
   - Exclude journal entries (date IS NULL)
-- [ ] T020 Implement GET_AVAILABLE_PROPERTIES handler:
+- [x] T020 Implement GET_AVAILABLE_PROPERTIES handler:
   - Get distinct property names used in folder
   - Include usage count
   - Join with property_definitions for type info
-- [ ] T021 Implement GET_VIEWS handler:
+- [x] T021 Implement GET_VIEWS handler:
   - Return all views for folder
-- [ ] T022 Implement SET_VIEW handler:
+- [x] T022 Implement SET_VIEW handler:
   - Add or update a single view by name
-- [ ] T023 Implement DELETE_VIEW handler:
+- [x] T023 Implement DELETE_VIEW handler:
   - Remove a view by name
-- [ ] T024 Register folder-view handlers in `src/main/ipc/index.ts`
+- [x] T024 Register folder-view handlers in `src/main/ipc/index.ts`
 
 ### Cache Operations (Optional)
 
@@ -143,7 +143,7 @@
   - invalidateFolderViewCache(path)
   - getFolderViewFromCache(path, hash)
 
-**Checkpoint**: Backend handlers are functional
+**Checkpoint**: Backend handlers are functional ✅
 
 ---
 
@@ -151,7 +151,7 @@
 
 **Purpose**: Expose API to renderer and create service wrapper
 
-- [ ] T026 Add folderView API to `src/preload/index.ts`:
+- [x] T026 Add folderView API to `src/preload/index.ts`:
   - getConfig(folderPath)
   - setConfig(folderPath, config)
   - getViews(folderPath)
@@ -159,10 +159,10 @@
   - deleteView(folderPath, viewName)
   - listWithProperties(folderPath, options)
   - getAvailableProperties(folderPath)
-- [ ] T027 Add TypeScript declarations to `src/preload/index.d.ts`
+- [x] T027 Add TypeScript declarations to `src/preload/index.d.ts`
 - [ ] T028 Create `src/renderer/src/services/folder-view-service.ts` IPC client wrapper
 
-**Checkpoint**: Renderer can communicate with backend
+**Checkpoint**: Renderer can communicate with backend ✅
 
 ---
 
@@ -170,17 +170,17 @@
 
 **Purpose**: Add folder tab type and routing
 
-- [ ] T029 Add 'folder' to TabType union in `src/renderer/src/contexts/tabs/types.ts`
-- [ ] T030 Add folder case to TabContent switch in `src/renderer/src/components/split-view/tab-content.tsx`:
+- [x] T029 Add 'folder' to TabType union in `src/renderer/src/contexts/tabs/types.ts`
+- [x] T030 Add folder case to TabContent switch in `src/renderer/src/components/split-view/tab-content.tsx` and `src/renderer/src/App.tsx` (TabContentRenderer):
   - Route to FolderViewPage component
   - Pass folderPath from tab.entityId
-- [ ] T031 Modify `src/renderer/src/components/notes-tree.tsx` handleSelectionChange:
+- [x] T031 Modify `src/renderer/src/components/notes-tree.tsx` handleSelectionChange:
   - Detect folder click (id starts with 'folder-')
   - Skip root folder (notes/) - do not open view
   - Open folder tab with path, title, icon
   - Use isPreview: true for single-click
 
-**Checkpoint**: Clicking folder opens folder view tab
+**Checkpoint**: Clicking folder opens folder view tab ✅
 
 ---
 
@@ -188,7 +188,7 @@
 
 **Purpose**: Create data fetching hook for folder view
 
-- [ ] T032 Create `src/renderer/src/hooks/use-folder-view.ts` with:
+- [x] T032 Create `src/renderer/src/hooks/use-folder-view.ts` with:
   - useFolderView(folderPath) hook
   - Fetch views on mount
   - Track activeViewIndex
@@ -198,9 +198,9 @@
   - Provide updateView function
   - Provide addView, deleteView functions
   - Provide refresh function
-- [ ] T033 Add debounced config save (300ms) for column resize/reorder operations
+- [x] T033 Add debounced config save (300ms) for column resize/reorder operations
 
-**Checkpoint**: Data fetching hook is ready
+**Checkpoint**: Data fetching hook is ready ✅
 
 ---
 
@@ -210,8 +210,8 @@
 
 ### Page Component
 
-- [ ] T034 Implement `src/renderer/src/pages/folder-view.tsx`:
-  - FolderViewPage component with folderPath propFtab
+- [x] T034 Implement `src/renderer/src/pages/folder-view.tsx`:
+  - FolderViewPage component with folderPath prop
   - Header with folder name, note count, back button (for nested)
   - View switcher (tabs for multiple views)
   - Toolbar placeholder
@@ -221,19 +221,19 @@
 
 ### Table Component
 
-- [ ] T035 Create `src/renderer/src/components/folder-view/folder-table-view.tsx`:
+- [x] T035 Create `src/renderer/src/components/folder-view/folder-table-view.tsx`:
   - Use useReactTable from @tanstack/react-table
   - Enable getCoreRowModel
   - Enable getSortedRowModel
   - Enable getFilteredRowModel
   - Enable column resizing (columnResizeMode: 'onChange')
   - Map columns from config to TanStack column definitions
-- [ ] T036 Implement table header rendering with column headers
-- [ ] T037 Implement table body rendering with rows
-- [ ] T038 Add row click handler (single-click = select, double-click = open note in new tab)
-- [ ] T039 Add row hover styling
+- [x] T036 Implement table header rendering with column headers
+- [x] T037 Implement table body rendering with rows
+- [x] T038 Add row click handler (single-click = select, double-click = open note in new tab)
+- [x] T039 Add row hover styling
 
-**Checkpoint**: Basic table displays notes
+**Checkpoint**: Basic table displays notes ✅
 
 ---
 
@@ -241,7 +241,7 @@
 
 **Purpose**: Render different property types appropriately
 
-- [ ] T040 Create `src/renderer/src/components/folder-view/property-cell.tsx` base component
+- [x] T040 Create `src/renderer/src/components/folder-view/property-cell.tsx` base component
 - [ ] T041 [P] Implement TextCell - plain text with ellipsis overflow
 - [ ] T042 [P] Implement NumberCell - right-aligned, formatted number
 - [ ] T043 [P] Implement CheckboxCell - green checkmark or gray X icon

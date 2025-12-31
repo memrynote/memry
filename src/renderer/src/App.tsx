@@ -5,14 +5,6 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { Separator } from '@/components/ui/separator'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { Toaster } from '@/components/ui/sonner'
-import { InboxPage } from '@/pages/inbox'
-import { JournalPage } from '@/pages/journal'
-import { TasksPage } from '@/pages/tasks'
-import { NotePage } from '@/pages/note'
-import { FolderViewPage } from '@/pages/folder-view'
-import { SettingsPage } from '@/pages/settings'
-import { TemplatesPage } from '@/pages/templates'
-import { TemplateEditorPage } from '@/pages/template-editor'
 import { DragProvider, type DragState } from '@/contexts/drag-context'
 import { AIAgentProvider } from '@/contexts/ai-agent-context'
 import { GlobalAIPanel } from '@/components/ai-agent'
@@ -23,10 +15,10 @@ import { getFilteredTasks } from '@/lib/task-utils'
 import { ThemeProvider } from 'next-themes'
 
 // Tab System imports
-import { TabProvider, useTabs, useActiveTab, getOrderedGroupWidths } from '@/contexts/tabs'
+import { TabProvider, useTabs, getOrderedGroupWidths } from '@/contexts/tabs'
 import { TasksProvider } from '@/contexts/tasks'
 import { TabBarWithDrag, TabDragProvider, TabErrorBoundary } from '@/components/tabs'
-import { SplitViewContainer } from '@/components/split-view'
+import { SplitViewContainer, SinglePaneContent } from '@/components/split-view'
 import { ChordIndicator, KeyboardShortcutsDialog } from '@/components/keyboard'
 import { SearchModal } from '@/components/search'
 import {
@@ -57,129 +49,15 @@ export type TaskSelectionType = 'view' | 'project'
 export type AppPage = BasePage | 'tasks'
 
 // =============================================================================
-// TAB CONTENT RENDERER
-// =============================================================================
-
-interface TabContentRendererProps {
-  tasks: Task[]
-  projects: Project[]
-  selectedTaskIds: Set<string>
-  onTasksChange: (tasks: Task[]) => void
-  onSelectionChange: (id: string, type: TaskSelectionType) => void
-  onSelectedTaskIdsChange: (ids: Set<string>) => void
-}
-
-const TabContentRenderer = ({
-  tasks,
-  projects,
-  selectedTaskIds,
-  onTasksChange,
-  onSelectionChange,
-  onSelectedTaskIdsChange
-}: TabContentRendererProps): React.JSX.Element => {
-  const activeTab = useActiveTab()
-
-  if (!activeTab) {
-    return <InboxPage />
-  }
-
-  // Route based on tab type
-  switch (activeTab.type) {
-    case 'inbox':
-      return <InboxPage />
-    // New unified tasks tab type
-    case 'tasks':
-      return (
-        <TasksPage
-          selectedId="all"
-          selectedType="view"
-          tasks={tasks}
-          projects={projects}
-          onTasksChange={onTasksChange}
-          onSelectionChange={onSelectionChange}
-          selectedTaskIds={selectedTaskIds}
-          onSelectedTaskIdsChange={onSelectedTaskIdsChange}
-        />
-      )
-    // Legacy task tab types (kept for backwards compatibility)
-    case 'all-tasks':
-    case 'today':
-    case 'upcoming':
-    case 'completed':
-    case 'project': {
-      // Derive selection from active tab (not from external state)
-      const selectedId =
-        activeTab.type === 'project'
-          ? activeTab.entityId || 'personal'
-          : activeTab.type === 'all-tasks'
-            ? 'all'
-            : activeTab.type
-      const selectedType = activeTab.type === 'project' ? 'project' : 'view'
-
-      return (
-        <TasksPage
-          selectedId={selectedId}
-          selectedType={selectedType}
-          tasks={tasks}
-          projects={projects}
-          onTasksChange={onTasksChange}
-          onSelectionChange={onSelectionChange}
-          selectedTaskIds={selectedTaskIds}
-          onSelectedTaskIdsChange={onSelectedTaskIdsChange}
-        />
-      )
-    }
-    case 'journal':
-      return <JournalPage />
-    case 'note':
-      return <NotePage noteId={activeTab.entityId} />
-    case 'settings':
-      return <SettingsPage />
-    case 'templates':
-      return <TemplatesPage />
-    case 'template-editor':
-      return <TemplateEditorPage templateId={activeTab.entityId} />
-    case 'folder':
-      return <FolderViewPage folderPath={activeTab.entityId} />
-    case 'home':
-    default:
-      // Placeholder for other tab types
-      return (
-        <div className="flex items-center justify-center h-full text-gray-500">
-          <div className="text-center">
-            <p className="text-lg font-medium">{activeTab.title}</p>
-            <p className="text-sm">Tab type: {activeTab.type}</p>
-          </div>
-        </div>
-      )
-  }
-}
-
-// =============================================================================
 // MAIN APP CONTENT (inside TabProvider)
 // =============================================================================
 
 interface AppContentProps {
-  tasks: Task[]
-  projects: Project[]
-  selectedTaskIds: Set<string>
-  onTasksChange: (tasks: Task[]) => void
-  onSelectionChange: (id: string, type: TaskSelectionType) => void
-  onSelectedTaskIdsChange: (ids: Set<string>) => void
   searchOpen: boolean
   onSearchOpenChange: (open: boolean) => void
 }
 
-const AppContent = ({
-  tasks,
-  projects,
-  selectedTaskIds,
-  onTasksChange,
-  onSelectionChange,
-  onSelectedTaskIdsChange,
-  searchOpen,
-  onSearchOpenChange
-}: AppContentProps): React.JSX.Element => {
+const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.JSX.Element => {
   const { state, openTab } = useTabs()
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
 
@@ -339,14 +217,7 @@ const AppContent = ({
         ) : (
           // Single pane - render content directly (full width)
           <div className="flex-1 flex flex-col overflow-hidden">
-            <TabContentRenderer
-              tasks={tasks}
-              projects={projects}
-              selectedTaskIds={selectedTaskIds}
-              onTasksChange={onTasksChange}
-              onSelectionChange={onSelectionChange}
-              onSelectedTaskIdsChange={onSelectedTaskIdsChange}
-            />
+            <SinglePaneContent />
           </div>
         )}
 
@@ -607,17 +478,6 @@ function App(): React.JSX.Element {
     [projects, taskDragEnd]
   )
 
-  // Update selection from TasksPage
-  const handleSelectionChange = useCallback((ids: Set<string>): void => {
-    setSelectedTaskIds(ids)
-  }, [])
-
-  // Task selection is now handled internally by TasksPage via internal tabs
-  // This callback is kept for interface compatibility but is a no-op
-  const handleTaskSelectionChange = useCallback((_id: string, _type: TaskSelectionType): void => {
-    // No-op - internal tabs manage selection now
-  }, [])
-
   // Main content with TabProvider and TasksProvider wrapping everything
   // Wrapped in TabErrorBoundary for graceful error handling
   const mainContent = (
@@ -638,16 +498,7 @@ function App(): React.JSX.Element {
               onOpenSearch={() => setSearchOpen(true)}
             />
             <SidebarInset className="flex flex-col">
-              <AppContent
-                tasks={tasks}
-                projects={projectsWithCounts}
-                selectedTaskIds={selectedTaskIds}
-                onTasksChange={handleTasksChange}
-                onSelectionChange={handleTaskSelectionChange}
-                onSelectedTaskIdsChange={handleSelectionChange}
-                searchOpen={searchOpen}
-                onSearchOpenChange={setSearchOpen}
-              />
+              <AppContent searchOpen={searchOpen} onSearchOpenChange={setSearchOpen} />
             </SidebarInset>
             {/* Drag Overlay - only for task drag to sidebar */}
             <TaskDragOverlay projects={projectsWithCounts} />

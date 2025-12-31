@@ -3,34 +3,35 @@
  */
 
 // Main container
-export { SplitViewContainer } from './split-view-container';
+export { SplitViewContainer } from './split-view-container'
 
 // Layout renderer
-export { SplitLayoutRenderer } from './split-layout-renderer';
+export { SplitLayoutRenderer } from './split-layout-renderer'
 
 // Pane components
-export { SplitPane } from './split-pane';
-export { TabPane } from './tab-pane';
-export { TabPaneWithDropZones } from './tab-pane-with-drop-zones';
-export { TabContent } from './tab-content';
-export { EmptyPaneState } from './empty-pane-state';
+export { SplitPane } from './split-pane'
+export { TabPane } from './tab-pane'
+export { TabPaneWithDropZones } from './tab-pane-with-drop-zones'
+export { TabContent } from './tab-content'
+export { SinglePaneContent } from './single-pane-content'
+export { EmptyPaneState } from './empty-pane-state'
 
 // UI components
-export { ResizeHandle } from './resize-handle';
+export { ResizeHandle } from './resize-handle'
 
 // Drop zones (drag-to-split)
-export { DropZone, getDropZoneLabel, type DropZonePosition } from './drop-zone';
-export { SplitDropZones } from './split-drop-zones';
-export { SplitPreview } from './split-preview';
+export { DropZone, getDropZoneLabel, type DropZonePosition } from './drop-zone'
+export { SplitDropZones } from './split-drop-zones'
+export { SplitPreview } from './split-preview'
 
 // Layout presets
-export { LayoutPicker } from './layout-picker';
+export { LayoutPicker } from './layout-picker'
 export {
   layoutPresets,
   applyLayoutPreset,
   type LayoutPreset,
-  type LayoutPresetConfig,
-} from './layout-presets';
+  type LayoutPresetConfig
+} from './layout-presets'
 
 // Helper functions
 export {
@@ -41,5 +42,5 @@ export {
   insertSplitAtGroup,
   countPanes,
   hasGroupInLayout,
-  getSiblingGroupId,
-} from './layout-helpers';
+  getSiblingGroupId
+} from './layout-helpers'
