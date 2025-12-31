@@ -45,6 +45,8 @@ interface FolderTableViewProps {
   onColumnsChange?: (columns: ColumnConfig[]) => void
   /** Called when display name changes for a column */
   onDisplayNameChange?: (columnId: string, displayName: string) => void
+  /** Column IDs to highlight (from column selector search) */
+  highlightedColumns?: string[]
   /** Loading state */
   isLoading?: boolean
   /** Additional CSS classes */
@@ -79,6 +81,7 @@ export function FolderTableView({
   onTagClick,
   onColumnsChange,
   onDisplayNameChange,
+  highlightedColumns = [],
   isLoading,
   className
 }: FolderTableViewProps): React.JSX.Element {
@@ -307,6 +310,7 @@ export function FolderTableView({
                     totalSortedColumns={sortedColumnsCount}
                     onWidthChange={handleWidthChange}
                     onDisplayNameChange={onDisplayNameChange}
+                    isHighlighted={highlightedColumns.includes(header.column.id)}
                   />
                 )
               })}
