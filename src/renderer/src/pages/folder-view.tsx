@@ -27,8 +27,17 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   const { openTab } = useTabs()
 
   // Use the folder view hook
-  const { views, activeViewIndex, activeView, notes, isLoading, error, setActiveViewIndex } =
-    useFolderView({ folderPath: folderPath ?? '' })
+  const {
+    views,
+    activeViewIndex,
+    activeView,
+    notes,
+    isLoading,
+    error,
+    setActiveViewIndex,
+    updateColumns,
+    updateDisplayName
+  } = useFolderView({ folderPath: folderPath ?? '' })
 
   // Get folder display name
   const folderName = useMemo(() => {
@@ -183,6 +192,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             onNoteOpen={handleNoteOpen}
             onFolderClick={handleFolderClick}
             onTagClick={handleTagClick}
+            onColumnsChange={updateColumns}
+            onDisplayNameChange={updateDisplayName}
             className="h-full"
           />
         )}

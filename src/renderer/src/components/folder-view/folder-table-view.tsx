@@ -28,6 +28,7 @@ import {
   PropertyCell,
   type PropertyType
 } from './property-cell'
+import { ColumnHeader } from './column-header'
 
 interface FolderTableViewProps {
   /** Notes to display */
@@ -42,6 +43,8 @@ interface FolderTableViewProps {
   onTagClick?: (tag: string) => void
   /** Called when column config changes (resize, reorder) */
   onColumnsChange?: (columns: ColumnConfig[]) => void
+  /** Called when display name changes for a column */
+  onDisplayNameChange?: (columnId: string, displayName: string) => void
   /** Loading state */
   isLoading?: boolean
   /** Additional CSS classes */
@@ -74,11 +77,32 @@ export function FolderTableView({
   onNoteOpen,
   onFolderClick,
   onTagClick,
-  onColumnsChange: _onColumnsChange,
+  onColumnsChange,
+  onDisplayNameChange,
   isLoading,
   className
 }: FolderTableViewProps): React.JSX.Element {
   const [sorting, setSorting] = useState<SortingState>([])
+
+  // Create a map of column configs for quick lookup
+  const columnConfigMap = useMemo(() => {
+    const map = new Map<string, ColumnConfig>()
+    columnConfig.forEach((col) => map.set(col.id, col))
+    return map
+  }, [columnConfig])
+
+  // Handle column width change from ColumnHeader
+  const handleWidthChange = useCallback(
+    (columnId: string, width: number) => {
+      if (!onColumnsChange) return
+
+      const updatedColumns = columnConfig.map((col) =>
+        col.id === columnId ? { ...col, width } : col
+      )
+      onColumnsChange(updatedColumns)
+    },
+    [columnConfig, onColumnsChange]
+  )
 
   // Memoized cell renderer for title column
   const renderTitleCell = useCallback(
@@ -233,6 +257,18 @@ export function FolderTableView({
     columnResizeMode: 'onChange'
   })
 
+  // Get sorted columns count for multi-sort display
+  const sortedColumnsCount = sorting.length
+
+  // Get sort index for a column (1-based)
+  const getSortIndex = useCallback(
+    (columnId: string): number | undefined => {
+      const index = sorting.findIndex((s) => s.id === columnId)
+      return index >= 0 ? index + 1 : undefined
+    },
+    [sorting]
+  )
+
   if (isLoading) {
     return (
       <div className={cn('flex items-center justify-center h-64', className)}>
@@ -258,39 +294,22 @@ export function FolderTableView({
         <thead className="sticky top-0 z-10 bg-background border-b">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <th
-                  key={header.id}
-                  className={cn(
-                    'px-3 py-2 text-left font-medium text-muted-foreground',
-                    'cursor-pointer hover:bg-muted/50 select-none',
-                    'relative group'
-                  )}
-                  style={{ width: header.getSize() }}
-                  onClick={header.column.getToggleSortingHandler()}
-                >
-                  <div className="flex items-center gap-1">
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                    <span className="text-muted-foreground/50">
-                      {{
-                        asc: ' ↑',
-                        desc: ' ↓'
-                      }[header.column.getIsSorted() as string] ?? null}
-                    </span>
-                  </div>
-                  {/* Resize handle */}
-                  <div
-                    onMouseDown={header.getResizeHandler()}
-                    onTouchStart={header.getResizeHandler()}
-                    onClick={(e) => e.stopPropagation()}
-                    className={cn(
-                      'absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none',
-                      'opacity-0 group-hover:opacity-100 hover:bg-primary/50',
-                      header.column.getIsResizing() && 'opacity-100 bg-primary'
-                    )}
+              {headerGroup.headers.map((header) => {
+                const config = columnConfigMap.get(header.column.id) || {
+                  id: header.column.id
+                }
+                return (
+                  <ColumnHeader
+                    key={header.id}
+                    header={header}
+                    columnConfig={config}
+                    sortIndex={getSortIndex(header.column.id)}
+                    totalSortedColumns={sortedColumnsCount}
+                    onWidthChange={handleWidthChange}
+                    onDisplayNameChange={onDisplayNameChange}
                   />
-                </th>
-              ))}
+                )
+              })}
             </tr>
           ))}
         </thead>

@@ -262,23 +262,23 @@
 
 **Purpose**: Sortable column headers with display name editing
 
-- [ ] T052 Create `src/renderer/src/components/folder-view/column-header.tsx`:
+- [x] T052 Create `src/renderer/src/components/folder-view/column-header.tsx`:
   - Display column name
   - Sort indicator (▲/▼/none)
   - Click to toggle sort
   - Shift+click for multi-sort
-- [ ] T053 Add resize handle to column header:
+- [x] T053 Add resize handle to column header:
   - Draggable border on right edge
   - Visual feedback during resize
   - Persist width on resize end
-- [ ] T054 Add display name editing:
+- [x] T054 Add display name editing:
   - Double-click header to edit
   - Inline input field
   - Save on Enter/blur
   - Cancel on Escape
   - Persist to .folder.md via properties.{id}.displayName
 
-**Checkpoint**: Column headers are interactive
+**Checkpoint**: Column headers are interactive ✅
 
 ---
 

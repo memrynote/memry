@@ -105,6 +105,8 @@ interface UseFolderViewResult {
   deleteView: (viewName: string) => Promise<void>
   /** Update column configuration for current view */
   updateColumns: (columns: ColumnConfig[]) => Promise<void>
+  /** Update display name for a property/column */
+  updateDisplayName: (columnId: string, displayName: string) => Promise<void>
   /** Load more notes (pagination) */
   loadMore: () => Promise<void>
   /** Refresh all data */
@@ -330,6 +332,69 @@ export function useFolderView({
   )
 
   /**
+   * Update display name for a property/column.
+   * Updates both the column config displayName and properties.{id}.displayName
+   */
+  const updateDisplayName = useCallback(
+    async (columnId: string, displayName: string) => {
+      if (!activeView) return
+
+      // Update column displayName in the current view
+      const updatedColumns = (activeView.columns || []).map((col) =>
+        col.id === columnId ? { ...col, displayName } : col
+      )
+
+      // Update view with new columns
+      const updatedView: ViewConfig = { ...activeView, columns: updatedColumns }
+
+      // Update local state immediately
+      setViews((prev) => {
+        const next = [...prev]
+        next[activeViewIndex] = updatedView
+        return next
+      })
+
+      // Debounce the save
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current)
+      }
+
+      updateTimeoutRef.current = setTimeout(async () => {
+        try {
+          // Save view with updated column displayName
+          await window.api.folderView.setView(
+            folderPath,
+            updatedView as unknown as Record<string, unknown>
+          )
+
+          // Also update the properties.{id}.displayName in folder config
+          // This ensures the displayName persists even if column is removed/re-added
+          const configResult = await window.api.folderView.getConfig(folderPath)
+          const existingConfig = configResult.config
+
+          const updatedConfig = {
+            ...existingConfig,
+            properties: {
+              ...existingConfig.properties,
+              [columnId]: {
+                ...(existingConfig.properties?.[columnId] || {}),
+                displayName
+              }
+            }
+          }
+
+          await window.api.folderView.setConfig(folderPath, updatedConfig)
+        } catch (err) {
+          console.error('Failed to save display name:', err)
+          // Revert on error
+          await fetchViews()
+        }
+      }, 300)
+    },
+    [activeView, activeViewIndex, folderPath, fetchViews]
+  )
+
+  /**
    * Load more notes (pagination)
    */
   const loadMore = useCallback(async () => {
@@ -388,6 +453,7 @@ export function useFolderView({
     addView,
     deleteView,
     updateColumns,
+    updateDisplayName,
     loadMore,
     refresh
   }
