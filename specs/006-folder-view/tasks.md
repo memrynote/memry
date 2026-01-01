@@ -393,24 +393,26 @@
 
 **Purpose**: Support multiple views per folder with view switcher
 
-- [ ] T077 Create `src/renderer/src/components/folder-view/view-switcher.tsx`:
-  - Tab-style view selector
-  - Show view names
-  - Click to switch active view
-  - Default view indicator
-- [ ] T078 Add "New View" button:
-  - Create new view with default config
-  - Prompt for view name
-  - Set as active
-- [ ] T079 Add view management dropdown per view tab:
-  - Rename view
+- [x] T077 Create `src/renderer/src/components/folder-view/view-switcher.tsx`:
+  - Dropdown-based view selector (single button, shows active view name)
+  - Show all views in dropdown list with checkmark on active
+  - Click view row to switch
+  - Default view indicator (badge)
+- [x] T078 Add "New View" button:
+  - "Create New View" option at bottom of dropdown
+  - Dialog prompts for view name
+  - Option to copy from current view or start fresh
+  - Set as active after creation
+- [x] T079 Add view management submenu per view row:
+  - [...] button on each row opens submenu to the left
+  - Rename view (dialog)
   - Duplicate view
   - Set as default
-  - Delete view (with confirmation)
-- [ ] T080 Persist activeViewIndex in component state (not in .folder.md)
-- [ ] T081 Save/load correct view config when switching
+  - Delete view (with confirmation, disabled if only one view)
+- [x] T080 Persist activeViewIndex in component state (not in .folder.md)
+- [x] T081 Save/load correct view config when switching
 
-**Checkpoint**: Multiple named views work
+**Checkpoint**: Multiple named views work ✅
 
 ---
 

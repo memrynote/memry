@@ -2,11 +2,11 @@
  * Folder View Page
  *
  * Displays notes in a folder as a database-like table view.
- * Similar to Obsidian Bases - supports multiple views, filtering, and sorting.
+ * Supports multiple views, filtering, and sorting.
  */
 
 import { useMemo, useState, useEffect } from 'react'
-import { ArrowLeft, Folder, LayoutGrid, List, Plus, Settings2 } from 'lucide-react'
+import { ArrowLeft, Folder, LayoutGrid, List, Settings2 } from 'lucide-react'
 
 // ============================================================================
 // Debounce Hook
@@ -33,10 +33,10 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 }
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useTabs } from '@/contexts/tabs'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { FolderViewToolbar } from '@/components/folder-view/folder-view-toolbar'
+import { ViewSwitcher } from '@/components/folder-view/view-switcher'
 import { useFolderView } from '@/hooks/use-folder-view'
 import { DEFAULT_COLUMNS, type FilterExpression } from '@shared/contracts/folder-view-api'
 
@@ -62,6 +62,9 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     isLoading,
     error,
     setActiveViewIndex,
+    updateView,
+    addView,
+    deleteView,
     updateColumns,
     updateSorting,
     updateFilters,
@@ -205,22 +208,16 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* View switcher tabs (if multiple views) */}
-        {views.length > 1 && (
-          <Tabs
-            value={String(activeViewIndex)}
-            onValueChange={(value) => setActiveViewIndex(Number(value))}
-            className="h-8"
-          >
-            <TabsList className="h-8">
-              {views.map((view, index) => (
-                <TabsTrigger key={view.name} value={String(index)} className="h-7 px-3 text-xs">
-                  {view.name}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        )}
+        {/* View Switcher */}
+        <ViewSwitcher
+          views={views}
+          activeViewIndex={activeViewIndex}
+          activeView={activeView}
+          onViewChange={setActiveViewIndex}
+          onAddView={addView}
+          onUpdateView={updateView}
+          onDeleteView={deleteView}
+        />
 
         {/* View type toggle (future: table/grid/list) */}
         <div className="flex items-center gap-1 border rounded-md p-0.5">
@@ -231,11 +228,6 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             <LayoutGrid className="h-4 w-4" />
           </Button>
         </div>
-
-        {/* Add view button */}
-        <Button variant="ghost" size="icon" className="h-8 w-8" disabled>
-          <Plus className="h-4 w-4" />
-        </Button>
 
         {/* Settings */}
         <Button variant="ghost" size="icon" className="h-8 w-8" disabled>

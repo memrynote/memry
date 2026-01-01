@@ -7,6 +7,7 @@
 
 export { FolderTableView, type OrderConfig } from './folder-table-view'
 export { FolderViewToolbar } from './folder-view-toolbar'
+export { ViewSwitcher } from './view-switcher'
 export { ColumnHeader, type DragHandleProps } from './column-header'
 export { ColumnSelector } from './column-selector'
 export { SortableColumnHeader } from './sortable-column-header'

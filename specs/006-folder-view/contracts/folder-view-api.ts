@@ -2,7 +2,7 @@
  * Folder View IPC API Contract
  *
  * Handles folder view configuration and note listing with properties.
- * Provides database-like table view for folders similar to Obsidian Bases.
+ * Provides database-like table view for folders
  *
  * STORAGE: Configuration is stored in .folder.md files (YAML frontmatter),
  * NOT in a database table. This ensures portability and sync-friendliness.
