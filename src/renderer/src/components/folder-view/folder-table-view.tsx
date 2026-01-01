@@ -2,7 +2,14 @@
  * Folder Table View Component
  *
  * TanStack Table-based view for displaying notes in a folder.
- * Supports column resizing, sorting, and property display.
+ * Supports column resizing, sorting, property display, and keyboard navigation.
+ *
+ * Phase 17: Keyboard Navigation
+ * - Arrow keys: Navigate up/down (with wrap-around)
+ * - Enter / Cmd+Enter: Open selected note in new tab
+ * - Escape: Clear selection
+ * - Cmd/Ctrl+A: Select all rows
+ * - Space: Jump to last row
  */
 
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
@@ -77,6 +84,8 @@ interface FolderTableViewProps {
   onDisplayNameChange?: (columnId: string, displayName: string) => void
   /** Called when sort order changes */
   onSortingChange?: (sorting: OrderConfig[]) => void
+  /** Called when selection changes (for bulk operations) */
+  onSelectionChange?: (selectedIds: Set<string>) => void
   /** Column IDs to highlight (from column selector search) */
   highlightedColumns?: string[]
   /** Loading state */
@@ -158,6 +167,7 @@ export function FolderTableView({
   onColumnsChange,
   onDisplayNameChange,
   onSortingChange,
+  onSelectionChange,
   highlightedColumns = [],
   isLoading,
   className
@@ -166,6 +176,19 @@ export function FolderTableView({
   const [sorting, setSorting] = useState<SortingState>(() =>
     orderConfigToSortingState(initialSorting)
   )
+
+  // ============================================================================
+  // Keyboard Navigation State (Phase 17)
+  // ============================================================================
+
+  /** Currently focused row for keyboard navigation */
+  const [focusedRowId, setFocusedRowId] = useState<string | null>(null)
+
+  /** Selected rows for bulk operations (Cmd/Ctrl+A) */
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set())
+
+  /** Ref to table container for focus management */
+  const tableContainerRef = useRef<HTMLDivElement>(null)
 
   // Create a map of column configs for quick lookup
   const columnConfigMap = useMemo(() => {
@@ -488,6 +511,141 @@ export function FolderTableView({
     [sorting]
   )
 
+  // ============================================================================
+  // Keyboard Navigation (Phase 17)
+  // ============================================================================
+
+  /**
+   * Handle row selection (single click on row, not on interactive cells)
+   */
+  const handleRowClick = useCallback(
+    (rowId: string, event: React.MouseEvent) => {
+      // Don't handle if clicking on interactive elements (buttons, links)
+      const target = event.target as HTMLElement
+      if (target.closest('button, a, [role="button"]')) {
+        return
+      }
+
+      setFocusedRowId(rowId)
+      setSelectedRowIds(new Set([rowId]))
+      onSelectionChange?.(new Set([rowId]))
+    },
+    [onSelectionChange]
+  )
+
+  /**
+   * Keyboard event handler for table navigation
+   * - ArrowDown/ArrowUp: Navigate rows (with wrap-around)
+   * - Enter/Cmd+Enter: Open selected note
+   * - Escape: Clear selection
+   * - Cmd/Ctrl+A: Select all rows
+   * - Space: Jump to last row
+   */
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const rows = table.getRowModel().rows
+      if (rows.length === 0) return
+
+      const currentIndex = focusedRowId ? rows.findIndex((r) => r.original.id === focusedRowId) : -1
+
+      switch (e.key) {
+        case 'ArrowDown': {
+          e.preventDefault()
+          // Wrap around: if at last row or no selection, go to first
+          let nextIndex: number
+          if (currentIndex === -1 || currentIndex >= rows.length - 1) {
+            nextIndex = 0
+          } else {
+            nextIndex = currentIndex + 1
+          }
+          const nextRow = rows[nextIndex]
+          setFocusedRowId(nextRow.original.id)
+          setSelectedRowIds(new Set([nextRow.original.id]))
+          onSelectionChange?.(new Set([nextRow.original.id]))
+          break
+        }
+
+        case 'ArrowUp': {
+          e.preventDefault()
+          // Wrap around: if at first row or no selection, go to last
+          let prevIndex: number
+          if (currentIndex === -1 || currentIndex <= 0) {
+            prevIndex = rows.length - 1
+          } else {
+            prevIndex = currentIndex - 1
+          }
+          const prevRow = rows[prevIndex]
+          setFocusedRowId(prevRow.original.id)
+          setSelectedRowIds(new Set([prevRow.original.id]))
+          onSelectionChange?.(new Set([prevRow.original.id]))
+          break
+        }
+
+        case ' ': {
+          // Space: Jump to last row
+          e.preventDefault()
+          const lastRow = rows[rows.length - 1]
+          setFocusedRowId(lastRow.original.id)
+          setSelectedRowIds(new Set([lastRow.original.id]))
+          onSelectionChange?.(new Set([lastRow.original.id]))
+          break
+        }
+
+        case 'Enter': {
+          // Enter or Cmd/Ctrl+Enter: Open selected note
+          if (focusedRowId) {
+            e.preventDefault()
+            onNoteOpen?.(focusedRowId)
+          }
+          break
+        }
+
+        case 'Escape': {
+          // Clear selection
+          e.preventDefault()
+          setFocusedRowId(null)
+          setSelectedRowIds(new Set())
+          onSelectionChange?.(new Set())
+          break
+        }
+
+        case 'a': {
+          // Cmd/Ctrl+A: Select all rows
+          if (e.metaKey || e.ctrlKey) {
+            e.preventDefault()
+            const allIds = new Set(rows.map((r) => r.original.id))
+            setSelectedRowIds(allIds)
+            onSelectionChange?.(allIds)
+            // Keep focus on current row, or set to first if none
+            if (!focusedRowId && rows.length > 0) {
+              setFocusedRowId(rows[0].original.id)
+            }
+          }
+          break
+        }
+      }
+    },
+    [focusedRowId, table, onNoteOpen, onSelectionChange]
+  )
+
+  /**
+   * Scroll focused row into view when it changes
+   */
+  useEffect(() => {
+    if (focusedRowId) {
+      const rowElement = document.querySelector(`[data-row-id="${focusedRowId}"]`)
+      rowElement?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+  }, [focusedRowId])
+
+  /**
+   * Clear selection when notes data changes (filter applied, data refreshed)
+   */
+  useEffect(() => {
+    setFocusedRowId(null)
+    setSelectedRowIds(new Set())
+  }, [notes])
+
   if (isLoading) {
     return (
       <div className={cn('flex items-center justify-center h-64', className)}>
@@ -527,7 +685,13 @@ export function FolderTableView({
       modifiers={[restrictToHorizontalAxis]}
       onDragEnd={handleDragEnd}
     >
-      <div className={cn('w-full overflow-auto', className)}>
+      {/* Table container with keyboard navigation support */}
+      <div
+        ref={tableContainerRef}
+        className={cn('w-full overflow-auto outline-none', className)}
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+      >
         <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-background border-b">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -555,30 +719,42 @@ export function FolderTableView({
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.map((row) => (
-              <tr
-                key={row.id}
-                className={cn(
-                  'border-b border-border/50',
-                  'hover:bg-muted/30',
-                  'transition-colors'
-                )}
-                onDoubleClick={() => onNoteOpen?.(row.original.id)}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    className="px-3 py-2"
-                    style={{
-                      width: cell.column.getSize(),
-                      maxWidth: cell.column.getSize()
-                    }}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {table.getRowModel().rows.map((row) => {
+              const isSelected = selectedRowIds.has(row.original.id)
+              const isFocused = focusedRowId === row.original.id
+
+              return (
+                <tr
+                  key={row.id}
+                  data-row-id={row.original.id}
+                  className={cn(
+                    'border-b border-border/50',
+                    'transition-colors',
+                    'cursor-pointer',
+                    // Hover styling (only when not selected)
+                    !isSelected && 'hover:bg-muted/30',
+                    // Selected row styling
+                    isSelected && 'bg-muted/50',
+                    // Focused row styling (keyboard navigation cursor)
+                    isFocused && 'ring-2 ring-primary ring-inset'
+                  )}
+                  onClick={(e) => handleRowClick(row.original.id, e)}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      className="px-3 py-2"
+                      style={{
+                        width: cell.column.getSize(),
+                        maxWidth: cell.column.getSize()
+                      }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
