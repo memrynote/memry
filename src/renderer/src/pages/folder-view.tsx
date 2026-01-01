@@ -102,8 +102,16 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     updateDisplayName,
     availableProperties,
     builtInColumns,
+    formulas,
+    formulasMap,
+    addFormula,
+    updateFormula,
+    deleteFormula,
     refresh
   } = useFolderView({ folderPath: folderPath ?? '' })
+
+  // Get first note for formula preview in editor
+  const sampleNote = notes.length > 0 ? notes[0] : null
 
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -472,12 +480,17 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         columns={activeView?.columns ?? DEFAULT_COLUMNS}
         builtInColumns={builtInColumns}
         availableProperties={availableProperties}
+        formulas={formulas}
         filters={activeView?.filters as FilterExpression | undefined}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onColumnsChange={updateColumns}
         onFiltersChange={updateFilters}
         onColumnSearchChange={setColumnSearchQuery}
+        onFormulaAdd={addFormula}
+        onFormulaEdit={updateFormula}
+        onFormulaDelete={deleteFormula}
+        sampleNote={sampleNote}
         className="flex-shrink-0 min-w-0 overflow-hidden"
       />
 
@@ -498,6 +511,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             <FolderTableView
               notes={notes}
               columns={activeView?.columns ?? DEFAULT_COLUMNS}
+              formulas={formulasMap}
               initialSorting={activeView?.order}
               globalFilter={debouncedSearchQuery}
               highlightQuery={debouncedSearchQuery}

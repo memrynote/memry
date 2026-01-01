@@ -7,16 +7,29 @@
  * - Grouped sections: Built-in, Properties, Formulas
  * - Checkboxes to toggle column visibility
  * - Usage count for property columns
+ * - Formula management (add, edit, delete)
  */
 
 import { useState, useMemo, useCallback } from 'react'
-import { ChevronDown, Columns3, Search } from 'lucide-react'
+import { ChevronDown, Columns3, Search, Plus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import type { ColumnConfig } from '@shared/contracts/folder-view-api'
+import { FormulaEditorModal } from './formula-editor-modal'
+import type { ColumnConfig, NoteWithProperties } from '@shared/contracts/folder-view-api'
 
 // ============================================================================
 // Types
@@ -34,6 +47,11 @@ export interface BuiltInColumnInfo {
   type: string
 }
 
+export interface FormulaInfo {
+  id: string
+  expression: string
+}
+
 interface ColumnSelectorProps {
   /** Currently visible columns */
   columns: ColumnConfig[]
@@ -41,12 +59,20 @@ interface ColumnSelectorProps {
   builtInColumns: BuiltInColumnInfo[]
   /** Available custom properties */
   availableProperties: AvailableProperty[]
-  /** Formulas defined in folder config (future) */
-  formulas?: Array<{ id: string; expression: string }>
+  /** Formulas defined in folder config */
+  formulas?: FormulaInfo[]
   /** Called when columns change */
   onColumnsChange: (columns: ColumnConfig[]) => void
   /** Called when search query changes (for table highlighting) */
   onSearchChange?: (query: string) => void
+  /** Called when a formula is added */
+  onFormulaAdd?: (name: string, expression: string) => Promise<void>
+  /** Called when a formula is updated */
+  onFormulaEdit?: (name: string, expression: string) => Promise<void>
+  /** Called when a formula is deleted */
+  onFormulaDelete?: (name: string) => Promise<void>
+  /** Sample note for formula preview */
+  sampleNote?: NoteWithProperties | null
   /** Additional CSS classes */
   className?: string
 }
@@ -65,8 +91,9 @@ const DEFAULT_WIDTHS: Record<string, number> = {
   wordCount: 80
 }
 
-/** Default width for property columns */
+/** Default width for property and formula columns */
 const DEFAULT_PROPERTY_WIDTH = 120
+const DEFAULT_FORMULA_WIDTH = 120
 
 // ============================================================================
 // Component
@@ -82,10 +109,21 @@ export function ColumnSelector({
   formulas = [],
   onColumnsChange,
   onSearchChange,
+  onFormulaAdd,
+  onFormulaEdit,
+  onFormulaDelete,
+  sampleNote,
   className
 }: ColumnSelectorProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Formula editor modal state
+  const [isFormulaEditorOpen, setIsFormulaEditorOpen] = useState(false)
+  const [editingFormula, setEditingFormula] = useState<FormulaInfo | null>(null)
+
+  // Delete confirmation dialog state
+  const [formulaToDelete, setFormulaToDelete] = useState<string | null>(null)
 
   // Create a set of visible column IDs for quick lookup
   const visibleColumnIds = useMemo(() => {
@@ -114,12 +152,17 @@ export function ColumnSelector({
   const filteredFormulas = useMemo(() => {
     if (!searchQuery) return formulas
     const query = searchQuery.toLowerCase()
-    return formulas.filter((f) => f.id.toLowerCase().includes(query))
+    return formulas.filter(
+      (f) => f.id.toLowerCase().includes(query) || f.expression.toLowerCase().includes(query)
+    )
   }, [formulas, searchQuery])
 
   // Check if there are any search results
   const hasResults =
     filteredBuiltIn.length > 0 || filteredProperties.length > 0 || filteredFormulas.length > 0
+
+  // Show formulas section even if empty (for add button)
+  const showFormulasSection = !searchQuery || filteredFormulas.length > 0
 
   // Handle search input change
   const handleSearchChange = useCallback(
@@ -148,7 +191,10 @@ export function ColumnSelector({
     (columnId: string, checked: boolean) => {
       if (checked) {
         // Add column to end with default width
-        const width = DEFAULT_WIDTHS[columnId] ?? DEFAULT_PROPERTY_WIDTH
+        const isFormula = columnId.startsWith('formula.')
+        const width = isFormula
+          ? DEFAULT_FORMULA_WIDTH
+          : (DEFAULT_WIDTHS[columnId] ?? DEFAULT_PROPERTY_WIDTH)
         const newColumn: ColumnConfig = { id: columnId, width }
         onColumnsChange([...columns, newColumn])
       } else {
@@ -159,88 +205,201 @@ export function ColumnSelector({
     [columns, onColumnsChange]
   )
 
+  // Open formula editor for creating new formula
+  const handleAddFormula = useCallback(() => {
+    setEditingFormula(null)
+    setIsFormulaEditorOpen(true)
+    // Don't close the popover - let user come back after creating
+  }, [])
+
+  // Open formula editor for editing existing formula
+  const handleEditFormula = useCallback((formula: FormulaInfo) => {
+    setEditingFormula(formula)
+    setIsFormulaEditorOpen(true)
+  }, [])
+
+  // Handle formula save (create or update)
+  const handleSaveFormula = useCallback(
+    async (name: string, expression: string) => {
+      if (editingFormula) {
+        // Editing existing formula
+        await onFormulaEdit?.(name, expression)
+      } else {
+        // Creating new formula
+        await onFormulaAdd?.(name, expression)
+      }
+    },
+    [editingFormula, onFormulaAdd, onFormulaEdit]
+  )
+
+  // Handle formula delete confirmation
+  const handleConfirmDelete = useCallback(async () => {
+    if (formulaToDelete) {
+      // Remove from columns if visible
+      const formulaColumnId = `formula.${formulaToDelete}`
+      if (isColumnVisible(formulaColumnId)) {
+        onColumnsChange(columns.filter((col) => col.id !== formulaColumnId))
+      }
+      // Delete the formula
+      await onFormulaDelete?.(formulaToDelete)
+      setFormulaToDelete(null)
+    }
+  }, [formulaToDelete, isColumnVisible, columns, onColumnsChange, onFormulaDelete])
+
+  // Existing formula names for validation
+  const existingFormulaNames = useMemo(() => formulas.map((f) => f.id), [formulas])
+
+  // Check if formula management is enabled
+  const canManageFormulas = Boolean(onFormulaAdd && onFormulaEdit && onFormulaDelete)
+
   return (
-    <Popover open={isOpen} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className={cn('gap-1.5', className)}>
-          <Columns3 className="h-4 w-4" />
-          <span>Columns</span>
-          <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-        </Button>
-      </PopoverTrigger>
+    <>
+      <Popover open={isOpen} onOpenChange={handleOpenChange}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className={cn('gap-1.5', className)}>
+            <Columns3 className="h-4 w-4" />
+            <span>Columns</span>
+            <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+          </Button>
+        </PopoverTrigger>
 
-      <PopoverContent align="start" className="w-64 p-0">
-        {/* Search input */}
-        <div className="p-2 border-b">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search columns..."
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="h-8 pl-8 text-sm"
-            />
+        <PopoverContent align="start" className="w-72 p-0">
+          {/* Search input */}
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search columns..."
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="h-8 pl-8 text-sm"
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Column list */}
-        <div className="max-h-80 overflow-y-auto">
-          {!hasResults ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">No matching columns</div>
-          ) : (
-            <>
-              {/* Built-in columns */}
-              {filteredBuiltIn.length > 0 && (
-                <ColumnGroup title="BUILT-IN">
-                  {filteredBuiltIn.map((col) => (
-                    <ColumnItem
-                      key={col.id}
-                      id={col.id}
-                      label={col.displayName}
-                      checked={isColumnVisible(col.id)}
-                      onCheckedChange={(checked) => toggleColumn(col.id, checked)}
-                    />
-                  ))}
-                </ColumnGroup>
-              )}
-
-              {/* Property columns */}
-              {filteredProperties.length > 0 && (
-                <ColumnGroup title="PROPERTIES">
-                  {filteredProperties.map((prop) => (
-                    <ColumnItem
-                      key={prop.name}
-                      id={prop.name}
-                      label={prop.name}
-                      subtitle={`${prop.usageCount} note${prop.usageCount !== 1 ? 's' : ''}`}
-                      checked={isColumnVisible(prop.name)}
-                      onCheckedChange={(checked) => toggleColumn(prop.name, checked)}
-                    />
-                  ))}
-                </ColumnGroup>
-              )}
-
-              {/* Formulas (coming soon) */}
-              <ColumnGroup title="FORMULAS">
-                {filteredFormulas.length > 0 ? (
-                  filteredFormulas.map((formula) => (
-                    <ColumnItem
-                      key={`formula.${formula.id}`}
-                      id={`formula.${formula.id}`}
-                      label={formula.id}
-                      checked={isColumnVisible(`formula.${formula.id}`)}
-                      onCheckedChange={(checked) => toggleColumn(`formula.${formula.id}`, checked)}
-                    />
-                  ))
-                ) : (
-                  <div className="px-3 py-2 text-xs text-muted-foreground italic">Coming soon</div>
+          {/* Column list */}
+          <div className="max-h-80 overflow-y-auto">
+            {!hasResults && !showFormulasSection ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                No matching columns
+              </div>
+            ) : (
+              <>
+                {/* Built-in columns */}
+                {filteredBuiltIn.length > 0 && (
+                  <ColumnGroup title="BUILT-IN">
+                    {filteredBuiltIn.map((col) => (
+                      <ColumnItem
+                        key={col.id}
+                        id={col.id}
+                        label={col.displayName}
+                        checked={isColumnVisible(col.id)}
+                        onCheckedChange={(checked) => toggleColumn(col.id, checked)}
+                      />
+                    ))}
+                  </ColumnGroup>
                 )}
-              </ColumnGroup>
-            </>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
+
+                {/* Property columns */}
+                {filteredProperties.length > 0 && (
+                  <ColumnGroup title="PROPERTIES">
+                    {filteredProperties.map((prop) => (
+                      <ColumnItem
+                        key={prop.name}
+                        id={prop.name}
+                        label={prop.name}
+                        subtitle={`${prop.usageCount} note${prop.usageCount !== 1 ? 's' : ''}`}
+                        checked={isColumnVisible(prop.name)}
+                        onCheckedChange={(checked) => toggleColumn(prop.name, checked)}
+                      />
+                    ))}
+                  </ColumnGroup>
+                )}
+
+                {/* Formulas */}
+                {showFormulasSection && (
+                  <ColumnGroup title="FORMULAS">
+                    {filteredFormulas.length > 0 ? (
+                      filteredFormulas.map((formula) => (
+                        <FormulaItem
+                          key={formula.id}
+                          formula={formula}
+                          checked={isColumnVisible(`formula.${formula.id}`)}
+                          onCheckedChange={(checked) =>
+                            toggleColumn(`formula.${formula.id}`, checked)
+                          }
+                          onEdit={canManageFormulas ? () => handleEditFormula(formula) : undefined}
+                          onDelete={
+                            canManageFormulas ? () => setFormulaToDelete(formula.id) : undefined
+                          }
+                        />
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-xs text-muted-foreground italic">
+                        No formulas defined
+                      </div>
+                    )}
+                    {/* Add formula button */}
+                    {canManageFormulas && (
+                      <button
+                        type="button"
+                        onClick={handleAddFormula}
+                        className={cn(
+                          'flex items-center gap-2 w-full px-3 py-1.5 text-sm',
+                          'text-primary hover:bg-muted/50 transition-colors',
+                          'focus:outline-none focus:bg-muted/50'
+                        )}
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>Add Formula</span>
+                      </button>
+                    )}
+                  </ColumnGroup>
+                )}
+              </>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* Formula Editor Modal */}
+      <FormulaEditorModal
+        open={isFormulaEditorOpen}
+        onOpenChange={setIsFormulaEditorOpen}
+        initialName={editingFormula?.id ?? ''}
+        initialExpression={editingFormula?.expression ?? ''}
+        sampleNote={sampleNote}
+        onSave={handleSaveFormula}
+        existingNames={
+          editingFormula
+            ? existingFormulaNames.filter((n) => n !== editingFormula.id)
+            : existingFormulaNames
+        }
+        availableProperties={availableProperties}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={Boolean(formulaToDelete)} onOpenChange={() => setFormulaToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Formula</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the formula &quot;{formulaToDelete}&quot;? This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
@@ -306,6 +465,94 @@ function ColumnItem({
         )}
       </div>
     </label>
+  )
+}
+
+/**
+ * Formula item with checkbox, edit, and delete buttons
+ */
+function FormulaItem({
+  formula,
+  checked,
+  onCheckedChange,
+  onEdit,
+  onDelete
+}: {
+  formula: FormulaInfo
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
+  onEdit?: () => void
+  onDelete?: () => void
+}): React.JSX.Element {
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2 px-3 py-1.5',
+        'hover:bg-muted/50 transition-colors group'
+      )}
+    >
+      <Checkbox
+        id={`col-formula-${formula.id}`}
+        checked={checked}
+        onCheckedChange={(checked) => onCheckedChange(checked === true)}
+      />
+      <label htmlFor={`col-formula-${formula.id}`} className="flex-1 min-w-0 cursor-pointer">
+        <span className="text-sm truncate block" title={formula.id}>
+          {formula.id}
+        </span>
+        <span
+          className="text-xs text-muted-foreground truncate block font-mono"
+          title={formula.expression}
+        >
+          {formula.expression}
+        </span>
+      </label>
+      {/* Action buttons (visible on hover) */}
+      {(onEdit || onDelete) && (
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          {onEdit && (
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEdit()
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Edit</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {onDelete && (
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-destructive hover:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onDelete()
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Delete</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 

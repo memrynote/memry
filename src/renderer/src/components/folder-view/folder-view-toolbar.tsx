@@ -8,9 +8,18 @@
 import { Search, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { ColumnSelector, type AvailableProperty, type BuiltInColumnInfo } from './column-selector'
+import {
+  ColumnSelector,
+  type AvailableProperty,
+  type BuiltInColumnInfo,
+  type FormulaInfo
+} from './column-selector'
 import { FilterBuilder } from './filter-builder'
-import type { ColumnConfig, FilterExpression } from '@shared/contracts/folder-view-api'
+import type {
+  ColumnConfig,
+  FilterExpression,
+  NoteWithProperties
+} from '@shared/contracts/folder-view-api'
 
 // ============================================================================
 // Types
@@ -23,8 +32,8 @@ interface FolderViewToolbarProps {
   builtInColumns: BuiltInColumnInfo[]
   /** Available custom properties */
   availableProperties: AvailableProperty[]
-  /** Formulas defined in folder config (future) */
-  formulas?: Array<{ id: string; expression: string }>
+  /** Formulas defined in folder config */
+  formulas?: FormulaInfo[]
   /** Current filter expression */
   filters?: FilterExpression
   /** Current global search query */
@@ -37,6 +46,14 @@ interface FolderViewToolbarProps {
   onFiltersChange: (filters: FilterExpression | undefined) => void
   /** Called when column search changes (for table highlighting) */
   onColumnSearchChange?: (query: string) => void
+  /** Called when a formula is added */
+  onFormulaAdd?: (name: string, expression: string) => Promise<void>
+  /** Called when a formula is updated */
+  onFormulaEdit?: (name: string, expression: string) => Promise<void>
+  /** Called when a formula is deleted */
+  onFormulaDelete?: (name: string) => Promise<void>
+  /** Sample note for formula preview */
+  sampleNote?: NoteWithProperties | null
   /** Additional CSS classes */
   className?: string
 }
@@ -59,6 +76,10 @@ export function FolderViewToolbar({
   onColumnsChange,
   onFiltersChange,
   onColumnSearchChange,
+  onFormulaAdd,
+  onFormulaEdit,
+  onFormulaDelete,
+  sampleNote,
   className
 }: FolderViewToolbarProps): React.JSX.Element {
   return (
@@ -76,6 +97,10 @@ export function FolderViewToolbar({
         formulas={formulas}
         onColumnsChange={onColumnsChange}
         onSearchChange={onColumnSearchChange}
+        onFormulaAdd={onFormulaAdd}
+        onFormulaEdit={onFormulaEdit}
+        onFormulaDelete={onFormulaDelete}
+        sampleNote={sampleNote}
       />
 
       {/* Filter Builder */}

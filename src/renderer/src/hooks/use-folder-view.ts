@@ -72,6 +72,12 @@ interface UseFolderViewOptions {
   pageSize?: number
 }
 
+/** Formula info for column selector */
+export interface FormulaInfo {
+  id: string
+  expression: string
+}
+
 interface UseFolderViewResult {
   // Data
   /** All views for this folder */
@@ -90,6 +96,10 @@ interface UseFolderViewResult {
   availableProperties: AvailableProperty[]
   /** Built-in columns info */
   builtInColumns: Array<{ id: string; displayName: string; type: string }>
+  /** Formulas defined in folder config */
+  formulas: FormulaInfo[]
+  /** Formulas as a map (name -> expression) for table rendering */
+  formulasMap: Record<string, string>
 
   // State
   /** Loading state */
@@ -116,6 +126,12 @@ interface UseFolderViewResult {
   updateDisplayName: (columnId: string, displayName: string) => Promise<void>
   /** Update filter expression for current view */
   updateFilters: (filters: FilterExpression | undefined) => Promise<void>
+  /** Add a new formula */
+  addFormula: (name: string, expression: string) => Promise<void>
+  /** Update an existing formula */
+  updateFormula: (name: string, expression: string) => Promise<void>
+  /** Delete a formula */
+  deleteFormula: (name: string) => Promise<void>
   /** Load more notes (pagination) */
   loadMore: () => Promise<void>
   /** Refresh all data */
@@ -144,6 +160,7 @@ export function useFolderView({
   const [builtInColumns, setBuiltInColumns] = useState<
     Array<{ id: string; displayName: string; type: string }>
   >([])
+  const [formulas, setFormulas] = useState<FormulaInfo[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -188,9 +205,12 @@ export function useFolderView({
       const result = await window.api.folderView.getAvailableProperties(folderPath)
       setAvailableProperties(result.properties)
       setBuiltInColumns(result.builtIn)
+      // Also fetch formulas from the result
+      setFormulas(result.formulas || [])
     } catch (err) {
       console.error('Failed to fetch available properties:', err)
       setAvailableProperties([])
+      setFormulas([])
       setBuiltInColumns(
         BUILT_IN_COLUMNS.map((id) => ({
           id,
@@ -564,6 +584,127 @@ export function useFolderView({
   }, [hasMore, isLoading, fetchNotes])
 
   // ============================================================================
+  // Formula Methods
+  // ============================================================================
+
+  /**
+   * Convert formulas array to map for table rendering
+   */
+  const formulasMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const formula of formulas) {
+      map[formula.id] = formula.expression
+    }
+    return map
+  }, [formulas])
+
+  /**
+   * Add a new formula
+   */
+  const addFormula = useCallback(
+    async (name: string, expression: string) => {
+      try {
+        console.log('[useFolderView.addFormula] Adding formula:', name)
+
+        // Get current folder config
+        const configResult = await window.api.folderView.getConfig(folderPath)
+        const existingConfig = configResult.config
+
+        // Add the new formula
+        const updatedFormulas = {
+          ...existingConfig.formulas,
+          [name]: expression
+        }
+
+        // Save updated config
+        await window.api.folderView.setConfig(folderPath, {
+          ...existingConfig,
+          formulas: updatedFormulas
+        })
+
+        // Update local state
+        setFormulas((prev) => [...prev, { id: name, expression }])
+
+        console.log('[useFolderView.addFormula] Formula added successfully')
+      } catch (err) {
+        console.error('[useFolderView.addFormula] Failed:', err)
+        throw err
+      }
+    },
+    [folderPath]
+  )
+
+  /**
+   * Update an existing formula
+   */
+  const updateFormula = useCallback(
+    async (name: string, expression: string) => {
+      try {
+        console.log('[useFolderView.updateFormula] Updating formula:', name)
+
+        // Get current folder config
+        const configResult = await window.api.folderView.getConfig(folderPath)
+        const existingConfig = configResult.config
+
+        // Update the formula
+        const updatedFormulas = {
+          ...existingConfig.formulas,
+          [name]: expression
+        }
+
+        // Save updated config
+        await window.api.folderView.setConfig(folderPath, {
+          ...existingConfig,
+          formulas: updatedFormulas
+        })
+
+        // Update local state
+        setFormulas((prev) => prev.map((f) => (f.id === name ? { id: name, expression } : f)))
+
+        console.log('[useFolderView.updateFormula] Formula updated successfully')
+      } catch (err) {
+        console.error('[useFolderView.updateFormula] Failed:', err)
+        throw err
+      }
+    },
+    [folderPath]
+  )
+
+  /**
+   * Delete a formula
+   */
+  const deleteFormula = useCallback(
+    async (name: string) => {
+      try {
+        console.log('[useFolderView.deleteFormula] Deleting formula:', name)
+
+        // Get current folder config
+        const configResult = await window.api.folderView.getConfig(folderPath)
+        const existingConfig = configResult.config
+
+        // Remove the formula
+        const updatedFormulas = { ...existingConfig.formulas }
+        delete updatedFormulas[name]
+
+        // Save updated config
+        await window.api.folderView.setConfig(folderPath, {
+          ...existingConfig,
+          formulas: Object.keys(updatedFormulas).length > 0 ? updatedFormulas : undefined
+        })
+
+        // Update local state
+        setFormulas((prev) => prev.filter((f) => f.id !== name))
+
+        console.log('[useFolderView.deleteFormula] Formula deleted successfully')
+      } catch (err) {
+        console.error('[useFolderView.deleteFormula] Failed:', err)
+        throw err
+      }
+    },
+    [folderPath]
+  )
+
+  // ============================================================================
   // Effects
   // ============================================================================
 
@@ -604,6 +745,8 @@ export function useFolderView({
     hasMore,
     availableProperties,
     builtInColumns,
+    formulas,
+    formulasMap,
 
     // State
     isLoading,
@@ -619,6 +762,9 @@ export function useFolderView({
     updateSorting,
     updateFilters,
     updateDisplayName,
+    addFormula,
+    updateFormula,
+    deleteFormula,
     loadMore,
     refresh
   }

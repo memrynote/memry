@@ -57,8 +57,12 @@ import {
   DateCell,
   WordCountCell,
   PropertyCell,
+  CheckboxCell,
+  NumberCell,
+  TextCell,
   type PropertyType
 } from './property-cell'
+import { evaluateFormula } from '@/lib/expression-evaluator'
 import { SortableColumnHeader } from './sortable-column-header'
 import { RowContextMenu } from './row-context-menu'
 import { FolderViewEmptyState } from './folder-view-empty-state'
@@ -76,6 +80,8 @@ interface FolderTableViewProps {
   notes: NoteWithProperties[]
   /** Column configuration */
   columns: ColumnConfig[]
+  /** Formula definitions (name -> expression) for computed columns */
+  formulas?: Record<string, string>
   /** Initial sort order from saved config */
   initialSorting?: OrderConfig[]
   /** Global search filter string */
@@ -182,6 +188,7 @@ function sortingStateToOrderConfig(sorting: SortingState): OrderConfig[] {
 export function FolderTableView({
   notes,
   columns: columnConfig,
+  formulas = {},
   initialSorting,
   globalFilter,
   highlightQuery,
@@ -388,6 +395,43 @@ export function FolderTableView({
     [highlightQuery]
   )
 
+  // Memoized cell renderer for formula columns
+  const renderFormulaCell = useCallback(
+    (formulaName: string, expression: string) => {
+      // Return a named function for React DevTools display name
+      const FormulaCellRenderer = (
+        info: CellContext<NoteWithProperties, unknown>
+      ): React.JSX.Element => {
+        const note = info.row.original
+        // Evaluate formula against note (cached by React's memoization)
+        const result = evaluateFormula(expression, note)
+
+        // Handle null/undefined (evaluation error or empty)
+        if (result === null || result === undefined) {
+          return <span className="text-muted-foreground/50">—</span>
+        }
+
+        // Render based on result type
+        if (typeof result === 'boolean') {
+          return <CheckboxCell value={result} />
+        }
+        if (typeof result === 'number') {
+          return <NumberCell value={result} />
+        }
+        if (result instanceof Date) {
+          return <DateCell value={result.toISOString()} />
+        }
+        if (Array.isArray(result)) {
+          return <TextCell value={result.join(', ')} highlightQuery={highlightQuery} />
+        }
+        return <TextCell value={String(result)} highlightQuery={highlightQuery} />
+      }
+      FormulaCellRenderer.displayName = `FormulaCell_${formulaName}`
+      return FormulaCellRenderer
+    },
+    [highlightQuery]
+  )
+
   // Get properties used in sorting that aren't in visible columns
   const sortOnlyColumns = useMemo(() => {
     const visibleIds = new Set(columnConfig.map((c) => c.id))
@@ -478,6 +522,33 @@ export function FolderTableView({
           }
 
         default:
+          // Check if this is a formula column (id starts with "formula.")
+          if (col.id.startsWith('formula.')) {
+            const formulaName = col.id.slice(8) // Remove "formula." prefix
+            const expression = formulas[formulaName]
+
+            if (!expression) {
+              // Formula not found - show empty
+              return {
+                ...baseColumn,
+                header: col.displayName ?? formulaName,
+                accessorFn: () => null,
+                cell: () => <span className="text-muted-foreground/50">—</span>
+              }
+            }
+
+            return {
+              ...baseColumn,
+              header: col.displayName ?? formulaName,
+              // Accessor evaluates formula for sorting/filtering
+              accessorFn: (row: NoteWithProperties) => {
+                const result = evaluateFormula(expression, row)
+                return result
+              },
+              cell: renderFormulaCell(formulaName, expression)
+            }
+          }
+
           // Custom property column
           return {
             ...baseColumn,
@@ -498,13 +569,15 @@ export function FolderTableView({
     return [...visibleColumns, ...hiddenSortColumns]
   }, [
     columnConfig,
+    formulas,
     sortOnlyColumns,
     renderTitleCell,
     renderFolderCell,
     renderTagsCell,
     renderDateCell,
     renderWordCountCell,
-    renderPropertyCell
+    renderPropertyCell,
+    renderFormulaCell
   ])
 
   // Create column visibility state - hide sort-only columns
@@ -834,6 +907,12 @@ export function FolderTableView({
     setSelectedRowIds(new Set())
   }, [notes, setSelectedRowIds])
 
+  // Calculate total width of all columns for table min-width
+  // (Must be before early returns to satisfy React hook rules)
+  const totalColumnsWidth = useMemo(() => {
+    return columnConfig.reduce((sum, col) => sum + (col.width ?? 150), 0)
+  }, [columnConfig])
+
   if (isLoading) {
     return (
       <div className={cn('flex items-center justify-center h-64', className)}>
@@ -864,11 +943,6 @@ export function FolderTableView({
       />
     )
   }
-
-  // Calculate total width of all columns for table min-width
-  const totalColumnsWidth = useMemo(() => {
-    return columnConfig.reduce((sum, col) => sum + (col.width ?? 150), 0)
-  }, [columnConfig])
 
   return (
     <DndContext

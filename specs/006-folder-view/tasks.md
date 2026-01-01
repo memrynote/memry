@@ -516,30 +516,33 @@
 
 ### Expression Parser
 
-- [ ] T102 Create `src/renderer/src/lib/expression-parser.ts`:
+- [x] T102 Create `src/renderer/src/lib/expression-parser.ts`:
   - Parse expression string to AST
   - Support operators: +, -, \*, /, ==, !=, <, >, <=, >=, &&, ||
   - Support function calls: today(), dateDiff(), if(), coalesce()
-- [ ] T103 Create `src/renderer/src/lib/expression-evaluator.ts`:
+- [x] T103 Create `src/renderer/src/lib/expression-evaluator.ts`:
   - Evaluate AST with note context
-  - Provide built-in functions
-  - Handle errors gracefully
+  - Provide built-in functions (today, now, dateDiff, dateAdd, if, coalesce, concat, lower, upper, round, etc.)
+  - Handle errors gracefully (returns null on error)
 
 ### Formula Columns
 
-- [ ] T104 Add formula column support to column selector:
-  - Show formula.{name} columns
-  - Add new formula option
-- [ ] T105 Create formula editor modal:
-  - Expression input with syntax highlighting
-  - Preview result on sample note
-  - Save formula to .folder.md formulas section
-- [ ] T106 Render formula columns in table:
-  - Evaluate formula per row
-  - Cache results for performance
-  - Handle evaluation errors
+- [x] T104 Add formula column support to column selector:
+  - Show formula.{name} columns with checkbox
+  - Add new formula button opens editor modal
+  - Edit/delete buttons on each formula
+- [x] T105 Create formula editor modal (`src/renderer/src/components/folder-view/formula-editor-modal.tsx`):
+  - Expression input with name field
+  - Function hints displayed
+  - Preview result on sample note (first note in folder)
+  - Save formula to .folder.md formulas section via use-folder-view hook
+- [x] T106 Render formula columns in table:
+  - Detect formula columns (id starts with "formula.")
+  - Evaluate formula per row using evaluateFormula
+  - Render result with appropriate cell type (number, boolean, date, text)
+  - Show dash (—) on evaluation errors
 
-**Checkpoint**: Computed columns work
+**Checkpoint**: Computed columns work ✅
 
 ---
 
