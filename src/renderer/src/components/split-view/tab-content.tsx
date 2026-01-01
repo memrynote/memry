@@ -150,7 +150,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
   return (
     <div
       ref={scrollRef}
-      className={cn('h-full overflow-auto', className)}
+      className={cn('h-full overflow-y-auto overflow-x-hidden', className)}
       data-tab-content={tab.id}
     >
       {renderContent()}

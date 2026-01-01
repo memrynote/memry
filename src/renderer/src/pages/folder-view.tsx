@@ -368,9 +368,9 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   }, [updateColumns])
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="flex flex-col h-full w-full min-w-0 max-w-full overflow-hidden">
+      {/* Header - min-w-0 breaks minimum content size chain to prevent table from pushing it */}
+      <header className="flex items-center gap-3 px-4 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex-shrink-0 min-w-0 overflow-hidden">
         {/* Back button */}
         {parentFolder !== null && (
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleNavigateUp}>
@@ -467,7 +467,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         </DropdownMenu>
       </header>
 
-      {/* Toolbar */}
+      {/* Toolbar - min-w-0 and overflow-hidden to stay within viewport */}
       <FolderViewToolbar
         columns={activeView?.columns ?? DEFAULT_COLUMNS}
         builtInColumns={builtInColumns}
@@ -478,44 +478,48 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         onColumnsChange={updateColumns}
         onFiltersChange={updateFilters}
         onColumnSearchChange={setColumnSearchQuery}
+        className="flex-shrink-0 min-w-0 overflow-hidden"
       />
 
-      {/* Content */}
-      <div className="flex-1 overflow-hidden">
-        {error ? (
-          <FolderViewEmptyState
-            variant="error"
-            errorMessage={error}
-            onRetry={refresh}
-            className="h-full"
-          />
-        ) : isLoading ? (
-          <FolderViewSkeleton columns={activeView?.columns ?? DEFAULT_COLUMNS} />
-        ) : (
-          <FolderTableView
-            notes={notes}
-            columns={activeView?.columns ?? DEFAULT_COLUMNS}
-            initialSorting={activeView?.order}
-            globalFilter={debouncedSearchQuery}
-            highlightQuery={debouncedSearchQuery}
-            selectedRowIds={selectedRowIds}
-            onSelectionChange={handleSelectionChange}
-            onNoteOpen={handleNoteOpen}
-            onOpenInNewTab={handleOpenInNewTab}
-            onFolderClick={handleFolderClick}
-            onTagClick={handleTagClick}
-            onColumnsChange={updateColumns}
-            onSortingChange={updateSorting}
-            onDisplayNameChange={updateDisplayName}
-            onDelete={handleDeleteRequest}
-            onCreateNote={handleCreateNote}
-            onClearAll={handleClearAll}
-            highlightedColumns={highlightedColumns}
-            density={density}
-            showColumnBorders={showColumnBorders}
-            className="h-full"
-          />
-        )}
+      {/* Content - relative container for absolute positioned table */}
+      <div className="flex-1 relative min-w-0">
+        {/* Absolute positioned inner container isolates table width from layout */}
+        <div className="absolute inset-0 overflow-hidden">
+          {error ? (
+            <FolderViewEmptyState
+              variant="error"
+              errorMessage={error}
+              onRetry={refresh}
+              className="h-full"
+            />
+          ) : isLoading ? (
+            <FolderViewSkeleton columns={activeView?.columns ?? DEFAULT_COLUMNS} />
+          ) : (
+            <FolderTableView
+              notes={notes}
+              columns={activeView?.columns ?? DEFAULT_COLUMNS}
+              initialSorting={activeView?.order}
+              globalFilter={debouncedSearchQuery}
+              highlightQuery={debouncedSearchQuery}
+              selectedRowIds={selectedRowIds}
+              onSelectionChange={handleSelectionChange}
+              onNoteOpen={handleNoteOpen}
+              onOpenInNewTab={handleOpenInNewTab}
+              onFolderClick={handleFolderClick}
+              onTagClick={handleTagClick}
+              onColumnsChange={updateColumns}
+              onSortingChange={updateSorting}
+              onDisplayNameChange={updateDisplayName}
+              onDelete={handleDeleteRequest}
+              onCreateNote={handleCreateNote}
+              onClearAll={handleClearAll}
+              highlightedColumns={highlightedColumns}
+              density={density}
+              showColumnBorders={showColumnBorders}
+              className="h-full"
+            />
+          )}
+        </div>
       </div>
 
       {/* Delete Confirmation Dialog */}

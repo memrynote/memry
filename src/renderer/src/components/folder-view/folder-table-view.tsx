@@ -865,6 +865,11 @@ export function FolderTableView({
     )
   }
 
+  // Calculate total width of all columns for table min-width
+  const totalColumnsWidth = useMemo(() => {
+    return columnConfig.reduce((sum, col) => sum + (col.width ?? 150), 0)
+  }, [columnConfig])
+
   return (
     <DndContext
       sensors={sensors}
@@ -873,15 +878,22 @@ export function FolderTableView({
       onDragEnd={handleDragEnd}
     >
       {/* Table container with keyboard navigation and virtualization support */}
+      {/* max-w-full ensures container stays within parent bounds while overflow-auto enables independent horizontal scroll */}
       <div
         ref={tableContainerRef}
-        className={cn('w-full overflow-auto outline-none', className)}
-        style={{ position: 'relative' }}
+        className={cn('w-full max-w-full overflow-auto outline-none', className)}
         tabIndex={0}
         onKeyDown={handleKeyDown}
       >
         {/* Table with CSS Grid layout for virtualization compatibility */}
-        <table style={{ display: 'grid' }} className="w-full text-sm">
+        {/* Use minWidth to allow horizontal scroll when columns exceed viewport */}
+        <table
+          style={{
+            display: 'grid',
+            minWidth: Math.max(totalColumnsWidth, 100)
+          }}
+          className="text-sm"
+        >
           {/* Sticky header */}
           <thead
             style={{
@@ -893,7 +905,7 @@ export function FolderTableView({
             className="bg-background border-b"
           >
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} style={{ display: 'flex', width: '100%' }}>
+              <tr key={headerGroup.id} style={{ display: 'flex' }}>
                 <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
                   {headerGroup.headers.map((header) => {
                     const config = columnConfigMap.get(header.column.id) || {
@@ -954,8 +966,7 @@ export function FolderTableView({
                     style={{
                       display: 'flex',
                       position: 'absolute',
-                      transform: `translateY(${virtualRow.start}px)`,
-                      width: '100%'
+                      transform: `translateY(${virtualRow.start}px)`
                     }}
                     className={cn(
                       'border-b border-border/50',
