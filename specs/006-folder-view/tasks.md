@@ -420,13 +420,15 @@
 
 **Purpose**: Navigate table with keyboard
 
-- [ ] T082 Implement arrow key navigation (up/down to move selection)
-- [ ] T083 Implement Enter key to open selected note in new tab
-- [ ] T084 Implement Escape to clear selection
-- [ ] T085 Implement Cmd/Ctrl+A to select all rows
-- [ ] T086 Add focus ring styling for keyboard navigation
+- [x] T082 Implement arrow key navigation (up/down to move selection with wrap-around)
+- [x] T083 Implement Enter key to open selected note in new tab (also Cmd/Ctrl+Enter)
+- [x] T084 Implement Escape to clear selection
+- [x] T085 Implement Cmd/Ctrl+A to select all rows
+- [x] T086 Add focus ring styling for keyboard navigation
+- [x] T086b Implement Space key to jump to last row
+- [x] T086c Implement single-click row selection (removed double-click handler)
 
-**Checkpoint**: Table is keyboard accessible
+**Checkpoint**: Table is keyboard accessible ✅
 
 ---
 
