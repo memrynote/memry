@@ -2,7 +2,7 @@
  * Column Header Component
  *
  * Interactive column header for folder table view with:
- * - Sorting: Click to toggle, Shift+click for multi-sort
+ * - Sorting: Click to toggle (multi-sort enabled by default)
  * - Resize: Drag right edge to resize column
  * - Display name editing: Double-click to edit inline
  */
@@ -107,19 +107,16 @@ export function ColumnHeader({
 
   /**
    * Handle click on header to toggle sort.
-   * - Click: Toggle sort (none → asc → desc → none)
-   * - Shift+click: Add to multi-sort
+   * Always uses multi-sort mode - each click adds/toggles in the sort order.
+   * Click cycles: none → asc → desc → none (removes from sort)
    */
   const handleSortClick = useCallback(
-    (event: React.MouseEvent) => {
-      if (!canSort) return
+    (_event: React.MouseEvent) => {
+      if (!canSort || isEditing) return
 
-      // Don't sort if we're editing or clicking the resize handle
-      if (isEditing) return
-
-      // Use TanStack's built-in multi-sort support
-      // Second parameter is `isMulti` - true when shift is held
-      column.toggleSorting(undefined, event.shiftKey)
+      // Always use multi-sort mode (second param = true)
+      // This allows clicking multiple columns to build up sort order
+      column.toggleSorting(undefined, true)
     },
     [column, canSort, isEditing]
   )

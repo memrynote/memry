@@ -5,7 +5,7 @@
  * Supports column resizing, sorting, and property display.
  */
 
-import { useMemo, useCallback, useState } from 'react'
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -187,21 +187,34 @@ export function FolderTableView({
     [columnConfig, onColumnsChange]
   )
 
-  // Handle sorting change - update local state and notify parent
+  // Keep a stable ref to onSortingChange to avoid effect re-runs
+  const onSortingChangeRef = useRef(onSortingChange)
+  onSortingChangeRef.current = onSortingChange
+
+  // Track if this is the initial render (skip notifying parent on mount)
+  const isInitialMount = useRef(true)
+
+  // Notify parent when sorting changes (after render, not during)
+  useEffect(() => {
+    // Skip the initial mount - we don't want to notify on first render
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
+
+    console.log('[FolderTableView] Sorting changed:', sorting)
+
+    if (onSortingChangeRef.current) {
+      onSortingChangeRef.current(sortingStateToOrderConfig(sorting))
+    }
+  }, [sorting]) // Only depend on sorting, not onSortingChange
+
+  // Handle sorting change - just update local state, useEffect handles parent notification
   const handleSortingChange = useCallback(
     (updater: SortingState | ((old: SortingState) => SortingState)) => {
-      setSorting((oldSorting) => {
-        const newSorting = typeof updater === 'function' ? updater(oldSorting) : updater
-
-        // Notify parent of sorting change (for persistence)
-        if (onSortingChange) {
-          onSortingChange(sortingStateToOrderConfig(newSorting))
-        }
-
-        return newSorting
-      })
+      setSorting(updater)
     },
-    [onSortingChange]
+    []
   )
 
   // Memoized cell renderer for title column
@@ -271,9 +284,37 @@ export function FolderTableView({
     [highlightQuery]
   )
 
+  // Get properties used in sorting that aren't in visible columns
+  const sortOnlyColumns = useMemo(() => {
+    const visibleIds = new Set(columnConfig.map((c) => c.id))
+    const sortIds = (initialSorting || []).map((s) => s.property)
+    return sortIds.filter((id) => !visibleIds.has(id))
+  }, [columnConfig, initialSorting])
+
   // Build TanStack column definitions from config
   const columns = useMemo<ColumnDef<NoteWithProperties>[]>(() => {
-    return columnConfig.map((col) => {
+    // Helper to create accessor for built-in properties
+    const getBuiltInAccessor = (id: string) => {
+      switch (id) {
+        case 'title':
+          return (row: NoteWithProperties) => row.title
+        case 'folder':
+          return (row: NoteWithProperties) => row.folder
+        case 'tags':
+          return (row: NoteWithProperties) => row.tags.join(', ')
+        case 'created':
+          return (row: NoteWithProperties) => row.created
+        case 'modified':
+          return (row: NoteWithProperties) => row.modified
+        case 'wordCount':
+          return (row: NoteWithProperties) => row.wordCount
+        default:
+          return (row: NoteWithProperties) => row.properties[id] ?? ''
+      }
+    }
+
+    // Build visible columns
+    const visibleColumns = columnConfig.map((col) => {
       const baseColumn = {
         id: col.id,
         header: col.displayName ?? capitalizeFirst(col.id),
@@ -341,8 +382,19 @@ export function FolderTableView({
           }
       }
     })
+
+    // Add hidden accessor-only columns for sorting by non-visible properties
+    const hiddenSortColumns: ColumnDef<NoteWithProperties>[] = sortOnlyColumns.map((id) => ({
+      id,
+      accessorFn: getBuiltInAccessor(id),
+      // These columns won't be rendered, just used for sorting
+      enableHiding: true
+    }))
+
+    return [...visibleColumns, ...hiddenSortColumns]
   }, [
     columnConfig,
+    sortOnlyColumns,
     renderTitleCell,
     renderFolderCell,
     renderTagsCell,
@@ -351,12 +403,22 @@ export function FolderTableView({
     renderPropertyCell
   ])
 
+  // Create column visibility state - hide sort-only columns
+  const columnVisibility = useMemo(() => {
+    const visibility: Record<string, boolean> = {}
+    for (const id of sortOnlyColumns) {
+      visibility[id] = false
+    }
+    return visibility
+  }, [sortOnlyColumns])
+
   const table = useReactTable({
     data: notes,
     columns,
     state: {
       sorting,
-      globalFilter: globalFilter ?? ''
+      globalFilter: globalFilter ?? '',
+      columnVisibility
     },
     onSortingChange: handleSortingChange,
     globalFilterFn: globalFilterFn,

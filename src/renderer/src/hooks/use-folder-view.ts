@@ -102,6 +102,8 @@ interface UseFolderViewResult {
   setActiveViewIndex: (index: number) => void
   /** Update current view configuration */
   updateView: (view: Partial<ViewConfig>) => Promise<void>
+  /** Set a specific view as default by index */
+  setViewAsDefault: (index: number) => Promise<void>
   /** Add a new view */
   addView: (view: ViewConfig) => Promise<void>
   /** Delete a view by name */
@@ -258,13 +260,26 @@ export function useFolderView({
   // ============================================================================
 
   /**
+   * Remove undefined values from an object (for YAML serialization)
+   */
+  const cleanUndefinedValues = <T extends Record<string, unknown>>(obj: T): T => {
+    const cleaned = { ...obj }
+    for (const key of Object.keys(cleaned)) {
+      if (cleaned[key] === undefined) {
+        delete cleaned[key]
+      }
+    }
+    return cleaned
+  }
+
+  /**
    * Update current view configuration
    */
   const updateView = useCallback(
     async (updates: Partial<ViewConfig>) => {
       if (!activeView) return
 
-      const updatedView: ViewConfig = { ...activeView, ...updates }
+      const updatedView: ViewConfig = cleanUndefinedValues({ ...activeView, ...updates })
 
       console.log(
         '[useFolderView.updateView] Updating view:',
@@ -287,7 +302,10 @@ export function useFolderView({
 
       updateTimeoutRef.current = setTimeout(async () => {
         try {
-          console.log('[useFolderView.updateView] Saving to backend...')
+          console.log(
+            '[useFolderView.updateView] Saving to backend...',
+            JSON.stringify(updatedView)
+          )
           const result = await window.api.folderView.setView(
             folderPath,
             updatedView as unknown as Record<string, unknown>
@@ -380,6 +398,53 @@ export function useFolderView({
       }
     },
     [folderPath, fetchViews, activeViewIndex]
+  )
+
+  /**
+   * Set a specific view as default by index.
+   * This clears default from all other views and sets the specified view as default.
+   */
+  const setViewAsDefault = useCallback(
+    async (index: number) => {
+      const targetView = views[index]
+      if (!targetView) {
+        console.error('[useFolderView.setViewAsDefault] Invalid index:', index)
+        return
+      }
+
+      console.log('[useFolderView.setViewAsDefault] Setting view as default:', targetView.name)
+
+      // Update local state immediately - clear default from all, set on target
+      setViews((prev) => {
+        return prev.map((v, i) => ({
+          ...v,
+          default: i === index
+        }))
+      })
+
+      // Save to backend - the backend handler will also clear default from others
+      try {
+        const result = await window.api.folderView.setView(folderPath, {
+          ...targetView,
+          default: true
+        } as unknown as Record<string, unknown>)
+
+        console.log('[useFolderView.setViewAsDefault] Result:', result)
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to set default view')
+        }
+
+        // Switch to the new default view
+        setActiveViewIndex(index)
+      } catch (err) {
+        console.error('[useFolderView.setViewAsDefault] Failed:', err)
+        // Revert on error
+        await fetchViews()
+        throw err
+      }
+    },
+    [views, folderPath, fetchViews]
   )
 
   /**
@@ -547,6 +612,7 @@ export function useFolderView({
     // Actions
     setActiveViewIndex,
     updateView,
+    setViewAsDefault,
     addView,
     deleteView,
     updateColumns,
