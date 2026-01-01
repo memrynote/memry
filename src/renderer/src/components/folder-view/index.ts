@@ -29,3 +29,4 @@ export {
   WordCountCell,
   type PropertyType
 } from './property-cell'
+export { RowContextMenu } from './row-context-menu'
