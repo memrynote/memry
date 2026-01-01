@@ -495,18 +495,18 @@
 
 **Purpose**: Folder-level actions
 
-- [ ] T098 Add "New Note" button to header:
+- [x] T098 Add "New Note" button to header:
   - Create note in current folder
   - Use folder's default template if set
   - Open new note in tab
-- [ ] T099 Add view settings dropdown:
+- [x] T099 Add view settings dropdown:
   - Density toggle (comfortable/compact)
   - Show/hide column borders
   - Reset to default columns
-- [ ] T100 Add note count display in header
-- [ ] T101 Add "Refresh" button (manual data refresh)
+- [x] T100 Add note count display in header
+- [~] T101 ~~Add "Refresh" button~~ REMOVED - folder view is reactive, no manual refresh needed
 
-**Checkpoint**: Toolbar actions are functional
+**Checkpoint**: Toolbar actions are functional ✅
 
 ---
 

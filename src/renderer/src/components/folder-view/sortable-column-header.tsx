@@ -30,6 +30,12 @@ interface SortableColumnHeaderProps {
   onDisplayNameChange?: (columnId: string, displayName: string) => void
   /** Whether this column is highlighted (from column selector search) */
   isHighlighted?: boolean
+  /** Display density (comfortable/compact) - T099 */
+  density?: 'comfortable' | 'compact'
+  /** Show borders between columns - T099 */
+  showColumnBorders?: boolean
+  /** Whether this is the last column (no border on right) - T099 */
+  isLastColumn?: boolean
 }
 
 /**
@@ -52,7 +58,10 @@ export function SortableColumnHeader({
   totalSortedColumns = 0,
   onWidthChange,
   onDisplayNameChange,
-  isHighlighted = false
+  isHighlighted = false,
+  density = 'comfortable',
+  showColumnBorders = false,
+  isLastColumn = false
 }: SortableColumnHeaderProps): React.JSX.Element {
   // Sortable hook
   const { attributes, listeners, setNodeRef, transition, isDragging, isOver } = useSortable({
@@ -219,12 +228,16 @@ export function SortableColumnHeader({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'px-3 py-2 text-left font-medium text-muted-foreground',
+        // T099: Density-aware padding
+        density === 'compact' ? 'px-2 py-1' : 'px-3 py-2',
+        'text-left font-medium text-muted-foreground',
         'select-none relative group',
         canSort && !isEditing && 'cursor-pointer hover:bg-muted/50',
         header.column.getIsResizing() && 'bg-muted/30',
         isHighlighted && 'bg-primary/10 text-primary',
         isDragging && 'opacity-50 z-50',
+        // T099: Column borders (not on last column)
+        showColumnBorders && !isLastColumn && 'border-r border-border/30',
         // Drop indicator - blue line on left side
         isOver &&
           'before:absolute before:left-0 before:top-1 before:bottom-1 before:w-0.5 before:bg-primary before:rounded-full before:z-20'

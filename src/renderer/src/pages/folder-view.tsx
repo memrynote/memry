@@ -6,7 +6,7 @@
  */
 
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
-import { ArrowLeft, Folder, LayoutGrid, List, Settings2 } from 'lucide-react'
+import { ArrowLeft, Folder, LayoutGrid, List, Plus, Settings2 } from 'lucide-react'
 
 // ============================================================================
 // Debounce Hook
@@ -44,6 +44,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { useDisplayDensity } from '@/hooks/use-display-density'
 import { useTabs } from '@/contexts/tabs'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { FolderViewToolbar } from '@/components/folder-view/folder-view-toolbar'
@@ -99,6 +109,26 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [notesToDelete, setNotesToDelete] = useState<string[]>([])
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // ============================================================================
+  // Phase 21: View Settings State
+  // ============================================================================
+
+  /** Display density (comfortable/compact) - persisted via hook */
+  const { density, setDensity } = useDisplayDensity()
+
+  /** Show column borders toggle - persisted to localStorage */
+  const [showColumnBorders, setShowColumnBorders] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('folder-view-show-borders') === 'true'
+    }
+    return false
+  })
+
+  // Persist column borders setting to localStorage
+  useEffect(() => {
+    localStorage.setItem('folder-view-show-borders', String(showColumnBorders))
+  }, [showColumnBorders])
 
   // ============================================================================
   // Selection State (Phase 19 - Lifted for virtualization persistence)
@@ -325,6 +355,18 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     updateFilters(undefined)
   }, [updateFilters])
 
+  // ============================================================================
+  // Phase 21: Toolbar Action Handlers
+  // ============================================================================
+
+  /**
+   * T099: Reset columns to default configuration.
+   * Used by view settings dropdown.
+   */
+  const handleResetColumns = useCallback(() => {
+    updateColumns(DEFAULT_COLUMNS)
+  }, [updateColumns])
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -342,7 +384,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
           <h1 className="text-lg font-semibold truncate">{folderName}</h1>
         </div>
 
-        {/* Note count */}
+        {/* Note count (T100 - already implemented) */}
         <span className="text-sm text-muted-foreground">
           {isLoading ? (
             <Skeleton className="h-4 w-16" />
@@ -352,6 +394,17 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             `${totalNotes} notes`
           )}
         </span>
+
+        {/* T098: New Note button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleCreateNote}
+          title="Create new note"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
 
         {/* Spacer */}
         <div className="flex-1" />
@@ -378,10 +431,40 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
           </Button>
         </div>
 
-        {/* Settings */}
-        <Button variant="ghost" size="icon" className="h-8 w-8" disabled>
-          <Settings2 className="h-4 w-4" />
-        </Button>
+        {/* T099: View Settings dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="View settings">
+              <Settings2 className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel>Display Density</DropdownMenuLabel>
+            <DropdownMenuCheckboxItem
+              checked={density === 'comfortable'}
+              onCheckedChange={() => setDensity('comfortable')}
+            >
+              Comfortable
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={density === 'compact'}
+              onCheckedChange={() => setDensity('compact')}
+            >
+              Compact
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem
+              checked={showColumnBorders}
+              onCheckedChange={(checked) => setShowColumnBorders(checked)}
+            >
+              Show column borders
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleResetColumns}>
+              Reset to default columns
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
       {/* Toolbar */}
@@ -428,6 +511,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             onCreateNote={handleCreateNote}
             onClearAll={handleClearAll}
             highlightedColumns={highlightedColumns}
+            density={density}
+            showColumnBorders={showColumnBorders}
             className="h-full"
           />
         )}

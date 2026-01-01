@@ -110,6 +110,10 @@ interface FolderTableViewProps {
   highlightedColumns?: string[]
   /** Loading state */
   isLoading?: boolean
+  /** Display density (comfortable/compact) - T099 */
+  density?: 'comfortable' | 'compact'
+  /** Show borders between columns - T099 */
+  showColumnBorders?: boolean
   /** Additional CSS classes */
   className?: string
 }
@@ -195,6 +199,8 @@ export function FolderTableView({
   onClearAll,
   highlightedColumns = [],
   isLoading,
+  density = 'comfortable',
+  showColumnBorders = false,
   className
 }: FolderTableViewProps): React.JSX.Element {
   // Convert initial sorting from OrderConfig[] to SortingState
@@ -903,6 +909,11 @@ export function FolderTableView({
                         onWidthChange={handleWidthChange}
                         onDisplayNameChange={onDisplayNameChange}
                         isHighlighted={highlightedColumns.includes(header.column.id)}
+                        density={density}
+                        showColumnBorders={showColumnBorders}
+                        isLastColumn={
+                          headerGroup.headers.indexOf(header) === headerGroup.headers.length - 1
+                        }
                       />
                     )
                   })}
@@ -960,10 +971,18 @@ export function FolderTableView({
                     onClick={(e) => handleRowClick(virtualRow.index, row.original.id, e)}
                     onDoubleClick={() => onNoteOpen?.(row.original.id)}
                   >
-                    {row.getVisibleCells().map((cell) => (
+                    {row.getVisibleCells().map((cell, cellIndex) => (
                       <td
                         key={cell.id}
-                        className="px-3 py-2 flex-shrink-0"
+                        className={cn(
+                          'flex-shrink-0',
+                          // T099: Density-aware padding
+                          density === 'compact' ? 'px-2 py-1' : 'px-3 py-2',
+                          // T099: Column borders (not on last column)
+                          showColumnBorders &&
+                            cellIndex < row.getVisibleCells().length - 1 &&
+                            'border-r border-border/30'
+                        )}
                         style={{
                           width: cell.column.getSize(),
                           maxWidth: cell.column.getSize()
