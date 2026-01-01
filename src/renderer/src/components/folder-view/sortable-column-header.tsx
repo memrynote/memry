@@ -94,12 +94,15 @@ export function SortableColumnHeader({
   // Sort Handling
   // ============================================================================
 
+  /**
+   * Handle click on header to toggle sort.
+   * Always uses multi-sort mode - each click adds/toggles in the sort order.
+   * Click cycles: none → asc → desc → none (removes from sort)
+   */
   const handleSortClick = useCallback(
     (_event: React.MouseEvent) => {
       if (!canSort || isEditing) return
       // Always use multi-sort mode (second param = true)
-      // This allows clicking multiple columns to build up sort order
-      // Click cycles: none → asc → desc → none (removes from sort)
       column.toggleSorting(undefined, true)
     },
     [column, canSort, isEditing]

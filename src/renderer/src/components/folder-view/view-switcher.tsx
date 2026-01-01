@@ -60,6 +60,8 @@ interface ViewSwitcherProps {
   onAddView: (view: ViewConfig) => Promise<void>
   /** Called when user updates a view */
   onUpdateView: (view: Partial<ViewConfig>) => Promise<void>
+  /** Called when user sets a view as default */
+  onSetViewAsDefault: (index: number) => Promise<void>
   /** Called when user deletes a view */
   onDeleteView: (viewName: string) => Promise<void>
   /** Additional CSS classes */
@@ -77,6 +79,7 @@ export function ViewSwitcher({
   onViewChange,
   onAddView,
   onUpdateView,
+  onSetViewAsDefault,
   onDeleteView,
   className
 }: ViewSwitcherProps): React.JSX.Element {
@@ -209,15 +212,9 @@ export function ViewSwitcher({
    */
   const handleSetDefault = useCallback(
     async (index: number) => {
-      // Switch to the view first
-      if (index !== activeViewIndex) {
-        onViewChange(index)
-      }
-
-      // Update to set as default
-      await onUpdateView({ default: true })
+      await onSetViewAsDefault(index)
     },
-    [activeViewIndex, onViewChange, onUpdateView]
+    [onSetViewAsDefault]
   )
 
   /**

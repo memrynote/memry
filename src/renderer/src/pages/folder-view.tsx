@@ -65,6 +65,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     updateView,
     addView,
     deleteView,
+    setViewAsDefault,
     updateColumns,
     updateSorting,
     updateFilters,
@@ -216,6 +217,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
           onViewChange={setActiveViewIndex}
           onAddView={addView}
           onUpdateView={updateView}
+          onSetViewAsDefault={setViewAsDefault}
           onDeleteView={deleteView}
         />
 
