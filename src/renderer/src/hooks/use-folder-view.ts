@@ -163,11 +163,16 @@ export function useFolderView({
    */
   const fetchViews = useCallback(async () => {
     try {
+      console.log('[useFolderView.fetchViews] Fetching views for:', folderPath)
       const result = await window.api.folderView.getViews(folderPath)
+      console.log(
+        '[useFolderView.fetchViews] Got views:',
+        result.views.map((v) => v.name)
+      )
       setViews(result.views)
       setActiveViewIndex(result.defaultIndex)
     } catch (err) {
-      console.error('Failed to fetch views:', err)
+      console.error('[useFolderView.fetchViews] Failed:', err)
       setViews([DEFAULT_VIEW])
       setActiveViewIndex(0)
     }
@@ -261,6 +266,13 @@ export function useFolderView({
 
       const updatedView: ViewConfig = { ...activeView, ...updates }
 
+      console.log(
+        '[useFolderView.updateView] Updating view:',
+        updatedView.name,
+        'updates:',
+        updates
+      )
+
       // Update local state immediately
       setViews((prev) => {
         const next = [...prev]
@@ -275,12 +287,19 @@ export function useFolderView({
 
       updateTimeoutRef.current = setTimeout(async () => {
         try {
-          await window.api.folderView.setView(
+          console.log('[useFolderView.updateView] Saving to backend...')
+          const result = await window.api.folderView.setView(
             folderPath,
             updatedView as unknown as Record<string, unknown>
           )
+
+          console.log('[useFolderView.updateView] Result:', result)
+
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to save view')
+          }
         } catch (err) {
-          console.error('Failed to save view:', err)
+          console.error('[useFolderView.updateView] Failed:', err)
           // Revert on error
           await fetchViews()
         }
@@ -295,16 +314,38 @@ export function useFolderView({
   const addView = useCallback(
     async (view: ViewConfig) => {
       try {
-        await window.api.folderView.setView(folderPath, view as unknown as Record<string, unknown>)
+        console.log('[useFolderView.addView] Adding view:', view.name, 'to folder:', folderPath)
+
+        const result = await window.api.folderView.setView(
+          folderPath,
+          view as unknown as Record<string, unknown>
+        )
+
+        console.log('[useFolderView.addView] Result:', result)
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to save view')
+        }
+
+        // Fetch updated views from backend
         await fetchViews()
-        // Switch to new view
-        setActiveViewIndex(views.length)
+
+        // Find the index of the newly added view
+        // Note: We need to use the callback form to get the latest views
+        setViews((currentViews) => {
+          const newIndex = currentViews.findIndex((v) => v.name === view.name)
+          if (newIndex >= 0) {
+            setActiveViewIndex(newIndex)
+          }
+          return currentViews
+        })
       } catch (err) {
-        console.error('Failed to add view:', err)
+        console.error('[useFolderView.addView] Failed:', err)
         setError(err instanceof Error ? err.message : 'Failed to add view')
+        throw err // Re-throw so the UI can handle it
       }
     },
-    [folderPath, fetchViews, views.length]
+    [folderPath, fetchViews]
   )
 
   /**
@@ -313,19 +354,32 @@ export function useFolderView({
   const deleteView = useCallback(
     async (viewName: string) => {
       try {
-        await window.api.folderView.deleteView(folderPath, viewName)
+        console.log('[useFolderView.deleteView] Deleting view:', viewName)
+
+        const result = await window.api.folderView.deleteView(folderPath, viewName)
+
+        console.log('[useFolderView.deleteView] Result:', result)
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to delete view')
+        }
+
         await fetchViews()
 
-        // Adjust active index if needed
-        if (activeViewIndex >= views.length - 1) {
-          setActiveViewIndex(Math.max(0, views.length - 2))
-        }
+        // Adjust active index if needed - use callback to get latest views
+        setViews((currentViews) => {
+          if (activeViewIndex >= currentViews.length) {
+            setActiveViewIndex(Math.max(0, currentViews.length - 1))
+          }
+          return currentViews
+        })
       } catch (err) {
-        console.error('Failed to delete view:', err)
+        console.error('[useFolderView.deleteView] Failed:', err)
         setError(err instanceof Error ? err.message : 'Failed to delete view')
+        throw err
       }
     },
-    [folderPath, fetchViews, activeViewIndex, views.length]
+    [folderPath, fetchViews, activeViewIndex]
   )
 
   /**
