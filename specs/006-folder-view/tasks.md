@@ -472,21 +472,22 @@
 
 **Purpose**: Polish UI states
 
-- [ ] T094 Implement loading skeleton:
+- [x] T094 Implement loading skeleton:
   - Shimmer rows while data loads
   - Match expected column widths
-- [ ] T095 Implement empty state:
+  - Dynamic row count based on viewport height
+- [x] T095 Implement empty state:
   - "No notes in this folder" message
-  - Create note button
+  - Create note button (uses folder template from .folder.md)
   - Helpful tips
-- [ ] T096 Implement filtered empty state:
-  - "No notes match your filters"
-  - Clear filters button
-- [ ] T097 Implement error state:
+- [x] T096 Implement filtered empty state:
+  - "No matching notes" message (unified for search + filters)
+  - Clear all button (clears both search and filters)
+- [x] T097 Implement error state:
   - Error message display
   - Retry button
 
-**Checkpoint**: All UI states are handled gracefully
+**Checkpoint**: All UI states are handled gracefully ✅
 
 ---
 

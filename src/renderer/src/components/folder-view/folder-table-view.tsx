@@ -61,6 +61,7 @@ import {
 } from './property-cell'
 import { SortableColumnHeader } from './sortable-column-header'
 import { RowContextMenu } from './row-context-menu'
+import { FolderViewEmptyState } from './folder-view-empty-state'
 
 /**
  * Sort order configuration (matches .folder.md format)
@@ -101,6 +102,10 @@ interface FolderTableViewProps {
   onSelectionChange?: (selectedIds: Set<string>) => void
   /** Called when note(s) should be deleted */
   onDelete?: (noteIds: string[]) => void
+  /** Called when user wants to create a new note (from empty state) */
+  onCreateNote?: () => void
+  /** Called when user wants to clear all search/filters (from no-results state) */
+  onClearAll?: () => void
   /** Column IDs to highlight (from column selector search) */
   highlightedColumns?: string[]
   /** Loading state */
@@ -186,6 +191,8 @@ export function FolderTableView({
   onSortingChange,
   onSelectionChange,
   onDelete,
+  onCreateNote,
+  onClearAll,
   highlightedColumns = [],
   isLoading,
   className
@@ -829,29 +836,26 @@ export function FolderTableView({
     )
   }
 
+  // Phase 20 (T095): Empty state when folder has no notes
   if (notes.length === 0) {
     return (
-      <div className={cn('flex items-center justify-center h-64', className)}>
-        <div className="text-center">
-          <div className="text-muted-foreground mb-2">No notes in this folder</div>
-          <p className="text-sm text-muted-foreground/60">Create a new note to get started</p>
-        </div>
-      </div>
+      <FolderViewEmptyState
+        variant="empty"
+        onCreateNote={onCreateNote}
+        className={cn('h-full', className)}
+      />
     )
   }
 
-  // Check if global filter resulted in no matches
+  // Phase 20 (T096): Check if global filter or filters resulted in no matches
   const filteredRowCount = table.getFilteredRowModel().rows.length
   if (filteredRowCount === 0 && globalFilter) {
     return (
-      <div className={cn('flex items-center justify-center h-64', className)}>
-        <div className="text-center">
-          <div className="text-muted-foreground mb-2">
-            No notes match &ldquo;{globalFilter}&rdquo;
-          </div>
-          <p className="text-sm text-muted-foreground/60">Try a different search term</p>
-        </div>
-      </div>
+      <FolderViewEmptyState
+        variant="no-results"
+        onClearAll={onClearAll}
+        className={cn('h-full', className)}
+      />
     )
   }
 

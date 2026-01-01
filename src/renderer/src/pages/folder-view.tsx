@@ -5,7 +5,7 @@
  * Supports multiple views, filtering, and sorting.
  */
 
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { ArrowLeft, Folder, LayoutGrid, List, Settings2 } from 'lucide-react'
 
 // ============================================================================
@@ -33,6 +33,7 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 }
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { FolderViewEmptyState } from '@/components/folder-view/folder-view-empty-state'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,8 +49,13 @@ import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { FolderViewToolbar } from '@/components/folder-view/folder-view-toolbar'
 import { ViewSwitcher } from '@/components/folder-view/view-switcher'
 import { useFolderView } from '@/hooks/use-folder-view'
+import { useNotes } from '@/hooks/use-notes'
 import { notesService } from '@/services/notes-service'
-import { DEFAULT_COLUMNS, type FilterExpression } from '@shared/contracts/folder-view-api'
+import {
+  DEFAULT_COLUMNS,
+  type FilterExpression,
+  type ColumnConfig
+} from '@shared/contracts/folder-view-api'
 
 interface FolderViewPageProps {
   /** Folder path relative to notes/ */
@@ -61,6 +67,9 @@ interface FolderViewPageProps {
  */
 export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.Element {
   const { openTab } = useTabs()
+
+  // Use notes hook for creating new notes (with folder template support)
+  const { createNote } = useNotes({ autoLoad: false })
 
   // Use the folder view hook
   const {
@@ -273,6 +282,49 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     }
   }
 
+  // ============================================================================
+  // Phase 20: Empty State Handlers
+  // ============================================================================
+
+  /**
+   * Handle creating a new note in the current folder.
+   * Uses folder template from .folder.md if one exists.
+   */
+  const handleCreateNote = useCallback(async () => {
+    try {
+      const note = await createNote({
+        title: 'Untitled',
+        folder: folderPath ?? undefined
+        // Template is auto-applied by backend from .folder.md
+      })
+
+      if (note) {
+        openTab({
+          type: 'note',
+          title: note.title || 'Untitled',
+          icon: 'file-text',
+          path: `/notes/${note.id}`,
+          entityId: note.id,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false
+        })
+      }
+    } catch (err) {
+      console.error('[FolderViewPage] Failed to create note:', err)
+    }
+  }, [createNote, folderPath, openTab])
+
+  /**
+   * Handle clearing all search and filters.
+   * Used by the 'no-results' empty state.
+   */
+  const handleClearAll = useCallback(() => {
+    setSearchQuery('')
+    updateFilters(undefined)
+  }, [updateFilters])
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -348,11 +400,14 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         {error ? (
-          <div className="flex items-center justify-center h-64 text-destructive">
-            <p>{error}</p>
-          </div>
+          <FolderViewEmptyState
+            variant="error"
+            errorMessage={error}
+            onRetry={refresh}
+            className="h-full"
+          />
         ) : isLoading ? (
-          <FolderViewSkeleton />
+          <FolderViewSkeleton columns={activeView?.columns ?? DEFAULT_COLUMNS} />
         ) : (
           <FolderTableView
             notes={notes}
@@ -370,6 +425,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             onSortingChange={updateSorting}
             onDisplayNameChange={updateDisplayName}
             onDelete={handleDeleteRequest}
+            onCreateNote={handleCreateNote}
+            onClearAll={handleClearAll}
             highlightedColumns={highlightedColumns}
             className="h-full"
           />
@@ -405,23 +462,62 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   )
 }
 
+// ============================================================================
+// Loading Skeleton Component (T094)
+// ============================================================================
+
+interface FolderViewSkeletonProps {
+  /** Column configs to match actual column widths */
+  columns: ColumnConfig[]
+  /** Additional CSS classes */
+  className?: string
+}
+
 /**
- * Loading skeleton for folder view
+ * Loading skeleton for folder view with dynamic column widths and viewport-aware row count.
  */
-function FolderViewSkeleton(): React.JSX.Element {
+function FolderViewSkeleton({ columns, className }: FolderViewSkeletonProps): React.JSX.Element {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [rowCount, setRowCount] = useState(10)
+
+  // Calculate row count based on container height
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const calculateRows = (): void => {
+      const height = container.clientHeight
+      const headerHeight = 40 // Approximate header row height
+      const rowHeight = 44 // Approximate data row height
+      const padding = 32 // Container padding (16px top + 16px bottom)
+      const availableHeight = height - headerHeight - padding
+      const calculated = Math.floor(availableHeight / rowHeight)
+      // Clamp between 5 and 20 rows
+      setRowCount(Math.max(5, Math.min(calculated, 20)))
+    }
+
+    calculateRows()
+
+    // Recalculate on resize
+    const resizeObserver = new ResizeObserver(calculateRows)
+    resizeObserver.observe(container)
+
+    return () => resizeObserver.disconnect()
+  }, [])
+
   return (
-    <div className="p-4 space-y-3">
+    <div ref={containerRef} className={`h-full p-4 space-y-2 ${className ?? ''}`}>
       {/* Header skeleton */}
       <div className="flex gap-4 pb-2 border-b">
-        {[200, 100, 120, 100].map((width, i) => (
-          <Skeleton key={i} className="h-6" style={{ width }} />
+        {columns.map((col, i) => (
+          <Skeleton key={i} className="h-6" style={{ width: col.width ?? 150 }} />
         ))}
       </div>
       {/* Row skeletons */}
-      {Array.from({ length: 10 }).map((_, i) => (
+      {Array.from({ length: rowCount }).map((_, i) => (
         <div key={i} className="flex gap-4">
-          {[200, 100, 120, 100].map((width, j) => (
-            <Skeleton key={j} className="h-8" style={{ width }} />
+          {columns.map((col, j) => (
+            <Skeleton key={j} className="h-8" style={{ width: col.width ?? 150 }} />
           ))}
         </div>
       ))}
