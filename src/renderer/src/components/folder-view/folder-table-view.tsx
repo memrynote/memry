@@ -2,7 +2,8 @@
  * Folder Table View Component
  *
  * TanStack Table-based view for displaying notes in a folder.
- * Supports column resizing, sorting, property display, and keyboard navigation.
+ * Supports column resizing, sorting, property display, keyboard navigation,
+ * and row virtualization for performance with large folders.
  *
  * Phase 17: Keyboard Navigation
  * - Arrow keys: Navigate up/down (with wrap-around)
@@ -10,6 +11,12 @@
  * - Escape: Clear selection
  * - Cmd/Ctrl+A: Select all rows
  * - Space: Jump to last row
+ *
+ * Phase 19: Row Virtualization
+ * - Uses @tanstack/react-virtual for efficient rendering of 1000+ notes
+ * - Only renders visible rows + overscan buffer
+ * - Supports dynamic row heights with measureElement
+ * - Shift+click range selection works across virtualized rows
  */
 
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
@@ -24,6 +31,7 @@ import {
   type CellContext,
   type FilterFn
 } from '@tanstack/react-table'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   DndContext,
   closestCenter,
@@ -52,6 +60,7 @@ import {
   type PropertyType
 } from './property-cell'
 import { SortableColumnHeader } from './sortable-column-header'
+import { RowContextMenu } from './row-context-menu'
 
 /**
  * Sort order configuration (matches .folder.md format)
@@ -72,8 +81,12 @@ interface FolderTableViewProps {
   globalFilter?: string
   /** Query string to highlight in cells */
   highlightQuery?: string
+  /** Selected row IDs (controlled mode - lifted to parent for persistence across views) */
+  selectedRowIds?: Set<string>
   /** Called when a note is clicked to open it */
   onNoteOpen?: (noteId: string) => void
+  /** Called when a note should be opened in a new tab */
+  onOpenInNewTab?: (noteId: string) => void
   /** Called when a folder cell is clicked */
   onFolderClick?: (folderPath: string) => void
   /** Called when a tag is clicked */
@@ -86,6 +99,8 @@ interface FolderTableViewProps {
   onSortingChange?: (sorting: OrderConfig[]) => void
   /** Called when selection changes (for bulk operations) */
   onSelectionChange?: (selectedIds: Set<string>) => void
+  /** Called when note(s) should be deleted */
+  onDelete?: (noteIds: string[]) => void
   /** Column IDs to highlight (from column selector search) */
   highlightedColumns?: string[]
   /** Loading state */
@@ -161,13 +176,16 @@ export function FolderTableView({
   initialSorting,
   globalFilter,
   highlightQuery,
+  selectedRowIds: externalSelectedRowIds,
   onNoteOpen,
+  onOpenInNewTab,
   onFolderClick,
   onTagClick,
   onColumnsChange,
   onDisplayNameChange,
   onSortingChange,
   onSelectionChange,
+  onDelete,
   highlightedColumns = [],
   isLoading,
   className
@@ -178,17 +196,61 @@ export function FolderTableView({
   )
 
   // ============================================================================
-  // Keyboard Navigation State (Phase 17)
+  // Keyboard Navigation State (Phase 17) & Selection (Phase 19)
   // ============================================================================
 
   /** Currently focused row for keyboard navigation */
   const [focusedRowId, setFocusedRowId] = useState<string | null>(null)
 
-  /** Selected rows for bulk operations (Cmd/Ctrl+A) */
-  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set())
+  /**
+   * Internal selected rows state (used when not controlled externally).
+   * When externalSelectedRowIds is provided, this is ignored and the external state is used.
+   * This allows selection to be lifted to the page for persistence across view switches.
+   */
+  const [internalSelectedRowIds, setInternalSelectedRowIds] = useState<Set<string>>(new Set())
 
-  /** Ref to table container for focus management */
+  /**
+   * Controlled/uncontrolled selection pattern:
+   * - If parent provides selectedRowIds prop, use that (controlled)
+   * - Otherwise, use internal state (uncontrolled)
+   */
+  const selectedRowIds = externalSelectedRowIds ?? internalSelectedRowIds
+
+  // Use refs to avoid recreating setSelectedRowIds on every render
+  const selectedRowIdsRef = useRef(selectedRowIds)
+  selectedRowIdsRef.current = selectedRowIds
+
+  const onSelectionChangeRef = useRef(onSelectionChange)
+  onSelectionChangeRef.current = onSelectionChange
+
+  const externalSelectedRowIdsRef = useRef(externalSelectedRowIds)
+  externalSelectedRowIdsRef.current = externalSelectedRowIds
+
+  /**
+   * Stable setter for selection state.
+   * Uses refs to avoid dependency on selectedRowIds which would cause infinite loops.
+   */
+  const setSelectedRowIds = useCallback(
+    (newSelection: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+      const resolved =
+        typeof newSelection === 'function' ? newSelection(selectedRowIdsRef.current) : newSelection
+
+      // Always notify parent if callback provided
+      onSelectionChangeRef.current?.(resolved)
+
+      // Only update internal state if not controlled
+      if (!externalSelectedRowIdsRef.current) {
+        setInternalSelectedRowIds(resolved)
+      }
+    },
+    [] // Stable - no dependencies, uses refs
+  )
+
+  /** Ref to table container for focus management and virtualization */
   const tableContainerRef = useRef<HTMLDivElement>(null)
+
+  /** Track last selected row index for Shift+click range selection */
+  const lastSelectedIndexRef = useRef<number | null>(null)
 
   // Create a map of column configs for quick lookup
   const columnConfigMap = useMemo(() => {
@@ -299,10 +361,16 @@ export function FolderTableView({
 
   // Memoized cell renderer for generic properties
   const renderPropertyCell = useCallback(
-    (columnId: string) => (info: CellContext<NoteWithProperties, unknown>) => {
-      const value = info.getValue()
-      const type = getColumnType(columnId)
-      return <PropertyCell value={value} type={type} highlightQuery={highlightQuery} />
+    (columnId: string) => {
+      // Return a named function for React DevTools display name
+      const PropertyCellRenderer = (
+        info: CellContext<NoteWithProperties, unknown>
+      ): React.JSX.Element => {
+        const value = info.getValue()
+        const type = getColumnType(columnId)
+        return <PropertyCell value={value} type={type} highlightQuery={highlightQuery} />
+      }
+      return PropertyCellRenderer
     },
     [highlightQuery]
   )
@@ -452,6 +520,35 @@ export function FolderTableView({
   })
 
   // ============================================================================
+  // Row Virtualization (Phase 19)
+  // ============================================================================
+
+  /** Get filtered/sorted rows from table for virtualization */
+  const { rows } = table.getRowModel()
+
+  /**
+   * Row virtualizer for efficient rendering of large datasets.
+   * Only renders visible rows plus overscan buffer for smooth scrolling.
+   */
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 40, // Estimated row height in px
+    // Dynamic row height measurement (disabled in Firefox due to measurement issues)
+    measureElement:
+      typeof window !== 'undefined' && !navigator.userAgent.includes('Firefox')
+        ? (element) => element?.getBoundingClientRect().height
+        : undefined,
+    overscan: 10 // Render 10 extra rows above/below viewport for smooth scrolling
+  })
+
+  /** Get virtual items to render */
+  const virtualRows = rowVirtualizer.getVirtualItems()
+
+  /** Total height of all rows (for scroll container sizing) */
+  const totalSize = rowVirtualizer.getTotalSize()
+
+  // ============================================================================
   // Drag and Drop for Column Reordering
   // ============================================================================
 
@@ -517,9 +614,12 @@ export function FolderTableView({
 
   /**
    * Handle row selection (single click on row, not on interactive cells)
+   * - Single click: Select single row, deselect others
+   * - Cmd/Ctrl+click: Toggle selection (multi-select)
+   * - Shift+click: Range selection from last selected to current
    */
   const handleRowClick = useCallback(
-    (rowId: string, event: React.MouseEvent) => {
+    (rowIndex: number, rowId: string, event: React.MouseEvent) => {
       // Don't handle if clicking on interactive elements (buttons, links)
       const target = event.target as HTMLElement
       if (target.closest('button, a, [role="button"]')) {
@@ -527,15 +627,48 @@ export function FolderTableView({
       }
 
       setFocusedRowId(rowId)
-      setSelectedRowIds(new Set([rowId]))
-      onSelectionChange?.(new Set([rowId]))
+
+      // Shift+click: Range selection
+      if (event.shiftKey && lastSelectedIndexRef.current !== null) {
+        const start = Math.min(lastSelectedIndexRef.current, rowIndex)
+        const end = Math.max(lastSelectedIndexRef.current, rowIndex)
+
+        // Select all rows in range
+        const newSelection = new Set(selectedRowIds)
+        for (let i = start; i <= end; i++) {
+          if (rows[i]) {
+            newSelection.add(rows[i].original.id)
+          }
+        }
+        setSelectedRowIds(newSelection)
+        // Note: setSelectedRowIds already calls onSelectionChange internally
+        // Don't update lastSelectedIndexRef on shift-click to allow extending range
+      } else if (event.metaKey || event.ctrlKey) {
+        // Cmd/Ctrl+click: Toggle selection (multi-select)
+        setSelectedRowIds((prev) => {
+          const newSet = new Set(prev)
+          if (newSet.has(rowId)) {
+            newSet.delete(rowId)
+          } else {
+            newSet.add(rowId)
+          }
+          return newSet
+        })
+        lastSelectedIndexRef.current = rowIndex
+      } else {
+        // Single click: Select single row only
+        const newSelection = new Set([rowId])
+        setSelectedRowIds(newSelection)
+        lastSelectedIndexRef.current = rowIndex
+      }
     },
-    [onSelectionChange]
+    [rows, selectedRowIds, setSelectedRowIds]
   )
 
   /**
    * Keyboard event handler for table navigation
    * - ArrowDown/ArrowUp: Navigate rows (with wrap-around)
+   * - Shift+ArrowDown/Up: Extend selection in that direction
    * - Enter/Cmd+Enter: Open selected note
    * - Escape: Clear selection
    * - Cmd/Ctrl+A: Select all rows
@@ -551,33 +684,71 @@ export function FolderTableView({
       switch (e.key) {
         case 'ArrowDown': {
           e.preventDefault()
-          // Wrap around: if at last row or no selection, go to first
+          // Calculate next index (no wrap when shift is held)
           let nextIndex: number
-          if (currentIndex === -1 || currentIndex >= rows.length - 1) {
+          if (currentIndex === -1) {
+            nextIndex = 0
+          } else if (currentIndex >= rows.length - 1) {
+            // At last row
+            if (e.shiftKey) {
+              // Don't wrap when extending selection
+              return
+            }
             nextIndex = 0
           } else {
             nextIndex = currentIndex + 1
           }
+
           const nextRow = rows[nextIndex]
           setFocusedRowId(nextRow.original.id)
-          setSelectedRowIds(new Set([nextRow.original.id]))
-          onSelectionChange?.(new Set([nextRow.original.id]))
+
+          if (e.shiftKey) {
+            // Shift+ArrowDown: Extend selection to include next row
+            setSelectedRowIds((prev) => {
+              const newSet = new Set(prev)
+              newSet.add(nextRow.original.id)
+              return newSet
+            })
+          } else {
+            // ArrowDown: Single select
+            setSelectedRowIds(new Set([nextRow.original.id]))
+            lastSelectedIndexRef.current = nextIndex
+          }
           break
         }
 
         case 'ArrowUp': {
           e.preventDefault()
-          // Wrap around: if at first row or no selection, go to last
+          // Calculate prev index (no wrap when shift is held)
           let prevIndex: number
-          if (currentIndex === -1 || currentIndex <= 0) {
+          if (currentIndex === -1) {
+            prevIndex = rows.length - 1
+          } else if (currentIndex <= 0) {
+            // At first row
+            if (e.shiftKey) {
+              // Don't wrap when extending selection
+              return
+            }
             prevIndex = rows.length - 1
           } else {
             prevIndex = currentIndex - 1
           }
+
           const prevRow = rows[prevIndex]
           setFocusedRowId(prevRow.original.id)
-          setSelectedRowIds(new Set([prevRow.original.id]))
-          onSelectionChange?.(new Set([prevRow.original.id]))
+
+          if (e.shiftKey) {
+            // Shift+ArrowUp: Extend selection to include previous row
+            setSelectedRowIds((prev) => {
+              const newSet = new Set(prev)
+              newSet.add(prevRow.original.id)
+              return newSet
+            })
+          } else {
+            // ArrowUp: Single select
+            setSelectedRowIds(new Set([prevRow.original.id]))
+            lastSelectedIndexRef.current = prevIndex
+          }
           break
         }
 
@@ -587,7 +758,7 @@ export function FolderTableView({
           const lastRow = rows[rows.length - 1]
           setFocusedRowId(lastRow.original.id)
           setSelectedRowIds(new Set([lastRow.original.id]))
-          onSelectionChange?.(new Set([lastRow.original.id]))
+          lastSelectedIndexRef.current = rows.length - 1
           break
         }
 
@@ -605,7 +776,7 @@ export function FolderTableView({
           e.preventDefault()
           setFocusedRowId(null)
           setSelectedRowIds(new Set())
-          onSelectionChange?.(new Set())
+          lastSelectedIndexRef.current = null
           break
         }
 
@@ -615,7 +786,6 @@ export function FolderTableView({
             e.preventDefault()
             const allIds = new Set(rows.map((r) => r.original.id))
             setSelectedRowIds(allIds)
-            onSelectionChange?.(allIds)
             // Keep focus on current row, or set to first if none
             if (!focusedRowId && rows.length > 0) {
               setFocusedRowId(rows[0].original.id)
@@ -625,18 +795,23 @@ export function FolderTableView({
         }
       }
     },
-    [focusedRowId, table, onNoteOpen, onSelectionChange]
+    [focusedRowId, table, onNoteOpen, setSelectedRowIds]
   )
 
   /**
-   * Scroll focused row into view when it changes
+   * Scroll focused row into view when it changes.
+   * Uses virtualizer's scrollToIndex for efficient scrolling with virtualized rows.
    */
   useEffect(() => {
     if (focusedRowId) {
-      const rowElement = document.querySelector(`[data-row-id="${focusedRowId}"]`)
-      rowElement?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      // Find the row index for the focused row
+      const rowIndex = rows.findIndex((r) => r.original.id === focusedRowId)
+      if (rowIndex >= 0) {
+        // Use virtualizer to scroll to the row (more efficient than DOM query)
+        rowVirtualizer.scrollToIndex(rowIndex, { align: 'auto', behavior: 'smooth' })
+      }
     }
-  }, [focusedRowId])
+  }, [focusedRowId, rows, rowVirtualizer])
 
   /**
    * Clear selection when notes data changes (filter applied, data refreshed)
@@ -644,7 +819,7 @@ export function FolderTableView({
   useEffect(() => {
     setFocusedRowId(null)
     setSelectedRowIds(new Set())
-  }, [notes])
+  }, [notes, setSelectedRowIds])
 
   if (isLoading) {
     return (
@@ -671,7 +846,9 @@ export function FolderTableView({
     return (
       <div className={cn('flex items-center justify-center h-64', className)}>
         <div className="text-center">
-          <div className="text-muted-foreground mb-2">No notes match "{globalFilter}"</div>
+          <div className="text-muted-foreground mb-2">
+            No notes match &ldquo;{globalFilter}&rdquo;
+          </div>
           <p className="text-sm text-muted-foreground/60">Try a different search term</p>
         </div>
       </div>
@@ -685,17 +862,28 @@ export function FolderTableView({
       modifiers={[restrictToHorizontalAxis]}
       onDragEnd={handleDragEnd}
     >
-      {/* Table container with keyboard navigation support */}
+      {/* Table container with keyboard navigation and virtualization support */}
       <div
         ref={tableContainerRef}
         className={cn('w-full overflow-auto outline-none', className)}
+        style={{ position: 'relative' }}
         tabIndex={0}
         onKeyDown={handleKeyDown}
       >
-        <table className="w-full border-collapse text-sm">
-          <thead className="sticky top-0 z-10 bg-background border-b">
+        {/* Table with CSS Grid layout for virtualization compatibility */}
+        <table style={{ display: 'grid' }} className="w-full text-sm">
+          {/* Sticky header */}
+          <thead
+            style={{
+              display: 'grid',
+              position: 'sticky',
+              top: 0,
+              zIndex: 10
+            }}
+            className="bg-background border-b"
+          >
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
+              <tr key={headerGroup.id} style={{ display: 'flex', width: '100%' }}>
                 <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
                   {headerGroup.headers.map((header) => {
                     const config = columnConfigMap.get(header.column.id) || {
@@ -718,41 +906,70 @@ export function FolderTableView({
               </tr>
             ))}
           </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row) => {
+
+          {/* Virtualized table body */}
+          <tbody
+            style={{
+              display: 'grid',
+              height: `${totalSize}px`,
+              position: 'relative'
+            }}
+          >
+            {virtualRows.map((virtualRow) => {
+              const row = rows[virtualRow.index]
               const isSelected = selectedRowIds.has(row.original.id)
               const isFocused = focusedRowId === row.original.id
+              const isPartOfSelection = isSelected && selectedRowIds.size > 1
 
               return (
-                <tr
+                <RowContextMenu
                   key={row.id}
-                  data-row-id={row.original.id}
-                  className={cn(
-                    'border-b border-border/50',
-                    'transition-colors',
-                    'cursor-pointer',
-                    // Hover styling (only when not selected)
-                    !isSelected && 'hover:bg-muted/30',
-                    // Selected row styling
-                    isSelected && 'bg-muted/50',
-                    // Focused row styling (keyboard navigation cursor)
-                    isFocused && 'ring-2 ring-primary ring-inset'
-                  )}
-                  onClick={(e) => handleRowClick(row.original.id, e)}
+                  note={row.original}
+                  isPartOfSelection={isPartOfSelection}
+                  selectedCount={selectedRowIds.size}
+                  selectedNoteIds={Array.from(selectedRowIds)}
+                  onNoteOpen={onNoteOpen}
+                  onOpenInNewTab={onOpenInNewTab}
+                  onDelete={onDelete}
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      className="px-3 py-2"
-                      style={{
-                        width: cell.column.getSize(),
-                        maxWidth: cell.column.getSize()
-                      }}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
+                  <tr
+                    data-index={virtualRow.index}
+                    data-row-id={row.original.id}
+                    ref={(node) => rowVirtualizer.measureElement(node)}
+                    style={{
+                      display: 'flex',
+                      position: 'absolute',
+                      transform: `translateY(${virtualRow.start}px)`,
+                      width: '100%'
+                    }}
+                    className={cn(
+                      'border-b border-border/50',
+                      'transition-colors',
+                      'cursor-pointer',
+                      // Hover styling (only when not selected)
+                      !isSelected && 'hover:bg-muted/50',
+                      // Selected row styling - more prominent background
+                      isSelected && 'bg-primary/15 hover:bg-primary/20',
+                      // Focused row styling (keyboard navigation cursor)
+                      isFocused && 'ring-2 ring-primary ring-inset'
+                    )}
+                    onClick={(e) => handleRowClick(virtualRow.index, row.original.id, e)}
+                    onDoubleClick={() => onNoteOpen?.(row.original.id)}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td
+                        key={cell.id}
+                        className="px-3 py-2 flex-shrink-0"
+                        style={{
+                          width: cell.column.getSize(),
+                          maxWidth: cell.column.getSize()
+                        }}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                </RowContextMenu>
               )
             })}
           </tbody>

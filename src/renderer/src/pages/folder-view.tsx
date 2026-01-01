@@ -5,7 +5,7 @@
  * Supports multiple views, filtering, and sorting.
  */
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { ArrowLeft, Folder, LayoutGrid, List, Settings2 } from 'lucide-react'
 
 // ============================================================================
@@ -33,11 +33,22 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 }
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
 import { useTabs } from '@/contexts/tabs'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { FolderViewToolbar } from '@/components/folder-view/folder-view-toolbar'
 import { ViewSwitcher } from '@/components/folder-view/view-switcher'
 import { useFolderView } from '@/hooks/use-folder-view'
+import { notesService } from '@/services/notes-service'
 import { DEFAULT_COLUMNS, type FilterExpression } from '@shared/contracts/folder-view-api'
 
 interface FolderViewPageProps {
@@ -71,8 +82,40 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     updateFilters,
     updateDisplayName,
     availableProperties,
-    builtInColumns
+    builtInColumns,
+    refresh
   } = useFolderView({ folderPath: folderPath ?? '' })
+
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [notesToDelete, setNotesToDelete] = useState<string[]>([])
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // ============================================================================
+  // Selection State (Phase 19 - Lifted for virtualization persistence)
+  // ============================================================================
+
+  /**
+   * Selected row IDs - lifted to page level so selection:
+   * 1. Persists when switching between named views
+   * 2. Can be accessed for bulk action toolbar (future)
+   * 3. Works seamlessly with row virtualization
+   */
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set())
+
+  /**
+   * Clear selection when folder changes
+   */
+  useEffect(() => {
+    setSelectedRowIds(new Set())
+  }, [folderPath])
+
+  /**
+   * Handle selection change from table
+   */
+  const handleSelectionChange = useCallback((newSelection: Set<string>) => {
+    setSelectedRowIds(newSelection)
+  }, [])
 
   // Column search state for highlighting
   const [columnSearchQuery, setColumnSearchQuery] = useState('')
@@ -119,7 +162,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   }, [folderPath])
 
   // Handle opening a note (single click opens permanent tab)
-  const handleNoteOpen = (noteId: string) => {
+  const handleNoteOpen = (noteId: string): void => {
     const note = notes.find((n) => n.id === noteId)
     if (note) {
       openTab({
@@ -137,7 +180,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   }
 
   // Handle clicking a subfolder
-  const handleFolderClick = (subfolderPath: string) => {
+  const handleFolderClick = (subfolderPath: string): void => {
     // Combine current folder path with subfolder
     const fullPath = folderPath ? `${folderPath}${subfolderPath}` : subfolderPath.slice(1)
     const folderName = subfolderPath.split('/').pop() || 'Folder'
@@ -156,13 +199,65 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   }
 
   // Handle clicking a tag
-  const handleTagClick = (tag: string) => {
+  const handleTagClick = (tag: string): void => {
     // TODO: Open search/filter for this tag
     console.log('Tag clicked:', tag)
   }
 
+  // Handle opening note in new tab (for context menu)
+  const handleOpenInNewTab = useCallback(
+    (noteId: string): void => {
+      const note = notes.find((n) => n.id === noteId)
+      if (note) {
+        openTab({
+          type: 'note',
+          title: note.title,
+          icon: 'file-text',
+          path: `/notes/${note.id}`,
+          entityId: note.id,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false
+        })
+      }
+    },
+    [notes, openTab]
+  )
+
+  // Handle delete request (shows confirmation dialog)
+  const handleDeleteRequest = useCallback((noteIds: string[]): void => {
+    setNotesToDelete(noteIds)
+    setDeleteDialogOpen(true)
+  }, [])
+
+  // Confirm and execute delete
+  const handleDeleteConfirm = useCallback(async () => {
+    if (notesToDelete.length === 0) return
+
+    setIsDeleting(true)
+    try {
+      // Delete all selected notes
+      for (const noteId of notesToDelete) {
+        const result = await notesService.delete(noteId)
+        if (!result.success) {
+          console.error(`Failed to delete note ${noteId}:`, result.error)
+        }
+      }
+
+      // Refresh the view to reflect changes
+      await refresh()
+    } catch (err) {
+      console.error('Failed to delete notes:', err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteDialogOpen(false)
+      setNotesToDelete([])
+    }
+  }, [notesToDelete, refresh])
+
   // Handle navigating to parent folder
-  const handleNavigateUp = () => {
+  const handleNavigateUp = (): void => {
     if (parentFolder !== null) {
       openTab({
         type: 'folder',
@@ -265,17 +360,47 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             initialSorting={activeView?.order}
             globalFilter={debouncedSearchQuery}
             highlightQuery={debouncedSearchQuery}
+            selectedRowIds={selectedRowIds}
+            onSelectionChange={handleSelectionChange}
             onNoteOpen={handleNoteOpen}
+            onOpenInNewTab={handleOpenInNewTab}
             onFolderClick={handleFolderClick}
             onTagClick={handleTagClick}
             onColumnsChange={updateColumns}
             onSortingChange={updateSorting}
             onDisplayNameChange={updateDisplayName}
+            onDelete={handleDeleteRequest}
             highlightedColumns={highlightedColumns}
             className="h-full"
           />
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {notesToDelete.length === 1 ? 'Delete Note' : `Delete ${notesToDelete.length} Notes`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {notesToDelete.length === 1
+                ? 'Are you sure you want to delete this note? This action cannot be undone.'
+                : `Are you sure you want to delete ${notesToDelete.length} notes? This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

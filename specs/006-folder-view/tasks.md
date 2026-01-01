@@ -436,17 +436,20 @@
 
 **Purpose**: Right-click actions on rows
 
-- [ ] T087 Create `src/renderer/src/components/folder-view/row-context-menu.tsx`:
+- [x] T087 Create `src/renderer/src/components/folder-view/row-context-menu.tsx`:
   - Open note
   - Open in new tab
+  - Open in External Editor
+  - Reveal in Finder
   - Reveal in sidebar
   - Copy link
-  - Move to folder...
   - Delete note
-- [ ] T088 Integrate context menu with table rows
-- [ ] T089 Handle multi-select context menu (bulk actions)
+- [x] T088 Integrate context menu with table rows
+- [x] T089 Handle multi-select context menu (bulk actions)
 
-**Checkpoint**: Context menu provides quick actions
+**Checkpoint**: Context menu provides quick actions ✅
+
+**Note**: "Move to folder..." implemented in Phase 27
 
 ---
 
@@ -454,14 +457,14 @@
 
 **Purpose**: Performance optimization for large folders
 
-- [ ] T090 Integrate @tanstack/react-virtual with table:
+- [x] T090 Integrate @tanstack/react-virtual with table:
   - useVirtualizer for row virtualization
   - Render only visible rows + buffer
-- [ ] T091 Handle scroll container properly for virtualization
-- [ ] T092 Maintain selection state during virtual scroll
-- [ ] T093 Test with 500+ notes to verify performance
+- [x] T091 Handle scroll container properly for virtualization
+- [x] T092 Maintain selection state during virtual scroll
+- [x] T093 Test with 500+ notes to verify performance
 
-**Checkpoint**: Large folders perform well
+**Checkpoint**: Large folders perform well ✅
 
 ---
 
@@ -611,6 +614,114 @@
 
 ---
 
+## Phase 27: Move to Folder
+
+**Purpose**: Move notes to different folders via context menu with AI-powered folder suggestions
+
+**Pattern Reference**: Reuse AI suggestion infrastructure from `src/main/inbox/suggestions.ts`:
+
+- `findSimilarNotes()` for embedding-based similarity search
+- `getFolderFromPath()` for extracting folder paths
+- `getFilingPatterns()` and `getRecentFilingDestinations()` for history-based suggestions
+
+### Backend: IPC & Suggestions
+
+- [ ] T134 [P] Add `GET_FOLDER_SUGGESTIONS` to FolderViewChannels in `src/shared/ipc-channels.ts`:
+  - Channel constant: 'folder-view:get-folder-suggestions'
+- [ ] T135 Create `getNoteFolderSuggestions()` function in `src/main/inbox/suggestions.ts`:
+  - Accept noteId parameter
+  - Get note content from vault via `getNoteById()`
+  - Reuse existing `findSimilarNotes()` for embedding similarity
+  - Extract unique folder paths from similar notes using `getFolderFromPath()`
+  - Combine with filing history patterns via `getFilingPatterns()`
+  - Return `FolderSuggestion[]` with path, confidence, reason
+  - Return max 3 suggestions
+- [ ] T136 [P] Add types to `src/shared/contracts/folder-view-api.ts`:
+  - `FolderSuggestion` interface: `{ path: string; confidence: number; reason: string }`
+  - `GetFolderSuggestionsRequest`: `{ noteId: string }`
+  - `GetFolderSuggestionsResponse`: `{ suggestions: FolderSuggestion[] }`
+- [ ] T137 Add handler in `src/main/ipc/folder-view-handlers.ts`:
+  - Register GET_FOLDER_SUGGESTIONS handler
+  - Call `getNoteFolderSuggestions(noteId)`
+  - Handle errors gracefully (return empty array on failure)
+- [ ] T138 [P] Expose in preload API:
+  - Add to `src/preload/index.ts`: `folderView.getFolderSuggestions(noteId: string)`
+  - Add TypeScript declaration to `src/preload/index.d.ts`
+
+### Frontend: Move to Folder Dialog
+
+- [ ] T139 Create `src/renderer/src/components/folder-view/move-to-folder-dialog.tsx`:
+  - Modal dialog using shadcn Dialog (not popover)
+  - Props: `isOpen`, `onClose`, `noteIds: string[]`, `currentFolder: string`, `onMove: (noteIds: string[], targetFolder: string) => void`
+  - Search input at top with 200ms debounce
+  - **AI Suggestions section** (collapsible, shows when noteIds.length === 1 or uses first note):
+    - Shows "Similar to [note title] in [folder]" reasons
+    - Confidence indicator (badge: high >0.7, medium >0.4, low)
+    - Loading skeleton while fetching
+    - Hidden if suggestions empty or AI disabled
+  - **All Folders section** (flat list with full paths):
+    - Display format: "Projects/Active/SubFolder" (full path)
+    - Filter by search query (case-insensitive)
+    - Scrollable container with max-height ~300px
+    - Fetch folders via `notesService.getFolders()`
+  - **Create new folder option**:
+    - Shows at bottom when search query doesn't match any folder
+    - Display: `+ Create "[typed name]"`
+    - On select: call `notesService.createFolder()` then move
+  - Keyboard navigation:
+    - Arrow keys to navigate list
+    - Enter to select highlighted folder
+    - Escape to close
+  - For bulk move (multiple noteIds): show "Move N notes" in title
+- [ ] T140 Create `src/renderer/src/hooks/use-folder-suggestions.ts`:
+  - `useFolderSuggestions(noteId: string | null)` hook
+  - Fetch AI suggestions via `window.api.folderView.getFolderSuggestions(noteId)`
+  - Cache suggestions per noteId to avoid re-fetching
+  - Return `{ suggestions: FolderSuggestion[], isLoading: boolean, error: Error | null }`
+  - Only fetch when noteId is provided and AI is enabled
+
+### Integration: Context Menu & Page
+
+- [ ] T141 Add "Move to folder..." to `src/renderer/src/components/folder-view/row-context-menu.tsx`:
+  - Add menu item after "Reveal in Sidebar"
+  - Icon: FolderInput or similar
+  - Keyboard shortcut hint: ⇧⌘M
+  - Triggers `onMoveToFolder(noteIds)` callback
+  - Works for single and multi-select (bulk move)
+- [ ] T142 Update `src/renderer/src/pages/folder-view.tsx`:
+  - Import and render MoveToFolderDialog component
+  - Add state: `isMoveDialogOpen: boolean`, `noteIdsForMove: string[]`
+  - Add handler `handleMoveRequest(noteIds: string[])`:
+    - Set noteIdsForMove and open dialog
+  - Add handler `handleMoveConfirm(noteIds: string[], targetFolder: string)`:
+    - For each noteId: call `notesService.move(noteId, targetFolder)`
+    - Close dialog
+    - Refresh folder view (moved notes disappear from current view)
+    - Show success toast: "Moved N note(s) to [folder]"
+  - Pass `onMoveToFolder={handleMoveRequest}` to FolderTableView
+- [ ] T143 Add keyboard shortcut (Cmd/Ctrl+Shift+M):
+  - Register in folder-view page's keyboard handler
+  - Only active when rows are selected
+  - Calls `handleMoveRequest(selectedNoteIds)`
+
+### Edge Cases & Polish
+
+- [ ] T144 Handle edge cases in move-to-folder-dialog:
+  - **Error fetching suggestions**: Show folder list only (no AI section)
+  - **Empty folder list**: Show "No folders found" message (shouldn't happen)
+  - **Moving to same folder**: Show info toast "Note is already in this folder", no-op
+  - **Creating folder that already exists**: Select existing folder instead
+  - **Very deep paths**: Truncate display with ellipsis, show full path in tooltip
+  - **Loading state**: Show skeleton for folder list while loading
+  - **Optimistic UI**: Remove row immediately on move, rollback on error
+  - **Bulk move errors**: Show partial success toast "Moved X of Y notes"
+
+**Checkpoint**: Notes can be moved to folders with AI suggestions ✅
+
+**Estimated effort**: 11 tasks, ~6 hours
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -664,6 +775,9 @@ Phase 13   Phase 14       Phase 15
 Phase 17   Phase 18       Phase 19
 (Keyboard) (Context)      (Virtual)
     │          │               │
+    │          ▼               │
+    │    Phase 27 (Move)       │
+    │          │               │
     └──────────┼───────────────┘
                ▼
     Phase 20 (States)
@@ -709,6 +823,7 @@ Phase 22   Phase 23       Phase 24
 | Phase 17: Keyboard         | 5     | Medium     | 1.5 hours |
 | Phase 18: Context Menu     | 3     | Low        | 1 hour    |
 | Phase 19: Virtualization   | 4     | Medium     | 1.5 hours |
+| Phase 27: Move to Folder   | 11    | Medium     | 6 hours   |
 | Phase 20: States           | 4     | Low        | 1 hour    |
 | Phase 21: Toolbar          | 4     | Low        | 1 hour    |
 | Phase 22: Formulas         | 5     | High       | 3 hours   |
@@ -717,7 +832,7 @@ Phase 22   Phase 23       Phase 24
 | Phase 25: Polish           | 9     | Medium     | 2 hours   |
 | Phase 26: Testing          | 10    | Low        | 2 hours   |
 
-**Total: 133 tasks, ~43 hours (5.5 days)**
+**Total: 144 tasks, ~49 hours (6+ days)**
 
 ---
 

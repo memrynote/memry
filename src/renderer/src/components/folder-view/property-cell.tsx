@@ -407,8 +407,8 @@ export function TitleCell({
         onClick?.()
       }}
       className={cn(
-        'flex items-center gap-2 text-left hover:text-primary transition-colors truncate w-full',
-        'focus:outline-none focus:text-primary',
+        'flex items-center gap-2 text-left hover:text-primary hover:underline transition-colors truncate w-full',
+        'focus:outline-none focus:text-primary cursor-pointer',
         className
       )}
       title={title}
