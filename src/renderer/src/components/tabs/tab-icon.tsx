@@ -27,6 +27,8 @@ interface TabIconProps {
   type: TabType
   /** Optional override icon name */
   icon?: string
+  /** Optional emoji (overrides icon) */
+  emoji?: string | null
   /** CSS classes */
   className?: string
 }
@@ -65,7 +67,7 @@ const TYPE_TO_ICON: Record<TabType, string> = {
   completed: 'check-circle',
   project: 'folder',
   note: 'file-text',
-  folder: 'folder', // Folder view 
+  folder: 'folder', // Folder view
   journal: 'book-open',
   search: 'search',
   settings: 'settings',
@@ -76,8 +78,14 @@ const TYPE_TO_ICON: Record<TabType, string> = {
 
 /**
  * Renders the appropriate icon for a tab
+ * If emoji is provided, renders emoji instead of icon
  */
-export const TabIcon = ({ type, icon, className }: TabIconProps): React.JSX.Element => {
+export const TabIcon = ({ type, icon, emoji, className }: TabIconProps): React.JSX.Element => {
+  // If emoji is provided, render it instead of icon
+  if (emoji) {
+    return <span className={cn('shrink-0 text-center leading-none', className)}>{emoji}</span>
+  }
+
   // Use provided icon name or fall back to type-based default
   const iconName = icon || TYPE_TO_ICON[type] || 'file'
   const IconComponent = ICON_COMPONENTS[iconName] || File

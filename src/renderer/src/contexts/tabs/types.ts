@@ -68,6 +68,8 @@ export interface Tab {
   title: string
   /** Icon name (lucide icon) */
   icon: string
+  /** Emoji icon (overrides icon for notes) */
+  emoji?: string | null
   /** Route/path for navigation */
   path: string
   /** ID of note/project/journal if applicable */
@@ -279,6 +281,8 @@ export interface SidebarItem {
   title: string
   /** Icon name (lucide icon) */
   icon?: string
+  /** Emoji icon (overrides icon for notes) */
+  emoji?: string | null
   /** Route/path for navigation */
   path: string
   /** Entity ID for notes/projects/journals */

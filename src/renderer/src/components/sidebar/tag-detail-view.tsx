@@ -79,7 +79,8 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
         type: 'note',
         title: note.title,
         path: note.path,
-        entityId: note.id
+        entityId: note.id,
+        emoji: note.emoji
       }
       openSidebarItem(item)
     },
