@@ -264,8 +264,12 @@ interface NotesTreeProps {
 }
 
 export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
+  // Load all notes so the tree can correctly show files in all folders
+  // Tree views need complete data - pagination doesn't make sense here
+  // Virtualization (enabled at 100+ items) handles render performance
   const { notes, isLoading, error, createNote, deleteNote, renameNote, moveNote } = useNotes({
-    autoLoad: true
+    autoLoad: true,
+    limit: 10000
   })
   const { folders, createFolder, refresh: refreshFolders } = useNoteFolders()
   const { openTab, closeTab } = useTabs()
