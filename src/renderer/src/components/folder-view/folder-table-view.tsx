@@ -48,7 +48,11 @@ import {
   sortableKeyboardCoordinates
 } from '@dnd-kit/sortable'
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
-import type { NoteWithProperties, ColumnConfig } from '@shared/contracts/folder-view-api'
+import type {
+  NoteWithProperties,
+  ColumnConfig,
+  SummaryConfig
+} from '@shared/contracts/folder-view-api'
 import { cn } from '@/lib/utils'
 import {
   TitleCell,
@@ -66,6 +70,7 @@ import { evaluateFormula } from '@/lib/expression-evaluator'
 import { SortableColumnHeader } from './sortable-column-header'
 import { RowContextMenu } from './row-context-menu'
 import { FolderViewEmptyState } from './folder-view-empty-state'
+import { SummaryRow } from './summary-row'
 
 /**
  * Sort order configuration (matches .folder.md format)
@@ -120,6 +125,10 @@ interface FolderTableViewProps {
   density?: 'comfortable' | 'compact'
   /** Show borders between columns - T099 */
   showColumnBorders?: boolean
+  /** Whether to show summary footer row - Phase 23 */
+  showSummaries?: boolean
+  /** Summary configurations per column - Phase 23 */
+  summaries?: Record<string, SummaryConfig>
   /** Additional CSS classes */
   className?: string
 }
@@ -207,7 +216,9 @@ export function FolderTableView({
   highlightedColumns = [],
   isLoading,
   density = 'comfortable',
-  showColumnBorders = false,
+  showColumnBorders = true,
+  showSummaries = false,
+  summaries = {},
   className
 }: FolderTableViewProps): React.JSX.Element {
   // Convert initial sorting from OrderConfig[] to SortingState
@@ -1081,6 +1092,21 @@ export function FolderTableView({
               )
             })}
           </tbody>
+
+          {/* Summary Row - Phase 23 */}
+          {showSummaries && Object.keys(summaries).length > 0 && (
+            <SummaryRow
+              columns={columnConfig}
+              notes={notes}
+              summaries={summaries}
+              formulas={formulas}
+              density={density}
+              showColumnBorders={showColumnBorders}
+              columnWidths={Object.fromEntries(
+                table.getAllColumns().map((col) => [col.id, col.getSize()])
+              )}
+            />
+          )}
         </table>
       </div>
     </DndContext>

@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { DEFAULT_COLUMNS, BUILT_IN_COLUMNS } from '@shared/contracts/folder-view-api'
-import type { FilterExpression } from '@shared/contracts/folder-view-api'
+import type { FilterExpression, SummaryConfig } from '@shared/contracts/folder-view-api'
 import { evaluateFilter } from '@/lib/filter-evaluator'
 
 // ============================================================================
@@ -100,6 +100,8 @@ interface UseFolderViewResult {
   formulas: FormulaInfo[]
   /** Formulas as a map (name -> expression) for table rendering */
   formulasMap: Record<string, string>
+  /** Summary configurations per column */
+  summaries: Record<string, SummaryConfig>
 
   // State
   /** Loading state */
@@ -126,6 +128,10 @@ interface UseFolderViewResult {
   updateDisplayName: (columnId: string, displayName: string) => Promise<void>
   /** Update filter expression for current view */
   updateFilters: (filters: FilterExpression | undefined) => Promise<void>
+  /** Update summary configuration for a column */
+  updateSummaryConfig: (columnId: string, config: SummaryConfig | undefined) => Promise<void>
+  /** Toggle showSummaries for current view */
+  toggleShowSummaries: () => Promise<void>
   /** Add a new formula */
   addFormula: (name: string, expression: string) => Promise<void>
   /** Update an existing formula */
@@ -161,6 +167,7 @@ export function useFolderView({
     Array<{ id: string; displayName: string; type: string }>
   >([])
   const [formulas, setFormulas] = useState<FormulaInfo[]>([])
+  const [summaries, setSummaries] = useState<Record<string, SummaryConfig>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -190,10 +197,15 @@ export function useFolderView({
       )
       setViews(result.views)
       setActiveViewIndex(result.defaultIndex)
+
+      // Also fetch summaries from folder config
+      const configResult = await window.api.folderView.getConfig(folderPath)
+      setSummaries((configResult.config.summaries ?? {}) as Record<string, SummaryConfig>)
     } catch (err) {
       console.error('[useFolderView.fetchViews] Failed:', err)
       setViews([DEFAULT_VIEW])
       setActiveViewIndex(0)
+      setSummaries({})
     }
   }, [folderPath])
 
@@ -498,6 +510,49 @@ export function useFolderView({
   )
 
   /**
+   * Update summary configuration for a column.
+   * Persists to .folder.md summaries section.
+   */
+  const updateSummaryConfig = useCallback(
+    async (columnId: string, config: SummaryConfig | undefined) => {
+      try {
+        // Get current folder config
+        const configResult = await window.api.folderView.getConfig(folderPath)
+        const existingConfig = configResult.config
+
+        // Update summaries
+        const updatedSummaries = {
+          ...((existingConfig.summaries ?? {}) as Record<string, SummaryConfig>)
+        }
+        if (config) {
+          updatedSummaries[columnId] = config
+        } else {
+          delete updatedSummaries[columnId]
+        }
+
+        // Save updated config
+        await window.api.folderView.setConfig(folderPath, {
+          ...existingConfig,
+          summaries: Object.keys(updatedSummaries).length > 0 ? updatedSummaries : undefined
+        })
+
+        // Update local state
+        setSummaries(updatedSummaries)
+      } catch (err) {
+        console.error('[useFolderView.updateSummaryConfig] Failed:', err)
+      }
+    },
+    [folderPath]
+  )
+
+  /**
+   * Toggle showSummaries for current view.
+   */
+  const toggleShowSummaries = useCallback(async () => {
+    await updateView({ showSummaries: !activeView?.showSummaries })
+  }, [updateView, activeView?.showSummaries])
+
+  /**
    * Client-side filtered notes based on active view's filters
    */
   const filteredNotes = useMemo(() => {
@@ -747,6 +802,7 @@ export function useFolderView({
     builtInColumns,
     formulas,
     formulasMap,
+    summaries,
 
     // State
     isLoading,
@@ -761,6 +817,8 @@ export function useFolderView({
     updateColumns,
     updateSorting,
     updateFilters,
+    updateSummaryConfig,
+    toggleShowSummaries,
     updateDisplayName,
     addFormula,
     updateFormula,

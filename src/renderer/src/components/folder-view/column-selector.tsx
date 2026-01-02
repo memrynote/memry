@@ -26,10 +26,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { FormulaEditorModal } from './formula-editor-modal'
-import type { ColumnConfig, NoteWithProperties } from '@shared/contracts/folder-view-api'
+import { getSummaryTypesForColumn, getSummaryTypeLabel } from '@/lib/summary-evaluator'
+import type {
+  ColumnConfig,
+  NoteWithProperties,
+  SummaryConfig
+} from '@shared/contracts/folder-view-api'
 
 // ============================================================================
 // Types
@@ -73,6 +85,10 @@ interface ColumnSelectorProps {
   onFormulaDelete?: (name: string) => Promise<void>
   /** Sample note for formula preview */
   sampleNote?: NoteWithProperties | null
+  /** Summary configurations per column */
+  summaries?: Record<string, SummaryConfig>
+  /** Called when summary config changes for a column */
+  onSummaryChange?: (columnId: string, config: SummaryConfig | undefined) => void
   /** Additional CSS classes */
   className?: string
 }
@@ -113,6 +129,8 @@ export function ColumnSelector({
   onFormulaEdit,
   onFormulaDelete,
   sampleNote,
+  summaries = {},
+  onSummaryChange,
   className
 }: ColumnSelectorProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false)
@@ -295,6 +313,11 @@ export function ColumnSelector({
                         label={col.displayName}
                         checked={isColumnVisible(col.id)}
                         onCheckedChange={(checked) => toggleColumn(col.id, checked)}
+                        columnType={col.type}
+                        summaryConfig={summaries[col.id]}
+                        onSummaryChange={
+                          onSummaryChange ? (config) => onSummaryChange(col.id, config) : undefined
+                        }
                       />
                     ))}
                   </ColumnGroup>
@@ -311,6 +334,13 @@ export function ColumnSelector({
                         subtitle={`${prop.usageCount} note${prop.usageCount !== 1 ? 's' : ''}`}
                         checked={isColumnVisible(prop.name)}
                         onCheckedChange={(checked) => toggleColumn(prop.name, checked)}
+                        columnType={prop.type}
+                        summaryConfig={summaries[prop.name]}
+                        onSummaryChange={
+                          onSummaryChange
+                            ? (config) => onSummaryChange(prop.name, config)
+                            : undefined
+                        }
                       />
                     ))}
                   </ColumnGroup>
@@ -428,43 +458,99 @@ function ColumnGroup({
 }
 
 /**
- * Individual column item with checkbox
+ * Individual column item with checkbox and optional summary selector
  */
 function ColumnItem({
   id,
   label,
   subtitle,
   checked,
-  onCheckedChange
+  onCheckedChange,
+  columnType,
+  summaryConfig,
+  onSummaryChange
 }: {
   id: string
   label: string
   subtitle?: string
   checked: boolean
   onCheckedChange: (checked: boolean) => void
+  columnType?: string
+  summaryConfig?: SummaryConfig
+  onSummaryChange?: (config: SummaryConfig | undefined) => void
 }): React.JSX.Element {
+  const showSummarySelector = checked && onSummaryChange && columnType
+
   return (
-    <label
-      htmlFor={`col-${id}`}
-      className={cn(
-        'flex items-center gap-2 px-3 py-1.5 cursor-pointer',
-        'hover:bg-muted/50 transition-colors'
-      )}
+    <div
+      className={cn('flex items-center gap-2 px-3 py-1.5', 'hover:bg-muted/50 transition-colors')}
     >
-      <Checkbox
-        id={`col-${id}`}
-        checked={checked}
-        onCheckedChange={(checked) => onCheckedChange(checked === true)}
-      />
-      <div className="flex-1 min-w-0">
-        <span className="text-sm truncate block" title={label}>
-          {label}
-        </span>
-        {subtitle && (
-          <span className="text-xs text-muted-foreground truncate block">{subtitle}</span>
-        )}
-      </div>
-    </label>
+      <label
+        htmlFor={`col-${id}`}
+        className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
+      >
+        <Checkbox
+          id={`col-${id}`}
+          checked={checked}
+          onCheckedChange={(checked) => onCheckedChange(checked === true)}
+        />
+        <div className="flex-1 min-w-0">
+          <span className="text-sm truncate block" title={label}>
+            {label}
+          </span>
+          {subtitle && (
+            <span className="text-xs text-muted-foreground truncate block">{subtitle}</span>
+          )}
+        </div>
+      </label>
+      {showSummarySelector && (
+        <SummarySelect columnType={columnType} value={summaryConfig} onChange={onSummaryChange} />
+      )}
+    </div>
+  )
+}
+
+/**
+ * Summary type selector dropdown
+ */
+function SummarySelect({
+  columnType,
+  value,
+  onChange
+}: {
+  columnType: string
+  value?: SummaryConfig
+  onChange: (config: SummaryConfig | undefined) => void
+}): React.JSX.Element {
+  const availableTypes = getSummaryTypesForColumn(columnType)
+
+  const handleChange = useCallback(
+    (selectedType: string) => {
+      if (selectedType === 'none') {
+        onChange(undefined)
+      } else {
+        onChange({ type: selectedType as SummaryConfig['type'] })
+      }
+    },
+    [onChange]
+  )
+
+  return (
+    <Select value={value?.type ?? 'none'} onValueChange={handleChange}>
+      <SelectTrigger className="h-6 w-[72px] text-xs px-2">
+        <SelectValue placeholder="None" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none" className="text-xs">
+          None
+        </SelectItem>
+        {availableTypes.map((type) => (
+          <SelectItem key={type} value={type} className="text-xs">
+            {getSummaryTypeLabel(type)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
 
