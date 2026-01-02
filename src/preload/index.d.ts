@@ -1851,6 +1851,20 @@ export interface FolderViewClientAPI {
   getFolderSuggestions(noteId: string): Promise<FolderViewGetFolderSuggestionsResponse>
 }
 
+// Tab Settings types
+export interface TabSettings {
+  /** When to open in new tab: always, never, or with modifier key */
+  openInNewTab: 'always' | 'never' | 'modifier'
+  /** Single-click opens preview, double-click opens permanent */
+  previewMode: boolean
+  /** Keep pinned tabs on left */
+  showPinnedTabsFirst: boolean
+  /** Restore tabs from last session on app start */
+  restoreSessionOnStart: boolean
+  /** When to show close button: always, on hover, or only on active tab */
+  tabCloseButton: 'always' | 'hover' | 'active'
+}
+
 // Settings client API interface
 export interface SettingsClientAPI {
   get(key: string): Promise<string | null>
@@ -1870,6 +1884,9 @@ export interface SettingsClientAPI {
     skipped?: number
     error?: string
   }>
+  // Tab Settings
+  getTabSettings(): Promise<TabSettings>
+  setTabSettings(settings: Partial<TabSettings>): Promise<{ success: boolean; error?: string }>
 }
 
 // Window controls API

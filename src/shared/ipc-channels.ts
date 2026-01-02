@@ -424,7 +424,11 @@ export const SettingsChannels = {
     /** Load AI embedding model */
     LOAD_AI_MODEL: 'settings:loadAIModel',
     /** Trigger re-indexing of note embeddings */
-    REINDEX_EMBEDDINGS: 'settings:reindexEmbeddings'
+    REINDEX_EMBEDDINGS: 'settings:reindexEmbeddings',
+    /** Get tab settings (preview mode, etc.) */
+    GET_TAB_SETTINGS: 'settings:getTabSettings',
+    /** Set tab settings */
+    SET_TAB_SETTINGS: 'settings:setTabSettings'
   },
   events: {
     /** Settings changed */

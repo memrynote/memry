@@ -19,7 +19,13 @@ import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from 
 
 const SETTINGS_KEYS = {
   JOURNAL_DEFAULT_TEMPLATE: 'journal.defaultTemplate',
-  AI_ENABLED: 'ai.enabled'
+  AI_ENABLED: 'ai.enabled',
+  // Tab settings
+  TAB_PREVIEW_MODE: 'tabs.previewMode',
+  TAB_OPEN_IN_NEW_TAB: 'tabs.openInNewTab',
+  TAB_SHOW_PINNED_FIRST: 'tabs.showPinnedTabsFirst',
+  TAB_RESTORE_SESSION: 'tabs.restoreSessionOnStart',
+  TAB_CLOSE_BUTTON: 'tabs.tabCloseButton'
 } as const
 
 // ============================================================================
@@ -50,6 +56,32 @@ export interface AIModelStatus {
 /** Default AI settings values */
 const DEFAULT_AI_SETTINGS: AISettings = {
   enabled: true
+}
+
+// ============================================================================
+// Tab Settings Interface
+// ============================================================================
+
+export interface TabSettings {
+  /** When to open in new tab: always, never, or with modifier key */
+  openInNewTab: 'always' | 'never' | 'modifier'
+  /** Single-click opens preview, double-click opens permanent */
+  previewMode: boolean
+  /** Keep pinned tabs on left */
+  showPinnedTabsFirst: boolean
+  /** Restore tabs from last session on app start */
+  restoreSessionOnStart: boolean
+  /** When to show close button: always, on hover, or only on active tab */
+  tabCloseButton: 'always' | 'hover' | 'active'
+}
+
+/** Default tab settings values */
+const DEFAULT_TAB_SETTINGS: TabSettings = {
+  openInNewTab: 'modifier',
+  previewMode: false,
+  showPinnedTabsFirst: true,
+  restoreSessionOnStart: true,
+  tabCloseButton: 'hover'
 }
 
 // ============================================================================
@@ -240,6 +272,82 @@ export function registerSettingsHandlers(): void {
     }
   })
 
+  // Get tab settings
+  ipcMain.handle(SettingsChannels.invoke.GET_TAB_SETTINGS, async () => {
+    const db = getDbOrNull()
+    if (!db) {
+      return DEFAULT_TAB_SETTINGS
+    }
+
+    const previewModeStr = getSetting(db, SETTINGS_KEYS.TAB_PREVIEW_MODE)
+    const openInNewTabStr = getSetting(db, SETTINGS_KEYS.TAB_OPEN_IN_NEW_TAB)
+    const showPinnedFirstStr = getSetting(db, SETTINGS_KEYS.TAB_SHOW_PINNED_FIRST)
+    const restoreSessionStr = getSetting(db, SETTINGS_KEYS.TAB_RESTORE_SESSION)
+    const closeButtonStr = getSetting(db, SETTINGS_KEYS.TAB_CLOSE_BUTTON)
+
+    return {
+      previewMode:
+        previewModeStr !== null ? previewModeStr === 'true' : DEFAULT_TAB_SETTINGS.previewMode,
+      openInNewTab:
+        (openInNewTabStr as TabSettings['openInNewTab']) ?? DEFAULT_TAB_SETTINGS.openInNewTab,
+      showPinnedTabsFirst:
+        showPinnedFirstStr !== null
+          ? showPinnedFirstStr === 'true'
+          : DEFAULT_TAB_SETTINGS.showPinnedTabsFirst,
+      restoreSessionOnStart:
+        restoreSessionStr !== null
+          ? restoreSessionStr === 'true'
+          : DEFAULT_TAB_SETTINGS.restoreSessionOnStart,
+      tabCloseButton:
+        (closeButtonStr as TabSettings['tabCloseButton']) ?? DEFAULT_TAB_SETTINGS.tabCloseButton
+    }
+  })
+
+  // Set tab settings
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_TAB_SETTINGS,
+    async (_event, settings: Partial<TabSettings>) => {
+      const db = getDbOrNull()
+      if (!db) {
+        return { success: false, error: 'No vault open' }
+      }
+
+      if (settings.previewMode !== undefined) {
+        setSetting(db, SETTINGS_KEYS.TAB_PREVIEW_MODE, settings.previewMode ? 'true' : 'false')
+      }
+      if (settings.openInNewTab !== undefined) {
+        setSetting(db, SETTINGS_KEYS.TAB_OPEN_IN_NEW_TAB, settings.openInNewTab)
+      }
+      if (settings.showPinnedTabsFirst !== undefined) {
+        setSetting(
+          db,
+          SETTINGS_KEYS.TAB_SHOW_PINNED_FIRST,
+          settings.showPinnedTabsFirst ? 'true' : 'false'
+        )
+      }
+      if (settings.restoreSessionOnStart !== undefined) {
+        setSetting(
+          db,
+          SETTINGS_KEYS.TAB_RESTORE_SESSION,
+          settings.restoreSessionOnStart ? 'true' : 'false'
+        )
+      }
+      if (settings.tabCloseButton !== undefined) {
+        setSetting(db, SETTINGS_KEYS.TAB_CLOSE_BUTTON, settings.tabCloseButton)
+      }
+
+      // Emit settings changed event
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(SettingsChannels.events.CHANGED, {
+          key: 'tabs',
+          value: settings
+        })
+      })
+
+      return { success: true }
+    }
+  )
+
   console.log('Settings IPC handlers registered')
 }
 
@@ -256,6 +364,8 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.GET_AI_MODEL_STATUS)
   ipcMain.removeHandler(SettingsChannels.invoke.LOAD_AI_MODEL)
   ipcMain.removeHandler(SettingsChannels.invoke.REINDEX_EMBEDDINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_TAB_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_TAB_SETTINGS)
 
   console.log('Settings IPC handlers unregistered')
 }

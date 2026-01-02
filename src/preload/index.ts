@@ -404,7 +404,16 @@ const api = {
       ipcRenderer.invoke(SettingsChannels.invoke.SET_AI_SETTINGS, settings),
     getAIModelStatus: () => ipcRenderer.invoke(SettingsChannels.invoke.GET_AI_MODEL_STATUS),
     loadAIModel: () => ipcRenderer.invoke(SettingsChannels.invoke.LOAD_AI_MODEL),
-    reindexEmbeddings: () => ipcRenderer.invoke(SettingsChannels.invoke.REINDEX_EMBEDDINGS)
+    reindexEmbeddings: () => ipcRenderer.invoke(SettingsChannels.invoke.REINDEX_EMBEDDINGS),
+    // Tab Settings
+    getTabSettings: () => ipcRenderer.invoke(SettingsChannels.invoke.GET_TAB_SETTINGS),
+    setTabSettings: (settings: {
+      openInNewTab?: 'always' | 'never' | 'modifier'
+      previewMode?: boolean
+      showPinnedTabsFirst?: boolean
+      restoreSessionOnStart?: boolean
+      tabCloseButton?: 'always' | 'hover' | 'active'
+    }) => ipcRenderer.invoke(SettingsChannels.invoke.SET_TAB_SETTINGS, settings)
   },
 
   // Bookmarks API

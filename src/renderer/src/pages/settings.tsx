@@ -57,6 +57,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { useTemplates } from '@/hooks/use-templates'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
+import { useTabPreferences } from '@/hooks/use-tab-preferences'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -174,14 +175,187 @@ function SettingsNavItem({ icon, label, isActive, onClick }: SettingsNavItemProp
 // ============================================================================
 
 function GeneralSettings() {
+  const { settings, isLoading, updateSettings } = useTabPreferences()
+  const { updateSettings: updateContextSettings } = useTabs()
+
+  const handlePreviewModeChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await updateSettings({ previewMode: enabled })
+      if (success) {
+        // Also update the context for immediate effect
+        updateContextSettings({ previewMode: enabled })
+        toast.success(enabled ? 'Preview mode enabled' : 'Preview mode disabled')
+      } else {
+        toast.error('Failed to update setting')
+      }
+    },
+    [updateSettings, updateContextSettings]
+  )
+
+  const handleOpenInNewTabChange = useCallback(
+    async (value: 'always' | 'never' | 'modifier') => {
+      const success = await updateSettings({ openInNewTab: value })
+      if (success) {
+        updateContextSettings({ openInNewTab: value })
+        toast.success('Tab opening behavior updated')
+      } else {
+        toast.error('Failed to update setting')
+      }
+    },
+    [updateSettings, updateContextSettings]
+  )
+
+  const handleShowPinnedFirstChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await updateSettings({ showPinnedTabsFirst: enabled })
+      if (success) {
+        updateContextSettings({ showPinnedTabsFirst: enabled })
+        toast.success(enabled ? 'Pinned tabs will appear first' : 'Pinned tabs position updated')
+      } else {
+        toast.error('Failed to update setting')
+      }
+    },
+    [updateSettings, updateContextSettings]
+  )
+
+  const handleRestoreSessionChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await updateSettings({ restoreSessionOnStart: enabled })
+      if (success) {
+        updateContextSettings({ restoreSessionOnStart: enabled })
+        toast.success(enabled ? 'Session will be restored on start' : 'Session restore disabled')
+      } else {
+        toast.error('Failed to update setting')
+      }
+    },
+    [updateSettings, updateContextSettings]
+  )
+
+  const handleCloseButtonChange = useCallback(
+    async (value: 'always' | 'hover' | 'active') => {
+      const success = await updateSettings({ tabCloseButton: value })
+      if (success) {
+        updateContextSettings({ tabCloseButton: value })
+        toast.success('Close button visibility updated')
+      } else {
+        toast.error('Failed to update setting')
+      }
+    },
+    [updateSettings, updateContextSettings]
+  )
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold">General</h3>
+          <p className="text-sm text-muted-foreground">Loading settings...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold">General</h3>
         <p className="text-sm text-muted-foreground">General application settings</p>
       </div>
+
       <Separator />
-      <div className="text-muted-foreground text-sm">General settings coming soon...</div>
+
+      {/* Tab Behavior Section */}
+      <div className="space-y-6">
+        <div>
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Tab Behavior
+          </h4>
+        </div>
+
+        {/* Preview Mode */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="preview-mode">Preview Mode</Label>
+            <p className="text-sm text-muted-foreground">
+              Single-click opens a preview tab, double-click opens permanently
+            </p>
+          </div>
+          <Switch
+            id="preview-mode"
+            checked={settings.previewMode}
+            onCheckedChange={handlePreviewModeChange}
+          />
+        </div>
+
+        {/* Open in New Tab */}
+        <div className="space-y-2">
+          <Label>Open Items In</Label>
+          <p className="text-sm text-muted-foreground">Choose when to open items in a new tab</p>
+          <Select value={settings.openInNewTab} onValueChange={handleOpenInNewTabChange}>
+            <SelectTrigger className="w-full max-w-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="always">Always open in new tab</SelectItem>
+              <SelectItem value="never">Replace current tab</SelectItem>
+              <SelectItem value="modifier">New tab with Cmd/Ctrl+Click</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Show Pinned Tabs First */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="pinned-first">Show Pinned Tabs First</Label>
+            <p className="text-sm text-muted-foreground">Keep pinned tabs on the left side</p>
+          </div>
+          <Switch
+            id="pinned-first"
+            checked={settings.showPinnedTabsFirst}
+            onCheckedChange={handleShowPinnedFirstChange}
+          />
+        </div>
+
+        {/* Restore Session */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="restore-session">Restore Session on Start</Label>
+            <p className="text-sm text-muted-foreground">
+              Reopen your tabs from your last session when the app starts
+            </p>
+          </div>
+          <Switch
+            id="restore-session"
+            checked={settings.restoreSessionOnStart}
+            onCheckedChange={handleRestoreSessionChange}
+          />
+        </div>
+
+        {/* Tab Close Button */}
+        <div className="space-y-2">
+          <Label>Tab Close Button</Label>
+          <p className="text-sm text-muted-foreground">When to show the close button on tabs</p>
+          <Select value={settings.tabCloseButton} onValueChange={handleCloseButtonChange}>
+            <SelectTrigger className="w-full max-w-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="always">Always visible</SelectItem>
+              <SelectItem value="hover">Show on hover</SelectItem>
+              <SelectItem value="active">Only on active tab</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Info hint */}
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+          <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+          <p className="text-muted-foreground">
+            Tab settings take effect immediately. Preview mode is useful for quickly browsing items
+            - single-click to preview, double-click to keep open.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

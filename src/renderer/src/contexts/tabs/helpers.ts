@@ -444,7 +444,7 @@ export const getInsertIndexAfterPinned = (tabs: Tab[]): number => {
  */
 export const DEFAULT_TAB_SETTINGS: TabSettings = {
   openInNewTab: 'modifier',
-  previewMode: true,
+  previewMode: false,
   showPinnedTabsFirst: true,
   restoreSessionOnStart: true,
   tabCloseButton: 'hover'
