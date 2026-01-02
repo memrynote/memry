@@ -102,7 +102,7 @@ export const NoteListSchema = z.object({
   tags: z.array(z.string()).optional(),
   sortBy: z.enum(['modified', 'created', 'title']).default('modified'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
-  limit: z.number().int().min(1).max(1000).default(100),
+  limit: z.number().int().min(1).max(10000).default(100),
   offset: z.number().int().min(0).default(0)
 })
 
