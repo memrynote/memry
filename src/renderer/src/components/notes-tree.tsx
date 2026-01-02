@@ -38,6 +38,7 @@ import {
   FilePlus,
   FolderPlus,
   LayoutTemplate,
+  LayoutGrid,
   X
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -406,28 +407,6 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       // Keep all IDs including folders for context-aware creation
       setSelectedIds(ids)
 
-      // Check for folder selection first (open folder view)
-      const folderIds = ids.filter((id) => id.startsWith('folder-') && id !== 'notes-root')
-      if (folderIds.length === 1) {
-        const folderPath = folderIds[0].replace('folder-', '')
-        // Skip root folder - don't open view for it
-        if (folderPath && folderPath !== '') {
-          const folderName = folderPath.split('/').pop() || 'Folder'
-          openTab({
-            type: 'folder',
-            title: folderName,
-            icon: 'folder',
-            path: `/folder/${encodeURIComponent(folderPath)}`,
-            entityId: folderPath,
-            isPinned: false,
-            isModified: false,
-            isPreview: true,
-            isDeleted: false
-          })
-          return
-        }
-      }
-
       // Only open in tab on single note selection (not folders, not multi-select)
       const noteIds = ids.filter((id) => !id.startsWith('folder-') && id !== 'notes-root')
       if (noteIds.length === 1) {
@@ -448,6 +427,25 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       }
     },
     [noteMap, openTab]
+  )
+
+  // Handle opening folder view from hover icon
+  const handleOpenFolderView = useCallback(
+    (folderPath: string) => {
+      const folderName = folderPath.split('/').pop() || 'Folder'
+      openTab({
+        type: 'folder',
+        title: folderName,
+        icon: 'folder',
+        path: `/folder/${encodeURIComponent(folderPath)}`,
+        entityId: folderPath,
+        isPinned: false,
+        isModified: false,
+        isPreview: true,
+        isDeleted: false
+      })
+    },
+    [openTab]
   )
 
   // Handle creating a new note - uses folder default template automatically
@@ -1356,29 +1354,18 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           ) : (
             <div className="group/folder flex flex-1 items-center">
               <TreeLabel className="flex-1">{folder.name}</TreeLabel>
-              {/* Hover action icons for creating note/folder */}
-              <div className="flex items-center gap-0.5 opacity-0 group-hover/folder:opacity-100 transition-opacity ml-auto">
+              {/* Hover action icon to open folder view */}
+              <div className="flex items-center opacity-0 group-hover/folder:opacity-100 transition-opacity ml-auto">
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation()
-                    handleCreateNoteInFolder(folder.path)
+                    handleOpenFolderView(folder.path)
                   }}
-                  className="p-0.5 hover:bg-muted rounded"
-                  aria-label="Create note in folder"
+                  className="p-1 cursor-pointer rounded hover:bg-accent/80 transition-colors"
+                  aria-label="Open folder view"
                 >
-                  <FilePlus className="h-3.5 w-3.5 text-muted-foreground" />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleCreateSubfolder(folder.path)
-                  }}
-                  className="p-0.5 hover:bg-muted rounded"
-                  aria-label="Create folder"
-                >
-                  <FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
+                  <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                 </button>
               </div>
             </div>
@@ -1414,6 +1401,11 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           onSelectionChange={handleSelectionChange}
           onCreateNote={handleCreateNoteInFolder}
           onCreateFolder={handleCreateSubfolder}
+          onRenameFolder={handleRenameFolderClick}
+          onDeleteFolder={handleDeleteFolderClick}
+          onSetFolderTemplate={handleSetFolderTemplate}
+          onClearFolderTemplate={handleClearFolderTemplate}
+          folderTemplateNames={folderTemplateNames}
           noteMap={noteMap}
           isDragDisabled={!!renamingNoteId || !!renamingFolderPath || isMoving}
           className="flex-1"

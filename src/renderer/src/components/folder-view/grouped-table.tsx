@@ -1064,7 +1064,7 @@ export function GroupedTable({
                       <td
                         key={cell.id}
                         className={cn(
-                          'flex-shrink-0',
+                          'flex-shrink-0 overflow-hidden',
                           density === 'compact' ? 'px-2 py-1' : 'px-3 py-2',
                           showColumnBorders &&
                             cellIndex < row.getVisibleCells().length - 1 &&
