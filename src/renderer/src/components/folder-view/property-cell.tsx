@@ -6,7 +6,7 @@
  * and specialized cells for built-in columns (title, folder, tags).
  */
 
-import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns'
+import { format } from 'date-fns'
 import { Check, X, ExternalLink, Folder, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -74,23 +74,12 @@ interface TagsCellProps {
 
 /**
  * Format a date for display in the table.
+ * Format: dd.MM.yyyy - HH:mm:ss
  */
 function formatDate(dateStr: string): string {
   try {
     const date = new Date(dateStr)
-    if (isToday(date)) {
-      return `Today, ${format(date, 'h:mm a')}`
-    }
-    if (isYesterday(date)) {
-      return `Yesterday, ${format(date, 'h:mm a')}`
-    }
-    // Within last week, show relative
-    const diffDays = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24))
-    if (diffDays < 7) {
-      return formatDistanceToNow(date, { addSuffix: true })
-    }
-    // Otherwise show date
-    return format(date, 'MMM d, yyyy')
+    return format(date, 'dd.MM.yyyy - HH:mm:ss')
   } catch {
     return String(dateStr)
   }
