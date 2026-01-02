@@ -4,8 +4,12 @@
  * Renders property values in the folder table view.
  * Handles different property types (text, number, date, checkbox, etc.)
  * and specialized cells for built-in columns (title, folder, tags).
+ *
+ * Performance: All cell components are wrapped with React.memo to prevent
+ * unnecessary re-renders when parent table components update.
  */
 
+import { memo } from 'react'
 import { format } from 'date-fns'
 import { Check, X, ExternalLink, Folder, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -143,7 +147,7 @@ function getTagColor(tag: string): string {
 /**
  * Renders a property value based on its type.
  */
-export function PropertyCell({
+export const PropertyCell = memo(function PropertyCell({
   value,
   type,
   highlightQuery,
@@ -166,16 +170,18 @@ export function PropertyCell({
     case 'select':
       return <SelectCell value={String(value)} className={className} />
 
-    case 'multiselect':
+    case 'multiselect': {
       const items = Array.isArray(value) ? value : String(value).split(',')
       return <MultiSelectCell values={items.map(String)} className={className} />
+    }
 
     case 'url':
       return <UrlCell value={String(value)} className={className} />
 
-    case 'rating':
+    case 'rating': {
       const rating = typeof value === 'number' ? value : parseInt(String(value), 10) || 0
       return <RatingCell value={rating} className={className} />
+    }
 
     case 'text':
     default:
@@ -183,7 +189,7 @@ export function PropertyCell({
         <TextCell value={String(value)} highlightQuery={highlightQuery} className={className} />
       )
   }
-}
+})
 
 // ============================================================================
 // Basic Type Cells
@@ -192,7 +198,7 @@ export function PropertyCell({
 /**
  * T041: Text cell with ellipsis overflow
  */
-export function TextCell({
+export const TextCell = memo(function TextCell({
   value,
   highlightQuery,
   className
@@ -206,12 +212,12 @@ export function TextCell({
       {highlightQuery ? highlightText(value, highlightQuery) : value}
     </span>
   )
-}
+})
 
 /**
  * T042: Number cell - right-aligned, formatted
  */
-export function NumberCell({
+export const NumberCell = memo(function NumberCell({
   value,
   className
 }: {
@@ -222,12 +228,12 @@ export function NumberCell({
   const formatted = isNaN(num) ? String(value) : num.toLocaleString()
 
   return <span className={cn('tabular-nums text-right block', className)}>{formatted}</span>
-}
+})
 
 /**
  * T043: Checkbox cell - checkmark or X
  */
-export function CheckboxCell({
+export const CheckboxCell = memo(function CheckboxCell({
   value,
   className
 }: {
@@ -239,12 +245,12 @@ export function CheckboxCell({
   ) : (
     <X className={cn('h-4 w-4 text-muted-foreground/50', className)} />
   )
-}
+})
 
 /**
  * T044: Date cell - relative format
  */
-export function DateCell({
+export const DateCell = memo(function DateCell({
   value,
   className
 }: {
@@ -256,12 +262,12 @@ export function DateCell({
       {formatDate(value)}
     </span>
   )
-}
+})
 
 /**
  * T045: Select cell - colored badge
  */
-export function SelectCell({
+export const SelectCell = memo(function SelectCell({
   value,
   className
 }: {
@@ -279,12 +285,12 @@ export function SelectCell({
       {value}
     </span>
   )
-}
+})
 
 /**
  * T046: MultiSelect cell - multiple badges
  */
-export function MultiSelectCell({
+export const MultiSelectCell = memo(function MultiSelectCell({
   values,
   className
 }: {
@@ -312,12 +318,12 @@ export function MultiSelectCell({
       )}
     </div>
   )
-}
+})
 
 /**
  * T047: URL cell - clickable link with external icon
  */
-export function UrlCell({
+export const UrlCell = memo(function UrlCell({
   value,
   className
 }: {
@@ -349,12 +355,12 @@ export function UrlCell({
       <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-50" />
     </a>
   )
-}
+})
 
 /**
  * T048: Rating cell - star display
  */
-export function RatingCell({
+export const RatingCell = memo(function RatingCell({
   value,
   max = 5,
   className
@@ -371,7 +377,7 @@ export function RatingCell({
       {'☆'.repeat(max - rating)}
     </span>
   )
-}
+})
 
 // ============================================================================
 // Specialized Built-in Cells
@@ -381,7 +387,7 @@ export function RatingCell({
  * T049: Title cell - emoji + title, clickable
  * Single click opens note in permanent tab
  */
-export function TitleCell({
+export const TitleCell = memo(function TitleCell({
   title,
   emoji,
   onClick,
@@ -412,12 +418,16 @@ export function TitleCell({
       </span>
     </button>
   )
-}
+})
 
 /**
  * T050: Folder cell - relative folder path with icon
  */
-export function FolderCell({ path, onClick, className }: FolderCellProps): React.JSX.Element {
+export const FolderCell = memo(function FolderCell({
+  path,
+  onClick,
+  className
+}: FolderCellProps): React.JSX.Element {
   // Root folder display
   if (!path || path === '/') {
     return <span className={cn('text-muted-foreground/50', className)}>—</span>
@@ -441,12 +451,12 @@ export function FolderCell({ path, onClick, className }: FolderCellProps): React
       <span className="truncate text-sm">{path}</span>
     </button>
   )
-}
+})
 
 /**
  * T051: Tags cell - multiple colored tag badges
  */
-export function TagsCell({
+export const TagsCell = memo(function TagsCell({
   tags,
   onTagClick,
   highlightQuery,
@@ -491,7 +501,7 @@ export function TagsCell({
       )}
     </div>
   )
-}
+})
 
 // ============================================================================
 // Word Count Cell (built-in)
@@ -500,7 +510,7 @@ export function TagsCell({
 /**
  * Word count cell - formatted number with "words" label
  */
-export function WordCountCell({
+export const WordCountCell = memo(function WordCountCell({
   value,
   className
 }: {
@@ -512,6 +522,6 @@ export function WordCountCell({
       {value.toLocaleString()}
     </span>
   )
-}
+})
 
 export default PropertyCell
