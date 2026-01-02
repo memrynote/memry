@@ -55,6 +55,7 @@ import {
 import { useDisplayDensity } from '@/hooks/use-display-density'
 import { useTabs } from '@/contexts/tabs'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
+import { GroupedTable } from '@/components/folder-view/grouped-table'
 import { FolderViewToolbar } from '@/components/folder-view/folder-view-toolbar'
 import { ViewSwitcher } from '@/components/folder-view/view-switcher'
 import { useFolderView } from '@/hooks/use-folder-view'
@@ -63,7 +64,8 @@ import { notesService } from '@/services/notes-service'
 import {
   DEFAULT_COLUMNS,
   type FilterExpression,
-  type ColumnConfig
+  type ColumnConfig,
+  type GroupByConfig
 } from '@shared/contracts/folder-view-api'
 
 interface FolderViewPageProps {
@@ -101,6 +103,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     updateDisplayName,
     updateSummaryConfig,
     toggleShowSummaries,
+    updateGroupBy,
     availableProperties,
     builtInColumns,
     formulas,
@@ -470,6 +473,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         sampleNote={sampleNote}
         summaries={summaries}
         onSummaryChange={updateSummaryConfig}
+        groupBy={activeView?.groupBy as GroupByConfig | undefined}
+        onGroupByChange={updateGroupBy}
         className="flex-shrink-0 min-w-0 overflow-hidden"
       />
 
@@ -486,7 +491,37 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             />
           ) : isLoading ? (
             <FolderViewSkeleton columns={activeView?.columns ?? DEFAULT_COLUMNS} />
+          ) : activeView?.groupBy ? (
+            // Grouped table view when groupBy is set (Phase 24)
+            <GroupedTable
+              notes={notes}
+              columns={activeView?.columns ?? DEFAULT_COLUMNS}
+              formulas={formulasMap}
+              groupBy={activeView.groupBy as GroupByConfig}
+              initialSorting={activeView?.order}
+              globalFilter={debouncedSearchQuery}
+              highlightQuery={debouncedSearchQuery}
+              selectedRowIds={selectedRowIds}
+              onSelectionChange={handleSelectionChange}
+              onNoteOpen={handleNoteOpen}
+              onOpenInNewTab={handleOpenInNewTab}
+              onFolderClick={handleFolderClick}
+              onTagClick={handleTagClick}
+              onColumnsChange={updateColumns}
+              onSortingChange={updateSorting}
+              onDisplayNameChange={updateDisplayName}
+              onDelete={handleDeleteRequest}
+              onCreateNote={handleCreateNote}
+              onClearAll={handleClearAll}
+              highlightedColumns={highlightedColumns}
+              density={density}
+              showColumnBorders={true}
+              showSummaries={activeView?.showSummaries ?? false}
+              summaries={summaries}
+              className="h-full"
+            />
           ) : (
+            // Standard table view
             <FolderTableView
               notes={notes}
               columns={activeView?.columns ?? DEFAULT_COLUMNS}

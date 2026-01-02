@@ -1751,6 +1751,13 @@ export interface FolderViewConfig {
   summaries?: Record<string, unknown>
 }
 
+export interface FolderViewGroupBy {
+  property: string
+  direction?: 'asc' | 'desc'
+  collapsed?: boolean
+  showSummary?: boolean
+}
+
 export interface FolderViewView {
   name: string
   type: 'table' | 'grid' | 'list' | 'kanban'
@@ -1758,7 +1765,7 @@ export interface FolderViewView {
   columns?: FolderViewColumn[]
   filters?: unknown
   order?: Array<{ property: string; direction: 'asc' | 'desc' }>
-  groupBy?: unknown
+  groupBy?: FolderViewGroupBy
   limit?: number
   showSummaries?: boolean
 }
