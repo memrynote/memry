@@ -12,7 +12,7 @@
  * - T114: Per-group summaries (when showSummary is enabled)
  */
 
-import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
+import { useMemo, useCallback, useState, useEffect, useRef, memo } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -1121,7 +1121,7 @@ interface GroupHeaderRowProps {
   columns: ColumnConfig[]
 }
 
-function GroupHeaderRow({
+const GroupHeaderRow = memo(function GroupHeaderRow({
   row,
   virtualRow,
   measureElement,
@@ -1234,6 +1234,6 @@ function GroupHeaderRow({
       </td>
     </tr>
   )
-}
+})
 
 export default GroupedTable

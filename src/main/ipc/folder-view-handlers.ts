@@ -6,7 +6,7 @@
  */
 
 import { ipcMain } from 'electron'
-import { eq, like, and, isNull } from 'drizzle-orm'
+import { eq, like, and, isNull, inArray } from 'drizzle-orm'
 import { FolderViewChannels } from '@shared/ipc-channels'
 import {
   GetConfigRequestSchema,
@@ -258,16 +258,11 @@ export function registerFolderViewHandlers(): void {
         // Get note IDs for batch queries
         const noteIds = notes.map((n) => n.id)
 
-        // Batch fetch tags
+        // Batch fetch tags for all notes
         const tagsResult = await db
           .select({ noteId: noteTags.noteId, tag: noteTags.tag })
           .from(noteTags)
-          .where(
-            noteIds.length === 1
-              ? eq(noteTags.noteId, noteIds[0])
-              : // For multiple notes, we need individual queries or SQL IN
-                eq(noteTags.noteId, noteIds[0]) // Simplified - should use IN
-          )
+          .where(inArray(noteTags.noteId, noteIds))
 
         // Group tags by note ID
         const tagsByNote = new Map<string, string[]>()

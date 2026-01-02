@@ -4,11 +4,63 @@
  * Evaluates parsed AST nodes against a note context.
  * Provides built-in functions for date manipulation, string operations, etc.
  *
+ * Performance: Expression parsing is cached using a simple LRU cache to avoid
+ * re-parsing the same expressions on every render. This significantly improves
+ * performance when rendering tables with formula columns.
+ *
  * @module lib/expression-evaluator
  */
 
 import { parseExpression, type ASTNode, ParseError } from './expression-parser'
 import type { NoteWithProperties } from '@shared/contracts/folder-view-api'
+
+// ============================================================================
+// Expression AST Cache (Performance Optimization)
+// ============================================================================
+
+/**
+ * Simple LRU cache for parsed expression ASTs.
+ * Prevents re-parsing the same expression on every render.
+ */
+const expressionCache = new Map<string, ASTNode>()
+const CACHE_MAX_SIZE = 100
+
+/**
+ * Get a cached parsed expression AST, or parse and cache it.
+ * Uses a simple LRU eviction strategy.
+ */
+function getCachedExpression(expression: string): ASTNode {
+  // Check cache first
+  if (expressionCache.has(expression)) {
+    // Move to end to mark as recently used (simple LRU)
+    const ast = expressionCache.get(expression)!
+    expressionCache.delete(expression)
+    expressionCache.set(expression, ast)
+    return ast
+  }
+
+  // Parse the expression
+  const ast = parseExpression(expression)
+
+  // Evict oldest entry if cache is full
+  if (expressionCache.size >= CACHE_MAX_SIZE) {
+    const firstKey = expressionCache.keys().next().value
+    if (firstKey !== undefined) {
+      expressionCache.delete(firstKey)
+    }
+  }
+
+  // Cache the result
+  expressionCache.set(expression, ast)
+  return ast
+}
+
+/**
+ * Clear the expression cache. Useful for testing or when expressions change.
+ */
+export function clearExpressionCache(): void {
+  expressionCache.clear()
+}
 
 // ============================================================================
 // Types
@@ -684,6 +736,9 @@ function compareValues(left: unknown, right: unknown): number {
 /**
  * Evaluate a formula expression against a note.
  *
+ * Uses cached expression ASTs for performance - parsing only happens once
+ * per unique expression string.
+ *
  * @param expression - The formula expression string
  * @param note - The note to evaluate against
  * @returns The result of evaluation, or null on error
@@ -698,7 +753,7 @@ function compareValues(left: unknown, right: unknown): number {
  */
 export function evaluateFormula(expression: string, note: NoteWithProperties): unknown {
   try {
-    const ast = parseExpression(expression)
+    const ast = getCachedExpression(expression)
     return evaluateAST(ast, { note })
   } catch (err) {
     if (err instanceof ParseError) {
@@ -712,10 +767,12 @@ export function evaluateFormula(expression: string, note: NoteWithProperties): u
 
 /**
  * Evaluate a formula with full context.
+ *
+ * Uses cached expression ASTs for performance.
  */
 export function evaluateFormulaWithContext(expression: string, context: FormulaContext): unknown {
   try {
-    const ast = parseExpression(expression)
+    const ast = getCachedExpression(expression)
     return evaluateAST(ast, context)
   } catch (err) {
     if (err instanceof ParseError) {
