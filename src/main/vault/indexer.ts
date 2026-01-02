@@ -152,6 +152,7 @@ async function indexFile(
 
     // Extract metadata
     const tags = extractTags(parsed.frontmatter)
+    const properties = extractProperties(parsed.frontmatter)
     const wikiLinks = extractWikiLinks(parsed.content)
     const wordCount = calculateWordCount(parsed.content)
     const characterCount = parsed.content.length
@@ -184,6 +185,13 @@ async function indexFile(
     // Set tags
     if (tags.length > 0) {
       setNoteTags(db, parsed.frontmatter.id, tags)
+    }
+
+    // Set properties with type inference
+    if (Object.keys(properties).length > 0) {
+      setNoteProperties(db, parsed.frontmatter.id, properties, (name, value) =>
+        getPropertyType(db, name, value, inferPropertyType)
+      )
     }
 
     // Set links (resolve targets after all files are indexed)
