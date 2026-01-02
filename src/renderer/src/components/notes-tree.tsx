@@ -416,6 +416,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
             type: 'note',
             title: getDisplayName(note.path),
             icon: 'file-text',
+            emoji: note.emoji,
             path: `/notes/${note.id}`,
             entityId: note.id,
             isPinned: false,
@@ -470,6 +471,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           type: 'note',
           title: getDisplayName(newNote.path),
           icon: 'file-text',
+          emoji: newNote.emoji,
           path: `/notes/${newNote.id}`,
           entityId: newNote.id,
           isPinned: false,
@@ -601,6 +603,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
             type: 'note',
             title: getDisplayName(newNote.path),
             icon: 'file-text',
+            emoji: newNote.emoji,
             path: `/notes/${newNote.id}`,
             entityId: newNote.id,
             isPinned: false,
@@ -1399,6 +1402,10 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           tree={tree}
           selectedIds={selectedIds}
           onSelectionChange={handleSelectionChange}
+          onRenameNote={handleRenameClick}
+          onDeleteNote={handleDeleteClick}
+          onOpenExternal={handleOpenExternal}
+          onRevealInFinder={handleRevealInFinder}
           onCreateNote={handleCreateNoteInFolder}
           onCreateFolder={handleCreateSubfolder}
           onRenameFolder={handleRenameFolderClick}

@@ -21,7 +21,8 @@ import {
   Pencil,
   Trash2,
   LayoutTemplate,
-  X
+  X,
+  ExternalLink
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTabs } from '@/contexts/tabs'
@@ -56,6 +57,10 @@ interface VirtualizedNotesTreeProps {
   onRenameNote?: (note: NoteListItem) => void
   /** Callback when a note should be deleted */
   onDeleteNote?: (note: NoteListItem) => void
+  /** Callback when opening a note externally */
+  onOpenExternal?: (note: NoteListItem) => void
+  /** Callback when revealing a note in Finder */
+  onRevealInFinder?: (note: NoteListItem) => void
   /** Callback when a folder should be deleted */
   onDeleteFolder?: (folderPath: string) => void
   /** Callback when creating a note in a folder */
@@ -291,9 +296,22 @@ interface NoteRowProps {
   isSelected: boolean
   onSelect: (noteId: string, event: React.MouseEvent) => void
   onDoubleClick?: (note: NoteListItem) => void
+  onRenameNote?: (note: NoteListItem) => void
+  onDeleteNote?: (note: NoteListItem) => void
+  onOpenExternal?: (note: NoteListItem) => void
+  onRevealInFinder?: (note: NoteListItem) => void
 }
 
-function NoteRow({ item, isSelected, onSelect, onDoubleClick }: NoteRowProps) {
+function NoteRow({
+  item,
+  isSelected,
+  onSelect,
+  onDoubleClick,
+  onRenameNote,
+  onDeleteNote,
+  onOpenExternal,
+  onRevealInFinder
+}: NoteRowProps) {
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -317,32 +335,59 @@ function NoteRow({ item, isSelected, onSelect, onDoubleClick }: NoteRowProps) {
   )
 
   return (
-    <div
-      role="treeitem"
-      aria-selected={isSelected}
-      tabIndex={0}
-      className={cn(
-        'flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors',
-        'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-        isSelected && 'bg-muted'
-      )}
-      style={{ paddingLeft: `${item.level * 16 + 8 + 20}px` }} // Extra indent for no expander
-      onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
-      onKeyDown={handleKeyDown}
-    >
-      {/* Note icon or emoji */}
-      {item.note.emoji ? (
-        <span className="text-sm leading-none shrink-0" role="img" aria-label="note icon">
-          {item.note.emoji}
-        </span>
-      ) : (
-        <FileText className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
-      )}
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          role="treeitem"
+          aria-selected={isSelected}
+          tabIndex={0}
+          className={cn(
+            'flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors',
+            'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            isSelected && 'bg-muted'
+          )}
+          style={{ paddingLeft: `${item.level * 16 + 8 + 20}px` }} // Extra indent for no expander
+          onClick={handleClick}
+          onDoubleClick={handleDoubleClick}
+          onKeyDown={handleKeyDown}
+        >
+          {/* Note icon or emoji */}
+          {item.note.emoji ? (
+            <span className="text-sm leading-none shrink-0" role="img" aria-label="note icon">
+              {item.note.emoji}
+            </span>
+          ) : (
+            <FileText className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
+          )}
 
-      {/* Note name */}
-      <span className="text-sm truncate">{getDisplayName(item.note.path)}</span>
-    </div>
+          {/* Note name */}
+          <span className="text-sm truncate">{getDisplayName(item.note.path)}</span>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onClick={() => onRenameNote?.(item.note)}>
+          <Pencil className="mr-2 h-4 w-4" />
+          Rename
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => onOpenExternal?.(item.note)}>
+          <ExternalLink className="mr-2 h-4 w-4" />
+          Open in External Editor
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onRevealInFinder?.(item.note)}>
+          <FolderOpen className="mr-2 h-4 w-4" />
+          Reveal in Finder
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem
+          className="text-destructive focus:text-destructive"
+          onClick={() => onDeleteNote?.(item.note)}
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Delete
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 
@@ -354,6 +399,10 @@ export function VirtualizedNotesTree({
   tree,
   selectedIds,
   onSelectionChange,
+  onRenameNote,
+  onDeleteNote,
+  onOpenExternal,
+  onRevealInFinder,
   onDeleteFolder,
   onCreateNote,
   onCreateFolder,
@@ -438,6 +487,7 @@ export function VirtualizedNotesTree({
               type: 'note',
               title: getDisplayName(note.path),
               icon: 'file-text',
+              emoji: note.emoji,
               path: `/notes/${note.id}`,
               entityId: note.id,
               isPinned: false,
@@ -459,6 +509,7 @@ export function VirtualizedNotesTree({
         type: 'note',
         title: getDisplayName(note.path),
         icon: 'file-text',
+        emoji: note.emoji,
         path: `/notes/${note.id}`,
         entityId: note.id,
         isPinned: false,
@@ -542,6 +593,10 @@ export function VirtualizedNotesTree({
                   isSelected={isSelected}
                   onSelect={handleSelect}
                   onDoubleClick={handleNoteDoubleClick}
+                  onRenameNote={onRenameNote}
+                  onDeleteNote={onDeleteNote}
+                  onOpenExternal={onOpenExternal}
+                  onRevealInFinder={onRevealInFinder}
                 />
               )}
             </div>

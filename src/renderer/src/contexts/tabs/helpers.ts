@@ -191,6 +191,7 @@ export const createTabFromSidebarItem = (
     type: item.type,
     title: item.title,
     icon: item.icon || getTabIcon(item.type),
+    emoji: item.emoji,
     path: item.path,
     entityId: item.entityId,
     isPinned: false,

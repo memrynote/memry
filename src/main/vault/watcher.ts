@@ -346,6 +346,7 @@ export class VaultWatcher {
       const characterCount = parsed.content.length
       const contentHash = generateContentHash(content)
       const snippet = createSnippet(parsed.content)
+      const emoji = (parsed.frontmatter as { emoji?: string }).emoji ?? null
 
       // Check if this is a journal entry (journal/YYYY-MM-DD.md)
       const date = extractDateFromPath(relativePath)
@@ -355,6 +356,7 @@ export class VaultWatcher {
         id: parsed.frontmatter.id,
         path: relativePath,
         title: parsed.frontmatter.title ?? path.basename(relativePath, '.md'),
+        emoji,
         contentHash,
         wordCount,
         characterCount,
@@ -478,11 +480,13 @@ export class VaultWatcher {
       const characterCount = parsed.content.length
       const snippet = createSnippet(parsed.content)
       const title = parsed.frontmatter.title ?? path.basename(relativePath, '.md')
+      const emoji = (parsed.frontmatter as { emoji?: string }).emoji ?? null
 
       if (cached) {
         // Update existing cache entry
         updateNoteCache(db, cached.id, {
           title,
+          emoji,
           contentHash,
           wordCount,
           characterCount,

@@ -23,9 +23,11 @@ import {
   parseNote,
   serializeNote,
   extractTags,
+  extractProperties,
   extractWikiLinks,
   calculateWordCount,
-  generateContentHash
+  generateContentHash,
+  inferPropertyType
 } from './frontmatter'
 import { safeRead, atomicWrite } from './file-ops'
 import { generateNoteId } from '../lib/id'
@@ -35,6 +37,8 @@ import {
   getNoteCacheById,
   setNoteTags,
   setNoteLinks,
+  setNoteProperties,
+  getPropertyType,
   resolveNoteByTitle,
   countNotes,
   countJournalEntries,
@@ -152,6 +156,7 @@ async function indexFile(
     const wordCount = calculateWordCount(parsed.content)
     const characterCount = parsed.content.length
     const contentHash = generateContentHash(content)
+    const emoji = (parsed.frontmatter as { emoji?: string }).emoji ?? null
 
     // Check if this is a journal entry (journal/YYYY-MM-DD.md)
     const date = extractDateFromPath(relativePath)
@@ -162,6 +167,7 @@ async function indexFile(
         id: parsed.frontmatter.id,
         path: relativePath,
         title: parsed.frontmatter.title ?? path.basename(relativePath, '.md'),
+        emoji,
         contentHash,
         wordCount,
         characterCount,
