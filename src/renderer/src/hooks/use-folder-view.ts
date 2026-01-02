@@ -751,6 +751,44 @@ export function useFolderView({
     }
   }, [activeViewIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Track custom property columns to trigger refetch when they change
+  const propertyColumnsKey = useMemo(() => {
+    const columns = activeView?.columns ?? []
+    return columns
+      .filter((c) => !BUILT_IN_COLUMNS.includes(c.id as (typeof BUILT_IN_COLUMNS)[number]))
+      .map((c) => c.id)
+      .sort()
+      .join(',')
+  }, [activeView?.columns])
+
+  // Refetch notes when custom property columns change (including after initial view load)
+  const prevPropertyColumnsKeyRef = useRef<string | null>(null)
+  useEffect(() => {
+    // Skip the very first render (before views are loaded)
+    if (activeView === undefined) {
+      return
+    }
+
+    // Skip if key hasn't changed
+    if (prevPropertyColumnsKeyRef.current === propertyColumnsKey) {
+      return
+    }
+
+    const isFirstLoad = prevPropertyColumnsKeyRef.current === null
+    prevPropertyColumnsKeyRef.current = propertyColumnsKey
+
+    // Refetch with correct property columns
+    // On first load after views are ready, this ensures we fetch with correct property IDs
+    // On subsequent changes, this refetches when columns are added/removed
+    offsetRef.current = 0
+    fetchNotes(false)
+
+    // Log for debugging
+    if (isFirstLoad) {
+      console.log('[useFolderView] Initial fetch with property columns:', propertyColumnsKey)
+    }
+  }, [propertyColumnsKey, activeView, fetchNotes])
+
   // Cleanup debounce timer
   useEffect(() => {
     return () => {
