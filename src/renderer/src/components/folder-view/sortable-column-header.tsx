@@ -93,11 +93,18 @@ export function SortableColumnHeader({
   // Styles for the header cell
   // NOTE: We intentionally do NOT apply CSS transforms to table cells
   // as it breaks table layout. Instead, we use opacity for visual feedback.
-  const style: React.CSSProperties = {
-    width: header.getSize(),
-    // Only apply transition for smooth width changes during resize
-    transition: transition || undefined
-  }
+  // For the last column, use minWidth + flex:1 so it expands to fill remaining space
+  const style: React.CSSProperties = isLastColumn
+    ? {
+        minWidth: header.getSize(),
+        flex: 1,
+        transition: transition || undefined
+      }
+    : {
+        width: header.getSize(),
+        // Only apply transition for smooth width changes during resize
+        transition: transition || undefined
+      }
 
   // ============================================================================
   // Sort Handling

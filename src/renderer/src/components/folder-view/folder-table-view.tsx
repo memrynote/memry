@@ -983,9 +983,11 @@ export function FolderTableView({
       >
         {/* Table with CSS Grid layout for virtualization compatibility */}
         {/* Use minWidth to allow horizontal scroll when columns exceed viewport */}
+        {/* width: 100% ensures table fills container when columns are narrower than viewport */}
         <table
           style={{
             display: 'grid',
+            width: '100%',
             minWidth: Math.max(totalColumnsWidth, 100)
           }}
           className="text-sm"
@@ -1001,7 +1003,7 @@ export function FolderTableView({
             className="bg-background border-b"
           >
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} style={{ display: 'flex' }}>
+              <tr key={headerGroup.id} style={{ display: 'flex', width: '100%' }}>
                 <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
                   {headerGroup.headers.map((header) => {
                     const config = columnConfigMap.get(header.column.id) || {
@@ -1062,6 +1064,7 @@ export function FolderTableView({
                     ref={(node) => rowVirtualizer.measureElement(node)}
                     style={{
                       display: 'flex',
+                      width: '100%',
                       position: 'absolute',
                       transform: `translateY(${virtualRow.start}px)`
                     }}
@@ -1079,26 +1082,34 @@ export function FolderTableView({
                     onClick={(e) => handleRowClick(virtualRow.index, row.original.id, e)}
                     onDoubleClick={() => onNoteOpen?.(row.original.id)}
                   >
-                    {row.getVisibleCells().map((cell, cellIndex) => (
-                      <td
-                        key={cell.id}
-                        className={cn(
-                          'flex-shrink-0 overflow-hidden',
-                          // T099: Density-aware padding
-                          density === 'compact' ? 'px-2 py-1' : 'px-3 py-2',
-                          // T099: Column borders (not on last column)
-                          showColumnBorders &&
-                            cellIndex < row.getVisibleCells().length - 1 &&
-                            'border-r border-border/30'
-                        )}
-                        style={{
-                          width: cell.column.getSize(),
-                          maxWidth: cell.column.getSize()
-                        }}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
+                    {row.getVisibleCells().map((cell, cellIndex) => {
+                      const isLastCell = cellIndex === row.getVisibleCells().length - 1
+                      return (
+                        <td
+                          key={cell.id}
+                          className={cn(
+                            'flex-shrink-0 overflow-hidden',
+                            // T099: Density-aware padding
+                            density === 'compact' ? 'px-2 py-1' : 'px-3 py-2',
+                            // T099: Column borders (not on last column)
+                            showColumnBorders && !isLastCell && 'border-r border-border/30'
+                          )}
+                          style={
+                            isLastCell
+                              ? {
+                                  minWidth: cell.column.getSize(),
+                                  flex: 1
+                                }
+                              : {
+                                  width: cell.column.getSize(),
+                                  maxWidth: cell.column.getSize()
+                                }
+                          }
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      )
+                    })}
                   </tr>
                 </RowContextMenu>
               )
