@@ -945,6 +945,7 @@ export function GroupedTable({
         <table
           style={{
             display: 'grid',
+            width: '100%',
             minWidth: Math.max(totalColumnsWidth, 100)
           }}
           className="text-sm"
@@ -960,7 +961,7 @@ export function GroupedTable({
             className="bg-background border-b"
           >
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} style={{ display: 'flex' }}>
+              <tr key={headerGroup.id} style={{ display: 'flex', width: '100%' }}>
                 <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
                   {headerGroup.headers.map((header) => {
                     const config = columnConfigMap.get(header.column.id) || {
@@ -1044,6 +1045,7 @@ export function GroupedTable({
                     ref={(node) => rowVirtualizer.measureElement(node)}
                     style={{
                       display: 'flex',
+                      width: '100%',
                       position: 'absolute',
                       transform: `translateY(${virtualRow.start}px)`,
                       // Add left padding when grouped to show hierarchy
@@ -1060,24 +1062,34 @@ export function GroupedTable({
                     onClick={(e) => handleRowClick(virtualRow.index, row.original.id, e)}
                     onDoubleClick={() => onNoteOpen?.(row.original.id)}
                   >
-                    {row.getVisibleCells().map((cell, cellIndex) => (
-                      <td
-                        key={cell.id}
-                        className={cn(
-                          'flex-shrink-0 overflow-hidden',
-                          density === 'compact' ? 'px-2 py-1' : 'px-3 py-2',
-                          showColumnBorders &&
-                            cellIndex < row.getVisibleCells().length - 1 &&
-                            'border-r border-border/30'
-                        )}
-                        style={{
-                          width: cell.column.getSize() - (isInGroup && cellIndex === 0 ? 24 : 0),
-                          maxWidth: cell.column.getSize() - (isInGroup && cellIndex === 0 ? 24 : 0)
-                        }}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
+                    {row.getVisibleCells().map((cell, cellIndex) => {
+                      const isLastCell = cellIndex === row.getVisibleCells().length - 1
+                      const adjustedWidth =
+                        cell.column.getSize() - (isInGroup && cellIndex === 0 ? 24 : 0)
+                      return (
+                        <td
+                          key={cell.id}
+                          className={cn(
+                            'flex-shrink-0 overflow-hidden',
+                            density === 'compact' ? 'px-2 py-1' : 'px-3 py-2',
+                            showColumnBorders && !isLastCell && 'border-r border-border/30'
+                          )}
+                          style={
+                            isLastCell
+                              ? {
+                                  minWidth: adjustedWidth,
+                                  flex: 1
+                                }
+                              : {
+                                  width: adjustedWidth,
+                                  maxWidth: adjustedWidth
+                                }
+                          }
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      )
+                    })}
                   </tr>
                 </RowContextMenu>
               )
@@ -1166,9 +1178,10 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
       ref={measureElement}
       style={{
         display: 'flex',
+        width: '100%',
+        minWidth: Math.max(totalColumnsWidth, 100),
         position: 'absolute',
-        transform: `translateY(${virtualRow.start}px)`,
-        width: Math.max(totalColumnsWidth, 100)
+        transform: `translateY(${virtualRow.start}px)`
       }}
       className={cn(
         'border-b border-border',
@@ -1182,7 +1195,7 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
           'flex items-center gap-2 flex-1',
           density === 'compact' ? 'px-2 py-1.5' : 'px-3 py-2.5'
         )}
-        style={{ width: totalColumnsWidth }}
+        style={{ minWidth: totalColumnsWidth, flex: 1 }}
       >
         {/* Expand/Collapse button */}
         <button

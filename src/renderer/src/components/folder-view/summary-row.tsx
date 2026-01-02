@@ -102,7 +102,7 @@ export function SummaryRow({
       }}
       className="bg-muted/50 border-t-2 border-border"
     >
-      <tr style={{ display: 'flex' }}>
+      <tr style={{ display: 'flex', width: '100%' }}>
         {columns.map((column, index) => {
           const summary = computedSummaries[column.id]
           const width = columnWidths?.[column.id] ?? column.width ?? 120
@@ -122,10 +122,17 @@ export function SummaryRow({
                 // Truncate overflow
                 'overflow-hidden'
               )}
-              style={{
-                width,
-                maxWidth: width
-              }}
+              style={
+                isLast
+                  ? {
+                      minWidth: width,
+                      flex: 1
+                    }
+                  : {
+                      width,
+                      maxWidth: width
+                    }
+              }
             >
               {summary ? (
                 <SummaryCell value={summary.value} type={summary.type} label={summary.label} />

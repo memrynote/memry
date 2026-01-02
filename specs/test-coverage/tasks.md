@@ -1136,6 +1136,225 @@
 
 ---
 
+## Phase 14: Coverage Completion Sweep (Missing Modules & Features)
+
+**Purpose**: Close remaining coverage gaps so every module and feature has explicit tests.
+
+### 14.1 Main Process Core Services (P1)
+
+- [ ] T572 Create src/main/lib/embeddings.test.ts
+- [ ] T573 [P] Test initEmbeddingModel: progress events, cache dir, error handling
+- [ ] T574 [P] Test generateEmbedding: length guard, truncation, dimension check
+- [ ] T575 Test model state helpers: isModelLoaded, isModelLoading, getModelInfo, unloadModel
+
+- [ ] T576 Create src/main/lib/reminders.test.ts
+- [ ] T577 [P] Test CRUD: createReminder, updateReminder, deleteReminder, getReminder
+- [ ] T578 [P] Test list queries: listReminders, getRemindersForTarget, filters (status/date)
+- [ ] T579 Test scheduler lifecycle: startReminderScheduler, stopReminderScheduler, due processing
+- [ ] T580 Test snooze/dismiss flows + event emission
+- [ ] T581 Test inbox item creation + notification click navigation (mock Notification/BrowserWindow)
+
+- [ ] T582 Create src/main/store.test.ts
+- [ ] T583 [P] Test vault CRUD: getVaults, upsertVault, removeVault, findVault
+- [ ] T584 Test get/set currentVault and touchVault timestamp updates
+
+### 14.2 Database Bootstrap & Seed (P1)
+
+- [ ] T585 Create src/main/database/client.test.ts
+- [ ] T586 [P] Test initDatabase/initIndexDatabase pragmas + close lifecycle
+- [ ] T587 [P] Test checkIndexHealth: missing/corrupt/healthy states
+- [ ] T588 Test withTimeout: resolves result and rejects on timeout
+
+- [ ] T589 Create src/main/database/migrate.test.ts
+- [ ] T590 [P] Test runMigrations creates core tables
+- [ ] T591 [P] Test runIndexMigrations creates note cache + vec_notes tables
+
+- [ ] T592 Create src/main/database/seed.test.ts
+- [ ] T593 [P] Test seedDefaults idempotency and inbox project creation
+- [ ] T594 Test seedSampleProject and seedPerformanceTestProject outputs
+
+### 14.3 Vault Watcher & Rename Tracking (P1)
+
+- [ ] T595 Create src/main/vault/rename-tracker.test.ts
+- [ ] T596 [P] Test trackPendingDelete timeout triggers onRealDelete
+- [ ] T597 [P] Test checkForRename updates cache and emits RENAMED event
+- [ ] T598 Test clearPendingDelete/clearAllPendingDeletes/hasPendingDeletes
+
+- [ ] T599 Create src/main/vault/watcher.test.ts
+- [ ] T600 [P] Test handleFileChange: frontmatter parse + cache updates
+- [ ] T601 [P] Test add/unlink events: create/delete note cache + tags/links sync
+- [ ] T602 Test rename flow integration with rename-tracker
+- [ ] T603 Test watcher startup/shutdown and resource cleanup
+
+### 14.4 Inbox Capture & Processing Additions (P2)
+
+- [ ] T604 Create src/main/inbox/capture.test.ts
+- [ ] T605 [P] Test captureText/link/image/voice/pdf flows
+- [ ] T606 Test metadata fetch + attachment handling integration
+
+- [ ] T607 Create src/main/inbox/suggestions.test.ts
+- [ ] T608 [P] Test suggestion generation, ranking, and deduping
+- [ ] T609 Test source mapping (recent notes, tags, projects)
+
+- [ ] T610 Create src/main/inbox/transcription.test.ts
+- [ ] T611 [P] Test transcription pipeline with mocked provider
+- [ ] T612 Test error handling, retries, and timeouts
+
+### 14.5 IPC Handlers Coverage Expansion (P1)
+
+- [ ] T613 Create src/main/ipc/journal-handlers.test.ts
+- [ ] T614 [P] Test journal handlers: CREATE/UPDATE/DELETE/GET/LIST, reminders integration
+
+- [ ] T615 Create src/main/ipc/tags-handlers.test.ts
+- [ ] T616 [P] Test tags handlers: LIST/CREATE/UPDATE/DELETE, suggestions
+
+- [ ] T617 Create src/main/ipc/templates-handlers.test.ts
+- [ ] T618 [P] Test templates handlers: CREATE/UPDATE/DELETE/GET/LIST, apply template
+
+- [ ] T619 Create src/main/ipc/saved-filters-handlers.test.ts
+- [ ] T620 [P] Test saved filter handlers: CRUD, reorder, share scope
+
+- [ ] T621 Create src/main/ipc/settings-handlers.test.ts
+- [ ] T622 [P] Test settings handlers: GET/SET/RESET, embedding progress events
+
+- [ ] T623 Create src/main/ipc/folder-view-handlers.test.ts
+- [ ] T624 [P] Test folder-view handlers: list notes with properties, filters, sorting
+
+- [ ] T625 Create src/main/ipc/reminder-handlers.test.ts
+- [ ] T626 [P] Test reminder handlers: CREATE/UPDATE/DELETE/LIST, SNOOZE/DISMISS, events
+
+- [ ] T627 Create src/main/ipc/bookmarks-handlers.test.ts
+- [ ] T628 [P] Test bookmark handlers: CREATE/DELETE/TOGGLE/LIST/REORDER/BULK
+
+- [ ] T629 Create src/main/ipc/validate.test.ts
+- [ ] T630 [P] Test createValidatedHandler/createHandler/createStringHandler/withErrorHandling
+
+### 14.6 Renderer Service Layer Tests (P2)
+
+- [ ] T631 Create src/renderer/src/services/notes-service.test.ts
+- [ ] T632 [P] Test notes-service API mapping + event subscriptions
+
+- [ ] T633 Create src/renderer/src/services/tasks-service.test.ts
+- [ ] T634 [P] Test tasks-service CRUD + bulk operations mapping
+
+- [ ] T635 Create src/renderer/src/services/journal-service.test.ts
+- [ ] T636 [P] Test journal-service list/read/write mapping
+
+- [ ] T637 Create src/renderer/src/services/inbox-service.test.ts
+- [ ] T638 [P] Test inbox-service capture, file, snooze, metadata mapping
+
+- [ ] T639 Create src/renderer/src/services/reminder-service.test.ts
+- [ ] T640 [P] Test reminder-service CRUD + event subscriptions
+
+- [ ] T641 Create src/renderer/src/services/templates-service.test.ts
+- [ ] T642 [P] Test templates-service CRUD + folder default mapping
+
+- [ ] T643 Create src/renderer/src/services/saved-filters-service.test.ts
+- [ ] T644 [P] Test saved-filters-service CRUD + reorder mapping
+
+- [ ] T645 Create src/renderer/src/services/tags-service.test.ts
+- [ ] T646 [P] Test tags-service list/update mapping
+
+- [ ] T647 Create src/renderer/src/services/search-service.test.ts
+- [ ] T648 [P] Test search-service search/quick-search/suggestions mapping
+
+- [ ] T649 Create src/renderer/src/services/vault-service.test.ts
+- [ ] T650 [P] Test vault-service create/open/switch/status mapping
+
+- [ ] T651 Create src/renderer/src/services/ai-connections-service.test.ts
+- [ ] T652 [P] Test ai-connections-service CRUD + connection test mapping
+
+### 14.7 Renderer Hooks Coverage Expansion (P2)
+
+- [ ] T653 Create src/renderer/src/hooks/use-active-heading.test.ts
+- [ ] T654 Create src/renderer/src/hooks/use-all-tags.test.ts
+- [ ] T655 Create src/renderer/src/hooks/use-autocomplete.test.ts
+- [ ] T656 Create src/renderer/src/hooks/use-bulk-actions.test.ts
+- [ ] T657 Create src/renderer/src/hooks/use-chord-shortcuts.test.ts
+- [ ] T658 Create src/renderer/src/hooks/use-display-density.test.ts
+- [ ] T659 Create src/renderer/src/hooks/use-drag-handlers.test.ts
+- [ ] T660 Create src/renderer/src/hooks/use-expanded-tasks.test.ts
+- [ ] T661 Create src/renderer/src/hooks/use-focus-management.test.ts
+- [ ] T662 Create src/renderer/src/hooks/use-focus-trap.test.ts
+- [ ] T663 Create src/renderer/src/hooks/use-folder-suggestions.test.ts
+- [ ] T664 Create src/renderer/src/hooks/use-folder-view.test.ts
+- [ ] T665 Create src/renderer/src/hooks/use-journal-properties.test.ts
+- [ ] T666 Create src/renderer/src/hooks/use-journal-reminders.test.ts
+- [ ] T667 Create src/renderer/src/hooks/use-journal-scroll.test.ts
+- [ ] T668 Create src/renderer/src/hooks/use-journal-settings.test.ts
+- [ ] T669 Create src/renderer/src/hooks/use-keyboard-shortcuts-base.test.ts
+- [ ] T670 Create src/renderer/src/hooks/use-new-note-shortcut.test.ts
+- [ ] T671 Create src/renderer/src/hooks/use-note-editor.test.ts
+- [ ] T672 Create src/renderer/src/hooks/use-note-properties.test.ts
+- [ ] T673 Create src/renderer/src/hooks/use-note-reminders.test.ts
+- [ ] T674 Create src/renderer/src/hooks/use-overdue-celebration.test.ts
+- [ ] T675 Create src/renderer/src/hooks/use-pages.test.ts
+- [ ] T676 Create src/renderer/src/hooks/use-pane-navigation.test.ts
+- [ ] T677 Create src/renderer/src/hooks/use-property-definitions.test.ts
+- [ ] T678 Create src/renderer/src/hooks/use-reduced-motion.test.ts
+- [ ] T679 Create src/renderer/src/hooks/use-reminder-notifications.test.ts
+- [ ] T680 Create src/renderer/src/hooks/use-reveal-in-sidebar.test.ts
+- [ ] T681 Create src/renderer/src/hooks/use-search-shortcut.test.ts
+- [ ] T682 Create src/renderer/src/hooks/use-sidebar-navigation.test.ts
+- [ ] T683 Create src/renderer/src/hooks/use-subtask-management.test.ts
+- [ ] T684 Create src/renderer/src/hooks/use-tab-keyboard-shortcuts.test.ts
+- [ ] T685 Create src/renderer/src/hooks/use-tag-detail.test.ts
+- [ ] T686 Create src/renderer/src/hooks/use-tags.test.ts
+- [ ] T687 Create src/renderer/src/hooks/use-task-filters.test.ts
+- [ ] T688 Create src/renderer/src/hooks/use-task-order.test.ts
+- [ ] T689 Create src/renderer/src/hooks/use-task-selection.test.ts
+- [ ] T690 Create src/renderer/src/hooks/use-task-settings.test.ts
+- [ ] T691 Create src/renderer/src/hooks/use-tasks-linked-to-note.test.ts
+- [ ] T692 Create src/renderer/src/hooks/use-templates.test.ts
+- [ ] T693 Create src/renderer/src/hooks/use-throttled-tab-switch.test.ts
+- [ ] T694 Create src/renderer/src/hooks/use-undo.test.ts
+- [ ] T695 Create src/renderer/src/hooks/use-vault.test.ts
+- [ ] T696 Create src/renderer/src/lib/hooks/use-mobile.test.ts
+- [ ] T697 Create src/renderer/src/lib/utils.test.ts
+
+### 14.8 Page + Component Tests (P3)
+
+- [ ] T698 Create src/renderer/src/pages/folder-view.test.tsx
+- [ ] T699 Create src/renderer/src/pages/inbox.test.tsx
+- [ ] T700 Create src/renderer/src/pages/journal.test.tsx
+- [ ] T701 Create src/renderer/src/pages/tasks.test.tsx
+- [ ] T702 Create src/renderer/src/pages/settings.test.tsx
+- [ ] T703 Create src/renderer/src/pages/templates.test.tsx
+- [ ] T704 Create src/renderer/src/pages/template-editor.test.tsx
+
+- [ ] T705 Create src/renderer/src/components/folder-view/folder-table-view.test.tsx
+- [ ] T706 Create src/renderer/src/components/folder-view/grouped-table.test.tsx
+- [ ] T707 Create src/renderer/src/components/reminder/reminder-picker.test.tsx
+- [ ] T708 Create src/renderer/src/components/reminder/highlight-reminder-popover.test.tsx
+- [ ] T709 Create src/renderer/src/components/sidebar/sidebar-bookmark-list.test.tsx
+- [ ] T710 Create src/renderer/src/components/note/version-history.test.tsx
+- [ ] T711 Create src/renderer/src/components/note/export-dialog.test.tsx
+- [ ] T712 Create src/renderer/src/components/note/template-selector.test.tsx
+- [ ] T713 Create src/renderer/src/components/inbox/inbox-list.test.tsx
+- [ ] T714 Create src/renderer/src/components/search/search-modal.test.tsx
+- [ ] T715 Create src/renderer/src/components/vault-switcher.test.tsx
+- [ ] T716 Create src/renderer/src/components/vault-onboarding.test.tsx
+- [ ] T717 Create src/renderer/src/components/note/backlinks/backlinks-section.test.tsx
+- [ ] T718 Create src/renderer/src/components/note/related-notes/related-notes-tab.test.tsx
+- [ ] T719 Create src/renderer/src/components/note/note-reminder-button.test.tsx
+- [ ] T720 Create src/renderer/src/components/journal/journal-reminder-button.test.tsx
+
+### 14.9 E2E Coverage Expansion (P2)
+
+- [ ] T721 Create tests/e2e/folder-view.spec.ts
+- [ ] T722 Create tests/e2e/templates.spec.ts
+- [ ] T723 Create tests/e2e/reminders.spec.ts
+- [ ] T724 Create tests/e2e/bookmarks.spec.ts
+- [ ] T725 Create tests/e2e/settings.spec.ts
+- [ ] T726 Create tests/e2e/export-version.spec.ts
+- [ ] T727 Create tests/e2e/attachments.spec.ts
+- [ ] T728 Create tests/e2e/tags-properties.spec.ts
+- [ ] T729 Create tests/e2e/saved-filters.spec.ts
+
+**Checkpoint**: Phase 14 complete - coverage gaps closed
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -1171,12 +1390,14 @@ Phase 12 (E2E Tests) → Requires all previous phases
 Phase 13 (Coverage & CI) → Final integration
 ```
 
+**Note**: Phase 14 spans multiple layers; run it after Phase 1 alongside Phases 4-12, and complete before Phase 13 thresholds.
+
 ### Priority Execution Path
 
 **MVP Test Coverage (P0 + P1):**
 
 ```
-Phase 1 → Phase 2 → Phase 4 → Phase 5 → Phase 9 → Phase 13
+Phase 1 → Phase 2 → Phase 4 → Phase 5 → Phase 9 → Phase 14 (P1 items) → Phase 13
 
 ~180 tasks for critical coverage
 ```
@@ -1184,7 +1405,7 @@ Phase 1 → Phase 2 → Phase 4 → Phase 5 → Phase 9 → Phase 13
 **Full Coverage:**
 
 ```
-All 13 phases → ~220 tasks total
+All 14 phases → ~300 tasks total (estimate)
 ```
 
 ---
@@ -1238,6 +1459,13 @@ All 13 phases → ~220 tasks total
 | inbox/stats.ts       | inbox/stats.test.ts       | T402-T408 |
 | inbox/snooze.ts      | inbox/snooze.test.ts      | T409-T414 |
 | inbox/attachments.ts | inbox/attachments.test.ts | T415-T420 |
+
+### Addendum: Phase 14 Coverage Map
+
+- Main process: embeddings, reminders, store, database client/migrate/seed, vault watcher/rename-tracker, inbox capture/suggestions/transcription
+- IPC: journal, tags, templates, saved-filters, settings, folder-view, reminders, bookmarks, validate helpers
+- Renderer: service wrappers, remaining hooks, page/component tests, utility additions (use-mobile, cn)
+- E2E: folder view, templates, reminders, bookmarks, settings, export/version, attachments, tags/properties, saved filters
 
 ---
 
