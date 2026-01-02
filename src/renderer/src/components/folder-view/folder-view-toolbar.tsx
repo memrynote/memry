@@ -18,7 +18,8 @@ import { FilterBuilder } from './filter-builder'
 import type {
   ColumnConfig,
   FilterExpression,
-  NoteWithProperties
+  NoteWithProperties,
+  SummaryConfig
 } from '@shared/contracts/folder-view-api'
 
 // ============================================================================
@@ -54,6 +55,10 @@ interface FolderViewToolbarProps {
   onFormulaDelete?: (name: string) => Promise<void>
   /** Sample note for formula preview */
   sampleNote?: NoteWithProperties | null
+  /** Summary configurations per column - Phase 23 */
+  summaries?: Record<string, SummaryConfig>
+  /** Called when summary config changes for a column - Phase 23 */
+  onSummaryChange?: (columnId: string, config: SummaryConfig | undefined) => void
   /** Additional CSS classes */
   className?: string
 }
@@ -80,6 +85,8 @@ export function FolderViewToolbar({
   onFormulaEdit,
   onFormulaDelete,
   sampleNote,
+  summaries,
+  onSummaryChange,
   className
 }: FolderViewToolbarProps): React.JSX.Element {
   return (
@@ -101,6 +108,8 @@ export function FolderViewToolbar({
         onFormulaEdit={onFormulaEdit}
         onFormulaDelete={onFormulaDelete}
         sampleNote={sampleNote}
+        summaries={summaries}
+        onSummaryChange={onSummaryChange}
       />
 
       {/* Filter Builder */}

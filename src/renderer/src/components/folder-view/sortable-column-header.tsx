@@ -60,7 +60,7 @@ export function SortableColumnHeader({
   onDisplayNameChange,
   isHighlighted = false,
   density = 'comfortable',
-  showColumnBorders = false,
+  showColumnBorders = true,
   isLastColumn = false
 }: SortableColumnHeaderProps): React.JSX.Element {
   // Sortable hook

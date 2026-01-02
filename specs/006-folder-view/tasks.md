@@ -550,18 +550,18 @@
 
 **Purpose**: Show aggregated values in footer row
 
-- [ ] T107 Create `src/renderer/src/components/folder-view/summary-row.tsx`:
+- [x] T107 Create `src/renderer/src/components/folder-view/summary-row.tsx`:
   - Sticky footer row
   - Show summary per column (if configured)
-- [ ] T108 Implement summary types:
+- [x] T108 Implement summary types:
   - sum, average, min, max, count
   - countBy (count per value)
   - countUnique
   - custom (expression)
-- [ ] T109 Add summary configuration to column selector
-- [ ] T110 Persist summaries to .folder.md
+- [x] T109 Add summary configuration to column selector
+- [x] T110 Persist summaries to .folder.md
 
-**Checkpoint**: Column summaries work
+**Checkpoint**: Column summaries work ✅
 
 ---
 

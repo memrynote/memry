@@ -48,7 +48,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger
@@ -100,10 +99,13 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     updateSorting,
     updateFilters,
     updateDisplayName,
+    updateSummaryConfig,
+    toggleShowSummaries,
     availableProperties,
     builtInColumns,
     formulas,
     formulasMap,
+    summaries,
     addFormula,
     updateFormula,
     deleteFormula,
@@ -124,19 +126,6 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
 
   /** Display density (comfortable/compact) - persisted via hook */
   const { density, setDensity } = useDisplayDensity()
-
-  /** Show column borders toggle - persisted to localStorage */
-  const [showColumnBorders, setShowColumnBorders] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('folder-view-show-borders') === 'true'
-    }
-    return false
-  })
-
-  // Persist column borders setting to localStorage
-  useEffect(() => {
-    localStorage.setItem('folder-view-show-borders', String(showColumnBorders))
-  }, [showColumnBorders])
 
   // ============================================================================
   // Selection State (Phase 19 - Lifted for virtualization persistence)
@@ -367,14 +356,6 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   // Phase 21: Toolbar Action Handlers
   // ============================================================================
 
-  /**
-   * T099: Reset columns to default configuration.
-   * Used by view settings dropdown.
-   */
-  const handleResetColumns = useCallback(() => {
-    updateColumns(DEFAULT_COLUMNS)
-  }, [updateColumns])
-
   return (
     <div className="flex flex-col h-full w-full min-w-0 max-w-full overflow-hidden">
       {/* Header - min-w-0 breaks minimum content size chain to prevent table from pushing it */}
@@ -462,15 +443,11 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             <DropdownMenuCheckboxItem
-              checked={showColumnBorders}
-              onCheckedChange={(checked) => setShowColumnBorders(checked)}
+              checked={activeView?.showSummaries ?? false}
+              onCheckedChange={() => toggleShowSummaries()}
             >
-              Show column borders
+              Show summaries
             </DropdownMenuCheckboxItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleResetColumns}>
-              Reset to default columns
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
@@ -491,6 +468,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         onFormulaEdit={updateFormula}
         onFormulaDelete={deleteFormula}
         sampleNote={sampleNote}
+        summaries={summaries}
+        onSummaryChange={updateSummaryConfig}
         className="flex-shrink-0 min-w-0 overflow-hidden"
       />
 
@@ -529,7 +508,9 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               onClearAll={handleClearAll}
               highlightedColumns={highlightedColumns}
               density={density}
-              showColumnBorders={showColumnBorders}
+              showColumnBorders={true}
+              showSummaries={activeView?.showSummaries ?? false}
+              summaries={summaries}
               className="h-full"
             />
           )}
