@@ -15,11 +15,13 @@ import {
   type FormulaInfo
 } from './column-selector'
 import { FilterBuilder } from './filter-builder'
+import { GroupBySelector } from './group-by-selector'
 import type {
   ColumnConfig,
   FilterExpression,
   NoteWithProperties,
-  SummaryConfig
+  SummaryConfig,
+  GroupByConfig
 } from '@shared/contracts/folder-view-api'
 
 // ============================================================================
@@ -59,6 +61,10 @@ interface FolderViewToolbarProps {
   summaries?: Record<string, SummaryConfig>
   /** Called when summary config changes for a column - Phase 23 */
   onSummaryChange?: (columnId: string, config: SummaryConfig | undefined) => void
+  /** Current group by configuration - Phase 24 */
+  groupBy?: GroupByConfig
+  /** Called when group by changes - Phase 24 */
+  onGroupByChange?: (groupBy: GroupByConfig | undefined) => void
   /** Additional CSS classes */
   className?: string
 }
@@ -87,6 +93,8 @@ export function FolderViewToolbar({
   sampleNote,
   summaries,
   onSummaryChange,
+  groupBy,
+  onGroupByChange,
   className
 }: FolderViewToolbarProps): React.JSX.Element {
   return (
@@ -119,6 +127,16 @@ export function FolderViewToolbar({
         builtInColumns={builtInColumns}
         onFiltersChange={onFiltersChange}
       />
+
+      {/* Group By Selector - Phase 24 */}
+      {onGroupByChange && (
+        <GroupBySelector
+          groupBy={groupBy}
+          availableProperties={availableProperties}
+          builtInColumns={builtInColumns}
+          onGroupByChange={onGroupByChange}
+        />
+      )}
 
       {/* Spacer */}
       <div className="flex-1" />

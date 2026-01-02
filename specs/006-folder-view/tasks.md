@@ -569,15 +569,15 @@
 
 **Purpose**: Group rows by property value
 
-- [ ] T111 Create `src/renderer/src/components/folder-view/grouped-table.tsx`:
+- [x] T111 Create `src/renderer/src/components/folder-view/grouped-table.tsx`:
   - Group rows by property value
   - Collapsible group headers
   - Show group count
-- [ ] T112 Add groupBy selector to toolbar
-- [ ] T113 Persist groupBy to .folder.md view.groupBy
-- [ ] T114 Support group summaries (per group)
+- [x] T112 Add groupBy selector to toolbar
+- [x] T113 Persist groupBy to .folder.md view.groupBy
+- [x] T114 Support group summaries (per group)
 
-**Checkpoint**: Grouping works
+**Checkpoint**: Grouping works ✅
 
 ---
 

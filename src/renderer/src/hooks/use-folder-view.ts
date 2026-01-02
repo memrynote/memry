@@ -7,7 +7,11 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { DEFAULT_COLUMNS, BUILT_IN_COLUMNS } from '@shared/contracts/folder-view-api'
-import type { FilterExpression, SummaryConfig } from '@shared/contracts/folder-view-api'
+import type {
+  FilterExpression,
+  SummaryConfig,
+  GroupByConfig
+} from '@shared/contracts/folder-view-api'
 import { evaluateFilter } from '@/lib/filter-evaluator'
 
 // ============================================================================
@@ -28,7 +32,7 @@ export interface ViewConfig {
   columns?: ColumnConfig[]
   filters?: FilterExpression | unknown // Allow unknown for API compatibility
   order?: Array<{ property: string; direction: 'asc' | 'desc' }>
-  groupBy?: unknown
+  groupBy?: GroupByConfig | unknown // Allow unknown for API compatibility
   limit?: number
   showSummaries?: boolean
 }
@@ -132,6 +136,8 @@ interface UseFolderViewResult {
   updateSummaryConfig: (columnId: string, config: SummaryConfig | undefined) => Promise<void>
   /** Toggle showSummaries for current view */
   toggleShowSummaries: () => Promise<void>
+  /** Update group by configuration for current view - Phase 24 */
+  updateGroupBy: (groupBy: GroupByConfig | undefined) => Promise<void>
   /** Add a new formula */
   addFormula: (name: string, expression: string) => Promise<void>
   /** Update an existing formula */
@@ -553,6 +559,17 @@ export function useFolderView({
   }, [updateView, activeView?.showSummaries])
 
   /**
+   * Update group by configuration for current view.
+   * Phase 24: T113 - Persist groupBy to .folder.md view.groupBy
+   */
+  const updateGroupBy = useCallback(
+    async (groupBy: GroupByConfig | undefined) => {
+      await updateView({ groupBy })
+    },
+    [updateView]
+  )
+
+  /**
    * Client-side filtered notes based on active view's filters
    */
   const filteredNotes = useMemo(() => {
@@ -819,6 +836,7 @@ export function useFolderView({
     updateFilters,
     updateSummaryConfig,
     toggleShowSummaries,
+    updateGroupBy,
     updateDisplayName,
     addFormula,
     updateFormula,
