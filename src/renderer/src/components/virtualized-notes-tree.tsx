@@ -9,7 +9,20 @@
 
 import { useRef, useCallback, useMemo, useState, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { FileText, Folder, FolderOpen, ChevronRight, ChevronDown, FilePlus, FolderPlus } from 'lucide-react'
+import {
+  FileText,
+  Folder,
+  FolderOpen,
+  ChevronRight,
+  ChevronDown,
+  LayoutGrid,
+  FilePlus,
+  FolderPlus,
+  Pencil,
+  Trash2,
+  LayoutTemplate,
+  X
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTabs } from '@/contexts/tabs'
 import type { NoteListItem } from '@/hooks/use-notes'
@@ -20,6 +33,13 @@ import {
   type FolderVirtualItem,
   type NoteVirtualItem
 } from '@/lib/virtualized-tree-utils'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger
+} from '@/components/ui/context-menu'
 
 // ============================================================================
 // Types
@@ -42,6 +62,14 @@ interface VirtualizedNotesTreeProps {
   onCreateNote?: (folderPath: string) => void
   /** Callback when creating a subfolder */
   onCreateFolder?: (folderPath: string) => void
+  /** Callback when renaming a folder */
+  onRenameFolder?: (folderPath: string) => void
+  /** Callback when setting folder template */
+  onSetFolderTemplate?: (folderPath: string) => void
+  /** Callback when clearing folder template */
+  onClearFolderTemplate?: (folderPath: string) => void
+  /** Map of folder paths to template names */
+  folderTemplateNames?: Map<string, string>
   /** Map of note IDs to notes for quick lookup */
   noteMap: Map<string, NoteListItem>
   /** Whether drag operations are disabled */
@@ -102,17 +130,38 @@ interface FolderRowProps {
   isSelected: boolean
   onToggleExpand: (folderId: string) => void
   onSelect: (folderId: string, event: React.MouseEvent) => void
+  onOpenFolderView?: (folderPath: string) => void
   onCreateNote?: (folderPath: string) => void
   onCreateFolder?: (folderPath: string) => void
+  onRenameFolder?: (folderPath: string) => void
+  onDeleteFolder?: (folderPath: string) => void
+  onSetFolderTemplate?: (folderPath: string) => void
+  onClearFolderTemplate?: (folderPath: string) => void
+  folderTemplateName?: string
 }
 
-function FolderRow({ item, isSelected, onToggleExpand, onSelect, onCreateNote, onCreateFolder }: FolderRowProps) {
+function FolderRow({
+  item,
+  isSelected,
+  onToggleExpand,
+  onSelect,
+  onOpenFolderView,
+  onCreateNote,
+  onCreateFolder,
+  onRenameFolder,
+  onDeleteFolder,
+  onSetFolderTemplate,
+  onClearFolderTemplate,
+  folderTemplateName
+}: FolderRowProps) {
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
+      // Toggle expand/collapse when clicking folder row
+      onToggleExpand(item.id)
       onSelect(item.id, e)
     },
-    [item.id, onSelect]
+    [item.id, onSelect, onToggleExpand]
   )
 
   const handleExpandClick = useCallback(
@@ -133,85 +182,107 @@ function FolderRow({ item, isSelected, onToggleExpand, onSelect, onCreateNote, o
     [item.id, onToggleExpand]
   )
 
-  const handleCreateNoteClick = useCallback(
+  const handleOpenFolderViewClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
-      onCreateNote?.(item.folder.path)
+      onOpenFolderView?.(item.folder.path)
     },
-    [item.folder.path, onCreateNote]
-  )
-
-  const handleCreateFolderClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      onCreateFolder?.(item.folder.path)
-    },
-    [item.folder.path, onCreateFolder]
+    [item.folder.path, onOpenFolderView]
   )
 
   return (
-    <div
-      role="treeitem"
-      aria-expanded={item.isExpanded}
-      aria-selected={isSelected}
-      tabIndex={0}
-      className={cn(
-        'group/folder flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors',
-        'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-        isSelected && 'bg-muted'
-      )}
-      style={{ paddingLeft: `${item.level * 16 + 8}px` }}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-    >
-      {/* Expand/Collapse button */}
-      <button
-        type="button"
-        className="p-0.5 hover:bg-muted rounded-sm"
-        onClick={handleExpandClick}
-        aria-label={item.isExpanded ? 'Collapse folder' : 'Expand folder'}
-      >
-        {item.hasChildren ? (
-          item.isExpanded ? (
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          role="treeitem"
+          aria-expanded={item.isExpanded}
+          aria-selected={isSelected}
+          tabIndex={0}
+          className={cn(
+            'group/folder flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors',
+            'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            isSelected && 'bg-muted'
+          )}
+          style={{ paddingLeft: `${item.level * 16 + 8}px` }}
+          onClick={handleClick}
+          onKeyDown={handleKeyDown}
+        >
+          {/* Expand/Collapse button */}
+          <button
+            type="button"
+            className="p-0.5 hover:bg-muted rounded-sm"
+            onClick={handleExpandClick}
+            aria-label={item.isExpanded ? 'Collapse folder' : 'Expand folder'}
+          >
+            {item.hasChildren ? (
+              item.isExpanded ? (
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+              )
+            ) : (
+              <span className="w-3.5" />
+            )}
+          </button>
+
+          {/* Folder icon */}
+          {item.isExpanded ? (
+            <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
           ) : (
-            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-          )
-        ) : (
-          <span className="w-3.5" />
-        )}
-      </button>
+            <Folder className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
+          )}
 
-      {/* Folder icon */}
-      {item.isExpanded ? (
-        <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
-      ) : (
-        <Folder className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
-      )}
+          {/* Folder name */}
+          <span className="text-sm truncate flex-1">{item.folder.name}</span>
 
-      {/* Folder name */}
-      <span className="text-sm truncate flex-1">{item.folder.name}</span>
-
-      {/* Hover action icons for creating note/folder */}
-      <div className="flex items-center gap-0.5 opacity-0 group-hover/folder:opacity-100 transition-opacity">
-        <button
-          type="button"
-          onClick={handleCreateNoteClick}
-          className="p-0.5 hover:bg-muted rounded"
-          aria-label="Create note in folder"
+          {/* Hover action icon to open folder view */}
+          <div className="flex items-center opacity-0 group-hover/folder:opacity-100 transition-opacity">
+            <button
+              type="button"
+              onClick={handleOpenFolderViewClick}
+              className="p-1 cursor-pointer rounded hover:bg-accent/80 transition-colors"
+              aria-label="Open folder view"
+            >
+              <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+            </button>
+          </div>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onClick={() => onCreateNote?.(item.folder.path)}>
+          <FilePlus className="mr-2 h-4 w-4" />
+          New Note
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onCreateFolder?.(item.folder.path)}>
+          <FolderPlus className="mr-2 h-4 w-4" />
+          New Folder
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => onSetFolderTemplate?.(item.folder.path)}>
+          <LayoutTemplate className="mr-2 h-4 w-4" />
+          Set Default Template
+          {folderTemplateName && (
+            <span className="ml-1 text-muted-foreground">({folderTemplateName})</span>
+          )}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onClearFolderTemplate?.(item.folder.path)}>
+          <X className="mr-2 h-4 w-4" />
+          Clear Default Template
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => onRenameFolder?.(item.folder.path)}>
+          <Pencil className="mr-2 h-4 w-4" />
+          Rename
+        </ContextMenuItem>
+        <ContextMenuItem
+          className="text-destructive focus:text-destructive"
+          onClick={() => onDeleteFolder?.(item.folder.path)}
         >
-          <FilePlus className="h-3.5 w-3.5 text-muted-foreground" />
-        </button>
-        <button
-          type="button"
-          onClick={handleCreateFolderClick}
-          className="p-0.5 hover:bg-muted rounded"
-          aria-label="Create folder"
-        >
-          <FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
-        </button>
-      </div>
-    </div>
+          <Trash2 className="mr-2 h-4 w-4" />
+          Delete
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 
@@ -283,8 +354,13 @@ export function VirtualizedNotesTree({
   tree,
   selectedIds,
   onSelectionChange,
+  onDeleteFolder,
   onCreateNote,
   onCreateFolder,
+  onRenameFolder,
+  onSetFolderTemplate,
+  onClearFolderTemplate,
+  folderTemplateNames,
   noteMap,
   className
 }: VirtualizedNotesTreeProps) {
@@ -394,6 +470,25 @@ export function VirtualizedNotesTree({
     [openTab]
   )
 
+  // Handle opening folder view from hover icon
+  const handleOpenFolderView = useCallback(
+    (folderPath: string) => {
+      const folderName = folderPath.split('/').pop() || 'Folder'
+      openTab({
+        type: 'folder',
+        title: folderName,
+        icon: 'folder',
+        path: `/folder/${encodeURIComponent(folderPath)}`,
+        entityId: folderPath,
+        isPinned: false,
+        isModified: false,
+        isPreview: true,
+        isDeleted: false
+      })
+    },
+    [openTab]
+  )
+
   const virtualItems = virtualizer.getVirtualItems()
 
   return (
@@ -432,8 +527,14 @@ export function VirtualizedNotesTree({
                   isSelected={isSelected}
                   onToggleExpand={handleToggleExpand}
                   onSelect={handleSelect}
+                  onOpenFolderView={handleOpenFolderView}
                   onCreateNote={onCreateNote}
                   onCreateFolder={onCreateFolder}
+                  onRenameFolder={onRenameFolder}
+                  onDeleteFolder={onDeleteFolder}
+                  onSetFolderTemplate={onSetFolderTemplate}
+                  onClearFolderTemplate={onClearFolderTemplate}
+                  folderTemplateName={folderTemplateNames?.get(item.folder.path)}
                 />
               ) : (
                 <NoteRow

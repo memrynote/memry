@@ -1083,7 +1083,7 @@ export function FolderTableView({
                       <td
                         key={cell.id}
                         className={cn(
-                          'flex-shrink-0',
+                          'flex-shrink-0 overflow-hidden',
                           // T099: Density-aware padding
                           density === 'compact' ? 'px-2 py-1' : 'px-3 py-2',
                           // T099: Column borders (not on last column)
