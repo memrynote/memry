@@ -17,8 +17,10 @@ import {
   runIndexMigrations,
   initializeFts,
   getIndexDatabase,
-  closeIndexDatabase
+  closeIndexDatabase,
+  updateFtsContent
 } from '../database'
+import { updateNoteEmbedding } from '../inbox/suggestions'
 import {
   parseNote,
   serializeNote,
@@ -194,6 +196,9 @@ async function indexFile(
       )
     }
 
+    // Update FTS index with content and tags for full-text search
+    updateFtsContent(db, parsed.frontmatter.id, parsed.content, tags)
+
     // Set links (resolve targets after all files are indexed)
     if (wikiLinks.length > 0) {
       const links = wikiLinks.map((title) => {
@@ -202,6 +207,11 @@ async function indexFile(
       })
       setNoteLinks(db, parsed.frontmatter.id, links)
     }
+
+    // Update embedding asynchronously for AI suggestions (non-blocking)
+    updateNoteEmbedding(parsed.frontmatter.id).catch((err) => {
+      console.log(`[Indexer] Failed to update embedding for ${parsed.frontmatter.id}:`, err)
+    })
 
     return 'indexed'
   } catch (error) {
