@@ -1225,7 +1225,10 @@ const api = {
     }) => ipcRenderer.invoke(FolderViewChannels.invoke.LIST_WITH_PROPERTIES, options),
     /** Get available properties for column selector */
     getAvailableProperties: (folderPath: string) =>
-      ipcRenderer.invoke(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, { folderPath })
+      ipcRenderer.invoke(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, { folderPath }),
+    /** Get AI-powered folder suggestions for moving a note (Phase 27) */
+    getFolderSuggestions: (noteId: string) =>
+      ipcRenderer.invoke(FolderViewChannels.invoke.GET_FOLDER_SUGGESTIONS, { noteId })
   },
 
   // Folder View event subscription helpers

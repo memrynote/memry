@@ -486,6 +486,30 @@ export const GetAvailablePropertiesRequestSchema = z.object({
 })
 
 // ============================================================================
+// Folder Suggestions (Phase 27 - Move to Folder)
+// ============================================================================
+
+export const GetFolderSuggestionsRequestSchema = z.object({
+  noteId: z.string()
+})
+
+/**
+ * AI-powered folder suggestion for moving a note.
+ */
+export interface FolderSuggestion {
+  /** Folder path relative to notes/ (empty string for root) */
+  path: string
+  /** Confidence score (0-1, higher = more confident) */
+  confidence: number
+  /** Human-readable reason for suggesting this folder */
+  reason: string
+}
+
+export interface GetFolderSuggestionsResponse {
+  suggestions: FolderSuggestion[]
+}
+
+// ============================================================================
 // Response Types
 // ============================================================================
 
@@ -625,6 +649,9 @@ export interface FolderViewClientAPI {
   ): Promise<ListWithPropertiesResponse>
 
   getAvailableProperties(folderPath: string): Promise<GetAvailablePropertiesResponse>
+
+  /** Get AI-powered folder suggestions for moving a note (Phase 27) */
+  getFolderSuggestions(noteId: string): Promise<GetFolderSuggestionsResponse>
 }
 
 // ============================================================================

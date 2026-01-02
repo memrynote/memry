@@ -675,7 +675,9 @@ export const FolderViewChannels = {
     /** List notes in folder with property values */
     LIST_WITH_PROPERTIES: 'folder-view:list-with-properties',
     /** Get available properties for column selector */
-    GET_AVAILABLE_PROPERTIES: 'folder-view:get-available-properties'
+    GET_AVAILABLE_PROPERTIES: 'folder-view:get-available-properties',
+    /** Get AI-powered folder suggestions for moving a note (T134) */
+    GET_FOLDER_SUGGESTIONS: 'folder-view:get-folder-suggestions'
   },
   events: {
     /** Folder view config was updated (external file change) */

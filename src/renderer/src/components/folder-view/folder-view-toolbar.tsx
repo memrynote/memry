@@ -104,6 +104,30 @@ export function FolderViewToolbar({
         className
       )}
     >
+      {/* Global Search Input - responsive width with min/max constraints */}
+      <div className="relative w-48 min-w-32 max-w-64 flex-shrink">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search notes..."
+          className="h-8 pl-8 pr-8 text-sm w-full"
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => onSearchChange('')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Clear search"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
       {/* Column Selector */}
       <ColumnSelector
         columns={columns}
@@ -137,30 +161,6 @@ export function FolderViewToolbar({
           onGroupByChange={onGroupByChange}
         />
       )}
-
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Global Search Input - responsive width with min/max constraints */}
-      <div className="relative w-48 min-w-32 max-w-64 flex-shrink">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-        <Input
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search notes..."
-          className="h-8 pl-8 pr-8 text-sm w-full"
-        />
-        {searchQuery && (
-          <button
-            type="button"
-            onClick={() => onSearchChange('')}
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Clear search"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
-      </div>
     </div>
   )
 }

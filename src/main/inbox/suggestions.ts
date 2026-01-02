@@ -699,3 +699,133 @@ export function getSuggestionStats(): {
     }
   }
 }
+
+// ============================================================================
+// Note Folder Suggestions (Phase 27 - Move to Folder)
+// ============================================================================
+
+/**
+ * Folder suggestion for moving a note
+ */
+export interface FolderSuggestion {
+  /** Folder path relative to notes/ */
+  path: string
+  /** Confidence score (0-1) */
+  confidence: number
+  /** Reason for suggesting this folder */
+  reason: string
+}
+
+/**
+ * Get folder suggestions for moving an existing note.
+ *
+ * Uses:
+ * 1. Embedding similarity with notes in other folders
+ * 2. Filing history patterns
+ * 3. Recent filing destinations
+ *
+ * @param noteId - The note ID to get suggestions for
+ * @returns Array of folder suggestions (max 3)
+ */
+export async function getNoteFolderSuggestions(noteId: string): Promise<FolderSuggestion[]> {
+  if (!isAIEnabled()) {
+    console.log('[Suggestions] AI disabled, returning empty folder suggestions')
+    return []
+  }
+
+  try {
+    // Get the note content
+    const note = await getNoteById(noteId)
+    if (!note) {
+      console.log(`[Suggestions] Note not found: ${noteId}`)
+      return []
+    }
+
+    // Get current folder to exclude from suggestions
+    const currentFolder = getFolderFromPath(note.path)
+
+    const suggestions: FolderSuggestion[] = []
+    const seenFolders = new Set<string>()
+
+    // Always exclude current folder
+    seenFolders.add(currentFolder)
+
+    // Build content for similarity search
+    const content = [note.title, note.content].filter(Boolean).join('\n\n')
+
+    // 1. Find similar notes and suggest their folders (only if model is loaded)
+    if (isModelLoaded() && content.length >= MIN_CONTENT_LENGTH) {
+      const similarNotes = await findSimilarNotes(content, 10)
+
+      for (const similar of similarNotes) {
+        // Skip notes in the same folder
+        const folder = getFolderFromPath(similar.notePath)
+        if (seenFolders.has(folder)) continue
+
+        seenFolders.add(folder)
+
+        suggestions.push({
+          path: folder,
+          confidence: similar.score,
+          reason: folder
+            ? `Similar to "${similar.noteTitle}" in ${folder}`
+            : `Similar to "${similar.noteTitle}" in root`
+        })
+
+        if (suggestions.length >= MAX_SUGGESTIONS) break
+      }
+    }
+
+    // 2. If we don't have enough suggestions, add from filing history
+    if (suggestions.length < MAX_SUGGESTIONS) {
+      const patterns = getFilingPatterns('note')
+
+      for (const pattern of patterns) {
+        if (seenFolders.has(pattern.destination)) continue
+
+        seenFolders.add(pattern.destination)
+        const confidence = Math.min(0.7, 0.3 + pattern.count * 0.1)
+
+        suggestions.push({
+          path: pattern.destination,
+          confidence,
+          reason: `You've moved ${pattern.count} notes here before`
+        })
+
+        if (suggestions.length >= MAX_SUGGESTIONS) break
+      }
+    }
+
+    // 3. If still not enough, add most recent filing destinations
+    if (suggestions.length < MAX_SUGGESTIONS) {
+      const recentDests = getRecentFilingDestinations(5)
+
+      for (const dest of recentDests) {
+        if (seenFolders.has(dest.path)) continue
+
+        seenFolders.add(dest.path)
+        const confidence = Math.min(0.5, 0.2 + dest.count * 0.05)
+
+        suggestions.push({
+          path: dest.path,
+          confidence,
+          reason: `Recently used (${dest.count} items)`
+        })
+
+        if (suggestions.length >= MAX_SUGGESTIONS) break
+      }
+    }
+
+    // Sort by confidence
+    suggestions.sort((a, b) => b.confidence - a.confidence)
+
+    console.log(
+      `[Suggestions] Generated ${suggestions.length} folder suggestions for note ${noteId}`
+    )
+    return suggestions.slice(0, MAX_SUGGESTIONS)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[Suggestions] Failed to get folder suggestions:', message)
+    return []
+  }
+}

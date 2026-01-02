@@ -58,6 +58,7 @@ import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { GroupedTable } from '@/components/folder-view/grouped-table'
 import { FolderViewToolbar } from '@/components/folder-view/folder-view-toolbar'
 import { ViewSwitcher } from '@/components/folder-view/view-switcher'
+import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import { useFolderView } from '@/hooks/use-folder-view'
 import { useNotes } from '@/hooks/use-notes'
 import { notesService } from '@/services/notes-service'
@@ -122,6 +123,11 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [notesToDelete, setNotesToDelete] = useState<string[]>([])
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Move to folder dialog state (Phase 27)
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false)
+  const [notesToMove, setNotesToMove] = useState<string[]>([])
+  const [movingNoteTitle, setMovingNoteTitle] = useState<string | undefined>()
 
   // ============================================================================
   // Phase 21: View Settings State
@@ -238,9 +244,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   }
 
   // Handle clicking a tag
-  const handleTagClick = (tag: string): void => {
+  const handleTagClick = (_tag: string): void => {
     // TODO: Open search/filter for this tag
-    console.log('Tag clicked:', tag)
   }
 
   // Handle opening note in new tab (for context menu)
@@ -269,6 +274,49 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     setNotesToDelete(noteIds)
     setDeleteDialogOpen(true)
   }, [])
+
+  // Handle move to folder request (shows move dialog) - Phase 27
+  const handleMoveRequest = useCallback(
+    (noteIds: string[]): void => {
+      setNotesToMove(noteIds)
+      // Get title of first note for dialog header
+      if (noteIds.length === 1) {
+        const note = notes.find((n) => n.id === noteIds[0])
+        setMovingNoteTitle(note?.title)
+      } else {
+        setMovingNoteTitle(undefined)
+      }
+      setMoveDialogOpen(true)
+    },
+    [notes]
+  )
+
+  // Confirm and execute move to folder - Phase 27
+  const handleMoveConfirm = useCallback(
+    async (targetFolder: string): Promise<void> => {
+      if (notesToMove.length === 0) return
+
+      try {
+        // Move all selected notes to the target folder
+        for (const noteId of notesToMove) {
+          const result = await notesService.move(noteId, targetFolder)
+          if (!result.success) {
+            console.error(`Failed to move note ${noteId}:`, result.error)
+          }
+        }
+
+        // Refresh the view to reflect changes
+        await refresh()
+      } catch (err) {
+        console.error('Failed to move notes:', err)
+      } finally {
+        setMoveDialogOpen(false)
+        setNotesToMove([])
+        setMovingNoteTitle(undefined)
+      }
+    },
+    [notesToMove, refresh]
+  )
 
   // Confirm and execute delete
   const handleDeleteConfirm = useCallback(async () => {
@@ -511,6 +559,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               onSortingChange={updateSorting}
               onDisplayNameChange={updateDisplayName}
               onDelete={handleDeleteRequest}
+              onMoveToFolder={handleMoveRequest}
               onCreateNote={handleCreateNote}
               onClearAll={handleClearAll}
               highlightedColumns={highlightedColumns}
@@ -539,6 +588,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               onSortingChange={updateSorting}
               onDisplayNameChange={updateDisplayName}
               onDelete={handleDeleteRequest}
+              onMoveToFolder={handleMoveRequest}
               onCreateNote={handleCreateNote}
               onClearAll={handleClearAll}
               highlightedColumns={highlightedColumns}
@@ -577,6 +627,16 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Move to Folder Dialog - Phase 27 */}
+      <MoveToFolderDialog
+        open={moveDialogOpen}
+        onOpenChange={setMoveDialogOpen}
+        noteIds={notesToMove}
+        currentFolder={folderPath}
+        onMove={handleMoveConfirm}
+        noteTitle={movingNoteTitle}
+      />
     </div>
   )
 }

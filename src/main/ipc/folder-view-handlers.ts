@@ -16,6 +16,7 @@ import {
   DeleteViewRequestSchema,
   ListWithPropertiesRequestSchema,
   GetAvailablePropertiesRequestSchema,
+  GetFolderSuggestionsRequestSchema,
   DEFAULT_VIEW,
   BUILT_IN_COLUMNS,
   type FolderViewConfig,
@@ -27,8 +28,10 @@ import {
   type SetViewResponse,
   type DeleteViewResponse,
   type ListWithPropertiesResponse,
-  type GetAvailablePropertiesResponse
+  type GetAvailablePropertiesResponse,
+  type GetFolderSuggestionsResponse
 } from '@shared/contracts/folder-view-api'
+import { getNoteFolderSuggestions } from '../inbox/suggestions'
 import { createValidatedHandler } from './validate'
 import { readFolderConfig, writeFolderConfig } from '../vault/folders'
 import { getIndexDatabase as getDataDb } from '../database'
@@ -398,6 +401,24 @@ export function registerFolderViewHandlers(): void {
         properties.sort((a, b) => b.usageCount - a.usageCount)
 
         return { builtIn, properties, formulas }
+      }
+    )
+  )
+
+  // folder-view:get-folder-suggestions - Get AI-powered folder suggestions for moving a note
+  ipcMain.handle(
+    FolderViewChannels.invoke.GET_FOLDER_SUGGESTIONS,
+    createValidatedHandler(
+      GetFolderSuggestionsRequestSchema,
+      async (input): Promise<GetFolderSuggestionsResponse> => {
+        try {
+          const suggestions = await getNoteFolderSuggestions(input.noteId)
+          return { suggestions }
+        } catch (error) {
+          console.error('[folder-view:get-folder-suggestions] Error:', error)
+          // Return empty array on error - not critical, just disables AI suggestions
+          return { suggestions: [] }
+        }
       }
     )
   )

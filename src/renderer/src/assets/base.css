@@ -29,6 +29,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+  user-select: text;
 }
 
 .content-area .bn-container {
@@ -287,6 +288,7 @@
     font-family: var(--font-sans);
     color: var(--text-primary);
     line-height: 1.5;
+    user-select: none;
   }
 
   /* Serif font utility for content titles */

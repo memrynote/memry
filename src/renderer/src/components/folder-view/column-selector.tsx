@@ -4,14 +4,15 @@
  * Dropdown component for adding/removing columns from the folder table view.
  * Features:
  * - Search input to filter columns
- * - Grouped sections: Built-in, Properties, Formulas
+ * - Flat list of all columns (built-in + properties)
+ * - Separate section for formulas with management actions
  * - Checkboxes to toggle column visibility
  * - Usage count for property columns
  * - Formula management (add, edit, delete)
  */
 
 import { useState, useMemo, useCallback } from 'react'
-import { ChevronDown, Columns3, Search, Plus, Pencil, Trash2 } from 'lucide-react'
+import { ChevronDown, SlidersHorizontal, Search, Plus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -175,9 +176,41 @@ export function ColumnSelector({
     )
   }, [formulas, searchQuery])
 
+  // Merge all columns into a single flat list (built-in + properties)
+  const allColumns = useMemo(() => {
+    const items: Array<{
+      id: string
+      label: string
+      subtitle?: string
+      type: string
+      isFormula?: boolean
+      formula?: FormulaInfo
+    }> = []
+
+    // Add built-in columns
+    filteredBuiltIn.forEach((col) => {
+      items.push({
+        id: col.id,
+        label: col.displayName,
+        type: col.type
+      })
+    })
+
+    // Add property columns
+    filteredProperties.forEach((prop) => {
+      items.push({
+        id: prop.name,
+        label: prop.name,
+        subtitle: `${prop.usageCount} note${prop.usageCount !== 1 ? 's' : ''}`,
+        type: prop.type
+      })
+    })
+
+    return items
+  }, [filteredBuiltIn, filteredProperties])
+
   // Check if there are any search results
-  const hasResults =
-    filteredBuiltIn.length > 0 || filteredProperties.length > 0 || filteredFormulas.length > 0
+  const hasResults = allColumns.length > 0 || filteredFormulas.length > 0
 
   // Show formulas section even if empty (for add button)
   const showFormulasSection = !searchQuery || filteredFormulas.length > 0
@@ -275,8 +308,8 @@ export function ColumnSelector({
       <Popover open={isOpen} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className={cn('gap-1.5', className)}>
-            <Columns3 className="h-4 w-4" />
-            <span>Columns</span>
+            <SlidersHorizontal className="h-4 w-4" />
+            <span>Properties</span>
             <ChevronDown className="h-3.5 w-3.5 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -303,14 +336,15 @@ export function ColumnSelector({
               </div>
             ) : (
               <>
-                {/* Built-in columns */}
-                {filteredBuiltIn.length > 0 && (
-                  <ColumnGroup title="BUILT-IN">
-                    {filteredBuiltIn.map((col) => (
+                {/* All columns (built-in + properties) in a flat list */}
+                {allColumns.length > 0 && (
+                  <div className="py-1">
+                    {allColumns.map((col) => (
                       <ColumnItem
                         key={col.id}
                         id={col.id}
-                        label={col.displayName}
+                        label={col.label}
+                        subtitle={col.subtitle}
                         checked={isColumnVisible(col.id)}
                         onCheckedChange={(checked) => toggleColumn(col.id, checked)}
                         columnType={col.type}
@@ -320,33 +354,10 @@ export function ColumnSelector({
                         }
                       />
                     ))}
-                  </ColumnGroup>
+                  </div>
                 )}
 
-                {/* Property columns */}
-                {filteredProperties.length > 0 && (
-                  <ColumnGroup title="PROPERTIES">
-                    {filteredProperties.map((prop) => (
-                      <ColumnItem
-                        key={prop.name}
-                        id={prop.name}
-                        label={prop.name}
-                        subtitle={`${prop.usageCount} note${prop.usageCount !== 1 ? 's' : ''}`}
-                        checked={isColumnVisible(prop.name)}
-                        onCheckedChange={(checked) => toggleColumn(prop.name, checked)}
-                        columnType={prop.type}
-                        summaryConfig={summaries[prop.name]}
-                        onSummaryChange={
-                          onSummaryChange
-                            ? (config) => onSummaryChange(prop.name, config)
-                            : undefined
-                        }
-                      />
-                    ))}
-                  </ColumnGroup>
-                )}
-
-                {/* Formulas */}
+                {/* Formulas section - keep separate since they have edit/delete actions */}
                 {showFormulasSection && (
                   <ColumnGroup title="FORMULAS">
                     {filteredFormulas.length > 0 ? (

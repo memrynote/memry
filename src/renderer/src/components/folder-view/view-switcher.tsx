@@ -134,9 +134,7 @@ export function ViewSwitcher({
               order: [{ property: 'modified', direction: 'desc' }]
             }
 
-      console.log('[ViewSwitcher] Creating view:', baseConfig.name)
       await onAddView(baseConfig)
-      console.log('[ViewSwitcher] View created successfully')
 
       setIsNewViewDialogOpen(false)
       setNewViewName('')

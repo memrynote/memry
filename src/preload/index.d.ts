@@ -1816,6 +1816,17 @@ export interface FolderViewConfigUpdatedEvent {
   source: 'internal' | 'external'
 }
 
+// Folder Suggestion types (Phase 27)
+export interface FolderSuggestion {
+  path: string
+  confidence: number
+  reason: string
+}
+
+export interface FolderViewGetFolderSuggestionsResponse {
+  suggestions: FolderSuggestion[]
+}
+
 // Folder View client API interface
 export interface FolderViewClientAPI {
   getConfig(folderPath: string): Promise<FolderViewGetConfigResponse>
@@ -1836,6 +1847,8 @@ export interface FolderViewClientAPI {
     offset?: number
   }): Promise<FolderViewListResponse>
   getAvailableProperties(folderPath: string): Promise<FolderViewAvailablePropertiesResponse>
+  /** Get AI-powered folder suggestions for moving a note (Phase 27) */
+  getFolderSuggestions(noteId: string): Promise<FolderViewGetFolderSuggestionsResponse>
 }
 
 // Settings client API interface

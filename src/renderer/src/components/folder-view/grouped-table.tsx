@@ -125,6 +125,8 @@ interface GroupedTableProps {
   onSelectionChange?: (selectedIds: Set<string>) => void
   /** Called when note(s) should be deleted */
   onDelete?: (noteIds: string[]) => void
+  /** Called when note(s) should be moved to a folder */
+  onMoveToFolder?: (noteIds: string[]) => void
   /** Called when user wants to create a new note (from empty state) */
   onCreateNote?: () => void
   /** Called when user wants to clear all search/filters (from no-results state) */
@@ -250,6 +252,7 @@ export function GroupedTable({
   onSortingChange,
   onSelectionChange,
   onDelete,
+  onMoveToFolder,
   onCreateNote,
   onClearAll,
   highlightedColumns = [],
@@ -860,9 +863,19 @@ export function GroupedTable({
           }
           break
         }
+
+        case 'm':
+        case 'M': {
+          // Cmd/Ctrl+Shift+M: Move to folder
+          if ((e.metaKey || e.ctrlKey) && e.shiftKey && selectedRowIds.size > 0) {
+            e.preventDefault()
+            onMoveToFolder?.(Array.from(selectedRowIds))
+          }
+          break
+        }
       }
     },
-    [focusedRowId, table, onNoteOpen, setSelectedRowIds]
+    [focusedRowId, table, onNoteOpen, onMoveToFolder, selectedRowIds, setSelectedRowIds]
   )
 
   useEffect(() => {
@@ -1022,6 +1035,7 @@ export function GroupedTable({
                   selectedNoteIds={Array.from(selectedRowIds)}
                   onNoteOpen={onNoteOpen}
                   onOpenInNewTab={onOpenInNewTab}
+                  onMoveToFolder={onMoveToFolder}
                   onDelete={onDelete}
                 >
                   <tr

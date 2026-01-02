@@ -24,7 +24,6 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { notesService } from '@/services/notes-service'
-import type { FolderSuggestion } from '@/preload/index.d'
 
 // ============================================================================
 // Types
@@ -111,10 +110,10 @@ export function MoveToFolderDialog({
 
   // Fetch AI suggestions for the first selected note
   const { data: suggestionsData, isLoading: isLoadingSuggestions } = useQuery({
-    queryKey: ['notes', 'folder-suggestions', noteIds[0]],
+    queryKey: ['folderView', 'folder-suggestions', noteIds[0]],
     queryFn: async () => {
       if (!noteIds[0]) return { suggestions: [] }
-      return window.api.notes.getFolderSuggestions(noteIds[0])
+      return window.api.folderView.getFolderSuggestions(noteIds[0])
     },
     enabled: open && noteIds.length > 0
   })

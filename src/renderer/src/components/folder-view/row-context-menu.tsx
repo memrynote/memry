@@ -13,7 +13,15 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
-import { FileText, ExternalLink, FolderOpen, PanelLeft, Link, Trash2 } from 'lucide-react'
+import {
+  FileText,
+  ExternalLink,
+  FolderOpen,
+  FolderInput,
+  PanelLeft,
+  Link,
+  Trash2
+} from 'lucide-react'
 import type { NoteWithProperties } from '@shared/contracts/folder-view-api'
 import { notesService } from '@/services/notes-service'
 
@@ -32,6 +40,8 @@ interface RowContextMenuProps {
   onNoteOpen?: (noteId: string) => void
   /** Callback when note should be opened in new tab */
   onOpenInNewTab?: (noteId: string) => void
+  /** Callback when note(s) should be moved to folder */
+  onMoveToFolder?: (noteIds: string[]) => void
   /** Callback when note(s) should be deleted */
   onDelete?: (noteIds: string[]) => void
 }
@@ -47,6 +57,7 @@ export function RowContextMenu({
   children,
   onNoteOpen,
   onOpenInNewTab,
+  onMoveToFolder,
   onDelete
 }: RowContextMenuProps): React.JSX.Element {
   // Determine if we should show bulk actions
@@ -103,6 +114,15 @@ export function RowContextMenu({
     onDelete?.([note.id])
   }
 
+  // Move to folder actions
+  const handleMoveToFolder = (): void => {
+    onMoveToFolder?.([note.id])
+  }
+
+  const handleBulkMoveToFolder = (): void => {
+    onMoveToFolder?.(selectedNoteIds)
+  }
+
   // Bulk actions
   const handleBulkDelete = (): void => {
     onDelete?.(selectedNoteIds)
@@ -114,10 +134,18 @@ export function RowContextMenu({
       <ContextMenuContent className="w-52">
         {showBulkActions ? (
           // Bulk actions menu (multi-select)
-          <ContextMenuItem variant="destructive" onClick={handleBulkDelete}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete {selectedCount} Notes
-          </ContextMenuItem>
+          <>
+            <ContextMenuItem onClick={handleBulkMoveToFolder}>
+              <FolderInput className="mr-2 h-4 w-4" />
+              Move {selectedCount} Notes to Folder...
+              <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem variant="destructive" onClick={handleBulkDelete}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete {selectedCount} Notes
+            </ContextMenuItem>
+          </>
         ) : (
           // Single note actions menu
           <>
@@ -154,6 +182,11 @@ export function RowContextMenu({
             <ContextMenuItem onClick={handleCopyLink}>
               <Link className="mr-2 h-4 w-4" />
               Copy Link
+            </ContextMenuItem>
+            <ContextMenuItem onClick={handleMoveToFolder}>
+              <FolderInput className="mr-2 h-4 w-4" />
+              Move to Folder...
+              <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
             </ContextMenuItem>
 
             <ContextMenuSeparator />

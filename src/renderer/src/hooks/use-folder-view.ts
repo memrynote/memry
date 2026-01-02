@@ -195,12 +195,7 @@ export function useFolderView({
    */
   const fetchViews = useCallback(async () => {
     try {
-      console.log('[useFolderView.fetchViews] Fetching views for:', folderPath)
       const result = await window.api.folderView.getViews(folderPath)
-      console.log(
-        '[useFolderView.fetchViews] Got views:',
-        result.views.map((v) => v.name)
-      )
       setViews(result.views)
       setActiveViewIndex(result.defaultIndex)
 
@@ -319,13 +314,6 @@ export function useFolderView({
 
       const updatedView: ViewConfig = cleanUndefinedValues({ ...activeView, ...updates })
 
-      console.log(
-        '[useFolderView.updateView] Updating view:',
-        updatedView.name,
-        'updates:',
-        updates
-      )
-
       // Update local state immediately
       setViews((prev) => {
         const next = [...prev]
@@ -340,16 +328,10 @@ export function useFolderView({
 
       updateTimeoutRef.current = setTimeout(async () => {
         try {
-          console.log(
-            '[useFolderView.updateView] Saving to backend...',
-            JSON.stringify(updatedView)
-          )
           const result = await window.api.folderView.setView(
             folderPath,
             updatedView as unknown as Record<string, unknown>
           )
-
-          console.log('[useFolderView.updateView] Result:', result)
 
           if (!result.success) {
             throw new Error(result.error || 'Failed to save view')
@@ -370,14 +352,10 @@ export function useFolderView({
   const addView = useCallback(
     async (view: ViewConfig) => {
       try {
-        console.log('[useFolderView.addView] Adding view:', view.name, 'to folder:', folderPath)
-
         const result = await window.api.folderView.setView(
           folderPath,
           view as unknown as Record<string, unknown>
         )
-
-        console.log('[useFolderView.addView] Result:', result)
 
         if (!result.success) {
           throw new Error(result.error || 'Failed to save view')
@@ -410,11 +388,7 @@ export function useFolderView({
   const deleteView = useCallback(
     async (viewName: string) => {
       try {
-        console.log('[useFolderView.deleteView] Deleting view:', viewName)
-
         const result = await window.api.folderView.deleteView(folderPath, viewName)
-
-        console.log('[useFolderView.deleteView] Result:', result)
 
         if (!result.success) {
           throw new Error(result.error || 'Failed to delete view')
@@ -450,8 +424,6 @@ export function useFolderView({
         return
       }
 
-      console.log('[useFolderView.setViewAsDefault] Setting view as default:', targetView.name)
-
       // Update local state immediately - clear default from all, set on target
       setViews((prev) => {
         return prev.map((v, i) => ({
@@ -466,8 +438,6 @@ export function useFolderView({
           ...targetView,
           default: true
         } as unknown as Record<string, unknown>)
-
-        console.log('[useFolderView.setViewAsDefault] Result:', result)
 
         if (!result.success) {
           throw new Error(result.error || 'Failed to set default view')
@@ -676,8 +646,6 @@ export function useFolderView({
   const addFormula = useCallback(
     async (name: string, expression: string) => {
       try {
-        console.log('[useFolderView.addFormula] Adding formula:', name)
-
         // Get current folder config
         const configResult = await window.api.folderView.getConfig(folderPath)
         const existingConfig = configResult.config
@@ -696,8 +664,6 @@ export function useFolderView({
 
         // Update local state
         setFormulas((prev) => [...prev, { id: name, expression }])
-
-        console.log('[useFolderView.addFormula] Formula added successfully')
       } catch (err) {
         console.error('[useFolderView.addFormula] Failed:', err)
         throw err
@@ -712,8 +678,6 @@ export function useFolderView({
   const updateFormula = useCallback(
     async (name: string, expression: string) => {
       try {
-        console.log('[useFolderView.updateFormula] Updating formula:', name)
-
         // Get current folder config
         const configResult = await window.api.folderView.getConfig(folderPath)
         const existingConfig = configResult.config
@@ -732,8 +696,6 @@ export function useFolderView({
 
         // Update local state
         setFormulas((prev) => prev.map((f) => (f.id === name ? { id: name, expression } : f)))
-
-        console.log('[useFolderView.updateFormula] Formula updated successfully')
       } catch (err) {
         console.error('[useFolderView.updateFormula] Failed:', err)
         throw err
@@ -748,8 +710,6 @@ export function useFolderView({
   const deleteFormula = useCallback(
     async (name: string) => {
       try {
-        console.log('[useFolderView.deleteFormula] Deleting formula:', name)
-
         // Get current folder config
         const configResult = await window.api.folderView.getConfig(folderPath)
         const existingConfig = configResult.config
@@ -766,8 +726,6 @@ export function useFolderView({
 
         // Update local state
         setFormulas((prev) => prev.filter((f) => f.id !== name))
-
-        console.log('[useFolderView.deleteFormula] Formula deleted successfully')
       } catch (err) {
         console.error('[useFolderView.deleteFormula] Failed:', err)
         throw err
