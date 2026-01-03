@@ -128,7 +128,7 @@
     "react-complex-tree": "^2.6.1",
     "react-day-picker": "^9.12.0",
     "react-pdf": "^10.2.0",
-    "sharp": "0.33.5",
+    "sharp": "0.34.5",
     "sonner": "^2.0.7",
     "sqlite-vec": "0.1.7-alpha.2",
     "tailwind-merge": "^3.4.0",

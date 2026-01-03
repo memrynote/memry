@@ -149,6 +149,8 @@ function createWindow(): void {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
   // Load React DevTools using new session.extensions API (Electron 38+)
+  // Note: Some console errors about "sandboxed_renderer.bundle.js" and "Autofill"
+  // are expected and harmless - they're caused by Chrome DevTools internals
   if (is.dev) {
     try {
       const REACT_DEVTOOLS_ID = 'fmkadmapgofadopljbjfkapdkoienihi'
@@ -167,14 +169,22 @@ app.whenReady().then(async () => {
         if (versions.length > 0) {
           const latestVersion = versions.sort().pop()!
           const extensionPath = join(extensionDir, latestVersion)
-          const extension = await session.defaultSession.extensions.loadExtension(extensionPath)
-          console.log(`Added Extension: ${extension.name}`)
+
+          // Check if extensions API is available (Electron 38+)
+          if (session.defaultSession.extensions?.loadExtension) {
+            const extension = await session.defaultSession.extensions.loadExtension(extensionPath)
+            console.log(`Added Extension: ${extension.name}`)
+          } else {
+            console.log('React DevTools: session.extensions API not available')
+          }
         }
       } else {
         console.log('React DevTools not found. Install it in Chrome to enable.')
       }
     } catch (err) {
-      console.log('Failed to load React DevTools:', err)
+      // Extension loading can fail for various reasons (version mismatch, sandbox issues)
+      // This is non-critical for development
+      console.log('Failed to load React DevTools:', err instanceof Error ? err.message : err)
     }
   }
 

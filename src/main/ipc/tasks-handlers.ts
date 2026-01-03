@@ -27,7 +27,6 @@ import {
 } from '@shared/contracts/tasks-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
 import { getDatabase } from '../database'
-import { seedPerformanceTestProject, seedDemoProjects } from '../database/seed'
 import { generateId } from '../lib/id'
 import * as taskQueries from '@shared/db/queries/tasks'
 import * as projectQueries from '@shared/db/queries/projects'
@@ -948,33 +947,7 @@ export function registerTasksHandlers(): void {
     })
   )
 
-  // ============================================================================
-  // Development/Testing
-  // ============================================================================
-
-  // tasks:seed-performance-test - Seed 1000+ tasks for performance testing
-  // DEV ONLY: Used to verify 60fps scrolling with large task lists
-  ipcMain.handle(
-    'tasks:seed-performance-test',
-    createHandler(async () => {
-      const db = requireDatabase()
-      seedPerformanceTestProject(db, 1200)
-      return { success: true, message: 'Seeded performance test project with 1200 tasks' }
-    })
-  )
-
-  // tasks:seed-demo - Seed demo projects for screen recordings
-  // DEV ONLY: Creates 3 demo projects with realistic tasks
-  ipcMain.handle(
-    'tasks:seed-demo',
-    createHandler(async () => {
-      const db = requireDatabase()
-      seedDemoProjects(db)
-      return { success: true, message: 'Seeded 3 demo projects with tasks' }
-    })
-  )
-
-  console.log('Tasks IPC handlers registered')
+  console.log('[IPC] Tasks handlers registered')
 }
 
 /**
@@ -985,5 +958,5 @@ export function unregisterTasksHandlers(): void {
   Object.values(TasksChannels.invoke).forEach((channel) => {
     ipcMain.removeHandler(channel)
   })
-  console.log('Tasks IPC handlers unregistered')
+  console.log('[IPC] Tasks handlers unregistered')
 }

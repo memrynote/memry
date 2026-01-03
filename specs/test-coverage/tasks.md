@@ -370,15 +370,15 @@
 
 **File**: `src/renderer/src/lib/summary-evaluator.ts` (520 lines, 9 exports)
 
-- [ ] T182 [P] Create summary-evaluator.test.ts
-- [ ] T183 [P] Test computeSummary: SUM aggregation
-- [ ] T184 [P] Test computeSummary: AVERAGE aggregation
-- [ ] T185 [P] Test computeSummary: MIN, MAX aggregations
-- [ ] T186 [P] Test computeSummary: COUNT, COUNT_VALUES, COUNT_UNIQUE
-- [ ] T187 Test computeSummary: COUNT_BY (grouped counts)
-- [ ] T188 Test getColumnValues: extract values from rows
-- [ ] T189 Test formatSummaryValue: number/date/text formatting
-- [ ] T190 Test getSummaryTypesForColumn: valid types per column type
+- [x] T182 [P] Create summary-evaluator.test.ts
+- [x] T183 [P] Test computeSummary: SUM aggregation
+- [x] T184 [P] Test computeSummary: AVERAGE aggregation
+- [x] T185 [P] Test computeSummary: MIN, MAX aggregations
+- [x] T186 [P] Test computeSummary: COUNT, COUNT_VALUES, COUNT_UNIQUE
+- [x] T187 Test computeSummary: COUNT_BY (grouped counts)
+- [x] T188 Test getColumnValues: extract values from rows
+- [x] T189 Test formatSummaryValue: number/date/text formatting
+- [x] T190 Test getSummaryTypesForColumn: valid types per column type
 
 ### 3.10 Additional Utility Tests
 
@@ -418,76 +418,76 @@
 
 **File**: `src/main/lib/id.ts`
 
-- [ ] T203 [P] Create src/main/lib/id.test.ts
-- [ ] T204 [P] Test generateId: 21-char URL-safe format
-- [ ] T205 [P] Test generateNoteId: 12-char lowercase alphanumeric
-- [ ] T206 [P] Test generateJournalId: j{YYYY-MM-DD} format
-- [ ] T207 [P] Test generateShortId: 8-char format
-- [ ] T208 Test validators: isValidNoteId, isValidId, isValidJournalId
+- [x] T203 [P] Create src/main/lib/id.test.ts
+- [x] T204 [P] Test generateId: 21-char URL-safe format
+- [x] T205 [P] Test generateNoteId: 12-char lowercase alphanumeric
+- [x] T206 [P] Test generateJournalId: j{YYYY-MM-DD} format
+- [x] T207 [P] Test generateShortId: 8-char format
+- [x] T208 Test validators: isValidNoteId, isValidId, isValidJournalId
 
 ### 4.2 Error Classes Tests
 
 **File**: `src/main/lib/errors.ts`
 
-- [ ] T209 [P] Create src/main/lib/errors.test.ts
-- [ ] T210 [P] Test VaultError class with all error codes
-- [ ] T211 [P] Test NoteError class with all error codes
-- [ ] T212 [P] Test DatabaseError class with all error codes
-- [ ] T213 Test type guards: isVaultError, isNoteError, isDatabaseError, isWatcherError
+- [x] T209 [P] Create src/main/lib/errors.test.ts
+- [x] T210 [P] Test VaultError class with all error codes
+- [x] T211 [P] Test NoteError class with all error codes
+- [x] T212 [P] Test DatabaseError class with all error codes
+- [x] T213 Test type guards: isVaultError, isNoteError, isDatabaseError, isWatcherError
 
 ### 4.3 Path Utils Tests
 
 **File**: `src/main/lib/paths.ts`
 
-- [ ] T214 [P] Create src/main/lib/paths.test.ts
-- [ ] T215 [P] Test sanitizePath: directory traversal prevention
-- [ ] T216 [P] Test getRelativePath, isPathInVault
-- [ ] T217 [P] Test safeFileName: filename sanitization
-- [ ] T218 Test isMarkdownFile, getTitleFromPath
-- [ ] T219 Test safeJoin, ensureMarkdownExtension, toMemryFileUrl
+- [x] T214 [P] Create src/main/lib/paths.test.ts
+- [x] T215 [P] Test sanitizePath: directory traversal prevention
+- [x] T216 [P] Test getRelativePath, isPathInVault
+- [x] T217 [P] Test safeFileName: filename sanitization
+- [x] T218 Test isMarkdownFile, getTitleFromPath
+- [x] T219 Test safeJoin, ensureMarkdownExtension, toMemryFileUrl
 
 ### 4.4 URL Utils Tests
 
 **File**: `src/main/lib/url-utils.ts`
 
-- [ ] T220 [P] Create src/main/lib/url-utils.test.ts
-- [ ] T221 [P] Test isValidUrl, parseUrl
-- [ ] T222 [P] Test extractDomain, extractBaseDomain
-- [ ] T223 [P] Test detectSocialPlatform: Twitter, LinkedIn, Mastodon, Bluesky
-- [ ] T224 [P] Test isSocialPost
-- [ ] T225 Test normalizeUrl: tracking parameter removal
-- [ ] T226 Test isPdfUrl, isImageUrl, isVideoUrl, isAudioUrl
-- [ ] T227 Test getUrlContentType
+- [x] T220 [P] Create src/main/lib/url-utils.test.ts
+- [x] T221 [P] Test isValidUrl, parseUrl
+- [x] T222 [P] Test extractDomain, extractBaseDomain
+- [x] T223 [P] Test detectSocialPlatform: Twitter, LinkedIn, Mastodon, Bluesky
+- [x] T224 [P] Test isSocialPost
+- [x] T225 Test normalizeUrl: tracking parameter removal
+- [x] T226 Test isPdfUrl, isImageUrl, isVideoUrl, isAudioUrl
+- [x] T227 Test getUrlContentType
 
 ### 4.5 Export Utils Tests
 
 **File**: `src/main/lib/export-utils.ts`
 
-- [ ] T228 [P] Create src/main/lib/export-utils.test.ts
-- [ ] T229 [P] Test markdownToHtml: markdown conversion
-- [ ] T230 [P] Test escapeHtml: HTML entity escaping
-- [ ] T231 Test getEmbeddedStyles: CSS generation
-- [ ] T232 Test renderNoteAsHtml: complete HTML document
-- [ ] T233 Test sanitizeFilename: export filename cleaning
+- [x] T228 [P] Create src/main/lib/export-utils.test.ts
+- [x] T229 [P] Test markdownToHtml: markdown conversion
+- [x] T230 [P] Test escapeHtml: HTML entity escaping
+- [x] T231 Test getEmbeddedStyles: CSS generation
+- [x] T232 Test renderNoteAsHtml: complete HTML document
+- [x] T233 Test sanitizeFilename: export filename cleaning
 
 ### 4.6 Frontmatter Tests
 
 **File**: `src/main/vault/frontmatter.ts`
 
-- [ ] T234 [P] Create src/main/vault/frontmatter.test.ts
-- [ ] T235 [P] Test parseNote: YAML frontmatter extraction
-- [ ] T236 [P] Test parseNote: content without frontmatter
-- [ ] T237 [P] Test serializeNote: frontmatter + content serialization
-- [ ] T238 [P] Test createFrontmatter: default frontmatter generation
-- [ ] T239 Test ensureFrontmatter: add frontmatter if missing
-- [ ] T240 Test validateNoteId, extractTitleFromPath
-- [ ] T241 Test extractWikiLinks: [[link]] extraction
-- [ ] T242 Test extractTags: tag normalization
-- [ ] T243 Test calculateWordCount: word counting (exclude code)
-- [ ] T244 Test generateContentHash: djb2 hash
-- [ ] T245 Test extractProperties, inferPropertyType
-- [ ] T246 Test serializePropertyValue, deserializePropertyValue
-- [ ] T247 Test createSnippet: preview generation
+- [x] T234 [P] Create src/main/vault/frontmatter.test.ts
+- [x] T235 [P] Test parseNote: YAML frontmatter extraction
+- [x] T236 [P] Test parseNote: content without frontmatter
+- [x] T237 [P] Test serializeNote: frontmatter + content serialization
+- [x] T238 [P] Test createFrontmatter: default frontmatter generation
+- [x] T239 Test ensureFrontmatter: add frontmatter if missing
+- [x] T240 Test validateNoteId, extractTitleFromPath
+- [x] T241 Test extractWikiLinks: [[link]] extraction
+- [x] T242 Test extractTags: tag normalization
+- [x] T243 Test calculateWordCount: word counting (exclude code)
+- [x] T244 Test generateContentHash: djb2 hash
+- [x] T245 Test extractProperties, inferPropertyType
+- [x] T246 Test serializePropertyValue, deserializePropertyValue
+- [x] T247 Test createSnippet: preview generation
 
 **Checkpoint**: All pure function unit tests complete
 

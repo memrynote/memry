@@ -78,7 +78,7 @@ export function registerAllHandlers(): void {
   registerFolderViewHandlers()
 
   handlersRegistered = true
-  console.log('All IPC handlers registered')
+  console.log('[IPC] All handlers registered')
 }
 
 /**

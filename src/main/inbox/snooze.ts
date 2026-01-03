@@ -418,7 +418,6 @@ function processDueItems(): void {
  * Processes any items that became due while app was closed
  */
 export function checkDueItemsOnStartup(): void {
-  console.log('[Snooze] Checking for due items on startup')
   processDueItems()
 }
 
@@ -432,7 +431,6 @@ export function startSnoozeScheduler(): void {
     return
   }
 
-  console.log('[Snooze] Starting scheduler (interval: 1 minute)')
 
   // Run immediately on start
   processDueItems()

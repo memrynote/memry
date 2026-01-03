@@ -131,7 +131,9 @@ export async function initEmbeddingModel(): Promise<boolean> {
     emitProgress('downloading', 5, 'Loading model (downloading if first time)...')
 
     // Create feature extraction pipeline with progress callback
+    // Explicitly set dtype to fp32 for CPU (silences "dtype not specified" warning)
     extractor = await pipeline('feature-extraction', MODEL_NAME, {
+      dtype: 'fp32',
       progress_callback: (progress: ModelProgress) => {
         if (progress.status === 'progress' && progress.progress !== undefined) {
           const pct = Math.round(progress.progress)
