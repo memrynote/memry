@@ -672,28 +672,28 @@
 
 **File**: `src/main/vault/notes.ts`
 
-- [ ] T360 Create src/main/vault/notes.test.ts
-- [ ] T361 [P] Test createNote: file creation + cache insert
-- [ ] T362 [P] Test getNoteById, getNoteByPath
-- [ ] T363 [P] Test updateNote: content + metadata update
-- [ ] T364 Test renameNote: file rename + cache update
-- [ ] T365 Test moveNote: folder move + cache update
-- [ ] T366 Test deleteNote: file + cache deletion
-- [ ] T367 Test listNotes: with pagination and filters
-- [ ] T368 Test getTagsWithCounts: tag aggregation
-- [ ] T369 Test getNoteLinks: outgoing + incoming
-- [ ] T370 Test folder operations: getFolders, createFolder, renameFolder, deleteFolder
-- [ ] T371 Test noteExists: by title and path
-- [ ] T372 Test snapshot operations: createSnapshot, getVersionHistory, restoreVersion
+- [x] T360 Create src/main/vault/notes.test.ts
+- [x] T361 [P] Test createNote: file creation + cache insert
+- [x] T362 [P] Test getNoteById, getNoteByPath
+- [x] T363 [P] Test updateNote: content + metadata update
+- [x] T364 Test renameNote: file rename + cache update
+- [x] T365 Test moveNote: folder move + cache update
+- [x] T366 Test deleteNote: file + cache deletion
+- [x] T367 Test listNotes: with pagination and filters
+- [x] T368 Test getTagsWithCounts: tag aggregation
+- [x] T369 Test getNoteLinks: outgoing + incoming
+- [x] T370 Test folder operations: getFolders, createFolder, renameFolder, deleteFolder
+- [x] T371 Test noteExists: by title and path
+- [x] T372 Test snapshot operations: createSnapshot, getVersionHistory, restoreVersion
 
 ### 6.4 Indexer Tests
 
 **File**: `src/main/vault/indexer.ts`
 
-- [ ] T373 Create src/main/vault/indexer.test.ts
-- [ ] T374 Test indexVault: full vault indexing
-- [ ] T375 Test needsInitialIndex: empty cache detection
-- [ ] T376 Test rebuildIndex: cache rebuild
+- [x] T373 Create src/main/vault/indexer.test.ts
+- [x] T374 Test indexVault: full vault indexing
+- [x] T375 Test needsInitialIndex: empty cache detection
+- [x] T376 Test rebuildIndex: cache rebuild
 
 ### 6.5 Journal Tests
 
