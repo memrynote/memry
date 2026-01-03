@@ -59,10 +59,6 @@ export function initIndexDatabase(dbPath: string): DrizzleDb {
 
   // Load sqlite-vec extension for vector search
   sqliteVec.load(sqliteIndexDb)
-  console.log(
-    '[Database] sqlite-vec loaded, version:',
-    sqliteIndexDb.prepare('SELECT vec_version()').get()
-  )
 
   // Create vec0 virtual table for note embeddings (not managed by Drizzle)
   // Uses cosine distance metric for similarity search
@@ -72,7 +68,6 @@ export function initIndexDatabase(dbPath: string): DrizzleDb {
       embedding float[${EMBEDDING_DIMENSION}] distance_metric=cosine
     )
   `)
-  console.log('[Database] vec_notes virtual table ready')
 
   indexDb = drizzle(sqliteIndexDb, { schema })
   return indexDb
