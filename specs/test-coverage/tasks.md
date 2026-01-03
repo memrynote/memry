@@ -986,35 +986,35 @@
 
 ### 11.1 Note Components Tests
 
-- [ ] T509 Create src/renderer/src/components/note/note-title.test.tsx
-- [ ] T510 Test title editing, emoji picker integration
+- [x] T509 Create src/renderer/src/components/note/note-title/note-title.test.tsx
+- [x] T510 Test title editing, emoji picker integration
 
-- [ ] T511 Create src/renderer/src/components/note/tags-row.test.tsx
-- [ ] T512 Test tag add/remove, autocomplete
+- [x] T511 Create src/renderer/src/components/note/tags-row/tags-row.test.tsx
+- [x] T512 Test tag add/remove, autocomplete
 
-- [ ] T513 Create src/renderer/src/components/note/info-section.test.tsx
-- [ ] T514 Test property editors (all 8 types)
+- [x] T513 Create src/renderer/src/components/note/info-section/info-section.test.tsx
+- [x] T514 Test property editors (all 8 types)
 
 ### 11.2 Task Components Tests
 
-- [ ] T515 Create src/renderer/src/components/task/task-card.test.tsx
-- [ ] T516 Test task display, completion toggle
+- [x] T515 Create src/renderer/src/components/tasks/kanban/kanban-card.test.tsx
+- [x] T516 Test task display, completion toggle
 
-- [ ] T517 Create src/renderer/src/components/task/task-quick-add.test.tsx
-- [ ] T518 Test quick add parsing preview
+- [x] T517 Create src/renderer/src/components/tasks/quick-add-input.test.tsx
+- [x] T518 Test quick add parsing preview
 
 ### 11.3 Inbox Components Tests
 
-- [ ] T519 Create src/renderer/src/components/inbox/inbox-card.test.tsx
-- [ ] T520 Test card display for all item types
+- [x] T519 Create src/renderer/src/components/inbox/inbox-list.test.tsx
+- [x] T520 Test card display for all item types
 
 ### 11.4 Common Components Tests
 
-- [ ] T521 Create src/renderer/src/components/notes-tree.test.tsx
-- [ ] T522 Test folder tree, drag-drop, context menu
+- [x] T521 Create src/renderer/src/components/notes-tree.test.tsx
+- [x] T522 Test folder tree, drag-drop, context menu
 
-- [ ] T523 Create src/renderer/src/components/command-palette.test.tsx
-- [ ] T524 Test search, navigation, keyboard shortcuts
+- [x] T523 Create src/renderer/src/components/search/search-modal.test.tsx
+- [x] T524 Test search, navigation, keyboard shortcuts
 
 **Checkpoint**: Component tests complete
 
