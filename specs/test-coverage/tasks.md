@@ -1026,63 +1026,63 @@
 
 ### 12.1 E2E Infrastructure
 
-- [ ] T525 Create playwright.config.ts for Electron
-- [ ] T526 Create tests/e2e/fixtures/test-vault/ with sample data
-- [ ] T527 Create tests/e2e/utils/electron-helpers.ts
+- [x] T525 Create playwright.config.ts for Electron
+- [x] T526 Create tests/e2e/fixtures/test-vault/ with sample data
+- [x] T527 Create tests/e2e/utils/electron-helpers.ts
 
 ### 12.2 Vault E2E Tests
 
-- [ ] T528 Create tests/e2e/vault.spec.ts
-- [ ] T529 Test vault creation flow
-- [ ] T530 Test vault opening/switching
-- [ ] T531 Test vault reindexing
+- [x] T528 Create tests/e2e/vault.spec.ts
+- [x] T529 Test vault creation flow
+- [x] T530 Test vault opening/switching
+- [x] T531 Test vault reindexing
 
 ### 12.3 Notes E2E Tests
 
-- [ ] T532 Create tests/e2e/notes.spec.ts
-- [ ] T533 Test note creation with title, content, tags
-- [ ] T534 Test note editing with auto-save
-- [ ] T535 Test wiki-link creation and navigation
-- [ ] T536 Test backlinks display
-- [ ] T537 Test note deletion and undo
+- [x] T532 Create tests/e2e/notes.spec.ts
+- [x] T533 Test note creation with title, content, tags
+- [x] T534 Test note editing with auto-save
+- [x] T535 Test wiki-link creation and navigation
+- [x] T536 Test backlinks display
+- [x] T537 Test note deletion and undo
 
 ### 12.4 Tasks E2E Tests
 
-- [ ] T538 Create tests/e2e/tasks.spec.ts
-- [ ] T539 Test task creation with quick-add syntax
-- [ ] T540 Test task completion, uncomplete
-- [ ] T541 Test task drag-drop between statuses
-- [ ] T542 Test subtask creation and management
-- [ ] T543 Test recurring task creation
+- [x] T538 Create tests/e2e/tasks.spec.ts
+- [x] T539 Test task creation with quick-add syntax
+- [x] T540 Test task completion, uncomplete
+- [x] T541 Test task drag-drop between statuses
+- [x] T542 Test subtask creation and management
+- [x] T543 Test recurring task creation
 
 ### 12.5 Inbox E2E Tests
 
-- [ ] T544 Create tests/e2e/inbox.spec.ts
-- [ ] T545 Test text capture
-- [ ] T546 Test link capture with metadata
-- [ ] T547 Test filing to folder
-- [ ] T548 Test snooze and unsnooze
+- [x] T544 Create tests/e2e/inbox.spec.ts
+- [x] T545 Test text capture
+- [x] T546 Test link capture with metadata
+- [x] T547 Test filing to folder
+- [x] T548 Test snooze and unsnooze
 
 ### 12.6 Journal E2E Tests
 
-- [ ] T549 Create tests/e2e/journal.spec.ts
-- [ ] T550 Test journal entry creation
-- [ ] T551 Test calendar navigation
-- [ ] T552 Test heatmap display
+- [x] T549 Create tests/e2e/journal.spec.ts
+- [x] T550 Test journal entry creation
+- [x] T551 Test calendar navigation
+- [x] T552 Test heatmap display
 
 ### 12.7 Search E2E Tests
 
-- [ ] T553 Create tests/e2e/search.spec.ts
-- [ ] T554 Test global search
-- [ ] T555 Test command palette
-- [ ] T556 Test search result navigation
+- [x] T553 Create tests/e2e/search.spec.ts
+- [x] T554 Test global search
+- [x] T555 Test command palette
+- [x] T556 Test search result navigation
 
 ### 12.8 Cross-Feature E2E Tests
 
-- [ ] T557 Create tests/e2e/integration.spec.ts
-- [ ] T558 Test inbox → note conversion flow
-- [ ] T559 Test task → note linking
-- [ ] T560 Test reminder notification flow
+- [x] T557 Create tests/e2e/integration.spec.ts
+- [x] T558 Test inbox → note conversion flow
+- [x] T559 Test task → note linking
+- [x] T560 Test reminder notification flow
 
 **Checkpoint**: E2E tests complete
 
