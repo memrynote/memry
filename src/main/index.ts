@@ -8,17 +8,19 @@ import {
   globalShortcut,
   clipboard,
   screen,
+  session,
   Menu,
   MenuItem
 } from 'electron'
 import { join } from 'path'
+import { homedir } from 'node:os'
+import { existsSync, readdirSync } from 'node:fs'
 import { config } from 'dotenv'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllHandlers } from './ipc'
 import { autoOpenLastVault, closeVault } from './vault'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
-import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
 
 // Load .env file from project root (must be before any env access)
 // In development, load from project root; in production, from app resources
@@ -110,10 +112,10 @@ function createWindow(): void {
     autoHideMenuBar: true,
     ...(process.platform === 'darwin'
       ? {
-          titleBarStyle: 'hidden',
-          // Hide native traffic lights - we use custom ones
-          trafficLightPosition: { x: -100, y: -100 }
-        }
+        titleBarStyle: 'hidden',
+        // Hide native traffic lights - we use custom ones
+        trafficLightPosition: { x: -100, y: -100 }
+      }
       : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -142,24 +144,39 @@ function createWindow(): void {
   }
 }
 
-// const os = require('node:os')
-// const path = require('node:path')
-
-// // on macOS
-// const reactDevToolsPath = path.join(
-//   os.homedir(),
-//   '/Users/h4yfans/Library/Application Support/Google/Chrome/Default/Extensions/fmkadmapgofadopljbjfkapdkoienihi/7.0.1_0'
-// )
-
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
-  // session.defaultSession.loadExtension(reactDevToolsPath)
+  // Load React DevTools using new session.extensions API (Electron 38+)
+  if (is.dev) {
+    try {
+      const REACT_DEVTOOLS_ID = 'fmkadmapgofadopljbjfkapdkoienihi'
+      const chromeExtensionsPath =
+        process.platform === 'darwin'
+          ? join(homedir(), 'Library/Application Support/Google/Chrome/Default/Extensions')
+          : process.platform === 'win32'
+            ? join(homedir(), 'AppData/Local/Google/Chrome/User Data/Default/Extensions')
+            : join(homedir(), '.config/google-chrome/Default/Extensions')
 
-  installExtension([REACT_DEVELOPER_TOOLS])
-    .then(([react]) => console.log(`Added Extensions: ${react.name}`))
-    .catch((err) => console.log('An error occurred: ', err))
+      const extensionDir = join(chromeExtensionsPath, REACT_DEVTOOLS_ID)
+
+      if (existsSync(extensionDir)) {
+        // Get the latest version directory
+        const versions = readdirSync(extensionDir).filter((v) => !v.startsWith('.'))
+        if (versions.length > 0) {
+          const latestVersion = versions.sort().pop()!
+          const extensionPath = join(extensionDir, latestVersion)
+          const extension = await session.defaultSession.extensions.loadExtension(extensionPath)
+          console.log(`Added Extension: ${extension.name}`)
+        }
+      } else {
+        console.log('React DevTools not found. Install it in Chrome to enable.')
+      }
+    } catch (err) {
+      console.log('Failed to load React DevTools:', err)
+    }
+  }
 
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
@@ -448,17 +465,11 @@ function registerQuickCaptureShortcut(): void {
   const shortcut = 'CommandOrControl+Shift+Space'
 
   const registered = globalShortcut.register(shortcut, () => {
-    console.log('[QuickCapture] Global shortcut triggered')
     showQuickCaptureWindow()
   })
 
-  if (registered) {
-    console.log(`[QuickCapture] Global shortcut registered: ${shortcut}`)
-  } else {
-    console.warn(
-      `[QuickCapture] Failed to register global shortcut: ${shortcut}. ` +
-        'It may be in use by another application.'
-    )
+  if (!registered) {
+    console.warn(`[QuickCapture] Failed to register global shortcut: ${shortcut}. It may be in use by another application.`)
   }
 }
 
