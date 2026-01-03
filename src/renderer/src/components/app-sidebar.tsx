@@ -143,9 +143,7 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
   const inboxCount = useMemo(() => {
     if (!inboxItems) return 0
     // Count all items (unfiled by default) but for reminders, only count unviewed ones
-    return inboxItems.filter(
-      (item) => item.type !== 'reminder' || !item.viewedAt
-    ).length
+    return inboxItems.filter((item) => item.type !== 'reminder' || !item.viewedAt).length
   }, [inboxItems])
 
   // Tab navigation hook
@@ -244,90 +242,95 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
   // Main sidebar content (shown when not drilling down)
   const mainContent = (
     <>
-      {/* Quick Actions: Search & New */}
-      <SidebarGroup>
-        <SidebarMenu>
-          {quickActions.map((action) => (
-            <SidebarMenuItem key={action.title}>
-              <SidebarMenuButton
-                tooltip={action.title}
-                onClick={
-                  action.action === 'search'
-                    ? onOpenSearch
-                    : action.action === 'new'
-                      ? handleNewNote
-                      : undefined
-                }
-              >
-                <action.icon className={cn('size-4', action.iconColor)} />
-                <span>{action.title}</span>
-                <KbdGroup className="ml-auto">
-                  <Kbd>{action.kbd}</Kbd>
-                </KbdGroup>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+      {/* FIXED SECTION - Quick Actions & Main Nav (doesn't scroll) */}
+      <div className="flex-shrink-0">
+        {/* Quick Actions: Search & New */}
+        <SidebarGroup>
+          <SidebarMenu>
+            {quickActions.map((action) => (
+              <SidebarMenuItem key={action.title}>
+                <SidebarMenuButton
+                  tooltip={action.title}
+                  onClick={
+                    action.action === 'search'
+                      ? onOpenSearch
+                      : action.action === 'new'
+                        ? handleNewNote
+                        : undefined
+                  }
+                >
+                  <action.icon className={cn('size-4', action.iconColor)} />
+                  <span>{action.title}</span>
+                  <KbdGroup className="ml-auto">
+                    <Kbd>{action.kbd}</Kbd>
+                  </KbdGroup>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
 
-        </SidebarMenu>
-      </SidebarGroup>
+        <SidebarSeparator className="w-auto!" />
 
-      <SidebarSeparator className="w-auto!" />
+        {/* Main Navigation: Inbox, Home, Journal, Tasks */}
+        <SidebarGroup>
+          <SidebarMenu>
+            {mainNav.map((item) => {
+              // Create SidebarItem to check active state from tab system
+              const sidebarItem: SidebarItem = {
+                type: item.page as TabType,
+                title: item.title,
+                path: `/${item.page}`
+              }
+              return (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    tooltip={item.title}
+                    isActive={isActiveItem(sidebarItem)}
+                    onClick={handleNavClick(item.page)}
+                  >
+                    <item.icon className={cn('size-4', item.iconColor)} />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                  {/* Show inbox count badge for Inbox */}
+                  {item.page === 'inbox' && inboxCount > 0 && (
+                    <SidebarMenuBadge>{inboxCount}</SidebarMenuBadge>
+                  )}
+                  {/* Show today's task count badge for Tasks */}
+                  {item.page === 'tasks' && todayTasksCount > 0 && (
+                    <SidebarMenuBadge>{todayTasksCount}</SidebarMenuBadge>
+                  )}
+                </SidebarMenuItem>
+              )
+            })}
+          </SidebarMenu>
+        </SidebarGroup>
 
-      {/* Main Navigation: Inbox, Home, Journal, Tasks */}
-      <SidebarGroup>
-        <SidebarMenu>
-          {mainNav.map((item) => {
-            // Create SidebarItem to check active state from tab system
-            const sidebarItem: SidebarItem = {
-              type: item.page as TabType,
-              title: item.title,
-              path: `/${item.page}`
-            }
-            return (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton
-                tooltip={item.title}
-                isActive={isActiveItem(sidebarItem)}
-                onClick={handleNavClick(item.page)}
-              >
-                <item.icon className={cn('size-4', item.iconColor)} />
-                <span>{item.title}</span>
-              </SidebarMenuButton>
-              {/* Show inbox count badge for Inbox */}
-              {item.page === 'inbox' && inboxCount > 0 && (
-                <SidebarMenuBadge>{inboxCount}</SidebarMenuBadge>
-              )}
-              {/* Show today's task count badge for Tasks */}
-              {item.page === 'tasks' && todayTasksCount > 0 && (
-                <SidebarMenuBadge>{todayTasksCount}</SidebarMenuBadge>
-              )}
-            </SidebarMenuItem>
-            )
-          })}
-        </SidebarMenu>
-      </SidebarGroup>
+        <SidebarSeparator className="w-auto!" />
+      </div>
 
-      <SidebarSeparator className="w-auto!" />
+      {/* SCROLLABLE SECTION - Collections, Bookmarks, Tags */}
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
+        {/* COLLECTIONS Section - Collapsible with actions */}
+        <SidebarSection
+          id="collections"
+          label="Collections"
+          defaultExpanded={false}
+          actions={notesActions}
+        >
+          <NotesTree onActionsReady={setNotesActions} />
+        </SidebarSection>
 
-      {/* COLLECTIONS Section - Collapsible with actions */}
-      <SidebarSection
-        id="collections"
-        label="Collections"
-        defaultExpanded={false}
-        actions={notesActions}
-      >
-        <NotesTree onActionsReady={setNotesActions} />
-      </SidebarSection>
+        {/* BOOKMARKS Section - Collapsible */}
+        <SidebarSection id="bookmarks" label="Bookmarks" defaultExpanded={false}>
+          <SidebarBookmarkList maxVisible={6} onBookmarkClick={handleBookmarkClick} />
+        </SidebarSection>
 
-      {/* BOOKMARKS Section - Collapsible */}
-      <SidebarSection id="bookmarks" label="Bookmarks" defaultExpanded={false}>
-        <SidebarBookmarkList maxVisible={6} onBookmarkClick={handleBookmarkClick} />
-      </SidebarSection>
-
-      {/* TAGS Section - Collapsible */}
-      <SidebarSection id="tags" label="Tags" defaultExpanded={false}>
-        <SidebarTagList maxVisible={6} onTagClick={handleTagClick} />
-      </SidebarSection>
+        {/* TAGS Section - Collapsible */}
+        <SidebarSection id="tags" label="Tags" defaultExpanded={false}>
+          <SidebarTagList maxVisible={6} onTagClick={handleTagClick} />
+        </SidebarSection>
+      </div>
     </>
   )
 

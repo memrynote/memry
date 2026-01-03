@@ -125,23 +125,10 @@ export const useSidebarNavigation = () => {
       const shouldBePreview = isPreview ?? (settings.previewMode && !inNewTab)
 
       // Determine if should open in new tab or replace current
-      let shouldOpenNewTab = inNewTab ?? false
-      let shouldReplaceActive = false
-
-      if (settings.openInNewTab === 'always' && !toTheSide) {
-        // Always mode: always open new tab
-        shouldOpenNewTab = true
-      } else if (settings.openInNewTab === 'never') {
-        // Never mode: replace current tab, unless Cmd/Ctrl+Click
-        if (inNewTab) {
-          // User explicitly requested new tab with modifier key
-          shouldOpenNewTab = true
-        } else {
-          // Replace the current active tab
-          shouldReplaceActive = true
-        }
-      }
-      // 'modifier' mode: uses the inNewTab value passed from click handler (default behavior)
+      // Default behavior: replace current tab
+      // New tab only when: Cmd/Ctrl+Click (inNewTab=true), right-click "Open in New Tab", or toTheSide
+      const shouldOpenNewTab = inNewTab ?? false
+      const shouldReplaceActive = !shouldOpenNewTab && !toTheSide
 
       // Check for existing tab
       const existingTab = findExistingTabForItem(state, item)
@@ -173,7 +160,7 @@ export const useSidebarNavigation = () => {
           openTab(tabData, { background: inBackground })
         }, 0)
       } else {
-        // Open tab - either replace current or create new
+        // Open tab - replace current tab unless explicitly opening new tab
         openTab(tabData, { background: inBackground, replaceActive: shouldReplaceActive })
       }
     },

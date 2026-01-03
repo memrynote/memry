@@ -192,19 +192,6 @@ function GeneralSettings() {
     [updateSettings, updateContextSettings]
   )
 
-  const handleOpenInNewTabChange = useCallback(
-    async (value: 'always' | 'never' | 'modifier') => {
-      const success = await updateSettings({ openInNewTab: value })
-      if (success) {
-        updateContextSettings({ openInNewTab: value })
-        toast.success('Tab opening behavior updated')
-      } else {
-        toast.error('Failed to update setting')
-      }
-    },
-    [updateSettings, updateContextSettings]
-  )
-
   const handleRestoreSessionChange = useCallback(
     async (enabled: boolean) => {
       const success = await updateSettings({ restoreSessionOnStart: enabled })
@@ -272,22 +259,6 @@ function GeneralSettings() {
             checked={settings.previewMode}
             onCheckedChange={handlePreviewModeChange}
           />
-        </div>
-
-        {/* Open in New Tab */}
-        <div className="space-y-2">
-          <Label>Open Items In</Label>
-          <p className="text-sm text-muted-foreground">Choose when to open items in a new tab</p>
-          <Select value={settings.openInNewTab} onValueChange={handleOpenInNewTabChange}>
-            <SelectTrigger className="w-full max-w-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="always">Always open in new tab</SelectItem>
-              <SelectItem value="never">Replace current tab</SelectItem>
-              <SelectItem value="modifier">New tab with Cmd/Ctrl+Click</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         {/* Restore Session */}

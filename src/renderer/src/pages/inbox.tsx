@@ -1355,8 +1355,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 onClick={handleDeselectAll}
                 className={cn(
                   'text-muted-foreground/60 hover:text-foreground',
-                  'hover:bg-foreground/5',
-                  'transition-all duration-200'
+                  'hover:bg-foreground/5'
                 )}
               >
                 Deselect all
@@ -1386,8 +1385,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                     onClick={handleSelectAll}
                     className={cn(
                       'text-muted-foreground/60 hover:text-foreground',
-                      'hover:bg-foreground/5',
-                      'transition-all duration-200'
+                      'hover:bg-foreground/5'
                     )}
                   >
                     Select all

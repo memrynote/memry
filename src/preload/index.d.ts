@@ -1853,8 +1853,6 @@ export interface FolderViewClientAPI {
 
 // Tab Settings types
 export interface TabSettings {
-  /** When to open in new tab: always, never, or with modifier key */
-  openInNewTab: 'always' | 'never' | 'modifier'
   /** Single-click opens preview, double-click opens permanent */
   previewMode: boolean
   /** Restore tabs from last session on app start */

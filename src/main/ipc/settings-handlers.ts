@@ -22,7 +22,6 @@ const SETTINGS_KEYS = {
   AI_ENABLED: 'ai.enabled',
   // Tab settings
   TAB_PREVIEW_MODE: 'tabs.previewMode',
-  TAB_OPEN_IN_NEW_TAB: 'tabs.openInNewTab',
   TAB_RESTORE_SESSION: 'tabs.restoreSessionOnStart',
   TAB_CLOSE_BUTTON: 'tabs.tabCloseButton'
 } as const
@@ -62,8 +61,6 @@ const DEFAULT_AI_SETTINGS: AISettings = {
 // ============================================================================
 
 export interface TabSettings {
-  /** When to open in new tab: always, never, or with modifier key */
-  openInNewTab: 'always' | 'never' | 'modifier'
   /** Single-click opens preview, double-click opens permanent */
   previewMode: boolean
   /** Restore tabs from last session on app start */
@@ -74,7 +71,6 @@ export interface TabSettings {
 
 /** Default tab settings values */
 const DEFAULT_TAB_SETTINGS: TabSettings = {
-  openInNewTab: 'never',
   previewMode: false,
   restoreSessionOnStart: true,
   tabCloseButton: 'hover'
@@ -276,15 +272,12 @@ export function registerSettingsHandlers(): void {
     }
 
     const previewModeStr = getSetting(db, SETTINGS_KEYS.TAB_PREVIEW_MODE)
-    const openInNewTabStr = getSetting(db, SETTINGS_KEYS.TAB_OPEN_IN_NEW_TAB)
     const restoreSessionStr = getSetting(db, SETTINGS_KEYS.TAB_RESTORE_SESSION)
     const closeButtonStr = getSetting(db, SETTINGS_KEYS.TAB_CLOSE_BUTTON)
 
     return {
       previewMode:
         previewModeStr !== null ? previewModeStr === 'true' : DEFAULT_TAB_SETTINGS.previewMode,
-      openInNewTab:
-        (openInNewTabStr as TabSettings['openInNewTab']) ?? DEFAULT_TAB_SETTINGS.openInNewTab,
       restoreSessionOnStart:
         restoreSessionStr !== null
           ? restoreSessionStr === 'true'
@@ -305,9 +298,6 @@ export function registerSettingsHandlers(): void {
 
       if (settings.previewMode !== undefined) {
         setSetting(db, SETTINGS_KEYS.TAB_PREVIEW_MODE, settings.previewMode ? 'true' : 'false')
-      }
-      if (settings.openInNewTab !== undefined) {
-        setSetting(db, SETTINGS_KEYS.TAB_OPEN_IN_NEW_TAB, settings.openInNewTab)
       }
       if (settings.restoreSessionOnStart !== undefined) {
         setSetting(

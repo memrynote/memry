@@ -20,7 +20,7 @@ import { useNoteProperties } from '@/hooks/use-note-properties'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated } from '@/services/notes-service'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
-import { Loader2, MoreHorizontal, History, Bookmark } from 'lucide-react'
+import { MoreHorizontal, History, Bookmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -55,21 +55,6 @@ function getDefaultValueForType(type: PropertyType): unknown {
     default:
       return ''
   }
-}
-
-// ============================================================================
-// Loading State Component
-// ============================================================================
-
-function NoteLoadingState() {
-  return (
-    <div className="flex items-center justify-center h-full min-h-[400px]">
-      <div className="flex flex-col items-center gap-3 text-muted-foreground">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="text-sm">Loading note...</p>
-      </div>
-    </div>
-  )
 }
 
 // ============================================================================
@@ -151,7 +136,6 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Local state
   const [note, setNote] = useState<Note | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [headings, setHeadings] = useState<HeadingItem[]>([])
   const [isInfoExpanded, setIsInfoExpanded] = useState(false)
@@ -210,11 +194,9 @@ export function NotePage({ noteId }: NotePageProps) {
   const loadNote = useCallback(async () => {
     if (!noteId) {
       setNote(null)
-      setIsLoading(false)
       return
     }
 
-    setIsLoading(true)
     setError(null)
     setIsDeleted(false) // Reset deleted state when loading a new note
 
@@ -229,8 +211,6 @@ export function NotePage({ noteId }: NotePageProps) {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load note')
-    } finally {
-      setIsLoading(false)
     }
   }, [noteId, getNote])
 
@@ -706,11 +686,6 @@ export function NotePage({ noteId }: NotePageProps) {
   // No note ID - show empty state
   if (!noteId) {
     return <NoteEmptyState />
-  }
-
-  // Loading
-  if (isLoading) {
-    return <NoteLoadingState />
   }
 
   // Error

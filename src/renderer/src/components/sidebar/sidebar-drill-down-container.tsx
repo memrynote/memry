@@ -27,12 +27,12 @@ export function SidebarDrillDownContainer({
   const isMainView = currentView.type === 'main'
 
   return (
-    <div className={cn('relative overflow-hidden flex-1', className)}>
+    <div className={cn('relative overflow-hidden flex-1 flex flex-col min-h-0', className)}>
       {/* Main sidebar content */}
       <div
         className={cn(
-          'absolute inset-0 transition-transform duration-200 ease-out overflow-y-auto',
-          !isMainView && 'pointer-events-none',
+          'flex flex-col flex-1 min-h-0 transition-transform duration-200 ease-out',
+          !isMainView && 'absolute inset-0 pointer-events-none',
           animationDirection === 'left' && !isMainView && '-translate-x-full',
           animationDirection === 'right' && !isMainView && 'translate-x-0',
           !isMainView && '-translate-x-full'

@@ -1,6 +1,5 @@
 import {
   app,
-  session,
   shell,
   BrowserWindow,
   ipcMain,
@@ -19,7 +18,7 @@ import { registerAllHandlers } from './ipc'
 import { autoOpenLastVault, closeVault } from './vault'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
-import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer';
+import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
 
 // Load .env file from project root (must be before any env access)
 // In development, load from project root; in production, from app resources
@@ -111,10 +110,10 @@ function createWindow(): void {
     autoHideMenuBar: true,
     ...(process.platform === 'darwin'
       ? {
-        titleBarStyle: 'hidden',
-        // Hide native traffic lights - we use custom ones
-        trafficLightPosition: { x: -100, y: -100 }
-      }
+          titleBarStyle: 'hidden',
+          // Hide native traffic lights - we use custom ones
+          trafficLightPosition: { x: -100, y: -100 }
+        }
       : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -143,7 +142,6 @@ function createWindow(): void {
   }
 }
 
-
 // const os = require('node:os')
 // const path = require('node:path')
 
@@ -161,11 +159,10 @@ app.whenReady().then(async () => {
 
   installExtension([REACT_DEVELOPER_TOOLS])
     .then(([react]) => console.log(`Added Extensions: ${react.name}`))
-    .catch((err) => console.log('An error occurred: ', err));
+    .catch((err) => console.log('An error occurred: ', err))
 
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
-
 
   // Register custom protocol for serving local attachment files
   // This allows secure access to vault files from the renderer process
@@ -460,7 +457,7 @@ function registerQuickCaptureShortcut(): void {
   } else {
     console.warn(
       `[QuickCapture] Failed to register global shortcut: ${shortcut}. ` +
-      'It may be in use by another application.'
+        'It may be in use by another application.'
     )
   }
 }

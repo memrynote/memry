@@ -23,8 +23,6 @@ interface UseTabPreferencesReturn {
   updateSettings: (updates: Partial<TabSettings>) => Promise<boolean>
   /** Set preview mode (convenience method) */
   setPreviewMode: (enabled: boolean) => Promise<boolean>
-  /** Set open in new tab behavior */
-  setOpenInNewTab: (value: TabSettings['openInNewTab']) => Promise<boolean>
   /** Set restore session on start */
   setRestoreSessionOnStart: (enabled: boolean) => Promise<boolean>
   /** Set tab close button behavior */
@@ -42,7 +40,7 @@ interface UseTabPreferencesReturn {
  * await setPreviewMode(true)
  *
  * // Update multiple settings
- * await updateSettings({ previewMode: true, openInNewTab: 'always' })
+ * await updateSettings({ previewMode: true, restoreSessionOnStart: true })
  * ```
  */
 export function useTabPreferences(): UseTabPreferencesReturn {
@@ -120,13 +118,6 @@ export function useTabPreferences(): UseTabPreferencesReturn {
     [updateSettings]
   )
 
-  const setOpenInNewTab = useCallback(
-    async (value: TabSettings['openInNewTab']): Promise<boolean> => {
-      return updateSettings({ openInNewTab: value })
-    },
-    [updateSettings]
-  )
-
   const setRestoreSessionOnStart = useCallback(
     async (enabled: boolean): Promise<boolean> => {
       return updateSettings({ restoreSessionOnStart: enabled })
@@ -147,7 +138,6 @@ export function useTabPreferences(): UseTabPreferencesReturn {
     error,
     updateSettings,
     setPreviewMode,
-    setOpenInNewTab,
     setRestoreSessionOnStart,
     setTabCloseButton
   }

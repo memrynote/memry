@@ -132,8 +132,6 @@ export type SplitLayout =
  * User preferences for tab behavior
  */
 export interface TabSettings {
-  /** When to open in new tab: always, never, or with modifier key (Ctrl/Cmd+click) */
-  openInNewTab: 'always' | 'never' | 'modifier'
   /** Single-click opens preview, double-click opens permanent */
   previewMode: boolean
   /** Restore tabs from last session on app start */

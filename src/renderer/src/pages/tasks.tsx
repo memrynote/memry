@@ -176,7 +176,7 @@ const TasksContentHeader = ({
     onProjectSettings,
 }: TasksContentHeaderProps): React.JSX.Element => {
     return (
-        <header className="relative flex items-start justify-between border-b border-border/50 px-6 py-6 journal-animate-in">
+        <header className="relative flex items-start justify-between border-b border-border/50 px-6 py-6">
             {/* Left side: Title and Subtitle */}
             <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2.5">
