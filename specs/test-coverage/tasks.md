@@ -1147,12 +1147,12 @@
 - [x] T574 [P] Test generateEmbedding: length guard, truncation, dimension check
 - [x] T575 Test model state helpers: isModelLoaded, isModelLoading, getModelInfo, unloadModel
 
-- [ ] T576 Create src/main/lib/reminders.test.ts
-- [ ] T577 [P] Test CRUD: createReminder, updateReminder, deleteReminder, getReminder
-- [ ] T578 [P] Test list queries: listReminders, getRemindersForTarget, filters (status/date)
-- [ ] T579 Test scheduler lifecycle: startReminderScheduler, stopReminderScheduler, due processing
-- [ ] T580 Test snooze/dismiss flows + event emission
-- [ ] T581 Test inbox item creation + notification click navigation (mock Notification/BrowserWindow)
+- [x] T576 Create src/main/lib/reminders.test.ts
+- [x] T577 [P] Test CRUD: createReminder, updateReminder, deleteReminder, getReminder
+- [x] T578 [P] Test list queries: listReminders, getRemindersForTarget, filters (status/date)
+- [x] T579 Test scheduler lifecycle: startReminderScheduler, stopReminderScheduler, due processing
+- [x] T580 Test snooze/dismiss flows + event emission
+- [x] T581 Test inbox item creation + notification click navigation (mock Notification/BrowserWindow)
 
 - [x] T582 Create src/main/store.test.ts
 - [x] T583 [P] Test vault CRUD: getVaults, upsertVault, removeVault, findVault
