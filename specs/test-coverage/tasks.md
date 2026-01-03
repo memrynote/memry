@@ -172,20 +172,20 @@
 
 **File**: `src/renderer/src/lib/expression-evaluator.ts` (802 lines, 8 exports)
 
-- [ ] T057 [P] Create expression-evaluator.test.ts with test structure
-- [ ] T058 [P] Test evaluateFormula: arithmetic operations (+, -, \*, /, %)
-- [ ] T059 [P] Test evaluateFormula: comparison operations
-- [ ] T060 [P] Test evaluateFormula: logical operations (&&, ||, !)
-- [ ] T061 [P] Test evaluateFormula: property access from context
-- [ ] T062 [P] Test evaluateFormula: conditional (ternary) expressions
-- [ ] T063 Test built-in math functions: abs, round, floor, ceil, min, max, sum, avg
-- [ ] T064 Test built-in string functions: upper, lower, trim, length, concat, substring
-- [ ] T065 Test built-in date functions: now, today, date, year, month, day, formatDate
-- [ ] T066 Test built-in array functions: first, last, count, join
-- [ ] T067 Test built-in conditional functions: if, switch, coalesce
-- [ ] T068 Test built-in type functions: number, text, boolean
-- [ ] T069 Test error handling: undefined properties, invalid functions
-- [ ] T070 Test caching behavior and clearExpressionCache()
+- [x] T057 [P] Create expression-evaluator.test.ts with test structure
+- [x] T058 [P] Test evaluateFormula: arithmetic operations (+, -, \*, /, %)
+- [x] T059 [P] Test evaluateFormula: comparison operations
+- [x] T060 [P] Test evaluateFormula: logical operations (&&, ||, !)
+- [x] T061 [P] Test evaluateFormula: property access from context
+- [x] T062 [P] Test evaluateFormula: conditional (ternary) expressions
+- [x] T063 Test built-in math functions: abs, round, floor, ceil, min, max, sum, avg
+- [x] T064 Test built-in string functions: upper, lower, trim, length, concat, substring
+- [x] T065 Test built-in date functions: now, today, date, year, month, day, formatDate
+- [x] T066 Test built-in array functions: first, last, count, join
+- [x] T067 Test built-in conditional functions: if, switch, coalesce
+- [x] T068 Test built-in type functions: number, text, boolean
+- [x] T069 Test error handling: undefined properties, invalid functions
+- [x] T070 Test caching behavior and clearExpressionCache()
 
 ### 2.5 Task Utils Tests
 
@@ -215,60 +215,60 @@
 
 **File**: `src/renderer/src/lib/repeat-utils.ts` (438 lines, 16 exports)
 
-- [ ] T090 [P] Create repeat-utils.test.ts with test structure
-- [ ] T091 [P] Test calculateNextOccurrence: daily repeat
-- [ ] T092 [P] Test calculateNextOccurrence: weekly repeat (single day, multiple days)
-- [ ] T093 [P] Test calculateNextOccurrence: monthly repeat (specific date)
-- [ ] T094 [P] Test calculateNextOccurrence: monthly repeat (nth weekday, e.g., "2nd Tuesday")
-- [ ] T095 [P] Test calculateNextOccurrence: monthly repeat (last weekday of month)
-- [ ] T096 [P] Test calculateNextOccurrence: yearly repeat
-- [ ] T097 Test calculateNextOccurrence: with interval (every 2 weeks, every 3 months)
-- [ ] T098 Test calculateNextOccurrence: edge cases (Feb 29, month end dates)
-- [ ] T099 Test calculateNextOccurrences: generate multiple future occurrences
-- [ ] T100 Test getRepeatDisplayText: human-readable repeat descriptions
-- [ ] T101 Test getRepeatPresets: verify all preset configurations
-- [ ] T102 Test createDefaultRepeatConfig: default values
-- [ ] T103 Test shouldCreateNextOccurrence: determines when to generate next task
-- [ ] T104 Test getRepeatProgress: progress tracking for repeating tasks
+- [x] T090 [P] Create repeat-utils.test.ts with test structure
+- [x] T091 [P] Test calculateNextOccurrence: daily repeat
+- [x] T092 [P] Test calculateNextOccurrence: weekly repeat (single day, multiple days)
+- [x] T093 [P] Test calculateNextOccurrence: monthly repeat (specific date)
+- [x] T094 [P] Test calculateNextOccurrence: monthly repeat (nth weekday, e.g., "2nd Tuesday")
+- [x] T095 [P] Test calculateNextOccurrence: monthly repeat (last weekday of month)
+- [x] T096 [P] Test calculateNextOccurrence: yearly repeat
+- [x] T097 Test calculateNextOccurrence: with interval (every 2 weeks, every 3 months)
+- [x] T098 Test calculateNextOccurrence: edge cases (Feb 29, month end dates)
+- [x] T099 Test calculateNextOccurrences: generate multiple future occurrences
+- [x] T100 Test getRepeatDisplayText: human-readable repeat descriptions
+- [x] T101 Test getRepeatPresets: verify all preset configurations
+- [x] T102 Test createDefaultRepeatConfig: default values
+- [x] T103 Test shouldCreateNextOccurrence: determines when to generate next task
+- [x] T104 Test getRepeatProgress: progress tracking for repeating tasks
 
 ### 2.7 Quick Add Parser Tests
 
 **File**: `src/renderer/src/lib/quick-add-parser.ts` (404 lines, 11 exports)
 
-- [ ] T105 [P] Create quick-add-parser.test.ts with test structure
-- [ ] T106 [P] Test parseQuickAdd: date syntax (!today, !tomorrow, !mon, !dec25)
-- [ ] T107 [P] Test parseQuickAdd: priority syntax (!!high, !!medium, !!low, !!1, !!2, !!3)
-- [ ] T108 [P] Test parseQuickAdd: project syntax (#project-name, #inbox)
-- [ ] T109 [P] Test parseQuickAdd: tag syntax (+tag1, +tag2)
-- [ ] T110 [P] Test parseQuickAdd: combined syntax ("Buy groceries !tomorrow !!high #personal +shopping")
-- [ ] T111 Test parseQuickAdd: partial matches during typing
-- [ ] T112 Test parseDateKeyword, parsePriorityKeyword separately
-- [ ] T113 Test findProjectByName: fuzzy project matching
-- [ ] T114 Test hasSpecialSyntax: detection of special characters
-- [ ] T115 Test getParsePreview: preview of parsed result
-- [ ] T116 Test autocomplete options: getDateOptions, getPriorityOptions, getProjectOptions
+- [x] T105 [P] Create quick-add-parser.test.ts with test structure
+- [x] T106 [P] Test parseQuickAdd: date syntax (!today, !tomorrow, !mon, !dec25)
+- [x] T107 [P] Test parseQuickAdd: priority syntax (!!high, !!medium, !!low, !!1, !!2, !!3)
+- [x] T108 [P] Test parseQuickAdd: project syntax (#project-name, #inbox)
+- [x] T109 [P] Test parseQuickAdd: tag syntax (+tag1, +tag2)
+- [x] T110 [P] Test parseQuickAdd: combined syntax ("Buy groceries !tomorrow !!high #personal +shopping")
+- [x] T111 Test parseQuickAdd: partial matches during typing
+- [x] T112 Test parseDateKeyword, parsePriorityKeyword separately
+- [x] T113 Test findProjectByName: fuzzy project matching
+- [x] T114 Test hasSpecialSyntax: detection of special characters
+- [x] T115 Test getParsePreview: preview of parsed result
+- [x] T116 Test autocomplete options: getDateOptions, getPriorityOptions, getProjectOptions
 
 ### 2.8 Subtask Utils Tests
 
 **File**: `src/renderer/src/lib/subtask-utils.ts` (678 lines, 24 exports)
 
-- [ ] T117 [P] Create subtask-utils.test.ts with test structure
-- [ ] T118 [P] Test helpers: isSubtask, hasSubtasks, getSubtasks, getParentTask
-- [ ] T119 [P] Test helpers: getTopLevelTasks, canHaveSubtasks
-- [ ] T120 [P] Test buildTaskTree: hierarchical tree construction
-- [ ] T121 [P] Test getAllSubtaskIds: recursive ID collection
-- [ ] T122 Test calculateProgress: percentage of completed subtasks
-- [ ] T123 Test validateSubtaskRelationship: circular reference prevention
-- [ ] T124 Test filterTasksWithSubtasks: filter preserving parent-child relationships
-- [ ] T125 Test sortTasksWithSubtasks: sort maintaining hierarchy
-- [ ] T126 Test createSubtask: create with proper parent reference
-- [ ] T127 Test createMultipleSubtasks: batch creation
-- [ ] T128 Test reorderSubtasks: position updates
-- [ ] T129 Test promoteToTask: convert subtask to top-level task
-- [ ] T130 Test demoteToSubtask: convert task to subtask
-- [ ] T131 Test deleteSubtask, deleteParentWithSubtasks: cascade delete
-- [ ] T132 Test completeParentWithSubtasks: completion cascade
-- [ ] T133 Test getIncompleteSubtasks, hasIncompleteSubtasks, getPotentialParents
+- [x] T117 [P] Create subtask-utils.test.ts with test structure
+- [x] T118 [P] Test helpers: isSubtask, hasSubtasks, getSubtasks, getParentTask
+- [x] T119 [P] Test helpers: getTopLevelTasks, canHaveSubtasks
+- [x] T120 [P] Test buildTaskTree: hierarchical tree construction
+- [x] T121 [P] Test getAllSubtaskIds: recursive ID collection
+- [x] T122 Test calculateProgress: percentage of completed subtasks
+- [x] T123 Test validateSubtaskRelationship: circular reference prevention
+- [x] T124 Test filterTasksWithSubtasks: filter preserving parent-child relationships
+- [x] T125 Test sortTasksWithSubtasks: sort maintaining hierarchy
+- [x] T126 Test createSubtask: create with proper parent reference
+- [x] T127 Test createMultipleSubtasks: batch creation
+- [x] T128 Test reorderSubtasks: position updates
+- [x] T129 Test promoteToTask: convert subtask to top-level task
+- [x] T130 Test demoteToSubtask: convert task to subtask
+- [x] T131 Test deleteSubtask, deleteParentWithSubtasks: cascade delete
+- [x] T132 Test completeParentWithSubtasks: completion cascade
+- [x] T133 Test getIncompleteSubtasks, hasIncompleteSubtasks, getPotentialParents
 
 **Checkpoint**: Core parser tests complete - highest-value unit tests done
 
@@ -294,77 +294,77 @@
 
 **File**: `src/renderer/src/lib/tag-utils.ts` (75 lines, 6 exports)
 
-- [ ] T141 [P] Create tag-utils.test.ts
-- [ ] T142 [P] Test isValidTagName: valid/invalid tag names
-- [ ] T143 [P] Test normalizeTagName: lowercase, trim, special chars
-- [ ] T144 [P] Test formatTagDisplay: display formatting
-- [ ] T145 Test extractTagsFromText: extract #tags from content
-- [ ] T146 Test sanitizeTagInput, isTagTerminator
+- [x] T141 [P] Create tag-utils.test.ts
+- [x] T142 [P] Test isValidTagName: valid/invalid tag names
+- [x] T143 [P] Test normalizeTagName: lowercase, trim, special chars
+- [x] T144 [P] Test formatTagDisplay: display formatting
+- [x] T145 Test extractTagsFromText: extract #tags from content
+- [x] T146 Test sanitizeTagInput, isTagTerminator
 
 ### 3.3 Fuzzy Search Tests
 
 **File**: `src/renderer/src/lib/fuzzy-search.ts` (136 lines, 3 exports)
 
-- [ ] T147 [P] Create fuzzy-search.test.ts
-- [ ] T148 [P] Test fuzzySearch: exact matches score highest
-- [ ] T149 [P] Test fuzzySearch: word boundary matches
-- [ ] T150 [P] Test fuzzySearch: consecutive character matches
-- [ ] T151 Test fuzzySearch: case insensitivity
-- [ ] T152 Test fuzzySearch: scoring algorithm accuracy
-- [ ] T153 Test highlightMatches: generates correct highlight indices
+- [x] T147 [P] Create fuzzy-search.test.ts
+- [x] T148 [P] Test fuzzySearch: exact matches score highest
+- [x] T149 [P] Test fuzzySearch: word boundary matches
+- [x] T150 [P] Test fuzzySearch: consecutive character matches
+- [x] T151 Test fuzzySearch: case insensitivity
+- [x] T152 Test fuzzySearch: scoring algorithm accuracy
+- [x] T153 Test highlightMatches: generates correct highlight indices
 
 ### 3.4 Journal Utils Tests
 
 **File**: `src/renderer/src/lib/journal-utils.ts` (404 lines, 22 exports)
 
-- [ ] T154 [P] Create journal-utils.test.ts
-- [ ] T155 [P] Test getTodayString, formatDateToISO, parseISODate
-- [ ] T156 [P] Test addDays, generateDateRange
-- [ ] T157 [P] Test generateMorePastDays, generateMoreFutureDays
-- [ ] T158 Test formatDayHeader, formatDateParts, getMonthName
-- [ ] T159 Test getOpacityForDistance, getDateDistance
-- [ ] T160 Test getTimeBasedGreeting: morning/afternoon/evening
-- [ ] T161 Test isYesterday, isTomorrow, getSpecialDayLabel
-- [ ] T162 Test getDaysInMonth, getMonthStats
+- [x] T154 [P] Create journal-utils.test.ts
+- [x] T155 [P] Test getTodayString, formatDateToISO, parseISODate
+- [x] T156 [P] Test addDays, generateDateRange
+- [x] T157 [P] Test generateMorePastDays, generateMoreFutureDays
+- [x] T158 Test formatDayHeader, formatDateParts, getMonthName
+- [x] T159 Test getOpacityForDistance, getDateDistance
+- [x] T160 Test getTimeBasedGreeting: morning/afternoon/evening
+- [x] T161 Test isYesterday, isTomorrow, getSpecialDayLabel
+- [x] T162 Test getDaysInMonth, getMonthStats
 
 ### 3.5 Inbox Utils Tests
 
 **File**: `src/renderer/src/lib/inbox-utils.ts` (96 lines, 5 exports)
 
-- [ ] T163 [P] Create inbox-utils.test.ts
-- [ ] T164 [P] Test groupItemsByTimePeriod: today, yesterday, this week, older
-- [ ] T165 [P] Test formatTimestamp: relative time formatting
-- [ ] T166 Test formatDuration: duration formatting (voice memos)
-- [ ] T167 Test extractDomain: domain extraction from URLs
+- [x] T163 [P] Create inbox-utils.test.ts
+- [x] T164 [P] Test groupItemsByTimePeriod: today, yesterday, this week, older
+- [x] T165 [P] Test formatTimestamp: relative time formatting
+- [x] T166 Test formatDuration: duration formatting (voice memos)
+- [x] T167 Test extractDomain: domain extraction from URLs
 
 ### 3.6 Stale Utils Tests
 
 **File**: `src/renderer/src/lib/stale-utils.ts` (100 lines, 9 exports)
 
-- [ ] T168 [P] Create stale-utils.test.ts
-- [ ] T169 [P] Test getDaysInInbox, isStale (7-day threshold)
-- [ ] T170 [P] Test formatAge: "2 days", "1 week"
-- [ ] T171 Test getStaleItems, getNonStaleItems: filtering
-- [ ] T172 Test getRandomNudgeMessage, getNudgeMessage
+- [x] T168 [P] Create stale-utils.test.ts
+- [x] T169 [P] Test getDaysInInbox, isStale (7-day threshold)
+- [x] T170 [P] Test formatAge: "2 days", "1 week"
+- [x] T171 Test getStaleItems, getNonStaleItems: filtering
+- [x] T172 Test getRandomNudgeMessage, getNudgeMessage
 
 ### 3.7 Lookup Utils Tests
 
 **File**: `src/renderer/src/lib/lookup-utils.ts` (97 lines, 8 exports)
 
-- [ ] T173 [P] Create lookup-utils.test.ts
-- [ ] T174 [P] Test createProjectMap, createCompletionStatusMap: O(1) lookup
-- [ ] T175 [P] Test isTaskCompletedFast, getProjectFromMap
-- [ ] T176 Test createLookupContext, getTaskContext
+- [x] T173 [P] Create lookup-utils.test.ts
+- [x] T174 [P] Test createProjectMap, createCompletionStatusMap: O(1) lookup
+- [x] T175 [P] Test isTaskCompletedFast, getProjectFromMap
+- [x] T176 Test createLookupContext, getTaskContext
 
 ### 3.8 Wiki Link Utils Tests
 
 **File**: `src/renderer/src/lib/wiki-link-utils.ts` (63 lines, 5 exports)
 
-- [ ] T177 [P] Create wiki-link-utils.test.ts
-- [ ] T178 [P] Test formatWikiLinkTitle: title formatting
-- [ ] T179 [P] Test parseWikiLinkSyntax: [[link]] and [[link|alias]] parsing
-- [ ] T180 Test createWikiLinkHTML: HTML generation
-- [ ] T181 Test formatRelativeTime: relative date display
+- [x] T177 [P] Create wiki-link-utils.test.ts
+- [x] T178 [P] Test formatWikiLinkTitle: title formatting
+- [x] T179 [P] Test parseWikiLinkSyntax: [[link]] and [[link|alias]] parsing
+- [x] T180 Test createWikiLinkHTML: HTML generation
+- [x] T181 Test formatRelativeTime: relative date display
 
 ### 3.9 Summary Evaluator Tests
 
@@ -384,14 +384,14 @@
 
 **File**: `src/renderer/src/lib/section-visibility.ts` (155 lines)
 
-- [ ] T191 [P] Create section-visibility.test.ts
-- [ ] T192 Test getSectionVisibility, shouldShowOverdueCelebration, getEmptyStateMessage
+- [x] T191 [P] Create section-visibility.test.ts
+- [x] T192 Test getSectionVisibility, shouldShowOverdueCelebration, getEmptyStateMessage
 
 **File**: `src/renderer/src/lib/virtual-list-utils.ts` (470 lines)
 
-- [ ] T193 [P] Create virtual-list-utils.test.ts
-- [ ] T194 Test flattenTasksByDueDate, flattenTodayTasks, flattenTasksByStatus
-- [ ] T195 Test estimateItemHeight, getTaskIdsFromVirtualItems
+- [x] T193 [P] Create virtual-list-utils.test.ts
+- [x] T194 Test flattenTasksByDueDate, flattenTodayTasks, flattenTasksByStatus
+- [x] T195 Test estimateItemHeight, getTaskIdsFromVirtualItems
 
 **File**: `src/renderer/src/lib/virtualized-tree-utils.ts` (226 lines)
 
@@ -891,40 +891,40 @@
 
 **File**: `src/shared/contracts/notes-api.ts`
 
-- [ ] T464 Create src/shared/contracts/notes-api.test.ts
-- [ ] T465 [P] Test NoteCreateSchema: valid/invalid inputs
-- [ ] T466 [P] Test NoteUpdateSchema: partial updates
-- [ ] T467 Test NoteListSchema: filter options
-- [ ] T468 Test error messages for invalid data
+- [x] T464 Create src/shared/contracts/notes-api.test.ts
+- [x] T465 [P] Test NoteCreateSchema: valid/invalid inputs
+- [x] T466 [P] Test NoteUpdateSchema: partial updates
+- [x] T467 Test NoteListSchema: filter options
+- [x] T468 Test error messages for invalid data
 
 ### 9.2 Tasks API Contract Tests
 
 **File**: `src/shared/contracts/tasks-api.ts`
 
-- [ ] T469 Create src/shared/contracts/tasks-api.test.ts
-- [ ] T470 [P] Test TaskCreateSchema, TaskUpdateSchema
-- [ ] T471 [P] Test RepeatConfigSchema: all repeat patterns
-- [ ] T472 Test ProjectCreateSchema, StatusCreateSchema
+- [x] T469 Create src/shared/contracts/tasks-api.test.ts
+- [x] T470 [P] Test TaskCreateSchema, TaskUpdateSchema
+- [x] T471 [P] Test RepeatConfigSchema: all repeat patterns
+- [x] T472 Test ProjectCreateSchema, StatusCreateSchema
 
 ### 9.3 Inbox API Contract Tests
 
 **File**: `src/shared/contracts/inbox-api.ts`
 
-- [ ] T473 Create src/shared/contracts/inbox-api.test.ts
-- [ ] T474 [P] Test capture schemas: Text, Link, Image, Voice, Clip, PDF
-- [ ] T475 Test InboxListSchema, SnoozeSchema
+- [x] T473 Create src/shared/contracts/inbox-api.test.ts
+- [x] T474 [P] Test capture schemas: Text, Link, Image, Voice, Clip, PDF
+- [x] T475 Test InboxListSchema, SnoozeSchema
 
 ### 9.4 Other Contract Tests
 
-- [ ] T476 [P] Create src/shared/contracts/folder-view-api.test.ts
-- [ ] T477 [P] Create src/shared/contracts/journal-api.test.ts
-- [ ] T478 [P] Create src/shared/contracts/reminders-api.test.ts
-- [ ] T479 [P] Create src/shared/contracts/search-api.test.ts
-- [ ] T480 [P] Create src/shared/contracts/vault-api.test.ts
-- [ ] T481 [P] Create src/shared/contracts/bookmarks-api.test.ts
-- [ ] T482 [P] Create src/shared/contracts/tags-api.test.ts
-- [ ] T483 [P] Create src/shared/contracts/templates-api.test.ts
-- [ ] T484 [P] Create src/shared/contracts/saved-filters-api.test.ts
+- [x] T476 [P] Create src/shared/contracts/folder-view-api.test.ts
+- [x] T477 [P] Create src/shared/contracts/journal-api.test.ts
+- [x] T478 [P] Create src/shared/contracts/reminders-api.test.ts
+- [x] T479 [P] Create src/shared/contracts/search-api.test.ts
+- [x] T480 [P] Create src/shared/contracts/vault-api.test.ts
+- [x] T481 [P] Create src/shared/contracts/bookmarks-api.test.ts
+- [x] T482 [P] Create src/shared/contracts/tags-api.test.ts
+- [x] T483 [P] Create src/shared/contracts/templates-api.test.ts
+- [x] T484 [P] Create src/shared/contracts/saved-filters-api.test.ts
 
 **Checkpoint**: Contract tests complete
 
