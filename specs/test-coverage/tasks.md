@@ -282,13 +282,13 @@
 
 **File**: `src/renderer/src/lib/subtask-bulk-utils.ts` (384 lines, 12 exports)
 
-- [ ] T134 [P] Create subtask-bulk-utils.test.ts
-- [ ] T135 [P] Test checkAllSubtasksComplete, getIncompleteSubtaskCount
-- [ ] T136 [P] Test completeAllSubtasks, markAllSubtasksIncomplete
-- [ ] T137 Test setDueDateForAllSubtasks, setPriorityForAllSubtasks
-- [ ] T138 Test deleteAllSubtasks
-- [ ] T139 Test duplicateTaskWithSubtasks: deep copy with new IDs
-- [ ] T140 Test completeParentTask, uncompleteParentTask
+- [x] T134 [P] Create subtask-bulk-utils.test.ts
+- [x] T135 [P] Test checkAllSubtasksComplete, getIncompleteSubtaskCount
+- [x] T136 [P] Test completeAllSubtasks, markAllSubtasksIncomplete
+- [x] T137 Test setDueDateForAllSubtasks, setPriorityForAllSubtasks
+- [x] T138 Test deleteAllSubtasks
+- [x] T139 Test duplicateTaskWithSubtasks: deep copy with new IDs
+- [x] T140 Test completeParentTask, uncompleteParentTask
 
 ### 3.2 Tag Utils Tests
 
