@@ -821,7 +821,7 @@
 
 ### 8.1 IPC Test Utilities
 
-- [ ] T435 Create tests/utils/mock-ipc.ts with:
+- [x] T435 Create tests/utils/mock-ipc.ts with:
   - `MockIpcMain` - Mock ipcMain.handle
   - `MockIpcRenderer` - Mock ipcRenderer.invoke
   - `createTestIpcContext()` - Full IPC mock context
@@ -830,54 +830,54 @@
 
 **File**: `src/main/ipc/notes-handlers.ts`
 
-- [ ] T436 Create src/main/ipc/notes-handlers.test.ts
-- [ ] T437 [P] Test CREATE handler: validation + note creation
-- [ ] T438 [P] Test GET, GET_BY_PATH handlers
-- [ ] T439 [P] Test UPDATE handler: all update scenarios
-- [ ] T440 Test DELETE handler: cascading effects
-- [ ] T441 Test LIST handler: filters and pagination
-- [ ] T442 Test folder handlers: GET_FOLDERS, CREATE_FOLDER, etc.
-- [ ] T443 Test version handlers: GET_VERSION_HISTORY, RESTORE_VERSION
+- [x] T436 Create src/main/ipc/notes-handlers.test.ts
+- [x] T437 [P] Test CREATE handler: validation + note creation
+- [x] T438 [P] Test GET, GET_BY_PATH handlers
+- [x] T439 [P] Test UPDATE handler: all update scenarios
+- [x] T440 Test DELETE handler: cascading effects
+- [x] T441 Test LIST handler: filters and pagination
+- [x] T442 Test folder handlers: GET_FOLDERS, CREATE_FOLDER, etc.
+- [x] T443 Test version handlers: GET_VERSION_HISTORY, RESTORE_VERSION
 
 ### 8.3 Tasks Handlers Tests
 
 **File**: `src/main/ipc/tasks-handlers.ts`
 
-- [ ] T444 Create src/main/ipc/tasks-handlers.test.ts
-- [ ] T445 [P] Test CREATE, GET, UPDATE, DELETE handlers
-- [ ] T446 [P] Test COMPLETE, UNCOMPLETE handlers
-- [ ] T447 Test LIST with filters
-- [ ] T448 Test bulk operations: BULK_COMPLETE, BULK_DELETE, BULK_MOVE
+- [x] T444 Create src/main/ipc/tasks-handlers.test.ts
+- [x] T445 [P] Test CREATE, GET, UPDATE, DELETE handlers
+- [x] T446 [P] Test COMPLETE, UNCOMPLETE handlers
+- [x] T447 Test LIST with filters
+- [x] T448 Test bulk operations: BULK_COMPLETE, BULK_DELETE, BULK_MOVE
 
 ### 8.4 Vault Handlers Tests
 
 **File**: `src/main/ipc/vault-handlers.ts`
 
-- [ ] T449 Create src/main/ipc/vault-handlers.test.ts
-- [ ] T450 [P] Test SELECT, CREATE handlers
-- [ ] T451 Test GET_ALL, GET_STATUS, GET_CONFIG handlers
-- [ ] T452 Test SWITCH, CLOSE handlers
-- [ ] T453 Test REINDEX handler
+- [x] T449 Create src/main/ipc/vault-handlers.test.ts
+- [x] T450 [P] Test SELECT, CREATE handlers
+- [x] T451 Test GET_ALL, GET_STATUS, GET_CONFIG handlers
+- [x] T452 Test SWITCH, CLOSE handlers
+- [x] T453 Test REINDEX handler
 
 ### 8.5 Inbox Handlers Tests
 
 **File**: `src/main/ipc/inbox-handlers.ts`
 
-- [ ] T454 Create src/main/ipc/inbox-handlers.test.ts
-- [ ] T455 [P] Test CAPTURE_TEXT, CAPTURE_LINK handlers
-- [ ] T456 [P] Test LIST, GET, UPDATE handlers
-- [ ] T457 Test FILE, ARCHIVE handlers
-- [ ] T458 Test SNOOZE, UNSNOOZE handlers
-- [ ] T459 Test bulk handlers
+- [x] T454 Create src/main/ipc/inbox-handlers.test.ts
+- [x] T455 [P] Test CAPTURE_TEXT, CAPTURE_LINK handlers
+- [x] T456 [P] Test LIST, GET, UPDATE handlers
+- [x] T457 Test FILE, ARCHIVE handlers
+- [x] T458 Test SNOOZE, UNSNOOZE handlers
+- [x] T459 Test bulk handlers
 
 ### 8.6 Search Handlers Tests
 
 **File**: `src/main/ipc/search-handlers.ts`
 
-- [ ] T460 Create src/main/ipc/search-handlers.test.ts
-- [ ] T461 [P] Test SEARCH, QUICK_SEARCH handlers
-- [ ] T462 Test SUGGESTIONS handler
-- [ ] T463 Test REBUILD_INDEX handler
+- [x] T460 Create src/main/ipc/search-handlers.test.ts
+- [x] T461 [P] Test SEARCH, QUICK_SEARCH handlers
+- [x] T462 Test SUGGESTIONS handler
+- [x] T463 Test REBUILD_INDEX handler
 
 **Checkpoint**: IPC integration tests complete
 
