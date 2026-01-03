@@ -1,0 +1,158 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e9]:
+          - button "Close window" [ref=e10]
+          - button "Minimize window" [ref=e11]
+          - button "Maximize window" [ref=e12]
+        - list [ref=e13]:
+          - listitem [ref=e14]:
+            - button "memry-e2e-C6vp0h" [ref=e15]:
+              - img [ref=e17]
+              - generic [ref=e20]: memry-e2e-C6vp0h
+              - img [ref=e21]
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - list [ref=e29]:
+            - listitem [ref=e30]:
+              - button "Search ⌘ P" [ref=e31]:
+                - img [ref=e32]
+                - generic [ref=e35]: Search
+                - generic [ref=e36]:
+                  - generic: ⌘ P
+            - listitem [ref=e37]:
+              - button "New ⌘ N" [ref=e38]:
+                - img [ref=e39]
+                - generic [ref=e40]: New
+                - generic [ref=e41]:
+                  - generic: ⌘ N
+          - list [ref=e43]:
+            - listitem [ref=e44]:
+              - button "Inbox" [ref=e45]:
+                - img [ref=e46]
+                - generic [ref=e49]: Inbox
+            - listitem [ref=e50]:
+              - button "Home" [ref=e51]:
+                - img [ref=e52]
+                - generic [ref=e55]: Home
+            - listitem [ref=e56]:
+              - button "Journal" [ref=e57]:
+                - img [ref=e58]
+                - generic [ref=e60]: Journal
+            - listitem [ref=e61]:
+              - button "Tasks" [ref=e62]:
+                - img [ref=e63]
+                - generic [ref=e66]: Tasks
+        - generic [ref=e67]:
+          - button "Collections section, collapsed" [ref=e71] [cursor=pointer]:
+            - img [ref=e72]
+            - generic [ref=e74]: Collections
+          - button "Bookmarks section, collapsed" [ref=e78] [cursor=pointer]:
+            - img [ref=e79]
+            - generic [ref=e81]: Bookmarks
+          - button "Tags section, collapsed" [ref=e85] [cursor=pointer]:
+            - img [ref=e86]
+            - generic [ref=e88]: Tags
+      - button "Toggle Sidebar" [ref=e89]
+    - main [ref=e90]:
+      - generic [ref=e91]:
+        - button "Toggle Sidebar" [ref=e93]:
+          - img
+          - generic [ref=e94]: Toggle Sidebar
+        - tablist "Open tabs" [ref=e96]:
+          - generic [ref=e98]:
+            - button "Inbox" [ref=e100]:
+              - tab "Inbox" [ref=e101] [cursor=pointer]:
+                - img [ref=e102]
+                - generic [ref=e105]: Inbox
+            - button "Untitled" [ref=e108]:
+              - tab "Untitled" [ref=e109] [cursor=pointer]:
+                - img [ref=e110]
+                - generic [ref=e113]: Untitled
+            - button "Untitled" [ref=e116]:
+              - tab "Untitled" [selected] [ref=e117] [cursor=pointer]:
+                - img [ref=e118]
+                - generic [ref=e121]: Untitled
+          - generic [ref=e123]:
+            - button "Split Right" [ref=e124]:
+              - img [ref=e125]
+            - button "AI Agent" [ref=e127]:
+              - img [ref=e128]
+        - button "?" [ref=e132]
+      - generic [ref=e133]:
+        - generic [ref=e137]:
+          - generic [ref=e140]:
+            - generic [ref=e141]:
+              - button "Set reminder" [ref=e143]:
+                - img
+                - generic [ref=e144]: Set reminder
+              - button "Add bookmark" [ref=e145]:
+                - img
+                - generic [ref=e146]: Add bookmark
+              - button "More options" [ref=e147]:
+                - img
+                - generic [ref=e148]: More options
+            - generic [ref=e149]:
+              - generic [ref=e150]:
+                - generic [ref=e154]:
+                  - button "Choose emoji" [ref=e156]:
+                    - img [ref=e158]
+                  - textbox "Note title" [ref=e162]:
+                    - /placeholder: Untitled
+                    - text: Untitled
+                - list "Tags" [ref=e164]:
+                  - button "Add tag" [ref=e166]:
+                    - img [ref=e167]
+                  - generic [ref=e168]: Add tags
+                - region "Note properties" [ref=e170]:
+                  - button "Info" [ref=e171] [cursor=pointer]:
+                    - img [ref=e172]
+                    - generic [ref=e174]: Info
+              - region "Note editor" [ref=e176]:
+                - application "Rich text editor" [ref=e177]:
+                  - textbox [ref=e179]:
+                    - paragraph [ref=e184]: Start writing, or press '/' for commands...
+              - region "Backlinks section with 0 links" [ref=e186]:
+                - button "Collapse backlinks section" [expanded] [ref=e188] [cursor=pointer]:
+                  - img [ref=e190]
+                  - img [ref=e192]
+                  - generic [ref=e195]: Backlinks
+                - list "Backlinks list" [ref=e196]:
+                  - generic [ref=e197]:
+                    - img [ref=e199]
+                    - heading "No backlinks yet" [level=4] [ref=e202]
+                    - paragraph [ref=e203]: Other notes that link to this note will appear here.
+          - generic "Document info available" [ref=e206] [cursor=pointer]
+        - generic [ref=e208]:
+          - generic [ref=e209]:
+            - heading "AI Agent" [level=2] [ref=e210]
+            - button "Close AI Agent" [ref=e211]:
+              - img
+          - generic [ref=e213]:
+            - generic [ref=e215]:
+              - img [ref=e217]
+              - heading "Start a conversation" [level=3] [ref=e219]
+              - paragraph [ref=e220]: Ask questions about this note or get AI-powered suggestions.
+            - generic [ref=e222]:
+              - textbox "Ask about this note..." [ref=e224]
+              - generic [ref=e225]:
+                - generic [ref=e226]:
+                  - button "Add attachment" [ref=e227]:
+                    - img [ref=e228]
+                  - button "Web search" [ref=e230]:
+                    - img [ref=e231]
+                  - button "Deep thinking" [ref=e234]:
+                    - img [ref=e235]
+                - button "GPT-4o" [ref=e243]:
+                  - img [ref=e244]
+                  - generic [ref=e247]: GPT-4o
+                  - img [ref=e248]
+                - button "Send message" [disabled] [ref=e250]:
+                  - img [ref=e251]
+    - status [ref=e254]
+  - region "Notifications alt+T"
+```

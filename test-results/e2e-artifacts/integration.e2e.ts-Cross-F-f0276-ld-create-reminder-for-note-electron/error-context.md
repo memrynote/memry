@@ -1,0 +1,183 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e9]:
+          - button "Close window" [ref=e10]
+          - button "Minimize window" [ref=e11]
+          - button "Maximize window" [ref=e12]
+        - list [ref=e13]:
+          - listitem [ref=e14]:
+            - button "memry-e2e-bS4C8q" [ref=e15]:
+              - img [ref=e17]
+              - generic [ref=e20]: memry-e2e-bS4C8q
+              - img [ref=e21]
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - list [ref=e29]:
+            - listitem [ref=e30]:
+              - button "Search ⌘ P" [ref=e31]:
+                - img [ref=e32]
+                - generic [ref=e35]: Search
+                - generic [ref=e36]:
+                  - generic: ⌘ P
+            - listitem [ref=e37]:
+              - button "New ⌘ N" [ref=e38]:
+                - img [ref=e39]
+                - generic [ref=e40]: New
+                - generic [ref=e41]:
+                  - generic: ⌘ N
+          - list [ref=e43]:
+            - listitem [ref=e44]:
+              - button "Inbox" [ref=e45]:
+                - img [ref=e46]
+                - generic [ref=e49]: Inbox
+            - listitem [ref=e50]:
+              - button "Home" [ref=e51]:
+                - img [ref=e52]
+                - generic [ref=e55]: Home
+            - listitem [ref=e56]:
+              - button "Journal" [ref=e57]:
+                - img [ref=e58]
+                - generic [ref=e60]: Journal
+            - listitem [ref=e61]:
+              - button "Tasks" [ref=e62]:
+                - img [ref=e63]
+                - generic [ref=e66]: Tasks
+        - generic [ref=e67]:
+          - button "Collections section, collapsed" [ref=e71] [cursor=pointer]:
+            - img [ref=e72]
+            - generic [ref=e74]: Collections
+          - button "Bookmarks section, collapsed" [ref=e78] [cursor=pointer]:
+            - img [ref=e79]
+            - generic [ref=e81]: Bookmarks
+          - button "Tags section, collapsed" [ref=e85] [cursor=pointer]:
+            - img [ref=e86]
+            - generic [ref=e88]: Tags
+      - button "Toggle Sidebar" [ref=e89]
+    - main [ref=e90]:
+      - generic [ref=e91]:
+        - button "Toggle Sidebar" [ref=e93]:
+          - img
+          - generic [ref=e94]: Toggle Sidebar
+        - tablist "Open tabs" [ref=e96]:
+          - generic [ref=e98]:
+            - button "Inbox" [ref=e100]:
+              - tab "Inbox" [ref=e101] [cursor=pointer]:
+                - img [ref=e102]
+                - generic [ref=e105]: Inbox
+            - button "Untitled" [ref=e108]:
+              - tab "Untitled" [ref=e109] [cursor=pointer]:
+                - img [ref=e110]
+                - generic [ref=e113]: Untitled
+            - button "Tasks" [ref=e116]:
+              - tab "Tasks" [selected] [ref=e117] [cursor=pointer]:
+                - img [ref=e118]
+                - generic [ref=e121]: Tasks
+            - button "Untitled" [ref=e124]:
+              - tab "Untitled" [ref=e125] [cursor=pointer]:
+                - img [ref=e126]
+                - generic [ref=e129]: Untitled
+          - generic [ref=e131]:
+            - button "Split Right" [ref=e132]:
+              - img [ref=e133]
+            - button "AI Agent" [ref=e135]:
+              - img [ref=e136]
+        - button "?" [ref=e140]
+      - generic [ref=e141]:
+        - main [ref=e145]:
+          - generic [ref=e146]:
+            - generic [ref=e147]:
+              - heading "Today" [level=1] [ref=e149]
+              - paragraph [ref=e150]: Sunday, January 4
+            - generic [ref=e151]:
+              - group "View mode" [ref=e152]:
+                - radio "List view" [checked] [ref=e153]:
+                  - img
+              - button "Add Task" [ref=e154]:
+                - img
+                - text: Add Task
+          - tablist "Task views" [ref=e155]:
+            - generic [ref=e156]:
+              - tab "All" [ref=e157]:
+                - img [ref=e158]
+                - generic [ref=e159]: All
+              - tab "Today" [selected] [ref=e160]:
+                - img [ref=e161]
+                - generic [ref=e163]: Today
+              - tab "Upcoming" [ref=e165]:
+                - img [ref=e166]
+                - generic [ref=e168]: Upcoming
+              - tab "Projects 1" [ref=e169]:
+                - img [ref=e170]
+                - generic [ref=e172]: Projects
+                - generic [ref=e173]: "1"
+          - generic [ref=e175]:
+            - generic [ref=e176]:
+              - generic [ref=e177]:
+                - img
+                - textbox "Search tasks" [ref=e178]:
+                  - /placeholder: Search tasks...
+              - button "Toggle filters panel" [ref=e180]:
+                - img
+                - generic [ref=e181]: Filters
+            - generic [ref=e182]:
+              - button "Sort options" [ref=e183]:
+                - generic [ref=e184]: "Sort: Due Date ↑"
+                - img
+              - button "More options" [ref=e186]:
+                - img
+                - generic [ref=e187]: More options
+          - generic [ref=e188]:
+            - generic: "4"
+            - generic [ref=e189]:
+              - button "Quick add shortcuts help" [ref=e192]:
+                - generic [ref=e193]:
+                  - img [ref=e195]
+                  - textbox "Quick add task" [ref=e196]:
+                    - /placeholder: Add task for today...
+                  - button "Quick add shortcuts help" [ref=e197]:
+                    - img [ref=e198]
+              - generic [ref=e204]:
+                - img [ref=e206]
+                - heading "All clear for today!" [level=3] [ref=e208]
+                - paragraph [ref=e209]: Enjoy your free time or plan ahead.
+                - generic [ref=e210]:
+                  - button "Add task for today" [ref=e211]:
+                    - img
+                    - text: Add task for today
+                  - button "View upcoming tasks" [ref=e212]:
+                    - img [ref=e213]
+                    - generic [ref=e215]: View upcoming tasks
+        - generic [ref=e217]:
+          - generic [ref=e218]:
+            - heading "AI Agent" [level=2] [ref=e219]
+            - button "Close AI Agent" [ref=e220]:
+              - img
+          - generic [ref=e222]:
+            - generic [ref=e224]:
+              - img [ref=e226]
+              - heading "Start a conversation" [level=3] [ref=e228]
+              - paragraph [ref=e229]: Ask questions about this note or get AI-powered suggestions.
+            - generic [ref=e231]:
+              - textbox "Ask about this note..." [ref=e233]
+              - generic [ref=e234]:
+                - generic [ref=e235]:
+                  - button "Add attachment" [ref=e236]:
+                    - img [ref=e237]
+                  - button "Web search" [ref=e239]:
+                    - img [ref=e240]
+                  - button "Deep thinking" [ref=e243]:
+                    - img [ref=e244]
+                - button "GPT-4o" [ref=e252]:
+                  - img [ref=e253]
+                  - generic [ref=e256]: GPT-4o
+                  - img [ref=e257]
+                - button "Send message" [disabled] [ref=e259]:
+                  - img [ref=e260]
+    - status [ref=e263]
+  - region "Notifications alt+T"
+```

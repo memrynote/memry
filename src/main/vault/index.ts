@@ -439,8 +439,24 @@ export async function reindex(): Promise<void> {
 
 /**
  * Auto-open the last vault on app start
+ * In test mode (TEST_VAULT_PATH env var), opens the test vault instead
  */
 export async function autoOpenLastVault(): Promise<void> {
+  // Support E2E testing with TEST_VAULT_PATH environment variable
+  const testVaultPath = process.env.TEST_VAULT_PATH
+  if (testVaultPath && process.env.NODE_ENV === 'test') {
+    try {
+      // Initialize the test vault if needed
+      if (!isVaultInitialized(testVaultPath)) {
+        initVault(testVaultPath)
+      }
+      await openVault(testVaultPath)
+      return
+    } catch (error) {
+      console.error('[Test] Failed to open test vault:', error)
+    }
+  }
+
   const lastVault = getCurrentVaultPath()
 
   if (lastVault && isVaultInitialized(lastVault)) {
