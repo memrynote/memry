@@ -68,11 +68,11 @@
 
 ### Configuration Files
 
-- [ ] T001 [P] Create vitest.config.ts with workspace configuration for main/renderer/shared
-- [ ] T002 [P] Create vitest.workspace.ts to define test projects (unit, integration, component)
-- [ ] T003 [P] Create playwright.config.ts for Electron E2E testing
-- [ ] T004 [P] Create tests/setup.ts with global test utilities and matchers
-- [ ] T005 [P] Create tests/setup-dom.ts with JSDOM/happy-dom configuration for React tests
+- [x] T001 [P] Create vitest.config.ts with workspace configuration for main/renderer/shared
+- [x] T002 [P] Create vitest.workspace.ts to define test projects (unit, integration, component)
+- [x] T003 [P] Create playwright.config.ts for Electron E2E testing
+- [x] T004 [P] Create tests/setup.ts with global test utilities and matchers
+- [x] T005 [P] Create tests/setup-dom.ts with JSDOM/happy-dom configuration for React tests
 
 ### Package.json Scripts
 
@@ -88,21 +88,21 @@
 
 ### Test Utilities & Mocks
 
-- [ ] T007 [P] Create tests/utils/test-db.ts - In-memory SQLite database factory for integration tests
-- [ ] T008 [P] Create tests/utils/test-vault.ts - Temporary vault directory factory
-- [ ] T009 [P] Create tests/utils/mock-electron.ts - Electron API mocks (shell, dialog, BrowserWindow)
-- [ ] T010 [P] Create tests/utils/mock-ipc.ts - IPC communication mocks (ipcMain, ipcRenderer)
-- [ ] T011 [P] Create tests/utils/fixtures/ directory with sample data files
-- [ ] T012 [P] Create tests/utils/render.tsx - Custom render wrapper for React components
+- [x] T007 [P] Create tests/utils/test-db.ts - In-memory SQLite database factory for integration tests
+- [x] T008 [P] Create tests/utils/test-vault.ts - Temporary vault directory factory
+- [x] T009 [P] Create tests/utils/mock-electron.ts - Electron API mocks (shell, dialog, BrowserWindow)
+- [x] T010 [P] Create tests/utils/mock-ipc.ts - IPC communication mocks (ipcMain, ipcRenderer)
+- [x] T011 [P] Create tests/utils/fixtures/ directory with sample data files
+- [x] T012 [P] Create tests/utils/render.tsx - Custom render wrapper for React components
 
 ### TypeScript Configuration
 
-- [ ] T013 Update tsconfig.json to include test files with proper paths
-- [ ] T014 [P] Create tests/tsconfig.json for test-specific TypeScript settings
+- [x] T013 Update tsconfig.json to include test files with proper paths
+- [x] T014 [P] Create tests/tsconfig.json for test-specific TypeScript settings
 
 ### Install Dependencies
 
-- [ ] T015 Install test dependencies: `pnpm add -D @testing-library/react @testing-library/jest-dom @testing-library/user-event @vitest/coverage-v8 @vitest/ui jsdom happy-dom @playwright/test`
+- [x] T015 Install test dependencies: `pnpm add -D @testing-library/react @testing-library/jest-dom @testing-library/user-event @vitest/coverage-v8 @vitest/ui jsdom happy-dom @playwright/test`
 
 **Checkpoint**: Test infrastructure ready - can run `pnpm test` successfully
 
@@ -116,37 +116,37 @@
 
 **File**: `src/renderer/src/lib/expression-parser.ts` (572 lines, 4 exports)
 
-- [ ] T016 [P] Create expression-parser.test.ts with test structure
-- [ ] T017 [P] Test tokenizer: numeric literals, string literals, identifiers
-- [ ] T018 [P] Test tokenizer: operators (+, -, \*, /, %, ==, !=, <, >, <=, >=, &&, ||, !)
-- [ ] T019 [P] Test tokenizer: parentheses, brackets, commas, dots
-- [ ] T020 [P] Test tokenizer: whitespace handling and edge cases
-- [ ] T021 Test parser: literal expressions (numbers, strings, booleans, null)
-- [ ] T022 Test parser: identifier expressions
-- [ ] T023 Test parser: member access (dot notation, bracket notation)
-- [ ] T024 Test parser: binary expressions with correct precedence
-- [ ] T025 Test parser: unary expressions (!, -)
-- [ ] T026 Test parser: function calls with arguments
-- [ ] T027 Test parser: conditional (ternary) expressions
-- [ ] T028 Test parser: nested expressions and complex combinations
-- [ ] T029 Test parser: error handling for invalid syntax
-- [ ] T030 Test validateExpression() function
+- [x] T016 [P] Create expression-parser.test.ts with test structure
+- [x] T017 [P] Test tokenizer: numeric literals, string literals, identifiers
+- [x] T018 [P] Test tokenizer: operators (+, -, \*, /, %, ==, !=, <, >, <=, >=, &&, ||, !)
+- [x] T019 [P] Test tokenizer: parentheses, brackets, commas, dots
+- [x] T020 [P] Test tokenizer: whitespace handling and edge cases
+- [x] T021 Test parser: literal expressions (numbers, strings, booleans, null)
+- [x] T022 Test parser: identifier expressions
+- [x] T023 Test parser: member access (dot notation, bracket notation)
+- [x] T024 Test parser: binary expressions with correct precedence
+- [x] T025 Test parser: unary expressions (!, -)
+- [x] T026 Test parser: function calls with arguments
+- [x] T027 Test parser: conditional (ternary) expressions
+- [x] T028 Test parser: nested expressions and complex combinations
+- [x] T029 Test parser: error handling for invalid syntax
+- [x] T030 Test validateExpression() function
 
 ### 2.2 Natural Date Parser Tests
 
 **File**: `src/renderer/src/lib/natural-date-parser.ts` (429 lines, 8 exports)
 
-- [ ] T031 [P] Create natural-date-parser.test.ts with test structure
-- [ ] T032 [P] Test parseNaturalDate: "today", "tomorrow", "yesterday"
-- [ ] T033 [P] Test parseNaturalDate: day names ("monday", "next friday", "last tuesday")
-- [ ] T034 [P] Test parseNaturalDate: relative dates ("in 3 days", "2 weeks ago")
-- [ ] T035 [P] Test parseNaturalDate: month + day ("dec 25", "january 1st")
-- [ ] T036 [P] Test parseNaturalDate: full dates ("2026-01-15", "01/15/2026")
-- [ ] T037 [P] Test parseNaturalDate: time parsing ("3pm", "15:30", "noon")
-- [ ] T038 [P] Test parseNaturalDate: combined date+time ("tomorrow at 3pm")
-- [ ] T039 Test parseNaturalDate: edge cases (end of month, leap years)
-- [ ] T040 Test parseNaturalDate: invalid inputs and error handling
-- [ ] T041 Test helper functions: nextSaturday, nextMonday, addWeeks, addMonths
+- [x] T031 [P] Create natural-date-parser.test.ts with test structure
+- [x] T032 [P] Test parseNaturalDate: "today", "tomorrow", "yesterday"
+- [x] T033 [P] Test parseNaturalDate: day names ("monday", "next friday", "last tuesday")
+- [x] T034 [P] Test parseNaturalDate: relative dates ("in 3 days", "2 weeks ago")
+- [x] T035 [P] Test parseNaturalDate: month + day ("dec 25", "january 1st")
+- [x] T036 [P] Test parseNaturalDate: full dates ("2026-01-15", "01/15/2026")
+- [x] T037 [P] Test parseNaturalDate: time parsing ("3pm", "15:30", "noon")
+- [x] T038 [P] Test parseNaturalDate: combined date+time ("tomorrow at 3pm")
+- [x] T039 Test parseNaturalDate: edge cases (end of month, leap years)
+- [x] T040 Test parseNaturalDate: invalid inputs and error handling
+- [x] T041 Test helper functions: nextSaturday, nextMonday, addWeeks, addMonths
 
 ### 2.3 Filter Evaluator Tests
 
