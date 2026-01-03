@@ -152,21 +152,21 @@
 
 **File**: `src/renderer/src/lib/filter-evaluator.ts` (594 lines, 17 exports)
 
-- [ ] T042 [P] Create filter-evaluator.test.ts with test structure
-- [ ] T043 [P] Test evaluateFilter: text operators (equals, contains, startsWith, endsWith)
-- [ ] T044 [P] Test evaluateFilter: number operators (=, !=, <, >, <=, >=)
-- [ ] T045 [P] Test evaluateFilter: date operators (is, before, after, between)
-- [ ] T046 [P] Test evaluateFilter: boolean operators (is true, is false)
-- [ ] T047 [P] Test evaluateFilter: select operators (is, isNot, isAny)
-- [ ] T048 [P] Test evaluateFilter: array operators (contains, isEmpty)
-- [ ] T049 Test evaluateFilter: AND logic with multiple conditions
-- [ ] T050 Test evaluateFilter: OR logic with multiple conditions
-- [ ] T051 Test evaluateFilter: NOT logic (negation)
-- [ ] T052 Test evaluateFilter: nested expressions (AND within OR, etc.)
-- [ ] T053 Test parseExpression() - filter string to AST
-- [ ] T054 Test serializeCondition() - AST to string
-- [ ] T055 Test utility functions: getOperatorsForType, countFilterConditions, isFilterEmpty
-- [ ] T056 Test createSimpleFilter, combineFiltersAnd, combineFiltersOr
+- [x] T042 [P] Create filter-evaluator.test.ts with test structure
+- [x] T043 [P] Test evaluateFilter: text operators (equals, contains, startsWith, endsWith)
+- [x] T044 [P] Test evaluateFilter: number operators (=, !=, <, >, <=, >=)
+- [x] T045 [P] Test evaluateFilter: date operators (is, before, after, between)
+- [x] T046 [P] Test evaluateFilter: boolean operators (is true, is false)
+- [x] T047 [P] Test evaluateFilter: select operators (is, isNot, isAny)
+- [x] T048 [P] Test evaluateFilter: array operators (contains, isEmpty)
+- [x] T049 Test evaluateFilter: AND logic with multiple conditions
+- [x] T050 Test evaluateFilter: OR logic with multiple conditions
+- [x] T051 Test evaluateFilter: NOT logic (negation)
+- [x] T052 Test evaluateFilter: nested expressions (AND within OR, etc.)
+- [x] T053 Test parseExpression() - filter string to AST
+- [x] T054 Test serializeCondition() - AST to string
+- [x] T055 Test utility functions: getOperatorsForType, countFilterConditions, isFilterEmpty
+- [x] T056 Test createSimpleFilter, combineFiltersAnd, combineFiltersOr
 
 ### 2.4 Expression Evaluator Tests
 
