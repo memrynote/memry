@@ -1175,16 +1175,16 @@
 
 ### 14.3 Vault Watcher & Rename Tracking (P1)
 
-- [ ] T595 Create src/main/vault/rename-tracker.test.ts
-- [ ] T596 [P] Test trackPendingDelete timeout triggers onRealDelete
-- [ ] T597 [P] Test checkForRename updates cache and emits RENAMED event
-- [ ] T598 Test clearPendingDelete/clearAllPendingDeletes/hasPendingDeletes
+- [x] T595 Create src/main/vault/rename-tracker.test.ts
+- [x] T596 [P] Test trackPendingDelete timeout triggers onRealDelete
+- [x] T597 [P] Test checkForRename updates cache and emits RENAMED event
+- [x] T598 Test clearPendingDelete/clearAllPendingDeletes/hasPendingDeletes
 
-- [ ] T599 Create src/main/vault/watcher.test.ts
-- [ ] T600 [P] Test handleFileChange: frontmatter parse + cache updates
-- [ ] T601 [P] Test add/unlink events: create/delete note cache + tags/links sync
-- [ ] T602 Test rename flow integration with rename-tracker
-- [ ] T603 Test watcher startup/shutdown and resource cleanup
+- [x] T599 Create src/main/vault/watcher.test.ts
+- [x] T600 [P] Test handleFileChange: frontmatter parse + cache updates
+- [x] T601 [P] Test add/unlink events: create/delete note cache + tags/links sync
+- [x] T602 Test rename flow integration with rename-tracker
+- [x] T603 Test watcher startup/shutdown and resource cleanup
 
 ### 14.4 Inbox Capture & Processing Additions (P2)
 

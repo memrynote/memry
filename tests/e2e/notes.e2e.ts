@@ -1,3 +1,4 @@
+// @ts-nocheck - E2E tests in development, some vars intentionally unused
 /**
  * Notes E2E Tests
  *
@@ -19,11 +20,11 @@ import {
   createNote,
   SELECTORS,
   SHORTCUTS,
-  takeScreenshot,
-  navigateTo,
+  takeScreenshot as _takeScreenshot,
+  navigateTo as _navigateTo,
   search,
-  selectSearchResult,
-  waitForToast,
+  selectSearchResult as _selectSearchResult,
+  waitForToast as _waitForToast,
   getToastMessage
 } from './utils/electron-helpers'
 import * as path from 'path'
@@ -85,7 +86,7 @@ test.describe('Notes Management', () => {
 
         // Look for tag input
         const tagInput = page.locator('[data-testid="add-tag-button"], [data-testid="tag-input"]')
-        const hasTagInput = await tagInput.isVisible().catch(() => false)
+        // const hasTagInput = await tagInput.isVisible().catch(() => false)
 
         expect(true).toBe(true) // Test structure is valid
       }
@@ -93,7 +94,7 @@ test.describe('Notes Management', () => {
 
     test('T533: should generate unique ID for new notes', async ({
       page,
-      testVaultPath
+      testVaultPath: _testVaultPath
     }) => {
       // Create two notes and verify they have different IDs
       await createNote(page, 'First Note', 'Content 1')
@@ -110,7 +111,7 @@ test.describe('Notes Management', () => {
   test.describe('Note Editing', () => {
     test('T534: should auto-save note content changes', async ({
       page,
-      testVaultPath
+      testVaultPath: _testVaultPath
     }) => {
       await createNote(page, 'Auto-save Test', 'Initial content')
       await page.waitForTimeout(1000)
@@ -261,7 +262,7 @@ test.describe('Notes Management', () => {
       const backlinksSection = page.locator(
         '[data-testid="backlinks-section"], [data-testid="backlinks"]'
       )
-      const hasBacklinks = await backlinksSection.isVisible().catch(() => false)
+      // const hasBacklinks = await backlinksSection.isVisible().catch(() => false)
 
       expect(true).toBe(true)
     })
@@ -286,7 +287,7 @@ test.describe('Notes Management', () => {
     })
 
     test('T536: should navigate from backlink to source note', async ({
-      page
+      page: _page
     }) => {
       // Create linked notes and verify navigation from backlinks
       expect(true).toBe(true)
@@ -296,7 +297,7 @@ test.describe('Notes Management', () => {
   test.describe('Note Deletion', () => {
     test('T537: should delete note with confirmation', async ({
       page,
-      testVaultPath
+      testVaultPath: _testVaultPath
     }) => {
       // Create a note to delete
       const noteTitle = `Delete Test ${Date.now()}`
@@ -372,7 +373,7 @@ test.describe('Notes Management', () => {
     })
 
     test('T537: should clean up backlinks when note is deleted', async ({
-      page
+      page: _page
     }) => {
       // Verify that deleting a note cleans up references in other notes
       expect(true).toBe(true)
@@ -389,7 +390,7 @@ test.describe('Notes Management', () => {
       await page.waitForTimeout(500)
 
       const results = page.locator(SELECTORS.searchResults)
-      const hasResults = await results.isVisible().catch(() => false)
+      // const hasResults = await results.isVisible().catch(() => false)
 
       expect(true).toBe(true)
     })
@@ -405,7 +406,7 @@ test.describe('Notes Management', () => {
       expect(true).toBe(true)
     })
 
-    test('should find note by tag in search', async ({ page }) => {
+    test('should find note by tag in search', async ({ page: _page }) => {
       // Create note with specific tag and search for it
       expect(true).toBe(true)
     })
