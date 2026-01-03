@@ -194,14 +194,6 @@ export function getAttachmentPath(vaultPath: string, noteId: string, filename: s
   return path.join(getNoteAttachmentsDir(vaultPath, noteId), filename)
 }
 
-/**
- * Get the relative path from a note to its attachment (for markdown/BlockNote)
- * Format: ../attachments/{noteId}/{filename}
- * @deprecated Use getAbsoluteAttachmentUrl for Electron rendering
- */
-export function getRelativeAttachmentPath(noteId: string, filename: string): string {
-  return `../attachments/${noteId}/${filename}`
-}
 
 /**
  * Get the memry-file:// URL for an attachment (for Electron rendering)

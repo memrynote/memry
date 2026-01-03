@@ -644,29 +644,29 @@
 
 **File**: `src/main/vault/file-ops.ts`
 
-- [ ] T342 Create src/main/vault/file-ops.test.ts
-- [ ] T343 [P] Test atomicWrite: write via temp file + rename
-- [ ] T344 [P] Test atomicWrite: handles existing file
-- [ ] T345 [P] Test safeRead, readRequired: success and error cases
-- [ ] T346 Test ensureDirectory: recursive creation
-- [ ] T347 Test listMarkdownFiles: recursive .md discovery
-- [ ] T348 Test listDirectories: subdirectory listing
-- [ ] T349 Test deleteFile, fileExists, directoryExists, getFileStats
-- [ ] T350 Test sanitizeFilename: special character handling
-- [ ] T351 Test generateNotePath: path generation with folders
-- [ ] T352 Test generateUniquePath: collision handling
+- [x] T342 Create src/main/vault/file-ops.test.ts
+- [x] T343 [P] Test atomicWrite: write via temp file + rename
+- [x] T344 [P] Test atomicWrite: handles existing file
+- [x] T345 [P] Test safeRead, readRequired: success and error cases
+- [x] T346 Test ensureDirectory: recursive creation
+- [x] T347 Test listMarkdownFiles: recursive .md discovery
+- [x] T348 Test listDirectories: subdirectory listing
+- [x] T349 Test deleteFile, fileExists, directoryExists, getFileStats
+- [x] T350 Test sanitizeFilename: special character handling
+- [x] T351 Test generateNotePath: path generation with folders
+- [x] T352 Test generateUniquePath: collision handling
 
 ### 6.2 Vault Init Tests
 
 **File**: `src/main/vault/init.ts`
 
-- [ ] T353 Create src/main/vault/init.test.ts
-- [ ] T354 [P] Test getMemryDir, getDataDbPath, getIndexDbPath, getConfigPath
-- [ ] T355 [P] Test isVaultInitialized: .memry folder detection
-- [ ] T356 [P] Test isValidDirectory, hasWritePermission
-- [ ] T357 Test initVault: creates vault structure
-- [ ] T358 Test readVaultConfig, writeVaultConfig: JSON config
-- [ ] T359 Test getVaultName, countMarkdownFiles
+- [x] T353 Create src/main/vault/init.test.ts
+- [x] T354 [P] Test getMemryDir, getDataDbPath, getIndexDbPath, getConfigPath
+- [x] T355 [P] Test isVaultInitialized: .memry folder detection
+- [x] T356 [P] Test isValidDirectory, hasWritePermission
+- [x] T357 Test initVault: creates vault structure
+- [x] T358 Test readVaultConfig, writeVaultConfig: JSON config
+- [x] T359 Test getVaultName, countMarkdownFiles
 
 ### 6.3 Notes Operations Tests
 
@@ -699,46 +699,46 @@
 
 **File**: `src/main/vault/journal.ts`
 
-- [ ] T377 Create src/main/vault/journal.test.ts
-- [ ] T378 [P] Test getJournalPath: date-based path generation
-- [ ] T379 [P] Test parseJournalEntry, serializeJournalEntry
-- [ ] T380 [P] Test createJournalFrontmatter
-- [ ] T381 Test readJournalEntry, writeJournalEntry
-- [ ] T382 Test deleteJournalEntryFile, journalEntryExists
-- [ ] T383 Test calculateActivityLevelFromContent, extractPreview
+- [x] T377 Create src/main/vault/journal.test.ts
+- [x] T378 [P] Test getJournalPath: date-based path generation
+- [x] T379 [P] Test parseJournalEntry, serializeJournalEntry
+- [x] T380 [P] Test createJournalFrontmatter
+- [x] T381 Test readJournalEntry, writeJournalEntry
+- [x] T382 Test deleteJournalEntryFile, journalEntryExists
+- [x] T383 Test calculateActivityLevelFromContent, extractPreview
 
 ### 6.6 Templates Tests
 
 **File**: `src/main/vault/templates.ts`
 
-- [ ] T384 Create src/main/vault/templates.test.ts
-- [ ] T385 [P] Test getTemplatesDir, ensureTemplatesDir
-- [ ] T386 [P] Test listTemplates, getTemplate
-- [ ] T387 Test createTemplate, updateTemplate, deleteTemplate
-- [ ] T388 Test duplicateTemplate
-- [ ] T389 Test applyTemplate: property and content application
+- [x] T384 Create src/main/vault/templates.test.ts
+- [x] T385 [P] Test getTemplatesDir, ensureTemplatesDir
+- [x] T386 [P] Test listTemplates, getTemplate
+- [x] T387 Test createTemplate, updateTemplate, deleteTemplate
+- [x] T388 Test duplicateTemplate
+- [x] T389 Test applyTemplate: property and content application
 
 ### 6.7 Attachments Tests
 
 **File**: `src/main/vault/attachments.ts`
 
-- [ ] T390 Create src/main/vault/attachments.test.ts
-- [ ] T391 [P] Test getNoteAttachmentsDir, getAttachmentPath
-- [ ] T392 [P] Test generateUniqueFilename
-- [ ] T393 Test saveAttachment, deleteAttachment
-- [ ] T394 Test listNoteAttachments, attachmentExists
-- [ ] T395 Test validation: isAllowedFileType, validateFileSize
-- [ ] T396 Test getRelativeAttachmentPath, getAbsoluteAttachmentUrl
+- [x] T390 Create src/main/vault/attachments.test.ts
+- [x] T391 [P] Test getNoteAttachmentsDir, getAttachmentPath
+- [x] T392 [P] Test generateUniqueFilename
+- [x] T393 Test saveAttachment, deleteAttachment
+- [x] T394 Test listNoteAttachments, attachmentExists
+- [x] T395 Test validation: isAllowedFileType, validateFileSize
+- [x] T396 Test getRelativeAttachmentPath, getAbsoluteAttachmentUrl
 
 ### 6.8 Folders Tests
 
 **File**: `src/main/vault/folders.ts`
 
-- [ ] T397 Create src/main/vault/folders.test.ts
-- [ ] T398 [P] Test readFolderConfig, writeFolderConfig
-- [ ] T399 Test getFolderTemplate: inheritance resolution
-- [ ] T400 Test setFolderTemplate
-- [ ] T401 Test isFolderConfigFile
+- [x] T397 Create src/main/vault/folders.test.ts
+- [x] T398 [P] Test readFolderConfig, writeFolderConfig
+- [x] T399 Test getFolderTemplate: inheritance resolution
+- [x] T400 Test setFolderTemplate
+- [x] T401 Test isFolderConfigFile
 
 **Checkpoint**: Vault integration tests complete
 
