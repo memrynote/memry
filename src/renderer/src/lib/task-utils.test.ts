@@ -2446,13 +2446,14 @@ describe("Task Utils", () => {
       })
 
       it("should include boundary dates (inclusive)", () => {
+        // Use local date constructors to avoid timezone issues
         const tasks = [
-          createMockTask({ id: "t1", dueDate: new Date("2026-01-10") }),
-          createMockTask({ id: "t2", dueDate: new Date("2026-01-20") }),
+          createMockTask({ id: "t1", dueDate: new Date(2026, 0, 10, 12) }),
+          createMockTask({ id: "t2", dueDate: new Date(2026, 0, 20, 12) }),
         ]
 
-        const start = new Date("2026-01-10")
-        const end = new Date("2026-01-20")
+        const start = startOfDay(new Date(2026, 0, 10))
+        const end = endOfDay(new Date(2026, 0, 20))
         const grouped = groupTasksByCalendarDate(tasks, start, end)
 
         expect(grouped.get("2026-01-10")).toHaveLength(1)
@@ -2478,7 +2479,7 @@ describe("Task Utils", () => {
     describe("filterBySearch", () => {
       it("should filter by title match", () => {
         const tasks = [
-          createMockTask({ id: "t1", title: "Buy groceries" }),
+          createMockTask({ id: "t1", title: "Buy grocery items" }),
           createMockTask({ id: "t2", title: "Go to gym" }),
           createMockTask({ id: "t3", title: "Grocery shopping" }),
         ]
@@ -2799,18 +2800,21 @@ describe("Task Utils", () => {
       })
 
       it("should filter tasks due this week", () => {
+        // Reference: Wed Jan 14, 2026. endOfWeek uses startOfDay (midnight), so use dates safely within range
         const tasks = [
-          createMockTask({ id: "t1", dueDate: new Date("2026-01-13") }),
-          createMockTask({ id: "t2", dueDate: new Date("2026-01-14") }),
-          createMockTask({ id: "t3", dueDate: new Date("2026-01-17") }),
-          createMockTask({ id: "t4", dueDate: new Date("2026-01-19") }),
+          createMockTask({ id: "t1", dueDate: new Date(2026, 0, 13, 12) }), // Tue - before today
+          createMockTask({ id: "t2", dueDate: new Date(2026, 0, 14, 12) }), // Wed - today
+          createMockTask({ id: "t3", dueDate: new Date(2026, 0, 16, 12) }), // Fri - within week
+          createMockTask({ id: "t4", dueDate: new Date(2026, 0, 19, 12) }), // Mon - next week
         ]
 
-        const filter = { type: "this-week" }
+        const filter = { type: "this-week" as const }
         const filtered = filterByDueDateRange(tasks, filter)
 
         expect(filtered.some((t: Task) => t.id === "t2")).toBe(true)
         expect(filtered.some((t: Task) => t.id === "t3")).toBe(true)
+        expect(filtered.some((t: Task) => t.id === "t1")).toBe(false) // before today
+        expect(filtered.some((t: Task) => t.id === "t4")).toBe(false) // next week
       })
 
       it("should filter tasks due next week", () => {
@@ -2829,16 +2833,19 @@ describe("Task Utils", () => {
       })
 
       it("should filter tasks due this month", () => {
+        // endOfMonth returns startOfDay, so use a date well within the range
         const tasks = [
-          createMockTask({ id: "t1", dueDate: new Date("2026-01-14") }),
-          createMockTask({ id: "t2", dueDate: new Date("2026-01-31") }),
-          createMockTask({ id: "t3", dueDate: new Date("2026-02-01") }),
+          createMockTask({ id: "t1", dueDate: new Date(2026, 0, 14, 12) }), // Today
+          createMockTask({ id: "t2", dueDate: new Date(2026, 0, 25, 12) }), // Middle of month
+          createMockTask({ id: "t3", dueDate: new Date(2026, 1, 1, 12) }),  // Next month
         ]
 
-        const filter = { type: "this-month" }
+        const filter = { type: "this-month" as const }
         const filtered = filterByDueDateRange(tasks, filter)
 
         expect(filtered).toHaveLength(2)
+        expect(filtered.some((t: Task) => t.id === "t1")).toBe(true)
+        expect(filtered.some((t: Task) => t.id === "t2")).toBe(true)
         expect(filtered.some((t: Task) => t.id === "t3")).toBe(false)
       })
 
