@@ -499,7 +499,7 @@
 
 ### 5.1 Test Database Setup
 
-- [ ] T248 Create tests/utils/test-db.ts with:
+- [x] T248 Create tests/utils/test-db.ts with:
   - `createTestDatabase()` - Create in-memory database
   - `seedTestData(db)` - Seed with test fixtures
   - `cleanupTestDatabase(db)` - Cleanup after tests
@@ -508,29 +508,29 @@
 
 **File**: `src/shared/db/queries/tasks.ts`
 
-- [ ] T249 Create src/shared/db/queries/tasks.test.ts
-- [ ] T250 [P] Test insertTask, getTaskById, taskExists
-- [ ] T251 [P] Test updateTask: all updateable fields
-- [ ] T252 [P] Test deleteTask: cascade effects
-- [ ] T253 Test listTasks: basic listing with pagination
-- [ ] T254 Test listTasks: filter by project, status, parent
-- [ ] T255 Test listTasks: filter by completion, archive status
-- [ ] T256 Test listTasks: filter by due dates (today, overdue, upcoming)
-- [ ] T257 Test listTasks: filter by tags, search query
-- [ ] T258 Test listTasks: sorting (dueDate, priority, createdAt)
-- [ ] T259 Test countTasks with filters
-- [ ] T260 Test getTasksByProject, getSubtasks, countSubtasks
-- [ ] T261 Test getTodayTasks, getTasksByDueDate, countOverdueTasksBeforeDate
-- [ ] T262 Test getOverdueTasks, getUpcomingTasks
-- [ ] T263 Test completeTask, uncompleteTask: status transitions
-- [ ] T264 Test archiveTask, unarchiveTask
-- [ ] T265 Test moveTask: project/status change
-- [ ] T266 Test reorderTasks: position updates
-- [ ] T267 Test duplicateTask, duplicateSubtask
-- [ ] T268 Test setTaskTags, getTaskTags, getAllTaskTags
-- [ ] T269 Test setTaskNotes, getTaskNoteIds, getTasksLinkedToNote
-- [ ] T270 Test bulkCompleteTasks, bulkDeleteTasks, bulkMoveTasks, bulkArchiveTasks
-- [ ] T271 Test getTaskStats, getNextTaskPosition
+- [x] T249 Create src/shared/db/queries/tasks.test.ts
+- [x] T250 [P] Test insertTask, getTaskById, taskExists
+- [x] T251 [P] Test updateTask: all updateable fields
+- [x] T252 [P] Test deleteTask: cascade effects
+- [x] T253 Test listTasks: basic listing with pagination
+- [x] T254 Test listTasks: filter by project, status, parent
+- [x] T255 Test listTasks: filter by completion, archive status
+- [x] T256 Test listTasks: filter by due dates (today, overdue, upcoming)
+- [x] T257 Test listTasks: filter by tags, search query
+- [x] T258 Test listTasks: sorting (dueDate, priority, createdAt)
+- [x] T259 Test countTasks with filters
+- [x] T260 Test getTasksByProject, getSubtasks, countSubtasks
+- [x] T261 Test getTodayTasks, getTasksByDueDate, countOverdueTasksBeforeDate
+- [x] T262 Test getOverdueTasks, getUpcomingTasks
+- [x] T263 Test completeTask, uncompleteTask: status transitions
+- [x] T264 Test archiveTask, unarchiveTask
+- [x] T265 Test moveTask: project/status change
+- [x] T266 Test reorderTasks: position updates
+- [x] T267 Test duplicateTask, duplicateSubtask
+- [x] T268 Test setTaskTags, getTaskTags, getAllTaskTags
+- [x] T269 Test setTaskNotes, getTaskNoteIds, getTasksLinkedToNote
+- [x] T270 Test bulkCompleteTasks, bulkDeleteTasks, bulkMoveTasks, bulkArchiveTasks
+- [x] T271 Test getTaskStats, getNextTaskPosition
 
 ### 5.3 Notes Queries Tests
 
@@ -566,19 +566,19 @@
 
 **File**: `src/shared/db/queries/projects.ts`
 
-- [ ] T297 Create src/shared/db/queries/projects.test.ts
-- [ ] T298 [P] Test insertProject, getProjectById, projectExists
-- [ ] T299 [P] Test updateProject, deleteProject (cascade)
-- [ ] T300 Test getInboxProject, listProjects
-- [ ] T301 Test getProjectsWithStats: task counts
-- [ ] T302 Test archiveProject, unarchiveProject
-- [ ] T303 Test reorderProjects, getNextProjectPosition
-- [ ] T304 Test insertStatus, updateStatus, deleteStatus
-- [ ] T305 Test getStatusesByProject, getDefaultStatus, getDoneStatus
-- [ ] T306 Test getEquivalentStatus: status mapping between projects
-- [ ] T307 Test reorderStatuses, setDefaultStatus, setDoneStatus
-- [ ] T308 Test createDefaultStatuses, countTasksInStatus
-- [ ] T309 Test getProjectWithStatuses, getProjectsWithStatuses
+- [x] T297 Create src/shared/db/queries/projects.test.ts
+- [x] T298 [P] Test insertProject, getProjectById, projectExists
+- [x] T299 [P] Test updateProject, deleteProject (cascade)
+- [x] T300 Test getInboxProject, listProjects
+- [x] T301 Test getProjectsWithStats: task counts
+- [x] T302 Test archiveProject, unarchiveProject
+- [x] T303 Test reorderProjects, getNextProjectPosition
+- [x] T304 Test insertStatus, updateStatus, deleteStatus
+- [x] T305 Test getStatusesByProject, getDefaultStatus, getDoneStatus
+- [x] T306 Test getEquivalentStatus: status mapping between projects
+- [x] T307 Test reorderStatuses, setDefaultStatus, setDoneStatus
+- [x] T308 Test createDefaultStatuses, countTasksInStatus
+- [x] T309 Test getProjectWithStatuses, getProjectsWithStatuses
 
 ### 5.5 Search Queries Tests
 
@@ -587,7 +587,7 @@
 - [x] T310 Create src/shared/db/queries/search.test.ts
 - [x] T311 [P] Test searchNotes: basic FTS5 search
 - [x] T312 [P] Test searchNotes: BM25 ranking
-- [ ] T313 [P] Test searchNotes: phrase matching
+- [x] T313 [P] Test searchNotes: phrase matching
 - [x] T314 Test searchNotes: prefix matching
 - [x] T315 Test quickSearch: optimized for command palette
 - [x] T316 Test getSuggestions: tags, titles autocomplete
@@ -601,24 +601,24 @@
 
 **File**: `src/shared/db/queries/bookmarks.ts`
 
-- [ ] T322 Create src/shared/db/queries/bookmarks.test.ts
-- [ ] T323 [P] Test insertBookmark, deleteBookmark, deleteBookmarkByItem
-- [ ] T324 [P] Test getBookmarkById, getBookmarkByItem, isBookmarked
-- [ ] T325 Test listBookmarks: pagination, type filter
-- [ ] T326 Test countBookmarks, listBookmarksByType
-- [ ] T327 Test reorderBookmarks, updateBookmarkPosition
-- [ ] T328 Test bulkCreateBookmarks, bulkDeleteBookmarks
-- [ ] T329 Test toggleBookmark, deleteOrphanedBookmarks
+- [x] T322 Create src/shared/db/queries/bookmarks.test.ts
+- [x] T323 [P] Test insertBookmark, deleteBookmark, deleteBookmarkByItem
+- [x] T324 [P] Test getBookmarkById, getBookmarkByItem, isBookmarked
+- [x] T325 Test listBookmarks: pagination, type filter
+- [x] T326 Test countBookmarks, listBookmarksByType
+- [x] T327 Test reorderBookmarks, updateBookmarkPosition
+- [x] T328 Test bulkCreateBookmarks, bulkDeleteBookmarks
+- [x] T329 Test toggleBookmark, deleteOrphanedBookmarks
 
 ### 5.7 Settings Queries Tests
 
 **File**: `src/shared/db/queries/settings.ts`
 
-- [ ] T330 Create src/shared/db/queries/settings.test.ts
-- [ ] T331 [P] Test getSetting, setSetting, deleteSetting
-- [ ] T332 Test saved filters: insertSavedFilter, updateSavedFilter
-- [ ] T333 Test saved filters: getSavedFilterById, listSavedFilters
-- [ ] T334 Test saved filters: reorderSavedFilters
+- [x] T330 Create src/shared/db/queries/settings.test.ts
+- [x] T331 [P] Test getSetting, setSetting, deleteSetting
+- [x] T332 Test saved filters: insertSavedFilter, updateSavedFilter
+- [x] T333 Test saved filters: getSavedFilterById, listSavedFilters
+- [x] T334 Test saved filters: reorderSavedFilters
 
 ### 5.8 FTS Integration Tests
 
