@@ -147,9 +147,8 @@ export function extractSnippet(
  */
 export function escapeSearchQuery(query: string): string {
   // Remove or escape FTS5 special characters
-  // Replace double quotes with escaped quotes
   let escaped = query
-    .replace(/"/g, '""') // Escape double quotes
+    .replace(/"/g, ' ') // Remove quotes to avoid phrase parsing
     .replace(/\*/g, '') // Remove wildcards (we add our own)
     .replace(/[():\-^]/g, ' ') // Replace operators with spaces
     .trim()
@@ -233,7 +232,7 @@ export function searchNotes(
     INNER JOIN note_cache nc ON nc.id = fts_notes.id
     WHERE fts_notes MATCH ${ftsQuery}
     ${folder ? sql`AND nc.path LIKE ${folder + '%'}` : sql``}
-    ORDER BY score
+    ORDER BY score DESC
     LIMIT ${limit}
     OFFSET ${offset}
   `)
@@ -308,7 +307,7 @@ export function quickSearch(
     FROM fts_notes
     INNER JOIN note_cache nc ON nc.id = fts_notes.id
     WHERE fts_notes MATCH ${ftsQuery}
-    ORDER BY score
+    ORDER BY score DESC
     LIMIT ${limit}
   `)
 

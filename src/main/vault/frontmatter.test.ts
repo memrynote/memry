@@ -134,8 +134,11 @@ describe('frontmatter utilities', () => {
   it('extractTags normalizes frontmatter tags', () => {
     const frontmatter: NoteFrontmatter = {
       id: 'abc123def456',
-
-    )
+      created: FIXED_ISO,
+      modified: FIXED_ISO,
+      tags: [' Work ', 'PERSONAL', '']
+    }
+    expect(extractTags(frontmatter)).toEqual(['work', 'personal'])
   })
 
   it('calculateWordCount ignores code blocks and inline code', () => {

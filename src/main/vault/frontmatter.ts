@@ -116,6 +116,10 @@ export function extractTitleFromPath(filePath: string): string {
 // Serialization
 // ============================================================================
 
+function stripTrailingNewlines(value: string): string {
+  return value.replace(/(?:\r?\n)+$/g, '')
+}
+
 /**
  * Serialize frontmatter and content back to markdown format.
  *
@@ -130,7 +134,8 @@ export function serializeNote(frontmatter: NoteFrontmatter, content: string): st
     modified: new Date().toISOString()
   }
 
-  return matter.stringify(content.trim(), updatedFrontmatter)
+  const serialized = matter.stringify(content.trim(), updatedFrontmatter)
+  return stripTrailingNewlines(serialized)
 }
 
 /**
@@ -169,7 +174,8 @@ export function ensureFrontmatter(rawContent: string, filePath: string): string 
 
   if (!parsed.hadFrontmatter || parsed.wasModified) {
     // Re-serialize with complete frontmatter
-    return matter.stringify(parsed.content, parsed.frontmatter)
+    const serialized = matter.stringify(parsed.content, parsed.frontmatter)
+    return stripTrailingNewlines(serialized)
   }
 
   // No changes needed

@@ -1352,34 +1352,27 @@ export function getJournalStreak(db: DrizzleDb): {
   const dates = new Set(entries.map((e) => e.date!))
 
   // Calculate current streak (from today or last entry backwards)
-  let currentStreak = 0
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  // Start from today and go backwards
-  let checkDate = new Date(today)
-
-  // If today doesn't have an entry, start from the last entry date
-  const todayStr = checkDate.toISOString().split('T')[0]
-  if (!dates.has(todayStr)) {
-    // Check if last entry was yesterday (streak still valid)
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
-    const yesterdayStr = yesterday.toISOString().split('T')[0]
-
-    if (dates.has(yesterdayStr)) {
-      checkDate = yesterday
-    } else {
-      // Streak is broken, current streak is 0
-      currentStreak = 0
-    }
+  const formatDateUtc = (date: Date) => date.toISOString().slice(0, 10)
+  const addDaysUtc = (dateStr: string, delta: number) => {
+    const date = new Date(`${dateStr}T00:00:00.000Z`)
+    date.setUTCDate(date.getUTCDate() + delta)
+    return formatDateUtc(date)
   }
 
-  // Count consecutive days backwards
-  if (currentStreak === 0 && dates.has(checkDate.toISOString().split('T')[0])) {
-    while (dates.has(checkDate.toISOString().split('T')[0])) {
+  let currentStreak = 0
+  const todayStr = formatDateUtc(new Date())
+  let checkDateStr: string | null = todayStr
+
+  if (!dates.has(todayStr)) {
+    const yesterdayStr = addDaysUtc(todayStr, -1)
+    checkDateStr = dates.has(yesterdayStr) ? yesterdayStr : null
+  }
+
+  if (checkDateStr) {
+    let cursor = checkDateStr
+    while (dates.has(cursor)) {
       currentStreak++
-      checkDate.setDate(checkDate.getDate() - 1)
+      cursor = addDaysUtc(cursor, -1)
     }
   }
 
