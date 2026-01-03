@@ -25,14 +25,19 @@ export const altKey = isMac ? "⌥" : "Alt"
  * Used to determine if keyboard shortcuts should be triggered
  */
 export const isInputFocused = (): boolean => {
-  const activeElement = document.activeElement
+  const activeElement = document.activeElement as HTMLElement | null
   const tagName = activeElement?.tagName.toLowerCase()
+  const contentEditable = activeElement?.contentEditable
+  const isContentEditable =
+    activeElement?.isContentEditable === true ||
+    contentEditable === "true" ||
+    contentEditable === "plaintext-only"
 
   return (
     tagName === "input" ||
     tagName === "textarea" ||
     tagName === "select" ||
-    (activeElement as HTMLElement)?.isContentEditable === true
+    isContentEditable
   )
 }
 
@@ -132,4 +137,3 @@ export const getKeyboardShortcuts = (): ShortcutCategory[] => [
     ],
   },
 ]
-
