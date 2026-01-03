@@ -1,7 +1,10 @@
-import { defineWorkspace } from 'vitest/config'
+import { defineProject, defineWorkspace } from 'vitest/config'
 import { resolve } from 'path'
+import { fileURLToPath } from 'url'
 
-export default defineWorkspace([
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
+
+export default [
   // ============================================================================
   // Shared Workspace - Pure TypeScript (Zod schemas, Drizzle queries)
   // ============================================================================
@@ -77,4 +80,4 @@ export default defineWorkspace([
       }
     }
   }
-])
+]

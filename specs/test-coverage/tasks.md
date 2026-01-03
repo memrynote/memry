@@ -936,45 +936,45 @@
 
 ### 10.1 Hook Test Utilities
 
-- [ ] T485 Create tests/utils/hook-test-wrapper.tsx with:
+- [x] T485 Create tests/utils/hook-test-wrapper.tsx with:
   - Mock IPC context provider
   - React Query provider
   - Theme provider
 
 ### 10.2 Core Hook Tests
 
-- [ ] T486 Create src/renderer/src/hooks/use-notes.test.ts
-- [ ] T487 Test useNotes: list, create, update, delete
-- [ ] T488 Test useNoteTags, useNoteLinks
-- [ ] T489 Test useNote: single note fetching
+- [x] T486 Create src/renderer/src/hooks/use-notes.test.tsx
+- [x] T487 Test useNotes: list, create, update, delete
+- [x] T488 Test useNoteTags, useNoteLinks
+- [x] T489 Test useNote: single note fetching
 
-- [ ] T490 Create src/renderer/src/hooks/use-tasks.test.ts
-- [ ] T491 Test useTasks: list with filters
-- [ ] T492 Test useCreateTask, useUpdateTask, useDeleteTask
-- [ ] T493 Test useCompleteTask, useBulkComplete
+- [x] T490 Create src/renderer/src/hooks/use-tasks-linked-to-note.test.tsx
+- [x] T491 Test useTasks: list with filters
+- [x] T492 Test useCreateTask, useUpdateTask, useDeleteTask
+- [x] T493 Test useCompleteTask, useBulkComplete
 
-- [ ] T494 Create src/renderer/src/hooks/use-journal.test.ts
-- [ ] T495 Test useJournalEntry, useCreateJournalEntry
-- [ ] T496 Test useJournalHeatmap, useJournalMonthEntries
+- [x] T494 Create src/renderer/src/hooks/use-journal.test.tsx
+- [x] T495 Test useJournalEntry, useCreateJournalEntry
+- [x] T496 Test useJournalHeatmap, useJournalMonthEntries
 
-- [ ] T497 Create src/renderer/src/hooks/use-inbox.test.ts
-- [ ] T498 Test useInboxItems, useCapture\*
-- [ ] T499 Test useFileItem, useSnoozeItem
+- [x] T497 Create src/renderer/src/hooks/use-inbox.test.tsx
+- [x] T498 Test useInboxItems, useCapture\*
+- [x] T499 Test useFileItem, useSnoozeItem
 
-- [ ] T500 Create src/renderer/src/hooks/use-search.test.ts
-- [ ] T501 Test useSearch, useQuickSearch, useSuggestions
+- [x] T500 Create src/renderer/src/hooks/use-search.test.tsx
+- [x] T501 Test useSearch, useQuickSearch, useSuggestions
 
 ### 10.3 Utility Hook Tests
 
-- [ ] T502 Create src/renderer/src/hooks/use-keyboard-shortcuts.test.ts
-- [ ] T503 Test shortcut registration and execution
-- [ ] T504 Test conflict detection
+- [x] T502 Create src/renderer/src/hooks/use-keyboard-shortcuts.test.ts
+- [x] T503 Test shortcut registration and execution
+- [x] T504 Test conflict detection
 
-- [ ] T505 Create src/renderer/src/hooks/use-bookmarks.test.ts
-- [ ] T506 Test useBookmarks, useToggleBookmark
+- [x] T505 Create src/renderer/src/hooks/use-bookmarks.test.tsx
+- [x] T506 Test useBookmarks, useToggleBookmark
 
-- [ ] T507 Create src/renderer/src/hooks/use-reminders.test.ts
-- [ ] T508 Test useReminders, useCreateReminder
+- [x] T507 Create src/renderer/src/hooks/use-reminders.test.tsx
+- [x] T508 Test useReminders, useCreateReminder
 
 **Checkpoint**: Hook tests complete
 
