@@ -191,25 +191,25 @@
 
 **File**: `src/renderer/src/lib/task-utils.ts` (1647 lines, 78+ exports)
 
-- [ ] T071 [P] Create task-utils.test.ts with test structure
-- [ ] T072 [P] Test date helpers: startOfDay, addDays, subDays, isSameDay
-- [ ] T073 [P] Test date helpers: isWithinInterval, isBefore, isAfter, differenceInDays
-- [ ] T074 [P] Test date helpers: nextSaturday, nextMonday, addWeeks, addMonths
-- [ ] T075 [P] Test date helpers: startOfWeek, endOfWeek, startOfMonth, endOfMonth
-- [ ] T076 [P] Test formatting: formatTime, formatDateShort, formatDayName, formatDueDate
-- [ ] T077 [P] Test status helpers: isTaskCompleted, getDefaultTodoStatus, getDefaultDoneStatus
-- [ ] T078 Test sorting: sortTasksByPriorityAndDate, sortTasksForDay, sortTasksByTimeAndPriority
-- [ ] T079 Test sorting: sortOverdueTasks, sortTasksAdvanced with all sort options
-- [ ] T080 Test grouping: groupTasksByDueDate, groupTasksByStatus, groupTasksByCompletion
-- [ ] T081 Test grouping: groupTasksByCalendarDate, groupCompletedByPeriod, groupArchivedByMonth
-- [ ] T082 Test calendar: getCalendarDays (generates correct days for any month)
-- [ ] T083 Test filtering: filterBySearch, filterByProjects, filterByPriorities
-- [ ] T084 Test filtering: filterByDueDateRange, filterByStatuses, filterByCompletion
-- [ ] T085 Test filtering: filterByRepeatType, filterByHasTime, applyFiltersAndSort
-- [ ] T086 Test today/upcoming: getTodayTasks, getUpcomingTasks, getDayHeaderText
-- [ ] T087 Test completed: getCompletedTasks, getArchivedTasks, getCompletionStats
-- [ ] T088 Test completed: calculateStreak (consecutive completion days)
-- [ ] T089 Test counts: getTaskCounts, formatTaskSubtitle, hasActiveFilters, countActiveFilters
+- [x] T071 [P] Create task-utils.test.ts with test structure
+- [x] T072 [P] Test date helpers: startOfDay, addDays, subDays, isSameDay
+- [x] T073 [P] Test date helpers: isWithinInterval, isBefore, isAfter, differenceInDays
+- [x] T074 [P] Test date helpers: nextSaturday, nextMonday, addWeeks, addMonths
+- [x] T075 [P] Test date helpers: startOfWeek, endOfWeek, startOfMonth, endOfMonth
+- [x] T076 [P] Test formatting: formatTime, formatDateShort, formatDayName, formatDueDate
+- [x] T077 [P] Test status helpers: isTaskCompleted, getDefaultTodoStatus, getDefaultDoneStatus
+- [x] T078 Test sorting: sortTasksByPriorityAndDate, sortTasksForDay, sortTasksByTimeAndPriority
+- [x] T079 Test sorting: sortOverdueTasks, sortTasksAdvanced with all sort options
+- [x] T080 Test grouping: groupTasksByDueDate, groupTasksByStatus, groupTasksByCompletion
+- [x] T081 Test grouping: groupTasksByCalendarDate, groupCompletedByPeriod, groupArchivedByMonth
+- [x] T082 Test calendar: getCalendarDays (generates correct days for any month)
+- [x] T083 Test filtering: filterBySearch, filterByProjects, filterByPriorities
+- [x] T084 Test filtering: filterByDueDateRange, filterByStatuses, filterByCompletion
+- [x] T085 Test filtering: filterByRepeatType, filterByHasTime, applyFiltersAndSort
+- [x] T086 Test today/upcoming: getTodayTasks, getUpcomingTasks, getDayHeaderText
+- [x] T087 Test completed: getCompletedTasks, getArchivedTasks, getCompletionStats
+- [x] T088 Test completed: calculateStreak (consecutive completion days)
+- [x] T089 Test counts: getTaskCounts, formatTaskSubtitle, hasActiveFilters, countActiveFilters
 
 ### 2.6 Repeat Utils Tests
 
