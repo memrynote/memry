@@ -1188,17 +1188,17 @@
 
 ### 14.4 Inbox Capture & Processing Additions (P2)
 
-- [ ] T604 Create src/main/inbox/capture.test.ts
+- [x] T604 Create src/main/inbox/capture.test.ts
 - [ ] T605 [P] Test captureText/link/image/voice/pdf flows
 - [ ] T606 Test metadata fetch + attachment handling integration
 
-- [ ] T607 Create src/main/inbox/suggestions.test.ts
-- [ ] T608 [P] Test suggestion generation, ranking, and deduping
-- [ ] T609 Test source mapping (recent notes, tags, projects)
+- [x] T607 Create src/main/inbox/suggestions.test.ts
+- [x] T608 [P] Test suggestion generation, ranking, and deduping
+- [x] T609 Test source mapping (recent notes, tags, projects)
 
-- [ ] T610 Create src/main/inbox/transcription.test.ts
-- [ ] T611 [P] Test transcription pipeline with mocked provider
-- [ ] T612 Test error handling, retries, and timeouts
+- [x] T610 Create src/main/inbox/transcription.test.ts
+- [x] T611 [P] Test transcription pipeline with mocked provider
+- [x] T612 Test error handling, retries, and timeouts
 
 ### 14.5 IPC Handlers Coverage Expansion (P1)
 
