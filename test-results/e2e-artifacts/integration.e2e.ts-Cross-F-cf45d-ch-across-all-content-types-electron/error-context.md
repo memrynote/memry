@@ -1,0 +1,379 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e9]:
+          - button "Close window" [ref=e10]
+          - button "Minimize window" [ref=e11]
+          - button "Maximize window" [ref=e12]
+        - list [ref=e13]:
+          - listitem [ref=e14]:
+            - button "memry-e2e-CPXuK6" [ref=e15]:
+              - img [ref=e17]
+              - generic [ref=e20]: memry-e2e-CPXuK6
+              - img [ref=e21]
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - list [ref=e29]:
+            - listitem [ref=e30]:
+              - button "Search ⌘ P" [ref=e31]:
+                - img [ref=e32]
+                - generic [ref=e35]: Search
+                - generic [ref=e36]:
+                  - generic: ⌘ P
+            - listitem [ref=e37]:
+              - button "New ⌘ N" [ref=e38]:
+                - img [ref=e39]
+                - generic [ref=e40]: New
+                - generic [ref=e41]:
+                  - generic: ⌘ N
+          - list [ref=e43]:
+            - listitem [ref=e44]:
+              - button "Inbox" [ref=e45]:
+                - img [ref=e46]
+                - generic [ref=e49]: Inbox
+            - listitem [ref=e50]:
+              - button "Home" [ref=e51]:
+                - img [ref=e52]
+                - generic [ref=e55]: Home
+            - listitem [ref=e56]:
+              - button "Journal" [ref=e57]:
+                - img [ref=e58]
+                - generic [ref=e60]: Journal
+            - listitem [ref=e61]:
+              - button "Tasks" [active] [ref=e62]:
+                - img [ref=e63]
+                - generic [ref=e66]: Tasks
+        - generic [ref=e67]:
+          - generic [ref=e69]:
+            - generic [ref=e70]:
+              - button "Collections section, expanded" [expanded] [ref=e71] [cursor=pointer]:
+                - img [ref=e72]
+                - generic [ref=e74]: Collections
+              - generic [ref=e75]:
+                - button "New Note" [ref=e76]:
+                  - img
+                  - generic [ref=e77]: New Note
+                - button "New Folder" [ref=e78]:
+                  - img
+                  - generic [ref=e79]: New Folder
+            - region "Collections section, expanded" [ref=e80]:
+              - list [ref=e81]:
+                - generic [ref=e86]:
+                  - img [ref=e89]
+                  - generic [ref=e92]: Searchable Note
+          - button "Bookmarks section, collapsed" [ref=e96] [cursor=pointer]:
+            - img [ref=e97]
+            - generic [ref=e99]: Bookmarks
+          - button "Tags section, collapsed" [ref=e103] [cursor=pointer]:
+            - img [ref=e104]
+            - generic [ref=e106]: Tags
+      - button "Toggle Sidebar" [ref=e107]
+    - main [ref=e108]:
+      - generic [ref=e109]:
+        - button "Toggle Sidebar" [ref=e111]:
+          - img
+          - generic [ref=e112]: Toggle Sidebar
+        - tablist "Open tabs" [ref=e114]:
+          - generic [ref=e116]:
+            - button "Inbox" [ref=e118]:
+              - tab "Inbox" [ref=e119] [cursor=pointer]:
+                - img [ref=e120]
+                - generic [ref=e123]: Inbox
+            - button "Untitled" [ref=e126]:
+              - tab "Untitled" [ref=e127] [cursor=pointer]:
+                - img [ref=e128]
+                - generic [ref=e131]: Untitled
+            - button "Untitled" [ref=e134]:
+              - tab "Untitled" [ref=e135] [cursor=pointer]:
+                - img [ref=e136]
+                - generic [ref=e139]: Untitled
+            - button "Untitled" [ref=e142]:
+              - tab "Untitled" [ref=e143] [cursor=pointer]:
+                - img [ref=e144]
+                - generic [ref=e147]: Untitled
+            - button "Untitled" [ref=e150]:
+              - tab "Untitled" [ref=e151] [cursor=pointer]:
+                - img [ref=e152]
+                - generic [ref=e155]: Untitled
+            - button "Untitled" [ref=e158]:
+              - tab "Untitled" [ref=e159] [cursor=pointer]:
+                - img [ref=e160]
+                - generic [ref=e163]: Untitled
+            - button "Home" [ref=e166]:
+              - tab "Home" [ref=e167] [cursor=pointer]:
+                - img [ref=e168]
+                - generic [ref=e171]: Home
+            - button "Untitled" [ref=e174]:
+              - tab "Untitled" [ref=e175] [cursor=pointer]:
+                - img [ref=e176]
+                - generic [ref=e179]: Untitled
+            - button "Untitled" [ref=e182]:
+              - tab "Untitled" [ref=e183] [cursor=pointer]:
+                - img [ref=e184]
+                - generic [ref=e187]: Untitled
+            - button "Untitled" [ref=e190]:
+              - tab "Untitled" [ref=e191] [cursor=pointer]:
+                - img [ref=e192]
+                - generic [ref=e195]: Untitled
+            - button "Untitled" [ref=e198]:
+              - tab "Untitled" [ref=e199] [cursor=pointer]:
+                - img [ref=e200]
+                - generic [ref=e203]: Untitled
+            - button "Untitled" [ref=e206]:
+              - tab "Untitled" [ref=e207] [cursor=pointer]:
+                - img [ref=e208]
+                - generic [ref=e211]: Untitled
+            - button "Untitled" [ref=e214]:
+              - tab "Untitled" [ref=e215] [cursor=pointer]:
+                - img [ref=e216]
+                - generic [ref=e219]: Untitled
+            - button "Untitled" [ref=e222]:
+              - tab "Untitled" [ref=e223] [cursor=pointer]:
+                - img [ref=e224]
+                - generic [ref=e227]: Untitled
+            - button "Untitled" [ref=e230]:
+              - tab "Untitled" [ref=e231] [cursor=pointer]:
+                - img [ref=e232]
+                - generic [ref=e235]: Untitled
+            - button "Untitled" [ref=e238]:
+              - tab "Untitled" [ref=e239] [cursor=pointer]:
+                - img [ref=e240]
+                - generic [ref=e243]: Untitled
+            - button "Untitled" [ref=e246]:
+              - tab "Untitled" [ref=e247] [cursor=pointer]:
+                - img [ref=e248]
+                - generic [ref=e251]: Untitled
+            - button "Untitled" [ref=e254]:
+              - tab "Untitled" [ref=e255] [cursor=pointer]:
+                - img [ref=e256]
+                - generic [ref=e259]: Untitled
+            - button "Untitled" [ref=e262]:
+              - tab "Untitled" [ref=e263] [cursor=pointer]:
+                - img [ref=e264]
+                - generic [ref=e267]: Untitled
+            - button "Untitled" [ref=e270]:
+              - tab "Untitled" [ref=e271] [cursor=pointer]:
+                - img [ref=e272]
+                - generic [ref=e275]: Untitled
+            - button "Untitled" [ref=e278]:
+              - tab "Untitled" [ref=e279] [cursor=pointer]:
+                - img [ref=e280]
+                - generic [ref=e283]: Untitled
+            - button "Untitled" [ref=e286]:
+              - tab "Untitled" [ref=e287] [cursor=pointer]:
+                - img [ref=e288]
+                - generic [ref=e291]: Untitled
+            - button "Untitled" [ref=e294]:
+              - tab "Untitled" [ref=e295] [cursor=pointer]:
+                - img [ref=e296]
+                - generic [ref=e299]: Untitled
+            - button "Untitled" [ref=e302]:
+              - tab "Untitled" [ref=e303] [cursor=pointer]:
+                - img [ref=e304]
+                - generic [ref=e307]: Untitled
+            - button "Untitled" [ref=e310]:
+              - tab "Untitled" [ref=e311] [cursor=pointer]:
+                - img [ref=e312]
+                - generic [ref=e315]: Untitled
+            - button "Untitled" [ref=e318]:
+              - tab "Untitled" [ref=e319] [cursor=pointer]:
+                - img [ref=e320]
+                - generic [ref=e323]: Untitled
+            - button "Untitled" [ref=e326]:
+              - tab "Untitled" [ref=e327] [cursor=pointer]:
+                - img [ref=e328]
+                - generic [ref=e331]: Untitled
+            - button "Untitled" [ref=e334]:
+              - tab "Untitled" [ref=e335] [cursor=pointer]:
+                - img [ref=e336]
+                - generic [ref=e339]: Untitled
+            - button "Untitled" [ref=e342]:
+              - tab "Untitled" [ref=e343] [cursor=pointer]:
+                - img [ref=e344]
+                - generic [ref=e347]: Untitled
+            - button "Untitled" [ref=e350]:
+              - tab "Untitled" [ref=e351] [cursor=pointer]:
+                - img [ref=e352]
+                - generic [ref=e355]: Untitled
+            - button "Untitled" [ref=e358]:
+              - tab "Untitled" [ref=e359] [cursor=pointer]:
+                - img [ref=e360]
+                - generic [ref=e363]: Untitled
+            - button "Untitled" [ref=e366]:
+              - tab "Untitled" [ref=e367] [cursor=pointer]:
+                - img [ref=e368]
+                - generic [ref=e371]: Untitled
+            - button "Untitled" [ref=e374]:
+              - tab "Untitled" [ref=e375] [cursor=pointer]:
+                - img [ref=e376]
+                - generic [ref=e379]: Untitled
+            - button "Untitled" [ref=e382]:
+              - tab "Untitled" [ref=e383] [cursor=pointer]:
+                - img [ref=e384]
+                - generic [ref=e387]: Untitled
+            - button "Untitled" [ref=e390]:
+              - tab "Untitled" [ref=e391] [cursor=pointer]:
+                - img [ref=e392]
+                - generic [ref=e395]: Untitled
+            - button "Untitled" [ref=e398]:
+              - tab "Untitled" [ref=e399] [cursor=pointer]:
+                - img [ref=e400]
+                - generic [ref=e403]: Untitled
+            - button "Untitled" [ref=e406]:
+              - tab "Untitled" [ref=e407] [cursor=pointer]:
+                - img [ref=e408]
+                - generic [ref=e411]: Untitled
+            - button "Untitled" [ref=e414]:
+              - tab "Untitled" [ref=e415] [cursor=pointer]:
+                - img [ref=e416]
+                - generic [ref=e419]: Untitled
+            - button "Untitled" [ref=e422]:
+              - tab "Untitled" [ref=e423] [cursor=pointer]:
+                - img [ref=e424]
+                - generic [ref=e427]: Untitled
+            - button "Untitled" [ref=e430]:
+              - tab "Untitled" [ref=e431] [cursor=pointer]:
+                - img [ref=e432]
+                - generic [ref=e435]: Untitled
+            - button "Untitled" [ref=e438]:
+              - tab "Untitled" [ref=e439] [cursor=pointer]:
+                - img [ref=e440]
+                - generic [ref=e443]: Untitled
+            - button "Untitled" [ref=e446]:
+              - tab "Untitled" [ref=e447] [cursor=pointer]:
+                - img [ref=e448]
+                - generic [ref=e451]: Untitled
+            - button "Untitled" [ref=e454]:
+              - tab "Untitled" [ref=e455] [cursor=pointer]:
+                - img [ref=e456]
+                - generic [ref=e459]: Untitled
+            - button "Untitled" [ref=e462]:
+              - tab "Untitled" [ref=e463] [cursor=pointer]:
+                - img [ref=e464]
+                - generic [ref=e467]: Untitled
+            - button "Untitled" [ref=e470]:
+              - tab "Untitled" [ref=e471] [cursor=pointer]:
+                - img [ref=e472]
+                - generic [ref=e475]: Untitled
+            - button "Untitled" [ref=e478]:
+              - tab "Untitled" [ref=e479] [cursor=pointer]:
+                - img [ref=e480]
+                - generic [ref=e483]: Untitled
+            - button "Tasks" [ref=e486]:
+              - tab "Tasks" [selected] [ref=e487] [cursor=pointer]:
+                - img [ref=e488]
+                - generic [ref=e491]: Tasks
+            - button "Untitled" [ref=e494]:
+              - tab "Untitled" [ref=e495] [cursor=pointer]:
+                - img [ref=e496]
+                - generic [ref=e499]: Untitled
+            - button "Untitled" [ref=e502]:
+              - tab "Untitled" [ref=e503] [cursor=pointer]:
+                - img [ref=e504]
+                - generic [ref=e507]: Untitled
+          - button "Scroll tabs right" [ref=e509]:
+            - img [ref=e510]
+          - generic [ref=e512]:
+            - button "Split Right" [ref=e513]:
+              - img [ref=e514]
+            - button "AI Agent" [ref=e516]:
+              - img [ref=e517]
+        - button "?" [ref=e521]
+      - generic [ref=e522]:
+        - main [ref=e526]:
+          - generic [ref=e527]:
+            - generic [ref=e528]:
+              - heading "Today" [level=1] [ref=e530]
+              - paragraph [ref=e531]: Sunday, January 4
+            - generic [ref=e532]:
+              - group "View mode" [ref=e533]:
+                - radio "List view" [checked] [ref=e534]:
+                  - img
+              - button "Add Task" [ref=e535]:
+                - img
+                - text: Add Task
+          - tablist "Task views" [ref=e536]:
+            - generic [ref=e537]:
+              - tab "All" [ref=e538]:
+                - img [ref=e539]
+                - generic [ref=e540]: All
+              - tab "Today" [selected] [ref=e541]:
+                - img [ref=e542]
+                - generic [ref=e544]: Today
+              - tab "Upcoming" [ref=e546]:
+                - img [ref=e547]
+                - generic [ref=e549]: Upcoming
+              - tab "Projects 1" [ref=e550]:
+                - img [ref=e551]
+                - generic [ref=e553]: Projects
+                - generic [ref=e554]: "1"
+          - generic [ref=e556]:
+            - generic [ref=e557]:
+              - generic [ref=e558]:
+                - img
+                - textbox "Search tasks" [ref=e559]:
+                  - /placeholder: Search tasks...
+              - button "Toggle filters panel" [ref=e561]:
+                - img
+                - generic [ref=e562]: Filters
+            - generic [ref=e563]:
+              - button "Sort options" [ref=e564]:
+                - generic [ref=e565]: "Sort: Due Date ↑"
+                - img
+              - button "More options" [ref=e567]:
+                - img
+                - generic [ref=e568]: More options
+          - generic [ref=e569]:
+            - generic: "4"
+            - generic [ref=e570]:
+              - button "Quick add shortcuts help" [ref=e573]:
+                - generic [ref=e574]:
+                  - img [ref=e576]
+                  - textbox "Quick add task" [ref=e577]:
+                    - /placeholder: Add task for today...
+                  - button "Quick add shortcuts help" [ref=e578]:
+                    - img [ref=e579]
+              - generic [ref=e585]:
+                - img [ref=e587]
+                - heading "All clear for today!" [level=3] [ref=e589]
+                - paragraph [ref=e590]: Enjoy your free time or plan ahead.
+                - generic [ref=e591]:
+                  - button "Add task for today" [ref=e592]:
+                    - img
+                    - text: Add task for today
+                  - button "View upcoming tasks" [ref=e593]:
+                    - img [ref=e594]
+                    - generic [ref=e596]: View upcoming tasks
+        - generic [ref=e598]:
+          - generic [ref=e599]:
+            - heading "AI Agent" [level=2] [ref=e600]
+            - button "Close AI Agent" [ref=e601]:
+              - img
+          - generic [ref=e603]:
+            - generic [ref=e605]:
+              - img [ref=e607]
+              - heading "Start a conversation" [level=3] [ref=e609]
+              - paragraph [ref=e610]: Ask questions about this note or get AI-powered suggestions.
+            - generic [ref=e612]:
+              - textbox "Ask about this note..." [ref=e614]
+              - generic [ref=e615]:
+                - generic [ref=e616]:
+                  - button "Add attachment" [ref=e617]:
+                    - img [ref=e618]
+                  - button "Web search" [ref=e620]:
+                    - img [ref=e621]
+                  - button "Deep thinking" [ref=e624]:
+                    - img [ref=e625]
+                - button "GPT-4o" [ref=e633]:
+                  - img [ref=e634]
+                  - generic [ref=e637]: GPT-4o
+                  - img [ref=e638]
+                - button "Send message" [disabled] [ref=e640]:
+                  - img [ref=e641]
+    - status [ref=e644]
+  - region "Notifications alt+T"
+```
