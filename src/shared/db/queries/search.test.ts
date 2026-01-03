@@ -74,6 +74,21 @@ describe('search queries', () => {
     expect(results.map((r) => r.id)).toContain('note-3')
   })
 
+  it('handles phrase queries by treating them as multi-term searches', () => {
+    // FTS5 phrase syntax uses quotes like "hello world" to match exact phrases
+    // Our implementation intentionally strips quotes for simplicity, converting
+    // phrase queries into multi-term AND queries
+    const phraseResults = searchNotes(db, '"hello world"')
+    expect(phraseResults.map((r) => r.id)).toContain('note-1')
+
+    // Verify escapeSearchQuery strips quotes
+    expect(escapeSearchQuery('"hello world"')).toBe('hello world')
+
+    // A phrase query should behave like a multi-term query
+    const multiTermResults = searchNotes(db, 'hello world')
+    expect(multiTermResults.map((r) => r.id)).toEqual(phraseResults.map((r) => r.id))
+  })
+
   it('returns quick search results', () => {
     const results = quickSearch(db, 'alpha')
     expect(results.notes.length).toBeGreaterThan(0)
