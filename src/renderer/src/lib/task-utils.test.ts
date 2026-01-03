@@ -50,6 +50,31 @@ import {
   isTaskCompleted,
   getDefaultTodoStatus,
   getDefaultDoneStatus,
+  // Task Sorting (T077-T078)
+  sortTasksByPriorityAndDate,
+  sortTasksForDay,
+  sortTasksByTimeAndPriority,
+  sortOverdueTasks,
+  sortTasksAdvanced,
+  // Task Grouping (T079-T080)
+  groupTasksByDueDate,
+  groupTasksByStatus,
+  groupTasksByCompletion,
+  // Calendar Helpers (T081)
+  formatDateKey,
+  parseDateKey,
+  getCalendarDays,
+  groupTasksByCalendarDate,
+  // Task Filtering - Basic (T082)
+  filterBySearch,
+  filterByProjects,
+  filterByPriorities,
+  filterByStatuses,
+  // Task Filtering - Date & Completion (T083)
+  filterByDueDateRange,
+  filterByCompletion,
+  filterByRepeatType,
+  filterByHasTime,
   // Task Filtering (T084)
   getFilteredTasks,
   // Task Counts (T085)
@@ -1261,6 +1286,1802 @@ describe("Task Utils", () => {
 
         expect(result?.id).toBe("shipped")
         expect(result?.name).toBe("Shipped")
+      })
+    })
+  })
+
+  // ============================================================================
+  // T077: TASK SORTING - PRIORITY & DATE
+  // ============================================================================
+
+  describe("T077: Task Sorting - Priority & Date", () => {
+
+    describe("sortTasksByPriorityAndDate", () => {
+      it("should sort by priority first (urgent > high > medium > low > none)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", priority: "none" }),
+          createMockTask({ id: "t2", priority: "urgent" }),
+          createMockTask({ id: "t3", priority: "low" }),
+          createMockTask({ id: "t4", priority: "high" }),
+          createMockTask({ id: "t5", priority: "medium" }),
+        ]
+
+        const sorted = sortTasksByPriorityAndDate(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t4", "t5", "t3", "t1"])
+      })
+
+      it("should sort by due date when priorities are equal (earlier first)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", priority: "high", dueDate: new Date("2026-01-20") }),
+          createMockTask({ id: "t2", priority: "high", dueDate: new Date("2026-01-15") }),
+          createMockTask({ id: "t3", priority: "high", dueDate: new Date("2026-01-18") }),
+        ]
+
+        const sorted = sortTasksByPriorityAndDate(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should put tasks without due date last within same priority", () => {
+        const tasks = [
+          createMockTask({ id: "t1", priority: "medium", dueDate: null }),
+          createMockTask({ id: "t2", priority: "medium", dueDate: new Date("2026-01-20") }),
+          createMockTask({ id: "t3", priority: "medium", dueDate: new Date("2026-01-15") }),
+        ]
+
+        const sorted = sortTasksByPriorityAndDate(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t3", "t2", "t1"])
+      })
+
+      it("should handle mixed priorities and dates correctly", () => {
+        const tasks = [
+          createMockTask({ id: "t1", priority: "low", dueDate: new Date("2026-01-15") }),
+          createMockTask({ id: "t2", priority: "urgent", dueDate: new Date("2026-01-20") }),
+          createMockTask({ id: "t3", priority: "high", dueDate: null }),
+          createMockTask({ id: "t4", priority: "urgent", dueDate: new Date("2026-01-10") }),
+        ]
+
+        const sorted = sortTasksByPriorityAndDate(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t4", "t2", "t3", "t1"])
+      })
+
+      it("should return empty array for empty input", () => {
+        const sorted = sortTasksByPriorityAndDate([])
+        expect(sorted).toEqual([])
+      })
+
+      it("should handle single task", () => {
+        const task = createMockTask({ id: "t1", priority: "high" })
+        const sorted = sortTasksByPriorityAndDate([task])
+        expect(sorted).toHaveLength(1)
+        expect(sorted[0].id).toBe("t1")
+      })
+
+      it("should not mutate original array", () => {
+        const tasks = [
+          createMockTask({ id: "t1", priority: "low" }),
+          createMockTask({ id: "t2", priority: "high" }),
+        ]
+        const originalOrder = tasks.map((t) => t.id)
+        sortTasksByPriorityAndDate(tasks)
+        expect(tasks.map((t) => t.id)).toEqual(originalOrder)
+      })
+
+      it("should maintain stable sort for equal priority and date", () => {
+        const date = new Date("2026-01-15")
+        const tasks = [
+          createMockTask({ id: "t1", priority: "medium", dueDate: date }),
+          createMockTask({ id: "t2", priority: "medium", dueDate: date }),
+          createMockTask({ id: "t3", priority: "medium", dueDate: date }),
+        ]
+
+        const sorted = sortTasksByPriorityAndDate(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t1", "t2", "t3"])
+      })
+
+      it("should handle all five priority levels in correct order", () => {
+        const tasks = [
+          createMockTask({ id: "none", priority: "none" }),
+          createMockTask({ id: "low", priority: "low" }),
+          createMockTask({ id: "medium", priority: "medium" }),
+          createMockTask({ id: "high", priority: "high" }),
+          createMockTask({ id: "urgent", priority: "urgent" }),
+        ]
+
+        const sorted = sortTasksByPriorityAndDate(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["urgent", "high", "medium", "low", "none"])
+      })
+    })
+
+    describe("sortTasksForDay", () => {
+      it("should put timed tasks first, then untimed", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: null }),
+          createMockTask({ id: "t2", dueTime: "14:30" }),
+          createMockTask({ id: "t3", dueTime: null }),
+        ]
+
+        const sorted = sortTasksForDay(tasks)
+
+        expect(sorted[0].id).toBe("t2")
+      })
+
+      it("should sort timed tasks chronologically", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: "14:30" }),
+          createMockTask({ id: "t2", dueTime: "09:00" }),
+          createMockTask({ id: "t3", dueTime: "18:00" }),
+          createMockTask({ id: "t4", dueTime: "12:00" }),
+        ]
+
+        const sorted = sortTasksForDay(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t4", "t1", "t3"])
+      })
+
+      it("should sort untimed tasks by priority", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: null, priority: "low" }),
+          createMockTask({ id: "t2", dueTime: null, priority: "urgent" }),
+          createMockTask({ id: "t3", dueTime: null, priority: "high" }),
+        ]
+
+        const sorted = sortTasksForDay(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should sort by title when priority is equal (untimed)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", title: "Zebra task", dueTime: null, priority: "medium" }),
+          createMockTask({ id: "t2", title: "Apple task", dueTime: null, priority: "medium" }),
+          createMockTask({ id: "t3", title: "Mango task", dueTime: null, priority: "medium" }),
+        ]
+
+        const sorted = sortTasksForDay(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should handle mixed timed and untimed tasks with varying priorities", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: null, priority: "urgent" }),
+          createMockTask({ id: "t2", dueTime: "14:00", priority: "low" }),
+          createMockTask({ id: "t3", dueTime: null, priority: "low" }),
+          createMockTask({ id: "t4", dueTime: "09:00", priority: "high" }),
+        ]
+
+        const sorted = sortTasksForDay(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t4", "t2", "t1", "t3"])
+      })
+
+      it("should handle empty array", () => {
+        const sorted = sortTasksForDay([])
+        expect(sorted).toEqual([])
+      })
+
+      it("should handle all tasks with same time (sort by priority)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: "10:00", priority: "low" }),
+          createMockTask({ id: "t2", dueTime: "10:00", priority: "high" }),
+          createMockTask({ id: "t3", dueTime: "10:00", priority: "medium" }),
+        ]
+
+        const sorted = sortTasksForDay(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should handle edge times (midnight and end of day)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: "23:59" }),
+          createMockTask({ id: "t2", dueTime: "00:00" }),
+          createMockTask({ id: "t3", dueTime: "12:00" }),
+        ]
+
+        const sorted = sortTasksForDay(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+    })
+
+    describe("sortTasksByTimeAndPriority", () => {
+      it("should put tasks with time before tasks without time", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: null }),
+          createMockTask({ id: "t2", dueTime: "15:00" }),
+        ]
+
+        const sorted = sortTasksByTimeAndPriority(tasks)
+
+        expect(sorted[0].id).toBe("t2")
+        expect(sorted[1].id).toBe("t1")
+      })
+
+      it("should sort tasks with time chronologically", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: "17:00" }),
+          createMockTask({ id: "t2", dueTime: "09:00" }),
+          createMockTask({ id: "t3", dueTime: "12:30" }),
+        ]
+
+        const sorted = sortTasksByTimeAndPriority(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should sort by priority when time is equal", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: "10:00", priority: "low" }),
+          createMockTask({ id: "t2", dueTime: "10:00", priority: "urgent" }),
+          createMockTask({ id: "t3", dueTime: "10:00", priority: "medium" }),
+        ]
+
+        const sorted = sortTasksByTimeAndPriority(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should sort untimed tasks by priority", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: null, priority: "none" }),
+          createMockTask({ id: "t2", dueTime: null, priority: "high" }),
+          createMockTask({ id: "t3", dueTime: null, priority: "low" }),
+        ]
+
+        const sorted = sortTasksByTimeAndPriority(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should handle empty array", () => {
+        expect(sortTasksByTimeAndPriority([])).toEqual([])
+      })
+
+      it("should handle all tasks without time", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: null, priority: "medium" }),
+          createMockTask({ id: "t2", dueTime: null, priority: "urgent" }),
+        ]
+
+        const sorted = sortTasksByTimeAndPriority(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t1"])
+      })
+
+      it("should not mutate original array", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: "17:00" }),
+          createMockTask({ id: "t2", dueTime: "09:00" }),
+        ]
+        const originalOrder = tasks.map((t) => t.id)
+        sortTasksByTimeAndPriority(tasks)
+        expect(tasks.map((t) => t.id)).toEqual(originalOrder)
+      })
+    })
+
+    describe("sortOverdueTasks", () => {
+      it("should sort by date (oldest first)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-10") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-05") }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-01-12") }),
+        ]
+
+        const sorted = sortOverdueTasks(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t1", "t3"])
+      })
+
+      it("should sort by priority when dates are equal", () => {
+        const sameDate = new Date("2026-01-10")
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: sameDate, priority: "low" }),
+          createMockTask({ id: "t2", dueDate: sameDate, priority: "urgent" }),
+          createMockTask({ id: "t3", dueDate: sameDate, priority: "high" }),
+        ]
+
+        const sorted = sortOverdueTasks(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should handle tasks with same date and priority", () => {
+        const sameDate = new Date("2026-01-10")
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: sameDate, priority: "medium" }),
+          createMockTask({ id: "t2", dueDate: sameDate, priority: "medium" }),
+        ]
+
+        const sorted = sortOverdueTasks(tasks)
+
+        expect(sorted).toHaveLength(2)
+      })
+
+      it("should handle empty array", () => {
+        expect(sortOverdueTasks([])).toEqual([])
+      })
+
+      it("should handle single task", () => {
+        const task = createMockTask({ id: "t1", dueDate: new Date("2026-01-10") })
+        const sorted = sortOverdueTasks([task])
+        expect(sorted).toHaveLength(1)
+        expect(sorted[0].id).toBe("t1")
+      })
+
+      it("should not mutate original array", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-12") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-05") }),
+        ]
+        const originalOrder = tasks.map((t) => t.id)
+        sortOverdueTasks(tasks)
+        expect(tasks.map((t) => t.id)).toEqual(originalOrder)
+      })
+
+      it("should handle dates spanning months", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-05") }),
+          createMockTask({ id: "t2", dueDate: new Date("2025-12-20") }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-01-01") }),
+        ]
+
+        const sorted = sortOverdueTasks(tasks)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+    })
+  })
+
+  // ============================================================================
+  // T078: TASK SORTING - ADVANCED
+  // ============================================================================
+
+  describe("T078: Task Sorting - Advanced", () => {
+
+    const mockAdvancedProjects: Project[] = [
+      createMockProject({ id: "p1", name: "Alpha Project" }),
+      createMockProject({ id: "p2", name: "Beta Project" }),
+      createMockProject({ id: "p3", name: "Gamma Project" }),
+    ]
+
+    describe("sortTasksAdvanced - by dueDate", () => {
+      it("should sort by due date ascending", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-20") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-10") }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-01-15") }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "dueDate", direction: "asc" }, mockAdvancedProjects)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should sort by due date descending", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-20") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-10") }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-01-15") }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "dueDate", direction: "desc" }, mockAdvancedProjects)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t1", "t3", "t2"])
+      })
+
+      it("should put tasks without due date at end (ascending)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: null }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-15") }),
+          createMockTask({ id: "t3", dueDate: null }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "dueDate", direction: "asc" }, mockAdvancedProjects)
+
+        expect(sorted[0].id).toBe("t2")
+        expect(sorted.slice(1).every((t: Task) => t.dueDate === null)).toBe(true)
+      })
+
+      it("should sort by time when dates are equal", () => {
+        const sameDate = new Date("2026-01-15")
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: sameDate, dueTime: "15:00" }),
+          createMockTask({ id: "t2", dueDate: sameDate, dueTime: "09:00" }),
+          createMockTask({ id: "t3", dueDate: sameDate, dueTime: "12:00" }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "dueDate", direction: "asc" }, mockAdvancedProjects)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should put tasks without time after tasks with time (same date)", () => {
+        const sameDate = new Date("2026-01-15")
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: sameDate, dueTime: null }),
+          createMockTask({ id: "t2", dueDate: sameDate, dueTime: "10:00" }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "dueDate", direction: "asc" }, mockAdvancedProjects)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t1"])
+      })
+    })
+
+    describe("sortTasksAdvanced - by priority", () => {
+      it("should sort by priority ascending (urgent first)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", priority: "low" }),
+          createMockTask({ id: "t2", priority: "urgent" }),
+          createMockTask({ id: "t3", priority: "medium" }),
+          createMockTask({ id: "t4", priority: "high" }),
+          createMockTask({ id: "t5", priority: "none" }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "priority", direction: "asc" }, mockAdvancedProjects)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t4", "t3", "t1", "t5"])
+      })
+
+      it("should sort by priority descending (none first)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", priority: "urgent" }),
+          createMockTask({ id: "t2", priority: "none" }),
+          createMockTask({ id: "t3", priority: "low" }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "priority", direction: "desc" }, mockAdvancedProjects)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+    })
+
+    describe("sortTasksAdvanced - by createdAt", () => {
+      it("should sort by creation date ascending (oldest first)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", createdAt: new Date("2026-01-10") }),
+          createMockTask({ id: "t2", createdAt: new Date("2026-01-05") }),
+          createMockTask({ id: "t3", createdAt: new Date("2026-01-12") }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "createdAt", direction: "asc" }, mockAdvancedProjects)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t1", "t3"])
+      })
+
+      it("should sort by creation date descending (newest first)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", createdAt: new Date("2026-01-10") }),
+          createMockTask({ id: "t2", createdAt: new Date("2026-01-05") }),
+          createMockTask({ id: "t3", createdAt: new Date("2026-01-12") }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "createdAt", direction: "desc" }, mockAdvancedProjects)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t3", "t1", "t2"])
+      })
+    })
+
+    describe("sortTasksAdvanced - by title", () => {
+      it("should sort alphabetically ascending", () => {
+        const tasks = [
+          createMockTask({ id: "t1", title: "Zebra" }),
+          createMockTask({ id: "t2", title: "Apple" }),
+          createMockTask({ id: "t3", title: "Mango" }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "title", direction: "asc" }, mockAdvancedProjects)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should sort alphabetically descending", () => {
+        const tasks = [
+          createMockTask({ id: "t1", title: "Zebra" }),
+          createMockTask({ id: "t2", title: "Apple" }),
+          createMockTask({ id: "t3", title: "Mango" }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "title", direction: "desc" }, mockAdvancedProjects)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t1", "t3", "t2"])
+      })
+
+      it("should handle case-insensitive sorting via localeCompare", () => {
+        const tasks = [
+          createMockTask({ id: "t1", title: "zebra" }),
+          createMockTask({ id: "t2", title: "Apple" }),
+          createMockTask({ id: "t3", title: "MANGO" }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "title", direction: "asc" }, mockAdvancedProjects)
+
+        expect(sorted.map((t: Task) => t.title.toLowerCase())).toEqual(["apple", "mango", "zebra"])
+      })
+    })
+
+    describe("sortTasksAdvanced - by project", () => {
+      it("should sort by project name ascending", () => {
+        const tasks = [
+          createMockTask({ id: "t1", projectId: "p3" }),
+          createMockTask({ id: "t2", projectId: "p1" }),
+          createMockTask({ id: "t3", projectId: "p2" }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "project", direction: "asc" }, mockAdvancedProjects)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should sort by project name descending", () => {
+        const tasks = [
+          createMockTask({ id: "t1", projectId: "p1" }),
+          createMockTask({ id: "t2", projectId: "p3" }),
+          createMockTask({ id: "t3", projectId: "p2" }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "project", direction: "desc" }, mockAdvancedProjects)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should handle tasks with unknown project IDs", () => {
+        const tasks = [
+          createMockTask({ id: "t1", projectId: "p1" }),
+          createMockTask({ id: "t2", projectId: "unknown" }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "project", direction: "asc" }, mockAdvancedProjects)
+
+        expect(sorted[0].id).toBe("t2")
+      })
+    })
+
+    describe("sortTasksAdvanced - by completedAt", () => {
+      it("should sort by completion date ascending", () => {
+        const tasks = [
+          createMockTask({ id: "t1", completedAt: new Date("2026-01-12") }),
+          createMockTask({ id: "t2", completedAt: new Date("2026-01-10") }),
+          createMockTask({ id: "t3", completedAt: new Date("2026-01-14") }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "completedAt", direction: "asc" }, mockAdvancedProjects)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t2", "t1", "t3"])
+      })
+
+      it("should sort by completion date descending", () => {
+        const tasks = [
+          createMockTask({ id: "t1", completedAt: new Date("2026-01-12") }),
+          createMockTask({ id: "t2", completedAt: new Date("2026-01-10") }),
+          createMockTask({ id: "t3", completedAt: new Date("2026-01-14") }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "completedAt", direction: "desc" }, mockAdvancedProjects)
+
+        expect(sorted.map((t: Task) => t.id)).toEqual(["t3", "t1", "t2"])
+      })
+
+      it("should put incomplete tasks at end", () => {
+        const tasks = [
+          createMockTask({ id: "t1", completedAt: null }),
+          createMockTask({ id: "t2", completedAt: new Date("2026-01-10") }),
+          createMockTask({ id: "t3", completedAt: null }),
+        ]
+
+        const sorted = sortTasksAdvanced(tasks, { field: "completedAt", direction: "asc" }, mockAdvancedProjects)
+
+        expect(sorted[0].id).toBe("t2")
+        expect(sorted.slice(1).every((t: Task) => t.completedAt === null)).toBe(true)
+      })
+    })
+
+    describe("sortTasksAdvanced - edge cases", () => {
+      it("should handle empty array", () => {
+        const sorted = sortTasksAdvanced([], { field: "dueDate", direction: "asc" }, mockAdvancedProjects)
+        expect(sorted).toEqual([])
+      })
+
+      it("should handle single task", () => {
+        const task = createMockTask({ id: "t1" })
+        const sorted = sortTasksAdvanced([task], { field: "dueDate", direction: "asc" }, mockAdvancedProjects)
+        expect(sorted).toHaveLength(1)
+      })
+
+      it("should not mutate original array", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-20") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-10") }),
+        ]
+        const originalOrder = tasks.map((t) => t.id)
+        sortTasksAdvanced(tasks, { field: "dueDate", direction: "asc" }, mockAdvancedProjects)
+        expect(tasks.map((t) => t.id)).toEqual(originalOrder)
+      })
+    })
+  })
+
+  // ============================================================================
+  // T079: TASK GROUPING - BY DUE DATE
+  // ============================================================================
+
+  describe("T079: Task Grouping - By Due Date", () => {
+
+    describe("groupTasksByDueDate", () => {
+      it("should group overdue tasks (before today)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-10") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-13") }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-01-05") }),
+        ]
+
+        const groups = groupTasksByDueDate(tasks)
+
+        expect(groups.overdue).toHaveLength(3)
+      })
+
+      it("should group tasks due today", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-14") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-14") }),
+        ]
+
+        const groups = groupTasksByDueDate(tasks)
+
+        expect(groups.today).toHaveLength(2)
+      })
+
+      it("should group tasks due tomorrow", () => {
+        const tasks = [createMockTask({ id: "t1", dueDate: new Date("2026-01-15") })]
+
+        const groups = groupTasksByDueDate(tasks)
+
+        expect(groups.tomorrow).toHaveLength(1)
+        expect(groups.tomorrow[0].id).toBe("t1")
+      })
+
+      it("should group upcoming tasks (2-7 days out)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-16") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-18") }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-01-21") }),
+        ]
+
+        const groups = groupTasksByDueDate(tasks)
+
+        expect(groups.upcoming).toHaveLength(3)
+      })
+
+      it("should group later tasks (8+ days out)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-22") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-02-14") }),
+        ]
+
+        const groups = groupTasksByDueDate(tasks)
+
+        expect(groups.later).toHaveLength(2)
+      })
+
+      it("should group tasks without due date", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: null }),
+          createMockTask({ id: "t2", dueDate: null }),
+        ]
+
+        const groups = groupTasksByDueDate(tasks)
+
+        expect(groups.noDueDate).toHaveLength(2)
+      })
+
+      it("should correctly categorize all date ranges", () => {
+        const tasks = [
+          createMockTask({ id: "overdue", dueDate: new Date("2026-01-10") }),
+          createMockTask({ id: "today", dueDate: new Date("2026-01-14") }),
+          createMockTask({ id: "tomorrow", dueDate: new Date("2026-01-15") }),
+          createMockTask({ id: "upcoming", dueDate: new Date("2026-01-18") }),
+          createMockTask({ id: "later", dueDate: new Date("2026-01-30") }),
+          createMockTask({ id: "nodate", dueDate: null }),
+        ]
+
+        const groups = groupTasksByDueDate(tasks)
+
+        expect(groups.overdue.some((t: Task) => t.id === "overdue")).toBe(true)
+        expect(groups.today.some((t: Task) => t.id === "today")).toBe(true)
+        expect(groups.tomorrow.some((t: Task) => t.id === "tomorrow")).toBe(true)
+        expect(groups.upcoming.some((t: Task) => t.id === "upcoming")).toBe(true)
+        expect(groups.later.some((t: Task) => t.id === "later")).toBe(true)
+        expect(groups.noDueDate.some((t: Task) => t.id === "nodate")).toBe(true)
+      })
+
+      it("should sort tasks within each group by priority and date", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-14"), priority: "low" }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-14"), priority: "urgent" }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-01-14"), priority: "high" }),
+        ]
+
+        const groups = groupTasksByDueDate(tasks)
+
+        expect(groups.today.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should return empty groups for empty input", () => {
+        const groups = groupTasksByDueDate([])
+
+        expect(groups.overdue).toEqual([])
+        expect(groups.today).toEqual([])
+        expect(groups.tomorrow).toEqual([])
+        expect(groups.upcoming).toEqual([])
+        expect(groups.later).toEqual([])
+        expect(groups.noDueDate).toEqual([])
+      })
+
+      it("should handle boundary case: exactly 7 days out (upcoming)", () => {
+        const tasks = [createMockTask({ id: "t1", dueDate: new Date("2026-01-21") })]
+
+        const groups = groupTasksByDueDate(tasks)
+
+        expect(groups.upcoming).toHaveLength(1)
+      })
+
+      it("should handle boundary case: exactly 8 days out (later)", () => {
+        const tasks = [createMockTask({ id: "t1", dueDate: new Date("2026-01-22") })]
+
+        const groups = groupTasksByDueDate(tasks)
+
+        expect(groups.later).toHaveLength(1)
+      })
+    })
+  })
+
+  // ============================================================================
+  // T080: TASK GROUPING - BY STATUS & COMPLETION
+  // ============================================================================
+
+  describe("T080: Task Grouping - By Status & Completion", () => {
+
+    describe("groupTasksByStatus", () => {
+      const statusList: Status[] = [
+        createMockStatus({ id: "s1", name: "To Do", type: "todo", order: 0 }),
+        createMockStatus({ id: "s2", name: "In Progress", type: "in_progress", order: 1 }),
+        createMockStatus({ id: "s3", name: "Done", type: "done", order: 2 }),
+      ]
+
+      it("should group tasks by their status", () => {
+        const tasks = [
+          createMockTask({ id: "t1", statusId: "s1" }),
+          createMockTask({ id: "t2", statusId: "s2" }),
+          createMockTask({ id: "t3", statusId: "s1" }),
+          createMockTask({ id: "t4", statusId: "s3" }),
+        ]
+
+        const groups = groupTasksByStatus(tasks, statusList)
+
+        expect(groups).toHaveLength(3)
+        expect(groups[0].status.id).toBe("s1")
+        expect(groups[0].tasks).toHaveLength(2)
+        expect(groups[1].status.id).toBe("s2")
+        expect(groups[1].tasks).toHaveLength(1)
+        expect(groups[2].status.id).toBe("s3")
+        expect(groups[2].tasks).toHaveLength(1)
+      })
+
+      it("should order groups by status order", () => {
+        const unorderedStatuses: Status[] = [
+          createMockStatus({ id: "s2", name: "In Progress", order: 1 }),
+          createMockStatus({ id: "s3", name: "Done", order: 2 }),
+          createMockStatus({ id: "s1", name: "To Do", order: 0 }),
+        ]
+
+        const tasks = [createMockTask({ id: "t1", statusId: "s2" })]
+
+        const groups = groupTasksByStatus(tasks, unorderedStatuses)
+
+        expect(groups[0].status.id).toBe("s1")
+        expect(groups[1].status.id).toBe("s2")
+        expect(groups[2].status.id).toBe("s3")
+      })
+
+      it("should return empty tasks array for statuses with no tasks", () => {
+        const tasks = [createMockTask({ id: "t1", statusId: "s1" })]
+
+        const groups = groupTasksByStatus(tasks, statusList)
+
+        expect(groups.find((g: { status: Status }) => g.status.id === "s1")?.tasks).toHaveLength(1)
+        expect(groups.find((g: { status: Status }) => g.status.id === "s2")?.tasks).toHaveLength(0)
+        expect(groups.find((g: { status: Status }) => g.status.id === "s3")?.tasks).toHaveLength(0)
+      })
+
+      it("should sort tasks within each group by priority and date", () => {
+        const tasks = [
+          createMockTask({ id: "t1", statusId: "s1", priority: "low" }),
+          createMockTask({ id: "t2", statusId: "s1", priority: "urgent" }),
+          createMockTask({ id: "t3", statusId: "s1", priority: "high" }),
+        ]
+
+        const groups = groupTasksByStatus(tasks, statusList)
+
+        const todoGroup = groups.find((g: { status: Status }) => g.status.id === "s1")!
+        expect(todoGroup.tasks.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should handle empty tasks array", () => {
+        const groups = groupTasksByStatus([], statusList)
+
+        expect(groups).toHaveLength(3)
+        groups.forEach((g: { tasks: Task[] }) => expect(g.tasks).toEqual([]))
+      })
+
+      it("should handle empty statuses array", () => {
+        const tasks = [createMockTask({ id: "t1" })]
+        const groups = groupTasksByStatus(tasks, [])
+
+        expect(groups).toEqual([])
+      })
+    })
+
+    describe("groupTasksByCompletion", () => {
+      it("should group tasks completed today", () => {
+        const tasks = [
+          createMockTask({ id: "t1", completedAt: new Date("2026-01-14T09:00:00Z") }),
+          createMockTask({ id: "t2", completedAt: new Date("2026-01-14T15:00:00Z") }),
+        ]
+
+        const groups = groupTasksByCompletion(tasks)
+
+        expect(groups.today).toHaveLength(2)
+      })
+
+      it("should group tasks completed yesterday", () => {
+        const tasks = [
+          createMockTask({ id: "t1", completedAt: new Date("2026-01-13T10:00:00Z") }),
+          createMockTask({ id: "t2", completedAt: new Date("2026-01-13T20:00:00Z") }),
+        ]
+
+        const groups = groupTasksByCompletion(tasks)
+
+        expect(groups.yesterday).toHaveLength(2)
+      })
+
+      it("should group tasks completed earlier", () => {
+        const tasks = [
+          createMockTask({ id: "t1", completedAt: new Date("2026-01-10T10:00:00Z") }),
+          createMockTask({ id: "t2", completedAt: new Date("2025-12-25T10:00:00Z") }),
+        ]
+
+        const groups = groupTasksByCompletion(tasks)
+
+        expect(groups.earlier).toHaveLength(2)
+      })
+
+      it("should skip tasks without completedAt", () => {
+        const tasks = [
+          createMockTask({ id: "t1", completedAt: null }),
+          createMockTask({ id: "t2", completedAt: new Date("2026-01-14T10:00:00Z") }),
+        ]
+
+        const groups = groupTasksByCompletion(tasks)
+
+        expect(groups.today).toHaveLength(1)
+        expect(groups.yesterday).toHaveLength(0)
+        expect(groups.earlier).toHaveLength(0)
+      })
+
+      it("should sort within groups by completion date (most recent first)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", completedAt: new Date("2026-01-14T09:00:00Z") }),
+          createMockTask({ id: "t2", completedAt: new Date("2026-01-14T15:00:00Z") }),
+          createMockTask({ id: "t3", completedAt: new Date("2026-01-14T12:00:00Z") }),
+        ]
+
+        const groups = groupTasksByCompletion(tasks)
+
+        expect(groups.today.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should return empty groups for empty input", () => {
+        const groups = groupTasksByCompletion([])
+
+        expect(groups.today).toEqual([])
+        expect(groups.yesterday).toEqual([])
+        expect(groups.earlier).toEqual([])
+      })
+
+      it("should correctly categorize all completion periods", () => {
+        const tasks = [
+          createMockTask({ id: "today", completedAt: new Date("2026-01-14T10:00:00Z") }),
+          createMockTask({ id: "yesterday", completedAt: new Date("2026-01-13T10:00:00Z") }),
+          createMockTask({ id: "earlier", completedAt: new Date("2026-01-01T10:00:00Z") }),
+        ]
+
+        const groups = groupTasksByCompletion(tasks)
+
+        expect(groups.today.some((t: Task) => t.id === "today")).toBe(true)
+        expect(groups.yesterday.some((t: Task) => t.id === "yesterday")).toBe(true)
+        expect(groups.earlier.some((t: Task) => t.id === "earlier")).toBe(true)
+      })
+    })
+  })
+
+  // ============================================================================
+  // T081: CALENDAR HELPERS
+  // ============================================================================
+
+  describe("T081: Calendar Helpers", () => {
+
+    describe("formatDateKey", () => {
+      it("should format date as yyyy-MM-dd", () => {
+        const date = new Date("2026-01-14")
+        expect(formatDateKey(date)).toBe("2026-01-14")
+      })
+
+      it("should pad single-digit months", () => {
+        const date = new Date("2026-05-01")
+        expect(formatDateKey(date)).toBe("2026-05-01")
+      })
+
+      it("should pad single-digit days", () => {
+        const date = new Date("2026-12-05")
+        expect(formatDateKey(date)).toBe("2026-12-05")
+      })
+
+      it("should handle year boundaries", () => {
+        const date = new Date("2025-12-31")
+        expect(formatDateKey(date)).toBe("2025-12-31")
+      })
+
+      it("should handle January 1st correctly", () => {
+        const date = new Date("2026-01-01")
+        expect(formatDateKey(date)).toBe("2026-01-01")
+      })
+
+      it("should handle leap year date", () => {
+        const date = new Date("2028-02-29")
+        expect(formatDateKey(date)).toBe("2028-02-29")
+      })
+    })
+
+    describe("parseDateKey", () => {
+      it("should parse yyyy-MM-dd to Date", () => {
+        const date = parseDateKey("2026-01-14")
+        expect(date.getFullYear()).toBe(2026)
+        expect(date.getMonth()).toBe(0)
+        expect(date.getDate()).toBe(14)
+      })
+
+      it("should handle December correctly", () => {
+        const date = parseDateKey("2026-12-25")
+        expect(date.getMonth()).toBe(11)
+        expect(date.getDate()).toBe(25)
+      })
+
+      it("should handle single-digit months and days", () => {
+        const date = parseDateKey("2026-01-05")
+        expect(date.getMonth()).toBe(0)
+        expect(date.getDate()).toBe(5)
+      })
+
+      it("should roundtrip with formatDateKey", () => {
+        const original = new Date("2026-07-15")
+        const key = formatDateKey(original)
+        const parsed = parseDateKey(key)
+        expect(parsed.getFullYear()).toBe(original.getFullYear())
+        expect(parsed.getMonth()).toBe(original.getMonth())
+        expect(parsed.getDate()).toBe(original.getDate())
+      })
+
+      it("should parse February 29 in leap year", () => {
+        const date = parseDateKey("2028-02-29")
+        expect(date.getMonth()).toBe(1)
+        expect(date.getDate()).toBe(29)
+      })
+    })
+
+    describe("getCalendarDays", () => {
+      it("should return calendar days for a month", () => {
+        const january2026 = new Date("2026-01-01")
+        const days = getCalendarDays(january2026)
+
+        expect(days.length).toBeGreaterThan(0)
+        expect(days.length % 7).toBe(0)
+      })
+
+      it("should mark days in current month correctly", () => {
+        const january2026 = new Date("2026-01-15")
+        const days = getCalendarDays(january2026)
+
+        const jan15 = days.find(
+          (d: { date: Date; isCurrentMonth: boolean }) =>
+            d.date.getMonth() === 0 && d.date.getDate() === 15 && d.date.getFullYear() === 2026
+        )
+        expect(jan15?.isCurrentMonth).toBe(true)
+      })
+
+      it("should mark overflow days from previous month", () => {
+        const january2026 = new Date("2026-01-01")
+        const days = getCalendarDays(january2026, 0)
+
+        expect(days[0].date.getDay()).toBe(0)
+        expect(days[0].isCurrentMonth).toBe(false)
+      })
+
+      it("should mark overflow days from next month", () => {
+        const january2026 = new Date("2026-01-31")
+        const days = getCalendarDays(january2026, 0)
+
+        const lastDay = days[days.length - 1]
+        expect(lastDay.date.getDay()).toBe(6)
+      })
+
+      it("should mark today correctly", () => {
+        const currentMonth = new Date("2026-01-14")
+        const days = getCalendarDays(currentMonth)
+
+        const today = days.find((d: { isToday: boolean }) => d.isToday)
+        expect(today).toBeDefined()
+        expect(today?.date.getDate()).toBe(14)
+      })
+
+      it("should mark weekends correctly", () => {
+        const january2026 = new Date("2026-01-01")
+        const days = getCalendarDays(january2026)
+
+        const weekends = days.filter((d: { isWeekend: boolean }) => d.isWeekend)
+        weekends.forEach((d: { date: Date }) => {
+          expect([0, 6]).toContain(d.date.getDay())
+        })
+      })
+
+      it("should respect weekStartsOn = 0 (Sunday)", () => {
+        const january2026 = new Date("2026-01-01")
+        const days = getCalendarDays(january2026, 0)
+
+        expect(days[0].date.getDay()).toBe(0)
+      })
+
+      it("should respect weekStartsOn = 1 (Monday)", () => {
+        const january2026 = new Date("2026-01-01")
+        const days = getCalendarDays(january2026, 1)
+
+        expect(days[0].date.getDay()).toBe(1)
+      })
+
+      it("should include all days of the month", () => {
+        const january2026 = new Date("2026-01-15")
+        const days = getCalendarDays(january2026)
+
+        for (let day = 1; day <= 31; day++) {
+          const found = days.some(
+            (d: { date: Date }) =>
+              d.date.getMonth() === 0 && d.date.getDate() === day && d.date.getFullYear() === 2026
+          )
+          expect(found).toBe(true)
+        }
+      })
+
+      it("should handle February with 28 days", () => {
+        const february2026 = new Date("2026-02-15")
+        const days = getCalendarDays(february2026)
+
+        for (let day = 1; day <= 28; day++) {
+          const found = days.some(
+            (d: { date: Date }) =>
+              d.date.getMonth() === 1 && d.date.getDate() === day && d.date.getFullYear() === 2026
+          )
+          expect(found).toBe(true)
+        }
+      })
+    })
+
+    describe("groupTasksByCalendarDate", () => {
+      it("should group tasks by date key within range", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-14") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-15") }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-01-14") }),
+        ]
+
+        const start = new Date("2026-01-10")
+        const end = new Date("2026-01-20")
+        const grouped = groupTasksByCalendarDate(tasks, start, end)
+
+        expect(grouped.get("2026-01-14")).toHaveLength(2)
+        expect(grouped.get("2026-01-15")).toHaveLength(1)
+      })
+
+      it("should exclude tasks outside date range", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-05") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-15") }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-01-25") }),
+        ]
+
+        const start = new Date("2026-01-10")
+        const end = new Date("2026-01-20")
+        const grouped = groupTasksByCalendarDate(tasks, start, end)
+
+        expect(grouped.get("2026-01-05")).toBeUndefined()
+        expect(grouped.get("2026-01-15")).toHaveLength(1)
+        expect(grouped.get("2026-01-25")).toBeUndefined()
+      })
+
+      it("should skip tasks without due date", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: null }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-15") }),
+        ]
+
+        const start = new Date("2026-01-10")
+        const end = new Date("2026-01-20")
+        const grouped = groupTasksByCalendarDate(tasks, start, end)
+
+        let totalTasks = 0
+        grouped.forEach((tasksForDay: Task[]) => {
+          totalTasks += tasksForDay.length
+        })
+        expect(totalTasks).toBe(1)
+      })
+
+      it("should sort tasks within each day", () => {
+        const date = new Date("2026-01-15")
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: date, dueTime: "15:00" }),
+          createMockTask({ id: "t2", dueDate: date, dueTime: "09:00" }),
+          createMockTask({ id: "t3", dueDate: date, dueTime: "12:00" }),
+        ]
+
+        const start = new Date("2026-01-10")
+        const end = new Date("2026-01-20")
+        const grouped = groupTasksByCalendarDate(tasks, start, end)
+
+        const dayTasks = grouped.get("2026-01-15")!
+        expect(dayTasks.map((t: Task) => t.id)).toEqual(["t2", "t3", "t1"])
+      })
+
+      it("should include boundary dates (inclusive)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-10") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-20") }),
+        ]
+
+        const start = new Date("2026-01-10")
+        const end = new Date("2026-01-20")
+        const grouped = groupTasksByCalendarDate(tasks, start, end)
+
+        expect(grouped.get("2026-01-10")).toHaveLength(1)
+        expect(grouped.get("2026-01-20")).toHaveLength(1)
+      })
+
+      it("should return empty map for empty tasks", () => {
+        const start = new Date("2026-01-10")
+        const end = new Date("2026-01-20")
+        const grouped = groupTasksByCalendarDate([], start, end)
+
+        expect(grouped.size).toBe(0)
+      })
+    })
+  })
+
+  // ============================================================================
+  // T082: TASK FILTERING - BASIC
+  // ============================================================================
+
+  describe("T082: Task Filtering - Basic", () => {
+
+    describe("filterBySearch", () => {
+      it("should filter by title match", () => {
+        const tasks = [
+          createMockTask({ id: "t1", title: "Buy groceries" }),
+          createMockTask({ id: "t2", title: "Go to gym" }),
+          createMockTask({ id: "t3", title: "Grocery shopping" }),
+        ]
+
+        const filtered = filterBySearch(tasks, "grocery")
+
+        expect(filtered).toHaveLength(2)
+        expect(filtered.some((t: Task) => t.id === "t1")).toBe(true)
+        expect(filtered.some((t: Task) => t.id === "t3")).toBe(true)
+      })
+
+      it("should filter by description match", () => {
+        const tasks = [
+          createMockTask({ id: "t1", title: "Task 1", description: "Important meeting" }),
+          createMockTask({ id: "t2", title: "Task 2", description: "Casual event" }),
+        ]
+
+        const filtered = filterBySearch(tasks, "meeting")
+
+        expect(filtered).toHaveLength(1)
+        expect(filtered[0].id).toBe("t1")
+      })
+
+      it("should be case-insensitive", () => {
+        const tasks = [
+          createMockTask({ id: "t1", title: "URGENT Task" }),
+          createMockTask({ id: "t2", title: "urgent work" }),
+          createMockTask({ id: "t3", title: "Normal task" }),
+        ]
+
+        const filtered = filterBySearch(tasks, "URGENT")
+
+        expect(filtered).toHaveLength(2)
+      })
+
+      it("should return all tasks for empty query", () => {
+        const tasks = [createMockTask({ id: "t1" }), createMockTask({ id: "t2" })]
+
+        expect(filterBySearch(tasks, "")).toHaveLength(2)
+        expect(filterBySearch(tasks, "   ")).toHaveLength(2)
+      })
+
+      it("should match partial strings", () => {
+        const tasks = [
+          createMockTask({ id: "t1", title: "Documentation" }),
+          createMockTask({ id: "t2", title: "Testing" }),
+        ]
+
+        const filtered = filterBySearch(tasks, "doc")
+
+        expect(filtered).toHaveLength(1)
+        expect(filtered[0].id).toBe("t1")
+      })
+
+      it("should handle special characters", () => {
+        const tasks = [
+          createMockTask({ id: "t1", title: "Task (important)" }),
+          createMockTask({ id: "t2", title: "Task [urgent]" }),
+        ]
+
+        const filtered = filterBySearch(tasks, "(important)")
+
+        expect(filtered).toHaveLength(1)
+      })
+
+      it("should trim query whitespace", () => {
+        const tasks = [createMockTask({ id: "t1", title: "Test task" })]
+
+        const filtered = filterBySearch(tasks, "  test  ")
+
+        expect(filtered).toHaveLength(1)
+      })
+
+      it("should handle empty description", () => {
+        const tasks = [createMockTask({ id: "t1", title: "Task", description: "" })]
+
+        expect(() => filterBySearch(tasks, "something")).not.toThrow()
+      })
+
+      it("should match title OR description", () => {
+        const tasks = [
+          createMockTask({ id: "t1", title: "Meeting", description: "" }),
+          createMockTask({ id: "t2", title: "Task", description: "Schedule a meeting" }),
+        ]
+
+        const filtered = filterBySearch(tasks, "meeting")
+
+        expect(filtered).toHaveLength(2)
+      })
+    })
+
+    describe("filterByProjects", () => {
+      it("should filter by single project", () => {
+        const tasks = [
+          createMockTask({ id: "t1", projectId: "p1" }),
+          createMockTask({ id: "t2", projectId: "p2" }),
+          createMockTask({ id: "t3", projectId: "p1" }),
+        ]
+
+        const filtered = filterByProjects(tasks, ["p1"])
+
+        expect(filtered).toHaveLength(2)
+        expect(filtered.every((t: Task) => t.projectId === "p1")).toBe(true)
+      })
+
+      it("should filter by multiple projects", () => {
+        const tasks = [
+          createMockTask({ id: "t1", projectId: "p1" }),
+          createMockTask({ id: "t2", projectId: "p2" }),
+          createMockTask({ id: "t3", projectId: "p3" }),
+        ]
+
+        const filtered = filterByProjects(tasks, ["p1", "p2"])
+
+        expect(filtered).toHaveLength(2)
+        expect(filtered.some((t: Task) => t.projectId === "p1")).toBe(true)
+        expect(filtered.some((t: Task) => t.projectId === "p2")).toBe(true)
+      })
+
+      it("should return all tasks for empty project list", () => {
+        const tasks = [
+          createMockTask({ id: "t1", projectId: "p1" }),
+          createMockTask({ id: "t2", projectId: "p2" }),
+        ]
+
+        expect(filterByProjects(tasks, [])).toHaveLength(2)
+      })
+
+      it("should return empty array if no tasks match", () => {
+        const tasks = [
+          createMockTask({ id: "t1", projectId: "p1" }),
+          createMockTask({ id: "t2", projectId: "p2" }),
+        ]
+
+        expect(filterByProjects(tasks, ["p99"])).toHaveLength(0)
+      })
+
+      it("should handle empty tasks array", () => {
+        expect(filterByProjects([], ["p1"])).toHaveLength(0)
+      })
+    })
+
+    describe("filterByPriorities", () => {
+      it("should filter by single priority", () => {
+        const tasks = [
+          createMockTask({ id: "t1", priority: "high" }),
+          createMockTask({ id: "t2", priority: "low" }),
+          createMockTask({ id: "t3", priority: "high" }),
+        ]
+
+        const filtered = filterByPriorities(tasks, ["high"])
+
+        expect(filtered).toHaveLength(2)
+        expect(filtered.every((t: Task) => t.priority === "high")).toBe(true)
+      })
+
+      it("should filter by multiple priorities", () => {
+        const tasks = [
+          createMockTask({ id: "t1", priority: "urgent" }),
+          createMockTask({ id: "t2", priority: "high" }),
+          createMockTask({ id: "t3", priority: "low" }),
+          createMockTask({ id: "t4", priority: "none" }),
+        ]
+
+        const filtered = filterByPriorities(tasks, ["urgent", "high"])
+
+        expect(filtered).toHaveLength(2)
+      })
+
+      it("should return all tasks for empty priority list", () => {
+        const tasks = [
+          createMockTask({ id: "t1", priority: "high" }),
+          createMockTask({ id: "t2", priority: "low" }),
+        ]
+
+        expect(filterByPriorities(tasks, [])).toHaveLength(2)
+      })
+
+      it("should handle all priority levels", () => {
+        const tasks = [
+          createMockTask({ id: "t1", priority: "urgent" }),
+          createMockTask({ id: "t2", priority: "high" }),
+          createMockTask({ id: "t3", priority: "medium" }),
+          createMockTask({ id: "t4", priority: "low" }),
+          createMockTask({ id: "t5", priority: "none" }),
+        ]
+
+        expect(filterByPriorities(tasks, ["urgent"])).toHaveLength(1)
+        expect(filterByPriorities(tasks, ["high"])).toHaveLength(1)
+        expect(filterByPriorities(tasks, ["medium"])).toHaveLength(1)
+        expect(filterByPriorities(tasks, ["low"])).toHaveLength(1)
+        expect(filterByPriorities(tasks, ["none"])).toHaveLength(1)
+      })
+
+      it("should handle empty tasks array", () => {
+        expect(filterByPriorities([], ["high"])).toHaveLength(0)
+      })
+    })
+
+    describe("filterByStatuses", () => {
+      it("should filter by single status", () => {
+        const tasks = [
+          createMockTask({ id: "t1", statusId: "s1" }),
+          createMockTask({ id: "t2", statusId: "s2" }),
+          createMockTask({ id: "t3", statusId: "s1" }),
+        ]
+
+        const filtered = filterByStatuses(tasks, ["s1"])
+
+        expect(filtered).toHaveLength(2)
+        expect(filtered.every((t: Task) => t.statusId === "s1")).toBe(true)
+      })
+
+      it("should filter by multiple statuses", () => {
+        const tasks = [
+          createMockTask({ id: "t1", statusId: "s1" }),
+          createMockTask({ id: "t2", statusId: "s2" }),
+          createMockTask({ id: "t3", statusId: "s3" }),
+        ]
+
+        const filtered = filterByStatuses(tasks, ["s1", "s3"])
+
+        expect(filtered).toHaveLength(2)
+      })
+
+      it("should return all tasks for empty status list", () => {
+        const tasks = [
+          createMockTask({ id: "t1", statusId: "s1" }),
+          createMockTask({ id: "t2", statusId: "s2" }),
+        ]
+
+        expect(filterByStatuses(tasks, [])).toHaveLength(2)
+      })
+
+      it("should return empty array if no tasks match", () => {
+        const tasks = [createMockTask({ id: "t1", statusId: "s1" })]
+
+        expect(filterByStatuses(tasks, ["s99"])).toHaveLength(0)
+      })
+
+      it("should handle empty tasks array", () => {
+        expect(filterByStatuses([], ["s1"])).toHaveLength(0)
+      })
+    })
+  })
+
+  // ============================================================================
+  // T083: TASK FILTERING - DATE & COMPLETION
+  // ============================================================================
+
+  describe("T083: Task Filtering - Date & Completion", () => {
+
+    describe("filterByDueDateRange", () => {
+      it('should return all tasks for "any" filter', () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-15") }),
+          createMockTask({ id: "t2", dueDate: null }),
+        ]
+
+        const filter = { type: "any" }
+        expect(filterByDueDateRange(tasks, filter)).toHaveLength(2)
+      })
+
+      it('should filter tasks with no due date ("none")', () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: null }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-15") }),
+          createMockTask({ id: "t3", dueDate: null }),
+        ]
+
+        const filter = { type: "none" }
+        const filtered = filterByDueDateRange(tasks, filter)
+
+        expect(filtered).toHaveLength(2)
+        expect(filtered.every((t: Task) => t.dueDate === null)).toBe(true)
+      })
+
+      it("should filter overdue tasks", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-10"), completedAt: null }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-14"), completedAt: null }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-01-15"), completedAt: null }),
+          createMockTask({ id: "t4", dueDate: new Date("2026-01-10"), completedAt: new Date() }),
+        ]
+
+        const filter = { type: "overdue" }
+        const filtered = filterByDueDateRange(tasks, filter)
+
+        expect(filtered).toHaveLength(1)
+        expect(filtered[0].id).toBe("t1")
+      })
+
+      it("should filter tasks due today", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-14T09:00:00Z") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-14T18:00:00Z") }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-01-15") }),
+        ]
+
+        const filter = { type: "today" }
+        const filtered = filterByDueDateRange(tasks, filter)
+
+        expect(filtered).toHaveLength(2)
+      })
+
+      it("should filter tasks due tomorrow", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-14") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-15") }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-01-16") }),
+        ]
+
+        const filter = { type: "tomorrow" }
+        const filtered = filterByDueDateRange(tasks, filter)
+
+        expect(filtered).toHaveLength(1)
+        expect(filtered[0].id).toBe("t2")
+      })
+
+      it("should filter tasks due this week", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-13") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-14") }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-01-17") }),
+          createMockTask({ id: "t4", dueDate: new Date("2026-01-19") }),
+        ]
+
+        const filter = { type: "this-week" }
+        const filtered = filterByDueDateRange(tasks, filter)
+
+        expect(filtered.some((t: Task) => t.id === "t2")).toBe(true)
+        expect(filtered.some((t: Task) => t.id === "t3")).toBe(true)
+      })
+
+      it("should filter tasks due next week", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-17") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-19") }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-01-22") }),
+          createMockTask({ id: "t4", dueDate: new Date("2026-01-26") }),
+        ]
+
+        const filter = { type: "next-week" }
+        const filtered = filterByDueDateRange(tasks, filter)
+
+        expect(filtered.some((t: Task) => t.id === "t2")).toBe(true)
+        expect(filtered.some((t: Task) => t.id === "t3")).toBe(true)
+      })
+
+      it("should filter tasks due this month", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-14") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-31") }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-02-01") }),
+        ]
+
+        const filter = { type: "this-month" }
+        const filtered = filterByDueDateRange(tasks, filter)
+
+        expect(filtered).toHaveLength(2)
+        expect(filtered.some((t: Task) => t.id === "t3")).toBe(false)
+      })
+
+      it("should filter tasks in custom date range", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueDate: new Date("2026-01-10") }),
+          createMockTask({ id: "t2", dueDate: new Date("2026-01-15") }),
+          createMockTask({ id: "t3", dueDate: new Date("2026-01-20") }),
+          createMockTask({ id: "t4", dueDate: new Date("2026-01-25") }),
+        ]
+
+        const filter = {
+          type: "custom",
+          customStart: new Date("2026-01-14"),
+          customEnd: new Date("2026-01-21"),
+        }
+        const filtered = filterByDueDateRange(tasks, filter)
+
+        expect(filtered).toHaveLength(2)
+        expect(filtered.some((t: Task) => t.id === "t2")).toBe(true)
+        expect(filtered.some((t: Task) => t.id === "t3")).toBe(true)
+      })
+
+      it("should return all tasks if custom range has no dates", () => {
+        const tasks = [createMockTask({ id: "t1", dueDate: new Date("2026-01-15") })]
+
+        const filter = {
+          type: "custom",
+          customStart: null,
+          customEnd: null,
+        }
+        const filtered = filterByDueDateRange(tasks, filter)
+
+        expect(filtered).toHaveLength(1)
+      })
+
+      it("should handle empty tasks array", () => {
+        expect(filterByDueDateRange([], { type: "today" })).toHaveLength(0)
+      })
+    })
+
+    describe("filterByCompletion", () => {
+      const completionProjects = [
+        createMockProject({
+          id: "p1",
+          statuses: [
+            createMockStatus({ id: "s-todo", type: "todo" }),
+            createMockStatus({ id: "s-done", type: "done" }),
+          ],
+        }),
+      ]
+
+      it("should filter active tasks (not completed, not archived)", () => {
+        const tasks = [
+          createMockTask({ id: "t1", projectId: "p1", statusId: "s-todo" }),
+          createMockTask({ id: "t2", projectId: "p1", statusId: "s-done" }),
+          createMockTask({ id: "t3", projectId: "p1", statusId: "s-todo", archivedAt: new Date() }),
+        ]
+
+        const filtered = filterByCompletion(tasks, "active", completionProjects)
+
+        expect(filtered).toHaveLength(1)
+        expect(filtered[0].id).toBe("t1")
+      })
+
+      it("should filter completed tasks", () => {
+        const tasks = [
+          createMockTask({ id: "t1", projectId: "p1", statusId: "s-todo" }),
+          createMockTask({ id: "t2", projectId: "p1", statusId: "s-done" }),
+          createMockTask({ id: "t3", projectId: "p1", statusId: "s-done" }),
+        ]
+
+        const filtered = filterByCompletion(tasks, "completed", completionProjects)
+
+        expect(filtered).toHaveLength(2)
+        expect(filtered.every((t: Task) => t.statusId === "s-done")).toBe(true)
+      })
+
+      it('should return all non-archived tasks for "all"', () => {
+        const tasks = [
+          createMockTask({ id: "t1", projectId: "p1", statusId: "s-todo" }),
+          createMockTask({ id: "t2", projectId: "p1", statusId: "s-done" }),
+          createMockTask({ id: "t3", projectId: "p1", statusId: "s-todo", archivedAt: new Date() }),
+        ]
+
+        const filtered = filterByCompletion(tasks, "all", completionProjects)
+
+        expect(filtered).toHaveLength(2)
+      })
+
+      it("should always exclude archived tasks", () => {
+        const tasks = [
+          createMockTask({ id: "t1", projectId: "p1", statusId: "s-todo", archivedAt: new Date() }),
+          createMockTask({ id: "t2", projectId: "p1", statusId: "s-done", archivedAt: new Date() }),
+        ]
+
+        expect(filterByCompletion(tasks, "active", completionProjects)).toHaveLength(0)
+        expect(filterByCompletion(tasks, "completed", completionProjects)).toHaveLength(0)
+        expect(filterByCompletion(tasks, "all", completionProjects)).toHaveLength(0)
+      })
+
+      it("should handle empty tasks array", () => {
+        expect(filterByCompletion([], "active", completionProjects)).toHaveLength(0)
+      })
+
+      it("should handle empty projects array", () => {
+        const tasks = [createMockTask({ id: "t1", projectId: "p1", statusId: "s-todo" })]
+
+        const filtered = filterByCompletion(tasks, "active", [])
+        expect(filtered).toHaveLength(1)
+      })
+    })
+
+    describe("filterByRepeatType", () => {
+      it("should filter repeating tasks", () => {
+        const tasks = [
+          createMockTask({ id: "t1", isRepeating: true }),
+          createMockTask({ id: "t2", isRepeating: false }),
+          createMockTask({ id: "t3", isRepeating: true }),
+        ]
+
+        const filtered = filterByRepeatType(tasks, "repeating")
+
+        expect(filtered).toHaveLength(2)
+        expect(filtered.every((t: Task) => t.isRepeating)).toBe(true)
+      })
+
+      it("should filter one-time tasks", () => {
+        const tasks = [
+          createMockTask({ id: "t1", isRepeating: true }),
+          createMockTask({ id: "t2", isRepeating: false }),
+          createMockTask({ id: "t3", isRepeating: false }),
+        ]
+
+        const filtered = filterByRepeatType(tasks, "one-time")
+
+        expect(filtered).toHaveLength(2)
+        expect(filtered.every((t: Task) => !t.isRepeating)).toBe(true)
+      })
+
+      it('should return all tasks for "all"', () => {
+        const tasks = [
+          createMockTask({ id: "t1", isRepeating: true }),
+          createMockTask({ id: "t2", isRepeating: false }),
+        ]
+
+        const filtered = filterByRepeatType(tasks, "all")
+
+        expect(filtered).toHaveLength(2)
+      })
+
+      it("should handle empty tasks array", () => {
+        expect(filterByRepeatType([], "repeating")).toHaveLength(0)
+      })
+
+      it("should handle all tasks being repeating", () => {
+        const tasks = [
+          createMockTask({ id: "t1", isRepeating: true }),
+          createMockTask({ id: "t2", isRepeating: true }),
+        ]
+
+        expect(filterByRepeatType(tasks, "repeating")).toHaveLength(2)
+        expect(filterByRepeatType(tasks, "one-time")).toHaveLength(0)
+      })
+    })
+
+    describe("filterByHasTime", () => {
+      it("should filter tasks with time set", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: "14:30" }),
+          createMockTask({ id: "t2", dueTime: null }),
+          createMockTask({ id: "t3", dueTime: "09:00" }),
+        ]
+
+        const filtered = filterByHasTime(tasks, "with-time")
+
+        expect(filtered).toHaveLength(2)
+        expect(filtered.every((t: Task) => t.dueTime !== null)).toBe(true)
+      })
+
+      it("should filter tasks without time", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: "14:30" }),
+          createMockTask({ id: "t2", dueTime: null }),
+          createMockTask({ id: "t3", dueTime: null }),
+        ]
+
+        const filtered = filterByHasTime(tasks, "without-time")
+
+        expect(filtered).toHaveLength(2)
+        expect(filtered.every((t: Task) => t.dueTime === null)).toBe(true)
+      })
+
+      it('should return all tasks for "all"', () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: "14:30" }),
+          createMockTask({ id: "t2", dueTime: null }),
+        ]
+
+        const filtered = filterByHasTime(tasks, "all")
+
+        expect(filtered).toHaveLength(2)
+      })
+
+      it("should handle empty tasks array", () => {
+        expect(filterByHasTime([], "with-time")).toHaveLength(0)
+      })
+
+      it("should handle various time formats", () => {
+        const tasks = [
+          createMockTask({ id: "t1", dueTime: "00:00" }),
+          createMockTask({ id: "t2", dueTime: "23:59" }),
+          createMockTask({ id: "t3", dueTime: "12:00" }),
+        ]
+
+        expect(filterByHasTime(tasks, "with-time")).toHaveLength(3)
+      })
+    })
+
+    describe("Combined filtering edge cases", () => {
+      it("should handle empty task array for all filters", () => {
+        const proj = [createMockProject({ id: "p1" })]
+
+        expect(filterByDueDateRange([], { type: "today" })).toEqual([])
+        expect(filterByCompletion([], "active", proj)).toEqual([])
+        expect(filterByRepeatType([], "repeating")).toEqual([])
+        expect(filterByHasTime([], "with-time")).toEqual([])
+      })
+
+      it("should handle single task for all filters", () => {
+        const proj = [createMockProject({ id: "project-1" })]
+        const task = createMockTask({
+          id: "t1",
+          projectId: "project-1",
+          statusId: "status-todo",
+          dueDate: new Date("2026-01-14"),
+          dueTime: "10:00",
+          isRepeating: true,
+        })
+
+        expect(filterByDueDateRange([task], { type: "today" })).toHaveLength(1)
+        expect(filterByRepeatType([task], "repeating")).toHaveLength(1)
+        expect(filterByHasTime([task], "with-time")).toHaveLength(1)
       })
     })
   })
