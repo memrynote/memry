@@ -5,8 +5,14 @@
 
 import Database from 'better-sqlite3'
 import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { sql } from 'drizzle-orm'
+import path from 'path'
 import * as schema from '@shared/db/schema'
+
+// Migration paths
+const DATA_MIGRATIONS = path.resolve(__dirname, '../../src/main/database/drizzle-data')
+const INDEX_MIGRATIONS = path.resolve(__dirname, '../../src/main/database/drizzle-index')
 
 export type TestDb = BetterSQLite3Database<typeof schema>
 
@@ -15,271 +21,6 @@ export interface TestDatabaseResult {
   sqlite: Database.Database
   close: () => void
 }
-
-// ============================================================================
-// Data Database Schema (data.db)
-// ============================================================================
-
-const DATA_SCHEMA = `
--- Projects table
-CREATE TABLE IF NOT EXISTS projects (
-  id TEXT PRIMARY KEY NOT NULL,
-  name TEXT NOT NULL,
-  description TEXT,
-  color TEXT NOT NULL DEFAULT '#6366f1',
-  icon TEXT,
-  position INTEGER NOT NULL DEFAULT 0,
-  is_inbox INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  modified_at TEXT NOT NULL DEFAULT (datetime('now')),
-  archived_at TEXT
-);
-
--- Statuses table
-CREATE TABLE IF NOT EXISTS statuses (
-  id TEXT PRIMARY KEY NOT NULL,
-  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  color TEXT NOT NULL DEFAULT '#6b7280',
-  position INTEGER NOT NULL DEFAULT 0,
-  is_default INTEGER NOT NULL DEFAULT 0,
-  is_done INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Tasks table
-CREATE TABLE IF NOT EXISTS tasks (
-  id TEXT PRIMARY KEY NOT NULL,
-  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  status_id TEXT REFERENCES statuses(id) ON DELETE SET NULL,
-  parent_id TEXT,
-  title TEXT NOT NULL,
-  description TEXT,
-  priority INTEGER NOT NULL DEFAULT 0,
-  position INTEGER NOT NULL DEFAULT 0,
-  due_date TEXT,
-  due_time TEXT,
-  start_date TEXT,
-  repeat_config TEXT,
-  repeat_from TEXT,
-  source_note_id TEXT,
-  completed_at TEXT,
-  archived_at TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  modified_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Task tags junction table
-CREATE TABLE IF NOT EXISTS task_tags (
-  task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-  tag TEXT NOT NULL,
-  PRIMARY KEY (task_id, tag)
-);
-
--- Task notes junction table
-CREATE TABLE IF NOT EXISTS task_notes (
-  task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-  note_id TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  PRIMARY KEY (task_id, note_id)
-);
-
--- Settings table
-CREATE TABLE IF NOT EXISTS settings (
-  key TEXT PRIMARY KEY NOT NULL,
-  value TEXT NOT NULL,
-  modified_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Saved filters table
-CREATE TABLE IF NOT EXISTS saved_filters (
-  id TEXT PRIMARY KEY NOT NULL,
-  name TEXT NOT NULL,
-  config TEXT NOT NULL,
-  position INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Bookmarks table
-CREATE TABLE IF NOT EXISTS bookmarks (
-  id TEXT PRIMARY KEY NOT NULL,
-  item_type TEXT NOT NULL,
-  item_id TEXT NOT NULL,
-  position INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(item_type, item_id)
-);
-
--- Inbox items table
-CREATE TABLE IF NOT EXISTS inbox_items (
-  id TEXT PRIMARY KEY NOT NULL,
-  type TEXT NOT NULL,
-  title TEXT NOT NULL,
-  content TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  modified_at TEXT NOT NULL DEFAULT (datetime('now')),
-  filed_at TEXT,
-  filed_to TEXT,
-  filed_action TEXT,
-  snoozed_until TEXT,
-  snooze_reason TEXT,
-  viewed_at TEXT,
-  processing_status TEXT DEFAULT 'complete',
-  processing_error TEXT,
-  metadata TEXT,
-  attachment_path TEXT,
-  thumbnail_path TEXT,
-  transcription TEXT,
-  transcription_status TEXT,
-  source_url TEXT,
-  source_title TEXT,
-  archived_at TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_inbox_items_type ON inbox_items(type);
-CREATE INDEX IF NOT EXISTS idx_inbox_items_created ON inbox_items(created_at);
-CREATE INDEX IF NOT EXISTS idx_inbox_items_filed ON inbox_items(filed_at);
-CREATE INDEX IF NOT EXISTS idx_inbox_items_snoozed ON inbox_items(snoozed_until);
-CREATE INDEX IF NOT EXISTS idx_inbox_items_processing ON inbox_items(processing_status);
-CREATE INDEX IF NOT EXISTS idx_inbox_items_archived ON inbox_items(archived_at);
-
--- Inbox item tags table
-CREATE TABLE IF NOT EXISTS inbox_item_tags (
-  id TEXT PRIMARY KEY NOT NULL,
-  item_id TEXT NOT NULL REFERENCES inbox_items(id) ON DELETE CASCADE,
-  tag TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_inbox_tags_item ON inbox_item_tags(item_id);
-CREATE INDEX IF NOT EXISTS idx_inbox_tags_tag ON inbox_item_tags(tag);
-
--- Filing history table
-CREATE TABLE IF NOT EXISTS filing_history (
-  id TEXT PRIMARY KEY NOT NULL,
-  item_type TEXT NOT NULL,
-  item_content TEXT,
-  filed_to TEXT NOT NULL,
-  filed_action TEXT NOT NULL,
-  tags TEXT,
-  filed_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_filing_history_type ON filing_history(item_type);
-CREATE INDEX IF NOT EXISTS idx_filing_history_filed_at ON filing_history(filed_at);
-
--- Inbox stats table
-CREATE TABLE IF NOT EXISTS inbox_stats (
-  id TEXT PRIMARY KEY NOT NULL,
-  date TEXT NOT NULL UNIQUE,
-  capture_count_link INTEGER DEFAULT 0,
-  capture_count_note INTEGER DEFAULT 0,
-  capture_count_image INTEGER DEFAULT 0,
-  capture_count_voice INTEGER DEFAULT 0,
-  capture_count_clip INTEGER DEFAULT 0,
-  capture_count_pdf INTEGER DEFAULT 0,
-  capture_count_social INTEGER DEFAULT 0,
-  capture_count_reminder INTEGER DEFAULT 0,
-  processed_count INTEGER DEFAULT 0,
-  archived_count INTEGER DEFAULT 0
-);
-
-CREATE INDEX IF NOT EXISTS idx_inbox_stats_date ON inbox_stats(date);
-
--- Suggestion feedback table
-CREATE TABLE IF NOT EXISTS suggestion_feedback (
-  id TEXT PRIMARY KEY NOT NULL,
-  item_id TEXT NOT NULL,
-  item_type TEXT NOT NULL,
-  suggested_to TEXT NOT NULL,
-  actual_to TEXT NOT NULL,
-  accepted INTEGER NOT NULL,
-  confidence INTEGER NOT NULL,
-  suggested_tags TEXT,
-  actual_tags TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_suggestion_feedback_item_type ON suggestion_feedback(item_type);
-CREATE INDEX IF NOT EXISTS idx_suggestion_feedback_accepted ON suggestion_feedback(accepted);
-CREATE INDEX IF NOT EXISTS idx_suggestion_feedback_created ON suggestion_feedback(created_at);
-`
-
-// ============================================================================
-// Index Database Schema (index.db)
-// ============================================================================
-
-const INDEX_SCHEMA = `
--- Note cache table
-CREATE TABLE IF NOT EXISTS note_cache (
-  id TEXT PRIMARY KEY NOT NULL,
-  path TEXT NOT NULL UNIQUE,
-  title TEXT NOT NULL,
-  emoji TEXT,
-  content_hash TEXT NOT NULL,
-  word_count INTEGER NOT NULL DEFAULT 0,
-  character_count INTEGER NOT NULL DEFAULT 0,
-  date TEXT,
-  snippet TEXT,
-  created_at TEXT NOT NULL,
-  modified_at TEXT NOT NULL,
-  indexed_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Note tags table
-CREATE TABLE IF NOT EXISTS note_tags (
-  note_id TEXT NOT NULL REFERENCES note_cache(id) ON DELETE CASCADE,
-  tag TEXT NOT NULL,
-  pinned_at TEXT,
-  PRIMARY KEY (note_id, tag)
-);
-
--- Tag definitions table
-CREATE TABLE IF NOT EXISTS tag_definitions (
-  name TEXT PRIMARY KEY NOT NULL,
-  color TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Note links table
-CREATE TABLE IF NOT EXISTS note_links (
-  source_id TEXT NOT NULL REFERENCES note_cache(id) ON DELETE CASCADE,
-  target_id TEXT,
-  target_title TEXT NOT NULL,
-  PRIMARY KEY (source_id, target_title)
-);
-
--- Note properties table
-CREATE TABLE IF NOT EXISTS note_properties (
-  note_id TEXT NOT NULL REFERENCES note_cache(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  value TEXT,
-  type TEXT NOT NULL,
-  PRIMARY KEY (note_id, name)
-);
-
--- Property definitions table
-CREATE TABLE IF NOT EXISTS property_definitions (
-  name TEXT PRIMARY KEY NOT NULL,
-  type TEXT NOT NULL,
-  options TEXT,
-  default_value TEXT,
-  color TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Note snapshots table
-CREATE TABLE IF NOT EXISTS note_snapshots (
-  id TEXT PRIMARY KEY NOT NULL,
-  note_id TEXT NOT NULL REFERENCES note_cache(id) ON DELETE CASCADE,
-  content TEXT NOT NULL,
-  title TEXT NOT NULL,
-  word_count INTEGER NOT NULL DEFAULT 0,
-  content_hash TEXT NOT NULL,
-  reason TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-`
 
 // ============================================================================
 // Database Factory Functions
@@ -296,10 +37,10 @@ export function createTestDataDb(): TestDatabaseResult {
   sqlite.pragma('foreign_keys = ON')
   sqlite.pragma('synchronous = NORMAL')
 
-  // Create schema
-  sqlite.exec(DATA_SCHEMA)
-
   const db = drizzle(sqlite, { schema })
+
+  // Run migrations from actual migration files
+  migrate(db, { migrationsFolder: DATA_MIGRATIONS })
 
   return {
     db,
@@ -325,10 +66,10 @@ export function createTestIndexDb(): TestDatabaseResult {
   sqlite.pragma('journal_mode = WAL')
   sqlite.pragma('synchronous = NORMAL')
 
-  // Create schema
-  sqlite.exec(INDEX_SCHEMA)
-
   const db = drizzle(sqlite, { schema })
+
+  // Run migrations from actual migration files
+  migrate(db, { migrationsFolder: INDEX_MIGRATIONS })
 
   return {
     db,

@@ -403,15 +403,13 @@ export function findNotesByTag(
     title: string
     createdAt: string
     modifiedAt: string
-    snippet: string | null
   }>(sql`
     SELECT
       nc.id,
       nc.path,
       nc.title,
       nc.created_at as createdAt,
-      nc.modified_at as modifiedAt,
-      nc.snippet
+      nc.modified_at as modifiedAt
     FROM note_cache nc
     INNER JOIN note_tags nt ON nt.note_id = nc.id
     WHERE nt.tag = ${normalizedTag}
@@ -423,7 +421,7 @@ export function findNotesByTag(
     id: row.id,
     path: row.path,
     title: row.title,
-    snippet: row.snippet || '',
+    snippet: '', // note_cache doesn't store snippets
     score: 1.0,
     matchedIn: ['tags'] as ('title' | 'content' | 'tags')[],
     createdAt: row.createdAt,
@@ -451,15 +449,13 @@ export function findBacklinks(
     title: string
     createdAt: string
     modifiedAt: string
-    snippet: string | null
   }>(sql`
     SELECT
       nc.id,
       nc.path,
       nc.title,
       nc.created_at as createdAt,
-      nc.modified_at as modifiedAt,
-      nc.snippet
+      nc.modified_at as modifiedAt
     FROM note_cache nc
     INNER JOIN note_links nl ON nl.source_id = nc.id
     WHERE nl.target_id = ${noteId}
@@ -471,7 +467,7 @@ export function findBacklinks(
     id: row.id,
     path: row.path,
     title: row.title,
-    snippet: row.snippet || '',
+    snippet: '', // note_cache doesn't store snippets
     score: 1.0,
     matchedIn: ['content'] as ('title' | 'content' | 'tags')[],
     createdAt: row.createdAt,
