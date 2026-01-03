@@ -193,6 +193,12 @@ interface MockVaultAPI {
  * Create a mock window.api object with all methods mocked.
  */
 export function createMockAPI(config?: MockAPIConfig): Record<string, unknown> {
+  const journalGet = vi.fn().mockResolvedValue(null)
+  const journalCreate = vi.fn().mockResolvedValue({ success: true })
+  const journalUpdate = vi.fn().mockResolvedValue({ success: true })
+  const journalDelete = vi.fn().mockResolvedValue({ success: true })
+  const journalGetMonth = vi.fn().mockResolvedValue([])
+
   const defaultMocks = {
     // Notes API
     notes: {
@@ -269,15 +275,22 @@ export function createMockAPI(config?: MockAPIConfig): Record<string, unknown> {
 
     // Journal API
     journal: {
-      get: vi.fn().mockResolvedValue(null),
-      create: vi.fn().mockResolvedValue({ success: true }),
-      update: vi.fn().mockResolvedValue({ success: true }),
-      delete: vi.fn().mockResolvedValue({ success: true }),
+      get: journalGet,
+      getEntry: journalGet,
+      create: journalCreate,
+      createEntry: journalCreate,
+      update: journalUpdate,
+      updateEntry: journalUpdate,
+      delete: journalDelete,
+      deleteEntry: journalDelete,
       list: vi.fn().mockResolvedValue({ entries: [] }),
       getHeatmap: vi.fn().mockResolvedValue([]),
-      getMonth: vi.fn().mockResolvedValue([]),
+      getMonth: journalGetMonth,
+      getMonthEntries: journalGetMonth,
       getYearStats: vi.fn().mockResolvedValue([]),
       getDayContext: vi.fn().mockResolvedValue({ tasks: [], events: [], overdueCount: 0 }),
+      getAllTags: vi.fn().mockResolvedValue([]),
+      getStreak: vi.fn().mockResolvedValue({ current: 0, longest: 0 }),
       ...config?.journal
     },
 
@@ -478,21 +491,24 @@ export function renderHookWithProviders<TResult, TProps = unknown>(
 // Test Setup Helpers
 // ============================================================================
 
-let originalWindow: typeof globalThis.window
+let originalApi: unknown
+let hadOriginalApi = false
 
 /**
  * Set up hook test environment.
  * Call in beforeEach to ensure clean state.
  */
 export function setupHookTestEnvironment(mockAPIConfig?: MockAPIConfig) {
-  originalWindow = globalThis.window
+  if (typeof window === 'undefined') {
+    throw new Error('setupHookTestEnvironment requires a DOM-like environment.')
+  }
+
+  hadOriginalApi = Object.prototype.hasOwnProperty.call(window, 'api')
+  originalApi = (window as Window & { api?: unknown }).api
   const mockAPI = createMockAPI(mockAPIConfig)
 
-  Object.defineProperty(globalThis, 'window', {
-    value: {
-      ...originalWindow,
-      api: mockAPI
-    },
+  Object.defineProperty(window, 'api', {
+    value: mockAPI,
     writable: true
   })
 
@@ -501,14 +517,20 @@ export function setupHookTestEnvironment(mockAPIConfig?: MockAPIConfig) {
 
 /**
  * Clean up hook test environment.
- * Call in afterEach to restore original window.
+ * Call in afterEach to restore the previous mock API.
  */
 export function cleanupHookTestEnvironment() {
-  if (originalWindow) {
-    Object.defineProperty(globalThis, 'window', {
-      value: originalWindow,
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  if (hadOriginalApi) {
+    Object.defineProperty(window, 'api', {
+      value: originalApi,
       writable: true
     })
+  } else {
+    delete (window as Window & { api?: unknown }).api
   }
 }
 

@@ -9,6 +9,12 @@ import { vi, beforeAll, afterAll, afterEach } from 'vitest'
 // Global Mocks
 // ============================================================================
 
+// Make Testing Library's fake-timer detection work with Vitest.
+const globalWithJest = globalThis as typeof globalThis & { jest?: typeof vi }
+if (!globalWithJest.jest) {
+  globalWithJest.jest = vi
+}
+
 // Mock crypto.randomUUID for consistent IDs in tests
 if (typeof globalThis.crypto === 'undefined') {
   Object.defineProperty(globalThis, 'crypto', {

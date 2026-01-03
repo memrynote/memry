@@ -165,15 +165,28 @@ const createMockApi = () => ({
   },
 
   // Journal API
-  journal: {
-    get: vi.fn().mockResolvedValue(null),
-    create: vi.fn().mockResolvedValue({ success: true }),
-    update: vi.fn().mockResolvedValue({ success: true }),
-    delete: vi.fn().mockResolvedValue({ success: true }),
-    list: vi.fn().mockResolvedValue({ entries: [] }),
-    getHeatmap: vi.fn().mockResolvedValue([]),
-    getMonth: vi.fn().mockResolvedValue([])
-  },
+  journal: (() => {
+    const getEntry = vi.fn().mockResolvedValue(null)
+    const createEntry = vi.fn().mockResolvedValue({ success: true })
+    const updateEntry = vi.fn().mockResolvedValue({ success: true })
+    const deleteEntry = vi.fn().mockResolvedValue({ success: true })
+    const getMonthEntries = vi.fn().mockResolvedValue([])
+
+    return {
+      get: getEntry,
+      getEntry,
+      create: createEntry,
+      createEntry,
+      update: updateEntry,
+      updateEntry,
+      delete: deleteEntry,
+      deleteEntry,
+      list: vi.fn().mockResolvedValue({ entries: [] }),
+      getHeatmap: vi.fn().mockResolvedValue([]),
+      getMonth: getMonthEntries,
+      getMonthEntries
+    }
+  })(),
 
   // Reminders API
   reminders: {
@@ -247,18 +260,27 @@ const createMockApi = () => ({
   onReminderDue: vi.fn().mockReturnValue(() => {})
 })
 
-// Set up mock window.api
-Object.defineProperty(globalThis, 'window', {
+if (typeof window === 'undefined') {
+  throw new Error('setup-dom requires a DOM-like environment.')
+}
+
+const windowTarget = window as Window & {
+  api?: unknown
+  electron?: unknown
+}
+
+Object.defineProperty(windowTarget, 'api', {
+  value: createMockApi(),
+  writable: true
+})
+
+Object.defineProperty(windowTarget, 'electron', {
   value: {
-    ...globalThis.window,
-    api: createMockApi(),
-    electron: {
-      ipcRenderer: {
-        send: vi.fn(),
-        invoke: vi.fn(),
-        on: vi.fn().mockReturnValue(() => {}),
-        removeListener: vi.fn()
-      }
+    ipcRenderer: {
+      send: vi.fn(),
+      invoke: vi.fn(),
+      on: vi.fn().mockReturnValue(() => {}),
+      removeListener: vi.fn()
     }
   },
   writable: true

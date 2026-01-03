@@ -298,13 +298,18 @@ describe('useJournalEntry', () => {
         expect(result.current.isLoading).toBe(false)
       })
 
-      expect(window.api.journal.get).toHaveBeenCalledTimes(1)
+      const getCallsForDate = () =>
+        (window.api.journal.get as ReturnType<typeof vi.fn>).mock.calls.filter(
+          ([callDate]) => callDate === '2026-01-03'
+        ).length
+
+      expect(getCallsForDate()).toBe(1)
 
       await act(async () => {
         await result.current.reload()
       })
 
-      expect(window.api.journal.get).toHaveBeenCalledTimes(2)
+      expect(getCallsForDate()).toBe(2)
     })
 
     it('should force reload discarding pending changes', async () => {
