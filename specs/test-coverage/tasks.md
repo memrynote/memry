@@ -752,64 +752,64 @@
 
 **File**: `src/main/inbox/stats.ts`
 
-- [ ] T402 Create src/main/inbox/stats.test.ts
-- [ ] T403 [P] Test getStaleThreshold, setStaleThreshold
-- [ ] T404 [P] Test isStale, getStaleCutoffDate
-- [ ] T405 Test getStaleItemIds, countStaleItems
-- [ ] T406 Test stat tracking: incrementCaptureCount, incrementProcessedCount
-- [ ] T407 Test getTodayStats, getTodayActivity
-- [ ] T408 Test getAverageTimeToProcess
+- [x] T402 Create src/main/inbox/stats.test.ts
+- [x] T403 [P] Test getStaleThreshold, setStaleThreshold
+- [x] T404 [P] Test isStale, getStaleCutoffDate
+- [x] T405 Test getStaleItemIds, countStaleItems
+- [x] T406 Test stat tracking: incrementCaptureCount, incrementProcessedCount
+- [x] T407 Test getTodayStats, getTodayActivity
+- [x] T408 Test getAverageTimeToProcess
 
 ### 7.2 Inbox Snooze Tests
 
 **File**: `src/main/inbox/snooze.ts`
 
-- [ ] T409 Create src/main/inbox/snooze.test.ts
-- [ ] T410 [P] Test snoozeItem, unsnoozeItem
-- [ ] T411 [P] Test getSnoozedItems, getDueSnoozeItems
-- [ ] T412 Test bulkSnoozeItems
-- [ ] T413 Test checkDueItemsOnStartup
-- [ ] T414 Test scheduler: startSnoozeScheduler, stopSnoozeScheduler
+- [x] T409 Create src/main/inbox/snooze.test.ts
+- [x] T410 [P] Test snoozeItem, unsnoozeItem
+- [x] T411 [P] Test getSnoozedItems, getDueSnoozeItems
+- [x] T412 Test bulkSnoozeItems
+- [x] T413 Test checkDueItemsOnStartup
+- [x] T414 Test scheduler: startSnoozeScheduler, stopSnoozeScheduler
 
 ### 7.3 Inbox Attachments Tests
 
 **File**: `src/main/inbox/attachments.ts`
 
-- [ ] T415 Create src/main/inbox/attachments.test.ts
-- [ ] T416 [P] Test getInboxAttachmentsDir, getItemAttachmentsDir
-- [ ] T417 [P] Test storeInboxAttachment, storeThumbnail
-- [ ] T418 Test deleteInboxAttachments, listInboxAttachments
-- [ ] T419 Test moveAttachmentsToNote
-- [ ] T420 Test resolveAttachmentUrl, hasAttachments
+- [x] T415 Create src/main/inbox/attachments.test.ts
+- [x] T416 [P] Test getInboxAttachmentsDir, getItemAttachmentsDir
+- [x] T417 [P] Test storeInboxAttachment, storeThumbnail
+- [x] T418 Test deleteInboxAttachments, listInboxAttachments
+- [x] T419 Test moveAttachmentsToNote
+- [x] T420 Test resolveAttachmentUrl, hasAttachments
 
 ### 7.4 Inbox Filing Tests
 
 **File**: `src/main/inbox/filing.ts`
 
-- [ ] T421 Create src/main/inbox/filing.test.ts
-- [ ] T422 [P] Test fileToFolder: file item to folder
-- [ ] T423 [P] Test convertToNote: standalone note creation
-- [ ] T424 Test linkToNote, linkToNotes: existing note linking
-- [ ] T425 Test bulkFileToFolder
+- [x] T421 Create src/main/inbox/filing.test.ts
+- [x] T422 [P] Test fileToFolder: file item to folder
+- [x] T423 [P] Test convertToNote: standalone note creation
+- [x] T424 Test linkToNote, linkToNotes: existing note linking
+- [x] T425 Test bulkFileToFolder
 
 ### 7.5 Inbox Metadata Tests
 
 **File**: `src/main/inbox/metadata.ts`
 
-- [ ] T426 Create src/main/inbox/metadata.test.ts (mock fetch)
-- [ ] T427 [P] Test fetchUrlMetadata: metascraper integration
-- [ ] T428 [P] Test isValidUrl, extractDomain
-- [ ] T429 Test downloadImage: image download
+- [x] T426 Create src/main/inbox/metadata.test.ts (mock fetch)
+- [x] T427 [P] Test fetchUrlMetadata: metascraper integration
+- [x] T428 [P] Test isValidUrl, extractDomain
+- [x] T429 Test downloadImage: image download
 
 ### 7.6 Social Extraction Tests
 
 **File**: `src/main/inbox/social.ts`
 
-- [ ] T430 Create src/main/inbox/social.test.ts (mock fetch)
-- [ ] T431 [P] Test detectSocialPlatform, isSocialPost
-- [ ] T432 [P] Test extractSocialPost: Twitter/X
-- [ ] T433 Test extractSocialPost: Mastodon, Bluesky
-- [ ] T434 Test createFallbackSocialMetadata
+- [x] T430 Create src/main/inbox/social.test.ts (mock fetch)
+- [x] T431 [P] Test detectSocialPlatform, isSocialPost
+- [x] T432 [P] Test extractSocialPost: Twitter/X
+- [x] T433 Test extractSocialPost: Mastodon, Bluesky
+- [x] T434 Test createFallbackSocialMetadata
 
 **Checkpoint**: Inbox integration tests complete
 

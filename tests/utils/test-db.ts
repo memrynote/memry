@@ -109,6 +109,100 @@ CREATE TABLE IF NOT EXISTS bookmarks (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(item_type, item_id)
 );
+
+-- Inbox items table
+CREATE TABLE IF NOT EXISTS inbox_items (
+  id TEXT PRIMARY KEY NOT NULL,
+  type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  modified_at TEXT NOT NULL DEFAULT (datetime('now')),
+  filed_at TEXT,
+  filed_to TEXT,
+  filed_action TEXT,
+  snoozed_until TEXT,
+  snooze_reason TEXT,
+  viewed_at TEXT,
+  processing_status TEXT DEFAULT 'complete',
+  processing_error TEXT,
+  metadata TEXT,
+  attachment_path TEXT,
+  thumbnail_path TEXT,
+  transcription TEXT,
+  transcription_status TEXT,
+  source_url TEXT,
+  source_title TEXT,
+  archived_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_inbox_items_type ON inbox_items(type);
+CREATE INDEX IF NOT EXISTS idx_inbox_items_created ON inbox_items(created_at);
+CREATE INDEX IF NOT EXISTS idx_inbox_items_filed ON inbox_items(filed_at);
+CREATE INDEX IF NOT EXISTS idx_inbox_items_snoozed ON inbox_items(snoozed_until);
+CREATE INDEX IF NOT EXISTS idx_inbox_items_processing ON inbox_items(processing_status);
+CREATE INDEX IF NOT EXISTS idx_inbox_items_archived ON inbox_items(archived_at);
+
+-- Inbox item tags table
+CREATE TABLE IF NOT EXISTS inbox_item_tags (
+  id TEXT PRIMARY KEY NOT NULL,
+  item_id TEXT NOT NULL REFERENCES inbox_items(id) ON DELETE CASCADE,
+  tag TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_inbox_tags_item ON inbox_item_tags(item_id);
+CREATE INDEX IF NOT EXISTS idx_inbox_tags_tag ON inbox_item_tags(tag);
+
+-- Filing history table
+CREATE TABLE IF NOT EXISTS filing_history (
+  id TEXT PRIMARY KEY NOT NULL,
+  item_type TEXT NOT NULL,
+  item_content TEXT,
+  filed_to TEXT NOT NULL,
+  filed_action TEXT NOT NULL,
+  tags TEXT,
+  filed_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_filing_history_type ON filing_history(item_type);
+CREATE INDEX IF NOT EXISTS idx_filing_history_filed_at ON filing_history(filed_at);
+
+-- Inbox stats table
+CREATE TABLE IF NOT EXISTS inbox_stats (
+  id TEXT PRIMARY KEY NOT NULL,
+  date TEXT NOT NULL UNIQUE,
+  capture_count_link INTEGER DEFAULT 0,
+  capture_count_note INTEGER DEFAULT 0,
+  capture_count_image INTEGER DEFAULT 0,
+  capture_count_voice INTEGER DEFAULT 0,
+  capture_count_clip INTEGER DEFAULT 0,
+  capture_count_pdf INTEGER DEFAULT 0,
+  capture_count_social INTEGER DEFAULT 0,
+  capture_count_reminder INTEGER DEFAULT 0,
+  processed_count INTEGER DEFAULT 0,
+  archived_count INTEGER DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_inbox_stats_date ON inbox_stats(date);
+
+-- Suggestion feedback table
+CREATE TABLE IF NOT EXISTS suggestion_feedback (
+  id TEXT PRIMARY KEY NOT NULL,
+  item_id TEXT NOT NULL,
+  item_type TEXT NOT NULL,
+  suggested_to TEXT NOT NULL,
+  actual_to TEXT NOT NULL,
+  accepted INTEGER NOT NULL,
+  confidence INTEGER NOT NULL,
+  suggested_tags TEXT,
+  actual_tags TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_suggestion_feedback_item_type ON suggestion_feedback(item_type);
+CREATE INDEX IF NOT EXISTS idx_suggestion_feedback_accepted ON suggestion_feedback(accepted);
+CREATE INDEX IF NOT EXISTS idx_suggestion_feedback_created ON suggestion_feedback(created_at);
 `
 
 // ============================================================================
@@ -347,6 +441,95 @@ export function seedTestData(db: TestDb): {
  */
 export function cleanupTestDatabase(result: TestDatabaseResult): void {
   result.close()
+}
+
+// ============================================================================
+// Inbox Seed Functions
+// ============================================================================
+
+export interface SeedInboxItemOptions {
+  id?: string
+  type?: string
+  title?: string
+  content?: string
+  createdAt?: string
+  filedAt?: string
+  filedTo?: string
+  filedAction?: string
+  snoozedUntil?: string
+  snoozeReason?: string
+  archivedAt?: string
+  sourceUrl?: string
+  metadata?: Record<string, unknown>
+}
+
+/**
+ * Seed inbox items for testing.
+ */
+export function seedInboxItems(db: TestDb, items: SeedInboxItemOptions[]): string[] {
+  const ids: string[] = []
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    const id = item.id || `inbox-item-${i}`
+    const type = item.type || 'note'
+    const title = item.title || `Test Item ${i}`
+    const content = item.content || null
+    const createdAt = item.createdAt || new Date().toISOString()
+    const metadata = item.metadata ? JSON.stringify(item.metadata) : null
+
+    db.run(sql`
+      INSERT INTO inbox_items (id, type, title, content, created_at, modified_at, filed_at, filed_to, filed_action, snoozed_until, snooze_reason, archived_at, source_url, metadata)
+      VALUES (${id}, ${type}, ${title}, ${content}, ${createdAt}, ${createdAt}, ${item.filedAt || null}, ${item.filedTo || null}, ${item.filedAction || null}, ${item.snoozedUntil || null}, ${item.snoozeReason || null}, ${item.archivedAt || null}, ${item.sourceUrl || null}, ${metadata})
+    `)
+    ids.push(id)
+  }
+  return ids
+}
+
+/**
+ * Seed a single inbox item.
+ */
+export function seedInboxItem(db: TestDb, options: SeedInboxItemOptions = {}): string {
+  return seedInboxItems(db, [options])[0]
+}
+
+/**
+ * Seed inbox item tags.
+ */
+export function seedInboxItemTags(db: TestDb, itemId: string, tags: string[]): void {
+  for (const tag of tags) {
+    const id = `tag-${itemId}-${tag}`
+    db.run(sql`
+      INSERT INTO inbox_item_tags (id, item_id, tag)
+      VALUES (${id}, ${itemId}, ${tag})
+    `)
+  }
+}
+
+/**
+ * Seed inbox stats for a specific date.
+ */
+export function seedInboxStats(
+  db: TestDb,
+  date: string,
+  stats: {
+    captureCountLink?: number
+    captureCountNote?: number
+    captureCountImage?: number
+    captureCountVoice?: number
+    captureCountClip?: number
+    captureCountPdf?: number
+    captureCountSocial?: number
+    processedCount?: number
+    archivedCount?: number
+  } = {}
+): string {
+  const id = `stats-${date}`
+  db.run(sql`
+    INSERT INTO inbox_stats (id, date, capture_count_link, capture_count_note, capture_count_image, capture_count_voice, capture_count_clip, capture_count_pdf, capture_count_social, processed_count, archived_count)
+    VALUES (${id}, ${date}, ${stats.captureCountLink || 0}, ${stats.captureCountNote || 0}, ${stats.captureCountImage || 0}, ${stats.captureCountVoice || 0}, ${stats.captureCountClip || 0}, ${stats.captureCountPdf || 0}, ${stats.captureCountSocial || 0}, ${stats.processedCount || 0}, ${stats.archivedCount || 0})
+  `)
+  return id
 }
 
 // Re-export sql for convenience
