@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY NOT NULL,
   project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   status_id TEXT REFERENCES statuses(id) ON DELETE SET NULL,
-  parent_id TEXT REFERENCES tasks(id) ON DELETE CASCADE,
+  parent_id TEXT,
   title TEXT NOT NULL,
   description TEXT,
   priority INTEGER NOT NULL DEFAULT 0,
@@ -60,9 +60,9 @@ CREATE TABLE IF NOT EXISTS tasks (
   due_date TEXT,
   due_time TEXT,
   start_date TEXT,
-  is_repeating INTEGER NOT NULL DEFAULT 0,
   repeat_config TEXT,
   repeat_from TEXT,
+  source_note_id TEXT,
   completed_at TEXT,
   archived_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS task_tags (
 CREATE TABLE IF NOT EXISTS task_notes (
   task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   note_id TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (task_id, note_id)
 );
 
@@ -87,7 +88,7 @@ CREATE TABLE IF NOT EXISTS task_notes (
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY NOT NULL,
   value TEXT NOT NULL,
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  modified_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Saved filters table
@@ -96,27 +97,7 @@ CREATE TABLE IF NOT EXISTS saved_filters (
   name TEXT NOT NULL,
   config TEXT NOT NULL,
   position INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  modified_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Inbox items table
-CREATE TABLE IF NOT EXISTS inbox_items (
-  id TEXT PRIMARY KEY NOT NULL,
-  type TEXT NOT NULL,
-  title TEXT,
-  content TEXT,
-  source_url TEXT,
-  attachment_path TEXT,
-  metadata TEXT,
-  tags TEXT,
-  filed_to TEXT,
-  filed_action TEXT,
-  snoozed_until TEXT,
-  snooze_reason TEXT,
-  archived_at TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  modified_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Bookmarks table
@@ -128,24 +109,6 @@ CREATE TABLE IF NOT EXISTS bookmarks (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(item_type, item_id)
 );
-
--- Reminders table
-CREATE TABLE IF NOT EXISTS reminders (
-  id TEXT PRIMARY KEY NOT NULL,
-  target_type TEXT NOT NULL,
-  target_id TEXT NOT NULL,
-  remind_at TEXT NOT NULL,
-  title TEXT,
-  note TEXT,
-  status TEXT NOT NULL DEFAULT 'pending',
-  snoozed_until TEXT,
-  dismissed_at TEXT,
-  highlight_text TEXT,
-  highlight_start INTEGER,
-  highlight_end INTEGER,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  modified_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
 `
 
 // ============================================================================
@@ -156,14 +119,16 @@ const INDEX_SCHEMA = `
 -- Note cache table
 CREATE TABLE IF NOT EXISTS note_cache (
   id TEXT PRIMARY KEY NOT NULL,
-  title TEXT NOT NULL,
   path TEXT NOT NULL UNIQUE,
-  folder TEXT,
-  content TEXT,
-  word_count INTEGER DEFAULT 0,
+  title TEXT NOT NULL,
   emoji TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  modified_at TEXT NOT NULL DEFAULT (datetime('now')),
+  content_hash TEXT NOT NULL,
+  word_count INTEGER NOT NULL DEFAULT 0,
+  character_count INTEGER NOT NULL DEFAULT 0,
+  date TEXT,
+  snippet TEXT,
+  created_at TEXT NOT NULL,
+  modified_at TEXT NOT NULL,
   indexed_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -171,13 +136,21 @@ CREATE TABLE IF NOT EXISTS note_cache (
 CREATE TABLE IF NOT EXISTS note_tags (
   note_id TEXT NOT NULL REFERENCES note_cache(id) ON DELETE CASCADE,
   tag TEXT NOT NULL,
+  pinned_at TEXT,
   PRIMARY KEY (note_id, tag)
+);
+
+-- Tag definitions table
+CREATE TABLE IF NOT EXISTS tag_definitions (
+  name TEXT PRIMARY KEY NOT NULL,
+  color TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Note links table
 CREATE TABLE IF NOT EXISTS note_links (
   source_id TEXT NOT NULL REFERENCES note_cache(id) ON DELETE CASCADE,
-  target_id TEXT REFERENCES note_cache(id) ON DELETE CASCADE,
+  target_id TEXT,
   target_title TEXT NOT NULL,
   PRIMARY KEY (source_id, target_title)
 );
@@ -187,52 +160,30 @@ CREATE TABLE IF NOT EXISTS note_properties (
   note_id TEXT NOT NULL REFERENCES note_cache(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   value TEXT,
-  type TEXT NOT NULL DEFAULT 'text',
+  type TEXT NOT NULL,
   PRIMARY KEY (note_id, name)
 );
 
 -- Property definitions table
 CREATE TABLE IF NOT EXISTS property_definitions (
   name TEXT PRIMARY KEY NOT NULL,
-  type TEXT NOT NULL DEFAULT 'text',
+  type TEXT NOT NULL,
   options TEXT,
   default_value TEXT,
   color TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Tag pins table
-CREATE TABLE IF NOT EXISTS tag_pins (
-  note_id TEXT NOT NULL,
-  tag TEXT NOT NULL,
-  pinned_at TEXT NOT NULL DEFAULT (datetime('now')),
-  PRIMARY KEY (note_id, tag)
-);
-
--- Tag colors table
-CREATE TABLE IF NOT EXISTS tag_colors (
-  tag TEXT PRIMARY KEY NOT NULL,
-  color TEXT NOT NULL
-);
-
 -- Note snapshots table
 CREATE TABLE IF NOT EXISTS note_snapshots (
   id TEXT PRIMARY KEY NOT NULL,
-  note_id TEXT NOT NULL,
+  note_id TEXT NOT NULL REFERENCES note_cache(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
+  title TEXT NOT NULL,
+  word_count INTEGER NOT NULL DEFAULT 0,
   content_hash TEXT NOT NULL,
-  word_count INTEGER DEFAULT 0,
+  reason TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- FTS virtual table for full-text search
-CREATE VIRTUAL TABLE IF NOT EXISTS note_fts USING fts5(
-  id UNINDEXED,
-  title,
-  content,
-  tags,
-  content='note_cache',
-  content_rowid='rowid'
 );
 `
 
@@ -261,6 +212,13 @@ export function createTestDataDb(): TestDatabaseResult {
     sqlite,
     close: () => sqlite.close()
   }
+}
+
+/**
+ * Create a default in-memory database for tests (data.db equivalent).
+ */
+export function createTestDatabase(): TestDatabaseResult {
+  return createTestDataDb()
 }
 
 /**
@@ -336,6 +294,59 @@ export function seedProjects(db: TestDb, count = 3): string[] {
     ids.push(id)
   }
   return ids
+}
+
+/**
+ * Seed a minimal set of data for integration tests.
+ */
+export function seedTestData(db: TestDb): {
+  projectId: string
+  statusIds: { todo: string; inProgress: string; done: string }
+  taskIds: string[]
+} {
+  const projectId = 'project-1'
+  db.run(sql`
+    INSERT INTO projects (id, name, color, position)
+    VALUES (${projectId}, 'Project 1', '#6366f1', 0)
+  `)
+
+  const statusIds = {
+    todo: 'status-todo',
+    inProgress: 'status-in-progress',
+    done: 'status-done'
+  }
+
+  db.run(sql`
+    INSERT INTO statuses (id, project_id, name, color, position, is_default, is_done)
+    VALUES (${statusIds.todo}, ${projectId}, 'To Do', '#6b7280', 0, 1, 0)
+  `)
+  db.run(sql`
+    INSERT INTO statuses (id, project_id, name, color, position, is_default, is_done)
+    VALUES (${statusIds.inProgress}, ${projectId}, 'In Progress', '#3b82f6', 1, 0, 0)
+  `)
+  db.run(sql`
+    INSERT INTO statuses (id, project_id, name, color, position, is_default, is_done)
+    VALUES (${statusIds.done}, ${projectId}, 'Done', '#22c55e', 2, 0, 1)
+  `)
+
+  const taskIds = ['task-1', 'task-2']
+  db.run(sql`
+    INSERT INTO tasks (id, project_id, status_id, title, position)
+    VALUES (${taskIds[0]}, ${projectId}, ${statusIds.todo}, 'Seed Task 1', 0)
+  `)
+  db.run(sql`
+    INSERT INTO tasks (id, project_id, status_id, title, position)
+    VALUES (${taskIds[1]}, ${projectId}, ${statusIds.inProgress}, 'Seed Task 2', 1)
+  `)
+
+  return { projectId, statusIds, taskIds }
+}
+
+/**
+ * Cleanup a test database created by this helper.
+ */
+export function cleanupTestDatabase(result: TestDatabaseResult): void {
+  result.close()
 }
 
 // Re-export sql for convenience
