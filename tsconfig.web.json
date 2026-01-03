@@ -11,6 +11,7 @@
     "composite": true,
     "jsx": "react-jsx",
     "baseUrl": ".",
+    "types": ["vitest/globals", "@testing-library/jest-dom"],
     "paths": {
       "@renderer/*": [
         "src/renderer/src/*"
