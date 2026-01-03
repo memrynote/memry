@@ -536,31 +536,31 @@
 
 **File**: `src/shared/db/queries/notes.ts`
 
-- [ ] T272 Create src/shared/db/queries/notes.test.ts
-- [ ] T273 [P] Test insertNoteCache, getNoteCacheById, getNoteCacheByPath
-- [ ] T274 [P] Test updateNoteCache, deleteNoteCache, noteCacheExists
-- [ ] T275 Test listNotesFromCache: pagination, folder filter
-- [ ] T276 Test listNotesFromCache: tag filter, search
-- [ ] T277 Test listNotesFromCache: sorting options
-- [ ] T278 Test countNotes with filters
-- [ ] T279 Test setNoteTags, getNoteTags, getAllTags
-- [ ] T280 Test findNotesByTag, findNotesWithTagInfo
-- [ ] T281 Test pinNoteToTag, unpinNoteFromTag
-- [ ] T282 Test renameTag, deleteTag, removeTagFromNote
-- [ ] T283 Test getOrCreateTag, getAllTagsWithColors, updateTagColor
-- [ ] T284 Test setNoteLinks, getOutgoingLinks, getIncomingLinks
-- [ ] T285 Test deleteLinksToNote, resolveNoteByTitle, updateLinkTargets
-- [ ] T286 Test bulkInsertNotes, clearNoteCache
-- [ ] T287 Test setNoteProperties, getNoteProperties, getNotePropertiesAsRecord
-- [ ] T288 Test property definitions: insertPropertyDefinition, updatePropertyDefinition
-- [ ] T289 Test property definitions: getPropertyDefinition, getAllPropertyDefinitions
-- [ ] T290 Test filterNotesByProperty: text, number, date, select filters
-- [ ] T291 Test snapshot operations: insertNoteSnapshot, getNoteSnapshots
-- [ ] T292 Test snapshot operations: getLatestSnapshot, snapshotExistsWithHash
-- [ ] T293 Test snapshot operations: pruneOldSnapshots
-- [ ] T294 Test journal queries: getJournalEntryByDate, journalEntryExistsByDate
-- [ ] T295 Test journal queries: getHeatmapData, getJournalMonthEntries
-- [ ] T296 Test journal queries: getJournalYearStats, getJournalStreak
+- [x] T272 Create src/shared/db/queries/notes.test.ts
+- [x] T273 [P] Test insertNoteCache, getNoteCacheById, getNoteCacheByPath
+- [x] T274 [P] Test updateNoteCache, deleteNoteCache, noteCacheExists
+- [x] T275 Test listNotesFromCache: pagination, folder filter
+- [x] T276 Test listNotesFromCache: tag filter, search
+- [x] T277 Test listNotesFromCache: sorting options
+- [x] T278 Test countNotes with filters
+- [x] T279 Test setNoteTags, getNoteTags, getAllTags
+- [x] T280 Test findNotesByTag, findNotesWithTagInfo
+- [x] T281 Test pinNoteToTag, unpinNoteFromTag
+- [x] T282 Test renameTag, deleteTag, removeTagFromNote
+- [x] T283 Test getOrCreateTag, getAllTagsWithColors, updateTagColor
+- [x] T284 Test setNoteLinks, getOutgoingLinks, getIncomingLinks
+- [x] T285 Test deleteLinksToNote, resolveNoteByTitle, updateLinkTargets
+- [x] T286 Test bulkInsertNotes, clearNoteCache
+- [x] T287 Test setNoteProperties, getNoteProperties, getNotePropertiesAsRecord
+- [x] T288 Test property definitions: insertPropertyDefinition, updatePropertyDefinition
+- [x] T289 Test property definitions: getPropertyDefinition, getAllPropertyDefinitions
+- [x] T290 Test filterNotesByProperty: text, number, date, select filters
+- [x] T291 Test snapshot operations: insertNoteSnapshot, getNoteSnapshots
+- [x] T292 Test snapshot operations: getLatestSnapshot, snapshotExistsWithHash
+- [x] T293 Test snapshot operations: pruneOldSnapshots
+- [x] T294 Test journal queries: getJournalEntryByDate, journalEntryExistsByDate
+- [x] T295 Test journal queries: getHeatmapData, getJournalMonthEntries
+- [x] T296 Test journal queries: getJournalYearStats, getJournalStreak
 
 ### 5.4 Projects Queries Tests
 
@@ -584,18 +584,18 @@
 
 **File**: `src/shared/db/queries/search.ts`
 
-- [ ] T310 Create src/shared/db/queries/search.test.ts
-- [ ] T311 [P] Test searchNotes: basic FTS5 search
-- [ ] T312 [P] Test searchNotes: BM25 ranking
+- [x] T310 Create src/shared/db/queries/search.test.ts
+- [x] T311 [P] Test searchNotes: basic FTS5 search
+- [x] T312 [P] Test searchNotes: BM25 ranking
 - [ ] T313 [P] Test searchNotes: phrase matching
-- [ ] T314 Test searchNotes: prefix matching
-- [ ] T315 Test quickSearch: optimized for command palette
-- [ ] T316 Test getSuggestions: tags, titles autocomplete
-- [ ] T317 Test findNotesByTag
-- [ ] T318 Test findBacklinks: incoming link discovery
-- [ ] T319 Test getSearchableCount, isFtsHealthy
-- [ ] T320 Test highlightTerms, extractSnippet
-- [ ] T321 Test escapeSearchQuery, buildPrefixQuery
+- [x] T314 Test searchNotes: prefix matching
+- [x] T315 Test quickSearch: optimized for command palette
+- [x] T316 Test getSuggestions: tags, titles autocomplete
+- [x] T317 Test findNotesByTag
+- [x] T318 Test findBacklinks: incoming link discovery
+- [x] T319 Test getSearchableCount, isFtsHealthy
+- [x] T320 Test highlightTerms, extractSnippet
+- [x] T321 Test escapeSearchQuery, buildPrefixQuery
 
 ### 5.6 Bookmarks Queries Tests
 
@@ -624,13 +624,13 @@
 
 **File**: `src/main/database/fts.ts`
 
-- [ ] T335 Create src/main/database/fts.test.ts
-- [ ] T336 [P] Test createFtsTable: FTS5 virtual table creation
-- [ ] T337 [P] Test insertFtsNote, updateFtsContent, deleteFtsNote
-- [ ] T338 Test FTS query: basic search
-- [ ] T339 Test FTS query: boolean operators (AND, OR, NOT)
-- [ ] T340 Test FTS query: prefix matching
-- [ ] T341 Test clearFtsTable, getFtsCount, ftsNoteExists
+- [x] T335 Create src/main/database/fts.test.ts
+- [x] T336 [P] Test createFtsTable: FTS5 virtual table creation
+- [x] T337 [P] Test insertFtsNote, updateFtsContent, deleteFtsNote
+- [x] T338 Test FTS query: basic search
+- [x] T339 Test FTS query: boolean operators (AND, OR, NOT)
+- [x] T340 Test FTS query: prefix matching
+- [x] T341 Test clearFtsTable, getFtsCount, ftsNoteExists
 
 **Checkpoint**: Database integration tests complete
 
