@@ -1142,10 +1142,10 @@
 
 ### 14.1 Main Process Core Services (P1)
 
-- [ ] T572 Create src/main/lib/embeddings.test.ts
-- [ ] T573 [P] Test initEmbeddingModel: progress events, cache dir, error handling
-- [ ] T574 [P] Test generateEmbedding: length guard, truncation, dimension check
-- [ ] T575 Test model state helpers: isModelLoaded, isModelLoading, getModelInfo, unloadModel
+- [x] T572 Create src/main/lib/embeddings.test.ts
+- [x] T573 [P] Test initEmbeddingModel: progress events, cache dir, error handling
+- [x] T574 [P] Test generateEmbedding: length guard, truncation, dimension check
+- [x] T575 Test model state helpers: isModelLoaded, isModelLoading, getModelInfo, unloadModel
 
 - [ ] T576 Create src/main/lib/reminders.test.ts
 - [ ] T577 [P] Test CRUD: createReminder, updateReminder, deleteReminder, getReminder
@@ -1154,23 +1154,23 @@
 - [ ] T580 Test snooze/dismiss flows + event emission
 - [ ] T581 Test inbox item creation + notification click navigation (mock Notification/BrowserWindow)
 
-- [ ] T582 Create src/main/store.test.ts
-- [ ] T583 [P] Test vault CRUD: getVaults, upsertVault, removeVault, findVault
-- [ ] T584 Test get/set currentVault and touchVault timestamp updates
+- [x] T582 Create src/main/store.test.ts
+- [x] T583 [P] Test vault CRUD: getVaults, upsertVault, removeVault, findVault
+- [x] T584 Test get/set currentVault and touchVault timestamp updates
 
 ### 14.2 Database Bootstrap & Seed (P1)
 
-- [ ] T585 Create src/main/database/client.test.ts
-- [ ] T586 [P] Test initDatabase/initIndexDatabase pragmas + close lifecycle
-- [ ] T587 [P] Test checkIndexHealth: missing/corrupt/healthy states
-- [ ] T588 Test withTimeout: resolves result and rejects on timeout
+- [x] T585 Create src/main/database/client.test.ts
+- [x] T586 [P] Test initDatabase/initIndexDatabase pragmas + close lifecycle
+- [x] T587 [P] Test checkIndexHealth: missing/corrupt/healthy states
+- [x] T588 Test withTimeout: resolves result and rejects on timeout
 
-- [ ] T589 Create src/main/database/migrate.test.ts
-- [ ] T590 [P] Test runMigrations creates core tables
-- [ ] T591 [P] Test runIndexMigrations creates note cache + vec_notes tables
+- [x] T589 Create src/main/database/migrate.test.ts
+- [x] T590 [P] Test runMigrations creates core tables
+- [x] T591 [P] Test runIndexMigrations creates note cache + vec_notes tables
 
-- [ ] T592 Create src/main/database/seed.test.ts
-- [ ] T593 [P] Test seedDefaults idempotency and inbox project creation
+- [x] T592 Create src/main/database/seed.test.ts
+- [x] T593 [P] Test seedDefaults idempotency and inbox project creation
 - [ ] T594 Test seedSampleProject and seedPerformanceTestProject outputs
 
 ### 14.3 Vault Watcher & Rename Tracking (P1)
