@@ -1857,8 +1857,6 @@ export interface TabSettings {
   openInNewTab: 'always' | 'never' | 'modifier'
   /** Single-click opens preview, double-click opens permanent */
   previewMode: boolean
-  /** Keep pinned tabs on left */
-  showPinnedTabsFirst: boolean
   /** Restore tabs from last session on app start */
   restoreSessionOnStart: boolean
   /** When to show close button: always, on hover, or only on active tab */

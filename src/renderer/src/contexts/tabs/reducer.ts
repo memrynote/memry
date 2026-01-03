@@ -66,10 +66,47 @@ export function tabReducer(state: TabSystemState, action: TabAction): TabSystemS
     // =========================================================================
 
     case 'OPEN_TAB': {
-      const { tab, groupId = state.activeGroupId, position, background } = action.payload
+      const {
+        tab,
+        groupId = state.activeGroupId,
+        position,
+        background,
+        replaceActive
+      } = action.payload
       const targetGroup = state.tabGroups[groupId]
 
       if (!targetGroup) return state
+
+      // Handle replaceActive - replace the current active tab instead of creating a new one
+      if (replaceActive && targetGroup.activeTabId) {
+        const activeTabIndex = targetGroup.tabs.findIndex((t) => t.id === targetGroup.activeTabId)
+        if (activeTabIndex !== -1) {
+          const activeTab = targetGroup.tabs[activeTabIndex]
+          // Don't replace pinned tabs - open a new tab instead
+          if (!activeTab.isPinned) {
+            const newTab: Tab = {
+              ...tab,
+              id: generateId(),
+              openedAt: Date.now(),
+              lastAccessedAt: Date.now()
+            }
+            const newTabs = [...targetGroup.tabs]
+            newTabs[activeTabIndex] = newTab
+
+            return {
+              ...state,
+              tabGroups: {
+                ...state.tabGroups,
+                [groupId]: {
+                  ...targetGroup,
+                  tabs: newTabs,
+                  activeTabId: newTab.id
+                }
+              }
+            }
+          }
+        }
+      }
 
       // Check for singleton - if already open, focus existing and merge viewState
       if (SINGLETON_TAB_TYPES.includes(tab.type)) {
@@ -166,9 +203,8 @@ export function tabReducer(state: TabSystemState, action: TabAction): TabSystemS
       // Determine position
       let insertIndex = position ?? targetGroup.tabs.length
 
-      // If showing pinned tabs first and new tab is not pinned,
-      // insert after pinned tabs
-      if (state.settings.showPinnedTabsFirst && !tab.isPinned) {
+      // Pinned tabs are always kept on the left - insert after them for non-pinned tabs
+      if (!tab.isPinned) {
         const afterPinnedIndex = getInsertIndexAfterPinned(targetGroup.tabs)
         insertIndex = Math.max(insertIndex, afterPinnedIndex)
       }
@@ -489,17 +525,13 @@ export function tabReducer(state: TabSystemState, action: TabAction): TabSystemS
       const tab = { ...group.tabs[tabIndex], isPinned: true, isPreview: false }
       let newTabs = group.tabs.filter((t) => t.id !== tabId)
 
-      // Move to end of pinned tabs
-      if (state.settings.showPinnedTabsFirst) {
-        const lastPinnedIndex = newTabs.findLastIndex((t) => t.isPinned)
-        newTabs = [
-          ...newTabs.slice(0, lastPinnedIndex + 1),
-          tab,
-          ...newTabs.slice(lastPinnedIndex + 1)
-        ]
-      } else {
-        newTabs = [...newTabs.slice(0, tabIndex), tab, ...newTabs.slice(tabIndex)]
-      }
+      // Move to end of pinned tabs (pinned tabs always stay on the left)
+      const lastPinnedIndex = newTabs.findLastIndex((t) => t.isPinned)
+      newTabs = [
+        ...newTabs.slice(0, lastPinnedIndex + 1),
+        tab,
+        ...newTabs.slice(lastPinnedIndex + 1)
+      ]
 
       return {
         ...state,
@@ -525,17 +557,13 @@ export function tabReducer(state: TabSystemState, action: TabAction): TabSystemS
       const tab = { ...group.tabs[tabIndex], isPinned: false }
       let newTabs = group.tabs.filter((t) => t.id !== tabId)
 
-      if (state.settings.showPinnedTabsFirst) {
-        // Move to start of unpinned tabs (after pinned)
-        const lastPinnedIndex = newTabs.findLastIndex((t) => t.isPinned)
-        newTabs = [
-          ...newTabs.slice(0, lastPinnedIndex + 1),
-          tab,
-          ...newTabs.slice(lastPinnedIndex + 1)
-        ]
-      } else {
-        newTabs = [...newTabs.slice(0, tabIndex), tab, ...newTabs.slice(tabIndex)]
-      }
+      // Move to start of unpinned tabs (after pinned) - pinned tabs always stay on the left
+      const lastPinnedIndex = newTabs.findLastIndex((t) => t.isPinned)
+      newTabs = [
+        ...newTabs.slice(0, lastPinnedIndex + 1),
+        tab,
+        ...newTabs.slice(lastPinnedIndex + 1)
+      ]
 
       return {
         ...state,

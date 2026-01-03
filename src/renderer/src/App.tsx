@@ -16,6 +16,7 @@ import { ThemeProvider } from 'next-themes'
 
 // Tab System imports
 import { TabProvider, useTabs, getOrderedGroupWidths } from '@/contexts/tabs'
+import { useTabPersistence, useSessionRestore } from '@/contexts/tabs/persistence'
 import { TasksProvider } from '@/contexts/tasks'
 import { TabBarWithDrag, TabDragProvider, TabErrorBoundary } from '@/components/tabs'
 import { SplitViewContainer, SinglePaneContent } from '@/components/split-view'
@@ -47,6 +48,24 @@ export type TaskSelectionType = 'view' | 'project'
 
 // Combined page type for routing
 export type AppPage = BasePage | 'tasks'
+
+// =============================================================================
+// TAB PERSISTENCE MANAGER (inside TabProvider)
+// =============================================================================
+
+/**
+ * Component that enables tab session persistence.
+ * Must be rendered inside TabProvider.
+ */
+function TabPersistenceManager({ children }: { children: React.ReactNode }): React.JSX.Element {
+  // Auto-save tab state on changes (debounced)
+  useTabPersistence()
+
+  // Restore session on mount
+  useSessionRestore()
+
+  return <>{children}</>
+}
 
 // =============================================================================
 // MAIN APP CONTENT (inside TabProvider)
@@ -492,16 +511,18 @@ function App(): React.JSX.Element {
       >
         <AIAgentProvider>
           <TabProvider>
-            <AppSidebar
-              currentPage={currentPage}
-              viewCounts={viewCounts}
-              onOpenSearch={() => setSearchOpen(true)}
-            />
-            <SidebarInset className="flex flex-col">
-              <AppContent searchOpen={searchOpen} onSearchOpenChange={setSearchOpen} />
-            </SidebarInset>
-            {/* Drag Overlay - only for task drag to sidebar */}
-            <TaskDragOverlay projects={projectsWithCounts} />
+            <TabPersistenceManager>
+              <AppSidebar
+                currentPage={currentPage}
+                viewCounts={viewCounts}
+                onOpenSearch={() => setSearchOpen(true)}
+              />
+              <SidebarInset className="flex flex-col">
+                <AppContent searchOpen={searchOpen} onSearchOpenChange={setSearchOpen} />
+              </SidebarInset>
+              {/* Drag Overlay - only for task drag to sidebar */}
+              <TaskDragOverlay projects={projectsWithCounts} />
+            </TabPersistenceManager>
           </TabProvider>
         </AIAgentProvider>
       </TasksProvider>

@@ -205,19 +205,6 @@ function GeneralSettings() {
     [updateSettings, updateContextSettings]
   )
 
-  const handleShowPinnedFirstChange = useCallback(
-    async (enabled: boolean) => {
-      const success = await updateSettings({ showPinnedTabsFirst: enabled })
-      if (success) {
-        updateContextSettings({ showPinnedTabsFirst: enabled })
-        toast.success(enabled ? 'Pinned tabs will appear first' : 'Pinned tabs position updated')
-      } else {
-        toast.error('Failed to update setting')
-      }
-    },
-    [updateSettings, updateContextSettings]
-  )
-
   const handleRestoreSessionChange = useCallback(
     async (enabled: boolean) => {
       const success = await updateSettings({ restoreSessionOnStart: enabled })
@@ -301,19 +288,6 @@ function GeneralSettings() {
               <SelectItem value="modifier">New tab with Cmd/Ctrl+Click</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-
-        {/* Show Pinned Tabs First */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="pinned-first">Show Pinned Tabs First</Label>
-            <p className="text-sm text-muted-foreground">Keep pinned tabs on the left side</p>
-          </div>
-          <Switch
-            id="pinned-first"
-            checked={settings.showPinnedTabsFirst}
-            onCheckedChange={handleShowPinnedFirstChange}
-          />
         </div>
 
         {/* Restore Session */}

@@ -410,7 +410,6 @@ const api = {
     setTabSettings: (settings: {
       openInNewTab?: 'always' | 'never' | 'modifier'
       previewMode?: boolean
-      showPinnedTabsFirst?: boolean
       restoreSessionOnStart?: boolean
       tabCloseButton?: 'always' | 'hover' | 'active'
     }) => ipcRenderer.invoke(SettingsChannels.invoke.SET_TAB_SETTINGS, settings)

@@ -25,8 +25,6 @@ interface UseTabPreferencesReturn {
   setPreviewMode: (enabled: boolean) => Promise<boolean>
   /** Set open in new tab behavior */
   setOpenInNewTab: (value: TabSettings['openInNewTab']) => Promise<boolean>
-  /** Set show pinned tabs first */
-  setShowPinnedTabsFirst: (enabled: boolean) => Promise<boolean>
   /** Set restore session on start */
   setRestoreSessionOnStart: (enabled: boolean) => Promise<boolean>
   /** Set tab close button behavior */
@@ -129,13 +127,6 @@ export function useTabPreferences(): UseTabPreferencesReturn {
     [updateSettings]
   )
 
-  const setShowPinnedTabsFirst = useCallback(
-    async (enabled: boolean): Promise<boolean> => {
-      return updateSettings({ showPinnedTabsFirst: enabled })
-    },
-    [updateSettings]
-  )
-
   const setRestoreSessionOnStart = useCallback(
     async (enabled: boolean): Promise<boolean> => {
       return updateSettings({ restoreSessionOnStart: enabled })
@@ -157,7 +148,6 @@ export function useTabPreferences(): UseTabPreferencesReturn {
     updateSettings,
     setPreviewMode,
     setOpenInNewTab,
-    setShowPinnedTabsFirst,
     setRestoreSessionOnStart,
     setTabCloseButton
   }

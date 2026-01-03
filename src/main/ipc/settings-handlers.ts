@@ -23,7 +23,6 @@ const SETTINGS_KEYS = {
   // Tab settings
   TAB_PREVIEW_MODE: 'tabs.previewMode',
   TAB_OPEN_IN_NEW_TAB: 'tabs.openInNewTab',
-  TAB_SHOW_PINNED_FIRST: 'tabs.showPinnedTabsFirst',
   TAB_RESTORE_SESSION: 'tabs.restoreSessionOnStart',
   TAB_CLOSE_BUTTON: 'tabs.tabCloseButton'
 } as const
@@ -67,8 +66,6 @@ export interface TabSettings {
   openInNewTab: 'always' | 'never' | 'modifier'
   /** Single-click opens preview, double-click opens permanent */
   previewMode: boolean
-  /** Keep pinned tabs on left */
-  showPinnedTabsFirst: boolean
   /** Restore tabs from last session on app start */
   restoreSessionOnStart: boolean
   /** When to show close button: always, on hover, or only on active tab */
@@ -77,9 +74,8 @@ export interface TabSettings {
 
 /** Default tab settings values */
 const DEFAULT_TAB_SETTINGS: TabSettings = {
-  openInNewTab: 'modifier',
+  openInNewTab: 'never',
   previewMode: false,
-  showPinnedTabsFirst: true,
   restoreSessionOnStart: true,
   tabCloseButton: 'hover'
 }
@@ -281,7 +277,6 @@ export function registerSettingsHandlers(): void {
 
     const previewModeStr = getSetting(db, SETTINGS_KEYS.TAB_PREVIEW_MODE)
     const openInNewTabStr = getSetting(db, SETTINGS_KEYS.TAB_OPEN_IN_NEW_TAB)
-    const showPinnedFirstStr = getSetting(db, SETTINGS_KEYS.TAB_SHOW_PINNED_FIRST)
     const restoreSessionStr = getSetting(db, SETTINGS_KEYS.TAB_RESTORE_SESSION)
     const closeButtonStr = getSetting(db, SETTINGS_KEYS.TAB_CLOSE_BUTTON)
 
@@ -290,10 +285,6 @@ export function registerSettingsHandlers(): void {
         previewModeStr !== null ? previewModeStr === 'true' : DEFAULT_TAB_SETTINGS.previewMode,
       openInNewTab:
         (openInNewTabStr as TabSettings['openInNewTab']) ?? DEFAULT_TAB_SETTINGS.openInNewTab,
-      showPinnedTabsFirst:
-        showPinnedFirstStr !== null
-          ? showPinnedFirstStr === 'true'
-          : DEFAULT_TAB_SETTINGS.showPinnedTabsFirst,
       restoreSessionOnStart:
         restoreSessionStr !== null
           ? restoreSessionStr === 'true'
@@ -317,13 +308,6 @@ export function registerSettingsHandlers(): void {
       }
       if (settings.openInNewTab !== undefined) {
         setSetting(db, SETTINGS_KEYS.TAB_OPEN_IN_NEW_TAB, settings.openInNewTab)
-      }
-      if (settings.showPinnedTabsFirst !== undefined) {
-        setSetting(
-          db,
-          SETTINGS_KEYS.TAB_SHOW_PINNED_FIRST,
-          settings.showPinnedTabsFirst ? 'true' : 'false'
-        )
       }
       if (settings.restoreSessionOnStart !== undefined) {
         setSetting(

@@ -274,14 +274,18 @@ export const TabProvider = ({
   // =========================================================================
 
   const openTab = useCallback(
-    (tab: Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>, options: OpenTabOptions = {}) => {
+    (
+      tab: Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>,
+      options: OpenTabOptions & { replaceActive?: boolean } = {}
+    ) => {
       dispatch({
         type: 'OPEN_TAB',
         payload: {
           tab,
           groupId: options.groupId,
           position: options.position,
-          background: options.background
+          background: options.background,
+          replaceActive: options.replaceActive
         }
       })
     },
