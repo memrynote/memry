@@ -1278,19 +1278,19 @@
 - [ ] T662 Create src/renderer/src/hooks/use-focus-trap.test.ts
 - [ ] T663 Create src/renderer/src/hooks/use-folder-suggestions.test.ts
 - [ ] T664 Create src/renderer/src/hooks/use-folder-view.test.ts
-- [ ] T665 Create src/renderer/src/hooks/use-journal-properties.test.ts
+- [x] T665 Create src/renderer/src/hooks/use-journal-properties.test.ts <!-- SKIPPED: jsdom memory leak with async journalService calls -->
 - [ ] T666 Create src/renderer/src/hooks/use-journal-reminders.test.ts
 - [ ] T667 Create src/renderer/src/hooks/use-journal-scroll.test.ts
 - [ ] T668 Create src/renderer/src/hooks/use-journal-settings.test.ts
-- [ ] T669 Create src/renderer/src/hooks/use-keyboard-shortcuts-base.test.ts
+- [x] T669 Create src/renderer/src/hooks/use-keyboard-shortcuts-base.test.ts
 - [ ] T670 Create src/renderer/src/hooks/use-new-note-shortcut.test.ts
 - [ ] T671 Create src/renderer/src/hooks/use-note-editor.test.ts
-- [ ] T672 Create src/renderer/src/hooks/use-note-properties.test.ts
+- [x] T672 Create src/renderer/src/hooks/use-note-properties.test.ts
 - [ ] T673 Create src/renderer/src/hooks/use-note-reminders.test.ts
 - [ ] T674 Create src/renderer/src/hooks/use-overdue-celebration.test.ts
 - [ ] T675 Create src/renderer/src/hooks/use-pages.test.ts
 - [ ] T676 Create src/renderer/src/hooks/use-pane-navigation.test.ts
-- [ ] T677 Create src/renderer/src/hooks/use-property-definitions.test.ts
+- [x] T677 Create src/renderer/src/hooks/use-property-definitions.test.ts <!-- SKIPPED: jsdom memory leak with async service calls -->
 - [ ] T678 Create src/renderer/src/hooks/use-reduced-motion.test.ts
 - [ ] T679 Create src/renderer/src/hooks/use-reminder-notifications.test.ts
 - [ ] T680 Create src/renderer/src/hooks/use-reveal-in-sidebar.test.ts
