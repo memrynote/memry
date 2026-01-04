@@ -1231,38 +1231,38 @@
 
 ### 14.6 Renderer Service Layer Tests (P2)
 
-- [ ] T631 Create src/renderer/src/services/notes-service.test.ts
-- [ ] T632 [P] Test notes-service API mapping + event subscriptions
+- [x] T631 Create src/renderer/src/services/notes-service.test.ts
+- [x] T632 [P] Test notes-service API mapping + event subscriptions
 
-- [ ] T633 Create src/renderer/src/services/tasks-service.test.ts
-- [ ] T634 [P] Test tasks-service CRUD + bulk operations mapping
+- [x] T633 Create src/renderer/src/services/tasks-service.test.ts
+- [x] T634 [P] Test tasks-service CRUD + bulk operations mapping
 
-- [ ] T635 Create src/renderer/src/services/journal-service.test.ts
-- [ ] T636 [P] Test journal-service list/read/write mapping
+- [x] T635 Create src/renderer/src/services/journal-service.test.ts
+- [x] T636 [P] Test journal-service list/read/write mapping
 
-- [ ] T637 Create src/renderer/src/services/inbox-service.test.ts
-- [ ] T638 [P] Test inbox-service capture, file, snooze, metadata mapping
+- [x] T637 Create src/renderer/src/services/inbox-service.test.ts
+- [x] T638 [P] Test inbox-service capture, file, snooze, metadata mapping
 
-- [ ] T639 Create src/renderer/src/services/reminder-service.test.ts
-- [ ] T640 [P] Test reminder-service CRUD + event subscriptions
+- [x] T639 Create src/renderer/src/services/reminder-service.test.ts
+- [x] T640 [P] Test reminder-service CRUD + event subscriptions
 
-- [ ] T641 Create src/renderer/src/services/templates-service.test.ts
-- [ ] T642 [P] Test templates-service CRUD + folder default mapping
+- [x] T641 Create src/renderer/src/services/templates-service.test.ts
+- [x] T642 [P] Test templates-service CRUD + folder default mapping
 
-- [ ] T643 Create src/renderer/src/services/saved-filters-service.test.ts
-- [ ] T644 [P] Test saved-filters-service CRUD + reorder mapping
+- [x] T643 Create src/renderer/src/services/saved-filters-service.test.ts
+- [x] T644 [P] Test saved-filters-service CRUD + reorder mapping
 
-- [ ] T645 Create src/renderer/src/services/tags-service.test.ts
-- [ ] T646 [P] Test tags-service list/update mapping
+- [x] T645 Create src/renderer/src/services/tags-service.test.ts
+- [x] T646 [P] Test tags-service list/update mapping
 
-- [ ] T647 Create src/renderer/src/services/search-service.test.ts
-- [ ] T648 [P] Test search-service search/quick-search/suggestions mapping
+- [x] T647 Create src/renderer/src/services/search-service.test.ts
+- [x] T648 [P] Test search-service search/quick-search/suggestions mapping
 
-- [ ] T649 Create src/renderer/src/services/vault-service.test.ts
-- [ ] T650 [P] Test vault-service create/open/switch/status mapping
+- [x] T649 Create src/renderer/src/services/vault-service.test.ts
+- [x] T650 [P] Test vault-service create/open/switch/status mapping
 
-- [ ] T651 Create src/renderer/src/services/ai-connections-service.test.ts
-- [ ] T652 [P] Test ai-connections-service CRUD + connection test mapping
+- [x] T651 Create src/renderer/src/services/ai-connections-service.test.ts
+- [x] T652 [P] Test ai-connections-service CRUD + connection test mapping
 
 ### 14.7 Renderer Hooks Coverage Expansion (P2)
 
