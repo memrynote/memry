@@ -5,20 +5,8 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
+import { createMockApi } from '@tests/setup-dom'
 import { useJournalProperties } from './use-journal-properties'
-
-// ============================================================================
-// Mocks
-// ============================================================================
-
-vi.mock('@/services/journal-service', () => ({
-  journalService: {
-    getEntry: vi.fn(),
-    updateEntry: vi.fn()
-  }
-}))
-
-import { journalService } from '@/services/journal-service'
 
 // ============================================================================
 // Test Data
@@ -44,10 +32,13 @@ const mockEntry = {
 // ============================================================================
 
 describe('useJournalProperties', () => {
+  let api: ReturnType<typeof createMockApi>
+
   beforeEach(() => {
-    vi.clearAllMocks()
-    vi.mocked(journalService.getEntry).mockResolvedValue(mockEntry)
-    vi.mocked(journalService.updateEntry).mockResolvedValue(mockEntry)
+    api = createMockApi()
+    api.journal.getEntry = vi.fn().mockResolvedValue(mockEntry)
+    api.journal.updateEntry = vi.fn().mockResolvedValue(mockEntry)
+    ;(window as Window & { api: unknown }).api = api
   })
 
   afterEach(() => {
@@ -141,7 +132,7 @@ describe('useJournalProperties', () => {
         await result.current.updateProperty('energy', 10)
       })
 
-      expect(journalService.updateEntry).toHaveBeenCalledWith({
+      expect(api.journal.updateEntry).toHaveBeenCalledWith({
         date: '2024-12-25',
         properties: expect.objectContaining({
           energy: 10
@@ -156,7 +147,7 @@ describe('useJournalProperties', () => {
         await result.current.updateProperty('mood', 'value')
       })
 
-      expect(journalService.updateEntry).not.toHaveBeenCalled()
+      expect(api.journal.updateEntry).not.toHaveBeenCalled()
     })
   })
 
@@ -188,12 +179,36 @@ describe('useJournalProperties', () => {
         await result.current.addProperty('score', 95)
       })
 
-      expect(journalService.updateEntry).toHaveBeenCalledWith({
+      expect(api.journal.updateEntry).toHaveBeenCalledWith({
         date: '2024-12-25',
         properties: expect.objectContaining({
           score: 95
         })
       })
+    })
+
+    it('should infer type from value', async () => {
+      const { result } = renderHook(() =>
+        useJournalProperties('2024-12-25', {})
+      )
+
+      // Test number inference
+      await act(async () => {
+        await result.current.addProperty('num', 42)
+      })
+      expect(result.current.properties.find((p) => p.name === 'num')?.type).toBe('number')
+
+      // Test boolean inference
+      await act(async () => {
+        await result.current.addProperty('bool', true)
+      })
+      expect(result.current.properties.find((p) => p.name === 'bool')?.type).toBe('checkbox')
+
+      // Test array inference
+      await act(async () => {
+        await result.current.addProperty('arr', ['a', 'b'])
+      })
+      expect(result.current.properties.find((p) => p.name === 'arr')?.type).toBe('multiselect')
     })
 
     it('should do nothing with null date', async () => {
@@ -203,7 +218,7 @@ describe('useJournalProperties', () => {
         await result.current.addProperty('prop', 'value')
       })
 
-      expect(journalService.updateEntry).not.toHaveBeenCalled()
+      expect(api.journal.updateEntry).not.toHaveBeenCalled()
     })
   })
 
@@ -235,7 +250,7 @@ describe('useJournalProperties', () => {
         await result.current.removeProperty('mood')
       })
 
-      expect(journalService.updateEntry).not.toHaveBeenCalled()
+      expect(api.journal.updateEntry).not.toHaveBeenCalled()
     })
   })
 
@@ -269,7 +284,7 @@ describe('useJournalProperties', () => {
         await result.current.setAllProperties({ prop: 'value' })
       })
 
-      expect(journalService.updateEntry).not.toHaveBeenCalled()
+      expect(api.journal.updateEntry).not.toHaveBeenCalled()
     })
   })
 
@@ -287,7 +302,7 @@ describe('useJournalProperties', () => {
         await result.current.refresh()
       })
 
-      expect(journalService.getEntry).toHaveBeenCalledWith('2024-12-25')
+      expect(api.journal.getEntry).toHaveBeenCalledWith('2024-12-25')
     })
 
     it('should do nothing with null date', async () => {
@@ -297,7 +312,7 @@ describe('useJournalProperties', () => {
         await result.current.refresh()
       })
 
-      expect(journalService.getEntry).not.toHaveBeenCalled()
+      expect(api.journal.getEntry).not.toHaveBeenCalled()
     })
   })
 
