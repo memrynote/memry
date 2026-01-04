@@ -17,35 +17,18 @@ import {
   runIndexMigrations,
   initializeFts,
   getIndexDatabase,
-  closeIndexDatabase,
-  updateFtsContent
+  closeIndexDatabase
 } from '../database'
 import { updateNoteEmbedding } from '../inbox/suggestions'
-import {
-  parseNote,
-  serializeNote,
-  extractTags,
-  extractProperties,
-  extractWikiLinks,
-  calculateWordCount,
-  generateContentHash,
-  createSnippet,
-  inferPropertyType
-} from './frontmatter'
+import { parseNote, serializeNote } from './frontmatter'
 import { safeRead, atomicWrite } from './file-ops'
 import { generateNoteId } from '../lib/id'
+import { syncNoteToCache } from './note-sync'
 import {
-  insertNoteCache,
   getNoteCacheByPath,
   getNoteCacheById,
-  setNoteTags,
-  setNoteLinks,
-  setNoteProperties,
-  getPropertyType,
-  resolveNoteByTitle,
   countNotes,
-  countJournalEntries,
-  extractDateFromPath
+  countJournalEntries
 } from '@shared/db/queries/notes'
 
 // ============================================================================
@@ -109,6 +92,7 @@ async function findMarkdownFiles(
 
 /**
  * Index a single markdown file into the cache.
+ * Uses syncNoteToCache() for unified cache operations.
  */
 async function indexFile(
   vaultPath: string,
@@ -153,61 +137,25 @@ async function indexFile(
       }
     }
 
-    // Extract metadata
-    const tags = extractTags(parsed.frontmatter)
-    const properties = extractProperties(parsed.frontmatter)
-    const wikiLinks = extractWikiLinks(parsed.content)
-    const wordCount = calculateWordCount(parsed.content)
-    const characterCount = parsed.content.length
-    const contentHash = generateContentHash(content)
-    const emoji = (parsed.frontmatter as { emoji?: string }).emoji ?? null
-
-    // Check if this is a journal entry (journal/YYYY-MM-DD.md)
-    const date = extractDateFromPath(relativePath)
-
-    // Insert into cache
+    // Use syncNoteToCache for unified cache operations
     try {
-      insertNoteCache(db, {
-        id: parsed.frontmatter.id,
-        path: relativePath,
-        title: parsed.frontmatter.title ?? path.basename(relativePath, '.md'),
-        emoji,
-        contentHash,
-        wordCount,
-        characterCount,
-        snippet: createSnippet(parsed.content),
-        date,
-        createdAt: parsed.frontmatter.created,
-        modifiedAt: parsed.frontmatter.modified
-      })
-      console.log(`[Indexer] Indexed: ${relativePath}${date ? ` (journal: ${date})` : ''}`)
-    } catch (insertError) {
-      console.error(`[Indexer] Insert failed for ${relativePath}:`, insertError)
-      return 'error'
-    }
-
-    // Set tags
-    if (tags.length > 0) {
-      setNoteTags(db, parsed.frontmatter.id, tags)
-    }
-
-    // Set properties with type inference
-    if (Object.keys(properties).length > 0) {
-      setNoteProperties(db, parsed.frontmatter.id, properties, (name, value) =>
-        getPropertyType(db, name, value, inferPropertyType)
+      const result = syncNoteToCache(
+        db,
+        {
+          id: parsed.frontmatter.id,
+          path: relativePath,
+          fileContent: content,
+          frontmatter: parsed.frontmatter,
+          parsedContent: parsed.content
+        },
+        { isNew: true }
       )
-    }
-
-    // Update FTS index with content and tags for full-text search
-    updateFtsContent(db, parsed.frontmatter.id, parsed.content, tags)
-
-    // Set links (resolve targets after all files are indexed)
-    if (wikiLinks.length > 0) {
-      const links = wikiLinks.map((title) => {
-        const target = resolveNoteByTitle(db, title)
-        return { targetTitle: title, targetId: target?.id }
-      })
-      setNoteLinks(db, parsed.frontmatter.id, links)
+      console.log(
+        `[Indexer] Indexed: ${relativePath}${result.date ? ` (journal: ${result.date})` : ''}`
+      )
+    } catch (syncError) {
+      console.error(`[Indexer] Sync failed for ${relativePath}:`, syncError)
+      return 'error'
     }
 
     // Update embedding asynchronously for AI suggestions (non-blocking)
