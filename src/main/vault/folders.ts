@@ -152,13 +152,9 @@ export async function readFolderConfig(folderPath: string): Promise<FolderConfig
 export async function writeFolderConfig(folderPath: string, config: FolderConfig): Promise<void> {
   const configPath = getFolderConfigPath(folderPath)
 
-  console.log('[writeFolderConfig] Writing to:', configPath)
-  console.log('[writeFolderConfig] Config views:', config.views?.length ?? 0)
-
   // Ensure the folder exists
   const folderDir = path.dirname(configPath)
   if (!existsSync(folderDir)) {
-    console.log('[writeFolderConfig] Creating folder:', folderDir)
     await fs.mkdir(folderDir, { recursive: true })
   }
 
@@ -172,7 +168,6 @@ export async function writeFolderConfig(folderPath: string, config: FolderConfig
 
   // If config is empty, delete the file
   if (!hasTemplateConfig && !hasViewConfig) {
-    console.log('[writeFolderConfig] Config is empty, deleting file if exists')
     if (existsSync(configPath)) {
       await fs.unlink(configPath)
     }
@@ -180,9 +175,7 @@ export async function writeFolderConfig(folderPath: string, config: FolderConfig
   }
 
   const content = serializeFolderConfig(config)
-  console.log('[writeFolderConfig] Content length:', content.length)
   await fs.writeFile(configPath, content, 'utf-8')
-  console.log('[writeFolderConfig] File written successfully')
 }
 
 /**

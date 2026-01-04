@@ -201,14 +201,14 @@ export function validateNoteId(id: string): boolean {
  */
 export function extractWikiLinks(content: string): string[] {
   const linkPattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g
-  const links: string[] = []
+  const links = new Set<string>()
   let match
 
   while ((match = linkPattern.exec(content)) !== null) {
-    links.push(match[1].trim())
+    links.add(match[1].trim())
   }
 
-  return links
+  return Array.from(links)
 }
 
 /**

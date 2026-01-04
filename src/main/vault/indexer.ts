@@ -29,6 +29,7 @@ import {
   extractWikiLinks,
   calculateWordCount,
   generateContentHash,
+  createSnippet,
   inferPropertyType
 } from './frontmatter'
 import { safeRead, atomicWrite } from './file-ops'
@@ -174,6 +175,7 @@ async function indexFile(
         contentHash,
         wordCount,
         characterCount,
+        snippet: createSnippet(parsed.content),
         date,
         createdAt: parsed.frontmatter.created,
         modifiedAt: parsed.frontmatter.modified

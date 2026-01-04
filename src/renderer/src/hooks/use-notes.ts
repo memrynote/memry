@@ -417,10 +417,10 @@ export function useNotes(options: UseNotesOptions = {}): UseNotesReturn {
         prev.map((note) =>
           note.id === event.id
             ? {
-                ...note,
-                ...event.changes,
-                modified: event.changes.modified ?? note.modified
-              }
+              ...note,
+              ...event.changes,
+              modified: event.changes.modified ?? note.modified
+            }
             : note
         )
       )

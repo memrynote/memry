@@ -131,6 +131,11 @@ describe('frontmatter utilities', () => {
     expect(links).toEqual(['First Link', 'Second'])
   })
 
+  it('extractWikiLinks deduplicates repeated links', () => {
+    const links = extractWikiLinks('[[Same Note]] and [[Other]] then [[Same Note]] again')
+    expect(links).toEqual(['Same Note', 'Other'])
+  })
+
   it('extractTags normalizes frontmatter tags', () => {
     const frontmatter: NoteFrontmatter = {
       id: 'abc123def456',

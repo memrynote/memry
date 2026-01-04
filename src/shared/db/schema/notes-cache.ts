@@ -12,6 +12,8 @@ export const noteCache = sqliteTable(
     wordCount: integer('word_count').notNull().default(0),
     // Unified: characterCount for activity level calculation (journal + notes)
     characterCount: integer('character_count').notNull().default(0),
+    // Cached snippet for list views (first ~150 chars, no file read needed)
+    snippet: text('snippet'),
     // Unified: date field for journal entries (YYYY-MM-DD), null for regular notes
     date: text('date'),
     createdAt: text('created_at').notNull(),

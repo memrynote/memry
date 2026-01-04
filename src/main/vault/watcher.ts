@@ -268,7 +268,6 @@ export class VaultWatcher {
     this.vaultPath = null
     this.debouncedChange = null
     this.isReady = false
-    console.log('[Watcher] Stopped')
   }
 
   /**
@@ -291,12 +290,10 @@ export class VaultWatcher {
 
     try {
       const relativePath = path.relative(this.vaultPath, absolutePath)
-      console.log('[Watcher] File added:', relativePath)
 
       // Read and parse the file
       const content = await safeRead(absolutePath)
       if (!content) {
-        console.warn('[Watcher] Could not read added file:', relativePath)
         return
       }
 
@@ -307,7 +304,6 @@ export class VaultWatcher {
       const oldPath = await checkForRename(parsed.frontmatter.id, relativePath)
       if (oldPath !== null) {
         // This was a rename - rename-tracker already handled cache update and event
-        console.log('[Watcher] File rename handled:', oldPath, '->', relativePath)
         return
       }
 
@@ -322,18 +318,14 @@ export class VaultWatcher {
       const existingById = getNoteCacheById(db, parsed.frontmatter.id)
       if (existingById && existingById.path !== relativePath) {
         // This is a copy of an existing note - regenerate ID
-        console.log('[Watcher] Duplicate ID detected, regenerating for:', relativePath)
         const newId = generateNoteId()
-        const oldId = parsed.frontmatter.id
         parsed.frontmatter.id = newId
 
         // Write back to file with new ID
         try {
           const newContent = serializeNote(parsed.frontmatter, parsed.content)
           await atomicWrite(absolutePath, newContent)
-          console.log(`[Watcher] Regenerated ID for ${relativePath}: ${oldId} → ${newId}`)
-        } catch (writeError) {
-          console.error(`[Watcher] Failed to write new ID for ${relativePath}:`, writeError)
+        } catch {
           return
         }
       }
@@ -360,6 +352,7 @@ export class VaultWatcher {
         contentHash,
         wordCount,
         characterCount,
+        snippet,
         date,
         createdAt: parsed.frontmatter.created,
         modifiedAt: parsed.frontmatter.modified
@@ -409,12 +402,7 @@ export class VaultWatcher {
       })
 
       // Update embedding asynchronously for AI suggestions (non-blocking)
-      updateNoteEmbedding(parsed.frontmatter.id).catch((err) => {
-        console.log(
-          `[Watcher] Failed to update embedding for new file ${parsed.frontmatter.id}:`,
-          err
-        )
-      })
+      updateNoteEmbedding(parsed.frontmatter.id).catch(() => {})
 
       // Also emit journal event if this is a journal entry
       const config = getConfig()
@@ -435,7 +423,6 @@ export class VaultWatcher {
         })
       }
     } catch (error) {
-      console.error('[Watcher] Error handling file add:', error)
       this.onError?.(error instanceof Error ? error : new Error(String(error)))
     }
   }
@@ -448,12 +435,10 @@ export class VaultWatcher {
 
     try {
       const relativePath = path.relative(this.vaultPath, absolutePath)
-      console.log('[Watcher] File changed:', relativePath)
 
       // Read and parse the file
       const content = await safeRead(absolutePath)
       if (!content) {
-        console.warn('[Watcher] Could not read changed file:', relativePath)
         return
       }
 
@@ -490,6 +475,7 @@ export class VaultWatcher {
           contentHash,
           wordCount,
           characterCount,
+          snippet,
           modifiedAt: parsed.frontmatter.modified
         })
 
@@ -527,9 +513,7 @@ export class VaultWatcher {
         })
 
         // Update embedding asynchronously for AI suggestions (non-blocking)
-        updateNoteEmbedding(cached.id).catch((err) => {
-          console.log(`[Watcher] Failed to update embedding for ${cached.id}:`, err)
-        })
+        updateNoteEmbedding(cached.id).catch(() => {})
 
         // Also emit journal event if this is a journal entry
         const config = getConfig()
@@ -555,7 +539,6 @@ export class VaultWatcher {
       }
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err))
-      console.error('[Watcher] Error handling file change:', error)
       this.onError?.(error)
     }
   }
@@ -569,7 +552,6 @@ export class VaultWatcher {
 
     try {
       const relativePath = path.relative(this.vaultPath, absolutePath)
-      console.log('[Watcher] File deleted:', relativePath)
 
       const db = getIndexDatabase()
 
@@ -607,7 +589,6 @@ export class VaultWatcher {
         }
       })
     } catch (error) {
-      console.error('[Watcher] Error handling file delete:', error)
       this.onError?.(error instanceof Error ? error : new Error(String(error)))
     }
   }

@@ -238,6 +238,44 @@ export function getNoteTags(db: DrizzleDb, noteId: string): string[] {
 }
 
 /**
+ * Get tags for multiple notes in a single batch query.
+ * Returns a Map of noteId -> tags array.
+ * This is O(1) vs O(n) for calling getNoteTags in a loop.
+ */
+export function getTagsForNotes(db: DrizzleDb, noteIds: string[]): Map<string, string[]> {
+  if (noteIds.length === 0) {
+    return new Map()
+  }
+
+  const results = db
+    .select({
+      noteId: noteTags.noteId,
+      tag: noteTags.tag
+    })
+    .from(noteTags)
+    .where(inArray(noteTags.noteId, noteIds))
+    .all()
+
+  // Group by noteId
+  const tagMap = new Map<string, string[]>()
+
+  // Initialize all noteIds with empty arrays
+  for (const noteId of noteIds) {
+    tagMap.set(noteId, [])
+  }
+
+  // Populate with actual tags
+  for (const row of results) {
+    const tags = tagMap.get(row.noteId)
+    if (tags) {
+      tags.push(row.tag)
+    }
+  }
+
+  return tagMap
+}
+
+/**
  * Get all unique tags with counts.
  */
 export function getAllTags(db: DrizzleDb): { tag: string; count: number }[] {
@@ -780,8 +818,6 @@ export function setNoteProperties(
       }
     })
     db.insert(noteProperties).values(propertyRecords).run()
-  } else {
-    console.log('[setNoteProperties] No properties to insert (empty)')
   }
 }
 

@@ -322,7 +322,7 @@ export function registerSettingsHandlers(): void {
     }
   )
 
-  console.log('Settings IPC handlers registered')
+  console.log('[IPC] Settings handlers registered')
 }
 
 /**

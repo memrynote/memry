@@ -15,7 +15,8 @@ import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, Property, NewProperty, PropertyType } from '@/components/note/info-section'
 import { BacklinksSection, Backlink } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
-import { useNotes, useNoteLinks, useNoteTags, type Note } from '@/hooks/use-notes'
+import { useNoteLinks, useNoteTags, type Note } from '@/hooks/use-notes'
+import { useNote, useNoteMutations } from '@/hooks/use-notes-query'
 import { useNoteProperties } from '@/hooks/use-note-properties'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated } from '@/services/notes-service'
@@ -97,8 +98,14 @@ function NoteEmptyState() {
 // ============================================================================
 
 export function NotePage({ noteId }: NotePageProps) {
-  // Hooks for data fetching
-  const { createNote, getNote, updateNote, renameNote } = useNotes({ autoLoad: false })
+  // TanStack Query hooks for data fetching with caching
+  const {
+    note,
+    isLoading,
+    error: noteError,
+    refetch: refetchNote
+  } = useNote(noteId ?? null)
+  const { createNote, updateNote, renameNote } = useNoteMutations()
   const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinks(noteId ?? null)
   const { tasks: linkedTasks, isLoading: linkedTasksLoading } = useTasksLinkedToNote(noteId ?? null)
   const { tags: allAvailableTags } = useNoteTags()
@@ -134,9 +141,10 @@ export function NotePage({ noteId }: NotePageProps) {
   // Bookmark state
   const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('note', noteId ?? '')
 
-  // Local state
-  const [note, setNote] = useState<Note | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // Convert query error to string
+  const error = noteError?.message ?? null
+
+  // Local state (UI-only, not data loading)
   const [headings, setHeadings] = useState<HeadingItem[]>([])
   const [isInfoExpanded, setIsInfoExpanded] = useState(false)
   const [isDeleted, setIsDeleted] = useState(false)
@@ -188,36 +196,17 @@ export function NotePage({ noteId }: NotePageProps) {
   }, [note])
 
   // ============================================================================
-  // Load Note
+  // Sync lastSavedContent with note data from query
   // ============================================================================
 
-  const loadNote = useCallback(async () => {
-    if (!noteId) {
-      setNote(null)
-      return
-    }
-
-    setError(null)
-    setIsDeleted(false) // Reset deleted state when loading a new note
-
-    try {
-      const loadedNote = await getNote(noteId)
-      if (loadedNote) {
-        setNote(loadedNote)
-        lastSavedContent.current = loadedNote.content
-        // Properties are now loaded via useNoteProperties hook
-      } else {
-        setError('Note not found')
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load note')
-    }
-  }, [noteId, getNote])
-
-  // Load note when noteId changes
+  // Update lastSavedContent when note data changes (from cache or fresh fetch)
   useEffect(() => {
-    loadNote()
-  }, [loadNote])
+    if (note?.content) {
+      lastSavedContent.current = note.content
+    }
+    // Reset deleted state when switching to a new note
+    setIsDeleted(false)
+  }, [note?.id, note?.content])
 
   // Cleanup save timeout on unmount
   useEffect(() => {
@@ -262,17 +251,8 @@ export function NotePage({ noteId }: NotePageProps) {
       // Ignore if we're currently saving
       if (isSavingRef.current) return
 
-      // Update local state with new content from external change
-      setNote((prev) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          ...event.changes,
-          content: event.changes.content ?? prev.content
-        }
-      })
-
-      // Update lastSavedContent to prevent false dirty detection
+      // TanStack Query will handle the cache invalidation and refetch.
+      // We just need to update lastSavedContent and force editor remount.
       if (event.changes.content !== undefined) {
         lastSavedContent.current = event.changes.content
       }
@@ -390,7 +370,7 @@ export function NotePage({ noteId }: NotePageProps) {
       saveTimeoutRef.current = setTimeout(async () => {
         isSavingRef.current = true
         try {
-          await updateNote({ id: noteId, content: markdown })
+          await updateNote.mutateAsync({ id: noteId, content: markdown })
           lastSavedContent.current = markdown
         } catch (err) {
           console.error('Failed to save note:', err)
@@ -399,7 +379,7 @@ export function NotePage({ noteId }: NotePageProps) {
         }
       }, 500)
     },
-    [noteId, note, updateNote, isDeleted]
+    [noteId, note, updateNote.mutateAsync, isDeleted]
   )
 
   const handleContentChange = useCallback((_blocks: Block[]) => {
@@ -416,15 +396,13 @@ export function NotePage({ noteId }: NotePageProps) {
       }
 
       try {
-        const result = await renameNote(noteId, newTitle)
-        if (result) {
-          setNote(result)
-        }
+        await renameNote.mutateAsync({ id: noteId, newTitle })
+        // Note will be updated via TanStack Query cache invalidation
       } catch (err) {
         console.error('Failed to rename note:', err)
       }
     },
-    [noteId, note, renameNote, isDeleted]
+    [noteId, note, renameNote.mutateAsync, isDeleted]
   )
 
   // T026: Handle emoji changes - save to backend
@@ -438,16 +416,14 @@ export function NotePage({ noteId }: NotePageProps) {
       }
 
       try {
-        const result = await updateNote({ id: noteId, emoji: newEmoji })
-        if (result) {
-          setNote(result)
-        }
+        await updateNote.mutateAsync({ id: noteId, emoji: newEmoji })
+        // Note will be updated via TanStack Query cache invalidation
       } catch (err) {
         console.error('Failed to update emoji:', err)
         toast.error('Failed to update emoji')
       }
     },
-    [noteId, note, updateNote, isDeleted]
+    [noteId, note, updateNote.mutateAsync, isDeleted]
   )
 
   // Tag handlers
@@ -464,16 +440,14 @@ export function NotePage({ noteId }: NotePageProps) {
       if (tagToAdd && !note.tags.includes(tagToAdd.name)) {
         const newTags = [...note.tags, tagToAdd.name]
         try {
-          const result = await updateNote({ id: noteId, tags: newTags })
-          if (result) {
-            setNote(result)
-          }
+          await updateNote.mutateAsync({ id: noteId, tags: newTags })
+          // Note will be updated via TanStack Query cache invalidation
         } catch (err) {
           console.error('Failed to add tag:', err)
         }
       }
     },
-    [noteId, note, availableTags, updateNote, isDeleted]
+    [noteId, note, availableTags, updateNote.mutateAsync, isDeleted]
   )
 
   const handleCreateTag = useCallback(
@@ -488,16 +462,14 @@ export function NotePage({ noteId }: NotePageProps) {
       if (!note.tags.includes(name)) {
         const newTags = [...note.tags, name]
         try {
-          const result = await updateNote({ id: noteId, tags: newTags })
-          if (result) {
-            setNote(result)
-          }
+          await updateNote.mutateAsync({ id: noteId, tags: newTags })
+          // Note will be updated via TanStack Query cache invalidation
         } catch (err) {
           console.error('Failed to create tag:', err)
         }
       }
     },
-    [noteId, note, updateNote, isDeleted]
+    [noteId, note, updateNote.mutateAsync, isDeleted]
   )
 
   const handleRemoveTag = useCallback(
@@ -511,15 +483,13 @@ export function NotePage({ noteId }: NotePageProps) {
 
       const newTags = note.tags.filter((t) => t !== tagId)
       try {
-        const result = await updateNote({ id: noteId, tags: newTags })
-        if (result) {
-          setNote(result)
-        }
+        await updateNote.mutateAsync({ id: noteId, tags: newTags })
+        // Note will be updated via TanStack Query cache invalidation
       } catch (err) {
         console.error('Failed to remove tag:', err)
       }
     },
-    [noteId, note, updateNote, isDeleted]
+    [noteId, note, updateNote.mutateAsync, isDeleted]
   )
 
   // Property handlers - wired to backend
@@ -597,27 +567,30 @@ export function NotePage({ noteId }: NotePageProps) {
       let resolvedTitle = 'Note'
 
       try {
-        const byId = await getNote(target)
+        // Try to get note by ID first
+        const byId = await notesService.get(target)
         if (byId) {
           resolvedId = byId.id
           resolvedTitle = byId.title
         } else {
+          // Search by title
           const listResult = await notesService.list({ sortBy: 'title', limit: 500 })
           const match = listResult.notes.find(
-            (note) => note.title.toLowerCase() === target.toLowerCase()
+            (n) => n.title.toLowerCase() === target.toLowerCase()
           )
 
           if (match) {
             resolvedId = match.id
             resolvedTitle = match.title
           } else {
-            const created = await createNote({ title: target })
-            if (!created) {
+            // Create new note with this title
+            const result = await createNote.mutateAsync({ title: target })
+            if (!result.success || !result.note) {
               toast.error('Failed to create linked note')
               return
             }
-            resolvedId = created.id
-            resolvedTitle = created.title
+            resolvedId = result.note.id
+            resolvedTitle = result.note.title
           }
         }
       } catch (err) {
@@ -638,7 +611,7 @@ export function NotePage({ noteId }: NotePageProps) {
         isDeleted: false
       })
     },
-    [openTab, getNote, createNote]
+    [openTab, createNote.mutateAsync]
   )
 
   const handleBacklinkClick = useCallback(
@@ -690,12 +663,12 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Error
   if (error) {
-    return <NoteErrorState error={error} onRetry={loadNote} />
+    return <NoteErrorState error={error} onRetry={refetchNote} />
   }
 
-  // No note found
-  if (!note) {
-    return <NoteErrorState error="Note not found" />
+  // Loading state - show nothing while fetching to avoid flash of error
+  if (isLoading || !note) {
+    return null
   }
 
   return (
@@ -820,7 +793,7 @@ export function NotePage({ noteId }: NotePageProps) {
           >
             <EditorErrorBoundary
               noteId={noteId}
-              onRecover={loadNote}
+              onRecover={refetchNote}
               onError={(error) => console.error('[NotePage] Editor error:', error)}
             >
               <ContentArea
@@ -880,7 +853,7 @@ export function NotePage({ noteId }: NotePageProps) {
             saveTimeoutRef.current = null
           }
           // Reload note with restored content
-          loadNote()
+          refetchNote()
         }}
       />
     </NoteLayout>

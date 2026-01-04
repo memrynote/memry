@@ -43,6 +43,7 @@ import {
   countNotes,
   setNoteTags,
   getNoteTags,
+  getTagsForNotes,
   getAllTagsWithColors,
   ensureTagDefinitions,
   setNoteLinks,
@@ -296,6 +297,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     title: input.title,
     contentHash,
     wordCount,
+    snippet: createSnippet(content),
     createdAt: frontmatter.created,
     modifiedAt: frontmatter.modified
   })
@@ -401,6 +403,7 @@ export async function getNoteById(id: string): Promise<Note | null> {
       title: parsed.frontmatter.title ?? path.basename(cached.path, '.md'),
       contentHash: generateContentHash(newContent),
       wordCount: calculateWordCount(parsed.content),
+      snippet: createSnippet(parsed.content),
       createdAt: parsed.frontmatter.created,
       modifiedAt: parsed.frontmatter.modified
     })
@@ -466,6 +469,7 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     title: parsed.frontmatter.title ?? path.basename(notePath, '.md'),
     contentHash,
     wordCount,
+    snippet: createSnippet(parsed.content),
     createdAt: parsed.frontmatter.created,
     modifiedAt: parsed.frontmatter.modified,
     emoji // T028: Include emoji in cache
@@ -575,6 +579,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     title: newTitle,
     contentHash,
     wordCount,
+    snippet: createSnippet(newContent),
     modifiedAt: newFrontmatter.modified,
     emoji: newEmoji // T028: Update emoji in cache
   })
@@ -813,6 +818,7 @@ export async function deleteNote(id: string): Promise<void> {
 
 /**
  * List notes with filtering and pagination.
+ * Optimized to use batch tag queries and cached snippets (no file reads).
  */
 export async function listNotes(options: NoteListOptions = {}): Promise<NoteListResponse> {
   const db = getIndexDatabase()
@@ -833,37 +839,22 @@ export async function listNotes(options: NoteListOptions = {}): Promise<NoteList
   // Get total count
   const total = countNotes(db, options.folder)
 
-  // Convert to list items
-  const noteItems: NoteListItem[] = await Promise.all(
-    notes.map(async (c) => {
-      const tags = getNoteTags(db, c.id)
+  // Batch load tags for all notes in a single query (O(1) instead of O(n))
+  const noteIds = notes.map((n) => n.id)
+  const tagsMap = getTagsForNotes(db, noteIds)
 
-      // Get snippet from file if needed
-      let snippet: string | undefined
-      try {
-        const absolutePath = toAbsolutePath(c.path)
-        const content = await safeRead(absolutePath)
-        if (content) {
-          const parsed = parseNote(content)
-          snippet = createSnippet(parsed.content)
-        }
-      } catch {
-        // Ignore snippet errors
-      }
-
-      return {
-        id: c.id,
-        path: c.path,
-        title: c.title,
-        created: new Date(c.createdAt),
-        modified: new Date(c.modifiedAt),
-        tags,
-        wordCount: c.wordCount,
-        snippet,
-        emoji: c.emoji // T028: Include emoji
-      }
-    })
-  )
+  // Convert to list items using cached snippets (no file reads needed)
+  const noteItems: NoteListItem[] = notes.map((c) => ({
+    id: c.id,
+    path: c.path,
+    title: c.title,
+    created: new Date(c.createdAt),
+    modified: new Date(c.modifiedAt),
+    tags: tagsMap.get(c.id) ?? [],
+    wordCount: c.wordCount,
+    snippet: c.snippet ?? undefined, // Use cached snippet from database
+    emoji: c.emoji // T028: Include emoji
+  }))
 
   return { notes: noteItems, total, hasMore }
 }
@@ -1069,7 +1060,6 @@ export function createSnapshot(
 
   // Skip if identical snapshot already exists (unless forced)
   if (!forceCreate && snapshotExistsWithHash(db, noteId, contentHash)) {
-    console.log('[Snapshot] Skipping - identical snapshot exists')
     return null
   }
 
@@ -1080,7 +1070,6 @@ export function createSnapshot(
       const latestTime = new Date(latest.createdAt).getTime()
       const now = Date.now()
       if (now - latestTime < MIN_SNAPSHOT_INTERVAL_MS) {
-        console.log('[Snapshot] Skipping - too soon since last snapshot')
         return null // Too soon since last snapshot
       }
     }
@@ -1130,22 +1119,11 @@ export function maybeCreateSignificantSnapshot(
   const newWordCount = calculateWordCount(newContent)
   const wordDiff = Math.abs(newWordCount - oldWordCount)
 
-  console.log('[Snapshot] Word count change:', {
-    oldWordCount,
-    newWordCount,
-    wordDiff,
-    threshold: SIGNIFICANT_WORD_CHANGE
-  })
-
   // Only create snapshot for significant changes
   if (wordDiff >= SIGNIFICANT_WORD_CHANGE) {
-    console.log('[Snapshot] Creating snapshot for significant change')
     try {
-      const result = createSnapshot(noteId, currentFileContent, title, SnapshotReasons.SIGNIFICANT)
-      console.log('[Snapshot] Snapshot created:', result)
-      return result
-    } catch (err) {
-      console.error('[Snapshot] Failed to create snapshot:', err)
+      return createSnapshot(noteId, currentFileContent, title, SnapshotReasons.SIGNIFICANT)
+    } catch {
       return null
     }
   }

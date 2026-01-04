@@ -57,6 +57,13 @@
       "when": 1766851308463,
       "tag": "0007_easy_domino",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1767534101164,
+      "tag": "0008_tiresome_micromax",
+      "breakpoints": true
     }
   ]
 }
