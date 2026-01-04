@@ -12,8 +12,7 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { MockBrowserWindow } from '@tests/utils/mock-electron'
-
-const mockWindows: MockBrowserWindow[] = []
+import { BrowserWindow } from 'electron'
 
 type NotificationHandler = () => void
 
@@ -45,7 +44,7 @@ class TestNotification {
 
 vi.mock('electron', () => ({
   BrowserWindow: {
-    getAllWindows: vi.fn(() => mockWindows)
+    getAllWindows: vi.fn()
   },
   Notification: TestNotification
 }))
@@ -81,9 +80,8 @@ describe('reminders', () => {
     vi.mocked(getDatabase).mockReturnValue(dataDb.db)
     vi.mocked(getIndexDatabase).mockReturnValue(indexDb.db)
 
-    mockWindows.length = 0
     window = new MockBrowserWindow()
-    mockWindows.push(window)
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window])
 
     TestNotification.instances = []
     TestNotification.isSupported.mockReturnValue(true)
@@ -93,7 +91,6 @@ describe('reminders', () => {
     stopReminderScheduler()
     cleanupTestDatabase(dataDb)
     indexDb.close()
-    mockWindows.length = 0
     TestNotification.instances = []
     vi.clearAllMocks()
     vi.useRealTimers()
@@ -328,7 +325,7 @@ describe('reminders', () => {
         contentHash: 'hash-10',
         createdAt: nowIso,
         modifiedAt: nowIso
-      })
+      }).run()
 
       dataDb.db.insert(reminders).values({
         id: 'rem-due',
@@ -338,7 +335,7 @@ describe('reminders', () => {
         status: reminderStatus.PENDING,
         createdAt: nowIso,
         modifiedAt: nowIso
-      })
+      }).run()
 
       window.minimize()
 

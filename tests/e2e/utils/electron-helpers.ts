@@ -33,12 +33,14 @@ export const SELECTORS = {
   noteTitle: 'textarea[aria-label="Note title"]', // Title textarea
   noteTags: '[data-testid="note-tags"], [class*="tags-row"]',
 
-  // Tasks
+  // Tasks - actual selectors from the app
   tasksList: '[data-testid="tasks-list"], [class*="task-list"]',
-  taskItem: '[data-testid="task-item"], [class*="task-item"]',
-  taskCheckbox: '[data-testid="task-checkbox"], input[type="checkbox"]',
-  addTaskButton: '[data-testid="add-task"], button[title*="task"], button:has-text("Add")',
-  taskInput: '[data-testid="task-input"], input[placeholder*="task"]',
+  taskItem: '[role="button"][aria-label*="Task:"], [data-testid="task-item"]',
+  taskCheckbox: '[role="checkbox"], [data-testid="task-checkbox"]',
+  addTaskButton: 'button:has-text("Add Task")', // Header button opens modal
+  taskInput: 'input[aria-label="Quick add task"], input[placeholder*="Add task"]', // Quick add input
+  taskModalTitleInput: '#task-title', // Title input in Add Task modal
+  taskModal: '[role="dialog"]:has-text("Add Task")', // Add Task modal
   kanbanBoard: '[data-testid="kanban-board"], [class*="kanban"]',
   kanbanColumn: '[data-testid="kanban-column"], [class*="column"]',
 
@@ -231,7 +233,9 @@ export async function createNote(
 
 /**
  * Create a new task via UI
- * Tries multiple strategies to create a task
+ * Tries multiple strategies:
+ * 1. Quick Add input (fastest - type and press Enter)
+ * 2. Add Task button -> modal flow
  */
 export async function createTask(
   page: Page,
@@ -243,46 +247,82 @@ export async function createTask(
   }
 ): Promise<void> {
   try {
-    // Try finding the add button first
+    // Strategy 1: Try Quick Add input (inline input in task list)
+    const quickAddInput = page.locator(SELECTORS.taskInput).first()
+    const hasQuickAdd = await quickAddInput.isVisible({ timeout: 2000 }).catch(() => false)
+
+    if (hasQuickAdd) {
+      await quickAddInput.click()
+      await quickAddInput.fill(title)
+      await page.keyboard.press(SHORTCUTS.enter)
+      await page.waitForTimeout(500)
+      return
+    }
+
+    // Strategy 2: Try Add Task button (opens modal)
     const addButton = page.locator(SELECTORS.addTaskButton).first()
-    const hasAddButton = await addButton.isVisible({ timeout: 3000 }).catch(() => false)
+    const hasAddButton = await addButton.isVisible({ timeout: 2000 }).catch(() => false)
 
     if (hasAddButton) {
       await addButton.click()
+      await page.waitForTimeout(300)
 
-      const input = page.locator(SELECTORS.taskInput).first()
-      const hasInput = await input.waitFor({ state: 'visible', timeout: 2000 })
+      // Wait for modal to open
+      const modal = page.locator(SELECTORS.taskModal).first()
+      const modalOpened = await modal.waitFor({ state: 'visible', timeout: 2000 })
         .then(() => true)
         .catch(() => false)
 
-      if (hasInput) {
-        await input.fill(title)
-        await page.keyboard.press(SHORTCUTS.enter)
+      if (modalOpened) {
+        // Fill in title in modal
+        const titleInput = page.locator(SELECTORS.taskModalTitleInput)
+        await titleInput.fill(title)
+
+        // Submit with Cmd+Enter or click Add Task button
+        await page.keyboard.press('Meta+Enter')
         await page.waitForTimeout(500)
         return
       }
     }
 
-    // Fallback: Look for any task input or quick-add functionality
-    console.log('Task creation: add button not found, trying alternative methods')
+    console.log('Task creation: no task input found, UI may not be ready')
     await page.waitForTimeout(500)
-  } catch {
-    console.log('Task creation: could not create task, UI may not be ready')
+  } catch (error) {
+    console.log('Task creation: could not create task -', error)
     await page.waitForTimeout(500)
   }
 }
 
 /**
- * Toggle task completion
+ * Toggle task completion by clicking the checkbox
+ * Task items have aria-label="Task: {title}, ..."
  */
 export async function toggleTaskCompletion(
   page: Page,
   taskTitle: string
 ): Promise<void> {
-  const task = page.locator(`${SELECTORS.taskItem}:has-text("${taskTitle}")`)
-  const checkbox = task.locator(SELECTORS.taskCheckbox)
-  await checkbox.click()
-  await page.waitForTimeout(300)
+  try {
+    // Find task by aria-label containing the title
+    const task = page.locator(`[role="button"][aria-label*="Task:"][aria-label*="${taskTitle}"]`).first()
+    const taskVisible = await task.isVisible({ timeout: 2000 }).catch(() => false)
+
+    if (taskVisible) {
+      const checkbox = task.locator(SELECTORS.taskCheckbox).first()
+      await checkbox.click()
+      await page.waitForTimeout(300)
+      return
+    }
+
+    // Fallback: find by text content
+    const taskByText = page.locator(`${SELECTORS.taskItem}:has-text("${taskTitle}")`).first()
+    if (await taskByText.isVisible().catch(() => false)) {
+      const checkbox = taskByText.locator(SELECTORS.taskCheckbox).first()
+      await checkbox.click()
+      await page.waitForTimeout(300)
+    }
+  } catch {
+    console.log(`Toggle task completion: could not find task "${taskTitle}"`)
+  }
 }
 
 /**

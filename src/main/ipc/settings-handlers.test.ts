@@ -195,6 +195,7 @@ describe('settings-handlers', () => {
     const reindexResult = await invokeHandler(SettingsChannels.invoke.REINDEX_EMBEDDINGS)
     expect(reindexResult).toEqual({ success: true, computed: 1, skipped: 0 })
 
+    ;(settingsQueries.getSetting as Mock).mockReturnValue(null)
     const tabSettings = await invokeHandler(SettingsChannels.invoke.GET_TAB_SETTINGS)
     expect(tabSettings).toEqual(
       expect.objectContaining({ previewMode: false, restoreSessionOnStart: true })

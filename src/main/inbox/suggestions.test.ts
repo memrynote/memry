@@ -3,11 +3,11 @@ import { inboxItems, filingHistory } from '@shared/db/schema/inbox'
 import { settings } from '@shared/db/schema/settings'
 import { createTestDatabase, cleanupTestDatabase, type TestDatabaseResult } from '@tests/utils/test-db'
 
-const mockIsModelLoaded = vi.fn()
-const mockInitEmbeddingModel = vi.fn()
-const mockGenerateEmbedding = vi.fn()
-const mockGetNoteById = vi.fn()
-const mockGetConfig = vi.fn()
+const mockIsModelLoaded = vi.hoisted(() => vi.fn())
+const mockInitEmbeddingModel = vi.hoisted(() => vi.fn())
+const mockGenerateEmbedding = vi.hoisted(() => vi.fn())
+const mockGetNoteById = vi.hoisted(() => vi.fn())
+const mockGetConfig = vi.hoisted(() => vi.fn())
 
 vi.mock('electron', () => ({
   BrowserWindow: {

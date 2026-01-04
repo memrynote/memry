@@ -7,27 +7,30 @@ import { InboxChannels } from '@shared/ipc-channels'
 import { inboxItems } from '@shared/db/schema/inbox'
 import { createTestDatabase, cleanupTestDatabase, type TestDatabaseResult } from '@tests/utils/test-db'
 import { MockBrowserWindow } from '@tests/utils/mock-electron'
+import { BrowserWindow } from 'electron'
 
-const mockWindows: MockBrowserWindow[] = []
-const mockCreate = vi.fn()
-const mockToFile = vi.fn()
-const mockEnvConfig = {
+const mockCreate = vi.hoisted(() => vi.fn())
+const mockToFile = vi.hoisted(() => vi.fn())
+const mockEnvConfig = vi.hoisted(() => ({
   openaiApiKey: undefined as string | undefined,
   whisperModel: 'whisper-1',
   embeddingModel: 'text-embedding-3-small'
-}
+}))
 
-class MockOpenAI {
-  audio = {
-    transcriptions: {
-      create: mockCreate
+const MockOpenAI = vi.hoisted(
+  () =>
+    class {
+      audio = {
+        transcriptions: {
+          create: mockCreate
+        }
+      }
     }
-  }
-}
+)
 
 vi.mock('electron', () => ({
   BrowserWindow: {
-    getAllWindows: vi.fn(() => mockWindows)
+    getAllWindows: vi.fn()
   }
 }))
 
@@ -74,9 +77,8 @@ describe('inbox transcription', () => {
       error: null
     } as ReturnType<typeof getStatus>)
 
-    mockWindows.length = 0
     window = new MockBrowserWindow()
-    mockWindows.push(window)
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window])
 
     mockCreate.mockReset()
     mockToFile.mockReset().mockResolvedValue({ file: 'mock' })
@@ -86,7 +88,6 @@ describe('inbox transcription', () => {
   afterEach(() => {
     cleanupTestDatabase(testDb)
     fs.rmSync(vaultPath, { recursive: true, force: true })
-    mockWindows.length = 0
     vi.clearAllMocks()
   })
 

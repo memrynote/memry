@@ -2,15 +2,15 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import path from 'path'
 import { SettingsChannels } from '@shared/ipc-channels'
 import { mockApp, MockBrowserWindow } from '@tests/utils/mock-electron'
+import { BrowserWindow } from 'electron'
 
-const mockWindows: MockBrowserWindow[] = []
 const mockPipeline = vi.fn()
 const mockEnv = { cacheDir: '' }
 
 vi.mock('electron', () => ({
   app: mockApp,
   BrowserWindow: {
-    getAllWindows: vi.fn(() => mockWindows)
+    getAllWindows: vi.fn()
   }
 }))
 
@@ -33,11 +33,11 @@ describe('embeddings', () => {
   beforeEach(() => {
     unloadModel()
     mockPipeline.mockReset()
-    mockWindows.length = 0
     mockEnv.cacheDir = ''
     mockApp.getPath.mockImplementation((name: string) =>
       name === 'userData' ? '/mock/user-data' : `/mock/${name}`
     )
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([])
   })
 
   afterEach(() => {
@@ -47,7 +47,7 @@ describe('embeddings', () => {
 
   it('loads the model, configures cache dir, and emits progress events', async () => {
     const window = new MockBrowserWindow()
-    mockWindows.push(window)
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window])
 
     const mockExtractor = vi.fn().mockResolvedValue({
       data: new Float32Array(EMBEDDING_DIMENSION)
@@ -74,7 +74,7 @@ describe('embeddings', () => {
 
   it('returns false and surfaces errors when model load fails', async () => {
     const window = new MockBrowserWindow()
-    mockWindows.push(window)
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window])
 
     mockPipeline.mockImplementationOnce(async () => {
       throw new Error('load failed')

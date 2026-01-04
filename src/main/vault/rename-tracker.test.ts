@@ -4,12 +4,11 @@ import { NotesChannels } from '@shared/ipc-channels'
 import { noteCache } from '@shared/db/schema/notes-cache'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { MockBrowserWindow } from '@tests/utils/mock-electron'
-
-const mockWindows: MockBrowserWindow[] = []
+import { BrowserWindow } from 'electron'
 
 vi.mock('electron', () => ({
   BrowserWindow: {
-    getAllWindows: vi.fn(() => mockWindows)
+    getAllWindows: vi.fn()
   }
 }))
 
@@ -35,15 +34,13 @@ describe('rename-tracker', () => {
     indexDb = createTestIndexDb()
     vi.mocked(getIndexDatabase).mockReturnValue(indexDb.db)
 
-    mockWindows.length = 0
     window = new MockBrowserWindow()
-    mockWindows.push(window)
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window])
   })
 
   afterEach(() => {
     clearAllPendingDeletes()
     indexDb.close()
-    mockWindows.length = 0
     vi.clearAllMocks()
     vi.useRealTimers()
   })

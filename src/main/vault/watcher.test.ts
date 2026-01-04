@@ -7,11 +7,11 @@ import { noteCache, noteTags, noteLinks } from '@shared/db/schema/notes-cache'
 import { createTestVault, createTestNote } from '@tests/utils/test-vault'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { MockBrowserWindow } from '@tests/utils/mock-electron'
+import { BrowserWindow } from 'electron'
 import { parseNote, serializeNote } from './frontmatter'
 import { trackPendingDelete, clearAllPendingDeletes, hasPendingDeletes } from './rename-tracker'
 
-const mockWindows: MockBrowserWindow[] = []
-const mockWatch = vi.fn()
+const mockWatch = vi.hoisted(() => vi.fn())
 const baseConfig = {
   excludePatterns: [],
   defaultNoteFolder: 'notes',
@@ -21,7 +21,7 @@ const baseConfig = {
 
 vi.mock('electron', () => ({
   BrowserWindow: {
-    getAllWindows: vi.fn(() => mockWindows)
+    getAllWindows: vi.fn()
   }
 }))
 
@@ -63,9 +63,8 @@ describe('vault watcher', () => {
     vi.mocked(updateNoteEmbedding).mockResolvedValue(undefined)
     vi.mocked(getConfig).mockReturnValue(baseConfig)
 
-    mockWindows.length = 0
     window = new MockBrowserWindow()
-    mockWindows.push(window)
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window])
     mockWatch.mockReset()
   })
 
@@ -73,7 +72,6 @@ describe('vault watcher', () => {
     clearAllPendingDeletes()
     indexDb.close()
     vault.cleanup()
-    mockWindows.length = 0
     vi.clearAllMocks()
     vi.useRealTimers()
   })

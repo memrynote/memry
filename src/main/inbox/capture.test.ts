@@ -4,16 +4,16 @@ import { InboxChannels } from '@shared/ipc-channels'
 import { inboxItems, inboxItemTags } from '@shared/db/schema/inbox'
 import { createTestDatabase, cleanupTestDatabase, type TestDatabaseResult } from '@tests/utils/test-db'
 import { MockBrowserWindow } from '@tests/utils/mock-electron'
+import { BrowserWindow } from 'electron'
 
-const mockWindows: MockBrowserWindow[] = []
-const mockStoreInboxAttachment = vi.fn()
-const mockResolveAttachmentUrl = vi.fn()
-const mockTranscribeAudio = vi.fn()
-const mockIsTranscriptionAvailable = vi.fn()
+const mockStoreInboxAttachment = vi.hoisted(() => vi.fn())
+const mockResolveAttachmentUrl = vi.hoisted(() => vi.fn())
+const mockTranscribeAudio = vi.hoisted(() => vi.fn())
+const mockIsTranscriptionAvailable = vi.hoisted(() => vi.fn())
 
 vi.mock('electron', () => ({
   BrowserWindow: {
-    getAllWindows: vi.fn(() => mockWindows)
+    getAllWindows: vi.fn()
   }
 }))
 
@@ -42,9 +42,8 @@ describe('inbox capture', () => {
     testDb = createTestDatabase()
     vi.mocked(getDatabase).mockReturnValue(testDb.db)
 
-    mockWindows.length = 0
     window = new MockBrowserWindow()
-    mockWindows.push(window)
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window])
 
     mockStoreInboxAttachment.mockReset()
     mockResolveAttachmentUrl.mockImplementation((value: string | null) =>
@@ -56,7 +55,6 @@ describe('inbox capture', () => {
 
   afterEach(() => {
     cleanupTestDatabase(testDb)
-    mockWindows.length = 0
     vi.clearAllMocks()
   })
 

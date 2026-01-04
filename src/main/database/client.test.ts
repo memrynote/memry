@@ -89,7 +89,8 @@ describe('database client', () => {
     vi.useFakeTimers()
     const pending = withTimeout(() => new Promise(() => undefined), 10)
 
+    const expectation = expect(pending).rejects.toThrow('timed out')
     await vi.advanceTimersByTimeAsync(10)
-    await expect(pending).rejects.toThrow('timed out')
+    await expectation
   })
 })
