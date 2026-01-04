@@ -3,10 +3,10 @@
  * Full-width tab with icon, title, and close button
  */
 
-import { useState } from 'react'
+import { useState, useCallback, memo } from 'react'
 import { X } from 'lucide-react'
 import type { Tab } from '@/contexts/tabs/types'
-import { useTabs } from '@/contexts/tabs'
+import { useTabs, useTabSettings } from '@/contexts/tabs'
 import { TabIcon } from './tab-icon'
 import { cn } from '@/lib/utils'
 
@@ -23,46 +23,57 @@ interface RegularTabProps {
 
 /**
  * Regular tab component with full title and controls
+ * Memoized to prevent unnecessary re-renders when other tabs change
  */
-export const RegularTab = ({
+const RegularTabComponent = ({
   tab,
   groupId,
   isActive,
   className
 }: RegularTabProps): React.JSX.Element => {
-  const { setActiveTab, closeTab, promotePreviewTab, state } = useTabs()
+  const { setActiveTab, closeTab, promotePreviewTab } = useTabs()
+  const settings = useTabSettings()
   const [isHovered, setIsHovered] = useState(false)
 
   // Determine if close button should be visible
   const showCloseButton =
-    state.settings.tabCloseButton === 'always' ||
-    (state.settings.tabCloseButton === 'hover' && isHovered) ||
-    (state.settings.tabCloseButton === 'active' && isActive)
+    settings.tabCloseButton === 'always' ||
+    (settings.tabCloseButton === 'hover' && isHovered) ||
+    (settings.tabCloseButton === 'active' && isActive)
 
-  // Handlers
-  const handleClick = (): void => {
+  // Memoized handlers to prevent unnecessary re-renders
+  const handleClick = useCallback((): void => {
     setActiveTab(tab.id, groupId)
-  }
+  }, [setActiveTab, tab.id, groupId])
 
-  const handleClose = (e: React.MouseEvent): void => {
-    e.stopPropagation()
-    closeTab(tab.id, groupId)
-  }
-
-  const handleMouseDown = (e: React.MouseEvent): void => {
-    // Middle-click to close
-    if (e.button === 1) {
-      e.preventDefault()
+  const handleClose = useCallback(
+    (e: React.MouseEvent): void => {
+      e.stopPropagation()
       closeTab(tab.id, groupId)
-    }
-  }
+    },
+    [closeTab, tab.id, groupId]
+  )
 
-  const handleDoubleClick = (): void => {
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent): void => {
+      // Middle-click to close
+      if (e.button === 1) {
+        e.preventDefault()
+        closeTab(tab.id, groupId)
+      }
+    },
+    [closeTab, tab.id, groupId]
+  )
+
+  const handleDoubleClick = useCallback((): void => {
     // Double-click promotes preview tab to permanent
     if (tab.isPreview) {
       promotePreviewTab(tab.id, groupId)
     }
-  }
+  }, [promotePreviewTab, tab.id, tab.isPreview, groupId])
+
+  const handleMouseEnter = useCallback(() => setIsHovered(true), [])
+  const handleMouseLeave = useCallback(() => setIsHovered(false), [])
 
   return (
     <div
@@ -96,8 +107,8 @@ export const RegularTab = ({
       onClick={handleClick}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       role="tab"
       aria-selected={isActive}
       tabIndex={isActive ? 0 : -1}
@@ -156,5 +167,31 @@ export const RegularTab = ({
     </div>
   )
 }
+
+/**
+ * Memoized RegularTab - only re-renders when its specific props change
+ * Custom comparison for tab object to check relevant properties
+ */
+export const RegularTab = memo(RegularTabComponent, (prevProps, nextProps) => {
+  // Compare primitive props
+  if (prevProps.groupId !== nextProps.groupId) return false
+  if (prevProps.isActive !== nextProps.isActive) return false
+  if (prevProps.className !== nextProps.className) return false
+
+  // Compare relevant tab properties (not lastAccessedAt which changes frequently)
+  const prevTab = prevProps.tab
+  const nextTab = nextProps.tab
+  if (prevTab.id !== nextTab.id) return false
+  if (prevTab.title !== nextTab.title) return false
+  if (prevTab.type !== nextTab.type) return false
+  if (prevTab.icon !== nextTab.icon) return false
+  if (prevTab.emoji !== nextTab.emoji) return false
+  if (prevTab.isPreview !== nextTab.isPreview) return false
+  if (prevTab.isModified !== nextTab.isModified) return false
+  if (prevTab.isPinned !== nextTab.isPinned) return false
+  if (prevTab.isDeleted !== nextTab.isDeleted) return false
+
+  return true // Props are equal, skip re-render
+})
 
 export default RegularTab

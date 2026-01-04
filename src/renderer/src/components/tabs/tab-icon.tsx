@@ -1,8 +1,10 @@
 /**
  * Tab Icon Component
  * Maps tab types to Lucide React icons
+ * Memoized to prevent unnecessary re-renders
  */
 
+import { memo } from 'react'
 import {
   Inbox,
   Home,
@@ -79,8 +81,9 @@ const TYPE_TO_ICON: Record<TabType, string> = {
 /**
  * Renders the appropriate icon for a tab
  * If emoji is provided, renders emoji instead of icon
+ * Memoized to prevent unnecessary re-renders
  */
-export const TabIcon = ({ type, icon, emoji, className }: TabIconProps): React.JSX.Element => {
+const TabIconComponent = ({ type, icon, emoji, className }: TabIconProps): React.JSX.Element => {
   // If emoji is provided, render it instead of icon
   if (emoji) {
     return <span className={cn('shrink-0 text-center leading-none', className)}>{emoji}</span>
@@ -92,5 +95,7 @@ export const TabIcon = ({ type, icon, emoji, className }: TabIconProps): React.J
 
   return <IconComponent className={cn('shrink-0', className)} />
 }
+
+export const TabIcon = memo(TabIconComponent)
 
 export default TabIcon

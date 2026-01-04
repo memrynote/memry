@@ -10,6 +10,7 @@ import {
   useCallback,
   useMemo,
   useEffect,
+  useRef,
   type ReactNode
 } from 'react'
 
@@ -254,6 +255,17 @@ export const TabProvider = ({
 
   const [state, dispatch] = useReducer(tabReducer, computedInitialState)
 
+  // Use refs for state values to avoid callback dependency changes
+  // This prevents cascade re-renders when activeGroupId/tabGroups change
+  const activeGroupIdRef = useRef(state.activeGroupId)
+  const tabGroupsRef = useRef(state.tabGroups)
+
+  // Keep refs in sync with state (must be in useEffect per React rules)
+  useEffect(() => {
+    activeGroupIdRef.current = state.activeGroupId
+    tabGroupsRef.current = state.tabGroups
+  })
+
   // Listen for settings changes from the database (other windows, settings page)
   useEffect(() => {
     const unsubscribe = window.api.onSettingsChanged((event) => {
@@ -311,60 +323,45 @@ export const TabProvider = ({
     []
   )
 
-  const closeTab = useCallback(
-    (tabId: string, groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
-      dispatch({
-        type: 'CLOSE_TAB',
-        payload: { tabId, groupId: actualGroupId }
-      })
-    },
-    [state.activeGroupId]
-  )
+  const closeTab = useCallback((tabId: string, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'CLOSE_TAB',
+      payload: { tabId, groupId: actualGroupId }
+    })
+  }, [])
 
-  const closeOtherTabs = useCallback(
-    (tabId: string, groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
-      dispatch({
-        type: 'CLOSE_OTHER_TABS',
-        payload: { tabId, groupId: actualGroupId }
-      })
-    },
-    [state.activeGroupId]
-  )
+  const closeOtherTabs = useCallback((tabId: string, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'CLOSE_OTHER_TABS',
+      payload: { tabId, groupId: actualGroupId }
+    })
+  }, [])
 
-  const closeTabsToRight = useCallback(
-    (tabId: string, groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
-      dispatch({
-        type: 'CLOSE_TABS_TO_RIGHT',
-        payload: { tabId, groupId: actualGroupId }
-      })
-    },
-    [state.activeGroupId]
-  )
+  const closeTabsToRight = useCallback((tabId: string, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'CLOSE_TABS_TO_RIGHT',
+      payload: { tabId, groupId: actualGroupId }
+    })
+  }, [])
 
-  const closeAllTabs = useCallback(
-    (groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
-      dispatch({
-        type: 'CLOSE_ALL_TABS',
-        payload: { groupId: actualGroupId }
-      })
-    },
-    [state.activeGroupId]
-  )
+  const closeAllTabs = useCallback((groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'CLOSE_ALL_TABS',
+      payload: { groupId: actualGroupId }
+    })
+  }, [])
 
-  const setActiveTab = useCallback(
-    (tabId: string, groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
-      dispatch({
-        type: 'SET_ACTIVE_TAB',
-        payload: { tabId, groupId: actualGroupId }
-      })
-    },
-    [state.activeGroupId]
-  )
+  const setActiveTab = useCallback((tabId: string, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'SET_ACTIVE_TAB',
+      payload: { tabId, groupId: actualGroupId }
+    })
+  }, [])
 
   const setActiveGroup = useCallback((groupId: string) => {
     dispatch({
@@ -373,136 +370,103 @@ export const TabProvider = ({
     })
   }, [])
 
-  const goToNextTab = useCallback(
-    (groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
-      dispatch({
-        type: 'GO_TO_NEXT_TAB',
-        payload: { groupId: actualGroupId }
-      })
-    },
-    [state.activeGroupId]
-  )
+  const goToNextTab = useCallback((groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'GO_TO_NEXT_TAB',
+      payload: { groupId: actualGroupId }
+    })
+  }, [])
 
-  const goToPreviousTab = useCallback(
-    (groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
-      dispatch({
-        type: 'GO_TO_PREVIOUS_TAB',
-        payload: { groupId: actualGroupId }
-      })
-    },
-    [state.activeGroupId]
-  )
+  const goToPreviousTab = useCallback((groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'GO_TO_PREVIOUS_TAB',
+      payload: { groupId: actualGroupId }
+    })
+  }, [])
 
-  const goToTabIndex = useCallback(
-    (index: number, groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
-      dispatch({
-        type: 'GO_TO_TAB_INDEX',
-        payload: { index, groupId: actualGroupId }
-      })
-    },
-    [state.activeGroupId]
-  )
+  const goToTabIndex = useCallback((index: number, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'GO_TO_TAB_INDEX',
+      payload: { index, groupId: actualGroupId }
+    })
+  }, [])
 
-  const pinTab = useCallback(
-    (tabId: string, groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
+  const pinTab = useCallback((tabId: string, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'PIN_TAB',
+      payload: { tabId, groupId: actualGroupId }
+    })
+  }, [])
+
+  const unpinTab = useCallback((tabId: string, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'UNPIN_TAB',
+      payload: { tabId, groupId: actualGroupId }
+    })
+  }, [])
+
+  const togglePinTab = useCallback((tabId: string, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    const group = tabGroupsRef.current[actualGroupId]
+    const tab = group?.tabs.find((t) => t.id === tabId)
+    if (tab) {
       dispatch({
-        type: 'PIN_TAB',
+        type: tab.isPinned ? 'UNPIN_TAB' : 'PIN_TAB',
         payload: { tabId, groupId: actualGroupId }
       })
-    },
-    [state.activeGroupId]
-  )
+    }
+  }, [])
 
-  const unpinTab = useCallback(
-    (tabId: string, groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
-      dispatch({
-        type: 'UNPIN_TAB',
-        payload: { tabId, groupId: actualGroupId }
-      })
-    },
-    [state.activeGroupId]
-  )
+  const setTabModified = useCallback((tabId: string, isModified: boolean, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'SET_TAB_MODIFIED',
+      payload: { tabId, groupId: actualGroupId, isModified }
+    })
+  }, [])
 
-  const togglePinTab = useCallback(
-    (tabId: string, groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
-      const group = state.tabGroups[actualGroupId]
-      const tab = group?.tabs.find((t) => t.id === tabId)
+  const setTabDeleted = useCallback((entityId: string, isDeleted: boolean) => {
+    // Find the tab by entityId across all groups
+    for (const [groupId, group] of Object.entries(tabGroupsRef.current)) {
+      const tab = group.tabs.find((t) => t.entityId === entityId)
       if (tab) {
         dispatch({
-          type: tab.isPinned ? 'UNPIN_TAB' : 'PIN_TAB',
-          payload: { tabId, groupId: actualGroupId }
+          type: 'SET_TAB_DELETED',
+          payload: { tabId: tab.id, groupId, isDeleted }
         })
+        return
       }
-    },
-    [state.activeGroupId, state.tabGroups]
-  )
+    }
+  }, [])
 
-  const setTabModified = useCallback(
-    (tabId: string, isModified: boolean, groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
-      dispatch({
-        type: 'SET_TAB_MODIFIED',
-        payload: { tabId, groupId: actualGroupId, isModified }
-      })
-    },
-    [state.activeGroupId]
-  )
+  const updateTabTitle = useCallback((tabId: string, title: string, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'UPDATE_TAB_TITLE',
+      payload: { tabId, groupId: actualGroupId, title }
+    })
+  }, [])
 
-  const setTabDeleted = useCallback(
-    (entityId: string, isDeleted: boolean) => {
-      // Find the tab by entityId across all groups
-      for (const [groupId, group] of Object.entries(state.tabGroups)) {
-        const tab = group.tabs.find((t) => t.entityId === entityId)
-        if (tab) {
-          dispatch({
-            type: 'SET_TAB_DELETED',
-            payload: { tabId: tab.id, groupId, isDeleted }
-          })
-          return
-        }
-      }
-    },
-    [state.tabGroups]
-  )
+  const promotePreviewTab = useCallback((tabId: string, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'PROMOTE_PREVIEW_TAB',
+      payload: { tabId, groupId: actualGroupId }
+    })
+  }, [])
 
-  const updateTabTitle = useCallback(
-    (tabId: string, title: string, groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
-      dispatch({
-        type: 'UPDATE_TAB_TITLE',
-        payload: { tabId, groupId: actualGroupId, title }
-      })
-    },
-    [state.activeGroupId]
-  )
-
-  const promotePreviewTab = useCallback(
-    (tabId: string, groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
-      dispatch({
-        type: 'PROMOTE_PREVIEW_TAB',
-        payload: { tabId, groupId: actualGroupId }
-      })
-    },
-    [state.activeGroupId]
-  )
-
-  const reorderTabs = useCallback(
-    (fromIndex: number, toIndex: number, groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
-      dispatch({
-        type: 'REORDER_TABS',
-        payload: { groupId: actualGroupId, fromIndex, toIndex }
-      })
-    },
-    [state.activeGroupId]
-  )
+  const reorderTabs = useCallback((fromIndex: number, toIndex: number, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'REORDER_TABS',
+      payload: { groupId: actualGroupId, fromIndex, toIndex }
+    })
+  }, [])
 
   const moveTabToGroup = useCallback(
     (tabId: string, fromGroupId: string, toGroupId: string, toIndex: number) => {
@@ -520,7 +484,7 @@ export const TabProvider = ({
       tabState: { scrollPosition?: number; viewState?: Record<string, unknown> },
       groupId?: string
     ) => {
-      const actualGroupId = groupId ?? state.activeGroupId
+      const actualGroupId = groupId ?? activeGroupIdRef.current
       dispatch({
         type: 'SAVE_TAB_STATE',
         payload: {
@@ -530,19 +494,16 @@ export const TabProvider = ({
         }
       })
     },
-    [state.activeGroupId]
+    []
   )
 
-  const splitView = useCallback(
-    (direction: 'horizontal', groupId?: string) => {
-      const actualGroupId = groupId ?? state.activeGroupId
-      dispatch({
-        type: 'SPLIT_VIEW',
-        payload: { direction, groupId: actualGroupId }
-      })
-    },
-    [state.activeGroupId]
-  )
+  const splitView = useCallback((direction: 'horizontal', groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'SPLIT_VIEW',
+      payload: { direction, groupId: actualGroupId }
+    })
+  }, [])
 
   const closeSplit = useCallback((groupId: string) => {
     dispatch({
@@ -789,4 +750,106 @@ export const useTabCounts = () => {
       groups: Object.keys(state.tabGroups).length
     }
   }, [state.tabGroups])
+}
+
+/**
+ * Hook to get only tab actions (stable references that don't change)
+ * Use this when you only need to perform actions like openTab, closeTab, etc.
+ * This prevents re-renders when tab state changes.
+ */
+export const useTabActions = () => {
+  const {
+    openTab,
+    openFromSidebar,
+    closeTab,
+    closeOtherTabs,
+    closeTabsToRight,
+    closeAllTabs,
+    setActiveTab,
+    setActiveGroup,
+    goToNextTab,
+    goToPreviousTab,
+    goToTabIndex,
+    pinTab,
+    unpinTab,
+    togglePinTab,
+    setTabModified,
+    setTabDeleted,
+    updateTabTitle,
+    promotePreviewTab,
+    reorderTabs,
+    moveTabToGroup,
+    saveTabState,
+    splitView,
+    closeSplit,
+    moveTabToNewSplit,
+    updateSettings,
+    restoreSession,
+    resetToDefault,
+    dispatch
+  } = useTabs()
+
+  // Return only actions - these are stable references due to useCallback with empty deps
+  return useMemo(
+    () => ({
+      openTab,
+      openFromSidebar,
+      closeTab,
+      closeOtherTabs,
+      closeTabsToRight,
+      closeAllTabs,
+      setActiveTab,
+      setActiveGroup,
+      goToNextTab,
+      goToPreviousTab,
+      goToTabIndex,
+      pinTab,
+      unpinTab,
+      togglePinTab,
+      setTabModified,
+      setTabDeleted,
+      updateTabTitle,
+      promotePreviewTab,
+      reorderTabs,
+      moveTabToGroup,
+      saveTabState,
+      splitView,
+      closeSplit,
+      moveTabToNewSplit,
+      updateSettings,
+      restoreSession,
+      resetToDefault,
+      dispatch
+    }),
+    [
+      openTab,
+      openFromSidebar,
+      closeTab,
+      closeOtherTabs,
+      closeTabsToRight,
+      closeAllTabs,
+      setActiveTab,
+      setActiveGroup,
+      goToNextTab,
+      goToPreviousTab,
+      goToTabIndex,
+      pinTab,
+      unpinTab,
+      togglePinTab,
+      setTabModified,
+      setTabDeleted,
+      updateTabTitle,
+      promotePreviewTab,
+      reorderTabs,
+      moveTabToGroup,
+      saveTabState,
+      splitView,
+      closeSplit,
+      moveTabToNewSplit,
+      updateSettings,
+      restoreSession,
+      resetToDefault,
+      dispatch
+    ]
+  )
 }
