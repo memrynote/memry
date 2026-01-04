@@ -14,15 +14,12 @@ import {
   parseNote,
   serializeNote,
   createFrontmatter,
-  extractWikiLinks,
-  extractTags,
-  extractProperties,
   calculateWordCount,
   generateContentHash,
   createSnippet,
-  inferPropertyType,
   type NoteFrontmatter
 } from './frontmatter'
+import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import {
   atomicWrite,
   safeRead,
@@ -41,20 +38,16 @@ import {
   getNoteCacheByPath,
   listNotesFromCache,
   countNotes,
-  setNoteTags,
   getNoteTags,
   getTagsForNotes,
   getAllTagsWithColors,
   ensureTagDefinitions,
-  setNoteLinks,
-  setNoteProperties,
   getNotePropertiesAsRecord,
+  getPropertiesForNotes,
   getOutgoingLinks,
   getIncomingLinks,
-  deleteLinksToNote,
   findDuplicateId,
   resolveNoteByTitle,
-  getPropertyType,
   insertNoteSnapshot,
   getLatestSnapshot,
   snapshotExistsWithHash,
@@ -63,7 +56,7 @@ import {
   pruneOldSnapshots
 } from '@shared/db/queries/notes'
 import { SnapshotReasons, type SnapshotReason } from '@shared/db/schema/notes-cache'
-import { getIndexDatabase, updateFtsContent } from '../database'
+import { getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@shared/contracts/notes-api'
@@ -98,6 +91,7 @@ export interface NoteListItem {
   wordCount: number
   snippet?: string
   emoji?: string | null // T028: Emoji icon for visual identification
+  properties?: Record<string, unknown> // T040: Optional properties for folder view
 }
 
 export interface NoteCreateInput {
@@ -126,6 +120,7 @@ export interface NoteListOptions {
   sortOrder?: 'asc' | 'desc'
   limit?: number
   offset?: number
+  includeProperties?: boolean // T041: Include properties in response (for folder view)
 }
 
 export interface NoteListResponse {
@@ -287,45 +282,18 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   // Get relative path for cache
   const relativePath = toRelativePath(filePath)
 
-  // Update cache
-  const contentHash = generateContentHash(fileContent)
-  const wordCount = calculateWordCount(content)
-
-  insertNoteCache(db, {
-    id: frontmatter.id,
-    path: relativePath,
-    title: input.title,
-    contentHash,
-    wordCount,
-    snippet: createSnippet(content),
-    createdAt: frontmatter.created,
-    modifiedAt: frontmatter.modified
-  })
-
-  // Set tags (merged from template and input)
-  if (mergedTags.length > 0) {
-    setNoteTags(db, frontmatter.id, mergedTags)
-  }
-
-  // T014: Set properties in cache
-  if (Object.keys(properties).length > 0) {
-    setNoteProperties(db, frontmatter.id, properties, (name, value) =>
-      getPropertyType(db, name, value, inferPropertyType)
-    )
-  }
-
-  // Update FTS index with content and tags
-  updateFtsContent(db, frontmatter.id, content, mergedTags)
-
-  // Extract and set links
-  const wikiLinks = extractWikiLinks(content)
-  if (wikiLinks.length > 0) {
-    const links = wikiLinks.map((title) => {
-      const target = resolveNoteByTitle(db, title)
-      return { targetTitle: title, targetId: target?.id }
-    })
-    setNoteLinks(db, frontmatter.id, links)
-  }
+  // Sync to cache using NoteSyncService (handles tags, properties, FTS, links)
+  const syncResult = syncNoteToCache(
+    db,
+    {
+      id: frontmatter.id,
+      path: relativePath,
+      fileContent,
+      frontmatter,
+      parsedContent: content
+    },
+    { isNew: true }
+  )
 
   // Build response
   const note: Note = {
@@ -338,7 +306,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     modified: new Date(frontmatter.modified),
     tags: mergedTags,
     aliases: frontmatter.aliases ?? [],
-    wordCount,
+    wordCount: syncResult.wordCount,
     properties, // T014/T096.6: Include merged properties in response
     emoji: null // T028: New notes start without emoji
   }
@@ -454,37 +422,20 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     return null
   }
 
-  // Parse and index
+  // Parse and sync to cache using NoteSyncService
   const parsed = parseNote(fileContent, notePath)
-  const contentHash = generateContentHash(fileContent)
-  const wordCount = calculateWordCount(parsed.content)
-  const tags = extractTags(parsed.frontmatter)
-  const properties = extractProperties(parsed.frontmatter) // T013: Extract properties
-  const emoji = (parsed.frontmatter as { emoji?: string }).emoji ?? null // T028: Extract emoji
 
-  // Insert into cache
-  insertNoteCache(db, {
-    id: parsed.frontmatter.id,
-    path: notePath,
-    title: parsed.frontmatter.title ?? path.basename(notePath, '.md'),
-    contentHash,
-    wordCount,
-    snippet: createSnippet(parsed.content),
-    createdAt: parsed.frontmatter.created,
-    modifiedAt: parsed.frontmatter.modified,
-    emoji // T028: Include emoji in cache
-  })
-
-  if (tags.length > 0) {
-    setNoteTags(db, parsed.frontmatter.id, tags)
-  }
-
-  // T013: Set properties in cache
-  if (Object.keys(properties).length > 0) {
-    setNoteProperties(db, parsed.frontmatter.id, properties, (name, value) =>
-      getPropertyType(db, name, value, inferPropertyType)
-    )
-  }
+  const syncResult = syncNoteToCache(
+    db,
+    {
+      id: parsed.frontmatter.id,
+      path: notePath,
+      fileContent,
+      frontmatter: parsed.frontmatter,
+      parsedContent: parsed.content
+    },
+    { isNew: true }
+  )
 
   return {
     id: parsed.frontmatter.id,
@@ -494,11 +445,11 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     frontmatter: parsed.frontmatter,
     created: new Date(parsed.frontmatter.created),
     modified: new Date(parsed.frontmatter.modified),
-    tags,
+    tags: syncResult.tags,
     aliases: parsed.frontmatter.aliases ?? [],
-    wordCount,
-    properties, // T013: Include properties
-    emoji // T028: Include emoji
+    wordCount: syncResult.wordCount,
+    properties: syncResult.properties,
+    emoji: syncResult.emoji
   }
 }
 
@@ -571,20 +522,20 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   const absolutePath = toAbsolutePath(existing.path)
   await atomicWrite(absolutePath, fileContent)
 
-  // Update cache
-  const contentHash = generateContentHash(fileContent)
-  const wordCount = calculateWordCount(newContent)
+  // Sync to cache using NoteSyncService (handles tags, properties, FTS, links)
+  const syncResult = syncNoteToCache(
+    db,
+    {
+      id: input.id,
+      path: existing.path,
+      fileContent,
+      frontmatter: newFrontmatter,
+      parsedContent: newContent
+    },
+    { isNew: false }
+  )
 
-  updateNoteCache(db, input.id, {
-    title: newTitle,
-    contentHash,
-    wordCount,
-    snippet: createSnippet(newContent),
-    modifiedAt: newFrontmatter.modified,
-    emoji: newEmoji // T028: Update emoji in cache
-  })
-
-  // Update tags and ensure tag definitions exist
+  // Check if tags changed (for event emission)
   const tagsChanged =
     newTags.length !== existing.tags.length || newTags.some((t) => !existing.tags.includes(t))
 
@@ -592,23 +543,6 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     // Ensure all tags have definitions (creates new tags with auto-assigned colors)
     ensureTagDefinitions(db, newTags)
   }
-  setNoteTags(db, input.id, newTags)
-
-  // T013: Update properties
-  setNoteProperties(db, input.id, newProperties, (name, value) =>
-    getPropertyType(db, name, value, inferPropertyType)
-  )
-
-  // Update FTS index with content and tags
-  updateFtsContent(db, input.id, newContent, newTags)
-
-  // Update links
-  const wikiLinks = extractWikiLinks(newContent)
-  const links = wikiLinks.map((title) => {
-    const target = resolveNoteByTitle(db, title)
-    return { targetTitle: title, targetId: target?.id }
-  })
-  setNoteLinks(db, input.id, links)
 
   // Build response
   const note: Note = {
@@ -621,7 +555,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     modified: new Date(newFrontmatter.modified),
     tags: newTags,
     aliases: newFrontmatter.aliases ?? [],
-    wordCount,
+    wordCount: syncResult.wordCount,
     properties: newProperties, // T013: Include properties
     emoji: newEmoji // T028: Include emoji
   }
@@ -798,11 +732,8 @@ export async function deleteNote(id: string): Promise<void> {
   const absolutePath = toAbsolutePath(cached.path)
   await deleteFile(absolutePath)
 
-  // Clean up links where this note is the target (orphaned outgoing links from other notes)
-  deleteLinksToNote(db, id)
-
-  // Remove from cache (cascades to tags and outgoing links via sourceId)
-  deleteNoteCache(db, id)
+  // Remove from cache using NoteSyncService (handles links cleanup + cache deletion)
+  deleteNoteFromCache(db, id)
 
   // Emit event
   emitNoteEvent(NotesChannels.events.DELETED, {
@@ -818,7 +749,7 @@ export async function deleteNote(id: string): Promise<void> {
 
 /**
  * List notes with filtering and pagination.
- * Optimized to use batch tag queries and cached snippets (no file reads).
+ * Optimized to use batch tag/property queries and cached snippets (no file reads).
  */
 export async function listNotes(options: NoteListOptions = {}): Promise<NoteListResponse> {
   const db = getIndexDatabase()
@@ -843,6 +774,9 @@ export async function listNotes(options: NoteListOptions = {}): Promise<NoteList
   const noteIds = notes.map((n) => n.id)
   const tagsMap = getTagsForNotes(db, noteIds)
 
+  // T040-T041: Optionally batch load properties (for folder view)
+  const propertiesMap = options.includeProperties ? getPropertiesForNotes(db, noteIds) : null
+
   // Convert to list items using cached snippets (no file reads needed)
   const noteItems: NoteListItem[] = notes.map((c) => ({
     id: c.id,
@@ -853,7 +787,8 @@ export async function listNotes(options: NoteListOptions = {}): Promise<NoteList
     tags: tagsMap.get(c.id) ?? [],
     wordCount: c.wordCount,
     snippet: c.snippet ?? undefined, // Use cached snippet from database
-    emoji: c.emoji // T028: Include emoji
+    emoji: c.emoji, // T028: Include emoji
+    ...(propertiesMap && { properties: propertiesMap.get(c.id) ?? {} }) // T040: Include properties if requested
   }))
 
   return { notes: noteItems, total, hasMore }
@@ -1213,36 +1148,21 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
   // Write the snapshot file content directly to disk
   await atomicWrite(absolutePath, snapshot.fileContent)
 
-  // Update cache with restored data
-  const contentHash = generateContentHash(snapshot.fileContent)
-  const wordCount = calculateWordCount(snapshotParsed.content)
-  const tags = snapshotParsed.frontmatter.tags ?? []
-  const properties = extractProperties(snapshotParsed.frontmatter)
-
-  updateNoteCache(db, cached.id, {
-    title: snapshotParsed.frontmatter.title ?? cached.title,
-    contentHash,
-    wordCount,
-    modifiedAt: new Date().toISOString(),
-    emoji: (snapshotParsed.frontmatter.emoji as string | null) ?? null
-  })
-
-  // Update tags
-  ensureTagDefinitions(db, tags)
-  setNoteTags(db, cached.id, tags)
-
-  // Update properties
-  setNoteProperties(db, cached.id, properties, (name, value) =>
-    getPropertyType(db, name, value, inferPropertyType)
+  // Sync to cache using NoteSyncService (handles tags, properties, FTS, links)
+  const syncResult = syncNoteToCache(
+    db,
+    {
+      id: cached.id,
+      path: cached.path,
+      fileContent: snapshot.fileContent,
+      frontmatter: snapshotParsed.frontmatter,
+      parsedContent: snapshotParsed.content
+    },
+    { isNew: false }
   )
 
-  // Update links
-  const wikiLinks = extractWikiLinks(snapshotParsed.content)
-  const links = wikiLinks.map((title) => {
-    const target = resolveNoteByTitle(db, title)
-    return { targetTitle: title, targetId: target?.id }
-  })
-  setNoteLinks(db, cached.id, links)
+  // Ensure all tags have definitions (creates new tags with auto-assigned colors)
+  ensureTagDefinitions(db, syncResult.tags)
 
   // Build the restored note object
   const restoredNote: Note = {
@@ -1253,11 +1173,11 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
     frontmatter: snapshotParsed.frontmatter,
     created: new Date(snapshotParsed.frontmatter.created),
     modified: new Date(),
-    tags,
+    tags: syncResult.tags,
     aliases: snapshotParsed.frontmatter.aliases ?? [],
-    wordCount,
-    properties,
-    emoji: (snapshotParsed.frontmatter.emoji as string | null) ?? null
+    wordCount: syncResult.wordCount,
+    properties: syncResult.properties,
+    emoji: syncResult.emoji
   }
 
   // Emit event

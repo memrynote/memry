@@ -16,29 +16,14 @@ import {
   parseNote,
   serializeNote,
   extractTags,
-  extractProperties,
-  extractWikiLinks,
-  calculateWordCount,
   generateContentHash,
-  createSnippet,
-  inferPropertyType
+  extractProperties
 } from './frontmatter'
 import { safeRead, atomicWrite } from './file-ops'
 import { generateNoteId } from '../lib/id'
-import {
-  insertNoteCache,
-  updateNoteCache,
-  deleteNoteCache,
-  getNoteCacheByPath,
-  getNoteCacheById,
-  setNoteTags,
-  setNoteLinks,
-  setNoteProperties,
-  resolveNoteByTitle,
-  getPropertyType,
-  extractDateFromPath
-} from '@shared/db/queries/notes'
-import { getIndexDatabase, updateFtsContent } from '../database'
+import { syncNoteToCache } from './note-sync'
+import { deleteNoteCache, getNoteCacheByPath, getNoteCacheById } from '@shared/db/queries/notes'
+import { getIndexDatabase } from '../database'
 import { NotesChannels, JournalChannels } from '@shared/ipc-channels'
 import { trackPendingDelete, checkForRename, clearAllPendingDeletes } from './rename-tracker'
 import { updateNoteEmbedding } from '../inbox/suggestions'
@@ -330,57 +315,22 @@ export class VaultWatcher {
         }
       }
 
-      // Extract metadata
+      // Sync to cache using NoteSyncService (handles tags, properties, FTS, links)
+      const syncResult = syncNoteToCache(
+        db,
+        {
+          id: parsed.frontmatter.id,
+          path: relativePath,
+          fileContent: content,
+          frontmatter: parsed.frontmatter,
+          parsedContent: parsed.content
+        },
+        { isNew: true }
+      )
+
+      // Extract tags and properties for event emission
       const tags = extractTags(parsed.frontmatter)
       const properties = extractProperties(parsed.frontmatter)
-      const wikiLinks = extractWikiLinks(parsed.content)
-      const wordCount = calculateWordCount(parsed.content)
-      const characterCount = parsed.content.length
-      const contentHash = generateContentHash(content)
-      const snippet = createSnippet(parsed.content)
-      const emoji = (parsed.frontmatter as { emoji?: string }).emoji ?? null
-
-      // Check if this is a journal entry (journal/YYYY-MM-DD.md)
-      const date = extractDateFromPath(relativePath)
-
-      // Insert into cache
-      insertNoteCache(db, {
-        id: parsed.frontmatter.id,
-        path: relativePath,
-        title: parsed.frontmatter.title ?? path.basename(relativePath, '.md'),
-        emoji,
-        contentHash,
-        wordCount,
-        characterCount,
-        snippet,
-        date,
-        createdAt: parsed.frontmatter.created,
-        modifiedAt: parsed.frontmatter.modified
-      })
-
-      // Set tags
-      if (tags.length > 0) {
-        setNoteTags(db, parsed.frontmatter.id, tags)
-      }
-
-      // T012: Set properties with type inference
-      if (Object.keys(properties).length > 0) {
-        setNoteProperties(db, parsed.frontmatter.id, properties, (name, value) =>
-          getPropertyType(db, name, value, inferPropertyType)
-        )
-      }
-
-      // Update FTS index with content and tags
-      updateFtsContent(db, parsed.frontmatter.id, parsed.content, tags)
-
-      // Set links
-      if (wikiLinks.length > 0) {
-        const links = wikiLinks.map((title) => {
-          const target = resolveNoteByTitle(db, title)
-          return { targetTitle: title, targetId: target?.id }
-        })
-        setNoteLinks(db, parsed.frontmatter.id, links)
-      }
 
       // Create list item for event
       const noteListItem: NoteListItem = {
@@ -390,8 +340,8 @@ export class VaultWatcher {
         created: new Date(parsed.frontmatter.created),
         modified: new Date(parsed.frontmatter.modified),
         tags,
-        wordCount,
-        snippet
+        wordCount: syncResult.wordCount,
+        snippet: syncResult.snippet
       }
 
       // Emit event to renderer
@@ -414,8 +364,8 @@ export class VaultWatcher {
             date: journalDate,
             content: parsed.content,
             tags,
-            wordCount,
-            characterCount,
+            wordCount: syncResult.wordCount,
+            characterCount: syncResult.characterCount,
             modified: new Date(parsed.frontmatter.modified),
             created: new Date(parsed.frontmatter.created)
           },
@@ -457,45 +407,24 @@ export class VaultWatcher {
         return
       }
 
-      // Extract metadata
-      const tags = extractTags(parsed.frontmatter)
-      const properties = extractProperties(parsed.frontmatter)
-      const wikiLinks = extractWikiLinks(parsed.content)
-      const wordCount = calculateWordCount(parsed.content)
-      const characterCount = parsed.content.length
-      const snippet = createSnippet(parsed.content)
-      const title = parsed.frontmatter.title ?? path.basename(relativePath, '.md')
-      const emoji = (parsed.frontmatter as { emoji?: string }).emoji ?? null
-
       if (cached) {
-        // Update existing cache entry
-        updateNoteCache(db, cached.id, {
-          title,
-          emoji,
-          contentHash,
-          wordCount,
-          characterCount,
-          snippet,
-          modifiedAt: parsed.frontmatter.modified
-        })
-
-        // Update tags
-        setNoteTags(db, cached.id, tags)
-
-        // T012: Update properties with type inference
-        setNoteProperties(db, cached.id, properties, (name, value) =>
-          getPropertyType(db, name, value, inferPropertyType)
+        // Sync to cache using NoteSyncService (handles tags, properties, FTS, links)
+        const syncResult = syncNoteToCache(
+          db,
+          {
+            id: cached.id,
+            path: relativePath,
+            fileContent: content,
+            frontmatter: parsed.frontmatter,
+            parsedContent: parsed.content
+          },
+          { isNew: false }
         )
 
-        // Update FTS index with content and tags
-        updateFtsContent(db, cached.id, parsed.content, tags)
-
-        // Update links
-        const links = wikiLinks.map((linkTitle) => {
-          const target = resolveNoteByTitle(db, linkTitle)
-          return { targetTitle: linkTitle, targetId: target?.id }
-        })
-        setNoteLinks(db, cached.id, links)
+        // Extract tags and properties for event emission
+        const tags = extractTags(parsed.frontmatter)
+        const properties = extractProperties(parsed.frontmatter)
+        const title = parsed.frontmatter.title ?? path.basename(relativePath, '.md')
 
         // Emit update event for notes
         emitEvent(NotesChannels.events.UPDATED, {
@@ -506,8 +435,8 @@ export class VaultWatcher {
             tags,
             properties, // T012: Include properties in event
             modified: new Date(parsed.frontmatter.modified),
-            wordCount,
-            snippet
+            wordCount: syncResult.wordCount,
+            snippet: syncResult.snippet
           },
           source: 'external'
         })
@@ -525,8 +454,8 @@ export class VaultWatcher {
               date: journalDate,
               content: parsed.content,
               tags,
-              wordCount,
-              characterCount,
+              wordCount: syncResult.wordCount,
+              characterCount: syncResult.characterCount,
               modified: new Date(parsed.frontmatter.modified),
               created: new Date(parsed.frontmatter.created)
             },

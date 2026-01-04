@@ -704,6 +704,101 @@ export function resolveNoteByTitle(db: DrizzleDb, title: string): NoteCache | un
 }
 
 /**
+ * Resolve multiple wiki link titles to note IDs in a batch.
+ * More efficient than resolving one at a time (O(1) vs O(n) database calls).
+ *
+ * @param db - Database instance
+ * @param titles - Array of wiki link titles to resolve
+ * @returns Map of title -> { id, path } or null if not found
+ */
+export function resolveNotesByTitles(
+  db: DrizzleDb,
+  titles: string[]
+): Map<string, { id: string; path: string } | null> {
+  if (titles.length === 0) {
+    return new Map()
+  }
+
+  // Query all notes and filter in memory for case-insensitive matching
+  // This is more reliable than trying to construct a complex SQL IN clause
+  const normalizedTitles = new Set(titles.map((t) => t.toLowerCase()))
+
+  const allNotes = db
+    .select({
+      id: noteCache.id,
+      path: noteCache.path,
+      title: noteCache.title
+    })
+    .from(noteCache)
+    .all()
+
+  // Build result map
+  const resultMap = new Map<string, { id: string; path: string } | null>()
+
+  // Initialize all titles with null
+  for (const title of titles) {
+    resultMap.set(title, null)
+  }
+
+  // Find matches (case-insensitive)
+  for (const note of allNotes) {
+    if (normalizedTitles.has(note.title.toLowerCase())) {
+      // Find the original title(s) that match
+      for (const title of titles) {
+        if (note.title.toLowerCase() === title.toLowerCase()) {
+          resultMap.set(title, { id: note.id, path: note.path })
+        }
+      }
+    }
+  }
+
+  return resultMap
+}
+
+/**
+ * Get properties for multiple notes in a single batch query.
+ * Returns a Map of noteId -> Record<propertyName, propertyValue>.
+ * This is O(1) vs O(n) for calling getNoteProperties in a loop.
+ */
+export function getPropertiesForNotes(
+  db: DrizzleDb,
+  noteIds: string[]
+): Map<string, Record<string, unknown>> {
+  if (noteIds.length === 0) {
+    return new Map()
+  }
+
+  const results = db
+    .select({
+      noteId: noteProperties.noteId,
+      name: noteProperties.name,
+      value: noteProperties.value,
+      type: noteProperties.type
+    })
+    .from(noteProperties)
+    .where(inArray(noteProperties.noteId, noteIds))
+    .all()
+
+  // Group by noteId
+  const propsMap = new Map<string, Record<string, unknown>>()
+
+  // Initialize all noteIds with empty objects
+  for (const noteId of noteIds) {
+    propsMap.set(noteId, {})
+  }
+
+  // Populate with actual properties
+  for (const row of results) {
+    const props = propsMap.get(row.noteId)
+    if (props) {
+      props[row.name] = deserializeValue(row.value, row.type as PropertyType)
+    }
+  }
+
+  return propsMap
+}
+
+/**
  * Update link target IDs after resolving titles.
  */
 export function updateLinkTargets(db: DrizzleDb, sourceId: string): void {
