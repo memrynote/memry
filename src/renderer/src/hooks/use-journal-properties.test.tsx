@@ -38,7 +38,7 @@ describe('useJournalProperties', () => {
     api = createMockApi()
     api.journal.getEntry = vi.fn().mockResolvedValue(mockEntry)
     api.journal.updateEntry = vi.fn().mockResolvedValue(mockEntry)
-    ;(window as Window & { api: unknown }).api = api
+      ; (window as Window & { api: unknown }).api = api
   })
 
   afterEach(() => {
