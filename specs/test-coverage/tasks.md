@@ -1202,32 +1202,32 @@
 
 ### 14.5 IPC Handlers Coverage Expansion (P1)
 
-- [ ] T613 Create src/main/ipc/journal-handlers.test.ts
+- [x] T613 Create src/main/ipc/journal-handlers.test.ts
 - [ ] T614 [P] Test journal handlers: CREATE/UPDATE/DELETE/GET/LIST, reminders integration
 
-- [ ] T615 Create src/main/ipc/tags-handlers.test.ts
+- [x] T615 Create src/main/ipc/tags-handlers.test.ts
 - [ ] T616 [P] Test tags handlers: LIST/CREATE/UPDATE/DELETE, suggestions
 
-- [ ] T617 Create src/main/ipc/templates-handlers.test.ts
+- [x] T617 Create src/main/ipc/templates-handlers.test.ts
 - [ ] T618 [P] Test templates handlers: CREATE/UPDATE/DELETE/GET/LIST, apply template
 
-- [ ] T619 Create src/main/ipc/saved-filters-handlers.test.ts
+- [x] T619 Create src/main/ipc/saved-filters-handlers.test.ts
 - [ ] T620 [P] Test saved filter handlers: CRUD, reorder, share scope
 
-- [ ] T621 Create src/main/ipc/settings-handlers.test.ts
+- [x] T621 Create src/main/ipc/settings-handlers.test.ts
 - [ ] T622 [P] Test settings handlers: GET/SET/RESET, embedding progress events
 
-- [ ] T623 Create src/main/ipc/folder-view-handlers.test.ts
+- [x] T623 Create src/main/ipc/folder-view-handlers.test.ts
 - [ ] T624 [P] Test folder-view handlers: list notes with properties, filters, sorting
 
-- [ ] T625 Create src/main/ipc/reminder-handlers.test.ts
+- [x] T625 Create src/main/ipc/reminder-handlers.test.ts
 - [ ] T626 [P] Test reminder handlers: CREATE/UPDATE/DELETE/LIST, SNOOZE/DISMISS, events
 
-- [ ] T627 Create src/main/ipc/bookmarks-handlers.test.ts
-- [ ] T628 [P] Test bookmark handlers: CREATE/DELETE/TOGGLE/LIST/REORDER/BULK
+- [x] T627 Create src/main/ipc/bookmarks-handlers.test.ts
+- [x] T628 [P] Test bookmark handlers: CREATE/DELETE/TOGGLE/LIST/REORDER/BULK
 
-- [ ] T629 Create src/main/ipc/validate.test.ts
-- [ ] T630 [P] Test createValidatedHandler/createHandler/createStringHandler/withErrorHandling
+- [x] T629 Create src/main/ipc/validate.test.ts
+- [x] T630 [P] Test createValidatedHandler/createHandler/createStringHandler/withErrorHandling
 
 ### 14.6 Renderer Service Layer Tests (P2)
 

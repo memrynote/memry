@@ -19,7 +19,7 @@
                     - generic:
                       - img
                     - generic:
-                      - generic: memry-e2e-ITtfyR
+                      - generic: memry-e2e-k1cD0R
                     - img
             - generic:
               - generic:
@@ -74,13 +74,12 @@
                         - region:
                           - list:
                             - generic:
-                              - generic:
-                                - generic:
-                                  - generic:
-                                    - generic:
-                                      - generic:
-                                        - img
-                                      - generic: Searchable Note
+                              - img
+                              - paragraph: No notes yet
+                              - paragraph: Create a note to get started
+                              - button:
+                                - img
+                                - text: New Note
                     - generic:
                       - generic:
                         - generic:
@@ -489,6 +488,126 @@
                       - tab:
                         - img
                         - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
+                  - generic:
+                    - button:
+                      - tab:
+                        - img
+                        - generic: Untitled
               - button:
                 - img
               - generic:
@@ -610,70 +729,54 @@
                           - img
       - status
     - region "Notifications alt+T"
-  - dialog:
-    - generic:
-      - heading [level=2]: Add Task
-    - generic:
-      - generic:
-        - generic: Title *
-        - textbox:
-          - /placeholder: What needs to be done?
-          - text: Searchable Task
-      - generic:
-        - generic: Description
-        - textbox:
-          - /placeholder: Add details, notes, or links...
-      - generic:
-        - generic:
-          - generic: Project
-          - combobox:
-            - generic: Select project
-            - img
-        - generic:
-          - generic: Status
-          - combobox:
-            - img
-      - generic:
-        - generic:
-          - generic: Due Date
-          - combobox:
-            - img
-            - generic: Set due date
-        - generic:
-          - generic: Priority
-          - combobox:
-            - generic:
-              - generic: None
-            - img
-      - generic:
-        - generic: Repeat
-        - combobox:
-          - generic:
-            - img
-            - generic: Does not repeat
-          - img
-    - generic:
-      - generic:
-        - checkbox
-        - generic: Create another
-      - generic:
-        - button: Cancel
-        - button: Add Task
-    - button:
-      - img
-      - generic: Close
-  - dialog "Search notes" [ref=e3]:
-    - heading "Search notes" [level=2] [ref=e4]
+  - dialog "Add Task" [ref=e2]:
+    - heading "Add Task" [level=2] [ref=e4]
     - generic [ref=e5]:
-      - img [ref=e6]
-      - textbox "Search notes" [active] [ref=e9]:
-        - /placeholder: Search notes...
-    - listbox [ref=e13]:
-      - generic [ref=e14]:
-        - img [ref=e15]
-        - paragraph [ref=e18]: Search your notes
-        - paragraph [ref=e19]: Find by title, content, or tags
-    - button "Close" [ref=e20]:
-      - img [ref=e21]
-      - generic [ref=e24]: Close
+      - generic [ref=e6]:
+        - generic [ref=e7]: Title *
+        - textbox "Title *" [active] [ref=e8]:
+          - /placeholder: What needs to be done?
+          - text: Task 1
+      - generic [ref=e9]:
+        - generic [ref=e10]: Description
+        - textbox "Description" [ref=e11]:
+          - /placeholder: Add details, notes, or links...
+      - generic [ref=e12]:
+        - generic [ref=e13]:
+          - generic [ref=e14]: Project
+          - combobox "Select project" [ref=e15]:
+            - generic: Select project
+            - img [ref=e16]
+        - generic [ref=e18]:
+          - generic [ref=e19]: Status
+          - combobox "Select status" [ref=e20]:
+            - img [ref=e21]
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]: Due Date
+          - combobox "Select due date" [ref=e26]:
+            - img
+            - generic [ref=e27]: Set due date
+        - generic [ref=e28]:
+          - generic [ref=e29]: Priority
+          - combobox "Select priority" [ref=e30]:
+            - generic [ref=e33]: None
+            - img
+      - generic [ref=e34]:
+        - generic [ref=e35]: Repeat
+        - combobox "Select repeat frequency" [ref=e36]:
+          - generic [ref=e37]:
+            - img
+            - generic [ref=e38]: Does not repeat
+          - img
+    - generic [ref=e39]:
+      - generic [ref=e40]:
+        - checkbox "Create another" [ref=e41]
+        - generic [ref=e42] [cursor=pointer]: Create another
+      - generic [ref=e43]:
+        - button "Cancel" [ref=e44]
+        - button "Add Task" [ref=e45]
+    - button "Close" [ref=e46]:
+      - img [ref=e47]
+      - generic [ref=e50]: Close
 ```
