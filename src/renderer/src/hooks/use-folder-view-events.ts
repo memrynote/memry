@@ -19,7 +19,8 @@ import {
   onNoteMoved,
   onNoteDeleted,
   onNoteCreated,
-  onNoteUpdated
+  onNoteUpdated,
+  onNoteExternalChange
 } from '@/services/notes-service'
 import { folderViewKeys } from './use-folder-view'
 
@@ -50,11 +51,17 @@ export function useFolderViewEvents(): void {
       queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
     })
 
+    // Handle external file changes (edited outside the app)
+    const unsubExternal = onNoteExternalChange(() => {
+      queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
+    })
+
     return () => {
       unsubMoved()
       unsubDeleted()
       unsubCreated()
       unsubUpdated()
+      unsubExternal()
     }
   }, [queryClient])
 }

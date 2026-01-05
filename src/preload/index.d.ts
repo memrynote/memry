@@ -1849,6 +1849,8 @@ export interface FolderViewClientAPI {
   getAvailableProperties(folderPath: string): Promise<FolderViewAvailablePropertiesResponse>
   /** Get AI-powered folder suggestions for moving a note (Phase 27) */
   getFolderSuggestions(noteId: string): Promise<FolderViewGetFolderSuggestionsResponse>
+  /** Check if a folder exists (T115) */
+  folderExists(folderPath: string): Promise<boolean>
 }
 
 // Tab Settings types

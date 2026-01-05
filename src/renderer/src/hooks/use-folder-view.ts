@@ -79,6 +79,7 @@ const DEFAULT_VIEW: ViewConfig = {
 
 export const folderViewKeys = {
   all: ['folder-view'] as const,
+  folderExists: (folderPath: string) => [...folderViewKeys.all, 'exists', folderPath] as const,
   views: (folderPath: string) => [...folderViewKeys.all, 'views', folderPath] as const,
   availableProperties: (folderPath: string) =>
     [...folderViewKeys.all, 'available-properties', folderPath] as const,
@@ -155,6 +156,8 @@ interface UseFolderViewResult {
   isLoading: boolean
   /** Error message if any */
   error: string | null
+  /** Whether the folder was not found (T115) */
+  folderNotFound: boolean
 
   // Actions
   /** Set active view by index */
@@ -222,6 +225,19 @@ export function useFolderView({
   // ============================================================================
 
   /**
+   * T115: Folder existence query - checks if folder exists
+   */
+  const folderExistsQuery = useQuery({
+    queryKey: folderViewKeys.folderExists(folderPath),
+    queryFn: async (): Promise<boolean> => {
+      return window.api.folderView.folderExists(folderPath)
+    },
+    staleTime: 60_000, // 60 seconds
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true
+  })
+
+  /**
    * Views query - fetches view configurations and summaries
    */
   const viewsQuery = useQuery({
@@ -238,7 +254,9 @@ export function useFolderView({
       }
     },
     staleTime: 30_000, // 30 seconds
-    gcTime: 5 * 60 * 1000 // 5 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    // T122: Refetch when window gains focus to pick up external .folder.md changes
+    refetchOnWindowFocus: true
   })
 
   /**
@@ -255,7 +273,9 @@ export function useFolderView({
       }
     },
     staleTime: 60_000, // 60 seconds - metadata changes less frequently
-    gcTime: 5 * 60 * 1000
+    gcTime: 5 * 60 * 1000,
+    // T122: Refetch when window gains focus to pick up external .folder.md changes
+    refetchOnWindowFocus: true
   })
 
   // Get views from query data
@@ -335,11 +355,13 @@ export function useFolderView({
 
   // Get properties data from query
   const availableProperties = propertiesQuery.data?.properties ?? []
-  const builtInColumns = propertiesQuery.data?.builtIn ?? BUILT_IN_COLUMNS.map((id) => ({
-    id,
-    displayName: id.charAt(0).toUpperCase() + id.slice(1),
-    type: 'text'
-  }))
+  const builtInColumns =
+    propertiesQuery.data?.builtIn ??
+    BUILT_IN_COLUMNS.map((id) => ({
+      id,
+      displayName: id.charAt(0).toUpperCase() + id.slice(1),
+      type: 'text'
+    }))
   const formulas = propertiesQuery.data?.formulas ?? []
 
   // Formulas map for table rendering
@@ -828,6 +850,8 @@ export function useFolderView({
       propertiesQuery.error?.message ??
       notesQuery.error?.message ??
       null,
+    // T115: Folder not found detection
+    folderNotFound: folderExistsQuery.data === false,
 
     // Actions
     setActiveViewIndex,

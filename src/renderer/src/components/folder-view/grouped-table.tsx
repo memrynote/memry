@@ -97,6 +97,8 @@ interface GroupedTableProps {
   columns: ColumnConfig[]
   /** Formula definitions (name -> expression) for computed columns */
   formulas?: Record<string, string>
+  /** Property types map (columnId -> PropertyType) for correct cell rendering - T116 */
+  propertyTypes?: Record<string, PropertyType>
   /** Group by configuration */
   groupBy?: GroupByConfig
   /** Initial sort order from saved config */
@@ -143,6 +145,8 @@ interface GroupedTableProps {
   showSummaries?: boolean
   /** Summary configurations per column */
   summaries?: Record<string, SummaryConfig>
+  /** Row IDs that are currently exiting (for T121 animation) */
+  exitingRowIds?: Set<string>
   /** Additional CSS classes */
   className?: string
 }
@@ -238,6 +242,7 @@ export function GroupedTable({
   notes,
   columns: columnConfig,
   formulas = {},
+  propertyTypes = {},
   groupBy,
   initialSorting,
   globalFilter,
@@ -261,6 +266,7 @@ export function GroupedTable({
   showColumnBorders = false,
   showSummaries = false,
   summaries = {},
+  exitingRowIds = new Set<string>(),
   className
 }: GroupedTableProps): React.JSX.Element {
   // ============================================================================
@@ -424,18 +430,20 @@ export function GroupedTable({
     return <WordCountCell value={value} />
   }, [])
 
+  // T116: Uses propertyTypes map for correct type rendering
   const renderPropertyCell = useCallback(
     (columnId: string) => {
       const PropertyCellRenderer = (
         info: CellContext<NoteWithProperties, unknown>
       ): React.JSX.Element => {
         const value = info.getValue()
-        const type = getColumnType(columnId)
+        // T116: Use propertyTypes from available properties if available
+        const type = propertyTypes[columnId] ?? getColumnType(columnId)
         return <PropertyCell value={value} type={type} highlightQuery={highlightQuery} />
       }
       return PropertyCellRenderer
     },
-    [highlightQuery]
+    [highlightQuery, propertyTypes]
   )
 
   const renderFormulaCell = useCallback(
@@ -1026,6 +1034,8 @@ export function GroupedTable({
               const isFocused = focusedRowId === row.original.id
               const isPartOfSelection = isSelected && selectedRowIds.size > 1
               const isInGroup = grouping.length > 0
+              // T121: Check if this row is currently exiting (being deleted)
+              const isExiting = exitingRowIds.has(row.original.id)
 
               return (
                 <RowContextMenu
@@ -1057,7 +1067,9 @@ export function GroupedTable({
                       'cursor-pointer',
                       !isSelected && 'hover:bg-muted/50',
                       isSelected && 'bg-primary/15 hover:bg-primary/20',
-                      isFocused && 'ring-2 ring-primary ring-inset'
+                      isFocused && 'ring-2 ring-primary ring-inset',
+                      // T121: Exit animation - simple opacity fade
+                      isExiting && 'opacity-0 transition-opacity duration-200'
                     )}
                     onClick={(e) => handleRowClick(virtualRow.index, row.original.id, e)}
                     onDoubleClick={() => onNoteOpen?.(row.original.id)}

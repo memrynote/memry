@@ -7,12 +7,15 @@
  *
  * Performance: All cell components are wrapped with React.memo to prevent
  * unnecessary re-renders when parent table components update.
+ *
+ * T117: Added TruncatedTooltip component for shadcn tooltip on truncated content.
  */
 
-import { memo } from 'react'
+import { memo, useState, useRef, useEffect } from 'react'
 import { format } from 'date-fns'
 import { Check, X, ExternalLink, Folder, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 // ============================================================================
 // Types
@@ -88,6 +91,56 @@ function formatDate(dateStr: string): string {
     return String(dateStr)
   }
 }
+
+// ============================================================================
+// T117: Truncated Tooltip Component
+// ============================================================================
+
+/**
+ * A span that shows a tooltip only when content is truncated.
+ * Uses a ref to detect if the content overflows its container.
+ */
+const TruncatedTooltip = memo(function TruncatedTooltip({
+  value,
+  children,
+  className
+}: {
+  value: string
+  children: React.ReactNode
+  className?: string
+}): React.JSX.Element {
+  const [isTruncated, setIsTruncated] = useState(false)
+  const textRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    const element = textRef.current
+    if (element) {
+      // Check if content is truncated (scrollWidth > clientWidth)
+      setIsTruncated(element.scrollWidth > element.clientWidth)
+    }
+  }, [value])
+
+  if (!isTruncated) {
+    return (
+      <span ref={textRef} className={cn('truncate block', className)}>
+        {children}
+      </span>
+    )
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span ref={textRef} className={cn('truncate block cursor-default', className)}>
+          {children}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[300px] break-words">
+        {value}
+      </TooltipContent>
+    </Tooltip>
+  )
+})
 
 /**
  * Highlight matching text in a string.
@@ -197,6 +250,7 @@ export const PropertyCell = memo(function PropertyCell({
 
 /**
  * T041: Text cell with ellipsis overflow
+ * T117: Now uses TruncatedTooltip for shadcn tooltip on truncated content
  */
 export const TextCell = memo(function TextCell({
   value,
@@ -208,9 +262,9 @@ export const TextCell = memo(function TextCell({
   className?: string
 }): React.JSX.Element {
   return (
-    <span className={cn('truncate block', className)} title={value}>
+    <TruncatedTooltip value={value} className={className}>
       {highlightQuery ? highlightText(value, highlightQuery) : value}
-    </span>
+    </TruncatedTooltip>
   )
 })
 

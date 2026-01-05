@@ -78,7 +78,7 @@ interface FolderViewPageProps {
  * Folder View Page Component
  */
 export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.Element {
-  const { openTab } = useTabs()
+  const { openTab, closeTab, getActiveTab } = useTabs()
 
   // Use notes hook for creating new notes (with folder template support)
   const { createNote } = useNotes({ autoLoad: false })
@@ -93,6 +93,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     unfilteredCount,
     isLoading,
     error,
+    folderNotFound,
     setActiveViewIndex,
     updateView,
     addView,
@@ -163,6 +164,10 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     setSelectedRowIds(newSelection)
   }, [])
 
+  // T121: Exiting row IDs for opacity fade animation
+  const [exitingRowIds, setExitingRowIds] = useState<Set<string>>(new Set())
+  const EXIT_ANIMATION_DURATION = 200 // ms
+
   // Column search state for highlighting
   const [columnSearchQuery, setColumnSearchQuery] = useState('')
 
@@ -206,6 +211,26 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     if (parts.length <= 1) return null
     return parts.slice(0, -1).join('/')
   }, [folderPath])
+
+  // T116: Create property types map from available properties
+  const propertyTypesMap = useMemo(() => {
+    const map: Record<
+      string,
+      'text' | 'number' | 'checkbox' | 'date' | 'select' | 'multiselect' | 'url' | 'rating'
+    > = {}
+    for (const prop of availableProperties) {
+      map[prop.name] = prop.type as
+        | 'text'
+        | 'number'
+        | 'checkbox'
+        | 'date'
+        | 'select'
+        | 'multiselect'
+        | 'url'
+        | 'rating'
+    }
+    return map
+  }, [availableProperties])
 
   // Handle opening a note (single click opens permanent tab)
   const handleNoteOpen = (noteId: string): void => {
@@ -312,9 +337,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         )
 
         // Check for failures
-        const failures = results.filter(
-          (r): r is PromiseRejectedResult => r.status === 'rejected'
-        )
+        const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
 
         if (failures.length > 0) {
           console.error(`${failures.length} notes failed to move:`, failures)
@@ -332,17 +355,30 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     [notesToMove, removeNotesOptimistically, refresh]
   )
 
-  // Confirm and execute delete (Optimized - no skeleton blink)
+  // Confirm and execute delete (T121: with opacity fade animation)
   const handleDeleteConfirm = useCallback(async () => {
     if (notesToDelete.length === 0) return
 
     setIsDeleting(true)
 
-    // Optimistic removal - update UI immediately (no skeleton)
-    removeNotesOptimistically(notesToDelete)
+    // T121: Start exit animation by adding IDs to exiting set
+    setExitingRowIds((prev) => new Set([...prev, ...notesToDelete]))
 
-    // Clear selection since deleted notes are gone
+    // Clear selection since notes are being deleted
     setSelectedRowIds(new Set())
+
+    // Wait for animation to complete before removing from state
+    await new Promise((resolve) => setTimeout(resolve, EXIT_ANIMATION_DURATION))
+
+    // Clear exiting state
+    setExitingRowIds((prev) => {
+      const next = new Set(prev)
+      notesToDelete.forEach((id) => next.delete(id))
+      return next
+    })
+
+    // Optimistic removal - update UI after animation
+    removeNotesOptimistically(notesToDelete)
 
     try {
       // Delete notes in parallel for performance
@@ -351,9 +387,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
       )
 
       // Check for failures
-      const failures = results.filter(
-        (r): r is PromiseRejectedResult => r.status === 'rejected'
-      )
+      const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
 
       if (failures.length > 0) {
         console.error(`${failures.length} notes failed to delete:`, failures)
@@ -367,7 +401,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
       setDeleteDialogOpen(false)
       setNotesToDelete([])
     }
-  }, [notesToDelete, removeNotesOptimistically, refresh])
+  }, [notesToDelete, removeNotesOptimistically, refresh, EXIT_ANIMATION_DURATION])
 
   // Handle navigating to parent folder
   const handleNavigateUp = (): void => {
@@ -557,7 +591,19 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
       <div className="flex-1 relative min-w-0">
         {/* Absolute positioned inner container isolates table width from layout */}
         <div className="absolute inset-0 overflow-hidden">
-          {error ? (
+          {folderNotFound ? (
+            <FolderViewEmptyState
+              variant="folder-not-found"
+              onGoBack={() => {
+                // Close the current tab
+                const activeTab = getActiveTab()
+                if (activeTab) {
+                  closeTab(activeTab.id)
+                }
+              }}
+              className="h-full"
+            />
+          ) : error ? (
             <FolderViewEmptyState
               variant="error"
               errorMessage={error}
@@ -572,6 +618,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               notes={notes}
               columns={activeView?.columns ?? DEFAULT_COLUMNS}
               formulas={formulasMap}
+              propertyTypes={propertyTypesMap}
               groupBy={activeView.groupBy as GroupByConfig}
               initialSorting={activeView?.order}
               globalFilter={debouncedSearchQuery}
@@ -594,6 +641,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               showColumnBorders={true}
               showSummaries={activeView?.showSummaries ?? false}
               summaries={summaries}
+              exitingRowIds={exitingRowIds}
               className="h-full"
             />
           ) : (
@@ -602,6 +650,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               notes={notes}
               columns={activeView?.columns ?? DEFAULT_COLUMNS}
               formulas={formulasMap}
+              propertyTypes={propertyTypesMap}
               initialSorting={activeView?.order}
               globalFilter={debouncedSearchQuery}
               highlightQuery={debouncedSearchQuery}
@@ -623,6 +672,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               showColumnBorders={true}
               showSummaries={activeView?.showSummaries ?? false}
               summaries={summaries}
+              exitingRowIds={exitingRowIds}
               className="h-full"
             />
           )}
