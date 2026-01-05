@@ -9,6 +9,31 @@
 
 **Priority Order**: Phase 2 (Backend) → Phase 4 (Performance) → Phase 3 (Frontend) → Phase 1 (Quick Wins)
 
+---
+
+## Completion Status (Updated: 2026-01-05)
+
+| Phase | Section | Status | Notes |
+|-------|---------|--------|-------|
+| **Phase 2** | 2.1 NoteSyncService | ✅ Complete | T001-T005 |
+| | 2.2 Batch Operations | ✅ Complete | T006-T009 |
+| | 2.3 Migrate Code | ✅ Complete | T010-T017 |
+| | 2.4 Zod Frontmatter | ⏭️ Skipped | User decision - current validation sufficient |
+| | 2.5 Pino Logging | ⬜ Not Started | Optional - 225 replacements |
+| **Phase 4** | 4.1 FTS Batch Updates | ✅ Complete | T028-T033 |
+| | 4.2 Embedding Queue | ✅ Complete | T034-T039 |
+| | 4.3 Optimize listNotes | 🟡 Partial | T040 done, T041 optional |
+| **Phase 3** | 3.1 Audit & Prepare | ✅ Complete | T042-T045 |
+| | 3.2 Migrate Components | ✅ Complete | T046-T053 |
+| | 3.3 Remove Deprecated | ✅ Complete | T054-T056 |
+| | 3.4 Optimize Hooks | ⬜ Not Started | Optional enhancements |
+| | 3.5 Shared Utilities | ⬜ Not Started | Optional extraction |
+| **Phase 1** | Quick Wins | ⬜ Not Started | Cleanup tasks |
+
+**Summary**: Core refactor complete (Phase 2.1-2.3, Phase 4.1-4.2, Phase 3.1-3.3). Optional enhancements remain.
+
+---
+
 ## Format: `[ID] [P?] [Phase] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
@@ -41,9 +66,9 @@ This refactor addresses:
 
 **CRITICAL**: This phase establishes the foundation. Must complete before other phases.
 
-### 2.1 Create NoteSyncService (Core Refactor)
+### 2.1 Create NoteSyncService (Core Refactor) ✅
 
-- [ ] T001 Create `src/main/vault/note-sync.ts` with interface definitions:
+- [x] T001 Create `src/main/vault/note-sync.ts` with interface definitions:
 
   ```typescript
   interface NoteSyncInput {
@@ -67,7 +92,7 @@ This refactor addresses:
   }
   ```
 
-- [ ] T002 Implement `extractNoteMetadata()` in `src/main/vault/note-sync.ts`:
+- [x] T002 Implement `extractNoteMetadata()` in `src/main/vault/note-sync.ts`:
   - Extract tags via `extractTags()`
   - Extract properties via `extractProperties()`
   - Extract wiki links via `extractWikiLinks()`
@@ -75,7 +100,7 @@ This refactor addresses:
   - Extract date from path for journal entries
   - Return `NoteSyncResult`
 
-- [ ] T003 Implement `syncNoteToCache()` in `src/main/vault/note-sync.ts`:
+- [x] T003 Implement `syncNoteToCache()` in `src/main/vault/note-sync.ts`:
   - Accept `db: DrizzleDb`, `input: NoteSyncInput`, `options: { isNew: boolean }`
   - Call `extractNoteMetadata()` for metadata
   - Insert or update note cache based on `isNew`
@@ -85,73 +110,75 @@ This refactor addresses:
   - Resolve and set links via batch resolver (T006)
   - Return `NoteSyncResult`
 
-- [ ] T004 Implement `deleteNoteFromCache()` in `src/main/vault/note-sync.ts`:
+- [x] T004 Implement `deleteNoteFromCache()` in `src/main/vault/note-sync.ts`:
   - Clean up links where note is target via `deleteLinksToNote()`
   - Delete from cache via `deleteNoteCache()`
 
-- [ ] T005 Export all functions from `src/main/vault/note-sync.ts`
+- [x] T005 Export all functions from `src/main/vault/note-sync.ts`
 
 **Checkpoint**: NoteSyncService created with core functions
 
-### 2.2 Batch Operations (Performance)
+### 2.2 Batch Operations (Performance) ✅
 
-- [ ] T006 Create `resolveNotesByTitles()` in `src/shared/db/queries/notes.ts`:
+- [x] T006 Create `resolveNotesByTitles()` in `src/shared/db/queries/notes.ts`:
   - Accept `db: DrizzleDb`, `titles: string[]`
   - Single query with `WHERE title IN (...)` or `WHERE LOWER(title) IN (...)`
   - Also check aliases
   - Return `Map<string, { id: string; path: string } | null>`
 
-- [ ] T007 Create `getPropertiesForNotes()` in `src/shared/db/queries/notes.ts`:
+- [x] T007 Create `getPropertiesForNotes()` in `src/shared/db/queries/notes.ts`:
   - Accept `db: DrizzleDb`, `noteIds: string[]`
   - Single query joining `noteProperties` with `propertyDefinitions`
   - Return `Map<string, Record<string, unknown>>`
 
-- [ ] T008 Create `getLinksForNotes()` in `src/shared/db/queries/notes.ts`:
+- [x] T008 Create `getLinksForNotes()` in `src/shared/db/queries/notes.ts`:
   - Accept `db: DrizzleDb`, `noteIds: string[]`
   - Single query for outgoing links
   - Return `Map<string, NoteLink[]>`
 
-- [ ] T009 Update `syncNoteToCache()` to use `resolveNotesByTitles()`:
+- [x] T009 Update `syncNoteToCache()` to use `resolveNotesByTitles()`:
   - Batch resolve all wiki link targets in one query
   - Replace individual `resolveNoteByTitle()` calls
 
-**Checkpoint**: Batch operations reduce N+1 queries
+**Checkpoint**: Batch operations reduce N+1 queries ✅
 
-### 2.3 Migrate Existing Code to NoteSyncService
+### 2.3 Migrate Existing Code to NoteSyncService ✅
 
-- [ ] T010 Migrate `src/main/vault/notes.ts` `createNote()`:
+- [x] T010 Migrate `src/main/vault/notes.ts` `createNote()`:
   - Replace inline cache insert with `syncNoteToCache()`
   - Remove duplicate metadata extraction logic
 
-- [ ] T011 Migrate `src/main/vault/notes.ts` `updateNote()`:
+- [x] T011 Migrate `src/main/vault/notes.ts` `updateNote()`:
   - Replace inline cache update with `syncNoteToCache()`
   - Keep snapshot logic before sync
 
-- [ ] T012 Migrate `src/main/vault/notes.ts` `getNoteByPath()`:
+- [x] T012 Migrate `src/main/vault/notes.ts` `getNoteByPath()`:
   - Replace inline cache insert with `syncNoteToCache()`
 
-- [ ] T013 Migrate `src/main/vault/notes.ts` `deleteNote()`:
+- [x] T013 Migrate `src/main/vault/notes.ts` `deleteNote()`:
   - Replace inline deletion with `deleteNoteFromCache()`
 
-- [ ] T014 Migrate `src/main/vault/watcher.ts` `handleFileAdd()`:
+- [x] T014 Migrate `src/main/vault/watcher.ts` `handleFileAdd()`:
   - Replace inline cache insert (~60 lines) with `syncNoteToCache()`
   - Keep rename detection and duplicate ID logic
 
-- [ ] T015 Migrate `src/main/vault/watcher.ts` `handleFileChange()`:
+- [x] T015 Migrate `src/main/vault/watcher.ts` `handleFileChange()`:
   - Replace inline cache update (~50 lines) with `syncNoteToCache()`
   - Keep content hash check for early return
 
-- [ ] T016 Migrate `src/main/vault/indexer.ts` `indexFile()`:
+- [x] T016 Migrate `src/main/vault/indexer.ts` `indexFile()`:
   - Replace inline cache insert (~40 lines) with `syncNoteToCache()`
   - Keep duplicate ID regeneration logic
 
-- [ ] T017 Remove duplicate helper functions from `notes.ts`:
+- [x] T017 Remove duplicate helper functions from `notes.ts`:
   - Keep only functions not in `note-sync.ts`
   - Update imports across files
 
-**Checkpoint**: All note sync operations use shared service (~200 lines removed)
+**Checkpoint**: All note sync operations use shared service (~200 lines removed) ✅
 
-### 2.4 Type-Safe Frontmatter with Zod
+### 2.4 Type-Safe Frontmatter with Zod ⏭️ SKIPPED
+
+> **Decision**: Skipped per user decision - current validation is sufficient
 
 - [ ] T018 Create `src/main/vault/frontmatter-schema.ts`:
 
@@ -235,13 +262,13 @@ This refactor addresses:
 
 ---
 
-## Phase 4: Performance Optimizations
+## Phase 4: Performance Optimizations ✅
 
 **Purpose**: Batch updates, queue operations, reduce I/O
 
-### 4.1 FTS Batch Updates
+### 4.1 FTS Batch Updates ✅
 
-- [ ] T028 Create `src/main/database/fts-queue.ts`:
+- [x] T028 Create `src/main/database/fts-queue.ts`:
 
   ```typescript
   interface FtsUpdate {
@@ -258,32 +285,32 @@ This refactor addresses:
   export function cancelPendingFtsUpdates(): void
   ```
 
-- [ ] T029 Implement `queueFtsUpdate()`:
+- [x] T029 Implement `queueFtsUpdate()`:
   - Add/update entry in `pendingUpdates` map
   - Schedule flush timer (2000ms) if not already scheduled
   - Deduplicate by noteId (latest update wins)
 
-- [ ] T030 Implement `flushFtsUpdates()`:
+- [x] T030 Implement `flushFtsUpdates()`:
   - Wrap in database transaction for atomicity
   - Process all pending updates
   - Clear map and timer
   - Log batch size with pino
 
-- [ ] T031 Implement `cancelPendingFtsUpdates()`:
+- [x] T031 Implement `cancelPendingFtsUpdates()`:
   - Clear timer and map
   - Called on vault close
 
-- [ ] T032 Update `syncNoteToCache()` to use `queueFtsUpdate()`:
+- [x] T032 Update `syncNoteToCache()` to use `queueFtsUpdate()`:
   - Replace direct `updateFtsContent()` call
   - Add option `{ immediate?: boolean }` for cases needing sync update
 
-- [ ] T033 Call `flushFtsUpdates()` on vault close in `src/main/vault/index.ts`
+- [x] T033 Call `flushFtsUpdates()` on vault close in `src/main/vault/index.ts`
 
-**Checkpoint**: FTS updates batched, reducing write operations
+**Checkpoint**: FTS updates batched, reducing write operations ✅
 
-### 4.2 Embedding Queue
+### 4.2 Embedding Queue ✅
 
-- [ ] T034 Create `src/main/inbox/embedding-queue.ts`:
+- [x] T034 Create `src/main/inbox/embedding-queue.ts`:
 
   ```typescript
   const embeddingQueue: string[] = []
@@ -296,34 +323,34 @@ This refactor addresses:
   export function clearEmbeddingQueue(): void
   ```
 
-- [ ] T035 Implement `queueEmbeddingUpdate()`:
+- [x] T035 Implement `queueEmbeddingUpdate()`:
   - Add to queue if not already present
   - Schedule processing if not already processing
 
-- [ ] T036 Implement `processEmbeddingQueue()`:
+- [x] T036 Implement `processEmbeddingQueue()`:
   - Process in batches of BATCH_SIZE
   - Use `Promise.allSettled()` for error resilience
   - Log failures with pino
   - Schedule next batch after BATCH_DELAY_MS
 
-- [ ] T037 Implement `clearEmbeddingQueue()`:
+- [x] T037 Implement `clearEmbeddingQueue()`:
   - Clear queue
   - Called on vault close
 
-- [ ] T038 Update embedding calls to use queue:
+- [x] T038 Update embedding calls to use queue:
   - `src/main/vault/notes.ts` `createNote()` - use `queueEmbeddingUpdate()`
   - `src/main/vault/notes.ts` `updateNote()` - use `queueEmbeddingUpdate()`
   - `src/main/vault/watcher.ts` `handleFileAdd()` - use `queueEmbeddingUpdate()`
   - `src/main/vault/watcher.ts` `handleFileChange()` - use `queueEmbeddingUpdate()`
   - `src/main/vault/indexer.ts` `indexFile()` - use `queueEmbeddingUpdate()`
 
-- [ ] T039 Call `clearEmbeddingQueue()` on vault close
+- [x] T039 Call `clearEmbeddingQueue()` on vault close
 
-**Checkpoint**: Embedding updates batched, reducing model load overhead
+**Checkpoint**: Embedding updates batched, reducing model load overhead ✅
 
 ### 4.3 Optimize listNotes Further
 
-- [ ] T040 Update `listNotes()` in `src/main/vault/notes.ts`:
+- [x] T040 Update `listNotes()` in `src/main/vault/notes.ts`:
   - Already uses `getTagsForNotes()` (from uncommitted changes)
   - Add `getPropertiesForNotes()` for bulk property loading
   - Remove any remaining individual queries
@@ -337,65 +364,65 @@ This refactor addresses:
 
 ---
 
-## Phase 3: Frontend Migration (Big Bang)
+## Phase 3: Frontend Migration (Big Bang) ✅
 
 **Purpose**: Deprecate use-notes.ts, migrate all consumers to TanStack Query
 
-### 3.1 Audit and Prepare
+### 3.1 Audit and Prepare ✅
 
-- [ ] T042 Audit all imports of `use-notes.ts`:
+- [x] T042 Audit all imports of `use-notes.ts`:
   - Run: `grep -r "from.*use-notes" src/renderer/`
   - Document all files and specific imports used
   - Create migration checklist per file
 
-- [ ] T043 Ensure `use-notes-query.ts` has feature parity:
+- [x] T043 Ensure `use-notes-query.ts` has feature parity:
   - Verify `useNote()` covers `getNote()`
   - Verify `useNotesList()` covers `notes` state
   - Verify `useNoteMutations()` covers all CRUD operations
   - Add any missing functionality
 
-- [ ] T044 Add `useNoteTagsQuery()` export if not present:
+- [x] T044 Add `useNoteTagsQuery()` export if not present:
   - Already exists in `use-notes-query.ts` - verify exported
 
-- [ ] T045 Add `useNoteFoldersQuery()` export if not present:
+- [x] T045 Add `useNoteFoldersQuery()` export if not present:
   - Already exists in `use-notes-query.ts` - verify exported
 
-### 3.2 Migrate Components (Big Bang)
+### 3.2 Migrate Components (Big Bang) ✅
 
-- [ ] T046 Migrate `src/renderer/src/pages/note.tsx`:
+- [x] T046 Migrate `src/renderer/src/pages/note.tsx`:
   - Already partially migrated in uncommitted changes
   - Complete migration: remove any remaining `useNotes` usage
   - Update all callbacks to use mutation hooks
 
-- [ ] T047 Migrate `src/renderer/src/pages/notes.tsx`:
+- [x] T047 Migrate `src/renderer/src/pages/notes.tsx`:
   - Replace `useNotes()` with `useNotesList()`
   - Update loading/error handling
   - Update CRUD operations to mutations
 
-- [ ] T048 Migrate `src/renderer/src/components/notes-tree.tsx`:
+- [x] T048 Migrate `src/renderer/src/components/notes-tree.tsx`:
   - Replace note fetching with query hooks
   - Update event handlers
 
-- [ ] T049 Migrate `src/renderer/src/components/note-list.tsx`:
+- [x] T049 Migrate `src/renderer/src/components/note-list.tsx`:
   - Replace with `useNotesList()` hook
   - Keep UI rendering logic
 
-- [ ] T050 Migrate `src/renderer/src/components/quick-switcher.tsx`:
+- [x] T050 Migrate `src/renderer/src/components/quick-switcher.tsx`:
   - Update note search/selection to use query hooks
 
-- [ ] T051 Migrate `src/renderer/src/components/command-palette.tsx`:
+- [x] T051 Migrate `src/renderer/src/components/command-palette.tsx`:
   - Update note operations to use mutation hooks
 
-- [ ] T052 Migrate `src/renderer/src/pages/search.tsx`:
+- [x] T052 Migrate `src/renderer/src/pages/search.tsx`:
   - Keep search hook, update note operations
 
-- [ ] T053 Migrate any remaining components:
+- [x] T053 Migrate any remaining components:
   - Search for remaining `useNotes` imports
   - Migrate each file
 
 ### 3.3 Remove Deprecated Hook
 
-- [ ] T054 Add deprecation notice to `use-notes.ts`:
+- [x] T054 Add deprecation notice to `use-notes.ts`:
 
   ```typescript
   /**
@@ -406,15 +433,17 @@ This refactor addresses:
    */
   ```
 
-- [ ] T055 Verify no remaining imports of `use-notes.ts`:
+- [x] T055 Verify no remaining imports of `use-notes.ts`:
   - Run grep to confirm
   - All imports should be from `use-notes-query.ts`
+  - **Result**: Only `use-notes.test.tsx` still imports (tests the deprecated API)
 
-- [ ] T056 Delete `src/renderer/src/hooks/use-notes.ts`:
+- [x] T056 Delete `src/renderer/src/hooks/use-notes.ts`:
   - Remove file (688 lines)
   - Update any barrel exports
+  - **Done**: Removed use-notes.ts and use-notes.test.tsx
 
-**Checkpoint**: Single source of truth for note hooks, ~688 lines removed
+**Checkpoint**: Single source of truth for note hooks, ~688 lines removed ✅
 
 ### 3.4 Optimize Query Hooks
 
