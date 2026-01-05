@@ -26,7 +26,7 @@ import { deleteNoteCache, getNoteCacheByPath, getNoteCacheById } from '@shared/d
 import { getIndexDatabase } from '../database'
 import { NotesChannels, JournalChannels } from '@shared/ipc-channels'
 import { trackPendingDelete, checkForRename, clearAllPendingDeletes } from './rename-tracker'
-import { updateNoteEmbedding } from '../inbox/suggestions'
+import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 
 // ============================================================================
 // Types
@@ -351,8 +351,8 @@ export class VaultWatcher {
         source: 'external'
       })
 
-      // Update embedding asynchronously for AI suggestions (non-blocking)
-      updateNoteEmbedding(parsed.frontmatter.id).catch(() => {})
+      // Queue embedding update for AI suggestions (batched for performance)
+      queueEmbeddingUpdate(parsed.frontmatter.id)
 
       // Also emit journal event if this is a journal entry
       const config = getConfig()
@@ -441,8 +441,8 @@ export class VaultWatcher {
           source: 'external'
         })
 
-        // Update embedding asynchronously for AI suggestions (non-blocking)
-        updateNoteEmbedding(cached.id).catch(() => {})
+        // Queue embedding update for AI suggestions (batched for performance)
+        queueEmbeddingUpdate(cached.id)
 
         // Also emit journal event if this is a journal entry
         const config = getConfig()

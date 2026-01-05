@@ -46,6 +46,8 @@ import { VaultError, VaultErrorCode } from '../lib/errors'
 import { startWatcher, stopWatcher } from './watcher'
 import { indexVault, rebuildIndex } from './indexer'
 import { initEmbeddingModel, isModelLoaded, isModelLoading } from '../lib/embeddings'
+import { flushFtsUpdates, hasPendingFtsUpdates } from '../database'
+import { clearEmbeddingQueue, hasPendingEmbeddings } from '../inbox/embedding-queue'
 
 /**
  * Current vault status
@@ -372,6 +374,25 @@ export async function closeVault(): Promise<void> {
 
   // Stop file watcher
   await stopWatcher()
+
+  // Flush any pending FTS updates before closing database
+  if (hasPendingFtsUpdates()) {
+    try {
+      const indexDb = getIndexDatabase()
+      const flushed = flushFtsUpdates(indexDb)
+      if (flushed > 0) {
+        console.log(`[Vault] Flushed ${flushed} pending FTS updates before close`)
+      }
+    } catch (error) {
+      console.error('[Vault] Failed to flush FTS updates:', error)
+    }
+  }
+
+  // Clear any pending embedding updates (don't wait for them on shutdown)
+  if (hasPendingEmbeddings()) {
+    clearEmbeddingQueue()
+    console.log(`[Vault] Cleared pending embedding updates before close`)
+  }
 
   // Close databases
   closeAllDatabases()

@@ -19,7 +19,7 @@ import {
   getIndexDatabase,
   closeIndexDatabase
 } from '../database'
-import { updateNoteEmbedding } from '../inbox/suggestions'
+import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { parseNote, serializeNote } from './frontmatter'
 import { safeRead, atomicWrite } from './file-ops'
 import { generateNoteId } from '../lib/id'
@@ -158,10 +158,8 @@ async function indexFile(
       return 'error'
     }
 
-    // Update embedding asynchronously for AI suggestions (non-blocking)
-    updateNoteEmbedding(parsed.frontmatter.id).catch((err) => {
-      console.log(`[Indexer] Failed to update embedding for ${parsed.frontmatter.id}:`, err)
-    })
+    // Queue embedding update for AI suggestions (batched for performance)
+    queueEmbeddingUpdate(parsed.frontmatter.id)
 
     return 'indexed'
   } catch (error) {
