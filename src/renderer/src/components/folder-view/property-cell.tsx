@@ -269,7 +269,7 @@ export const TextCell = memo(function TextCell({
 })
 
 /**
- * T042: Number cell - right-aligned, formatted
+ * T042: Number cell - left-aligned (consistent with other cells), formatted with tabular nums
  */
 export const NumberCell = memo(function NumberCell({
   value,
@@ -281,7 +281,7 @@ export const NumberCell = memo(function NumberCell({
   const num = typeof value === 'number' ? value : parseFloat(String(value))
   const formatted = isNaN(num) ? String(value) : num.toLocaleString()
 
-  return <span className={cn('tabular-nums text-right block', className)}>{formatted}</span>
+  return <span className={cn('tabular-nums', className)}>{formatted}</span>
 })
 
 /**
