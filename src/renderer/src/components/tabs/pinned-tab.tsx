@@ -48,22 +48,28 @@ export const PinnedTab = ({
       <TooltipTrigger asChild>
         <div
           className={cn(
-            // Base styles
+            // Base styles with refined sizing
             'relative flex items-center justify-center',
-            'w-9 h-9 cursor-pointer',
-            'transition-colors duration-100',
+            'w-8 h-8 cursor-pointer',
             'select-none',
+            'rounded-md',
+            // Smooth transitions
+            'transition-all duration-150 ease-out',
 
-            // Active state - browser style with rounded top corners
+            // Active state - elevated card style matching RegularTab
             isActive
               ? [
                   'bg-white dark:bg-gray-800',
-                  'rounded-t-lg',
-                  'border border-gray-200 dark:border-gray-600',
-                  'border-b-0',
-                  '-mb-px'
+                  'shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.06)]',
+                  'dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_1px_2px_rgba(0,0,0,0.2)]',
+                  'border border-gray-200/60 dark:border-gray-700/50'
                 ]
-              : ['hover:bg-gray-200/50 dark:hover:bg-gray-700/50'],
+              : [
+                  'bg-transparent',
+                  'hover:bg-gray-200/40 dark:hover:bg-gray-700/30',
+                  'border border-transparent',
+                  'hover:border-gray-200/40 dark:hover:border-gray-700/30'
+                ],
 
             className
           )}
@@ -76,30 +82,40 @@ export const PinnedTab = ({
           data-group-id={groupId}
           data-pinned="true"
         >
-          {/* Icon */}
+          {/* Icon with smooth color transition */}
           <TabIcon
             type={tab.type}
             icon={tab.icon}
             emoji={tab.emoji}
             className={cn(
-              'w-4 h-4',
-              isActive ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'
+              'w-4 h-4 transition-colors duration-150',
+              isActive
+                ? 'text-gray-700 dark:text-gray-200'
+                : 'text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400'
             )}
           />
 
-          {/* Modified indicator (small dot) */}
+          {/* Modified indicator with pulse animation */}
           {tab.isModified && (
             <div
-              className={cn('absolute top-1 right-1', 'w-1.5 h-1.5 rounded-full', 'bg-blue-500')}
+              className={cn(
+                'absolute top-1 right-1',
+                'w-1.5 h-1.5 rounded-full',
+                'bg-blue-400 dark:bg-blue-500',
+                'animate-pulse'
+              )}
               aria-label="Unsaved changes"
             />
           )}
         </div>
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="text-xs">
+      <TooltipContent
+        side="bottom"
+        className="text-xs px-2.5 py-1.5 font-medium bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-0"
+      >
         <div className="flex items-center gap-1.5">
           <span>{tab.title}</span>
-          {tab.isModified && <span className="text-gray-400">(unsaved)</span>}
+          {tab.isModified && <span className="text-gray-400 dark:text-gray-500">(unsaved)</span>}
         </div>
       </TooltipContent>
     </Tooltip>

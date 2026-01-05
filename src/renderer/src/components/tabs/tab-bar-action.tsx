@@ -25,6 +25,7 @@ interface TabBarActionProps {
 
 /**
  * Action button for tab bar
+ * Features refined styling with smooth micro-interactions
  */
 export const TabBarAction = ({
     icon,
@@ -41,16 +42,20 @@ export const TabBarAction = ({
                     onClick={onClick}
                     disabled={disabled}
                     className={cn(
-                        // Base styles
-                        'flex h-7 w-7 items-center justify-center rounded',
-                        // Colors
-                        'text-gray-500 hover:text-gray-700 hover:bg-gray-200/70',
+                        // Base styles with refined sizing
+                        'flex h-7 w-7 items-center justify-center rounded-md',
+                        // Colors with smooth transitions
+                        'text-gray-400 hover:text-gray-600',
+                        'hover:bg-gray-200/50',
                         // Dark mode
-                        'dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700',
-                        // Transitions
-                        'transition-colors duration-100',
+                        'dark:text-gray-500 dark:hover:text-gray-300',
+                        'dark:hover:bg-gray-700/40',
+                        // Smooth transitions for all properties
+                        'transition-all duration-150 ease-out',
+                        // Active state
+                        'active:scale-95 active:bg-gray-200/70 dark:active:bg-gray-700/60',
                         // Disabled state
-                        'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent',
+                        'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:active:scale-100',
                         className
                     )}
                     aria-label={tooltip}
@@ -58,7 +63,10 @@ export const TabBarAction = ({
                     {icon}
                 </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
+            <TooltipContent
+                side="bottom"
+                className="text-xs px-2.5 py-1.5 font-medium bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-0"
+            >
                 {tooltip}
             </TooltipContent>
         </Tooltip>

@@ -166,23 +166,35 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
 
   return (
     <TabDragProvider>
-      {/* Header with Tab Bar(s) */}
-      <header className="drag-region flex h-10 shrink-0 items-center border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
-        {/* Sidebar trigger */}
-        <div className="flex items-center gap-2 px-2 h-full shrink-0">
-          <SidebarTrigger className="-ml-1 no-drag" />
-          <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+      {/* Header with Tab Bar(s) - Refined workspace aesthetic */}
+      <header
+        className="drag-region flex h-11 shrink-0 items-center relative
+
+          dark:from-gray-900 dark:to-gray-850
+          border-b border-gray-200/60 dark:border-gray-700/50
+          shadow-[0_1px_3px_rgba(0,0,0,0.02)]
+          dark:shadow-[0_1px_3px_rgba(0,0,0,0.15)]"
+      >
+        {/* Sidebar trigger with refined styling */}
+        <div className="flex items-center gap-2.5 px-3 h-full shrink-0">
+          <SidebarTrigger className="-ml-1 no-drag text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors duration-150" />
+          <Separator
+            orientation="vertical"
+            className="mr-2 h-5 bg-gray-200/70 dark:bg-gray-700/50"
+          />
         </div>
 
-        {/* Tab Bar(s) - single or split */}
+        {/* Tab Bar(s) - single or split with smooth transitions */}
         {isSplitView ? (
-          // Split view: show tab bars side by side with divider, widths synced with split panel ratios
+          // Split view: show tab bars side by side with refined divider
           <div className="flex-1 flex h-full">
             {orderedGroupWidths.map(({ groupId, width }, index) => (
               <div
                 key={groupId}
                 style={{ width: `${width}%` }}
-                className={`h-full overflow-hidden shrink-0 ${index > 0 ? 'border-l border-gray-300 dark:border-gray-600' : ''
+                className={`h-full overflow-hidden shrink-0 transition-all duration-200 ease-out ${index > 0
+                    ? 'border-l border-gray-200/60 dark:border-gray-700/40'
+                    : ''
                   }`}
               >
                 <TabBarWithDrag groupId={groupId} />
@@ -196,34 +208,40 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
           </div>
         )}
 
-        {/* Global Actions */}
-        <div className="flex items-center gap-1 px-2 shrink-0">
+        {/* Global Actions with refined styling */}
+        <div className="flex items-center gap-1.5 px-3 shrink-0">
           <button
             type="button"
             onClick={() => setShowShortcutsDialog(true)}
-            className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
+            className="p-2 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
+              hover:bg-gray-200/50 dark:hover:bg-gray-700/50
+              transition-all duration-150 ease-out"
             title="Keyboard shortcuts (?)"
           >
-            <span className="text-xs font-mono">?</span>
+            <span className="text-xs font-medium tracking-wide">?</span>
           </button>
         </div>
       </header>
 
       {/* Main Content Area - Split View or Single Pane */}
-      <div className="flex flex-1 overflow-hidden" id="main-content">
+      <div
+        className="flex flex-1 overflow-hidden dark:bg-gray-900
+          transition-colors duration-200"
+        id="main-content"
+      >
         {isSplitView ? (
           // Multiple panes - use SplitViewContainer with matching header spacers
           <>
             {/* Left spacer - matches header's sidebar trigger area for alignment */}
-            <div className="flex items-center gap-2 px-2 shrink-0" aria-hidden="true">
+            <div className="flex items-center gap-2.5 px-3 shrink-0" aria-hidden="true">
               <div className="size-7 -ml-1" />
               <Separator
                 orientation="vertical"
-                className="mr-2 data-[orientation=vertical]:h-4 invisible"
+                className="mr-2 h-5 invisible"
               />
             </div>
 
-            {/* Split view container */}
+            {/* Split view container with smooth transitions */}
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
               <SplitViewContainer hideTabBars />
             </div>
