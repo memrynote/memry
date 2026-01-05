@@ -332,30 +332,42 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     [notesToMove, removeNotesOptimistically, refresh]
   )
 
-  // Confirm and execute delete
+  // Confirm and execute delete (Optimized - no skeleton blink)
   const handleDeleteConfirm = useCallback(async () => {
     if (notesToDelete.length === 0) return
 
     setIsDeleting(true)
-    try {
-      // Delete all selected notes
-      for (const noteId of notesToDelete) {
-        const result = await notesService.delete(noteId)
-        if (!result.success) {
-          console.error(`Failed to delete note ${noteId}:`, result.error)
-        }
-      }
 
-      // Refresh the view to reflect changes
-      await refresh()
+    // Optimistic removal - update UI immediately (no skeleton)
+    removeNotesOptimistically(notesToDelete)
+
+    // Clear selection since deleted notes are gone
+    setSelectedRowIds(new Set())
+
+    try {
+      // Delete notes in parallel for performance
+      const results = await Promise.allSettled(
+        notesToDelete.map((noteId) => notesService.delete(noteId))
+      )
+
+      // Check for failures
+      const failures = results.filter(
+        (r): r is PromiseRejectedResult => r.status === 'rejected'
+      )
+
+      if (failures.length > 0) {
+        console.error(`${failures.length} notes failed to delete:`, failures)
+        await refresh() // Restore correct state on failure
+      }
     } catch (err) {
       console.error('Failed to delete notes:', err)
+      await refresh() // Restore correct state on error
     } finally {
       setIsDeleting(false)
       setDeleteDialogOpen(false)
       setNotesToDelete([])
     }
-  }, [notesToDelete, refresh])
+  }, [notesToDelete, removeNotesOptimistically, refresh])
 
   // Handle navigating to parent folder
   const handleNavigateUp = (): void => {

@@ -3,9 +3,17 @@
  *
  * Data fetching and state management for folder view (Bases-like database view).
  * Handles view configuration, note listing with properties, and column management.
+ *
+ * Uses TanStack Query for caching - data persists across tab switches for instant loading.
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import {
+  useQuery,
+  useInfiniteQuery,
+  useQueryClient,
+  type InfiniteData
+} from '@tanstack/react-query'
 import { DEFAULT_COLUMNS, BUILT_IN_COLUMNS } from '@shared/contracts/folder-view-api'
 import type {
   FilterExpression,
@@ -13,7 +21,7 @@ import type {
   GroupByConfig
 } from '@shared/contracts/folder-view-api'
 import { evaluateFilter } from '@/lib/filter-evaluator'
-import { onNoteMoved, onNoteDeleted } from '@/services/notes-service'
+import { onNoteMoved, onNoteDeleted, onNoteCreated, onNoteUpdated } from '@/services/notes-service'
 
 // ============================================================================
 // Types (mirrored from preload for renderer use)
@@ -67,6 +75,20 @@ const DEFAULT_VIEW: ViewConfig = {
 }
 
 // ============================================================================
+// Query Keys
+// ============================================================================
+
+export const folderViewKeys = {
+  all: ['folder-view'] as const,
+  views: (folderPath: string) => [...folderViewKeys.all, 'views', folderPath] as const,
+  availableProperties: (folderPath: string) =>
+    [...folderViewKeys.all, 'available-properties', folderPath] as const,
+  notesBase: (folderPath: string) => [...folderViewKeys.all, 'notes', folderPath] as const,
+  notes: (folderPath: string, propertyIds: string[]) =>
+    [...folderViewKeys.notesBase(folderPath), propertyIds.join(',')] as const
+}
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -81,6 +103,27 @@ interface UseFolderViewOptions {
 export interface FormulaInfo {
   id: string
   expression: string
+}
+
+/** Response from listWithProperties API */
+interface ListWithPropertiesResponse {
+  notes: NoteWithProperties[]
+  hasMore: boolean
+  total: number
+}
+
+/** Combined views and config data */
+interface ViewsQueryData {
+  views: ViewConfig[]
+  defaultIndex: number
+  summaries: Record<string, SummaryConfig>
+}
+
+/** Available properties query data */
+interface PropertiesQueryData {
+  properties: AvailableProperty[]
+  builtIn: Array<{ id: string; displayName: string; type: string }>
+  formulas: FormulaInfo[]
 }
 
 interface UseFolderViewResult {
@@ -161,135 +204,153 @@ interface UseFolderViewResult {
 
 /**
  * Hook for managing folder view data and state.
+ * Uses TanStack Query for caching - data persists across tab switches.
  */
 export function useFolderView({
   folderPath,
   pageSize = 100
 }: UseFolderViewOptions): UseFolderViewResult {
-  // State
-  const [views, setViews] = useState<ViewConfig[]>([DEFAULT_VIEW])
-  const [activeViewIndex, setActiveViewIndex] = useState(0)
-  const [notes, setNotes] = useState<NoteWithProperties[]>([])
-  const [hasMore, setHasMore] = useState(false)
-  const [availableProperties, setAvailableProperties] = useState<AvailableProperty[]>([])
-  const [builtInColumns, setBuiltInColumns] = useState<
-    Array<{ id: string; displayName: string; type: string }>
-  >([])
-  const [formulas, setFormulas] = useState<FormulaInfo[]>([])
-  const [summaries, setSummaries] = useState<Record<string, SummaryConfig>>({})
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  // Track current offset for pagination
-  const offsetRef = useRef(0)
+  // Local state for user's current view selection
+  const [activeViewIndex, setActiveViewIndex] = useState(0)
 
   // Debounce timer for column updates
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // ============================================================================
+  // Queries
+  // ============================================================================
+
+  /**
+   * Views query - fetches view configurations and summaries
+   */
+  const viewsQuery = useQuery({
+    queryKey: folderViewKeys.views(folderPath),
+    queryFn: async (): Promise<ViewsQueryData> => {
+      const [viewsResult, configResult] = await Promise.all([
+        window.api.folderView.getViews(folderPath),
+        window.api.folderView.getConfig(folderPath)
+      ])
+      return {
+        views: viewsResult.views,
+        defaultIndex: viewsResult.defaultIndex,
+        summaries: (configResult.config.summaries ?? {}) as Record<string, SummaryConfig>
+      }
+    },
+    staleTime: 30_000, // 30 seconds
+    gcTime: 5 * 60 * 1000 // 5 minutes
+  })
+
+  /**
+   * Available properties query - fetches column metadata and formulas
+   */
+  const propertiesQuery = useQuery({
+    queryKey: folderViewKeys.availableProperties(folderPath),
+    queryFn: async (): Promise<PropertiesQueryData> => {
+      const result = await window.api.folderView.getAvailableProperties(folderPath)
+      return {
+        properties: result.properties,
+        builtIn: result.builtIn,
+        formulas: result.formulas || []
+      }
+    },
+    staleTime: 60_000, // 60 seconds - metadata changes less frequently
+    gcTime: 5 * 60 * 1000
+  })
+
+  // Get views from query data
+  const views = viewsQuery.data?.views ?? [DEFAULT_VIEW]
+  const summaries = viewsQuery.data?.summaries ?? {}
+
+  // Sync activeViewIndex when views load (only on initial load or invalidation)
+  const hasInitializedRef = useRef(false)
+  useEffect(() => {
+    if (viewsQuery.data && !hasInitializedRef.current) {
+      setActiveViewIndex(viewsQuery.data.defaultIndex)
+      hasInitializedRef.current = true
+    }
+  }, [viewsQuery.data])
+
+  // Reset initialization flag when folder changes
+  useEffect(() => {
+    hasInitializedRef.current = false
+  }, [folderPath])
+
   // Get active view
   const activeView = views[activeViewIndex] ?? null
 
-  // ============================================================================
-  // Data Fetching
-  // ============================================================================
+  // Compute property IDs from active view columns (for query key)
+  const propertyIds = useMemo(() => {
+    const columns = activeView?.columns ?? DEFAULT_COLUMNS
+    return columns
+      .filter((c) => !BUILT_IN_COLUMNS.includes(c.id as (typeof BUILT_IN_COLUMNS)[number]))
+      .map((c) => c.id)
+      .sort()
+  }, [activeView?.columns])
 
   /**
-   * Fetch views for folder
+   * Notes infinite query - fetches notes with pagination
    */
-  const fetchViews = useCallback(async () => {
-    try {
-      const result = await window.api.folderView.getViews(folderPath)
-      setViews(result.views)
-      setActiveViewIndex(result.defaultIndex)
-
-      // Also fetch summaries from folder config
-      const configResult = await window.api.folderView.getConfig(folderPath)
-      setSummaries((configResult.config.summaries ?? {}) as Record<string, SummaryConfig>)
-    } catch (err) {
-      console.error('[useFolderView.fetchViews] Failed:', err)
-      setViews([DEFAULT_VIEW])
-      setActiveViewIndex(0)
-      setSummaries({})
-    }
-  }, [folderPath])
-
-  /**
-   * Fetch available properties for column selector
-   */
-  const fetchAvailableProperties = useCallback(async () => {
-    try {
-      const result = await window.api.folderView.getAvailableProperties(folderPath)
-      setAvailableProperties(result.properties)
-      setBuiltInColumns(result.builtIn)
-      // Also fetch formulas from the result
-      setFormulas(result.formulas || [])
-    } catch (err) {
-      console.error('Failed to fetch available properties:', err)
-      setAvailableProperties([])
-      setFormulas([])
-      setBuiltInColumns(
-        BUILT_IN_COLUMNS.map((id) => ({
-          id,
-          displayName: id.charAt(0).toUpperCase() + id.slice(1),
-          type: 'text'
-        }))
-      )
-    }
-  }, [folderPath])
-
-  /**
-   * Fetch notes with properties
-   */
-  const fetchNotes = useCallback(
-    async (append = false) => {
-      const offset = append ? offsetRef.current : 0
-
-      try {
-        const columns = activeView?.columns ?? DEFAULT_COLUMNS
-        const propertyIds = columns
-          .filter((c) => !BUILT_IN_COLUMNS.includes(c.id as (typeof BUILT_IN_COLUMNS)[number]))
-          .map((c) => c.id)
-
-        const result = await window.api.folderView.listWithProperties({
-          folderPath,
-          properties: propertyIds,
-          limit: pageSize,
-          offset
-        })
-
-        if (append) {
-          setNotes((prev) => [...prev, ...result.notes])
-        } else {
-          setNotes(result.notes)
-        }
-
-        setHasMore(result.hasMore)
-        offsetRef.current = offset + result.notes.length
-      } catch (err) {
-        console.error('[useFolderView] Failed to fetch notes:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load notes')
+  const notesQuery = useInfiniteQuery({
+    queryKey: folderViewKeys.notes(folderPath, propertyIds),
+    queryFn: async ({ pageParam = 0 }): Promise<ListWithPropertiesResponse> => {
+      const result = await window.api.folderView.listWithProperties({
+        folderPath,
+        properties: propertyIds,
+        limit: pageSize,
+        offset: pageParam
+      })
+      return {
+        notes: result.notes,
+        hasMore: result.hasMore,
+        total: result.total
       }
     },
-    [folderPath, activeView, pageSize]
-  )
+    getNextPageParam: (lastPage, allPages) => {
+      const totalFetched = allPages.reduce((acc, page) => acc + page.notes.length, 0)
+      return lastPage.hasMore ? totalFetched : undefined
+    },
+    initialPageParam: 0,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000
+  })
 
-  /**
-   * Refresh all data
-   */
-  const refresh = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    offsetRef.current = 0
+  // Flatten notes from infinite query pages
+  const notes = useMemo(() => {
+    return notesQuery.data?.pages.flatMap((page) => page.notes) ?? []
+  }, [notesQuery.data])
+
+  // Client-side filtered notes
+  const filteredNotes = useMemo(() => {
+    const filters = activeView?.filters as FilterExpression | undefined
+    if (!filters) return notes
 
     try {
-      await Promise.all([fetchViews(), fetchAvailableProperties()])
-      await fetchNotes(false)
+      return notes.filter((note) => evaluateFilter(note, filters))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load folder view')
-    } finally {
-      setIsLoading(false)
+      console.error('[useFolderView] Filter evaluation error:', err)
+      return notes
     }
-  }, [fetchViews, fetchAvailableProperties, fetchNotes])
+  }, [notes, activeView?.filters])
+
+  // Get properties data from query
+  const availableProperties = propertiesQuery.data?.properties ?? []
+  const builtInColumns = propertiesQuery.data?.builtIn ?? BUILT_IN_COLUMNS.map((id) => ({
+    id,
+    displayName: id.charAt(0).toUpperCase() + id.slice(1),
+    type: 'text'
+  }))
+  const formulas = propertiesQuery.data?.formulas ?? []
+
+  // Formulas map for table rendering
+  const formulasMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const formula of formulas) {
+      map[formula.id] = formula.expression
+    }
+    return map
+  }, [formulas])
 
   // ============================================================================
   // Actions
@@ -309,7 +370,7 @@ export function useFolderView({
   }
 
   /**
-   * Update current view configuration
+   * Update current view configuration with optimistic update
    */
   const updateView = useCallback(
     async (updates: Partial<ViewConfig>) => {
@@ -317,11 +378,12 @@ export function useFolderView({
 
       const updatedView: ViewConfig = cleanUndefinedValues({ ...activeView, ...updates })
 
-      // Update local state immediately
-      setViews((prev) => {
-        const next = [...prev]
-        next[activeViewIndex] = updatedView
-        return next
+      // Optimistic update to cache
+      queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(folderPath), (old) => {
+        if (!old) return old
+        const newViews = [...old.views]
+        newViews[activeViewIndex] = updatedView
+        return { ...old, views: newViews }
       })
 
       // Debounce the save to avoid too many writes
@@ -342,11 +404,11 @@ export function useFolderView({
         } catch (err) {
           console.error('[useFolderView.updateView] Failed:', err)
           // Revert on error
-          await fetchViews()
+          queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
         }
       }, 300)
     },
-    [activeView, activeViewIndex, folderPath, fetchViews]
+    [activeView, activeViewIndex, folderPath, queryClient]
   )
 
   /**
@@ -364,25 +426,23 @@ export function useFolderView({
           throw new Error(result.error || 'Failed to save view')
         }
 
-        // Fetch updated views from backend
-        await fetchViews()
+        // Invalidate to refetch views
+        await queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
 
-        // Find the index of the newly added view
-        // Note: We need to use the callback form to get the latest views
-        setViews((currentViews) => {
-          const newIndex = currentViews.findIndex((v) => v.name === view.name)
+        // Find and set the new view as active
+        const newData = queryClient.getQueryData<ViewsQueryData>(folderViewKeys.views(folderPath))
+        if (newData) {
+          const newIndex = newData.views.findIndex((v) => v.name === view.name)
           if (newIndex >= 0) {
             setActiveViewIndex(newIndex)
           }
-          return currentViews
-        })
+        }
       } catch (err) {
         console.error('[useFolderView.addView] Failed:', err)
-        setError(err instanceof Error ? err.message : 'Failed to add view')
-        throw err // Re-throw so the UI can handle it
+        throw err
       }
     },
-    [folderPath, fetchViews]
+    [folderPath, queryClient]
   )
 
   /**
@@ -397,27 +457,24 @@ export function useFolderView({
           throw new Error(result.error || 'Failed to delete view')
         }
 
-        await fetchViews()
+        // Invalidate to refetch views
+        await queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
 
-        // Adjust active index if needed - use callback to get latest views
-        setViews((currentViews) => {
-          if (activeViewIndex >= currentViews.length) {
-            setActiveViewIndex(Math.max(0, currentViews.length - 1))
-          }
-          return currentViews
-        })
+        // Adjust active index if needed
+        const newData = queryClient.getQueryData<ViewsQueryData>(folderViewKeys.views(folderPath))
+        if (newData && activeViewIndex >= newData.views.length) {
+          setActiveViewIndex(Math.max(0, newData.views.length - 1))
+        }
       } catch (err) {
         console.error('[useFolderView.deleteView] Failed:', err)
-        setError(err instanceof Error ? err.message : 'Failed to delete view')
         throw err
       }
     },
-    [folderPath, fetchViews, activeViewIndex]
+    [folderPath, queryClient, activeViewIndex]
   )
 
   /**
-   * Set a specific view as default by index.
-   * This clears default from all other views and sets the specified view as default.
+   * Set a specific view as default by index
    */
   const setViewAsDefault = useCallback(
     async (index: number) => {
@@ -427,15 +484,16 @@ export function useFolderView({
         return
       }
 
-      // Update local state immediately - clear default from all, set on target
-      setViews((prev) => {
-        return prev.map((v, i) => ({
-          ...v,
-          default: i === index
-        }))
+      // Optimistic update to cache
+      queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(folderPath), (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          views: old.views.map((v, i) => ({ ...v, default: i === index })),
+          defaultIndex: index
+        }
       })
 
-      // Save to backend - the backend handler will also clear default from others
       try {
         const result = await window.api.folderView.setView(folderPath, {
           ...targetView,
@@ -446,16 +504,15 @@ export function useFolderView({
           throw new Error(result.error || 'Failed to set default view')
         }
 
-        // Switch to the new default view
         setActiveViewIndex(index)
       } catch (err) {
         console.error('[useFolderView.setViewAsDefault] Failed:', err)
         // Revert on error
-        await fetchViews()
+        queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
         throw err
       }
     },
-    [views, folderPath, fetchViews]
+    [views, folderPath, queryClient]
   )
 
   /**
@@ -489,17 +546,14 @@ export function useFolderView({
   )
 
   /**
-   * Update summary configuration for a column.
-   * Persists to .folder.md summaries section.
+   * Update summary configuration for a column
    */
   const updateSummaryConfig = useCallback(
     async (columnId: string, config: SummaryConfig | undefined) => {
       try {
-        // Get current folder config
         const configResult = await window.api.folderView.getConfig(folderPath)
         const existingConfig = configResult.config
 
-        // Update summaries
         const updatedSummaries = {
           ...((existingConfig.summaries ?? {}) as Record<string, SummaryConfig>)
         }
@@ -509,31 +563,32 @@ export function useFolderView({
           delete updatedSummaries[columnId]
         }
 
-        // Save updated config
         await window.api.folderView.setConfig(folderPath, {
           ...existingConfig,
           summaries: Object.keys(updatedSummaries).length > 0 ? updatedSummaries : undefined
         })
 
-        // Update local state
-        setSummaries(updatedSummaries)
+        // Update cache
+        queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(folderPath), (old) => {
+          if (!old) return old
+          return { ...old, summaries: updatedSummaries }
+        })
       } catch (err) {
         console.error('[useFolderView.updateSummaryConfig] Failed:', err)
       }
     },
-    [folderPath]
+    [folderPath, queryClient]
   )
 
   /**
-   * Toggle showSummaries for current view.
+   * Toggle showSummaries for current view
    */
   const toggleShowSummaries = useCallback(async () => {
     await updateView({ showSummaries: !activeView?.showSummaries })
   }, [updateView, activeView?.showSummaries])
 
   /**
-   * Update group by configuration for current view.
-   * Phase 24: T113 - Persist groupBy to .folder.md view.groupBy
+   * Update group by configuration for current view
    */
   const updateGroupBy = useCallback(
     async (groupBy: GroupByConfig | undefined) => {
@@ -543,41 +598,24 @@ export function useFolderView({
   )
 
   /**
-   * Client-side filtered notes based on active view's filters
-   */
-  const filteredNotes = useMemo(() => {
-    const filters = activeView?.filters as FilterExpression | undefined
-    if (!filters) return notes
-
-    try {
-      return notes.filter((note) => evaluateFilter(note, filters))
-    } catch (err) {
-      console.error('[useFolderView] Filter evaluation error:', err)
-      return notes // Return all notes on error
-    }
-  }, [notes, activeView?.filters])
-
-  /**
-   * Update display name for a property/column.
-   * Updates both the column config displayName and properties.{id}.displayName
+   * Update display name for a property/column
    */
   const updateDisplayName = useCallback(
     async (columnId: string, displayName: string) => {
       if (!activeView) return
 
-      // Update column displayName in the current view
       const updatedColumns = (activeView.columns || []).map((col) =>
         col.id === columnId ? { ...col, displayName } : col
       )
 
-      // Update view with new columns
       const updatedView: ViewConfig = { ...activeView, columns: updatedColumns }
 
-      // Update local state immediately
-      setViews((prev) => {
-        const next = [...prev]
-        next[activeViewIndex] = updatedView
-        return next
+      // Optimistic update
+      queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(folderPath), (old) => {
+        if (!old) return old
+        const newViews = [...old.views]
+        newViews[activeViewIndex] = updatedView
+        return { ...old, views: newViews }
       })
 
       // Debounce the save
@@ -587,14 +625,11 @@ export function useFolderView({
 
       updateTimeoutRef.current = setTimeout(async () => {
         try {
-          // Save view with updated column displayName
           await window.api.folderView.setView(
             folderPath,
             updatedView as unknown as Record<string, unknown>
           )
 
-          // Also update the properties.{id}.displayName in folder config
-          // This ensures the displayName persists even if column is removed/re-added
           const configResult = await window.api.folderView.getConfig(folderPath)
           const existingConfig = configResult.config
 
@@ -612,45 +647,60 @@ export function useFolderView({
           await window.api.folderView.setConfig(folderPath, updatedConfig)
         } catch (err) {
           console.error('Failed to save display name:', err)
-          // Revert on error
-          await fetchViews()
+          queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
         }
       }, 300)
     },
-    [activeView, activeViewIndex, folderPath, fetchViews]
+    [activeView, activeViewIndex, folderPath, queryClient]
   )
 
   /**
    * Load more notes (pagination)
    */
   const loadMore = useCallback(async () => {
-    if (!hasMore || isLoading) return
-    await fetchNotes(true)
-  }, [hasMore, isLoading, fetchNotes])
+    if (notesQuery.hasNextPage && !notesQuery.isFetchingNextPage) {
+      await notesQuery.fetchNextPage()
+    }
+  }, [notesQuery])
 
   /**
-   * Optimistically remove notes from the local state.
-   * Used for immediate UI feedback before backend confirmation (e.g., move/delete).
+   * Optimistically remove notes from the query cache
    */
-  const removeNotesOptimistically = useCallback((noteIds: string[]) => {
-    const idSet = new Set(noteIds)
-    setNotes((prev) => prev.filter((note) => !idSet.has(note.id)))
-  }, [])
+  const removeNotesOptimistically = useCallback(
+    (noteIds: string[]) => {
+      const idSet = new Set(noteIds)
+
+      queryClient.setQueryData<InfiniteData<ListWithPropertiesResponse>>(
+        folderViewKeys.notes(folderPath, propertyIds),
+        (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              notes: page.notes.filter((note) => !idSet.has(note.id))
+            }))
+          }
+        }
+      )
+    },
+    [queryClient, folderPath, propertyIds]
+  )
+
+  /**
+   * Refresh all data by invalidating queries
+   */
+  const refresh = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) }),
+      queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(folderPath) }),
+      queryClient.invalidateQueries({ queryKey: folderViewKeys.notesBase(folderPath) })
+    ])
+  }, [queryClient, folderPath])
 
   // ============================================================================
   // Formula Methods
   // ============================================================================
-
-  /**
-   * Convert formulas array to map for table rendering
-   */
-  const formulasMap = useMemo(() => {
-    const map: Record<string, string> = {}
-    for (const formula of formulas) {
-      map[formula.id] = formula.expression
-    }
-    return map
-  }, [formulas])
 
   /**
    * Add a new formula
@@ -658,30 +708,27 @@ export function useFolderView({
   const addFormula = useCallback(
     async (name: string, expression: string) => {
       try {
-        // Get current folder config
         const configResult = await window.api.folderView.getConfig(folderPath)
         const existingConfig = configResult.config
 
-        // Add the new formula
         const updatedFormulas = {
           ...existingConfig.formulas,
           [name]: expression
         }
 
-        // Save updated config
         await window.api.folderView.setConfig(folderPath, {
           ...existingConfig,
           formulas: updatedFormulas
         })
 
-        // Update local state
-        setFormulas((prev) => [...prev, { id: name, expression }])
+        // Invalidate to refetch
+        queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(folderPath) })
       } catch (err) {
         console.error('[useFolderView.addFormula] Failed:', err)
         throw err
       }
     },
-    [folderPath]
+    [folderPath, queryClient]
   )
 
   /**
@@ -690,30 +737,27 @@ export function useFolderView({
   const updateFormula = useCallback(
     async (name: string, expression: string) => {
       try {
-        // Get current folder config
         const configResult = await window.api.folderView.getConfig(folderPath)
         const existingConfig = configResult.config
 
-        // Update the formula
         const updatedFormulas = {
           ...existingConfig.formulas,
           [name]: expression
         }
 
-        // Save updated config
         await window.api.folderView.setConfig(folderPath, {
           ...existingConfig,
           formulas: updatedFormulas
         })
 
-        // Update local state
-        setFormulas((prev) => prev.map((f) => (f.id === name ? { id: name, expression } : f)))
+        // Invalidate to refetch
+        queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(folderPath) })
       } catch (err) {
         console.error('[useFolderView.updateFormula] Failed:', err)
         throw err
       }
     },
-    [folderPath]
+    [folderPath, queryClient]
   )
 
   /**
@@ -722,84 +766,30 @@ export function useFolderView({
   const deleteFormula = useCallback(
     async (name: string) => {
       try {
-        // Get current folder config
         const configResult = await window.api.folderView.getConfig(folderPath)
         const existingConfig = configResult.config
 
-        // Remove the formula
         const updatedFormulas = { ...existingConfig.formulas }
         delete updatedFormulas[name]
 
-        // Save updated config
         await window.api.folderView.setConfig(folderPath, {
           ...existingConfig,
           formulas: Object.keys(updatedFormulas).length > 0 ? updatedFormulas : undefined
         })
 
-        // Update local state
-        setFormulas((prev) => prev.filter((f) => f.id !== name))
+        // Invalidate to refetch
+        queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(folderPath) })
       } catch (err) {
         console.error('[useFolderView.deleteFormula] Failed:', err)
         throw err
       }
     },
-    [folderPath]
+    [folderPath, queryClient]
   )
 
   // ============================================================================
   // Effects
   // ============================================================================
-
-  // Initial load and refresh on folder change
-  useEffect(() => {
-    refresh()
-  }, [folderPath]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Refetch notes when active view changes
-  useEffect(() => {
-    if (!isLoading) {
-      offsetRef.current = 0
-      fetchNotes(false)
-    }
-  }, [activeViewIndex]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Track custom property columns to trigger refetch when they change
-  const propertyColumnsKey = useMemo(() => {
-    const columns = activeView?.columns ?? []
-    return columns
-      .filter((c) => !BUILT_IN_COLUMNS.includes(c.id as (typeof BUILT_IN_COLUMNS)[number]))
-      .map((c) => c.id)
-      .sort()
-      .join(',')
-  }, [activeView?.columns])
-
-  // Refetch notes when custom property columns change (including after initial view load)
-  const prevPropertyColumnsKeyRef = useRef<string | null>(null)
-  useEffect(() => {
-    // Skip the very first render (before views are loaded)
-    if (activeView === undefined) {
-      return
-    }
-
-    // Skip if key hasn't changed
-    if (prevPropertyColumnsKeyRef.current === propertyColumnsKey) {
-      return
-    }
-
-    const isFirstLoad = prevPropertyColumnsKeyRef.current === null
-    prevPropertyColumnsKeyRef.current = propertyColumnsKey
-
-    // Refetch with correct property columns
-    // On first load after views are ready, this ensures we fetch with correct property IDs
-    // On subsequent changes, this refetches when columns are added/removed
-    offsetRef.current = 0
-    fetchNotes(false)
-
-    // Log for debugging
-    if (isFirstLoad) {
-      console.log('[useFolderView] Initial fetch with property columns:', propertyColumnsKey)
-    }
-  }, [propertyColumnsKey, activeView, fetchNotes])
 
   // Cleanup debounce timer
   useEffect(() => {
@@ -810,29 +800,65 @@ export function useFolderView({
     }
   }, [])
 
-  // Listen for note moved/deleted events to keep view in sync
+  // Listen for note events to keep cache in sync
   useEffect(() => {
     const unsubMoved = onNoteMoved((event) => {
-      // Extract folder from the new path (e.g., "projects/active/note.md" -> "projects/active")
+      // Extract folder from new path
       const pathParts = event.newPath.split('/')
-      pathParts.pop() // Remove filename
+      pathParts.pop()
       const newFolder = pathParts.join('/')
 
-      // Remove note if it moved to a different folder
+      // Remove from cache if moved out of current folder
       if (newFolder !== folderPath) {
-        setNotes((prev) => prev.filter((note) => note.id !== event.id))
+        queryClient.setQueryData<InfiniteData<ListWithPropertiesResponse>>(
+          folderViewKeys.notes(folderPath, propertyIds),
+          (old) => {
+            if (!old) return old
+            return {
+              ...old,
+              pages: old.pages.map((page) => ({
+                ...page,
+                notes: page.notes.filter((note) => note.id !== event.id)
+              }))
+            }
+          }
+        )
       }
     })
 
     const unsubDeleted = onNoteDeleted((event) => {
-      setNotes((prev) => prev.filter((note) => note.id !== event.id))
+      queryClient.setQueryData<InfiniteData<ListWithPropertiesResponse>>(
+        folderViewKeys.notes(folderPath, propertyIds),
+        (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              notes: page.notes.filter((note) => note.id !== event.id)
+            }))
+          }
+        }
+      )
+    })
+
+    const unsubCreated = onNoteCreated(() => {
+      // Invalidate to refetch - new note might be in this folder
+      queryClient.invalidateQueries({ queryKey: folderViewKeys.notesBase(folderPath) })
+    })
+
+    const unsubUpdated = onNoteUpdated(() => {
+      // Invalidate to refresh property values
+      queryClient.invalidateQueries({ queryKey: folderViewKeys.notesBase(folderPath) })
     })
 
     return () => {
       unsubMoved()
       unsubDeleted()
+      unsubCreated()
+      unsubUpdated()
     }
-  }, [folderPath])
+  }, [folderPath, propertyIds, queryClient])
 
   // ============================================================================
   // Return
@@ -846,16 +872,20 @@ export function useFolderView({
     notes: filteredNotes,
     totalNotes: filteredNotes.length,
     unfilteredCount: notes.length,
-    hasMore,
+    hasMore: notesQuery.hasNextPage ?? false,
     availableProperties,
     builtInColumns,
     formulas,
     formulasMap,
     summaries,
 
-    // State
-    isLoading,
-    error,
+    // State - use query states for proper caching behavior
+    isLoading: viewsQuery.isLoading || propertiesQuery.isLoading || notesQuery.isLoading,
+    error:
+      viewsQuery.error?.message ??
+      propertiesQuery.error?.message ??
+      notesQuery.error?.message ??
+      null,
 
     // Actions
     setActiveViewIndex,
