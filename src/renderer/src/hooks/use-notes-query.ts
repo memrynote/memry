@@ -5,7 +5,7 @@
  * @module hooks/use-notes-query
  */
 
-import { useEffect } from 'react'
+import { useEffect, useCallback, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type {
   Note,
@@ -13,6 +13,8 @@ import type {
   NoteListResponse,
   NoteLinksResponse
 } from '../../../preload/index.d'
+
+// Types are re-exported at the end of this file
 import {
   notesService,
   onNoteCreated,
@@ -109,6 +111,12 @@ const METADATA_STALE_TIME = 60_000
 
 /** 5 minutes - keep in cache for quick access */
 const NOTE_GC_TIME = 5 * 60 * 1000
+
+/** Stable empty arrays/objects to avoid recreating on every render */
+const EMPTY_FOLDERS: string[] = []
+const EMPTY_TAGS: Array<{ tag: string; color: string; count: number }> = []
+const EMPTY_NOTES_LIST: NoteListResponse = { notes: [], total: 0, hasMore: false }
+const EMPTY_LINKS: NoteLinksResponse = { outgoing: [], incoming: [] }
 
 // =============================================================================
 // useNote Hook - Single Note with Caching
@@ -227,7 +235,8 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
     }
   }, [queryClient])
 
-  const data = query.data ?? { notes: [], total: 0, hasMore: false }
+  // Memoize data to avoid recreating object reference
+  const data = useMemo(() => query.data ?? EMPTY_NOTES_LIST, [query.data])
 
   return {
     notes: data.notes,
@@ -258,8 +267,11 @@ export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
     gcTime: NOTE_GC_TIME
   })
 
+  // Memoize tags to avoid recreating array reference
+  const tags = useMemo(() => query.data ?? EMPTY_TAGS, [query.data])
+
   return {
-    tags: query.data ?? [],
+    tags,
     isLoading: query.isLoading,
     error: query.error,
     refetch: query.refetch
@@ -275,6 +287,7 @@ export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
  */
 export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options
+  const queryClient = useQueryClient()
 
   const query = useQuery({
     queryKey: notesKeys.folders(),
@@ -284,11 +297,35 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
     gcTime: NOTE_GC_TIME
   })
 
+  const createFolderMutation = useMutation({
+    mutationFn: (path: string) => notesService.createFolder(path),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
+    }
+  })
+
+  // Wrap in useCallback to provide stable reference (prevents infinite re-render loops)
+  const createFolder = useCallback(
+    async (path: string): Promise<boolean> => {
+      try {
+        const result = await createFolderMutation.mutateAsync(path)
+        return result.success
+      } catch {
+        return false
+      }
+    },
+    [createFolderMutation.mutateAsync]
+  )
+
+  // Memoize folders to avoid recreating array reference
+  const folders = useMemo(() => query.data ?? EMPTY_FOLDERS, [query.data])
+
   return {
-    folders: query.data ?? [],
+    folders,
     isLoading: query.isLoading,
     error: query.error,
-    refetch: query.refetch
+    refetch: query.refetch,
+    createFolder
   }
 }
 
@@ -335,7 +372,8 @@ export function useNoteLinksQuery(noteId: string | null, options: { enabled?: bo
     }
   }, [noteId, queryClient])
 
-  const data = query.data ?? { outgoing: [], incoming: [] }
+  // Memoize data to avoid recreating object reference
+  const data = useMemo(() => query.data ?? EMPTY_LINKS, [query.data])
 
   return {
     outgoing: data.outgoing,

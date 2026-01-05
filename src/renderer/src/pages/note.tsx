@@ -15,8 +15,13 @@ import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, Property, NewProperty, PropertyType } from '@/components/note/info-section'
 import { BacklinksSection, Backlink } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
-import { useNoteLinks, useNoteTags, type Note } from '@/hooks/use-notes'
-import { useNote, useNoteMutations } from '@/hooks/use-notes-query'
+import {
+  useNote,
+  useNoteMutations,
+  useNoteLinksQuery,
+  useNoteTagsQuery,
+  type Note
+} from '@/hooks/use-notes-query'
 import { useNoteProperties } from '@/hooks/use-note-properties'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated } from '@/services/notes-service'
@@ -106,9 +111,9 @@ export function NotePage({ noteId }: NotePageProps) {
     refetch: refetchNote
   } = useNote(noteId ?? null)
   const { createNote, updateNote, renameNote } = useNoteMutations()
-  const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinks(noteId ?? null)
+  const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinksQuery(noteId ?? null)
   const { tasks: linkedTasks, isLoading: linkedTasksLoading } = useTasksLinkedToNote(noteId ?? null)
-  const { tags: allAvailableTags } = useNoteTags()
+  const { tags: allAvailableTags } = useNoteTagsQuery()
   const { openTab, setTabDeleted } = useTabs()
   const activeTab = useActiveTab()
 

@@ -22,7 +22,12 @@ import {
   type DropPosition
 } from '@/components/kibo-ui/tree'
 import { useTabActions } from '@/contexts/tabs'
-import { useNotes, useNoteFolders, type NoteListItem } from '@/hooks/use-notes'
+import {
+  useNotesList,
+  useNoteFoldersQuery,
+  useNoteMutations,
+  type NoteListItem
+} from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
 import {
   FileText,
@@ -268,11 +273,15 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   // Load all notes so the tree can correctly show files in all folders
   // Tree views need complete data - pagination doesn't make sense here
   // Virtualization (enabled at 100+ items) handles render performance
-  const { notes, isLoading, error, createNote, deleteNote, renameNote, moveNote } = useNotes({
-    autoLoad: true,
-    limit: 10000
-  })
-  const { folders, createFolder, refresh: refreshFolders } = useNoteFolders()
+  const { notes, isLoading, error } = useNotesList({ limit: 10000 })
+  const mutations = useNoteMutations()
+  // Extract stable mutateAsync functions to avoid infinite re-render loops
+  // (useMutation returns unstable object references when mutation state changes)
+  const createNoteMutateAsync = mutations.createNote.mutateAsync
+  const deleteNoteMutateAsync = mutations.deleteNote.mutateAsync
+  const renameNoteMutateAsync = mutations.renameNote.mutateAsync
+  const moveNoteMutateAsync = mutations.moveNote.mutateAsync
+  const { folders, createFolder, refetch: refreshFolders } = useNoteFoldersQuery()
   const { openTab, closeTab } = useTabActions()
   const [isCreating, setIsCreating] = useState(false)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
@@ -458,14 +467,15 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       // Get folder's default template (if any)
       const templateId = targetFolder ? await notesService.getFolderTemplate(targetFolder) : null
 
-      const newNote = await createNote({
+      const result = await createNoteMutateAsync({
         title: 'Untitled',
         folder: targetFolder || undefined,
         template: templateId ?? undefined
         // Note: content is intentionally omitted to allow template content to be used
       })
 
-      if (newNote) {
+      if (result.success && result.note) {
+        const newNote = result.note
         // Open the new note in a tab
         openTab({
           type: 'note',
@@ -489,7 +499,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     } finally {
       setIsCreating(false)
     }
-  }, [isCreating, createNote, openTab, targetFolder])
+  }, [isCreating, createNoteMutateAsync, openTab, targetFolder])
 
   // Handle opening template selector for folder configuration
   const handleSetFolderTemplate = useCallback((folderPath: string) => {
@@ -591,14 +601,15 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         // Get folder's default template (if any)
         const templateId = await notesService.getFolderTemplate(folderPath)
 
-        const newNote = await createNote({
+        const result = await createNoteMutateAsync({
           title: 'Untitled',
           folder: folderPath || undefined,
           template: templateId ?? undefined
           // Note: content is intentionally omitted to allow template content to be used
         })
 
-        if (newNote) {
+        if (result.success && result.note) {
+          const newNote = result.note
           openTab({
             type: 'note',
             title: getDisplayName(newNote.path),
@@ -618,7 +629,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         setIsCreating(false)
       }
     },
-    [isCreating, createNote, openTab]
+    [isCreating, createNoteMutateAsync, openTab]
   )
 
   // Handle creating a subfolder in a specific folder (from context menu)
@@ -673,7 +684,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
 
       setIsRenaming(true)
       try {
-        await renameNote(noteId, renameValue.trim())
+        await renameNoteMutateAsync({ id: noteId, newTitle: renameValue.trim() })
       } catch (err) {
         console.error('Failed to rename note:', err)
       } finally {
@@ -681,7 +692,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         setRenamingNoteId(null)
       }
     },
-    [renameValue, isRenaming, renameNote]
+    [renameValue, isRenaming, renameNoteMutateAsync]
   )
 
   const handleRenameCancel = useCallback(() => {
@@ -783,8 +794,8 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     try {
       // Delete notes first (before folders, in case notes are inside folders)
       for (const note of notesToDelete) {
-        const success = await deleteNote(note.id)
-        if (success) {
+        const result = await deleteNoteMutateAsync(note.id)
+        if (result.success) {
           // Close the tab if it's open
           closeTab(`/notes/${note.id}`)
         }
@@ -809,7 +820,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     } finally {
       setIsDeleting(false)
     }
-  }, [notesToDelete, foldersToDelete, isDeleting, deleteNote, closeTab, refreshFolders])
+  }, [notesToDelete, foldersToDelete, isDeleting, deleteNoteMutateAsync, closeTab, refreshFolders])
 
   const handleOpenExternal = useCallback(async (note: NoteListItem) => {
     try {
@@ -879,14 +890,14 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       }
 
       try {
-        await moveNote(noteId, targetFolder)
+        await moveNoteMutateAsync({ id: noteId, newFolder: targetFolder })
         return true
       } catch (err) {
         console.error('Failed to move note:', err)
         return false
       }
     },
-    [noteMap, moveNote]
+    [noteMap, moveNoteMutateAsync]
   )
 
   /**
@@ -1190,7 +1201,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
 
   // Render error state
   if (error) {
-    return <NotesTreeError error={error} />
+    return <NotesTreeError error={error.message ?? 'Failed to load notes'} />
   }
 
   // Render empty state (only if no notes AND no folders)

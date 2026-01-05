@@ -26,7 +26,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTabActions } from '@/contexts/tabs'
-import type { NoteListItem } from '@/hooks/use-notes'
+import type { NoteListItem } from '@/hooks/use-notes-query'
 import {
   flattenTree,
   TREE_ROW_HEIGHT,

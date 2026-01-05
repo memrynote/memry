@@ -5,10 +5,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NotesTree } from './notes-tree'
-import type { NoteListItem } from '@/hooks/use-notes'
+import type { NoteListItem } from '@/hooks/use-notes-query'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 // Wrapper for tests that provides TooltipProvider
@@ -33,9 +33,10 @@ vi.mock('@/contexts/tabs', () => ({
   })
 }))
 
-vi.mock('@/hooks/use-notes', () => ({
-  useNotes: vi.fn(),
-  useNoteFolders: vi.fn()
+vi.mock('@/hooks/use-notes-query', () => ({
+  useNotesList: vi.fn(),
+  useNoteFoldersQuery: vi.fn(),
+  useNoteMutations: vi.fn()
 }))
 
 vi.mock('@/services/notes-service', () => ({
@@ -63,7 +64,7 @@ vi.mock('@/components/note/template-selector', () => ({
 }))
 
 // Import the mocked module
-import { useNotes, useNoteFolders } from '@/hooks/use-notes'
+import { useNotesList, useNoteFoldersQuery, useNoteMutations } from '@/hooks/use-notes-query'
 
 // ============================================================================
 // Test Data
@@ -78,8 +79,8 @@ const createNote = (
   path,
   title: path.split('/').pop()?.replace('.md', '') || 'Untitled',
   emoji: null,
-  createdAt: new Date().toISOString(),
-  modifiedAt: new Date().toISOString(),
+  created: new Date(),
+  modified: new Date(),
   wordCount: 100,
   tags: [],
   ...overrides
@@ -99,22 +100,39 @@ const setupMocks = (
   notes: NoteListItem[] = mockNotes,
   folders: string[] = mockFolders,
   loading = false,
-  error: string | null = null
+  error: Error | null = null
 ) => {
-  ;(useNotes as ReturnType<typeof vi.fn>).mockReturnValue({
+  ;(useNotesList as ReturnType<typeof vi.fn>).mockReturnValue({
     notes,
     isLoading: loading,
+    isFetching: false,
     error,
-    createNote: vi.fn().mockResolvedValue({ id: 'new-note', path: 'notes/Untitled.md' }),
-    deleteNote: vi.fn().mockResolvedValue(true),
-    renameNote: vi.fn().mockResolvedValue(true),
-    moveNote: vi.fn().mockResolvedValue(true)
+    refetch: vi.fn(),
+    total: notes.length,
+    hasMore: false
   })
 
-  ;(useNoteFolders as ReturnType<typeof vi.fn>).mockReturnValue({
+  ;(useNoteFoldersQuery as ReturnType<typeof vi.fn>).mockReturnValue({
     folders,
-    createFolder: vi.fn().mockResolvedValue(true),
-    refresh: vi.fn()
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+    createFolder: vi.fn().mockResolvedValue(true)
+  })
+
+  ;(useNoteMutations as ReturnType<typeof vi.fn>).mockReturnValue({
+    createNote: {
+      mutateAsync: vi.fn().mockResolvedValue({ success: true, note: { id: 'new-note', path: 'notes/Untitled.md' } })
+    },
+    deleteNote: {
+      mutateAsync: vi.fn().mockResolvedValue({ success: true })
+    },
+    renameNote: {
+      mutateAsync: vi.fn().mockResolvedValue({ success: true, note: {} })
+    },
+    moveNote: {
+      mutateAsync: vi.fn().mockResolvedValue({ success: true, note: {} })
+    }
   })
 }
 
@@ -136,7 +154,7 @@ describe('T521: NotesTree - folder tree display', () => {
   })
 
   it('should render error state when error occurs', () => {
-    setupMocks([], [], false, 'Failed to load notes')
+    setupMocks([], [], false, new Error('Failed to load notes'))
     renderWithProviders(<NotesTree />)
 
     // Error state shows when notes fail to load
@@ -392,15 +410,12 @@ describe('T522: NotesTree - delete', () => {
 
   it('should cancel delete on dialog cancel', async () => {
     const user = userEvent.setup()
-    const deleteNote = vi.fn()
-    ;(useNotes as ReturnType<typeof vi.fn>).mockReturnValue({
-      notes: mockNotes,
-      isLoading: false,
-      error: null,
-      createNote: vi.fn(),
-      deleteNote,
-      renameNote: vi.fn(),
-      moveNote: vi.fn()
+    const deleteNoteMock = vi.fn()
+    ;(useNoteMutations as ReturnType<typeof vi.fn>).mockReturnValue({
+      createNote: { mutateAsync: vi.fn() },
+      deleteNote: { mutateAsync: deleteNoteMock },
+      renameNote: { mutateAsync: vi.fn() },
+      moveNote: { mutateAsync: vi.fn() }
     })
 
     renderWithProviders(<NotesTree />)
@@ -414,7 +429,7 @@ describe('T522: NotesTree - delete', () => {
     const cancelButton = screen.getByRole('button', { name: /cancel/i })
     await user.click(cancelButton)
 
-    expect(deleteNote).not.toHaveBeenCalled()
+    expect(deleteNoteMock).not.toHaveBeenCalled()
   })
 })
 
@@ -468,15 +483,12 @@ describe('T522: NotesTree - keyboard navigation', () => {
 
   it('should delete on Delete key press', async () => {
     const user = userEvent.setup()
-    const deleteNote = vi.fn().mockResolvedValue(true)
-    ;(useNotes as ReturnType<typeof vi.fn>).mockReturnValue({
-      notes: mockNotes,
-      isLoading: false,
-      error: null,
-      createNote: vi.fn(),
-      deleteNote,
-      renameNote: vi.fn(),
-      moveNote: vi.fn()
+    const deleteNoteMock = vi.fn().mockResolvedValue({ success: true })
+    ;(useNoteMutations as ReturnType<typeof vi.fn>).mockReturnValue({
+      createNote: { mutateAsync: vi.fn() },
+      deleteNote: { mutateAsync: deleteNoteMock },
+      renameNote: { mutateAsync: vi.fn() },
+      moveNote: { mutateAsync: vi.fn() }
     })
 
     renderWithProviders(<NotesTree />)
