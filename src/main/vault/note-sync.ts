@@ -32,7 +32,7 @@ import {
   extractDateFromPath,
   resolveNotesByTitles
 } from '@shared/db/queries/notes'
-import { updateFtsContent } from '../database'
+import { queueFtsUpdate } from '../database'
 
 // ============================================================================
 // Types
@@ -238,9 +238,9 @@ export function syncNoteToCache(
     )
   }
 
-  // Update FTS index
+  // Queue FTS index update (batched for performance)
   if (!skipFts) {
-    updateFtsContent(db, id, parsedContent, tags)
+    queueFtsUpdate(id, parsedContent, tags)
   }
 
   // Resolve and set links
