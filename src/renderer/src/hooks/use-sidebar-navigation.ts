@@ -3,8 +3,8 @@
  * Handles opening sidebar items in tabs with proper behavior
  */
 
-import { useCallback } from 'react'
-import { useTabs } from '@/contexts/tabs'
+import { useCallback, useRef, useEffect } from 'react'
+import { useTabs, useTabSettings } from '@/contexts/tabs'
 import {
   findExistingTab,
   findTabByEntityId,
@@ -109,10 +109,18 @@ export const isItemActiveTab = (state: TabSystemState, item: SidebarItem): boole
 
 /**
  * Hook for sidebar navigation with tab integration
+ * Note: This hook needs access to state for checking existing tabs and active state.
+ * Components using only openSidebarItem could be optimized further with a separate hook.
  */
 export const useSidebarNavigation = () => {
   const { openTab, setActiveTab, splitView, state, dispatch } = useTabs()
-  const { settings } = state
+  const settings = useTabSettings()
+
+  // Use refs for state to avoid recreating callbacks
+  const stateRef = useRef(state)
+  useEffect(() => {
+    stateRef.current = state
+  })
 
   /**
    * Open a sidebar item in a tab
@@ -120,9 +128,11 @@ export const useSidebarNavigation = () => {
   const openSidebarItem = useCallback(
     (item: SidebarItem, options: OpenSidebarItemOptions = {}) => {
       const { inNewTab, inBackground, toTheSide, isPreview } = options
+      const currentState = stateRef.current
+      const currentSettings = settings
 
       // Determine if we should use preview mode
-      const shouldBePreview = isPreview ?? (settings.previewMode && !inNewTab)
+      const shouldBePreview = isPreview ?? (currentSettings.previewMode && !inNewTab)
 
       // Determine if should open in new tab or replace current
       // Default behavior: replace current tab
@@ -131,7 +141,7 @@ export const useSidebarNavigation = () => {
       const shouldReplaceActive = !shouldOpenNewTab && !toTheSide
 
       // Check for existing tab
-      const existingTab = findExistingTabForItem(state, item)
+      const existingTab = findExistingTabForItem(currentState, item)
 
       if (existingTab && !shouldOpenNewTab && !toTheSide) {
         // Focus existing tab
@@ -152,7 +162,7 @@ export const useSidebarNavigation = () => {
 
       if (toTheSide) {
         // Create split and open in new pane
-        splitView('horizontal', state.activeGroupId)
+        splitView('horizontal', currentState.activeGroupId)
         // The new group will be active, so opening a tab there
         // Note: This is a simplification - ideally we'd wait for the split
         // and then open the tab in the new pane
@@ -164,7 +174,7 @@ export const useSidebarNavigation = () => {
         openTab(tabData, { background: inBackground, replaceActive: shouldReplaceActive })
       }
     },
-    [openTab, setActiveTab, splitView, dispatch, state, settings]
+    [openTab, setActiveTab, splitView, dispatch, settings]
   )
 
   /**
@@ -188,16 +198,16 @@ export const useSidebarNavigation = () => {
 
   /**
    * Check if item is open in any tab
+   * Note: This reads from state directly for accurate results
    */
-  const isOpenInTab = useCallback(
-    (item: SidebarItem): boolean => {
-      return isItemOpenInTab(state, item)
-    },
-    [state]
-  )
+  const isOpenInTab = useCallback((item: SidebarItem): boolean => {
+    return isItemOpenInTab(stateRef.current, item)
+  }, [])
 
   /**
    * Check if item is the active tab
+   * Note: This function is called during render for highlighting,
+   * so it needs to use fresh state for accurate UI
    */
   const isActiveItem = useCallback(
     (item: SidebarItem): boolean => {

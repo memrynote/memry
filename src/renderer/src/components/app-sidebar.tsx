@@ -27,7 +27,7 @@ import { SidebarTagList } from '@/components/sidebar/sidebar-tag-list'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
-import { useTabs } from '@/contexts/tabs'
+import { useTabActions } from '@/contexts/tabs'
 import { notesService } from '@/services/notes-service'
 import { SidebarDrillDownProvider, useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useInboxList } from '@/hooks/use-inbox'
@@ -149,8 +149,8 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
   // Tab navigation hook
   const { openSidebarItem, isActiveItem } = useSidebarNavigation()
 
-  // Tab context for opening new notes
-  const { openTab } = useTabs()
+  // Tab actions for opening new notes (stable reference, won't cause re-renders)
+  const { openTab } = useTabActions()
 
   // Drill-down context for tag navigation
   const { openTag } = useSidebarDrillDown()

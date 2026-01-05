@@ -21,7 +21,7 @@ import {
   type MoveOperation,
   type DropPosition
 } from '@/components/kibo-ui/tree'
-import { useTabs } from '@/contexts/tabs'
+import { useTabActions } from '@/contexts/tabs'
 import { useNotes, useNoteFolders, type NoteListItem } from '@/hooks/use-notes'
 import { notesService } from '@/services/notes-service'
 import {
@@ -273,7 +273,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     limit: 10000
   })
   const { folders, createFolder, refresh: refreshFolders } = useNoteFolders()
-  const { openTab, closeTab } = useTabs()
+  const { openTab, closeTab } = useTabActions()
   const [isCreating, setIsCreating] = useState(false)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
   const [isMoving, setIsMoving] = useState(false)

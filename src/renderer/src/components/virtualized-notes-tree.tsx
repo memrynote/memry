@@ -25,7 +25,7 @@ import {
   ExternalLink
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useTabs } from '@/contexts/tabs'
+import { useTabActions } from '@/contexts/tabs'
 import type { NoteListItem } from '@/hooks/use-notes'
 import {
   flattenTree,
@@ -413,7 +413,7 @@ export function VirtualizedNotesTree({
   noteMap,
   className
 }: VirtualizedNotesTreeProps) {
-  const { openTab } = useTabs()
+  const { openTab } = useTabActions()
   const parentRef = useRef<HTMLDivElement>(null)
 
   // Expanded folders state (persisted to localStorage)

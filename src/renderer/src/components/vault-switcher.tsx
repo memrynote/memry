@@ -25,13 +25,13 @@ import {
   useSidebar
 } from '@/components/ui/sidebar'
 import { useVault, useVaultList } from '@/hooks/use-vault'
-import { useTabs } from '@/contexts/tabs'
+import { useTabActions } from '@/contexts/tabs'
 
 export function VaultSwitcher() {
   const { isMobile } = useSidebar()
   const { status, isLoading, selectVault, switchVault } = useVault()
   const { vaults } = useVaultList()
-  const { openTab } = useTabs()
+  const { openTab } = useTabActions()
 
   const currentVaultName = status?.path
     ? status.path.split('/').pop() || 'Vault'
