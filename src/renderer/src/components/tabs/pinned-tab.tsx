@@ -48,27 +48,32 @@ export const PinnedTab = ({
       <TooltipTrigger asChild>
         <div
           className={cn(
-            // Base styles with refined sizing
+            // Base styles - consistent sizing for all states
             'relative flex items-center justify-center',
-            'w-8 h-8 cursor-pointer',
+            'w-9 h-9 cursor-pointer',
             'select-none',
-            'rounded-md',
-            // Smooth transitions
-            'transition-all duration-150 ease-out',
+            // All tabs have border (transparent for inactive) to maintain consistent size
+            'border',
+            // All tabs extend down to overlap header border
+            '-mb-px',
+            // Rounded top corners for browser-style
+            'rounded-t-lg',
+            // Smooth color transitions only (not size)
+            'transition-colors duration-150 ease-out',
 
-            // Active state - elevated card style matching RegularTab
+            // Active state - visible borders and content background
             isActive
               ? [
-                  'bg-white dark:bg-gray-800',
-                  'shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.06)]',
-                  'dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_1px_2px_rgba(0,0,0,0.2)]',
-                  'border border-gray-200/60 dark:border-gray-700/50'
+                  'bg-white dark:bg-gray-900',
+                  'border-gray-200 dark:border-gray-700',
+                  'border-b-transparent',
+                  'z-10'
                 ]
               : [
+                  // Inactive tabs - transparent borders
                   'bg-transparent',
-                  'hover:bg-gray-200/40 dark:hover:bg-gray-700/30',
-                  'border border-transparent',
-                  'hover:border-gray-200/40 dark:hover:border-gray-700/30'
+                  'border-transparent',
+                  'hover:bg-gray-200/50 dark:hover:bg-gray-700/40'
                 ],
 
             className

@@ -166,14 +166,10 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
 
   return (
     <TabDragProvider>
-      {/* Header with Tab Bar(s) - Refined workspace aesthetic */}
+      {/* Header with Tab Bar(s) - Browser-style tabs */}
       <header
         className="drag-region flex h-11 shrink-0 items-center relative
-
-          dark:from-gray-900 dark:to-gray-850
-          border-b border-gray-200/60 dark:border-gray-700/50
-          shadow-[0_1px_3px_rgba(0,0,0,0.02)]
-          dark:shadow-[0_1px_3px_rgba(0,0,0,0.15)]"
+          bg-gray-100 dark:bg-gray-800"
       >
         {/* Sidebar trigger with refined styling */}
         <div className="flex items-center gap-2.5 px-3 h-full shrink-0">
@@ -193,8 +189,8 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
                 key={groupId}
                 style={{ width: `${width}%` }}
                 className={`h-full overflow-hidden shrink-0 transition-all duration-200 ease-out ${index > 0
-                    ? 'border-l border-gray-200/60 dark:border-gray-700/40'
-                    : ''
+                  ? 'border-l border-gray-200/60 dark:border-gray-700/40'
+                  : ''
                   }`}
               >
                 <TabBarWithDrag groupId={groupId} />
@@ -225,8 +221,7 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
 
       {/* Main Content Area - Split View or Single Pane */}
       <div
-        className="flex flex-1 overflow-hidden dark:bg-gray-900
-          transition-colors duration-200"
+        className="flex flex-1 overflow-hidden dark:bg-gray-900"
         id="main-content"
       >
         {isSplitView ? (

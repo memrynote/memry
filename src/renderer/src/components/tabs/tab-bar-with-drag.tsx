@@ -93,11 +93,12 @@ export const TabBarWithDrag = ({
         <TabBarContextMenu groupId={groupId}>
             <div
                 className={cn(
-                    // Container with refined styling
-                    'flex items-center h-full',
+                    // Container - align items to bottom for tab merge effect
+                    'flex items-end h-full',
                     'bg-transparent',
-                    // Subtle bottom edge treatment
                     'relative',
+                    // Bottom border that active tabs will overlap
+                    'border-b border-gray-200 dark:border-gray-700',
                     className
                 )}
                 role="tablist"
@@ -108,7 +109,7 @@ export const TabBarWithDrag = ({
                 {/* Pinned tabs section (not in sortable context) */}
                 {pinnedTabs.length > 0 && (
                     <>
-                        <div className="flex items-center px-1.5 gap-1">
+                        <div className="flex items-end px-1.5 gap-0.5 pb-0">
                             {pinnedTabs.map((tab) => (
                                 <TabContextMenu
                                     key={tab.id}
@@ -124,23 +125,23 @@ export const TabBarWithDrag = ({
                             ))}
                         </div>
 
-                        {/* Refined divider */}
-                        <div className="w-px h-5 bg-gray-200/60 dark:bg-gray-700/40 mx-1.5" />
+                        {/* Divider */}
+                        <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1 mb-2" />
                     </>
                 )}
 
-                {/* Scroll left button with smooth fade */}
+                {/* Scroll left button */}
                 {canScrollLeft && (
                     <button
                         type="button"
                         onClick={scrollLeft}
                         className={cn(
-                            'flex items-center justify-center w-7 h-full',
-                            'bg-gradient-to-r from-gray-100/90 via-gray-100/60 to-transparent',
-                            'dark:from-gray-900/90 dark:via-gray-900/60 dark:to-transparent',
-                            'hover:from-gray-200/90 dark:hover:from-gray-800/90',
-                            'transition-all duration-150 ease-out z-10',
-                            'absolute left-0'
+                            'flex items-center justify-center w-7 h-[calc(100%-4px)]',
+                            'bg-gradient-to-r from-gray-100/95 via-gray-100/70 to-transparent',
+                            'dark:from-gray-800/95 dark:via-gray-800/70 dark:to-transparent',
+                            'hover:from-gray-200/95 dark:hover:from-gray-700/95',
+                            'transition-all duration-150 ease-out z-20',
+                            'absolute left-0 bottom-px'
                         )}
                         aria-label="Scroll tabs left"
                     >
@@ -148,23 +149,23 @@ export const TabBarWithDrag = ({
                     </button>
                 )}
 
-                {/* Regular tabs section (sortable) with smooth scrolling */}
+                {/* Regular tabs section (sortable) */}
                 <div
                     ref={scrollRef}
                     className={cn(
-                        'flex-1 flex items-center overflow-x-auto',
+                        'flex-1 flex items-end overflow-x-auto',
                         'scroll-smooth',
                         'scrollbar-none [&::-webkit-scrollbar]:hidden',
                         '[-ms-overflow-style:none] [scrollbar-width:none]',
-                        canScrollLeft && 'pl-6',
-                        canScrollRight && 'pr-6'
+                        canScrollLeft && 'pl-7',
+                        canScrollRight && 'pr-7'
                     )}
                 >
                     <SortableContext
                         items={regularTabs.map((t) => t.id)}
                         strategy={horizontalListSortingStrategy}
                     >
-                        <div className="flex items-center gap-0.5 px-1">
+                        <div className="flex items-end gap-0.5 px-1 pb-0">
                             {regularTabs.map((tab) => (
                                 <SortableTab
                                     key={tab.id}
@@ -177,18 +178,18 @@ export const TabBarWithDrag = ({
                     </SortableContext>
                 </div>
 
-                {/* Scroll right button with smooth fade */}
+                {/* Scroll right button */}
                 {canScrollRight && (
                     <button
                         type="button"
                         onClick={scrollRight}
                         className={cn(
-                            'flex items-center justify-center w-7 h-full',
-                            'bg-gradient-to-l from-gray-100/90 via-gray-100/60 to-transparent',
-                            'dark:from-gray-900/90 dark:via-gray-900/60 dark:to-transparent',
-                            'hover:from-gray-200/90 dark:hover:from-gray-800/90',
-                            'transition-all duration-150 ease-out z-10',
-                            'absolute right-[72px]'
+                            'flex items-center justify-center w-7 h-[calc(100%-4px)]',
+                            'bg-gradient-to-l from-gray-100/95 via-gray-100/70 to-transparent',
+                            'dark:from-gray-800/95 dark:via-gray-800/70 dark:to-transparent',
+                            'hover:from-gray-200/95 dark:hover:from-gray-700/95',
+                            'transition-all duration-150 ease-out z-20',
+                            'absolute right-[72px] bottom-px'
                         )}
                         aria-label="Scroll tabs right"
                     >
@@ -196,8 +197,8 @@ export const TabBarWithDrag = ({
                     </button>
                 )}
 
-                {/* Tab actions with refined styling */}
-                <div className="flex items-center px-2 gap-1 border-l border-gray-200/50 dark:border-gray-700/40 ml-auto">
+                {/* Tab actions */}
+                <div className="flex items-center px-2 gap-1 mb-1.5 ml-auto self-center">
                     <TabBarAction
                         icon={<PanelRight className="w-4 h-4" />}
                         tooltip="Split Right"
