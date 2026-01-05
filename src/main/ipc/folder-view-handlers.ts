@@ -139,29 +139,16 @@ export function registerFolderViewHandlers(): void {
     FolderViewChannels.invoke.SET_VIEW,
     createValidatedHandler(SetViewRequestSchema, async (input): Promise<SetViewResponse> => {
       try {
-        console.log('[folder-view:set-view] Saving view:', {
-          folderPath: input.folderPath,
-          viewName: input.view.name
-        })
-
         const currentConfig = (await readFolderConfig(input.folderPath)) || {}
         const views = currentConfig.views || []
-
-        console.log(
-          '[folder-view:set-view] Current views:',
-          views.map((v) => v.name)
-        )
 
         // Find existing view by name
         const existingIndex = views.findIndex((v) => v.name === input.view.name)
 
         if (existingIndex >= 0) {
           // Update existing
-          console.log('[folder-view:set-view] Updating existing view at index:', existingIndex)
           views[existingIndex] = input.view
         } else {
-          // Add new
-          console.log('[folder-view:set-view] Adding new view')
           views.push(input.view)
         }
 
@@ -175,7 +162,6 @@ export function registerFolderViewHandlers(): void {
         }
 
         await writeFolderConfig(input.folderPath, { ...currentConfig, views })
-        console.log('[folder-view:set-view] Successfully saved. Total views:', views.length)
         return { success: true }
       } catch (error) {
         console.error('[folder-view:set-view] Error:', error)

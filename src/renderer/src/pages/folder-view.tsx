@@ -113,7 +113,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     addFormula,
     updateFormula,
     deleteFormula,
-    refresh
+    refresh,
+    removeNotesOptimistically
   } = useFolderView({ folderPath: folderPath ?? '' })
 
   // Get first note for formula preview in editor
@@ -293,31 +294,42 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     [notes]
   )
 
-  // Confirm and execute move to folder - Phase 27
+  // Confirm and execute move to folder - Phase 27 (Optimized - no skeleton blink)
   const handleMoveConfirm = useCallback(
     async (targetFolder: string): Promise<void> => {
       if (notesToMove.length === 0) return
 
-      try {
-        // Move all selected notes to the target folder
-        for (const noteId of notesToMove) {
-          const result = await notesService.move(noteId, targetFolder)
-          if (!result.success) {
-            console.error(`Failed to move note ${noteId}:`, result.error)
-          }
-        }
+      // Optimistic removal - update UI immediately (no skeleton)
+      removeNotesOptimistically(notesToMove)
 
-        // Refresh the view to reflect changes
-        await refresh()
+      // Clear selection since moved notes are gone
+      setSelectedRowIds(new Set())
+
+      try {
+        // Move notes in parallel for performance
+        const results = await Promise.allSettled(
+          notesToMove.map((noteId) => notesService.move(noteId, targetFolder))
+        )
+
+        // Check for failures
+        const failures = results.filter(
+          (r): r is PromiseRejectedResult => r.status === 'rejected'
+        )
+
+        if (failures.length > 0) {
+          console.error(`${failures.length} notes failed to move:`, failures)
+          await refresh() // Restore correct state on failure
+        }
       } catch (err) {
         console.error('Failed to move notes:', err)
+        await refresh() // Restore correct state on error
       } finally {
         setMoveDialogOpen(false)
         setNotesToMove([])
         setMovingNoteTitle(undefined)
       }
     },
-    [notesToMove, refresh]
+    [notesToMove, removeNotesOptimistically, refresh]
   )
 
   // Confirm and execute delete

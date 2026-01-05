@@ -13,6 +13,7 @@ import type {
   GroupByConfig
 } from '@shared/contracts/folder-view-api'
 import { evaluateFilter } from '@/lib/filter-evaluator'
+import { onNoteMoved, onNoteDeleted } from '@/services/notes-service'
 
 // ============================================================================
 // Types (mirrored from preload for renderer use)
@@ -148,6 +149,8 @@ interface UseFolderViewResult {
   loadMore: () => Promise<void>
   /** Refresh all data */
   refresh: () => Promise<void>
+  /** Optimistically remove notes from local state (for immediate UI feedback) */
+  removeNotesOptimistically: (noteIds: string[]) => void
   /** Total unfiltered note count (for "showing X of Y") */
   unfilteredCount: number
 }
@@ -625,6 +628,15 @@ export function useFolderView({
     await fetchNotes(true)
   }, [hasMore, isLoading, fetchNotes])
 
+  /**
+   * Optimistically remove notes from the local state.
+   * Used for immediate UI feedback before backend confirmation (e.g., move/delete).
+   */
+  const removeNotesOptimistically = useCallback((noteIds: string[]) => {
+    const idSet = new Set(noteIds)
+    setNotes((prev) => prev.filter((note) => !idSet.has(note.id)))
+  }, [])
+
   // ============================================================================
   // Formula Methods
   // ============================================================================
@@ -798,6 +810,30 @@ export function useFolderView({
     }
   }, [])
 
+  // Listen for note moved/deleted events to keep view in sync
+  useEffect(() => {
+    const unsubMoved = onNoteMoved((event) => {
+      // Extract folder from the new path (e.g., "projects/active/note.md" -> "projects/active")
+      const pathParts = event.newPath.split('/')
+      pathParts.pop() // Remove filename
+      const newFolder = pathParts.join('/')
+
+      // Remove note if it moved to a different folder
+      if (newFolder !== folderPath) {
+        setNotes((prev) => prev.filter((note) => note.id !== event.id))
+      }
+    })
+
+    const unsubDeleted = onNoteDeleted((event) => {
+      setNotes((prev) => prev.filter((note) => note.id !== event.id))
+    })
+
+    return () => {
+      unsubMoved()
+      unsubDeleted()
+    }
+  }, [folderPath])
+
   // ============================================================================
   // Return
   // ============================================================================
@@ -838,7 +874,8 @@ export function useFolderView({
     updateFormula,
     deleteFormula,
     loadMore,
-    refresh
+    refresh,
+    removeNotesOptimistically
   }
 }
 

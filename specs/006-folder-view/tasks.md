@@ -590,7 +590,7 @@
 - [ ] T117 Add tooltip to truncated cell content
 - [ ] T118 Add sticky header (stays visible on scroll)
 - [ ] T119 Add column minimum width constraints
-- [ ] T120 Add column maximum width constraints (optional)
+- [ ] T120 Add column maximum width constraints
 - [ ] T121 Animate row removal when note is deleted
 - [ ] T122 Handle external .folder.md changes (file watcher)
 - [ ] T123 Handle external note changes (file watcher events)
