@@ -603,16 +603,16 @@
 
 **Purpose**: Verify feature works end-to-end
 
-- [ ] T124 Test folder click opens folder view
-- [ ] T125 Test notes display with correct properties
-- [ ] T126 Test column add/remove/reorder persists to .folder.md
-- [ ] T127 Test sorting persists across sessions
-- [ ] T128 Test filtering with AND/OR/NOT works correctly
-- [ ] T129 Test multiple views work
-- [ ] T130 Test double-click opens note in new tab
-- [ ] T131 Test .folder.md can be manually edited
-- [ ] T132 Test with 100+ notes for performance
-- [ ] T133 Test vault sync (verify .folder.md syncs correctly)
+- [x] T124 Test folder click opens folder view
+- [x] T125 Test notes display with correct properties
+- [x] T126 Test column add/remove/reorder persists to .folder.md
+- [x] T127 Test sorting persists across sessions
+- [x] T128 Test filtering with AND/OR/NOT works correctly
+- [x] T129 Test multiple views work
+- [x] T130 Test double-click opens note in new tab
+- [x] T131 Test .folder.md can be manually edited
+- [x] T132 Test with 100+ notes for performance
+- [x] T133 Test vault sync (verify .folder.md syncs correctly)
 
 **Checkpoint**: Feature is complete and tested
 
