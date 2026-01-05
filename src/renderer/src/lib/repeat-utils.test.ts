@@ -1,12 +1,14 @@
 /**
- * Repeat Utils Tests (T099-T103)
+ * Repeat Utils Tests (T090-T104)
  *
  * This file contains tests for:
- * - T099: Constants & Date Helpers (DAY_NAMES, SHORT_DAY_NAMES, ORDINALS, getOrdinalSuffix, getWeekOfMonth, isLastWeekdayOfMonth, findNthWeekdayOfMonth, addYears)
- * - T100: Calculate Next Occurrence - Basic (daily, weekly, monthly, yearly frequencies, end conditions)
- * - T101: Weekly with Days of Week (single day, multiple days, interval > 1)
- * - T102: Display Text & Presets (getRepeatDisplayText, getRepeatPresets)
- * - T103: Config Helpers (createDefaultRepeatConfig, shouldCreateNextOccurrence, getRepeatProgress, calculateNextOccurrences)
+ * - T090: Test file structure
+ * - T091-T098: Calculate Next Occurrence (daily, weekly, monthly, yearly, intervals, edge cases)
+ * - T099: Calculate Next Occurrences
+ * - T100: Display Text (getRepeatDisplayText)
+ * - T101: Presets (getRepeatPresets)
+ * - T102-T104: Config Helpers (createDefaultRepeatConfig, shouldCreateNextOccurrence, getRepeatProgress)
+ * - Additional helper coverage (constants/date helpers)
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
@@ -564,6 +566,17 @@ describe("Repeat Utils", () => {
         expect(result!.getFullYear()).toBe(2028)
         expect(result!.getMonth()).toBe(11)
         expect(result!.getDate()).toBe(25)
+      })
+
+      it("should handle Feb 29 on a non-leap year", () => {
+        const fromDate = new Date(2024, 1, 29) // Feb 29, 2024
+        const config = createMockRepeatConfig({ frequency: "yearly", interval: 1 })
+        const result = calculateNextOccurrence(fromDate, config)
+
+        expect(result).not.toBeNull()
+        expect(result!.getFullYear()).toBe(2025)
+        expect(result!.getMonth()).toBe(2) // March
+        expect(result!.getDate()).toBe(1)
       })
     })
 
