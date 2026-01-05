@@ -1235,7 +1235,10 @@ const api = {
       ipcRenderer.invoke(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, { folderPath }),
     /** Get AI-powered folder suggestions for moving a note (Phase 27) */
     getFolderSuggestions: (noteId: string) =>
-      ipcRenderer.invoke(FolderViewChannels.invoke.GET_FOLDER_SUGGESTIONS, { noteId })
+      ipcRenderer.invoke(FolderViewChannels.invoke.GET_FOLDER_SUGGESTIONS, { noteId }),
+    /** Check if a folder exists (T115) */
+    folderExists: (folderPath: string): Promise<boolean> =>
+      ipcRenderer.invoke(FolderViewChannels.invoke.FOLDER_EXISTS, folderPath)
   },
 
   // Folder View event subscription helpers
