@@ -585,17 +585,17 @@
 
 **Purpose**: Handle edge cases and improve UX
 
-- [ ] T115 Handle folder not found (deleted while viewing)
-- [ ] T116 Handle note property type changes (re-render cells correctly)
-- [ ] T117 Add tooltip to truncated cell content
-- [ ] T118 Add sticky header (stays visible on scroll)
-- [ ] T119 Add column minimum width constraints
-- [ ] T120 Add column maximum width constraints
-- [ ] T121 Animate row removal when note is deleted
-- [ ] T122 Handle external .folder.md changes (file watcher)
-- [ ] T123 Handle external note changes (file watcher events)
+- [x] T115 Handle folder not found (deleted while viewing)
+- [x] T116 Handle note property type changes (re-render cells correctly)
+- [x] T117 Add tooltip to truncated cell content
+- [x] T118 Add sticky header (stays visible on scroll)
+- [x] T119 Add column minimum width constraints
+- [x] T120 Add column maximum width constraints
+- [x] T121 Animate row removal when note is deleted
+- [x] T122 Handle external .folder.md changes (file watcher)
+- [x] T123 Handle external note changes (file watcher events)
 
-**Checkpoint**: Edge cases are handled
+**Checkpoint**: Edge cases are handled ✅
 
 ---
 

@@ -87,6 +87,8 @@ interface FolderTableViewProps {
   columns: ColumnConfig[]
   /** Formula definitions (name -> expression) for computed columns */
   formulas?: Record<string, string>
+  /** Property types map (columnId -> PropertyType) for correct cell rendering - T116 */
+  propertyTypes?: Record<string, PropertyType>
   /** Initial sort order from saved config */
   initialSorting?: OrderConfig[]
   /** Global search filter string */
@@ -131,6 +133,8 @@ interface FolderTableViewProps {
   showSummaries?: boolean
   /** Summary configurations per column - Phase 23 */
   summaries?: Record<string, SummaryConfig>
+  /** Row IDs that are currently exiting (for T121 animation) */
+  exitingRowIds?: Set<string>
   /** Additional CSS classes */
   className?: string
 }
@@ -200,6 +204,7 @@ export function FolderTableView({
   notes,
   columns: columnConfig,
   formulas = {},
+  propertyTypes = {},
   initialSorting,
   globalFilter,
   highlightQuery,
@@ -222,6 +227,7 @@ export function FolderTableView({
   showColumnBorders = true,
   showSummaries = false,
   summaries = {},
+  exitingRowIds = new Set<string>(),
   className
 }: FolderTableViewProps): React.JSX.Element {
   // Convert initial sorting from OrderConfig[] to SortingState
@@ -392,6 +398,7 @@ export function FolderTableView({
   }, [])
 
   // Memoized cell renderer for generic properties
+  // T116: Uses propertyTypes map for correct type rendering
   const renderPropertyCell = useCallback(
     (columnId: string) => {
       // Return a named function for React DevTools display name
@@ -399,12 +406,13 @@ export function FolderTableView({
         info: CellContext<NoteWithProperties, unknown>
       ): React.JSX.Element => {
         const value = info.getValue()
-        const type = getColumnType(columnId)
+        // T116: Use propertyTypes from available properties if available
+        const type = propertyTypes[columnId] ?? getColumnType(columnId)
         return <PropertyCell value={value} type={type} highlightQuery={highlightQuery} />
       }
       return PropertyCellRenderer
     },
-    [highlightQuery]
+    [highlightQuery, propertyTypes]
   )
 
   // Memoized cell renderer for formula columns
@@ -1045,6 +1053,8 @@ export function FolderTableView({
               const isSelected = selectedRowIds.has(row.original.id)
               const isFocused = focusedRowId === row.original.id
               const isPartOfSelection = isSelected && selectedRowIds.size > 1
+              // T121: Check if this row is currently exiting (being deleted)
+              const isExiting = exitingRowIds.has(row.original.id)
 
               return (
                 <RowContextMenu
@@ -1077,7 +1087,9 @@ export function FolderTableView({
                       // Selected row styling - more prominent background
                       isSelected && 'bg-primary/15 hover:bg-primary/20',
                       // Focused row styling (keyboard navigation cursor)
-                      isFocused && 'ring-2 ring-primary ring-inset'
+                      isFocused && 'ring-2 ring-primary ring-inset',
+                      // T121: Exit animation - simple opacity fade
+                      isExiting && 'opacity-0 transition-opacity duration-200'
                     )}
                     onClick={(e) => handleRowClick(virtualRow.index, row.original.id, e)}
                     onDoubleClick={() => onNoteOpen?.(row.original.id)}

@@ -681,7 +681,9 @@ export const FolderViewChannels = {
     /** Get available properties for column selector */
     GET_AVAILABLE_PROPERTIES: 'folder-view:get-available-properties',
     /** Get AI-powered folder suggestions for moving a note (T134) */
-    GET_FOLDER_SUGGESTIONS: 'folder-view:get-folder-suggestions'
+    GET_FOLDER_SUGGESTIONS: 'folder-view:get-folder-suggestions',
+    /** Check if a folder exists (T115) */
+    FOLDER_EXISTS: 'folder-view:folder-exists'
   },
   events: {
     /** Folder view config was updated (external file change) */

@@ -33,7 +33,7 @@ import {
 } from '@shared/contracts/folder-view-api'
 import { getNoteFolderSuggestions } from '../inbox/suggestions'
 import { createValidatedHandler } from './validate'
-import { readFolderConfig, writeFolderConfig } from '../vault/folders'
+import { readFolderConfig, writeFolderConfig, folderExists } from '../vault/folders'
 import { getIndexDatabase as getDataDb } from '../database'
 import { noteCache, noteTags, noteProperties } from '@shared/db/schema/notes-cache'
 
@@ -402,6 +402,14 @@ export function registerFolderViewHandlers(): void {
         }
       }
     )
+  )
+
+  // folder-view:folder-exists - Check if a folder exists (T115)
+  ipcMain.handle(
+    FolderViewChannels.invoke.FOLDER_EXISTS,
+    async (_event, folderPath: string): Promise<boolean> => {
+      return folderExists(folderPath)
+    }
   )
 }
 

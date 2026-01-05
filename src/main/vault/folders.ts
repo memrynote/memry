@@ -126,6 +126,21 @@ function serializeFolderConfig(config: FolderConfig): string {
 // ============================================================================
 
 /**
+ * Check if a folder exists in the notes directory.
+ * @param folderPath - Relative path from notes directory (e.g., "projects/active")
+ * @returns true if folder exists, false otherwise
+ */
+export function folderExists(folderPath: string): boolean {
+  const notesDir = getNotesDir()
+  // Handle root folder
+  if (!folderPath || folderPath === '' || folderPath === '.') {
+    return existsSync(notesDir)
+  }
+  const fullPath = path.join(notesDir, folderPath)
+  return existsSync(fullPath)
+}
+
+/**
  * Read folder config from .folder.md file.
  * @param folderPath - Relative path from notes directory
  * @returns FolderConfig or null if not found

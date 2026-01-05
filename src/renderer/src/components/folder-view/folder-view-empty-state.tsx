@@ -7,7 +7,16 @@
  * - 'error': Error occurred - shows retry CTA
  */
 
-import { FolderOpen, Search, AlertCircle, Plus, RefreshCw, X } from 'lucide-react'
+import {
+  FolderOpen,
+  Search,
+  AlertCircle,
+  Plus,
+  RefreshCw,
+  X,
+  FolderX,
+  ArrowLeft
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -15,7 +24,7 @@ import { cn } from '@/lib/utils'
 // Types
 // ============================================================================
 
-export type FolderViewEmptyStateVariant = 'empty' | 'no-results' | 'error'
+export type FolderViewEmptyStateVariant = 'empty' | 'no-results' | 'error' | 'folder-not-found'
 
 export interface FolderViewEmptyStateProps {
   /** Which variant to display */
@@ -32,6 +41,9 @@ export interface FolderViewEmptyStateProps {
 
   /** Called when user clicks "Try again" ('error' variant) */
   onRetry?: () => void
+
+  /** Called when user clicks "Go Back" ('folder-not-found' variant) */
+  onGoBack?: () => void
 
   /** Additional CSS classes */
   className?: string
@@ -82,6 +94,16 @@ const emptyStateConfigs: Record<FolderViewEmptyStateVariant, EmptyStateConfig> =
     actionLabel: 'Try again',
     actionIcon: RefreshCw,
     actionVariant: 'default'
+  },
+  'folder-not-found': {
+    icon: FolderX,
+    iconClassName: 'text-muted-foreground',
+    containerClassName: 'bg-muted',
+    title: 'Folder not found',
+    description: 'This folder may have been moved or deleted',
+    actionLabel: 'Go Back',
+    actionIcon: ArrowLeft,
+    actionVariant: 'outline'
   }
 }
 
@@ -98,6 +120,7 @@ export function FolderViewEmptyState({
   onCreateNote,
   onClearAll,
   onRetry,
+  onGoBack,
   className
 }: FolderViewEmptyStateProps): React.JSX.Element {
   const config = emptyStateConfigs[variant]
@@ -116,6 +139,9 @@ export function FolderViewEmptyState({
       case 'error':
         onRetry?.()
         break
+      case 'folder-not-found':
+        onGoBack?.()
+        break
     }
   }
 
@@ -123,7 +149,8 @@ export function FolderViewEmptyState({
   const showAction =
     (variant === 'empty' && onCreateNote) ||
     (variant === 'no-results' && onClearAll) ||
-    (variant === 'error' && onRetry)
+    (variant === 'error' && onRetry) ||
+    (variant === 'folder-not-found' && onGoBack)
 
   // Use custom error message if provided
   const description = variant === 'error' && errorMessage ? errorMessage : config.description
