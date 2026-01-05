@@ -33,6 +33,7 @@ import {
   useUndoKeyboardShortcut,
   useReminderNotifications
 } from '@/hooks'
+import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
 import { tasksService } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
 import { VaultOnboarding } from '@/components/vault-onboarding'
@@ -113,6 +114,7 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
   useNewNoteShortcut(handleNewNote)
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
+  useFolderViewEvents() // Global cache invalidation for folder-view tabs
 
   // Handle search result selection - open note or journal in appropriate tab
   const handleSelectSearchResult = useCallback(
@@ -180,9 +182,8 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
               <div
                 key={groupId}
                 style={{ width: `${width}%` }}
-                className={`h-full overflow-hidden shrink-0 ${
-                  index > 0 ? 'border-l border-gray-300 dark:border-gray-600' : ''
-                }`}
+                className={`h-full overflow-hidden shrink-0 ${index > 0 ? 'border-l border-gray-300 dark:border-gray-600' : ''
+                  }`}
               >
                 <TabBarWithDrag groupId={groupId} />
               </div>
@@ -225,12 +226,6 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
             {/* Split view container */}
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
               <SplitViewContainer hideTabBars />
-            </div>
-
-            {/* Right spacer - matches header's global actions area for alignment */}
-            <div className="flex items-center gap-1 px-2 shrink-0" aria-hidden="true">
-              <div className="size-8" />
-              <div className="size-8" />
             </div>
           </>
         ) : (

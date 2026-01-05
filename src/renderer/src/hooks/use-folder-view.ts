@@ -21,7 +21,6 @@ import type {
   GroupByConfig
 } from '@shared/contracts/folder-view-api'
 import { evaluateFilter } from '@/lib/filter-evaluator'
-import { onNoteMoved, onNoteDeleted, onNoteCreated, onNoteUpdated } from '@/services/notes-service'
 
 // ============================================================================
 // Types (mirrored from preload for renderer use)
@@ -800,65 +799,8 @@ export function useFolderView({
     }
   }, [])
 
-  // Listen for note events to keep cache in sync
-  useEffect(() => {
-    const unsubMoved = onNoteMoved((event) => {
-      // Extract folder from new path
-      const pathParts = event.newPath.split('/')
-      pathParts.pop()
-      const newFolder = pathParts.join('/')
-
-      // Remove from cache if moved out of current folder
-      if (newFolder !== folderPath) {
-        queryClient.setQueryData<InfiniteData<ListWithPropertiesResponse>>(
-          folderViewKeys.notes(folderPath, propertyIds),
-          (old) => {
-            if (!old) return old
-            return {
-              ...old,
-              pages: old.pages.map((page) => ({
-                ...page,
-                notes: page.notes.filter((note) => note.id !== event.id)
-              }))
-            }
-          }
-        )
-      }
-    })
-
-    const unsubDeleted = onNoteDeleted((event) => {
-      queryClient.setQueryData<InfiniteData<ListWithPropertiesResponse>>(
-        folderViewKeys.notes(folderPath, propertyIds),
-        (old) => {
-          if (!old) return old
-          return {
-            ...old,
-            pages: old.pages.map((page) => ({
-              ...page,
-              notes: page.notes.filter((note) => note.id !== event.id)
-            }))
-          }
-        }
-      )
-    })
-
-    const unsubCreated = onNoteCreated(() => {
-      // Invalidate to refetch - new note might be in this folder
-      queryClient.invalidateQueries({ queryKey: folderViewKeys.notesBase(folderPath) })
-    })
-
-    const unsubUpdated = onNoteUpdated(() => {
-      // Invalidate to refresh property values
-      queryClient.invalidateQueries({ queryKey: folderViewKeys.notesBase(folderPath) })
-    })
-
-    return () => {
-      unsubMoved()
-      unsubDeleted()
-      unsubCreated()
-      unsubUpdated()
-    }
-  }, [folderPath, propertyIds, queryClient])
+  // Note: Event listeners for cache sync are handled globally in useFolderViewEvents()
+  // This ensures all folder-view tabs stay in sync even when unmounted
 
   // ============================================================================
   // Return
