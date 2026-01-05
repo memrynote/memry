@@ -7,7 +7,7 @@ import { memo, useState } from 'react'
 import { FileText, ChevronRight, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import type { Note } from '@/hooks/use-notes'
+import type { Note } from '@/hooks/use-notes-query'
 
 // =============================================================================
 // TYPES
@@ -174,7 +174,7 @@ interface NoteItemProps {
 
 function NoteItem({ note, isActive, onClick }: NoteItemProps): React.JSX.Element {
   // Format time as "2:34 PM"
-  const time = new Date(note.createdAt).toLocaleTimeString('en-US', {
+  const time = new Date(note.created).toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
   })

@@ -9,7 +9,7 @@ import { Tag } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar'
-import { useNoteTags } from '@/hooks/use-notes'
+import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { getTagColors } from '@/components/note/tags-row/tag-colors'
 
 interface SidebarTagListProps {
@@ -29,7 +29,7 @@ export function SidebarTagList({
   selectedTag,
   className
 }: SidebarTagListProps): React.JSX.Element {
-  const { tags, isLoading, error } = useNoteTags()
+  const { tags, isLoading, error } = useNoteTagsQuery()
   const [showAll, setShowAll] = React.useState(false)
 
   // Sort tags by count (descending) and filter out empty tags

@@ -60,7 +60,7 @@ import { FolderViewToolbar } from '@/components/folder-view/folder-view-toolbar'
 import { ViewSwitcher } from '@/components/folder-view/view-switcher'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import { useFolderView } from '@/hooks/use-folder-view'
-import { useNotes } from '@/hooks/use-notes'
+import { useNoteMutations } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
 import {
   DEFAULT_COLUMNS,
@@ -80,8 +80,8 @@ interface FolderViewPageProps {
 export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.Element {
   const { openTab, closeTab, getActiveTab } = useTabs()
 
-  // Use notes hook for creating new notes (with folder template support)
-  const { createNote } = useNotes({ autoLoad: false })
+  // Use mutations hook for creating new notes (with folder template support)
+  const { createNote } = useNoteMutations()
 
   // Use the folder view hook
   const {
@@ -430,20 +430,20 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
    */
   const handleCreateNote = useCallback(async () => {
     try {
-      const note = await createNote({
+      const result = await createNote.mutateAsync({
         title: 'Untitled',
         folder: folderPath ?? undefined
         // Template is auto-applied by backend from .folder.md
       })
 
-      if (note) {
+      if (result.success && result.note) {
         openTab({
           type: 'note',
-          title: note.title || 'Untitled',
+          title: result.note.title || 'Untitled',
           icon: 'file-text',
-          emoji: note.emoji,
-          path: `/notes/${note.id}`,
-          entityId: note.id,
+          emoji: result.note.emoji,
+          path: `/notes/${result.note.id}`,
+          entityId: result.note.id,
           isPinned: false,
           isModified: false,
           isPreview: false,

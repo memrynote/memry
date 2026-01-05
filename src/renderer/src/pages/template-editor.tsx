@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Loader2, Save, ArrowLeft, Lock } from 'lucide-react'
 import { useTemplates } from '@/hooks/use-templates'
-import { useNoteTags } from '@/hooks/use-notes'
+import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { toast } from 'sonner'
 import type { TemplateProperty } from '@/services/templates-service'
@@ -100,7 +100,7 @@ function EditorLoadingState() {
 export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
   const isNew = !templateId
   const { getTemplate, createTemplate, updateTemplate } = useTemplates()
-  const { tags: allAvailableTags } = useNoteTags()
+  const { tags: allAvailableTags } = useNoteTagsQuery()
   const { closeTab, updateTabTitle } = useTabs()
   const activeTab = useActiveTab()
 

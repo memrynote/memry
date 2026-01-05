@@ -45,7 +45,7 @@ import {
 } from '@/components/note/info-section'
 import { OutlineInfoPanel, type HeadingItem } from '@/components/shared'
 import { useActiveHeading } from '@/hooks/use-active-heading'
-import { useNoteTags } from '@/hooks/use-notes'
+import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useJournalProperties } from '@/hooks/use-journal-properties'
 import { useTemplates } from '@/hooks/use-templates'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
@@ -229,7 +229,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const { tasks: dayTasks, overdueCount } = useDayContext(selectedDate)
 
   // Tags hook - get available tags from the system
-  const { tags: allAvailableTags } = useNoteTags()
+  const { tags: allAvailableTags } = useNoteTagsQuery()
 
   // Properties hook - manage journal entry properties
   const {

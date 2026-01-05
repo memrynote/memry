@@ -8,7 +8,7 @@
  * @module lib/virtualized-tree-utils
  */
 
-import type { NoteListItem } from '@/hooks/use-notes'
+import type { NoteListItem } from '@/hooks/use-notes-query'
 
 // ============================================================================
 // Types

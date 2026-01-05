@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import type { NoteListItem } from "@/hooks/use-notes"
+import type { NoteListItem } from "@/hooks/use-notes-query"
 import {
   TREE_ROW_HEIGHT,
   countTreeItems,
