@@ -83,9 +83,8 @@ export const folderViewKeys = {
   views: (folderPath: string) => [...folderViewKeys.all, 'views', folderPath] as const,
   availableProperties: (folderPath: string) =>
     [...folderViewKeys.all, 'available-properties', folderPath] as const,
-  notesBase: (folderPath: string) => [...folderViewKeys.all, 'notes', folderPath] as const,
-  notes: (folderPath: string, propertyIds: string[]) =>
-    [...folderViewKeys.notesBase(folderPath), propertyIds.join(',')] as const
+  // Stable notes key - does NOT include propertyIds to avoid refetch on column change
+  notes: (folderPath: string) => [...folderViewKeys.all, 'notes', folderPath] as const
 }
 
 // ============================================================================
@@ -299,24 +298,22 @@ export function useFolderView({
   // Get active view
   const activeView = views[activeViewIndex] ?? null
 
-  // Compute property IDs from active view columns (for query key)
-  const propertyIds = useMemo(() => {
-    const columns = activeView?.columns ?? DEFAULT_COLUMNS
-    return columns
-      .filter((c) => !BUILT_IN_COLUMNS.includes(c.id as (typeof BUILT_IN_COLUMNS)[number]))
-      .map((c) => c.id)
-      .sort()
-  }, [activeView?.columns])
-
   /**
    * Notes infinite query - fetches notes with pagination
+   *
+   * Note: Query key is stable (based only on folderPath) to prevent
+   * full refetch when columns are added/removed. We fetch all properties
+   * so column changes don't require a refetch.
    */
   const notesQuery = useInfiniteQuery({
-    queryKey: folderViewKeys.notes(folderPath, propertyIds),
+    queryKey: folderViewKeys.notes(folderPath),
     queryFn: async ({ pageParam = 0 }): Promise<ListWithPropertiesResponse> => {
+      // Fetch all available properties to avoid refetch when columns change
+      // This is a trade-off: slightly larger payload vs better UX
       const result = await window.api.folderView.listWithProperties({
         folderPath,
-        properties: propertyIds,
+        // Don't filter properties - fetch all so column changes don't need refetch
+        properties: undefined,
         limit: pageSize,
         offset: pageParam
       })
@@ -692,7 +689,7 @@ export function useFolderView({
       const idSet = new Set(noteIds)
 
       queryClient.setQueryData<InfiniteData<ListWithPropertiesResponse>>(
-        folderViewKeys.notes(folderPath, propertyIds),
+        folderViewKeys.notes(folderPath),
         (old) => {
           if (!old) return old
           return {
@@ -705,7 +702,7 @@ export function useFolderView({
         }
       )
     },
-    [queryClient, folderPath, propertyIds]
+    [queryClient, folderPath]
   )
 
   /**
@@ -715,7 +712,7 @@ export function useFolderView({
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) }),
       queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(folderPath) }),
-      queryClient.invalidateQueries({ queryKey: folderViewKeys.notesBase(folderPath) })
+      queryClient.invalidateQueries({ queryKey: folderViewKeys.notes(folderPath) })
     ])
   }, [queryClient, folderPath])
 

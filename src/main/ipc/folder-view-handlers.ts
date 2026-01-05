@@ -259,27 +259,27 @@ export function registerFolderViewHandlers(): void {
           tagsByNote.get(row.noteId)!.push(row.tag)
         })
 
-        // Batch fetch properties (if specific properties requested)
+        // Batch fetch properties for all notes
+        // When input.properties is undefined, fetch ALL properties (for column flexibility)
+        // When input.properties is specified, only fetch those (for optimization)
         const propertiesMap = new Map<string, Record<string, unknown>>()
 
-        if (input.properties && input.properties.length > 0) {
-          // Query properties for all notes
-          for (const noteId of noteIds) {
-            const propsResult = await db
-              .select({ name: noteProperties.name, value: noteProperties.value })
-              .from(noteProperties)
-              .where(eq(noteProperties.noteId, noteId))
+        // Always fetch properties - if undefined, fetch all; if specified, could filter (but we fetch all for simplicity)
+        for (const noteId of noteIds) {
+          const propsResult = await db
+            .select({ name: noteProperties.name, value: noteProperties.value })
+            .from(noteProperties)
+            .where(eq(noteProperties.noteId, noteId))
 
-            const props: Record<string, unknown> = {}
-            propsResult.forEach((row) => {
-              try {
-                props[row.name] = row.value ? JSON.parse(row.value) : null
-              } catch {
-                props[row.name] = row.value
-              }
-            })
-            propertiesMap.set(noteId, props)
-          }
+          const props: Record<string, unknown> = {}
+          propsResult.forEach((row) => {
+            try {
+              props[row.name] = row.value ? JSON.parse(row.value) : null
+            } catch {
+              props[row.name] = row.value
+            }
+          })
+          propertiesMap.set(noteId, props)
         }
 
         // Build response
