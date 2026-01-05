@@ -78,28 +78,32 @@ const RegularTabComponent = ({
   return (
     <div
       className={cn(
-        // Base styles with refined spacing
-        'group relative flex items-center gap-2 h-8 px-3 cursor-pointer',
+        // Base styles - consistent sizing for all states
+        'group relative flex items-center gap-2 h-9 px-3 cursor-pointer',
         'min-w-[100px] max-w-[180px]',
         'select-none',
-        'rounded-md',
-        // Smooth transitions for all properties
-        'transition-all duration-150 ease-out',
+        // All tabs have border (transparent for inactive) to maintain consistent size
+        'border',
+        // All tabs extend down to overlap header border
+        '-mb-px',
+        // Rounded top corners for browser-style
+        'rounded-t-lg',
+        // Smooth color transitions only (not size)
+        'transition-colors duration-150 ease-out',
 
-        // Active state - elevated card style
+        // Active state - visible borders and content background
         isActive
           ? [
-              'bg-white dark:bg-gray-800',
-              'shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.06)]',
-              'dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_1px_2px_rgba(0,0,0,0.2)]',
-              'border border-gray-200/60 dark:border-gray-700/50',
+              'bg-white dark:bg-gray-900',
+              'border-gray-200 dark:border-gray-700',
+              'border-b-transparent',
               'z-10'
             ]
           : [
+              // Inactive tabs - transparent borders
               'bg-transparent',
-              'hover:bg-gray-200/40 dark:hover:bg-gray-700/30',
-              'border border-transparent',
-              'hover:border-gray-200/40 dark:hover:border-gray-700/30'
+              'border-transparent',
+              'hover:bg-gray-200/50 dark:hover:bg-gray-700/40'
             ],
 
         // Preview tab styling
