@@ -23,8 +23,7 @@ import {
   Trash2,
   LayoutTemplate,
   X,
-  ExternalLink,
-  GripVertical
+  ExternalLink
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTabActions } from '@/contexts/tabs'
@@ -160,6 +159,7 @@ function isFolder(itemId: string): boolean {
 interface FolderRowProps {
   item: FolderVirtualItem
   isSelected: boolean
+  isLastSelected: boolean
   isDragging: boolean
   isDropTarget: boolean
   dropPosition: DropPosition | null
@@ -186,6 +186,7 @@ interface FolderRowProps {
 function FolderRow({
   item,
   isSelected,
+  isLastSelected,
   isDragging,
   isDropTarget,
   dropPosition,
@@ -210,6 +211,7 @@ function FolderRow({
 }: FolderRowProps) {
   const rowRef = useRef<HTMLDivElement>(null)
   const showBulkActions = isSelected && selectedCount > 1
+  const showSelectionBadge = showBulkActions && isLastSelected
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -311,11 +313,6 @@ function FolderRow({
             />
           )}
 
-          {/* Drag handle */}
-          {draggable && (
-            <GripVertical className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover/folder:opacity-100 shrink-0 cursor-grab" />
-          )}
-
           {/* Expand/Collapse button */}
           <button
             type="button"
@@ -345,7 +342,7 @@ function FolderRow({
           <span className="text-sm truncate flex-1">{item.folder.name}</span>
 
           {/* Selection count badge */}
-          {showBulkActions && (
+          {showSelectionBadge && (
             <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
               {selectedCount}
             </span>
@@ -421,6 +418,7 @@ function FolderRow({
 interface NoteRowProps {
   item: NoteVirtualItem
   isSelected: boolean
+  isLastSelected: boolean
   isDragging: boolean
   isDropTarget: boolean
   dropPosition: DropPosition | null
@@ -443,6 +441,7 @@ interface NoteRowProps {
 function NoteRow({
   item,
   isSelected,
+  isLastSelected,
   isDragging,
   isDropTarget,
   dropPosition,
@@ -463,6 +462,7 @@ function NoteRow({
 }: NoteRowProps) {
   const rowRef = useRef<HTMLDivElement>(null)
   const showBulkActions = isSelected && selectedCount > 1
+  const showSelectionBadge = showBulkActions && isLastSelected
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -542,11 +542,6 @@ function NoteRow({
             />
           )}
 
-          {/* Drag handle */}
-          {draggable && (
-            <GripVertical className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover/note:opacity-100 shrink-0 cursor-grab" />
-          )}
-
           {/* Note icon or emoji */}
           {item.note.emoji ? (
             <span className="text-sm leading-none shrink-0" role="img" aria-label="note icon">
@@ -560,7 +555,7 @@ function NoteRow({
           <span className="text-sm truncate flex-1">{getDisplayName(item.note.path)}</span>
 
           {/* Selection count badge */}
-          {showBulkActions && (
+          {showSelectionBadge && (
             <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
               {selectedCount}
             </span>
@@ -886,6 +881,7 @@ export function VirtualizedNotesTree({
         {virtualItems.map((virtualRow) => {
           const item = flatItems[virtualRow.index]
           const isSelected = selectedIds.includes(item.id)
+          const isLastSelected = item.id === selectedIds[selectedIds.length - 1]
           const isDragging = dragState.draggedId === item.id
           const isDropTarget = dragState.dropTargetId === item.id
 
@@ -905,6 +901,7 @@ export function VirtualizedNotesTree({
                 <FolderRow
                   item={item}
                   isSelected={isSelected}
+                  isLastSelected={isLastSelected}
                   isDragging={isDragging}
                   isDropTarget={isDropTarget}
                   dropPosition={isDropTarget ? dragState.dropPosition : null}
@@ -931,6 +928,7 @@ export function VirtualizedNotesTree({
                 <NoteRow
                   item={item}
                   isSelected={isSelected}
+                  isLastSelected={isLastSelected}
                   isDragging={isDragging}
                   isDropTarget={isDropTarget}
                   dropPosition={isDropTarget ? dragState.dropPosition : null}

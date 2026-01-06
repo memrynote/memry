@@ -444,6 +444,7 @@ const ListView = ({
           density={density}
           onArchive={onArchive}
           onFocus={handleItemFocus}
+          onPreview={onPreview}
           onSelectionToggle={handleSelectionToggle}
           onFileAllToUnsorted={onFileAllStale}
           onReviewOneByOne={onReviewStale}

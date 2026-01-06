@@ -43,6 +43,7 @@ interface StaleSectionProps {
   density?: DisplayDensity
   onArchive: (id: string) => void
   onFocus: (id: string) => void
+  onPreview: (id: string) => void
   onSelectionToggle: (id: string, shiftKey: boolean) => void
   onFileAllToUnsorted: () => void
   onReviewOneByOne: () => void
@@ -60,6 +61,7 @@ export const StaleSection = ({
   density = 'comfortable',
   onArchive,
   onFocus,
+  onPreview,
   onSelectionToggle,
   onFileAllToUnsorted,
   onReviewOneByOne,
@@ -100,6 +102,7 @@ export const StaleSection = ({
               density={density}
               onArchive={onArchive}
               onFocus={onFocus}
+              onPreview={onPreview}
               onSelectionToggle={onSelectionToggle}
             />
           ))}

@@ -35,7 +35,8 @@ vi.mock('electron', () => ({
 
 // Mock database module
 vi.mock('../database', () => ({
-  getIndexDatabase: vi.fn()
+  getIndexDatabase: vi.fn(),
+  getDatabase: vi.fn()
 }))
 
 // Mock vault/notes module - these are the actual operations we'll test
@@ -91,13 +92,21 @@ vi.mock('@shared/db/queries/notes', () => ({
   deleteNoteSnapshot: vi.fn()
 }))
 
+// Mock shared/db/queries/note-positions
+vi.mock('@shared/db/queries/note-positions', () => ({
+  getNotesInFolder: vi.fn(),
+  reorderNotesInFolder: vi.fn(),
+  getAllNotePositions: vi.fn()
+}))
+
 // Import the module after mocking
 import { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
-import { getIndexDatabase } from '../database'
+import { getIndexDatabase, getDatabase } from '../database'
 import * as notesVault from '../vault/notes'
 import * as attachmentsVault from '../vault/attachments'
 import * as foldersVault from '../vault/folders'
 import * as noteQueries from '@shared/db/queries/notes'
+import * as positionQueries from '@shared/db/queries/note-positions'
 
 describe('notes-handlers', () => {
   let mockDb: { run: Mock; get: Mock; all: Mock }
@@ -108,13 +117,13 @@ describe('notes-handlers', () => {
     handleCalls.length = 0
     removeHandlerCalls.length = 0
 
-    // Setup mock database
     mockDb = {
       run: vi.fn(),
       get: vi.fn(),
       all: vi.fn()
     }
     ;(getIndexDatabase as Mock).mockReturnValue(mockDb)
+    ;(getDatabase as Mock).mockReturnValue(mockDb)
   })
 
   afterEach(() => {
@@ -395,10 +404,10 @@ describe('notes-handlers', () => {
       }
       ;(notesVault.listNotes as Mock).mockResolvedValue(mockNotes)
 
-      const result = await invokeHandler(NotesChannels.invoke.LIST, {
+      const result = (await invokeHandler(NotesChannels.invoke.LIST, {
         limit: 50,
         offset: 0
-      })
+      })) as { hasMore: boolean; total: number }
 
       expect(result.hasMore).toBe(true)
       expect(result.total).toBe(100)
@@ -785,6 +794,156 @@ describe('notes-handlers', () => {
       })
 
       expect(result).toEqual({ success: true, definition: mockDef })
+    })
+  })
+
+  describe('GET_POSITIONS handler', () => {
+    beforeEach(() => {
+      registerNotesHandlers()
+    })
+
+    it('should get note positions for a folder', async () => {
+      const mockPositions = [
+        { path: 'projects/note1.md', position: 0 },
+        { path: 'projects/note2.md', position: 1 }
+      ]
+      ;(positionQueries.getNotesInFolder as Mock).mockReturnValue(mockPositions)
+
+      const result = await invokeHandler(NotesChannels.invoke.GET_POSITIONS, {
+        folderPath: 'projects'
+      })
+
+      expect(result).toEqual({ success: true, positions: mockPositions })
+      expect(positionQueries.getNotesInFolder).toHaveBeenCalledWith(mockDb, 'projects')
+    })
+
+    it('should get positions for root folder', async () => {
+      const mockPositions = [{ path: 'root-note.md', position: 0 }]
+      ;(positionQueries.getNotesInFolder as Mock).mockReturnValue(mockPositions)
+
+      const result = await invokeHandler(NotesChannels.invoke.GET_POSITIONS, {
+        folderPath: ''
+      })
+
+      expect(result).toEqual({ success: true, positions: mockPositions })
+      expect(positionQueries.getNotesInFolder).toHaveBeenCalledWith(mockDb, '')
+    })
+
+    it('should handle errors when getting positions', async () => {
+      ;(positionQueries.getNotesInFolder as Mock).mockImplementation(() => {
+        throw new Error('Database error')
+      })
+
+      const result = await invokeHandler(NotesChannels.invoke.GET_POSITIONS, {
+        folderPath: 'projects'
+      })
+
+      expect(result).toEqual({
+        success: false,
+        positions: [],
+        error: 'Database error'
+      })
+    })
+  })
+
+  describe('GET_ALL_POSITIONS handler', () => {
+    beforeEach(() => {
+      registerNotesHandlers()
+    })
+
+    it('should get all note positions as a map', async () => {
+      const mockPositions = [
+        { path: 'projects/note1.md', position: 0 },
+        { path: 'projects/note2.md', position: 1 },
+        { path: 'archive/old.md', position: 0 }
+      ]
+      ;(positionQueries.getAllNotePositions as Mock).mockReturnValue(mockPositions)
+
+      const result = await invokeHandler(NotesChannels.invoke.GET_ALL_POSITIONS)
+
+      expect(result).toEqual({
+        success: true,
+        positions: {
+          'projects/note1.md': 0,
+          'projects/note2.md': 1,
+          'archive/old.md': 0
+        }
+      })
+    })
+
+    it('should return empty map when no positions exist', async () => {
+      ;(positionQueries.getAllNotePositions as Mock).mockReturnValue([])
+
+      const result = await invokeHandler(NotesChannels.invoke.GET_ALL_POSITIONS)
+
+      expect(result).toEqual({ success: true, positions: {} })
+    })
+
+    it('should handle errors when getting all positions', async () => {
+      ;(positionQueries.getAllNotePositions as Mock).mockImplementation(() => {
+        throw new Error('Database connection failed')
+      })
+
+      const result = await invokeHandler(NotesChannels.invoke.GET_ALL_POSITIONS)
+
+      expect(result).toEqual({
+        success: false,
+        positions: {},
+        error: 'Database connection failed'
+      })
+    })
+  })
+
+  describe('REORDER handler', () => {
+    beforeEach(() => {
+      registerNotesHandlers()
+    })
+
+    it('should reorder notes in a folder', async () => {
+      ;(positionQueries.reorderNotesInFolder as Mock).mockReturnValue(undefined)
+
+      const result = await invokeHandler(NotesChannels.invoke.REORDER, {
+        folderPath: 'projects',
+        notePaths: ['projects/note2.md', 'projects/note1.md', 'projects/note3.md']
+      })
+
+      expect(result).toEqual({ success: true })
+      expect(positionQueries.reorderNotesInFolder).toHaveBeenCalledWith(mockDb, 'projects', [
+        'projects/note2.md',
+        'projects/note1.md',
+        'projects/note3.md'
+      ])
+    })
+
+    it('should reorder notes in root folder', async () => {
+      ;(positionQueries.reorderNotesInFolder as Mock).mockReturnValue(undefined)
+
+      const result = await invokeHandler(NotesChannels.invoke.REORDER, {
+        folderPath: '',
+        notePaths: ['root-note.md', 'another-note.md']
+      })
+
+      expect(result).toEqual({ success: true })
+      expect(positionQueries.reorderNotesInFolder).toHaveBeenCalledWith(mockDb, '', [
+        'root-note.md',
+        'another-note.md'
+      ])
+    })
+
+    it('should handle errors when reordering', async () => {
+      ;(positionQueries.reorderNotesInFolder as Mock).mockImplementation(() => {
+        throw new Error('Transaction failed')
+      })
+
+      const result = await invokeHandler(NotesChannels.invoke.REORDER, {
+        folderPath: 'projects',
+        notePaths: ['projects/note1.md']
+      })
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Transaction failed'
+      })
     })
   })
 })

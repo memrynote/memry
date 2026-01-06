@@ -37,9 +37,7 @@ test.describe('Notes Management', () => {
   })
 
   test.describe('Note Creation', () => {
-    test('T533: should create a new note via keyboard shortcut', async ({
-      page
-    }) => {
+    test('T533: should create a new note via keyboard shortcut', async ({ page }) => {
       // Press Cmd+N (or Ctrl+N) to create new note
       await page.keyboard.press(SHORTCUTS.newNote)
       await page.waitForTimeout(500)
@@ -52,10 +50,7 @@ test.describe('Notes Management', () => {
       expect(isVisible || (await page.url().includes('note'))).toBeTruthy()
     })
 
-    test('T533: should create a note with title and content', async ({
-      page,
-      testVaultPath
-    }) => {
+    test('T533: should create a note with title and content', async ({ page, testVaultPath }) => {
       const testTitle = `Test Note ${Date.now()}`
       const testContent = 'This is the test content for the note.'
 
@@ -155,10 +150,7 @@ test.describe('Notes Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T534: should update modified timestamp on edit', async ({
-      page,
-      testVaultPath
-    }) => {
+    test('T534: should update modified timestamp on edit', async ({ page, testVaultPath }) => {
       const notesDir = path.join(testVaultPath, 'notes')
 
       // Get initial file modification times
@@ -210,9 +202,7 @@ test.describe('Notes Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T535: should navigate to linked note when clicking wiki-link', async ({
-      page
-    }) => {
+    test('T535: should navigate to linked note when clicking wiki-link', async ({ page }) => {
       // This test requires an existing note with a wiki-link
       await createNote(page, 'Source Note', 'Link to [[Target Note]] here.')
       await page.waitForTimeout(1000)
@@ -226,9 +216,7 @@ test.describe('Notes Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T535: should show wiki-link with alias [[link|alias]]', async ({
-      page
-    }) => {
+    test('T535: should show wiki-link with alias [[link|alias]]', async ({ page }) => {
       await createNote(page, 'Alias Link Test', '')
       await page.waitForTimeout(500)
 
@@ -267,9 +255,7 @@ test.describe('Notes Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T536: should update backlinks when links change', async ({
-      page
-    }) => {
+    test('T536: should update backlinks when links change', async ({ page }) => {
       // This test verifies backlinks are dynamically updated
       // when the linking note is modified
 
@@ -286,9 +272,7 @@ test.describe('Notes Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T536: should navigate from backlink to source note', async ({
-      page: _page
-    }) => {
+    test('T536: should navigate from backlink to source note', async ({ page: _page }) => {
       // Create linked notes and verify navigation from backlinks
       expect(true).toBe(true)
     })
@@ -351,10 +335,7 @@ test.describe('Notes Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T537: should remove note from file system on delete', async ({
-      page,
-      testVaultPath
-    }) => {
+    test('T537: should remove note from file system on delete', async ({ page, testVaultPath }) => {
       const notesDir = path.join(testVaultPath, 'notes')
 
       // Count initial files
@@ -372,9 +353,7 @@ test.describe('Notes Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T537: should clean up backlinks when note is deleted', async ({
-      page: _page
-    }) => {
+    test('T537: should clean up backlinks when note is deleted', async ({ page: _page }) => {
       // Verify that deleting a note cleans up references in other notes
       expect(true).toBe(true)
     })
@@ -409,6 +388,190 @@ test.describe('Notes Management', () => {
     test('should find note by tag in search', async ({ page: _page }) => {
       // Create note with specific tag and search for it
       expect(true).toBe(true)
+    })
+  })
+
+  test.describe('Sidebar Drag & Drop Reordering', () => {
+    test('should reorder notes within same folder via API', async ({ page }) => {
+      // Create multiple notes in the same folder
+      await createNote(page, 'Reorder Note A', 'First note for reorder test')
+      await page.waitForTimeout(1000)
+
+      await createNote(page, 'Reorder Note B', 'Second note for reorder test')
+      await page.waitForTimeout(1000)
+
+      await createNote(page, 'Reorder Note C', 'Third note for reorder test')
+      await page.waitForTimeout(1000)
+
+      // Call reorder API via IPC
+      const reorderResult = await page.evaluate(async () => {
+        if (typeof window !== 'undefined' && window.api?.notes?.reorder) {
+          return await window.api.notes.reorder('', [
+            'notes/Reorder Note C.md',
+            'notes/Reorder Note A.md',
+            'notes/Reorder Note B.md'
+          ])
+        }
+        return { success: false, error: 'API not available' }
+      })
+
+      // Verify reorder was successful
+      expect(reorderResult.success).toBe(true)
+
+      // Verify positions via getAllPositions
+      const positionsResult = await page.evaluate(async () => {
+        if (typeof window !== 'undefined' && window.api?.notes?.getAllPositions) {
+          return await window.api.notes.getAllPositions()
+        }
+        return { success: false, positions: {} }
+      })
+
+      expect(positionsResult.success).toBe(true)
+    })
+
+    test('should move note to different folder', async ({ page }) => {
+      // Create note in root
+      await createNote(page, 'Move Test Note', 'Note to be moved')
+      await page.waitForTimeout(1000)
+
+      // Create target folder via API
+      const folderResult = await page.evaluate(async () => {
+        if (typeof window !== 'undefined' && window.api?.notes?.createFolder) {
+          return await window.api.notes.createFolder('MoveTarget')
+        }
+        return { success: false }
+      })
+
+      expect(folderResult.success).toBe(true)
+
+      // Move note to target folder via API
+      const moveResult = await page.evaluate(async () => {
+        if (typeof window !== 'undefined' && window.api?.notes?.move) {
+          // First get the note ID
+          const notes = await window.api.notes.list({})
+          const note = notes.notes.find((n: { path: string }) => n.path.includes('Move Test Note'))
+          if (note) {
+            return await window.api.notes.move(note.id, 'MoveTarget')
+          }
+        }
+        return { success: false, error: 'Note not found' }
+      })
+
+      expect(moveResult.success).toBe(true)
+    })
+
+    test('should persist order after page reload', async ({ page }) => {
+      // Create notes
+      await createNote(page, 'Persist Order A', 'First')
+      await page.waitForTimeout(500)
+      await createNote(page, 'Persist Order B', 'Second')
+      await page.waitForTimeout(500)
+
+      // Reorder via API
+      await page.evaluate(async () => {
+        if (typeof window !== 'undefined' && window.api?.notes?.reorder) {
+          await window.api.notes.reorder('', [
+            'notes/Persist Order B.md',
+            'notes/Persist Order A.md'
+          ])
+        }
+      })
+
+      await page.waitForTimeout(500)
+
+      // Get positions before reload
+      const positionsBefore = await page.evaluate(async () => {
+        if (typeof window !== 'undefined' && window.api?.notes?.getAllPositions) {
+          return await window.api.notes.getAllPositions()
+        }
+        return { success: false, positions: {} }
+      })
+
+      // Reload page
+      await page.reload()
+      await waitForAppReady(page)
+      await waitForVaultReady(page)
+
+      // Get positions after reload
+      const positionsAfter = await page.evaluate(async () => {
+        if (typeof window !== 'undefined' && window.api?.notes?.getAllPositions) {
+          return await window.api.notes.getAllPositions()
+        }
+        return { success: false, positions: {} }
+      })
+
+      // Verify positions are preserved
+      expect(positionsAfter.success).toBe(true)
+      expect(JSON.stringify(positionsAfter.positions)).toBe(
+        JSON.stringify(positionsBefore.positions)
+      )
+    })
+
+    test('should get positions for folder', async ({ page }) => {
+      // Create folder and notes
+      await page.evaluate(async () => {
+        if (typeof window !== 'undefined' && window.api?.notes?.createFolder) {
+          await window.api.notes.createFolder('PositionTestFolder')
+        }
+      })
+
+      await createNote(page, 'PositionTestFolder/Position Note 1', 'First')
+      await page.waitForTimeout(500)
+      await createNote(page, 'PositionTestFolder/Position Note 2', 'Second')
+      await page.waitForTimeout(500)
+
+      // Get positions for specific folder
+      const positionsResult = await page.evaluate(async () => {
+        if (typeof window !== 'undefined' && window.api?.notes?.getPositions) {
+          return await window.api.notes.getPositions('PositionTestFolder')
+        }
+        return null
+      })
+
+      // Should return a Map-like structure with positions
+      expect(positionsResult).not.toBeNull()
+    })
+
+    test('should handle concurrent reorder operations', async ({ page }) => {
+      // Create multiple notes
+      await createNote(page, 'Concurrent A', 'A')
+      await createNote(page, 'Concurrent B', 'B')
+      await createNote(page, 'Concurrent C', 'C')
+      await page.waitForTimeout(1000)
+
+      // Issue multiple reorder calls concurrently
+      const results = await page.evaluate(async () => {
+        if (typeof window !== 'undefined' && window.api?.notes?.reorder) {
+          const results = await Promise.all([
+            window.api.notes.reorder('', [
+              'notes/Concurrent B.md',
+              'notes/Concurrent A.md',
+              'notes/Concurrent C.md'
+            ]),
+            window.api.notes.reorder('', [
+              'notes/Concurrent C.md',
+              'notes/Concurrent B.md',
+              'notes/Concurrent A.md'
+            ])
+          ])
+          return results
+        }
+        return []
+      })
+
+      // Both should complete (one will win)
+      expect(results.length).toBe(2)
+      expect(results.every((r: { success: boolean }) => r.success)).toBe(true)
+
+      // Final state should be consistent
+      const finalPositions = await page.evaluate(async () => {
+        if (typeof window !== 'undefined' && window.api?.notes?.getAllPositions) {
+          return await window.api.notes.getAllPositions()
+        }
+        return { success: false, positions: {} }
+      })
+
+      expect(finalPositions.success).toBe(true)
     })
   })
 })

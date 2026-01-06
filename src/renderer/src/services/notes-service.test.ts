@@ -118,4 +118,87 @@ describe('notes-service', () => {
     expect(onNoteExternalChange(externalHandler)).toBe(unsubscribe)
     expect(api.onNoteExternalChange).toHaveBeenCalledWith(externalHandler)
   })
+
+  describe('position operations', () => {
+    it('getPositions forwards folder path to api', async () => {
+      const positionsMap = new Map([
+        ['projects/note1.md', 0],
+        ['projects/note2.md', 1]
+      ])
+      api.notes.getPositions = vi.fn().mockResolvedValue(positionsMap)
+
+      const result = await notesService.getPositions('projects')
+
+      expect(api.notes.getPositions).toHaveBeenCalledWith('projects')
+      expect(result).toEqual(positionsMap)
+    })
+
+    it('getPositions handles root folder', async () => {
+      const positionsMap = new Map([['root-note.md', 0]])
+      api.notes.getPositions = vi.fn().mockResolvedValue(positionsMap)
+
+      const result = await notesService.getPositions('')
+
+      expect(api.notes.getPositions).toHaveBeenCalledWith('')
+      expect(result).toEqual(positionsMap)
+    })
+
+    it('getAllPositions returns position map', async () => {
+      const response = {
+        success: true,
+        positions: {
+          'projects/note1.md': 0,
+          'projects/note2.md': 1,
+          'archive/old.md': 0
+        }
+      }
+      api.notes.getAllPositions = vi.fn().mockResolvedValue(response)
+
+      const result = await notesService.getAllPositions()
+
+      expect(api.notes.getAllPositions).toHaveBeenCalled()
+      expect(result).toEqual(response)
+    })
+
+    it('getAllPositions handles error response', async () => {
+      const errorResponse = {
+        success: false,
+        positions: {},
+        error: 'Database error'
+      }
+      api.notes.getAllPositions = vi.fn().mockResolvedValue(errorResponse)
+
+      const result = await notesService.getAllPositions()
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Database error')
+    })
+
+    it('reorder forwards folder path and note paths to api', async () => {
+      api.notes.reorder = vi.fn().mockResolvedValue({ success: true })
+
+      const result = await notesService.reorder('projects', [
+        'projects/note2.md',
+        'projects/note1.md',
+        'projects/note3.md'
+      ])
+
+      expect(api.notes.reorder).toHaveBeenCalledWith('projects', [
+        'projects/note2.md',
+        'projects/note1.md',
+        'projects/note3.md'
+      ])
+      expect(result).toEqual({ success: true })
+    })
+
+    it('reorder handles error response', async () => {
+      const errorResponse = { success: false, error: 'Reorder failed' }
+      api.notes.reorder = vi.fn().mockResolvedValue(errorResponse)
+
+      const result = await notesService.reorder('projects', ['projects/note1.md'])
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Reorder failed')
+    })
+  })
 })

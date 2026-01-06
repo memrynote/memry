@@ -44,6 +44,7 @@ interface StaleItemRowProps {
   density?: DisplayDensity
   onArchive: (id: string) => void
   onFocus: (id: string) => void
+  onPreview: (id: string) => void
   onSelectionToggle: (id: string, shiftKey: boolean) => void
 }
 
@@ -59,11 +60,13 @@ export const StaleItemRow = ({
   density = 'comfortable',
   onArchive,
   onFocus,
+  onPreview,
   onSelectionToggle
 }: StaleItemRowProps): React.JSX.Element => {
   const densityConfig = DENSITY_CONFIG[density]
   const handleClick = (): void => {
     onFocus(item.id)
+    onPreview(item.id)
   }
 
   const handleCheckboxClick = (e: React.MouseEvent): void => {
