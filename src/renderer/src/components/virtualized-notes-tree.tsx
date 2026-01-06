@@ -8,7 +8,7 @@
  * @module components/virtualized-notes-tree
  */
 
-import { useRef, useCallback, useMemo, useState, useEffect } from 'react'
+import { useRef, useCallback, useMemo, useState, useEffect, useLayoutEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   FileText,
@@ -100,6 +100,8 @@ interface VirtualizedNotesTreeProps {
   isDragDisabled?: boolean
   /** Custom class name */
   className?: string
+  /** Optional scroll container for virtualized rendering */
+  scrollContainerRef?: React.RefObject<HTMLElement>
 }
 
 // ============================================================================
@@ -628,10 +630,13 @@ export function VirtualizedNotesTree({
   folderTemplateNames,
   noteMap,
   isDragDisabled = false,
-  className
+  className,
+  scrollContainerRef
 }: VirtualizedNotesTreeProps) {
   const { openTab } = useTabActions()
   const parentRef = useRef<HTMLDivElement>(null)
+  const [scrollMargin, setScrollMargin] = useState(0)
+  const usesExternalScroll = !!scrollContainerRef
 
   // Expanded folders state (persisted to localStorage)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => loadExpandedFolders())
@@ -656,12 +661,37 @@ export function VirtualizedNotesTree({
     return flattenTree(tree, expandedIds)
   }, [tree, expandedIds])
 
+  useLayoutEffect(() => {
+    if (!scrollContainerRef?.current || !parentRef.current) {
+      setScrollMargin(0)
+      return
+    }
+
+    const scrollElement = scrollContainerRef.current
+    const updateScrollMargin = () => {
+      if (!parentRef.current) return
+      const scrollRect = scrollElement.getBoundingClientRect()
+      const listRect = parentRef.current.getBoundingClientRect()
+      const offset = listRect.top - scrollRect.top + scrollElement.scrollTop
+      setScrollMargin(offset)
+    }
+
+    updateScrollMargin()
+
+    const resizeObserver = new ResizeObserver(updateScrollMargin)
+    resizeObserver.observe(scrollElement)
+    resizeObserver.observe(parentRef.current)
+
+    return () => resizeObserver.disconnect()
+  }, [scrollContainerRef])
+
   // Virtual list setup
   const virtualizer = useVirtualizer({
     count: flatItems.length,
-    getScrollElement: () => parentRef.current,
+    getScrollElement: () => scrollContainerRef?.current ?? parentRef.current,
     estimateSize: () => TREE_ROW_HEIGHT,
-    overscan: 10 // Render 10 extra items above/below viewport
+    overscan: 10, // Render 10 extra items above/below viewport
+    scrollMargin: usesExternalScroll ? scrollMargin : 0
   })
 
   // Toggle folder expand/collapse
@@ -868,7 +898,11 @@ export function VirtualizedNotesTree({
       role="tree"
       aria-label="Notes tree"
       tabIndex={0}
-      className={cn('h-full overflow-auto focus:outline-none', className)}
+      className={cn(
+        'focus:outline-none',
+        usesExternalScroll ? 'overflow-visible' : 'h-full overflow-auto',
+        className
+      )}
       onKeyDown={handleKeyDown}
     >
       <div

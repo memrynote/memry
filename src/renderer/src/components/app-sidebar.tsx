@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useRef } from 'react'
 import { BookOpen, Home, Inbox, ListTodo, Plus, Search } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -132,6 +132,7 @@ export function AppSidebar({ currentPage, viewCounts, onOpenSearch, ...props }: 
 function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: AppSidebarProps) {
   // State to hold action buttons from NotesTree
   const [notesActions, setNotesActions] = useState<React.ReactNode>(null)
+  const sidebarScrollRef = useRef<HTMLDivElement>(null)
 
   // Calculate today's tasks count for Tasks badge in sidebar
   const todayTasksCount = useMemo(() => {
@@ -310,7 +311,7 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
       </div>
 
       {/* SCROLLABLE SECTION - Collections, Bookmarks, Tags */}
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
+      <div ref={sidebarScrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
         {/* COLLECTIONS Section - Collapsible with actions */}
         <SidebarSection
           id="collections"
@@ -318,7 +319,7 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
           defaultExpanded={false}
           actions={notesActions}
         >
-          <NotesTree onActionsReady={setNotesActions} />
+          <NotesTree onActionsReady={setNotesActions} scrollContainerRef={sidebarScrollRef} />
         </SidebarSection>
 
         {/* BOOKMARKS Section - Collapsible */}

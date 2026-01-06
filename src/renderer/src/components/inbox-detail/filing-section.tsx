@@ -4,28 +4,15 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import {
-  Folder,
-  Link2,
-  Sparkles,
-  Loader2,
-  ChevronDown,
-  Check,
-  X,
-  Plus
-} from 'lucide-react'
+import { Folder, Sparkles, Loader2, ChevronDown, Check } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
+import { LinkInput } from './link-input'
 import { cn } from '@/lib/utils'
 import type { InboxItem, InboxItemListItem, Folder as FolderType, LinkedNote } from '@/types'
 
@@ -77,149 +64,9 @@ const FolderChip = ({ folder, index, isSelected, onClick }: FolderChipProps): Re
     >
       <span className="text-[10px] font-bold opacity-60">{index + 1}</span>
       <span className="truncate max-w-[100px]">{folder.name || 'Notes'}</span>
-      {confidence && !isSelected && (
-        <span className="text-[10px] opacity-50">{confidence}%</span>
-      )}
+      {confidence && !isSelected && <span className="text-[10px] opacity-50">{confidence}%</span>}
       {isSelected && <Check className="size-3" />}
     </button>
-  )
-}
-
-// =============================================================================
-// Compact Link Input Component
-// =============================================================================
-
-interface CompactLinkInputProps {
-  linkedNotes: LinkedNote[]
-  onLinkedNotesChange: (notes: LinkedNote[]) => void
-}
-
-const CompactLinkInput = ({
-  linkedNotes,
-  onLinkedNotesChange
-}: CompactLinkInputProps): React.JSX.Element => {
-  const [isOpen, setIsOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-
-  // Fetch notes for search
-  const { data: searchResults = [] } = useQuery({
-    queryKey: ['notes', 'search', searchQuery],
-    queryFn: async () => {
-      if (!searchQuery || searchQuery.length < 2) return []
-      const results = await window.api.search.searchNotes(searchQuery, { limit: 10 })
-      return results.map((note) => ({
-        id: note.id,
-        title: note.title,
-        type: 'note' as const
-      }))
-    },
-    enabled: searchQuery.length >= 2
-  })
-
-  // Filter out already linked notes from search results
-  const availableResults = searchResults.filter(
-    (note) => !linkedNotes.find((n) => n.id === note.id)
-  )
-
-  const handleSelectNote = (note: LinkedNote): void => {
-    if (!linkedNotes.find((n) => n.id === note.id)) {
-      onLinkedNotesChange([...linkedNotes, note])
-    }
-    // Keep popover open and clear search for adding more notes
-    setSearchQuery('')
-  }
-
-  const handleRemoveNote = (noteId: string): void => {
-    onLinkedNotesChange(linkedNotes.filter((n) => n.id !== noteId))
-  }
-
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {linkedNotes.map((note) => (
-        <Badge
-          key={note.id}
-          variant="outline"
-          className="text-xs px-2 py-0.5 gap-1"
-        >
-          <Link2 className="size-3" />
-          <span className="truncate max-w-[80px]">{note.title}</span>
-          <button
-            onClick={() => handleRemoveNote(note.id)}
-            className="hover:text-destructive"
-          >
-            <X className="size-3" />
-          </button>
-        </Badge>
-      ))}
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <Plus className="size-3 mr-1" />
-            Link
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-64 p-2" align="start">
-          <Input
-            placeholder="Search notes..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 text-xs mb-2"
-            autoFocus
-          />
-          <ScrollArea className="max-h-48">
-            {/* Show linked notes count */}
-            {linkedNotes.length > 0 && (
-              <p className="text-[10px] text-muted-foreground px-2 py-1 border-b mb-1">
-                {linkedNotes.length} note{linkedNotes.length > 1 ? 's' : ''} linked
-              </p>
-            )}
-
-            {searchQuery.length >= 2 ? (
-              availableResults.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-2">
-                  {searchResults.length > 0 ? 'All matches already linked' : 'No notes found'}
-                </p>
-              ) : (
-                <div className="space-y-1">
-                  {availableResults.map((note) => (
-                    <button
-                      key={note.id}
-                      onClick={() => handleSelectNote(note)}
-                      className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-accent text-left"
-                    >
-                      <Link2 className="size-3 shrink-0" />
-                      <span className="truncate flex-1">{note.title}</span>
-                      <Plus className="size-3 shrink-0 text-muted-foreground" />
-                    </button>
-                  ))}
-                </div>
-              )
-            ) : (
-              <p className="text-xs text-muted-foreground text-center py-2">
-                Type to search notes...
-              </p>
-            )}
-          </ScrollArea>
-
-          {/* Done button when notes are linked */}
-          {linkedNotes.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsOpen(false)}
-              className="w-full mt-2 h-7 text-xs"
-            >
-              <Check className="size-3 mr-1" />
-              Done
-            </Button>
-          )}
-        </PopoverContent>
-      </Popover>
-    </div>
   )
 }
 
@@ -381,9 +228,7 @@ export const FilingSection = ({
             />
             <ScrollArea className="max-h-48">
               {filteredFolders.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-2">
-                  No folders found
-                </p>
+                <p className="text-xs text-muted-foreground text-center py-2">No folders found</p>
               ) : (
                 <div className="space-y-1">
                   {filteredFolders.map((folder) => (
@@ -402,9 +247,7 @@ export const FilingSection = ({
                     >
                       <Folder className="size-3 shrink-0" />
                       <span className="truncate flex-1">{folder.name}</span>
-                      {selectedFolder?.id === folder.id && (
-                        <Check className="size-3 shrink-0" />
-                      )}
+                      {selectedFolder?.id === folder.id && <Check className="size-3 shrink-0" />}
                     </button>
                   ))}
                 </div>
@@ -414,31 +257,21 @@ export const FilingSection = ({
         </Popover>
       </div>
 
-      {/* Tags & Links Row - Side by Side */}
-      <div className="grid grid-cols-2 gap-4 pt-2">
-        {/* Tags - Using existing TagAutocomplete */}
-        <div className="min-w-0">
-          <TagAutocomplete
-            tags={tags}
-            onTagsChange={onTagsChange}
-            placeholder="Add tags..."
-            showSections={false}
-            maxSuggestions={5}
-            className="[&>div:first-child]:hidden [&>div]:space-y-1.5"
-          />
-        </div>
+      {/* Tags Section - Full Width */}
+      <div className="pt-2">
+        <TagAutocomplete
+          tags={tags}
+          onTagsChange={onTagsChange}
+          placeholder="Add tags..."
+          showSections={false}
+          maxSuggestions={5}
+          className="[&>div:first-child]:hidden [&>div]:space-y-1.5"
+        />
+      </div>
 
-        {/* Links */}
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-            <Link2 className="size-3" />
-            <span>Links</span>
-          </div>
-          <CompactLinkInput
-            linkedNotes={linkedNotes}
-            onLinkedNotesChange={onLinkedNotesChange}
-          />
-        </div>
+      {/* Links Section - Full Width with Card-based Design */}
+      <div className="pt-2">
+        <LinkInput linkedNotes={linkedNotes} onLinkedNotesChange={onLinkedNotesChange} />
       </div>
     </div>
   )

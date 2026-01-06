@@ -1,0 +1,324 @@
+/**
+ * LinkInput Component
+ * Modern card-based link input with search functionality
+ * Follows Option E design: icon in input, card-based linked notes below
+ */
+
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { Link2, FileText, X, Loader2, Folder } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+import type { LinkedNote } from '@/types'
+
+// =============================================================================
+// Debounce Hook
+// =============================================================================
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value)
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
+
+    return () => clearTimeout(handler)
+  }, [value, delay])
+
+  return debouncedValue
+}
+
+// =============================================================================
+// LinkedNoteCard Component
+// =============================================================================
+
+interface LinkedNoteCardProps {
+  note: LinkedNote
+  onRemove: (id: string) => void
+}
+
+const LinkedNoteCard = ({ note, onRemove }: LinkedNoteCardProps): React.JSX.Element => {
+  const Icon = note.type === 'folder' ? Folder : FileText
+
+  return (
+    <div
+      className={cn(
+        'group flex items-center gap-3 px-3 py-2.5 rounded-lg',
+        'bg-muted/40 border border-border/50',
+        'transition-colors hover:bg-muted/60'
+      )}
+    >
+      <div className="flex items-center justify-center size-8 rounded-md bg-background border border-border/50 shrink-0">
+        <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{note.title}</p>
+        {note.type === 'note' && (
+          <p className="text-xs text-muted-foreground truncate opacity-70">Note</p>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={() => onRemove(note.id)}
+        className={cn(
+          'p-1 rounded-md opacity-0 group-hover:opacity-100',
+          'transition-opacity hover:bg-destructive/10 hover:text-destructive'
+        )}
+        aria-label={`Remove link to ${note.title}`}
+      >
+        <X className="size-4" aria-hidden="true" />
+      </button>
+    </div>
+  )
+}
+
+// =============================================================================
+// SearchResultItem Component
+// =============================================================================
+
+interface SearchResultItemProps {
+  note: LinkedNote
+  isHighlighted: boolean
+  onSelect: (note: LinkedNote) => void
+  onMouseEnter: () => void
+}
+
+const SearchResultItem = ({
+  note,
+  isHighlighted,
+  onSelect,
+  onMouseEnter
+}: SearchResultItemProps): React.JSX.Element => {
+  const Icon = note.type === 'folder' ? Folder : FileText
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(note)}
+      onMouseEnter={onMouseEnter}
+      className={cn(
+        'w-full flex items-center gap-2 px-3 py-2 text-left',
+        'transition-colors duration-75',
+        isHighlighted ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
+      )}
+      role="option"
+      aria-selected={isHighlighted}
+    >
+      <Icon className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+      <span className="text-sm truncate flex-1">{note.title}</span>
+    </button>
+  )
+}
+
+// =============================================================================
+// LinkInput Component
+// =============================================================================
+
+interface LinkInputProps {
+  linkedNotes: LinkedNote[]
+  onLinkedNotesChange: (notes: LinkedNote[]) => void
+  className?: string
+}
+
+export const LinkInput = ({
+  linkedNotes,
+  onLinkedNotesChange,
+  className
+}: LinkInputProps): React.JSX.Element => {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
+
+  const inputRef = useRef<HTMLInputElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Debounced search query
+  const debouncedQuery = useDebounce(searchQuery, 200)
+
+  // Fetch notes for search
+  const { data: searchResults = [], isLoading: isSearching } = useQuery({
+    queryKey: ['notes', 'search', debouncedQuery],
+    queryFn: async () => {
+      if (!debouncedQuery || debouncedQuery.length < 2) return []
+      const results = await window.api.search.searchNotes(debouncedQuery, { limit: 10 })
+      return results.map((note) => ({
+        id: note.id,
+        title: note.title,
+        type: 'note' as const
+      }))
+    },
+    enabled: debouncedQuery.length >= 2
+  })
+
+  // Filter out already linked notes
+  const availableResults = searchResults.filter(
+    (note) => !linkedNotes.find((n) => n.id === note.id)
+  )
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent): void => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Reset highlighted index when results change
+  useEffect(() => {
+    setHighlightedIndex(availableResults.length > 0 ? 0 : -1)
+  }, [availableResults.length])
+
+  // Show/hide dropdown based on search
+  useEffect(() => {
+    if (searchQuery.trim().length >= 2) {
+      setIsDropdownOpen(true)
+    } else {
+      setIsDropdownOpen(false)
+    }
+  }, [searchQuery])
+
+  const handleSelectNote = useCallback(
+    (note: LinkedNote): void => {
+      if (!linkedNotes.find((n) => n.id === note.id)) {
+        onLinkedNotesChange([...linkedNotes, note])
+      }
+      setSearchQuery('')
+      setIsDropdownOpen(false)
+      inputRef.current?.focus()
+    },
+    [linkedNotes, onLinkedNotesChange]
+  )
+
+  const handleRemoveNote = useCallback(
+    (noteId: string): void => {
+      onLinkedNotesChange(linkedNotes.filter((n) => n.id !== noteId))
+    },
+    [linkedNotes, onLinkedNotesChange]
+  )
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    setSearchQuery(e.target.value)
+  }
+
+  const handleInputFocus = (): void => {
+    if (searchQuery.trim().length >= 2 && availableResults.length > 0) {
+      setIsDropdownOpen(true)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (!isDropdownOpen || availableResults.length === 0) {
+      if (e.key === 'Escape') {
+        setSearchQuery('')
+        inputRef.current?.blur()
+      }
+      return
+    }
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setHighlightedIndex((prev) => (prev < availableResults.length - 1 ? prev + 1 : 0))
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : availableResults.length - 1))
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (highlightedIndex >= 0 && highlightedIndex < availableResults.length) {
+          handleSelectNote(availableResults[highlightedIndex])
+        }
+        break
+      case 'Escape':
+        e.preventDefault()
+        setIsDropdownOpen(false)
+        setSearchQuery('')
+        break
+      case 'Tab':
+        if (highlightedIndex >= 0 && highlightedIndex < availableResults.length) {
+          e.preventDefault()
+          handleSelectNote(availableResults[highlightedIndex])
+        }
+        break
+    }
+  }
+
+  return (
+    <div ref={containerRef} className={cn('space-y-3', className)}>
+      {/* Search Input */}
+      <div className="relative">
+        <Link2
+          className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none"
+          aria-hidden="true"
+        />
+        <Input
+          ref={inputRef}
+          type="text"
+          placeholder="Link notes..."
+          value={searchQuery}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          onKeyDown={handleKeyDown}
+          className="pl-9"
+          aria-label="Search notes to link"
+          aria-expanded={isDropdownOpen}
+          aria-haspopup="listbox"
+          aria-autocomplete="list"
+          autoComplete="off"
+        />
+
+        {/* Dropdown Results */}
+        {isDropdownOpen && (
+          <div
+            ref={dropdownRef}
+            className={cn(
+              'absolute z-50 w-full mt-1 py-1 rounded-md border border-border',
+              'bg-popover shadow-md max-h-48 overflow-y-auto'
+            )}
+            role="listbox"
+          >
+            {isSearching ? (
+              <div className="flex items-center gap-2 px-3 py-2">
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Searching...</span>
+              </div>
+            ) : availableResults.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-2">
+                {searchResults.length > 0 ? 'All matches already linked' : 'No notes found'}
+              </p>
+            ) : (
+              availableResults.map((note, index) => (
+                <SearchResultItem
+                  key={note.id}
+                  note={note}
+                  isHighlighted={index === highlightedIndex}
+                  onSelect={handleSelectNote}
+                  onMouseEnter={() => setHighlightedIndex(index)}
+                />
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Linked Notes List */}
+      {linkedNotes.length > 0 && (
+        <div className="space-y-2" role="list" aria-label="Linked notes">
+          {linkedNotes.map((note) => (
+            <LinkedNoteCard key={note.id} note={note} onRemove={handleRemoveNote} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default LinkInput

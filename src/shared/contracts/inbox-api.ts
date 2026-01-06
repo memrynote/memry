@@ -17,7 +17,15 @@ export { InboxChannels }
 // Type Definitions
 // ============================================================================
 
-export type InboxItemType = 'link' | 'note' | 'image' | 'voice' | 'clip' | 'pdf' | 'social' | 'reminder'
+export type InboxItemType =
+  | 'link'
+  | 'note'
+  | 'image'
+  | 'voice'
+  | 'clip'
+  | 'pdf'
+  | 'social'
+  | 'reminder'
 export type ProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
 export type FilingAction = 'folder' | 'note' | 'linked'
 
@@ -365,6 +373,35 @@ export const MarkViewedSchema = z.object({
 })
 
 // ============================================================================
+// Archived Items Schemas
+// ============================================================================
+
+export const ListArchivedSchema = z.object({
+  search: z.string().optional(),
+  limit: z.number().int().min(1).max(200).default(50),
+  offset: z.number().int().min(0).default(0)
+})
+
+export const GetFilingHistorySchema = z.object({
+  limit: z.number().int().min(1).max(100).default(20)
+})
+
+// ============================================================================
+// Filing History Types
+// ============================================================================
+
+export interface FilingHistoryEntry {
+  id: string
+  itemId: string
+  itemType: InboxItemType
+  itemTitle: string
+  filedTo: string
+  filedAction: FilingAction
+  filedAt: Date
+  tags: string[]
+}
+
+// ============================================================================
 // Response Types
 // ============================================================================
 
@@ -391,6 +428,16 @@ export interface BulkResponse {
   success: boolean
   processedCount: number
   errors: Array<{ itemId: string; error: string }>
+}
+
+export interface ArchivedListResponse {
+  items: InboxItemListItem[]
+  total: number
+  hasMore: boolean
+}
+
+export interface FilingHistoryResponse {
+  entries: FilingHistoryEntry[]
 }
 
 export interface SuggestionsResponse {
@@ -620,4 +667,12 @@ export interface InboxClientAPI {
   // Settings
   getStaleThreshold(): Promise<number>
   setStaleThreshold(days: number): Promise<{ success: boolean }>
+
+  // Archived items
+  listArchived(options?: z.infer<typeof ListArchivedSchema>): Promise<ArchivedListResponse>
+  unarchive(id: string): Promise<{ success: boolean; error?: string }>
+  deletePermanent(id: string): Promise<{ success: boolean; error?: string }>
+
+  // Filing history
+  getFilingHistory(options?: z.infer<typeof GetFilingHistorySchema>): Promise<FilingHistoryResponse>
 }

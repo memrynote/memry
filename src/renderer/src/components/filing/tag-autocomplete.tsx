@@ -199,16 +199,15 @@ export const TagAutocomplete = ({
   const recentTags = getRecentTags(5).filter((t) => !tags.includes(t.name))
   const popularTags = getPopularTags(8).filter((t) => !tags.includes(t.name))
 
-  // Show dropdown when typing and there are matches
   useEffect(() => {
     if (inputValue.trim() && suggestions.length > 0) {
-      setIsDropdownOpen(true)
       setHighlightedIndex(0)
-    } else if (!inputValue.trim()) {
-      setIsDropdownOpen(false)
+    } else if (!inputValue.trim() && isDropdownOpen && popularTags.length > 0) {
+      setHighlightedIndex(0)
+    } else {
       setHighlightedIndex(-1)
     }
-  }, [inputValue, suggestions.length])
+  }, [inputValue, suggestions.length, isDropdownOpen, popularTags.length])
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -266,20 +265,25 @@ export const TagAutocomplete = ({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    if (isDropdownOpen && suggestions.length > 0) {
+    const hasSearchResults = inputValue.trim() && suggestions.length > 0
+    const hasPopularTags = !inputValue.trim() && popularTags.length > 0
+    const activeList = hasSearchResults ? suggestions : popularTags.slice(0, 5)
+    const hasDropdownItems = isDropdownOpen && (hasSearchResults || hasPopularTags)
+
+    if (hasDropdownItems) {
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault()
-          setHighlightedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0))
+          setHighlightedIndex((prev) => (prev < activeList.length - 1 ? prev + 1 : 0))
           break
         case 'ArrowUp':
           e.preventDefault()
-          setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1))
+          setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : activeList.length - 1))
           break
         case 'Enter':
           e.preventDefault()
-          if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
-            addTag(suggestions[highlightedIndex].name)
+          if (highlightedIndex >= 0 && highlightedIndex < activeList.length) {
+            addTag(activeList[highlightedIndex].name)
           } else if (inputValue.trim()) {
             addTag(inputValue)
           }
@@ -290,9 +294,9 @@ export const TagAutocomplete = ({
           setHighlightedIndex(-1)
           break
         case 'Tab':
-          if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
+          if (highlightedIndex >= 0 && highlightedIndex < activeList.length) {
             e.preventDefault()
-            addTag(suggestions[highlightedIndex].name)
+            addTag(activeList[highlightedIndex].name)
           }
           break
       }
@@ -307,9 +311,7 @@ export const TagAutocomplete = ({
   }
 
   const handleInputFocus = (): void => {
-    if (inputValue.trim() && suggestions.length > 0) {
-      setIsDropdownOpen(true)
-    }
+    setIsDropdownOpen(true)
   }
 
   return (
@@ -338,26 +340,47 @@ export const TagAutocomplete = ({
         />
 
         {/* Autocomplete Dropdown */}
-        {isDropdownOpen && suggestions.length > 0 && (
-          <div
-            ref={dropdownRef}
-            className={cn(
-              'absolute z-50 w-full mt-1 py-1 rounded-md border border-border',
-              'bg-popover shadow-md max-h-48 overflow-y-auto'
-            )}
-            role="listbox"
-          >
-            {suggestions.slice(0, maxSuggestions).map((tag, index) => (
-              <SuggestionItem
-                key={tag.name}
-                tag={tag}
-                isHighlighted={index === highlightedIndex}
-                onSelect={addTag}
-                onMouseEnter={() => setHighlightedIndex(index)}
-              />
-            ))}
-          </div>
-        )}
+        {isDropdownOpen &&
+          (suggestions.length > 0 || (!inputValue.trim() && popularTags.length > 0)) && (
+            <div
+              ref={dropdownRef}
+              className={cn(
+                'absolute z-50 w-full mt-1 py-1 rounded-md border border-border',
+                'bg-popover shadow-md max-h-48 overflow-y-auto'
+              )}
+              role="listbox"
+            >
+              {inputValue.trim() ? (
+                suggestions
+                  .slice(0, maxSuggestions)
+                  .map((tag, index) => (
+                    <SuggestionItem
+                      key={tag.name}
+                      tag={tag}
+                      isHighlighted={index === highlightedIndex}
+                      onSelect={addTag}
+                      onMouseEnter={() => setHighlightedIndex(index)}
+                    />
+                  ))
+              ) : (
+                <>
+                  <p className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/70 border-b border-border/50">
+                    <TrendingUp className="size-3" aria-hidden="true" />
+                    Popular
+                  </p>
+                  {popularTags.slice(0, 5).map((tag, index) => (
+                    <SuggestionItem
+                      key={tag.name}
+                      tag={tag}
+                      isHighlighted={index === highlightedIndex}
+                      onSelect={addTag}
+                      onMouseEnter={() => setHighlightedIndex(index)}
+                    />
+                  ))}
+                </>
+              )}
+            </div>
+          )}
       </div>
 
       {/* Current Tags */}

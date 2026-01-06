@@ -92,14 +92,13 @@ export function highlightTerms(text: string, query: string, tag: string = 'mark'
  * @param contextChars - Characters of context around match (default: 50)
  * @returns Snippet with highlighted match
  */
-export function extractSnippet(
-  text: string,
-  query: string,
-  contextChars: number = 50
-): string {
+export function extractSnippet(text: string, query: string, contextChars: number = 50): string {
   if (!text || !query) return text.slice(0, contextChars * 2) + '...'
 
-  const terms = query.toLowerCase().split(/\s+/).filter((t) => t.length > 0)
+  const terms = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length > 0)
   if (terms.length === 0) return text.slice(0, contextChars * 2) + '...'
 
   // Find first match position
@@ -222,7 +221,7 @@ export function searchNotes(
       nc.path,
       nc.title,
       snippet(fts_notes, 2, '<mark>', '</mark>', '...', 30) as snippet,
-      bm25(fts_notes, 1.0, 2.0, 1.0) as score,
+      bm25(fts_notes, 2.0, 1.0, 1.0) as score,
       fts_notes.title as fts_title,
       fts_notes.content as fts_content,
       fts_notes.tags as fts_tags,
@@ -238,33 +237,35 @@ export function searchNotes(
   `)
 
   // Get tags for each result and determine what matched
-  return results.map((row) => {
-    const noteTags = getTagsForNote(db, row.id)
-    const matchedIn = determineMatchedFields(
-      escapedQuery,
-      row.fts_title,
-      row.fts_content,
-      row.fts_tags
-    )
+  return results
+    .map((row) => {
+      const noteTags = getTagsForNote(db, row.id)
+      const matchedIn = determineMatchedFields(
+        escapedQuery,
+        row.fts_title,
+        row.fts_content,
+        row.fts_tags
+      )
 
-    // Filter by tags if specified
-    if (tags && tags.length > 0) {
-      const hasMatchingTag = tags.some((t) => noteTags.includes(t.toLowerCase()))
-      if (!hasMatchingTag) return null
-    }
+      // Filter by tags if specified
+      if (tags && tags.length > 0) {
+        const hasMatchingTag = tags.some((t) => noteTags.includes(t.toLowerCase()))
+        if (!hasMatchingTag) return null
+      }
 
-    return {
-      id: row.id,
-      path: row.path,
-      title: row.title,
-      snippet: row.snippet || '',
-      score: Math.abs(row.score), // BM25 returns negative scores
-      matchedIn,
-      createdAt: row.createdAt,
-      modifiedAt: row.modifiedAt,
-      tags: noteTags
-    }
-  }).filter((r): r is SearchResultNote => r !== null)
+      return {
+        id: row.id,
+        path: row.path,
+        title: row.title,
+        snippet: row.snippet || '',
+        score: Math.abs(row.score), // BM25 returns negative scores
+        matchedIn,
+        createdAt: row.createdAt,
+        modifiedAt: row.modifiedAt,
+        tags: noteTags
+      }
+    })
+    .filter((r): r is SearchResultNote => r !== null)
 }
 
 /**
@@ -276,11 +277,7 @@ export function searchNotes(
  * @param limit - Maximum number of results (default 5)
  * @returns Quick search results
  */
-export function quickSearch(
-  db: DrizzleDb,
-  query: string,
-  limit: number = 5
-): QuickSearchResult {
+export function quickSearch(db: DrizzleDb, query: string, limit: number = 5): QuickSearchResult {
   const escapedQuery = escapeSearchQuery(query)
   if (!escapedQuery) return { notes: [] }
 
@@ -301,7 +298,7 @@ export function quickSearch(
       nc.path,
       nc.title,
       snippet(fts_notes, 2, '<mark>', '</mark>', '...', 20) as snippet,
-      bm25(fts_notes) as score,
+      bm25(fts_notes, 2.0, 1.0, 1.0) as score,
       nc.created_at as createdAt,
       nc.modified_at as modifiedAt
     FROM fts_notes
@@ -390,11 +387,7 @@ export function getSuggestions(
  * @param limit - Maximum results (default 50)
  * @returns Array of notes with the tag
  */
-export function findNotesByTag(
-  db: DrizzleDb,
-  tag: string,
-  limit: number = 50
-): SearchResultNote[] {
+export function findNotesByTag(db: DrizzleDb, tag: string, limit: number = 50): SearchResultNote[] {
   const normalizedTag = tag.toLowerCase().trim()
 
   const results = db.all<{

@@ -586,7 +586,17 @@ const api = {
     // Settings
     getStaleThreshold: () => ipcRenderer.invoke(InboxChannels.invoke.GET_STALE_THRESHOLD),
     setStaleThreshold: (days: number) =>
-      ipcRenderer.invoke(InboxChannels.invoke.SET_STALE_THRESHOLD, days)
+      ipcRenderer.invoke(InboxChannels.invoke.SET_STALE_THRESHOLD, days),
+
+    // Archived items
+    listArchived: (options?: { search?: string; limit?: number; offset?: number }) =>
+      ipcRenderer.invoke(InboxChannels.invoke.LIST_ARCHIVED, options ?? {}),
+    unarchive: (id: string) => ipcRenderer.invoke(InboxChannels.invoke.UNARCHIVE, id),
+    deletePermanent: (id: string) => ipcRenderer.invoke(InboxChannels.invoke.DELETE_PERMANENT, id),
+
+    // Filing history
+    getFilingHistory: (options?: { limit?: number }) =>
+      ipcRenderer.invoke(InboxChannels.invoke.GET_FILING_HISTORY, options ?? {})
   },
 
   // Quick Capture API (global shortcut window)

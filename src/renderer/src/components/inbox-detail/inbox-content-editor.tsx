@@ -117,16 +117,48 @@ export const InboxContentEditor = memo(function InboxContentEditor({
     }
   }, [editor, onContentChange])
 
+  const handleContainerMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!editable) return
+
+      const target = e.target as HTMLElement
+
+      if (
+        target.closest('[contenteditable="true"]')?.contains(target) &&
+        target.closest('.bn-block-content')
+      ) {
+        return
+      }
+
+      if (target.closest('button, a, input')) {
+        return
+      }
+
+      const editorElement = (e.currentTarget as HTMLElement).querySelector(
+        '.bn-editor [contenteditable="true"]'
+      ) as HTMLElement
+
+      if (editorElement) {
+        e.preventDefault()
+        editorElement.focus()
+      }
+    },
+    [editable]
+  )
+
   return (
     <div
       className={cn(
         'inbox-content-editor prose prose-sm dark:prose-invert max-w-none',
-        '[&_.bn-editor]:min-h-[120px]',
-        '[&_.bn-container]:bg-transparent',
+        'min-h-[300px] flex flex-col',
+        '[&_.bn-editor]:min-h-[280px] [&_.bn-editor]:flex-1',
+        '[&_.bn-container]:bg-transparent [&_.bn-container]:flex-1',
+        editable && 'cursor-text',
         className
       )}
       role="region"
       aria-label="Content editor"
+      onMouseDown={handleContainerMouseDown}
     >
       <BlockNoteView
         editor={editor}

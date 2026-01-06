@@ -25,6 +25,9 @@ import { EmptyState } from '@/components/empty-state/empty-state'
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
 import { SRAnnouncer } from '@/components/sr-announcer'
 import { CaptureInput } from '@/components/capture-input'
+import { InboxSegmentControl, type InboxView } from '@/components/inbox/inbox-segment-control'
+import { InboxInsightsView } from '@/components/inbox/inbox-insights-view'
+import { InboxArchivedView } from '@/components/inbox/inbox-archived-view'
 import { inboxService, onInboxSnoozeDue } from '@/services/inbox-service'
 import type { ReminderMetadata } from '@shared/contracts/inbox-api'
 import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
@@ -48,6 +51,7 @@ interface InboxPageProps {
 export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [showSnoozedItems, setShowSnoozedItems] = useState(false)
+  const [currentView, setCurrentView] = useState<InboxView>('inbox')
   const queryClient = useQueryClient()
   const { openTab } = useTabs()
 
@@ -1369,213 +1373,232 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                   Inbox
                 </h1>
                 <p className="font-serif text-sm text-muted-foreground/70 tracking-wide">
-                  {items.length === 0
-                    ? 'All caught up'
-                    : todayItemsCount > 0
-                      ? `${todayItemsCount} item${todayItemsCount !== 1 ? 's' : ''} arrived today`
-                      : `${items.length} item${items.length !== 1 ? 's' : ''} waiting`}
+                  {currentView === 'inbox'
+                    ? items.length === 0
+                      ? 'All caught up'
+                      : todayItemsCount > 0
+                        ? `${todayItemsCount} item${todayItemsCount !== 1 ? 's' : ''} arrived today`
+                        : `${items.length} item${items.length !== 1 ? 's' : ''} waiting`
+                    : currentView === 'archived'
+                      ? 'Previously processed items'
+                      : 'Capture patterns & insights'}
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
-                {items.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSelectAll}
-                    className={cn(
-                      'text-muted-foreground/60 hover:text-foreground',
-                      'hover:bg-foreground/5'
+                {/* View-specific controls */}
+                {currentView === 'inbox' && (
+                  <>
+                    {items.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSelectAll}
+                        className={cn(
+                          'text-muted-foreground/60 hover:text-foreground',
+                          'hover:bg-foreground/5'
+                        )}
+                      >
+                        Select all
+                      </Button>
                     )}
-                  >
-                    Select all
-                  </Button>
+
+                    {/* Show snoozed items toggle */}
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="show-snoozed"
+                        checked={showSnoozedItems}
+                        onCheckedChange={setShowSnoozedItems}
+                        className="scale-90"
+                      />
+                      <Label
+                        htmlFor="show-snoozed"
+                        className="text-xs text-muted-foreground/70 cursor-pointer whitespace-nowrap"
+                      >
+                        <Clock className="inline-block size-3 mr-1" />
+                        Show snoozed
+                      </Label>
+                    </div>
+
+                    {/* Display density toggle */}
+                    <div className="flex items-center">
+                      <ToggleGroup
+                        type="single"
+                        value={density}
+                        onValueChange={(value) => {
+                          if (value) setDensity(value as 'comfortable' | 'compact')
+                        }}
+                        size="sm"
+                        className="bg-muted/30 rounded-md p-0.5"
+                      >
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <ToggleGroupItem
+                              value="comfortable"
+                              aria-label="Comfortable view"
+                              className={cn(
+                                'h-7 w-7 p-0',
+                                'data-[state=on]:bg-background data-[state=on]:shadow-sm'
+                              )}
+                            >
+                              <LayoutGrid className="size-3.5" />
+                            </ToggleGroupItem>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">
+                            Comfortable
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <ToggleGroupItem
+                              value="compact"
+                              aria-label="Compact view"
+                              className={cn(
+                                'h-7 w-7 p-0',
+                                'data-[state=on]:bg-background data-[state=on]:shadow-sm'
+                              )}
+                            >
+                              <AlignJustify className="size-3.5" />
+                            </ToggleGroupItem>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">
+                            Compact
+                          </TooltipContent>
+                        </Tooltip>
+                      </ToggleGroup>
+                    </div>
+                  </>
                 )}
-
-                {/* Show snoozed items toggle */}
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="show-snoozed"
-                    checked={showSnoozedItems}
-                    onCheckedChange={setShowSnoozedItems}
-                    className="scale-90"
-                  />
-                  <Label
-                    htmlFor="show-snoozed"
-                    className="text-xs text-muted-foreground/70 cursor-pointer whitespace-nowrap"
-                  >
-                    <Clock className="inline-block size-3 mr-1" />
-                    Show snoozed
-                  </Label>
-                </div>
-
-                {/* Display density toggle */}
-                <div className="flex items-center">
-                  <ToggleGroup
-                    type="single"
-                    value={density}
-                    onValueChange={(value) => {
-                      if (value) setDensity(value as 'comfortable' | 'compact')
-                    }}
-                    size="sm"
-                    className="bg-muted/30 rounded-md p-0.5"
-                  >
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <ToggleGroupItem
-                          value="comfortable"
-                          aria-label="Comfortable view"
-                          className={cn(
-                            'h-7 w-7 p-0',
-                            'data-[state=on]:bg-background data-[state=on]:shadow-sm'
-                          )}
-                        >
-                          <LayoutGrid className="size-3.5" />
-                        </ToggleGroupItem>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="text-xs">
-                        Comfortable
-                      </TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <ToggleGroupItem
-                          value="compact"
-                          aria-label="Compact view"
-                          className={cn(
-                            'h-7 w-7 p-0',
-                            'data-[state=on]:bg-background data-[state=on]:shadow-sm'
-                          )}
-                        >
-                          <AlignJustify className="size-3.5" />
-                        </ToggleGroupItem>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="text-xs">
-                        Compact
-                      </TooltipContent>
-                    </Tooltip>
-                  </ToggleGroup>
-                </div>
               </div>
             </div>
           )}
         </div>
+
+        {/* Segment Control - view switcher */}
+        <div className="mt-4">
+          <InboxSegmentControl value={currentView} onChange={setCurrentView} />
+        </div>
       </header>
 
-      {/* Quick Capture Input */}
-      <div className={densityConfig.captureMargin}>
-        <CaptureInput
-          density={density}
-          onCaptureSuccess={() => {
-            addToast({
-              message: 'Item captured',
-              type: 'success'
-            })
-          }}
-          onCaptureError={(errorMsg) => {
-            addToast({
-              message: errorMsg,
-              type: 'error'
-            })
-          }}
-        />
-      </div>
-
-      {/* Content: Scrollable area with view-based rendering or empty state */}
-      <div
-        className={cn(
-          'flex-1 overflow-y-auto',
-          isInBulkMode && 'pb-32'
-        )}
-      >
-        {/* Loading State */}
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-64 gap-4">
-            <Loader2 className="size-8 text-muted-foreground/50 animate-spin" />
-            <p className="text-sm text-muted-foreground/60 font-serif">Loading inbox...</p>
-          </div>
-        ) : error ? (
-          /* Error State */
-          <div className="flex flex-col items-center justify-center h-64 gap-4">
-            <AlertCircle className="size-8 text-destructive/60" />
-            <p className="text-sm text-destructive/80 font-serif">Failed to load inbox</p>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Try again
-            </Button>
-          </div>
-        ) : showEmptyState ? (
-          <EmptyState
-            itemsProcessedToday={itemsProcessedToday}
-            hasFilingHistory={hasFilingHistory}
-            isExiting={isEmptyStateExiting}
-          />
-        ) : (
-          <ListView
-            items={nonStaleItems}
-            staleItems={staleItems}
-            selectedItemIds={selectedItemIds}
-            exitingItemIds={exitingItemIds}
+      {/* Quick Capture Input - only in inbox view */}
+      {currentView === 'inbox' && (
+        <div className={densityConfig.captureMargin}>
+          <CaptureInput
             density={density}
-            onPreview={handlePreview}
-            onArchive={handleArchive}
-            onSnooze={handleSnooze}
-            onQuickFile={handleQuickFile}
-            onSelectionChange={handleSelectionChange}
-            onFileAllStale={handleFileAllStaleToUnsorted}
-            onReviewStale={handleReviewStaleItems}
-            focusedItemId={focusedItemId}
-            onFocusedItemChange={handleFocusedItemChange}
-            isPreviewOpen={isDetailPanelOpen}
+            onCaptureSuccess={() => {
+              addToast({
+                message: 'Item captured',
+                type: 'success'
+              })
+            }}
+            onCaptureError={(errorMsg) => {
+              addToast({
+                message: errorMsg,
+                type: 'error'
+              })
+            }}
           />
+        </div>
+      )}
+
+      {/* Content: Scrollable area with view-based rendering */}
+      <div
+        className={cn('flex-1 overflow-y-auto', currentView === 'inbox' && isInBulkMode && 'pb-32')}
+      >
+        {currentView === 'inbox' && (
+          <>
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-64 gap-4">
+                <Loader2 className="size-8 text-muted-foreground/50 animate-spin" />
+                <p className="text-sm text-muted-foreground/60 font-serif">Loading inbox...</p>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center h-64 gap-4">
+                <AlertCircle className="size-8 text-destructive/60" />
+                <p className="text-sm text-destructive/80 font-serif">Failed to load inbox</p>
+                <Button variant="outline" size="sm" onClick={() => refetch()}>
+                  Try again
+                </Button>
+              </div>
+            ) : showEmptyState ? (
+              <EmptyState
+                itemsProcessedToday={itemsProcessedToday}
+                hasFilingHistory={hasFilingHistory}
+                isExiting={isEmptyStateExiting}
+              />
+            ) : (
+              <ListView
+                items={nonStaleItems}
+                staleItems={staleItems}
+                selectedItemIds={selectedItemIds}
+                exitingItemIds={exitingItemIds}
+                density={density}
+                onPreview={handlePreview}
+                onArchive={handleArchive}
+                onSnooze={handleSnooze}
+                onQuickFile={handleQuickFile}
+                onSelectionChange={handleSelectionChange}
+                onFileAllStale={handleFileAllStaleToUnsorted}
+                onReviewStale={handleReviewStaleItems}
+                focusedItemId={focusedItemId}
+                onFocusedItemChange={handleFocusedItemChange}
+                isPreviewOpen={isDetailPanelOpen}
+              />
+            )}
+          </>
         )}
+
+        {currentView === 'archived' && <InboxArchivedView />}
+
+        {currentView === 'insights' && <InboxInsightsView />}
       </div>
 
-      {/* Bulk Action Bar */}
-      <BulkActionBar
-        selectedCount={selectedCount}
-        onFileAll={handleBulkFileAll}
-        onTagAll={handleBulkTagAll}
-        onArchiveAll={handleBulkArchiveAll}
-        onSnoozeAll={handleBulkSnoozeAll}
-        aiSuggestion={aiSuggestion}
-        onAddSuggestionToSelection={handleAddSuggestionToSelection}
-        onDismissSuggestion={handleDismissSuggestion}
-      />
+      {/* Inbox view specific components */}
+      {currentView === 'inbox' && (
+        <>
+          <BulkActionBar
+            selectedCount={selectedCount}
+            onFileAll={handleBulkFileAll}
+            onTagAll={handleBulkTagAll}
+            onArchiveAll={handleBulkArchiveAll}
+            onSnoozeAll={handleBulkSnoozeAll}
+            aiSuggestion={aiSuggestion}
+            onAddSuggestionToSelection={handleAddSuggestionToSelection}
+            onDismissSuggestion={handleDismissSuggestion}
+          />
 
-      {/* Bulk File Panel */}
-      <BulkFilePanel
-        isOpen={isBulkFilePanelOpen}
-        items={selectedItems}
-        onClose={() => setIsBulkFilePanelOpen(false)}
-        onFile={handleBulkFileComplete}
-      />
+          <BulkFilePanel
+            isOpen={isBulkFilePanelOpen}
+            items={selectedItems}
+            onClose={() => setIsBulkFilePanelOpen(false)}
+            onFile={handleBulkFileComplete}
+          />
 
-      {/* Bulk Tag Popover - rendered as part of the action bar */}
-      <BulkTagPopover
-        isOpen={isBulkTagPopoverOpen}
-        itemCount={selectedCount}
-        trigger={<span />}
-        onOpenChange={setIsBulkTagPopoverOpen}
-        onApplyTags={handleBulkTagApply}
-      />
+          <BulkTagPopover
+            isOpen={isBulkTagPopoverOpen}
+            itemCount={selectedCount}
+            trigger={<span />}
+            onOpenChange={setIsBulkTagPopoverOpen}
+            onApplyTags={handleBulkTagApply}
+          />
 
-      {/* Archive Confirmation Dialog */}
-      <ArchiveConfirmationDialog
-        isOpen={isArchiveDialogOpen}
-        itemCount={selectedCount}
-        onConfirm={handleBulkArchiveConfirm}
-        onCancel={handleArchiveDialogCancel}
-      />
+          <ArchiveConfirmationDialog
+            isOpen={isArchiveDialogOpen}
+            itemCount={selectedCount}
+            onConfirm={handleBulkArchiveConfirm}
+            onCancel={handleArchiveDialogCancel}
+          />
 
-      {/* Unified Detail Panel (Preview + Filing) */}
-      <InboxDetailPanel
-        isOpen={isDetailPanelOpen}
-        item={activeDetailItem}
-        isLoading={isDetailLoading}
-        onClose={handleDetailPanelClose}
-        onFile={handleFilingComplete}
-        onArchive={handleArchive}
-      />
+          <InboxDetailPanel
+            isOpen={isDetailPanelOpen}
+            item={activeDetailItem}
+            isLoading={isDetailLoading}
+            onClose={handleDetailPanelClose}
+            onFile={handleFilingComplete}
+            onArchive={handleArchive}
+          />
+        </>
+      )}
 
       {/* Toast notifications */}
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
