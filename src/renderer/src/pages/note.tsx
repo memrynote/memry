@@ -104,12 +104,7 @@ function NoteEmptyState() {
 
 export function NotePage({ noteId }: NotePageProps) {
   // TanStack Query hooks for data fetching with caching
-  const {
-    note,
-    isLoading,
-    error: noteError,
-    refetch: refetchNote
-  } = useNote(noteId ?? null)
+  const { note, isLoading, error: noteError, refetch: refetchNote } = useNote(noteId ?? null)
   const { createNote, updateNote, renameNote } = useNoteMutations()
   const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinksQuery(noteId ?? null)
   const { tasks: linkedTasks, isLoading: linkedTasksLoading } = useTasksLinkedToNote(noteId ?? null)
@@ -119,11 +114,13 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Extract highlight info from tab viewState (from reminder navigation)
   const initialHighlight = useMemo(() => {
-    const viewState = activeTab?.viewState as {
-      highlightStart?: number
-      highlightEnd?: number
-      highlightText?: string
-    } | undefined
+    const viewState = activeTab?.viewState as
+      | {
+          highlightStart?: number
+          highlightEnd?: number
+          highlightText?: string
+        }
+      | undefined
 
     if (viewState?.highlightText) {
       return {
@@ -311,23 +308,29 @@ export function NotePage({ noteId }: NotePageProps) {
   // ============================================================================
 
   const backlinks: Backlink[] = useMemo(() => {
-    return rawBacklinks.map((bl) => ({
-      id: bl.sourceId,
-      noteId: bl.sourceId,
-      noteTitle: bl.sourceTitle,
-      folder: bl.sourcePath.split('/')[0] || '',
-      date: new Date(),
-      mentions: bl.context
-        ? [
-            {
-              id: `mention-${bl.sourceId}`,
-              snippet: bl.context,
-              linkStart: 0,
-              linkEnd: 0
-            }
-          ]
-        : []
-    }))
+    return rawBacklinks.map((bl) => {
+      const pathParts = bl.sourcePath.split('/')
+      const withoutNotesPrefix = pathParts[0] === 'notes' ? pathParts.slice(1) : pathParts
+      const folderPath = withoutNotesPrefix.slice(0, -1).join('/')
+
+      return {
+        id: bl.sourceId,
+        noteId: bl.sourceId,
+        noteTitle: bl.sourceTitle,
+        folder: folderPath,
+        date: new Date(),
+        mentions: bl.context
+          ? [
+              {
+                id: `mention-${bl.sourceId}`,
+                snippet: bl.context,
+                linkStart: 0,
+                linkEnd: 0
+              }
+            ]
+          : []
+      }
+    })
   }, [rawBacklinks])
 
   // ============================================================================
@@ -580,9 +583,7 @@ export function NotePage({ noteId }: NotePageProps) {
         } else {
           // Search by title
           const listResult = await notesService.list({ sortBy: 'title', limit: 500 })
-          const match = listResult.notes.find(
-            (n) => n.title.toLowerCase() === target.toLowerCase()
-          )
+          const match = listResult.notes.find((n) => n.title.toLowerCase() === target.toLowerCase())
 
           if (match) {
             resolvedId = match.id
@@ -683,12 +684,7 @@ export function NotePage({ noteId }: NotePageProps) {
         {/* Action bar - positioned at top-right of content area */}
         <div className="absolute top-0 right-0 z-10 flex items-center gap-2">
           {/* Reminder Button */}
-          {noteId && (
-            <NoteReminderButton
-              noteId={noteId}
-              disabled={isDeleted}
-            />
-          )}
+          {noteId && <NoteReminderButton noteId={noteId} disabled={isDeleted} />}
 
           {/* Bookmark Button */}
           <Button

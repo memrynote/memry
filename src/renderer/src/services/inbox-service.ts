@@ -16,7 +16,8 @@ import type {
   InboxBulkResponse as BulkResponse,
   InboxSuggestionsResponse as SuggestionsResponse,
   InboxStats,
-  InboxCapturePattern as CapturePattern
+  InboxCapturePattern as CapturePattern,
+  InboxFilingHistoryResponse as FilingHistoryResponse
 } from '../../../preload/index.d'
 
 // ============================================================================
@@ -464,6 +465,26 @@ export const inboxService = {
    */
   setStaleThreshold: (days: number): Promise<{ success: boolean }> => {
     return window.api.inbox.setStaleThreshold(days)
+  },
+
+  listArchived: (options?: {
+    search?: string
+    limit?: number
+    offset?: number
+  }): Promise<InboxListResponse> => {
+    return window.api.inbox.listArchived(options)
+  },
+
+  unarchive: (id: string): Promise<{ success: boolean; error?: string }> => {
+    return window.api.inbox.unarchive(id)
+  },
+
+  deletePermanent: (id: string): Promise<{ success: boolean; error?: string }> => {
+    return window.api.inbox.deletePermanent(id)
+  },
+
+  getFilingHistory: (options?: { limit?: number }): Promise<FilingHistoryResponse> => {
+    return window.api.inbox.getFilingHistory(options)
   }
 }
 

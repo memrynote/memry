@@ -1342,6 +1342,21 @@ export interface InboxBulkResponse {
   errors: Array<{ itemId: string; error: string }>
 }
 
+export interface InboxFilingHistoryEntry {
+  id: string
+  itemId: string
+  itemType: InboxItemType
+  itemTitle: string
+  filedTo: string
+  filedAction: InboxFilingAction
+  filedAt: Date
+  tags: string[]
+}
+
+export interface InboxFilingHistoryResponse {
+  entries: InboxFilingHistoryEntry[]
+}
+
 export interface InboxFilingSuggestion {
   destination: {
     type: 'folder' | 'note' | 'new-note'
@@ -1541,6 +1556,18 @@ export interface InboxClientAPI {
   // Settings
   getStaleThreshold(): Promise<number>
   setStaleThreshold(days: number): Promise<{ success: boolean }>
+
+  // Archived items
+  listArchived(options?: {
+    search?: string
+    limit?: number
+    offset?: number
+  }): Promise<InboxListResponse>
+  unarchive(id: string): Promise<{ success: boolean; error?: string }>
+  deletePermanent(id: string): Promise<{ success: boolean; error?: string }>
+
+  // Filing history
+  getFilingHistory(options?: { limit?: number }): Promise<InboxFilingHistoryResponse>
 }
 
 // Quick Capture types

@@ -585,7 +585,19 @@ export const InboxChannels = {
     /** Get stale threshold setting */
     GET_STALE_THRESHOLD: 'inbox:get-stale-threshold',
     /** Set stale threshold setting */
-    SET_STALE_THRESHOLD: 'inbox:set-stale-threshold'
+    SET_STALE_THRESHOLD: 'inbox:set-stale-threshold',
+
+    // Archived items
+    /** List archived inbox items */
+    LIST_ARCHIVED: 'inbox:list-archived',
+    /** Unarchive an inbox item (restore to active) */
+    UNARCHIVE: 'inbox:unarchive',
+    /** Permanently delete an inbox item */
+    DELETE_PERMANENT: 'inbox:delete-permanent',
+
+    // Filing history
+    /** Get recent filing history entries */
+    GET_FILING_HISTORY: 'inbox:get-filing-history'
   },
   events: {
     /** Item was captured */

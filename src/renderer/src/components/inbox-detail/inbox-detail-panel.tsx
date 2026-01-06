@@ -11,8 +11,10 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Archive, Check, Loader2 } from 'lucide-react'
+import { Archive, Check, Loader2, GripHorizontal } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+
+import { cn } from '@/lib/utils'
 
 import {
   Sheet,
@@ -25,12 +27,7 @@ import {
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import { Button } from '@/components/ui/button'
 
-import {
-  ContentSection,
-  ContentMetadata,
-  ContentSkeleton,
-  TypeIcon
-} from './content-section'
+import { ContentSection, ContentMetadata, ContentSkeleton, TypeIcon } from './content-section'
 import { FilingSection, useFilingState } from './filing-section'
 import { useRetryTranscription, useUpdateInboxItem } from '@/hooks/use-inbox'
 import { isMac, isInputFocused } from '@/hooks/use-keyboard-shortcuts'
@@ -71,15 +68,8 @@ export const InboxDetailPanel = ({
   const updateItemMutation = useUpdateInboxItem()
 
   // Filing state management
-  const {
-    selectedFolder,
-    tags,
-    linkedNotes,
-    setSelectedFolder,
-    setTags,
-    setLinkedNotes,
-    canFile
-  } = useFilingState({ item, isOpen })
+  const { selectedFolder, tags, linkedNotes, setSelectedFolder, setTags, setLinkedNotes, canFile } =
+    useFilingState({ item, isOpen })
 
   // Fetch AI suggestions for keyboard shortcuts
   const { data: aiSuggestions = [] } = useQuery({
@@ -117,6 +107,48 @@ export const InboxDetailPanel = ({
 
   // Loading state for filing
   const [isFilingLoading, setIsFilingLoading] = useState(false)
+
+  // Resizable filing section state (percentage of total height for filing section)
+  const [filingSectionRatio, setFilingSectionRatio] = useState(0.35)
+  const [isResizing, setIsResizing] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Handle resize drag
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      setIsResizing(true)
+
+      const startY = e.clientY
+      const startRatio = filingSectionRatio
+
+      const handleMouseMove = (moveEvent: MouseEvent): void => {
+        if (!containerRef.current) return
+
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const containerHeight = containerRect.height
+        const deltaY = startY - moveEvent.clientY
+        const deltaRatio = deltaY / containerHeight
+
+        const newRatio = Math.min(0.7, Math.max(0.2, startRatio + deltaRatio))
+        setFilingSectionRatio(newRatio)
+      }
+
+      const handleMouseUp = (): void => {
+        setIsResizing(false)
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      }
+
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = 'row-resize'
+      document.body.style.userSelect = 'none'
+    },
+    [filingSectionRatio]
+  )
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -299,10 +331,13 @@ export const InboxDetailPanel = ({
             {/* Metadata Bar */}
             <ContentMetadata item={item} />
 
-            {/* Main Content Area - 60/40 Split */}
-            <div className="flex-1 min-h-0 flex flex-col">
-              {/* Scrollable Content Area - 60% */}
-              <div className="flex-[6] min-h-0 overflow-y-auto border-b border-[var(--border)]">
+            {/* Main Content Area - Resizable Split */}
+            <div ref={containerRef} className="flex-1 min-h-0 flex flex-col">
+              {/* Scrollable Content Area */}
+              <div
+                className="min-h-0 overflow-y-auto"
+                style={{ flex: `${1 - filingSectionRatio} 1 0%` }}
+              >
                 <div className="px-6 py-4">
                   <ContentSection
                     item={item}
@@ -313,8 +348,36 @@ export const InboxDetailPanel = ({
                 </div>
               </div>
 
-              {/* Filing Section - 40% */}
-              <div className="flex-[4] min-h-0 overflow-y-auto bg-[var(--muted)]/30">
+              {/* Resize Handle */}
+              <div
+                onMouseDown={handleResizeStart}
+                className={cn(
+                  'relative h-2 shrink-0 cursor-row-resize group',
+                  'border-y border-border bg-muted/30',
+                  'hover:bg-muted/60 transition-colors',
+                  isResizing && 'bg-primary/20'
+                )}
+                role="separator"
+                aria-orientation="horizontal"
+                aria-label="Resize filing section"
+                tabIndex={0}
+              >
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <GripHorizontal
+                    className={cn(
+                      'size-4 text-muted-foreground/50',
+                      'group-hover:text-muted-foreground transition-colors',
+                      isResizing && 'text-primary'
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Filing Section - Resizable */}
+              <div
+                className="min-h-0 overflow-y-auto bg-muted/30"
+                style={{ flex: `${filingSectionRatio} 1 0%` }}
+              >
                 <div className="px-6 py-4">
                   <FilingSection
                     item={item}
@@ -331,36 +394,36 @@ export const InboxDetailPanel = ({
 
             {/* Footer with Actions */}
             <SheetFooter className="shrink-0 px-6 py-3 border-t border-[var(--border)] flex-col gap-2">
-                <div className="flex items-center justify-between w-full gap-3">
-                  <Button
-                    variant="ghost"
-                    onClick={handleArchive}
-                    className="text-[var(--muted-foreground)]"
-                  >
-                    <Archive className="size-4 mr-2" aria-hidden="true" />
-                    Archive
-                  </Button>
-                  <Button
-                    onClick={handleFileItem}
-                    disabled={!canFile || isFilingLoading}
-                    className="min-w-[120px]"
-                  >
-                    {isFilingLoading ? (
-                      <>
-                        <Loader2 className="size-4 animate-spin mr-2" aria-hidden="true" />
-                        Filing...
-                      </>
-                    ) : (
-                      <>
-                        {canFile && <Check className="size-4 mr-2" aria-hidden="true" />}
-                        File item
-                      </>
-                    )}
-                  </Button>
-                </div>
-                <p className="text-xs text-[var(--muted-foreground)] text-center w-full">
-                  {keyboardHint}
-                </p>
+              <div className="flex items-center justify-between w-full gap-3">
+                <Button
+                  variant="ghost"
+                  onClick={handleArchive}
+                  className="text-[var(--muted-foreground)]"
+                >
+                  <Archive className="size-4 mr-2" aria-hidden="true" />
+                  Archive
+                </Button>
+                <Button
+                  onClick={handleFileItem}
+                  disabled={!canFile || isFilingLoading}
+                  className="min-w-[120px]"
+                >
+                  {isFilingLoading ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin mr-2" aria-hidden="true" />
+                      Filing...
+                    </>
+                  ) : (
+                    <>
+                      {canFile && <Check className="size-4 mr-2" aria-hidden="true" />}
+                      File item
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-[var(--muted-foreground)] text-center w-full">
+                {keyboardHint}
+              </p>
             </SheetFooter>
           </>
         ) : (

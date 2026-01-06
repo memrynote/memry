@@ -337,9 +337,11 @@ function NotesTreeError({ error }: { error: string }) {
 interface NotesTreeProps {
   /** Callback to receive action buttons for external rendering */
   onActionsReady?: (actions: React.ReactNode) => void
+  /** Optional scroll container for virtualized rendering */
+  scrollContainerRef?: React.RefObject<HTMLElement>
 }
 
-export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
+export function NotesTree({ onActionsReady, scrollContainerRef }: NotesTreeProps = {}) {
   // Load all notes so the tree can correctly show files in all folders
   // Tree views need complete data - pagination doesn't make sense here
   // Virtualization (enabled at 100+ items) handles render performance
@@ -1659,8 +1661,11 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     )
   }
 
+  const rootClassName = scrollContainerRef ? 'flex flex-col' : 'flex flex-col h-full'
+  const virtualizedClassName = scrollContainerRef ? undefined : 'flex-1'
+
   return (
-    <div ref={treeContainerRef} className="flex flex-col h-full" tabIndex={-1}>
+    <div ref={treeContainerRef} className={rootClassName} tabIndex={-1}>
       {/* Use virtualized tree for 100+ items, otherwise use standard tree */}
       {useVirtualization ? (
         <VirtualizedNotesTree
@@ -1682,7 +1687,8 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           folderTemplateNames={folderTemplateNames}
           noteMap={noteMap}
           isDragDisabled={!!renamingNoteId || !!renamingFolderPath || isMoving}
-          className="flex-1"
+          className={virtualizedClassName}
+          scrollContainerRef={scrollContainerRef}
         />
       ) : (
         <TreeProvider

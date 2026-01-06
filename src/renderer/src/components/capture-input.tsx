@@ -8,11 +8,21 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Send, Loader2, Link, FileText, Mic } from 'lucide-react'
+import { Send, Loader2, Link, FileText, Mic, Paperclip } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useCaptureText, useCaptureLink, useCaptureVoice } from '@/hooks/use-inbox'
+import { useCaptureText, useCaptureLink, useCaptureVoice, useCaptureImage } from '@/hooks/use-inbox'
 import { type DisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
 import { VoiceRecorder } from './voice-recorder'
+
+const ALLOWED_IMAGE_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml'
+] as const
+
+type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number]
 
 interface CaptureInputProps {
   onCaptureSuccess?: () => void
@@ -63,15 +73,20 @@ export function CaptureInput({
   const [isFocused, setIsFocused] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Get density-specific config
   const densityConfig = DENSITY_CONFIG[density]
 
   const captureText = useCaptureText()
   const captureLink = useCaptureLink()
   const captureVoice = useCaptureVoice()
+  const captureImage = useCaptureImage()
 
-  const isCapturing = captureText.isPending || captureLink.isPending || captureVoice.isPending
+  const isCapturing =
+    captureText.isPending ||
+    captureLink.isPending ||
+    captureVoice.isPending ||
+    captureImage.isPending
   const isUrl = isLikelyUrl(value)
 
   // Auto-resize textarea
@@ -171,12 +186,48 @@ export function CaptureInput({
     setIsRecording(false)
   }, [])
 
-  /**
-   * Start voice recording
-   */
   const handleMicClick = useCallback(() => {
     setIsRecording(true)
   }, [])
+
+  const handleAttachClick = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+
+  const handleFileSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type as AllowedImageType)) {
+        onCaptureError?.(`Unsupported file type: ${file.type}`)
+        return
+      }
+
+      try {
+        const arrayBuffer = await file.arrayBuffer()
+        const result = await captureImage.mutateAsync({
+          data: arrayBuffer,
+          filename: file.name,
+          mimeType: file.type
+        })
+
+        if (result.success) {
+          onCaptureSuccess?.()
+        } else {
+          onCaptureError?.(result.error || 'Failed to capture image')
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'File capture failed'
+        onCaptureError?.(message)
+      }
+    },
+    [captureImage, onCaptureSuccess, onCaptureError]
+  )
 
   // Show voice recorder when recording
   if (isRecording) {
@@ -247,7 +298,25 @@ export function CaptureInput({
           aria-label="Capture input"
         />
 
-        {/* Microphone button for voice recording */}
+        {/* Attachment button */}
+        <button
+          onClick={handleAttachClick}
+          disabled={isCapturing}
+          className={cn(
+            'mt-0.5 flex-shrink-0',
+            'p-1.5 rounded-lg',
+            'text-muted-foreground/50',
+            'transition-all duration-200',
+            'hover:bg-foreground/5 hover:text-foreground/70',
+            'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent'
+          )}
+          aria-label="Attach image"
+          title="Attach image (PNG, JPG, GIF, WebP, SVG)"
+        >
+          <Paperclip className="size-4" aria-hidden="true" />
+        </button>
+
+        {/* Microphone button */}
         <button
           onClick={handleMicClick}
           disabled={isCapturing}
@@ -264,6 +333,16 @@ export function CaptureInput({
         >
           <Mic className="size-4" aria-hidden="true" />
         </button>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ALLOWED_IMAGE_TYPES.join(',')}
+          onChange={handleFileSelect}
+          className="hidden"
+          aria-hidden="true"
+        />
 
         {/* Submit button */}
         <button

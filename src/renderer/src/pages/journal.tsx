@@ -34,7 +34,7 @@ import {
   type JournalViewState
 } from '@/components/journal'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
-import { BacklinksSection, type Backlink } from '@/components/note/backlinks'
+
 import { TemplateSelector } from '@/components/note/template-selector'
 import { TagsRow, type Tag } from '@/components/note/tags-row'
 import {
@@ -93,61 +93,6 @@ import { JournalReminderButton } from '@/components/journal/journal-reminder-but
 // Note: Calendar events are not yet implemented (spec mentions "can be mocked initially")
 // Using empty array - will be populated when calendar integration is added
 const EMPTY_EVENTS: ScheduleEvent[] = []
-
-const DUMMY_JOURNAL_BACKLINKS: Backlink[] = [
-  {
-    id: 'jbl-1',
-    noteId: 'note-101',
-    noteTitle: 'Project Alpha Planning',
-    folder: 'Projects',
-    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    mentions: [
-      {
-        id: 'jm-1',
-        snippet: '...as discussed in my [[journal entry]], the timeline needs adjustment for Q1...',
-        linkStart: 20,
-        linkEnd: 35
-      }
-    ]
-  },
-  {
-    id: 'jbl-2',
-    noteId: 'note-102',
-    noteTitle: 'Weekly Retrospective',
-    folder: 'Work',
-    date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    mentions: [
-      {
-        id: 'jm-2',
-        snippet:
-          '...referencing thoughts from [[this day]] about team productivity improvements...',
-        linkStart: 28,
-        linkEnd: 38
-      }
-    ]
-  },
-  {
-    id: 'jbl-3',
-    noteId: 'note-103',
-    noteTitle: 'Personal Goals 2024',
-    folder: 'Personal',
-    date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    mentions: [
-      {
-        id: 'jm-3',
-        snippet: '...the reflections from [[December 13]] helped clarify my priorities...',
-        linkStart: 24,
-        linkEnd: 36
-      },
-      {
-        id: 'jm-4',
-        snippet: '...mentioned in [[journal]] that I want to focus more on deep work...',
-        linkStart: 16,
-        linkEnd: 23
-      }
-    ]
-  }
-]
 
 // =============================================================================
 // GREETING HELPERS
@@ -629,11 +574,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     // TODO: Navigate to linked note
   }, [])
 
-  const handleBacklinkClick = useCallback((noteId: string) => {
-    console.log('Backlink clicked, navigate to note:', noteId)
-    // TODO: Navigate to linked note
-  }, [])
-
   // Heading handlers for outline panel
   const handleHeadingClick = useCallback((headingId: string) => {
     const element = document.querySelector(`[data-id="${headingId}"]`)
@@ -1075,10 +1015,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
                       {/* Reminder Button */}
                       {viewState.type === 'day' && entry && (
-                        <JournalReminderButton
-                          journalDate={entry.date}
-                          disabled={false}
-                        />
+                        <JournalReminderButton journalDate={entry.date} disabled={false} />
                       )}
 
                       {/* Bookmark Button */}
@@ -1281,17 +1218,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                         onInternalLinkClick={handleInternalLinkClick}
                       />
                     )}
-                  </div>
-
-                  {/* Backlinks Section */}
-                  <div className=" mt-8">
-                    <BacklinksSection
-                      backlinks={DUMMY_JOURNAL_BACKLINKS}
-                      isLoading={false}
-                      initialCount={5}
-                      collapsible={true}
-                      onBacklinkClick={handleBacklinkClick}
-                    />
                   </div>
                 </>
               )}

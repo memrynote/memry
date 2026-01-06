@@ -16,6 +16,8 @@ import {
   InboxListSchema,
   InboxUpdateSchema,
   BulkArchiveSchema,
+  ListArchivedSchema,
+  GetFilingHistorySchema,
   type CaptureResponse,
   type InboxListResponse,
   type InboxItem,
@@ -25,7 +27,10 @@ import {
   type SuggestionsResponse,
   type InboxStats,
   type CapturePattern,
-  type ImageMetadata
+  type ImageMetadata,
+  type ArchivedListResponse,
+  type FilingHistoryResponse,
+  type FilingHistoryEntry
 } from '@shared/contracts/inbox-api'
 import sharp from 'sharp'
 import { getDatabase } from '../database'
@@ -36,10 +41,17 @@ import {
   resolveAttachmentUrl,
   getItemAttachmentsDir,
   storeInboxAttachment,
-  storeThumbnail
+  storeThumbnail,
+  deleteInboxAttachments
 } from '../inbox/attachments'
 import { fetchUrlMetadata, downloadImage } from '../inbox/metadata'
-import { fileToFolder, convertToNote, linkToNote, linkToNotes, bulkFileToFolder } from '../inbox/filing'
+import {
+  fileToFolder,
+  convertToNote,
+  linkToNote,
+  linkToNotes,
+  bulkFileToFolder
+} from '../inbox/filing'
 import {
   extractSocialPost,
   detectSocialPlatform,
@@ -903,7 +915,11 @@ async function handleGetStats(): Promise<InboxStats> {
     .select({ count: sql<number>`count(*)` })
     .from(inboxItems)
     .where(
-      and(isNull(inboxItems.filedAt), isNull(inboxItems.snoozedUntil), isNull(inboxItems.archivedAt))
+      and(
+        isNull(inboxItems.filedAt),
+        isNull(inboxItems.snoozedUntil),
+        isNull(inboxItems.archivedAt)
+      )
     )
     .get()
 
@@ -915,7 +931,11 @@ async function handleGetStats(): Promise<InboxStats> {
     })
     .from(inboxItems)
     .where(
-      and(isNull(inboxItems.filedAt), isNull(inboxItems.snoozedUntil), isNull(inboxItems.archivedAt))
+      and(
+        isNull(inboxItems.filedAt),
+        isNull(inboxItems.snoozedUntil),
+        isNull(inboxItems.archivedAt)
+      )
     )
     .groupBy(inboxItems.type)
     .all()
@@ -1256,7 +1276,11 @@ async function handleFile(input: unknown): Promise<FileResponse> {
             : []
 
         if (noteIds.length === 0) {
-          return { success: false, filedTo: null, error: 'At least one note ID required for linking' }
+          return {
+            success: false,
+            filedTo: null,
+            error: 'At least one note ID required for linking'
+          }
         }
 
         // Pass folder path so the inbox note is created in the selected folder
@@ -1665,6 +1689,129 @@ async function handleRetryMetadata(itemId: string): Promise<{ success: boolean; 
   }
 }
 
+async function handleListArchived(input: unknown): Promise<ArchivedListResponse> {
+  const options = ListArchivedSchema.parse(input || {})
+  const db = requireDatabase()
+
+  const conditions: ReturnType<typeof sql>[] = []
+  conditions.push(sql`${inboxItems.archivedAt} IS NOT NULL`)
+
+  if (options.search) {
+    conditions.push(
+      sql`(${inboxItems.title} LIKE ${'%' + options.search + '%'} OR ${inboxItems.content} LIKE ${'%' + options.search + '%'})`
+    )
+  }
+
+  const countResult = db
+    .select({ count: sql<number>`count(*)` })
+    .from(inboxItems)
+    .where(and(...conditions))
+    .get()
+
+  const total = countResult?.count || 0
+
+  const rows = db
+    .select()
+    .from(inboxItems)
+    .where(and(...conditions))
+    .orderBy(desc(inboxItems.archivedAt))
+    .limit(options.limit)
+    .offset(options.offset)
+    .all()
+
+  const items: InboxItemListItem[] = rows.map((row) => {
+    const tags = getItemTags(db, row.id)
+    return toListItem(row, tags)
+  })
+
+  return {
+    items,
+    total,
+    hasMore: options.offset + items.length < total
+  }
+}
+
+async function handleUnarchive(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const db = requireDatabase()
+
+    const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
+    if (!existing) {
+      return { success: false, error: 'Item not found' }
+    }
+
+    if (!existing.archivedAt) {
+      return { success: false, error: 'Item is not archived' }
+    }
+
+    db.update(inboxItems)
+      .set({
+        archivedAt: null,
+        modifiedAt: new Date().toISOString()
+      })
+      .where(eq(inboxItems.id, id))
+      .run()
+
+    emitInboxEvent(InboxChannels.events.UPDATED, { id, changes: { archivedAt: null } })
+
+    return { success: true }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return { success: false, error: message }
+  }
+}
+
+async function handleDeletePermanent(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const db = requireDatabase()
+
+    const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
+    if (!existing) {
+      return { success: false, error: 'Item not found' }
+    }
+
+    await deleteInboxAttachments(id)
+
+    db.delete(inboxItemTags).where(eq(inboxItemTags.itemId, id)).run()
+
+    db.delete(inboxItems).where(eq(inboxItems.id, id)).run()
+
+    return { success: true }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return { success: false, error: message }
+  }
+}
+
+async function handleGetFilingHistory(input: unknown): Promise<FilingHistoryResponse> {
+  const options = GetFilingHistorySchema.parse(input || {})
+  const db = requireDatabase()
+
+  const rows = db
+    .select()
+    .from(inboxItems)
+    .where(sql`${inboxItems.filedAt} IS NOT NULL`)
+    .orderBy(desc(inboxItems.filedAt))
+    .limit(options.limit)
+    .all()
+
+  const entries: FilingHistoryEntry[] = rows.map((row) => {
+    const tags = getItemTags(db, row.id)
+    return {
+      id: row.id,
+      itemId: row.id,
+      itemType: row.type as FilingHistoryEntry['itemType'],
+      itemTitle: row.title,
+      filedTo: row.filedTo || '',
+      filedAction: (row.filedAction || 'folder') as FilingHistoryEntry['filedAction'],
+      filedAt: new Date(row.filedAt!),
+      tags
+    }
+  })
+
+  return { entries }
+}
+
 async function stubGetPatterns(): Promise<CapturePattern> {
   return {
     timeHeatmap: [],
@@ -1755,6 +1902,16 @@ export function registerInboxHandlers(): void {
     handleSetStaleThreshold(days)
   )
 
+  // Archived items handlers
+  ipcMain.handle(InboxChannels.invoke.LIST_ARCHIVED, (_, input) => handleListArchived(input))
+  ipcMain.handle(InboxChannels.invoke.UNARCHIVE, (_, id) => handleUnarchive(id))
+  ipcMain.handle(InboxChannels.invoke.DELETE_PERMANENT, (_, id) => handleDeletePermanent(id))
+
+  // Filing history handler
+  ipcMain.handle(InboxChannels.invoke.GET_FILING_HISTORY, (_, input) =>
+    handleGetFilingHistory(input)
+  )
+
   console.log('[IPC] Inbox handlers registered')
 }
 
@@ -1816,6 +1973,14 @@ export function unregisterInboxHandlers(): void {
   // Settings
   ipcMain.removeHandler(InboxChannels.invoke.GET_STALE_THRESHOLD)
   ipcMain.removeHandler(InboxChannels.invoke.SET_STALE_THRESHOLD)
+
+  // Archived items
+  ipcMain.removeHandler(InboxChannels.invoke.LIST_ARCHIVED)
+  ipcMain.removeHandler(InboxChannels.invoke.UNARCHIVE)
+  ipcMain.removeHandler(InboxChannels.invoke.DELETE_PERMANENT)
+
+  // Filing history
+  ipcMain.removeHandler(InboxChannels.invoke.GET_FILING_HISTORY)
 
   console.log('[IPC] Inbox handlers unregistered')
 }

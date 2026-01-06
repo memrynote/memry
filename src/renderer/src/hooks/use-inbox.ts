@@ -22,6 +22,7 @@ import {
   onInboxProcessingError,
   type CaptureTextInput,
   type CaptureLinkInput,
+  type CaptureImageInput,
   type CaptureVoiceInput,
   type InboxListInput,
   type InboxUpdateInput,
@@ -46,7 +47,9 @@ export const inboxKeys = {
   tags: () => [...inboxKeys.all, 'tags'] as const,
   snoozed: () => [...inboxKeys.all, 'snoozed'] as const,
   suggestions: (itemId: string) => [...inboxKeys.all, 'suggestions', itemId] as const,
-  staleThreshold: () => [...inboxKeys.all, 'staleThreshold'] as const
+  staleThreshold: () => [...inboxKeys.all, 'staleThreshold'] as const,
+  archived: (options?: { search?: string }) => [...inboxKeys.all, 'archived', options] as const,
+  filingHistory: () => [...inboxKeys.all, 'filingHistory'] as const
 }
 
 // =============================================================================
@@ -479,6 +482,21 @@ export function useCaptureVoice() {
   })
 }
 
+/**
+ * Hook for capturing an image.
+ */
+export function useCaptureImage() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (input: CaptureImageInput) => inboxService.captureImage(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+    }
+  })
+}
+
 // =============================================================================
 // CRUD Mutations
 // =============================================================================
@@ -748,14 +766,96 @@ export function useInboxProcessingErrors(
   }, [callback])
 }
 
-// =============================================================================
-// Combined Inbox Operations Hook
-// =============================================================================
+export interface ArchivedListOptions {
+  search?: string
+  limit?: number
+  enabled?: boolean
+}
 
-/**
- * Convenience hook that combines common inbox operations.
- * Useful for components that need full CRUD access.
- */
+export function useInboxArchived(options: ArchivedListOptions = {}) {
+  const queryClient = useQueryClient()
+  const { enabled = true, ...listOptions } = options
+
+  const query = useInfiniteQuery({
+    queryKey: inboxKeys.archived(listOptions),
+    queryFn: async ({ pageParam = 0 }) => {
+      const response = await inboxService.listArchived({
+        ...listOptions,
+        offset: pageParam,
+        limit: listOptions.limit ?? 50
+      })
+      return response
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      const totalFetched = allPages.reduce((acc, page) => acc + page.items.length, 0)
+      return lastPage.hasMore ? totalFetched : undefined
+    },
+    initialPageParam: 0,
+    staleTime: ITEM_STALE_TIME,
+    enabled
+  })
+
+  const items = query.data?.pages.flatMap((page) => page.items) ?? []
+  const lastPage = query.data?.pages[query.data.pages.length - 1]
+  const total = lastPage?.total ?? 0
+  const hasMore = lastPage?.hasMore ?? false
+
+  useEffect(() => {
+    const unsubArchived = onInboxArchived(() => {
+      queryClient.invalidateQueries({ queryKey: inboxKeys.archived({}) })
+    })
+    return () => {
+      unsubArchived()
+    }
+  }, [queryClient])
+
+  return {
+    items,
+    total,
+    hasMore,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    error: query.error,
+    refetch: () => query.refetch(),
+    loadMore: () => query.fetchNextPage(),
+    isLoadingMore: query.isFetchingNextPage
+  }
+}
+
+export function useUnarchiveInboxItem() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => inboxService.unarchive(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inboxKeys.archived({}) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+    }
+  })
+}
+
+export function useDeletePermanentInboxItem() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => inboxService.deletePermanent(id),
+    onSuccess: (_, id) => {
+      queryClient.removeQueries({ queryKey: inboxKeys.item(id) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.archived({}) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+    }
+  })
+}
+
+export function useInboxFilingHistory(options?: { limit?: number }) {
+  return useQuery({
+    queryKey: inboxKeys.filingHistory(),
+    queryFn: () => inboxService.getFilingHistory(options),
+    staleTime: ITEM_STALE_TIME
+  })
+}
+
 export function useInboxOperations() {
   const captureText = useCaptureText()
   const captureLink = useCaptureLink()
