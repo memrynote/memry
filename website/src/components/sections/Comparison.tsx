@@ -9,8 +9,8 @@ function ComparisonCell({ value }: { value: boolean | 'partial' }) {
   if (value === true) {
     return (
       <div className="flex justify-center">
-        <div className="w-6 h-6 rounded-full bg-success/10 flex items-center justify-center">
-          <Check className="w-4 h-4 text-success" />
+        <div className="w-6 h-6 rounded-full bg-sage/10 flex items-center justify-center">
+          <Check className="w-4 h-4 text-sage" />
         </div>
       </div>
     )
@@ -19,8 +19,8 @@ function ComparisonCell({ value }: { value: boolean | 'partial' }) {
   if (value === 'partial') {
     return (
       <div className="flex justify-center">
-        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-          <Minus className="w-4 h-4 text-primary" />
+        <div className="w-6 h-6 rounded-full bg-terracotta/10 flex items-center justify-center">
+          <Minus className="w-4 h-4 text-terracotta" />
         </div>
       </div>
     )
@@ -29,7 +29,7 @@ function ComparisonCell({ value }: { value: boolean | 'partial' }) {
   return (
     <div className="flex justify-center">
       <div className="w-6 h-6 rounded-full bg-muted/10 flex items-center justify-center">
-        <X className="w-4 h-4 text-muted" />
+        <X className="w-4 h-4 text-muted/50" />
       </div>
     </div>
   )
@@ -37,7 +37,7 @@ function ComparisonCell({ value }: { value: boolean | 'partial' }) {
 
 export function Comparison() {
   return (
-    <section className="py-24 bg-surface">
+    <section className="py-24 bg-paper-alt/30">
       <Container size="md">
         <SectionHeading
           title="How we compare"
@@ -48,19 +48,19 @@ export function Comparison() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-100px' }}
-          transition={{ duration: 0.5 }}
-          className="overflow-x-auto"
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="overflow-x-auto rounded-xl border border-border/50 bg-white/50 shadow-sm"
         >
           <table className="w-full">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-border/60">
                 {COMPARISON_DATA.headers.map((header, index) => (
                   <th
                     key={header || 'feature'}
                     className={cn(
-                      'py-4 px-4 text-sm font-medium',
-                      index === 0 ? 'text-left' : 'text-center',
-                      index === 1 && 'text-primary'
+                      'py-5 px-6 text-sm font-medium font-mono-accent uppercase tracking-wider',
+                      index === 0 ? 'text-left text-ink' : 'text-center text-muted',
+                      index === 1 && 'text-terracotta font-bold'
                     )}
                   >
                     {header}
@@ -70,18 +70,21 @@ export function Comparison() {
             </thead>
             <tbody>
               {COMPARISON_DATA.rows.map((row) => (
-                <tr key={row.feature} className="border-b border-border/50">
-                  <td className="py-4 px-4 text-sm text-foreground">{row.feature}</td>
-                  <td className="py-4 px-4">
+                <tr
+                  key={row.feature}
+                  className="border-b border-border/40 hover:bg-paper-alt/50 transition-colors"
+                >
+                  <td className="py-4 px-6 text-sm font-medium text-ink">{row.feature}</td>
+                  <td className="py-4 px-6 bg-paper-alt/20">
                     <ComparisonCell value={row.memry} />
                   </td>
-                  <td className="py-4 px-4">
+                  <td className="py-4 px-6">
                     <ComparisonCell value={row.notion} />
                   </td>
-                  <td className="py-4 px-4">
+                  <td className="py-4 px-6">
                     <ComparisonCell value={row.obsidian} />
                   </td>
-                  <td className="py-4 px-4">
+                  <td className="py-4 px-6">
                     <ComparisonCell value={row.logseq} />
                   </td>
                 </tr>
@@ -90,15 +93,15 @@ export function Comparison() {
           </table>
         </motion.div>
 
-        <p className="text-center text-sm text-muted mt-6">
-          <span className="inline-flex items-center gap-2 mr-4">
-            <Check className="w-4 h-4 text-success" /> Yes
+        <p className="text-center text-sm text-muted mt-8 font-mono-accent">
+          <span className="inline-flex items-center gap-2 mr-6">
+            <Check className="w-3 h-3 text-sage" /> Yes
           </span>
-          <span className="inline-flex items-center gap-2 mr-4">
-            <Minus className="w-4 h-4 text-primary" /> Partial/Plugin
+          <span className="inline-flex items-center gap-2 mr-6">
+            <Minus className="w-3 h-3 text-terracotta" /> Partial/Plugin
           </span>
           <span className="inline-flex items-center gap-2">
-            <X className="w-4 h-4 text-muted" /> No
+            <X className="w-3 h-3 text-muted" /> No
           </span>
         </p>
       </Container>

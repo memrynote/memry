@@ -1,17 +1,21 @@
 import { Inbox, BookOpen, FileText, CheckSquare, FolderOpen, Lock, Zap } from 'lucide-react'
 
-export const FORMSPREE_ID = 'YOUR_FORMSPREE_ID'
+export const ZOOTOOLS_API_KEY = 'zootools-api-token-b0a9da5d-56c2-427b-82ef-ee80d89f43a3'
 export const GITHUB_URL = 'https://github.com/memrynote/memry'
+export const DISCORD_URL = 'https://discord.gg/memry'
+export const TWITTER_DEV_URL = 'https://x.com/h4yfans'
 
 export const NAV_LINKS = [
-  { label: 'Features', href: '/features' },
-  { label: 'Pricing', href: '/pricing' }
+  { label: 'Features', href: '#features' },
+  { label: 'Roadmap', href: '#roadmap' },
+  { label: 'Pricing', href: '#pricing' }
 ] as const
 
 export const FOOTER_LINKS = {
   product: [
-    { label: 'Features', href: '/features' },
-    { label: 'Pricing', href: '/pricing' },
+    { label: 'Features', href: '#features' },
+    { label: 'Roadmap', href: '#roadmap' },
+    { label: 'Pricing', href: '#pricing' },
     { label: 'Download', href: '#waitlist' }
   ],
   resources: [

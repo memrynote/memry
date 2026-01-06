@@ -6,29 +6,29 @@ export function Footer() {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="border-t border-border bg-surface py-16">
+    <footer className="border-t border-border bg-paper py-20">
       <Container>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
-          <div className="col-span-2 md:col-span-1">
-            <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">M</span>
-              </div>
-              <span className="font-display text-xl font-semibold text-foreground">Memry</span>
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-10 mb-16">
+          <div className="col-span-2 md:col-span-2 pr-8">
+            <Link to="/" className="inline-block mb-6 group">
+              <span className="font-serif text-3xl font-medium text-ink group-hover:text-terracotta transition-colors">
+                Memry.
+              </span>
             </Link>
-            <p className="text-sm text-muted font-serif italic">
-              Your thoughts, beautifully organized.
+            <p className="text-lg text-muted font-sans leading-relaxed max-w-sm">
+              The local-first PKM that combines task management, journaling, and note-taking in one
+              warm, focused space.
             </p>
           </div>
 
           <div>
-            <h4 className="font-medium text-foreground mb-4">Product</h4>
-            <ul className="space-y-3">
+            <h4 className="font-serif text-lg text-ink mb-6">Product</h4>
+            <ul className="space-y-4">
               {FOOTER_LINKS.product.map((link) => (
                 <li key={link.label}>
                   <Link
                     to={link.href}
-                    className="text-sm text-muted hover:text-primary transition-colors"
+                    className="text-sm text-muted hover:text-terracotta transition-colors font-medium"
                   >
                     {link.label}
                   </Link>
@@ -38,13 +38,13 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-medium text-foreground mb-4">Resources</h4>
-            <ul className="space-y-3">
+            <h4 className="font-serif text-lg text-ink mb-6">Resources</h4>
+            <ul className="space-y-4">
               {FOOTER_LINKS.resources.map((link) => (
                 <li key={link.label}>
                   <Link
                     to={link.href}
-                    className="text-sm text-muted hover:text-primary transition-colors"
+                    className="text-sm text-muted hover:text-terracotta transition-colors font-medium"
                   >
                     {link.label}
                   </Link>
@@ -54,13 +54,13 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-medium text-foreground mb-4">Legal</h4>
-            <ul className="space-y-3">
+            <h4 className="font-serif text-lg text-ink mb-6">Legal</h4>
+            <ul className="space-y-4">
               {FOOTER_LINKS.legal.map((link) => (
                 <li key={link.label}>
                   <Link
                     to={link.href}
-                    className="text-sm text-muted hover:text-primary transition-colors"
+                    className="text-sm text-muted hover:text-terracotta transition-colors font-medium"
                   >
                     {link.label}
                   </Link>
@@ -70,15 +70,15 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-medium text-foreground mb-4">Connect</h4>
-            <ul className="space-y-3">
+            <h4 className="font-serif text-lg text-ink mb-6">Connect</h4>
+            <ul className="space-y-4">
               {FOOTER_LINKS.social.map((link) => (
                 <li key={link.label}>
                   <a
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-muted hover:text-primary transition-colors"
+                    className="text-sm text-muted hover:text-terracotta transition-colors font-medium"
                   >
                     {link.label}
                   </a>
@@ -88,10 +88,13 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="pt-8 border-t border-border">
-          <p className="text-sm text-muted text-center">
-            © {currentYear} Memry. Made with care at{' '}
-            <a href="https://memrynote.com" className="text-primary hover:underline">
+        <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-sm text-muted/60 font-mono-accent">
+            © {currentYear} Memry. All rights reserved.
+          </p>
+          <p className="text-sm text-muted/60 font-mono-accent">
+            Made with care at{' '}
+            <a href="https://memrynote.com" className="text-terracotta hover:underline">
               memrynote.com
             </a>
           </p>

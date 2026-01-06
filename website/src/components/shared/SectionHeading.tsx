@@ -19,14 +19,15 @@ export function SectionHeading({
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-100px' }}
-      transition={{ duration: 0.5 }}
-      className={cn('mb-12', align === 'center' && 'text-center', className)}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      className={cn('mb-16', align === 'center' && 'text-center', className)}
     >
-      <h2 className="font-display text-3xl md:text-4xl font-semibold text-foreground mb-4">
+      <h2 className="font-serif text-4xl md:text-5xl font-normal text-ink mb-6 relative inline-block">
         {title}
+        <span className="absolute -bottom-2 left-1/4 right-1/4 h-px bg-terracotta/30" />
       </h2>
       {subtitle && (
-        <p className="text-lg text-muted font-serif italic max-w-2xl mx-auto">{subtitle}</p>
+        <p className="text-xl text-muted font-sans max-w-2xl mx-auto leading-relaxed">{subtitle}</p>
       )}
     </motion.div>
   )
