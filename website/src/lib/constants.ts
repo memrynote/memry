@@ -111,6 +111,13 @@ export const COMPARISON_DATA = {
     { feature: 'Markdown files', memry: true, notion: false, obsidian: true, logseq: true },
     { feature: 'Free tier', memry: true, notion: 'partial', obsidian: true, logseq: true },
     {
+      feature: 'End-to-end encryption',
+      memry: true,
+      notion: false,
+      obsidian: true,
+      logseq: false
+    },
+    {
       feature: 'Integrated experience',
       memry: true,
       notion: true,
@@ -146,7 +153,7 @@ export const PRICING_TIERS = [
       'Everything in Free',
       'Publish notes to web',
       'Real-time collaboration',
-      'Mobile app sync',
+      'E2EE mobile sync',
       'Priority support'
     ],
     cta: 'Join Waitlist',
@@ -164,6 +171,11 @@ export const FAQ_ITEMS = [
     question: 'Where is my data stored?',
     answer:
       'Your data lives in a "vault" folder on your computer that you choose. Notes are stored as plain Markdown files with YAML frontmatter for metadata. You can open them in any text editor.'
+  },
+  {
+    question: 'Is my data secure?',
+    answer:
+      'Absolutely. Your data is stored locally on your device by default. When you use Pro features like sync or collaboration, all data is encrypted end-to-end (E2EE) — meaning only you and the people you share with can read it. Not even we can access your content.'
   },
   {
     question: 'Can I sync between devices?',
