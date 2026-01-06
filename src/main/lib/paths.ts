@@ -102,14 +102,18 @@ export function ensureMarkdownExtension(filePath: string): string {
 
 /**
  * Builds a memry-file:// URL from a local file path.
+ * Uses 'local' as explicit host to avoid URL parsing issues where
+ * the first path segment gets treated as hostname and lowercased.
  */
 export function toMemryFileUrl(filePath: string): string {
   const normalized = path.normalize(filePath)
 
   if (process.platform === 'win32') {
-    return `memry-file:///${normalized.replace(/\\/g, '/')}`
+    // Windows: memry-file://local/C:/path/to/file
+    return `memry-file://local/${normalized.replace(/\\/g, '/')}`
   }
 
-  const absolutePath = normalized.startsWith('/') ? normalized : `/${normalized}`
-  return `memry-file://${absolutePath}`
+  // macOS/Linux: memry-file://local/Users/name/path
+  const absolutePath = normalized.startsWith('/') ? normalized.slice(1) : normalized
+  return `memry-file://local/${absolutePath}`
 }

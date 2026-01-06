@@ -194,13 +194,23 @@ app.whenReady().then(async () => {
   // Register custom protocol for serving local attachment files
   // This allows secure access to vault files from the renderer process
   protocol.handle('memry-file', async (request) => {
-    // URL format: memry-file:///absolute/path/to/file
+    // URL format: memry-file://local/absolute/path/to/file
+    // Using 'local' as explicit host to avoid URL parsing issues
     const url = new URL(request.url)
     // The pathname is URL-encoded, need to decode it
     let filePath = decodeURIComponent(url.pathname)
-    // On Windows, remove the leading slash from /C:/path/to/file
-    if (process.platform === 'win32' && filePath.startsWith('/')) {
-      filePath = filePath.slice(1)
+
+    // On macOS/Linux, the path should be absolute (starts with /)
+    if (process.platform !== 'win32') {
+      // Ensure the path starts with /
+      if (!filePath.startsWith('/')) {
+        filePath = '/' + filePath
+      }
+    } else {
+      // On Windows, remove the leading slash from /C:/path/to/file
+      if (filePath.startsWith('/')) {
+        filePath = filePath.slice(1)
+      }
     }
 
     // Check if file exists before fetching to avoid noisy errors
