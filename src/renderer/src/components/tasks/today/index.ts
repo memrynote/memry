@@ -1,2 +1,2 @@
-export { TodayView } from "./today-view"
-export { default } from "./today-view"
+export { VirtualizedTodayView as TodayView } from "./virtualized-today-view"
+export { default } from "./virtualized-today-view"

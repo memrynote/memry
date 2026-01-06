@@ -17,3 +17,9 @@ export * from './date-breadcrumb'
 export * from './journal-entry-list-item'
 export * from './journal-month-view'
 export * from './journal-year-view'
+
+// Template Indicator
+export * from './default-template-indicator'
+
+// Error Boundary
+export * from './journal-error-boundary'

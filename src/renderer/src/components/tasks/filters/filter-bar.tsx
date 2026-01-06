@@ -1,7 +1,14 @@
 import { useState, useRef, useMemo, forwardRef, useImperativeHandle } from "react"
-import { CheckSquare, CircleCheck, SlidersHorizontal } from "lucide-react"
+import { CheckSquare, CircleCheck, SlidersHorizontal, MoreHorizontal, Archive, FolderArchive } from "lucide-react"
 
 import { SearchInput } from "./search-input"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { ProjectFilter } from "./project-filter"
 import { PriorityFilter } from "./priority-filter"
 import { DueDateFilter } from "./due-date-filter"
@@ -48,6 +55,14 @@ interface FilterBarProps {
   onToggleSelectionMode?: () => void
   /** Whether to show the "Show Completed" toggle */
   showCompletionToggle?: boolean
+  /** View archived tasks */
+  onViewArchived?: () => void
+  /** Open archive options menu */
+  onArchiveOptions?: () => void
+  /** Number of completed tasks */
+  completedCount?: number
+  /** Number of archived tasks */
+  archivedCount?: number
   className?: string
 }
 
@@ -79,6 +94,10 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
       isSelectionMode = false,
       onToggleSelectionMode,
       showCompletionToggle = false,
+      onViewArchived,
+      onArchiveOptions,
+      completedCount = 0,
+      archivedCount = 0,
       className,
     },
     ref
@@ -294,25 +313,51 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
           <div className="flex items-center gap-2 shrink-0">
             <SortDropdown sort={sort} onChange={onUpdateSort} />
 
-            {onToggleSelectionMode && (
+            {/* More dropdown - contains Select, Archive options */}
+            {(onToggleSelectionMode || onViewArchived || onArchiveOptions) && (
               <>
                 <div className="h-6 w-px bg-border" />
-                <button
-                  type="button"
-                  onClick={onToggleSelectionMode}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
-                    "hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    isSelectionMode
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                  aria-label={isSelectionMode ? "Exit selection mode" : "Enter selection mode"}
-                  aria-pressed={isSelectionMode}
-                >
-                  <CheckSquare className="size-4" />
-                  <span className="hidden sm:inline">Select</span>
-                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-9 px-2.5",
+                        (isSelectionMode || archivedCount > 0 || completedCount > 0) && "text-foreground"
+                      )}
+                    >
+                      <MoreHorizontal className="size-4" />
+                      <span className="sr-only">More options</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    {onToggleSelectionMode && (
+                      <DropdownMenuItem onClick={onToggleSelectionMode}>
+                        <CheckSquare className="size-4 mr-2" />
+                        {isSelectionMode ? "Exit Selection" : "Select Tasks"}
+                      </DropdownMenuItem>
+                    )}
+
+                    {(onViewArchived || onArchiveOptions) && onToggleSelectionMode && (
+                      <DropdownMenuSeparator />
+                    )}
+
+                    {onViewArchived && archivedCount > 0 && (
+                      <DropdownMenuItem onClick={onViewArchived}>
+                        <FolderArchive className="size-4 mr-2" />
+                        View Archived ({archivedCount})
+                      </DropdownMenuItem>
+                    )}
+
+                    {onArchiveOptions && completedCount > 0 && (
+                      <DropdownMenuItem onClick={onArchiveOptions}>
+                        <Archive className="size-4 mr-2" />
+                        Archive Options...
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             )}
           </div>

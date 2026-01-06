@@ -13,17 +13,20 @@
 export type TabType =
   | 'inbox'
   | 'home'
-  | 'tasks'       // New unified tasks tab
-  | 'all-tasks'   // Legacy - kept for backwards compatibility
-  | 'today'       // Legacy - kept for backwards compatibility
-  | 'upcoming'    // Legacy - kept for backwards compatibility
-  | 'completed'   // Legacy - kept for backwards compatibility
-  | 'project'     // Legacy - kept for backwards compatibility
+  | 'tasks' // New unified tasks tab
+  | 'all-tasks' // Legacy - kept for backwards compatibility
+  | 'today' // Legacy - kept for backwards compatibility
+  | 'upcoming' // Legacy - kept for backwards compatibility
+  | 'completed' // Legacy - kept for backwards compatibility
+  | 'project' // Legacy - kept for backwards compatibility
   | 'note'
+  | 'folder' // Folder view (Bases-like database view)
   | 'journal'
   | 'search'
   | 'settings'
-  | 'collection';
+  | 'collection'
+  | 'template-editor' // Template editing (Phase 15)
+  | 'templates' // Template list/management (Phase 15)
 
 /**
  * Singleton tab types - only one instance allowed
@@ -33,20 +36,21 @@ export const SINGLETON_TAB_TYPES: TabType[] = [
   'inbox',
   'home',
   'journal',
-  'tasks',      // New unified tasks tab
-  'all-tasks',  // Legacy
-  'today',      // Legacy
-  'upcoming',   // Legacy
-  'completed',  // Legacy
+  'tasks', // New unified tasks tab
+  'all-tasks', // Legacy
+  'today', // Legacy
+  'upcoming', // Legacy
+  'completed', // Legacy
   'settings',
-];
+  'templates' // Template list
+]
 
 /**
  * Check if a tab type is singleton
  */
 export const isSingletonTabType = (type: TabType): boolean => {
-  return SINGLETON_TAB_TYPES.includes(type);
-};
+  return SINGLETON_TAB_TYPES.includes(type)
+}
 
 // =============================================================================
 // TAB INTERFACE
@@ -57,37 +61,41 @@ export const isSingletonTabType = (type: TabType): boolean => {
  */
 export interface Tab {
   /** Unique identifier (uuid) */
-  id: string;
+  id: string
   /** Content type */
-  type: TabType;
+  type: TabType
   /** Display title */
-  title: string;
+  title: string
   /** Icon name (lucide icon) */
-  icon: string;
+  icon: string
+  /** Emoji icon (overrides icon for notes) */
+  emoji?: string | null
   /** Route/path for navigation */
-  path: string;
+  path: string
   /** ID of note/project/journal if applicable */
-  entityId?: string;
+  entityId?: string
 
   // State
   /** Pinned tabs stay leftmost */
-  isPinned: boolean;
+  isPinned: boolean
   /** Has unsaved changes (for notes) */
-  isModified: boolean;
+  isModified: boolean
   /** Preview mode - single-click, replaced on next open */
-  isPreview: boolean;
+  isPreview: boolean
+  /** Entity was deleted externally (show strikethrough) */
+  isDeleted: boolean
 
   // Preserved state
   /** Scroll position to restore */
-  scrollPosition?: number;
+  scrollPosition?: number
   /** View-specific state (filters, expanded sections, etc.) */
-  viewState?: Record<string, unknown>;
+  viewState?: Record<string, unknown>
 
   // Metadata
   /** Timestamp when opened */
-  openedAt: number;
+  openedAt: number
   /** Timestamp of last focus */
-  lastAccessedAt: number;
+  lastAccessedAt: number
 }
 
 // =============================================================================
@@ -99,13 +107,13 @@ export interface Tab {
  */
 export interface TabGroup {
   /** Unique identifier */
-  id: string;
+  id: string
   /** Tabs in this group */
-  tabs: Tab[];
+  tabs: Tab[]
   /** Currently active tab in group */
-  activeTabId: string | null;
+  activeTabId: string | null
   /** Is this the focused group? */
-  isActive: boolean;
+  isActive: boolean
 }
 
 /**
@@ -114,7 +122,7 @@ export interface TabGroup {
  */
 export type SplitLayout =
   | { type: 'leaf'; tabGroupId: string }
-  | { type: 'horizontal'; ratio: number; first: SplitLayout; second: SplitLayout };
+  | { type: 'horizontal'; ratio: number; first: SplitLayout; second: SplitLayout }
 
 // =============================================================================
 // TAB SETTINGS
@@ -124,16 +132,12 @@ export type SplitLayout =
  * User preferences for tab behavior
  */
 export interface TabSettings {
-  /** When to open in new tab: always, never, or with modifier key (Ctrl/Cmd+click) */
-  openInNewTab: 'always' | 'never' | 'modifier';
   /** Single-click opens preview, double-click opens permanent */
-  previewMode: boolean;
-  /** Keep pinned tabs on left */
-  showPinnedTabsFirst: boolean;
+  previewMode: boolean
   /** Restore tabs from last session on app start */
-  restoreSessionOnStart: boolean;
+  restoreSessionOnStart: boolean
   /** When to show close button: always, on hover, or only on active tab */
-  tabCloseButton: 'always' | 'hover' | 'active';
+  tabCloseButton: 'always' | 'hover' | 'active'
 }
 
 // =============================================================================
@@ -145,13 +149,13 @@ export interface TabSettings {
  */
 export interface TabSystemState {
   /** Tab groups (one per split pane) */
-  tabGroups: Record<string, TabGroup>;
+  tabGroups: Record<string, TabGroup>
   /** Layout tree defining split arrangement */
-  layout: SplitLayout;
+  layout: SplitLayout
   /** Currently focused group ID */
-  activeGroupId: string;
+  activeGroupId: string
   /** User preferences */
-  settings: TabSettings;
+  settings: TabSettings
 }
 
 // =============================================================================
@@ -163,13 +167,15 @@ export interface TabSystemState {
  */
 export interface OpenTabOptions {
   /** Target group ID (defaults to active group) */
-  groupId?: string;
+  groupId?: string
   /** Position to insert tab at */
-  position?: number;
+  position?: number
   /** Don't focus the new tab */
-  background?: boolean;
+  background?: boolean
   /** Open even if singleton exists */
-  forceNew?: boolean;
+  forceNew?: boolean
+  /** Replace the currently active tab instead of creating a new one */
+  replaceActive?: boolean
 }
 
 /**
@@ -178,13 +184,15 @@ export interface OpenTabOptions {
 export type TabAction =
   // Tab CRUD
   | {
-      type: 'OPEN_TAB';
+      type: 'OPEN_TAB'
       payload: {
-        tab: Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>;
-        groupId?: string;
-        position?: number;
-        background?: boolean;
-      };
+        tab: Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>
+        groupId?: string
+        position?: number
+        background?: boolean
+        /** Replace the currently active tab instead of creating a new one */
+        replaceActive?: boolean
+      }
     }
   | { type: 'CLOSE_TAB'; payload: { tabId: string; groupId: string } }
   | { type: 'CLOSE_OTHER_TABS'; payload: { tabId: string; groupId: string } }
@@ -203,25 +211,26 @@ export type TabAction =
   | { type: 'PIN_TAB'; payload: { tabId: string; groupId: string } }
   | { type: 'UNPIN_TAB'; payload: { tabId: string; groupId: string } }
   | { type: 'SET_TAB_MODIFIED'; payload: { tabId: string; groupId: string; isModified: boolean } }
+  | { type: 'SET_TAB_DELETED'; payload: { tabId: string; groupId: string; isDeleted: boolean } }
   | { type: 'UPDATE_TAB_TITLE'; payload: { tabId: string; groupId: string; title: string } }
   | { type: 'PROMOTE_PREVIEW_TAB'; payload: { tabId: string; groupId: string } }
 
   // Tab reordering
   | {
-      type: 'MOVE_TAB';
-      payload: { tabId: string; fromGroupId: string; toGroupId: string; toIndex: number };
+      type: 'MOVE_TAB'
+      payload: { tabId: string; fromGroupId: string; toGroupId: string; toIndex: number }
     }
   | { type: 'REORDER_TABS'; payload: { groupId: string; fromIndex: number; toIndex: number } }
 
   // Tab state preservation
   | {
-      type: 'SAVE_TAB_STATE';
+      type: 'SAVE_TAB_STATE'
       payload: {
-        tabId: string;
-        groupId: string;
-        scrollPosition?: number;
-        viewState?: Record<string, unknown>;
-      };
+        tabId: string
+        groupId: string
+        scrollPosition?: number
+        viewState?: Record<string, unknown>
+      }
     }
 
   // Split view
@@ -229,24 +238,24 @@ export type TabAction =
   | { type: 'RESIZE_SPLIT'; payload: { path: number[]; ratio: number } }
   | { type: 'CLOSE_SPLIT'; payload: { groupId: string } }
   | {
-      type: 'MOVE_TAB_TO_NEW_SPLIT';
+      type: 'MOVE_TAB_TO_NEW_SPLIT'
       payload: {
-        tabId: string;
-        fromGroupId: string;
+        tabId: string
+        fromGroupId: string
         /** Target group to split (if different from fromGroupId) */
-        targetGroupId?: string;
-        direction: 'horizontal' | 'left' | 'right';
+        targetGroupId?: string
+        direction: 'horizontal' | 'left' | 'right'
         /** Position of new pane relative to target */
-        position?: 'first' | 'second';
-      };
+        position?: 'first' | 'second'
+      }
     }
   | {
-      type: 'SET_LAYOUT';
+      type: 'SET_LAYOUT'
       payload: {
-        tabGroups: Record<string, TabGroup>;
-        layout: SplitLayout;
-        activeGroupId: string;
-      };
+        tabGroups: Record<string, TabGroup>
+        layout: SplitLayout
+        activeGroupId: string
+      }
     }
 
   // Settings
@@ -254,7 +263,7 @@ export type TabAction =
 
   // Session
   | { type: 'RESTORE_SESSION'; payload: TabSystemState }
-  | { type: 'RESET_TO_DEFAULT' };
+  | { type: 'RESET_TO_DEFAULT' }
 
 // =============================================================================
 // SIDEBAR INTEGRATION
@@ -265,21 +274,23 @@ export type TabAction =
  */
 export interface SidebarItem {
   /** Unique identifier (optional - will be generated if not provided) */
-  id?: string;
+  id?: string
   /** Content type */
-  type: TabType;
+  type: TabType
   /** Display title */
-  title: string;
+  title: string
   /** Icon name (lucide icon) */
-  icon?: string;
+  icon?: string
+  /** Emoji icon (overrides icon for notes) */
+  emoji?: string | null
   /** Route/path for navigation */
-  path: string;
+  path: string
   /** Entity ID for notes/projects/journals */
-  entityId?: string;
+  entityId?: string
   /** Color for projects (hex or name) */
-  color?: string;
+  color?: string
   /** Item count (e.g., task count) */
-  count?: number;
+  count?: number
   /** Nested children items */
-  children?: SidebarItem[];
+  children?: SidebarItem[]
 }

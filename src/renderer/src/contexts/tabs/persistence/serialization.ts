@@ -3,19 +3,11 @@
  * Functions to serialize/deserialize tab state for storage
  */
 
-import type {
-  Tab,
-  TabGroup,
-  TabSystemState,
-} from '@/contexts/tabs/types';
-import { createDefaultTab, generateId } from '@/contexts/tabs/helpers';
-import type {
-  PersistedTabState,
-  PersistedTabGroup,
-  PersistedTab,
-} from './types';
-import { STORAGE_VERSION } from './types';
-import { migratePersistedState } from './migrations';
+import type { Tab, TabGroup, TabSystemState } from '@/contexts/tabs/types'
+import { createDefaultTab, generateId } from '@/contexts/tabs/helpers'
+import type { PersistedTabState, PersistedTabGroup, PersistedTab } from './types'
+import { STORAGE_VERSION } from './types'
+import { migratePersistedState } from './migrations'
 
 // =============================================================================
 // SERIALIZE
@@ -26,7 +18,7 @@ import { migratePersistedState } from './migrations';
  * Filters out preview tabs and transient state
  */
 export const serializeTabState = (state: TabSystemState): PersistedTabState => {
-  const tabGroups: Record<string, PersistedTabGroup> = {};
+  const tabGroups: Record<string, PersistedTabGroup> = {}
 
   for (const [groupId, group] of Object.entries(state.tabGroups)) {
     // Filter out preview tabs - they shouldn't persist
@@ -41,16 +33,16 @@ export const serializeTabState = (state: TabSystemState): PersistedTabState => {
         entityId: tab.entityId,
         isPinned: tab.isPinned,
         scrollPosition: tab.scrollPosition,
-        viewState: tab.viewState,
-      }));
+        viewState: tab.viewState
+      }))
 
     // Only persist groups that have tabs
     if (persistedTabs.length > 0) {
       tabGroups[groupId] = {
         id: group.id,
         tabs: persistedTabs,
-        activeTabId: group.activeTabId,
-      };
+        activeTabId: group.activeTabId
+      }
     }
   }
 
@@ -60,9 +52,9 @@ export const serializeTabState = (state: TabSystemState): PersistedTabState => {
     layout: state.layout,
     activeGroupId: state.activeGroupId,
     settings: state.settings,
-    savedAt: Date.now(),
-  };
-};
+    savedAt: Date.now()
+  }
+}
 
 // =============================================================================
 // DESERIALIZE
@@ -72,15 +64,13 @@ export const serializeTabState = (state: TabSystemState): PersistedTabState => {
  * Deserialize tab state from storage
  * Applies migrations and validates data
  */
-export const deserializeTabState = (
-  persisted: PersistedTabState
-): Partial<TabSystemState> => {
+export const deserializeTabState = (persisted: PersistedTabState): Partial<TabSystemState> => {
   // Apply migrations if needed
-  const migrated = migratePersistedState(persisted);
+  const migrated = migratePersistedState(persisted)
 
-  const tabGroups: Record<string, TabGroup> = {};
+  const tabGroups: Record<string, TabGroup> = {}
 
-  const persistedTabGroups = migrated.tabGroups as Record<string, PersistedTabGroup>;
+  const persistedTabGroups = migrated.tabGroups as Record<string, PersistedTabGroup>
 
   for (const [groupId, group] of Object.entries(persistedTabGroups)) {
     // Convert persisted tabs to full tabs
@@ -88,46 +78,47 @@ export const deserializeTabState = (
       ...tab,
       isModified: false,
       isPreview: false,
+      isDeleted: false,
       openedAt: Date.now(),
-      lastAccessedAt: Date.now(),
-    }));
+      lastAccessedAt: Date.now()
+    }))
 
     // Ensure at least one tab per group
-    const finalTabs = tabs.length > 0 ? tabs : [createDefaultTab()];
+    const finalTabs = tabs.length > 0 ? tabs : [createDefaultTab()]
 
     // Validate activeTabId
     const activeTabId =
       group.activeTabId && finalTabs.some((t) => t.id === group.activeTabId)
         ? group.activeTabId
-        : finalTabs[0].id;
+        : finalTabs[0].id
 
     tabGroups[groupId] = {
       id: group.id,
       tabs: finalTabs,
       activeTabId,
-      isActive: groupId === migrated.activeGroupId,
-    };
+      isActive: groupId === migrated.activeGroupId
+    }
   }
 
   // Ensure at least one group exists
   if (Object.keys(tabGroups).length === 0) {
-    const defaultGroupId = generateId();
-    const defaultTab = createDefaultTab();
+    const defaultGroupId = generateId()
+    const defaultTab = createDefaultTab()
     tabGroups[defaultGroupId] = {
       id: defaultGroupId,
       tabs: [defaultTab],
       activeTabId: defaultTab.id,
-      isActive: true,
-    };
+      isActive: true
+    }
   }
 
   return {
     tabGroups,
     layout: migrated.layout,
     activeGroupId: migrated.activeGroupId,
-    settings: migrated.settings,
-  };
-};
+    settings: migrated.settings
+  }
+}
 
 // =============================================================================
 // PINNED TABS
@@ -137,10 +128,8 @@ export const deserializeTabState = (
  * Extract only pinned tabs from persisted state
  * Used when full restore is disabled
  */
-export const extractPinnedTabs = (
-  persisted: PersistedTabState
-): Tab[] => {
-  const pinnedTabs: Tab[] = [];
+export const extractPinnedTabs = (persisted: PersistedTabState): Tab[] => {
+  const pinnedTabs: Tab[] = []
 
   for (const group of Object.values(persisted.tabGroups)) {
     for (const tab of group.tabs) {
@@ -149,12 +138,13 @@ export const extractPinnedTabs = (
           ...tab,
           isModified: false,
           isPreview: false,
+          isDeleted: false,
           openedAt: Date.now(),
-          lastAccessedAt: Date.now(),
-        });
+          lastAccessedAt: Date.now()
+        })
       }
     }
   }
 
-  return pinnedTabs;
-};
+  return pinnedTabs
+}

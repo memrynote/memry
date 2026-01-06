@@ -29,6 +29,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+  user-select: text;
 }
 
 .content-area .bn-container {
@@ -287,6 +288,7 @@
     font-family: var(--font-sans);
     color: var(--text-primary);
     line-height: 1.5;
+    user-select: none;
   }
 
   /* Serif font utility for content titles */
@@ -981,6 +983,31 @@
   );
 }
 
+/* Wiki link styling inside notes */
+.wiki-link {
+  color: rgb(217, 119, 6) !important;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0 2px;
+  border-radius: 4px;
+  background-color: color-mix(in srgb, rgb(245, 158, 11) 12%, transparent);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.wiki-link:hover {
+  background-color: color-mix(in srgb, rgb(245, 158, 11) 24%, transparent);
+  text-decoration: underline;
+}
+
+.dark .wiki-link {
+  color: rgb(251, 191, 36) !important;
+  background-color: color-mix(in srgb, rgb(251, 191, 36) 14%, transparent);
+}
+
+.dark .wiki-link:hover {
+  background-color: color-mix(in srgb, rgb(251, 191, 36) 24%, transparent);
+}
+
 /* Backlink mention highlight - warm amber for wiki-style links */
 .backlink-mention {
   color: rgb(217, 119, 6);
@@ -1167,5 +1194,162 @@
     black 8px,
     black calc(100% - 8px),
     transparent 100%
+  );
+}
+
+/* ============================================
+   Outline Indicator (T078)
+   Heading outline navigation component
+   ============================================ */
+
+/* Entrance animation */
+.outline-indicator {
+  animation: outline-fade-in 0.4s var(--ease-out);
+}
+
+@keyframes outline-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+/* Line hover effect */
+.outline-line:hover {
+  box-shadow: 0 0 8px rgba(28, 25, 23, 0.15);
+}
+
+/* Dark mode adjustments */
+.dark .outline-line {
+  background-color: rgb(168, 162, 158) !important;
+}
+
+.dark .outline-line[style*="rgb(28, 25, 23)"] {
+  background-color: rgb(245, 245, 244) !important;
+}
+
+.dark .vertical-connector {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(87, 83, 78) 8%,
+    rgb(87, 83, 78) 92%,
+    transparent 100%
+  ) !important;
+}
+
+.dark .outline-line:hover {
+  box-shadow: 0 0 8px rgba(245, 245, 244, 0.15);
+}
+
+/* ============================================
+   Templates Page - Editorial Collection Design
+   ============================================ */
+
+/* Templates page entrance animation */
+@keyframes templates-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Templates animation utilities */
+.templates-animate-in {
+  animation: templates-fade-in 0.5s var(--ease-out) forwards;
+}
+
+/* Stagger delays for templates sections */
+.templates-stagger-1 { animation-delay: 0ms; }
+.templates-stagger-2 { animation-delay: 60ms; }
+.templates-stagger-3 { animation-delay: 120ms; }
+.templates-stagger-4 { animation-delay: 180ms; }
+.templates-stagger-5 { animation-delay: 280ms; }
+.templates-stagger-6 { animation-delay: 380ms; }
+
+/* Template card entrance animation */
+@keyframes template-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Template specimen card hover glow */
+.template-card-glow {
+  transition: box-shadow 0.3s var(--ease-out);
+}
+
+.template-card-glow:hover {
+  box-shadow:
+    0 8px 30px -8px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
+}
+
+.dark .template-card-glow:hover {
+  box-shadow:
+    0 8px 30px -8px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Template icon float animation */
+@keyframes template-icon-float {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.02);
+  }
+}
+
+.template-icon-float:hover {
+  animation: template-icon-float 2s ease-in-out infinite;
+}
+
+/* Template empty state decorative pulse */
+@keyframes template-plus-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px -2px rgba(245, 158, 11, 0.25);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px -2px rgba(245, 158, 11, 0.35);
+  }
+}
+
+.template-plus-pulse {
+  animation: template-plus-pulse 3s ease-in-out infinite;
+}
+
+/* Template section divider gradient */
+.template-section-divider {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    rgba(245, 158, 11, 0.2),
+    var(--border) 20%,
+    transparent
+  );
+}
+
+.dark .template-section-divider {
+  background: linear-gradient(
+    to right,
+    rgba(251, 191, 36, 0.15),
+    var(--border) 20%,
+    transparent
   );
 }

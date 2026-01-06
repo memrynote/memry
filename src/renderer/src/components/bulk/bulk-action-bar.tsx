@@ -1,12 +1,13 @@
-import { Folder, Tag, Trash2 } from "lucide-react"
+import { Folder, Tag, Archive, Clock } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { AIClusterSuggestion } from "@/components/bulk/ai-cluster-suggestion"
-import { cn } from "@/lib/utils"
-import type { InboxItem } from "@/types"
+import { Button } from '@/components/ui/button'
+import { AIClusterSuggestion } from '@/components/bulk/ai-cluster-suggestion'
+import { SnoozePicker } from '@/components/snooze'
+import { cn } from '@/lib/utils'
+import type { InboxItemListItem } from '@/types'
 
 interface ClusterSuggestion {
-  items: InboxItem[]
+  items: InboxItemListItem[]
   reason: string
 }
 
@@ -14,7 +15,8 @@ interface BulkActionBarProps {
   selectedCount: number
   onFileAll: () => void
   onTagAll: () => void
-  onDeleteAll: () => void
+  onSnoozeAll?: (snoozeUntil: string) => void
+  onArchiveAll: () => void
   aiSuggestion: ClusterSuggestion | null
   onAddSuggestionToSelection: () => void
   onDismissSuggestion: () => void
@@ -24,18 +26,19 @@ const BulkActionBar = ({
   selectedCount,
   onFileAll,
   onTagAll,
-  onDeleteAll,
+  onSnoozeAll,
+  onArchiveAll,
   aiSuggestion,
   onAddSuggestionToSelection,
-  onDismissSuggestion,
+  onDismissSuggestion
 }: BulkActionBarProps): React.JSX.Element | null => {
   if (selectedCount === 0) return null
 
   return (
     <div
       className={cn(
-        "fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border shadow-lg",
-        "slide-up-enter motion-reduce:animate-none"
+        'fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border shadow-lg',
+        'slide-up-enter motion-reduce:animate-none'
       )}
       role="toolbar"
       aria-label="Bulk actions"
@@ -43,31 +46,38 @@ const BulkActionBar = ({
       <div className="max-w-4xl mx-auto px-6 py-4">
         {/* Action Buttons Row */}
         <div className="flex items-center justify-center gap-4">
-          <Button
-            variant="secondary"
-            onClick={onFileAll}
-            className="gap-2"
-          >
+          <Button variant="secondary" onClick={onFileAll} className="gap-2">
             <Folder className="size-4" aria-hidden="true" />
             File all
           </Button>
 
-          <Button
-            variant="outline"
-            onClick={onTagAll}
-            className="gap-2"
-          >
+          <Button variant="outline" onClick={onTagAll} className="gap-2">
             <Tag className="size-4" aria-hidden="true" />
             Tag all
           </Button>
 
+          {/* Snooze all - with dropdown picker */}
+          {onSnoozeAll && (
+            <SnoozePicker
+              onSnooze={onSnoozeAll}
+              size="default"
+              variant="outline"
+              trigger={
+                <Button variant="outline" className="gap-2">
+                  <Clock className="size-4" aria-hidden="true" />
+                  Snooze all
+                </Button>
+              }
+            />
+          )}
+
           <Button
             variant="outline"
-            onClick={onDeleteAll}
-            className="gap-2 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/50"
+            onClick={onArchiveAll}
+            className="gap-2"
           >
-            <Trash2 className="size-4" aria-hidden="true" />
-            Delete all
+            <Archive className="size-4" aria-hidden="true" />
+            Archive all
           </Button>
         </div>
 
@@ -88,4 +98,3 @@ const BulkActionBar = ({
 }
 
 export { BulkActionBar, type ClusterSuggestion }
-

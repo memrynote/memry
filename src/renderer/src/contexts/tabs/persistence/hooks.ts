@@ -145,6 +145,7 @@ export const useSessionRestore = (
                     isPinned: true,
                     isModified: false,
                     isPreview: false,
+                    isDeleted: false,
                     scrollPosition: tab.scrollPosition,
                     viewState: tab.viewState,
                   },

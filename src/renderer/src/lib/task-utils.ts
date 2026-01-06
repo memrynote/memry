@@ -599,6 +599,9 @@ export const getFilteredTasks = (
   selectedType: "view" | "project",
   projects: Project[]
 ): Task[] => {
+  // Always exclude archived tasks from normal views
+  const nonArchivedTasks = tasks.filter((t) => !t.archivedAt)
+
   // Helper to check if task is incomplete
   const isIncomplete = (task: Task): boolean => {
     const project = projects.find((p) => p.id === task.projectId)
@@ -612,11 +615,11 @@ export const getFilteredTasks = (
   // Helper to check if task is a subtask
   const isSubtask = (task: Task): boolean => task.parentId !== null
 
-  // Get incomplete top-level tasks
-  const incompleteTopLevel = tasks.filter((t) => isIncomplete(t) && !isSubtask(t))
+  // Get incomplete top-level tasks (excluding archived)
+  const incompleteTopLevel = nonArchivedTasks.filter((t) => isIncomplete(t) && !isSubtask(t))
 
-  // Get completed top-level tasks
-  const completedTopLevel = tasks.filter((t) => isComplete(t) && !isSubtask(t))
+  // Get completed top-level tasks (excluding archived)
+  const completedTopLevel = nonArchivedTasks.filter((t) => isComplete(t) && !isSubtask(t))
 
   if (selectedType === "view") {
     const today = startOfDay(new Date())
@@ -625,7 +628,7 @@ export const getFilteredTasks = (
     switch (selectedId) {
       case "all":
         // All incomplete tasks - include subtasks of incomplete parents
-        return includeSubtasksForMatchingParents(incompleteTopLevel, tasks)
+        return includeSubtasksForMatchingParents(incompleteTopLevel, nonArchivedTasks)
 
       case "today": {
         // Filter top-level tasks by due date
@@ -636,7 +639,7 @@ export const getFilteredTasks = (
           return isSameDay(taskDate, today) || isBefore(taskDate, today)
         })
         // Include subtasks of matching parents
-        return includeSubtasksForMatchingParents(matchingTopLevel, tasks)
+        return includeSubtasksForMatchingParents(matchingTopLevel, nonArchivedTasks)
       }
 
       case "upcoming": {
@@ -648,26 +651,25 @@ export const getFilteredTasks = (
           return isAfter(taskDate, today) && !isAfter(taskDate, weekFromNow)
         })
         // Include subtasks of matching parents
-        return includeSubtasksForMatchingParents(matchingTopLevel, tasks)
+        return includeSubtasksForMatchingParents(matchingTopLevel, nonArchivedTasks)
       }
 
       case "completed":
         // All completed tasks - include subtasks of completed parents
-        return includeSubtasksForMatchingParents(completedTopLevel, tasks)
+        return includeSubtasksForMatchingParents(completedTopLevel, nonArchivedTasks)
 
       default:
-        return includeSubtasksForMatchingParents(incompleteTopLevel, tasks)
+        return includeSubtasksForMatchingParents(incompleteTopLevel, nonArchivedTasks)
     }
   }
 
   if (selectedType === "project") {
-    // Return all tasks for the project (both complete and incomplete)
-    // Filter to project first, then include subtasks
-    const projectTasks = tasks.filter((task) => task.projectId === selectedId)
+    // Return all tasks for the project (both complete and incomplete, excluding archived)
+    const projectTasks = nonArchivedTasks.filter((task) => task.projectId === selectedId)
     return projectTasks
   }
 
-  return includeSubtasksForMatchingParents(incompleteTopLevel, tasks)
+  return includeSubtasksForMatchingParents(incompleteTopLevel, nonArchivedTasks)
 }
 
 // ============================================================================
@@ -791,9 +793,9 @@ export const dueDateGroupConfig: Record<keyof TaskGroupByDate, GroupHeaderConfig
 }
 
 export const completionGroupConfig: Record<keyof TaskGroupByCompletion, GroupHeaderConfig> = {
-  today: { id: "today", label: "TODAY", accentColor: "#10b981" },
-  yesterday: { id: "yesterday", label: "YESTERDAY" },
-  earlier: { id: "earlier", label: "EARLIER", isMuted: true },
+  today: { id: "today", label: "TODAY", urgency: "high", accentColor: "#10b981" },
+  yesterday: { id: "yesterday", label: "YESTERDAY", urgency: "normal" },
+  earlier: { id: "earlier", label: "EARLIER", urgency: "low", isMuted: true },
 }
 
 // ============================================================================
@@ -1119,11 +1121,11 @@ export const groupCompletedByPeriod = (tasks: Task[]): CompletedTaskGroups => {
  * Config for completion period headers
  */
 export const completionPeriodConfig: Record<CompletionPeriod, GroupHeaderConfig> = {
-  today: { id: "today", label: "TODAY", accentColor: "#10b981" },
-  yesterday: { id: "yesterday", label: "YESTERDAY" },
-  earlierThisWeek: { id: "earlierThisWeek", label: "EARLIER THIS WEEK" },
-  lastWeek: { id: "lastWeek", label: "LAST WEEK", isMuted: true },
-  older: { id: "older", label: "OLDER", isMuted: true },
+  today: { id: "today", label: "TODAY", urgency: "high", accentColor: "#10b981" },
+  yesterday: { id: "yesterday", label: "YESTERDAY", urgency: "normal" },
+  earlierThisWeek: { id: "earlierThisWeek", label: "EARLIER THIS WEEK", urgency: "normal" },
+  lastWeek: { id: "lastWeek", label: "LAST WEEK", urgency: "low", isMuted: true },
+  older: { id: "older", label: "OLDER", urgency: "low", isMuted: true },
 }
 
 /**
@@ -1428,14 +1430,17 @@ export const filterByCompletion = (
     return status?.type === "done"
   }
 
+  // Always exclude archived tasks from normal views
+  const nonArchivedTasks = tasks.filter((t) => !t.archivedAt)
+
   switch (completion) {
     case "active":
-      return tasks.filter((t) => !isComplete(t))
+      return nonArchivedTasks.filter((t) => !isComplete(t))
     case "completed":
-      return tasks.filter((t) => isComplete(t) && !t.archivedAt)
+      return nonArchivedTasks.filter((t) => isComplete(t))
     case "all":
     default:
-      return tasks
+      return nonArchivedTasks
   }
 }
 
@@ -1495,13 +1500,35 @@ export const sortTasksAdvanced = (
     let comparison = 0
 
     switch (sort.field) {
-      case "dueDate":
+      case "dueDate": {
         // Tasks without due date go to end
-        if (!a.dueDate && !b.dueDate) comparison = 0
-        else if (!a.dueDate) comparison = 1
-        else if (!b.dueDate) comparison = -1
-        else comparison = a.dueDate.getTime() - b.dueDate.getTime()
+        if (!a.dueDate && !b.dueDate) {
+          comparison = 0
+        } else if (!a.dueDate) {
+          comparison = 1
+        } else if (!b.dueDate) {
+          comparison = -1
+        } else {
+          // Compare dates first
+          comparison = a.dueDate.getTime() - b.dueDate.getTime()
+
+          // If same date, compare by time
+          // Tasks with time come before tasks without time
+          if (comparison === 0) {
+            if (!a.dueTime && !b.dueTime) {
+              comparison = 0
+            } else if (!a.dueTime) {
+              comparison = 1 // Tasks without time go after tasks with time
+            } else if (!b.dueTime) {
+              comparison = -1
+            } else {
+              // Compare time strings (HH:MM format sorts correctly alphabetically)
+              comparison = a.dueTime.localeCompare(b.dueTime)
+            }
+          }
+        }
         break
+      }
 
       case "priority":
         comparison = priorityOrder[a.priority] - priorityOrder[b.priority]

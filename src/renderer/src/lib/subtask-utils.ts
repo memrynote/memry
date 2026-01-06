@@ -221,6 +221,8 @@ export interface SubtaskOperationResult {
   error?: string
   updatedTasks?: Task[]
   newTask?: Task
+  newTasks?: Task[]  // T038: For bulk add operations
+  reorderedTasks?: Task[]  // T039: For reorder operations
 }
 
 /**
@@ -354,6 +356,7 @@ export const createMultipleSubtasks = (
   return {
     success: true,
     updatedTasks,
+    newTasks: newSubtasks,  // T038: Return new tasks for database persistence
   }
 }
 
@@ -395,9 +398,15 @@ export const reorderSubtasks = (
     t.id === parentId ? updatedParent : t
   )
 
+  // T039: Get the reordered subtasks for database position updates
+  const reorderedTasks = finalOrder
+    .map((id) => allTasks.find((t) => t.id === id))
+    .filter((t): t is Task => t !== undefined)
+
   return {
     success: true,
     updatedTasks,
+    reorderedTasks,  // T039: Return reordered tasks for database persistence
   }
 }
 

@@ -13,6 +13,7 @@ export { ContentDivider } from './ContentDivider'
 export type {
   ContentAreaProps,
   HeadingInfo,
+  HighlightInfo,
   SelectionInfo,
   Block
 } from './types'

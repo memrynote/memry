@@ -35,6 +35,7 @@ interface KanbanBoardProps {
       dueDate: Date | null
       priority: Task["priority"]
       projectId: string | null
+      statusId?: string
     }
   ) => void
   className?: string

@@ -1,6 +1,16 @@
 node_modules
 dist
+build
+coverage
 out
 .DS_Store
+Thumbs.db
 .eslintcache
 *.log*
+.env*
+*.tmp
+*.swp
+.idea
+.social
+.vscode
+test-results

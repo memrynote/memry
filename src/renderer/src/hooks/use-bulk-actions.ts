@@ -4,6 +4,8 @@ import { toast } from "sonner"
 import type { Task, Priority } from "@/data/sample-tasks"
 import type { Project } from "@/data/tasks-data"
 import { getDefaultTodoStatus, getDefaultDoneStatus } from "@/lib/task-utils"
+import { tasksService } from "@/services/tasks-service"
+import { useVault } from "@/hooks/use-vault"
 
 // ============================================================================
 // TYPES
@@ -26,7 +28,7 @@ export interface UseBulkActionsOptions {
 
 export interface UseBulkActionsReturn {
   /** Complete all selected tasks */
-  bulkComplete: () => void
+  bulkComplete: () => void | Promise<void>
   /** Uncomplete all selected tasks */
   bulkUncomplete: () => void
   /** Change priority for all selected tasks */
@@ -34,13 +36,13 @@ export interface UseBulkActionsReturn {
   /** Change due date for all selected tasks */
   bulkChangeDueDate: (dueDate: Date | null) => void
   /** Move all selected tasks to a different project */
-  bulkMoveToProject: (projectId: string) => void
+  bulkMoveToProject: (projectId: string) => void | Promise<void>
   /** Change status for all selected tasks (Kanban) */
   bulkChangeStatus: (statusId: string) => void
   /** Archive all selected tasks */
-  bulkArchive: () => void
+  bulkArchive: () => void | Promise<void>
   /** Delete all selected tasks */
-  bulkDelete: () => void
+  bulkDelete: () => void | Promise<void>
   /** Get selected tasks */
   getSelectedTasks: () => Task[]
 }
@@ -60,6 +62,9 @@ export const useBulkActions = ({
   onDeleteTask,
   onComplete,
 }: UseBulkActionsOptions): UseBulkActionsReturn => {
+  // Get vault status to determine if backend operations are available
+  const { status } = useVault()
+  const isVaultOpen = status?.isOpen ?? false
   // ========== HELPERS ==========
 
   const getSelectedTasks = useCallback((): Task[] => {
@@ -68,8 +73,7 @@ export const useBulkActions = ({
 
   // ========== BULK ACTIONS ==========
 
-  const bulkComplete = useCallback((): void => {
-    const now = new Date()
+  const bulkComplete = useCallback(async (): Promise<void> => {
     const selectedTasks = getSelectedTasks()
     const tasksToComplete = selectedTasks.filter((task) => {
       const project = projects.find((p) => p.id === task.projectId)
@@ -90,20 +94,41 @@ export const useBulkActions = ({
       completedAt: task.completedAt,
     }))
 
-    tasksToComplete.forEach((task) => {
-      const project = projects.find((p) => p.id === task.projectId)
-      if (!project) return
+    const taskIds = tasksToComplete.map((t) => t.id)
 
-      const doneStatus = getDefaultDoneStatus(project)
-      if (doneStatus) {
-        onUpdateTask(task.id, {
-          statusId: doneStatus.id,
-          completedAt: now,
-        })
+    // T068: Use backend bulk operation when vault is open
+    if (isVaultOpen) {
+      try {
+        const result = await tasksService.bulkComplete(taskIds)
+        if (!result.success) {
+          toast.error(result.error || "Failed to complete tasks")
+          return
+        }
+        // State updates happen via event subscriptions in TasksContext
+      } catch (error) {
+        console.error("[bulkComplete] Backend error:", error)
+        toast.error("Failed to complete tasks")
+        return
       }
-    })
+    } else {
+      // Fallback to individual updates when vault is not open
+      const now = new Date()
+      tasksToComplete.forEach((task) => {
+        const project = projects.find((p) => p.id === task.projectId)
+        if (!project) return
+
+        const doneStatus = getDefaultDoneStatus(project)
+        if (doneStatus) {
+          onUpdateTask(task.id, {
+            statusId: doneStatus.id,
+            completedAt: now,
+          })
+        }
+      })
+    }
 
     toast.success(`${tasksToComplete.length} task${tasksToComplete.length !== 1 ? "s" : ""} completed`, {
+      duration: 10000, // T052: 10-second timeout for undo per spec
       action: {
         label: "Undo",
         onClick: () => {
@@ -119,7 +144,7 @@ export const useBulkActions = ({
     })
 
     onComplete()
-  }, [getSelectedTasks, projects, onUpdateTask, onComplete])
+  }, [getSelectedTasks, projects, onUpdateTask, onComplete, isVaultOpen])
 
   const bulkUncomplete = useCallback((): void => {
     const selectedTasks = getSelectedTasks()
@@ -188,7 +213,7 @@ export const useBulkActions = ({
   )
 
   const bulkMoveToProject = useCallback(
-    (projectId: string): void => {
+    async (projectId: string): Promise<void> => {
       const count = selectedIds.length
       if (count === 0) return
 
@@ -198,42 +223,59 @@ export const useBulkActions = ({
         return
       }
 
-      const defaultStatus = getDefaultTodoStatus(targetProject)
-
-      selectedIds.forEach((taskId) => {
-        const task = tasks.find((t) => t.id === taskId)
-        if (!task) return
-
-        // Get current status type to try to match in new project
-        const currentProject = projects.find((p) => p.id === task.projectId)
-        const currentStatus = currentProject?.statuses.find((s) => s.id === task.statusId)
-        const currentStatusType = currentStatus?.type || "todo"
-
-        // Try to find matching status type in target project
-        let newStatus = targetProject.statuses.find((s) => s.type === currentStatusType)
-        if (!newStatus) {
-          newStatus = defaultStatus
+      // T070: Use backend bulk operation when vault is open
+      if (isVaultOpen) {
+        try {
+          const result = await tasksService.bulkMove(selectedIds, projectId)
+          if (!result.success) {
+            toast.error(result.error || "Failed to move tasks")
+            return
+          }
+          // State updates happen via event subscriptions in TasksContext
+        } catch (error) {
+          console.error("[bulkMoveToProject] Backend error:", error)
+          toast.error("Failed to move tasks")
+          return
         }
+      } else {
+        // Fallback to individual updates when vault is not open
+        const defaultStatus = getDefaultTodoStatus(targetProject)
 
-        const updates: Partial<Task> = {
-          projectId,
-          statusId: newStatus?.id || targetProject.statuses[0]?.id,
-        }
+        selectedIds.forEach((taskId) => {
+          const task = tasks.find((t) => t.id === taskId)
+          if (!task) return
 
-        // Handle completed status
-        if (newStatus?.type === "done" && !task.completedAt) {
-          updates.completedAt = new Date()
-        } else if (newStatus?.type !== "done" && task.completedAt) {
-          updates.completedAt = null
-        }
+          // Get current status type to try to match in new project
+          const currentProject = projects.find((p) => p.id === task.projectId)
+          const currentStatus = currentProject?.statuses.find((s) => s.id === task.statusId)
+          const currentStatusType = currentStatus?.type || "todo"
 
-        onUpdateTask(taskId, updates)
-      })
+          // Try to find matching status type in target project
+          let newStatus = targetProject.statuses.find((s) => s.type === currentStatusType)
+          if (!newStatus) {
+            newStatus = defaultStatus
+          }
+
+          const updates: Partial<Task> = {
+            projectId,
+            statusId: newStatus?.id || targetProject.statuses[0]?.id,
+          }
+
+          // Handle completed status
+          if (newStatus?.type === "done" && !task.completedAt) {
+            updates.completedAt = new Date()
+          } else if (newStatus?.type !== "done" && task.completedAt) {
+            updates.completedAt = null
+          }
+
+          onUpdateTask(taskId, updates)
+        })
+      }
 
       toast.success(`${count} task${count !== 1 ? "s" : ""} moved to ${targetProject.name}`)
       onComplete()
     },
-    [selectedIds, tasks, projects, onUpdateTask, onComplete]
+    [selectedIds, tasks, projects, onUpdateTask, onComplete, isVaultOpen]
   )
 
   const bulkChangeStatus = useCallback(
@@ -276,20 +318,37 @@ export const useBulkActions = ({
     [selectedIds, tasks, projects, onUpdateTask, onComplete]
   )
 
-  const bulkArchive = useCallback((): void => {
+  const bulkArchive = useCallback(async (): Promise<void> => {
     const count = selectedIds.length
     if (count === 0) return
-
-    const now = new Date()
 
     // Store for undo
     const archivedIds = [...selectedIds]
 
-    selectedIds.forEach((taskId) => {
-      onUpdateTask(taskId, { archivedAt: now })
-    })
+    // T071: Use backend bulk operation when vault is open
+    if (isVaultOpen) {
+      try {
+        const result = await tasksService.bulkArchive(selectedIds)
+        if (!result.success) {
+          toast.error(result.error || "Failed to archive tasks")
+          return
+        }
+        // State updates happen via event subscriptions in TasksContext
+      } catch (error) {
+        console.error("[bulkArchive] Backend error:", error)
+        toast.error("Failed to archive tasks")
+        return
+      }
+    } else {
+      // Fallback to individual updates when vault is not open
+      const now = new Date()
+      selectedIds.forEach((taskId) => {
+        onUpdateTask(taskId, { archivedAt: now })
+      })
+    }
 
     toast.success(`${count} task${count !== 1 ? "s" : ""} archived`, {
+      duration: 10000, // T052: 10-second timeout for undo per spec
       action: {
         label: "Undo",
         onClick: () => {
@@ -302,25 +361,39 @@ export const useBulkActions = ({
     })
 
     onComplete()
-  }, [selectedIds, onUpdateTask, onComplete])
+  }, [selectedIds, onUpdateTask, onComplete, isVaultOpen])
 
-  const bulkDelete = useCallback((): void => {
+  const bulkDelete = useCallback(async (): Promise<void> => {
     const count = selectedIds.length
     if (count === 0) return
 
-    // Store deleted tasks for undo
-    const deletedTasks = getSelectedTasks().map((task) => ({ ...task }))
-
-    selectedIds.forEach((taskId) => {
-      onDeleteTask(taskId)
-    })
+    // T069: Use backend bulk operation when vault is open
+    if (isVaultOpen) {
+      try {
+        const result = await tasksService.bulkDelete(selectedIds)
+        if (!result.success) {
+          toast.error(result.error || "Failed to delete tasks")
+          return
+        }
+        // State updates happen via event subscriptions in TasksContext (DELETED events)
+      } catch (error) {
+        console.error("[bulkDelete] Backend error:", error)
+        toast.error("Failed to delete tasks")
+        return
+      }
+    } else {
+      // Fallback to individual deletes when vault is not open
+      selectedIds.forEach((taskId) => {
+        onDeleteTask(taskId)
+      })
+    }
 
     toast.success(`${count} task${count !== 1 ? "s" : ""} deleted`, {
       description: "This action can be undone for a short time.",
     })
 
     onComplete()
-  }, [selectedIds, getSelectedTasks, onDeleteTask, onComplete])
+  }, [selectedIds, onDeleteTask, onComplete, isVaultOpen])
 
   return {
     bulkComplete,

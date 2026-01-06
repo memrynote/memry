@@ -55,10 +55,11 @@ export const TaskDragOverlay = ({
   const isCompleted = status?.type === "done"
 
   // Check if overdue
-  const isOverdue =
+  const isOverdue = Boolean(
     !isCompleted &&
     primaryTask?.dueDate &&
     new Date(primaryTask.dueDate) < new Date(new Date().setHours(0, 0, 0, 0))
+  )
 
   return (
     <DragOverlay dropAnimation={dropAnimation}>

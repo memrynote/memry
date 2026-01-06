@@ -49,9 +49,23 @@ export interface SelectionInfo {
 /**
  * Props for the ContentArea component (BlockNote-based)
  */
+/** Highlight info for scrolling to and highlighting text from reminders */
+export interface HighlightInfo {
+  /** Text to highlight */
+  text: string
+  /** Character start position (optional, for more precise matching) */
+  start?: number
+  /** Character end position (optional, for more precise matching) */
+  end?: number
+}
+
 export interface ContentAreaProps {
-  /** Initial content as BlockNote blocks or HTML string */
+  /** Note ID for attachment uploads (T069) */
+  noteId?: string
+  /** Initial content as BlockNote blocks, HTML string, or markdown string */
   initialContent?: Block[] | string
+  /** Type of content being passed: 'html', 'markdown', or 'blocks' */
+  contentType?: 'html' | 'markdown' | 'blocks'
   /** Placeholder text when editor is empty */
   placeholder?: string
   /** Whether the editor is read-only */
@@ -60,16 +74,20 @@ export interface ContentAreaProps {
   autoFocus?: boolean
   /** Callback when content changes (returns blocks) */
   onContentChange?: (blocks: Block[]) => void
+  /** Callback when content changes (returns markdown string) */
+  onMarkdownChange?: (markdown: string) => void
   /** Callback when headings change (for outline) */
   onHeadingsChange?: (headings: HeadingInfo[]) => void
   /** Callback when selection changes */
   onSelectionChange?: (selection: SelectionInfo) => void
   /** Callback when external link is clicked */
   onLinkClick?: (href: string) => void
-  /** Callback when internal [[wiki-link]] is clicked */
-  onInternalLinkClick?: (noteId: string) => void
+  /** Callback when internal [[wiki-link]] is clicked (note id or title) */
+  onInternalLinkClick?: (noteIdOrTitle: string) => void
   /** Additional CSS classes */
   className?: string
+  /** Initial highlight info to scroll to and highlight (from reminder navigation) */
+  initialHighlight?: HighlightInfo
 }
 
 // =============================================================================

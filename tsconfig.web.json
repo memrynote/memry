@@ -4,12 +4,14 @@
     "src/renderer/src/env.d.ts",
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.tsx",
-    "src/preload/*.d.ts"
+    "src/preload/*.d.ts",
+    "src/shared/**/*"
   ],
   "compilerOptions": {
     "composite": true,
     "jsx": "react-jsx",
     "baseUrl": ".",
+    "types": ["vitest/globals", "@testing-library/jest-dom"],
     "paths": {
       "@renderer/*": [
         "src/renderer/src/*"
@@ -17,6 +19,12 @@
       "@/*": [
         "./src/renderer/src/*"
       ],
+      "@shared/*": [
+        "./src/shared/*"
+      ],
+      "@tests/*": [
+        "./tests/*"
+      ]
     }
-  },
+  }
 }

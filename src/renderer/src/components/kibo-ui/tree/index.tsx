@@ -58,7 +58,7 @@ type TreeContextType = {
   focusedId: string | null;
   dragState: DragState;
   toggleExpanded: (nodeId: string) => void;
-  handleSelection: (nodeId: string, ctrlKey: boolean) => void;
+  handleSelection: (nodeId: string, ctrlKey: boolean, shiftKey?: boolean) => void;
   setFocusedId: (nodeId: string | null) => void;
   registerNode: (nodeId: string, parentId: string | null, hasChildren: boolean, customIcon?: string, inheritedIcon?: string) => void;
   unregisterNode: (nodeId: string) => void;
@@ -83,7 +83,7 @@ type TreeContextType = {
 
 const TreeContext = createContext<TreeContextType | undefined>(undefined);
 
-const useTree = () => {
+export const useTree = () => {
   const context = useContext(TreeContext);
   if (!context) {
     throw new Error("Tree components must be used within a TreeProvider");
@@ -157,6 +157,7 @@ export const TreeProvider = ({
     selectedIds ?? []
   );
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [anchorId, setAnchorId] = useState<string | null>(null); // For shift+click range selection
   const [dragState, setDragStateInternal] = useState<DragState>({
     draggedId: null,
     dropTargetId: null,
@@ -260,21 +261,23 @@ export const TreeProvider = ({
   }, []);
 
   const getVisibleNodes = useCallback(() => {
+    // Query DOM for nodes in visual order instead of registration order
+    // This ensures shift+click selection works correctly for both folders and files
+    const treeElement = document.querySelector('[data-tree-view]');
+    if (!treeElement) return [];
+
+    const nodeElements = treeElement.querySelectorAll('[data-tree-node-id]');
     const visibleNodes: string[] = [];
-    const traverse = (parentId: string | null) => {
-      for (const nodeId of nodeOrderRef.current) {
-        const info = nodesRef.current.get(nodeId);
-        if (info && info.parentId === parentId) {
-          visibleNodes.push(nodeId);
-          if (info.hasChildren && expandedIds.has(nodeId)) {
-            traverse(nodeId);
-          }
-        }
+
+    for (const el of nodeElements) {
+      const nodeId = el.getAttribute('data-tree-node-id');
+      if (nodeId) {
+        visibleNodes.push(nodeId);
       }
-    };
-    traverse(null);
+    }
+
     return visibleNodes;
-  }, [expandedIds]);
+  }, []);
 
   const expandNode = useCallback((nodeId: string) => {
     setExpandedIds((prev) => {
@@ -305,20 +308,39 @@ export const TreeProvider = ({
   }, []);
 
   const handleSelection = useCallback(
-    (nodeId: string, ctrlKey = false) => {
+    (nodeId: string, ctrlKey = false, shiftKey = false) => {
       if (!selectable) {
         return;
       }
 
       let newSelection: string[];
 
-      if (multiSelect && ctrlKey) {
+      if (multiSelect && shiftKey && anchorId) {
+        // Shift+click: select range from anchor to clicked item
+        const visibleNodes = getVisibleNodes();
+        const anchorIndex = visibleNodes.indexOf(anchorId);
+        const clickedIndex = visibleNodes.indexOf(nodeId);
+
+        if (anchorIndex !== -1 && clickedIndex !== -1) {
+          const start = Math.min(anchorIndex, clickedIndex);
+          const end = Math.max(anchorIndex, clickedIndex);
+          newSelection = visibleNodes.slice(start, end + 1);
+        } else {
+          newSelection = [nodeId];
+        }
+        // Don't update anchor on shift+click
+      } else if (multiSelect && ctrlKey) {
+        // Cmd/Ctrl+click: toggle individual item
         newSelection = currentSelectedIds.includes(nodeId)
           ? currentSelectedIds.filter((id) => id !== nodeId)
           : [...currentSelectedIds, nodeId];
+        // Update anchor to last clicked item
+        setAnchorId(nodeId);
       } else {
-        // Always select the clicked item (don't toggle off)
+        // Regular click: select only this item
         newSelection = [nodeId];
+        // Update anchor
+        setAnchorId(nodeId);
       }
 
       if (isControlled) {
@@ -335,6 +357,8 @@ export const TreeProvider = ({
       currentSelectedIds,
       isControlled,
       onSelectionChange,
+      anchorId,
+      getVisibleNodes,
     ]
   );
 
@@ -384,7 +408,7 @@ export const TreeProvider = ({
 export type TreeViewProps = HTMLAttributes<HTMLDivElement>;
 
 export const TreeView = ({ className, children, ...props }: TreeViewProps) => (
-  <div className={cn("py-2 h-full", className)} {...props}>
+  <div className={cn("py-2 h-full", className)} data-tree-view {...props}>
     {children}
   </div>
 );
@@ -470,12 +494,19 @@ export const TreeNode = ({
   );
 };
 
-export type TreeNodeTriggerProps = ComponentProps<typeof motion.div>;
+export type TreeNodeTriggerProps = ComponentProps<typeof motion.div> & {
+  /** Custom context menu content to render instead of the default "Set Icon" menu */
+  contextMenuContent?: ReactNode;
+  /** Whether to show the default icon context menu (default: true) */
+  showIconMenu?: boolean;
+};
 
 export const TreeNodeTrigger = ({
   children,
   className,
   onClick,
+  contextMenuContent,
+  showIconMenu = true,
   ...props
 }: TreeNodeTriggerProps) => {
   const {
@@ -674,7 +705,7 @@ export const TreeNodeTrigger = ({
             onClick={(e) => {
               setFocusedId(nodeId);
               toggleExpanded(nodeId);
-              handleSelection(nodeId, e.ctrlKey || e.metaKey);
+              handleSelection(nodeId, e.ctrlKey || e.metaKey, e.shiftKey);
               onClick?.(e);
             }}
             onFocus={() => setFocusedId(nodeId)}
@@ -717,21 +748,29 @@ export const TreeNodeTrigger = ({
           </motion.div>
         </ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem onClick={handleSetIconClick}>
-            <Palette className="mr-2 h-4 w-4" />
-            Set Icon
-          </ContextMenuItem>
-          {effectiveIcon && (
+          {contextMenuContent ? (
+            // Use custom context menu content
+            contextMenuContent
+          ) : showIconMenu ? (
+            // Default icon menu
             <>
-              <ContextMenuSeparator />
-              <ContextMenuItem
-                onClick={() => setNodeIcon(nodeId, null)}
-                className="text-destructive focus:text-destructive"
-              >
-                Clear Icon
+              <ContextMenuItem onClick={handleSetIconClick}>
+                <Palette className="mr-2 h-4 w-4" />
+                Set Icon
               </ContextMenuItem>
+              {effectiveIcon && (
+                <>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem
+                    onClick={() => setNodeIcon(nodeId, null)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    Clear Icon
+                  </ContextMenuItem>
+                </>
+              )}
             </>
-          )}
+          ) : null}
         </ContextMenuContent>
       </ContextMenu>
 
@@ -766,7 +805,7 @@ export const TreeLines = () => {
 
         return (
           <div
-            className="absolute top-0 bottom-0 border-border/40 border-l"
+            className="absolute top-0 bottom-0 border-border border-l"
             key={index.toString()}
             style={{
               left: index * (indent ?? 0) + 12,
@@ -778,7 +817,7 @@ export const TreeLines = () => {
 
       {/* Horizontal connector line */}
       <div
-        className="absolute top-1/2 border-border/40 border-t"
+        className="absolute top-1/2 border-border border-t"
         style={{
           left: (level - 1) * (indent ?? 0) + 12,
           width: (indent ?? 0) - 4,
@@ -789,7 +828,7 @@ export const TreeLines = () => {
       {/* Vertical line to midpoint for last items */}
       {isLast && (
         <div
-          className="absolute top-0 border-border/40 border-l"
+          className="absolute top-0 border-border border-l"
           style={{
             left: (level - 1) * (indent ?? 0) + 12,
             height: "50%",

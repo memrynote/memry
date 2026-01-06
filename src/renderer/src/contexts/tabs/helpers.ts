@@ -10,8 +10,8 @@ import type {
   TabSystemState,
   SplitLayout,
   TabSettings,
-  SidebarItem,
-} from './types';
+  SidebarItem
+} from './types'
 
 // =============================================================================
 // ID GENERATION
@@ -21,8 +21,8 @@ import type {
  * Generate unique ID for tabs and groups
  */
 export const generateId = (): string => {
-  return crypto.randomUUID();
-};
+  return crypto.randomUUID()
+}
 
 // =============================================================================
 // TAB SEARCH HELPERS
@@ -32,66 +32,57 @@ export const generateId = (): string => {
  * Result of finding a tab in the system
  */
 export interface FoundTab {
-  tab: Tab;
-  groupId: string;
+  tab: Tab
+  groupId: string
 }
 
 /**
  * Find existing tab by type (for singletons)
  * Searches all groups for a tab with matching type
  */
-export const findExistingTab = (
-  state: TabSystemState,
-  type: TabType
-): FoundTab | null => {
+export const findExistingTab = (state: TabSystemState, type: TabType): FoundTab | null => {
   for (const [groupId, group] of Object.entries(state.tabGroups)) {
-    const tab = group.tabs.find((t) => t.type === type);
+    const tab = group.tabs.find((t) => t.type === type)
     if (tab) {
-      return { tab, groupId };
+      return { tab, groupId }
     }
   }
-  return null;
-};
+  return null
+}
 
 /**
  * Find tab by entity ID (for notes, projects, journals, etc.)
  * Used to prevent duplicate tabs for the same entity
  */
-export const findTabByEntityId = (
-  state: TabSystemState,
-  entityId: string
-): FoundTab | null => {
+export const findTabByEntityId = (state: TabSystemState, entityId: string): FoundTab | null => {
   for (const [groupId, group] of Object.entries(state.tabGroups)) {
-    const tab = group.tabs.find((t) => t.entityId === entityId);
+    const tab = group.tabs.find((t) => t.entityId === entityId)
     if (tab) {
-      return { tab, groupId };
+      return { tab, groupId }
     }
   }
-  return null;
-};
+  return null
+}
 
 /**
  * Find tab by ID across all groups
  */
-export const findTabById = (
-  state: TabSystemState,
-  tabId: string
-): FoundTab | null => {
+export const findTabById = (state: TabSystemState, tabId: string): FoundTab | null => {
   for (const [groupId, group] of Object.entries(state.tabGroups)) {
-    const tab = group.tabs.find((t) => t.id === tabId);
+    const tab = group.tabs.find((t) => t.id === tabId)
     if (tab) {
-      return { tab, groupId };
+      return { tab, groupId }
     }
   }
-  return null;
-};
+  return null
+}
 
 /**
  * Find preview tab in a group
  */
 export const findPreviewTab = (group: TabGroup): Tab | null => {
-  return group.tabs.find((t) => t.isPreview) || null;
-};
+  return group.tabs.find((t) => t.isPreview) || null
+}
 
 // =============================================================================
 // TAB ICON MAPPING
@@ -103,25 +94,28 @@ export const findPreviewTab = (group: TabGroup): Tab | null => {
 const TAB_ICONS: Record<TabType, string> = {
   inbox: 'inbox',
   home: 'home',
-  tasks: 'list-checks',      // New unified tasks tab
+  tasks: 'list-checks', // New unified tasks tab
   'all-tasks': 'list-checks',
   today: 'star',
   upcoming: 'calendar',
   completed: 'check-circle',
   project: 'folder',
   note: 'file-text',
+  folder: 'folder', // Folder view (Bases-like database view)
   journal: 'book-open',
   search: 'search',
   settings: 'settings',
   collection: 'bookmark',
-};
+  'template-editor': 'layout-template',
+  templates: 'layout-template'
+}
 
 /**
  * Get icon name for a tab type
  */
 export const getTabIcon = (type: TabType): string => {
-  return TAB_ICONS[type] || 'file';
-};
+  return TAB_ICONS[type] || 'file'
+}
 
 // =============================================================================
 // TAB PATH MAPPING
@@ -137,33 +131,33 @@ const TAB_PATHS: Partial<Record<TabType, string>> = {
   today: '/tasks/today',
   upcoming: '/tasks/upcoming',
   completed: '/tasks/completed',
-  settings: '/settings',
-};
+  settings: '/settings'
+}
 
 /**
  * Get default path for a tab type
  */
 export const getDefaultPath = (type: TabType, entityId?: string): string => {
   if (TAB_PATHS[type]) {
-    return TAB_PATHS[type]!;
+    return TAB_PATHS[type]!
   }
 
   // Dynamic paths for entity-based tabs
   switch (type) {
     case 'project':
-      return `/project/${entityId}`;
+      return `/project/${entityId}`
     case 'note':
-      return `/note/${entityId}`;
+      return `/note/${entityId}`
     case 'journal':
-      return `/journal/${entityId}`;
+      return `/journal/${entityId}`
     case 'search':
-      return `/search/${entityId}`;
+      return `/search/${entityId}`
     case 'collection':
-      return `/collection/${entityId}`;
+      return `/collection/${entityId}`
     default:
-      return '/';
+      return '/'
   }
-};
+}
 
 // =============================================================================
 // TAB CREATION HELPERS
@@ -181,9 +175,10 @@ export const createDefaultTab = (): Tab => ({
   isPinned: false,
   isModified: false,
   isPreview: false,
+  isDeleted: false,
   openedAt: Date.now(),
-  lastAccessedAt: Date.now(),
-});
+  lastAccessedAt: Date.now()
+})
 
 /**
  * Create a tab from sidebar item
@@ -196,27 +191,27 @@ export const createTabFromSidebarItem = (
     type: item.type,
     title: item.title,
     icon: item.icon || getTabIcon(item.type),
+    emoji: item.emoji,
     path: item.path,
     entityId: item.entityId,
     isPinned: false,
     isModified: false,
     isPreview,
-  };
-};
+    isDeleted: false
+  }
+}
 
 /**
  * Create a new tab with generated ID and timestamps
  */
-export const createTab = (
-  tabData: Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>
-): Tab => {
+export const createTab = (tabData: Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>): Tab => {
   return {
     ...tabData,
     id: generateId(),
     openedAt: Date.now(),
-    lastAccessedAt: Date.now(),
-  };
-};
+    lastAccessedAt: Date.now()
+  }
+}
 
 // =============================================================================
 // TAB GROUP HELPERS
@@ -226,14 +221,14 @@ export const createTab = (
  * Create initial tab group with Inbox tab
  */
 export const createInitialTabGroup = (): TabGroup => {
-  const initialTab = createDefaultTab();
+  const initialTab = createDefaultTab()
   return {
     id: generateId(),
     tabs: [initialTab],
     activeTabId: initialTab.id,
-    isActive: true,
-  };
-};
+    isActive: true
+  }
+}
 
 /**
  * Create an empty tab group (for split view)
@@ -243,17 +238,17 @@ export const createEmptyTabGroup = (withDefaultTab: boolean = true): TabGroup =>
     id: generateId(),
     tabs: [],
     activeTabId: null,
-    isActive: false,
-  };
-
-  if (withDefaultTab) {
-    const defaultTab = createDefaultTab();
-    group.tabs.push(defaultTab);
-    group.activeTabId = defaultTab.id;
+    isActive: false
   }
 
-  return group;
-};
+  if (withDefaultTab) {
+    const defaultTab = createDefaultTab()
+    group.tabs.push(defaultTab)
+    group.activeTabId = defaultTab.id
+  }
+
+  return group
+}
 
 // =============================================================================
 // LAYOUT HELPERS
@@ -275,52 +270,49 @@ export const insertSplitAtGroup = (
         type: direction,
         ratio: 0.5,
         first: { type: 'leaf', tabGroupId: targetGroupId },
-        second: { type: 'leaf', tabGroupId: newGroupId },
-      };
+        second: { type: 'leaf', tabGroupId: newGroupId }
+      }
     }
-    return layout;
+    return layout
   }
 
   // Recursively search in nested layouts
   return {
     ...layout,
     first: insertSplitAtGroup(layout.first, targetGroupId, newGroupId, direction),
-    second: insertSplitAtGroup(layout.second, targetGroupId, newGroupId, direction),
-  };
-};
+    second: insertSplitAtGroup(layout.second, targetGroupId, newGroupId, direction)
+  }
+}
 
 /**
  * Remove group from layout tree
  * Returns null if the group was the only one (root leaf)
  */
-export const removeGroupFromLayout = (
-  layout: SplitLayout,
-  groupId: string
-): SplitLayout | null => {
+export const removeGroupFromLayout = (layout: SplitLayout, groupId: string): SplitLayout | null => {
   if (layout.type === 'leaf') {
-    return layout.tabGroupId === groupId ? null : layout;
+    return layout.tabGroupId === groupId ? null : layout
   }
 
-  const first = removeGroupFromLayout(layout.first, groupId);
-  const second = removeGroupFromLayout(layout.second, groupId);
+  const first = removeGroupFromLayout(layout.first, groupId)
+  const second = removeGroupFromLayout(layout.second, groupId)
 
   // If one side was removed, return the other
-  if (!first) return second;
-  if (!second) return first;
+  if (!first) return second
+  if (!second) return first
 
   // Both sides exist, return updated layout
-  return { ...layout, first, second };
-};
+  return { ...layout, first, second }
+}
 
 /**
  * Find all group IDs in a layout
  */
 export const getAllGroupIds = (layout: SplitLayout): string[] => {
   if (layout.type === 'leaf') {
-    return [layout.tabGroupId];
+    return [layout.tabGroupId]
   }
-  return [...getAllGroupIds(layout.first), ...getAllGroupIds(layout.second)];
-};
+  return [...getAllGroupIds(layout.first), ...getAllGroupIds(layout.second)]
+}
 
 /**
  * Calculate the width percentage each tab group should occupy in the header
@@ -332,28 +324,26 @@ export const getAllGroupIds = (layout: SplitLayout): string[] => {
  * @param layout - The split layout tree
  * @returns Map of groupId to width percentage (0-100)
  */
-export const getGroupWidthPercentages = (
-  layout: SplitLayout
-): Map<string, number> => {
-  const result = new Map<string, number>();
+export const getGroupWidthPercentages = (layout: SplitLayout): Map<string, number> => {
+  const result = new Map<string, number>()
 
   const traverse = (node: SplitLayout, availableWidth: number): void => {
     if (node.type === 'leaf') {
       // Leaf node: this group gets the full available width
-      result.set(node.tabGroupId, availableWidth);
-      return;
+      result.set(node.tabGroupId, availableWidth)
+      return
     }
 
     // Horizontal split: divide width by ratio
-    const firstWidth = availableWidth * node.ratio;
-    const secondWidth = availableWidth * (1 - node.ratio);
-    traverse(node.first, firstWidth);
-    traverse(node.second, secondWidth);
-  };
+    const firstWidth = availableWidth * node.ratio
+    const secondWidth = availableWidth * (1 - node.ratio)
+    traverse(node.first, firstWidth)
+    traverse(node.second, secondWidth)
+  }
 
-  traverse(layout, 100);
-  return result;
-};
+  traverse(layout, 100)
+  return result
+}
 
 /**
  * Get ordered group IDs with their widths for header rendering
@@ -366,24 +356,24 @@ export const getGroupWidthPercentages = (
 export const getOrderedGroupWidths = (
   layout: SplitLayout
 ): Array<{ groupId: string; width: number }> => {
-  const result: Array<{ groupId: string; width: number }> = [];
+  const result: Array<{ groupId: string; width: number }> = []
 
   const traverse = (node: SplitLayout, availableWidth: number): void => {
     if (node.type === 'leaf') {
-      result.push({ groupId: node.tabGroupId, width: availableWidth });
-      return;
+      result.push({ groupId: node.tabGroupId, width: availableWidth })
+      return
     }
 
     // Horizontal split: first on left, second on right
-    const firstWidth = availableWidth * node.ratio;
-    const secondWidth = availableWidth * (1 - node.ratio);
-    traverse(node.first, firstWidth);
-    traverse(node.second, secondWidth);
-  };
+    const firstWidth = availableWidth * node.ratio
+    const secondWidth = availableWidth * (1 - node.ratio)
+    traverse(node.first, firstWidth)
+    traverse(node.second, secondWidth)
+  }
 
-  traverse(layout, 100);
-  return result;
-};
+  traverse(layout, 100)
+  return result
+}
 
 /**
  * Update split ratio at a specific path in the layout tree
@@ -395,33 +385,33 @@ export const updateSplitRatio = (
   ratio: number
 ): SplitLayout => {
   if (path.length === 0 || layout.type === 'leaf') {
-    return layout;
+    return layout
   }
 
-  const [currentIndex, ...remainingPath] = path;
+  const [currentIndex, ...remainingPath] = path
 
   if (layout.type === 'horizontal') {
     // If we're at the target level (remainingPath is empty), update ratio
     if (remainingPath.length === 0) {
-      return { ...layout, ratio };
+      return { ...layout, ratio }
     }
 
     // Otherwise, continue recursing
     if (currentIndex === 0) {
       return {
         ...layout,
-        first: updateSplitRatio(layout.first, remainingPath, ratio),
-      };
+        first: updateSplitRatio(layout.first, remainingPath, ratio)
+      }
     } else {
       return {
         ...layout,
-        second: updateSplitRatio(layout.second, remainingPath, ratio),
-      };
+        second: updateSplitRatio(layout.second, remainingPath, ratio)
+      }
     }
   }
 
-  return layout;
-};
+  return layout
+}
 
 // =============================================================================
 // TAB SORTING HELPERS
@@ -431,19 +421,19 @@ export const updateSplitRatio = (
  * Sort tabs with pinned tabs first
  */
 export const sortTabsWithPinnedFirst = (tabs: Tab[]): Tab[] => {
-  const pinned = tabs.filter((t) => t.isPinned);
-  const unpinned = tabs.filter((t) => !t.isPinned);
-  return [...pinned, ...unpinned];
-};
+  const pinned = tabs.filter((t) => t.isPinned)
+  const unpinned = tabs.filter((t) => !t.isPinned)
+  return [...pinned, ...unpinned]
+}
 
 /**
  * Get the index where a new unpinned tab should be inserted
  * (after all pinned tabs)
  */
 export const getInsertIndexAfterPinned = (tabs: Tab[]): number => {
-  const lastPinnedIndex = tabs.findLastIndex((t) => t.isPinned);
-  return lastPinnedIndex + 1;
-};
+  const lastPinnedIndex = tabs.findLastIndex((t) => t.isPinned)
+  return lastPinnedIndex + 1
+}
 
 // =============================================================================
 // INITIAL STATE
@@ -453,28 +443,26 @@ export const getInsertIndexAfterPinned = (tabs: Tab[]): number => {
  * Default tab settings
  */
 export const DEFAULT_TAB_SETTINGS: TabSettings = {
-  openInNewTab: 'modifier',
-  previewMode: true,
-  showPinnedTabsFirst: true,
+  previewMode: false,
   restoreSessionOnStart: true,
-  tabCloseButton: 'hover',
-};
+  tabCloseButton: 'hover'
+}
 
 /**
  * Create the initial tab system state
  */
 export const createInitialState = (): TabSystemState => {
-  const initialGroup = createInitialTabGroup();
+  const initialGroup = createInitialTabGroup()
 
   return {
     tabGroups: {
-      [initialGroup.id]: initialGroup,
+      [initialGroup.id]: initialGroup
     },
     layout: {
       type: 'leaf',
-      tabGroupId: initialGroup.id,
+      tabGroupId: initialGroup.id
     },
     activeGroupId: initialGroup.id,
-    settings: { ...DEFAULT_TAB_SETTINGS },
-  };
-};
+    settings: { ...DEFAULT_TAB_SETTINGS }
+  }
+}

@@ -123,60 +123,10 @@ export const taskViews: TaskView[] = [
 ]
 
 // ============================================================================
-// SAMPLE DATA - PROJECTS
+// SAMPLE DATA - PROJECTS (Empty - data loaded from database)
 // ============================================================================
 
-export const initialProjects: Project[] = [
-  {
-    id: "personal",
-    name: "Personal",
-    description: "Default project for personal tasks",
-    icon: "Folder",
-    color: "#6366f1",
-    isDefault: true,
-    isArchived: false,
-    statuses: [
-      { id: "p-todo", name: "To Do", color: "#6b7280", type: "todo", order: 0 },
-      { id: "p-doing", name: "Doing", color: "#3b82f6", type: "in_progress", order: 1 },
-      { id: "p-done", name: "Done", color: "#10b981", type: "done", order: 2 },
-    ],
-    createdAt: new Date("2024-01-01"),
-    taskCount: 5,
-  },
-  {
-    id: "project-alpha",
-    name: "Project Alpha",
-    description: "Design system implementation",
-    icon: "Palette",
-    color: "#f59e0b",
-    isDefault: false,
-    isArchived: false,
-    statuses: [
-      { id: "a-backlog", name: "Backlog", color: "#6b7280", type: "todo", order: 0 },
-      { id: "a-progress", name: "In Progress", color: "#3b82f6", type: "in_progress", order: 1 },
-      { id: "a-review", name: "Review", color: "#f59e0b", type: "in_progress", order: 2 },
-      { id: "a-done", name: "Done", color: "#10b981", type: "done", order: 3 },
-    ],
-    createdAt: new Date("2024-06-15"),
-    taskCount: 8,
-  },
-  {
-    id: "work",
-    name: "Work Tasks",
-    description: "",
-    icon: "Briefcase",
-    color: "#10b981",
-    isDefault: false,
-    isArchived: false,
-    statuses: [
-      { id: "w-todo", name: "To Do", color: "#6b7280", type: "todo", order: 0 },
-      { id: "w-progress", name: "In Progress", color: "#3b82f6", type: "in_progress", order: 1 },
-      { id: "w-done", name: "Complete", color: "#10b981", type: "done", order: 2 },
-    ],
-    createdAt: new Date("2024-03-10"),
-    taskCount: 10,
-  },
-]
+export const initialProjects: Project[] = []
 
 // ============================================================================
 // HELPER FUNCTIONS

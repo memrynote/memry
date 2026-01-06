@@ -17,6 +17,7 @@ import { TasksTabBar, type TasksInternalTab } from "@/components/tasks/tasks-tab
 import { ProjectsTabContent } from "@/components/tasks/projects/projects-tab-content"
 import { ProjectSidebar } from "@/components/tasks/projects/project-sidebar"
 import { AddTaskModal } from "@/components/tasks/add-task-modal"
+import { ProjectModal } from "@/components/tasks/project-modal"
 import { TaskDetailPanel } from "@/components/tasks/task-detail-panel"
 import { KanbanBoard } from "@/components/tasks/kanban"
 import { CalendarView } from "@/components/tasks/calendar"
@@ -26,6 +27,7 @@ import {
     ClearCompletedMenu,
     ArchiveConfirmDialog,
     DeleteCompletedDialog,
+    ArchivedView,
 } from "@/components/tasks/completed"
 import { FilterBar, FilterEmptyState, type FilterBarRef } from "@/components/tasks/filters"
 import { cn } from "@/lib/utils"
@@ -48,12 +50,14 @@ import {
     type TaskFilters,
     type TaskSort,
     type SavedFilter,
+    type CompletionFilterType,
 } from "@/data/tasks-data"
 import { createDefaultTask, generateTaskId, type Task, type Priority } from "@/data/sample-tasks"
 import { addDays } from "@/lib/task-utils"
 import { calculateNextOccurrence, shouldCreateNextOccurrence } from "@/lib/repeat-utils"
 import type { StopRepeatOption } from "@/components/tasks/stop-repeating-dialog"
-import { useFilterState, useSavedFilters, useFilteredAndSortedTasks, useTaskSelection, useBulkActions, useSubtaskManagement } from "@/hooks"
+import { useFilterState, useSavedFilters, useFilteredAndSortedTasks, useTaskSelection, useBulkActions, useSubtaskManagement, useUndoTracker } from "@/hooks"
+import { useTasksContext } from "@/contexts/tasks"
 import { BulkActionToolbar, BulkDeleteDialog, BulkDueDatePicker } from "@/components/tasks/bulk-actions"
 import {
     AllSubtasksCompleteDialog,
@@ -62,6 +66,7 @@ import {
     DeleteAllSubtasksDialog,
 } from "@/components/tasks/dialogs"
 import { getSubtasks } from "@/lib/subtask-utils"
+import { tasksService } from "@/services/tasks-service"
 import type { TaskSelectionType } from "@/App"
 
 // ============================================================================
@@ -171,7 +176,7 @@ const TasksContentHeader = ({
     onProjectSettings,
 }: TasksContentHeaderProps): React.JSX.Element => {
     return (
-        <header className="relative flex items-start justify-between border-b border-border/50 px-6 py-6 journal-animate-in">
+        <header className="relative flex items-start justify-between border-b border-border/50 px-6 py-6">
             {/* Left side: Title and Subtitle */}
             <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2.5">
@@ -238,6 +243,19 @@ export const TasksPage = ({
     selectedTaskIds: _externalSelectedIds,
     onSelectedTaskIdsChange,
 }: TasksPageProps): React.JSX.Element => {
+    // Get database-aware task operations from context
+    const {
+        addTask: contextAddTask,
+        updateTask: contextUpdateTask,
+        deleteTask: contextDeleteTask,
+        addProject: contextAddProject,
+        updateProject: contextUpdateProject,
+        deleteProject: contextDeleteProject,
+    } = useTasksContext()
+
+    // T051-T054: Undo tracking for Cmd+Z support
+    const { registerUndo } = useUndoTracker()
+
     // Local setter that updates via parent callback
     const setTasks = useCallback((updater: Task[] | ((prev: Task[]) => Task[])) => {
         if (typeof updater === "function") {
@@ -266,8 +284,8 @@ export const TasksPage = ({
     const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false)
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
 
-    // Completed/Archive view states (unused after refactor, kept for potential future use)
-    const [_showArchivedView, _setShowArchivedView] = useState(false)
+    // Completed/Archive view states
+    const [showArchivedView, setShowArchivedView] = useState(false)
     const [isClearMenuOpen, setIsClearMenuOpen] = useState(false)
     const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
     const [archiveDialogVariant, setArchiveDialogVariant] = useState<"all" | "older-than">("all")
@@ -305,6 +323,10 @@ export const TasksPage = ({
 
     // Bulk due date picker state
     const [isBulkDueDatePickerOpen, setIsBulkDueDatePickerOpen] = useState(false)
+
+    // Project modal states
+    const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
+    const [editingProject, setEditingProject] = useState<Project | null>(null)
 
     // ========== DERIVED STATE ==========
 
@@ -347,7 +369,7 @@ export const TasksPage = ({
     // In Projects tab, ignore projectIds filter (already scoped) and include completed by default
     const projectsTabFilters = useMemo(() => {
         if (activeInternalTab !== "projects") return filters
-        return { ...filters, projectIds: [], completion: "all" }
+        return { ...filters, projectIds: [], completion: "all" as CompletionFilterType }
     }, [filters, activeInternalTab])
 
     // Apply advanced filters and sort to base filtered tasks
@@ -429,19 +451,13 @@ export const TasksPage = ({
         }
     }, [selection.selectedIds, onSelectedTaskIdsChange])
 
-    // Bulk actions hook
+    // Bulk actions hook - use context functions to persist to database
     const bulkActions = useBulkActions({
         selectedIds: selectedTaskIds,
         tasks,
         projects,
-        onUpdateTask: (taskId, updates) => {
-            setTasks((prev) =>
-                prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
-            )
-        },
-        onDeleteTask: (taskId) => {
-            setTasks((prev) => prev.filter((t) => t.id !== taskId))
-        },
+        onUpdateTask: contextUpdateTask,
+        onDeleteTask: contextDeleteTask,
         onComplete: deselectAll,
     })
 
@@ -454,11 +470,21 @@ export const TasksPage = ({
         }
     }, [selection.isSelectionMode, enterSelectionMode, exitSelectionMode])
 
-    // Subtask management hook
+    // Subtask management hook - T038-T042: Wire to database via context operations
     const subtaskManagement = useSubtaskManagement({
         tasks,
         projects,
         onTasksChange: setTasks,
+        onAddTask: contextAddTask,
+        onUpdateTask: contextUpdateTask,
+        onDeleteTask: contextDeleteTask,
+        onReorderTasks: async (taskIds, positions) => {
+            try {
+                await tasksService.reorder(taskIds, positions)
+            } catch (error) {
+                console.error("[Tasks] Failed to reorder subtasks:", error)
+            }
+        },
     })
 
     // Derived: task counts for header (replaced by tabCounts, kept for potential future use)
@@ -568,6 +594,59 @@ export const TasksPage = ({
         setActiveView(view)
     }
 
+    // ========== PROJECT HANDLERS ==========
+
+    const handleCreateProject = useCallback(() => {
+        setEditingProject(null)
+        setIsProjectModalOpen(true)
+    }, [])
+
+    const handleEditProject = useCallback((project: Project) => {
+        setEditingProject(project)
+        setIsProjectModalOpen(true)
+    }, [])
+
+    const handleSaveProject = useCallback(async (project: Project) => {
+        try {
+            if (editingProject) {
+                await contextUpdateProject(project.id, project)
+                toast.success("Project updated")
+            } else {
+                await contextAddProject(project)
+                toast.success("Project created")
+            }
+            setIsProjectModalOpen(false)
+            setEditingProject(null)
+        } catch (error) {
+            console.error("Failed to save project:", error)
+            toast.error("Failed to save project")
+        }
+    }, [editingProject, contextAddProject, contextUpdateProject])
+
+    const handleArchiveProject = useCallback(async (project: Project) => {
+        try {
+            await contextUpdateProject(project.id, { isArchived: true })
+            toast.success("Project archived")
+        } catch (error) {
+            console.error("Failed to archive project:", error)
+            toast.error("Failed to archive project")
+        }
+    }, [contextUpdateProject])
+
+    const handleDeleteProject = useCallback(async (projectId: string) => {
+        try {
+            await contextDeleteProject(projectId)
+            toast.success("Project deleted")
+            // If we were viewing the deleted project, reset selection
+            if (selectedProjectId === projectId) {
+                setSelectedProjectId(null)
+            }
+        } catch (error) {
+            console.error("Failed to delete project:", error)
+            toast.error("Failed to delete project")
+        }
+    }, [contextDeleteProject, selectedProjectId])
+
     // Keyboard shortcuts for filter operations and selection
     useEffect(() => {
         const isInputFocused = (): boolean => {
@@ -644,8 +723,9 @@ export const TasksPage = ({
     }
 
     const handleAddTaskFromModal = useCallback((newTask: Task): void => {
-        setTasks((prev) => [...prev, newTask])
-    }, [setTasks])
+        // Use context addTask to persist to database
+        contextAddTask(newTask)
+    }, [contextAddTask])
 
     // Get default project and due date for the modal based on current selection
     const modalDefaultProjectId = useMemo(() => {
@@ -711,9 +791,10 @@ export const TasksPage = ({
             const newTask = createDefaultTask(projectId, statusId, title, dueDate)
             newTask.priority = priority
 
-            setTasks((prev) => [...prev, newTask])
+            // Use context addTask to persist to database
+            contextAddTask(newTask)
         },
-        [selectedId, selectedType, selectedProject, projects, setTasks]
+        [selectedId, selectedType, selectedProject, projects, contextAddTask]
     )
 
     const handleToggleComplete = useCallback(
@@ -728,18 +809,21 @@ export const TasksPage = ({
             if (!currentStatus) return
 
             if (currentStatus.type === "done") {
+                // Uncomplete: move back to todo status
                 const todoStatus = getDefaultTodoStatus(project)
-                setTasks((prev) =>
-                    prev.map((task) =>
-                        task.id === taskId
-                            ? { ...task, statusId: todoStatus?.id || task.statusId, completedAt: null }
-                            : task
-                    )
-                )
+                contextUpdateTask(taskId, {
+                    statusId: todoStatus?.id || taskToComplete.statusId,
+                    completedAt: null
+                })
                 return
             }
 
             const doneStatus = getDefaultDoneStatus(project)
+            const completedAt = new Date()
+
+            // Get subtasks to also complete them
+            const subtasks = getSubtasks(taskId, tasks)
+            const hasSubtasks = subtasks.length > 0
 
             if (taskToComplete.isRepeating && taskToComplete.repeatConfig && taskToComplete.dueDate) {
                 const config = taskToComplete.repeatConfig
@@ -750,43 +834,41 @@ export const TasksPage = ({
                     completedCount: newCompletedCount,
                 })
 
-                // Update tasks in a single setState call to avoid race conditions
-                setTasks((prev) => {
-                    // First, mark the completed task as done
-                    const updatedTasks = prev.map((task) =>
-                        task.id === taskId
-                            ? {
-                                ...task,
-                                statusId: doneStatus?.id || task.statusId,
-                                completedAt: new Date(),
-                                // Mark completed occurrence as non-repeating so it shows in Done section
-                                isRepeating: false,
-                                repeatConfig: null,
-                            }
-                            : task
-                    )
-
-                    // Then, if we should create the next occurrence, add it
-                    if (shouldCreateNext && nextDate) {
-                        const newTask: Task = {
-                            ...taskToComplete,
-                            id: generateTaskId(),
-                            dueDate: nextDate,
-                            statusId: getDefaultTodoStatus(project)?.id || taskToComplete.statusId,
-                            completedAt: null,
-                            createdAt: new Date(),
-                            repeatConfig: {
-                                ...config,
-                                completedCount: newCompletedCount,
-                            },
-                        }
-                        return [...updatedTasks, newTask]
-                    }
-
-                    return updatedTasks
+                // Mark the completed task as done (no longer repeating)
+                contextUpdateTask(taskId, {
+                    statusId: doneStatus?.id || taskToComplete.statusId,
+                    completedAt,
+                    isRepeating: false,
+                    repeatConfig: null,
                 })
 
+                // Also complete all subtasks
+                if (hasSubtasks) {
+                    subtasks.forEach((subtask) => {
+                        if (!subtask.completedAt) {
+                            contextUpdateTask(subtask.id, {
+                                statusId: doneStatus?.id || subtask.statusId,
+                                completedAt,
+                            })
+                        }
+                    })
+                }
+
+                // Create the next occurrence if needed
                 if (shouldCreateNext && nextDate) {
+                    const newTask: Task = {
+                        ...taskToComplete,
+                        id: generateTaskId(),
+                        dueDate: nextDate,
+                        statusId: getDefaultTodoStatus(project)?.id || taskToComplete.statusId,
+                        completedAt: null,
+                        createdAt: new Date(),
+                        repeatConfig: {
+                            ...config,
+                            completedCount: newCompletedCount,
+                        },
+                    }
+                    contextAddTask(newTask)
                     toast.success("Task completed!", {
                         description: `Next occurrence: ${formatDateShort(nextDate)}`,
                     })
@@ -796,16 +878,30 @@ export const TasksPage = ({
                     })
                 }
             } else {
-                setTasks((prev) =>
-                    prev.map((task) =>
-                        task.id === taskId
-                            ? { ...task, statusId: doneStatus?.id || task.statusId, completedAt: new Date() }
-                            : task
-                    )
-                )
+                // Simple completion: mark as done
+                contextUpdateTask(taskId, {
+                    statusId: doneStatus?.id || taskToComplete.statusId,
+                    completedAt
+                })
+
+                // Also complete all subtasks
+                if (hasSubtasks) {
+                    const incompleteSubtasks = subtasks.filter(s => !s.completedAt)
+                    incompleteSubtasks.forEach((subtask) => {
+                        contextUpdateTask(subtask.id, {
+                            statusId: doneStatus?.id || subtask.statusId,
+                            completedAt,
+                        })
+                    })
+                    if (incompleteSubtasks.length > 0) {
+                        toast.success("Task completed!", {
+                            description: `Also marked ${incompleteSubtasks.length} subtask(s) as done.`,
+                        })
+                    }
+                }
             }
         },
-        [tasks, projects, setTasks]
+        [tasks, projects, contextUpdateTask, contextAddTask]
     )
 
     const handleSkipOccurrence = useCallback(
@@ -815,17 +911,14 @@ export const TasksPage = ({
 
             const nextDate = calculateNextOccurrence(task.dueDate, task.repeatConfig)
             if (nextDate) {
-                setTasks((prev) =>
-                    prev.map((t) =>
-                        t.id === taskId ? { ...t, dueDate: nextDate } : t
-                    )
-                )
+                // T-GAP-001: Use contextUpdateTask to persist to database
+                contextUpdateTask(taskId, { dueDate: nextDate })
                 toast.success("Occurrence skipped", {
                     description: `Moved to ${formatDateShort(nextDate)}`,
                 })
             }
         },
-        [tasks, setTasks]
+        [tasks, contextUpdateTask]
     )
 
     const handleStopRepeating = useCallback(
@@ -834,22 +927,18 @@ export const TasksPage = ({
             if (!task) return
 
             if (option === "delete") {
-                setTasks((prev) => prev.filter((t) => t.id !== taskId))
+                // T-GAP-003: Use contextDeleteTask to persist to database
+                contextDeleteTask(taskId)
                 setIsDetailPanelOpen(false)
                 setSelectedTaskId(null)
                 toast.success("Repeating task deleted")
             } else {
-                setTasks((prev) =>
-                    prev.map((t) =>
-                        t.id === taskId
-                            ? { ...t, isRepeating: false, repeatConfig: null }
-                            : t
-                    )
-                )
+                // T-GAP-002: Use contextUpdateTask to persist to database
+                contextUpdateTask(taskId, { isRepeating: false, repeatConfig: null })
                 toast.success("Task will no longer repeat")
             }
         },
-        [tasks, setTasks]
+        [tasks, contextDeleteTask, contextUpdateTask]
     )
 
     const handleTaskClick = useCallback((taskId: string): void => {
@@ -863,10 +952,9 @@ export const TasksPage = ({
     }, [])
 
     const handleUpdateTask = useCallback((taskId: string, updates: Partial<Task>): void => {
-        setTasks((prev) =>
-            prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
-        )
-    }, [setTasks])
+        // Use context updateTask to persist to database
+        contextUpdateTask(taskId, updates)
+    }, [contextUpdateTask])
 
     const handleDeleteTask = useCallback((taskId: string): void => {
         const task = tasks.find((t) => t.id === taskId)
@@ -874,45 +962,50 @@ export const TasksPage = ({
 
         const deletedTask = { ...task }
 
-        setTasks((prev) => prev.filter((t) => t.id !== taskId))
+        // Use context deleteTask to persist to database
+        contextDeleteTask(taskId)
         setIsDetailPanelOpen(false)
         setSelectedTaskId(null)
 
+        // T051-T054: Register undo for Cmd+Z support
+        const undoFn = () => {
+            contextAddTask(deletedTask)
+        }
+        registerUndo(`Delete "${task.title}"`, undoFn)
+
         toast.success("Task deleted", {
             description: `"${task.title}" has been deleted.`,
+            duration: 10000, // T052: 10-second timeout for undo per spec
             action: {
                 label: "Undo",
-                onClick: () => {
-                    setTasks((prev) => [...prev, deletedTask])
-                },
+                onClick: undoFn,
             },
         })
-    }, [tasks, setTasks])
+    }, [tasks, contextDeleteTask, contextAddTask, registerUndo])
 
-    const handleDuplicateTask = useCallback((taskId: string): void => {
+    const handleDuplicateTask = useCallback(async (taskId: string): Promise<void> => {
         const task = tasks.find((t) => t.id === taskId)
         if (!task) return
 
-        const project = projects.find((p) => p.id === task.projectId)
-        const defaultStatus = project ? getDefaultTodoStatus(project) : null
+        try {
+            // Use backend service which handles subtask duplication
+            const result = await tasksService.duplicate(taskId)
 
-        const duplicatedTask: Task = {
-            ...task,
-            id: `task-${Date.now()}`,
-            title: `${task.title} (copy)`,
-            statusId: defaultStatus?.id || task.statusId,
-            createdAt: new Date(),
-            completedAt: null,
+            if (result.success && result.task) {
+                toast.success("Task duplicated", {
+                    description: `"${result.task.title}" has been created.`,
+                })
+                setSelectedTaskId(result.task.id)
+            } else {
+                toast.error("Failed to duplicate task", {
+                    description: result.error || "Unknown error",
+                })
+            }
+        } catch (error) {
+            console.error("Failed to duplicate task:", error)
+            toast.error("Failed to duplicate task")
         }
-
-        setTasks((prev) => [...prev, duplicatedTask])
-
-        toast.success("Task duplicated", {
-            description: `"${duplicatedTask.title}" has been created.`,
-        })
-
-        setSelectedTaskId(duplicatedTask.id)
-    }, [tasks, projects, setTasks])
+    }, [tasks])
 
     const handleAddTaskWithDate = useCallback(
         (date: Date): void => {
@@ -962,6 +1055,7 @@ export const TasksPage = ({
             )
 
             toast.success("Task archived", {
+                duration: 10000, // T052: 10-second timeout for undo per spec
                 action: {
                     label: "Undo",
                     onClick: () => {
@@ -1004,6 +1098,7 @@ export const TasksPage = ({
             setTasks((prev) => prev.filter((t) => t.id !== taskId))
 
             toast.success("Task deleted", {
+                duration: 10000, // T052: 10-second timeout for undo per spec
                 action: {
                     label: "Undo",
                     onClick: () => {
@@ -1015,15 +1110,15 @@ export const TasksPage = ({
         [tasks, setTasks]
     )
 
-    const _handleViewArchived = useCallback((): void => {
-        _setShowArchivedView(true)
+    const handleViewArchived = useCallback((): void => {
+        setShowArchivedView(true)
     }, [])
 
-    const _handleBackFromArchived = useCallback((): void => {
-        _setShowArchivedView(false)
+    const handleBackFromArchived = useCallback((): void => {
+        setShowArchivedView(false)
     }, [])
 
-    const _handleOpenClearMenu = useCallback((): void => {
+    const handleOpenClearMenu = useCallback((): void => {
         setIsClearMenuOpen(true)
     }, [])
 
@@ -1048,31 +1143,22 @@ export const TasksPage = ({
         setIsArchiveDialogOpen(true)
     }, [])
 
-    const handleConfirmArchive = useCallback((): void => {
+    const handleConfirmArchive = useCallback(async (): Promise<void> => {
+        let tasksToArchive: Task[]
         if (archiveDialogVariant === "all") {
-            const completedIds = completedTasksForActions.map((t) => t.id)
-            setTasks((prev) =>
-                prev.map((t) =>
-                    completedIds.includes(t.id)
-                        ? { ...t, archivedAt: new Date() }
-                        : t
-                )
-            )
-            toast.success(`${completedIds.length} task${completedIds.length !== 1 ? "s" : ""} archived`)
+            tasksToArchive = completedTasksForActions
         } else {
-            const olderTasks = getTasksOlderThan(completedTasksForActions, archiveOlderThanDays)
-            const olderIds = olderTasks.map((t) => t.id)
-            setTasks((prev) =>
-                prev.map((t) =>
-                    olderIds.includes(t.id)
-                        ? { ...t, archivedAt: new Date() }
-                        : t
-                )
-            )
-            toast.success(`${olderIds.length} task${olderIds.length !== 1 ? "s" : ""} archived`)
+            tasksToArchive = getTasksOlderThan(completedTasksForActions, archiveOlderThanDays)
         }
+
+        // Archive each task via handleUpdateTask to trigger database save
+        for (const task of tasksToArchive) {
+            await handleUpdateTask(task.id, { archivedAt: new Date() })
+        }
+
+        toast.success(`${tasksToArchive.length} task${tasksToArchive.length !== 1 ? "s" : ""} archived`)
         setIsArchiveDialogOpen(false)
-    }, [archiveDialogVariant, archiveOlderThanDays, completedTasksForActions, setTasks])
+    }, [archiveDialogVariant, archiveOlderThanDays, completedTasksForActions, handleUpdateTask])
 
     const tasksToArchiveCount = useMemo((): number => {
         if (archiveDialogVariant === "all") {
@@ -1086,23 +1172,27 @@ export const TasksPage = ({
         setIsDeleteCompletedDialogOpen(true)
     }, [])
 
-    const _handleDeleteAllArchived = useCallback((): void => {
+    const handleDeleteAllArchived = useCallback((): void => {
         setDeleteCompletedVariant("archived")
         setIsDeleteCompletedDialogOpen(true)
     }, [])
 
-    const handleConfirmDeleteCompleted = useCallback((): void => {
+    const handleConfirmDeleteCompleted = useCallback(async (): Promise<void> => {
+        let tasksToDelete: Task[]
         if (deleteCompletedVariant === "completed") {
-            const completedIds = completedTasksForActions.map((t) => t.id)
-            setTasks((prev) => prev.filter((t) => !completedIds.includes(t.id)))
-            toast.success(`${completedIds.length} task${completedIds.length !== 1 ? "s" : ""} deleted permanently`)
+            tasksToDelete = completedTasksForActions
         } else {
-            const archivedIds = archivedTasksForActions.map((t) => t.id)
-            setTasks((prev) => prev.filter((t) => !archivedIds.includes(t.id)))
-            toast.success(`${archivedIds.length} task${archivedIds.length !== 1 ? "s" : ""} deleted permanently`)
+            tasksToDelete = archivedTasksForActions
         }
+
+        // Delete each task via handleDeleteTask to trigger database delete
+        for (const task of tasksToDelete) {
+            await handleDeleteTask(task.id)
+        }
+
+        toast.success(`${tasksToDelete.length} task${tasksToDelete.length !== 1 ? "s" : ""} deleted permanently`)
         setIsDeleteCompletedDialogOpen(false)
-    }, [deleteCompletedVariant, completedTasksForActions, archivedTasksForActions, setTasks])
+    }, [deleteCompletedVariant, completedTasksForActions, archivedTasksForActions, handleDeleteTask])
 
     const tasksToDeleteCount = useMemo((): number => {
         if (deleteCompletedVariant === "completed") {
@@ -1279,6 +1369,10 @@ export const TasksPage = ({
                             isSelectionMode={selection.isSelectionMode}
                             onToggleSelectionMode={handleToggleSelectionMode}
                             showCompletionToggle={activeInternalTab === "all"}
+                            onViewArchived={activeInternalTab === "all" ? handleViewArchived : undefined}
+                            onArchiveOptions={activeInternalTab === "all" ? handleOpenClearMenu : undefined}
+                            completedCount={completedTasksForActions.length}
+                            archivedCount={archivedTasksForActions.length}
                         />
                     )}
 
@@ -1303,9 +1397,21 @@ export const TasksPage = ({
                         />
                     )}
 
+                    {/* T049: Archived View - shown when viewing archived tasks */}
+                    {showArchivedView && (
+                        <ArchivedView
+                            tasks={tasks}
+                            projects={projects}
+                            onBack={handleBackFromArchived}
+                            onRestore={(taskId) => handleUpdateTask(taskId, { archivedAt: null })}
+                            onDelete={handleDeleteTask}
+                            onDeleteAll={handleDeleteAllArchived}
+                        />
+                    )}
+
                     {/* Content Body - Today Tab */}
                     {activeInternalTab === "today" && (
-                        <div className="relative flex-1 overflow-hidden">
+                        <div className="relative flex flex-1 flex-col overflow-hidden">
                             {/* Decorative Day Watermark */}
                             <div
                                 className="journal-day-watermark pointer-events-none absolute -right-4 top-8 select-none text-[12rem] font-bold leading-none"
@@ -1329,40 +1435,74 @@ export const TasksPage = ({
 
                     {/* Content Body - Upcoming Tab */}
                     {activeInternalTab === "upcoming" && (
-                        <UpcomingView
-                            tasks={filteredTasks}
-                            projects={projects}
-                            selectedTaskId={selectedTaskId}
-                            onToggleComplete={handleToggleComplete}
-                            onUpdateTask={handleUpdateTask}
-                            onTaskClick={handleTaskClick}
-                            onQuickAdd={handleQuickAdd}
-                            onOpenModal={handleOpenAddTaskModal}
-                            onAddTaskWithDate={handleAddTaskWithDate}
-                        />
+                        <div className="flex flex-1 flex-col overflow-hidden">
+                            <UpcomingView
+                                tasks={filteredTasks}
+                                projects={projects}
+                                selectedTaskId={selectedTaskId}
+                                onToggleComplete={handleToggleComplete}
+                                onUpdateTask={handleUpdateTask}
+                                onTaskClick={handleTaskClick}
+                                onQuickAdd={handleQuickAdd}
+                                onOpenModal={handleOpenAddTaskModal}
+                                onAddTaskWithDate={handleAddTaskWithDate}
+                            />
+                        </div>
                     )}
 
                     {/* Content Body - All Tab (List View) */}
                     {activeInternalTab === "all" && activeView === "list" && (
-                        showFilterEmptyState ? (
-                            <FilterEmptyState
-                                filters={filters}
+                        <div className="flex flex-1 flex-col overflow-hidden">
+                            {showFilterEmptyState ? (
+                                <FilterEmptyState
+                                    filters={filters}
+                                    projects={projects}
+                                    onClearFilters={clearFilters}
+                                />
+                            ) : (
+                                <TaskList
+                                    tasks={filteredTasks}
+                                    projects={projects}
+                                    selectedId="all"
+                                    selectedType="view"
+                                    selectedTaskId={selectedTaskId}
+                                    onToggleComplete={handleToggleComplete}
+                                    onUpdateTask={handleUpdateTask}
+                                    onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
+                                    onTaskClick={handleTaskClick}
+                                    onQuickAdd={handleQuickAdd}
+                                    onOpenModal={handleOpenAddTaskModal}
+                                    isSelectionMode={selection.isSelectionMode}
+                                    selectedIds={selection.selectedIds}
+                                    onToggleSelect={toggleTask}
+                                    onShiftSelect={selectRange}
+                                    onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
+                                    onAddSubtask={subtaskManagement.handleAddSubtask}
+                                />
+                            )}
+                        </div>
+                    )}
+
+                    {/* Content Body - Projects Tab */}
+                    {activeInternalTab === "projects" && activeView === "list" && (
+                        <div className="flex flex-1 flex-col overflow-hidden">
+                            <ProjectsTabContent
+                                tasks={tasks}
                                 projects={projects}
-                                onClearFilters={clearFilters}
-                            />
-                        ) : (
-                            <TaskList
-                                tasks={filteredTasks}
-                                projects={projects}
-                                selectedId="all"
-                                selectedType="view"
                                 selectedTaskId={selectedTaskId}
+                                selectedProjectId={selectedProjectId}
+                                onProjectSelect={setSelectedProjectId}
+                                filteredProjectTasks={selectedProjectId ? projectsTabFilteredTasks : undefined}
                                 onToggleComplete={handleToggleComplete}
                                 onUpdateTask={handleUpdateTask}
                                 onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
                                 onTaskClick={handleTaskClick}
                                 onQuickAdd={handleQuickAdd}
                                 onOpenModal={handleOpenAddTaskModal}
+                                onProjectEdit={handleEditProject}
+                                onProjectArchive={handleArchiveProject}
+                                onProjectDelete={handleDeleteProject}
+                                onCreateProject={handleCreateProject}
                                 isSelectionMode={selection.isSelectionMode}
                                 selectedIds={selection.selectedIds}
                                 onToggleSelect={toggleTask}
@@ -1370,68 +1510,50 @@ export const TasksPage = ({
                                 onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
                                 onAddSubtask={subtaskManagement.handleAddSubtask}
                             />
-                        )
-                    )}
-
-                    {/* Content Body - Projects Tab */}
-                    {activeInternalTab === "projects" && activeView === "list" && (
-                        <ProjectsTabContent
-                            tasks={tasks}
-                            projects={projects}
-                            selectedTaskId={selectedTaskId}
-                            selectedProjectId={selectedProjectId}
-                            onProjectSelect={setSelectedProjectId}
-                            filteredProjectTasks={selectedProjectId ? projectsTabFilteredTasks : undefined}
-                            onToggleComplete={handleToggleComplete}
-                            onUpdateTask={handleUpdateTask}
-                            onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
-                            onTaskClick={handleTaskClick}
-                            onQuickAdd={handleQuickAdd}
-                            onOpenModal={handleOpenAddTaskModal}
-                            isSelectionMode={selection.isSelectionMode}
-                            selectedIds={selection.selectedIds}
-                            onToggleSelect={toggleTask}
-                            onShiftSelect={selectRange}
-                            onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
-                            onAddSubtask={subtaskManagement.handleAddSubtask}
-                        />
+                        </div>
                     )}
 
                     {/* Kanban View - All Tab */}
                     {activeInternalTab === "all" && activeView === "kanban" && (
-                        showFilterEmptyState ? (
-                            <FilterEmptyState
-                                filters={filters}
-                                projects={projects}
-                                onClearFilters={clearFilters}
-                            />
-                        ) : (
-                            <KanbanBoard
-                                tasks={filteredTasks}
-                                projects={projects}
-                                selectedId="all"
-                                selectedType="view"
-                                selectedTaskId={selectedTaskId}
-                                onUpdateTask={handleUpdateTask}
-                                onTaskClick={handleTaskClick}
-                                onToggleComplete={handleToggleComplete}
-                                onDeleteTask={handleDeleteTask}
-                                onQuickAdd={handleQuickAdd}
-                                isSelectionMode={selection.isSelectionMode}
-                                selectedIds={selection.selectedIds}
-                                onToggleSelect={toggleTask}
-                            />
-                        )
+                        <div className="flex flex-1 flex-col overflow-hidden">
+                            {showFilterEmptyState ? (
+                                <FilterEmptyState
+                                    filters={filters}
+                                    projects={projects}
+                                    onClearFilters={clearFilters}
+                                />
+                            ) : (
+                                <KanbanBoard
+                                    tasks={filteredTasks}
+                                    projects={projects}
+                                    selectedId="all"
+                                    selectedType="view"
+                                    selectedTaskId={selectedTaskId}
+                                    onUpdateTask={handleUpdateTask}
+                                    onTaskClick={handleTaskClick}
+                                    onToggleComplete={handleToggleComplete}
+                                    onDeleteTask={handleDeleteTask}
+                                    onQuickAdd={handleQuickAdd}
+                                    isSelectionMode={selection.isSelectionMode}
+                                    selectedIds={selection.selectedIds}
+                                    onToggleSelect={toggleTask}
+                                />
+                            )}
+                        </div>
                     )}
 
                     {/* Kanban View - Projects Tab */}
                     {activeInternalTab === "projects" && activeView === "kanban" && (
-                        <div className="flex h-full">
+                        <div className="flex flex-1 overflow-hidden">
                             <ProjectSidebar
                                 tasks={tasks}
                                 projects={projects}
                                 selectedProjectId={selectedProjectId}
                                 onProjectSelect={setSelectedProjectId}
+                                onProjectEdit={handleEditProject}
+                                onProjectArchive={handleArchiveProject}
+                                onProjectDelete={handleDeleteProject}
+                                onCreateProject={handleCreateProject}
                             />
                             <div className="flex-1 overflow-hidden">
                                 {selectedProjectId ? (
@@ -1468,29 +1590,35 @@ export const TasksPage = ({
 
                     {/* Calendar View - All Tab */}
                     {activeInternalTab === "all" && activeView === "calendar" && (
-                        <CalendarView
-                            tasks={filteredTasks}
-                            projects={projects}
-                            selectedId="all"
-                            selectedType="view"
-                            onUpdateTask={handleUpdateTask}
-                            onTaskClick={handleTaskClick}
-                            onAddTaskWithDate={handleAddTaskWithDate}
-                            onToggleComplete={handleToggleComplete}
-                            isSelectionMode={selection.isSelectionMode}
-                            selectedIds={selection.selectedIds}
-                            onToggleSelect={toggleTask}
-                        />
+                        <div className="flex flex-1 flex-col overflow-hidden">
+                            <CalendarView
+                                tasks={filteredTasks}
+                                projects={projects}
+                                selectedId="all"
+                                selectedType="view"
+                                onUpdateTask={handleUpdateTask}
+                                onTaskClick={handleTaskClick}
+                                onAddTaskWithDate={handleAddTaskWithDate}
+                                onToggleComplete={handleToggleComplete}
+                                isSelectionMode={selection.isSelectionMode}
+                                selectedIds={selection.selectedIds}
+                                onToggleSelect={toggleTask}
+                            />
+                        </div>
                     )}
 
                     {/* Calendar View - Projects Tab */}
                     {activeInternalTab === "projects" && activeView === "calendar" && (
-                        <div className="flex h-full">
+                        <div className="flex flex-1 overflow-hidden">
                             <ProjectSidebar
                                 tasks={tasks}
                                 projects={projects}
                                 selectedProjectId={selectedProjectId}
                                 onProjectSelect={setSelectedProjectId}
+                                onProjectEdit={handleEditProject}
+                                onProjectArchive={handleArchiveProject}
+                                onProjectDelete={handleDeleteProject}
+                                onCreateProject={handleCreateProject}
                             />
                             <div className="flex-1 overflow-hidden">
                                 {selectedProjectId ? (
@@ -1536,6 +1664,18 @@ export const TasksPage = ({
                 prefillTitle={addTaskPrefillTitle}
             />
 
+            {/* Project Modal */}
+            <ProjectModal
+                isOpen={isProjectModalOpen}
+                onClose={() => {
+                    setIsProjectModalOpen(false)
+                    setEditingProject(null)
+                }}
+                onSave={handleSaveProject}
+                onDelete={editingProject ? () => handleDeleteProject(editingProject.id) : undefined}
+                project={editingProject}
+            />
+
             {/* Task Detail Panel */}
             <TaskDetailPanel
                 isOpen={isDetailPanelOpen}
@@ -1571,7 +1711,9 @@ export const TasksPage = ({
                 onArchiveAll={handleArchiveAll}
                 onArchiveOlderThan={handleArchiveOlderThan}
                 onDeleteAll={handleDeleteAllCompleted}
+                onViewArchived={handleViewArchived}
                 completedCount={completedTasksForActions.length}
+                archivedCount={archivedTasksForActions.length}
             />
 
             {/* Archive Confirm Dialog */}

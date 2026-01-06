@@ -1,169 +1,347 @@
-import { useState, useCallback } from 'react'
+/**
+ * NotePage Component
+ *
+ * Displays and edits a note from the vault.
+ * Loads real note data via useNotes() hook and saves changes via updateNote().
+ */
+
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { ExportDialog } from '@/components/note/export-dialog'
+import { VersionHistory } from '@/components/note/version-history'
+import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
-import { InfoSection, Property, NewProperty } from '@/components/note/info-section'
+import { InfoSection, Property, NewProperty, PropertyType } from '@/components/note/info-section'
 import { BacklinksSection, Backlink } from '@/components/note/backlinks'
+import { LinkedTasksSection } from '@/components/note/linked-tasks'
+import {
+  useNote,
+  useNoteMutations,
+  useNoteLinksQuery,
+  useNoteTagsQuery,
+  type Note
+} from '@/hooks/use-notes-query'
+import { useNoteProperties } from '@/hooks/use-note-properties'
+import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
+import { notesService, onNoteDeleted, onNoteUpdated } from '@/services/notes-service'
+import { useTabs, useActiveTab } from '@/contexts/tabs'
+import { MoreHorizontal, History, Bookmark } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { toast } from 'sonner'
+import { useIsBookmarked } from '@/hooks/use-bookmarks'
+import { NoteReminderButton } from '@/components/note/note-reminder-button'
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface NotePageProps {
   noteId?: string
 }
 
-// Initial content for the editor (HTML string - will be parsed by BlockNote)
-const initialContent = `
-<h1>Introduction</h1>
-<p>This is a sample note demonstrating the note editor layout. The layout follows a clean, three-zone design inspired by Capacities and other modern PKM applications.</p>
-<p>The main content area is centered with a comfortable max-width of 720px, providing optimal reading width while maintaining a clean, paper-like aesthetic.</p>
-
-<h2>Background</h2>
-<p>The design philosophy emphasizes progressive disclosure, with advanced features hidden until needed. The warm color palette creates a comfortable reading environment.</p>
-
-<h2>Key Concepts</h2>
-<p>The layout is built with three distinct zones, each serving a specific purpose in the note-taking workflow.</p>
-
-<h3>Concept A</h3>
-<p>The main content zone provides a distraction-free writing environment with generous padding and a warm background color.</p>
-
-<h3>Concept B</h3>
-<p>The outline edge allows quick navigation through document structure, while the right sidebar provides access to AI features and related notes.</p>
-
-<h1>Implementation</h1>
-<p>The layout is implemented using modern React patterns with TypeScript, following the existing architectural conventions in the Memry application.</p>
-
-<h2>Setup</h2>
-<p>Components are organized in a modular fashion, with clear separation of concerns between layout logic and content rendering.</p>
-
-<h2>Configuration</h2>
-<p>The layout supports responsive breakpoints, adapting seamlessly from desktop to tablet and mobile viewports while maintaining usability.</p>
-
-<h1>Conclusion</h1>
-<p>This layout shell provides a solid foundation for building a comprehensive note editor with all the features specified in the design document.</p>
-`
-
-// Mock tag data for demonstration
-const mockAvailableTags: Tag[] = [
-  { id: '1', name: 'Important', color: 'red' },
-  { id: '2', name: 'Work', color: 'blue' },
-  { id: '3', name: 'Personal', color: 'green' },
-  { id: '4', name: 'Project', color: 'purple' },
-  { id: '5', name: 'Research', color: 'amber' },
-  { id: '6', name: 'Ideas', color: 'yellow' },
-  { id: '7', name: 'Meeting', color: 'cyan' },
-  { id: '8', name: 'Review', color: 'pink' },
-  { id: '9', name: 'Urgent', color: 'coral' },
-  { id: '10', name: 'Archive', color: 'stone' }
-]
-
-const mockRecentTags: Tag[] = [
-  { id: '1', name: 'Important', color: 'red' },
-  { id: '2', name: 'Work', color: 'blue' },
-  { id: '4', name: 'Project', color: 'purple' },
-  { id: '5', name: 'Research', color: 'amber' }
-]
-
-// Mock backlinks data for demonstration
-const mockBacklinks: Backlink[] = [
-  {
-    id: 'bl-1',
-    noteId: 'note-123',
-    noteTitle: 'Film Analysis Project',
-    folder: 'Projects',
-    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    mentions: [
-      {
-        id: 'm-1',
-        snippet:
-          "...studying the cinematography of [[The Godfather]] reveals Coppola's masterful use of low-key lighting...",
-        linkStart: 32,
-        linkEnd: 48
-      }
-    ]
-  },
-  {
-    id: 'bl-2',
-    noteId: 'note-456',
-    noteTitle: 'Team Meeting Dec 5',
-    folder: 'Meetings',
-    date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    mentions: [
-      {
-        id: 'm-2',
-        snippet:
-          '...decided to use [[The Godfather]] as our case study for the presentation next week...',
-        linkStart: 19,
-        linkEnd: 35
-      }
-    ]
-  },
-  {
-    id: 'bl-3',
-    noteId: 'note-789',
-    noteTitle: 'Classic Cinema Notes',
-    folder: 'Research',
-    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    mentions: [
-      {
-        id: 'm-3',
-        snippet:
-          '...alongside Citizen Kane, [[The Godfather]] represents a turning point in American filmmaking...',
-        linkStart: 27,
-        linkEnd: 43
-      },
-      {
-        id: 'm-4',
-        snippet:
-          "...the baptism scene in [[The Godfather]] is often cited as one of cinema's greatest...",
-        linkStart: 23,
-        linkEnd: 39
-      }
-    ]
+// Default values for property types when creating new properties
+function getDefaultValueForType(type: PropertyType): unknown {
+  switch (type) {
+    case 'checkbox':
+      return false
+    case 'number':
+    case 'rating':
+      return 0
+    case 'multiSelect':
+      return []
+    case 'date':
+      return null
+    default:
+      return ''
   }
-]
+}
 
-// Mock properties for demonstration
-const mockProperties: Property[] = [
-  { id: 'p1', name: 'Director', type: 'text', value: 'Francis Ford Coppola', isCustom: false },
-  { id: 'p2', name: 'Year', type: 'number', value: 1972, isCustom: false },
-  { id: 'p3', name: 'Rating', type: 'rating', value: 5, isCustom: false },
-  { id: 'p4', name: 'Watched', type: 'checkbox', value: true, isCustom: false },
-  { id: 'p5', name: 'Status', type: 'select', value: 'Completed', isCustom: false, options: ['Draft', 'In Progress', 'Completed', 'Archived'] },
-  { id: 'p6', name: 'IMDB', type: 'url', value: 'https://imdb.com/title/tt0068646', isCustom: true },
-  { id: 'p7', name: 'Notes', type: 'longText', value: '', isCustom: true }
-]
+// ============================================================================
+// Error State Component
+// ============================================================================
 
-export function NotePage({ noteId: _noteId }: NotePageProps) {
-  // noteId will be used in the future to load specific note data
-  const [emoji, setEmoji] = useState<string | null>('📝')
-  const [title, setTitle] = useState('Sample Note Title')
-  const [tags, setTags] = useState<Tag[]>([
-    { id: '1', name: 'Important', color: 'red' },
-    { id: '4', name: 'Project', color: 'purple' }
-  ])
-  const [availableTags, setAvailableTags] = useState<Tag[]>(mockAvailableTags)
-  const [properties, setProperties] = useState<Property[]>(mockProperties)
-  const [isInfoExpanded, setIsInfoExpanded] = useState(false)
+function NoteErrorState({ error, onRetry }: { error: string; onRetry?: () => void }) {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[400px]">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <p className="text-destructive font-medium">Failed to load note</p>
+        <p className="text-sm text-muted-foreground">{error}</p>
+        {onRetry && (
+          <button onClick={onRetry} className="text-sm text-primary hover:underline">
+            Try again
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
 
-  // Content state for the editor (BlockNote blocks)
-  const [_blocks, setBlocks] = useState<Block[]>([])
+// ============================================================================
+// Empty State Component
+// ============================================================================
+
+function NoteEmptyState() {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[400px]">
+      <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
+        <p className="text-sm">No note selected</p>
+        <p className="text-xs">Select a note from the sidebar to view it</p>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
+export function NotePage({ noteId }: NotePageProps) {
+  // TanStack Query hooks for data fetching with caching
+  const {
+    note,
+    isLoading,
+    error: noteError,
+    refetch: refetchNote
+  } = useNote(noteId ?? null)
+  const { createNote, updateNote, renameNote } = useNoteMutations()
+  const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinksQuery(noteId ?? null)
+  const { tasks: linkedTasks, isLoading: linkedTasksLoading } = useTasksLinkedToNote(noteId ?? null)
+  const { tags: allAvailableTags } = useNoteTagsQuery()
+  const { openTab, setTabDeleted } = useTabs()
+  const activeTab = useActiveTab()
+
+  // Extract highlight info from tab viewState (from reminder navigation)
+  const initialHighlight = useMemo(() => {
+    const viewState = activeTab?.viewState as {
+      highlightStart?: number
+      highlightEnd?: number
+      highlightText?: string
+    } | undefined
+
+    if (viewState?.highlightText) {
+      return {
+        text: viewState.highlightText,
+        start: viewState.highlightStart,
+        end: viewState.highlightEnd
+      }
+    }
+    return undefined
+  }, [activeTab?.viewState])
+
+  // Properties from backend
+  const {
+    properties: backendProperties,
+    updateProperty: updateBackendProperty,
+    addProperty: addBackendProperty,
+    removeProperty: removeBackendProperty
+  } = useNoteProperties(noteId ?? null)
+
+  // Bookmark state
+  const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('note', noteId ?? '')
+
+  // Convert query error to string
+  const error = noteError?.message ?? null
+
+  // Local state (UI-only, not data loading)
   const [headings, setHeadings] = useState<HeadingItem[]>([])
+  const [isInfoExpanded, setIsInfoExpanded] = useState(false)
+  const [isDeleted, setIsDeleted] = useState(false)
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
+  const [externalUpdateCount, setExternalUpdateCount] = useState(0)
+
+  // Content tracking for change detection
+  const lastSavedContent = useRef<string>('')
+
+  // Refs for debouncing
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Type mapping for backend PropertyValue → UI Property
+  const mapPropertyType = useCallback((backendType: string): PropertyType => {
+    const typeMap: Record<string, PropertyType> = {
+      text: 'text',
+      number: 'number',
+      checkbox: 'checkbox',
+      date: 'date',
+      select: 'select',
+      multiselect: 'multiSelect',
+      url: 'url',
+      rating: 'rating'
+    }
+    return typeMap[backendType] ?? 'text'
+  }, [])
+
+  // Convert backend properties to UI format
+  const properties: Property[] = useMemo(() => {
+    return backendProperties.map((prop) => ({
+      id: prop.name,
+      name: prop.name,
+      type: mapPropertyType(prop.type),
+      value: prop.value,
+      isCustom: true
+    }))
+  }, [backendProperties, mapPropertyType])
+
+  // Compute document stats for the Info tab in OutlineInfoPanel
+  const documentStats = useMemo(() => {
+    if (!note) return undefined
+    return {
+      wordCount: note.wordCount ?? 0,
+      characterCount: note.content?.length ?? 0,
+      createdAt: note.created ?? null,
+      modifiedAt: note.modified ?? null
+    }
+  }, [note])
+
+  // ============================================================================
+  // Sync lastSavedContent with note data from query
+  // ============================================================================
+
+  // Update lastSavedContent when note data changes (from cache or fresh fetch)
+  useEffect(() => {
+    if (note?.content) {
+      lastSavedContent.current = note.content
+    }
+    // Reset deleted state when switching to a new note
+    setIsDeleted(false)
+  }, [note?.id, note?.content])
+
+  // Cleanup save timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Listen for note deletion events
+  useEffect(() => {
+    if (!noteId) return
+
+    const handleDeleted = (event: { id: string }) => {
+      if (event.id === noteId) {
+        setIsDeleted(true)
+        // Mark tab as deleted with strikethrough (using entityId)
+        setTabDeleted(noteId, true)
+      }
+    }
+
+    const unsubDeleted = onNoteDeleted(handleDeleted)
+
+    return () => {
+      unsubDeleted()
+    }
+  }, [noteId, setTabDeleted])
+
+  // Listen for external note updates (file changed outside app)
+  // Track if we're currently saving to ignore our own updates
+  const isSavingRef = useRef(false)
+
+  useEffect(() => {
+    if (!noteId) return
+
+    const handleUpdated = (event: { id: string; changes: Partial<Note>; source?: string }) => {
+      // Only handle external updates for this note
+      if (event.id !== noteId) return
+      // Ignore our own saves (source won't be 'external')
+      if (event.source !== 'external') return
+      // Ignore if we're currently saving
+      if (isSavingRef.current) return
+
+      // TanStack Query will handle the cache invalidation and refetch.
+      // We just need to update lastSavedContent and force editor remount.
+      if (event.changes.content !== undefined) {
+        lastSavedContent.current = event.changes.content
+      }
+
+      // Increment counter to force editor remount with new content
+      setExternalUpdateCount((c) => c + 1)
+    }
+
+    const unsubUpdated = onNoteUpdated(handleUpdated)
+
+    return () => {
+      unsubUpdated()
+    }
+  }, [noteId])
+
+  // ============================================================================
+  // Tags - Convert between string[] and Tag[]
+  // ============================================================================
+
+  // Build a lookup map of tag colors from backend
+  const tagColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const t of allAvailableTags) {
+      map.set(t.tag, t.color)
+    }
+    return map
+  }, [allAvailableTags])
+
+  const noteTags: Tag[] = useMemo(() => {
+    return (note?.tags || []).map((tagName) => ({
+      id: tagName,
+      name: tagName,
+      color: tagColorMap.get(tagName) ?? 'stone' // Fallback to stone if not found
+    }))
+  }, [note?.tags, tagColorMap])
+
+  const availableTags: Tag[] = useMemo(() => {
+    return allAvailableTags.map((t) => ({
+      id: t.tag,
+      name: t.tag,
+      color: t.color // Use color from backend
+    }))
+  }, [allAvailableTags])
+
+  const recentTags = useMemo(() => {
+    return availableTags.slice(0, 4)
+  }, [availableTags])
+
+  // ============================================================================
+  // Backlinks - Convert to UI format
+  // ============================================================================
+
+  const backlinks: Backlink[] = useMemo(() => {
+    return rawBacklinks.map((bl) => ({
+      id: bl.sourceId,
+      noteId: bl.sourceId,
+      noteTitle: bl.sourceTitle,
+      folder: bl.sourcePath.split('/')[0] || '',
+      date: new Date(),
+      mentions: bl.context
+        ? [
+            {
+              id: `mention-${bl.sourceId}`,
+              snippet: bl.context,
+              linkStart: 0,
+              linkEnd: 0
+            }
+          ]
+        : []
+    }))
+  }, [rawBacklinks])
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const handleHeadingClick = useCallback((headingId: string) => {
-    console.log('Heading clicked:', headingId)
-    // Scroll to the heading element - BlockNote uses data-id attribute
     const element = document.querySelector(`[data-id="${headingId}"]`)
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [])
 
-  const handleContentChange = useCallback((newBlocks: Block[]) => {
-    setBlocks(newBlocks)
-    // You can also convert to HTML if needed:
-    // const html = await editor.blocksToHTMLLossy(newBlocks)
-  }, [])
-
   const handleHeadingsChange = useCallback((newHeadings: HeadingInfo[]) => {
-    // Transform HeadingInfo to HeadingItem for NoteLayout
     setHeadings(
       newHeadings.map((h) => ({
         id: h.id,
@@ -174,182 +352,515 @@ export function NotePage({ noteId: _noteId }: NotePageProps) {
     )
   }, [])
 
-  const handleInternalLinkClick = useCallback((noteId: string) => {
-    console.log('Internal link clicked, navigate to note:', noteId)
-    // TODO: Implement navigation to linked note
+  // Debounced save on markdown content change
+  const handleMarkdownChange = useCallback(
+    (markdown: string) => {
+      if (!noteId || !note) return
+
+      // Block saves if note was deleted
+      if (isDeleted) {
+        toast.error('Cannot save - this note was deleted')
+        return
+      }
+
+      // Skip if content hasn't changed
+      if (markdown === lastSavedContent.current) return
+
+      // Clear previous timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+
+      // Debounce save (500ms)
+      saveTimeoutRef.current = setTimeout(async () => {
+        isSavingRef.current = true
+        try {
+          await updateNote.mutateAsync({ id: noteId, content: markdown })
+          lastSavedContent.current = markdown
+        } catch (err) {
+          console.error('Failed to save note:', err)
+        } finally {
+          isSavingRef.current = false
+        }
+      }, 500)
+    },
+    [noteId, note, updateNote.mutateAsync, isDeleted]
+  )
+
+  const handleContentChange = useCallback((_blocks: Block[]) => {
+    // Content change is handled via onMarkdownChange
   }, [])
 
+  const handleTitleChange = useCallback(
+    async (newTitle: string) => {
+      if (!noteId || !note || newTitle === note.title) return
+
+      if (isDeleted) {
+        toast.error('Cannot rename - this note was deleted')
+        return
+      }
+
+      try {
+        await renameNote.mutateAsync({ id: noteId, newTitle })
+        // Note will be updated via TanStack Query cache invalidation
+      } catch (err) {
+        console.error('Failed to rename note:', err)
+      }
+    },
+    [noteId, note, renameNote.mutateAsync, isDeleted]
+  )
+
+  // T026: Handle emoji changes - save to backend
+  const handleEmojiChange = useCallback(
+    async (newEmoji: string | null) => {
+      if (!noteId || !note) return
+
+      if (isDeleted) {
+        toast.error('Cannot update emoji - this note was deleted')
+        return
+      }
+
+      try {
+        await updateNote.mutateAsync({ id: noteId, emoji: newEmoji })
+        // Note will be updated via TanStack Query cache invalidation
+      } catch (err) {
+        console.error('Failed to update emoji:', err)
+        toast.error('Failed to update emoji')
+      }
+    },
+    [noteId, note, updateNote.mutateAsync, isDeleted]
+  )
+
+  // Tag handlers
+  const handleAddTag = useCallback(
+    async (tagId: string) => {
+      if (!noteId || !note) return
+
+      if (isDeleted) {
+        toast.error('Cannot add tag - this note was deleted')
+        return
+      }
+
+      const tagToAdd = availableTags.find((t) => t.id === tagId)
+      if (tagToAdd && !note.tags.includes(tagToAdd.name)) {
+        const newTags = [...note.tags, tagToAdd.name]
+        try {
+          await updateNote.mutateAsync({ id: noteId, tags: newTags })
+          // Note will be updated via TanStack Query cache invalidation
+        } catch (err) {
+          console.error('Failed to add tag:', err)
+        }
+      }
+    },
+    [noteId, note, availableTags, updateNote.mutateAsync, isDeleted]
+  )
+
+  const handleCreateTag = useCallback(
+    async (name: string, _color: string) => {
+      if (!noteId || !note) return
+
+      if (isDeleted) {
+        toast.error('Cannot add tag - this note was deleted')
+        return
+      }
+
+      if (!note.tags.includes(name)) {
+        const newTags = [...note.tags, name]
+        try {
+          await updateNote.mutateAsync({ id: noteId, tags: newTags })
+          // Note will be updated via TanStack Query cache invalidation
+        } catch (err) {
+          console.error('Failed to create tag:', err)
+        }
+      }
+    },
+    [noteId, note, updateNote.mutateAsync, isDeleted]
+  )
+
+  const handleRemoveTag = useCallback(
+    async (tagId: string) => {
+      if (!noteId || !note) return
+
+      if (isDeleted) {
+        toast.error('Cannot remove tag - this note was deleted')
+        return
+      }
+
+      const newTags = note.tags.filter((t) => t !== tagId)
+      try {
+        await updateNote.mutateAsync({ id: noteId, tags: newTags })
+        // Note will be updated via TanStack Query cache invalidation
+      } catch (err) {
+        console.error('Failed to remove tag:', err)
+      }
+    },
+    [noteId, note, updateNote.mutateAsync, isDeleted]
+  )
+
+  // Property handlers - wired to backend
+  const handlePropertyChange = useCallback(
+    async (propertyId: string, value: unknown) => {
+      console.log('[NotePage] handlePropertyChange called:', { propertyId, value, noteId })
+      if (isDeleted) {
+        toast.error('Cannot update property - this note was deleted')
+        return
+      }
+      try {
+        await updateBackendProperty(propertyId, value)
+        console.log('[NotePage] Property updated successfully')
+      } catch (err) {
+        console.error('[NotePage] Failed to update property:', err)
+        toast.error('Failed to update property')
+      }
+    },
+    [updateBackendProperty, isDeleted, noteId]
+  )
+
+  const handleAddProperty = useCallback(
+    async (newProp: NewProperty) => {
+      console.log('[NotePage] handleAddProperty called:', { newProp, noteId })
+      if (isDeleted) {
+        toast.error('Cannot add property - this note was deleted')
+        return
+      }
+      // Get default value based on type
+      const defaultValue = getDefaultValueForType(newProp.type)
+      console.log('[NotePage] Adding property with default value:', {
+        name: newProp.name,
+        defaultValue
+      })
+      try {
+        await addBackendProperty(newProp.name, defaultValue)
+        console.log('[NotePage] Property added successfully')
+      } catch (err) {
+        console.error('[NotePage] Failed to add property:', err)
+        toast.error('Failed to add property')
+      }
+    },
+    [addBackendProperty, isDeleted, noteId]
+  )
+
+  const handleDeleteProperty = useCallback(
+    async (propertyId: string) => {
+      console.log('[NotePage] handleDeleteProperty called:', { propertyId, noteId })
+      if (isDeleted) {
+        toast.error('Cannot delete property - this note was deleted')
+        return
+      }
+      try {
+        await removeBackendProperty(propertyId)
+        console.log('[NotePage] Property deleted successfully')
+      } catch (err) {
+        console.error('[NotePage] Failed to delete property:', err)
+        toast.error('Failed to delete property')
+      }
+    },
+    [removeBackendProperty, isDeleted, noteId]
+  )
+
+  // Link handlers
   const handleLinkClick = useCallback((href: string) => {
-    console.log('External link clicked:', href)
-    // Open in default browser
     window.open(href, '_blank', 'noopener,noreferrer')
   }, [])
 
-  const handleEmojiChange = (newEmoji: string | null) => {
-    setEmoji(newEmoji)
-    console.log('Emoji changed:', newEmoji)
-  }
+  const handleInternalLinkClick = useCallback(
+    async (linkedNoteIdOrTitle: string) => {
+      const target = linkedNoteIdOrTitle?.trim()
+      if (!target) return
 
-  const handleTitleChange = (newTitle: string) => {
-    setTitle(newTitle)
-    console.log('Title changed:', newTitle)
-  }
+      let resolvedId = target
+      let resolvedTitle = 'Note'
 
-  const handleAddTag = useCallback(
-    (tagId: string) => {
-      const tagToAdd = availableTags.find((t) => t.id === tagId)
-      if (tagToAdd && !tags.some((t) => t.id === tagId)) {
-        setTags((prev) => [...prev, tagToAdd])
-        console.log('Tag added:', tagToAdd.name)
+      try {
+        // Try to get note by ID first
+        const byId = await notesService.get(target)
+        if (byId) {
+          resolvedId = byId.id
+          resolvedTitle = byId.title
+        } else {
+          // Search by title
+          const listResult = await notesService.list({ sortBy: 'title', limit: 500 })
+          const match = listResult.notes.find(
+            (n) => n.title.toLowerCase() === target.toLowerCase()
+          )
+
+          if (match) {
+            resolvedId = match.id
+            resolvedTitle = match.title
+          } else {
+            // Create new note with this title
+            const result = await createNote.mutateAsync({ title: target })
+            if (!result.success || !result.note) {
+              toast.error('Failed to create linked note')
+              return
+            }
+            resolvedId = result.note.id
+            resolvedTitle = result.note.title
+          }
+        }
+      } catch (err) {
+        console.error('[NotePage] Failed to resolve wiki link:', err)
+        toast.error('Failed to open linked note')
+        return
       }
+
+      openTab({
+        type: 'note',
+        title: resolvedTitle,
+        icon: 'file-text',
+        path: `/notes/${resolvedId}`,
+        entityId: resolvedId,
+        isPinned: false,
+        isModified: false,
+        isPreview: true,
+        isDeleted: false
+      })
     },
-    [availableTags, tags]
+    [openTab, createNote.mutateAsync]
   )
 
-  const handleCreateTag = useCallback((name: string, color: string) => {
-    const newTag: Tag = {
-      id: `new-${Date.now()}`,
-      name,
-      color
-    }
-    setAvailableTags((prev) => [...prev, newTag])
-    setTags((prev) => [...prev, newTag])
-    console.log('Tag created:', name, color)
-  }, [])
+  const handleBacklinkClick = useCallback(
+    (backlinkNoteId: string) => {
+      // Look up the title from the backlinks array
+      const backlink = backlinks.find((bl) => bl.noteId === backlinkNoteId)
+      const noteTitle = backlink?.noteTitle || 'Note'
 
-  const handleRemoveTag = useCallback((tagId: string) => {
-    setTags((prev) => prev.filter((t) => t.id !== tagId))
-    console.log('Tag removed:', tagId)
-  }, [])
+      openTab({
+        type: 'note',
+        title: noteTitle,
+        icon: 'file-text',
+        path: `/notes/${backlinkNoteId}`,
+        entityId: backlinkNoteId,
+        isPinned: false,
+        isModified: false,
+        isPreview: true,
+        isDeleted: false
+      })
+    },
+    [openTab, backlinks]
+  )
 
-  const handlePropertyChange = useCallback((propertyId: string, value: unknown) => {
-    setProperties((prev) =>
-      prev.map((p) => (p.id === propertyId ? { ...p, value } : p))
-    )
-    console.log('Property changed:', propertyId, value)
-  }, [])
+  // Handle clicking on a linked task
+  const handleLinkedTaskClick = useCallback(
+    (taskId: string) => {
+      openTab({
+        type: 'tasks',
+        title: 'Tasks',
+        icon: 'check-square',
+        path: `/tasks?taskId=${taskId}`,
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      })
+    },
+    [openTab]
+  )
 
-  const handleAddProperty = useCallback((newProp: NewProperty) => {
-    const property: Property = {
-      id: `custom-${Date.now()}`,
-      name: newProp.name,
-      type: newProp.type,
-      value: null,
-      isCustom: true
-    }
-    setProperties((prev) => [...prev, property])
-    console.log('Property added:', newProp.name, newProp.type)
-  }, [])
+  // ============================================================================
+  // Render
+  // ============================================================================
 
-  const handleDeleteProperty = useCallback((propertyId: string) => {
-    setProperties((prev) => prev.filter((p) => p.id !== propertyId))
-    console.log('Property deleted:', propertyId)
-  }, [])
+  // No note ID - show empty state
+  if (!noteId) {
+    return <NoteEmptyState />
+  }
 
-  const handleBacklinkClick = useCallback((noteId: string) => {
-    console.log('Backlink clicked, navigate to note:', noteId)
-    // TODO: Implement navigation to linked note
-  }, [])
+  // Error
+  if (error) {
+    return <NoteErrorState error={error} onRetry={refetchNote} />
+  }
+
+  // Loading state - show nothing while fetching to avoid flash of error
+  if (isLoading || !note) {
+    return null
+  }
 
   return (
-    <NoteLayout headings={headings} onHeadingClick={handleHeadingClick}>
-      {/* Note content with editorial aesthetic */}
-      <div className="space-y-8 journal-animate-in">
-        <div style={{ paddingInline: "54px" }}>
-          {/* Title section with decorative accent */}
-          <div className="space-y-4 journal-stagger-1">
-            <div className="relative">
-              {/* Decorative margin accent */}
-              <div
-                className="absolute -left-8 top-1/2 -translate-y-1/2 w-1 h-12 bg-gradient-to-b from-amber-400/40 via-amber-500/20 to-transparent rounded-full opacity-60"
-                aria-hidden="true"
+    <NoteLayout headings={headings} onHeadingClick={handleHeadingClick} stats={documentStats}>
+      {/* Note content wrapper with relative positioning for action bar */}
+      <div className="relative">
+        {/* Action bar - positioned at top-right of content area */}
+        <div className="absolute top-0 right-0 z-10 flex items-center gap-2">
+          {/* Reminder Button */}
+          {noteId && (
+            <NoteReminderButton
+              noteId={noteId}
+              disabled={isDeleted}
+            />
+          )}
+
+          {/* Bookmark Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hover:bg-muted/50"
+            onClick={toggleBookmark}
+            disabled={isDeleted || !noteId}
+            title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+          >
+            <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-current text-amber-500' : ''}`} />
+            <span className="sr-only">{isBookmarked ? 'Remove bookmark' : 'Add bookmark'}</span>
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 hover:bg-muted/50"
+                disabled={isDeleted}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">More options</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setIsVersionHistoryOpen(true)}>
+                <History className="mr-2 h-4 w-4" />
+                Version History
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>
+                Export
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Note content */}
+        <div className="space-y-8">
+          <div style={{ paddingInline: '54px' }}>
+            {/* Title section */}
+            <div className="space-y-4">
+              <div className="relative">
+                <div
+                  className="absolute -left-8 top-1/2 -translate-y-1/2 w-1 h-12 bg-gradient-to-b from-amber-400/40 via-amber-500/20 to-transparent rounded-full opacity-60"
+                  aria-hidden="true"
+                />
+                <NoteTitle
+                  emoji={note.emoji ?? null}
+                  title={note.title}
+                  onEmojiChange={handleEmojiChange}
+                  onTitleChange={handleTitleChange}
+                  placeholder="Untitled"
+                />
+              </div>
+            </div>
+
+            {/* Tags section */}
+            <div>
+              <TagsRow
+                tags={noteTags}
+                availableTags={availableTags}
+                recentTags={recentTags}
+                onAddTag={handleAddTag}
+                onCreateTag={handleCreateTag}
+                onRemoveTag={handleRemoveTag}
               />
-              <NoteTitle
-                emoji={emoji}
-                title={title}
-                onEmojiChange={handleEmojiChange}
-                onTitleChange={handleTitleChange}
-                placeholder="Untitled"
+            </div>
+
+            {/* Info Section (Properties) - always show for adding new properties */}
+            <div>
+              <InfoSection
+                properties={properties}
+                isExpanded={isInfoExpanded}
+                onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
+                onPropertyChange={handlePropertyChange}
+                onAddProperty={handleAddProperty}
+                onDeleteProperty={handleDeleteProperty}
+                disabled={isDeleted}
               />
             </div>
           </div>
 
-          {/* Tags section */}
-          <div className="journal-stagger-2">
-            <TagsRow
-              tags={tags}
-              availableTags={availableTags}
-              recentTags={mockRecentTags}
-              onAddTag={handleAddTag}
-              onCreateTag={handleCreateTag}
-              onRemoveTag={handleRemoveTag}
+          {/* Main content - BlockNote Editor with Markdown */}
+          <div
+            className="editor-click-area min-h-[400px] relative"
+            onMouseDown={(e) => {
+              const target = e.target as HTMLElement
+              if (
+                target.closest('[contenteditable="true"]')?.contains(target) &&
+                target.closest('.bn-block-content')
+              ) {
+                return
+              }
+              if (target.closest('button, a, input')) {
+                return
+              }
+              const editor = (e.currentTarget as HTMLElement).querySelector(
+                '.bn-editor [contenteditable="true"]'
+              ) as HTMLElement
+              if (editor) {
+                e.preventDefault()
+                editor.focus()
+              }
+            }}
+          >
+            <EditorErrorBoundary
+              noteId={noteId}
+              onRecover={refetchNote}
+              onError={(error) => console.error('[NotePage] Editor error:', error)}
+            >
+              <ContentArea
+                key={`${noteId}-${externalUpdateCount}`} // Force re-mount when note changes or external update
+                noteId={noteId} // T069: Required for attachment uploads
+                initialContent={note.content}
+                contentType="markdown"
+                placeholder="Start writing, or press '/' for commands..."
+                onContentChange={handleContentChange}
+                onMarkdownChange={handleMarkdownChange}
+                onHeadingsChange={handleHeadingsChange}
+                onLinkClick={handleLinkClick}
+                onInternalLinkClick={handleInternalLinkClick}
+                initialHighlight={initialHighlight}
+              />
+            </EditorErrorBoundary>
+          </div>
+
+          {/* Backlinks section */}
+          <div className="pt-8 mx-[54px] border-t border-border/30">
+            <BacklinksSection
+              backlinks={backlinks}
+              isLoading={backlinksLoading}
+              initialCount={5}
+              collapsible={true}
+              onBacklinkClick={handleBacklinkClick}
+            />
+
+            {/* Linked Tasks Section */}
+            <LinkedTasksSection
+              tasks={linkedTasks}
+              isLoading={linkedTasksLoading}
+              onTaskClick={handleLinkedTaskClick}
             />
           </div>
-
-          {/* Info Section (Collapsible Properties) */}
-          <div className="journal-stagger-3">
-            <InfoSection
-              properties={properties}
-              isExpanded={isInfoExpanded}
-              onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
-              onPropertyChange={handlePropertyChange}
-              onAddProperty={handleAddProperty}
-              onDeleteProperty={handleDeleteProperty}
-            />
-          </div>
-        </div>
-
-        {/* Main content - BlockNote Editor */}
-        <div
-          className="editor-click-area min-h-[400px] journal-stagger-4 relative"
-          onMouseDown={(e) => {
-            const target = e.target as HTMLElement
-            // If clicking directly on editable text, let it work normally
-            if (target.closest('[contenteditable="true"]')?.contains(target) &&
-                target.closest('.bn-block-content')) {
-              return
-            }
-            // If clicking on buttons or links, let it work normally
-            if (target.closest('button, a, input')) {
-              return
-            }
-            // Focus editor for all other clicks (empty areas)
-            const editor = (e.currentTarget as HTMLElement).querySelector('.bn-editor [contenteditable="true"]') as HTMLElement
-            if (editor) {
-              e.preventDefault()
-              editor.focus()
-            }
-          }}
-        >
-          <ContentArea
-            initialContent={initialContent}
-            placeholder="Start writing, or press '/' for commands..."
-            onContentChange={handleContentChange}
-            onHeadingsChange={handleHeadingsChange}
-            onLinkClick={handleLinkClick}
-            onInternalLinkClick={handleInternalLinkClick}
-          />
-        </div>
-
-        {/* Backlinks section with editorial separator */}
-        <div className="journal-stagger-5 pt-8 mx-[54px] border-t border-border/30">
-          <div className="flex items-baseline gap-2 mb-4">
-            <span className="font-sans text-xs font-medium uppercase tracking-wider text-text-tertiary/50">
-              References
-            </span>
-            <span className="font-serif text-xs italic text-text-tertiary/30">
-              {mockBacklinks.length} backlink{mockBacklinks.length !== 1 ? 's' : ''}
-            </span>
-          </div>
-          <BacklinksSection
-            backlinks={mockBacklinks}
-            isLoading={false}
-            initialCount={5}
-            collapsible={true}
-            onBacklinkClick={handleBacklinkClick}
-          />
         </div>
       </div>
+
+      {/* Export Dialog */}
+      <ExportDialog
+        open={isExportDialogOpen}
+        onOpenChange={setIsExportDialogOpen}
+        noteId={noteId}
+        noteTitle={note.title}
+      />
+
+      {/* Version History Panel */}
+      <VersionHistory
+        open={isVersionHistoryOpen}
+        onOpenChange={setIsVersionHistoryOpen}
+        noteId={noteId}
+        noteTitle={note.title}
+        onRestore={() => {
+          // Clear any pending save to prevent overwriting restored content
+          if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current)
+            saveTimeoutRef.current = null
+          }
+          // Reload note with restored content
+          refetchNote()
+        }}
+      />
     </NoteLayout>
   )
 }

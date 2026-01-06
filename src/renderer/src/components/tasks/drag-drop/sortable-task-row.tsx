@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, memo } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { GripVertical } from "lucide-react"
@@ -53,10 +53,54 @@ interface SortableTaskRowProps {
 const EXIT_ANIMATION_DURATION = 200
 
 // ============================================================================
+// PROP COMPARISON FOR MEMOIZATION
+// ============================================================================
+
+/**
+ * Custom comparison function for React.memo
+ * Only re-render when task data or visual state changes
+ */
+const arePropsEqual = (
+  prevProps: SortableTaskRowProps,
+  nextProps: SortableTaskRowProps
+): boolean => {
+  // Task identity and content
+  if (prevProps.task.id !== nextProps.task.id) return false
+  if (prevProps.task.title !== nextProps.task.title) return false
+  if (prevProps.task.priority !== nextProps.task.priority) return false
+  if (prevProps.task.statusId !== nextProps.task.statusId) return false
+  if (prevProps.task.isRepeating !== nextProps.task.isRepeating) return false
+
+  // Date comparison (handle null case)
+  const prevDate = prevProps.task.dueDate?.getTime() ?? null
+  const nextDate = nextProps.task.dueDate?.getTime() ?? null
+  if (prevDate !== nextDate) return false
+
+  // Time comparison
+  if (prevProps.task.dueTime !== nextProps.task.dueTime) return false
+
+  // Visual state
+  if (prevProps.isCompleted !== nextProps.isCompleted) return false
+  if (prevProps.isSelected !== nextProps.isSelected) return false
+  if (prevProps.isSelectionMode !== nextProps.isSelectionMode) return false
+  if (prevProps.isCheckedForSelection !== nextProps.isCheckedForSelection) return false
+  if (prevProps.showProjectBadge !== nextProps.showProjectBadge) return false
+  if (prevProps.accentClass !== nextProps.accentClass) return false
+
+  // Project reference (compare by id for performance)
+  if (prevProps.project.id !== nextProps.project.id) return false
+
+  // Section (for drag context)
+  if (prevProps.sectionId !== nextProps.sectionId) return false
+
+  return true
+}
+
+// ============================================================================
 // SORTABLE TASK ROW COMPONENT
 // ============================================================================
 
-export const SortableTaskRow = ({
+const SortableTaskRowComponent = ({
   task,
   project,
   projects,
@@ -370,6 +414,9 @@ export const SortableTaskRow = ({
   )
 }
 
+// Memoized export to prevent unnecessary re-renders
+export const SortableTaskRow = memo(SortableTaskRowComponent, arePropsEqual)
+
 // ============================================================================
 // DRAG PREVIEW (for overlay)
 // ============================================================================
@@ -419,6 +466,9 @@ export const TaskRowPreview = ({
 }
 
 export default SortableTaskRow
+
+// Re-export the component type for reference
+export type { SortableTaskRowProps }
 
 
 
