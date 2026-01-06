@@ -4,58 +4,44 @@ import { ArrowRight, Check, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ZOOTOOLS_API_KEY } from '@/lib/constants'
 
 interface WaitlistFormProps {
   variant?: 'hero' | 'inline' | 'centered'
   className?: string
 }
 
-interface ZooToolsResponse {
-  contact: {
-    id: string
-    properties: {
-      email: string
-      status: string
-    }
-  }
-  operation: 'contact_created' | 'contact_updated'
-}
-
 export function WaitlistForm({ variant = 'hero', className }: WaitlistFormProps) {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [isReturning, setIsReturning] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!email || status === 'loading') return
 
     setStatus('loading')
+    setErrorMessage('')
 
     try {
-      const response = await fetch('https://api.zootools.co/v1/contacts', {
+      const response = await fetch('/api/waitlist', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${ZOOTOOLS_API_KEY}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          properties: {
-            email
-          }
-        })
+        body: JSON.stringify({ email })
       })
 
-      if (response.ok) {
-        const data: ZooToolsResponse = await response.json()
-        setIsReturning(data.operation === 'contact_updated')
+      const data = await response.json()
+
+      if (response.ok && data.success) {
         setStatus('success')
         setEmail('')
       } else {
+        setErrorMessage(data.error || 'Something went wrong')
         setStatus('error')
       }
     } catch {
+      setErrorMessage('Network error. Please try again.')
       setStatus('error')
     }
   }
@@ -74,14 +60,8 @@ export function WaitlistForm({ variant = 'hero', className }: WaitlistFormProps)
           <Check className="w-4 h-4 text-sage" />
         </div>
         <div>
-          <p className="font-serif font-medium text-ink">
-            {isReturning ? 'Welcome back!' : "You're on the list!"}
-          </p>
-          <p className="text-sm text-muted">
-            {isReturning
-              ? "Great to see you again. We'll keep you updated."
-              : "We'll notify you when Memry is ready."}
-          </p>
+          <p className="font-serif font-medium text-ink">You're on the list!</p>
+          <p className="text-sm text-muted">We'll notify you when Memry is ready.</p>
         </div>
       </motion.div>
     )
@@ -103,15 +83,22 @@ export function WaitlistForm({ variant = 'hero', className }: WaitlistFormProps)
           type="email"
           placeholder="Enter your email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value)
+            if (status === 'error') setStatus('idle')
+          }}
           required
           disabled={status === 'loading'}
           className={cn(
             'w-full bg-white/50 backdrop-blur-sm focus:bg-white',
             variant === 'hero' && 'h-12 text-base shadow-sm',
-            variant === 'centered' && 'h-12 text-base'
+            variant === 'centered' && 'h-12 text-base',
+            status === 'error' && 'border-red-500 focus:ring-red-500'
           )}
         />
+        {status === 'error' && (
+          <p className="text-sm text-red-600 mt-2 absolute -bottom-6 left-0">{errorMessage}</p>
+        )}
       </div>
       <Button
         type="submit"
@@ -131,11 +118,6 @@ export function WaitlistForm({ variant = 'hero', className }: WaitlistFormProps)
           </>
         )}
       </Button>
-      {status === 'error' && (
-        <p className="text-sm text-red-600 mt-2 absolute -bottom-6 left-0">
-          Something went wrong. Please try again.
-        </p>
-      )}
     </form>
   )
 }
