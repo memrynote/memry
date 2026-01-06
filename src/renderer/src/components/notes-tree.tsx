@@ -122,18 +122,68 @@ function isDescendantOrSelf(sourcePath: string, targetPath: string): boolean {
   return targetPath === sourcePath || targetPath.startsWith(sourcePath + '/')
 }
 
+/**
+ * Get notes in a specific folder from tree structure
+ */
+function getNotesInFolder(tree: TreeStructure, folderPath: string): NoteListItem[] {
+  if (folderPath === '') {
+    return tree.rootNotes
+  }
+
+  const findFolder = (folders: FolderNode[], path: string): FolderNode | null => {
+    for (const folder of folders) {
+      if (folder.path === path) return folder
+      const found = findFolder(folder.children, path)
+      if (found) return found
+    }
+    return null
+  }
+
+  const folder = findFolder(tree.folders, folderPath)
+  return folder ? folder.notes : []
+}
+
+/**
+ * Get sibling folders in a specific parent folder from tree structure
+ * @param tree The tree structure
+ * @param parentPath The parent folder path (empty string for root level)
+ * @returns Array of folder paths in the parent
+ */
+function getFoldersInParent(tree: TreeStructure, parentPath: string): string[] {
+  if (parentPath === '') {
+    // Root level folders
+    return tree.folders.map((f) => f.path)
+  }
+
+  const findFolder = (folders: FolderNode[], path: string): FolderNode | null => {
+    for (const folder of folders) {
+      if (folder.path === path) return folder
+      const found = findFolder(folder.children, path)
+      if (found) return found
+    }
+    return null
+  }
+
+  const parentFolder = findFolder(tree.folders, parentPath)
+  return parentFolder ? parentFolder.children.map((f) => f.path) : []
+}
+
 // ============================================================================
 // Tree Building Utilities
 // ============================================================================
 
 /**
  * Build a tree structure from flat notes list and folders.
+ * Positions map is used to sort notes within each folder.
  */
-function buildTreeFromNotes(notes: NoteListItem[], folders: string[]): TreeStructure {
+function buildTreeFromNotes(
+  notes: NoteListItem[],
+  folders: string[],
+  positions: Record<string, number>
+): TreeStructure {
   const folderMap = new Map<string, FolderNode>()
   const rootNotes: NoteListItem[] = []
 
-  // Initialize folder structure
   folders.forEach((folderPath) => {
     const parts = folderPath.split('/').filter(Boolean)
     let currentPath = ''
@@ -151,7 +201,6 @@ function buildTreeFromNotes(notes: NoteListItem[], folders: string[]): TreeStruc
         }
         folderMap.set(currentPath, node)
 
-        // Add to parent's children
         if (parentPath && folderMap.has(parentPath)) {
           const parent = folderMap.get(parentPath)!
           if (!parent.children.some((c) => c.path === currentPath)) {
@@ -162,28 +211,22 @@ function buildTreeFromNotes(notes: NoteListItem[], folders: string[]): TreeStruc
     })
   })
 
-  // Assign notes to folders
   notes.forEach((note) => {
-    // note.path is like "notes/subfolder/note.md" - we need the folder part
     const pathParts = note.path.split('/')
-    pathParts.pop() // Remove filename
+    pathParts.pop()
 
     if (pathParts.length === 0 || pathParts[0] === 'notes') {
-      // Root level note (in notes/ folder directly)
       if (pathParts.length <= 1) {
         rootNotes.push(note)
       } else {
-        // Note is in a subfolder
-        const folderPath = pathParts.slice(1).join('/') // Remove "notes" prefix
+        const folderPath = pathParts.slice(1).join('/')
         if (folderMap.has(folderPath)) {
           folderMap.get(folderPath)!.notes.push(note)
         } else {
-          // Folder not in list, add note to root
           rootNotes.push(note)
         }
       }
     } else {
-      // Note path doesn't start with "notes/"
       const folderPath = pathParts.join('/')
       if (folderMap.has(folderPath)) {
         folderMap.get(folderPath)!.notes.push(note)
@@ -193,10 +236,37 @@ function buildTreeFromNotes(notes: NoteListItem[], folders: string[]): TreeStruc
     }
   })
 
-  // Get root-level folders (no parent)
+  // Sort notes by position, fallback to modified date
+  const sortByPosition = (a: NoteListItem, b: NoteListItem): number => {
+    const posA = positions[a.path] ?? Number.MAX_SAFE_INTEGER
+    const posB = positions[b.path] ?? Number.MAX_SAFE_INTEGER
+    if (posA !== posB) return posA - posB
+    return b.modified.getTime() - a.modified.getTime()
+  }
+
+  // Sort folders by position, fallback to alphabetical
+  const sortFoldersByPosition = (a: FolderNode, b: FolderNode): number => {
+    const posA = positions[a.path] ?? Number.MAX_SAFE_INTEGER
+    const posB = positions[b.path] ?? Number.MAX_SAFE_INTEGER
+    if (posA !== posB) return posA - posB
+    return a.name.localeCompare(b.name)
+  }
+
+  rootNotes.sort(sortByPosition)
+
+  const sortFolderContents = (folder: FolderNode): void => {
+    folder.notes.sort(sortByPosition)
+    folder.children.sort(sortFoldersByPosition)
+    folder.children.forEach(sortFolderContents)
+  }
+
   const rootFolders = Array.from(folderMap.values()).filter((folder) => {
     return !folder.path.includes('/')
   })
+
+  // Sort root folders by position
+  rootFolders.sort(sortFoldersByPosition)
+  rootFolders.forEach(sortFolderContents)
 
   return {
     folders: rootFolders,
@@ -313,6 +383,9 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   const [folderToConfigureTemplate, setFolderToConfigureTemplate] = useState<string | null>(null)
   const [folderTemplateNames, setFolderTemplateNames] = useState<Map<string, string>>(new Map())
 
+  // Note positions for custom ordering
+  const [notePositions, setNotePositions] = useState<Record<string, number>>({})
+
   // Focus input when note renaming starts
   useEffect(() => {
     if (renamingNoteId && renameInputRef.current) {
@@ -366,10 +439,25 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     loadFolderTemplateNames()
   }, [folders])
 
-  // Build tree structure from notes and folders
+  // Fetch positions when notes change
+  useEffect(() => {
+    const fetchPositions = async () => {
+      try {
+        const result = await notesService.getAllPositions()
+        if (result.success) {
+          setNotePositions(result.positions)
+        }
+      } catch (err) {
+        console.error('Failed to fetch positions:', err)
+      }
+    }
+    fetchPositions()
+  }, [notes])
+
+  // Build tree structure from notes, folders, and positions
   const tree = useMemo(() => {
-    return buildTreeFromNotes(notes, folders)
-  }, [notes, folders])
+    return buildTreeFromNotes(notes, folders, notePositions)
+  }, [notes, folders, notePositions])
 
   // Check if we should use virtualized rendering (100+ items)
   const useVirtualization = useMemo(() => {
@@ -962,29 +1050,132 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   )
 
   /**
+   * Handle reordering notes within the same folder
+   */
+  const handleReorderInFolder = useCallback(
+    async (
+      folderPath: string,
+      draggedNoteId: string,
+      targetNoteId: string,
+      position: DropPosition
+    ): Promise<boolean> => {
+      const folderNotes = getNotesInFolder(tree, folderPath)
+      if (folderNotes.length < 2) return false
+
+      const draggedNote = noteMap.get(draggedNoteId)
+      const targetNote = noteMap.get(targetNoteId)
+      if (!draggedNote || !targetNote) return false
+
+      const currentPaths = folderNotes.map((n) => n.path)
+      const draggedIndex = currentPaths.indexOf(draggedNote.path)
+      const targetIndex = currentPaths.indexOf(targetNote.path)
+
+      if (draggedIndex === -1 || targetIndex === -1) return false
+
+      const newPaths = [...currentPaths]
+      newPaths.splice(draggedIndex, 1)
+
+      let insertIndex = targetIndex
+      if (draggedIndex < targetIndex) {
+        insertIndex = targetIndex - 1
+      }
+      if (position === 'after') {
+        insertIndex += 1
+      }
+
+      newPaths.splice(insertIndex, 0, draggedNote.path)
+
+      if (newPaths.every((p, i) => p === currentPaths[i])) {
+        return false
+      }
+
+      try {
+        await notesService.reorder(folderPath, newPaths)
+        const result = await notesService.getAllPositions()
+        if (result.success) {
+          setNotePositions(result.positions)
+        }
+        return true
+      } catch (err) {
+        console.error('Failed to reorder notes:', err)
+        return false
+      }
+    },
+    [tree, noteMap]
+  )
+
+  /**
+   * Handle reordering folders within the same parent folder
+   */
+  const handleReorderFoldersInParent = useCallback(
+    async (
+      parentPath: string,
+      draggedFolderPath: string,
+      targetFolderPath: string,
+      position: DropPosition
+    ): Promise<boolean> => {
+      const siblingFolders = getFoldersInParent(tree, parentPath)
+      if (siblingFolders.length < 2) return false
+
+      const draggedIndex = siblingFolders.indexOf(draggedFolderPath)
+      const targetIndex = siblingFolders.indexOf(targetFolderPath)
+
+      if (draggedIndex === -1 || targetIndex === -1) return false
+
+      const newPaths = [...siblingFolders]
+      newPaths.splice(draggedIndex, 1)
+
+      let insertIndex = targetIndex
+      if (draggedIndex < targetIndex) {
+        insertIndex = targetIndex - 1
+      }
+      if (position === 'after') {
+        insertIndex += 1
+      }
+
+      newPaths.splice(insertIndex, 0, draggedFolderPath)
+
+      if (newPaths.every((p, i) => p === siblingFolders[i])) {
+        return false
+      }
+
+      try {
+        // Reorder folders using the same reorder API (positions work for both)
+        await notesService.reorder(parentPath, newPaths)
+        const result = await notesService.getAllPositions()
+        if (result.success) {
+          setNotePositions(result.positions)
+        }
+        return true
+      } catch (err) {
+        console.error('Failed to reorder folders:', err)
+        return false
+      }
+    },
+    [tree]
+  )
+
+  /**
    * Main move handler called when drag-drop completes
    * Supports multi-selection: all selected items are moved together
    */
   const handleMove = useCallback(
     async (operation: MoveOperation) => {
-      if (isMoving) return // Prevent concurrent moves
+      if (isMoving) return
 
       const { draggedId, targetId, position } = operation
 
-      // Don't allow dropping on self
       if (draggedId === targetId) return
 
       setIsMoving(true)
 
       try {
-        // Check if dragged item is part of multi-selection
         const isPartOfSelection = selectedIds.includes(draggedId)
         const itemsToMove =
           isPartOfSelection && selectedIds.length > 1
-            ? selectedIds.filter((id) => id !== targetId) // Exclude target from items to move
+            ? selectedIds.filter((id) => id !== targetId)
             : [draggedId]
 
-        // Separate notes and folders
         const notesToMove: string[] = []
         const foldersToMove: string[] = []
 
@@ -996,20 +1187,74 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           }
         }
 
-        // Calculate target folder for notes
         const targetFolder = calculateTargetFolder(targetId, position)
 
-        // Move folders first (to avoid issues if notes are inside folders being moved)
+        // Check for folder reordering (single folder dragged before/after another folder)
+        if (
+          foldersToMove.length === 1 &&
+          notesToMove.length === 0 &&
+          targetId.startsWith('folder-') &&
+          (position === 'before' || position === 'after')
+        ) {
+          const draggedFolderPath = foldersToMove[0]
+          const targetFolderPath = targetId.replace('folder-', '')
+
+          // Get parent paths to check if they're siblings
+          const draggedParent = getParentFolder(draggedFolderPath)
+          const targetParent = getParentFolder(targetFolderPath)
+
+          if (draggedParent === targetParent) {
+            // Same parent - this is a reorder operation
+            const reordered = await handleReorderFoldersInParent(
+              draggedParent,
+              draggedFolderPath,
+              targetFolderPath,
+              position
+            )
+            if (reordered) {
+              return
+            }
+          }
+        }
+
+        // Handle folder moves (different parent or inside drop)
         for (const folderPath of foldersToMove) {
           await handleFolderMove(folderPath, targetId, position)
         }
 
-        // Move notes
+        // Check for note reordering (single note dragged before/after another note)
+        if (
+          notesToMove.length === 1 &&
+          foldersToMove.length === 0 &&
+          !targetId.startsWith('folder-') &&
+          targetId !== 'notes-root' &&
+          (position === 'before' || position === 'after')
+        ) {
+          const draggedNote = noteMap.get(notesToMove[0])
+          const targetNote = noteMap.get(targetId)
+
+          if (draggedNote && targetNote) {
+            const draggedFolder = extractFolderFromPath(draggedNote.path)
+            const dropFolder = extractFolderFromPath(targetNote.path)
+
+            if (draggedFolder === dropFolder) {
+              const reordered = await handleReorderInFolder(
+                draggedFolder,
+                notesToMove[0],
+                targetId,
+                position
+              )
+              if (reordered) {
+                return
+              }
+            }
+          }
+        }
+
         for (const noteId of notesToMove) {
           await handleNoteMove(noteId, targetFolder)
         }
 
-        // Clear selection after successful move
         if (itemsToMove.length > 1) {
           setSelectedIds([])
         }
@@ -1017,7 +1262,16 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         setIsMoving(false)
       }
     },
-    [isMoving, selectedIds, calculateTargetFolder, handleNoteMove, handleFolderMove]
+    [
+      isMoving,
+      selectedIds,
+      calculateTargetFolder,
+      handleNoteMove,
+      handleFolderMove,
+      handleReorderInFolder,
+      handleReorderFoldersInParent,
+      noteMap
+    ]
   )
 
   // Handle Delete key to delete selected notes
@@ -1413,6 +1667,8 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           tree={tree}
           selectedIds={selectedIds}
           onSelectionChange={handleSelectionChange}
+          onMove={handleMove}
+          onBulkDelete={handleBulkDelete}
           onRenameNote={handleRenameClick}
           onDeleteNote={handleDeleteClick}
           onOpenExternal={handleOpenExternal}

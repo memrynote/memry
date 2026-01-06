@@ -3,6 +3,7 @@
  *
  * A virtualized version of the notes tree for performance with 100+ notes.
  * Uses @tanstack/react-virtual for efficient rendering of only visible items.
+ * Supports drag-drop reordering, multi-selection, and bulk operations.
  *
  * @module components/virtualized-notes-tree
  */
@@ -22,7 +23,8 @@ import {
   Trash2,
   LayoutTemplate,
   X,
-  ExternalLink
+  ExternalLink,
+  GripVertical
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTabActions } from '@/contexts/tabs'
@@ -46,6 +48,20 @@ import {
 // Types
 // ============================================================================
 
+export type DropPosition = 'before' | 'after' | 'inside'
+
+export type MoveOperation = {
+  draggedId: string
+  targetId: string
+  position: DropPosition
+}
+
+type DragState = {
+  draggedId: string | null
+  dropTargetId: string | null
+  dropPosition: DropPosition | null
+}
+
 interface VirtualizedNotesTreeProps {
   /** Tree structure with folders and notes */
   tree: TreeStructure
@@ -53,6 +69,10 @@ interface VirtualizedNotesTreeProps {
   selectedIds: string[]
   /** Callback when selection changes */
   onSelectionChange: (ids: string[]) => void
+  /** Callback when items are moved via drag-drop */
+  onMove?: (operation: MoveOperation) => void
+  /** Callback for bulk delete */
+  onBulkDelete?: () => void
   /** Callback when a note should be renamed */
   onRenameNote?: (note: NoteListItem) => void
   /** Callback when a note should be deleted */
@@ -126,6 +146,13 @@ function saveExpandedFolders(expandedIds: Set<string>): void {
   }
 }
 
+/**
+ * Check if an item is a folder based on its ID
+ */
+function isFolder(itemId: string): boolean {
+  return itemId.startsWith('folder-')
+}
+
 // ============================================================================
 // Row Components
 // ============================================================================
@@ -133,6 +160,11 @@ function saveExpandedFolders(expandedIds: Set<string>): void {
 interface FolderRowProps {
   item: FolderVirtualItem
   isSelected: boolean
+  isDragging: boolean
+  isDropTarget: boolean
+  dropPosition: DropPosition | null
+  selectedCount: number
+  draggable: boolean
   onToggleExpand: (folderId: string) => void
   onSelect: (folderId: string, event: React.MouseEvent) => void
   onOpenFolderView?: (folderPath: string) => void
@@ -142,12 +174,23 @@ interface FolderRowProps {
   onDeleteFolder?: (folderPath: string) => void
   onSetFolderTemplate?: (folderPath: string) => void
   onClearFolderTemplate?: (folderPath: string) => void
+  onBulkDelete?: () => void
+  onDragStart: (e: React.DragEvent, itemId: string) => void
+  onDragEnd: () => void
+  onDragOver: (e: React.DragEvent, itemId: string, hasChildren: boolean) => void
+  onDragLeave: (e: React.DragEvent) => void
+  onDrop: (e: React.DragEvent) => void
   folderTemplateName?: string
 }
 
 function FolderRow({
   item,
   isSelected,
+  isDragging,
+  isDropTarget,
+  dropPosition,
+  selectedCount,
+  draggable,
   onToggleExpand,
   onSelect,
   onOpenFolderView,
@@ -157,8 +200,17 @@ function FolderRow({
   onDeleteFolder,
   onSetFolderTemplate,
   onClearFolderTemplate,
+  onBulkDelete,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
   folderTemplateName
 }: FolderRowProps) {
+  const rowRef = useRef<HTMLDivElement>(null)
+  const showBulkActions = isSelected && selectedCount > 1
+
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -195,23 +247,75 @@ function FolderRow({
     [item.folder.path, onOpenFolderView]
   )
 
+  const handleDragStart = useCallback(
+    (e: React.DragEvent) => {
+      onDragStart(e, item.id)
+    },
+    [item.id, onDragStart]
+  )
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      onDragOver(e, item.id, item.hasChildren)
+    },
+    [item.id, item.hasChildren, onDragOver]
+  )
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div
+          ref={rowRef}
           role="treeitem"
           aria-expanded={item.isExpanded}
           aria-selected={isSelected}
           tabIndex={0}
+          draggable={draggable}
           className={cn(
-            'group/folder flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors',
+            'group/folder relative flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors',
             'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-            isSelected && 'bg-muted'
+            isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground',
+            isDragging && 'opacity-50',
+            draggable && 'cursor-default'
           )}
           style={{ paddingLeft: `${item.level * 16 + 8}px` }}
           onClick={handleClick}
           onKeyDown={handleKeyDown}
+          onDragStart={handleDragStart}
+          onDragEnd={onDragEnd}
+          onDragOver={handleDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
         >
+          {/* Drop indicator - before */}
+          {isDropTarget && dropPosition === 'before' && (
+            <div
+              className="absolute left-2 right-2 -top-0.5 h-0.5 rounded-full bg-primary"
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Drop indicator - after */}
+          {isDropTarget && dropPosition === 'after' && (
+            <div
+              className="absolute left-2 right-2 -bottom-0.5 h-0.5 rounded-full bg-primary"
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Drop indicator - inside (for folders) */}
+          {isDropTarget && dropPosition === 'inside' && (
+            <div
+              className="absolute inset-0 rounded-md border-2 border-primary border-dashed bg-primary/10"
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Drag handle */}
+          {draggable && (
+            <GripVertical className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover/folder:opacity-100 shrink-0 cursor-grab" />
+          )}
+
           {/* Expand/Collapse button */}
           <button
             type="button"
@@ -240,6 +344,13 @@ function FolderRow({
           {/* Folder name */}
           <span className="text-sm truncate flex-1">{item.folder.name}</span>
 
+          {/* Selection count badge */}
+          {showBulkActions && (
+            <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+              {selectedCount}
+            </span>
+          )}
+
           {/* Hover action icon to open folder view */}
           <div className="flex items-center opacity-0 group-hover/folder:opacity-100 transition-opacity">
             <button
@@ -254,38 +365,54 @@ function FolderRow({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem onClick={() => onCreateNote?.(item.folder.path)}>
-          <FilePlus className="mr-2 h-4 w-4" />
-          New Note
-        </ContextMenuItem>
-        <ContextMenuItem onClick={() => onCreateFolder?.(item.folder.path)}>
-          <FolderPlus className="mr-2 h-4 w-4" />
-          New Folder
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem onClick={() => onSetFolderTemplate?.(item.folder.path)}>
-          <LayoutTemplate className="mr-2 h-4 w-4" />
-          Set Default Template
-          {folderTemplateName && (
-            <span className="ml-1 text-muted-foreground">({folderTemplateName})</span>
-          )}
-        </ContextMenuItem>
-        <ContextMenuItem onClick={() => onClearFolderTemplate?.(item.folder.path)}>
-          <X className="mr-2 h-4 w-4" />
-          Clear Default Template
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem onClick={() => onRenameFolder?.(item.folder.path)}>
-          <Pencil className="mr-2 h-4 w-4" />
-          Rename
-        </ContextMenuItem>
-        <ContextMenuItem
-          className="text-destructive focus:text-destructive"
-          onClick={() => onDeleteFolder?.(item.folder.path)}
-        >
-          <Trash2 className="mr-2 h-4 w-4" />
-          Delete
-        </ContextMenuItem>
+        {showBulkActions ? (
+          // Bulk actions when multiple items selected
+          <>
+            <ContextMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={onBulkDelete}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete {selectedCount} items
+            </ContextMenuItem>
+          </>
+        ) : (
+          // Single item actions
+          <>
+            <ContextMenuItem onClick={() => onCreateNote?.(item.folder.path)}>
+              <FilePlus className="mr-2 h-4 w-4" />
+              New Note
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => onCreateFolder?.(item.folder.path)}>
+              <FolderPlus className="mr-2 h-4 w-4" />
+              New Folder
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => onSetFolderTemplate?.(item.folder.path)}>
+              <LayoutTemplate className="mr-2 h-4 w-4" />
+              Set Default Template
+              {folderTemplateName && (
+                <span className="ml-1 text-muted-foreground">({folderTemplateName})</span>
+              )}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => onClearFolderTemplate?.(item.folder.path)}>
+              <X className="mr-2 h-4 w-4" />
+              Clear Default Template
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => onRenameFolder?.(item.folder.path)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Rename
+            </ContextMenuItem>
+            <ContextMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => onDeleteFolder?.(item.folder.path)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </ContextMenuItem>
+          </>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   )
@@ -294,24 +421,49 @@ function FolderRow({
 interface NoteRowProps {
   item: NoteVirtualItem
   isSelected: boolean
+  isDragging: boolean
+  isDropTarget: boolean
+  dropPosition: DropPosition | null
+  selectedCount: number
+  draggable: boolean
   onSelect: (noteId: string, event: React.MouseEvent) => void
   onDoubleClick?: (note: NoteListItem) => void
   onRenameNote?: (note: NoteListItem) => void
   onDeleteNote?: (note: NoteListItem) => void
   onOpenExternal?: (note: NoteListItem) => void
   onRevealInFinder?: (note: NoteListItem) => void
+  onBulkDelete?: () => void
+  onDragStart: (e: React.DragEvent, itemId: string) => void
+  onDragEnd: () => void
+  onDragOver: (e: React.DragEvent, itemId: string, hasChildren: boolean) => void
+  onDragLeave: (e: React.DragEvent) => void
+  onDrop: (e: React.DragEvent) => void
 }
 
 function NoteRow({
   item,
   isSelected,
+  isDragging,
+  isDropTarget,
+  dropPosition,
+  selectedCount,
+  draggable,
   onSelect,
   onDoubleClick,
   onRenameNote,
   onDeleteNote,
   onOpenExternal,
-  onRevealInFinder
+  onRevealInFinder,
+  onBulkDelete,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop
 }: NoteRowProps) {
+  const rowRef = useRef<HTMLDivElement>(null)
+  const showBulkActions = isSelected && selectedCount > 1
+
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -334,23 +486,67 @@ function NoteRow({
     [item.note, onDoubleClick]
   )
 
+  const handleDragStart = useCallback(
+    (e: React.DragEvent) => {
+      onDragStart(e, item.id)
+    },
+    [item.id, onDragStart]
+  )
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      onDragOver(e, item.id, false)
+    },
+    [item.id, onDragOver]
+  )
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div
+          ref={rowRef}
           role="treeitem"
           aria-selected={isSelected}
           tabIndex={0}
+          draggable={draggable}
           className={cn(
-            'flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors',
+            'group/note relative flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors',
             'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-            isSelected && 'bg-muted'
+            isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground',
+            isDragging && 'opacity-50',
+            draggable && 'cursor-default'
           )}
           style={{ paddingLeft: `${item.level * 16 + 8 + 20}px` }} // Extra indent for no expander
           onClick={handleClick}
           onDoubleClick={handleDoubleClick}
           onKeyDown={handleKeyDown}
+          onDragStart={handleDragStart}
+          onDragEnd={onDragEnd}
+          onDragOver={handleDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
         >
+          {/* Drop indicator - before */}
+          {isDropTarget && dropPosition === 'before' && (
+            <div
+              className="absolute left-2 right-2 -top-0.5 h-0.5 rounded-full bg-primary"
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Drop indicator - after */}
+          {isDropTarget && dropPosition === 'after' && (
+            <div
+              className="absolute left-2 right-2 -bottom-0.5 h-0.5 rounded-full bg-primary"
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Drag handle */}
+          {draggable && (
+            <GripVertical className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover/note:opacity-100 shrink-0 cursor-grab" />
+          )}
+
           {/* Note icon or emoji */}
           {item.note.emoji ? (
             <span className="text-sm leading-none shrink-0" role="img" aria-label="note icon">
@@ -361,31 +557,54 @@ function NoteRow({
           )}
 
           {/* Note name */}
-          <span className="text-sm truncate">{getDisplayName(item.note.path)}</span>
+          <span className="text-sm truncate flex-1">{getDisplayName(item.note.path)}</span>
+
+          {/* Selection count badge */}
+          {showBulkActions && (
+            <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+              {selectedCount}
+            </span>
+          )}
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem onClick={() => onRenameNote?.(item.note)}>
-          <Pencil className="mr-2 h-4 w-4" />
-          Rename
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem onClick={() => onOpenExternal?.(item.note)}>
-          <ExternalLink className="mr-2 h-4 w-4" />
-          Open in External Editor
-        </ContextMenuItem>
-        <ContextMenuItem onClick={() => onRevealInFinder?.(item.note)}>
-          <FolderOpen className="mr-2 h-4 w-4" />
-          Reveal in Finder
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem
-          className="text-destructive focus:text-destructive"
-          onClick={() => onDeleteNote?.(item.note)}
-        >
-          <Trash2 className="mr-2 h-4 w-4" />
-          Delete
-        </ContextMenuItem>
+        {showBulkActions ? (
+          // Bulk actions when multiple items selected
+          <>
+            <ContextMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={onBulkDelete}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete {selectedCount} items
+            </ContextMenuItem>
+          </>
+        ) : (
+          // Single item actions
+          <>
+            <ContextMenuItem onClick={() => onRenameNote?.(item.note)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Rename
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => onOpenExternal?.(item.note)}>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Open in External Editor
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => onRevealInFinder?.(item.note)}>
+              <FolderOpen className="mr-2 h-4 w-4" />
+              Reveal in Finder
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => onDeleteNote?.(item.note)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </ContextMenuItem>
+          </>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   )
@@ -399,6 +618,8 @@ export function VirtualizedNotesTree({
   tree,
   selectedIds,
   onSelectionChange,
+  onMove,
+  onBulkDelete,
   onRenameNote,
   onDeleteNote,
   onOpenExternal,
@@ -411,6 +632,7 @@ export function VirtualizedNotesTree({
   onClearFolderTemplate,
   folderTemplateNames,
   noteMap,
+  isDragDisabled = false,
   className
 }: VirtualizedNotesTreeProps) {
   const { openTab } = useTabActions()
@@ -418,6 +640,16 @@ export function VirtualizedNotesTree({
 
   // Expanded folders state (persisted to localStorage)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => loadExpandedFolders())
+
+  // Drag state
+  const [dragState, setDragState] = useState<DragState>({
+    draggedId: null,
+    dropTargetId: null,
+    dropPosition: null
+  })
+
+  // Anchor for shift-click range selection
+  const [anchorId, setAnchorId] = useState<string | null>(null)
 
   // Persist expanded state changes
   useEffect(() => {
@@ -450,37 +682,40 @@ export function VirtualizedNotesTree({
     })
   }, [])
 
-  // Handle item selection
+  // Handle item selection with shift/cmd support
   const handleSelect = useCallback(
     (itemId: string, event: React.MouseEvent) => {
-      // Multi-select with Cmd/Ctrl
+      // Multi-select with Cmd/Ctrl - toggle individual item
       if (event.metaKey || event.ctrlKey) {
         const newSelection = selectedIds.includes(itemId)
           ? selectedIds.filter((id) => id !== itemId)
           : [...selectedIds, itemId]
         onSelectionChange(newSelection)
+        setAnchorId(itemId)
       }
       // Range select with Shift
-      else if (event.shiftKey && selectedIds.length > 0) {
-        const lastSelected = selectedIds[selectedIds.length - 1]
-        const lastIndex = flatItems.findIndex((item) => item.id === lastSelected)
+      else if (event.shiftKey && anchorId) {
+        const anchorIndex = flatItems.findIndex((item) => item.id === anchorId)
         const currentIndex = flatItems.findIndex((item) => item.id === itemId)
 
-        if (lastIndex !== -1 && currentIndex !== -1) {
-          const start = Math.min(lastIndex, currentIndex)
-          const end = Math.max(lastIndex, currentIndex)
+        if (anchorIndex !== -1 && currentIndex !== -1) {
+          const start = Math.min(anchorIndex, currentIndex)
+          const end = Math.max(anchorIndex, currentIndex)
           const rangeIds = flatItems.slice(start, end + 1).map((item) => item.id)
-          onSelectionChange([...new Set([...selectedIds, ...rangeIds])])
+          onSelectionChange(rangeIds)
         } else {
           onSelectionChange([itemId])
+          setAnchorId(itemId)
         }
+        // Don't update anchor on shift+click
       }
       // Single select
       else {
         onSelectionChange([itemId])
+        setAnchorId(itemId)
 
         // If it's a note, open it in a tab
-        if (!itemId.startsWith('folder-')) {
+        if (!isFolder(itemId)) {
           const note = noteMap.get(itemId)
           if (note) {
             openTab({
@@ -499,7 +734,7 @@ export function VirtualizedNotesTree({
         }
       }
     },
-    [selectedIds, onSelectionChange, flatItems, noteMap, openTab]
+    [selectedIds, onSelectionChange, flatItems, noteMap, openTab, anchorId]
   )
 
   // Handle note double-click (open in non-preview mode)
@@ -540,14 +775,106 @@ export function VirtualizedNotesTree({
     [openTab]
   )
 
+  // Drag event handlers
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, itemId: string) => {
+      if (isDragDisabled) return
+
+      e.dataTransfer.effectAllowed = 'move'
+      e.dataTransfer.setData('text/plain', itemId)
+      setDragState((prev) => ({ ...prev, draggedId: itemId }))
+    },
+    [isDragDisabled]
+  )
+
+  const handleDragEnd = useCallback(() => {
+    setDragState({ draggedId: null, dropTargetId: null, dropPosition: null })
+  }, [])
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent, itemId: string, hasChildren: boolean) => {
+      if (isDragDisabled || dragState.draggedId === itemId) return
+
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+
+      const rect = e.currentTarget.getBoundingClientRect()
+      const y = e.clientY - rect.top
+      const height = rect.height
+      const threshold = height / 3
+
+      let position: DropPosition
+      if (y < threshold) {
+        position = 'before'
+      } else if (y > height - threshold) {
+        position = 'after'
+      } else {
+        position = hasChildren ? 'inside' : 'after'
+      }
+
+      setDragState((prev) => ({
+        ...prev,
+        dropTargetId: itemId,
+        dropPosition: position
+      }))
+    },
+    [isDragDisabled, dragState.draggedId]
+  )
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    const relatedTarget = e.relatedTarget as HTMLElement
+    const currentTarget = e.currentTarget as HTMLElement
+    if (!currentTarget.contains(relatedTarget)) {
+      setDragState((prev) => ({
+        ...prev,
+        dropTargetId: null,
+        dropPosition: null
+      }))
+    }
+  }, [])
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+
+      const { draggedId, dropTargetId, dropPosition } = dragState
+
+      if (draggedId && dropTargetId && dropPosition && onMove) {
+        onMove({
+          draggedId,
+          targetId: dropTargetId,
+          position: dropPosition
+        })
+      }
+
+      setDragState({ draggedId: null, dropTargetId: null, dropPosition: null })
+    },
+    [dragState, onMove]
+  )
+
+  // Keyboard handler for Delete key
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length > 0) {
+        e.preventDefault()
+        onBulkDelete?.()
+      }
+    },
+    [selectedIds, onBulkDelete]
+  )
+
   const virtualItems = virtualizer.getVirtualItems()
+  const draggable = !isDragDisabled
+  const selectedCount = selectedIds.length
 
   return (
     <div
       ref={parentRef}
       role="tree"
       aria-label="Notes tree"
-      className={cn('h-full overflow-auto', className)}
+      tabIndex={0}
+      className={cn('h-full overflow-auto focus:outline-none', className)}
+      onKeyDown={handleKeyDown}
     >
       <div
         style={{
@@ -559,6 +886,8 @@ export function VirtualizedNotesTree({
         {virtualItems.map((virtualRow) => {
           const item = flatItems[virtualRow.index]
           const isSelected = selectedIds.includes(item.id)
+          const isDragging = dragState.draggedId === item.id
+          const isDropTarget = dragState.dropTargetId === item.id
 
           return (
             <div
@@ -576,6 +905,11 @@ export function VirtualizedNotesTree({
                 <FolderRow
                   item={item}
                   isSelected={isSelected}
+                  isDragging={isDragging}
+                  isDropTarget={isDropTarget}
+                  dropPosition={isDropTarget ? dragState.dropPosition : null}
+                  selectedCount={selectedCount}
+                  draggable={draggable}
                   onToggleExpand={handleToggleExpand}
                   onSelect={handleSelect}
                   onOpenFolderView={handleOpenFolderView}
@@ -585,18 +919,35 @@ export function VirtualizedNotesTree({
                   onDeleteFolder={onDeleteFolder}
                   onSetFolderTemplate={onSetFolderTemplate}
                   onClearFolderTemplate={onClearFolderTemplate}
+                  onBulkDelete={onBulkDelete}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
                   folderTemplateName={folderTemplateNames?.get(item.folder.path)}
                 />
               ) : (
                 <NoteRow
                   item={item}
                   isSelected={isSelected}
+                  isDragging={isDragging}
+                  isDropTarget={isDropTarget}
+                  dropPosition={isDropTarget ? dragState.dropPosition : null}
+                  selectedCount={selectedCount}
+                  draggable={draggable}
                   onSelect={handleSelect}
                   onDoubleClick={handleNoteDoubleClick}
                   onRenameNote={onRenameNote}
                   onDeleteNote={onDeleteNote}
                   onOpenExternal={onOpenExternal}
                   onRevealInFinder={onRevealInFinder}
+                  onBulkDelete={onBulkDelete}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
                 />
               )}
             </div>

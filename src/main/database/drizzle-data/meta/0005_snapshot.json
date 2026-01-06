@@ -788,6 +788,13 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -823,6 +830,13 @@
           "name": "idx_inbox_items_processing",
           "columns": [
             "processing_status"
+          ],
+          "isUnique": false
+        },
+        "idx_inbox_items_archived": {
+          "name": "idx_inbox_items_archived",
+          "columns": [
+            "archived_at"
           ],
           "isUnique": false
         }
@@ -921,8 +935,8 @@
           "autoincrement": false,
           "default": 0
         },
-        "deleted_count": {
-          "name": "deleted_count",
+        "archived_count": {
+          "name": "archived_count",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,

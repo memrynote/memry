@@ -343,6 +343,25 @@ export const notesService: NotesClientAPI = {
    */
   deleteVersion: (snapshotId: string): Promise<{ success: boolean; error?: string }> => {
     return window.api.notes.deleteVersion(snapshotId)
+  },
+
+  getPositions: (folderPath: string): Promise<Map<string, number>> => {
+    return window.api.notes.getPositions(folderPath)
+  },
+
+  getAllPositions: (): Promise<{
+    success: boolean
+    positions: Record<string, number>
+    error?: string
+  }> => {
+    return window.api.notes.getAllPositions()
+  },
+
+  reorder: (
+    folderPath: string,
+    notePaths: string[]
+  ): Promise<{ success: boolean; error?: string }> => {
+    return window.api.notes.reorder(folderPath, notePaths)
   }
 }
 

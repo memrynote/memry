@@ -14,7 +14,9 @@ import {
   NoteUpdateSchema,
   NoteRenameSchema,
   NoteMoveSchema,
-  NoteListSchema
+  NoteListSchema,
+  NoteReorderSchema,
+  NoteGetPositionsSchema
 } from '@shared/contracts/notes-api'
 import { PropertyTypes } from '@shared/db/schema/notes-cache'
 import { RenameFolderSchema } from '@shared/contracts/tasks-api'
@@ -53,7 +55,12 @@ import {
   insertPropertyDefinition,
   updatePropertyDefinition
 } from '@shared/db/queries/notes'
-import { getIndexDatabase } from '../database'
+import { getIndexDatabase, getDatabase } from '../database'
+import {
+  getNotesInFolder,
+  reorderNotesInFolder,
+  getAllNotePositions
+} from '@shared/db/queries/note-positions'
 
 // ============================================================================
 // Zod Schemas for Properties (T015-T018)
@@ -656,6 +663,52 @@ export function registerNotesHandlers(): void {
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to delete version'
+        return { success: false, error: message }
+      }
+    })
+  )
+
+  ipcMain.handle(
+    NotesChannels.invoke.GET_POSITIONS,
+    createValidatedHandler(NoteGetPositionsSchema, async (input) => {
+      try {
+        const db = getDatabase()
+        const positions = getNotesInFolder(db, input.folderPath)
+        return { success: true, positions }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to get positions'
+        return { success: false, positions: [], error: message }
+      }
+    })
+  )
+
+  ipcMain.handle(
+    NotesChannels.invoke.GET_ALL_POSITIONS,
+    createHandler(async () => {
+      try {
+        const db = getDatabase()
+        const positions = getAllNotePositions(db)
+        const positionMap: Record<string, number> = {}
+        for (const p of positions) {
+          positionMap[p.path] = p.position
+        }
+        return { success: true, positions: positionMap }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to get all positions'
+        return { success: false, positions: {}, error: message }
+      }
+    })
+  )
+
+  ipcMain.handle(
+    NotesChannels.invoke.REORDER,
+    createValidatedHandler(NoteReorderSchema, async (input) => {
+      try {
+        const db = getDatabase()
+        reorderNotesInFolder(db, input.folderPath, input.notePaths)
+        return { success: true }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to reorder notes'
         return { success: false, error: message }
       }
     })
