@@ -4,7 +4,7 @@ import { Container } from '@/components/layout/Container'
 import { MockupFrame } from '@/components/shared/MockupFrame'
 import { WaitlistForm } from '@/components/shared/WaitlistForm'
 
-const benefits = ['Free forever', 'Own your data', 'No cloud required']
+const benefits = ['Free to start', 'Own your data', 'No cloud required']
 
 const containerVariants = {
   hidden: { opacity: 0 },

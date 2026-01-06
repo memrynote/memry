@@ -1,6 +1,5 @@
 import { Inbox, BookOpen, FileText, CheckSquare, FolderOpen, Lock, Zap } from 'lucide-react'
 
-export const ZOOTOOLS_API_KEY = 'zootools-api-token-b0a9da5d-56c2-427b-82ef-ee80d89f43a3'
 export const GITHUB_URL = 'https://github.com/memrynote/memry'
 export const DISCORD_URL = 'https://discord.gg/memry'
 export const TWITTER_DEV_URL = 'https://x.com/h4yfans'
@@ -42,8 +41,8 @@ export const VALUE_PROPS = [
   },
   {
     icon: Lock,
-    title: 'Private',
-    description: '100% local. No cloud required. Your thoughts never leave your device.'
+    title: 'Private & Secure',
+    description: "Local-first with E2EE. Your data is encrypted end-to-end. Even we can't read it."
   },
   {
     icon: Zap,
@@ -110,7 +109,7 @@ export const COMPARISON_DATA = {
     { feature: 'Daily journal', memry: true, notion: 'partial', obsidian: 'partial', logseq: true },
     { feature: 'Inbox/capture', memry: true, notion: false, obsidian: false, logseq: false },
     { feature: 'Markdown files', memry: true, notion: false, obsidian: true, logseq: true },
-    { feature: 'Free forever', memry: true, notion: 'partial', obsidian: true, logseq: true },
+    { feature: 'Free tier', memry: true, notion: 'partial', obsidian: true, logseq: true },
     {
       feature: 'Integrated experience',
       memry: true,
@@ -126,29 +125,29 @@ export const PRICING_TIERS = [
     name: 'Free',
     price: '$0',
     period: 'forever',
-    description: 'Everything you need to organize your thoughts.',
+    description: 'Perfect for personal use on a single device.',
     features: [
-      'All features included',
-      'Unlimited notes',
-      'Unlimited tasks',
-      'Local sync (any service)',
+      'Unlimited notes & tasks',
+      'Journal & Inbox',
+      'Full-text search',
+      'Local storage',
       'Markdown export'
     ],
-    cta: 'Join Waitlist',
+    cta: 'Get Started',
     highlighted: false
   },
   {
-    name: 'Supporter',
+    name: 'Pro',
     price: '$9',
     period: '/month',
     yearlyPrice: '$79/year',
-    description: 'Support development and get early access to new features.',
+    description: 'For power users who need sync and collaboration.',
     features: [
       'Everything in Free',
-      'Priority support',
-      'Early feature access',
-      'Discord role',
-      'Founder badge'
+      'Publish notes to web',
+      'Real-time collaboration',
+      'Mobile app sync',
+      'Priority support'
     ],
     cta: 'Join Waitlist',
     highlighted: true
@@ -157,9 +156,9 @@ export const PRICING_TIERS = [
 
 export const FAQ_ITEMS = [
   {
-    question: 'Is Memry really free?',
+    question: 'Is Memry free?',
     answer:
-      "Yes! Memry is free forever with no feature limitations. The Supporter tier is optional and helps fund ongoing development. We believe your PKM tool shouldn't hold your data hostage behind a paywall."
+      'Memry offers a generous free tier for personal use on desktop. Core features like notes, tasks, journal, and inbox are completely free with no limits. Pro features like publishing to web, real-time collaboration, and mobile sync require a subscription.'
   },
   {
     question: 'Where is my data stored?',
