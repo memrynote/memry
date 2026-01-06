@@ -106,8 +106,8 @@ const RegularTabComponent = ({
               'hover:bg-gray-200/50 dark:hover:bg-gray-700/40'
             ],
 
-        // Preview tab styling
-        tab.isPreview && 'italic',
+        // Preview tab styling - only show italic if preview mode is enabled
+        tab.isPreview && settings.previewMode && 'italic',
 
         className
       )}
@@ -143,7 +143,7 @@ const RegularTabComponent = ({
           isActive
             ? 'text-gray-800 dark:text-gray-100'
             : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300',
-          tab.isPreview && 'italic font-normal',
+          tab.isPreview && settings.previewMode && 'italic font-normal',
           tab.isDeleted && 'line-through opacity-50'
         )}
       >

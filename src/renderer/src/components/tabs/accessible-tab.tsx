@@ -6,7 +6,7 @@
 import { useRef, useEffect } from 'react'
 import { X } from 'lucide-react'
 import type { Tab } from '@/contexts/tabs/types'
-import { useTabs } from '@/contexts/tabs'
+import { useTabs, useTabSettings } from '@/contexts/tabs'
 import { TabIcon } from './tab-icon'
 import { cn } from '@/lib/utils'
 
@@ -40,6 +40,7 @@ export const AccessibleTab = ({
   className
 }: AccessibleTabProps): React.JSX.Element => {
   const { setActiveTab, closeTab } = useTabs()
+  const settings = useTabSettings()
   const tabRef = useRef<HTMLButtonElement>(null)
 
   // Focus when marked as focused (keyboard navigation)
@@ -123,8 +124,8 @@ export const AccessibleTab = ({
         <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" aria-hidden="true" />
       )}
 
-      {/* Preview indicator */}
-      {tab.isPreview && !tab.isModified && (
+      {/* Preview indicator - only show when preview mode is enabled */}
+      {tab.isPreview && !tab.isModified && settings.previewMode && (
         <span className="text-xs text-gray-400 italic" aria-hidden="true">
           preview
         </span>

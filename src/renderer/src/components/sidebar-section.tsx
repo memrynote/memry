@@ -166,7 +166,7 @@ export const SidebarSection = ({
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="overflow-hidden"
+              className="overflow-y-auto scrollbar-thin max-h-[calc(100vh-240px)]"
             >
               <SidebarMenu className="mt-1 space-y-0.5">
                 {children}
