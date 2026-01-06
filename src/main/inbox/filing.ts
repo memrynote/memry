@@ -211,7 +211,7 @@ function generateNoteContent(item: InboxItemRow): string {
       if (item.attachmentPath) {
         const attachmentUrl = resolveAttachmentUrl(item.attachmentPath)
         if (attachmentUrl) {
-          content += `\n\n[View Attachment](${attachmentUrl})`
+          // content += `\n\n[View Attachment](${attachmentUrl})`
         }
       }
 

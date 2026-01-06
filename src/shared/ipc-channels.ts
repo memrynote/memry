@@ -106,7 +106,13 @@ export const NotesChannels = {
     /** Restore a note from a version (T114) */
     RESTORE_VERSION: 'notes:restore-version',
     /** Delete a specific version (T114) */
-    DELETE_VERSION: 'notes:delete-version'
+    DELETE_VERSION: 'notes:delete-version',
+    /** Get note positions in a folder */
+    GET_POSITIONS: 'notes:get-positions',
+    /** Get all note positions */
+    GET_ALL_POSITIONS: 'notes:get-all-positions',
+    /** Reorder notes in a folder */
+    REORDER: 'notes:reorder'
   },
   events: {
     /** Note was created (externally or internally) */

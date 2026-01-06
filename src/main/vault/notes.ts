@@ -116,11 +116,11 @@ export interface NoteUpdateInput {
 export interface NoteListOptions {
   folder?: string
   tags?: string[]
-  sortBy?: 'modified' | 'created' | 'title'
+  sortBy?: 'modified' | 'created' | 'title' | 'position'
   sortOrder?: 'asc' | 'desc'
   limit?: number
   offset?: number
-  includeProperties?: boolean // T041: Include properties in response (for folder view)
+  includeProperties?: boolean
 }
 
 export interface NoteListResponse {

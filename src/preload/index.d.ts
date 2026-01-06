@@ -935,6 +935,14 @@ export interface NotesClientAPI {
   getVersion(snapshotId: string): Promise<SnapshotDetail | null>
   restoreVersion(snapshotId: string): Promise<RestoreVersionResponse>
   deleteVersion(snapshotId: string): Promise<{ success: boolean; error?: string }>
+  // Position/Reorder API
+  getPositions(folderPath: string): Promise<Map<string, number>>
+  getAllPositions(): Promise<{
+    success: boolean
+    positions: Record<string, number>
+    error?: string
+  }>
+  reorder(folderPath: string, notePaths: string[]): Promise<{ success: boolean; error?: string }>
 }
 
 // Tasks client API interface

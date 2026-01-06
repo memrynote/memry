@@ -100,10 +100,19 @@ export const NoteMoveSchema = z.object({
 export const NoteListSchema = z.object({
   folder: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  sortBy: z.enum(['modified', 'created', 'title']).default('modified'),
+  sortBy: z.enum(['modified', 'created', 'title', 'position']).default('modified'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
   limit: z.number().int().min(1).max(10000).default(100),
   offset: z.number().int().min(0).default(0)
+})
+
+export const NoteReorderSchema = z.object({
+  folderPath: z.string(),
+  notePaths: z.array(z.string())
+})
+
+export const NoteGetPositionsSchema = z.object({
+  folderPath: z.string()
 })
 
 // ============================================================================
