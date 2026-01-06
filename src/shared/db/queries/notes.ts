@@ -117,7 +117,7 @@ export function findDuplicateId(
 export interface ListNotesOptions {
   folder?: string
   tags?: string[]
-  sortBy?: 'modified' | 'created' | 'title'
+  sortBy?: 'modified' | 'created' | 'title' | 'position'
   sortOrder?: 'asc' | 'desc'
   limit?: number
   offset?: number
@@ -163,17 +163,17 @@ export function listNotesFromCache(db: DrizzleDb, options: ListNotesOptions = {}
     conditions.push(inArray(noteCache.id, noteIdsWithTags))
   }
 
-  // Build sort order
+  // Build sort order (position sorting is handled at application layer)
+  const effectiveSortBy = sortBy === 'position' ? 'modified' : sortBy
   const sortColumn =
-    sortBy === 'modified'
+    effectiveSortBy === 'modified'
       ? noteCache.modifiedAt
-      : sortBy === 'created'
+      : effectiveSortBy === 'created'
         ? noteCache.createdAt
         : noteCache.title
 
   const orderFn = sortOrder === 'asc' ? asc : desc
 
-  // Execute query
   let query = db.select().from(noteCache)
 
   if (conditions.length > 0) {

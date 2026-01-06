@@ -43,6 +43,13 @@
       "when": 1767097184642,
       "tag": "0005_old_mac_gargan",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1767723334849,
+      "tag": "0006_late_infant_terrible",
+      "breakpoints": true
     }
   ]
 }

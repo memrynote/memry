@@ -145,7 +145,14 @@ const api = {
     restoreVersion: (snapshotId: string) =>
       ipcRenderer.invoke(NotesChannels.invoke.RESTORE_VERSION, snapshotId),
     deleteVersion: (snapshotId: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.DELETE_VERSION, snapshotId)
+      ipcRenderer.invoke(NotesChannels.invoke.DELETE_VERSION, snapshotId),
+
+    // Position/Reorder API (drag-drop sidebar reordering)
+    getPositions: (folderPath: string) =>
+      ipcRenderer.invoke(NotesChannels.invoke.GET_POSITIONS, { folderPath }),
+    getAllPositions: () => ipcRenderer.invoke(NotesChannels.invoke.GET_ALL_POSITIONS),
+    reorder: (folderPath: string, notePaths: string[]) =>
+      ipcRenderer.invoke(NotesChannels.invoke.REORDER, { folderPath, notePaths })
   },
 
   // Templates API
