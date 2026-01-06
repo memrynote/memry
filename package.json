@@ -32,6 +32,7 @@
     "db:push:index": "drizzle-kit push --config drizzle-index.config.ts",
     "db:studio:data": "drizzle-kit studio --config drizzle-data.config.ts",
     "db:studio:index": "drizzle-kit studio --config drizzle-index.config.ts",
+    "db:seed": "npm run rebuild:node && npx tsx scripts/seed-tasks.ts",
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
