@@ -8,7 +8,7 @@
  * @module database/fts-queue
  */
 
-import type { DrizzleDb } from './client'
+import { type DrizzleDb, getIndexDatabase } from './client'
 import { updateFtsContent } from './fts'
 
 // ============================================================================
@@ -51,8 +51,13 @@ export function queueFtsUpdate(noteId: string, content: string, tags: string[]):
   // Schedule flush if not already scheduled
   if (!flushTimer) {
     flushTimer = setTimeout(() => {
-      // Timer callback will be handled externally via flushFtsUpdates()
-      // This just ensures we have a timer running
+      try {
+        const db = getIndexDatabase()
+        flushFtsUpdates(db)
+      } catch (error) {
+        // Database may not be open (vault closed), ignore
+        console.warn('[FTS Queue] Failed to flush updates:', error)
+      }
     }, FLUSH_DELAY_MS)
   }
 }
