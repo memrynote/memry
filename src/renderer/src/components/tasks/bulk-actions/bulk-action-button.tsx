@@ -1,10 +1,10 @@
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-type BulkActionVariant = "default" | "secondary" | "danger"
+type BulkActionVariant = 'default' | 'secondary' | 'danger'
 
 interface BulkActionButtonProps {
   /** Icon to display */
@@ -26,9 +26,9 @@ interface BulkActionButtonProps {
 // ============================================================================
 
 const variantStyles: Record<BulkActionVariant, string> = {
-  default: "bg-background border-border hover:bg-accent text-foreground",
-  secondary: "bg-background border-border hover:bg-accent text-muted-foreground",
-  danger: "bg-background border-destructive/30 hover:bg-destructive/10 text-destructive",
+  default: 'bg-background border-border hover:bg-accent text-foreground',
+  secondary: 'bg-background border-border hover:bg-accent text-muted-foreground',
+  danger: 'bg-background border-destructive/30 hover:bg-destructive/10 text-destructive'
 }
 
 /**
@@ -38,9 +38,9 @@ export const BulkActionButton = ({
   icon,
   label,
   onClick,
-  variant = "default",
+  variant = 'default',
   disabled = false,
-  className,
+  className
 }: BulkActionButtonProps): React.JSX.Element => {
   const handleClick = (e: React.MouseEvent): void => {
     e.preventDefault()
@@ -51,7 +51,7 @@ export const BulkActionButton = ({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if ((e.key === "Enter" || e.key === " ") && !disabled) {
+    if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
       e.preventDefault()
       e.stopPropagation()
       onClick()
@@ -65,10 +65,10 @@ export const BulkActionButton = ({
       onKeyDown={handleKeyDown}
       disabled={disabled}
       className={cn(
-        "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium",
-        "transition-colors duration-150",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        "disabled:cursor-not-allowed disabled:opacity-50",
+        'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium',
+        'transition-colors duration-150',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'disabled:cursor-not-allowed disabled:opacity-50',
         variantStyles[variant],
         className
       )}
@@ -81,14 +81,3 @@ export const BulkActionButton = ({
 }
 
 export default BulkActionButton
-
-
-
-
-
-
-
-
-
-
-

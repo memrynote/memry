@@ -87,9 +87,7 @@ export function SelectableListSection({
               )}
             />
           )}
-          {icon && (
-            <span className="text-amber-600 dark:text-amber-500">{icon}</span>
-          )}
+          {icon && <span className="text-amber-600 dark:text-amber-500">{icon}</span>}
           <h3
             className={cn(
               'text-xs font-semibold uppercase tracking-wider text-muted-foreground/60',
@@ -98,9 +96,7 @@ export function SelectableListSection({
           >
             {title}
           </h3>
-          {count !== undefined && (
-            <span className="text-xs text-muted-foreground/40">{count}</span>
-          )}
+          {count !== undefined && <span className="text-xs text-muted-foreground/40">{count}</span>}
           <div className="flex-1 h-px bg-gradient-to-r from-border/40 to-transparent" />
         </button>
 
@@ -152,7 +148,10 @@ export function SelectableListItem({
         // Base state
         'hover:bg-muted/50',
         // Selected state
-        isSelected && ['bg-amber-50 dark:bg-amber-950/30', 'hover:bg-amber-50 dark:hover:bg-amber-950/30'],
+        isSelected && [
+          'bg-amber-50 dark:bg-amber-950/30',
+          'hover:bg-amber-50 dark:hover:bg-amber-950/30'
+        ],
         className
       )}
     >
@@ -204,7 +203,9 @@ export function SelectableListItem({
           <span className={cn('font-medium text-sm truncate', 'text-foreground/90')}>{label}</span>
           {badge}
         </div>
-        {description && <p className="text-xs text-muted-foreground/60 truncate mt-0.5">{description}</p>}
+        {description && (
+          <p className="text-xs text-muted-foreground/60 truncate mt-0.5">{description}</p>
+        )}
       </div>
     </button>
   )
@@ -240,7 +241,10 @@ export function StandaloneSelectableItem({
         'px-3 py-2.5 rounded-lg',
         'transition-all duration-150 ease-out',
         'hover:bg-muted/50',
-        isSelected && ['bg-amber-50 dark:bg-amber-950/30', 'hover:bg-amber-50 dark:hover:bg-amber-950/30'],
+        isSelected && [
+          'bg-amber-50 dark:bg-amber-950/30',
+          'hover:bg-amber-50 dark:hover:bg-amber-950/30'
+        ],
         className
       )}
     >
@@ -292,7 +296,9 @@ export function StandaloneSelectableItem({
           <span className={cn('font-medium text-sm truncate', 'text-foreground/90')}>{label}</span>
           {badge}
         </div>
-        {description && <p className="text-xs text-muted-foreground/60 truncate mt-0.5">{description}</p>}
+        {description && (
+          <p className="text-xs text-muted-foreground/60 truncate mt-0.5">{description}</p>
+        )}
       </div>
     </button>
   )

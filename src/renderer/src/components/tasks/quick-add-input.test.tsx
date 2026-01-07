@@ -94,11 +94,14 @@ describe('T517: QuickAddInput - basic input', () => {
     const input = screen.getByRole('textbox', { name: /quick add task/i })
     await user.type(input, 'Buy groceries{enter}')
 
-    expect(defaultProps.onAdd).toHaveBeenCalledWith('Buy groceries', expect.objectContaining({
-      dueDate: null,
-      priority: 'none',
-      projectId: null
-    }))
+    expect(defaultProps.onAdd).toHaveBeenCalledWith(
+      'Buy groceries',
+      expect.objectContaining({
+        dueDate: null,
+        priority: 'none',
+        projectId: null
+      })
+    )
   })
 
   it('should clear input after submission', async () => {

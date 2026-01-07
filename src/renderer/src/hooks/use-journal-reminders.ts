@@ -57,10 +57,11 @@ export interface UseJournalRemindersResult {
  */
 export function useJournalReminders(journalDate: string | null): UseJournalRemindersResult {
   // Fetch reminders for this journal entry
-  const { reminders, isLoading, hasReminders: _hasReminders } = useRemindersForTarget(
-    'journal',
-    journalDate ?? ''
-  )
+  const {
+    reminders,
+    isLoading,
+    hasReminders: _hasReminders
+  } = useRemindersForTarget('journal', journalDate ?? '')
 
   // Filter for active reminders (pending or snoozed)
   const activeReminders = useMemo(() => {

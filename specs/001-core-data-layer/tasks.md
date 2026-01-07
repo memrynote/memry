@@ -30,7 +30,7 @@
 - [x] T002 Install dev dependencies: drizzle-kit, @electron/rebuild, @types/better-sqlite3, vitest
 - [x] T003 [P] Add npm scripts to package.json (postinstall, rebuild, db:generate, db:push, db:studio)
 - [x] T004 [P] Update electron.vite.config.ts to externalize better-sqlite3 and add @shared path alias
-- [x] T005 [P] Update tsconfig.json with @shared/* path alias
+- [x] T005 [P] Update tsconfig.json with @shared/\* path alias
 - [x] T006 Create drizzle.config.ts in project root
 - [x] T007 Create directory structure per plan.md (src/shared/db/, src/main/database/, src/main/vault/, src/main/ipc/, src/main/lib/)
 - [x] T008 Run electron-rebuild to compile better-sqlite3 for Electron
@@ -287,19 +287,24 @@ Foundational (Phase 2)
 ### Parallel Opportunities
 
 **Within Phase 1 (Setup)**:
+
 - T003, T004, T005 can run in parallel (different config files)
 
 **Within Phase 2 (Foundational)**:
+
 - T009-T015 (7 schema files) can ALL run in parallel
 - T022-T024 (3 utility files) can ALL run in parallel
 
 **Within Phase 3 (US1)**:
+
 - After T037-T038 complete, remaining tasks are sequential
 
 **Within Phase 4-6 (US2-US4)**:
+
 - These phases are mostly sequential within themselves
 
 **Across Stories (with team)**:
+
 - Tasks Integration (Phase 9) is independent of notes user stories
 - Can work on Phase 9 in parallel with Phase 3-8 if needed
 
@@ -347,6 +352,7 @@ Task: "[P] Create notes-cache schema in src/shared/db/schema/notes-cache.ts"
 **Minimum Viable Product**: Setup + Foundational + US1
 
 This delivers:
+
 - Users can select a vault folder
 - Users can create, edit, delete notes
 - Notes are plain markdown files with YAML frontmatter
@@ -356,6 +362,7 @@ This delivers:
 **Enhanced MVP**: Add US2 + US4 (external changes + search)
 
 This adds:
+
 - Real-time detection of external edits
 - Fast full-text search across notes
 
@@ -363,19 +370,19 @@ This adds:
 
 ## Summary
 
-| Phase | Task Count | Parallel Tasks |
-|-------|------------|----------------|
-| Setup | 8 | 3 |
-| Foundational | 28 | 10 |
-| US1 (Markdown) | 12 | 0 |
-| US2 (External) | 6 | 0 |
-| US3 (Renames) | 5 | 0 |
-| US4 (Search) | 8 | 0 |
-| US7+US8 (Progress/Recovery) | 6 | 0 |
-| US9+US10 (Multi-Vault) | 6 | 0 |
-| Tasks Integration | 8 | 2 |
-| Polish | 6 | 0 |
-| **Total** | **93** | **15** |
+| Phase                       | Task Count | Parallel Tasks |
+| --------------------------- | ---------- | -------------- |
+| Setup                       | 8          | 3              |
+| Foundational                | 28         | 10             |
+| US1 (Markdown)              | 12         | 0              |
+| US2 (External)              | 6          | 0              |
+| US3 (Renames)               | 5          | 0              |
+| US4 (Search)                | 8          | 0              |
+| US7+US8 (Progress/Recovery) | 6          | 0              |
+| US9+US10 (Multi-Vault)      | 6          | 0              |
+| Tasks Integration           | 8          | 2              |
+| Polish                      | 6          | 0              |
+| **Total**                   | **93**     | **15**         |
 
 ---
 

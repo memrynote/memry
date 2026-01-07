@@ -1,7 +1,7 @@
-import { useState, useCallback, useMemo, useEffect } from "react"
-import { arrayMove } from "@dnd-kit/sortable"
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { arrayMove } from '@dnd-kit/sortable'
 
-import type { Task } from "@/data/sample-tasks"
+import type { Task } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -27,7 +27,7 @@ interface UseTaskOrderReturn {
   /** Set order for a section */
   setOrder: (sectionId: string, order: string[]) => void
   /** Move a task within a section */
-  moveTask: (sectionId: string, taskId: string, direction: "up" | "down") => void
+  moveTask: (sectionId: string, taskId: string, direction: 'up' | 'down') => void
   /** Move a task to top of section */
   moveToTop: (sectionId: string, taskId: string) => void
   /** Move a task to bottom of section */
@@ -46,15 +46,15 @@ interface UseTaskOrderReturn {
 // CONSTANTS
 // ============================================================================
 
-const STORAGE_KEY = "task-orders"
+const STORAGE_KEY = 'task-orders'
 
 // ============================================================================
 // HOOK
 // ============================================================================
 
 export const useTaskOrder = ({
-  storageKeyPrefix = "",
-  persist = true,
+  storageKeyPrefix = '',
+  persist = true
 }: UseTaskOrderProps = {}): UseTaskOrderReturn => {
   const storageKey = storageKeyPrefix ? `${storageKeyPrefix}-${STORAGE_KEY}` : STORAGE_KEY
 
@@ -70,11 +70,11 @@ export const useTaskOrder = ({
         const parsed = JSON.parse(saved)
         return {
           orders: parsed.orders || {},
-          isManuallyOrdered: Object.keys(parsed.orders || {}).length > 0,
+          isManuallyOrdered: Object.keys(parsed.orders || {}).length > 0
         }
       }
     } catch (err) {
-      console.warn("Failed to load task order from localStorage:", err)
+      console.warn('Failed to load task order from localStorage:', err)
     }
 
     return { orders: {}, isManuallyOrdered: false }
@@ -87,7 +87,7 @@ export const useTaskOrder = ({
     try {
       localStorage.setItem(storageKey, JSON.stringify({ orders: state.orders }))
     } catch (err) {
-      console.warn("Failed to save task order to localStorage:", err)
+      console.warn('Failed to save task order to localStorage:', err)
     }
   }, [state.orders, persist, storageKey])
 
@@ -127,9 +127,9 @@ export const useTaskOrder = ({
     setState((prev) => ({
       orders: {
         ...prev.orders,
-        [sectionId]: order,
+        [sectionId]: order
       },
-      isManuallyOrdered: true,
+      isManuallyOrdered: true
     }))
   }, [])
 
@@ -142,35 +142,32 @@ export const useTaskOrder = ({
   )
 
   // Move a task within a section
-  const moveTask = useCallback(
-    (sectionId: string, taskId: string, direction: "up" | "down") => {
-      setState((prev) => {
-        const currentOrder = prev.orders[sectionId]
-        if (!currentOrder) return prev
+  const moveTask = useCallback((sectionId: string, taskId: string, direction: 'up' | 'down') => {
+    setState((prev) => {
+      const currentOrder = prev.orders[sectionId]
+      if (!currentOrder) return prev
 
-        const currentIndex = currentOrder.indexOf(taskId)
-        if (currentIndex === -1) return prev
+      const currentIndex = currentOrder.indexOf(taskId)
+      if (currentIndex === -1) return prev
 
-        const newIndex =
-          direction === "up"
-            ? Math.max(0, currentIndex - 1)
-            : Math.min(currentOrder.length - 1, currentIndex + 1)
+      const newIndex =
+        direction === 'up'
+          ? Math.max(0, currentIndex - 1)
+          : Math.min(currentOrder.length - 1, currentIndex + 1)
 
-        if (newIndex === currentIndex) return prev
+      if (newIndex === currentIndex) return prev
 
-        const newOrder = arrayMove(currentOrder, currentIndex, newIndex)
+      const newOrder = arrayMove(currentOrder, currentIndex, newIndex)
 
-        return {
-          orders: {
-            ...prev.orders,
-            [sectionId]: newOrder,
-          },
-          isManuallyOrdered: true,
-        }
-      })
-    },
-    []
-  )
+      return {
+        orders: {
+          ...prev.orders,
+          [sectionId]: newOrder
+        },
+        isManuallyOrdered: true
+      }
+    })
+  }, [])
 
   // Move a task to top of section
   const moveToTop = useCallback((sectionId: string, taskId: string) => {
@@ -186,9 +183,9 @@ export const useTaskOrder = ({
       return {
         orders: {
           ...prev.orders,
-          [sectionId]: newOrder,
+          [sectionId]: newOrder
         },
-        isManuallyOrdered: true,
+        isManuallyOrdered: true
       }
     })
   }, [])
@@ -207,9 +204,9 @@ export const useTaskOrder = ({
       return {
         orders: {
           ...prev.orders,
-          [sectionId]: newOrder,
+          [sectionId]: newOrder
         },
-        isManuallyOrdered: true,
+        isManuallyOrdered: true
       }
     })
   }, [])
@@ -219,8 +216,7 @@ export const useTaskOrder = ({
     (sectionId: string, activeId: string, overId: string, tasks: Task[]) => {
       setState((prev) => {
         // Get current order, or initialize from tasks
-        const currentOrder =
-          prev.orders[sectionId] || tasks.map((t) => t.id)
+        const currentOrder = prev.orders[sectionId] || tasks.map((t) => t.id)
 
         const oldIndex = currentOrder.indexOf(activeId)
         const newIndex = currentOrder.indexOf(overId)
@@ -234,9 +230,9 @@ export const useTaskOrder = ({
         return {
           orders: {
             ...prev.orders,
-            [sectionId]: newOrder,
+            [sectionId]: newOrder
           },
-          isManuallyOrdered: true,
+          isManuallyOrdered: true
         }
       })
     },
@@ -251,7 +247,7 @@ export const useTaskOrder = ({
         const { [sectionId]: _, ...rest } = prev.orders
         return {
           orders: rest,
-          isManuallyOrdered: Object.keys(rest).length > 0,
+          isManuallyOrdered: Object.keys(rest).length > 0
         }
       }
       // Clear all
@@ -260,10 +256,7 @@ export const useTaskOrder = ({
   }, [])
 
   // Check if manually ordered
-  const isManuallyOrdered = useMemo(
-    () => Object.keys(state.orders).length > 0,
-    [state.orders]
-  )
+  const isManuallyOrdered = useMemo(() => Object.keys(state.orders).length > 0, [state.orders])
 
   return {
     getOrderedTasks,
@@ -274,19 +267,8 @@ export const useTaskOrder = ({
     reorderByDrag,
     clearOrder,
     isManuallyOrdered,
-    getOrder,
+    getOrder
   }
 }
 
 export default useTaskOrder
-
-
-
-
-
-
-
-
-
-
-

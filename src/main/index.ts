@@ -112,10 +112,10 @@ function createWindow(): void {
     autoHideMenuBar: true,
     ...(process.platform === 'darwin'
       ? {
-        titleBarStyle: 'hidden',
-        // Hide native traffic lights - we use custom ones
-        trafficLightPosition: { x: -100, y: -100 }
-      }
+          titleBarStyle: 'hidden',
+          // Hide native traffic lights - we use custom ones
+          trafficLightPosition: { x: -100, y: -100 }
+        }
       : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -489,7 +489,9 @@ function registerQuickCaptureShortcut(): void {
   })
 
   if (!registered) {
-    console.warn(`[QuickCapture] Failed to register global shortcut: ${shortcut}. It may be in use by another application.`)
+    console.warn(
+      `[QuickCapture] Failed to register global shortcut: ${shortcut}. It may be in use by another application.`
+    )
   }
 }
 

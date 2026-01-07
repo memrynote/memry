@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from "react"
-import { Search, FileText, Loader2 } from "lucide-react"
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Search, FileText, Loader2 } from 'lucide-react'
 
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
-import { notesService, type NoteListItem } from "@/services/notes-service"
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+import { notesService, type NoteListItem } from '@/services/notes-service'
 import type { SearchResultNote } from '@/services/search-service'
 
 // ============================================================================
@@ -32,13 +32,13 @@ export const NoteSearchDropdown = ({
   onSelectNote,
   excludeNoteIds = [],
   children,
-  className,
+  className
 }: NoteSearchDropdownProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState('')
   const [notes, setNotes] = useState<NoteItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [debouncedQuery, setDebouncedQuery] = useState("")
+  const [debouncedQuery, setDebouncedQuery] = useState('')
 
   // Debounce search query
   useEffect(() => {
@@ -61,11 +61,15 @@ export const NoteSearchDropdown = ({
           setNotes(results.map((r: SearchResultNote) => ({ id: r.id, title: r.title })))
         } else {
           // Load recent notes when no query
-          const response = await notesService.list({ limit: 20, sortBy: "modified", sortOrder: "desc" })
+          const response = await notesService.list({
+            limit: 20,
+            sortBy: 'modified',
+            sortOrder: 'desc'
+          })
           setNotes(response.notes.map((n: NoteListItem) => ({ id: n.id, title: n.title })))
         }
       } catch (error) {
-        console.error("Failed to load notes:", error)
+        console.error('Failed to load notes:', error)
         setNotes([])
       } finally {
         setIsLoading(false)
@@ -80,17 +84,20 @@ export const NoteSearchDropdown = ({
     return notes.filter((note) => !excludeNoteIds.includes(note.id))
   }, [notes, excludeNoteIds])
 
-  const handleSelectNote = useCallback((noteId: string): void => {
-    onSelectNote(noteId)
-    setIsOpen(false)
-    setSearchQuery("")
-  }, [onSelectNote])
+  const handleSelectNote = useCallback(
+    (noteId: string): void => {
+      onSelectNote(noteId)
+      setIsOpen(false)
+      setSearchQuery('')
+    },
+    [onSelectNote]
+  )
 
   const handleOpenChange = useCallback((open: boolean): void => {
     setIsOpen(open)
     if (!open) {
-      setSearchQuery("")
-      setDebouncedQuery("")
+      setSearchQuery('')
+      setDebouncedQuery('')
     }
   }, [])
 
@@ -122,7 +129,7 @@ export const NoteSearchDropdown = ({
             </div>
           ) : filteredNotes.length === 0 ? (
             <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-              {searchQuery ? "No notes found" : "No notes available"}
+              {searchQuery ? 'No notes found' : 'No notes available'}
             </div>
           ) : (
             filteredNotes.map((note) => (
@@ -131,8 +138,8 @@ export const NoteSearchDropdown = ({
                 type="button"
                 onClick={() => handleSelectNote(note.id)}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
-                  "hover:bg-accent focus:bg-accent focus:outline-none"
+                  'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
+                  'hover:bg-accent focus:bg-accent focus:outline-none'
                 )}
               >
                 <FileText className="size-4 text-muted-foreground" aria-hidden="true" />

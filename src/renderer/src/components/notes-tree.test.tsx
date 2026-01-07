@@ -13,9 +13,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 
 // Wrapper for tests that provides TooltipProvider
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
-  <TooltipProvider>
-    {children}
-  </TooltipProvider>
+  <TooltipProvider>{children}</TooltipProvider>
 )
 
 const renderWithProviders = (ui: React.ReactElement) => {
@@ -111,7 +109,6 @@ const setupMocks = (
     total: notes.length,
     hasMore: false
   })
-
   ;(useNoteFoldersQuery as ReturnType<typeof vi.fn>).mockReturnValue({
     folders,
     isLoading: false,
@@ -119,10 +116,11 @@ const setupMocks = (
     refetch: vi.fn(),
     createFolder: vi.fn().mockResolvedValue(true)
   })
-
   ;(useNoteMutations as ReturnType<typeof vi.fn>).mockReturnValue({
     createNote: {
-      mutateAsync: vi.fn().mockResolvedValue({ success: true, note: { id: 'new-note', path: 'notes/Untitled.md' } })
+      mutateAsync: vi
+        .fn()
+        .mockResolvedValue({ success: true, note: { id: 'new-note', path: 'notes/Untitled.md' } })
     },
     deleteNote: {
       mutateAsync: vi.fn().mockResolvedValue({ success: true })
@@ -236,7 +234,9 @@ describe('T521: NotesTree - folder tree display', () => {
     renderWithProviders(<NotesTree />)
 
     // The component renders buttons for folder view controls
-    expect(screen.getAllByRole('button', { name: /open folder view/i }).length).toBeGreaterThanOrEqual(1)
+    expect(
+      screen.getAllByRole('button', { name: /open folder view/i }).length
+    ).toBeGreaterThanOrEqual(1)
   })
 
   it('should select note and open tab on click', async () => {

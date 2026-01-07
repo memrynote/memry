@@ -28,7 +28,6 @@ describe('vault-service', () => {
     api.onVaultIndexProgress = vi.fn().mockReturnValue(() => {})
     api.onVaultError = vi.fn().mockReturnValue(() => {})
     api.onVaultIndexRecovered = vi.fn().mockReturnValue(() => {})
-
     ;(window as Window & { api: unknown }).api = api
   })
 

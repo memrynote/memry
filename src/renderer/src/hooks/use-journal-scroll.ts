@@ -11,7 +11,7 @@ import {
   generateMoreFutureDays,
   getTodayString,
   getDateDistance,
-  getOpacityForDistance,
+  getOpacityForDistance
 } from '@/lib/journal-utils'
 
 // =============================================================================
@@ -92,10 +92,13 @@ export function useJournalScroll(): UseJournalScrollResult {
   }, [])
 
   // Get opacity for a date
-  const getOpacity = useCallback((date: string): number => {
-    const distance = getDateDistance(date, activeDate)
-    return getOpacityForDistance(distance)
-  }, [activeDate])
+  const getOpacity = useCallback(
+    (date: string): number => {
+      const distance = getDateDistance(date, activeDate)
+      return getOpacityForDistance(distance)
+    },
+    [activeDate]
+  )
 
   // Scroll to a specific date
   const scrollToDate = useCallback((date: string, smooth: boolean = true) => {
@@ -116,20 +119,26 @@ export function useJournalScroll(): UseJournalScrollResult {
 
     container.scrollBy({
       top: scrollOffset,
-      behavior: smooth ? 'smooth' : 'instant',
+      behavior: smooth ? 'smooth' : 'instant'
     })
 
     // Reset programmatic scroll flag after animation
-    setTimeout(() => {
-      isScrollingProgrammatically.current = false
-      setActiveDate(date)
-    }, smooth ? 400 : 0)
+    setTimeout(
+      () => {
+        isScrollingProgrammatically.current = false
+        setActiveDate(date)
+      },
+      smooth ? 400 : 0
+    )
   }, [])
 
   // Scroll to today
-  const scrollToToday = useCallback((smooth: boolean = true) => {
-    scrollToDate(today, smooth)
-  }, [today, scrollToDate])
+  const scrollToToday = useCallback(
+    (smooth: boolean = true) => {
+      scrollToDate(today, smooth)
+    },
+    [today, scrollToDate]
+  )
 
   // Load more past days
   const loadMorePast = useCallback(() => {
@@ -146,7 +155,7 @@ export function useJournalScroll(): UseJournalScrollResult {
       const container = scrollContainerRef.current
       const scrollHeightBefore = container?.scrollHeight || 0
 
-      setDays(prev => [...newDays, ...prev])
+      setDays((prev) => [...newDays, ...prev])
 
       // Restore scroll position after new content is added
       requestAnimationFrame(() => {
@@ -170,7 +179,7 @@ export function useJournalScroll(): UseJournalScrollResult {
       const newestDate = days[days.length - 1].date
       const newDays = generateMoreFutureDays(newestDate, LOAD_MORE_COUNT)
 
-      setDays(prev => [...prev, ...newDays])
+      setDays((prev) => [...prev, ...newDays])
       setIsLoadingFuture(false)
     }, 100)
   }, [isLoadingFuture, days])
@@ -268,13 +277,16 @@ export function useJournalScroll(): UseJournalScrollResult {
   }, [today, scrollToDate, hasScrolledToToday])
 
   // Memoize the state object
-  const state = useMemo<JournalScrollState>(() => ({
-    days,
-    activeDate,
-    today,
-    isLoadingPast,
-    isLoadingFuture,
-  }), [days, activeDate, today, isLoadingPast, isLoadingFuture])
+  const state = useMemo<JournalScrollState>(
+    () => ({
+      days,
+      activeDate,
+      today,
+      isLoadingPast,
+      isLoadingFuture
+    }),
+    [days, activeDate, today, isLoadingPast, isLoadingFuture]
+  )
 
   return {
     state,
@@ -285,7 +297,7 @@ export function useJournalScroll(): UseJournalScrollResult {
     scrollToDate,
     scrollToToday,
     loadMorePast,
-    loadMoreFuture,
+    loadMoreFuture
   }
 }
 

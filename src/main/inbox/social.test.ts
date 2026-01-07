@@ -32,7 +32,10 @@ vi.mock('../lib/url-utils', () => ({
   })
 }))
 
-import { detectSocialPlatform as mockDetectSocialPlatform, isSocialPost as mockIsSocialPost } from '../lib/url-utils'
+import {
+  detectSocialPlatform as mockDetectSocialPlatform,
+  isSocialPost as mockIsSocialPost
+} from '../lib/url-utils'
 
 describe('Social Media Post Extraction', () => {
   beforeEach(() => {
@@ -242,7 +245,9 @@ describe('Social Media Post Extraction', () => {
         json: () => Promise.resolve(apiResponse)
       })
 
-      const result = await extractSocialPost('https://bsky.app/profile/testuser.bsky.social/post/abc123')
+      const result = await extractSocialPost(
+        'https://bsky.app/profile/testuser.bsky.social/post/abc123'
+      )
 
       expect(result.success).toBe(true)
       expect(result.metadata?.platform).toBe('bluesky')
@@ -277,7 +282,10 @@ describe('Social Media Post Extraction', () => {
   // ==========================================================================
   describe('createFallbackSocialMetadata', () => {
     it('should create fallback metadata with URL', () => {
-      const fallback = createFallbackSocialMetadata('https://twitter.com/user/status/123', 'twitter')
+      const fallback = createFallbackSocialMetadata(
+        'https://twitter.com/user/status/123',
+        'twitter'
+      )
 
       expect(fallback.platform).toBe('twitter')
       expect(fallback.postUrl).toBe('https://twitter.com/user/status/123')

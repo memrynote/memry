@@ -1,26 +1,17 @@
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback } from 'react'
 
-import type { Task, Priority } from "@/data/sample-tasks"
-import type {
-  TaskFilters,
-  TaskSort,
-  SavedFilter,
-  Project,
-  DueDateFilter,
-} from "@/data/tasks-data"
-import {
-  defaultFilters,
-  defaultSort,
-} from "@/data/tasks-data"
-import { applyFiltersAndSort, hasActiveFilters } from "@/lib/task-utils"
+import type { Task, Priority } from '@/data/sample-tasks'
+import type { TaskFilters, TaskSort, SavedFilter, Project, DueDateFilter } from '@/data/tasks-data'
+import { defaultFilters, defaultSort } from '@/data/tasks-data'
+import { applyFiltersAndSort, hasActiveFilters } from '@/lib/task-utils'
 import {
   savedFiltersService,
   onSavedFilterCreated,
   onSavedFilterUpdated,
   onSavedFilterDeleted,
   type SavedFilter as DbSavedFilter,
-  type SavedFilterConfig,
-} from "@/services/saved-filters-service"
+  type SavedFilterConfig
+} from '@/services/saved-filters-service'
 
 // ============================================================================
 // DEBOUNCE HOOK
@@ -49,8 +40,8 @@ export const useDebouncedValue = <T>(value: T, delay: number): T => {
 // PERSISTENCE HELPERS
 // ============================================================================
 
-const FILTERS_STORAGE_KEY = "taskFilters"
-const SAVED_FILTERS_KEY = "savedTaskFilters"
+const FILTERS_STORAGE_KEY = 'taskFilters'
+const SAVED_FILTERS_KEY = 'savedTaskFilters'
 
 interface PersistedFilterState {
   filters: TaskFilters
@@ -61,46 +52,36 @@ interface PersistedFilterState {
 /**
  * Generate a unique key for storing filters per view
  */
-const getViewKey = (
-  selectedType: string,
-  selectedId: string,
-  activeView: string
-): string => {
+const getViewKey = (selectedType: string, selectedId: string, activeView: string): string => {
   return `${selectedType}-${selectedId}-${activeView}`
 }
 
 /**
  * Save filters to localStorage
  */
-const persistFilters = (
-  viewKey: string,
-  filters: TaskFilters,
-  sort: TaskSort
-): void => {
+const persistFilters = (viewKey: string, filters: TaskFilters, sort: TaskSort): void => {
   try {
-    const stored = JSON.parse(localStorage.getItem(FILTERS_STORAGE_KEY) || "{}")
+    const stored = JSON.parse(localStorage.getItem(FILTERS_STORAGE_KEY) || '{}')
     stored[viewKey] = {
       filters,
       sort,
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: new Date().toISOString()
     }
     localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(stored))
   } catch (err) {
-    console.error("Failed to persist filters:", err)
+    console.error('Failed to persist filters:', err)
   }
 }
 
 /**
  * Load persisted filters from localStorage
  */
-const loadPersistedFilters = (
-  viewKey: string
-): PersistedFilterState | null => {
+const loadPersistedFilters = (viewKey: string): PersistedFilterState | null => {
   try {
-    const stored = JSON.parse(localStorage.getItem(FILTERS_STORAGE_KEY) || "{}")
+    const stored = JSON.parse(localStorage.getItem(FILTERS_STORAGE_KEY) || '{}')
     return stored[viewKey] || null
   } catch (err) {
-    console.error("Failed to load persisted filters:", err)
+    console.error('Failed to load persisted filters:', err)
     return null
   }
 }
@@ -116,10 +97,10 @@ const loadSavedFilters = (): SavedFilter[] => {
     // Convert date strings back to Date objects
     return parsed.map((f: SavedFilter) => ({
       ...f,
-      createdAt: new Date(f.createdAt),
+      createdAt: new Date(f.createdAt)
     }))
   } catch (err) {
-    console.error("Failed to load saved filters:", err)
+    console.error('Failed to load saved filters:', err)
     return []
   }
 }
@@ -151,7 +132,7 @@ export const useFilterState = ({
   selectedType,
   selectedId,
   activeView,
-  persistFilters: shouldPersist = true,
+  persistFilters: shouldPersist = true
 }: UseFilterStateOptions): UseFilterStateReturn => {
   const viewKey = getViewKey(selectedType, selectedId, activeView)
 
@@ -205,7 +186,7 @@ export const useFilterState = ({
     updateFilters,
     updateSort,
     clearFilters,
-    hasActiveFilters: isActive,
+    hasActiveFilters: isActive
   }
 }
 
@@ -235,7 +216,7 @@ export const useFilteredAndSortedTasks = ({
   filters,
   sort,
   projects,
-  searchDebounceMs = 150,
+  searchDebounceMs = 150
 }: UseFilteredTasksOptions): UseFilteredTasksReturn => {
   // Debounce search query
   const debouncedSearch = useDebouncedValue(filters.search, searchDebounceMs)
@@ -255,7 +236,7 @@ export const useFilteredAndSortedTasks = ({
   return {
     filteredTasks,
     totalCount: tasks.length,
-    filteredCount: filteredTasks.length,
+    filteredCount: filteredTasks.length
   }
 }
 
@@ -283,9 +264,7 @@ function dbToFrontendFilter(dbFilter: DbSavedFilter): SavedFilter {
     customStart: config.filters.dueDate.customStart
       ? new Date(config.filters.dueDate.customStart)
       : null,
-    customEnd: config.filters.dueDate.customEnd
-      ? new Date(config.filters.dueDate.customEnd)
-      : null,
+    customEnd: config.filters.dueDate.customEnd ? new Date(config.filters.dueDate.customEnd) : null
   }
 
   return {
@@ -299,15 +278,15 @@ function dbToFrontendFilter(dbFilter: DbSavedFilter): SavedFilter {
       statusIds: config.filters.statusIds,
       completion: config.filters.completion,
       repeatType: config.filters.repeatType,
-      hasTime: config.filters.hasTime,
+      hasTime: config.filters.hasTime
     },
     sort: config.sort
       ? {
           field: config.sort.field,
-          direction: config.sort.direction,
+          direction: config.sort.direction
         }
       : undefined,
-    createdAt: new Date(dbFilter.createdAt),
+    createdAt: new Date(dbFilter.createdAt)
   }
 }
 
@@ -323,19 +302,19 @@ function frontendToDbConfig(filters: TaskFilters, sort?: TaskSort): SavedFilterC
       dueDate: {
         type: filters.dueDate.type,
         customStart: filters.dueDate.customStart?.toISOString() ?? null,
-        customEnd: filters.dueDate.customEnd?.toISOString() ?? null,
+        customEnd: filters.dueDate.customEnd?.toISOString() ?? null
       },
       statusIds: filters.statusIds,
       completion: filters.completion,
       repeatType: filters.repeatType,
-      hasTime: filters.hasTime,
+      hasTime: filters.hasTime
     },
     sort: sort
       ? {
           field: sort.field,
-          direction: sort.direction,
+          direction: sort.direction
         }
-      : undefined,
+      : undefined
   }
 }
 
@@ -354,7 +333,7 @@ export const useSavedFilters = (): UseSavedFiltersReturn => {
         const response = await savedFiltersService.list()
         setSavedFilters(response.savedFilters.map(dbToFrontendFilter))
       } catch (error) {
-        console.error("[useSavedFilters] Failed to load saved filters:", error)
+        console.error('[useSavedFilters] Failed to load saved filters:', error)
         // Fallback to localStorage for backwards compatibility
         setSavedFilters(loadSavedFilters())
       } finally {
@@ -373,9 +352,7 @@ export const useSavedFilters = (): UseSavedFiltersReturn => {
 
     const unsubUpdated = onSavedFilterUpdated((event) => {
       const frontendFilter = dbToFrontendFilter(event.savedFilter)
-      setSavedFilters((prev) =>
-        prev.map((f) => (f.id === event.id ? frontendFilter : f))
-      )
+      setSavedFilters((prev) => prev.map((f) => (f.id === event.id ? frontendFilter : f)))
     })
 
     const unsubDeleted = onSavedFilterDeleted((event) => {
@@ -389,25 +366,22 @@ export const useSavedFilters = (): UseSavedFiltersReturn => {
     }
   }, [])
 
-  const saveFilter = useCallback(
-    async (name: string, filters: TaskFilters, sort?: TaskSort) => {
-      try {
-        const config = frontendToDbConfig(filters, sort)
-        await savedFiltersService.create({ name, config })
-        // Event subscription will update state
-      } catch (error) {
-        console.error("[useSavedFilters] Failed to save filter:", error)
-      }
-    },
-    []
-  )
+  const saveFilter = useCallback(async (name: string, filters: TaskFilters, sort?: TaskSort) => {
+    try {
+      const config = frontendToDbConfig(filters, sort)
+      await savedFiltersService.create({ name, config })
+      // Event subscription will update state
+    } catch (error) {
+      console.error('[useSavedFilters] Failed to save filter:', error)
+    }
+  }, [])
 
   const deleteFilter = useCallback(async (id: string) => {
     try {
       await savedFiltersService.delete(id)
       // Event subscription will update state
     } catch (error) {
-      console.error("[useSavedFilters] Failed to delete filter:", error)
+      console.error('[useSavedFilters] Failed to delete filter:', error)
     }
   }, [])
 
@@ -429,7 +403,7 @@ export const useSavedFilters = (): UseSavedFiltersReturn => {
         await savedFiltersService.update(updateInput)
         // Event subscription will update state
       } catch (error) {
-        console.error("[useSavedFilters] Failed to update filter:", error)
+        console.error('[useSavedFilters] Failed to update filter:', error)
       }
     },
     [savedFilters]
@@ -440,6 +414,6 @@ export const useSavedFilters = (): UseSavedFiltersReturn => {
     isLoading,
     saveFilter,
     deleteFilter,
-    updateFilter,
+    updateFilter
   }
 }

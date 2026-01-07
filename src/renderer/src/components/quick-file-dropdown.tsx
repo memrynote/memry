@@ -1,17 +1,11 @@
-import { useMemo } from "react"
-import { Folder } from "lucide-react"
+import { useMemo } from 'react'
+import { Folder } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import type { Folder as FolderType } from "@/types"
+import { cn } from '@/lib/utils'
+import type { Folder as FolderType } from '@/types'
 
 // Highlight matching text in folder name
-const HighlightedText = ({
-  text,
-  query,
-}: {
-  text: string
-  query: string
-}): React.JSX.Element => {
+const HighlightedText = ({ text, query }: { text: string; query: string }): React.JSX.Element => {
   if (!query.trim()) {
     return <>{text}</>
   }
@@ -48,7 +42,7 @@ const QuickFileDropdownItem = ({
   folder,
   query,
   isHighlighted,
-  onSelect,
+  onSelect
 }: QuickFileDropdownItemProps): React.JSX.Element => {
   const handleClick = (): void => {
     onSelect(folder)
@@ -57,11 +51,9 @@ const QuickFileDropdownItem = ({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 px-3 py-2 cursor-pointer",
-        "dropdown-highlight", // smooth background transition
-        isHighlighted
-          ? "bg-primary text-primary-foreground"
-          : "hover:bg-muted"
+        'flex items-center gap-2 px-3 py-2 cursor-pointer',
+        'dropdown-highlight', // smooth background transition
+        isHighlighted ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
       )}
       onClick={handleClick}
       role="option"
@@ -69,8 +61,8 @@ const QuickFileDropdownItem = ({
     >
       <Folder
         className={cn(
-          "size-4 shrink-0",
-          isHighlighted ? "text-[var(--primary-foreground)]" : "text-[var(--muted-foreground)]"
+          'size-4 shrink-0',
+          isHighlighted ? 'text-[var(--primary-foreground)]' : 'text-[var(--muted-foreground)]'
         )}
         aria-hidden="true"
       />
@@ -94,7 +86,7 @@ const QuickFileDropdown = ({
   query,
   highlightedIndex,
   onSelect,
-  maxResults = 5,
+  maxResults = 5
 }: QuickFileDropdownProps): React.JSX.Element | null => {
   // Filter folders based on query
   const filteredFolders = useMemo(() => {
@@ -118,8 +110,8 @@ const QuickFileDropdown = ({
   return (
     <div
       className={cn(
-        "absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-20 overflow-hidden",
-        "animate-in fade-in-0 slide-in-from-top-2 duration-[var(--duration-fast)]"
+        'absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-20 overflow-hidden',
+        'animate-in fade-in-0 slide-in-from-top-2 duration-[var(--duration-fast)]'
       )}
       role="listbox"
       aria-label="Folder suggestions"
@@ -162,4 +154,3 @@ const getFilteredFolders = (
 }
 
 export { QuickFileDropdown, getFilteredFolders }
-

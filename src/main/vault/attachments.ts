@@ -194,7 +194,6 @@ export function getAttachmentPath(vaultPath: string, noteId: string, filename: s
   return path.join(getNoteAttachmentsDir(vaultPath, noteId), filename)
 }
 
-
 /**
  * Get the memry-file:// URL for an attachment (for Electron rendering)
  * Uses custom protocol handler to serve local files securely
@@ -202,7 +201,11 @@ export function getAttachmentPath(vaultPath: string, noteId: string, filename: s
  * @param noteId - The note ID
  * @param filename - The attachment filename
  */
-export function getAbsoluteAttachmentUrl(vaultPath: string, noteId: string, filename: string): string {
+export function getAbsoluteAttachmentUrl(
+  vaultPath: string,
+  noteId: string,
+  filename: string
+): string {
   const absolutePath = path.join(vaultPath, 'attachments', noteId, filename)
   // Use custom memry-file:// protocol for secure file access
   return toMemryFileUrl(absolutePath)

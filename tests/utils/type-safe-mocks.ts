@@ -39,8 +39,9 @@ import type {
  * Converts a function type to a Vitest Mock with the same signature.
  * Uses ReturnType<typeof vi.fn> which is the actual mock type.
  */
-type MockedFunction<T extends (...args: unknown[]) => unknown> =
-  ReturnType<typeof vi.fn<Parameters<T>, ReturnType<T>>>
+type MockedFunction<T extends (...args: unknown[]) => unknown> = ReturnType<
+  typeof vi.fn<Parameters<T>, ReturnType<T>>
+>
 
 /**
  * Converts an API interface to a mocked version where all methods
@@ -48,9 +49,7 @@ type MockedFunction<T extends (...args: unknown[]) => unknown> =
  */
 export type MockedAPI<T> = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [K in keyof T]: T[K] extends (...args: any[]) => any
-    ? MockedFunction<T[K]>
-    : never
+  [K in keyof T]: T[K] extends (...args: any[]) => any ? MockedFunction<T[K]> : never
 }
 
 /**

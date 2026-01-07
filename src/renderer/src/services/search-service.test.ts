@@ -32,7 +32,6 @@ describe('search-service', () => {
     api.onSearchIndexRebuildProgress = vi.fn().mockReturnValue(() => {})
     api.onSearchIndexRebuildCompleted = vi.fn().mockReturnValue(() => {})
     api.onSearchIndexCorrupt = vi.fn().mockReturnValue(() => {})
-
     ;(window as Window & { api: unknown }).api = api
   })
 

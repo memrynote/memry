@@ -3,11 +3,11 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { getIconByName } from "@/components/icon-picker"
-import { cn } from "@/lib/utils"
-import type { Project } from "@/data/tasks-data"
+  SelectValue
+} from '@/components/ui/select'
+import { getIconByName } from '@/components/icon-picker'
+import { cn } from '@/lib/utils'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -26,7 +26,7 @@ interface ProjectSelectProps {
 
 const ProjectIndicator = ({
   project,
-  className,
+  className
 }: {
   project: Project
   className?: string
@@ -36,7 +36,7 @@ const ProjectIndicator = ({
   if (IconComponent) {
     return (
       <IconComponent
-        className={cn("size-4 shrink-0", className)}
+        className={cn('size-4 shrink-0', className)}
         style={{ color: project.color }}
         aria-hidden="true"
       />
@@ -45,7 +45,7 @@ const ProjectIndicator = ({
 
   return (
     <span
-      className={cn("size-3 shrink-0 rounded-full", className)}
+      className={cn('size-3 shrink-0 rounded-full', className)}
       style={{ backgroundColor: project.color }}
       aria-hidden="true"
     />
@@ -60,7 +60,7 @@ export const ProjectSelect = ({
   value,
   onChange,
   projects,
-  className,
+  className
 }: ProjectSelectProps): React.JSX.Element => {
   // Filter out archived projects
   const availableProjects = projects.filter((p) => !p.isArchived)
@@ -74,10 +74,7 @@ export const ProjectSelect = ({
 
   return (
     <Select value={value} onValueChange={handleValueChange}>
-      <SelectTrigger
-        className={cn("w-full", className)}
-        aria-label="Select project"
-      >
+      <SelectTrigger className={cn('w-full', className)} aria-label="Select project">
         <SelectValue>
           {currentProject ? (
             <div className="flex items-center gap-2">
@@ -91,11 +88,7 @@ export const ProjectSelect = ({
       </SelectTrigger>
       <SelectContent>
         {availableProjects.map((project) => (
-          <SelectItem
-            key={project.id}
-            value={project.id}
-            className="cursor-pointer"
-          >
+          <SelectItem key={project.id} value={project.id} className="cursor-pointer">
             <div className="flex items-center gap-2">
               <ProjectIndicator project={project} />
               <span className="truncate">{project.name}</span>
@@ -108,4 +101,3 @@ export const ProjectSelect = ({
 }
 
 export default ProjectSelect
-

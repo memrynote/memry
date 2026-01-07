@@ -7,7 +7,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { ReminderChannels } from '@shared/ipc-channels'
-import { reminderStatus, type Reminder, type ReminderWithTarget } from '@shared/contracts/reminders-api'
+import {
+  reminderStatus,
+  type Reminder,
+  type ReminderWithTarget
+} from '@shared/contracts/reminders-api'
 
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
@@ -60,7 +64,6 @@ describe('reminder-handlers', () => {
     vi.clearAllMocks()
     handleCalls.length = 0
     removeHandlerCalls.length = 0
-
     ;(getDatabase as Mock).mockReturnValue({})
     ;(getIndexDatabase as Mock).mockReturnValue({})
   })
@@ -141,7 +144,6 @@ describe('reminder-handlers', () => {
       total: 1,
       hasMore: false
     })
-
     ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({
       id: 'note-2',
       title: 'Note Two'
@@ -201,11 +203,9 @@ describe('reminder-handlers', () => {
 
   it('deletes reminders and reports missing ones', async () => {
     registerReminderHandlers()
-
     ;(remindersService.deleteReminder as Mock).mockReturnValue(true)
     const deleteResult = await invokeHandler(ReminderChannels.invoke.DELETE, 'rem-4')
     expect(deleteResult).toEqual({ success: true })
-
     ;(remindersService.deleteReminder as Mock).mockReturnValue(false)
     const missingResult = await invokeHandler(ReminderChannels.invoke.DELETE, 'missing')
     expect(missingResult).toEqual({ success: false, error: 'Reminder not found' })

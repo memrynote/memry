@@ -10,10 +10,4 @@ export { ContentArea } from './ContentArea'
 export { ContentDivider } from './ContentDivider'
 
 // Types
-export type {
-  ContentAreaProps,
-  HeadingInfo,
-  HighlightInfo,
-  SelectionInfo,
-  Block
-} from './types'
+export type { ContentAreaProps, HeadingInfo, HighlightInfo, SelectionInfo, Block } from './types'

@@ -1,11 +1,11 @@
-import { useState } from "react"
-import { ChevronDown, ArrowUp, ArrowDown } from "lucide-react"
+import { useState } from 'react'
+import { ChevronDown, ArrowUp, ArrowDown } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import type { TaskSort, SortField, SortDirection } from "@/data/tasks-data"
-import { sortFieldOptions } from "@/data/tasks-data"
+import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
+import type { TaskSort, SortField, SortDirection } from '@/data/tasks-data'
+import { sortFieldOptions } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -24,12 +24,12 @@ interface SortDropdownProps {
 export const SortDropdown = ({
   sort,
   onChange,
-  className,
+  className
 }: SortDropdownProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
 
   const currentOption = sortFieldOptions.find((o) => o.value === sort.field)
-  const directionIcon = sort.direction === "asc" ? "↑" : "↓"
+  const directionIcon = sort.direction === 'asc' ? '↑' : '↓'
 
   const handleSelectField = (field: SortField): void => {
     onChange({ ...sort, field })
@@ -45,10 +45,12 @@ export const SortDropdown = ({
         <Button
           variant="outline"
           size="sm"
-          className={cn("h-9 gap-2", className)}
+          className={cn('h-9 gap-2', className)}
           aria-label="Sort options"
         >
-          <span>Sort: {currentOption?.label} {directionIcon}</span>
+          <span>
+            Sort: {currentOption?.label} {directionIcon}
+          </span>
           <ChevronDown className="size-4 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -66,17 +68,17 @@ export const SortDropdown = ({
               <div
                 key={option.value}
                 className={cn(
-                  "flex items-center justify-between rounded-sm px-2 py-1.5 transition-colors",
-                  "hover:bg-accent",
-                  isSelected && "bg-accent"
+                  'flex items-center justify-between rounded-sm px-2 py-1.5 transition-colors',
+                  'hover:bg-accent',
+                  isSelected && 'bg-accent'
                 )}
               >
                 <button
                   type="button"
                   onClick={() => handleSelectField(option.value)}
                   className={cn(
-                    "flex-1 text-left text-sm focus:outline-none",
-                    isSelected && "font-medium"
+                    'flex-1 text-left text-sm focus:outline-none',
+                    isSelected && 'font-medium'
                   )}
                 >
                   {option.label}
@@ -86,12 +88,12 @@ export const SortDropdown = ({
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => handleToggleDirection("asc")}
+                      onClick={() => handleToggleDirection('asc')}
                       className={cn(
-                        "p-1 rounded text-xs transition-colors focus:outline-none",
-                        sort.direction === "asc"
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                        'p-1 rounded text-xs transition-colors focus:outline-none',
+                        sort.direction === 'asc'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                       )}
                       aria-label="Sort ascending"
                       title="Ascending"
@@ -100,12 +102,12 @@ export const SortDropdown = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleToggleDirection("desc")}
+                      onClick={() => handleToggleDirection('desc')}
                       className={cn(
-                        "p-1 rounded text-xs transition-colors focus:outline-none",
-                        sort.direction === "desc"
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                        'p-1 rounded text-xs transition-colors focus:outline-none',
+                        sort.direction === 'desc'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                       )}
                       aria-label="Sort descending"
                       title="Descending"

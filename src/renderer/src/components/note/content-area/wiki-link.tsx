@@ -22,10 +22,7 @@ export function parseWikiLinkText(text: string): WikiLinkParts | null {
   return { target, alias }
 }
 
-export function createWikiLinkInlineContent(
-  target: string,
-  alias: string
-) {
+export function createWikiLinkInlineContent(target: string, alias: string) {
   return {
     type: 'wikiLink',
     props: { target, alias: alias ?? '' }

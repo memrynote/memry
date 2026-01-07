@@ -8,13 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import {
-  fileToFolder,
-  convertToNote,
-  linkToNote,
-  linkToNotes,
-  bulkFileToFolder
-} from './filing'
+import { fileToFolder, convertToNote, linkToNote, linkToNotes, bulkFileToFolder } from './filing'
 import {
   createTestDatabase,
   cleanupTestDatabase,
@@ -258,10 +252,7 @@ describe('Inbox Filing Operations', () => {
 
       await fileToFolder(itemId, 'folder')
 
-      expect(mockSend).toHaveBeenCalledWith(
-        'inbox:filed',
-        expect.anything()
-      )
+      expect(mockSend).toHaveBeenCalledWith('inbox:filed', expect.anything())
     })
 
     it('should handle root folder (empty string)', async () => {

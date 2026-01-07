@@ -1,11 +1,11 @@
 ---
-id: "note-getting-started"
-title: "Getting Started"
+id: 'note-getting-started'
+title: 'Getting Started'
 tags:
   - tutorial
   - onboarding
-created: "2025-01-01T00:00:00.000Z"
-modified: "2025-01-01T00:00:00.000Z"
+created: '2025-01-01T00:00:00.000Z'
+modified: '2025-01-01T00:00:00.000Z'
 ---
 
 # Getting Started

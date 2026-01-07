@@ -717,10 +717,7 @@ describe('Filter Evaluator', () => {
         properties: { status: 'active', priority: 5, completed: false }
       })
       const filter: FilterExpression = {
-        or: [
-          { and: ['status == "active"', 'priority >= 3'] },
-          'completed isChecked'
-        ]
+        or: [{ and: ['status == "active"', 'priority >= 3'] }, 'completed isChecked']
       }
       expect(evaluateFilter(note, filter)).toBe(true)
     })
@@ -730,10 +727,7 @@ describe('Filter Evaluator', () => {
         properties: { status: 'active', priority: 1, completed: false }
       })
       const filter: FilterExpression = {
-        and: [
-          { or: ['status == "active"', 'status == "pending"'] },
-          'completed isUnchecked'
-        ]
+        and: [{ or: ['status == "active"', 'status == "pending"'] }, 'completed isUnchecked']
       }
       expect(evaluateFilter(note, filter)).toBe(true)
     })
@@ -743,10 +737,7 @@ describe('Filter Evaluator', () => {
         properties: { status: 'active', archived: false }
       })
       const filter: FilterExpression = {
-        and: [
-          'status == "active"',
-          { not: 'archived isChecked' }
-        ]
+        and: ['status == "active"', { not: 'archived isChecked' }]
       }
       expect(evaluateFilter(note, filter)).toBe(true)
     })
@@ -758,10 +749,7 @@ describe('Filter Evaluator', () => {
       const filter: FilterExpression = {
         and: [
           {
-            or: [
-              { and: ['status == "active"', 'priority >= 3'] },
-              'completed isChecked'
-            ]
+            or: [{ and: ['status == "active"', 'priority >= 3'] }, 'completed isChecked']
           },
           { not: 'archived isChecked' }
         ]
@@ -1053,8 +1041,12 @@ describe('Filter Evaluator', () => {
       expect(serializeCondition({ property: 'p', operator: '!=', value: 'x' })).toBe('p != "x"')
       expect(serializeCondition({ property: 'p', operator: '>', value: 5 })).toBe('p > 5')
       expect(serializeCondition({ property: 'p', operator: '<', value: 5 })).toBe('p < 5')
-      expect(serializeCondition({ property: 'p', operator: 'contains', value: 'x' })).toBe('p contains "x"')
-      expect(serializeCondition({ property: 'p', operator: 'startsWith', value: 'x' })).toBe('p startsWith "x"')
+      expect(serializeCondition({ property: 'p', operator: 'contains', value: 'x' })).toBe(
+        'p contains "x"'
+      )
+      expect(serializeCondition({ property: 'p', operator: 'startsWith', value: 'x' })).toBe(
+        'p startsWith "x"'
+      )
     })
   })
 
@@ -1175,20 +1167,14 @@ describe('Filter Evaluator', () => {
 
       it('should count nested conditions', () => {
         const filter: FilterExpression = {
-          and: [
-            { or: ['a == 1', 'b == 2'] },
-            'c == 3'
-          ]
+          and: [{ or: ['a == 1', 'b == 2'] }, 'c == 3']
         }
         expect(countFilterConditions(filter)).toBe(3)
       })
 
       it('should count deeply nested conditions', () => {
         const filter: FilterExpression = {
-          and: [
-            { or: [{ and: ['a == 1', 'b == 2'] }, 'c == 3'] },
-            { not: 'd == 4' }
-          ]
+          and: [{ or: [{ and: ['a == 1', 'b == 2'] }, 'c == 3'] }, { not: 'd == 4' }]
         }
         expect(countFilterConditions(filter)).toBe(4)
       })

@@ -153,7 +153,11 @@ export function registerTasksHandlers(): void {
               ? projectQueries.getStatusById(db, currentTask.statusId)
               : undefined
             // Find equivalent status in the new project
-            const newStatus = projectQueries.getEquivalentStatus(db, updates.projectId, currentStatus)
+            const newStatus = projectQueries.getEquivalentStatus(
+              db,
+              updates.projectId,
+              currentStatus
+            )
             if (newStatus) {
               updates.statusId = newStatus.id
             }
@@ -288,7 +292,11 @@ export function registerTasksHandlers(): void {
           linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
         }
 
-        emitTaskEvent(TasksChannels.events.UPDATED, { id, task: enrichedTask, changes: { completedAt: null } })
+        emitTaskEvent(TasksChannels.events.UPDATED, {
+          id,
+          task: enrichedTask,
+          changes: { completedAt: null }
+        })
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -314,7 +322,11 @@ export function registerTasksHandlers(): void {
           linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
         }
         // Emit event so frontend can update state
-        emitTaskEvent(TasksChannels.events.UPDATED, { id, task: enrichedTask, changes: { archivedAt: task.archivedAt } })
+        emitTaskEvent(TasksChannels.events.UPDATED, {
+          id,
+          task: enrichedTask,
+          changes: { archivedAt: task.archivedAt }
+        })
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to archive task'
@@ -339,7 +351,11 @@ export function registerTasksHandlers(): void {
           linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
         }
         // Emit event so frontend can update state
-        emitTaskEvent(TasksChannels.events.UPDATED, { id, task: enrichedTask, changes: { archivedAt: null } })
+        emitTaskEvent(TasksChannels.events.UPDATED, {
+          id,
+          task: enrichedTask,
+          changes: { archivedAt: null }
+        })
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to unarchive task'
@@ -363,7 +379,11 @@ export function registerTasksHandlers(): void {
             const currentStatus = currentTask.statusId
               ? projectQueries.getStatusById(db, currentTask.statusId)
               : undefined
-            const newStatus = projectQueries.getEquivalentStatus(db, input.targetProjectId, currentStatus)
+            const newStatus = projectQueries.getEquivalentStatus(
+              db,
+              input.targetProjectId,
+              currentStatus
+            )
             if (newStatus) {
               targetStatusId = newStatus.id
             }
@@ -450,7 +470,12 @@ export function registerTasksHandlers(): void {
         for (const subtask of subtasks) {
           const newSubtaskId = generateId()
           // Use duplicateSubtask which sets parentId correctly and keeps original title
-          const duplicatedSubtask = taskQueries.duplicateSubtask(db, subtask.id, newSubtaskId, newId)
+          const duplicatedSubtask = taskQueries.duplicateSubtask(
+            db,
+            subtask.id,
+            newSubtaskId,
+            newId
+          )
 
           if (duplicatedSubtask) {
             // Copy subtask tags

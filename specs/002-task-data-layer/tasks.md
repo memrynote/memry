@@ -40,14 +40,14 @@ src/
 
 **Purpose**: Establish verification baseline and understand current state
 
-- [X] T001 Verify project builds without errors using `pnpm typecheck && pnpm build:mac`
+- [x] T001 Verify project builds without errors using `pnpm typecheck && pnpm build:mac`
   - Fixed task-specific type errors (task-utils.ts, tasks.tsx, kanban-board.tsx, etc.)
   - Pre-existing errors in other features (tabs, journal, notes) documented but out of scope
-- [X] T002 Verify existing database schema matches spec in src/shared/db/schema/tasks.ts
+- [x] T002 Verify existing database schema matches spec in src/shared/db/schema/tasks.ts
   - All core fields present; isRepeating/subtaskIds computed (denormalized design)
-- [X] T003 [P] Verify IPC handlers are registered in src/main/ipc/index.ts
+- [x] T003 [P] Verify IPC handlers are registered in src/main/ipc/index.ts
   - registerTasksHandlers() called in registerAllHandlers()
-- [X] T004 [P] Verify preload exposes tasks API in src/preload/index.ts
+- [x] T004 [P] Verify preload exposes tasks API in src/preload/index.ts
   - Comprehensive API: CRUD, actions, subtasks, projects, statuses, bulk ops, views
 
 ---
@@ -58,16 +58,16 @@ src/
 
 **⚠️ CRITICAL**: These gaps block proper functioning of all user stories
 
-- [X] T005 Fix status loading gap - load statuses per project in src/renderer/src/contexts/tasks/index.tsx:89
+- [x] T005 Fix status loading gap - load statuses per project in src/renderer/src/contexts/tasks/index.tsx:89
   - ALREADY IMPLEMENTED: Lines 257-271 load statuses via tasksService.listStatuses()
-- [X] T006 Implement RepeatConfig conversion in dbTaskToUiTask in src/renderer/src/contexts/tasks/index.tsx:68
+- [x] T006 Implement RepeatConfig conversion in dbTaskToUiTask in src/renderer/src/contexts/tasks/index.tsx:68
   - ALREADY IMPLEMENTED: dbRepeatConfigToUiRepeatConfig() at lines 87-109
-- [X] T007 Trace and document data flow from App.tsx → TasksProvider → tasks.tsx
+- [x] T007 Trace and document data flow from App.tsx → TasksProvider → tasks.tsx
   - Flow: Database ↔ TasksProvider (IPC sync) ↔ App.tsx (state owner) → TasksPage (props)
   - App.tsx owns state, TasksProvider handles DB sync, TasksPage is controlled component
-- [X] T008 [P] Verify TasksProvider properly subscribes to IPC events in src/renderer/src/contexts/tasks/index.tsx
+- [x] T008 [P] Verify TasksProvider properly subscribes to IPC events in src/renderer/src/contexts/tasks/index.tsx
   - VERIFIED: Lines 308-354 subscribe to 6 events with proper cleanup
-- [X] T009 [P] Verify type conversions (priority int↔string, dates) in src/renderer/src/contexts/tasks/index.tsx
+- [x] T009 [P] Verify type conversions (priority int↔string, dates) in src/renderer/src/contexts/tasks/index.tsx
   - VERIFIED: priorityMap (0-4), Date conversions in dbTaskToUiTask
 
 **Checkpoint**: Integration gaps fixed - user story verification can now begin ✅
@@ -82,15 +82,15 @@ src/
 
 ### Verification for User Story 1
 
-- [X] T010 [US1] Verify task creation persists to data.db by checking SQLite directly after create
+- [x] T010 [US1] Verify task creation persists to data.db by checking SQLite directly after create
   - VERIFIED: insertTask() uses .returning().get() for synchronous write confirmation
-- [X] T011 [US1] Verify task updates persist by modifying task and checking database in src/shared/db/queries/tasks.ts
+- [x] T011 [US1] Verify task updates persist by modifying task and checking database in src/shared/db/queries/tasks.ts
   - VERIFIED: updateTask() uses synchronous write, sets modifiedAt timestamp
-- [X] T012 [US1] Verify task deletion works correctly (soft delete with archivedAt) in src/shared/db/queries/tasks.ts
+- [x] T012 [US1] Verify task deletion works correctly (soft delete with archivedAt) in src/shared/db/queries/tasks.ts
   - VERIFIED: archiveTask() sets archivedAt; deleteTask() for hard delete
-- [X] T013 [US1] Test crash recovery - verify WAL mode and PRAGMA settings in src/main/database/client.ts
+- [x] T013 [US1] Test crash recovery - verify WAL mode and PRAGMA settings in src/main/database/client.ts
   - VERIFIED: WAL mode, foreign_keys ON, synchronous NORMAL, busy_timeout 5000, cache_size 64MB
-- [X] T014 [US1] Verify graceful shutdown saves pending changes in src/main/index.ts
+- [x] T014 [US1] Verify graceful shutdown saves pending changes in src/main/index.ts
   - VERIFIED: before-quit handler with 5s timeout, closeVault() for cleanup
 
 **Checkpoint**: Persistence verified - data survives restarts ✅
@@ -105,15 +105,15 @@ src/
 
 ### Verification for User Story 2
 
-- [X] T015 [P] [US2] Verify title and description fields save correctly via tasksService.create in src/renderer/src/services/tasks-service.ts
+- [x] T015 [P] [US2] Verify title and description fields save correctly via tasksService.create in src/renderer/src/services/tasks-service.ts
   - VERIFIED: tasks-handlers.ts:78-79 saves title (required) and description (optional, null default)
-- [X] T016 [P] [US2] Verify dueDate and dueTime fields save and display correctly in task row components
+- [x] T016 [P] [US2] Verify dueDate and dueTime fields save and display correctly in task row components
   - VERIFIED: tasks-handlers.ts:82-83 saves dueDate/dueTime as text, nullable
-- [X] T017 [P] [US2] Verify priority field conversion (string↔int) works bidirectionally in src/renderer/src/contexts/tasks/index.tsx
+- [x] T017 [P] [US2] Verify priority field conversion (string↔int) works bidirectionally in src/renderer/src/contexts/tasks/index.tsx
   - VERIFIED: Backend stores 0-4 int, frontend converts via priorityMap/priorityReverseMap
-- [X] T018 [US2] Verify projectId and statusId assignment works in src/renderer/src/services/tasks-service.ts
+- [x] T018 [US2] Verify projectId and statusId assignment works in src/renderer/src/services/tasks-service.ts
   - VERIFIED: tasks-handlers.ts:75-76 assigns projectId (required) and statusId (optional)
-- [X] T019 [US2] Verify default values are applied when creating minimal task (title only) in src/shared/db/queries/tasks.ts
+- [x] T019 [US2] Verify default values are applied when creating minimal task (title only) in src/shared/db/queries/tasks.ts
   - VERIFIED: Auto-generated id, position; defaults: priority=0, statusId/description/dates=null
 
 **Checkpoint**: Task creation with full details verified ✅
@@ -128,17 +128,17 @@ src/
 
 ### Verification for User Story 3
 
-- [X] T020 [P] [US3] Verify project creation with custom statuses in src/renderer/src/services/tasks-service.ts
+- [x] T020 [P] [US3] Verify project creation with custom statuses in src/renderer/src/services/tasks-service.ts
   - COMPLETED: Wired ProjectModal in tasks.tsx with full CRUD handlers
   - handleCreateProject, handleEditProject, handleSaveProject, handleArchiveProject, handleDeleteProject
   - Connected to ProjectsTabContent and ProjectSidebar components
   - Backend createProject handler creates default statuses automatically
-- [X] T021 [P] [US3] Verify statuses load per project (fix gap identified in T005) in src/renderer/src/contexts/tasks/index.tsx
+- [x] T021 [P] [US3] Verify statuses load per project (fix gap identified in T005) in src/renderer/src/contexts/tasks/index.tsx
   - ALREADY VERIFIED in T005: Lines 257-271 load statuses via tasksService.listStatuses()
-- [X] T022 [US3] Verify task status changes persist correctly in src/shared/db/queries/tasks.ts
+- [x] T022 [US3] Verify task status changes persist correctly in src/shared/db/queries/tasks.ts
   - VERIFIED: updateTask() uses synchronous write with modifiedAt timestamp
   - handleUpdateTask in tasks.tsx calls contextUpdateTask which persists via IPC
-- [X] T023 [US3] Verify Kanban view displays correct columns per project in src/renderer/src/components/tasks/kanban/
+- [x] T023 [US3] Verify Kanban view displays correct columns per project in src/renderer/src/components/tasks/kanban/
   - VERIFIED: KanbanBoard receives projects prop with statuses, renders columns per project
   - Project statuses loaded in TasksProvider context on project load
 
@@ -154,16 +154,16 @@ src/
 
 ### Verification for User Story 4
 
-- [X] T024 [P] [US4] Verify complete operation sets completedAt timestamp in src/renderer/src/services/tasks-service.ts
+- [x] T024 [P] [US4] Verify complete operation sets completedAt timestamp in src/renderer/src/services/tasks-service.ts
   - FIXED: Context's updateTask now detects completedAt changes and calls tasksService.complete() instead of generic update
   - Backend handler at tasks-handlers.ts:224 calls taskQueries.completeTask() which sets completedAt timestamp
-- [X] T025 [P] [US4] Verify uncomplete operation clears completedAt in src/renderer/src/services/tasks-service.ts
+- [x] T025 [P] [US4] Verify uncomplete operation clears completedAt in src/renderer/src/services/tasks-service.ts
   - FIXED: Context's updateTask calls tasksService.uncomplete() when completedAt is set to null
   - Backend handler at tasks-handlers.ts:245 calls taskQueries.uncompleteTask() which clears completedAt
-- [X] T026 [US4] Verify completed tasks appear in completed view in src/renderer/src/pages/tasks.tsx
+- [x] T026 [US4] Verify completed tasks appear in completed view in src/renderer/src/pages/tasks.tsx
   - FIXED: Added onTaskCompleted event subscription in TasksProvider to update state when tasks are completed
   - CompletedView at completed-view.tsx:102-105 filters tasks by completedAt !== null
-- [X] T027 [US4] Verify completion timestamp is displayed in task detail panel in src/renderer/src/components/tasks/
+- [x] T027 [US4] Verify completion timestamp is displayed in task detail panel in src/renderer/src/components/tasks/
   - VERIFIED: TaskMetadata component at task-metadata.tsx:47 displays "Completed {date}" when completedAt is set
   - CompletedTaskRow at completed-task-row.tsx:99-119 shows completion time/date in the row
 
@@ -179,7 +179,7 @@ src/
 
 ### Implementation for User Story 5
 
-- [X] T028 [P] [US5] Verify client-side filtering works correctly in src/renderer/src/lib/task-utils.ts
+- [x] T028 [P] [US5] Verify client-side filtering works correctly in src/renderer/src/lib/task-utils.ts
   - VERIFIED: `applyFiltersAndSort()` function at task-utils.ts:1542-1586 applies all filters:
     - Search filter (title + description)
     - Project filter (multi-select)
@@ -191,7 +191,7 @@ src/
     - Has time filter (with-time/without-time/all)
   - Used by `useFilteredAndSortedTasks` hook via FilterBar in tasks.tsx
 
-- [X] T029 [P] [US5] Verify sorting by due date, priority, created date in src/renderer/src/lib/task-utils.ts
+- [x] T029 [P] [US5] Verify sorting by due date, priority, created date in src/renderer/src/lib/task-utils.ts
   - VERIFIED: `sortTasksAdvanced()` function at task-utils.ts:1481-1537 supports:
     - dueDate (tasks without due date go to end)
     - priority (urgent > high > medium > low > none)
@@ -201,14 +201,14 @@ src/
     - completedAt
   - Supports both ascending and descending direction
 
-- [X] T030 [US5] Verify saved filters persist - UPDATED to use database storage
+- [x] T030 [US5] Verify saved filters persist - UPDATED to use database storage
   - MIGRATED: `useSavedFilters` hook now uses **database storage** via savedFiltersService
   - Saved filters stored in SQLite `saved_filters` table
   - Event-driven updates (onSavedFilterCreated/Updated/Deleted)
   - localStorage fallback for backwards compatibility
   - Filter state per view still persisted to localStorage via `useFilterState` hook
 
-- [X] T031 [US5] Migrate saved filters to database for cross-device sync
+- [x] T031 [US5] Migrate saved filters to database for cross-device sync
   - DECISION: **IMPLEMENTED** - Saved filters now use database storage
   - IMPLEMENTATION:
     - `saved_filters` table schema exists in src/shared/db/schema/settings.ts
@@ -223,7 +223,7 @@ src/
     - Supports future cross-device sync
     - localStorage fallback for backwards compatibility
 
-- [X] T032 [US5] Verify filter handles deleted project gracefully (edge case from spec)
+- [x] T032 [US5] Verify filter handles deleted project gracefully (edge case from spec)
   - FIXED: Updated ActiveFiltersBar at active-filters-bar.tsx:70-82
   - Now shows "Deleted Project" chip with gray color for orphaned project filters
   - User can remove the chip to clear the orphaned filter
@@ -241,20 +241,20 @@ src/
 
 ### Implementation for User Story 6
 
-- [X] T033 [US6] Complete RepeatConfig type conversion in src/renderer/src/contexts/tasks/index.tsx (relates to T006)
+- [x] T033 [US6] Complete RepeatConfig type conversion in src/renderer/src/contexts/tasks/index.tsx (relates to T006)
   - VERIFIED: `dbRepeatConfigToUiRepeatConfig` function at contexts/tasks/index.tsx:85-115
   - Converts database JSON format to UI RepeatConfig with Date objects
   - UI to DB conversion done in `addTask` and `updateTask` functions
   - Handles: frequency, interval, daysOfWeek, monthlyType, dayOfMonth, weekOfMonth, dayOfWeekForMonth, endType, endDate, endCount, completedCount, createdAt
 
-- [X] T034 [P] [US6] Verify repeat config is saved to database in src/shared/db/queries/tasks.ts
+- [x] T034 [P] [US6] Verify repeat config is saved to database in src/shared/db/queries/tasks.ts
   - VERIFIED: Schema at schema/tasks.ts:25 stores repeatConfig as JSON
   - TaskCreateSchema at contracts/tasks-api.ts:152 includes repeatConfig
   - TaskUpdateSchema at contracts/tasks-api.ts:180 includes repeatConfig
   - Create handler at tasks-handlers.ts:85 passes repeatConfig to insertTask
   - Update handler at tasks-handlers.ts:138 spreads updates including repeatConfig
 
-- [X] T035 [US6] Implement next instance creation on complete in src/renderer/src/contexts/tasks/index.tsx
+- [x] T035 [US6] Implement next instance creation on complete in src/renderer/src/contexts/tasks/index.tsx
   - VERIFIED: Full implementation in pages/tasks.tsx handleToggleComplete (lines 814-853)
   - When completing repeating task:
     1. Calculates newCompletedCount (line 816)
@@ -264,13 +264,13 @@ src/
     5. Creates next instance with updated completedCount via contextAddTask
   - contextAddTask correctly converts RepeatConfig for database storage
 
-- [X] T036 [US6] Verify "stop repeating" action converts to one-time task
+- [x] T036 [US6] Verify "stop repeating" action converts to one-time task
   - VERIFIED: handleStopRepeating in pages/tasks.tsx:882-900
   - Option "delete": calls contextDeleteTask (removes task entirely)
   - Option "keep" (else): calls contextUpdateTask with { isRepeating: false, repeatConfig: null }
   - contextUpdateTask correctly passes null repeatConfig to service for database update
 
-- [X] T037 [US6] Verify end conditions (after date, after N occurrences) work correctly
+- [x] T037 [US6] Verify end conditions (after date, after N occurrences) work correctly
   - VERIFIED: shouldCreateNextOccurrence in lib/repeat-utils.ts:410-422
     - endType="never": always returns true
     - endType="count": returns true if completedCount < endCount
@@ -291,26 +291,26 @@ src/
 
 ### Verification for User Story 7
 
-- [X] T038 [P] [US7] Verify subtask creation with parentId in src/renderer/src/services/tasks-service.ts
+- [x] T038 [P] [US7] Verify subtask creation with parentId in src/renderer/src/services/tasks-service.ts
   - FIXED: Updated `useSubtaskManagement` hook to accept `onAddTask` callback
   - `handleAddSubtask` and `handleBulkAddSubtasks` now use `contextAddTask` for database persistence
   - Subtasks created with `parentId` are saved to database via `tasksService.create`
   - `subtask-utils.ts` updated to return `newTask` and `newTasks` for database operations
 
-- [X] T039 [P] [US7] Verify subtask reordering persists in src/shared/db/queries/tasks.ts
+- [x] T039 [P] [US7] Verify subtask reordering persists in src/shared/db/queries/tasks.ts
   - FIXED: Added `onReorderTasks` callback to hook for database persistence
   - `handleReorderSubtasks` calls `tasksService.reorder(taskIds, positions)`
   - `subtask-utils.ts` updated to return `reorderedTasks` for position updates
   - Uses dedicated `tasks:reorder` IPC channel for batch position updates
 
-- [X] T040 [US7] Verify depth constraint (subtasks cannot have subtasks) in src/renderer/src/hooks/use-subtask-management.ts
+- [x] T040 [US7] Verify depth constraint (subtasks cannot have subtasks) in src/renderer/src/hooks/use-subtask-management.ts
   - VERIFIED: `validateSubtaskRelationship` in subtask-utils.ts:147-150 checks:
     - "Parent cannot be a subtask itself (no nested subtasks)"
   - `createSubtask` at subtask-utils.ts:256-258 also validates:
     - "Cannot add subtask to another subtask"
   - `canHaveSubtasks(task)` at subtask-utils.ts:115-117 returns `task.parentId === null`
 
-- [X] T041 [US7] Verify parent task deletion prompts for subtask handling
+- [x] T041 [US7] Verify parent task deletion prompts for subtask handling
   - VERIFIED: `handleDeleteTask` in use-subtask-management.ts:413-432
   - Opens delete parent dialog if task has subtasks (line 420-423)
   - `confirmDeleteParent(keepSubtasks)` handles both options:
@@ -318,7 +318,7 @@ src/
     - keepSubtasks=false: Deletes parent and all subtasks
   - FIXED: Added `onDeleteTask` callback for database persistence
 
-- [X] T042 [US7] Verify promote subtask to standalone task works in src/renderer/src/services/tasks-service.ts
+- [x] T042 [US7] Verify promote subtask to standalone task works in src/renderer/src/services/tasks-service.ts
   - FIXED: `handlePromoteToTask` in use-subtask-management.ts now uses `onUpdateTask`
   - Sets `parentId: null` to promote subtask to standalone task
   - Backend: `tasks:convert-to-task` handler calls `taskQueries.moveTask(db, taskId, { parentId: null })`
@@ -336,25 +336,25 @@ src/
 
 ### Verification for User Story 8
 
-- [X] T043 [P] [US8] Verify linkedNoteIds saves correctly in src/shared/db/schema/task-relations.ts
+- [x] T043 [P] [US8] Verify linkedNoteIds saves correctly in src/shared/db/schema/task-relations.ts
   - FIXED: Updated TaskLinksSection, NoteSearchDropdown, TaskMetadata to use real notesService
   - Added async note fetching with loading states
   - Frontend now uses actual notes from database instead of sample data
-- [X] T044 [P] [US8] Verify sourceNoteId is set when creating task from note
+- [x] T044 [P] [US8] Verify sourceNoteId is set when creating task from note
   - IMPLEMENTED: Added sourceNoteId column to database schema (src/shared/db/schema/tasks.ts)
   - Updated TaskCreateSchema in contracts/tasks-api.ts to include sourceNoteId
   - Updated IPC handler (tasks-handlers.ts) to pass sourceNoteId to insertTask
   - Updated preload API and types (index.ts, index.d.ts)
   - Updated services/tasks-service.ts Task interface and TasksClientAPI
   - Fixed contexts/tasks/index.tsx to use real sourceNoteId from database
-- [X] T045 [US8] Verify note displays linked tasks (may require notes integration)
+- [x] T045 [US8] Verify note displays linked tasks (may require notes integration)
   - IMPLEMENTED: Added GET_LINKED_TASKS IPC channel (ipc-channels.ts)
   - Added IPC handler for tasks:get-linked-tasks (tasks-handlers.ts)
   - Added preload API method getLinkedTasks (index.ts)
   - Created useTasksLinkedToNote hook (use-tasks-linked-to-note.ts)
   - Created LinkedTasksSection component (components/note/linked-tasks/index.tsx)
   - Integrated LinkedTasksSection in note.tsx below BacklinksSection
-- [X] T046 [US8] Verify clicking note link opens the note in a tab
+- [x] T046 [US8] Verify clicking note link opens the note in a tab
   - IMPLEMENTED: Added onNoteClick prop to TaskLinksSection component
   - Made LinkedNoteItem clickable with onClick handler
   - Added handleNoteClick callback in TaskDetailPanel using useTabs
@@ -372,20 +372,20 @@ src/
 
 ### Verification for User Story 9
 
-- [X] T047 [P] [US9] Verify archive operation sets archivedAt timestamp in src/renderer/src/services/tasks-service.ts
+- [x] T047 [P] [US9] Verify archive operation sets archivedAt timestamp in src/renderer/src/services/tasks-service.ts
   - FIXED: Added archivedAt handling in TasksContext.updateTask() (contexts/tasks/index.tsx:583-641)
   - Uses dedicated tasksService.archive() and tasksService.unarchive() endpoints
   - Event listeners update state on successful archive/unarchive
-- [X] T048 [P] [US9] Verify archived tasks hidden from active/completed views in src/renderer/src/pages/tasks.tsx
+- [x] T048 [P] [US9] Verify archived tasks hidden from active/completed views in src/renderer/src/pages/tasks.tsx
   - VERIFIED: getCompletedTasks() at task-utils.ts:1027 filters `archivedAt === null`
   - VERIFIED: getArchivedTasks() at task-utils.ts:1034 filters `archivedAt !== null`
   - FIXED: TasksContext now loads archived tasks (includeArchived: true)
-- [X] T049 [US9] Verify archive view shows archived tasks in src/renderer/src/components/tasks/completed/
+- [x] T049 [US9] Verify archive view shows archived tasks in src/renderer/src/components/tasks/completed/
   - FIXED: Enabled ArchivedView in tasks.tsx (removed underscore prefix from state)
   - FIXED: Added ArchivedView rendering in JSX (tasks.tsx:1368-1378)
   - FIXED: Added "View Archived" option to ClearCompletedMenu (clear-completed-menu.tsx)
   - FIXED: Wired handleViewArchived handler to open archive view
-- [X] T050 [US9] Verify unarchive returns task to completed view
+- [x] T050 [US9] Verify unarchive returns task to completed view
   - VERIFIED: ArchivedView.onRestore calls handleUpdateTask with { archivedAt: null }
   - VERIFIED: TasksContext.updateTask detects archivedAt and calls tasksService.unarchive()
   - VERIFIED: Task reappears in completed list after unarchive (getCompletedTasks filter)
@@ -402,24 +402,24 @@ src/
 
 ### Implementation for User Story 10
 
-- [X] T051 [US10] Verify undo state is maintained in client-side context in src/renderer/src/contexts/tasks/index.tsx
+- [x] T051 [US10] Verify undo state is maintained in client-side context in src/renderer/src/contexts/tasks/index.tsx
   - IMPLEMENTED: Created global undo stack in src/renderer/src/hooks/use-undo.ts
   - Undo state maintained via closures in toast actions and global undo stack
   - Supports single and bulk operations
-- [X] T052 [US10] Verify 10-second timeout for undo expires correctly
+- [x] T052 [US10] Verify 10-second timeout for undo expires correctly
   - IMPLEMENTED: Added `duration: 10000` to all toast.success() calls with undo actions
   - Files updated: use-bulk-actions.ts, use-drag-handlers.ts, use-subtask-management.ts, tasks.tsx
   - Global undo stack also expires entries after 10 seconds (UNDO_EXPIRY_MS)
-- [X] T053 [US10] Verify bulk undo restores all affected tasks
+- [x] T053 [US10] Verify bulk undo restores all affected tasks
   - VERIFIED: use-bulk-actions.ts stores original states in closure before bulk operations
   - bulkComplete, bulkArchive store previous states and restore on undo click
   - Global undo stack supports bulk undo via Cmd+Z
-- [X] T054 [US10] Document that undo is client-side only (no backend support currently)
+- [x] T054 [US10] Document that undo is client-side only (no backend support currently)
   - DOCUMENTED: This is a client-side only feature - undo data is stored in memory
   - Undo data will be lost on page refresh
   - Undo relies on capturing task state at the time of action (via closures)
   - This is acceptable per spec - undo is for quick recovery, not historical rollback
-- [X] T055 [US10] Add Cmd+Z keyboard shortcut support for undo (user requested)
+- [x] T055 [US10] Add Cmd+Z keyboard shortcut support for undo (user requested)
   - IMPLEMENTED: Created useUndoKeyboardShortcut hook in src/renderer/src/hooks/use-undo.ts
   - Hook called in AppContent component (App.tsx)
   - Uses global undo stack to track undoable actions
@@ -438,16 +438,16 @@ src/
 
 ### Verification for User Story 11
 
-- [X] T055 [P] [US11] Verify duplicate operation in src/renderer/src/services/tasks-service.ts
+- [x] T055 [P] [US11] Verify duplicate operation in src/renderer/src/services/tasks-service.ts
   - VERIFIED: `tasksService.duplicate(id)` at tasks-service.ts:324
   - Preload exposes `duplicate` at index.ts:170
   - IPC channel `DUPLICATE` at ipc-channels.ts:154
   - Handler at tasks-handlers.ts:414-478 calls `taskQueries.duplicateTask`
   - Query at queries/tasks.ts:448-473 performs the duplication
-- [X] T056 [US11] Verify duplicated task has "Copy of" prefix and is uncompleted
+- [x] T056 [US11] Verify duplicated task has "Copy of" prefix and is uncompleted
   - FIXED: Changed title format from `${original.title} (copy)` to `Copy of ${original.title}` in queries/tasks.ts:460
   - VERIFIED: `completedAt` and `archivedAt` are not included in duplicate, default to `null` (uncompleted)
-- [X] T057 [US11] Verify subtasks are duplicated with parent
+- [x] T057 [US11] Verify subtasks are duplicated with parent
   - IMPLEMENTED: Created `duplicateSubtask()` function in queries/tasks.ts:481-512
   - New function correctly sets parentId to new parent and preserves original subtask title
   - Updated tasks-handlers.ts:439-462 to use `duplicateSubtask()` instead of `duplicateTask()`
@@ -468,17 +468,17 @@ src/
 
 ### Verification for User Story 12
 
-- [X] T058 [P] [US12] Verify dueTime field saves correctly in src/shared/db/queries/tasks.ts
+- [x] T058 [P] [US12] Verify dueTime field saves correctly in src/shared/db/queries/tasks.ts
   - VERIFIED: Schema at schema/tasks.ts:22 stores dueTime as text
   - IPC handler at tasks-handlers.ts:83 saves dueTime with null default
   - Query functions at queries/tasks.ts:464-465 preserve dueTime in duplicateTask
-- [X] T059 [US12] Verify time displays in task row and detail panel
+- [x] T059 [US12] Verify time displays in task row and detail panel
   - VERIFIED: DueDateBadge at task-badges.tsx:199 uses formatDueDate(dueDate, dueTime)
   - today-task-row.tsx:55-56 shows formatted time with formatTime()
   - calendar-task-item.tsx:105-106 displays time with formatShortTime()
   - task-detail-panel.tsx:160-162 provides handleUpdateDueTime handler
   - Multiple task rows (task-row, sortable-task-row, parent-task-row) pass dueTime to badges
-- [X] T060 [US12] Verify sorting by due date considers time component
+- [x] T060 [US12] Verify sorting by due date considers time component
   - VERIFIED: sortTasksForDay at task-utils.ts:515-516 uses timeToMinutes(dueTime)
   - FIXED: sortTasksAdvanced at task-utils.ts:1503-1531 now considers dueTime when sorting by dueDate
   - Tasks with time on same date sort before tasks without time
@@ -497,7 +497,7 @@ src/
 
 ### Verification for User Story 13
 
-- [X] T061 [P] [US13] Verify natural date parser in src/renderer/src/lib/natural-date-parser.ts
+- [x] T061 [P] [US13] Verify natural date parser in src/renderer/src/lib/natural-date-parser.ts
   - VERIFIED: Comprehensive parser at natural-date-parser.ts:214-421
   - Supports relative terms: "today", "tomorrow", "tmrw", "yesterday", "next week", "this weekend"
   - Supports "in X days/weeks/months" patterns
@@ -506,19 +506,19 @@ src/
   - Supports numeric dates: "12/25", "12-25", "12/25/2024"
   - Supports ordinal day: "25th", "1st"
   - Supports time extraction: "tomorrow at 3pm", "next friday 2:30pm"
-- [X] T062 [US13] Verify priority markers (!high, !low, etc.) are parsed correctly
+- [x] T062 [US13] Verify priority markers (!high, !low, etc.) are parsed correctly
   - VERIFIED: quick-add-parser.ts handles priority markers
   - Priority map at lines 144-156 supports: urgent, high, medium, low, none
   - Single-letter shortcuts: u, h, m, l, n
   - Parses !!keyword (double !) at lines 241-249
   - Examples: !!urgent, !!high, !!med, !!medium, !!low, !!none
-- [X] T063 [US13] Verify parsed values are applied to created task
+- [x] T063 [US13] Verify parsed values are applied to created task
   - VERIFIED: Full integration chain works
   - quick-add-input.tsx:237-244 parses input and passes dueDate, priority, projectId
   - tasks.tsx:748-796 handleQuickAdd receives parsed data
   - Creates task with createDefaultTask, sets priority, calls contextAddTask
   - Task persisted to database with all parsed values
-- [X] T064 [US13] Test common phrases: "tomorrow", "next Monday", "in 3 days"
+- [x] T064 [US13] Test common phrases: "tomorrow", "next Monday", "in 3 days"
   - VERIFIED in natural-date-parser.ts:
   - "tomorrow" → addDays(today, 1) at line 246
   - "next monday" → nextMonday() or getNextDayOfWeek() with prefix handling
@@ -537,20 +537,20 @@ src/
 
 ### Verification for User Story 14
 
-- [X] T065 [P] [US14] Verify drag-drop handlers in src/renderer/src/components/tasks/kanban/
+- [x] T065 [P] [US14] Verify drag-drop handlers in src/renderer/src/components/tasks/kanban/
   - VERIFIED: Full drag-drop system implemented with @dnd-kit
   - KanbanCard uses `useSortable` at kanban-card.tsx:83-99 with `type: "task"` data
   - KanbanColumn uses `useDroppable` at kanban-column.tsx:75-91 with `type: "column"` data
   - DragProvider in contexts/drag-context.tsx wraps app with DndContext
   - Custom collision detection prioritizes drop zones (columns, sections, projects)
-- [X] T066 [US14] Verify status update persists to database on drop
+- [x] T066 [US14] Verify status update persists to database on drop
   - **FIXED**: `handleUpdateTask` in App.tsx was only updating local state, not persisting to database
   - Root cause: App.tsx lines 366-370 only called `setTasks()` without calling `tasksService`
   - Fix: Updated `handleUpdateTask` in App.tsx to call `tasksService.update()` when vault is open
   - Also fixed `handleDeleteTask` in App.tsx to call `tasksService.delete()` when vault is open
   - Flow: useDragHandlers.handleColumnDrop → App.tsx.handleUpdateTask → tasksService.update() → IPC → SQLite
   - Handles all drag scenarios: status change, project move, date change, archive, delete
-- [X] T067 [US14] Verify dragging to Done column sets completedAt
+- [x] T067 [US14] Verify dragging to Done column sets completedAt
   - VERIFIED: Two locations handle completedAt:
   - use-drag-handlers.ts:187-193: Sets `completedAt = new Date()` if target is "done" type column
   - kanban-board.tsx:355-360: Same logic for keyboard Cmd+Arrow moves
@@ -565,23 +565,23 @@ src/
 
 **Purpose**: Verify all bulk operations use backend correctly
 
-- [X] T068 [P] Verify bulkComplete uses tasksService.bulkComplete in src/renderer/src/pages/tasks.tsx
+- [x] T068 [P] Verify bulkComplete uses tasksService.bulkComplete in src/renderer/src/pages/tasks.tsx
   - FIXED: Updated use-bulk-actions.ts:75-146 to use tasksService.bulkComplete() when vault is open
   - Backend handler tasks-handlers.ts:769-795 now emits COMPLETED events for each task
   - Single IPC call + single SQL UPDATE instead of N individual calls
-- [X] T069 [P] Verify bulkDelete uses tasksService.bulkDelete in src/renderer/src/pages/tasks.tsx
+- [x] T069 [P] Verify bulkDelete uses tasksService.bulkDelete in src/renderer/src/pages/tasks.tsx
   - FIXED: Updated use-bulk-actions.ts:365-395 to use tasksService.bulkDelete() when vault is open
   - Backend handler already emits DELETED events at tasks-handlers.ts:797-811
   - Single IPC call + single SQL DELETE
-- [X] T070 [P] Verify bulkMove uses tasksService.bulkMove in src/renderer/src/pages/tasks.tsx
+- [x] T070 [P] Verify bulkMove uses tasksService.bulkMove in src/renderer/src/pages/tasks.tsx
   - FIXED: Updated use-bulk-actions.ts:214-278 to use tasksService.bulkMove() when vault is open
   - Backend handler tasks-handlers.ts:813-839 now emits UPDATED events for each task
   - Single IPC call + single SQL UPDATE
-- [X] T071 Verify bulkArchive uses tasksService.bulkArchive in src/renderer/src/pages/tasks.tsx
+- [x] T071 Verify bulkArchive uses tasksService.bulkArchive in src/renderer/src/pages/tasks.tsx
   - FIXED: Updated use-bulk-actions.ts:320-363 to use tasksService.bulkArchive() when vault is open
   - Backend handler tasks-handlers.ts:841-871 now emits UPDATED events for each task
   - Single IPC call + single SQL UPDATE
-- [X] T072 Performance test: bulk operations on 50 tasks complete in <500ms
+- [x] T072 Performance test: bulk operations on 50 tasks complete in <500ms
   - VERIFIED: Database queries at queries/tasks.ts:626-682 use efficient single SQL operations
   - bulkCompleteTasks: Single UPDATE with WHERE id IN (...)
   - bulkDeleteTasks: Single DELETE with WHERE id IN (...)
@@ -597,29 +597,29 @@ src/
 
 **Purpose**: Final verification and documentation
 
-- [X] T073 [P] Run full typecheck `pnpm typecheck` and fix any errors
+- [x] T073 [P] Run full typecheck `pnpm typecheck` and fix any errors
   - VERIFIED: Main process (typecheck:node) compiles without errors
   - Pre-existing errors in renderer (~50 errors) are documented and out of scope
   - No new errors introduced by 002-task-data-layer changes
-- [X] T074 [P] Run lint `pnpm lint` and fix any issues
+- [x] T074 [P] Run lint `pnpm lint` and fix any issues
   - VERIFIED: No new lint errors in task-related files
   - Pre-existing warnings in specs folder (prettier semicolons)
   - Pre-existing errors in other features (tabs, journal, etc.)
-- [X] T075 Verify performance: 1000+ tasks with 60fps scrolling
+- [x] T075 Verify performance: 1000+ tasks with 60fps scrolling
   - IMPLEMENTED: `seedPerformanceTestProject()` in src/main/database/seed.ts
   - Creates 1200 tasks with realistic data (titles, priorities, due dates)
   - Callable via `tasksService.seedPerformanceTest()` from renderer
   - Batch inserts (100/batch) for efficient seeding (~100ms for 1200 tasks)
-- [X] T076 Update docs/implementation-status.md with verification results
+- [x] T076 Update docs/implementation-status.md with verification results
   - UPDATED: Added 002-task-data-layer section with phase completion status
   - Documented bulk operations performance improvements
   - Added performance testing instructions
-- [X] T077 Create smoke test checklist for manual QA
+- [x] T077 Create smoke test checklist for manual QA
   - CREATED: specs/002-task-data-layer/smoke-test-checklist.md
   - Covers: CRUD, Projects, Statuses, Drag-Drop, Bulk Ops, Subtasks, etc.
   - Includes performance testing instructions
   - Documents known issues and expected behavior
-- [X] T078 Document any remaining gaps or technical debt
+- [x] T078 Document any remaining gaps or technical debt
   - See "Technical Debt & Known Issues" section below
 
 **Checkpoint**: Phase 18 complete ✅
@@ -710,6 +710,7 @@ Task: "Verify type conversions (priority int↔string, dates)" [T009]
 ### MVP First (Verification Focus)
 
 Since backend is already implemented:
+
 1. Complete Phase 1: Setup verification
 2. Complete Phase 2: Fix integration gaps (CRITICAL)
 3. Complete Phase 3: User Story 1 (Persistence) - Core functionality
@@ -728,6 +729,7 @@ Since backend is already implemented:
 ### Key Focus Areas
 
 Given the plan.md analysis, prioritize:
+
 1. **T005**: Status loading gap (blocks US3)
 2. **T006**: RepeatConfig conversion (blocks US6)
 3. **T007**: Data flow documentation (understanding)

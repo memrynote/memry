@@ -1,9 +1,9 @@
-import { Check } from "lucide-react"
+import { Check } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { formatDueDate } from "@/lib/task-utils"
-import { TaskCheckbox, PriorityBadge } from "@/components/tasks/task-badges"
-import type { Task } from "@/data/sample-tasks"
+import { cn } from '@/lib/utils'
+import { formatDueDate } from '@/lib/task-utils'
+import { TaskCheckbox, PriorityBadge } from '@/components/tasks/task-badges'
+import type { Task } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -26,7 +26,7 @@ export const SubtaskRow = ({
   isLast,
   onToggleComplete,
   onClick,
-  className,
+  className
 }: SubtaskRowProps): React.JSX.Element => {
   const isCompleted = !!subtask.completedAt
   const formattedDate = formatDueDate(subtask.dueDate, subtask.dueTime)
@@ -36,7 +36,7 @@ export const SubtaskRow = ({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === "Enter" && onClick) {
+    if (e.key === 'Enter' && onClick) {
       e.preventDefault()
       onClick(subtask.id)
     }
@@ -54,35 +54,32 @@ export const SubtaskRow = ({
       onClick={handleClick}
       onKeyDown={onClick ? handleKeyDown : undefined}
       className={cn(
-        "flex items-center gap-2 px-3 py-1.5 ml-2",
-        "hover:bg-accent/50 cursor-pointer rounded-r-lg",
-        "transition-colors duration-150",
-        onClick && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        'flex items-center gap-2 px-3 py-1.5 ml-2',
+        'hover:bg-accent/50 cursor-pointer rounded-r-lg',
+        'transition-colors duration-150',
+        onClick && 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         className
       )}
-      aria-label={`Subtask: ${subtask.title}${isCompleted ? ", completed" : ""}`}
+      aria-label={`Subtask: ${subtask.title}${isCompleted ? ', completed' : ''}`}
     >
       {/* Tree connector */}
       <span
         className="text-muted-foreground/50 text-sm font-mono w-4 select-none"
         aria-hidden="true"
       >
-        {isLast ? "└─" : "├─"}
+        {isLast ? '└─' : '├─'}
       </span>
 
       {/* Subtask checkbox */}
       <div onClick={handleToggleComplete}>
-        <TaskCheckbox
-          checked={isCompleted}
-          onChange={() => onToggleComplete(subtask.id)}
-        />
+        <TaskCheckbox checked={isCompleted} onChange={() => onToggleComplete(subtask.id)} />
       </div>
 
       {/* Subtask title */}
       <span
         className={cn(
-          "flex-1 text-sm truncate",
-          isCompleted && "line-through text-muted-foreground"
+          'flex-1 text-sm truncate',
+          isCompleted && 'line-through text-muted-foreground'
         )}
       >
         {subtask.title}
@@ -96,13 +93,9 @@ export const SubtaskRow = ({
         </span>
       ) : (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {subtask.priority !== "none" && (
-            <PriorityBadge priority={subtask.priority} size="sm" />
-          )}
+          {subtask.priority !== 'none' && <PriorityBadge priority={subtask.priority} size="sm" />}
           {formattedDate && (
-            <span className={cn(
-              formattedDate.status === "overdue" && "text-destructive"
-            )}>
+            <span className={cn(formattedDate.status === 'overdue' && 'text-destructive')}>
               {formattedDate.label}
             </span>
           )}
@@ -113,11 +106,3 @@ export const SubtaskRow = ({
 }
 
 export default SubtaskRow
-
-
-
-
-
-
-
-

@@ -28,11 +28,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type {
-  SearchResult,
-  SearchResultNote,
-  SearchStats
-} from '../../../preload/index.d'
+import type { SearchResult, SearchResultNote, SearchStats } from '../../../preload/index.d'
 import {
   searchService,
   onSearchIndexRebuildProgress,

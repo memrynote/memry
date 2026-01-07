@@ -1,14 +1,9 @@
-import { RefreshCw } from "lucide-react"
+import { RefreshCw } from 'lucide-react'
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
-import { getRepeatDisplayText, getRepeatProgress } from "@/lib/repeat-utils"
-import type { RepeatConfig } from "@/data/sample-tasks"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
+import { getRepeatDisplayText, getRepeatProgress } from '@/lib/repeat-utils'
+import type { RepeatConfig } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -17,7 +12,7 @@ import type { RepeatConfig } from "@/data/sample-tasks"
 interface RepeatIndicatorProps {
   config: RepeatConfig
   showTooltip?: boolean
-  size?: "sm" | "md"
+  size?: 'sm' | 'md'
   className?: string
 }
 
@@ -28,20 +23,17 @@ interface RepeatIndicatorProps {
 export const RepeatIndicator = ({
   config,
   showTooltip = true,
-  size = "sm",
-  className,
+  size = 'sm',
+  className
 }: RepeatIndicatorProps): React.JSX.Element => {
   const displayText = getRepeatDisplayText(config)
   const progress = getRepeatProgress(config)
 
-  const iconSize = size === "sm" ? "size-3.5" : "size-4"
+  const iconSize = size === 'sm' ? 'size-3.5' : 'size-4'
 
   const indicator = (
     <span
-      className={cn(
-        "inline-flex items-center text-blue-500",
-        className
-      )}
+      className={cn('inline-flex items-center text-blue-500', className)}
       aria-label={`Repeating: ${displayText}`}
     >
       <RefreshCw className={iconSize} aria-hidden="true" />
@@ -55,9 +47,7 @@ export const RepeatIndicator = ({
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>
-          {indicator}
-        </TooltipTrigger>
+        <TooltipTrigger asChild>{indicator}</TooltipTrigger>
         <TooltipContent side="top" className="max-w-[200px]">
           <div className="flex flex-col gap-1">
             <span className="font-medium">{displayText}</span>
@@ -74,4 +64,3 @@ export const RepeatIndicator = ({
 }
 
 export default RepeatIndicator
-

@@ -232,9 +232,7 @@ describe('search-handlers', () => {
 
     it('should perform quick search for command palette', async () => {
       const mockResult = {
-        notes: [
-          { id: 'note1', title: 'Quick Result', snippet: '...' }
-        ]
+        notes: [{ id: 'note1', title: 'Quick Result', snippet: '...' }]
       }
       ;(searchQueries.quickSearch as Mock).mockReturnValue(mockResult)
 

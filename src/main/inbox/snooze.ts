@@ -431,7 +431,6 @@ export function startSnoozeScheduler(): void {
     return
   }
 
-
   // Run immediately on start
   processDueItems()
 

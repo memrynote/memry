@@ -16,10 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import {
-  SelectableListSection,
-  SelectableListItem
-} from '@/components/ui/selectable-list'
+import { SelectableListSection, SelectableListItem } from '@/components/ui/selectable-list'
 import { LabeledCheckbox } from '@/components/ui/labeled-checkbox'
 import { PrimaryActionButton } from '@/components/ui/primary-action-button'
 import { Search, Lock, Sparkles, PenLine } from 'lucide-react'
@@ -101,7 +98,14 @@ export function TemplateSelector({
     setSelectedId('blank')
     setSetAsFolderDefault(false)
     setSetAsJournalDefault(false)
-  }, [selectedId, setAsFolderDefault, setAsJournalDefault, onSelect, onSetFolderDefault, onSetJournalDefault])
+  }, [
+    selectedId,
+    setAsFolderDefault,
+    setAsJournalDefault,
+    onSelect,
+    onSetFolderDefault,
+    onSetJournalDefault
+  ])
 
   const handleClose = useCallback(() => {
     setSearch('')
@@ -231,13 +235,7 @@ export function TemplateSelector({
         </ScrollArea>
 
         {/* Footer with refined actions */}
-        <div
-          className={cn(
-            'px-6 py-4 border-t',
-            'bg-muted/30',
-            'border-border/60'
-          )}
-        >
+        <div className={cn('px-6 py-4 border-t', 'bg-muted/30', 'border-border/60')}>
           <div className="flex items-center justify-between">
             {/* Set as default checkboxes */}
             <div className="flex flex-col gap-1.5">
@@ -263,17 +261,13 @@ export function TemplateSelector({
                 />
               )}
               {/* Empty div for spacing when no checkbox is shown */}
-              {!folderPath && !onSetFolderDefault && (!isJournalContext || !onSetJournalDefault) && (
-                <div />
-              )}
+              {!folderPath &&
+                !onSetFolderDefault &&
+                (!isJournalContext || !onSetJournalDefault) && <div />}
             </div>
 
             <div className="flex gap-2.5">
-              <Button
-                variant="outline"
-                onClick={handleClose}
-                className="px-4"
-              >
+              <Button variant="outline" onClick={handleClose} className="px-4">
                 Cancel
               </Button>
               <PrimaryActionButton onClick={handleSelect}>

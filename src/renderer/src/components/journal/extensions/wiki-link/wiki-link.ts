@@ -48,11 +48,11 @@ export const WikiLink = Node.create<WikiLinkOptions>({
             .deleteRange(range)
             .insertContent({
               type: this.name,
-              attrs: props,
+              attrs: props
             })
             .run()
-        },
-      },
+        }
+      }
     }
   },
 
@@ -66,9 +66,9 @@ export const WikiLink = Node.create<WikiLinkOptions>({
             return {}
           }
           return {
-            'data-href': attributes.href,
+            'data-href': attributes.href
           }
-        },
+        }
       },
       title: {
         default: null,
@@ -78,9 +78,9 @@ export const WikiLink = Node.create<WikiLinkOptions>({
             return {}
           }
           return {
-            'data-title': attributes.title,
+            'data-title': attributes.title
           }
-        },
+        }
       },
       exists: {
         default: true,
@@ -90,18 +90,18 @@ export const WikiLink = Node.create<WikiLinkOptions>({
         },
         renderHTML: (attributes) => {
           return {
-            'data-exists': attributes.exists,
+            'data-exists': attributes.exists
           }
-        },
-      },
+        }
+      }
     }
   },
 
   parseHTML() {
     return [
       {
-        tag: 'span[data-wiki-link]',
-      },
+        tag: 'span[data-wiki-link]'
+      }
     ]
   },
 
@@ -118,9 +118,9 @@ export const WikiLink = Node.create<WikiLinkOptions>({
         class: classes.join(' '),
         role: 'link',
         tabindex: '0',
-        'aria-label': `Link to ${HTMLAttributes.title}`,
+        'aria-label': `Link to ${HTMLAttributes.title}`
       }),
-      HTMLAttributes.title || '',
+      HTMLAttributes.title || ''
     ]
   },
 
@@ -152,7 +152,7 @@ export const WikiLink = Node.create<WikiLinkOptions>({
           return isWikiLink
         })
         return result
-      },
+      }
     }
   },
 
@@ -160,10 +160,10 @@ export const WikiLink = Node.create<WikiLinkOptions>({
     return [
       Suggestion({
         editor: this.editor,
-        ...this.options.suggestion,
-      }),
+        ...this.options.suggestion
+      })
     ]
-  },
+  }
 })
 
 // CSS styles for wiki-link rendering

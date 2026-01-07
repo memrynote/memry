@@ -54,6 +54,7 @@ All checklist items pass. The specification is ready for `/speckit.plan`.
 ### Dependency Note
 
 This feature depends on the Core Data Layer (001-core-data-layer) for:
+
 - Note identifiers for task-to-note linking
 - Vault structure for data persistence
 

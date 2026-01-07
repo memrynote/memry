@@ -1,9 +1,9 @@
-import { Search } from "lucide-react"
+import { Search } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import type { TaskFilters, Project } from "@/data/tasks-data"
-import { dueDateFilterOptions } from "@/data/tasks-data"
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import type { TaskFilters, Project } from '@/data/tasks-data'
+import { dueDateFilterOptions } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -24,7 +24,7 @@ export const FilterEmptyState = ({
   filters,
   projects,
   onClearFilters,
-  className,
+  className
 }: FilterEmptyStateProps): React.JSX.Element => {
   // Generate a summary of active filters
   const getFilterSummary = (): string => {
@@ -41,20 +41,18 @@ export const FilterEmptyState = ({
         .map((id) => projects.find((p) => p.id === id)?.name)
         .filter(Boolean)
       if (projectNames.length > 0) {
-        parts.push(projectNames.join(", "))
+        parts.push(projectNames.join(', '))
       }
     }
 
     // Priorities
     if (filters.priorities.length > 0) {
-      const priorityLabels = filters.priorities.map(
-        (p) => p.charAt(0).toUpperCase() + p.slice(1)
-      )
-      parts.push(priorityLabels.join(", "))
+      const priorityLabels = filters.priorities.map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+      parts.push(priorityLabels.join(', '))
     }
 
     // Due date
-    if (filters.dueDate.type !== "any") {
+    if (filters.dueDate.type !== 'any') {
       const option = dueDateFilterOptions.find((o) => o.value === filters.dueDate.type)
       if (option) {
         parts.push(option.label)
@@ -62,29 +60,22 @@ export const FilterEmptyState = ({
     }
 
     // Repeat type
-    if (filters.repeatType !== "all") {
-      parts.push(filters.repeatType === "repeating" ? "Repeating" : "One-time")
+    if (filters.repeatType !== 'all') {
+      parts.push(filters.repeatType === 'repeating' ? 'Repeating' : 'One-time')
     }
 
-    return parts.join(" · ")
+    return parts.join(' · ')
   }
 
   const filterSummary = getFilterSummary()
 
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center justify-center py-16 px-4",
-        className
-      )}
-    >
+    <div className={cn('flex flex-col items-center justify-center py-16 px-4', className)}>
       <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
         <Search className="size-8 text-muted-foreground" />
       </div>
 
-      <h3 className="text-lg font-medium text-foreground mb-2">
-        No tasks match your filters
-      </h3>
+      <h3 className="text-lg font-medium text-foreground mb-2">No tasks match your filters</h3>
 
       {filterSummary && (
         <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
@@ -92,15 +83,9 @@ export const FilterEmptyState = ({
         </p>
       )}
 
-      <p className="text-sm text-muted-foreground mb-4">
-        Try adjusting your filters or
-      </p>
+      <p className="text-sm text-muted-foreground mb-4">Try adjusting your filters or</p>
 
-      <Button
-        variant="outline"
-        onClick={onClearFilters}
-        className="text-primary"
-      >
+      <Button variant="outline" onClick={onClearFilters} className="text-primary">
         Clear all filters
       </Button>
     </div>

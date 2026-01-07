@@ -1,12 +1,15 @@
-import { useState, useEffect, useMemo } from "react"
-import { ChevronDown, Calendar as CalendarIcon } from "lucide-react"
+import { useState, useEffect, useMemo } from 'react'
+import { ChevronDown, Calendar as CalendarIcon } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
-import { cn } from "@/lib/utils"
-import type { DueDateFilter as DueDateFilterType, DueDateFilterType as FilterType } from "@/data/tasks-data"
-import { dueDateFilterOptions } from "@/data/tasks-data"
+import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { cn } from '@/lib/utils'
+import type {
+  DueDateFilter as DueDateFilterType,
+  DueDateFilterType as FilterType
+} from '@/data/tasks-data'
+import { dueDateFilterOptions } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -27,41 +30,37 @@ export const DueDateFilter = ({
   value,
   onChange,
   taskCountByDueDate = {} as Record<FilterType, number>,
-  className,
+  className
 }: DueDateFilterProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
   const [localType, setLocalType] = useState<FilterType>(value.type)
-  const [customStart, setCustomStart] = useState<Date | undefined>(
-    value.customStart || undefined
-  )
-  const [customEnd, setCustomEnd] = useState<Date | undefined>(
-    value.customEnd || undefined
-  )
-  const [showCustom, setShowCustom] = useState(value.type === "custom")
+  const [customStart, setCustomStart] = useState<Date | undefined>(value.customStart || undefined)
+  const [customEnd, setCustomEnd] = useState<Date | undefined>(value.customEnd || undefined)
+  const [showCustom, setShowCustom] = useState(value.type === 'custom')
 
   // Sync local state when props change
   useEffect(() => {
     setLocalType(value.type)
     setCustomStart(value.customStart || undefined)
     setCustomEnd(value.customEnd || undefined)
-    setShowCustom(value.type === "custom")
+    setShowCustom(value.type === 'custom')
   }, [value])
 
-  const hasSelection = value.type !== "any"
+  const hasSelection = value.type !== 'any'
 
   const getDisplayLabel = (): string => {
-    if (value.type === "any") return "Due Date"
-    if (value.type === "custom" && value.customStart && value.customEnd) {
+    if (value.type === 'any') return 'Due Date'
+    if (value.type === 'custom' && value.customStart && value.customEnd) {
       const formatDate = (date: Date): string =>
-        date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
       return `${formatDate(value.customStart)} - ${formatDate(value.customEnd)}`
     }
     const option = dueDateFilterOptions.find((o) => o.value === value.type)
-    return option?.label || "Due Date"
+    return option?.label || 'Due Date'
   }
 
   const handleSelectType = (type: FilterType): void => {
-    if (type === "custom") {
+    if (type === 'custom') {
       setShowCustom(true)
       setLocalType(type)
     } else {
@@ -74,9 +73,9 @@ export const DueDateFilter = ({
   const tryApplyCustomRange = (start?: Date, end?: Date): void => {
     if (start && end) {
       onChange({
-        type: "custom",
+        type: 'custom',
         customStart: start,
-        customEnd: end,
+        customEnd: end
       })
       setIsOpen(false)
     }
@@ -87,7 +86,7 @@ export const DueDateFilter = ({
       setLocalType(value.type)
       setCustomStart(value.customStart || undefined)
       setCustomEnd(value.customEnd || undefined)
-      setShowCustom(value.type === "custom")
+      setShowCustom(value.type === 'custom')
     }
     setIsOpen(open)
   }
@@ -98,11 +97,7 @@ export const DueDateFilter = ({
         <Button
           variant="outline"
           size="sm"
-          className={cn(
-            "h-9 gap-2",
-            hasSelection && "border-primary bg-primary/5",
-            className
-          )}
+          className={cn('h-9 gap-2', hasSelection && 'border-primary bg-primary/5', className)}
           aria-label="Filter by due date"
         >
           <span className="truncate max-w-32">{getDisplayLabel()}</span>
@@ -110,10 +105,7 @@ export const DueDateFilter = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent
-        className={cn("p-0", showCustom ? "w-auto" : "w-56")}
-        align="start"
-      >
+      <PopoverContent className={cn('p-0', showCustom ? 'w-auto' : 'w-56')} align="start">
         {!showCustom ? (
           <div className="p-2">
             {/* Preset options */}
@@ -125,41 +117,37 @@ export const DueDateFilter = ({
                 // Add separator before "Custom range"
                 const showSeparator =
                   index > 0 &&
-                  (option.value === "custom" ||
-                    (index === 2 && dueDateFilterOptions[index - 1]?.value !== "custom"))
+                  (option.value === 'custom' ||
+                    (index === 2 && dueDateFilterOptions[index - 1]?.value !== 'custom'))
 
                 return (
                   <div key={option.value}>
-                    {showSeparator && index === 2 && (
-                      <div className="my-2 h-px bg-border" />
-                    )}
+                    {showSeparator && index === 2 && <div className="my-2 h-px bg-border" />}
                     <button
                       type="button"
                       onClick={() => handleSelectType(option.value)}
                       className={cn(
-                        "flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm transition-colors",
-                        "hover:bg-accent focus:outline-none focus:bg-accent",
-                        isSelected && "font-medium bg-accent"
+                        'flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm transition-colors',
+                        'hover:bg-accent focus:outline-none focus:bg-accent',
+                        isSelected && 'font-medium bg-accent'
                       )}
                     >
                       <span className="flex items-center gap-2">
                         <span
                           className={cn(
-                            "size-2 rounded-full",
-                            isSelected ? "bg-primary" : "bg-transparent"
+                            'size-2 rounded-full',
+                            isSelected ? 'bg-primary' : 'bg-transparent'
                           )}
                         />
                         <span>{option.label}</span>
                       </span>
-                      {option.value !== "any" &&
-                        option.value !== "none" &&
-                        option.value !== "custom" && (
-                          <span className="text-xs text-text-tertiary">
-                            {taskCount}
-                          </span>
+                      {option.value !== 'any' &&
+                        option.value !== 'none' &&
+                        option.value !== 'custom' && (
+                          <span className="text-xs text-text-tertiary">{taskCount}</span>
                         )}
                     </button>
-                    {option.value === "custom" && index > 0 && (
+                    {option.value === 'custom' && index > 0 && (
                       <div className="my-2 h-px bg-border" />
                     )}
                   </div>
@@ -184,26 +172,24 @@ export const DueDateFilter = ({
             <div className="space-y-4">
               {/* From date */}
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                  From
-                </label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">From</label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !customStart && "text-muted-foreground"
+                        'w-full justify-start text-left font-normal',
+                        !customStart && 'text-muted-foreground'
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {customStart
-                        ? customStart.toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })
-                        : "Select date"}
+                        ? customStart.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })
+                        : 'Select date'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -228,26 +214,24 @@ export const DueDateFilter = ({
 
               {/* To date */}
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                  To
-                </label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">To</label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !customEnd && "text-muted-foreground"
+                        'w-full justify-start text-left font-normal',
+                        !customEnd && 'text-muted-foreground'
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {customEnd
-                        ? customEnd.toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })
-                        : "Select date"}
+                        ? customEnd.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })
+                        : 'Select date'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">

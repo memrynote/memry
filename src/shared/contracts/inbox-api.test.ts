@@ -519,16 +519,7 @@ describe('InboxListSchema', () => {
   })
 
   it('should validate all item types', () => {
-    const types = [
-      'link',
-      'note',
-      'image',
-      'voice',
-      'clip',
-      'pdf',
-      'social',
-      'reminder'
-    ] as const
+    const types = ['link', 'note', 'image', 'voice', 'clip', 'pdf', 'social', 'reminder'] as const
     for (const type of types) {
       const result = InboxListSchema.safeParse({ type })
       expect(result.success).toBe(true)

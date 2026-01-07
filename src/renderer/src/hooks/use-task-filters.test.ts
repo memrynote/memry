@@ -129,10 +129,9 @@ describe('useDebouncedValue', () => {
   })
 
   it('should debounce value updates', () => {
-    const { result, rerender } = renderHook(
-      ({ value }) => useDebouncedValue(value, 300),
-      { initialProps: { value: 'initial' } }
-    )
+    const { result, rerender } = renderHook(({ value }) => useDebouncedValue(value, 300), {
+      initialProps: { value: 'initial' }
+    })
 
     expect(result.current).toBe('initial')
 
@@ -151,10 +150,9 @@ describe('useDebouncedValue', () => {
   })
 
   it('should reset timer on rapid changes', () => {
-    const { result, rerender } = renderHook(
-      ({ value }) => useDebouncedValue(value, 300),
-      { initialProps: { value: 'v1' } }
-    )
+    const { result, rerender } = renderHook(({ value }) => useDebouncedValue(value, 300), {
+      initialProps: { value: 'v1' }
+    })
 
     rerender({ value: 'v2' })
     act(() => vi.advanceTimersByTime(100))
@@ -352,15 +350,20 @@ describe('useFilterState', () => {
       localStorageMock.setItem(
         'taskFilters',
         JSON.stringify({
-          [viewKey1]: { filters: { ...defaultFilters, search: 'project-1-search' }, sort: defaultSort },
-          [viewKey2]: { filters: { ...defaultFilters, search: 'project-2-search' }, sort: defaultSort }
+          [viewKey1]: {
+            filters: { ...defaultFilters, search: 'project-1-search' },
+            sort: defaultSort
+          },
+          [viewKey2]: {
+            filters: { ...defaultFilters, search: 'project-2-search' },
+            sort: defaultSort
+          }
         })
       )
 
-      const { result, rerender } = renderHook(
-        (props) => useFilterState(props),
-        { initialProps: { ...defaultOptions, selectedId: 'project-1' } }
-      )
+      const { result, rerender } = renderHook((props) => useFilterState(props), {
+        initialProps: { ...defaultOptions, selectedId: 'project-1' }
+      })
 
       expect(result.current.filters.search).toBe('project-1-search')
 

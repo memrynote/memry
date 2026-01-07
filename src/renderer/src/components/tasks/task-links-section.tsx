@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react"
-import { FileText, X, Link, Loader2 } from "lucide-react"
+import { useState, useEffect } from 'react'
+import { FileText, X, Link, Loader2 } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { NoteSearchDropdown } from "./note-search-dropdown"
-import { cn } from "@/lib/utils"
-import { notesService, type Note } from "@/services/notes-service"
+import { Button } from '@/components/ui/button'
+import { NoteSearchDropdown } from './note-search-dropdown'
+import { cn } from '@/lib/utils'
+import { notesService, type Note } from '@/services/notes-service'
 
 // ============================================================================
 // TYPES
@@ -31,7 +31,7 @@ interface LinkedNoteItemProps {
 const LinkedNoteItem = ({
   noteId,
   onRemove,
-  onClick,
+  onClick
 }: LinkedNoteItemProps): React.JSX.Element | null => {
   const [note, setNote] = useState<Note | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -78,16 +78,16 @@ const LinkedNoteItem = ({
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2",
-        onClick && "cursor-pointer hover:bg-muted/50 transition-colors"
+        'group flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2',
+        onClick && 'cursor-pointer hover:bg-muted/50 transition-colors'
       )}
       onClick={onClick}
       onKeyDown={(e) => {
-        if (e.key === "Enter" && onClick) {
+        if (e.key === 'Enter' && onClick) {
           onClick()
         }
       }}
-      role={onClick ? "button" : undefined}
+      role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
       <FileText className="size-4 text-muted-foreground" aria-hidden="true" />
@@ -117,7 +117,7 @@ export const TaskLinksSection = ({
   onAddLink,
   onRemoveLink,
   onNoteClick,
-  className,
+  className
 }: TaskLinksSectionProps): React.JSX.Element => {
   const handleRemoveLink = (noteId: string) => (): void => {
     onRemoveLink(noteId)
@@ -128,7 +128,7 @@ export const TaskLinksSection = ({
   }
 
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
+    <div className={cn('flex flex-col gap-3', className)}>
       {/* Section label */}
       <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         Linked Notes
@@ -149,15 +149,12 @@ export const TaskLinksSection = ({
       )}
 
       {/* Add link button with dropdown */}
-      <NoteSearchDropdown
-        onSelectNote={onAddLink}
-        excludeNoteIds={linkedNoteIds}
-      >
+      <NoteSearchDropdown onSelectNote={onAddLink} excludeNoteIds={linkedNoteIds}>
         <button
           type="button"
           className={cn(
-            "flex items-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground transition-colors",
-            "hover:border-primary hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            'flex items-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground transition-colors',
+            'hover:border-primary hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring'
           )}
         >
           <Link className="size-4" aria-hidden="true" />

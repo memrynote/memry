@@ -20,7 +20,9 @@ describe('journal-service', () => {
     api.journal.getHeatmap = vi.fn().mockResolvedValue([])
     api.journal.getMonthEntries = vi.fn().mockResolvedValue([])
     api.journal.getYearStats = vi.fn().mockResolvedValue([])
-    api.journal.getDayContext = vi.fn().mockResolvedValue({ date: '2025-01-01', tasks: [], events: [] })
+    api.journal.getDayContext = vi
+      .fn()
+      .mockResolvedValue({ date: '2025-01-01', tasks: [], events: [] })
     api.journal.getAllTags = vi.fn().mockResolvedValue([])
     api.journal.getStreak = vi.fn().mockResolvedValue({ currentStreak: 0, longestStreak: 0 })
 
@@ -28,7 +30,6 @@ describe('journal-service', () => {
     api.onJournalEntryUpdated = vi.fn().mockReturnValue(() => {})
     api.onJournalEntryDeleted = vi.fn().mockReturnValue(() => {})
     api.onJournalExternalChange = vi.fn().mockReturnValue(() => {})
-
     ;(window as Window & { api: unknown }).api = api
   })
 

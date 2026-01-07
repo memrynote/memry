@@ -184,7 +184,7 @@ describe('fuzzySearch', () => {
       // With equal scores, original array order is preserved (stable sort)
       expect(result).toHaveLength(2)
       expect(result[0].name).toBe('xxxxx') // First in original array
-      expect(result[1].name).toBe('task')  // Second in original array
+      expect(result[1].name).toBe('task') // Second in original array
     })
 
     it('matches in any of the specified keys', () => {

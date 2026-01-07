@@ -1,14 +1,14 @@
-import { motion } from "framer-motion"
+import { motion } from 'framer-motion'
 
-import { PrioritySelect } from "@/components/tasks/priority-select"
-import { cn } from "@/lib/utils"
-import { formatDateShort, startOfDay, isBefore, isSameDay, addDays } from "@/lib/task-utils"
-import type { Task, Priority } from "@/data/sample-tasks"
-import { Calendar, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar as CalendarComponent } from "@/components/ui/calendar"
-import { useState } from "react"
+import { PrioritySelect } from '@/components/tasks/priority-select'
+import { cn } from '@/lib/utils'
+import { formatDateShort, startOfDay, isBefore, isSameDay, addDays } from '@/lib/task-utils'
+import type { Task, Priority } from '@/data/sample-tasks'
+import { Calendar, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar as CalendarComponent } from '@/components/ui/calendar'
+import { useState } from 'react'
 
 // ============================================================================
 // TYPES
@@ -28,10 +28,7 @@ interface SimpleDueDatePickerProps {
   onChange: (date: Date | null) => void
 }
 
-const SimpleDueDatePicker = ({
-  value,
-  onChange,
-}: SimpleDueDatePickerProps): React.JSX.Element => {
+const SimpleDueDatePicker = ({ value, onChange }: SimpleDueDatePickerProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
 
   const handleSelect = (date: Date | undefined): void => {
@@ -48,22 +45,22 @@ const SimpleDueDatePicker = ({
   // Determine display text and status color
   const getDisplayInfo = (): { text: string; className: string } => {
     if (!value) {
-      return { text: "No date", className: "text-muted-foreground" }
+      return { text: 'No date', className: 'text-muted-foreground' }
     }
 
     const today = startOfDay(new Date())
     const selectedDate = startOfDay(value)
 
     if (isBefore(selectedDate, today)) {
-      return { text: formatDateShort(value), className: "text-destructive" }
+      return { text: formatDateShort(value), className: 'text-destructive' }
     }
     if (isSameDay(selectedDate, today)) {
-      return { text: "Today", className: "text-amber-600" }
+      return { text: 'Today', className: 'text-amber-600' }
     }
     if (isSameDay(selectedDate, addDays(today, 1))) {
-      return { text: "Tomorrow", className: "text-blue-600" }
+      return { text: 'Tomorrow', className: 'text-blue-600' }
     }
-    return { text: formatDateShort(value), className: "text-foreground" }
+    return { text: formatDateShort(value), className: 'text-foreground' }
   }
 
   const displayInfo = getDisplayInfo()
@@ -74,18 +71,12 @@ const SimpleDueDatePicker = ({
         <Button
           variant="outline"
           size="sm"
-          className={cn(
-            "w-full justify-start text-left h-8",
-            displayInfo.className
-          )}
+          className={cn('w-full justify-start text-left h-8', displayInfo.className)}
         >
           <Calendar className="mr-2 h-3.5 w-3.5" />
           <span className="truncate">{displayInfo.text}</span>
           {value && (
-            <X
-              className="ml-auto h-3.5 w-3.5 opacity-50 hover:opacity-100"
-              onClick={handleClear}
-            />
+            <X className="ml-auto h-3.5 w-3.5 opacity-50 hover:opacity-100" onClick={handleClear} />
           )}
         </Button>
       </PopoverTrigger>
@@ -107,7 +98,7 @@ const SimpleDueDatePicker = ({
 
 export const SubtaskExpandedDetails = ({
   subtask,
-  onUpdate,
+  onUpdate
 }: SubtaskExpandedDetailsProps): React.JSX.Element => {
   const handlePriorityChange = (priority: Priority): void => {
     onUpdate({ priority })
@@ -124,9 +115,9 @@ export const SubtaskExpandedDetails = ({
   return (
     <motion.div
       initial={{ height: 0, opacity: 0 }}
-      animate={{ height: "auto", opacity: 1 }}
+      animate={{ height: 'auto', opacity: 1 }}
       exit={{ height: 0, opacity: 0 }}
-      transition={{ duration: 0.2, ease: "easeInOut" }}
+      transition={{ duration: 0.2, ease: 'easeInOut' }}
       className="overflow-hidden"
     >
       <div className="px-3 pb-3 pt-0 border-t mt-2">
@@ -137,11 +128,7 @@ export const SubtaskExpandedDetails = ({
             <label className="text-xs text-muted-foreground uppercase tracking-wide block mb-1.5">
               Priority
             </label>
-            <PrioritySelect
-              value={subtask.priority}
-              onChange={handlePriorityChange}
-              compact
-            />
+            <PrioritySelect value={subtask.priority} onChange={handlePriorityChange} compact />
           </div>
 
           {/* Due date picker */}
@@ -149,10 +136,7 @@ export const SubtaskExpandedDetails = ({
             <label className="text-xs text-muted-foreground uppercase tracking-wide block mb-1.5">
               Due Date
             </label>
-            <SimpleDueDatePicker
-              value={subtask.dueDate}
-              onChange={handleDueDateChange}
-            />
+            <SimpleDueDatePicker value={subtask.dueDate} onChange={handleDueDateChange} />
           </div>
 
           {/* Assignee placeholder */}
@@ -160,9 +144,7 @@ export const SubtaskExpandedDetails = ({
             <label className="text-xs text-muted-foreground uppercase tracking-wide block mb-1.5">
               Assigned
             </label>
-            <span className="text-sm text-muted-foreground h-8 flex items-center">
-              —
-            </span>
+            <span className="text-sm text-muted-foreground h-8 flex items-center">—</span>
           </div>
         </div>
 
@@ -172,13 +154,13 @@ export const SubtaskExpandedDetails = ({
             Notes
           </label>
           <textarea
-            value={subtask.description || ""}
+            value={subtask.description || ''}
             onChange={handleDescriptionChange}
             placeholder="Add notes..."
             className={cn(
-              "w-full p-2 text-sm border rounded-lg resize-none",
-              "bg-background focus:outline-none focus:ring-2 focus:ring-ring",
-              "placeholder:text-muted-foreground/60"
+              'w-full p-2 text-sm border rounded-lg resize-none',
+              'bg-background focus:outline-none focus:ring-2 focus:ring-ring',
+              'placeholder:text-muted-foreground/60'
             )}
             rows={2}
           />
@@ -189,11 +171,3 @@ export const SubtaskExpandedDetails = ({
 }
 
 export default SubtaskExpandedDetails
-
-
-
-
-
-
-
-

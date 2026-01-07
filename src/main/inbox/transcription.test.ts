@@ -5,7 +5,11 @@ import path from 'path'
 import { eq } from 'drizzle-orm'
 import { InboxChannels } from '@shared/ipc-channels'
 import { inboxItems } from '@shared/db/schema/inbox'
-import { createTestDatabase, cleanupTestDatabase, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDatabase,
+  cleanupTestDatabase,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { MockBrowserWindow } from '@tests/utils/mock-electron'
 import { BrowserWindow } from 'electron'
 
@@ -93,16 +97,19 @@ describe('inbox transcription', () => {
 
   function seedVoiceItem(id: string, attachmentPath: string) {
     const now = new Date().toISOString()
-    testDb.db.insert(inboxItems).values({
-      id,
-      type: 'voice',
-      title: 'Voice memo',
-      content: null,
-      createdAt: now,
-      modifiedAt: now,
-      attachmentPath,
-      transcriptionStatus: 'pending'
-    }).run()
+    testDb.db
+      .insert(inboxItems)
+      .values({
+        id,
+        type: 'voice',
+        title: 'Voice memo',
+        content: null,
+        createdAt: now,
+        modifiedAt: now,
+        attachmentPath,
+        transcriptionStatus: 'pending'
+      })
+      .run()
   }
 
   // ==========================================================================
@@ -124,11 +131,7 @@ describe('inbox transcription', () => {
     expect(result.success).toBe(true)
     expect(result.transcription).toBe('Hello world')
 
-    const updated = testDb.db
-      .select()
-      .from(inboxItems)
-      .where(eq(inboxItems.id, 'item-1'))
-      .get()
+    const updated = testDb.db.select().from(inboxItems).where(eq(inboxItems.id, 'item-1')).get()
 
     expect(updated?.transcriptionStatus).toBe('complete')
     expect(updated?.transcription).toBe('Hello world')
@@ -177,11 +180,7 @@ describe('inbox transcription', () => {
     expect(result.success).toBe(false)
     expect(result.error).toContain('Unsupported audio format')
 
-    const updated = testDb.db
-      .select()
-      .from(inboxItems)
-      .where(eq(inboxItems.id, 'item-3'))
-      .get()
+    const updated = testDb.db.select().from(inboxItems).where(eq(inboxItems.id, 'item-3')).get()
 
     expect(updated?.transcriptionStatus).toBe('failed')
   })
@@ -207,11 +206,7 @@ describe('inbox transcription', () => {
     const retryResult = await retryTranscription('item-4')
     expect(retryResult.success).toBe(true)
 
-    const updated = testDb.db
-      .select()
-      .from(inboxItems)
-      .where(eq(inboxItems.id, 'item-4'))
-      .get()
+    const updated = testDb.db.select().from(inboxItems).where(eq(inboxItems.id, 'item-4')).get()
 
     expect(updated?.transcriptionStatus).toBe('complete')
     expect(updated?.transcription).toBe('Recovered')
@@ -222,26 +217,32 @@ describe('inbox transcription', () => {
     expect(responseMissing.success).toBe(false)
 
     const now = new Date().toISOString()
-    testDb.db.insert(inboxItems).values({
-      id: 'item-5',
-      type: 'link',
-      title: 'Not voice',
-      content: null,
-      createdAt: now,
-      modifiedAt: now
-    }).run()
+    testDb.db
+      .insert(inboxItems)
+      .values({
+        id: 'item-5',
+        type: 'link',
+        title: 'Not voice',
+        content: null,
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
 
     const responseType = await retryTranscription('item-5')
     expect(responseType.success).toBe(false)
 
-    testDb.db.insert(inboxItems).values({
-      id: 'item-6',
-      type: 'voice',
-      title: 'Voice',
-      content: null,
-      createdAt: now,
-      modifiedAt: now
-    }).run()
+    testDb.db
+      .insert(inboxItems)
+      .values({
+        id: 'item-6',
+        type: 'voice',
+        title: 'Voice',
+        content: null,
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
 
     const responseAttachment = await retryTranscription('item-6')
     expect(responseAttachment.success).toBe(false)

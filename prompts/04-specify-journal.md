@@ -32,8 +32,10 @@ Build the journal system for daily entries that connects to the existing Journal
 
 ### Journal Entry (File-based)
 ```
+
 vault/journal/2024-01-15.md
-```
+
+````
 
 ```yaml
 ---
@@ -57,13 +59,14 @@ Today's focus: Planning Q1 goals...
 
 ## Evening Review
 ...
-```
+````
 
 ### Journal Index (Database)
+
 ```typescript
 interface JournalIndex {
-  id: string              // "journal-YYYY-MM-DD"
-  date: string            // "YYYY-MM-DD" for easy sorting
+  id: string // "journal-YYYY-MM-DD"
+  date: string // "YYYY-MM-DD" for easy sorting
   path: string
   createdAt: Date
   modifiedAt: Date
@@ -73,25 +76,27 @@ interface JournalIndex {
   tags: string[]
 
   // For heatmap
-  activityLevel: 0 | 1 | 2 | 3 | 4  // Computed from characterCount
+  activityLevel: 0 | 1 | 2 | 3 | 4 // Computed from characterCount
 }
 ```
 
 ### Heatmap Levels
+
 ```typescript
 // Character count to activity level mapping
 function getActivityLevel(charCount: number): 0 | 1 | 2 | 3 | 4 {
   if (charCount === 0) return 0
-  if (charCount <= 100) return 1   // Quick note
-  if (charCount <= 500) return 2   // Short entry
-  if (charCount <= 1000) return 3  // Medium entry
-  return 4                         // Long entry
+  if (charCount <= 100) return 1 // Quick note
+  if (charCount <= 500) return 2 // Short entry
+  if (charCount <= 1000) return 3 // Medium entry
+  return 4 // Long entry
 }
 ```
 
 ## FUNCTIONAL REQUIREMENTS
 
 ### Entry Management
+
 - Open journal: navigate to today's date
 - Navigate to date: load or create entry for that date
 - Create entry: generate file on first keystroke
@@ -99,6 +104,7 @@ function getActivityLevel(charCount: number): 0 | 1 | 2 | 3 | 4 {
 - Delete entry: move file to trash, update index
 
 ### Calendar Widget
+
 - Show current month by default
 - Previous/next month navigation
 - Click day to navigate to that entry
@@ -111,12 +117,14 @@ function getActivityLevel(charCount: number): 0 | 1 | 2 | 3 | 4 {
 - Future dates shown but muted
 
 ### Month View
+
 - List all entries in selected month
 - Show entry preview (first 100 chars)
 - Show word count and tags
 - Click entry to navigate to day view
 
 ### Year View
+
 - Grid of 12 month cards
 - Each card shows:
   - Month name
@@ -126,12 +134,14 @@ function getActivityLevel(charCount: number): 0 | 1 | 2 | 3 | 4 {
 - Click month to go to month view
 
 ### Day Context Sidebar
+
 - Today's calendar events (integrate with system calendar later, mock for now)
 - Today's tasks (from task system)
 - Overdue task count with warning
 - Quick task toggle (complete from journal)
 
 ### AI Connections Panel
+
 - Semantic similarity search against:
   - Past journal entries
   - Notes in vault
@@ -144,6 +154,7 @@ function getActivityLevel(charCount: number): 0 | 1 | 2 | 3 | 4 {
 - Click connection to open in new tab
 
 ### Focus Mode
+
 - Hide left sidebar
 - Hide right context sidebar
 - Center editor with narrower max-width
@@ -152,6 +163,7 @@ function getActivityLevel(charCount: number): 0 | 1 | 2 | 3 | 4 {
 - Persist preference in localStorage
 
 ### Word/Character Count
+
 - Update in real-time as user types
 - Show in subtle location (bottom or header)
 - Don't distract from writing
@@ -159,12 +171,14 @@ function getActivityLevel(charCount: number): 0 | 1 | 2 | 3 | 4 {
 ## NON-FUNCTIONAL REQUIREMENTS
 
 ### Performance
+
 - Switch between days in <100ms
 - Heatmap render for 365 days in <50ms
 - AI connections update in <2 seconds
 - Focus mode toggle instant (no delay)
 
 ### UX
+
 - Writing should feel "buttery smooth"
 - No jarring layout shifts
 - Respect reduced motion preferences
@@ -173,6 +187,7 @@ function getActivityLevel(charCount: number): 0 | 1 | 2 | 3 | 4 {
 ## ACCEPTANCE CRITERIA
 
 ### Navigation
+
 - [ ] Opening journal shows today's entry (or empty editor)
 - [ ] Calendar shows current month with today highlighted
 - [ ] Clicking past date loads that entry
@@ -180,18 +195,21 @@ function getActivityLevel(charCount: number): 0 | 1 | 2 | 3 | 4 {
 - [ ] Month/year views accessible from breadcrumb
 
 ### Heatmap
+
 - [ ] Days with entries show colored activity level
 - [ ] Empty days show neutral/gray
 - [ ] Hovering shows date and word count
 - [ ] Activity level updates after save
 
 ### Day Context
+
 - [ ] Shows today's calendar events (mock data ok)
 - [ ] Shows today's tasks with completion toggles
 - [ ] Overdue tasks highlighted in red
 - [ ] Completing task updates task system
 
 ### AI Connections
+
 - [ ] Shows "Finding connections..." while loading
 - [ ] Displays 3-5 relevant past entries/notes
 - [ ] Connection snippets highlight matched text
@@ -199,6 +217,7 @@ function getActivityLevel(charCount: number): 0 | 1 | 2 | 3 | 4 {
 - [ ] No connections shows empty state gracefully
 
 ### Focus Mode
+
 - [ ] Cmd+\ toggles focus mode
 - [ ] Sidebars smoothly animate out
 - [ ] Editor width narrows for comfortable reading
@@ -206,6 +225,7 @@ function getActivityLevel(charCount: number): 0 | 1 | 2 | 3 | 4 {
 - [ ] Preference persists across sessions
 
 ### Writing Experience
+
 - [ ] Auto-save works (no lost content)
 - [ ] Word count updates as typing
 - [ ] Formatting (headings, lists) works
@@ -213,9 +233,13 @@ function getActivityLevel(charCount: number): 0 | 1 | 2 | 3 | 4 {
 - [ ] Can link to notes with [[wiki links]]
 
 ### Edge Cases
+
 - [ ] Very old dates (2020) work correctly
 - [ ] Leap years handled (Feb 29)
 - [ ] Journal entry with 10,000 words performs well
 - [ ] Rapid day switching doesn't cause race conditions
 - [ ] External edit to journal file detected
+
+```
+
 ```

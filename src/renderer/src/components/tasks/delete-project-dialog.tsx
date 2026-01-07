@@ -1,23 +1,23 @@
-import { useState } from "react"
-import { AlertTriangle } from "lucide-react"
+import { useState } from 'react'
+import { AlertTriangle } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
+import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { cn } from "@/lib/utils"
-import type { Project } from "@/data/tasks-data"
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import { cn } from '@/lib/utils'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-export type DeleteTasksOption = "move" | "delete"
+export type DeleteTasksOption = 'move' | 'delete'
 
 interface DeleteProjectDialogProps {
   isOpen: boolean
@@ -34,9 +34,9 @@ export const DeleteProjectDialog = ({
   isOpen,
   onClose,
   onConfirm,
-  project,
+  project
 }: DeleteProjectDialogProps): React.JSX.Element => {
-  const [selectedOption, setSelectedOption] = useState<DeleteTasksOption>("move")
+  const [selectedOption, setSelectedOption] = useState<DeleteTasksOption>('move')
 
   const taskCount = project?.taskCount || 0
   const hasTasks = taskCount > 0
@@ -50,12 +50,14 @@ export const DeleteProjectDialog = ({
     setSelectedOption(option)
   }
 
-  const handleKeyDown = (option: DeleteTasksOption) => (e: React.KeyboardEvent): void => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault()
-      setSelectedOption(option)
+  const handleKeyDown =
+    (option: DeleteTasksOption) =>
+    (e: React.KeyboardEvent): void => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        setSelectedOption(option)
+      }
     }
-  }
 
   if (!project) return <></>
 
@@ -71,8 +73,8 @@ export const DeleteProjectDialog = ({
               {hasTasks ? (
                 <>
                   <p>
-                    This project has {taskCount} task{taskCount !== 1 ? "s" : ""}. What
-                    would you like to do with them?
+                    This project has {taskCount} task{taskCount !== 1 ? 's' : ''}. What would you
+                    like to do with them?
                   </p>
 
                   {/* Radio Options */}
@@ -80,26 +82,26 @@ export const DeleteProjectDialog = ({
                     {/* Option: Move to Personal */}
                     <label
                       className={cn(
-                        "flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors",
-                        selectedOption === "move"
-                          ? "border-primary bg-accent/50"
-                          : "hover:bg-accent/30"
+                        'flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors',
+                        selectedOption === 'move'
+                          ? 'border-primary bg-accent/50'
+                          : 'hover:bg-accent/30'
                       )}
-                      onClick={handleOptionChange("move")}
-                      onKeyDown={handleKeyDown("move")}
+                      onClick={handleOptionChange('move')}
+                      onKeyDown={handleKeyDown('move')}
                       tabIndex={0}
                       role="radio"
-                      aria-checked={selectedOption === "move"}
+                      aria-checked={selectedOption === 'move'}
                     >
                       <div
                         className={cn(
-                          "size-4 rounded-full border-2 transition-colors",
-                          selectedOption === "move"
-                            ? "border-primary bg-primary"
-                            : "border-muted-foreground"
+                          'size-4 rounded-full border-2 transition-colors',
+                          selectedOption === 'move'
+                            ? 'border-primary bg-primary'
+                            : 'border-muted-foreground'
                         )}
                       >
-                        {selectedOption === "move" && (
+                        {selectedOption === 'move' && (
                           <div className="m-0.5 size-2 rounded-full bg-primary-foreground" />
                         )}
                       </div>
@@ -111,32 +113,30 @@ export const DeleteProjectDialog = ({
                     {/* Option: Delete tasks */}
                     <label
                       className={cn(
-                        "flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors",
-                        selectedOption === "delete"
-                          ? "border-primary bg-accent/50"
-                          : "hover:bg-accent/30"
+                        'flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors',
+                        selectedOption === 'delete'
+                          ? 'border-primary bg-accent/50'
+                          : 'hover:bg-accent/30'
                       )}
-                      onClick={handleOptionChange("delete")}
-                      onKeyDown={handleKeyDown("delete")}
+                      onClick={handleOptionChange('delete')}
+                      onKeyDown={handleKeyDown('delete')}
                       tabIndex={0}
                       role="radio"
-                      aria-checked={selectedOption === "delete"}
+                      aria-checked={selectedOption === 'delete'}
                     >
                       <div
                         className={cn(
-                          "size-4 rounded-full border-2 transition-colors",
-                          selectedOption === "delete"
-                            ? "border-primary bg-primary"
-                            : "border-muted-foreground"
+                          'size-4 rounded-full border-2 transition-colors',
+                          selectedOption === 'delete'
+                            ? 'border-primary bg-primary'
+                            : 'border-muted-foreground'
                         )}
                       >
-                        {selectedOption === "delete" && (
+                        {selectedOption === 'delete' && (
                           <div className="m-0.5 size-2 rounded-full bg-primary-foreground" />
                         )}
                       </div>
-                      <span className="text-sm text-foreground">
-                        Delete all tasks permanently
-                      </span>
+                      <span className="text-sm text-foreground">Delete all tasks permanently</span>
                     </label>
                   </div>
                 </>
@@ -157,10 +157,7 @@ export const DeleteProjectDialog = ({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            variant="destructive"
-            onClick={handleConfirm}
-          >
+          <Button variant="destructive" onClick={handleConfirm}>
             Delete Project
           </Button>
         </AlertDialogFooter>
@@ -170,4 +167,3 @@ export const DeleteProjectDialog = ({
 }
 
 export default DeleteProjectDialog
-

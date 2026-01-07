@@ -1,23 +1,23 @@
-import { useState, useMemo } from "react"
-import { Archive } from "lucide-react"
+import { useState, useMemo } from 'react'
+import { Archive } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 import {
   getCompletedTasks,
   getCompletionStats,
   groupCompletedByPeriod,
   filterCompletedBySearch,
   completionPeriodConfig,
-  type CompletionPeriod,
-} from "@/lib/task-utils"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Button } from "@/components/ui/button"
-import { CompletedTaskRow } from "./completed-task-row"
-import { CompletionStats } from "./completion-stats"
-import { CompletedSearchInput } from "./completed-search-input"
-import { CompletedEmptyState } from "./completed-empty-state"
-import type { Task } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+  type CompletionPeriod
+} from '@/lib/task-utils'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Button } from '@/components/ui/button'
+import { CompletedTaskRow } from './completed-task-row'
+import { CompletionStats } from './completion-stats'
+import { CompletedSearchInput } from './completed-search-input'
+import { CompletedEmptyState } from './completed-empty-state'
+import type { Task } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -37,7 +37,7 @@ interface CompletedViewProps {
 interface TaskSectionHeaderProps {
   title: string
   count: number
-  variant?: "default" | "accent" | "muted"
+  variant?: 'default' | 'accent' | 'muted'
   className?: string
 }
 
@@ -48,32 +48,28 @@ interface TaskSectionHeaderProps {
 const TaskSectionHeader = ({
   title,
   count,
-  variant = "default",
-  className,
+  variant = 'default',
+  className
 }: TaskSectionHeaderProps): React.JSX.Element => {
   return (
-    <div
-      className={cn(
-        "flex items-center justify-between py-2 px-1",
-        className
-      )}
-    >
+    <div className={cn('flex items-center justify-between py-2 px-1', className)}>
       <span
         className={cn(
-          "text-xs font-semibold uppercase tracking-wider",
-          variant === "accent" && "text-emerald-600 dark:text-emerald-500",
-          variant === "muted" && "text-text-tertiary",
-          variant === "default" && "text-text-secondary"
+          'text-xs font-semibold uppercase tracking-wider',
+          variant === 'accent' && 'text-emerald-600 dark:text-emerald-500',
+          variant === 'muted' && 'text-text-tertiary',
+          variant === 'default' && 'text-text-secondary'
         )}
       >
         {title}
       </span>
       <span
         className={cn(
-          "text-xs tabular-nums rounded-full px-2 py-0.5",
-          variant === "accent" && "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400",
-          variant === "muted" && "bg-muted text-text-tertiary",
-          variant === "default" && "bg-muted text-text-secondary"
+          'text-xs tabular-nums rounded-full px-2 py-0.5',
+          variant === 'accent' &&
+            'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400',
+          variant === 'muted' && 'bg-muted text-text-tertiary',
+          variant === 'default' && 'bg-muted text-text-secondary'
         )}
       >
         {count}
@@ -94,21 +90,15 @@ export const CompletedView = ({
   onDelete,
   onViewArchived,
   onOpenClearMenu,
-  className,
+  className
 }: CompletedViewProps): React.JSX.Element => {
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Get completed (non-archived) tasks
-  const completedTasks = useMemo(
-    () => getCompletedTasks(tasks),
-    [tasks]
-  )
+  const completedTasks = useMemo(() => getCompletedTasks(tasks), [tasks])
 
   // Calculate stats (on all completed, not filtered)
-  const stats = useMemo(
-    () => getCompletionStats(completedTasks),
-    [completedTasks]
-  )
+  const stats = useMemo(() => getCompletionStats(completedTasks), [completedTasks])
 
   // Filter by search
   const filteredTasks = useMemo(
@@ -117,10 +107,7 @@ export const CompletedView = ({
   )
 
   // Group filtered tasks by period
-  const groupedTasks = useMemo(
-    () => groupCompletedByPeriod(filteredTasks),
-    [filteredTasks]
-  )
+  const groupedTasks = useMemo(() => groupCompletedByPeriod(filteredTasks), [filteredTasks])
 
   // Check for empty states
   const hasCompletedTasks = completedTasks.length > 0
@@ -128,13 +115,7 @@ export const CompletedView = ({
   const isSearching = searchQuery.trim().length > 0
 
   // Periods in display order
-  const periods: CompletionPeriod[] = [
-    "today",
-    "yesterday",
-    "earlierThisWeek",
-    "lastWeek",
-    "older",
-  ]
+  const periods: CompletionPeriod[] = ['today', 'yesterday', 'earlierThisWeek', 'lastWeek', 'older']
 
   // Get project by ID
   const getProject = (projectId: string): Project | undefined => {
@@ -142,29 +123,20 @@ export const CompletedView = ({
   }
 
   // Get variant for period header
-  const getPeriodVariant = (period: CompletionPeriod): "default" | "accent" | "muted" => {
+  const getPeriodVariant = (period: CompletionPeriod): 'default' | 'accent' | 'muted' => {
     const config = completionPeriodConfig[period]
-    if (config.accentColor) return "accent"
-    if (config.isMuted) return "muted"
-    return "default"
+    if (config.accentColor) return 'accent'
+    if (config.isMuted) return 'muted'
+    return 'default'
   }
 
   return (
-    <ScrollArea className={cn("flex-1", className)}>
+    <ScrollArea className={cn('flex-1', className)}>
       <div className="p-4 space-y-6">
         {/* Search and Actions Bar */}
         <div className="flex items-center gap-3">
-          <CompletedSearchInput
-            value={searchQuery}
-            onChange={setSearchQuery}
-            className="flex-1"
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onViewArchived}
-            className="shrink-0"
-          >
+          <CompletedSearchInput value={searchQuery} onChange={setSearchQuery} className="flex-1" />
+          <Button variant="outline" size="sm" onClick={onViewArchived} className="shrink-0">
             <Archive className="size-4 mr-2" aria-hidden="true" />
             View Archived
           </Button>
@@ -219,7 +191,7 @@ export const CompletedView = ({
         {hasCompletedTasks && (
           <div className="flex items-center justify-between pt-4 border-t border-border">
             <span className="text-sm text-text-tertiary">
-              {completedTasks.length} completed task{completedTasks.length !== 1 ? "s" : ""}
+              {completedTasks.length} completed task{completedTasks.length !== 1 ? 's' : ''}
             </span>
             <Button
               variant="ghost"

@@ -435,7 +435,12 @@ const api = {
       previewMode?: boolean
       restoreSessionOnStart?: boolean
       tabCloseButton?: 'always' | 'hover' | 'active'
-    }) => ipcRenderer.invoke(SettingsChannels.invoke.SET_TAB_SETTINGS, settings)
+    }) => ipcRenderer.invoke(SettingsChannels.invoke.SET_TAB_SETTINGS, settings),
+    // Note Editor Settings
+    getNoteEditorSettings: () =>
+      ipcRenderer.invoke(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS),
+    setNoteEditorSettings: (settings: { toolbarMode?: 'floating' | 'sticky' }) =>
+      ipcRenderer.invoke(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS, settings)
   },
 
   // Bookmarks API

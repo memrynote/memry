@@ -1,14 +1,14 @@
-import type { Task } from "@/data/sample-tasks"
-import type { Project, Status } from "@/data/tasks-data"
+import type { Task } from '@/data/sample-tasks'
+import type { Project, Status } from '@/data/tasks-data'
 import {
   groupTasksByDueDate,
   groupTasksByStatus,
   dueDateGroupConfig,
   type TaskGroupByDate,
   type TaskGroupByStatus,
-  type UrgencyLevel,
-} from "@/lib/task-utils"
-import { getTopLevelTasks, getSubtasks, hasSubtasks } from "@/lib/subtask-utils"
+  type UrgencyLevel
+} from '@/lib/task-utils'
+import { getTopLevelTasks, getSubtasks, hasSubtasks } from '@/lib/subtask-utils'
 
 // ============================================================================
 // VIRTUAL ITEM TYPES
@@ -18,12 +18,12 @@ import { getTopLevelTasks, getSubtasks, hasSubtasks } from "@/lib/subtask-utils"
  * Virtual item types for flattened list rendering
  */
 export type VirtualItemType =
-  | "section-header" // Due date group header (Overdue, Today, etc.)
-  | "status-header" // Project status header
-  | "task" // Simple task (no subtasks)
-  | "parent-task" // Task with subtasks (variable height when expanded)
-  | "empty-state" // Per-section empty state
-  | "add-task-button" // Add task button at section end
+  | 'section-header' // Due date group header (Overdue, Today, etc.)
+  | 'status-header' // Project status header
+  | 'task' // Simple task (no subtasks)
+  | 'parent-task' // Task with subtasks (variable height when expanded)
+  | 'empty-state' // Per-section empty state
+  | 'add-task-button' // Add task button at section end
 
 /**
  * Base interface for all virtual items
@@ -37,7 +37,7 @@ interface VirtualItemBase {
  * Section header for due date grouping (All Tasks view)
  */
 export interface SectionHeaderItem extends VirtualItemBase {
-  type: "section-header"
+  type: 'section-header'
   sectionKey: keyof TaskGroupByDate
   label: string
   count: number
@@ -50,7 +50,7 @@ export interface SectionHeaderItem extends VirtualItemBase {
  * Status header for project view
  */
 export interface StatusHeaderItem extends VirtualItemBase {
-  type: "status-header"
+  type: 'status-header'
   status: Status
   count: number
 }
@@ -59,7 +59,7 @@ export interface StatusHeaderItem extends VirtualItemBase {
  * Simple task item (no subtasks)
  */
 export interface TaskItem extends VirtualItemBase {
-  type: "task"
+  type: 'task'
   task: Task
   project: Project
   sectionId: string
@@ -70,7 +70,7 @@ export interface TaskItem extends VirtualItemBase {
  * Parent task item (has subtasks, variable height when expanded)
  */
 export interface ParentTaskItem extends VirtualItemBase {
-  type: "parent-task"
+  type: 'parent-task'
   task: Task
   project: Project
   subtasks: Task[]
@@ -82,8 +82,8 @@ export interface ParentTaskItem extends VirtualItemBase {
  * Empty state for a section
  */
 export interface EmptyStateItem extends VirtualItemBase {
-  type: "empty-state"
-  variant: "section" | "celebration"
+  type: 'empty-state'
+  variant: 'section' | 'celebration'
   sectionId?: string
   message?: string
 }
@@ -92,7 +92,7 @@ export interface EmptyStateItem extends VirtualItemBase {
  * Add task button at end of section
  */
 export interface AddTaskButtonItem extends VirtualItemBase {
-  type: "add-task-button"
+  type: 'add-task-button'
   sectionId: string
   date?: Date
 }
@@ -116,15 +116,15 @@ export type VirtualItem =
  * Estimated heights for virtual items (in pixels)
  */
 export const ITEM_HEIGHTS = {
-  "section-header": 48,
-  "status-header": 48,
+  'section-header': 48,
+  'status-header': 48,
   task: 52,
-  "parent-task-collapsed": 52,
-  "subtask-row": 38,
-  "add-subtask-input": 40,
-  "empty-state": 80,
-  "empty-state-celebration": 200,
-  "add-task-button": 40,
+  'parent-task-collapsed': 52,
+  'subtask-row': 38,
+  'add-subtask-input': 40,
+  'empty-state': 80,
+  'empty-state-celebration': 200,
+  'add-task-button': 40
 } as const
 
 /**
@@ -137,35 +137,35 @@ export const estimateItemHeight = (
   allTasks: Task[]
 ): number => {
   switch (item.type) {
-    case "section-header":
-      return ITEM_HEIGHTS["section-header"]
+    case 'section-header':
+      return ITEM_HEIGHTS['section-header']
 
-    case "status-header":
-      return ITEM_HEIGHTS["status-header"]
+    case 'status-header':
+      return ITEM_HEIGHTS['status-header']
 
-    case "task":
+    case 'task':
       return ITEM_HEIGHTS.task
 
-    case "parent-task": {
+    case 'parent-task': {
       if (!expandedIds.has(item.task.id)) {
-        return ITEM_HEIGHTS["parent-task-collapsed"]
+        return ITEM_HEIGHTS['parent-task-collapsed']
       }
       // Calculate expanded height: base + subtasks + add input
       const subtasks = allTasks.filter((t) => t.parentId === item.task.id)
       return (
-        ITEM_HEIGHTS["parent-task-collapsed"] +
-        subtasks.length * ITEM_HEIGHTS["subtask-row"] +
-        ITEM_HEIGHTS["add-subtask-input"]
+        ITEM_HEIGHTS['parent-task-collapsed'] +
+        subtasks.length * ITEM_HEIGHTS['subtask-row'] +
+        ITEM_HEIGHTS['add-subtask-input']
       )
     }
 
-    case "empty-state":
-      return item.variant === "celebration"
-        ? ITEM_HEIGHTS["empty-state-celebration"]
-        : ITEM_HEIGHTS["empty-state"]
+    case 'empty-state':
+      return item.variant === 'celebration'
+        ? ITEM_HEIGHTS['empty-state-celebration']
+        : ITEM_HEIGHTS['empty-state']
 
-    case "add-task-button":
-      return ITEM_HEIGHTS["add-task-button"]
+    case 'add-task-button':
+      return ITEM_HEIGHTS['add-task-button']
 
     default:
       return 50
@@ -195,12 +195,12 @@ export const flattenTasksByDueDate = (
 
   // Group order matches the non-virtualized view
   const groupOrder: (keyof TaskGroupByDate)[] = [
-    "overdue",
-    "today",
-    "tomorrow",
-    "upcoming",
-    "later",
-    "noDueDate",
+    'overdue',
+    'today',
+    'tomorrow',
+    'upcoming',
+    'later',
+    'noDueDate'
   ]
 
   groupOrder.forEach((groupKey) => {
@@ -213,13 +213,13 @@ export const flattenTasksByDueDate = (
     // Add section header
     items.push({
       id: `header-${groupKey}`,
-      type: "section-header",
+      type: 'section-header',
       sectionKey: groupKey,
       label: config.label,
       count: tasksInGroup.length,
       urgency: config.urgency,
       accentColor: config.accentColor,
-      isMuted: config.isMuted,
+      isMuted: config.isMuted
     })
 
     // Add tasks
@@ -233,21 +233,21 @@ export const flattenTasksByDueDate = (
         const subtasks = getSubtasks(task.id, allTasks)
         items.push({
           id: `parent-task-${task.id}`,
-          type: "parent-task",
+          type: 'parent-task',
           task,
           project,
           subtasks,
           sectionId: groupKey,
-          isOverdue: groupKey === "overdue",
+          isOverdue: groupKey === 'overdue'
         })
       } else {
         items.push({
           id: `task-${task.id}`,
-          type: "task",
+          type: 'task',
           task,
           project,
           sectionId: groupKey,
-          isOverdue: groupKey === "overdue",
+          isOverdue: groupKey === 'overdue'
         })
       }
     })
@@ -255,8 +255,8 @@ export const flattenTasksByDueDate = (
     // Add "add task" button at end of section
     items.push({
       id: `add-${groupKey}`,
-      type: "add-task-button",
-      sectionId: groupKey,
+      type: 'add-task-button',
+      sectionId: groupKey
     })
   })
 
@@ -294,10 +294,10 @@ export const flattenTodayTasks = (
   if (isEmpty) {
     if (showCelebration) {
       items.push({
-        id: "empty-celebration",
-        type: "empty-state",
-        variant: "celebration",
-        message: "All clear for today!",
+        id: 'empty-celebration',
+        type: 'empty-state',
+        variant: 'celebration',
+        message: 'All clear for today!'
       })
     }
     return items
@@ -306,13 +306,13 @@ export const flattenTodayTasks = (
   // Overdue section
   if (hasOverdue) {
     items.push({
-      id: "header-overdue",
-      type: "section-header",
-      sectionKey: "overdue",
-      label: "OVERDUE",
+      id: 'header-overdue',
+      type: 'section-header',
+      sectionKey: 'overdue',
+      label: 'OVERDUE',
       count: todayData.overdue.length,
-      urgency: "critical",
-      accentColor: "#ef4444",
+      urgency: 'critical',
+      accentColor: '#ef4444'
     })
 
     const topLevelOverdue = getTopLevelTasks(todayData.overdue)
@@ -326,21 +326,21 @@ export const flattenTodayTasks = (
         const subtasks = getSubtasks(task.id, allTasks)
         items.push({
           id: `parent-task-${task.id}`,
-          type: "parent-task",
+          type: 'parent-task',
           task,
           project,
           subtasks,
-          sectionId: "overdue",
-          isOverdue: true,
+          sectionId: 'overdue',
+          isOverdue: true
         })
       } else {
         items.push({
           id: `task-${task.id}`,
-          type: "task",
+          type: 'task',
           task,
           project,
-          sectionId: "overdue",
-          isOverdue: true,
+          sectionId: 'overdue',
+          isOverdue: true
         })
       }
     })
@@ -348,13 +348,13 @@ export const flattenTodayTasks = (
 
   // Today section
   items.push({
-    id: "header-today",
-    type: "section-header",
-    sectionKey: "today",
-    label: "TODAY",
+    id: 'header-today',
+    type: 'section-header',
+    sectionKey: 'today',
+    label: 'TODAY',
     count: todayData.today.length,
-    urgency: "high",
-    accentColor: "#3b82f6",
+    urgency: 'high',
+    accentColor: '#3b82f6'
   })
 
   if (hasToday) {
@@ -369,19 +369,19 @@ export const flattenTodayTasks = (
         const subtasks = getSubtasks(task.id, allTasks)
         items.push({
           id: `parent-task-${task.id}`,
-          type: "parent-task",
+          type: 'parent-task',
           task,
           project,
           subtasks,
-          sectionId: "today",
+          sectionId: 'today'
         })
       } else {
         items.push({
           id: `task-${task.id}`,
-          type: "task",
+          type: 'task',
           task,
           project,
-          sectionId: "today",
+          sectionId: 'today'
         })
       }
     })
@@ -389,9 +389,9 @@ export const flattenTodayTasks = (
 
   // Add task button at end
   items.push({
-    id: "add-today",
-    type: "add-task-button",
-    sectionId: "today",
+    id: 'add-today',
+    type: 'add-task-button',
+    sectionId: 'today'
   })
 
   return items
@@ -419,9 +419,9 @@ export const flattenTasksByStatus = (
     // Add status header (always show, even if empty - for drop targets)
     items.push({
       id: `status-header-${group.status.id}`,
-      type: "status-header",
+      type: 'status-header',
       status: group.status,
-      count: group.tasks.length,
+      count: group.tasks.length
     })
 
     // Add tasks in this status
@@ -432,19 +432,19 @@ export const flattenTasksByStatus = (
         const subtasks = getSubtasks(task.id, allTasks)
         items.push({
           id: `parent-task-${task.id}`,
-          type: "parent-task",
+          type: 'parent-task',
           task,
           project,
           subtasks,
-          sectionId: group.status.id,
+          sectionId: group.status.id
         })
       } else {
         items.push({
           id: `task-${task.id}`,
-          type: "task",
+          type: 'task',
           task,
           project,
-          sectionId: group.status.id,
+          sectionId: group.status.id
         })
       }
     })
@@ -462,8 +462,9 @@ export const flattenTasksByStatus = (
  */
 export const getTaskIdsFromVirtualItems = (items: VirtualItem[]): string[] => {
   return items
-    .filter((item): item is TaskItem | ParentTaskItem =>
-      item.type === "task" || item.type === "parent-task"
+    .filter(
+      (item): item is TaskItem | ParentTaskItem =>
+        item.type === 'task' || item.type === 'parent-task'
     )
     .map((item) => item.task.id)
 }

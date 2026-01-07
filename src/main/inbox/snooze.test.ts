@@ -496,10 +496,7 @@ describe('Inbox Snooze Service', () => {
       startSnoozeScheduler()
 
       // Due item should be processed immediately
-      expect(mockSend).toHaveBeenCalledWith(
-        'inbox:snooze-due',
-        expect.anything()
-      )
+      expect(mockSend).toHaveBeenCalledWith('inbox:snooze-due', expect.anything())
     })
 
     it('should process due items every minute', () => {
@@ -521,10 +518,7 @@ describe('Inbox Snooze Service', () => {
       // Advance time by 1 minute
       vi.advanceTimersByTime(60 * 1000)
 
-      expect(mockSend).toHaveBeenCalledWith(
-        'inbox:snooze-due',
-        expect.anything()
-      )
+      expect(mockSend).toHaveBeenCalledWith('inbox:snooze-due', expect.anything())
     })
 
     it('should handle errors gracefully in scheduler', () => {

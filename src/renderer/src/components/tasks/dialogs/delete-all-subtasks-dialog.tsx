@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react"
+import { Trash2 } from 'lucide-react'
 
 import {
   AlertDialog,
@@ -8,10 +8,10 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import type { Task } from "@/data/sample-tasks"
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import type { Task } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -34,7 +34,7 @@ export const DeleteAllSubtasksDialog = ({
   parentTitle,
   subtasks,
   onClose,
-  onConfirm,
+  onConfirm
 }: DeleteAllSubtasksDialogProps): React.JSX.Element => {
   const handleConfirm = (): void => {
     onConfirm()
@@ -55,7 +55,7 @@ export const DeleteAllSubtasksDialog = ({
             <div className="space-y-3">
               <p>
                 This will delete {subtasks.length} subtask
-                {subtasks.length !== 1 ? "s" : ""} from &ldquo;{parentTitle}
+                {subtasks.length !== 1 ? 's' : ''} from &ldquo;{parentTitle}
                 &rdquo;.
               </p>
 
@@ -63,25 +63,18 @@ export const DeleteAllSubtasksDialog = ({
               <ScrollArea className="max-h-[200px] rounded-lg border p-3">
                 <ul className="space-y-1.5">
                   {subtasks.map((subtask) => (
-                    <li
-                      key={subtask.id}
-                      className="flex items-center gap-2 text-sm"
-                    >
+                    <li key={subtask.id} className="flex items-center gap-2 text-sm">
                       <span className="text-muted-foreground">•</span>
                       <span className="truncate">{subtask.title}</span>
                       {subtask.completedAt && (
-                        <span className="text-xs text-green-600 dark:text-green-400">
-                          ✓
-                        </span>
+                        <span className="text-xs text-green-600 dark:text-green-400">✓</span>
                       )}
                     </li>
                   ))}
                 </ul>
               </ScrollArea>
 
-              <p className="text-destructive text-sm font-medium">
-                This action cannot be undone.
-              </p>
+              <p className="text-destructive text-sm font-medium">This action cannot be undone.</p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -100,11 +93,3 @@ export const DeleteAllSubtasksDialog = ({
 }
 
 export default DeleteAllSubtasksDialog
-
-
-
-
-
-
-
-

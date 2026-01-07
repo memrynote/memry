@@ -29,9 +29,7 @@ export function SearchResultItem({
       className={cn(
         'w-full text-left px-3 py-2.5 rounded-md transition-colors',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        isSelected
-          ? 'bg-accent text-accent-foreground'
-          : 'hover:bg-muted'
+        isSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
       )}
       role="option"
       aria-selected={isSelected}
@@ -73,9 +71,7 @@ export function SearchResultItem({
             </span>
           ))}
           {tags.length > 3 && (
-            <span className="text-xs text-muted-foreground">
-              +{tags.length - 3}
-            </span>
+            <span className="text-xs text-muted-foreground">+{tags.length - 3}</span>
           )}
         </div>
       )}

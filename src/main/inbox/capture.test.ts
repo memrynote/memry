@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { InboxChannels } from '@shared/ipc-channels'
 import { inboxItems, inboxItemTags } from '@shared/db/schema/inbox'
-import { createTestDatabase, cleanupTestDatabase, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDatabase,
+  cleanupTestDatabase,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { MockBrowserWindow } from '@tests/utils/mock-electron'
 import { BrowserWindow } from 'electron'
 

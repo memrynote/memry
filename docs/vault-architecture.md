@@ -80,9 +80,9 @@ MyVault/                          # User-selected folder
 
 ### Database Separation
 
-| Database | Purpose | Rebuildable? |
-|----------|---------|--------------|
-| `data.db` | Tasks, projects, statuses | NO - source of truth |
+| Database   | Purpose                      | Rebuildable?             |
+| ---------- | ---------------------------- | ------------------------ |
+| `data.db`  | Tasks, projects, statuses    | NO - source of truth     |
 | `index.db` | Note cache, FTS index, links | YES - rebuilt from files |
 
 ## File Locations
@@ -176,51 +176,51 @@ Main                        Preload                     Renderer
 
 ### Invoke Channels (Request/Response)
 
-| Channel | Input | Output | Description |
-|---------|-------|--------|-------------|
-| `vault:select` | `{ path?: string }` | `SelectVaultResponse` | Open folder picker or use path |
-| `vault:get-status` | none | `VaultStatus` | Get current vault state |
-| `vault:get-config` | none | `VaultConfig` | Get vault configuration |
-| `vault:update-config` | `Partial<VaultConfig>` | `VaultConfig` | Update configuration |
-| `vault:close` | none | `void` | Close current vault |
-| `vault:get-all` | none | `GetVaultsResponse` | List all known vaults |
-| `vault:switch` | `string` | `SelectVaultResponse` | Switch to different vault |
-| `vault:remove` | `string` | `void` | Remove from known list |
-| `vault:reindex` | none | `void` | Trigger manual reindex |
+| Channel               | Input                  | Output                | Description                    |
+| --------------------- | ---------------------- | --------------------- | ------------------------------ |
+| `vault:select`        | `{ path?: string }`    | `SelectVaultResponse` | Open folder picker or use path |
+| `vault:get-status`    | none                   | `VaultStatus`         | Get current vault state        |
+| `vault:get-config`    | none                   | `VaultConfig`         | Get vault configuration        |
+| `vault:update-config` | `Partial<VaultConfig>` | `VaultConfig`         | Update configuration           |
+| `vault:close`         | none                   | `void`                | Close current vault            |
+| `vault:get-all`       | none                   | `GetVaultsResponse`   | List all known vaults          |
+| `vault:switch`        | `string`               | `SelectVaultResponse` | Switch to different vault      |
+| `vault:remove`        | `string`               | `void`                | Remove from known list         |
+| `vault:reindex`       | none                   | `void`                | Trigger manual reindex         |
 
 ### Event Channels (Main → Renderer)
 
-| Channel | Payload | Description |
-|---------|---------|-------------|
-| `vault:status-changed` | `VaultStatus` | Vault state changed |
-| `vault:index-progress` | `number` | Indexing progress (0-100) |
-| `vault:error` | `string` | Error occurred |
+| Channel                | Payload       | Description               |
+| ---------------------- | ------------- | ------------------------- |
+| `vault:status-changed` | `VaultStatus` | Vault state changed       |
+| `vault:index-progress` | `number`      | Indexing progress (0-100) |
+| `vault:error`          | `string`      | Error occurred            |
 
 ## Key Types
 
 ```typescript
 interface VaultInfo {
-  path: string           // Absolute path to vault folder
-  name: string           // Folder name
-  noteCount: number      // Number of markdown files
-  taskCount: number      // Number of tasks
-  lastOpened: string     // ISO timestamp
-  isDefault: boolean     // Is this the default vault?
+  path: string // Absolute path to vault folder
+  name: string // Folder name
+  noteCount: number // Number of markdown files
+  taskCount: number // Number of tasks
+  lastOpened: string // ISO timestamp
+  isDefault: boolean // Is this the default vault?
 }
 
 interface VaultStatus {
-  isOpen: boolean        // Is a vault currently open?
-  path: string | null    // Path to open vault
-  isIndexing: boolean    // Is indexing in progress?
-  indexProgress: number  // 0-100
-  error: string | null   // Current error message
+  isOpen: boolean // Is a vault currently open?
+  path: string | null // Path to open vault
+  isIndexing: boolean // Is indexing in progress?
+  indexProgress: number // 0-100
+  error: string | null // Current error message
 }
 
 interface VaultConfig {
-  excludePatterns: string[]    // ['.git', 'node_modules', '.trash']
-  defaultNoteFolder: string    // 'notes'
-  journalFolder: string        // 'journal'
-  attachmentsFolder: string    // 'attachments'
+  excludePatterns: string[] // ['.git', 'node_modules', '.trash']
+  defaultNoteFolder: string // 'notes'
+  journalFolder: string // 'journal'
+  attachmentsFolder: string // 'attachments'
 }
 ```
 
@@ -270,23 +270,13 @@ interface VaultConfig {
 
 ```tsx
 function VaultSelector() {
-  const {
-    status,
-    isLoading,
-    error,
-    selectVault,
-    closeVault
-  } = useVault()
+  const { status, isLoading, error, selectVault, closeVault } = useVault()
 
   if (isLoading) return <Spinner />
   if (error) return <ErrorMessage error={error} />
 
   if (!status?.isOpen) {
-    return (
-      <button onClick={() => selectVault()}>
-        Select Vault
-      </button>
-    )
+    return <button onClick={() => selectVault()}>Select Vault</button>
   }
 
   return (
@@ -307,16 +297,12 @@ function VaultSwitcher() {
 
   return (
     <ul>
-      {vaults.map(vault => (
+      {vaults.map((vault) => (
         <li key={vault.path}>
           {vault.name}
           {vault.path === currentVault && ' (current)'}
-          <button onClick={() => switchVault(vault.path)}>
-            Switch
-          </button>
-          <button onClick={() => removeVault(vault.path)}>
-            Remove
-          </button>
+          <button onClick={() => switchVault(vault.path)}>Switch</button>
+          <button onClick={() => removeVault(vault.path)}>Remove</button>
         </li>
       ))}
     </ul>
@@ -335,7 +321,7 @@ throw new VaultError('Vault not found', VaultErrorCode.NOT_FOUND)
 
 // Type guards
 if (isVaultError(error)) {
-  console.log(error.code)  // VaultErrorCode enum value
+  console.log(error.code) // VaultErrorCode enum value
 }
 ```
 
@@ -345,8 +331,8 @@ if (isVaultError(error)) {
 
 ```typescript
 interface StoreSchema {
-  currentVault: string | null     // Path to current vault
-  vaults: StoredVaultInfo[]       // List of known vaults
+  currentVault: string | null // Path to current vault
+  vaults: StoredVaultInfo[] // List of known vaults
 }
 ```
 

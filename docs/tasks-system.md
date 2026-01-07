@@ -5,6 +5,7 @@ This document provides a comprehensive guide to the tasks implementation in Memr
 ## Overview
 
 The tasks system is the core feature of Memry, providing:
+
 - Task CRUD operations with subtask hierarchy
 - Project organization with customizable statuses (kanban-style)
 - Due dates, priorities, and recurring tasks
@@ -34,18 +35,18 @@ UI Components (src/renderer/src/components/tasks/)
 
 ## File Locations Quick Reference
 
-| Layer | File Path |
-|-------|-----------|
-| **Schema** | `src/shared/db/schema/tasks.ts`, `projects.ts`, `statuses.ts`, `task-relations.ts` |
-| **Contracts** | `src/shared/contracts/tasks-api.ts` |
-| **Queries** | `src/shared/db/queries/tasks.ts`, `projects.ts` |
-| **IPC Channels** | `src/shared/ipc-channels.ts` |
-| **IPC Handlers** | `src/main/ipc/tasks-handlers.ts` |
-| **Service** | `src/renderer/src/services/tasks-service.ts` |
-| **Context** | `src/renderer/src/contexts/tasks/index.tsx` |
-| **Hooks** | `src/renderer/src/hooks/use-task-*.ts` |
-| **Utilities** | `src/renderer/src/lib/task-utils.ts`, `subtask-utils.ts` |
-| **Components** | `src/renderer/src/components/tasks/` |
+| Layer            | File Path                                                                          |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| **Schema**       | `src/shared/db/schema/tasks.ts`, `projects.ts`, `statuses.ts`, `task-relations.ts` |
+| **Contracts**    | `src/shared/contracts/tasks-api.ts`                                                |
+| **Queries**      | `src/shared/db/queries/tasks.ts`, `projects.ts`                                    |
+| **IPC Channels** | `src/shared/ipc-channels.ts`                                                       |
+| **IPC Handlers** | `src/main/ipc/tasks-handlers.ts`                                                   |
+| **Service**      | `src/renderer/src/services/tasks-service.ts`                                       |
+| **Context**      | `src/renderer/src/contexts/tasks/index.tsx`                                        |
+| **Hooks**        | `src/renderer/src/hooks/use-task-*.ts`                                             |
+| **Utilities**    | `src/renderer/src/lib/task-utils.ts`, `subtask-utils.ts`                           |
+| **Components**   | `src/renderer/src/components/tasks/`                                               |
 
 ---
 
@@ -217,36 +218,36 @@ StatusUpdateSchema: { id, name?, color?, position?, isDefault?, isDone? }
 ### Core CRUD
 
 ```typescript
-insertTask(db, task)           // Insert new task
-updateTask(db, id, updates)    // Partial update
-deleteTask(db, id)             // Hard delete
-getTaskById(db, id)            // Single task lookup
-taskExists(db, id)             // Existence check
+insertTask(db, task) // Insert new task
+updateTask(db, id, updates) // Partial update
+deleteTask(db, id) // Hard delete
+getTaskById(db, id) // Single task lookup
+taskExists(db, id) // Existence check
 ```
 
 ### Listing & Filtering
 
 ```typescript
-listTasks(db, filters)  // Complex query with:
-  // - projectId, statusId, parentId matching
-  // - Completed/archived exclusion
-  // - Due date ranges (dueBefore, dueAfter)
-  // - Tag-based filtering
-  // - Sorting (position, dueDate, priority, created, modified)
-  // - Pagination (limit, offset)
+listTasks(db, filters) // Complex query with:
+// - projectId, statusId, parentId matching
+// - Completed/archived exclusion
+// - Due date ranges (dueBefore, dueAfter)
+// - Tag-based filtering
+// - Sorting (position, dueDate, priority, created, modified)
+// - Pagination (limit, offset)
 
-countTasks(db, filters)              // Count with filters
-getTasksByProject(db, projectId)     // Active tasks in project
-getSubtasks(db, parentId)            // Children of parent
-countSubtasks(db, parentId)          // Subtask counts
+countTasks(db, filters) // Count with filters
+getTasksByProject(db, projectId) // Active tasks in project
+getSubtasks(db, parentId) // Children of parent
+countSubtasks(db, parentId) // Subtask counts
 ```
 
 ### Task Views (Specialized Queries)
 
 ```typescript
-getTodayTasks(db)                    // Due today, ordered by time
-getOverdueTasks(db)                  // Past-due uncompleted
-getUpcomingTasks(db, { days })       // Due within N days
+getTodayTasks(db) // Due today, ordered by time
+getOverdueTasks(db) // Past-due uncompleted
+getUpcomingTasks(db, { days }) // Due within N days
 ```
 
 ### Task Actions
@@ -264,13 +265,13 @@ duplicateTask(db, id)                // Clone with "(copy)" suffix
 ### Tags & Note Links
 
 ```typescript
-setTaskTags(db, taskId, tags)        // Replace all tags
-getTaskTags(db, taskId)              // Get task's tags
-getAllTaskTags(db)                   // All tags with counts
+setTaskTags(db, taskId, tags) // Replace all tags
+getTaskTags(db, taskId) // Get task's tags
+getAllTaskTags(db) // All tags with counts
 
-setTaskNotes(db, taskId, noteIds)    // Replace linked notes
-getTaskNoteIds(db, taskId)           // Get linked note IDs
-getTasksLinkedToNote(db, noteId)     // Reverse lookup
+setTaskNotes(db, taskId, noteIds) // Replace linked notes
+getTaskNoteIds(db, taskId) // Get linked note IDs
+getTasksLinkedToNote(db, noteId) // Reverse lookup
 ```
 
 ### Bulk Operations
@@ -338,17 +339,21 @@ import { ipcMain } from 'electron'
 import { createValidatedHandler } from './validate'
 import { TaskCreateSchema } from '@shared/contracts/tasks-api'
 
-ipcMain.handle('tasks:create', createValidatedHandler(TaskCreateSchema, async (input) => {
-  const db = requireDatabase()
-  const task = await taskQueries.insertTask(db, input)
-  emitTaskEvent('tasks:created', task)
-  return { success: true, data: task }
-}))
+ipcMain.handle(
+  'tasks:create',
+  createValidatedHandler(TaskCreateSchema, async (input) => {
+    const db = requireDatabase()
+    const task = await taskQueries.insertTask(db, input)
+    emitTaskEvent('tasks:created', task)
+    return { success: true, data: task }
+  })
+)
 ```
 
 ### IPC Channels
 
 **Task Operations:**
+
 - `tasks:create`, `tasks:get`, `tasks:update`, `tasks:delete`, `tasks:list`
 - `tasks:complete`, `tasks:uncomplete`
 - `tasks:archive`, `tasks:unarchive`
@@ -357,24 +362,28 @@ ipcMain.handle('tasks:create', createValidatedHandler(TaskCreateSchema, async (i
 - `tasks:get-tags`
 
 **Project Operations:**
+
 - `tasks:project-create`, `tasks:project-get`, `tasks:project-update`, `tasks:project-delete`
 - `tasks:project-list`, `tasks:project-archive`, `tasks:project-reorder`
 
 **Status Operations:**
+
 - `tasks:status-create`, `tasks:status-update`, `tasks:status-delete`
 - `tasks:status-reorder`, `tasks:status-list`
 
 **Bulk Operations:**
+
 - `tasks:bulk-complete`, `tasks:bulk-delete`, `tasks:bulk-move`, `tasks:bulk-archive`
 
 **Stats & Views:**
+
 - `tasks:get-stats`, `tasks:get-today`, `tasks:get-upcoming`, `tasks:get-overdue`
 
 ### Event Emission
 
 ```typescript
 function emitTaskEvent(channel: string, data: unknown) {
-  BrowserWindow.getAllWindows().forEach(win => {
+  BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send(channel, data)
   })
 }
@@ -398,7 +407,7 @@ export const tasksService = {
   update: (input: TaskUpdateInput) => window.api.tasks.update(input),
   delete: (id: string) => window.api.tasks.delete(id),
   list: (filters?: TaskListInput) => window.api.tasks.list(filters),
-  complete: (id: string) => window.api.tasks.complete(id),
+  complete: (id: string) => window.api.tasks.complete(id)
   // ... etc
 }
 
@@ -465,7 +474,7 @@ function dbTaskToUiTask(dbTask: DbTask): UiTask {
   return {
     ...dbTask,
     priority: priorityFromInt(dbTask.priority),
-    dueDate: dbTask.dueDate ? parseDate(dbTask.dueDate) : undefined,
+    dueDate: dbTask.dueDate ? parseDate(dbTask.dueDate) : undefined
     // ... etc
   }
 }
@@ -492,14 +501,7 @@ Task position/reordering persistence.
 Multi-select for bulk operations:
 
 ```typescript
-const {
-  selectedIds,
-  isSelected,
-  select,
-  toggle,
-  selectRange,
-  clearSelection
-} = useTaskSelection()
+const { selectedIds, isSelected, select, toggle, selectRange, clearSelection } = useTaskSelection()
 ```
 
 ### `use-task-settings.ts`
@@ -512,24 +514,25 @@ Task-specific settings management.
 
 ### Core Display Components
 
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `task-row.tsx` | `/tasks/` | Individual task rendering |
-| `task-list.tsx` | `/tasks/` | Task collection with grouping |
-| `task-group.tsx` | `/tasks/` | Group tasks by status/date/project |
-| `task-section.tsx` | `/tasks/` | Section wrapper with headers |
+| Component          | Location  | Purpose                            |
+| ------------------ | --------- | ---------------------------------- |
+| `task-row.tsx`     | `/tasks/` | Individual task rendering          |
+| `task-list.tsx`    | `/tasks/` | Task collection with grouping      |
+| `task-group.tsx`   | `/tasks/` | Group tasks by status/date/project |
+| `task-section.tsx` | `/tasks/` | Section wrapper with headers       |
 
 ### Detail Panel
 
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `task-detail-panel.tsx` | `/tasks/` | Right-side detail view |
+| Component                  | Location  | Purpose                 |
+| -------------------------- | --------- | ----------------------- |
+| `task-detail-panel.tsx`    | `/tasks/` | Right-side detail view  |
 | `task-properties-grid.tsx` | `/tasks/` | Grid of editable fields |
-| `task-description.tsx` | `/tasks/` | Description editor |
+| `task-description.tsx`     | `/tasks/` | Description editor      |
 
 ### Subtask Components
 
 Located in `/tasks/`:
+
 - `subtask-row.tsx`, `sortable-subtask-row.tsx`
 - `sortable-subtask-list.tsx`
 - `add-subtask-input.tsx`
@@ -538,6 +541,7 @@ Located in `/tasks/`:
 ### Interactive Badges
 
 **File:** `task-badges.tsx`
+
 - `TaskCheckbox` - Completion toggle
 - `InteractiveProjectBadge` - Project selector dropdown
 - `InteractivePriorityBadge` - Priority picker
@@ -585,6 +589,7 @@ All mutations emit IPC events → Context subscribes → Multi-window support
 ### Soft Deletes
 
 Tasks and projects use `archivedAt` nullable field:
+
 - Queries filter by `isNull(archivedAt)` by default
 - Preserves audit trail and enables undo
 

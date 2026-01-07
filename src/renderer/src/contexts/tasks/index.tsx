@@ -161,64 +161,64 @@ function dbProjectToUiProject(dbProject: DbProject | ProjectWithStats): Project 
 
 interface TasksContextValue {
   // Data
-  tasks: Task[];
-  projects: Project[];
+  tasks: Task[]
+  projects: Project[]
 
   // Selection state
-  taskSelectedId: string;
-  taskSelectedType: TaskSelectionType;
-  selectedTaskIds: Set<string>;
+  taskSelectedId: string
+  taskSelectedType: TaskSelectionType
+  selectedTaskIds: Set<string>
 
   // Actions
-  setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void;
-  setProjects: (projects: Project[] | ((prev: Project[]) => Project[])) => void;
-  setSelection: (id: string, type: TaskSelectionType) => void;
-  setSelectedTaskIds: (ids: Set<string>) => void;
+  setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void
+  setProjects: (projects: Project[] | ((prev: Project[]) => Project[])) => void
+  setSelection: (id: string, type: TaskSelectionType) => void
+  setSelectedTaskIds: (ids: Set<string>) => void
 
   // Task operations
-  addTask: (task: Task) => void;
-  updateTask: (taskId: string, updates: Partial<Task>) => void;
-  deleteTask: (taskId: string) => void;
+  addTask: (task: Task) => void
+  updateTask: (taskId: string, updates: Partial<Task>) => void
+  deleteTask: (taskId: string) => void
 
   // Project operations
-  addProject: (project: Project) => void;
-  updateProject: (projectId: string, updates: Partial<Project>) => void;
-  deleteProject: (projectId: string) => void;
+  addProject: (project: Project) => void
+  updateProject: (projectId: string, updates: Partial<Project>) => void
+  deleteProject: (projectId: string) => void
 }
 
 interface TasksProviderProps {
-  children: ReactNode;
-  initialTasks: Task[];
-  initialProjects: Project[];
-  onTasksChange?: (tasks: Task[]) => void;
-  onProjectsChange?: (projects: Project[]) => void;
+  children: ReactNode
+  initialTasks: Task[]
+  initialProjects: Project[]
+  onTasksChange?: (tasks: Task[]) => void
+  onProjectsChange?: (projects: Project[]) => void
 }
 
 // =============================================================================
 // CONTEXT
 // =============================================================================
 
-const TasksContext = createContext<TasksContextValue | null>(null);
+const TasksContext = createContext<TasksContextValue | null>(null)
 
 // =============================================================================
 // HOOK
 // =============================================================================
 
 export const useTasksContext = (): TasksContextValue => {
-  const context = useContext(TasksContext);
+  const context = useContext(TasksContext)
   if (!context) {
-    throw new Error('useTasksContext must be used within a TasksProvider');
+    throw new Error('useTasksContext must be used within a TasksProvider')
   }
-  return context;
-};
+  return context
+}
 
 /**
  * Optional hook that returns null if used outside provider
  * Useful for components that can work with or without TasksContext
  */
 export const useTasksOptional = (): TasksContextValue | null => {
-  return useContext(TasksContext);
-};
+  return useContext(TasksContext)
+}
 
 // =============================================================================
 // PROVIDER
@@ -265,7 +265,10 @@ export const TasksProvider = ({
                 statuses: statuses.map(dbStatusToUiStatus)
               }
             } catch (error) {
-              console.warn(`[TasksProvider] Failed to load statuses for project ${project.id}:`, error)
+              console.warn(
+                `[TasksProvider] Failed to load statuses for project ${project.id}:`,
+                error
+              )
               return project // Return project without statuses on error
             }
           })
@@ -355,9 +358,7 @@ export const TasksProvider = ({
         // T038: If this is a subtask, update parent's subtaskIds
         if (uiTask.parentId) {
           const updatedPrev = prev.map((t) =>
-            t.id === uiTask.parentId
-              ? { ...t, subtaskIds: [...t.subtaskIds, uiTask.id] }
-              : t
+            t.id === uiTask.parentId ? { ...t, subtaskIds: [...t.subtaskIds, uiTask.id] } : t
           )
           return [uiTask, ...updatedPrev]
         }
@@ -384,9 +385,7 @@ export const TasksProvider = ({
           // Add to new parent's subtaskIds
           if (uiTask.parentId) {
             updated = updated.map((t) =>
-              t.id === uiTask.parentId
-                ? { ...t, subtaskIds: [...t.subtaskIds, event.id] }
-                : t
+              t.id === uiTask.parentId ? { ...t, subtaskIds: [...t.subtaskIds, event.id] } : t
             )
           }
         }
@@ -458,19 +457,19 @@ export const TasksProvider = ({
           // Convert UI RepeatConfig to service format (Date → string)
           const repeatConfigForService = task.repeatConfig
             ? {
-              frequency: task.repeatConfig.frequency,
-              interval: task.repeatConfig.interval,
-              daysOfWeek: task.repeatConfig.daysOfWeek,
-              monthlyType: task.repeatConfig.monthlyType,
-              dayOfMonth: task.repeatConfig.dayOfMonth,
-              weekOfMonth: task.repeatConfig.weekOfMonth,
-              dayOfWeekForMonth: task.repeatConfig.dayOfWeekForMonth,
-              endType: task.repeatConfig.endType,
-              endDate: task.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
-              endCount: task.repeatConfig.endCount,
-              completedCount: task.repeatConfig.completedCount,
-              createdAt: task.repeatConfig.createdAt.toISOString()
-            }
+                frequency: task.repeatConfig.frequency,
+                interval: task.repeatConfig.interval,
+                daysOfWeek: task.repeatConfig.daysOfWeek,
+                monthlyType: task.repeatConfig.monthlyType,
+                dayOfMonth: task.repeatConfig.dayOfMonth,
+                weekOfMonth: task.repeatConfig.weekOfMonth,
+                dayOfWeekForMonth: task.repeatConfig.dayOfWeekForMonth,
+                endType: task.repeatConfig.endType,
+                endDate: task.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
+                endCount: task.repeatConfig.endCount,
+                completedCount: task.repeatConfig.completedCount,
+                createdAt: task.repeatConfig.createdAt.toISOString()
+              }
             : null
 
           await tasksService.create({
@@ -530,19 +529,20 @@ export const TasksProvider = ({
               if (otherUpdates.repeatConfig !== undefined) {
                 repeatConfigForService = otherUpdates.repeatConfig
                   ? {
-                    frequency: otherUpdates.repeatConfig.frequency,
-                    interval: otherUpdates.repeatConfig.interval,
-                    daysOfWeek: otherUpdates.repeatConfig.daysOfWeek,
-                    monthlyType: otherUpdates.repeatConfig.monthlyType,
-                    dayOfMonth: otherUpdates.repeatConfig.dayOfMonth,
-                    weekOfMonth: otherUpdates.repeatConfig.weekOfMonth,
-                    dayOfWeekForMonth: otherUpdates.repeatConfig.dayOfWeekForMonth,
-                    endType: otherUpdates.repeatConfig.endType,
-                    endDate: otherUpdates.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
-                    endCount: otherUpdates.repeatConfig.endCount,
-                    completedCount: otherUpdates.repeatConfig.completedCount,
-                    createdAt: otherUpdates.repeatConfig.createdAt.toISOString()
-                  }
+                      frequency: otherUpdates.repeatConfig.frequency,
+                      interval: otherUpdates.repeatConfig.interval,
+                      daysOfWeek: otherUpdates.repeatConfig.daysOfWeek,
+                      monthlyType: otherUpdates.repeatConfig.monthlyType,
+                      dayOfMonth: otherUpdates.repeatConfig.dayOfMonth,
+                      weekOfMonth: otherUpdates.repeatConfig.weekOfMonth,
+                      dayOfWeekForMonth: otherUpdates.repeatConfig.dayOfWeekForMonth,
+                      endType: otherUpdates.repeatConfig.endType,
+                      endDate:
+                        otherUpdates.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
+                      endCount: otherUpdates.repeatConfig.endCount,
+                      completedCount: otherUpdates.repeatConfig.completedCount,
+                      createdAt: otherUpdates.repeatConfig.createdAt.toISOString()
+                    }
                   : null
               }
 
@@ -590,19 +590,20 @@ export const TasksProvider = ({
               if (otherUpdates.repeatConfig !== undefined) {
                 repeatConfigForService = otherUpdates.repeatConfig
                   ? {
-                    frequency: otherUpdates.repeatConfig.frequency,
-                    interval: otherUpdates.repeatConfig.interval,
-                    daysOfWeek: otherUpdates.repeatConfig.daysOfWeek,
-                    monthlyType: otherUpdates.repeatConfig.monthlyType,
-                    dayOfMonth: otherUpdates.repeatConfig.dayOfMonth,
-                    weekOfMonth: otherUpdates.repeatConfig.weekOfMonth,
-                    dayOfWeekForMonth: otherUpdates.repeatConfig.dayOfWeekForMonth,
-                    endType: otherUpdates.repeatConfig.endType,
-                    endDate: otherUpdates.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
-                    endCount: otherUpdates.repeatConfig.endCount,
-                    completedCount: otherUpdates.repeatConfig.completedCount,
-                    createdAt: otherUpdates.repeatConfig.createdAt.toISOString()
-                  }
+                      frequency: otherUpdates.repeatConfig.frequency,
+                      interval: otherUpdates.repeatConfig.interval,
+                      daysOfWeek: otherUpdates.repeatConfig.daysOfWeek,
+                      monthlyType: otherUpdates.repeatConfig.monthlyType,
+                      dayOfMonth: otherUpdates.repeatConfig.dayOfMonth,
+                      weekOfMonth: otherUpdates.repeatConfig.weekOfMonth,
+                      dayOfWeekForMonth: otherUpdates.repeatConfig.dayOfWeekForMonth,
+                      endType: otherUpdates.repeatConfig.endType,
+                      endDate:
+                        otherUpdates.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
+                      endCount: otherUpdates.repeatConfig.endCount,
+                      completedCount: otherUpdates.repeatConfig.completedCount,
+                      createdAt: otherUpdates.repeatConfig.createdAt.toISOString()
+                    }
                   : null
               }
 
@@ -637,19 +638,19 @@ export const TasksProvider = ({
           if (updates.repeatConfig !== undefined) {
             repeatConfigForService = updates.repeatConfig
               ? {
-                frequency: updates.repeatConfig.frequency,
-                interval: updates.repeatConfig.interval,
-                daysOfWeek: updates.repeatConfig.daysOfWeek,
-                monthlyType: updates.repeatConfig.monthlyType,
-                dayOfMonth: updates.repeatConfig.dayOfMonth,
-                weekOfMonth: updates.repeatConfig.weekOfMonth,
-                dayOfWeekForMonth: updates.repeatConfig.dayOfWeekForMonth,
-                endType: updates.repeatConfig.endType,
-                endDate: updates.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
-                endCount: updates.repeatConfig.endCount,
-                completedCount: updates.repeatConfig.completedCount,
-                createdAt: updates.repeatConfig.createdAt.toISOString()
-              }
+                  frequency: updates.repeatConfig.frequency,
+                  interval: updates.repeatConfig.interval,
+                  daysOfWeek: updates.repeatConfig.daysOfWeek,
+                  monthlyType: updates.repeatConfig.monthlyType,
+                  dayOfMonth: updates.repeatConfig.dayOfMonth,
+                  weekOfMonth: updates.repeatConfig.weekOfMonth,
+                  dayOfWeekForMonth: updates.repeatConfig.dayOfWeekForMonth,
+                  endType: updates.repeatConfig.endType,
+                  endDate: updates.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
+                  endCount: updates.repeatConfig.endCount,
+                  completedCount: updates.repeatConfig.completedCount,
+                  createdAt: updates.repeatConfig.createdAt.toISOString()
+                }
               : null
           }
 
@@ -672,10 +673,14 @@ export const TasksProvider = ({
         } catch (error) {
           console.error('[TasksProvider] Failed to update task:', error)
           // Fallback to local state on error
-          setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task)))
+          setTasks((prev) =>
+            prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
+          )
         }
       } else {
-        setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task)))
+        setTasks((prev) =>
+          prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
+        )
       }
     },
     [isVaultOpen, setTasks]
@@ -805,4 +810,4 @@ export const TasksProvider = ({
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>
 }
 
-export default TasksProvider;
+export default TasksProvider

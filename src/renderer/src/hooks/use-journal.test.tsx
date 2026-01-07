@@ -231,9 +231,7 @@ describe('useJournalEntry', () => {
       const mockEntry = createMockJournalEntry({ date: '2026-01-03' })
 
       ;(window.api.journal.get as ReturnType<typeof vi.fn>).mockResolvedValue(mockEntry)
-      ;(window.api.journal.update as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error('Error')
-      )
+      ;(window.api.journal.update as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Error'))
 
       const { result } = renderHook(() => useJournalEntry('2026-01-03'), { wrapper })
 
@@ -533,9 +531,7 @@ describe('useDayContext', () => {
 
   it('should load day context with tasks', async () => {
     const mockContext = {
-      tasks: [
-        { id: 'task-1', title: 'Task 1', dueDate: '2026-01-03' }
-      ],
+      tasks: [{ id: 'task-1', title: 'Task 1', dueDate: '2026-01-03' }],
       events: [],
       overdueCount: 2
     }

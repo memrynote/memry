@@ -27,7 +27,6 @@ describe('templates-service', () => {
     api.onTemplateCreated = vi.fn().mockReturnValue(() => {})
     api.onTemplateUpdated = vi.fn().mockReturnValue(() => {})
     api.onTemplateDeleted = vi.fn().mockReturnValue(() => {})
-
     ;(window as Window & { api: unknown }).api = api
   })
 

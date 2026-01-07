@@ -25,9 +25,7 @@ vi.mock('electron', () => ({
     })
   },
   BrowserWindow: {
-    getAllWindows: vi.fn(() => [
-      { webContents: { send: vi.fn() } }
-    ])
+    getAllWindows: vi.fn(() => [{ webContents: { send: vi.fn() } }])
   }
 }))
 
@@ -180,11 +178,10 @@ describe('tasks-handlers', () => {
           tags: ['important', 'urgent']
         })
 
-        expect(taskQueries.setTaskTags).toHaveBeenCalledWith(
-          mockDb,
-          'generated-id-123',
-          ['important', 'urgent']
-        )
+        expect(taskQueries.setTaskTags).toHaveBeenCalledWith(mockDb, 'generated-id-123', [
+          'important',
+          'urgent'
+        ])
       })
 
       it('should create a task with linked notes', async () => {
@@ -197,11 +194,10 @@ describe('tasks-handlers', () => {
           linkedNoteIds: ['note1', 'note2']
         })
 
-        expect(taskQueries.setTaskNotes).toHaveBeenCalledWith(
-          mockDb,
-          'generated-id-123',
-          ['note1', 'note2']
-        )
+        expect(taskQueries.setTaskNotes).toHaveBeenCalledWith(mockDb, 'generated-id-123', [
+          'note1',
+          'note2'
+        ])
       })
 
       it('should handle creation errors', async () => {
@@ -465,7 +461,10 @@ describe('tasks-handlers', () => {
     describe('BULK_MOVE handler', () => {
       it('should move multiple tasks to a project', async () => {
         ;(taskQueries.bulkMoveTasks as Mock).mockReturnValue(2)
-        ;(taskQueries.getTaskById as Mock).mockReturnValue({ id: 'task1', projectId: 'new-project' })
+        ;(taskQueries.getTaskById as Mock).mockReturnValue({
+          id: 'task1',
+          projectId: 'new-project'
+        })
 
         const result = await invokeHandler(TasksChannels.invoke.BULK_MOVE, {
           ids: ['task1', 'task2'],
@@ -480,7 +479,10 @@ describe('tasks-handlers', () => {
     describe('BULK_ARCHIVE handler', () => {
       it('should archive multiple tasks', async () => {
         ;(taskQueries.bulkArchiveTasks as Mock).mockReturnValue(2)
-        ;(taskQueries.getTaskById as Mock).mockReturnValue({ id: 'task1', archivedAt: '2026-01-03' })
+        ;(taskQueries.getTaskById as Mock).mockReturnValue({
+          id: 'task1',
+          archivedAt: '2026-01-03'
+        })
 
         const result = await invokeHandler(TasksChannels.invoke.BULK_ARCHIVE, {
           ids: ['task1', 'task2']

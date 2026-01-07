@@ -34,18 +34,32 @@ import { useQuickSearch, useRecentSearches } from '@/hooks/use-search'
 // ============================================================================
 
 const mockNotes = [
-  { id: 'note-1', title: 'Meeting Notes', path: 'notes/Meeting Notes.md', snippet: 'Today we discussed...', tags: ['work'] },
-  { id: 'note-2', title: 'Project Ideas', path: 'notes/Project Ideas.md', snippet: 'New features to consider...', tags: ['ideas'] },
-  { id: 'note-3', title: 'Daily Journal', path: 'notes/Daily Journal.md', snippet: 'Reflections on the day...', tags: ['personal'] }
+  {
+    id: 'note-1',
+    title: 'Meeting Notes',
+    path: 'notes/Meeting Notes.md',
+    snippet: 'Today we discussed...',
+    tags: ['work']
+  },
+  {
+    id: 'note-2',
+    title: 'Project Ideas',
+    path: 'notes/Project Ideas.md',
+    snippet: 'New features to consider...',
+    tags: ['ideas']
+  },
+  {
+    id: 'note-3',
+    title: 'Daily Journal',
+    path: 'notes/Daily Journal.md',
+    snippet: 'Reflections on the day...',
+    tags: ['personal']
+  }
 ]
 
 const mockRecentSearches = ['react', 'typescript', 'meeting']
 
-const setupMocks = (
-  notes = mockNotes,
-  recentSearches = mockRecentSearches,
-  isLoading = false
-) => {
+const setupMocks = (notes = mockNotes, recentSearches = mockRecentSearches, isLoading = false) => {
   const setQuery = vi.fn()
   const clear = vi.fn()
   const addRecent = vi.fn()
@@ -58,7 +72,6 @@ const setupMocks = (
     setQuery,
     clear
   })
-
   ;(useRecentSearches as ReturnType<typeof vi.fn>).mockReturnValue({
     recent: recentSearches,
     isLoading: false,
@@ -73,19 +86,16 @@ const setupMocks = (
 // Test Helpers
 // ============================================================================
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false }
-  }
-})
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false }
+    }
+  })
 
 const renderWithProviders = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>
-  )
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
 // ============================================================================
@@ -244,7 +254,9 @@ describe('T524: SearchModal - keyboard navigation', () => {
     expect(screen.getByText('react')).toBeInTheDocument()
     expect(screen.getByText('typescript')).toBeInTheDocument()
     // Check that one item has aria-selected="true"
-    const selectedItems = screen.getAllByRole('option').filter((el) => el.getAttribute('aria-selected') === 'true')
+    const selectedItems = screen
+      .getAllByRole('option')
+      .filter((el) => el.getAttribute('aria-selected') === 'true')
     expect(selectedItems.length).toBeGreaterThanOrEqual(1)
   })
 
@@ -258,7 +270,9 @@ describe('T524: SearchModal - keyboard navigation', () => {
 
     // Verify items are still rendered and at least one is selected
     expect(screen.getByText('react')).toBeInTheDocument()
-    const selectedItems = screen.getAllByRole('option').filter((el) => el.getAttribute('aria-selected') === 'true')
+    const selectedItems = screen
+      .getAllByRole('option')
+      .filter((el) => el.getAttribute('aria-selected') === 'true')
     expect(selectedItems.length).toBeGreaterThanOrEqual(1)
   })
 
@@ -274,7 +288,9 @@ describe('T524: SearchModal - keyboard navigation', () => {
     // Verify items are rendered
     expect(screen.getByText('meeting')).toBeInTheDocument()
     // Check that one item is selected
-    const selectedItems = screen.getAllByRole('option').filter((el) => el.getAttribute('aria-selected') === 'true')
+    const selectedItems = screen
+      .getAllByRole('option')
+      .filter((el) => el.getAttribute('aria-selected') === 'true')
     expect(selectedItems.length).toBe(1)
   })
 
@@ -290,7 +306,9 @@ describe('T524: SearchModal - keyboard navigation', () => {
     // Verify items are rendered
     expect(screen.getByText('react')).toBeInTheDocument()
     // Check that one item is selected
-    const selectedItems = screen.getAllByRole('option').filter((el) => el.getAttribute('aria-selected') === 'true')
+    const selectedItems = screen
+      .getAllByRole('option')
+      .filter((el) => el.getAttribute('aria-selected') === 'true')
     expect(selectedItems.length).toBe(1)
   })
 
@@ -353,7 +371,9 @@ describe('T524: SearchModal - keyboard navigation', () => {
 
     const user = userEvent.setup()
 
-    renderWithProviders(<SearchModal {...defaultProps} onClose={onClose} onSelectNote={onSelectNote} />)
+    renderWithProviders(
+      <SearchModal {...defaultProps} onClose={onClose} onSelectNote={onSelectNote} />
+    )
 
     await user.keyboard('{Enter}')
 
@@ -371,7 +391,9 @@ describe('T524: SearchModal - keyboard navigation', () => {
     // Verify items are rendered
     expect(screen.getByText('meeting')).toBeInTheDocument()
     // Scroll behavior is tested implicitly - just verify selection works
-    const selectedItems = screen.getAllByRole('option').filter((el) => el.getAttribute('aria-selected') === 'true')
+    const selectedItems = screen
+      .getAllByRole('option')
+      .filter((el) => el.getAttribute('aria-selected') === 'true')
     expect(selectedItems.length).toBe(1)
   })
 })
@@ -447,7 +469,6 @@ describe('SearchModal - result display', () => {
       setQuery: vi.fn(),
       clear: vi.fn()
     })
-
     ;(useRecentSearches as ReturnType<typeof vi.fn>).mockReturnValue({
       recent: [],
       isLoading: false,
@@ -470,7 +491,6 @@ describe('SearchModal - result display', () => {
       setQuery: vi.fn(),
       clear: vi.fn()
     })
-
     ;(useRecentSearches as ReturnType<typeof vi.fn>).mockReturnValue({
       recent: [],
       isLoading: false,
@@ -491,7 +511,6 @@ describe('SearchModal - result display', () => {
       setQuery: vi.fn(),
       clear: vi.fn()
     })
-
     ;(useRecentSearches as ReturnType<typeof vi.fn>).mockReturnValue({
       recent: [],
       isLoading: false,

@@ -281,18 +281,14 @@ describe('BookmarkBulkCreateSchema', () => {
 
   it('should validate single item', () => {
     const result = BookmarkBulkCreateSchema.safeParse({
-      items: [
-        { itemType: 'note', itemId: 'note-1' }
-      ]
+      items: [{ itemType: 'note', itemId: 'note-1' }]
     })
     expect(result.success).toBe(true)
   })
 
   it('should reject item with empty itemId', () => {
     const result = BookmarkBulkCreateSchema.safeParse({
-      items: [
-        { itemType: 'note', itemId: '' }
-      ]
+      items: [{ itemType: 'note', itemId: '' }]
     })
     expect(result.success).toBe(false)
   })
@@ -304,9 +300,7 @@ describe('BookmarkBulkCreateSchema', () => {
 
   it('should reject item missing itemType', () => {
     const result = BookmarkBulkCreateSchema.safeParse({
-      items: [
-        { itemId: 'note-1' }
-      ]
+      items: [{ itemId: 'note-1' }]
     })
     expect(result.success).toBe(false)
   })

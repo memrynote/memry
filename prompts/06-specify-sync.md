@@ -33,16 +33,18 @@ Build the sync engine that synchronizes encrypted data between devices:
 
 ### Key Hierarchy
 ```
+
 Recovery Key (24 words BIP39)
-        │
-        └──► Master Key (256-bit, derived via Argon2id)
-                │
-                ├──► Vault Key (derived, encrypts vault data)
-                │
-                ├──► File Keys (random per file, encrypted with Vault Key)
-                │
-                └──► Device Keys (derived per device for device auth)
-```
+│
+└──► Master Key (256-bit, derived via Argon2id)
+│
+├──► Vault Key (derived, encrypts vault data)
+│
+├──► File Keys (random per file, encrypted with Vault Key)
+│
+└──► Device Keys (derived per device for device auth)
+
+````
 
 ### Encryption Scheme
 ```typescript
@@ -79,9 +81,10 @@ function encryptItem(item: PlainItem, vaultKey: Uint8Array): EncryptedItem {
     modifiedAt: new Date()
   }
 }
-```
+````
 
 ### Key Derivation
+
 ```typescript
 // From recovery phrase to master key
 async function deriveMainKey(recoveryPhrase: string, salt: Uint8Array): Promise<Uint8Array> {
@@ -103,13 +106,14 @@ async function deriveMainKey(recoveryPhrase: string, salt: Uint8Array): Promise<
 
 // Derive vault key from master key
 function deriveVaultKey(masterKey: Uint8Array): Uint8Array {
-  return hkdf(masterKey, "memry-vault-key", 32)
+  return hkdf(masterKey, 'memry-vault-key', 32)
 }
 ```
 
 ## FUNCTIONAL REQUIREMENTS
 
 ### First Device Setup
+
 ```
 1. User signs up (OAuth: Google/Apple/GitHub)
 2. Generate random master key (256 bits)
@@ -121,6 +125,7 @@ function deriveVaultKey(masterKey: Uint8Array): Uint8Array {
 ```
 
 ### Device Linking
+
 ```
 Option A: QR Code (Recommended)
 1. New device: Click "Link existing account"
@@ -142,6 +147,7 @@ Option B: Recovery Phrase
 ```
 
 ### Sync Protocol
+
 ```
 PUSH (Local changes → Server)
 1. Detect local changes (file save, task update, etc.)
@@ -169,6 +175,7 @@ PULL (Server changes → Local)
 ```
 
 ### Conflict Resolution
+
 ```
 When same item modified on multiple devices:
 
@@ -189,6 +196,7 @@ When same item modified on multiple devices:
 ```
 
 ### What Gets Synced
+
 ```
 SYNCED (encrypted):
 ├── Notes (content + frontmatter)
@@ -207,24 +215,27 @@ NOT SYNCED (local only):
 ```
 
 ### Sync Status
+
 ```typescript
 type SyncStatus =
-  | { state: "idle", lastSync: Date }
-  | { state: "syncing", itemsRemaining: number }
-  | { state: "error", error: string, retryAt: Date }
-  | { state: "offline", queueSize: number }
-  | { state: "conflict", conflictCount: number }
+  | { state: 'idle'; lastSync: Date }
+  | { state: 'syncing'; itemsRemaining: number }
+  | { state: 'error'; error: string; retryAt: Date }
+  | { state: 'offline'; queueSize: number }
+  | { state: 'conflict'; conflictCount: number }
 ```
 
 ## NON-FUNCTIONAL REQUIREMENTS
 
 ### Performance
+
 - Sync single item in <2 seconds (on good connection)
 - Batch sync 100 items in <30 seconds
 - Initial sync of 1000 items in <5 minutes
 - Background sync doesn't freeze UI (use Web Worker)
 
 ### Security
+
 - Keys never transmitted unencrypted
 - Keys never logged or included in error reports
 - Server-side: only encrypted blobs stored
@@ -232,6 +243,7 @@ type SyncStatus =
 - Replay attack prevention (nonces, timestamps)
 
 ### Reliability
+
 - Sync queue persists across app crashes
 - Failed syncs retry with exponential backoff
 - Network interruption doesn't corrupt data
@@ -240,6 +252,7 @@ type SyncStatus =
 ## ACCEPTANCE CRITERIA
 
 ### First Device Setup
+
 - [ ] OAuth signup works (Google, Apple, GitHub)
 - [ ] Recovery phrase displayed clearly
 - [ ] Recovery phrase confirmation required
@@ -247,6 +260,7 @@ type SyncStatus =
 - [ ] Sync begins automatically after setup
 
 ### Device Linking
+
 - [ ] QR code displays on existing device
 - [ ] New device scans and links successfully
 - [ ] Recovery phrase restore works
@@ -254,6 +268,7 @@ type SyncStatus =
 - [ ] Linked device appears in device list
 
 ### Push Sync
+
 - [ ] Local file save triggers sync within 5 seconds
 - [ ] Task changes sync within 5 seconds
 - [ ] Offline changes queue properly
@@ -261,27 +276,34 @@ type SyncStatus =
 - [ ] Sync errors show retry option
 
 ### Pull Sync
+
 - [ ] Changes from other devices appear automatically
 - [ ] Delete on one device deletes everywhere
 - [ ] Rename on one device updates everywhere
 - [ ] Large attachments sync in background
 
 ### Conflicts
+
 - [ ] Same file edited on two devices creates conflict copy
 - [ ] Conflict notification appears
 - [ ] Conflict review shows both versions
 - [ ] Resolving conflict removes duplicate
 
 ### Security
+
 - [ ] Server logs show only encrypted data
 - [ ] Recovery phrase not stored anywhere after setup
 - [ ] Removing device requires confirmation
 - [ ] Key rotation possible (re-encrypt everything)
 
 ### Status & UI
+
 - [ ] Sync icon shows current status
 - [ ] "Syncing..." shows during active sync
 - [ ] Error state shows clear message
 - [ ] Offline state shows queue count
 - [ ] Sync history viewable in settings
+
+```
+
 ```

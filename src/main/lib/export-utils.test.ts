@@ -10,8 +10,7 @@ import {
 
 describe('export-utils', () => {
   it('markdownToHtml converts wiki links and strips file blocks', () => {
-    const markdown =
-      'Hello [[Note Title]] and [[Page|Display]]\n<!-- file:{id:123} -->'
+    const markdown = 'Hello [[Note Title]] and [[Page|Display]]\n<!-- file:{id:123} -->'
     const html = markdownToHtml(markdown)
     expect(html).toContain('<span class="wiki-link">Note Title</span>')
     expect(html).toContain('<span class="wiki-link">Display</span>')
@@ -66,9 +65,7 @@ describe('export-utils', () => {
   })
 
   it('sanitizeFilename removes invalid characters and limits length', () => {
-    expect(sanitizeFilename('  in<va>lid: file/name?.md  ')).toBe(
-      'invalid filename.md'
-    )
+    expect(sanitizeFilename('  in<va>lid: file/name?.md  ')).toBe('invalid filename.md')
     expect(sanitizeFilename('a'.repeat(250))).toHaveLength(200)
   })
 })

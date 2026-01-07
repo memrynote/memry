@@ -1,19 +1,16 @@
-import { useMemo } from "react"
-import { AnimatePresence } from "framer-motion"
+import { useMemo } from 'react'
+import { AnimatePresence } from 'framer-motion'
 
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { TaskSection } from "@/components/tasks/task-section"
-import { QuickAddInput } from "@/components/tasks/quick-add-input"
-import {
-  CelebrationEmptyState,
-  OverdueClearedBanner,
-} from "@/components/tasks/empty-states"
-import { cn } from "@/lib/utils"
-import { getTodayTasks, startOfDay } from "@/lib/task-utils"
-import { getSectionVisibility } from "@/lib/section-visibility"
-import { useOverdueCelebration } from "@/hooks"
-import type { Task, Priority } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { TaskSection } from '@/components/tasks/task-section'
+import { QuickAddInput } from '@/components/tasks/quick-add-input'
+import { CelebrationEmptyState, OverdueClearedBanner } from '@/components/tasks/empty-states'
+import { cn } from '@/lib/utils'
+import { getTodayTasks, startOfDay } from '@/lib/task-utils'
+import { getSectionVisibility } from '@/lib/section-visibility'
+import { useOverdueCelebration } from '@/hooks'
+import type { Task, Priority } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -53,29 +50,24 @@ export const TodayView = ({
   onQuickAdd,
   onOpenModal,
   onViewUpcoming,
-  className,
+  className
 }: TodayViewProps): React.JSX.Element => {
   // Get filtered and sorted tasks for today
-  const { overdue, today } = useMemo(
-    () => getTodayTasks(tasks, projects),
-    [tasks, projects]
-  )
+  const { overdue, today } = useMemo(() => getTodayTasks(tasks, projects), [tasks, projects])
 
   // Track overdue celebration state
-  const { showCelebration, dismiss: dismissCelebration } = useOverdueCelebration(
-    overdue.length
-  )
+  const { showCelebration, dismiss: dismissCelebration } = useOverdueCelebration(overdue.length)
 
   // Calculate section visibility
-  const overdueVisibility = getSectionVisibility("overdue", overdue.length)
-  const todayVisibility = getSectionVisibility("today", today.length)
+  const overdueVisibility = getSectionVisibility('overdue', overdue.length)
+  const todayVisibility = getSectionVisibility('today', today.length)
 
   // Handle adding task with today's date
   const handleAddTaskForToday = (): void => {
-    onQuickAdd("", {
+    onQuickAdd('', {
       dueDate: startOfDay(new Date()),
-      priority: "none",
-      projectId: null,
+      priority: 'none',
+      projectId: null
     })
   }
 
@@ -92,14 +84,14 @@ export const TodayView = ({
     const finalData = {
       ...parsedData,
       dueDate: parsedData?.dueDate ?? startOfDay(new Date()),
-      priority: parsedData?.priority ?? "none" as Priority,
-      projectId: parsedData?.projectId ?? null,
+      priority: parsedData?.priority ?? ('none' as Priority),
+      projectId: parsedData?.projectId ?? null
     }
     onQuickAdd(title, finalData)
   }
 
   return (
-    <ScrollArea className={cn("flex-1", className)}>
+    <ScrollArea className={cn('flex-1', className)}>
       <div className="p-4 space-y-4">
         {/* Quick Add Input */}
         <QuickAddInput
@@ -111,9 +103,7 @@ export const TodayView = ({
 
         {/* Overdue Cleared Celebration Banner */}
         <AnimatePresence>
-          {showCelebration && (
-            <OverdueClearedBanner onDismiss={dismissCelebration} />
-          )}
+          {showCelebration && <OverdueClearedBanner onDismiss={dismissCelebration} />}
         </AnimatePresence>
 
         {/* Overdue section - only show when has tasks */}

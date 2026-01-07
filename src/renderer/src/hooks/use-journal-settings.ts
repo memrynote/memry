@@ -91,21 +91,24 @@ export function useJournalSettings(): UseJournalSettingsReturn {
   }, [])
 
   // Update settings
-  const updateSettings = useCallback(async (updates: Partial<JournalSettings>): Promise<boolean> => {
-    try {
-      const result = await window.api.settings.setJournalSettings(updates)
-      if (result.success) {
-        // Optimistically update local state
-        setSettings((prev) => ({ ...prev, ...updates }))
-        return true
+  const updateSettings = useCallback(
+    async (updates: Partial<JournalSettings>): Promise<boolean> => {
+      try {
+        const result = await window.api.settings.setJournalSettings(updates)
+        if (result.success) {
+          // Optimistically update local state
+          setSettings((prev) => ({ ...prev, ...updates }))
+          return true
+        }
+        setError(result.error ?? 'Failed to update settings')
+        return false
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to update settings')
+        return false
       }
-      setError(result.error ?? 'Failed to update settings')
-      return false
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update settings')
-      return false
-    }
-  }, [])
+    },
+    []
+  )
 
   // Convenience method for setting default template
   const setDefaultTemplate = useCallback(

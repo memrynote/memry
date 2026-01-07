@@ -23,7 +23,9 @@ const SETTINGS_KEYS = {
   // Tab settings
   TAB_PREVIEW_MODE: 'tabs.previewMode',
   TAB_RESTORE_SESSION: 'tabs.restoreSessionOnStart',
-  TAB_CLOSE_BUTTON: 'tabs.tabCloseButton'
+  TAB_CLOSE_BUTTON: 'tabs.tabCloseButton',
+  // Note editor settings
+  NOTE_EDITOR_TOOLBAR_MODE: 'noteEditor.toolbarMode'
 } as const
 
 // ============================================================================
@@ -74,6 +76,20 @@ const DEFAULT_TAB_SETTINGS: TabSettings = {
   previewMode: false,
   restoreSessionOnStart: true,
   tabCloseButton: 'hover'
+}
+
+// ============================================================================
+// Note Editor Settings Interface
+// ============================================================================
+
+export interface NoteEditorSettings {
+  /** Toolbar display mode: floating (on selection) or sticky (always visible) */
+  toolbarMode: 'floating' | 'sticky'
+}
+
+/** Default note editor settings values */
+const DEFAULT_NOTE_EDITOR_SETTINGS: NoteEditorSettings = {
+  toolbarMode: 'floating'
 }
 
 // ============================================================================
@@ -322,6 +338,47 @@ export function registerSettingsHandlers(): void {
     }
   )
 
+  // Get note editor settings
+  ipcMain.handle(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS, async () => {
+    const db = getDbOrNull()
+    if (!db) {
+      return DEFAULT_NOTE_EDITOR_SETTINGS
+    }
+
+    const toolbarModeStr = getSetting(db, SETTINGS_KEYS.NOTE_EDITOR_TOOLBAR_MODE)
+
+    return {
+      toolbarMode:
+        (toolbarModeStr as NoteEditorSettings['toolbarMode']) ??
+        DEFAULT_NOTE_EDITOR_SETTINGS.toolbarMode
+    }
+  })
+
+  // Set note editor settings
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS,
+    async (_event, settings: Partial<NoteEditorSettings>) => {
+      const db = getDbOrNull()
+      if (!db) {
+        return { success: false, error: 'No vault open' }
+      }
+
+      if (settings.toolbarMode !== undefined) {
+        setSetting(db, SETTINGS_KEYS.NOTE_EDITOR_TOOLBAR_MODE, settings.toolbarMode)
+      }
+
+      // Emit settings changed event
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(SettingsChannels.events.CHANGED, {
+          key: 'noteEditor',
+          value: settings
+        })
+      })
+
+      return { success: true }
+    }
+  )
+
   console.log('[IPC] Settings handlers registered')
 }
 
@@ -340,6 +397,8 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.REINDEX_EMBEDDINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_TAB_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_TAB_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS)
 
   console.log('Settings IPC handlers unregistered')
 }

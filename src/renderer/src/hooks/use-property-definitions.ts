@@ -135,9 +135,7 @@ export function usePropertyDefinitions(): UsePropertyDefinitionsReturn {
           throw new Error(result.error ?? 'Failed to update property definition')
         }
         // Update local state
-        setDefinitions((prev) =>
-          prev.map((def) => (def.name === name ? result.definition! : def))
-        )
+        setDefinitions((prev) => prev.map((def) => (def.name === name ? result.definition! : def)))
         return result.definition
       } catch (err) {
         console.error('[usePropertyDefinitions] Error updating definition:', err)

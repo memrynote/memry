@@ -54,9 +54,9 @@ export function safeFileName(title: string, maxLength = 100): string {
       // Remove leading/trailing dashes and spaces
       .replace(/^[-\s]+|[-\s]+$/g, '')
       // Limit length
-      .slice(0, maxLength)
-      // Ensure not empty
-      || 'untitled'
+      .slice(0, maxLength) ||
+    // Ensure not empty
+    'untitled'
   )
 }
 

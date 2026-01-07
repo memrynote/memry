@@ -1,12 +1,12 @@
 ---
-id: "note-sample-project"
-title: "Sample Project"
+id: 'note-sample-project'
+title: 'Sample Project'
 tags:
   - project
   - active
-created: "2025-01-01T00:00:00.000Z"
-modified: "2025-01-01T00:00:00.000Z"
-status: "in-progress"
+created: '2025-01-01T00:00:00.000Z'
+modified: '2025-01-01T00:00:00.000Z'
+status: 'in-progress'
 priority: 3
 ---
 

@@ -127,7 +127,9 @@ describe('TemplateCreateSchema', () => {
       description: 'Template for project notes',
       icon: '📋',
       tags: ['project', 'active'],
-      properties: [{ name: 'status', type: 'select', value: 'active', options: ['active', 'done'] }],
+      properties: [
+        { name: 'status', type: 'select', value: 'active', options: ['active', 'done'] }
+      ],
       content: '# Project Notes\n\nAdd your content here.'
     })
     expect(result.success).toBe(true)

@@ -1,33 +1,34 @@
-import { useState, useRef, useMemo, forwardRef, useImperativeHandle } from "react"
-import { CheckSquare, CircleCheck, SlidersHorizontal, MoreHorizontal, Archive, FolderArchive } from "lucide-react"
+import { useState, useRef, useMemo, forwardRef, useImperativeHandle } from 'react'
+import {
+  CheckSquare,
+  CircleCheck,
+  SlidersHorizontal,
+  MoreHorizontal,
+  Archive,
+  FolderArchive
+} from 'lucide-react'
 
-import { SearchInput } from "./search-input"
+import { SearchInput } from './search-input'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { ProjectFilter } from "./project-filter"
-import { PriorityFilter } from "./priority-filter"
-import { DueDateFilter } from "./due-date-filter"
-import { MoreFiltersDropdown } from "./more-filters-dropdown"
-import { SortDropdown } from "./sort-dropdown"
-import { ActiveFiltersBar } from "./active-filters-bar"
-import { SavedFiltersDropdown } from "./saved-filters-dropdown"
-import { SaveFilterDialog } from "./save-filter-dialog"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import type {
-  TaskFilters,
-  TaskSort,
-  SavedFilter,
-  Project,
-  Status,
-} from "@/data/tasks-data"
-import { hasActiveFilters, countActiveFilters } from "@/lib/task-utils"
-import type { Priority, Task } from "@/data/sample-tasks"
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { ProjectFilter } from './project-filter'
+import { PriorityFilter } from './priority-filter'
+import { DueDateFilter } from './due-date-filter'
+import { MoreFiltersDropdown } from './more-filters-dropdown'
+import { SortDropdown } from './sort-dropdown'
+import { ActiveFiltersBar } from './active-filters-bar'
+import { SavedFiltersDropdown } from './saved-filters-dropdown'
+import { SaveFilterDialog } from './save-filter-dialog'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import type { TaskFilters, TaskSort, SavedFilter, Project, Status } from '@/data/tasks-data'
+import { hasActiveFilters, countActiveFilters } from '@/lib/task-utils'
+import type { Priority, Task } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -98,7 +99,7 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
       onArchiveOptions,
       completedCount = 0,
       archivedCount = 0,
-      className,
+      className
     },
     ref
   ) => {
@@ -110,7 +111,7 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
     useImperativeHandle(ref, () => ({
       focusSearch: () => {
         searchRef.current?.focus()
-      },
+      }
     }))
 
     const isActive = hasActiveFilters(filters)
@@ -131,7 +132,7 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
         high: 0,
         medium: 0,
         low: 0,
-        none: 0,
+        none: 0
       }
       tasks.forEach((task) => {
         counts[task.priority]++
@@ -183,7 +184,7 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
     }
 
     return (
-      <div className={cn("border-b", className)}>
+      <div className={cn('border-b', className)}>
         {/* Main compact bar with inline expandable filters */}
         <div className="flex items-center gap-2 px-4 py-2">
           {/* Left group grows, right group stays fixed */}
@@ -206,8 +207,8 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
               size="sm"
               onClick={() => setShowFiltersPanel((prev) => !prev)}
               className={cn(
-                "h-9 gap-2 shrink-0",
-                activeFilterCount > 0 && "border-primary bg-primary/5"
+                'h-9 gap-2 shrink-0',
+                activeFilterCount > 0 && 'border-primary bg-primary/5'
               )}
               aria-label="Toggle filters panel"
               aria-expanded={showFiltersPanel}
@@ -273,22 +274,20 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
                     type="button"
                     onClick={() =>
                       onUpdateFilters({
-                        completion: filters.completion === "all" ? "active" : "all",
+                        completion: filters.completion === 'all' ? 'active' : 'all'
                       })
                     }
                     className={cn(
-                      "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors shrink-0",
-                      "hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      filters.completion === "all"
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                        : "text-muted-foreground hover:text-foreground"
+                      'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors shrink-0',
+                      'hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      filters.completion === 'all'
+                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                        : 'text-muted-foreground hover:text-foreground'
                     )}
                     aria-label={
-                      filters.completion === "all"
-                        ? "Hide completed tasks"
-                        : "Show completed tasks"
+                      filters.completion === 'all' ? 'Hide completed tasks' : 'Show completed tasks'
                     }
-                    aria-pressed={filters.completion === "all"}
+                    aria-pressed={filters.completion === 'all'}
                   >
                     <CircleCheck className="size-4" />
                     <span className="hidden sm:inline">Completed</span>
@@ -323,8 +322,9 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
                       variant="ghost"
                       size="sm"
                       className={cn(
-                        "h-9 px-2.5",
-                        (isSelectionMode || archivedCount > 0 || completedCount > 0) && "text-foreground"
+                        'h-9 px-2.5',
+                        (isSelectionMode || archivedCount > 0 || completedCount > 0) &&
+                          'text-foreground'
                       )}
                     >
                       <MoreHorizontal className="size-4" />
@@ -335,7 +335,7 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
                     {onToggleSelectionMode && (
                       <DropdownMenuItem onClick={onToggleSelectionMode}>
                         <CheckSquare className="size-4 mr-2" />
-                        {isSelectionMode ? "Exit Selection" : "Select Tasks"}
+                        {isSelectionMode ? 'Exit Selection' : 'Select Tasks'}
                       </DropdownMenuItem>
                     )}
 
@@ -388,6 +388,6 @@ export const FilterBar = forwardRef<FilterBarRef, FilterBarProps>(
   }
 )
 
-FilterBar.displayName = "FilterBar"
+FilterBar.displayName = 'FilterBar'
 
 export default FilterBar

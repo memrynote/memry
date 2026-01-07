@@ -60,36 +60,36 @@ pnpm dev
 
 ### Main Process
 
-| File | Purpose |
-|------|---------|
-| `src/main/vault/notes.ts` | Note CRUD operations (file-based) |
-| `src/main/vault/frontmatter.ts` | YAML frontmatter parsing |
-| `src/main/vault/file-ops.ts` | Atomic file writes |
-| `src/main/vault/watcher.ts` | File change detection |
-| `src/main/ipc/notes-handlers.ts` | IPC handler registration |
-| `src/main/database/fts.ts` | FTS5 full-text search |
-| `src/shared/db/queries/notes.ts` | Database query functions |
+| File                             | Purpose                           |
+| -------------------------------- | --------------------------------- |
+| `src/main/vault/notes.ts`        | Note CRUD operations (file-based) |
+| `src/main/vault/frontmatter.ts`  | YAML frontmatter parsing          |
+| `src/main/vault/file-ops.ts`     | Atomic file writes                |
+| `src/main/vault/watcher.ts`      | File change detection             |
+| `src/main/ipc/notes-handlers.ts` | IPC handler registration          |
+| `src/main/database/fts.ts`       | FTS5 full-text search             |
+| `src/shared/db/queries/notes.ts` | Database query functions          |
 
 ### Renderer Process
 
-| File | Purpose |
-|------|---------|
-| `src/renderer/src/pages/note.tsx` | Note page component |
-| `src/renderer/src/hooks/use-notes.ts` | Notes state management |
-| `src/renderer/src/services/notes-service.ts` | IPC wrapper |
-| `src/renderer/src/components/note/content-area/ContentArea.tsx` | BlockNote editor |
-| `src/renderer/src/components/note/note-title/NoteTitle.tsx` | Title + emoji |
-| `src/renderer/src/components/note/tags-row/TagsRow.tsx` | Tag management |
-| `src/renderer/src/components/note/info-section/InfoSection.tsx` | Properties panel |
-| `src/renderer/src/components/note/backlinks/BacklinksSection.tsx` | Backlinks display |
+| File                                                              | Purpose                |
+| ----------------------------------------------------------------- | ---------------------- |
+| `src/renderer/src/pages/note.tsx`                                 | Note page component    |
+| `src/renderer/src/hooks/use-notes.ts`                             | Notes state management |
+| `src/renderer/src/services/notes-service.ts`                      | IPC wrapper            |
+| `src/renderer/src/components/note/content-area/ContentArea.tsx`   | BlockNote editor       |
+| `src/renderer/src/components/note/note-title/NoteTitle.tsx`       | Title + emoji          |
+| `src/renderer/src/components/note/tags-row/TagsRow.tsx`           | Tag management         |
+| `src/renderer/src/components/note/info-section/InfoSection.tsx`   | Properties panel       |
+| `src/renderer/src/components/note/backlinks/BacklinksSection.tsx` | Backlinks display      |
 
 ### Shared
 
-| File | Purpose |
-|------|---------|
-| `src/shared/contracts/notes-api.ts` | Zod schemas & types |
+| File                                  | Purpose                   |
+| ------------------------------------- | ------------------------- |
+| `src/shared/contracts/notes-api.ts`   | Zod schemas & types       |
 | `src/shared/db/schema/notes-cache.ts` | Drizzle table definitions |
-| `src/shared/ipc-channels.ts` | IPC channel constants |
+| `src/shared/ipc-channels.ts`          | IPC channel constants     |
 
 ## Existing UI Components
 
@@ -133,13 +133,7 @@ console.log('Created note:', note.id)
 import { useNotes } from '@/hooks/use-notes'
 
 function NotesView() {
-  const {
-    notes,
-    isLoading,
-    createNote,
-    updateNote,
-    deleteNote
-  } = useNotes({
+  const { notes, isLoading, createNote, updateNote, deleteNote } = useNotes({
     folder: 'projects',
     tags: ['active'],
     sortBy: 'modified'
@@ -152,7 +146,7 @@ function NotesView() {
 
   return (
     <ul>
-      {notes.map(note => (
+      {notes.map((note) => (
         <li key={note.id}>{note.title}</li>
       ))}
     </ul>
@@ -168,10 +162,13 @@ import { ContentArea } from '@/components/note'
 function NoteEditor({ noteId }) {
   const [headings, setHeadings] = useState([])
 
-  const handleMarkdownChange = useCallback((markdown: string) => {
-    // Save to backend
-    notesService.update({ id: noteId, content: markdown })
-  }, [noteId])
+  const handleMarkdownChange = useCallback(
+    (markdown: string) => {
+      // Save to backend
+      notesService.update({ id: noteId, content: markdown })
+    },
+    [noteId]
+  )
 
   return (
     <ContentArea
@@ -199,12 +196,13 @@ export const MyNewInputSchema = z.object({
 export const NotesChannels = {
   invoke: {
     // ... existing
-    MY_NEW_HANDLER: 'notes:my-new-action',
+    MY_NEW_HANDLER: 'notes:my-new-action'
   }
 }
 
 // 3. Add handler in src/main/ipc/notes-handlers.ts
-ipcMain.handle(NotesChannels.invoke.MY_NEW_HANDLER,
+ipcMain.handle(
+  NotesChannels.invoke.MY_NEW_HANDLER,
   createValidatedHandler(MyNewInputSchema, async (input) => {
     // Implement logic
     return { success: true, data: result }
@@ -348,6 +346,7 @@ pnpm build:mac        # Build for macOS
 1. Start the dev server: `pnpm dev`
 2. Select a vault folder in the app
 3. Create notes via the UI or terminal:
+
    ```bash
    # Create a test note directly
    echo '---
@@ -363,6 +362,7 @@ pnpm build:mac        # Build for macOS
    This is a test note with [[Wiki Link]].
    ' > ~/my-vault/notes/Test\ Note.md
    ```
+
 4. The app should detect the new file and update the UI
 
 ### Debugging
@@ -427,15 +427,19 @@ const debouncedSave = useDebouncedCallback(
 )
 
 // On editor change
-const handleMarkdownChange = useCallback((markdown: string) => {
-  setSaveStatus('saving')
-  debouncedSave(markdown)
-}, [debouncedSave])
+const handleMarkdownChange = useCallback(
+  (markdown: string) => {
+    setSaveStatus('saving')
+    debouncedSave(markdown)
+  },
+  [debouncedSave]
+)
 ```
 
 ## What's Already Built vs What's Needed
 
 ### Backend (90% Complete)
+
 - ✅ Note CRUD (create, read, update, delete, rename, move)
 - ✅ Tags management
 - ✅ Wiki link tracking & backlinks
@@ -447,6 +451,7 @@ const handleMarkdownChange = useCallback((markdown: string) => {
 - ⚠️ Attachment upload handler (not implemented)
 
 ### Frontend (70% Complete)
+
 - ✅ BlockNote editor with markdown support
 - ✅ Title + emoji picker
 - ✅ Tags input with autocomplete UI

@@ -80,7 +80,9 @@ export const OutlineEdge = memo(function OutlineEdge({
     if (isHovered && activeHeadingId && popupRef.current) {
       // Small delay to ensure DOM is rendered
       requestAnimationFrame(() => {
-        const activeElement = popupRef.current?.querySelector(`[data-heading-id="${activeHeadingId}"]`)
+        const activeElement = popupRef.current?.querySelector(
+          `[data-heading-id="${activeHeadingId}"]`
+        )
         if (activeElement) {
           activeElement.scrollIntoView({ block: 'center', behavior: 'instant' })
         }
@@ -149,7 +151,8 @@ export const OutlineEdge = memo(function OutlineEdge({
             style={{
               width: '1px',
               height: `${verticalLineHeight}px`,
-              background: 'linear-gradient(to bottom, transparent 0%, rgb(214, 211, 209) 8%, rgb(214, 211, 209) 92%, transparent 100%)'
+              background:
+                'linear-gradient(to bottom, transparent 0%, rgb(214, 211, 209) 8%, rgb(214, 211, 209) 92%, transparent 100%)'
             }}
             aria-hidden="true"
           />
@@ -185,7 +188,8 @@ export const OutlineEdge = memo(function OutlineEdge({
                     heading.level === 3 && 'pl-7 text-xs text-stone-600 dark:text-stone-400',
                     heading.level >= 4 && 'pl-9 text-xs text-stone-500 dark:text-stone-500',
                     // Active state - highlighted
-                    isActive && 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                    isActive &&
+                      'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
                   )}
                 >
                   <span className="line-clamp-2">{heading.text}</span>

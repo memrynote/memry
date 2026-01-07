@@ -97,7 +97,12 @@ describe('bookmarks queries', () => {
 
     expect(created).toBe(2)
     const all = listBookmarks(db)
-    expect(bulkDeleteBookmarks(db, all.map((b) => b.id))).toBe(2)
+    expect(
+      bulkDeleteBookmarks(
+        db,
+        all.map((b) => b.id)
+      )
+    ).toBe(2)
   })
 
   it('toggles bookmarks and deletes orphaned entries', () => {

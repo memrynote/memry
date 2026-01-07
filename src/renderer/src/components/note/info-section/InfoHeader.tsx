@@ -12,11 +12,7 @@ export function InfoHeader({ isExpanded, onToggle }: InfoHeaderProps) {
       type="button"
       onClick={onToggle}
       aria-expanded={isExpanded}
-      className={cn(
-        'flex items-center gap-2 py-2',
-        'cursor-pointer select-none',
-        'group'
-      )}
+      className={cn('flex items-center gap-2 py-2', 'cursor-pointer select-none', 'group')}
     >
       <ChevronRight
         className={cn(

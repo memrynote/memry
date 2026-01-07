@@ -26,17 +26,22 @@ export function AddPropertyPopup({ isOpen, onClose, onAdd, position }: AddProper
     [onClose]
   )
 
-  const handleTypeSelect = useCallback((type: PropertyType) => {
-    // Get the default label for this type as the property name
-    const config = PROPERTY_TYPE_CONFIG[type]
-    onAdd({ name: config.label, type })
-    onClose()
-  }, [onAdd, onClose])
+  const handleTypeSelect = useCallback(
+    (type: PropertyType) => {
+      // Get the default label for this type as the property name
+      const config = PROPERTY_TYPE_CONFIG[type]
+      onAdd({ name: config.label, type })
+      onClose()
+    },
+    [onAdd, onClose]
+  )
 
   // Focus first item when opened
   useEffect(() => {
     if (isOpen && popupRef.current) {
-      const firstButton = popupRef.current.querySelector('button[role="option"]') as HTMLButtonElement
+      const firstButton = popupRef.current.querySelector(
+        'button[role="option"]'
+      ) as HTMLButtonElement
       firstButton?.focus()
     }
   }, [isOpen])

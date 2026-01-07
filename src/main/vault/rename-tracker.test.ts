@@ -68,16 +68,19 @@ describe('rename-tracker', () => {
   // ==========================================================================
   it('updates cache and emits rename event on match', async () => {
     const now = new Date().toISOString()
-    indexDb.db.insert(noteCache).values({
-      id: 'note-2',
-      path: 'notes/old-name.md',
-      title: 'old-name',
-      contentHash: 'hash',
-      wordCount: 0,
-      characterCount: 0,
-      createdAt: now,
-      modifiedAt: now
-    }).run()
+    indexDb.db
+      .insert(noteCache)
+      .values({
+        id: 'note-2',
+        path: 'notes/old-name.md',
+        title: 'old-name',
+        contentHash: 'hash',
+        wordCount: 0,
+        characterCount: 0,
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
 
     trackPendingDelete('note-2', 'notes/old-name.md', vi.fn())
 
@@ -85,11 +88,7 @@ describe('rename-tracker', () => {
 
     expect(oldPath).toBe('notes/old-name.md')
 
-    const updated = indexDb.db
-      .select()
-      .from(noteCache)
-      .where(eq(noteCache.id, 'note-2'))
-      .get()
+    const updated = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'note-2')).get()
 
     expect(updated?.path).toBe('notes/new-name.md')
     expect(updated?.title).toBe('new-name')

@@ -21,20 +21,20 @@ Build the task management data layer that persists tasks, projects, and enables 
 
 ## Constitution Check
 
-*GATE: ✅ PASSED*
+_GATE: ✅ PASSED_
 
-| Principle | Status | Notes |
-|-----------|--------|-------|
-| I. Local-First | ✅ Pass | Data in SQLite in vault folder |
-| II. E2EE | N/A | No sync yet |
-| III. No Vendor Lock-In | ✅ Pass | SQLite exportable, markdown notes |
-| IV. Privacy by Design | ✅ Pass | No telemetry |
-| V. Offline-First | ✅ Pass | Works without network |
-| VI. File System Source of Truth | ✅ Pass (notes) | Tasks use DB as source of truth per VII |
-| VII. Database for Structured Data | ✅ Pass | Tasks/projects in SQLite |
-| VIII. External Edit Detection | N/A | DB is app-controlled |
-| IX. Rename Tracking | ✅ Pass | Tasks use stable IDs |
-| X. Single Source of Truth | ✅ Pass | DB is authoritative for tasks |
+| Principle                         | Status          | Notes                                   |
+| --------------------------------- | --------------- | --------------------------------------- |
+| I. Local-First                    | ✅ Pass         | Data in SQLite in vault folder          |
+| II. E2EE                          | N/A             | No sync yet                             |
+| III. No Vendor Lock-In            | ✅ Pass         | SQLite exportable, markdown notes       |
+| IV. Privacy by Design             | ✅ Pass         | No telemetry                            |
+| V. Offline-First                  | ✅ Pass         | Works without network                   |
+| VI. File System Source of Truth   | ✅ Pass (notes) | Tasks use DB as source of truth per VII |
+| VII. Database for Structured Data | ✅ Pass         | Tasks/projects in SQLite                |
+| VIII. External Edit Detection     | N/A             | DB is app-controlled                    |
+| IX. Rename Tracking               | ✅ Pass         | Tasks use stable IDs                    |
+| X. Single Source of Truth         | ✅ Pass         | DB is authoritative for tasks           |
 
 ## Project Structure
 
@@ -99,45 +99,45 @@ src/
 
 ### Backend Layer: ✅ COMPLETE
 
-| Component | File | Status |
-|-----------|------|--------|
-| Tasks Schema | `src/shared/db/schema/tasks.ts` | ✅ Complete |
-| Projects Schema | `src/shared/db/schema/projects.ts` | ✅ Complete |
-| Statuses Schema | `src/shared/db/schema/statuses.ts` | ✅ Complete |
-| Task Relations | `src/shared/db/schema/task-relations.ts` | ✅ Complete |
-| Task Queries | `src/shared/db/queries/tasks.ts` | ✅ Complete (~700 lines) |
-| Project Queries | `src/shared/db/queries/projects.ts` | ✅ Complete |
-| IPC Handlers | `src/main/ipc/tasks-handlers.ts` | ✅ Complete (~755 lines) |
-| Tasks Service | `src/renderer/src/services/tasks-service.ts` | ✅ Complete (438 lines) |
-| Tasks Context | `src/renderer/src/contexts/tasks/index.tsx` | ✅ Complete (493 lines) |
+| Component       | File                                         | Status                   |
+| --------------- | -------------------------------------------- | ------------------------ |
+| Tasks Schema    | `src/shared/db/schema/tasks.ts`              | ✅ Complete              |
+| Projects Schema | `src/shared/db/schema/projects.ts`           | ✅ Complete              |
+| Statuses Schema | `src/shared/db/schema/statuses.ts`           | ✅ Complete              |
+| Task Relations  | `src/shared/db/schema/task-relations.ts`     | ✅ Complete              |
+| Task Queries    | `src/shared/db/queries/tasks.ts`             | ✅ Complete (~700 lines) |
+| Project Queries | `src/shared/db/queries/projects.ts`          | ✅ Complete              |
+| IPC Handlers    | `src/main/ipc/tasks-handlers.ts`             | ✅ Complete (~755 lines) |
+| Tasks Service   | `src/renderer/src/services/tasks-service.ts` | ✅ Complete (438 lines)  |
+| Tasks Context   | `src/renderer/src/contexts/tasks/index.tsx`  | ✅ Complete (493 lines)  |
 
 ### UI Layer: ✅ COMPLETE
 
-| Component Category | Files | Status |
-|-------------------|-------|--------|
-| Main Page | `pages/tasks.tsx` | ✅ 1653 lines |
-| Task Rows | 7 variants | ✅ Complete |
-| Kanban Board | 8 components | ✅ Complete |
-| Calendar View | 8 components | ✅ Complete |
-| Filters | 14 components | ✅ Complete |
-| Bulk Actions | 9 components | ✅ Complete |
-| Completed/Archive | 10 components | ✅ Complete |
-| Detail Panel | 9 components | ✅ Complete |
-| Dialogs | 9 components | ✅ Complete |
-| Drag-Drop | 7 components | ✅ Complete |
+| Component Category | Files             | Status        |
+| ------------------ | ----------------- | ------------- |
+| Main Page          | `pages/tasks.tsx` | ✅ 1653 lines |
+| Task Rows          | 7 variants        | ✅ Complete   |
+| Kanban Board       | 8 components      | ✅ Complete   |
+| Calendar View      | 8 components      | ✅ Complete   |
+| Filters            | 14 components     | ✅ Complete   |
+| Bulk Actions       | 9 components      | ✅ Complete   |
+| Completed/Archive  | 10 components     | ✅ Complete   |
+| Detail Panel       | 9 components      | ✅ Complete   |
+| Dialogs            | 9 components      | ✅ Complete   |
+| Drag-Drop          | 7 components      | ✅ Complete   |
 
 ### Integration Gaps: ⚠️ NEEDS WORK
 
-| Gap | Location | Issue |
-|-----|----------|-------|
-| Status Loading | `contexts/tasks/index.tsx:89` | Sets `statuses: []` with TODO comment |
-| RepeatConfig | `contexts/tasks/index.tsx:68` | `// TODO: Convert repeat config` |
-| Client-Side Filtering | `pages/tasks.tsx` | Filters locally instead of using backend |
-| Bulk Operations | `pages/tasks.tsx` | May not be using `tasksService.bulk*` methods |
+| Gap                   | Location                      | Issue                                         |
+| --------------------- | ----------------------------- | --------------------------------------------- |
+| Status Loading        | `contexts/tasks/index.tsx:89` | Sets `statuses: []` with TODO comment         |
+| RepeatConfig          | `contexts/tasks/index.tsx:68` | `// TODO: Convert repeat config`              |
+| Client-Side Filtering | `pages/tasks.tsx`             | Filters locally instead of using backend      |
+| Bulk Operations       | `pages/tasks.tsx`             | May not be using `tasksService.bulk*` methods |
 
 ## Complexity Tracking
 
-*No violations identified.*
+_No violations identified._
 
 ---
 
@@ -148,6 +148,7 @@ src/
 **Size**: 1653 lines, heavily feature-complete UI
 
 **Key Features Implemented**:
+
 - **4 View Modes**: List, Kanban, Calendar, Projects
 - **4 Internal Tabs**: All, Today, Upcoming, Projects
 - **Advanced Filtering**: Project, priority, due date, status, completion, repeating
@@ -162,46 +163,49 @@ src/
 
 **Total Components**: ~144 files across 14 subdirectories
 
-| Category | Files | Purpose |
-|----------|-------|---------|
-| Task Rows | 7 | Display variants (normal, sortable, completed, parent) |
-| Kanban | 8 | Board, columns, cards, drag overlay |
-| Calendar | 8 | Month grid, day cells, task items |
-| Filters | 14 | Search, project/priority/date filters, saved filters |
-| Bulk Actions | 9 | Toolbar, buttons, dialogs |
-| Completed | 10 | Completed/archived views, archive dialogs |
-| Detail Panel | 9 | Subtask sections, editing |
-| Dialogs | 9 | Delete, complete, bulk operations |
-| Drag-Drop | 7 | Sortable rows, drop zones, overlays |
-| Repeats | 6 | Repeat picker, custom dialog, indicators |
+| Category     | Files | Purpose                                                |
+| ------------ | ----- | ------------------------------------------------------ |
+| Task Rows    | 7     | Display variants (normal, sortable, completed, parent) |
+| Kanban       | 8     | Board, columns, cards, drag overlay                    |
+| Calendar     | 8     | Month grid, day cells, task items                      |
+| Filters      | 14    | Search, project/priority/date filters, saved filters   |
+| Bulk Actions | 9     | Toolbar, buttons, dialogs                              |
+| Completed    | 10    | Completed/archived views, archive dialogs              |
+| Detail Panel | 9     | Subtask sections, editing                              |
+| Dialogs      | 9     | Delete, complete, bulk operations                      |
+| Drag-Drop    | 7     | Sortable rows, drop zones, overlays                    |
+| Repeats      | 6     | Repeat picker, custom dialog, indicators               |
 
 ### Custom Hooks
 
-| Hook | Purpose |
-|------|---------|
-| `useTaskSelection` | Multi-select state (selectedIds, selectRange, selectAll) |
-| `useBulkActions` | Bulk operations (complete, delete, priority, move) |
-| `useSubtaskManagement` | Subtask CRUD + 7 dialog states |
-| `useFilterState` | Filter/sort state with localStorage persistence |
-| `useSavedFilters` | Named filter preset management |
-| `useFilteredAndSortedTasks` | Apply filters + sort with memoization |
-| `useTaskOrder` | Manual task ordering per section |
+| Hook                        | Purpose                                                  |
+| --------------------------- | -------------------------------------------------------- |
+| `useTaskSelection`          | Multi-select state (selectedIds, selectRange, selectAll) |
+| `useBulkActions`            | Bulk operations (complete, delete, priority, move)       |
+| `useSubtaskManagement`      | Subtask CRUD + 7 dialog states                           |
+| `useFilterState`            | Filter/sort state with localStorage persistence          |
+| `useSavedFilters`           | Named filter preset management                           |
+| `useFilteredAndSortedTasks` | Apply filters + sort with memoization                    |
+| `useTaskOrder`              | Manual task ordering per section                         |
 
 ### Type System
 
 **Core Types** (from `data/tasks-data.ts` and `data/sample-tasks.ts`):
 
 ```typescript
-type Priority = "none" | "low" | "medium" | "high" | "urgent"
-type StatusType = "todo" | "in_progress" | "done"
-type ViewMode = "list" | "kanban" | "calendar"
+type Priority = 'none' | 'low' | 'medium' | 'high' | 'urgent'
+type StatusType = 'todo' | 'in_progress' | 'done'
+type ViewMode = 'list' | 'kanban' | 'calendar'
 
 interface Task {
-  id, title, description
-  projectId, statusId
+  id
+  title
+  description
+  projectId
+  statusId
   priority: Priority
   dueDate: Date | null
-  dueTime: string | null  // "HH:MM"
+  dueTime: string | null // "HH:MM"
   isRepeating: boolean
   repeatConfig: RepeatConfig | null
   linkedNoteIds: string[]
@@ -214,7 +218,11 @@ interface Task {
 }
 
 interface Project {
-  id, name, description, icon, color
+  id
+  name
+  description
+  icon
+  color
   statuses: Status[]
   isDefault: boolean
   isArchived: boolean
@@ -222,7 +230,9 @@ interface Project {
 }
 
 interface Status {
-  id, name, color
+  id
+  name
+  color
   type: StatusType
   order: number
 }
@@ -253,6 +263,7 @@ UI Components
 ### Database Schema
 
 **Tasks Table** (`src/shared/db/schema/tasks.ts`):
+
 - `id` (PK), `projectId` (FK), `statusId` (FK), `parentId` (self-ref)
 - `title`, `description`, `priority` (0-3 integer)
 - `dueDate`, `dueTime`, `startDate` (strings: YYYY-MM-DD, HH:MM)
@@ -281,6 +292,7 @@ The `tasksService` provides full coverage:
 ### Tasks Context (Database Integrated)
 
 The `TasksProvider` already:
+
 - ✅ Loads tasks/projects from database when vault opens
 - ✅ Subscribes to IPC events for real-time updates
 - ✅ Converts between DB types and UI types (priority int↔string, dates)
@@ -288,6 +300,7 @@ The `TasksProvider` already:
 - ✅ Provides addTask, updateTask, deleteTask operations
 
 **Type Conversion**:
+
 ```typescript
 const priorityMap = { 0: 'none', 1: 'low', 2: 'medium', 3: 'high' }
 const priorityReverseMap = { none: 0, low: 1, medium: 2, high: 3, urgent: 3 }
@@ -298,7 +311,7 @@ function dbTaskToUiTask(dbTask) {
     priority: priorityMap[dbTask.priority],
     dueDate: dbTask.dueDate ? new Date(dbTask.dueDate) : null,
     createdAt: new Date(dbTask.createdAt),
-    completedAt: dbTask.completedAt ? new Date(dbTask.completedAt) : null,
+    completedAt: dbTask.completedAt ? new Date(dbTask.completedAt) : null
   }
 }
 ```
@@ -307,19 +320,19 @@ function dbTaskToUiTask(dbTask) {
 
 ## Gap Analysis
 
-| Feature | UI Status | Backend Status | Integration Status |
-|---------|-----------|----------------|-------------------|
-| Task CRUD | ✅ Complete | ✅ Complete | ✅ Connected |
-| Project CRUD | ✅ Complete | ✅ Complete | ✅ Connected |
-| Status CRUD | ✅ Complete | ✅ Complete | ⚠️ Not loading statuses per project |
-| Filtering | ✅ Complete | ✅ Complete | ⚠️ UI filters locally, not via backend |
-| Saved Filters | ✅ Complete | ❌ Not in DB | localStorage only |
-| Bulk Operations | ✅ Complete | ✅ Complete | ⚠️ May not be using backend |
-| Subtasks | ✅ Complete | ✅ Complete | ⚠️ Needs verification |
-| Repeating Tasks | ✅ Complete | ✅ Schema exists | ⚠️ UI creates locally |
-| Note Links | ✅ Complete | ✅ Schema exists | ⚠️ Needs verification |
-| Archive/Unarchive | ✅ Complete | ✅ Complete | ⚠️ Needs verification |
-| Undo Support | ✅ Complete | ❌ Not in backend | Client-side only |
+| Feature           | UI Status   | Backend Status    | Integration Status                     |
+| ----------------- | ----------- | ----------------- | -------------------------------------- |
+| Task CRUD         | ✅ Complete | ✅ Complete       | ✅ Connected                           |
+| Project CRUD      | ✅ Complete | ✅ Complete       | ✅ Connected                           |
+| Status CRUD       | ✅ Complete | ✅ Complete       | ⚠️ Not loading statuses per project    |
+| Filtering         | ✅ Complete | ✅ Complete       | ⚠️ UI filters locally, not via backend |
+| Saved Filters     | ✅ Complete | ❌ Not in DB      | localStorage only                      |
+| Bulk Operations   | ✅ Complete | ✅ Complete       | ⚠️ May not be using backend            |
+| Subtasks          | ✅ Complete | ✅ Complete       | ⚠️ Needs verification                  |
+| Repeating Tasks   | ✅ Complete | ✅ Schema exists  | ⚠️ UI creates locally                  |
+| Note Links        | ✅ Complete | ✅ Schema exists  | ⚠️ Needs verification                  |
+| Archive/Unarchive | ✅ Complete | ✅ Complete       | ⚠️ Needs verification                  |
+| Undo Support      | ✅ Complete | ❌ Not in backend | Client-side only                       |
 
 ### Key Observations
 
@@ -336,16 +349,19 @@ function dbTaskToUiTask(dbTask) {
 ## Next Steps
 
 ### Phase 1: Verify Integration
+
 - [ ] Trace data flow from App.tsx → TasksProvider → tasks.tsx
 - [ ] Verify statuses are loading per project
 - [ ] Test CRUD operations end-to-end
 
 ### Phase 2: Complete Integration Gaps
+
 - [ ] Implement repeat config conversion in context
 - [ ] Consider using backend filtering for large datasets
 - [ ] Verify bulk operations use backend
 
 ### Phase 3: Testing
+
 - [ ] Test with real vault and database
 - [ ] Verify real-time sync across windows
 - [ ] Test error handling and fallbacks

@@ -92,9 +92,7 @@ describe('useInboxList', () => {
         expect(result.current.isLoading).toBe(false)
       })
 
-      expect(window.api.inbox.list).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'link' })
-      )
+      expect(window.api.inbox.list).toHaveBeenCalledWith(expect.objectContaining({ type: 'link' }))
     })
 
     it('should support infinite scroll (loadMore)', async () => {

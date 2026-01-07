@@ -1,5 +1,5 @@
-import type { Task, Priority } from "@/data/sample-tasks"
-import { generateTaskId } from "@/data/sample-tasks"
+import type { Task, Priority } from '@/data/sample-tasks'
+import { generateTaskId } from '@/data/sample-tasks'
 
 // ============================================================================
 // SUBTASK TYPES
@@ -94,7 +94,7 @@ export const buildTaskTree = (tasks: Task[]): TaskWithSubtasks[] => {
     return {
       ...task,
       subtasks,
-      progress: calculateProgress(subtasks),
+      progress: calculateProgress(subtasks)
     }
   })
 }
@@ -129,29 +129,29 @@ export const validateSubtaskRelationship = (
 ): { valid: boolean; error?: string } => {
   // Cannot be own parent
   if (parentId === subtaskId) {
-    return { valid: false, error: "A task cannot be its own parent" }
+    return { valid: false, error: 'A task cannot be its own parent' }
   }
 
   const parent = allTasks.find((t) => t.id === parentId)
   const subtask = allTasks.find((t) => t.id === subtaskId)
 
   if (!parent || !subtask) {
-    return { valid: false, error: "Parent or subtask not found" }
+    return { valid: false, error: 'Parent or subtask not found' }
   }
 
   // Subtask must be in same project
   if (parent.projectId !== subtask.projectId) {
-    return { valid: false, error: "Subtask must belong to the same project as parent" }
+    return { valid: false, error: 'Subtask must belong to the same project as parent' }
   }
 
   // Parent cannot be a subtask itself (no nested subtasks)
   if (parent.parentId !== null) {
-    return { valid: false, error: "Cannot add subtasks to a subtask (no nested subtasks)" }
+    return { valid: false, error: 'Cannot add subtasks to a subtask (no nested subtasks)' }
   }
 
   // Subtask cannot already have subtasks (would create nested structure)
   if (subtask.subtaskIds.length > 0) {
-    return { valid: false, error: "Cannot make a parent task into a subtask" }
+    return { valid: false, error: 'Cannot make a parent task into a subtask' }
   }
 
   return { valid: true }
@@ -221,8 +221,8 @@ export interface SubtaskOperationResult {
   error?: string
   updatedTasks?: Task[]
   newTask?: Task
-  newTasks?: Task[]  // T038: For bulk add operations
-  reorderedTasks?: Task[]  // T039: For reorder operations
+  newTasks?: Task[] // T038: For bulk add operations
+  reorderedTasks?: Task[] // T039: For reorder operations
 }
 
 /**
@@ -248,21 +248,21 @@ export const createSubtask = (
   options: CreateSubtaskOptions,
   allTasks: Task[]
 ): SubtaskOperationResult => {
-  const { title, parentId, priority = "none", dueDate = null, dueTime = null } = options
+  const { title, parentId, priority = 'none', dueDate = null, dueTime = null } = options
 
   const parent = allTasks.find((t) => t.id === parentId)
   if (!parent) {
-    return { success: false, error: "Parent task not found" }
+    return { success: false, error: 'Parent task not found' }
   }
 
   if (parent.parentId !== null) {
-    return { success: false, error: "Cannot add subtask to another subtask" }
+    return { success: false, error: 'Cannot add subtask to another subtask' }
   }
 
   const newSubtask: Task = {
     id: generateTaskId(),
     title,
-    description: "",
+    description: '',
     projectId: parent.projectId,
     statusId: parent.statusId,
     priority,
@@ -276,25 +276,23 @@ export const createSubtask = (
     subtaskIds: [], // Subtasks cannot have children
     createdAt: new Date(),
     completedAt: null,
-    archivedAt: null,
+    archivedAt: null
   }
 
   // Update parent's subtaskIds
   const updatedParent: Task = {
     ...parent,
-    subtaskIds: [...parent.subtaskIds, newSubtask.id],
+    subtaskIds: [...parent.subtaskIds, newSubtask.id]
   }
 
   // Create new tasks array with updated parent and new subtask
-  const updatedTasks = allTasks.map((t) =>
-    t.id === parentId ? updatedParent : t
-  )
+  const updatedTasks = allTasks.map((t) => (t.id === parentId ? updatedParent : t))
   updatedTasks.push(newSubtask)
 
   return {
     success: true,
     updatedTasks,
-    newTask: newSubtask,
+    newTask: newSubtask
   }
 }
 
@@ -307,26 +305,26 @@ export const createMultipleSubtasks = (
   allTasks: Task[]
 ): SubtaskOperationResult => {
   if (titles.length === 0) {
-    return { success: false, error: "No titles provided" }
+    return { success: false, error: 'No titles provided' }
   }
 
   const parent = allTasks.find((t) => t.id === parentId)
   if (!parent) {
-    return { success: false, error: "Parent task not found" }
+    return { success: false, error: 'Parent task not found' }
   }
 
   if (parent.parentId !== null) {
-    return { success: false, error: "Cannot add subtask to another subtask" }
+    return { success: false, error: 'Cannot add subtask to another subtask' }
   }
 
   // Create all new subtasks
   const newSubtasks: Task[] = titles.map((title) => ({
     id: generateTaskId(),
     title,
-    description: "",
+    description: '',
     projectId: parent.projectId,
     statusId: parent.statusId,
-    priority: "none" as const,
+    priority: 'none' as const,
     dueDate: null,
     dueTime: null,
     isRepeating: false,
@@ -337,26 +335,24 @@ export const createMultipleSubtasks = (
     subtaskIds: [],
     createdAt: new Date(),
     completedAt: null,
-    archivedAt: null,
+    archivedAt: null
   }))
 
   // Update parent's subtaskIds with all new IDs
   const newSubtaskIds = newSubtasks.map((s) => s.id)
   const updatedParent: Task = {
     ...parent,
-    subtaskIds: [...parent.subtaskIds, ...newSubtaskIds],
+    subtaskIds: [...parent.subtaskIds, ...newSubtaskIds]
   }
 
   // Create new tasks array with updated parent and all new subtasks
-  const updatedTasks = allTasks.map((t) =>
-    t.id === parentId ? updatedParent : t
-  )
+  const updatedTasks = allTasks.map((t) => (t.id === parentId ? updatedParent : t))
   updatedTasks.push(...newSubtasks)
 
   return {
     success: true,
     updatedTasks,
-    newTasks: newSubtasks,  // T038: Return new tasks for database persistence
+    newTasks: newSubtasks // T038: Return new tasks for database persistence
   }
 }
 
@@ -371,14 +367,14 @@ export const reorderSubtasks = (
 ): SubtaskOperationResult => {
   const parent = allTasks.find((t) => t.id === parentId)
   if (!parent) {
-    return { success: false, error: "Parent task not found" }
+    return { success: false, error: 'Parent task not found' }
   }
 
   // Validate that all IDs in newOrder exist in parent's subtaskIds
   const existingIds = new Set(parent.subtaskIds)
   const allIdsValid = newOrder.every((id) => existingIds.has(id))
   if (!allIdsValid) {
-    return { success: false, error: "Invalid subtask IDs in new order" }
+    return { success: false, error: 'Invalid subtask IDs in new order' }
   }
 
   // Build final order: start with newOrder, then append any missing IDs
@@ -391,12 +387,10 @@ export const reorderSubtasks = (
   // Update parent's subtaskIds
   const updatedParent: Task = {
     ...parent,
-    subtaskIds: finalOrder,
+    subtaskIds: finalOrder
   }
 
-  const updatedTasks = allTasks.map((t) =>
-    t.id === parentId ? updatedParent : t
-  )
+  const updatedTasks = allTasks.map((t) => (t.id === parentId ? updatedParent : t))
 
   // T039: Get the reordered subtasks for database position updates
   const reorderedTasks = finalOrder
@@ -406,41 +400,38 @@ export const reorderSubtasks = (
   return {
     success: true,
     updatedTasks,
-    reorderedTasks,  // T039: Return reordered tasks for database persistence
+    reorderedTasks // T039: Return reordered tasks for database persistence
   }
 }
 
 /**
  * Promote a subtask to a standalone task
  */
-export const promoteToTask = (
-  subtaskId: string,
-  allTasks: Task[]
-): SubtaskOperationResult => {
+export const promoteToTask = (subtaskId: string, allTasks: Task[]): SubtaskOperationResult => {
   const subtask = allTasks.find((t) => t.id === subtaskId)
   if (!subtask) {
-    return { success: false, error: "Subtask not found" }
+    return { success: false, error: 'Subtask not found' }
   }
 
   if (!subtask.parentId) {
-    return { success: false, error: "Task is already a standalone task" }
+    return { success: false, error: 'Task is already a standalone task' }
   }
 
   const parent = allTasks.find((t) => t.id === subtask.parentId)
   if (!parent) {
-    return { success: false, error: "Parent task not found" }
+    return { success: false, error: 'Parent task not found' }
   }
 
   // Remove from parent's subtaskIds
   const updatedParent: Task = {
     ...parent,
-    subtaskIds: parent.subtaskIds.filter((id) => id !== subtaskId),
+    subtaskIds: parent.subtaskIds.filter((id) => id !== subtaskId)
   }
 
   // Update subtask to be standalone
   const updatedSubtask: Task = {
     ...subtask,
-    parentId: null,
+    parentId: null
   }
 
   const updatedTasks = allTasks.map((t) => {
@@ -451,7 +442,7 @@ export const promoteToTask = (
 
   return {
     success: true,
-    updatedTasks,
+    updatedTasks
   }
 }
 
@@ -473,12 +464,12 @@ export const demoteToSubtask = (
   const newParent = allTasks.find((t) => t.id === newParentId)
 
   if (!task || !newParent) {
-    return { success: false, error: "Task or parent not found" }
+    return { success: false, error: 'Task or parent not found' }
   }
 
   // Check if task already has a parent (shouldn't happen based on validation, but extra safety)
   if (task.parentId !== null) {
-    return { success: false, error: "Task is already a subtask" }
+    return { success: false, error: 'Task is already a subtask' }
   }
 
   // Update task to be subtask (inherit project from parent if different)
@@ -486,13 +477,13 @@ export const demoteToSubtask = (
     ...task,
     parentId: newParentId,
     projectId: newParent.projectId,
-    statusId: newParent.statusId,
+    statusId: newParent.statusId
   }
 
   // Add to parent's subtaskIds
   const updatedParent: Task = {
     ...newParent,
-    subtaskIds: [...newParent.subtaskIds, taskId],
+    subtaskIds: [...newParent.subtaskIds, taskId]
   }
 
   const updatedTasks = allTasks.map((t) => {
@@ -503,35 +494,32 @@ export const demoteToSubtask = (
 
   return {
     success: true,
-    updatedTasks,
+    updatedTasks
   }
 }
 
 /**
  * Delete a subtask
  */
-export const deleteSubtask = (
-  subtaskId: string,
-  allTasks: Task[]
-): SubtaskOperationResult => {
+export const deleteSubtask = (subtaskId: string, allTasks: Task[]): SubtaskOperationResult => {
   const subtask = allTasks.find((t) => t.id === subtaskId)
   if (!subtask) {
-    return { success: false, error: "Subtask not found" }
+    return { success: false, error: 'Subtask not found' }
   }
 
   if (!subtask.parentId) {
-    return { success: false, error: "Task is not a subtask" }
+    return { success: false, error: 'Task is not a subtask' }
   }
 
   const parent = allTasks.find((t) => t.id === subtask.parentId)
   if (!parent) {
-    return { success: false, error: "Parent task not found" }
+    return { success: false, error: 'Parent task not found' }
   }
 
   // Remove from parent's subtaskIds
   const updatedParent: Task = {
     ...parent,
-    subtaskIds: parent.subtaskIds.filter((id) => id !== subtaskId),
+    subtaskIds: parent.subtaskIds.filter((id) => id !== subtaskId)
   }
 
   // Remove the subtask from tasks array
@@ -541,7 +529,7 @@ export const deleteSubtask = (
 
   return {
     success: true,
-    updatedTasks,
+    updatedTasks
   }
 }
 
@@ -555,7 +543,7 @@ export const deleteParentWithSubtasks = (
 ): SubtaskOperationResult => {
   const parent = allTasks.find((t) => t.id === parentId)
   if (!parent) {
-    return { success: false, error: "Parent task not found" }
+    return { success: false, error: 'Parent task not found' }
   }
 
   let updatedTasks: Task[]
@@ -574,14 +562,12 @@ export const deleteParentWithSubtasks = (
   } else {
     // Delete parent and all subtasks
     const subtaskIds = new Set(parent.subtaskIds)
-    updatedTasks = allTasks.filter(
-      (t) => t.id !== parentId && !subtaskIds.has(t.id)
-    )
+    updatedTasks = allTasks.filter((t) => t.id !== parentId && !subtaskIds.has(t.id))
   }
 
   return {
     success: true,
-    updatedTasks,
+    updatedTasks
   }
 }
 
@@ -595,7 +581,7 @@ export const completeParentWithSubtasks = (
 ): SubtaskOperationResult => {
   const parent = allTasks.find((t) => t.id === parentId)
   if (!parent) {
-    return { success: false, error: "Parent task not found" }
+    return { success: false, error: 'Parent task not found' }
   }
 
   const now = new Date()
@@ -616,29 +602,21 @@ export const completeParentWithSubtasks = (
 
   return {
     success: true,
-    updatedTasks,
+    updatedTasks
   }
 }
 
 /**
  * Get incomplete subtasks for a parent task
  */
-export const getIncompleteSubtasks = (
-  parentId: string,
-  allTasks: Task[]
-): Task[] => {
-  return allTasks.filter(
-    (t) => t.parentId === parentId && t.completedAt === null
-  )
+export const getIncompleteSubtasks = (parentId: string, allTasks: Task[]): Task[] => {
+  return allTasks.filter((t) => t.parentId === parentId && t.completedAt === null)
 }
 
 /**
  * Check if a parent task has incomplete subtasks
  */
-export const hasIncompleteSubtasks = (
-  parentId: string,
-  allTasks: Task[]
-): boolean => {
+export const hasIncompleteSubtasks = (parentId: string, allTasks: Task[]): boolean => {
   return getIncompleteSubtasks(parentId, allTasks).length > 0
 }
 
@@ -654,24 +632,26 @@ export const getPotentialParents = (
   const task = allTasks.find((t) => t.id === taskId)
   if (!task) return []
 
-  return allTasks.filter((t) => {
-    // Cannot be itself
-    if (t.id === taskId) return false
-    // Cannot be a subtask
-    if (t.parentId !== null) return false
-    // Cannot have subtasks already (would create deep nesting)
-    // Actually, we allow tasks with subtasks to be parents
-    // The task being demoted just becomes another sibling
-    return true
-  }).sort((a, b) => {
-    // Prioritize same project
-    if (currentProjectId) {
-      const aInProject = a.projectId === currentProjectId
-      const bInProject = b.projectId === currentProjectId
-      if (aInProject && !bInProject) return -1
-      if (!aInProject && bInProject) return 1
-    }
-    // Then by recency
-    return b.createdAt.getTime() - a.createdAt.getTime()
-  })
+  return allTasks
+    .filter((t) => {
+      // Cannot be itself
+      if (t.id === taskId) return false
+      // Cannot be a subtask
+      if (t.parentId !== null) return false
+      // Cannot have subtasks already (would create deep nesting)
+      // Actually, we allow tasks with subtasks to be parents
+      // The task being demoted just becomes another sibling
+      return true
+    })
+    .sort((a, b) => {
+      // Prioritize same project
+      if (currentProjectId) {
+        const aInProject = a.projectId === currentProjectId
+        const bInProject = b.projectId === currentProjectId
+        if (aInProject && !bInProject) return -1
+        if (!aInProject && bInProject) return 1
+      }
+      // Then by recency
+      return b.createdAt.getTime() - a.createdAt.getTime()
+    })
 }

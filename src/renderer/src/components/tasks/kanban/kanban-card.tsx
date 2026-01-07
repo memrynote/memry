@@ -1,16 +1,20 @@
-import { useRef, useEffect, useMemo } from "react"
-import { useSortable, defaultAnimateLayoutChanges, type AnimateLayoutChanges } from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import { Check, Repeat } from "lucide-react"
+import { useRef, useEffect, useMemo } from 'react'
+import {
+  useSortable,
+  defaultAnimateLayoutChanges,
+  type AnimateLayoutChanges
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { Check, Repeat } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { PriorityBadge, DueDateBadge } from "@/components/tasks/task-badges"
-import { SelectionCheckbox } from "@/components/tasks/bulk-actions"
-import { SubtaskBadge } from "@/components/tasks/subtask-badge"
-import { KanbanSubtaskPreview } from "./kanban-subtask-preview"
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
-import { getSubtasks, calculateProgress } from "@/lib/subtask-utils"
-import type { Task } from "@/data/sample-tasks"
+import { cn } from '@/lib/utils'
+import { PriorityBadge, DueDateBadge } from '@/components/tasks/task-badges'
+import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
+import { SubtaskBadge } from '@/components/tasks/subtask-badge'
+import { KanbanSubtaskPreview } from './kanban-subtask-preview'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
+import { getSubtasks, calculateProgress } from '@/lib/subtask-utils'
+import type { Task } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -64,7 +68,7 @@ export const KanbanCard = ({
   // Selection props
   isSelectionMode = false,
   isCheckedForSelection = false,
-  onToggleSelect,
+  onToggleSelect
 }: KanbanCardProps): React.JSX.Element => {
   const cardRef = useRef<HTMLDivElement>(null)
 
@@ -80,31 +84,24 @@ export const KanbanCard = ({
 
   const hasSubtasks = subtasks.length > 0
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: {
-      type: "task",
+      type: 'task',
       task,
       columnId,
-      sourceType: "kanban",
+      sourceType: 'kanban'
     },
-    animateLayoutChanges,
+    animateLayoutChanges
   })
 
   // Scroll into view when focused via keyboard navigation
   useEffect(() => {
     if (isFocused && cardRef.current) {
       cardRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "nearest",
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest'
       })
     }
   }, [isFocused])
@@ -112,18 +109,18 @@ export const KanbanCard = ({
   // Combine refs (sortable ref + our scroll ref)
   const setRefs = (node: HTMLDivElement | null): void => {
     setNodeRef(node)
-      ; (cardRef as React.MutableRefObject<HTMLDivElement | null>).current = node
+    ;(cardRef as React.MutableRefObject<HTMLDivElement | null>).current = node
   }
 
   // Custom transition for smooth 200ms ease-out animation
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition: transition || "transform 200ms ease-out",
+    transition: transition || 'transform 200ms ease-out',
     // When dragging, make room for the dragged card
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.5 : 1
   }
 
-  const hasPriority = task.priority !== "none"
+  const hasPriority = task.priority !== 'none'
   const hasDueDate = !!task.dueDate
   const hasMetadata = hasPriority || hasDueDate || task.isRepeating
 
@@ -151,7 +148,7 @@ export const KanbanCard = ({
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
     // Only handle Space for click - Enter/E are handled at board level for quick edit
-    if (e.key === " ") {
+    if (e.key === ' ') {
       e.preventDefault()
       onClick?.()
     }
@@ -180,25 +177,25 @@ export const KanbanCard = ({
       aria-selected={isFocused || isSelected || isCheckedForSelection}
       className={cn(
         // Base styles
-        "group rounded-lg border-2 bg-card p-3 shadow-sm transition-all duration-150",
-        "cursor-grab active:cursor-grabbing",
-        "focus-visible:outline-none",
+        'group rounded-lg border-2 bg-card p-3 shadow-sm transition-all duration-150',
+        'cursor-grab active:cursor-grabbing',
+        'focus-visible:outline-none',
         // Hover state
-        "hover:shadow-md hover:border-border/80",
+        'hover:shadow-md hover:border-border/80',
         // Default border
-        "border-transparent",
+        'border-transparent',
         // Selection mode checked state
-        isCheckedForSelection && "border-primary bg-primary/5",
+        isCheckedForSelection && 'border-primary bg-primary/5',
         // Focused state (keyboard navigation) - use border instead of ring to prevent overflow
-        isFocused && !isCheckedForSelection && "border-primary shadow-md",
+        isFocused && !isCheckedForSelection && 'border-primary shadow-md',
         // Selected state (detail panel open)
-        isSelected && !isFocused && !isCheckedForSelection && "border-primary/50",
+        isSelected && !isFocused && !isCheckedForSelection && 'border-primary/50',
         // Overdue state
-        isOverdue && !isCompleted && !isCheckedForSelection && "border-l-red-500",
+        isOverdue && !isCompleted && !isCheckedForSelection && 'border-l-red-500',
         // Completed state
-        isCompleted && "opacity-70 bg-muted/30",
+        isCompleted && 'opacity-70 bg-muted/30',
         // Dragging state - card becomes a placeholder
-        isDragging && "opacity-40 shadow-none border-dashed border-primary/50 bg-primary/5"
+        isDragging && 'opacity-40 shadow-none border-dashed border-primary/50 bg-primary/5'
       )}
     >
       {/* Selection Checkbox - visible only in selection mode */}
@@ -226,8 +223,8 @@ export const KanbanCard = ({
 
         <span
           className={cn(
-            "text-sm font-medium leading-snug line-clamp-2",
-            isCompleted && "text-muted-foreground line-through"
+            'text-sm font-medium leading-snug line-clamp-2',
+            isCompleted && 'text-muted-foreground line-through'
           )}
         >
           {task.title}
@@ -238,29 +235,16 @@ export const KanbanCard = ({
       {hasMetadata && !isCompleted && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {/* Priority */}
-          {hasPriority && (
-            <PriorityBadge
-              priority={task.priority}
-              variant="full"
-              size="sm"
-            />
-          )}
+          {hasPriority && <PriorityBadge priority={task.priority} variant="full" size="sm" />}
 
           {/* Due Date */}
           {hasDueDate && (
-            <DueDateBadge
-              dueDate={task.dueDate}
-              dueTime={task.dueTime}
-              variant="compact"
-            />
+            <DueDateBadge dueDate={task.dueDate} dueTime={task.dueTime} variant="compact" />
           )}
 
           {/* Repeat Icon */}
           {task.isRepeating && (
-            <Repeat
-              className="size-3 text-muted-foreground"
-              aria-label="Repeating task"
-            />
+            <Repeat className="size-3 text-muted-foreground" aria-label="Repeating task" />
           )}
         </div>
       )}
@@ -282,14 +266,9 @@ export const KanbanCard = ({
   if (hasSubtasks) {
     return (
       <HoverCard openDelay={300}>
-        <HoverCardTrigger asChild>
-          {cardContent}
-        </HoverCardTrigger>
+        <HoverCardTrigger asChild>{cardContent}</HoverCardTrigger>
         <HoverCardContent side="right" className="w-72">
-          <KanbanSubtaskPreview
-            parentTitle={task.title}
-            subtasks={subtasks}
-          />
+          <KanbanSubtaskPreview parentTitle={task.title} subtasks={subtasks} />
         </HoverCardContent>
       </HoverCard>
     )
@@ -313,9 +292,9 @@ export const KanbanCardSkeleton = ({
   task,
   allTasks = [],
   isCompleted = false,
-  isOverdue = false,
+  isOverdue = false
 }: KanbanCardSkeletonProps): React.JSX.Element => {
-  const hasPriority = task.priority !== "none"
+  const hasPriority = task.priority !== 'none'
   const hasDueDate = !!task.dueDate
   const hasMetadata = hasPriority || hasDueDate || task.isRepeating
 
@@ -327,12 +306,12 @@ export const KanbanCardSkeleton = ({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-card p-3 shadow-xl transition-all duration-150",
-        "rotate-3 scale-105",
-        isOverdue && !isCompleted && "border-l-2 border-l-red-500",
-        isCompleted && "opacity-70 bg-muted/30"
+        'rounded-lg border bg-card p-3 shadow-xl transition-all duration-150',
+        'rotate-3 scale-105',
+        isOverdue && !isCompleted && 'border-l-2 border-l-red-500',
+        isCompleted && 'opacity-70 bg-muted/30'
       )}
-      style={{ width: "256px" }}
+      style={{ width: '256px' }}
     >
       {/* Task Title */}
       <div className="flex items-start gap-2">
@@ -345,8 +324,8 @@ export const KanbanCardSkeleton = ({
 
         <span
           className={cn(
-            "text-sm font-medium leading-snug line-clamp-2",
-            isCompleted && "text-muted-foreground line-through"
+            'text-sm font-medium leading-snug line-clamp-2',
+            isCompleted && 'text-muted-foreground line-through'
           )}
         >
           {task.title}
@@ -356,27 +335,14 @@ export const KanbanCardSkeleton = ({
       {/* Metadata Row */}
       {hasMetadata && !isCompleted && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          {hasPriority && (
-            <PriorityBadge
-              priority={task.priority}
-              variant="full"
-              size="sm"
-            />
-          )}
+          {hasPriority && <PriorityBadge priority={task.priority} variant="full" size="sm" />}
 
           {hasDueDate && (
-            <DueDateBadge
-              dueDate={task.dueDate}
-              dueTime={task.dueTime}
-              variant="compact"
-            />
+            <DueDateBadge dueDate={task.dueDate} dueTime={task.dueTime} variant="compact" />
           )}
 
           {task.isRepeating && (
-            <Repeat
-              className="size-3 text-muted-foreground"
-              aria-label="Repeating task"
-            />
+            <Repeat className="size-3 text-muted-foreground" aria-label="Repeating task" />
           )}
         </div>
       )}

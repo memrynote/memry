@@ -1,11 +1,6 @@
 import { FileText, StickyNote, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { Attachment } from './types'
 
 interface AttachmentChipProps {
@@ -45,9 +40,7 @@ export function AttachmentChip({ attachment, onRemove }: AttachmentChipProps) {
             )}
           >
             {getIcon()}
-            <span className="text-sm text-stone-700 truncate max-w-[120px]">
-              {displayName}
-            </span>
+            <span className="text-sm text-stone-700 truncate max-w-[120px]">{displayName}</span>
             <button
               type="button"
               onClick={() => onRemove(attachment.id)}

@@ -1922,6 +1922,12 @@ export interface TabSettings {
   tabCloseButton: 'always' | 'hover' | 'active'
 }
 
+// Note Editor Settings types
+export interface NoteEditorSettings {
+  /** Toolbar display mode: floating (on selection) or sticky (always visible) */
+  toolbarMode: 'floating' | 'sticky'
+}
+
 // Settings client API interface
 export interface SettingsClientAPI {
   get(key: string): Promise<string | null>
@@ -1944,6 +1950,11 @@ export interface SettingsClientAPI {
   // Tab Settings
   getTabSettings(): Promise<TabSettings>
   setTabSettings(settings: Partial<TabSettings>): Promise<{ success: boolean; error?: string }>
+  // Note Editor Settings
+  getNoteEditorSettings(): Promise<NoteEditorSettings>
+  setNoteEditorSettings(
+    settings: Partial<NoteEditorSettings>
+  ): Promise<{ success: boolean; error?: string }>
 }
 
 // Window controls API

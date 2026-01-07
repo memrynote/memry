@@ -8,11 +8,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
-import {
-  createTestVault,
-  readTestNote,
-  type TestVaultResult
-} from '@tests/utils/test-vault'
+import { createTestVault, readTestNote, type TestVaultResult } from '@tests/utils/test-vault'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { VaultStatus, VaultConfig } from '@shared/contracts/vault-api'
 
@@ -881,21 +877,11 @@ describe('notes operations', () => {
         const fileContent = fs.readFileSync(filePath, 'utf-8')
 
         // Create first snapshot
-        const snapshot1 = notes.createSnapshot(
-          created.id,
-          fileContent,
-          created.title,
-          'manual'
-        )
+        const snapshot1 = notes.createSnapshot(created.id, fileContent, created.title, 'manual')
         expect(snapshot1).not.toBeNull()
 
         // Try to create duplicate - should be skipped
-        const snapshot2 = notes.createSnapshot(
-          created.id,
-          fileContent,
-          created.title,
-          'manual'
-        )
+        const snapshot2 = notes.createSnapshot(created.id, fileContent, created.title, 'manual')
         expect(snapshot2).toBeNull()
       })
     })
@@ -965,12 +951,7 @@ describe('notes operations', () => {
         const originalContent = fs.readFileSync(filePath, 'utf-8')
 
         // Create snapshot of original
-        const snapshot = notes.createSnapshot(
-          created.id,
-          originalContent,
-          created.title,
-          'manual'
-        )
+        const snapshot = notes.createSnapshot(created.id, originalContent, created.title, 'manual')
 
         // Update note
         await notes.updateNote({ id: created.id, content: 'Modified content.' })

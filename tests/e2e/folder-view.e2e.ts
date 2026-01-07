@@ -142,7 +142,11 @@ function folderConfigPath(vaultPath: string, folderPath: string): string {
   return path.join(vaultPath, 'notes', folderPath, '.folder.md')
 }
 
-function writeFolderConfig(vaultPath: string, folderPath: string, config: Record<string, unknown>): void {
+function writeFolderConfig(
+  vaultPath: string,
+  folderPath: string,
+  config: Record<string, unknown>
+): void {
   const folderDir = path.join(vaultPath, 'notes', folderPath)
   fs.mkdirSync(folderDir, { recursive: true })
   fs.writeFileSync(folderConfigPath(vaultPath, folderPath), matter.stringify('', config))
@@ -167,7 +171,10 @@ async function openFolderView(
     await treeNode.hover().catch(() => {})
     const openButton = treeNode.locator('button[aria-label="Open folder view"]')
     if (await openButton.count()) {
-      await openButton.first().click({ force: true }).catch(() => {})
+      await openButton
+        .first()
+        .click({ force: true })
+        .catch(() => {})
     } else {
       await treeNode.click().catch(() => {})
     }
@@ -177,7 +184,10 @@ async function openFolderView(
       await treeItem.hover().catch(() => {})
       const openButton = treeItem.locator('button[aria-label="Open folder view"]')
       if (await openButton.count()) {
-        await openButton.first().click({ force: true }).catch(() => {})
+        await openButton
+          .first()
+          .click({ force: true })
+          .catch(() => {})
       } else {
         await treeItem.click().catch(() => {})
       }
@@ -196,11 +206,17 @@ async function openColumnSelector(page: import('@playwright/test').Page): Promis
   if (!isVisible) return false
 
   await button.click().catch(() => {})
-  await page.getByPlaceholder('Search columns...').waitFor({ state: 'visible', timeout: 2000 }).catch(() => {})
+  await page
+    .getByPlaceholder('Search columns...')
+    .waitFor({ state: 'visible', timeout: 2000 })
+    .catch(() => {})
   return true
 }
 
-async function toggleColumn(page: import('@playwright/test').Page, columnName: string): Promise<void> {
+async function toggleColumn(
+  page: import('@playwright/test').Page,
+  columnName: string
+): Promise<void> {
   const searchInput = page.getByPlaceholder('Search columns...')
   const hasSearch = await searchInput.isVisible().catch(() => false)
   if (!hasSearch) return
@@ -234,7 +250,14 @@ test.describe('Folder View', () => {
       .isVisible()
       .catch(() => false)
 
-    expect(headingVisible || (await page.locator('table').first().isVisible().catch(() => false))).toBe(true)
+    expect(
+      headingVisible ||
+        (await page
+          .locator('table')
+          .first()
+          .isVisible()
+          .catch(() => false))
+    ).toBe(true)
   })
 
   test('T125: should show notes with properties in the table', async ({ page }) => {
@@ -288,7 +311,10 @@ test.describe('Folder View', () => {
       .locator('th:has-text("Status") [title="Drag to reorder column"]')
       .first()
     const titleHeader = page.locator('th:has-text("Title")').first()
-    if ((await statusHandle.isVisible().catch(() => false)) && (await titleHeader.isVisible().catch(() => false))) {
+    if (
+      (await statusHandle.isVisible().catch(() => false)) &&
+      (await titleHeader.isVisible().catch(() => false))
+    ) {
       await statusHandle.dragTo(titleHeader).catch(() => {})
       await page.waitForTimeout(600)
     }
@@ -333,19 +359,13 @@ test.describe('Folder View', () => {
     expect(true).toBe(true)
   })
 
-  test('T128: should apply AND/OR/NOT filters from config', async ({
-    page,
-    testVaultPath
-  }) => {
+  test('T128: should apply AND/OR/NOT filters from config', async ({ page, testVaultPath }) => {
     writeFolderConfig(testVaultPath, PROJECT_FOLDER, {
       views: [
         {
           ...DEFAULT_VIEW,
           filters: {
-            and: [
-              { not: 'status == "archived"' },
-              { or: ['priority >= 3', 'done isChecked'] }
-            ]
+            and: [{ not: 'status == "archived"' }, { or: ['priority >= 3', 'done isChecked'] }]
           }
         }
       ]
@@ -380,7 +400,10 @@ test.describe('Folder View', () => {
         const nameInput = page.locator('#view-name')
         if (await nameInput.isVisible().catch(() => false)) {
           await nameInput.fill('Review View').catch(() => {})
-          await page.getByRole('button', { name: 'Create' }).click().catch(() => {})
+          await page
+            .getByRole('button', { name: 'Create' })
+            .click()
+            .catch(() => {})
           await page.waitForTimeout(600)
         }
       }
@@ -413,10 +436,7 @@ test.describe('Folder View', () => {
     expect(true).toBe(true)
   })
 
-  test('T131: should react to manual .folder.md edits', async ({
-    page,
-    testVaultPath
-  }) => {
+  test('T131: should react to manual .folder.md edits', async ({ page, testVaultPath }) => {
     await openFolderView(page, PROJECT_FOLDER, PROJECT_FOLDER)
 
     const existing = readFolderConfig(testVaultPath, PROJECT_FOLDER) ?? {}

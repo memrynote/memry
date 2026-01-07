@@ -70,9 +70,7 @@ export function SelectEditor({
           isOpen && 'border-stone-400 ring-1 ring-stone-400'
         )}
       >
-        <span className={value ? 'text-stone-900' : 'text-stone-400'}>
-          {value || placeholder}
-        </span>
+        <span className={value ? 'text-stone-900' : 'text-stone-400'}>{value || placeholder}</span>
         <ChevronDown
           className={cn(
             'h-3.5 w-3.5 text-stone-400 transition-transform duration-150',
@@ -106,9 +104,7 @@ export function SelectEditor({
               )}
             >
               {option}
-              {value === option && (
-                <Check className="h-3.5 w-3.5 text-stone-600" />
-              )}
+              {value === option && <Check className="h-3.5 w-3.5 text-stone-600" />}
             </button>
           ))}
         </div>

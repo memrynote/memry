@@ -1,13 +1,13 @@
-import { useMemo } from "react"
+import { useMemo } from 'react'
 
-import { ProjectSelect } from "./project-select"
-import { StatusSelect } from "./status-select"
-import { DueDatePicker } from "./due-date-picker"
-import { PrioritySelect } from "./priority-select"
-import { cn } from "@/lib/utils"
-import { getDefaultTodoStatus } from "@/lib/task-utils"
-import type { Task, Priority } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+import { ProjectSelect } from './project-select'
+import { StatusSelect } from './status-select'
+import { DueDatePicker } from './due-date-picker'
+import { PrioritySelect } from './priority-select'
+import { cn } from '@/lib/utils'
+import { getDefaultTodoStatus } from '@/lib/task-utils'
+import type { Task, Priority } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -34,10 +34,7 @@ interface PropertyFieldProps {
   children: React.ReactNode
 }
 
-const PropertyField = ({
-  label,
-  children,
-}: PropertyFieldProps): React.JSX.Element => {
+const PropertyField = ({ label, children }: PropertyFieldProps): React.JSX.Element => {
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -61,7 +58,7 @@ export const TaskPropertiesGrid = ({
   onUpdateDueTime,
   onUpdatePriority,
   isCompleted,
-  className,
+  className
 }: TaskPropertiesGridProps): React.JSX.Element => {
   // Get current project
   const currentProject = useMemo(() => {
@@ -79,9 +76,9 @@ export const TaskPropertiesGrid = ({
     if (newProject) {
       // Map status to equivalent type in new project
       const currentStatus = currentStatuses.find((s) => s.id === task.statusId)
-      const newStatus = newProject.statuses.find(
-        (s) => s.type === currentStatus?.type
-      ) || getDefaultTodoStatus(newProject)
+      const newStatus =
+        newProject.statuses.find((s) => s.type === currentStatus?.type) ||
+        getDefaultTodoStatus(newProject)
 
       onUpdateProject(projectId)
       if (newStatus && newStatus.id !== task.statusId) {
@@ -91,23 +88,15 @@ export const TaskPropertiesGrid = ({
   }
 
   return (
-    <div className={cn("grid grid-cols-2 gap-4", className)}>
+    <div className={cn('grid grid-cols-2 gap-4', className)}>
       {/* Project */}
       <PropertyField label="Project">
-        <ProjectSelect
-          value={task.projectId}
-          onChange={handleProjectChange}
-          projects={projects}
-        />
+        <ProjectSelect value={task.projectId} onChange={handleProjectChange} projects={projects} />
       </PropertyField>
 
       {/* Status */}
       <PropertyField label="Status">
-        <StatusSelect
-          value={task.statusId}
-          onChange={onUpdateStatus}
-          statuses={currentStatuses}
-        />
+        <StatusSelect value={task.statusId} onChange={onUpdateStatus} statuses={currentStatuses} />
       </PropertyField>
 
       {/* Due Date */}
@@ -127,14 +116,9 @@ export const TaskPropertiesGrid = ({
       {/* Priority (hidden when completed) */}
       <PropertyField label="Priority">
         {!isCompleted ? (
-          <PrioritySelect
-            value={task.priority}
-            onChange={onUpdatePriority}
-          />
+          <PrioritySelect value={task.priority} onChange={onUpdatePriority} />
         ) : (
-          <div className="flex h-9 items-center px-3 text-sm text-muted-foreground">
-            —
-          </div>
+          <div className="flex h-9 items-center px-3 text-sm text-muted-foreground">—</div>
         )}
       </PropertyField>
     </div>
@@ -142,4 +126,3 @@ export const TaskPropertiesGrid = ({
 }
 
 export default TaskPropertiesGrid
-

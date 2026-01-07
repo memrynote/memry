@@ -30,12 +30,9 @@ export function TextEditor({
     }
   }, [autoFocus])
 
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setLocalValue(e.target.value)
-    },
-    []
-  )
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalValue(e.target.value)
+  }, [])
 
   const handleBlur = useCallback(() => {
     onChange(localValue)

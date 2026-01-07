@@ -1,8 +1,8 @@
-import { Search, X } from "lucide-react"
+import { Search, X } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 // ============================================================================
 // TYPES
@@ -22,26 +22,26 @@ interface CompletedSearchInputProps {
 export const CompletedSearchInput = ({
   value,
   onChange,
-  placeholder = "Search completed tasks...",
-  className,
+  placeholder = 'Search completed tasks...',
+  className
 }: CompletedSearchInputProps): React.JSX.Element => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     onChange(e.target.value)
   }
 
   const handleClear = (): void => {
-    onChange("")
+    onChange('')
   }
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === "Escape" && value) {
+    if (e.key === 'Escape' && value) {
       e.preventDefault()
       handleClear()
     }
   }
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn('relative', className)}>
       <Search
         className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-text-tertiary"
         aria-hidden="true"

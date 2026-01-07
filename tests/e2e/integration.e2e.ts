@@ -34,10 +34,7 @@ test.describe('Cross-Feature Integration', () => {
   })
 
   test.describe('Inbox to Note Conversion', () => {
-    test('T558: should convert inbox item to new note', async ({
-      page,
-      testVaultPath
-    }) => {
+    test('T558: should convert inbox item to new note', async ({ page, testVaultPath }) => {
       // Navigate to inbox
       await navigateTo(page, 'inbox')
       await page.waitForTimeout(500)
@@ -69,9 +66,7 @@ test.describe('Cross-Feature Integration', () => {
       expect(true).toBe(true)
     })
 
-    test('T558: should preserve content when converting', async ({
-      page
-    }) => {
+    test('T558: should preserve content when converting', async ({ page }) => {
       await navigateTo(page, 'inbox')
       await page.waitForTimeout(500)
 
@@ -102,9 +97,7 @@ test.describe('Cross-Feature Integration', () => {
       expect(true).toBe(true)
     })
 
-    test('T558: should remove item from inbox after conversion', async ({
-      page
-    }) => {
+    test('T558: should remove item from inbox after conversion', async ({ page }) => {
       await navigateTo(page, 'inbox')
       await page.waitForTimeout(500)
 
@@ -137,9 +130,7 @@ test.describe('Cross-Feature Integration', () => {
       expect(true).toBe(true)
     })
 
-    test('T558: should link to existing note instead of converting', async ({
-      page
-    }) => {
+    test('T558: should link to existing note instead of converting', async ({ page }) => {
       // First create a note to link to
       const existingNoteTitle = `Existing Note ${Date.now()}`
       await createNote(page, existingNoteTitle, 'This is an existing note.')
@@ -233,9 +224,7 @@ test.describe('Cross-Feature Integration', () => {
       expect(true).toBe(true)
     })
 
-    test('T559: should navigate from task to linked note', async ({
-      page
-    }) => {
+    test('T559: should navigate from task to linked note', async ({ page }) => {
       await navigateTo(page, 'tasks')
       await page.waitForTimeout(500)
 
@@ -257,9 +246,7 @@ test.describe('Cross-Feature Integration', () => {
       expect(true).toBe(true)
     })
 
-    test('T559: should navigate from note to linked task', async ({
-      page
-    }) => {
+    test('T559: should navigate from note to linked task', async ({ page }) => {
       // Open a note that has linked tasks
       const linkedTasksSection = page.locator('[data-testid="linked-tasks"]')
       if (await linkedTasksSection.isVisible()) {
@@ -499,7 +486,7 @@ test.describe('Cross-Feature Integration', () => {
     test('should handle concurrent operations', async ({ page }) => {
       // Test multiple operations happening at once
       await Promise.all([
-        createNote(page, 'Concurrent Note 1', 'Content 1'),
+        createNote(page, 'Concurrent Note 1', 'Content 1')
         // Note: In real E2E tests, you'd need separate pages for true concurrency
       ])
 

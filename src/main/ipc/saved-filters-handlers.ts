@@ -42,7 +42,9 @@ function requireDatabase() {
 /**
  * Convert DB saved filter to API format
  */
-function toApiFilter(dbFilter: ReturnType<typeof settingsQueries.getSavedFilterById>): SavedFilter | null {
+function toApiFilter(
+  dbFilter: ReturnType<typeof settingsQueries.getSavedFilterById>
+): SavedFilter | null {
   if (!dbFilter) return null
   return {
     id: dbFilter.id,
@@ -115,7 +117,10 @@ export function registerSavedFiltersHandlers(): void {
       const filter = settingsQueries.updateSavedFilter(db, input.id, updates)
       const apiFilter = toApiFilter(filter)
 
-      emitSavedFilterEvent(SavedFiltersChannels.events.UPDATED, { id: input.id, savedFilter: apiFilter })
+      emitSavedFilterEvent(SavedFiltersChannels.events.UPDATED, {
+        id: input.id,
+        savedFilter: apiFilter
+      })
 
       return { success: true, savedFilter: apiFilter }
     })

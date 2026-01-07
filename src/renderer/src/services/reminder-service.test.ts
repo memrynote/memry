@@ -19,7 +19,9 @@ describe('reminder-service', () => {
   beforeEach(() => {
     api = createMockApi()
     api.reminders.get = vi.fn().mockResolvedValue(null)
-    api.reminders.getUpcoming = vi.fn().mockResolvedValue({ reminders: [], total: 0, hasMore: false })
+    api.reminders.getUpcoming = vi
+      .fn()
+      .mockResolvedValue({ reminders: [], total: 0, hasMore: false })
     api.reminders.getDue = vi.fn().mockResolvedValue([])
     api.reminders.getForTarget = vi.fn().mockResolvedValue([])
     api.reminders.countPending = vi.fn().mockResolvedValue(0)
@@ -31,7 +33,6 @@ describe('reminder-service', () => {
     api.onReminderDue = vi.fn().mockReturnValue(() => {})
     api.onReminderDismissed = vi.fn().mockReturnValue(() => {})
     api.onReminderSnoozed = vi.fn().mockReturnValue(() => {})
-
     ;(window as Window & { api: unknown }).api = api
   })
 
@@ -69,7 +70,10 @@ describe('reminder-service', () => {
     expect(api.reminders.getDue).toHaveBeenCalled()
 
     await reminderService.getForTarget('note', 'note-1')
-    expect(api.reminders.getForTarget).toHaveBeenCalledWith({ targetType: 'note', targetId: 'note-1' })
+    expect(api.reminders.getForTarget).toHaveBeenCalledWith({
+      targetType: 'note',
+      targetId: 'note-1'
+    })
 
     await reminderService.countPending()
     expect(api.reminders.countPending).toHaveBeenCalled()

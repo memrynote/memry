@@ -1,7 +1,7 @@
-import { DragOverlay, type DropAnimation, defaultDropAnimationSideEffects } from "@dnd-kit/core"
+import { DragOverlay, type DropAnimation, defaultDropAnimationSideEffects } from '@dnd-kit/core'
 
-import { KanbanCardSkeleton } from "./kanban-card"
-import type { Task } from "@/data/sample-tasks"
+import { KanbanCardSkeleton } from './kanban-card'
+import type { Task } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -21,12 +21,12 @@ const dropAnimation: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
     styles: {
       active: {
-        opacity: "0.5",
-      },
-    },
+        opacity: '0.5'
+      }
+    }
   }),
   duration: 200,
-  easing: "ease-out",
+  easing: 'ease-out'
 }
 
 // ============================================================================
@@ -36,20 +36,15 @@ const dropAnimation: DropAnimation = {
 export const KanbanDragOverlay = ({
   activeTask,
   isCompleted = false,
-  isOverdue = false,
+  isOverdue = false
 }: KanbanDragOverlayProps): React.JSX.Element => {
   return (
     <DragOverlay dropAnimation={dropAnimation}>
       {activeTask ? (
-        <KanbanCardSkeleton
-          task={activeTask}
-          isCompleted={isCompleted}
-          isOverdue={isOverdue}
-        />
+        <KanbanCardSkeleton task={activeTask} isCompleted={isCompleted} isOverdue={isOverdue} />
       ) : null}
     </DragOverlay>
   )
 }
 
 export default KanbanDragOverlay
-

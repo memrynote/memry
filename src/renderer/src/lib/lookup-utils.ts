@@ -1,5 +1,5 @@
-import type { Task } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+import type { Task } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // PROJECT LOOKUP UTILITIES
@@ -29,7 +29,7 @@ export const createCompletionStatusMap = (
   projects.forEach((project) => {
     const statusMap = new Map<string, boolean>()
     project.statuses.forEach((status) => {
-      statusMap.set(status.id, status.type === "done")
+      statusMap.set(status.id, status.type === 'done')
     })
     map.set(project.id, statusMap)
   })
@@ -79,7 +79,7 @@ export interface LookupContext {
 export const createLookupContext = (projects: Project[]): LookupContext => {
   return {
     projectMap: createProjectMap(projects),
-    completionMap: createCompletionStatusMap(projects),
+    completionMap: createCompletionStatusMap(projects)
   }
 }
 

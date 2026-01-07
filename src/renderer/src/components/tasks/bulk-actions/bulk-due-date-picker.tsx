@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState } from 'react'
 
 import {
   Dialog,
@@ -6,13 +6,13 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Input } from "@/components/ui/input"
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
 
 // ============================================================================
 // TYPES
@@ -40,11 +40,11 @@ export const BulkDueDatePicker = ({
   open,
   onClose,
   taskCount,
-  onConfirm,
+  onConfirm
 }: BulkDueDatePickerProps): React.JSX.Element => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [includeTime, setIncludeTime] = useState(false)
-  const [selectedTime, setSelectedTime] = useState<string>("12:00")
+  const [selectedTime, setSelectedTime] = useState<string>('12:00')
 
   const handleConfirm = (): void => {
     if (selectedDate) {
@@ -53,7 +53,7 @@ export const BulkDueDatePicker = ({
       // Reset state
       setSelectedDate(undefined)
       setIncludeTime(false)
-      setSelectedTime("12:00")
+      setSelectedTime('12:00')
     }
   }
 
@@ -63,7 +63,7 @@ export const BulkDueDatePicker = ({
       // Reset state when closing
       setSelectedDate(undefined)
       setIncludeTime(false)
-      setSelectedTime("12:00")
+      setSelectedTime('12:00')
     }
   }
 
@@ -72,7 +72,7 @@ export const BulkDueDatePicker = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            Set due date for {taskCount} task{taskCount !== 1 ? "s" : ""}
+            Set due date for {taskCount} task{taskCount !== 1 ? 's' : ''}
           </DialogTitle>
           <DialogDescription>
             Select a date to set as the due date for all selected tasks.
@@ -90,11 +90,7 @@ export const BulkDueDatePicker = ({
 
           <div className="flex w-full items-center justify-between gap-4 px-2">
             <div className="flex items-center gap-2">
-              <Switch
-                id="include-time"
-                checked={includeTime}
-                onCheckedChange={setIncludeTime}
-              />
+              <Switch id="include-time" checked={includeTime} onCheckedChange={setIncludeTime} />
               <Label htmlFor="include-time" className="text-sm">
                 Also set time
               </Label>
@@ -125,14 +121,3 @@ export const BulkDueDatePicker = ({
 }
 
 export default BulkDueDatePicker
-
-
-
-
-
-
-
-
-
-
-

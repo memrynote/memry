@@ -1,7 +1,7 @@
-import { CalendarDays, Plus, Check } from "lucide-react"
+import { CalendarDays, Plus, Check } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
@@ -22,18 +22,16 @@ export const TodayEmptyState = ({
   hasOverdue,
   onAddTask,
   onViewUpcoming,
-  className,
+  className
 }: TodayEmptyStateProps): React.JSX.Element => {
   // If there are overdue tasks but nothing for today
   if (hasOverdue) {
     return (
-      <div className={cn("text-center py-12", className)}>
+      <div className={cn('text-center py-12', className)}>
         <div className="mb-4 mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
           <CalendarDays className="size-5 text-text-tertiary" aria-hidden="true" />
         </div>
-        <h3 className="text-lg font-medium text-text-primary mb-2">
-          Nothing scheduled for today
-        </h3>
+        <h3 className="text-lg font-medium text-text-primary mb-2">Nothing scheduled for today</h3>
         <p className="text-sm text-text-tertiary mb-6 max-w-xs mx-auto">
           You have overdue tasks above. Add some tasks for today or check your upcoming list.
         </p>
@@ -47,16 +45,14 @@ export const TodayEmptyState = ({
 
   // Completely clear - calm, quiet satisfaction state
   return (
-    <div className={cn("text-center py-20", className)}>
+    <div className={cn('text-center py-20', className)}>
       {/* Subtle checkmark icon */}
       <div className="mb-6 mx-auto w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center">
         <Check className="size-7 text-emerald-600 dark:text-emerald-500" aria-hidden="true" />
       </div>
 
       {/* Title */}
-      <h3 className="text-lg font-medium text-text-primary mb-2">
-        All caught up for today
-      </h3>
+      <h3 className="text-lg font-medium text-text-primary mb-2">All caught up for today</h3>
 
       {/* Subtitle */}
       <p className="text-sm text-text-tertiary mb-8 max-w-xs mx-auto">
@@ -75,9 +71,9 @@ export const TodayEmptyState = ({
             type="button"
             onClick={onViewUpcoming}
             className={cn(
-              "flex items-center gap-2 text-sm text-text-tertiary",
-              "hover:text-text-secondary transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
+              'flex items-center gap-2 text-sm text-text-tertiary',
+              'hover:text-text-secondary transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded'
             )}
           >
             <CalendarDays className="size-4" aria-hidden="true" />

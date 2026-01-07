@@ -9,7 +9,7 @@ import {
   useImperativeHandle,
   useState,
   useCallback,
-  type KeyboardEvent,
+  type KeyboardEvent
 } from 'react'
 import type { SuggestionProps } from '@tiptap/suggestion'
 import { FileText, Plus } from 'lucide-react'
@@ -63,7 +63,7 @@ export const WikiLinkAutocomplete = forwardRef<
         command({
           href: item.id,
           title: item.title,
-          exists: item.exists,
+          exists: item.exists
         })
       }
     },
@@ -100,7 +100,7 @@ export const WikiLinkAutocomplete = forwardRef<
       }
 
       return false
-    },
+    }
   }))
 
   // Separate recent and all pages
@@ -137,7 +137,8 @@ export const WikiLinkAutocomplete = forwardRef<
                     'wiki-link-autocomplete-item',
                     'relative flex w-full cursor-pointer select-none items-start gap-2 rounded-sm px-2 py-1.5 text-sm outline-none',
                     'hover:bg-accent hover:text-accent-foreground',
-                    selectedIndex === index && 'bg-accent text-accent-foreground wiki-link-autocomplete-item-selected'
+                    selectedIndex === index &&
+                      'bg-accent text-accent-foreground wiki-link-autocomplete-item-selected'
                   )}
                   onClick={() => selectItem(index)}
                   role="option"
@@ -158,9 +159,7 @@ export const WikiLinkAutocomplete = forwardRef<
           {/* All Pages Section (if more than recent) */}
           {hasMorePages && (
             <div>
-              <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">
-                All Pages
-              </div>
+              <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">All Pages</div>
               {items.slice(3).map((item, index) => {
                 const actualIndex = index + 3
                 return (

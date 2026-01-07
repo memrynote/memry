@@ -88,7 +88,7 @@ export function generateDateRange(
     days.push({
       date: dateStr,
       isToday: dateStr === today,
-      isFuture: dateStr > today,
+      isFuture: dateStr > today
     })
   }
 
@@ -97,7 +97,7 @@ export function generateDateRange(
   days.push({
     date: centerDateStr,
     isToday: centerDateStr === today,
-    isFuture: centerDateStr > today,
+    isFuture: centerDateStr > today
   })
 
   // Generate future days
@@ -107,7 +107,7 @@ export function generateDateRange(
     days.push({
       date: dateStr,
       isToday: false,
-      isFuture: true,
+      isFuture: true
     })
   }
 
@@ -128,7 +128,7 @@ export function generateMorePastDays(oldestDate: string, count: number = 14): Da
     days.push({
       date: dateStr,
       isToday: dateStr === today,
-      isFuture: dateStr > today,
+      isFuture: dateStr > today
     })
   }
 
@@ -149,7 +149,7 @@ export function generateMoreFutureDays(newestDate: string, count: number = 14): 
     days.push({
       date: dateStr,
       isToday: false,
-      isFuture: dateStr > today,
+      isFuture: dateStr > today
     })
   }
 
@@ -161,8 +161,20 @@ export function generateMoreFutureDays(newestDate: string, count: number = 14): 
 // =============================================================================
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
-                     'July', 'August', 'September', 'October', 'November', 'December']
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December'
+]
 
 /**
  * Format a date for day card header
@@ -181,7 +193,7 @@ export function formatDayHeader(dateStr: string): DayHeader {
     dateStr: `${monthName} ${dayNum}, ${year}`,
     monthYear: `${monthName} ${year}`,
     isToday: dateStr === today,
-    isFuture: dateStr > today,
+    isFuture: dateStr > today
   }
 }
 
@@ -197,11 +209,11 @@ export function formatDayHeader(dateStr: string): DayHeader {
 export function getOpacityForDistance(distance: number): number {
   const absDistance = Math.abs(distance)
 
-  if (absDistance === 0) return 1.0    // Active day
-  if (absDistance === 1) return 0.7    // Adjacent days
-  if (absDistance === 2) return 0.5    // 2 days away
-  if (absDistance === 3) return 0.35   // 3 days away
-  return 0.25                          // 4+ days away (minimum)
+  if (absDistance === 0) return 1.0 // Active day
+  if (absDistance === 1) return 0.7 // Adjacent days
+  if (absDistance === 2) return 0.5 // 2 days away
+  if (absDistance === 3) return 0.35 // 3 days away
+  return 0.25 // 4+ days away (minimum)
 }
 
 /**
@@ -301,7 +313,7 @@ export function formatDateParts(dateStr: string): DateParts {
     month: MONTH_NAMES[date.getMonth()],
     monthIndex: date.getMonth(),
     year: date.getFullYear(),
-    dayName: DAY_NAMES[date.getDay()],
+    dayName: DAY_NAMES[date.getDay()]
   }
 }
 
@@ -321,7 +333,7 @@ export function getDaysInMonth(year: number, month: number): DayData[] {
     days.push({
       date: dateStr,
       isToday: dateStr === today,
-      isFuture: dateStr > today,
+      isFuture: dateStr > today
     })
   }
 
@@ -355,10 +367,10 @@ export function getMonthStats(
 
     // Filter heatmap data for this month
     const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`
-    const monthEntries = heatmapData.filter(entry => entry.date.startsWith(monthPrefix))
+    const monthEntries = heatmapData.filter((entry) => entry.date.startsWith(monthPrefix))
 
     // Calculate stats
-    const entriesWithContent = monthEntries.filter(e => e.characterCount > 0)
+    const entriesWithContent = monthEntries.filter((e) => e.characterCount > 0)
     const entryCount = entriesWithContent.length
     const totalChars = monthEntries.reduce((sum, e) => sum + e.characterCount, 0)
 
@@ -375,7 +387,7 @@ export function getMonthStats(
 
       for (let day = weekStart; day <= weekEnd; day++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-        const entry = monthEntries.find(e => e.date === dateStr)
+        const entry = monthEntries.find((e) => e.date === dateStr)
         if (entry && entry.level > maxLevel) {
           maxLevel = entry.level
         }
@@ -388,7 +400,7 @@ export function getMonthStats(
       monthName,
       entryCount,
       totalChars,
-      activityDots,
+      activityDots
     })
   }
 

@@ -1,8 +1,8 @@
-import { Check, Circle } from "lucide-react"
+import { Check, Circle } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { formatDateShort } from "@/lib/task-utils"
-import type { Task } from "@/data/sample-tasks"
+import { cn } from '@/lib/utils'
+import { formatDateShort } from '@/lib/task-utils'
+import type { Task } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -22,7 +22,7 @@ interface KanbanSubtaskPreviewProps {
 export const KanbanSubtaskPreview = ({
   parentTitle,
   subtasks,
-  maxVisible = 5,
+  maxVisible = 5
 }: KanbanSubtaskPreviewProps): React.JSX.Element => {
   const visibleSubtasks = subtasks.slice(0, maxVisible)
   const overflowCount = Math.max(subtasks.length - maxVisible, 0)
@@ -38,10 +38,7 @@ export const KanbanSubtaskPreview = ({
           const isCompleted = !!subtask.completedAt
 
           return (
-            <div
-              key={subtask.id}
-              className="flex items-center gap-2 text-sm"
-            >
+            <div key={subtask.id} className="flex items-center gap-2 text-sm">
               {/* Completion icon */}
               {isCompleted ? (
                 <Check className="w-3 h-3 text-green-500 shrink-0" />
@@ -52,8 +49,8 @@ export const KanbanSubtaskPreview = ({
               {/* Subtask title */}
               <span
                 className={cn(
-                  "flex-1 truncate",
-                  isCompleted && "text-muted-foreground line-through"
+                  'flex-1 truncate',
+                  isCompleted && 'text-muted-foreground line-through'
                 )}
               >
                 {subtask.title}
@@ -73,7 +70,7 @@ export const KanbanSubtaskPreview = ({
       {/* Overflow indicator */}
       {overflowCount > 0 && (
         <p className="text-xs text-muted-foreground">
-          +{overflowCount} more subtask{overflowCount !== 1 ? "s" : ""}
+          +{overflowCount} more subtask{overflowCount !== 1 ? 's' : ''}
         </p>
       )}
     </div>
@@ -81,11 +78,3 @@ export const KanbanSubtaskPreview = ({
 }
 
 export default KanbanSubtaskPreview
-
-
-
-
-
-
-
-

@@ -1,10 +1,7 @@
-import { Archive, Trash2, Clock } from "lucide-react"
+import { Archive, Trash2, Clock } from 'lucide-react'
 
-import {
-  AlertDialog,
-  AlertDialogContent,
-} from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
+import { AlertDialog, AlertDialogContent } from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 
 // ============================================================================
 // TYPES
@@ -33,7 +30,7 @@ export const ClearCompletedMenu = ({
   onDeleteAll,
   onViewArchived,
   completedCount,
-  archivedCount = 0,
+  archivedCount = 0
 }: ClearCompletedMenuProps): React.JSX.Element => {
   const handleArchiveAll = (): void => {
     onArchiveAll()
@@ -116,18 +113,14 @@ export const ClearCompletedMenu = ({
                 onClick={handleViewArchived}
               >
                 <Archive className="size-4 mr-2" aria-hidden="true" />
-                View archived{archivedCount > 0 ? ` (${archivedCount})` : ""}
+                View archived{archivedCount > 0 ? ` (${archivedCount})` : ''}
               </Button>
             </>
           )}
 
           <div className="h-px bg-border mx-2" />
 
-          <Button
-            variant="ghost"
-            className="w-full justify-start h-9 px-3"
-            onClick={handleClose}
-          >
+          <Button variant="ghost" className="w-full justify-start h-9 px-3" onClick={handleClose}>
             Cancel
           </Button>
         </div>

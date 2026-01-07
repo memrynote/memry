@@ -4,10 +4,10 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import type { Task } from "@/data/sample-tasks"
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import type { Task } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -37,7 +37,7 @@ export const BulkDeleteDialog = ({
   open,
   onClose,
   tasks,
-  onConfirm,
+  onConfirm
 }: BulkDeleteDialogProps): React.JSX.Element => {
   const visibleTasks = tasks.slice(0, MAX_VISIBLE_TASKS)
   const remainingCount = tasks.length - MAX_VISIBLE_TASKS
@@ -52,10 +52,10 @@ export const BulkDeleteDialog = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            Delete {tasks.length} task{tasks.length !== 1 ? "s" : ""}?
+            Delete {tasks.length} task{tasks.length !== 1 ? 's' : ''}?
           </DialogTitle>
           <DialogDescription>
-            You&apos;re about to delete {tasks.length} task{tasks.length !== 1 ? "s" : ""}:
+            You&apos;re about to delete {tasks.length} task{tasks.length !== 1 ? 's' : ''}:
           </DialogDescription>
         </DialogHeader>
 
@@ -69,7 +69,7 @@ export const BulkDeleteDialog = ({
             ))}
             {remainingCount > 0 && (
               <li className="text-muted-foreground">
-                ... and {remainingCount} more task{remainingCount !== 1 ? "s" : ""}
+                ... and {remainingCount} more task{remainingCount !== 1 ? 's' : ''}
               </li>
             )}
           </ul>
@@ -84,7 +84,7 @@ export const BulkDeleteDialog = ({
             Cancel
           </Button>
           <Button variant="destructive" onClick={handleConfirm}>
-            Delete {tasks.length} task{tasks.length !== 1 ? "s" : ""}
+            Delete {tasks.length} task{tasks.length !== 1 ? 's' : ''}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -93,14 +93,3 @@ export const BulkDeleteDialog = ({
 }
 
 export default BulkDeleteDialog
-
-
-
-
-
-
-
-
-
-
-

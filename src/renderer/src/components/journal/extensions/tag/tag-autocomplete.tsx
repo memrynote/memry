@@ -9,7 +9,7 @@ import {
   useImperativeHandle,
   useState,
   useCallback,
-  type KeyboardEvent,
+  type KeyboardEvent
 } from 'react'
 import type { SuggestionProps } from '@tiptap/suggestion'
 import { Hash, Plus } from 'lucide-react'
@@ -103,7 +103,7 @@ export const TagAutocomplete = forwardRef<
       }
 
       return false
-    },
+    }
   }))
 
   return (

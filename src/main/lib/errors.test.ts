@@ -59,12 +59,8 @@ describe('errors', () => {
   it('type guards identify their respective error instances', () => {
     expect(isVaultError(new VaultError('vault', VaultErrorCode.NOT_FOUND))).toBe(true)
     expect(isNoteError(new NoteError('note', NoteErrorCode.NOT_FOUND))).toBe(true)
-    expect(isDatabaseError(new DatabaseError('db', DatabaseErrorCode.QUERY_FAILED))).toBe(
-      true
-    )
-    expect(isWatcherError(new WatcherError('watch', WatcherErrorCode.EVENT_ERROR))).toBe(
-      true
-    )
+    expect(isDatabaseError(new DatabaseError('db', DatabaseErrorCode.QUERY_FAILED))).toBe(true)
+    expect(isWatcherError(new WatcherError('watch', WatcherErrorCode.EVENT_ERROR))).toBe(true)
 
     const generic = new Error('generic')
     expect(isVaultError(generic)).toBe(false)

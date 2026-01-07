@@ -25,7 +25,7 @@ const MOCK_PAGES: Page[] = [
     type: 'page',
     content: 'Main project documentation...',
     lastEdited: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-    exists: true,
+    exists: true
   },
   {
     id: '2',
@@ -33,7 +33,7 @@ const MOCK_PAGES: Page[] = [
     type: 'note',
     content: 'Weekly standup notes...',
     lastEdited: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-    exists: true,
+    exists: true
   },
   {
     id: '3',
@@ -41,7 +41,7 @@ const MOCK_PAGES: Page[] = [
     type: 'note',
     content: 'Review of accomplishments...',
     lastEdited: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
-    exists: true,
+    exists: true
   },
   {
     id: '4',
@@ -49,7 +49,7 @@ const MOCK_PAGES: Page[] = [
     type: 'page',
     content: 'Annual goals and objectives...',
     lastEdited: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week ago
-    exists: true,
+    exists: true
   },
   {
     id: '5',
@@ -57,7 +57,7 @@ const MOCK_PAGES: Page[] = [
     type: 'note',
     content: 'Notes from recent reading...',
     lastEdited: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days ago
-    exists: true,
+    exists: true
   },
   {
     id: '6',
@@ -65,7 +65,7 @@ const MOCK_PAGES: Page[] = [
     type: 'page',
     content: 'Collection of ideas...',
     lastEdited: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), // 2 weeks ago
-    exists: true,
+    exists: true
   },
   {
     id: '7',
@@ -73,7 +73,7 @@ const MOCK_PAGES: Page[] = [
     type: 'page',
     content: 'Side project documentation...',
     lastEdited: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
-    exists: true,
+    exists: true
   },
   {
     id: '8',
@@ -81,8 +81,8 @@ const MOCK_PAGES: Page[] = [
     type: 'note',
     content: 'Brainstorming side projects...',
     lastEdited: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(), // 12 days ago
-    exists: true,
-  },
+    exists: true
+  }
 ]
 
 /**
@@ -136,22 +136,19 @@ export function usePages() {
   /**
    * Create a new page
    */
-  const createPage = useCallback(
-    (title: string, type: Page['type'] = 'page'): Page => {
-      const newPage: Page = {
-        id: crypto.randomUUID(),
-        title: title.trim(),
-        type,
-        content: '',
-        lastEdited: new Date().toISOString(),
-        exists: true,
-      }
+  const createPage = useCallback((title: string, type: Page['type'] = 'page'): Page => {
+    const newPage: Page = {
+      id: crypto.randomUUID(),
+      title: title.trim(),
+      type,
+      content: '',
+      lastEdited: new Date().toISOString(),
+      exists: true
+    }
 
-      setPages((prev) => [...prev, newPage])
-      return newPage
-    },
-    []
-  )
+    setPages((prev) => [...prev, newPage])
+    return newPage
+  }, [])
 
   /**
    * Update an existing page
@@ -163,7 +160,7 @@ export function usePages() {
           ? {
               ...page,
               ...updates,
-              lastEdited: new Date().toISOString(),
+              lastEdited: new Date().toISOString()
             }
           : page
       )
@@ -214,6 +211,6 @@ export function usePages() {
     updatePage,
     deletePage,
     searchPages,
-    getRecentPages,
+    getRecentPages
   }
 }

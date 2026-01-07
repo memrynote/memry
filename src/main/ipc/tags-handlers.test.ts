@@ -55,7 +55,6 @@ describe('tags-handlers', () => {
     handleCalls.length = 0
     removeHandlerCalls.length = 0
     mockSend.mockClear()
-
     ;(getIndexDatabase as Mock).mockReturnValue({})
   })
 
@@ -65,7 +64,6 @@ describe('tags-handlers', () => {
 
   it('lists notes by tag with pinned separation', async () => {
     registerTagsHandlers()
-
     ;(notesQueries.getTagDefinition as Mock).mockReturnValue({ color: 'blue' })
     ;(notesQueries.findNotesWithTagInfo as Mock).mockReturnValue([
       {
@@ -127,7 +125,6 @@ describe('tags-handlers', () => {
 
   it('renames, updates color, and deletes tags', async () => {
     registerTagsHandlers()
-
     ;(notesQueries.renameTag as Mock).mockReturnValue(3)
     const renameResult = await invokeHandler(TagsChannels.invoke.RENAME_TAG, {
       oldName: 'old',
@@ -147,7 +144,6 @@ describe('tags-handlers', () => {
     expect(colorResult).toEqual({ success: true })
     expect(notesQueries.updateTagColor).toHaveBeenCalledWith({}, 'new', '#ff0000')
     expect(mockSend).toHaveBeenCalledWith('notes:tags-changed', {})
-
     ;(notesQueries.deleteTag as Mock).mockReturnValue(5)
     const deleteResult = await invokeHandler(TagsChannels.invoke.DELETE_TAG, 'new')
     expect(deleteResult).toEqual({ success: true, affectedNotes: 5 })

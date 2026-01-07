@@ -31,8 +31,12 @@ export const tasks = sqliteTable(
     completedAt: text('completed_at'),
     archivedAt: text('archived_at'),
 
-    createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-    modifiedAt: text('modified_at').notNull().default(sql`(datetime('now'))`)
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    modifiedAt: text('modified_at')
+      .notNull()
+      .default(sql`(datetime('now'))`)
   },
   (table) => [
     index('idx_tasks_project').on(table.projectId),

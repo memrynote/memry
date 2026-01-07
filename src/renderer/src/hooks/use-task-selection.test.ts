@@ -636,10 +636,9 @@ describe('useTaskSelection', () => {
     })
 
     it('should handle visibleTaskIds changes', () => {
-      const { result, rerender } = renderHook(
-        ({ ids }) => useTaskSelection(ids),
-        { initialProps: { ids: visibleTaskIds } }
-      )
+      const { result, rerender } = renderHook(({ ids }) => useTaskSelection(ids), {
+        initialProps: { ids: visibleTaskIds }
+      })
 
       act(() => {
         result.current.selectTask('task-1')

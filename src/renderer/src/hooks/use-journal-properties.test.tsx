@@ -38,7 +38,7 @@ describe('useJournalProperties', () => {
     api = createMockApi()
     api.journal.getEntry = vi.fn().mockResolvedValue(mockEntry)
     api.journal.updateEntry = vi.fn().mockResolvedValue(mockEntry)
-      ; (window as Window & { api: unknown }).api = api
+    ;(window as Window & { api: unknown }).api = api
   })
 
   afterEach(() => {
@@ -59,22 +59,16 @@ describe('useJournalProperties', () => {
     })
 
     it('should use initialProperties when provided', () => {
-      const { result } = renderHook(() =>
-        useJournalProperties('2024-12-25', mockProperties)
-      )
+      const { result } = renderHook(() => useJournalProperties('2024-12-25', mockProperties))
 
       expect(result.current.properties).toHaveLength(6)
       expect(result.current.propertiesRecord).toEqual(mockProperties)
     })
 
     it('should infer types correctly from initial properties', () => {
-      const { result } = renderHook(() =>
-        useJournalProperties('2024-12-25', mockProperties)
-      )
+      const { result } = renderHook(() => useJournalProperties('2024-12-25', mockProperties))
 
-      const propsByName = Object.fromEntries(
-        result.current.properties.map((p) => [p.name, p.type])
-      )
+      const propsByName = Object.fromEntries(result.current.properties.map((p) => [p.name, p.type]))
 
       expect(propsByName.mood).toBe('text')
       expect(propsByName.energy).toBe('number')
@@ -97,9 +91,7 @@ describe('useJournalProperties', () => {
 
   describe('propertiesRecord', () => {
     it('should convert properties array to Record', () => {
-      const { result } = renderHook(() =>
-        useJournalProperties('2024-12-25', mockProperties)
-      )
+      const { result } = renderHook(() => useJournalProperties('2024-12-25', mockProperties))
 
       expect(result.current.propertiesRecord).toEqual(mockProperties)
     })
@@ -111,9 +103,7 @@ describe('useJournalProperties', () => {
 
   describe('updateProperty', () => {
     it('should optimistically update property', async () => {
-      const { result } = renderHook(() =>
-        useJournalProperties('2024-12-25', mockProperties)
-      )
+      const { result } = renderHook(() => useJournalProperties('2024-12-25', mockProperties))
 
       await act(async () => {
         await result.current.updateProperty('mood', 'excited')
@@ -124,9 +114,7 @@ describe('useJournalProperties', () => {
     })
 
     it('should call updateEntry with updated properties', async () => {
-      const { result } = renderHook(() =>
-        useJournalProperties('2024-12-25', mockProperties)
-      )
+      const { result } = renderHook(() => useJournalProperties('2024-12-25', mockProperties))
 
       await act(async () => {
         await result.current.updateProperty('energy', 10)
@@ -157,9 +145,7 @@ describe('useJournalProperties', () => {
 
   describe('addProperty', () => {
     it('should optimistically add property', async () => {
-      const { result } = renderHook(() =>
-        useJournalProperties('2024-12-25', mockProperties)
-      )
+      const { result } = renderHook(() => useJournalProperties('2024-12-25', mockProperties))
 
       const initialCount = result.current.properties.length
 
@@ -171,9 +157,7 @@ describe('useJournalProperties', () => {
     })
 
     it('should call updateEntry with new property', async () => {
-      const { result } = renderHook(() =>
-        useJournalProperties('2024-12-25', mockProperties)
-      )
+      const { result } = renderHook(() => useJournalProperties('2024-12-25', mockProperties))
 
       await act(async () => {
         await result.current.addProperty('score', 95)
@@ -188,9 +172,7 @@ describe('useJournalProperties', () => {
     })
 
     it('should infer type from value', async () => {
-      const { result } = renderHook(() =>
-        useJournalProperties('2024-12-25', {})
-      )
+      const { result } = renderHook(() => useJournalProperties('2024-12-25', {}))
 
       // Test number inference
       await act(async () => {
@@ -228,9 +210,7 @@ describe('useJournalProperties', () => {
 
   describe('removeProperty', () => {
     it('should optimistically remove property', async () => {
-      const { result } = renderHook(() =>
-        useJournalProperties('2024-12-25', mockProperties)
-      )
+      const { result } = renderHook(() => useJournalProperties('2024-12-25', mockProperties))
 
       const hadMood = result.current.properties.some((p) => p.name === 'mood')
       expect(hadMood).toBe(true)
@@ -260,9 +240,7 @@ describe('useJournalProperties', () => {
 
   describe('setAllProperties', () => {
     it('should replace all properties', async () => {
-      const { result } = renderHook(() =>
-        useJournalProperties('2024-12-25', mockProperties)
-      )
+      const { result } = renderHook(() => useJournalProperties('2024-12-25', mockProperties))
 
       const newProps = {
         newProp1: 'value1',
@@ -294,9 +272,7 @@ describe('useJournalProperties', () => {
 
   describe('refresh', () => {
     it('should fetch properties from entry', async () => {
-      const { result } = renderHook(() =>
-        useJournalProperties('2024-12-25', {})
-      )
+      const { result } = renderHook(() => useJournalProperties('2024-12-25', {}))
 
       await act(async () => {
         await result.current.refresh()

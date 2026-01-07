@@ -60,9 +60,7 @@ export const TabDragOverlay = ({ tab }: TabDragOverlayProps): React.JSX.Element 
       </span>
 
       {/* Modified indicator */}
-      {tab.isModified && (
-        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
-      )}
+      {tab.isModified && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />}
     </div>
   )
 }

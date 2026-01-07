@@ -172,7 +172,11 @@ describe('useBookmarks', () => {
     })
 
     it('should toggle bookmark off (remove)', async () => {
-      const existingBookmark = createMockBookmark({ id: 'bm-1', itemId: 'note-1', itemType: 'note' })
+      const existingBookmark = createMockBookmark({
+        id: 'bm-1',
+        itemId: 'note-1',
+        itemType: 'note'
+      })
 
       ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockResolvedValue({
         bookmarks: [existingBookmark],

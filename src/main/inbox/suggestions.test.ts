@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { inboxItems, filingHistory } from '@shared/db/schema/inbox'
 import { settings } from '@shared/db/schema/settings'
-import { createTestDatabase, cleanupTestDatabase, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDatabase,
+  cleanupTestDatabase,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 
 const mockIsModelLoaded = vi.hoisted(() => vi.fn())
 const mockInitEmbeddingModel = vi.hoisted(() => vi.fn())
@@ -68,53 +72,59 @@ describe('inbox suggestions', () => {
   it('generates ranked suggestions from filing history and recents', async () => {
     const now = new Date().toISOString()
 
-    testDb.db.insert(inboxItems).values({
-      id: 'item-1',
-      type: 'link',
-      title: 'Interesting link',
-      content: 'Some content',
-      createdAt: now,
-      modifiedAt: now
-    }).run()
+    testDb.db
+      .insert(inboxItems)
+      .values({
+        id: 'item-1',
+        type: 'link',
+        title: 'Interesting link',
+        content: 'Some content',
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
 
-    testDb.db.insert(filingHistory).values([
-      {
-        id: 'fh-1',
-        itemType: 'link',
-        itemContent: 'content',
-        filedTo: 'notes/projects/ProjectA/note.md',
-        filedAction: 'folder',
-        tags: ['work'],
-        filedAt: now
-      },
-      {
-        id: 'fh-2',
-        itemType: 'link',
-        itemContent: 'content',
-        filedTo: 'notes/projects/ProjectA/note.md',
-        filedAction: 'folder',
-        tags: ['work'],
-        filedAt: now
-      },
-      {
-        id: 'fh-3',
-        itemType: 'link',
-        itemContent: 'content',
-        filedTo: 'notes/archive/note.md',
-        filedAction: 'folder',
-        tags: ['archive'],
-        filedAt: now
-      },
-      {
-        id: 'fh-4',
-        itemType: 'note',
-        itemContent: 'content',
-        filedTo: 'notes/recent/note.md',
-        filedAction: 'folder',
-        tags: [],
-        filedAt: now
-      }
-    ]).run()
+    testDb.db
+      .insert(filingHistory)
+      .values([
+        {
+          id: 'fh-1',
+          itemType: 'link',
+          itemContent: 'content',
+          filedTo: 'notes/projects/ProjectA/note.md',
+          filedAction: 'folder',
+          tags: ['work'],
+          filedAt: now
+        },
+        {
+          id: 'fh-2',
+          itemType: 'link',
+          itemContent: 'content',
+          filedTo: 'notes/projects/ProjectA/note.md',
+          filedAction: 'folder',
+          tags: ['work'],
+          filedAt: now
+        },
+        {
+          id: 'fh-3',
+          itemType: 'link',
+          itemContent: 'content',
+          filedTo: 'notes/archive/note.md',
+          filedAction: 'folder',
+          tags: ['archive'],
+          filedAt: now
+        },
+        {
+          id: 'fh-4',
+          itemType: 'note',
+          itemContent: 'content',
+          filedTo: 'notes/recent/note.md',
+          filedAction: 'folder',
+          tags: [],
+          filedAt: now
+        }
+      ])
+      .run()
 
     mockIsModelLoaded.mockReturnValue(false)
 
@@ -136,24 +146,30 @@ describe('inbox suggestions', () => {
   it('maps filing history paths to folder destinations and tags', async () => {
     const now = new Date().toISOString()
 
-    testDb.db.insert(inboxItems).values({
-      id: 'item-2',
-      type: 'link',
-      title: 'Another link',
-      content: 'content',
-      createdAt: now,
-      modifiedAt: now
-    }).run()
+    testDb.db
+      .insert(inboxItems)
+      .values({
+        id: 'item-2',
+        type: 'link',
+        title: 'Another link',
+        content: 'content',
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
 
-    testDb.db.insert(filingHistory).values({
-      id: 'fh-5',
-      itemType: 'link',
-      itemContent: 'content',
-      filedTo: 'notes/projects/ProjectB/note.md',
-      filedAction: 'folder',
-      tags: ['alpha', 'beta'],
-      filedAt: now
-    }).run()
+    testDb.db
+      .insert(filingHistory)
+      .values({
+        id: 'fh-5',
+        itemType: 'link',
+        itemContent: 'content',
+        filedTo: 'notes/projects/ProjectB/note.md',
+        filedAction: 'folder',
+        tags: ['alpha', 'beta'],
+        filedAt: now
+      })
+      .run()
 
     mockIsModelLoaded.mockReturnValue(false)
 

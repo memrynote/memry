@@ -56,8 +56,7 @@ afterAll(() => {
  * Wait for a specified duration.
  * Useful for testing async operations.
  */
-export const wait = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms))
+export const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 /**
  * Create a deferred promise for testing async behavior.

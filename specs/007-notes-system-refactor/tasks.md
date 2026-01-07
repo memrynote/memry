@@ -13,22 +13,22 @@
 
 ## Completion Status (Updated: 2026-01-05)
 
-| Phase | Section | Status | Notes |
-|-------|---------|--------|-------|
-| **Phase 2** | 2.1 NoteSyncService | ✅ Complete | T001-T005 |
-| | 2.2 Batch Operations | ✅ Complete | T006-T009 |
-| | 2.3 Migrate Code | ✅ Complete | T010-T017 |
-| | 2.4 Zod Frontmatter | ⏭️ Skipped | User decision - current validation sufficient |
-| | 2.5 Pino Logging | ⬜ Not Started | Optional - 225 replacements |
-| **Phase 4** | 4.1 FTS Batch Updates | ✅ Complete | T028-T033 |
-| | 4.2 Embedding Queue | ✅ Complete | T034-T039 |
-| | 4.3 Optimize listNotes | 🟡 Partial | T040 done, T041 optional |
-| **Phase 3** | 3.1 Audit & Prepare | ✅ Complete | T042-T045 |
-| | 3.2 Migrate Components | ✅ Complete | T046-T053 |
-| | 3.3 Remove Deprecated | ✅ Complete | T054-T056 |
-| | 3.4 Optimize Hooks | ⬜ Not Started | Optional enhancements |
-| | 3.5 Shared Utilities | ⬜ Not Started | Optional extraction |
-| **Phase 1** | Quick Wins | ⬜ Not Started | Cleanup tasks |
+| Phase       | Section                | Status         | Notes                                         |
+| ----------- | ---------------------- | -------------- | --------------------------------------------- |
+| **Phase 2** | 2.1 NoteSyncService    | ✅ Complete    | T001-T005                                     |
+|             | 2.2 Batch Operations   | ✅ Complete    | T006-T009                                     |
+|             | 2.3 Migrate Code       | ✅ Complete    | T010-T017                                     |
+|             | 2.4 Zod Frontmatter    | ⏭️ Skipped     | User decision - current validation sufficient |
+|             | 2.5 Pino Logging       | ⬜ Not Started | Optional - 225 replacements                   |
+| **Phase 4** | 4.1 FTS Batch Updates  | ✅ Complete    | T028-T033                                     |
+|             | 4.2 Embedding Queue    | ✅ Complete    | T034-T039                                     |
+|             | 4.3 Optimize listNotes | 🟡 Partial     | T040 done, T041 optional                      |
+| **Phase 3** | 3.1 Audit & Prepare    | ✅ Complete    | T042-T045                                     |
+|             | 3.2 Migrate Components | ✅ Complete    | T046-T053                                     |
+|             | 3.3 Remove Deprecated  | ✅ Complete    | T054-T056                                     |
+|             | 3.4 Optimize Hooks     | ⬜ Not Started | Optional enhancements                         |
+|             | 3.5 Shared Utilities   | ⬜ Not Started | Optional extraction                           |
+| **Phase 1** | Quick Wins             | ⬜ Not Started | Cleanup tasks                                 |
 
 **Summary**: Core refactor complete (Phase 2.1-2.3, Phase 4.1-4.2, Phase 3.1-3.3). Optional enhancements remain.
 

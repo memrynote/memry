@@ -382,12 +382,16 @@ describe('Date Functions', () => {
 
     it('should calculate difference in minutes', () => {
       const note = createMockNote()
-      expect(evaluateFormula('dateDiff("2026-01-14T01:00:00", "2026-01-14T00:00:00", "minutes")', note)).toBe(60)
+      expect(
+        evaluateFormula('dateDiff("2026-01-14T01:00:00", "2026-01-14T00:00:00", "minutes")', note)
+      ).toBe(60)
     })
 
     it('should calculate difference in seconds', () => {
       const note = createMockNote()
-      expect(evaluateFormula('dateDiff("2026-01-14T00:01:00", "2026-01-14T00:00:00", "seconds")', note)).toBe(60)
+      expect(
+        evaluateFormula('dateDiff("2026-01-14T00:01:00", "2026-01-14T00:00:00", "seconds")', note)
+      ).toBe(60)
     })
 
     it('should calculate difference in months (approximate, 30-day basis)', () => {
@@ -486,7 +490,9 @@ describe('Date Functions', () => {
 
     it('should format with time components', () => {
       const note = createMockNote()
-      expect(evaluateFormula('formatDate("2026-01-14T15:30:45", "HH:mm:ss")', note)).toBe('15:30:45')
+      expect(evaluateFormula('formatDate("2026-01-14T15:30:45", "HH:mm:ss")', note)).toBe(
+        '15:30:45'
+      )
     })
 
     it('should return null for invalid date', () => {
@@ -1415,9 +1421,9 @@ describe('Conditional Expressions & Edge Cases', () => {
 
     it('should nest conditional expressions', () => {
       const note = createMockNote()
-      expect(
-        evaluateFormula('priority > 4 ? "urgent" : priority > 2 ? "high" : "low"', note)
-      ).toBe('high')
+      expect(evaluateFormula('priority > 4 ? "urgent" : priority > 2 ? "high" : "low"', note)).toBe(
+        'high'
+      )
     })
   })
 
@@ -1464,9 +1470,9 @@ describe('Conditional Expressions & Edge Cases', () => {
 
     it('should evaluate with multiple properties', () => {
       const note = createMockNote()
-      expect(
-        evaluateFormula('if(completed, "Done", concat("Priority: ", priority))', note)
-      ).toBe('Priority: 3')
+      expect(evaluateFormula('if(completed, "Done", concat("Priority: ", priority))', note)).toBe(
+        'Priority: 3'
+      )
     })
 
     it('should handle mixed types in comparisons', () => {

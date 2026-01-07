@@ -13,8 +13,8 @@
  * to the database. This is an acceptable limitation per the spec.
  */
 
-import { useCallback, useEffect } from "react"
-import { toast } from "sonner"
+import { useCallback, useEffect } from 'react'
+import { toast } from 'sonner'
 
 // ============================================================================
 // GLOBAL UNDO STACK
@@ -45,9 +45,7 @@ function startCleanupInterval() {
   cleanupInterval = setInterval(() => {
     const now = Date.now()
     const hadEntries = globalUndoStack.length > 0
-    globalUndoStack = globalUndoStack.filter(
-      (entry) => now - entry.timestamp < UNDO_EXPIRY_MS
-    )
+    globalUndoStack = globalUndoStack.filter((entry) => now - entry.timestamp < UNDO_EXPIRY_MS)
     if (hadEntries && globalUndoStack.length === 0) {
       notifyListeners()
     }
@@ -65,11 +63,11 @@ function notifyListeners() {
   globalUndoListeners.forEach((listener) => listener())
 }
 
-function pushUndoEntry(entry: Omit<UndoEntry, "id" | "timestamp">) {
+function pushUndoEntry(entry: Omit<UndoEntry, 'id' | 'timestamp'>) {
   const newEntry: UndoEntry = {
     ...entry,
     id: `undo-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    timestamp: Date.now(),
+    timestamp: Date.now()
   }
 
   // Add to stack, remove oldest if over limit
@@ -96,9 +94,7 @@ function popUndoEntry(): UndoEntry | undefined {
 function getLastUndoEntry(): UndoEntry | undefined {
   // Filter out expired entries
   const now = Date.now()
-  globalUndoStack = globalUndoStack.filter(
-    (entry) => now - entry.timestamp < UNDO_EXPIRY_MS
-  )
+  globalUndoStack = globalUndoStack.filter((entry) => now - entry.timestamp < UNDO_EXPIRY_MS)
   return globalUndoStack[globalUndoStack.length - 1]
 }
 
@@ -132,17 +128,14 @@ export const useUndoTracker = (): UseUndoTrackerReturn => {
     }
   }, [forceUpdate])
 
-  const registerUndo = useCallback(
-    (description: string, undoFn: () => void): string => {
-      return pushUndoEntry({ description, undoFn })
-    },
-    []
-  )
+  const registerUndo = useCallback((description: string, undoFn: () => void): string => {
+    return pushUndoEntry({ description, undoFn })
+  }, [])
 
   const undo = useCallback((): boolean => {
     const entry = popUndoEntry()
     if (!entry) {
-      toast.info("Nothing to undo")
+      toast.info('Nothing to undo')
       return false
     }
 
@@ -151,8 +144,8 @@ export const useUndoTracker = (): UseUndoTrackerReturn => {
       toast.success(`Undone: ${entry.description}`)
       return true
     } catch (error) {
-      console.error("[useUndoTracker] Error executing undo:", error)
-      toast.error("Failed to undo action")
+      console.error('[useUndoTracker] Error executing undo:', error)
+      toast.error('Failed to undo action')
       return false
     }
   }, [])
@@ -163,7 +156,7 @@ export const useUndoTracker = (): UseUndoTrackerReturn => {
     registerUndo,
     undo,
     canUndo: !!lastEntry,
-    lastActionDescription: lastEntry?.description ?? null,
+    lastActionDescription: lastEntry?.description ?? null
   }
 }
 
@@ -179,16 +172,14 @@ export const useUndoKeyboardShortcut = (): void => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Cmd+Z on Mac, Ctrl+Z on Windows/Linux
-      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
       const modifier = isMac ? e.metaKey : e.ctrlKey
 
-      if (modifier && e.key.toLowerCase() === "z" && !e.shiftKey) {
+      if (modifier && e.key.toLowerCase() === 'z' && !e.shiftKey) {
         // Don't intercept if in an input field (let native undo work)
         const target = e.target as HTMLElement
         const isInputField =
-          target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable
+          target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
 
         if (isInputField) {
           return // Let native text undo work
@@ -204,20 +195,20 @@ export const useUndoKeyboardShortcut = (): void => {
               popped.undoFn()
               toast.success(`Undone: ${popped.description}`)
             } catch (error) {
-              console.error("[useUndoKeyboardShortcut] Error executing undo:", error)
-              toast.error("Failed to undo action")
+              console.error('[useUndoKeyboardShortcut] Error executing undo:', error)
+              toast.error('Failed to undo action')
             }
           }
         } else {
           // Still prevent default but show info
           e.preventDefault()
-          toast.info("Nothing to undo", { duration: 2000 })
+          toast.info('Nothing to undo', { duration: 2000 })
         }
       }
     }
 
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 }
 

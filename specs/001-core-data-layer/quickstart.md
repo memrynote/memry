@@ -48,9 +48,9 @@ pnpm rebuild
 Update `electron.vite.config.ts` to externalize native modules:
 
 ```typescript
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
 
 export default defineConfig({
   main: {
@@ -78,7 +78,7 @@ export default defineConfig({
     },
     plugins: [react()]
   }
-});
+})
 ```
 
 ## Step 4: Create Drizzle Configuration
@@ -86,16 +86,16 @@ export default defineConfig({
 Create `drizzle.config.ts` in the project root:
 
 ```typescript
-import type { Config } from 'drizzle-kit';
+import type { Config } from 'drizzle-kit'
 
 export default {
   schema: './src/shared/db/schema/index.ts',
   out: './src/main/database/drizzle',
   dialect: 'sqlite',
   dbCredentials: {
-    url: './test.db', // For development/generation only
-  },
-} satisfies Config;
+    url: './test.db' // For development/generation only
+  }
+} satisfies Config
 ```
 
 ## Step 5: Create Directory Structure
@@ -121,8 +121,8 @@ mkdir -p src/renderer/src/hooks
 Create `src/shared/db/schema/projects.ts`:
 
 ```typescript
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
-import { sql } from 'drizzle-orm';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
 
 export const projects = sqliteTable('projects', {
   id: text('id').primaryKey(),
@@ -132,48 +132,62 @@ export const projects = sqliteTable('projects', {
   icon: text('icon'),
   position: integer('position').notNull().default(0),
   isInbox: integer('is_inbox', { mode: 'boolean' }).notNull().default(false),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-  modifiedAt: text('modified_at').notNull().default(sql`(datetime('now'))`),
-  archivedAt: text('archived_at'),
-});
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  modifiedAt: text('modified_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  archivedAt: text('archived_at')
+})
 
-export type Project = typeof projects.$inferSelect;
-export type NewProject = typeof projects.$inferInsert;
+export type Project = typeof projects.$inferSelect
+export type NewProject = typeof projects.$inferInsert
 ```
 
 Create `src/shared/db/schema/tasks.ts`:
 
 ```typescript
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
-import { sql } from 'drizzle-orm';
-import { projects } from './projects';
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
+import { projects } from './projects'
 
-export const tasks = sqliteTable('tasks', {
-  id: text('id').primaryKey(),
-  projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
-  parentId: text('parent_id'),
-  title: text('title').notNull(),
-  description: text('description'),
-  priority: integer('priority').notNull().default(0),
-  position: integer('position').notNull().default(0),
-  dueDate: text('due_date'),
-  completedAt: text('completed_at'),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-  modifiedAt: text('modified_at').notNull().default(sql`(datetime('now'))`),
-}, (table) => [
-  index('idx_tasks_project').on(table.projectId),
-  index('idx_tasks_due_date').on(table.dueDate),
-]);
+export const tasks = sqliteTable(
+  'tasks',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    parentId: text('parent_id'),
+    title: text('title').notNull(),
+    description: text('description'),
+    priority: integer('priority').notNull().default(0),
+    position: integer('position').notNull().default(0),
+    dueDate: text('due_date'),
+    completedAt: text('completed_at'),
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    modifiedAt: text('modified_at')
+      .notNull()
+      .default(sql`(datetime('now'))`)
+  },
+  (table) => [
+    index('idx_tasks_project').on(table.projectId),
+    index('idx_tasks_due_date').on(table.dueDate)
+  ]
+)
 
-export type Task = typeof tasks.$inferSelect;
-export type NewTask = typeof tasks.$inferInsert;
+export type Task = typeof tasks.$inferSelect
+export type NewTask = typeof tasks.$inferInsert
 ```
 
 Create `src/shared/db/schema/index.ts`:
 
 ```typescript
-export * from './projects';
-export * from './tasks';
+export * from './projects'
+export * from './tasks'
 // Add more exports as you create schema files
 ```
 
@@ -191,60 +205,60 @@ This creates migration files in `src/main/database/drizzle/`.
 Create `src/main/database/client.ts`:
 
 ```typescript
-import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
-import * as schema from '@shared/db/schema';
+import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import Database from 'better-sqlite3'
+import * as schema from '@shared/db/schema'
 
-export type DrizzleDb = BetterSQLite3Database<typeof schema>;
+export type DrizzleDb = BetterSQLite3Database<typeof schema>
 
-let dataDb: DrizzleDb | null = null;
-let sqliteDb: Database.Database | null = null;
+let dataDb: DrizzleDb | null = null
+let sqliteDb: Database.Database | null = null
 
 export function initDatabase(dbPath: string): DrizzleDb {
-  sqliteDb = new Database(dbPath);
-  sqliteDb.pragma('journal_mode = WAL');
-  sqliteDb.pragma('foreign_keys = ON');
+  sqliteDb = new Database(dbPath)
+  sqliteDb.pragma('journal_mode = WAL')
+  sqliteDb.pragma('foreign_keys = ON')
 
-  dataDb = drizzle(sqliteDb, { schema });
-  return dataDb;
+  dataDb = drizzle(sqliteDb, { schema })
+  return dataDb
 }
 
 export function getDatabase(): DrizzleDb {
-  if (!dataDb) throw new Error('Database not initialized');
-  return dataDb;
+  if (!dataDb) throw new Error('Database not initialized')
+  return dataDb
 }
 
 export function closeDatabase(): void {
-  sqliteDb?.close();
-  sqliteDb = null;
-  dataDb = null;
+  sqliteDb?.close()
+  sqliteDb = null
+  dataDb = null
 }
 ```
 
 Create `src/main/database/migrate.ts`:
 
 ```typescript
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
-import path from 'path';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import Database from 'better-sqlite3'
+import path from 'path'
 
 export function runMigrations(dbPath: string): void {
-  const sqlite = new Database(dbPath);
-  const db = drizzle(sqlite);
+  const sqlite = new Database(dbPath)
+  const db = drizzle(sqlite)
 
-  const migrationsFolder = path.join(__dirname, 'drizzle');
-  migrate(db, { migrationsFolder });
+  const migrationsFolder = path.join(__dirname, 'drizzle')
+  migrate(db, { migrationsFolder })
 
-  sqlite.close();
+  sqlite.close()
 }
 ```
 
 Create `src/main/database/index.ts`:
 
 ```typescript
-export { initDatabase, getDatabase, closeDatabase, type DrizzleDb } from './client';
-export { runMigrations } from './migrate';
+export { initDatabase, getDatabase, closeDatabase, type DrizzleDb } from './client'
+export { runMigrations } from './migrate'
 ```
 
 ## Step 9: Create Example Query Functions
@@ -252,40 +266,33 @@ export { runMigrations } from './migrate';
 Create `src/shared/db/queries/tasks.ts`:
 
 ```typescript
-import { eq, isNull, desc } from 'drizzle-orm';
-import { tasks, type Task, type NewTask } from '../schema';
-import type { DrizzleDb } from '../../main/database';
+import { eq, isNull, desc } from 'drizzle-orm'
+import { tasks, type Task, type NewTask } from '../schema'
+import type { DrizzleDb } from '../../main/database'
 
 export function getAllTasks(db: DrizzleDb): Task[] {
-  return db.select().from(tasks).all();
+  return db.select().from(tasks).all()
 }
 
 export function getIncompleteTasks(db: DrizzleDb): Task[] {
-  return db.select()
-    .from(tasks)
-    .where(isNull(tasks.completedAt))
-    .orderBy(tasks.position)
-    .all();
+  return db.select().from(tasks).where(isNull(tasks.completedAt)).orderBy(tasks.position).all()
 }
 
 export function getTasksByProject(db: DrizzleDb, projectId: string): Task[] {
-  return db.select()
-    .from(tasks)
-    .where(eq(tasks.projectId, projectId))
-    .orderBy(tasks.position)
-    .all();
+  return db.select().from(tasks).where(eq(tasks.projectId, projectId)).orderBy(tasks.position).all()
 }
 
 export function createTask(db: DrizzleDb, task: NewTask): Task {
-  return db.insert(tasks).values(task).returning().get();
+  return db.insert(tasks).values(task).returning().get()
 }
 
 export function completeTask(db: DrizzleDb, taskId: string): Task | undefined {
-  return db.update(tasks)
+  return db
+    .update(tasks)
     .set({ completedAt: new Date().toISOString() })
     .where(eq(tasks.id, taskId))
     .returning()
-    .get();
+    .get()
 }
 ```
 
@@ -294,34 +301,34 @@ export function completeTask(db: DrizzleDb, taskId: string): Task | undefined {
 Update `src/main/index.ts`:
 
 ```typescript
-import { app, BrowserWindow, ipcMain } from 'electron';
-import { join } from 'path';
-import { initDatabase, closeDatabase, runMigrations } from './database';
-import { registerTasksHandlers } from './ipc/tasks-handlers';
+import { app, BrowserWindow, ipcMain } from 'electron'
+import { join } from 'path'
+import { initDatabase, closeDatabase, runMigrations } from './database'
+import { registerTasksHandlers } from './ipc/tasks-handlers'
 
-let vaultPath = '/path/to/vault'; // Load from electron-store
+let vaultPath = '/path/to/vault' // Load from electron-store
 
 async function initializeApp(): Promise<void> {
-  const dbPath = join(vaultPath, '.memry', 'data.db');
+  const dbPath = join(vaultPath, '.memry', 'data.db')
 
   // Run migrations
-  runMigrations(dbPath);
+  runMigrations(dbPath)
 
   // Initialize database connection
-  initDatabase(dbPath);
+  initDatabase(dbPath)
 
   // Register IPC handlers
-  registerTasksHandlers();
+  registerTasksHandlers()
 }
 
 app.whenReady().then(async () => {
-  await initializeApp();
-  createWindow();
-});
+  await initializeApp()
+  createWindow()
+})
 
 app.on('before-quit', () => {
-  closeDatabase();
-});
+  closeDatabase()
+})
 ```
 
 ## Step 11: Create IPC Handlers
@@ -329,30 +336,30 @@ app.on('before-quit', () => {
 Create `src/main/ipc/tasks-handlers.ts`:
 
 ```typescript
-import { ipcMain } from 'electron';
-import { getDatabase } from '../database';
-import * as taskQueries from '@shared/db/queries/tasks';
-import { nanoid } from 'nanoid';
+import { ipcMain } from 'electron'
+import { getDatabase } from '../database'
+import * as taskQueries from '@shared/db/queries/tasks'
+import { nanoid } from 'nanoid'
 
 export function registerTasksHandlers(): void {
   ipcMain.handle('tasks:list', async () => {
-    const db = getDatabase();
-    return taskQueries.getAllTasks(db);
-  });
+    const db = getDatabase()
+    return taskQueries.getAllTasks(db)
+  })
 
   ipcMain.handle('tasks:create', async (_, input: { title: string; projectId: string }) => {
-    const db = getDatabase();
+    const db = getDatabase()
     return taskQueries.createTask(db, {
       id: nanoid(),
       title: input.title,
-      projectId: input.projectId,
-    });
-  });
+      projectId: input.projectId
+    })
+  })
 
   ipcMain.handle('tasks:complete', async (_, taskId: string) => {
-    const db = getDatabase();
-    return taskQueries.completeTask(db, taskId);
-  });
+    const db = getDatabase()
+    return taskQueries.completeTask(db, taskId)
+  })
 }
 ```
 
@@ -377,6 +384,7 @@ pnpm db:studio
 ### "Cannot find module 'better-sqlite3'"
 
 Run the rebuild script:
+
 ```bash
 pnpm rebuild
 ```
@@ -384,10 +392,12 @@ pnpm rebuild
 ### "Cannot find module '@shared/db/schema'"
 
 Ensure path aliases are configured in:
+
 1. `electron.vite.config.ts` (build-time)
 2. `tsconfig.json` (type-checking)
 
 Add to `tsconfig.json`:
+
 ```json
 {
   "compilerOptions": {
@@ -401,6 +411,7 @@ Add to `tsconfig.json`:
 ### "EMFILE: too many open files" (Linux)
 
 Increase inotify limit:
+
 ```bash
 echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
@@ -409,6 +420,7 @@ sudo sysctl -p
 ### Drizzle Kit errors
 
 Ensure the database file exists or use `push` for development:
+
 ```bash
 # Create empty db and push schema directly (development)
 pnpm db:push
@@ -459,12 +471,12 @@ When building the React Native app, you'll:
 
 ```typescript
 // react-native/database/client.ts
-import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { openDatabaseSync } from 'expo-sqlite';
-import * as schema from '@shared/db/schema';
+import { drizzle } from 'drizzle-orm/expo-sqlite'
+import { openDatabaseSync } from 'expo-sqlite'
+import * as schema from '@shared/db/schema'
 
-const sqlite = openDatabaseSync('data.db');
-export const db = drizzle(sqlite, { schema });
+const sqlite = openDatabaseSync('data.db')
+export const db = drizzle(sqlite, { schema })
 ```
 
 The queries work identically across platforms!

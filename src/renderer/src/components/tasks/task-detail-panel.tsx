@@ -1,23 +1,23 @@
-import { useEffect, useState, useCallback, useMemo } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useEffect, useState, useCallback, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { useTabs } from "@/contexts/tabs"
-import { TaskDetailHeader } from "./task-detail-header"
-import { TaskPropertiesGrid } from "./task-properties-grid"
-import { TaskDescription } from "./task-description"
-import { TaskRepeatDisplay } from "./task-repeat-display"
-import { TaskLinksSection } from "./task-links-section"
-import { TaskMetadata } from "./task-metadata"
-import { TaskDetailFooter } from "./task-detail-footer"
-import { DeleteTaskDialog } from "./delete-task-dialog"
-import { StopRepeatingDialog, type StopRepeatOption } from "./stop-repeating-dialog"
-import { SubtasksSection } from "./detail-panel"
-import { cn } from "@/lib/utils"
-import { getSubtasks, calculateProgress, canHaveSubtasks } from "@/lib/subtask-utils"
-import { notesService } from "@/services/notes-service"
-import type { Task, Priority, RepeatConfig } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { useTabs } from '@/contexts/tabs'
+import { TaskDetailHeader } from './task-detail-header'
+import { TaskPropertiesGrid } from './task-properties-grid'
+import { TaskDescription } from './task-description'
+import { TaskRepeatDisplay } from './task-repeat-display'
+import { TaskLinksSection } from './task-links-section'
+import { TaskMetadata } from './task-metadata'
+import { TaskDetailFooter } from './task-detail-footer'
+import { DeleteTaskDialog } from './delete-task-dialog'
+import { StopRepeatingDialog, type StopRepeatOption } from './stop-repeating-dialog'
+import { SubtasksSection } from './detail-panel'
+import { cn } from '@/lib/utils'
+import { getSubtasks, calculateProgress, canHaveSubtasks } from '@/lib/subtask-utils'
+import { notesService } from '@/services/notes-service'
+import type { Task, Priority, RepeatConfig } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -82,7 +82,7 @@ export const TaskDetailPanel = ({
   onOpenBulkDueDateDialog,
   onOpenBulkPriorityDialog,
   onOpenDeleteAllSubtasksDialog,
-  className,
+  className
 }: TaskDetailPanelProps): React.JSX.Element => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isStopRepeatDialogOpen, setIsStopRepeatDialogOpen] = useState(false)
@@ -104,13 +104,13 @@ export const TaskDetailPanel = ({
   // Handle escape key to close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === "Escape" && isOpen && !isDeleteDialogOpen) {
+      if (e.key === 'Escape' && isOpen && !isDeleteDialogOpen) {
         onClose()
       }
     }
 
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, isDeleteDialogOpen, onClose])
 
   // Update handlers
@@ -188,7 +188,7 @@ export const TaskDetailPanel = ({
       if (task) {
         onUpdateTask(task.id, {
           isRepeating: repeatConfig !== null,
-          repeatConfig,
+          repeatConfig
         })
       }
     },
@@ -238,7 +238,7 @@ export const TaskDetailPanel = ({
   const handleNoteClick = useCallback(
     async (noteId: string): Promise<void> => {
       // Try to get the note title for a better tab name
-      let noteTitle = "Note"
+      let noteTitle = 'Note'
       try {
         const note = await notesService.get(noteId)
         if (note) {
@@ -249,15 +249,15 @@ export const TaskDetailPanel = ({
       }
 
       openTab({
-        type: "note",
+        type: 'note',
         title: noteTitle,
-        icon: "file-text",
+        icon: 'file-text',
         path: `/notes/${noteId}`,
         entityId: noteId,
         isPinned: false,
         isModified: false,
         isPreview: true,
-        isDeleted: false,
+        isDeleted: false
       })
     },
     [openTab]
@@ -282,7 +282,7 @@ export const TaskDetailPanel = ({
 
   const handleMoveToProject = useCallback((): void => {
     // Opens project selector - for now just log
-    console.log("Move to project")
+    console.log('Move to project')
   }, [])
 
   const handleCopyLink = useCallback((): void => {
@@ -290,7 +290,7 @@ export const TaskDetailPanel = ({
       // Copy task link to clipboard
       const link = `memry://task/${task.id}`
       navigator.clipboard.writeText(link)
-      console.log("Link copied:", link)
+      console.log('Link copied:', link)
     }
   }, [task])
 
@@ -398,12 +398,12 @@ export const TaskDetailPanel = ({
 
             {/* Panel */}
             <motion.aside
-              initial={{ x: "100%" }}
+              initial={{ x: '100%' }}
               animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               className={cn(
-                "fixed right-0 top-0 z-50 flex h-full w-[420px] flex-col bg-background shadow-xl border-l border-border",
+                'fixed right-0 top-0 z-50 flex h-full w-[420px] flex-col bg-background shadow-xl border-l border-border',
                 className
               )}
               role="dialog"
@@ -438,10 +438,7 @@ export const TaskDetailPanel = ({
                   <div className="h-px bg-border" />
 
                   {/* Description */}
-                  <TaskDescription
-                    value={task.description}
-                    onChange={handleUpdateDescription}
-                  />
+                  <TaskDescription value={task.description} onChange={handleUpdateDescription} />
 
                   {/* Divider */}
                   <div className="h-px bg-border" />
@@ -478,7 +475,9 @@ export const TaskDetailPanel = ({
                     repeatConfig={task.repeatConfig}
                     dueDate={task.dueDate}
                     onConfigChange={handleRepeatConfigChange}
-                    onSkipOccurrence={task.isRepeating && onSkipOccurrence ? handleSkipOccurrence : undefined}
+                    onSkipOccurrence={
+                      task.isRepeating && onSkipOccurrence ? handleSkipOccurrence : undefined
+                    }
                   />
 
                   {/* Divider */}
@@ -521,7 +520,7 @@ export const TaskDetailPanel = ({
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleConfirmDelete}
-        taskTitle={task?.title || ""}
+        taskTitle={task?.title || ''}
       />
 
       {/* Stop Repeating Dialog */}
@@ -529,7 +528,7 @@ export const TaskDetailPanel = ({
         isOpen={isStopRepeatDialogOpen}
         onClose={() => setIsStopRepeatDialogOpen(false)}
         onConfirm={handleStopRepeatConfirm}
-        taskTitle={task?.title || ""}
+        taskTitle={task?.title || ''}
         repeatConfig={task?.repeatConfig || null}
       />
     </>
@@ -537,4 +536,3 @@ export const TaskDetailPanel = ({
 }
 
 export default TaskDetailPanel
-

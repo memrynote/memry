@@ -1,7 +1,7 @@
-import { useState } from "react"
-import { ChevronRight } from "lucide-react"
+import { useState } from 'react'
+import { ChevronRight } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
@@ -15,7 +15,7 @@ interface ExpandChevronProps {
   /** Called when the chevron is clicked */
   onClick: () => void
   /** Size variant */
-  size?: "sm" | "md"
+  size?: 'sm' | 'md'
   /** Additional class names */
   className?: string
 }
@@ -29,21 +29,15 @@ export const ExpandChevron = ({
   isExpanded,
   hasSubtasks,
   onClick,
-  size = "md",
-  className,
+  size = 'md',
+  className
 }: ExpandChevronProps): React.JSX.Element => {
   const [isAnimating, setIsAnimating] = useState(false)
 
   // Return empty spacer to maintain alignment when no subtasks
   if (!hasSubtasks) {
     return (
-      <div
-        className={cn(
-          "shrink-0",
-          size === "sm" ? "w-5 h-5" : "w-6 h-6"
-        )}
-        aria-hidden="true"
-      />
+      <div className={cn('shrink-0', size === 'sm' ? 'w-5 h-5' : 'w-6 h-6')} aria-hidden="true" />
     )
   }
 
@@ -55,7 +49,7 @@ export const ExpandChevron = ({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === "Enter" || e.key === " ") {
+    if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       e.stopPropagation()
       setIsAnimating(true)
@@ -72,29 +66,29 @@ export const ExpandChevron = ({
       onKeyDown={handleKeyDown}
       tabIndex={0}
       className={cn(
-        "flex items-center justify-center rounded shrink-0",
-        "transition-all duration-150",
+        'flex items-center justify-center rounded shrink-0',
+        'transition-all duration-150',
         // Enhanced hover and active states for better visibility
-        "text-gray-400 hover:text-gray-600 hover:bg-gray-100",
-        "active:bg-gray-200",
-        "dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-800",
-        "dark:active:bg-gray-700",
+        'text-gray-400 hover:text-gray-600 hover:bg-gray-100',
+        'active:bg-gray-200',
+        'dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-800',
+        'dark:active:bg-gray-700',
         // Focus states for accessibility
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
         // Size variants
-        size === "sm" ? "w-5 h-5" : "w-6 h-6",
+        size === 'sm' ? 'w-5 h-5' : 'w-6 h-6',
         // Animation feedback on click
-        isAnimating && "scale-110 bg-gray-100 dark:bg-gray-800",
+        isAnimating && 'scale-110 bg-gray-100 dark:bg-gray-800',
         className
       )}
       aria-expanded={isExpanded}
-      aria-label={isExpanded ? "Collapse subtasks" : "Expand subtasks"}
+      aria-label={isExpanded ? 'Collapse subtasks' : 'Expand subtasks'}
     >
       <ChevronRight
         className={cn(
-          "transition-transform duration-200 ease-out",
-          size === "sm" ? "w-4 h-4" : "w-5 h-5",
-          isExpanded && "rotate-90"
+          'transition-transform duration-200 ease-out',
+          size === 'sm' ? 'w-4 h-4' : 'w-5 h-5',
+          isExpanded && 'rotate-90'
         )}
         strokeWidth={2.5}
         aria-hidden="true"
@@ -104,8 +98,3 @@ export const ExpandChevron = ({
 }
 
 export default ExpandChevron
-
-
-
-
-

@@ -46,10 +46,7 @@ export async function atomicWrite(filePath: string, content: string): Promise<vo
       // Ignore cleanup errors
     }
 
-    throw new NoteError(
-      `Failed to write file: ${filePath}`,
-      NoteErrorCode.WRITE_FAILED
-    )
+    throw new NoteError(`Failed to write file: ${filePath}`, NoteErrorCode.WRITE_FAILED)
   }
 }
 
@@ -73,10 +70,7 @@ export async function safeRead(filePath: string): Promise<string | null> {
       return null
     }
 
-    throw new NoteError(
-      `Failed to read file: ${filePath}`,
-      NoteErrorCode.READ_FAILED
-    )
+    throw new NoteError(`Failed to read file: ${filePath}`, NoteErrorCode.READ_FAILED)
   }
 }
 
@@ -91,10 +85,7 @@ export async function readRequired(filePath: string): Promise<string> {
   const content = await safeRead(filePath)
 
   if (content === null) {
-    throw new NoteError(
-      `File not found: ${filePath}`,
-      NoteErrorCode.NOT_FOUND
-    )
+    throw new NoteError(`File not found: ${filePath}`, NoteErrorCode.NOT_FOUND)
   }
 
   return content
@@ -127,10 +118,7 @@ export async function ensureDirectory(dirPath: string): Promise<void> {
  * @param relativeTo - Base path for relative paths (optional)
  * @returns Array of file paths
  */
-export async function listMarkdownFiles(
-  dirPath: string,
-  relativeTo?: string
-): Promise<string[]> {
+export async function listMarkdownFiles(dirPath: string, relativeTo?: string): Promise<string[]> {
   const files: string[] = []
 
   async function scanDir(currentPath: string): Promise<void> {
@@ -148,9 +136,7 @@ export async function listMarkdownFiles(
         if (entry.isDirectory()) {
           await scanDir(fullPath)
         } else if (entry.isFile() && entry.name.endsWith('.md')) {
-          const filePath = relativeTo
-            ? path.relative(relativeTo, fullPath)
-            : fullPath
+          const filePath = relativeTo ? path.relative(relativeTo, fullPath) : fullPath
           files.push(filePath)
         }
       }
@@ -177,10 +163,7 @@ export async function listMarkdownFiles(
  * @param relativeTo - Base path for relative paths (optional)
  * @returns Array of directory paths
  */
-export async function listDirectories(
-  dirPath: string,
-  relativeTo?: string
-): Promise<string[]> {
+export async function listDirectories(dirPath: string, relativeTo?: string): Promise<string[]> {
   const dirs: string[] = []
 
   async function scanDir(currentPath: string): Promise<void> {
@@ -195,9 +178,7 @@ export async function listDirectories(
 
         if (entry.isDirectory()) {
           const fullPath = path.join(currentPath, entry.name)
-          const dirPath = relativeTo
-            ? path.relative(relativeTo, fullPath)
-            : fullPath
+          const dirPath = relativeTo ? path.relative(relativeTo, fullPath) : fullPath
           dirs.push(dirPath)
           await scanDir(fullPath)
         }
@@ -236,10 +217,7 @@ export async function deleteFile(filePath: string): Promise<void> {
       return // File already doesn't exist
     }
 
-    throw new NoteError(
-      `Failed to delete file: ${filePath}`,
-      NoteErrorCode.DELETE_FAILED
-    )
+    throw new NoteError(`Failed to delete file: ${filePath}`, NoteErrorCode.DELETE_FAILED)
   }
 }
 
@@ -344,11 +322,7 @@ export function sanitizeFilename(filename: string): string {
  * @param folder - Optional subfolder
  * @returns Absolute file path
  */
-export function generateNotePath(
-  notesDir: string,
-  title: string,
-  folder?: string
-): string {
+export function generateNotePath(notesDir: string, title: string, folder?: string): string {
   const filename = sanitizeFilename(title) + '.md'
 
   if (folder) {

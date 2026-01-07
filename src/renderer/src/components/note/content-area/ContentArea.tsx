@@ -5,7 +5,7 @@
  */
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { SuggestionMenuController, useCreateBlockNote } from '@blocknote/react'
+import { SuggestionMenuController, useCreateBlockNote, FormattingToolbar } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
 import {
   BlockNoteSchema,
@@ -309,6 +309,7 @@ export const ContentArea = memo(function ContentArea({
   contentType = 'html',
   placeholder = "Start writing, or press '/' for commands...",
   editable = true,
+  stickyToolbar = false,
   onContentChange,
   onMarkdownChange,
   onHeadingsChange,
@@ -869,7 +870,10 @@ export const ContentArea = memo(function ContentArea({
       {/* BlockNote Editor */}
       <div
         ref={editorContainerRef}
-        className="bn-container flex-1 min-h-[300px] relative"
+        className={cn(
+          'bn-container flex-1 min-h-[300px] relative',
+          stickyToolbar && 'sticky-toolbar-enabled'
+        )}
         role="application"
         aria-label="Rich text editor"
       >
@@ -878,7 +882,9 @@ export const ContentArea = memo(function ContentArea({
           editable={editable}
           onChange={handleChange}
           theme={editorTheme}
+          formattingToolbar={!stickyToolbar}
         >
+          {stickyToolbar && <FormattingToolbar />}
           <SuggestionMenuController
             triggerCharacter="[["
             getItems={getWikiLinkItems}

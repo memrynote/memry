@@ -1,34 +1,25 @@
-import { useMemo, useRef, useState, memo } from "react"
-import { Plus } from "lucide-react"
-import { useVirtualizer } from "@tanstack/react-virtual"
-import { AnimatePresence } from "framer-motion"
+import { useMemo, useRef, useState, memo } from 'react'
+import { Plus } from 'lucide-react'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { AnimatePresence } from 'framer-motion'
 
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { QuickAddInput } from "@/components/tasks/quick-add-input"
-import { SortableTaskRow } from "@/components/tasks/drag-drop"
-import { DaySectionHeader } from "@/components/tasks/day-section-header"
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import { QuickAddInput } from '@/components/tasks/quick-add-input'
+import { SortableTaskRow } from '@/components/tasks/drag-drop'
+import { DaySectionHeader } from '@/components/tasks/day-section-header'
 import {
   PlanningEmptyState,
   SimpleEmptyState,
-  OverdueClearedBanner,
-} from "@/components/tasks/empty-states"
-import { cn } from "@/lib/utils"
-import {
-  getUpcomingTasks,
-  parseDateKey,
-  startOfDay,
-  addDays,
-} from "@/lib/task-utils"
-import {
-  createLookupContext,
-  isTaskCompletedFast,
-  type LookupContext,
-} from "@/lib/lookup-utils"
-import { getSectionVisibility } from "@/lib/section-visibility"
-import { useOverdueCelebration } from "@/hooks"
-import type { Task, Priority } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+  OverdueClearedBanner
+} from '@/components/tasks/empty-states'
+import { cn } from '@/lib/utils'
+import { getUpcomingTasks, parseDateKey, startOfDay, addDays } from '@/lib/task-utils'
+import { createLookupContext, isTaskCompletedFast, type LookupContext } from '@/lib/lookup-utils'
+import { getSectionVisibility } from '@/lib/section-visibility'
+import { useOverdueCelebration } from '@/hooks'
+import type { Task, Priority } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -57,12 +48,7 @@ interface VirtualizedUpcomingViewProps {
 }
 
 // Virtual item types for flattened data structure
-type VirtualItemType =
-  | "overdue-header"
-  | "day-header"
-  | "task"
-  | "empty-day"
-  | "add-task-button"
+type VirtualItemType = 'overdue-header' | 'day-header' | 'task' | 'empty-day' | 'add-task-button'
 
 interface VirtualItem {
   id: string
@@ -78,11 +64,11 @@ interface VirtualItem {
 
 // Estimated heights for different item types
 const ITEM_HEIGHTS = {
-  "overdue-header": 44,
-  "day-header": 44,
+  'overdue-header': 44,
+  'day-header': 44,
   task: 52,
-  "empty-day": 80,
-  "add-task-button": 40,
+  'empty-day': 80,
+  'add-task-button': 40
 } as const
 
 // ============================================================================
@@ -105,20 +91,20 @@ const flattenUpcomingData = (
   // Add overdue section if has tasks
   if (overdue.length > 0) {
     items.push({
-      id: "overdue-header",
-      type: "overdue-header",
+      id: 'overdue-header',
+      type: 'overdue-header',
       taskCount: overdue.length,
-      isOverdue: true,
+      isOverdue: true
     })
 
     overdue.forEach((task) => {
       const project = lookupContext.projectMap.get(task.projectId)
       items.push({
         id: `task-${task.id}`,
-        type: "task",
+        type: 'task',
         task,
         project,
-        isOverdue: true,
+        isOverdue: true
       })
     })
   }
@@ -130,8 +116,8 @@ const flattenUpcomingData = (
 
     // Check visibility for tomorrow section
     if (isTomorrow) {
-      const visibility = getSectionVisibility("tomorrow", dayTasks.length, {
-        hasTasksThisWeek,
+      const visibility = getSectionVisibility('tomorrow', dayTasks.length, {
+        hasTasksThisWeek
       })
       if (!visibility.shouldShow) return
     }
@@ -144,11 +130,11 @@ const flattenUpcomingData = (
     // Add day header
     items.push({
       id: `day-${dateKey}`,
-      type: "day-header",
+      type: 'day-header',
       date,
       dateKey,
       taskCount: dayTasks.length,
-      isTomorrow,
+      isTomorrow
     })
 
     if (dayTasks.length > 0) {
@@ -157,28 +143,28 @@ const flattenUpcomingData = (
         const project = lookupContext.projectMap.get(task.projectId)
         items.push({
           id: `task-${task.id}`,
-          type: "task",
+          type: 'task',
           task,
           project,
-          dateKey,
+          dateKey
         })
       })
 
       // Add "add task" button at end of day
       items.push({
         id: `add-${dateKey}`,
-        type: "add-task-button",
+        type: 'add-task-button',
         date,
-        dateKey,
+        dateKey
       })
     } else {
       // Add empty day state
       items.push({
         id: `empty-${dateKey}`,
-        type: "empty-day",
+        type: 'empty-day',
         date,
         dateKey,
-        isTomorrow,
+        isTomorrow
       })
     }
   })
@@ -212,10 +198,10 @@ const VirtualItemRenderer = memo(
     onToggleComplete,
     onUpdateTask,
     onTaskClick,
-    onAddTaskForDate,
+    onAddTaskForDate
   }: VirtualItemRendererProps): React.JSX.Element | null => {
     switch (item.type) {
-      case "overdue-header":
+      case 'overdue-header':
         return (
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/50 bg-red-50/50 dark:bg-red-950/20 rounded-t-lg border border-red-200 dark:border-red-900">
             <span className="font-semibold text-sm uppercase tracking-wide text-red-600 dark:text-red-400">
@@ -227,7 +213,7 @@ const VirtualItemRenderer = memo(
           </div>
         )
 
-      case "day-header":
+      case 'day-header':
         if (!item.date) return null
         return (
           <div className="mt-4 first:mt-0">
@@ -235,7 +221,7 @@ const VirtualItemRenderer = memo(
           </div>
         )
 
-      case "task":
+      case 'task':
         if (!item.task || !item.project) return null
         const isCompleted = isTaskCompletedFast(item.task, lookupContext.completionMap)
         return (
@@ -243,7 +229,7 @@ const VirtualItemRenderer = memo(
             task={item.task}
             project={item.project}
             projects={projects}
-            sectionId={item.dateKey || "overdue"}
+            sectionId={item.dateKey || 'overdue'}
             allTasks={allTasks}
             isCompleted={isCompleted}
             isSelected={selectedTaskId === item.task.id}
@@ -252,33 +238,35 @@ const VirtualItemRenderer = memo(
             onUpdateTask={onUpdateTask}
             onClick={onTaskClick}
             accentClass={
-              item.isOverdue && !isCompleted
-                ? "border-l-2 border-l-destructive"
-                : undefined
+              item.isOverdue && !isCompleted ? 'border-l-2 border-l-destructive' : undefined
             }
           />
         )
 
-      case "empty-day":
+      case 'empty-day':
         if (!item.date) return null
         return (
           <SimpleEmptyState
-            label={item.isTomorrow ? "tomorrow" : item.date.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase()}
+            label={
+              item.isTomorrow
+                ? 'tomorrow'
+                : item.date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+            }
             onAddTask={() => onAddTaskForDate(item.date!)}
           />
         )
 
-      case "add-task-button":
+      case 'add-task-button':
         if (!item.date) return null
         return (
           <button
             type="button"
             onClick={() => onAddTaskForDate(item.date!)}
             className={cn(
-              "w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-tertiary",
-              "hover:bg-accent/50 hover:text-text-secondary",
-              "border-t border-border/50 transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+              'w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-tertiary',
+              'hover:bg-accent/50 hover:text-text-secondary',
+              'border-t border-border/50 transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset'
             )}
           >
             <Plus className="size-4" aria-hidden="true" />
@@ -292,7 +280,7 @@ const VirtualItemRenderer = memo(
   }
 )
 
-VirtualItemRenderer.displayName = "VirtualItemRenderer"
+VirtualItemRenderer.displayName = 'VirtualItemRenderer'
 
 // ============================================================================
 // VIRTUALIZED UPCOMING VIEW COMPONENT
@@ -310,7 +298,7 @@ export const VirtualizedUpcomingView = ({
   onOpenModal,
   onAddTaskWithDate,
   onViewCalendar,
-  className,
+  className
 }: VirtualizedUpcomingViewProps): React.JSX.Element => {
   // State for showing/hiding empty days
   const [showEmptyDays, setShowEmptyDays] = useState(true)
@@ -319,10 +307,7 @@ export const VirtualizedUpcomingView = ({
   const parentRef = useRef<HTMLDivElement>(null)
 
   // Create lookup context for O(1) project/status lookups
-  const lookupContext = useMemo(
-    () => createLookupContext(projects),
-    [projects]
-  )
+  const lookupContext = useMemo(() => createLookupContext(projects), [projects])
 
   // Get filtered and grouped tasks for upcoming view
   const { overdue, byDay } = useMemo(
@@ -331,13 +316,11 @@ export const VirtualizedUpcomingView = ({
   )
 
   // Track overdue celebration state
-  const { showCelebration, dismiss: dismissCelebration } = useOverdueCelebration(
-    overdue.length
-  )
+  const { showCelebration, dismiss: dismissCelebration } = useOverdueCelebration(overdue.length)
 
   // Calculate section visibility
-  const overdueVisibility = getSectionVisibility("overdue", overdue.length)
-  const upcomingVisibility = getSectionVisibility("upcoming", 0)
+  const overdueVisibility = getSectionVisibility('overdue', overdue.length)
+  const upcomingVisibility = getSectionVisibility('upcoming', 0)
 
   // Calculate if there are any tasks this week
   let totalUpcomingTasks = 0
@@ -349,7 +332,7 @@ export const VirtualizedUpcomingView = ({
 
   // Determine tomorrow's date key
   const tomorrow = addDays(startOfDay(new Date()), 1)
-  const tomorrowKey = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`
+  const tomorrowKey = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
 
   // Flatten data for virtualization
   const virtualItems = useMemo(
@@ -373,7 +356,7 @@ export const VirtualizedUpcomingView = ({
       const item = virtualItems[index]
       return ITEM_HEIGHTS[item.type] || 50
     },
-    overscan: 5,
+    overscan: 5
   })
 
   // Handle adding task for a specific date
@@ -381,10 +364,10 @@ export const VirtualizedUpcomingView = ({
     if (onAddTaskWithDate) {
       onAddTaskWithDate(date)
     } else {
-      onQuickAdd("", {
+      onQuickAdd('', {
         dueDate: date,
-        priority: "none",
-        projectId: null,
+        priority: 'none',
+        projectId: null
       })
     }
   }
@@ -406,14 +389,14 @@ export const VirtualizedUpcomingView = ({
     const finalData = {
       ...parsedData,
       dueDate: parsedData?.dueDate ?? tomorrow,
-      priority: parsedData?.priority ?? ("none" as Priority),
-      projectId: parsedData?.projectId ?? null,
+      priority: parsedData?.priority ?? ('none' as Priority),
+      projectId: parsedData?.projectId ?? null
     }
     onQuickAdd(title, finalData)
   }
 
   return (
-    <div className={cn("flex flex-1 flex-col overflow-hidden", className)}>
+    <div className={cn('flex flex-1 flex-col overflow-hidden', className)}>
       {/* Header with toggle */}
       <div className="flex items-center justify-between p-4 border-b border-border/50">
         <QuickAddInput
@@ -425,15 +408,8 @@ export const VirtualizedUpcomingView = ({
         />
 
         <div className="flex items-center gap-2 shrink-0">
-          <Switch
-            id="show-empty-days"
-            checked={showEmptyDays}
-            onCheckedChange={setShowEmptyDays}
-          />
-          <Label
-            htmlFor="show-empty-days"
-            className="text-sm text-text-tertiary cursor-pointer"
-          >
+          <Switch id="show-empty-days" checked={showEmptyDays} onCheckedChange={setShowEmptyDays} />
+          <Label htmlFor="show-empty-days" className="text-sm text-text-tertiary cursor-pointer">
             Show empty days
           </Label>
         </div>
@@ -451,25 +427,18 @@ export const VirtualizedUpcomingView = ({
       {/* Planning empty state - show when completely empty */}
       {isCompletelyEmpty && upcomingVisibility.showEmptyState && (
         <div className="p-4">
-          <PlanningEmptyState
-            onAddTask={handleAddTask}
-            onViewCalendar={onViewCalendar}
-          />
+          <PlanningEmptyState onAddTask={handleAddTask} onViewCalendar={onViewCalendar} />
         </div>
       )}
 
       {/* Virtualized content */}
       {!isCompletelyEmpty && (
-        <div
-          ref={parentRef}
-          className="flex-1 overflow-auto px-4"
-          style={{ contain: "strict" }}
-        >
+        <div ref={parentRef} className="flex-1 overflow-auto px-4" style={{ contain: 'strict' }}>
           <div
             style={{
               height: `${virtualizer.getTotalSize()}px`,
-              width: "100%",
-              position: "relative",
+              width: '100%',
+              position: 'relative'
             }}
           >
             {virtualizer.getVirtualItems().map((virtualRow) => {
@@ -478,12 +447,12 @@ export const VirtualizedUpcomingView = ({
                 <div
                   key={item.id}
                   style={{
-                    position: "absolute",
+                    position: 'absolute',
                     top: 0,
                     left: 0,
-                    width: "100%",
+                    width: '100%',
                     height: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start}px)`,
+                    transform: `translateY(${virtualRow.start}px)`
                   }}
                 >
                   <VirtualItemRenderer

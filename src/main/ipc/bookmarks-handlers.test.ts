@@ -77,7 +77,6 @@ describe('bookmarks-handlers', () => {
     handleCalls.length = 0
     removeHandlerCalls.length = 0
     mockSend.mockClear()
-
     ;(getDatabase as Mock).mockReturnValue({})
     ;(getIndexDatabase as Mock).mockReturnValue({})
   })
@@ -88,7 +87,6 @@ describe('bookmarks-handlers', () => {
 
   it('creates and deletes bookmarks with events', async () => {
     registerBookmarksHandlers()
-
     ;(bookmarkQueries.isBookmarked as Mock).mockReturnValue(false)
     ;(bookmarkQueries.getNextBookmarkPosition as Mock).mockReturnValue(0)
     ;(bookmarkQueries.insertBookmark as Mock).mockReturnValue({
@@ -107,7 +105,6 @@ describe('bookmarks-handlers', () => {
       BookmarksChannels.events.CREATED,
       expect.objectContaining({ bookmark: expect.objectContaining({ id: 'bookmark-1' }) })
     )
-
     ;(bookmarkQueries.getBookmarkById as Mock).mockReturnValue({
       id: 'bookmark-1',
       itemType: BookmarkItemTypes.NOTE,
@@ -121,7 +118,6 @@ describe('bookmarks-handlers', () => {
 
   it('lists bookmarks with resolved item info', async () => {
     registerBookmarksHandlers()
-
     ;(bookmarkQueries.listBookmarks as Mock).mockReturnValue([
       { id: 'bookmark-1', itemType: BookmarkItemTypes.NOTE, itemId: 'note-1', position: 0 }
     ])
@@ -147,7 +143,6 @@ describe('bookmarks-handlers', () => {
 
   it('toggles and reorders bookmarks, supports bulk operations', async () => {
     registerBookmarksHandlers()
-
     ;(bookmarkQueries.toggleBookmark as Mock).mockReturnValue({
       isBookmarked: true,
       bookmark: { id: 'bookmark-2', itemType: BookmarkItemTypes.TASK, itemId: 'task-1' }
@@ -170,13 +165,11 @@ describe('bookmarks-handlers', () => {
     expect(mockSend).toHaveBeenCalledWith(BookmarksChannels.events.REORDERED, {
       bookmarkIds: ['bookmark-2']
     })
-
     ;(bookmarkQueries.bulkDeleteBookmarks as Mock).mockReturnValue(2)
     const bulkDelete = await invokeHandler(BookmarksChannels.invoke.BULK_DELETE, {
       bookmarkIds: ['b1', 'b2']
     })
     expect(bulkDelete).toEqual({ success: true, deletedCount: 2 })
-
     ;(bookmarkQueries.bulkCreateBookmarks as Mock).mockReturnValue(2)
     const bulkCreate = await invokeHandler(BookmarksChannels.invoke.BULK_CREATE, {
       items: [

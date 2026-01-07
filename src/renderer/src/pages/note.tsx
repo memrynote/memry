@@ -37,6 +37,7 @@ import {
 import { toast } from 'sonner'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { NoteReminderButton } from '@/components/note/note-reminder-button'
+import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
 
 // ============================================================================
 // Types
@@ -142,6 +143,9 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Bookmark state
   const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('note', noteId ?? '')
+
+  // Editor settings (toolbar mode)
+  const { settings: editorSettings } = useNoteEditorSettings()
 
   // Convert query error to string
   const error = noteError?.message ?? null
@@ -798,11 +802,12 @@ export function NotePage({ noteId }: NotePageProps) {
               onError={(error) => console.error('[NotePage] Editor error:', error)}
             >
               <ContentArea
-                key={`${noteId}-${externalUpdateCount}`} // Force re-mount when note changes or external update
-                noteId={noteId} // T069: Required for attachment uploads
+                key={`${noteId}-${externalUpdateCount}`}
+                noteId={noteId}
                 initialContent={note.content}
                 contentType="markdown"
                 placeholder="Start writing, or press '/' for commands..."
+                stickyToolbar={editorSettings.toolbarMode === 'sticky'}
                 onContentChange={handleContentChange}
                 onMarkdownChange={handleMarkdownChange}
                 onHeadingsChange={handleHeadingsChange}
