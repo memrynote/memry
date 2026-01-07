@@ -436,7 +436,11 @@ export const SettingsChannels = {
     /** Get tab settings (preview mode, etc.) */
     GET_TAB_SETTINGS: 'settings:getTabSettings',
     /** Set tab settings */
-    SET_TAB_SETTINGS: 'settings:setTabSettings'
+    SET_TAB_SETTINGS: 'settings:setTabSettings',
+    /** Get note editor settings (toolbar mode, etc.) */
+    GET_NOTE_EDITOR_SETTINGS: 'settings:getNoteEditorSettings',
+    /** Set note editor settings */
+    SET_NOTE_EDITOR_SETTINGS: 'settings:setNoteEditorSettings'
   },
   events: {
     /** Settings changed */

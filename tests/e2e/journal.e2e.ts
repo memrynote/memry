@@ -33,10 +33,7 @@ test.describe('Journal Management', () => {
   })
 
   test.describe('Journal Entry Creation', () => {
-    test('T550: should create journal entry for today', async ({
-      page,
-      testVaultPath
-    }) => {
+    test('T550: should create journal entry for today', async ({ page, testVaultPath }) => {
       // The journal view should auto-show today's entry
       const journalEditor = page.locator(SELECTORS.journalEditor)
       const hasEditor = await journalEditor.isVisible().catch(() => false)
@@ -60,9 +57,7 @@ test.describe('Journal Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T550: should show date header on journal entry', async ({
-      page
-    }) => {
+    test('T550: should show date header on journal entry', async ({ page }) => {
       // Look for date header
       const dateHeader = page.locator('[data-testid="journal-date-header"]')
       const hasDateHeader = await dateHeader.isVisible().catch(() => false)
@@ -92,9 +87,7 @@ test.describe('Journal Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T550: should support markdown formatting in journal', async ({
-      page
-    }) => {
+    test('T550: should support markdown formatting in journal', async ({ page }) => {
       const journalEditor = page.locator(SELECTORS.journalEditor)
       const hasEditor = await journalEditor.isVisible().catch(() => false)
 
@@ -166,9 +159,7 @@ test.describe('Journal Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T551: should navigate to specific date via calendar', async ({
-      page
-    }) => {
+    test('T551: should navigate to specific date via calendar', async ({ page }) => {
       const calendar = page.locator(SELECTORS.journalCalendar)
       const hasCalendar = await calendar.isVisible().catch(() => false)
 
@@ -215,9 +206,7 @@ test.describe('Journal Management', () => {
       }
 
       // Then return to today
-      const todayButton = page.locator(
-        '[data-testid="go-to-today"], [aria-label="Go to today"]'
-      )
+      const todayButton = page.locator('[data-testid="go-to-today"], [aria-label="Go to today"]')
       if (await todayButton.isVisible()) {
         await todayButton.click()
         await page.waitForTimeout(500)
@@ -294,9 +283,7 @@ test.describe('Journal Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T552: should navigate to date when clicking heatmap', async ({
-      page
-    }) => {
+    test('T552: should navigate to date when clicking heatmap', async ({ page }) => {
       const heatmap = page.locator('[data-testid="activity-heatmap"]')
       const hasHeatmap = await heatmap.isVisible().catch(() => false)
 

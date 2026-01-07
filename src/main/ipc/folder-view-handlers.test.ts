@@ -66,11 +66,15 @@ describe('folder-view-handlers', () => {
     registerFolderViewHandlers()
     ;(folderFiles.readFolderConfig as Mock).mockResolvedValue(null)
 
-    const config = await invokeHandler(FolderViewChannels.invoke.GET_CONFIG, { folderPath: 'projects' })
+    const config = await invokeHandler(FolderViewChannels.invoke.GET_CONFIG, {
+      folderPath: 'projects'
+    })
     expect(config.isDefault).toBe(true)
     expect(config.config.views).toHaveLength(1)
 
-    const views = await invokeHandler(FolderViewChannels.invoke.GET_VIEWS, { folderPath: 'projects' })
+    const views = await invokeHandler(FolderViewChannels.invoke.GET_VIEWS, {
+      folderPath: 'projects'
+    })
     expect(views.views).toHaveLength(1)
     expect(views.defaultIndex).toBe(0)
   })
@@ -89,7 +93,6 @@ describe('folder-view-handlers', () => {
 
   it('adds or updates a view and enforces default selection', async () => {
     registerFolderViewHandlers()
-
     ;(folderFiles.readFolderConfig as Mock).mockResolvedValue({
       views: [{ name: 'Default', type: 'table', default: true }]
     })
@@ -113,7 +116,6 @@ describe('folder-view-handlers', () => {
 
   it('deletes views and restores defaults as needed', async () => {
     registerFolderViewHandlers()
-
     ;(folderFiles.readFolderConfig as Mock).mockResolvedValue({
       views: [{ name: 'Only', type: 'table', default: true }]
     })
@@ -126,7 +128,6 @@ describe('folder-view-handlers', () => {
       'projects',
       expect.objectContaining({ views: undefined })
     )
-
     ;(folderFiles.readFolderConfig as Mock).mockResolvedValue({
       views: [
         { name: 'Default', type: 'table', default: true },
@@ -150,29 +151,38 @@ describe('folder-view-handlers', () => {
     registerFolderViewHandlers()
 
     const now = new Date().toISOString()
-    indexDb.db.insert(noteCache).values({
-      id: 'note-1',
-      path: 'notes/projects/2024/note.md',
-      title: 'Note',
-      contentHash: 'hash',
-      wordCount: 5,
-      characterCount: 20,
-      createdAt: now,
-      modifiedAt: now
-    }).run()
+    indexDb.db
+      .insert(noteCache)
+      .values({
+        id: 'note-1',
+        path: 'notes/projects/2024/note.md',
+        title: 'Note',
+        contentHash: 'hash',
+        wordCount: 5,
+        characterCount: 20,
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
 
-    indexDb.db.insert(noteTags).values({
-      noteId: 'note-1',
-      tag: 'alpha',
-      pinnedAt: null
-    }).run()
+    indexDb.db
+      .insert(noteTags)
+      .values({
+        noteId: 'note-1',
+        tag: 'alpha',
+        pinnedAt: null
+      })
+      .run()
 
-    indexDb.db.insert(noteProperties).values({
-      noteId: 'note-1',
-      name: 'status',
-      value: JSON.stringify('open'),
-      type: 'text'
-    }).run()
+    indexDb.db
+      .insert(noteProperties)
+      .values({
+        noteId: 'note-1',
+        name: 'status',
+        value: JSON.stringify('open'),
+        type: 'text'
+      })
+      .run()
 
     const result = await invokeHandler(FolderViewChannels.invoke.LIST_WITH_PROPERTIES, {
       folderPath: 'projects',
@@ -191,23 +201,28 @@ describe('folder-view-handlers', () => {
     registerFolderViewHandlers()
 
     const now = new Date().toISOString()
-    indexDb.db.insert(noteCache).values({
-      id: 'note-2',
-      path: 'notes/projects/note.md',
-      title: 'Note',
-      contentHash: 'hash',
-      wordCount: 2,
-      characterCount: 10,
-      createdAt: now,
-      modifiedAt: now
-    }).run()
-    indexDb.db.insert(noteProperties).values({
-      noteId: 'note-2',
-      name: 'priority',
-      value: JSON.stringify(1),
-      type: 'number'
-    }).run()
-
+    indexDb.db
+      .insert(noteCache)
+      .values({
+        id: 'note-2',
+        path: 'notes/projects/note.md',
+        title: 'Note',
+        contentHash: 'hash',
+        wordCount: 2,
+        characterCount: 10,
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
+    indexDb.db
+      .insert(noteProperties)
+      .values({
+        noteId: 'note-2',
+        name: 'priority',
+        value: JSON.stringify(1),
+        type: 'number'
+      })
+      .run()
     ;(folderFiles.readFolderConfig as Mock).mockResolvedValue({ formulas: { score: '1+1' } })
     const props = await invokeHandler(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, {
       folderPath: 'projects'
@@ -215,7 +230,6 @@ describe('folder-view-handlers', () => {
     expect(props.properties).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'priority', type: 'number' })])
     )
-
     ;(suggestions.getNoteFolderSuggestions as Mock).mockResolvedValue([
       { path: 'projects', confidence: 0.5, reason: 'History' }
     ])

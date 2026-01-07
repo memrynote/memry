@@ -290,7 +290,10 @@ describe('TagsRow - accessibility', () => {
   it('should have proper aria-label on add button', () => {
     render(<TagsRow {...defaultProps} />)
 
-    expect(screen.getByRole('button', { name: /add tag/i })).toHaveAttribute('aria-label', 'Add tag')
+    expect(screen.getByRole('button', { name: /add tag/i })).toHaveAttribute(
+      'aria-label',
+      'Add tag'
+    )
   })
 
   it('should have proper aria-label on remove buttons', async () => {

@@ -10,7 +10,16 @@ import { createReactBlockSpec } from '@blocknote/react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
-import { FileText, File, Download, Loader2, PanelLeftClose, PanelLeft, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  FileText,
+  File,
+  Download,
+  Loader2,
+  PanelLeftClose,
+  PanelLeft,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
@@ -76,11 +85,14 @@ function PdfPreview({ url, name }: PdfPreviewProps) {
     setLoading(false)
   }
 
-  const goToPage = useCallback((page: number) => {
-    if (page >= 1 && page <= numPages) {
-      setCurrentPage(page)
-    }
-  }, [numPages])
+  const goToPage = useCallback(
+    (page: number) => {
+      if (page >= 1 && page <= numPages) {
+        setCurrentPage(page)
+      }
+    },
+    [numPages]
+  )
 
   const goToPrevPage = useCallback(() => {
     goToPage(currentPage - 1)
@@ -131,12 +143,7 @@ function PdfPreview({ url, name }: PdfPreviewProps) {
               )}
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            asChild
-            className="h-7 text-xs"
-          >
+          <Button variant="ghost" size="sm" asChild className="h-7 text-xs">
             <a href={url} download={name}>
               <Download className="mr-1 h-3 w-3" />
               Download
@@ -254,12 +261,7 @@ function FilePreview({ url, name, size, mimeType }: FilePreviewProps) {
         <p className="truncate font-medium text-sm">{name}</p>
         <p className="text-xs text-muted-foreground">{formatFileSize(size)}</p>
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        asChild
-        className="h-8"
-      >
+      <Button variant="ghost" size="sm" asChild className="h-8">
         <a href={url} download={name}>
           <Download className="mr-1 h-4 w-4" />
           Download
@@ -329,14 +331,21 @@ export const FILE_BLOCK_REGEX = /<!-- file:(\{[^}]+\}) -->/g
 /**
  * Serialize file block props to markdown marker
  */
-export function serializeFileBlock(props: { url: string; name: string; size: number; mimeType: string }): string {
+export function serializeFileBlock(props: {
+  url: string
+  name: string
+  size: number
+  mimeType: string
+}): string {
   return `<!-- file:${JSON.stringify(props)} -->`
 }
 
 /**
  * Parse file block marker from markdown
  */
-export function parseFileBlockMarker(marker: string): { url: string; name: string; size: number; mimeType: string } | null {
+export function parseFileBlockMarker(
+  marker: string
+): { url: string; name: string; size: number; mimeType: string } | null {
   const match = marker.match(/<!-- file:(\{[^}]+\}) -->/)
   if (!match) return null
   try {

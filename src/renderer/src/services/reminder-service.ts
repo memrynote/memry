@@ -111,10 +111,7 @@ export const reminderService = {
   /**
    * Get reminders for a specific target
    */
-  getForTarget: (
-    targetType: ReminderTargetType,
-    targetId: string
-  ): Promise<Reminder[]> => {
+  getForTarget: (targetType: ReminderTargetType, targetId: string): Promise<Reminder[]> => {
     return window.api.reminders.getForTarget({ targetType, targetId })
   },
 
@@ -215,53 +212,41 @@ export async function createHighlightReminder(
 /**
  * Subscribe to reminder created events
  */
-export function onReminderCreated(
-  callback: (event: ReminderCreatedEvent) => void
-): () => void {
+export function onReminderCreated(callback: (event: ReminderCreatedEvent) => void): () => void {
   return window.api.onReminderCreated(callback)
 }
 
 /**
  * Subscribe to reminder updated events
  */
-export function onReminderUpdated(
-  callback: (event: ReminderUpdatedEvent) => void
-): () => void {
+export function onReminderUpdated(callback: (event: ReminderUpdatedEvent) => void): () => void {
   return window.api.onReminderUpdated(callback)
 }
 
 /**
  * Subscribe to reminder deleted events
  */
-export function onReminderDeleted(
-  callback: (event: ReminderDeletedEvent) => void
-): () => void {
+export function onReminderDeleted(callback: (event: ReminderDeletedEvent) => void): () => void {
   return window.api.onReminderDeleted(callback)
 }
 
 /**
  * Subscribe to reminder due events (reminder is ready to show)
  */
-export function onReminderDue(
-  callback: (event: ReminderDueEvent) => void
-): () => void {
+export function onReminderDue(callback: (event: ReminderDueEvent) => void): () => void {
   return window.api.onReminderDue(callback)
 }
 
 /**
  * Subscribe to reminder dismissed events
  */
-export function onReminderDismissed(
-  callback: (event: ReminderDismissedEvent) => void
-): () => void {
+export function onReminderDismissed(callback: (event: ReminderDismissedEvent) => void): () => void {
   return window.api.onReminderDismissed(callback)
 }
 
 /**
  * Subscribe to reminder snoozed events
  */
-export function onReminderSnoozed(
-  callback: (event: ReminderSnoozedEvent) => void
-): () => void {
+export function onReminderSnoozed(callback: (event: ReminderSnoozedEvent) => void): () => void {
   return window.api.onReminderSnoozed(callback)
 }

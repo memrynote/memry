@@ -1,11 +1,11 @@
-import { useCallback } from "react"
-import { toast } from "sonner"
+import { useCallback } from 'react'
+import { toast } from 'sonner'
 
-import type { Task, Priority } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
-import { getDefaultTodoStatus, getDefaultDoneStatus } from "@/lib/task-utils"
-import { tasksService } from "@/services/tasks-service"
-import { useVault } from "@/hooks/use-vault"
+import type { Task, Priority } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
+import { getDefaultTodoStatus, getDefaultDoneStatus } from '@/lib/task-utils'
+import { tasksService } from '@/services/tasks-service'
+import { useVault } from '@/hooks/use-vault'
 
 // ============================================================================
 // TYPES
@@ -60,7 +60,7 @@ export const useBulkActions = ({
   projects,
   onUpdateTask,
   onDeleteTask,
-  onComplete,
+  onComplete
 }: UseBulkActionsOptions): UseBulkActionsReturn => {
   // Get vault status to determine if backend operations are available
   const { status } = useVault()
@@ -79,11 +79,11 @@ export const useBulkActions = ({
       const project = projects.find((p) => p.id === task.projectId)
       if (!project) return false
       const status = project.statuses.find((s) => s.id === task.statusId)
-      return status?.type !== "done"
+      return status?.type !== 'done'
     })
 
     if (tasksToComplete.length === 0) {
-      toast.info("All selected tasks are already complete")
+      toast.info('All selected tasks are already complete')
       return
     }
 
@@ -91,7 +91,7 @@ export const useBulkActions = ({
     const originalStates = tasksToComplete.map((task) => ({
       id: task.id,
       statusId: task.statusId,
-      completedAt: task.completedAt,
+      completedAt: task.completedAt
     }))
 
     const taskIds = tasksToComplete.map((t) => t.id)
@@ -101,13 +101,13 @@ export const useBulkActions = ({
       try {
         const result = await tasksService.bulkComplete(taskIds)
         if (!result.success) {
-          toast.error(result.error || "Failed to complete tasks")
+          toast.error(result.error || 'Failed to complete tasks')
           return
         }
         // State updates happen via event subscriptions in TasksContext
       } catch (error) {
-        console.error("[bulkComplete] Backend error:", error)
-        toast.error("Failed to complete tasks")
+        console.error('[bulkComplete] Backend error:', error)
+        toast.error('Failed to complete tasks')
         return
       }
     } else {
@@ -121,27 +121,30 @@ export const useBulkActions = ({
         if (doneStatus) {
           onUpdateTask(task.id, {
             statusId: doneStatus.id,
-            completedAt: now,
+            completedAt: now
           })
         }
       })
     }
 
-    toast.success(`${tasksToComplete.length} task${tasksToComplete.length !== 1 ? "s" : ""} completed`, {
-      duration: 10000, // T052: 10-second timeout for undo per spec
-      action: {
-        label: "Undo",
-        onClick: () => {
-          originalStates.forEach((state) => {
-            onUpdateTask(state.id, {
-              statusId: state.statusId,
-              completedAt: state.completedAt,
+    toast.success(
+      `${tasksToComplete.length} task${tasksToComplete.length !== 1 ? 's' : ''} completed`,
+      {
+        duration: 10000, // T052: 10-second timeout for undo per spec
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            originalStates.forEach((state) => {
+              onUpdateTask(state.id, {
+                statusId: state.statusId,
+                completedAt: state.completedAt
+              })
             })
-          })
-          toast.success("Changes undone")
-        },
-      },
-    })
+            toast.success('Changes undone')
+          }
+        }
+      }
+    )
 
     onComplete()
   }, [getSelectedTasks, projects, onUpdateTask, onComplete, isVaultOpen])
@@ -152,11 +155,11 @@ export const useBulkActions = ({
       const project = projects.find((p) => p.id === task.projectId)
       if (!project) return false
       const status = project.statuses.find((s) => s.id === task.statusId)
-      return status?.type === "done"
+      return status?.type === 'done'
     })
 
     if (tasksToUncomplete.length === 0) {
-      toast.info("No completed tasks selected")
+      toast.info('No completed tasks selected')
       return
     }
 
@@ -168,12 +171,14 @@ export const useBulkActions = ({
       if (todoStatus) {
         onUpdateTask(task.id, {
           statusId: todoStatus.id,
-          completedAt: null,
+          completedAt: null
         })
       }
     })
 
-    toast.success(`${tasksToUncomplete.length} task${tasksToUncomplete.length !== 1 ? "s" : ""} restored`)
+    toast.success(
+      `${tasksToUncomplete.length} task${tasksToUncomplete.length !== 1 ? 's' : ''} restored`
+    )
     onComplete()
   }, [getSelectedTasks, projects, onUpdateTask, onComplete])
 
@@ -186,8 +191,8 @@ export const useBulkActions = ({
         onUpdateTask(taskId, { priority })
       })
 
-      const priorityLabel = priority === "none" ? "removed" : `set to ${priority}`
-      toast.success(`Priority ${priorityLabel} for ${count} task${count !== 1 ? "s" : ""}`)
+      const priorityLabel = priority === 'none' ? 'removed' : `set to ${priority}`
+      toast.success(`Priority ${priorityLabel} for ${count} task${count !== 1 ? 's' : ''}`)
       onComplete()
     },
     [selectedIds, onUpdateTask, onComplete]
@@ -203,8 +208,8 @@ export const useBulkActions = ({
       })
 
       const message = dueDate
-        ? `Due date set for ${count} task${count !== 1 ? "s" : ""}`
-        : `Due date removed from ${count} task${count !== 1 ? "s" : ""}`
+        ? `Due date set for ${count} task${count !== 1 ? 's' : ''}`
+        : `Due date removed from ${count} task${count !== 1 ? 's' : ''}`
 
       toast.success(message)
       onComplete()
@@ -219,7 +224,7 @@ export const useBulkActions = ({
 
       const targetProject = projects.find((p) => p.id === projectId)
       if (!targetProject) {
-        toast.error("Project not found")
+        toast.error('Project not found')
         return
       }
 
@@ -228,13 +233,13 @@ export const useBulkActions = ({
         try {
           const result = await tasksService.bulkMove(selectedIds, projectId)
           if (!result.success) {
-            toast.error(result.error || "Failed to move tasks")
+            toast.error(result.error || 'Failed to move tasks')
             return
           }
           // State updates happen via event subscriptions in TasksContext
         } catch (error) {
-          console.error("[bulkMoveToProject] Backend error:", error)
-          toast.error("Failed to move tasks")
+          console.error('[bulkMoveToProject] Backend error:', error)
+          toast.error('Failed to move tasks')
           return
         }
       } else {
@@ -248,7 +253,7 @@ export const useBulkActions = ({
           // Get current status type to try to match in new project
           const currentProject = projects.find((p) => p.id === task.projectId)
           const currentStatus = currentProject?.statuses.find((s) => s.id === task.statusId)
-          const currentStatusType = currentStatus?.type || "todo"
+          const currentStatusType = currentStatus?.type || 'todo'
 
           // Try to find matching status type in target project
           let newStatus = targetProject.statuses.find((s) => s.type === currentStatusType)
@@ -258,13 +263,13 @@ export const useBulkActions = ({
 
           const updates: Partial<Task> = {
             projectId,
-            statusId: newStatus?.id || targetProject.statuses[0]?.id,
+            statusId: newStatus?.id || targetProject.statuses[0]?.id
           }
 
           // Handle completed status
-          if (newStatus?.type === "done" && !task.completedAt) {
+          if (newStatus?.type === 'done' && !task.completedAt) {
             updates.completedAt = new Date()
-          } else if (newStatus?.type !== "done" && task.completedAt) {
+          } else if (newStatus?.type !== 'done' && task.completedAt) {
             updates.completedAt = null
           }
 
@@ -272,7 +277,7 @@ export const useBulkActions = ({
         })
       }
 
-      toast.success(`${count} task${count !== 1 ? "s" : ""} moved to ${targetProject.name}`)
+      toast.success(`${count} task${count !== 1 ? 's' : ''} moved to ${targetProject.name}`)
       onComplete()
     },
     [selectedIds, tasks, projects, onUpdateTask, onComplete, isVaultOpen]
@@ -284,8 +289,8 @@ export const useBulkActions = ({
       if (count === 0) return
 
       // Find the status to get its name and type
-      let statusName = ""
-      let statusType: "todo" | "in_progress" | "done" = "todo"
+      let statusName = ''
+      let statusType: 'todo' | 'in_progress' | 'done' = 'todo'
 
       for (const project of projects) {
         const status = project.statuses.find((s) => s.id === statusId)
@@ -303,16 +308,16 @@ export const useBulkActions = ({
         const updates: Partial<Task> = { statusId }
 
         // Handle completedAt based on status type
-        if (statusType === "done" && !task.completedAt) {
+        if (statusType === 'done' && !task.completedAt) {
           updates.completedAt = new Date()
-        } else if (statusType !== "done" && task.completedAt) {
+        } else if (statusType !== 'done' && task.completedAt) {
           updates.completedAt = null
         }
 
         onUpdateTask(taskId, updates)
       })
 
-      toast.success(`${count} task${count !== 1 ? "s" : ""} moved to ${statusName}`)
+      toast.success(`${count} task${count !== 1 ? 's' : ''} moved to ${statusName}`)
       onComplete()
     },
     [selectedIds, tasks, projects, onUpdateTask, onComplete]
@@ -330,13 +335,13 @@ export const useBulkActions = ({
       try {
         const result = await tasksService.bulkArchive(selectedIds)
         if (!result.success) {
-          toast.error(result.error || "Failed to archive tasks")
+          toast.error(result.error || 'Failed to archive tasks')
           return
         }
         // State updates happen via event subscriptions in TasksContext
       } catch (error) {
-        console.error("[bulkArchive] Backend error:", error)
-        toast.error("Failed to archive tasks")
+        console.error('[bulkArchive] Backend error:', error)
+        toast.error('Failed to archive tasks')
         return
       }
     } else {
@@ -347,17 +352,17 @@ export const useBulkActions = ({
       })
     }
 
-    toast.success(`${count} task${count !== 1 ? "s" : ""} archived`, {
+    toast.success(`${count} task${count !== 1 ? 's' : ''} archived`, {
       duration: 10000, // T052: 10-second timeout for undo per spec
       action: {
-        label: "Undo",
+        label: 'Undo',
         onClick: () => {
           archivedIds.forEach((taskId) => {
             onUpdateTask(taskId, { archivedAt: null })
           })
-          toast.success("Tasks restored from archive")
-        },
-      },
+          toast.success('Tasks restored from archive')
+        }
+      }
     })
 
     onComplete()
@@ -372,13 +377,13 @@ export const useBulkActions = ({
       try {
         const result = await tasksService.bulkDelete(selectedIds)
         if (!result.success) {
-          toast.error(result.error || "Failed to delete tasks")
+          toast.error(result.error || 'Failed to delete tasks')
           return
         }
         // State updates happen via event subscriptions in TasksContext (DELETED events)
       } catch (error) {
-        console.error("[bulkDelete] Backend error:", error)
-        toast.error("Failed to delete tasks")
+        console.error('[bulkDelete] Backend error:', error)
+        toast.error('Failed to delete tasks')
         return
       }
     } else {
@@ -388,8 +393,8 @@ export const useBulkActions = ({
       })
     }
 
-    toast.success(`${count} task${count !== 1 ? "s" : ""} deleted`, {
-      description: "This action can be undone for a short time.",
+    toast.success(`${count} task${count !== 1 ? 's' : ''} deleted`, {
+      description: 'This action can be undone for a short time.'
     })
 
     onComplete()
@@ -404,19 +409,8 @@ export const useBulkActions = ({
     bulkChangeStatus,
     bulkArchive,
     bulkDelete,
-    getSelectedTasks,
+    getSelectedTasks
   }
 }
 
 export default useBulkActions
-
-
-
-
-
-
-
-
-
-
-

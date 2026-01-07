@@ -2,7 +2,7 @@
 
 AI-powered assistant for writing help, content discovery, and productivity.
 
-```
+````
 /speckit.specify
 
 Build the AI assistant that helps users with writing, organization, and content discovery:
@@ -55,15 +55,16 @@ class LocalProvider implements AIProvider {
 class AnthropicProvider implements AIProvider {
   // Claude for completions
 }
-```
+````
 
 ### Embedding Storage
+
 ```typescript
 interface EmbeddingIndex {
-  id: string              // Content ID (note, journal, task)
-  type: "note" | "journal" | "task"
-  embedding: number[]     // Vector (384-1536 dimensions)
-  text: string            // Original text for display
+  id: string // Content ID (note, journal, task)
+  type: 'note' | 'journal' | 'task'
+  embedding: number[] // Vector (384-1536 dimensions)
+  text: string // Original text for display
   metadata: {
     title: string
     path?: string
@@ -76,6 +77,7 @@ interface EmbeddingIndex {
 ## FUNCTIONAL REQUIREMENTS
 
 ### AI Panel
+
 - Slide-out panel on right side (like existing AI agent panel)
 - Toggle with Cmd+I or button
 - Chat interface for questions
@@ -83,6 +85,7 @@ interface EmbeddingIndex {
 - Quick action buttons above chat
 
 ### Semantic Search (RAG)
+
 ```
 User asks: "What did I write about project planning?"
 
@@ -98,22 +101,24 @@ User asks: "What did I write about project planning?"
 ```
 
 ### Writing Assistance
+
 Commands available in editor (select text, right-click or Cmd+J):
 
 ```typescript
 type WritingCommand =
-  | "improve"        // Rewrite for clarity
-  | "fix-grammar"    // Fix spelling and grammar
-  | "expand"         // Expand bullet points to paragraphs
-  | "summarize"      // Condense selected text
-  | "simplify"       // Make more readable
-  | "formalize"      // Make more professional
-  | "casual"         // Make more conversational
-  | "translate"      // Translate to another language
-  | "continue"       // Continue writing from cursor
+  | 'improve' // Rewrite for clarity
+  | 'fix-grammar' // Fix spelling and grammar
+  | 'expand' // Expand bullet points to paragraphs
+  | 'summarize' // Condense selected text
+  | 'simplify' // Make more readable
+  | 'formalize' // Make more professional
+  | 'casual' // Make more conversational
+  | 'translate' // Translate to another language
+  | 'continue' // Continue writing from cursor
 ```
 
 ### Content Generation
+
 - Extract tasks from notes (find action items)
 - Generate tags from content
 - Create meeting summary from notes
@@ -121,6 +126,7 @@ type WritingCommand =
 - Brainstorm ideas on topic
 
 ### Embedding Updates
+
 ```
 On note save:
 1. Check if content changed significantly (hash comparison)
@@ -133,6 +139,7 @@ On note save:
 ```
 
 ### Privacy Mode
+
 - Local provider option (Ollama)
 - All processing on device
 - No data sent to external APIs
@@ -140,6 +147,7 @@ On note save:
 - Trade-off: Lower quality, slower
 
 ### Chat Interface
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  AI Assistant                                        [×]    │
@@ -180,6 +188,7 @@ On note save:
 ```
 
 ### Context Window
+
 - Include current note content in context
 - Include recent conversation history
 - Include relevant search results
@@ -188,18 +197,21 @@ On note save:
 ## NON-FUNCTIONAL REQUIREMENTS
 
 ### Performance
+
 - Chat response starts streaming within 1 second
 - Embedding generation: ~100 notes/minute
 - Semantic search: <500ms for 10,000 embeddings
 - Background embedding doesn't block UI
 
 ### Privacy
+
 - API keys stored in OS keychain
 - Option for fully local processing
 - No content sent to analytics
 - Embeddings stored locally, not synced by default
 
 ### Cost Management
+
 - Show estimated API cost for operations
 - Rate limiting to prevent runaway costs
 - Batch operations when possible
@@ -208,12 +220,14 @@ On note save:
 ## ACCEPTANCE CRITERIA
 
 ### AI Panel
+
 - [ ] Cmd+I toggles AI panel
 - [ ] Panel slides in from right
 - [ ] Close button works
 - [ ] Panel state persists
 
 ### Chat
+
 - [ ] Can type and send messages
 - [ ] Responses stream in real-time
 - [ ] Context from current note included
@@ -221,12 +235,14 @@ On note save:
 - [ ] Can clear conversation
 
 ### Semantic Search
+
 - [ ] "What did I write about X" finds relevant notes
 - [ ] Sources shown with results
 - [ ] Clicking source opens note
 - [ ] Works across notes and journal
 
 ### Writing Commands
+
 - [ ] Select text, Cmd+J opens command menu
 - [ ] "Improve" rewrites selected text
 - [ ] "Fix grammar" corrects errors
@@ -235,27 +251,34 @@ On note save:
 - [ ] Result shown in diff view, can accept/reject
 
 ### Content Generation
+
 - [ ] "Extract tasks" from meeting notes works
 - [ ] Generated tasks can be created with one click
 - [ ] "Suggest tags" provides relevant tags
 - [ ] Tags can be added with one click
 
 ### Privacy Mode
+
 - [ ] Can switch to local provider in settings
 - [ ] Local processing works offline
 - [ ] No network requests when local mode enabled
 - [ ] Clear indication of which mode active
 
 ### Embedding Index
+
 - [ ] New notes get indexed automatically
 - [ ] Updated notes get re-indexed
 - [ ] Index status visible (X notes indexed)
 - [ ] Can rebuild index manually
 
 ### Edge Cases
+
 - [ ] Large documents chunked properly
 - [ ] API errors show clear message
 - [ ] Rate limiting handled gracefully
 - [ ] Empty vault shows helpful guidance
 - [ ] No API key shows setup instructions
+
+```
+
 ```

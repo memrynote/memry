@@ -17,6 +17,7 @@ import { Loader2, Save, ArrowLeft, Lock } from 'lucide-react'
 import { useTemplates } from '@/hooks/use-templates'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
+import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
 import { toast } from 'sonner'
 import type { TemplateProperty } from '@/services/templates-service'
 
@@ -103,6 +104,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
   const { tags: allAvailableTags } = useNoteTagsQuery()
   const { closeTab, updateTabTitle } = useTabs()
   const activeTab = useActiveTab()
+  const { settings: editorSettings } = useNoteEditorSettings()
 
   // State
   const [isLoading, setIsLoading] = useState(!isNew)
@@ -495,6 +497,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
                 initialContent={content}
                 contentType="markdown"
                 placeholder="Default content for notes created from this template..."
+                stickyToolbar={editorSettings.toolbarMode === 'sticky'}
                 onMarkdownChange={handleContentChange}
                 editable={!isBuiltIn}
               />

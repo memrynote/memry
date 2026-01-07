@@ -9,7 +9,9 @@ export const taskNotes = sqliteTable(
       .notNull()
       .references(() => tasks.id, { onDelete: 'cascade' }),
     noteId: text('note_id').notNull(),
-    createdAt: text('created_at').notNull().default(sql`(datetime('now'))`)
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(datetime('now'))`)
   },
   (table) => [primaryKey({ columns: [table.taskId, table.noteId] })]
 )

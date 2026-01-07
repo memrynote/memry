@@ -1,11 +1,11 @@
-import { useState, useMemo } from "react"
-import { ChevronDown, Check } from "lucide-react"
+import { useState, useMemo } from 'react'
+import { ChevronDown, Check } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import type { Project } from "@/data/tasks-data"
-import { getIconByName } from "@/components/icon-picker"
+import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
+import type { Project } from '@/data/tasks-data'
+import { getIconByName } from '@/components/icon-picker'
 
 // ============================================================================
 // TYPES
@@ -28,14 +28,11 @@ export const ProjectFilter = ({
   selectedIds,
   onChange,
   taskCountByProject = {},
-  className,
+  className
 }: ProjectFilterProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
 
-  const visibleProjects = useMemo(
-    () => projects.filter((p) => !p.isArchived),
-    [projects]
-  )
+  const visibleProjects = useMemo(() => projects.filter((p) => !p.isArchived), [projects])
 
   const allSelected = selectedIds.length === 0
   const hasSelection = selectedIds.length > 0
@@ -65,11 +62,7 @@ export const ProjectFilter = ({
         <Button
           variant="outline"
           size="sm"
-          className={cn(
-            "h-9 gap-2",
-            hasSelection && "border-primary bg-primary/5",
-            className
-          )}
+          className={cn('h-9 gap-2', hasSelection && 'border-primary bg-primary/5', className)}
           aria-label="Filter by project"
         >
           <span>Project</span>
@@ -89,9 +82,9 @@ export const ProjectFilter = ({
             type="button"
             onClick={handleToggleAll}
             className={cn(
-              "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
-              "hover:bg-accent focus:outline-none focus:bg-accent",
-              allSelected && "font-medium"
+              'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
+              'hover:bg-accent focus:outline-none focus:bg-accent',
+              allSelected && 'font-medium'
             )}
           >
             <span className="flex items-center justify-center size-4">
@@ -115,9 +108,9 @@ export const ProjectFilter = ({
                   type="button"
                   onClick={() => handleToggleProject(project.id)}
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
-                    "hover:bg-accent focus:outline-none focus:bg-accent",
-                    isSelected && "font-medium"
+                    'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
+                    'hover:bg-accent focus:outline-none focus:bg-accent',
+                    isSelected && 'font-medium'
                   )}
                 >
                   <span className="flex items-center justify-center size-4">
@@ -125,10 +118,7 @@ export const ProjectFilter = ({
                   </span>
                   <span className="flex items-center gap-2 flex-1 min-w-0">
                     {IconComponent ? (
-                      <IconComponent
-                        className="size-4 shrink-0"
-                        style={{ color: project.color }}
-                      />
+                      <IconComponent className="size-4 shrink-0" style={{ color: project.color }} />
                     ) : (
                       <span
                         className="size-3 shrink-0 rounded-full"
@@ -137,9 +127,7 @@ export const ProjectFilter = ({
                     )}
                     <span className="truncate">{project.name}</span>
                   </span>
-                  <span className="text-xs text-text-tertiary shrink-0">
-                    {taskCount}
-                  </span>
+                  <span className="text-xs text-text-tertiary shrink-0">{taskCount}</span>
                 </button>
               )
             })}

@@ -1,8 +1,8 @@
-import { DragOverlay, type DropAnimation, defaultDropAnimationSideEffects } from "@dnd-kit/core"
+import { DragOverlay, type DropAnimation, defaultDropAnimationSideEffects } from '@dnd-kit/core'
 
-import { useDragContext } from "@/contexts/drag-context"
-import { MultiDragOverlay, SingleTaskPreview } from "./multi-drag-overlay"
-import type { Project } from "@/data/tasks-data"
+import { useDragContext } from '@/contexts/drag-context'
+import { MultiDragOverlay, SingleTaskPreview } from './multi-drag-overlay'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -21,12 +21,12 @@ const dropAnimation: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
     styles: {
       active: {
-        opacity: "0.5",
-      },
-    },
+        opacity: '0.5'
+      }
+    }
   }),
   duration: 200,
-  easing: "ease-out",
+  easing: 'ease-out'
 }
 
 // ============================================================================
@@ -37,9 +37,7 @@ const dropAnimation: DropAnimation = {
  * Unified drag overlay that switches between single and multi-drag preview
  * based on the current drag state
  */
-export const TaskDragOverlay = ({
-  projects,
-}: TaskDragOverlayProps): React.JSX.Element => {
+export const TaskDragOverlay = ({ projects }: TaskDragOverlayProps): React.JSX.Element => {
   const { dragState, isMultiDrag } = useDragContext()
   const { isDragging, draggedTasks } = dragState
 
@@ -52,7 +50,7 @@ export const TaskDragOverlay = ({
   const primaryTask = draggedTasks[0]
   const project = projects.find((p) => p.id === primaryTask?.projectId)
   const status = project?.statuses.find((s) => s.id === primaryTask?.statusId)
-  const isCompleted = status?.type === "done"
+  const isCompleted = status?.type === 'done'
 
   // Check if overdue
   const isOverdue = Boolean(
@@ -66,25 +64,10 @@ export const TaskDragOverlay = ({
       {isMultiDrag ? (
         <MultiDragOverlay tasks={draggedTasks} />
       ) : (
-        <SingleTaskPreview
-          task={primaryTask}
-          isCompleted={isCompleted}
-          isOverdue={isOverdue}
-        />
+        <SingleTaskPreview task={primaryTask} isCompleted={isCompleted} isOverdue={isOverdue} />
       )}
     </DragOverlay>
   )
 }
 
 export default TaskDragOverlay
-
-
-
-
-
-
-
-
-
-
-

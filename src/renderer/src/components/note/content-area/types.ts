@@ -72,6 +72,8 @@ export interface ContentAreaProps {
   editable?: boolean
   /** Whether to auto-focus the editor on mount */
   autoFocus?: boolean
+  /** Whether to show sticky formatting toolbar (always visible above editor) */
+  stickyToolbar?: boolean
   /** Callback when content changes (returns blocks) */
   onContentChange?: (blocks: Block[]) => void
   /** Callback when content changes (returns markdown string) */

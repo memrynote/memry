@@ -50,7 +50,6 @@ describe('templates-handlers', () => {
 
   it('lists and gets templates', async () => {
     registerTemplatesHandlers()
-
     ;(templates.listTemplates as vi.Mock).mockResolvedValue([{ id: 't1', name: 'Template 1' }])
     ;(templates.getTemplate as vi.Mock).mockReturnValue({ id: 't1', name: 'Template 1' })
 
@@ -63,7 +62,6 @@ describe('templates-handlers', () => {
 
   it('creates, updates, deletes, and duplicates templates', async () => {
     registerTemplatesHandlers()
-
     ;(templates.createTemplate as vi.Mock).mockResolvedValue({ id: 't2', name: 'New' })
     ;(templates.updateTemplate as vi.Mock).mockResolvedValue({ id: 't2', name: 'Updated' })
     ;(templates.deleteTemplate as vi.Mock).mockResolvedValue(undefined)
@@ -95,7 +93,6 @@ describe('templates-handlers', () => {
 
   it('returns errors when template operations fail', async () => {
     registerTemplatesHandlers()
-
     ;(templates.createTemplate as vi.Mock).mockRejectedValue(new Error('create failed'))
     const createResult = await invokeHandler(TemplatesChannels.invoke.CREATE, {
       name: 'Bad',
@@ -104,15 +101,15 @@ describe('templates-handlers', () => {
       content: ''
     })
     expect(createResult).toEqual({ success: false, template: null, error: 'create failed' })
-
     ;(templates.updateTemplate as vi.Mock).mockRejectedValue(new Error('update failed'))
-    const updateResult = await invokeHandler(TemplatesChannels.invoke.UPDATE, { id: 't1', name: 'Bad' })
+    const updateResult = await invokeHandler(TemplatesChannels.invoke.UPDATE, {
+      id: 't1',
+      name: 'Bad'
+    })
     expect(updateResult).toEqual({ success: false, template: null, error: 'update failed' })
-
     ;(templates.deleteTemplate as vi.Mock).mockRejectedValue(new Error('delete failed'))
     const deleteResult = await invokeHandler(TemplatesChannels.invoke.DELETE, 't1')
     expect(deleteResult).toEqual({ success: false, error: 'delete failed' })
-
     ;(templates.duplicateTemplate as vi.Mock).mockRejectedValue(new Error('duplicate failed'))
     const duplicateResult = await invokeHandler(TemplatesChannels.invoke.DUPLICATE, {
       id: 't1',

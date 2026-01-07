@@ -339,14 +339,7 @@ describe('KanbanCard - accessibility', () => {
 
   it('should have aria-label on selection checkbox', () => {
     const task = createTask({ title: 'My Task' })
-    render(
-      <KanbanCard
-        {...defaultProps}
-        task={task}
-        isSelectionMode
-        onToggleSelect={vi.fn()}
-      />
-    )
+    render(<KanbanCard {...defaultProps} task={task} isSelectionMode onToggleSelect={vi.fn()} />)
 
     expect(screen.getByRole('checkbox', { name: /select my task/i })).toBeInTheDocument()
   })

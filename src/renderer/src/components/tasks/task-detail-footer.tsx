@@ -1,14 +1,14 @@
-import { Trash2, MoreHorizontal, Copy, FolderInput, Link2 } from "lucide-react"
+import { Trash2, MoreHorizontal, Copy, FolderInput, Link2 } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
@@ -31,12 +31,12 @@ export const TaskDetailFooter = ({
   onDuplicate,
   onMoveToProject,
   onCopyLink,
-  className,
+  className
 }: TaskDetailFooterProps): React.JSX.Element => {
   return (
     <div
       className={cn(
-        "flex items-center justify-between border-t border-border px-4 py-3",
+        'flex items-center justify-between border-t border-border px-4 py-3',
         className
       )}
     >
@@ -79,4 +79,3 @@ export const TaskDetailFooter = ({
 }
 
 export default TaskDetailFooter
-

@@ -1,17 +1,17 @@
-import React from "react"
-import { ChevronLeft, ChevronRight, Filter } from "lucide-react"
+import React from 'react'
+import { ChevronLeft, ChevronRight, Filter } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
-import type { Project } from "@/data/tasks-data"
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
+import type { Project } from '@/data/tasks-data'
 
 interface CalendarHeaderProps {
   currentMonth: Date
@@ -34,11 +34,11 @@ export const CalendarHeader = ({
   onToggleCompleted,
   projects,
   projectFilter,
-  onProjectFilterChange,
+  onProjectFilterChange
 }: CalendarHeaderProps): React.JSX.Element => {
-  const monthLabel = currentMonth.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
+  const monthLabel = currentMonth.toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric'
   })
 
   const selectedProject = projects?.find((p) => p.id === projectFilter)
@@ -46,23 +46,13 @@ export const CalendarHeader = ({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-1 pb-4">
       <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onPreviousMonth}
-          aria-label="Previous month"
-        >
+        <Button variant="ghost" size="icon" onClick={onPreviousMonth} aria-label="Previous month">
           <ChevronLeft className="size-4" />
         </Button>
 
-        <div className={cn("text-lg font-semibold")}>{monthLabel}</div>
+        <div className={cn('text-lg font-semibold')}>{monthLabel}</div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onNextMonth}
-          aria-label="Next month"
-        >
+        <Button variant="ghost" size="icon" onClick={onNextMonth} aria-label="Next month">
           <ChevronRight className="size-4" />
         </Button>
 
@@ -78,7 +68,7 @@ export const CalendarHeader = ({
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
                 <Filter className="size-3.5" />
-                {selectedProject ? selectedProject.name : "All Projects"}
+                {selectedProject ? selectedProject.name : 'All Projects'}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -121,4 +111,3 @@ export const CalendarHeader = ({
 }
 
 export default CalendarHeader
-

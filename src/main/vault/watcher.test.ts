@@ -110,12 +110,9 @@ describe('vault watcher', () => {
     expect(updated?.contentHash).not.toBe(initialHash)
     expect(updated?.wordCount).toBeGreaterThan(initialWordCount)
 
-    expect(updateFtsContent).toHaveBeenCalledWith(
-      indexDb.db,
-      'note-change',
-      expect.any(String),
-      ['alpha']
-    )
+    expect(updateFtsContent).toHaveBeenCalledWith(indexDb.db, 'note-change', expect.any(String), [
+      'alpha'
+    ])
 
     expect(window.webContents.send).toHaveBeenCalledWith(
       NotesChannels.events.UPDATED,
@@ -137,16 +134,19 @@ describe('vault watcher', () => {
     vi.useFakeTimers()
     const now = new Date().toISOString()
 
-    indexDb.db.insert(noteCache).values({
-      id: 'target-note',
-      path: 'notes/target-note.md',
-      title: 'Target Note',
-      contentHash: 'hash',
-      wordCount: 0,
-      characterCount: 0,
-      createdAt: now,
-      modifiedAt: now
-    }).run()
+    indexDb.db
+      .insert(noteCache)
+      .values({
+        id: 'target-note',
+        path: 'notes/target-note.md',
+        title: 'Target Note',
+        contentHash: 'hash',
+        wordCount: 0,
+        characterCount: 0,
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
 
     const notePath = createTestNote(vault, {
       id: 'note-add',
@@ -186,11 +186,7 @@ describe('vault watcher', () => {
     await watcher.handleFileDelete(notePath)
     await vi.advanceTimersByTimeAsync(500)
 
-    const deleted = indexDb.db
-      .select()
-      .from(noteCache)
-      .where(eq(noteCache.id, 'note-add'))
-      .get()
+    const deleted = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'note-add')).get()
     expect(deleted).toBeUndefined()
 
     const remainingTags = indexDb.db
@@ -245,11 +241,7 @@ describe('vault watcher', () => {
     await watcher.handleFileAdd(newPath)
     await vi.advanceTimersByTimeAsync(500)
 
-    const updated = indexDb.db
-      .select()
-      .from(noteCache)
-      .where(eq(noteCache.id, 'note-rename'))
-      .get()
+    const updated = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'note-rename')).get()
 
     expect(updated?.path).toBe('notes/new-name.md')
     expect(updated?.title).toBe('new-name')

@@ -88,7 +88,6 @@ export function useReminders(options?: ListRemindersInput) {
   }
 }
 
-
 /**
  * Hook for getting reminders for a specific target (note, journal, highlight)
  */
@@ -108,10 +107,7 @@ export function useRemindersForTarget(targetType: ReminderTargetType, targetId: 
 
     const unsubs = [
       onReminderCreated((event) => {
-        if (
-          event.reminder.targetType === targetType &&
-          event.reminder.targetId === targetId
-        ) {
+        if (event.reminder.targetType === targetType && event.reminder.targetId === targetId) {
           queryClient.invalidateQueries({
             queryKey: reminderKeys.forTarget(targetType, targetId)
           })
@@ -125,10 +121,7 @@ export function useRemindersForTarget(targetType: ReminderTargetType, targetId: 
         }
       }),
       onReminderDismissed((event) => {
-        if (
-          event.reminder.targetType === targetType &&
-          event.reminder.targetId === targetId
-        ) {
+        if (event.reminder.targetType === targetType && event.reminder.targetId === targetId) {
           queryClient.invalidateQueries({
             queryKey: reminderKeys.forTarget(targetType, targetId)
           })
@@ -147,13 +140,10 @@ export function useRemindersForTarget(targetType: ReminderTargetType, targetId: 
   }
 }
 
-
 /**
  * Hook for subscribing to due reminders (for notifications)
  */
-export function useDueReminderNotifications(
-  onDue: (event: ReminderDueEvent) => void
-) {
+export function useDueReminderNotifications(onDue: (event: ReminderDueEvent) => void) {
   useEffect(() => {
     const unsub = onReminderDue(onDue)
     return unsub
@@ -233,4 +223,3 @@ export function useSnoozeReminder() {
     }
   })
 }
-

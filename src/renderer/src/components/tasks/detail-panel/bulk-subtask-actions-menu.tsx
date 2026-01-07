@@ -1,20 +1,13 @@
-import {
-  MoreHorizontal,
-  CheckCircle2,
-  Circle,
-  Calendar,
-  Flag,
-  Trash2,
-} from "lucide-react"
+import { MoreHorizontal, CheckCircle2, Circle, Calendar, Flag, Trash2 } from 'lucide-react'
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
@@ -43,7 +36,7 @@ export const BulkSubtaskActionsMenu = ({
   onMarkAllIncomplete,
   onSetDueDate,
   onSetPriority,
-  onDeleteAll,
+  onDeleteAll
 }: BulkSubtaskActionsMenuProps): React.JSX.Element | null => {
   // Don't show menu if no subtasks
   if (subtaskCount === 0) return null
@@ -54,8 +47,8 @@ export const BulkSubtaskActionsMenu = ({
         <button
           type="button"
           className={cn(
-            "p-1 rounded hover:bg-accent transition-colors",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            'p-1 rounded hover:bg-accent transition-colors',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
           )}
           aria-label="Bulk subtask actions"
         >
@@ -68,7 +61,7 @@ export const BulkSubtaskActionsMenu = ({
         <DropdownMenuItem
           onClick={onCompleteAll}
           disabled={!hasIncomplete}
-          className={cn(!hasIncomplete && "opacity-50")}
+          className={cn(!hasIncomplete && 'opacity-50')}
         >
           <CheckCircle2 className="size-4 mr-2" />
           Complete all subtasks
@@ -77,7 +70,7 @@ export const BulkSubtaskActionsMenu = ({
         <DropdownMenuItem
           onClick={onMarkAllIncomplete}
           disabled={!hasComplete}
-          className={cn(!hasComplete && "opacity-50")}
+          className={cn(!hasComplete && 'opacity-50')}
         >
           <Circle className="size-4 mr-2" />
           Mark all incomplete
@@ -99,10 +92,7 @@ export const BulkSubtaskActionsMenu = ({
         <DropdownMenuSeparator />
 
         {/* Delete all */}
-        <DropdownMenuItem
-          onClick={onDeleteAll}
-          variant="destructive"
-        >
+        <DropdownMenuItem onClick={onDeleteAll} variant="destructive">
           <Trash2 className="size-4 mr-2" />
           Delete all subtasks
         </DropdownMenuItem>
@@ -112,11 +102,3 @@ export const BulkSubtaskActionsMenu = ({
 }
 
 export default BulkSubtaskActionsMenu
-
-
-
-
-
-
-
-

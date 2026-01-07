@@ -107,9 +107,7 @@ export function parseNote(rawContent: string, filePath?: string): ParsedNote {
 export function extractTitleFromPath(filePath: string): string {
   const basename = path.basename(filePath, '.md')
   // Convert kebab-case and snake_case to Title Case
-  return basename
-    .replace(/[-_]/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
+  return basename.replace(/[-_]/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
 // ============================================================================
@@ -242,9 +240,7 @@ export function calculateWordCount(content: string): number {
   const withoutInlineCode = withoutCode.replace(/`[^`]+`/g, '')
 
   // Count words (split on whitespace)
-  const words = withoutInlineCode
-    .split(/\s+/)
-    .filter((word) => word.length > 0)
+  const words = withoutInlineCode.split(/\s+/).filter((word) => word.length > 0)
 
   return words.length
 }
@@ -274,14 +270,7 @@ import type { PropertyType } from '@shared/db/schema/notes-cache'
 /**
  * Reserved frontmatter keys that are NOT properties.
  */
-const RESERVED_FRONTMATTER_KEYS = new Set([
-  'id',
-  'title',
-  'created',
-  'modified',
-  'tags',
-  'aliases'
-])
+const RESERVED_FRONTMATTER_KEYS = new Set(['id', 'title', 'created', 'modified', 'tags', 'aliases'])
 
 /**
  * Extract custom properties from frontmatter.
@@ -291,9 +280,7 @@ const RESERVED_FRONTMATTER_KEYS = new Set([
  * @param frontmatter - Parsed frontmatter object
  * @returns Record of property names to values
  */
-export function extractProperties(
-  frontmatter: NoteFrontmatter
-): Record<string, unknown> {
+export function extractProperties(frontmatter: NoteFrontmatter): Record<string, unknown> {
   // Check for explicit `properties` object first
   if (frontmatter.properties && typeof frontmatter.properties === 'object') {
     return frontmatter.properties as Record<string, unknown>
@@ -409,10 +396,7 @@ export function serializePropertyValue(value: unknown): string | null {
  * @param type - Property type
  * @returns Parsed value
  */
-export function deserializePropertyValue(
-  value: string | null,
-  type: PropertyType
-): unknown {
+export function deserializePropertyValue(value: string | null, type: PropertyType): unknown {
   if (value === null) {
     return null
   }

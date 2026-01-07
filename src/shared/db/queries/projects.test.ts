@@ -332,12 +332,8 @@ describe('projects queries', () => {
       isDone: true
     })
 
-    expect(getEquivalentStatus(db, 'project-12', getStatusById(db, todo.id))?.id).toBe(
-      'status-12a'
-    )
-    expect(getEquivalentStatus(db, 'project-12', getStatusById(db, done.id))?.id).toBe(
-      'status-12c'
-    )
+    expect(getEquivalentStatus(db, 'project-12', getStatusById(db, todo.id))?.id).toBe('status-12a')
+    expect(getEquivalentStatus(db, 'project-12', getStatusById(db, done.id))?.id).toBe('status-12c')
     const inProgress = getStatusById(db, 'status-12b')
     expect(getEquivalentStatus(db, 'project-11', inProgress)?.id).toBe('status-11a')
   })

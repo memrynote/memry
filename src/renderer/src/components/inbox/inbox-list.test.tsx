@@ -296,12 +296,7 @@ describe('T520: InboxListItem - selection and actions', () => {
 
     render(
       <InboxListSection {...defaultSectionProps} onSelect={onSelect} onFocus={onFocus}>
-        <InboxListItem
-          item={item}
-          period="today"
-          onPreview={onPreview}
-          onArchive={onArchive}
-        />
+        <InboxListItem item={item} period="today" onPreview={onPreview} onArchive={onArchive} />
       </InboxListSection>
     )
 
@@ -317,12 +312,7 @@ describe('T520: InboxListItem - selection and actions', () => {
 
     render(
       <InboxListSection {...defaultSectionProps} onSelect={onSelect} onFocus={onFocus}>
-        <InboxListItem
-          item={item}
-          period="today"
-          onPreview={onPreview}
-          onArchive={onArchive}
-        />
+        <InboxListItem item={item} period="today" onPreview={onPreview} onArchive={onArchive} />
       </InboxListSection>
     )
 
@@ -338,12 +328,7 @@ describe('T520: InboxListItem - selection and actions', () => {
 
     render(
       <InboxListSection {...defaultSectionProps} onSelect={onSelect} onFocus={onFocus}>
-        <InboxListItem
-          item={item}
-          period="today"
-          onPreview={onPreview}
-          onArchive={onArchive}
-        />
+        <InboxListItem item={item} period="today" onPreview={onPreview} onArchive={onArchive} />
       </InboxListSection>
     )
 
@@ -361,12 +346,7 @@ describe('T520: InboxListItem - selection and actions', () => {
 
     render(
       <InboxListSection {...defaultSectionProps} selectedIds={selectedIds}>
-        <InboxListItem
-          item={item}
-          period="today"
-          onPreview={onPreview}
-          onArchive={onArchive}
-        />
+        <InboxListItem item={item} period="today" onPreview={onPreview} onArchive={onArchive} />
       </InboxListSection>
     )
 
@@ -379,12 +359,7 @@ describe('T520: InboxListItem - selection and actions', () => {
 
     render(
       <InboxListSection {...defaultSectionProps} focusedId="item-1">
-        <InboxListItem
-          item={item}
-          period="today"
-          onPreview={onPreview}
-          onArchive={onArchive}
-        />
+        <InboxListItem item={item} period="today" onPreview={onPreview} onArchive={onArchive} />
       </InboxListSection>
     )
 
@@ -398,12 +373,7 @@ describe('T520: InboxListItem - selection and actions', () => {
 
     render(
       <InboxListSection {...defaultSectionProps} selectedIds={selectedIds}>
-        <InboxListItem
-          item={item}
-          period="today"
-          onPreview={onPreview}
-          onArchive={onArchive}
-        />
+        <InboxListItem item={item} period="today" onPreview={onPreview} onArchive={onArchive} />
       </InboxListSection>
     )
 
@@ -416,12 +386,7 @@ describe('T520: InboxListItem - selection and actions', () => {
 
     render(
       <InboxListSection {...defaultSectionProps}>
-        <InboxListItem
-          item={item}
-          period="today"
-          onPreview={onPreview}
-          onArchive={onArchive}
-        />
+        <InboxListItem item={item} period="today" onPreview={onPreview} onArchive={onArchive} />
       </InboxListSection>
     )
 
@@ -502,7 +467,8 @@ describe('InboxListSection', () => {
       </InboxListSection>
     )
 
-    const section = screen.getByRole('region', { hidden: true }) || document.querySelector('section')
+    const section =
+      screen.getByRole('region', { hidden: true }) || document.querySelector('section')
     expect(section).toHaveAttribute('aria-labelledby', 'section-today')
   })
 })
@@ -517,12 +483,7 @@ describe('InboxList - accessibility', () => {
 
     render(
       <InboxListSection {...defaultSectionProps}>
-        <InboxListItem
-          item={item}
-          period="today"
-          onPreview={vi.fn()}
-          onArchive={vi.fn()}
-        />
+        <InboxListItem item={item} period="today" onPreview={vi.fn()} onArchive={vi.fn()} />
       </InboxListSection>
     )
 
@@ -534,12 +495,7 @@ describe('InboxList - accessibility', () => {
 
     render(
       <InboxListSection {...defaultSectionProps}>
-        <InboxListItem
-          item={item}
-          period="today"
-          onPreview={vi.fn()}
-          onArchive={vi.fn()}
-        />
+        <InboxListItem item={item} period="today" onPreview={vi.fn()} onArchive={vi.fn()} />
       </InboxListSection>
     )
 
@@ -551,12 +507,7 @@ describe('InboxList - accessibility', () => {
 
     render(
       <InboxListSection {...defaultSectionProps} focusedId="item-1">
-        <InboxListItem
-          item={item}
-          period="today"
-          onPreview={vi.fn()}
-          onArchive={vi.fn()}
-        />
+        <InboxListItem item={item} period="today" onPreview={vi.fn()} onArchive={vi.fn()} />
       </InboxListSection>
     )
 

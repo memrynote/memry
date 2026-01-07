@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
-import * as React from "react"
-import { FolderOpen, Sparkles, FileText, Clock, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useVault, useVaultList } from "@/hooks/use-vault"
+import * as React from 'react'
+import { FolderOpen, Sparkles, FileText, Clock, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useVault, useVaultList } from '@/hooks/use-vault'
 
 export function VaultOnboarding() {
   const { selectVault, isLoading, error, switchVault } = useVault()
@@ -25,9 +25,7 @@ export function VaultOnboarding() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-500 text-white mb-4 shadow-lg shadow-indigo-500/30">
             <Sparkles className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-semibold text-gray-900 mb-2">
-            Welcome to Memry
-          </h1>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">Welcome to Memry</h1>
           <p className="text-gray-600">
             Your personal knowledge management system.
             <br />
@@ -55,9 +53,7 @@ export function VaultOnboarding() {
             )}
           </Button>
 
-          {error && (
-            <p className="mt-3 text-sm text-red-500 text-center">{error}</p>
-          )}
+          {error && <p className="mt-3 text-sm text-red-500 text-center">{error}</p>}
 
           {/* Features */}
           <div className="mt-6 grid grid-cols-2 gap-4">
@@ -81,9 +77,7 @@ export function VaultOnboarding() {
         {/* Recent vaults */}
         {vaults.length > 0 && (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200/50 p-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-3 px-2">
-              Recent Vaults
-            </h3>
+            <h3 className="text-sm font-medium text-gray-500 mb-3 px-2">Recent Vaults</h3>
             <div className="space-y-1">
               {vaults.slice(0, 3).map((vault) => (
                 <button
@@ -96,12 +90,9 @@ export function VaultOnboarding() {
                     <FolderOpen className="w-5 h-5 text-gray-500 group-hover:text-indigo-500 transition-colors" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">
-                      {vault.name}
-                    </p>
+                    <p className="font-medium text-gray-900 truncate">{vault.name}</p>
                     <p className="text-xs text-gray-500 truncate">
-                      {vault.noteCount} notes · Last opened{" "}
-                      {formatRelativeTime(vault.lastOpened)}
+                      {vault.noteCount} notes · Last opened {formatRelativeTime(vault.lastOpened)}
                     </p>
                   </div>
                 </button>
@@ -122,7 +113,7 @@ function formatRelativeTime(isoString: string): string {
   const diffHours = Math.floor(diffMins / 60)
   const diffDays = Math.floor(diffHours / 24)
 
-  if (diffMins < 1) return "just now"
+  if (diffMins < 1) return 'just now'
   if (diffMins < 60) return `${diffMins}m ago`
   if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays < 7) return `${diffDays}d ago`

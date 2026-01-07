@@ -112,11 +112,18 @@ function resolveTargetTitle(targetType: string, targetId: string): string | null
 
     // For notes and highlights, look up the note by ID
     // For journals, targetId is the journal entry ID (notes with date field set)
-    const note = indexDb.select({ title: noteCache.title }).from(noteCache).where(eq(noteCache.id, targetId)).get()
+    const note = indexDb
+      .select({ title: noteCache.title })
+      .from(noteCache)
+      .where(eq(noteCache.id, targetId))
+      .get()
 
     return note?.title || null
   } catch (error) {
-    console.error(`[Reminders] Failed to resolve target title for ${targetType}:${targetId}:`, error)
+    console.error(
+      `[Reminders] Failed to resolve target title for ${targetType}:${targetId}:`,
+      error
+    )
     return null
   }
 }
@@ -483,10 +490,7 @@ export function getDueReminders(): ReminderWithTarget[] {
         // Pending reminders that are due
         and(eq(reminders.status, reminderStatus.PENDING), lte(reminders.remindAt, currentTime)),
         // Snoozed reminders that are due
-        and(
-          eq(reminders.status, reminderStatus.SNOOZED),
-          lte(reminders.snoozedUntil, currentTime)
-        )
+        and(eq(reminders.status, reminderStatus.SNOOZED), lte(reminders.snoozedUntil, currentTime))
       )
     )
     .orderBy(asc(reminders.remindAt))
@@ -501,10 +505,7 @@ export function getDueReminders(): ReminderWithTarget[] {
  * @param targetId - ID of the target
  * @returns Array of reminders for the target
  */
-export function getRemindersForTarget(
-  targetType: string,
-  targetId: string
-): Reminder[] {
+export function getRemindersForTarget(targetType: string, targetId: string): Reminder[] {
   const db = getDatabase()
 
   const rows = db
@@ -744,7 +745,10 @@ export function countPendingReminders(): number {
       .select({ count: sql<number>`count(*)` })
       .from(reminders)
       .where(
-        or(eq(reminders.status, reminderStatus.PENDING), eq(reminders.status, reminderStatus.SNOOZED))
+        or(
+          eq(reminders.status, reminderStatus.PENDING),
+          eq(reminders.status, reminderStatus.SNOOZED)
+        )
       )
       .get()
     return result?.count || 0

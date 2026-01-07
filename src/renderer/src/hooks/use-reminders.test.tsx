@@ -80,10 +80,9 @@ describe('useReminders', () => {
         hasMore: false
       })
 
-      const { result } = renderHook(
-        () => useReminders({ status: 'pending', limit: 10 }),
-        { wrapper }
-      )
+      const { result } = renderHook(() => useReminders({ status: 'pending', limit: 10 }), {
+        wrapper
+      })
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
@@ -121,12 +120,11 @@ describe('useReminders', () => {
     it('should load reminders for a specific note', async () => {
       const mockReminders = [createMockReminder({ id: 'rem-1', targetId: 'note-1' })]
 
-      ;(window.api.reminders.getForTarget as ReturnType<typeof vi.fn>).mockResolvedValue(mockReminders)
-
-      const { result } = renderHook(
-        () => useRemindersForTarget('note', 'note-1'),
-        { wrapper }
+      ;(window.api.reminders.getForTarget as ReturnType<typeof vi.fn>).mockResolvedValue(
+        mockReminders
       )
+
+      const { result } = renderHook(() => useRemindersForTarget('note', 'note-1'), { wrapper })
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
@@ -137,10 +135,7 @@ describe('useReminders', () => {
     })
 
     it('should not load when targetId is empty', async () => {
-      const { result } = renderHook(
-        () => useRemindersForTarget('note', ''),
-        { wrapper }
-      )
+      const { result } = renderHook(() => useRemindersForTarget('note', ''), { wrapper })
 
       await new Promise((resolve) => setTimeout(resolve, 50))
 

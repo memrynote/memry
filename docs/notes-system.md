@@ -28,19 +28,18 @@ Every note has YAML frontmatter at the top:
 
 ```yaml
 ---
-id: "a1b2c3d4e5f6"           # nanoid(12), lowercase alphanumeric
-title: "Note Title"           # Optional, defaults to filename
-created: "2025-12-18T10:00:00.000Z"
-modified: "2025-12-18T15:30:00.000Z"
+id: 'a1b2c3d4e5f6' # nanoid(12), lowercase alphanumeric
+title: 'Note Title' # Optional, defaults to filename
+created: '2025-12-18T10:00:00.000Z'
+modified: '2025-12-18T15:30:00.000Z'
 tags:
   - work
   - important
 aliases:
-  - "Old Title"
-  - "Alternative Name"
-customField: "preserved"      # Custom fields are preserved
+  - 'Old Title'
+  - 'Alternative Name'
+customField: 'preserved' # Custom fields are preserved
 ---
-
 # Note content here
 
 Regular markdown content with [[Wiki Links]] support.
@@ -49,6 +48,7 @@ Regular markdown content with [[Wiki Links]] support.
 ## Implementation Components
 
 ### 1. Frontmatter Module
+
 **File**: `src/main/vault/frontmatter.ts`
 
 Handles parsing and serialization of markdown files with YAML frontmatter.
@@ -67,6 +67,7 @@ createSnippet(content: string, maxLength?: number): string
 ```
 
 **Features**:
+
 - Auto-generates UUID if missing (`nanoid(12)`)
 - Auto-sets `created`/`modified` timestamps
 - Preserves custom frontmatter fields (via `[key: string]: unknown`)
@@ -75,6 +76,7 @@ createSnippet(content: string, maxLength?: number): string
 - Validates note ID format (lowercase alphanumeric, 12 chars)
 
 ### 2. File Operations
+
 **File**: `src/main/vault/file-ops.ts`
 
 Atomic file operations to prevent data corruption.
@@ -95,11 +97,13 @@ generateUniquePath(basePath: string): Promise<string>
 ```
 
 **Atomic Write Pattern**:
+
 1. Write to temporary file (`.tmp` suffix)
 2. Rename temp file to target path
 3. If crash occurs, original file is preserved
 
 ### 3. Note CRUD Operations
+
 **File**: `src/main/vault/notes.ts`
 
 Main business logic for note operations.
@@ -126,6 +130,7 @@ revealInFinder(id: string): Promise<void>
 ```
 
 **Key Behaviors**:
+
 - **Create**: Generates ID, writes file, updates cache, indexes FTS, emits event
 - **Update**: Atomic write, updates cache, syncs FTS content, emits event
 - **Delete**: Removes file, cleans cache (tags, links), removes from FTS, emits event
@@ -136,6 +141,7 @@ revealInFinder(id: string): Promise<void>
 - **Events**: Uses `NotesChannels.events.*` for IPC notifications
 
 ### 4. Database Queries
+
 **File**: `src/shared/db/queries/notes.ts`
 
 Drizzle ORM queries for the note cache.
@@ -175,6 +181,7 @@ clearNoteCache(db): void
 ```
 
 ### 5. IPC Handlers
+
 **File**: `src/main/ipc/notes-handlers.ts`
 
 Registers all notes IPC channels with Zod validation.
@@ -201,6 +208,7 @@ Registers all notes IPC channels with Zod validation.
 ```
 
 ### 6. Preload Bridge
+
 **File**: `src/preload/index.ts`
 
 Exposes notes API to renderer process.
@@ -222,6 +230,7 @@ window.api.onNoteExternalChange(callback)
 ```
 
 ### 7. Renderer Service
+
 **File**: `src/renderer/src/services/notes-service.ts`
 
 Thin wrapper for type safety and convenience.
@@ -234,6 +243,7 @@ const notes = await notesService.list({ sortBy: 'modified', limit: 50 })
 ```
 
 ### 8. React Hooks
+
 **File**: `src/renderer/src/hooks/use-notes.ts`
 
 State management hooks for React components.
@@ -241,23 +251,23 @@ State management hooks for React components.
 ```typescript
 // Main hook
 const {
-  notes,           // NoteListItem[]
-  currentNote,     // Note | null
-  total,           // number
-  hasMore,         // boolean
-  isLoading,       // boolean
-  error,           // string | null
-  loadNotes,       // (options?) => Promise<NoteListResponse>
-  loadMore,        // () => Promise<void>
-  refresh,         // () => Promise<void>
-  createNote,      // (input) => Promise<Note | null>
-  getNote,         // (id) => Promise<Note | null>
-  updateNote,      // (input) => Promise<Note | null>
-  renameNote,      // (id, newTitle) => Promise<Note | null>
-  moveNote,        // (id, newFolder) => Promise<Note | null>
-  deleteNote,      // (id) => Promise<boolean>
-  setCurrentNote,  // (note) => void
-  clearError       // () => void
+  notes, // NoteListItem[]
+  currentNote, // Note | null
+  total, // number
+  hasMore, // boolean
+  isLoading, // boolean
+  error, // string | null
+  loadNotes, // (options?) => Promise<NoteListResponse>
+  loadMore, // () => Promise<void>
+  refresh, // () => Promise<void>
+  createNote, // (input) => Promise<Note | null>
+  getNote, // (id) => Promise<Note | null>
+  updateNote, // (input) => Promise<Note | null>
+  renameNote, // (id, newTitle) => Promise<Note | null>
+  moveNote, // (id, newFolder) => Promise<Note | null>
+  deleteNote, // (id) => Promise<boolean>
+  setCurrentNote, // (note) => void
+  clearError // () => void
 } = useNotes({ folder, tags, sortBy, sortOrder, limit, autoLoad })
 
 // Additional hooks
@@ -267,12 +277,14 @@ const { folders, createFolder, renameFolder, deleteFolder, refresh } = useNoteFo
 ```
 
 **Features**:
+
 - Auto-loads on mount (configurable)
 - Subscribes to IPC events automatically
 - Updates state when notes change externally
 - Pagination with `loadMore()`
 
 ### 9. Rename Tracker
+
 **File**: `src/main/vault/rename-tracker.ts`
 
 Detects file renames by matching UUIDs within a 500ms window.
@@ -288,6 +300,7 @@ getPendingDeleteCount(): number
 ```
 
 **How it works**:
+
 1. When a file is deleted, `trackPendingDelete()` stores the UUID
 2. A 500ms timer starts
 3. If a new file with the same UUID appears, `checkForRename()` detects it
@@ -295,6 +308,7 @@ getPendingDeleteCount(): number
 5. If no match within 500ms, `onRealDelete()` callback executes
 
 ### 10. FTS Module
+
 **File**: `src/main/database/fts.ts`
 
 FTS5 full-text search with automatic triggers.
@@ -313,6 +327,7 @@ ftsNoteExists(db, noteId): boolean                 // Check if indexed
 **Important**: FTS triggers sync id/title automatically, but content/tags must be updated manually via `updateFtsContent()`.
 
 ### 11. Search Handlers
+
 **File**: `src/main/ipc/search-handlers.ts`
 
 Complete search IPC layer with recent search tracking.
@@ -333,6 +348,7 @@ Complete search IPC layer with recent search tracking.
 ```
 
 ### 12. Search Hooks
+
 **File**: `src/renderer/src/hooks/use-search.ts`
 
 React hooks for search state management.
@@ -340,8 +356,17 @@ React hooks for search state management.
 ```typescript
 // Main search hook with debouncing
 const {
-  query, setQuery, results, total, hasMore,
-  isLoading, queryTime, error, search, loadMore, clear
+  query,
+  setQuery,
+  results,
+  total,
+  hasMore,
+  isLoading,
+  queryTime,
+  error,
+  search,
+  loadMore,
+  clear
 } = useSearch({ debounceMs, autoSearch, limit })
 
 // Quick search for command palette
@@ -355,6 +380,7 @@ const { recent, isLoading, addRecent, clearRecent, refresh } = useRecentSearches
 ```
 
 ### 13. Search Queries
+
 **File**: `src/shared/db/queries/search.ts`
 
 FTS5 query functions.
@@ -373,25 +399,32 @@ isFtsHealthy(db): boolean
 ## Implementation Details
 
 ### Wiki Link Patterns
+
 The `extractWikiLinks()` function supports two patterns:
+
 - `[[Note Title]]` - Simple link
 - `[[Note Title|Display Text]]` - Link with custom display text
 
 ### Content Hash Algorithm
+
 Uses djb2 hash for change detection:
+
 ```typescript
 function djb2Hash(str: string): string {
   let hash = 5381
   for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) + hash) + str.charCodeAt(i)
+    hash = (hash << 5) + hash + str.charCodeAt(i)
   }
   return (hash >>> 0).toString(16)
 }
 ```
+
 Used to skip redundant updates when file timestamp changes but content doesn't.
 
 ### Duplicate ID Detection (T046)
+
 When `getNoteById()` finds a note with the same ID at a different path:
+
 1. Generates a new UUID for the duplicate
 2. Writes the new ID back to the file
 3. Updates the cache
@@ -400,7 +433,9 @@ When `getNoteById()` finds a note with the same ID at a different path:
 This handles edge cases where users copy files or sync conflicts occur.
 
 ### Snippet Generation
+
 `createSnippet()` algorithm:
+
 1. Remove YAML frontmatter
 2. Strip markdown formatting (headers, bold, italic, links)
 3. Remove code blocks and inline code
@@ -408,31 +443,40 @@ This handles edge cases where users copy files or sync conflicts occur.
 5. Trim to 200 characters at word boundary
 
 ### Tag Case Normalization
+
 Tags are automatically normalized to lowercase during:
+
 - `extractTags()` in frontmatter processing
 - `setNoteTags()` in database operations
 
 ### Link Resolution Strategy
+
 `resolveNoteByTitle()` uses two-phase resolution:
+
 1. Exact match on title
 2. Case-insensitive fallback
 
 This ensures `[[My Note]]` links resolve to `My Note.md` or `my note.md`.
 
 ### Modified Timestamp Behavior
+
 - `serializeNote()` updates `modified` timestamp on every write
 - Reading a file does NOT update the modified timestamp
 - Only explicit updates via `updateNote()` or file changes trigger modified update
 
 ### Event Source Distinction
+
 All note events include a `source` field:
+
 - `'internal'` - Change originated from app API
 - `'external'` - Change detected by file watcher
 
 Used to prevent UI jitter from self-generated events.
 
 ### Atomic File Write Pattern
+
 All file writes use atomic pattern:
+
 1. Write to temp file: `filename.md.{random-hex}.tmp`
 2. Rename temp file to target path
 3. On error, cleanup temp file
@@ -440,6 +484,7 @@ All file writes use atomic pattern:
 Prevents data corruption if crash occurs during write.
 
 ## IPC Channel Constants
+
 **File**: `src/shared/ipc-channels.ts`
 
 Single source of truth for all IPC channel names.
@@ -448,7 +493,7 @@ Single source of truth for all IPC channel names.
 export const NotesChannels = {
   invoke: {
     CREATE: 'notes:create',
-    GET: 'notes:get',
+    GET: 'notes:get'
     // ... all invoke channels
   },
   events: {
@@ -734,33 +779,34 @@ export const NotesChannels = {
 
 ### Note Creation - Sequence Summary
 
-| Step | Location | Action |
-|------|----------|--------|
-| 1 | React Component | User triggers `createNote()` |
-| 2 | useNotes Hook | Sets loading state, calls service |
-| 3 | Notes Service | Calls `window.api.notes.create()` |
-| 4 | Preload → Main | IPC invoke crosses process boundary |
-| 5 | IPC Handler | Validates input with Zod schema |
-| 6 | notes.ts | Validates vault is open |
-| 7 | notes.ts | Generates unique ID (nanoid) |
-| 8 | frontmatter.ts | Creates frontmatter object |
-| 9 | file-ops.ts | Generates file path |
-| 10 | frontmatter.ts | Serializes to markdown string |
-| 11 | file-ops.ts | Ensures directory exists |
-| 12 | file-ops.ts | **Atomic write to file system** |
-| 13 | - | File created on disk |
-| 14 | notes.ts | Extracts metadata (tags, links, etc.) |
-| 15 | queries/notes.ts | Inserts into note_cache table |
-| 16 | queries/notes.ts | Inserts tags into note_tags |
-| 17 | queries/notes.ts | Inserts links into note_links |
-| 18 | notes.ts | Emits `notes:created` event |
-| 19 | notes.ts | Returns Note object |
-| 20 | Main → Preload | IPC response returns |
-| 21 | Notes Service | Returns result to hook |
-| 22 | useNotes Hook | Event listener fires (parallel) |
-| 23 | useNotes Hook | Updates React state |
+| Step | Location         | Action                                |
+| ---- | ---------------- | ------------------------------------- |
+| 1    | React Component  | User triggers `createNote()`          |
+| 2    | useNotes Hook    | Sets loading state, calls service     |
+| 3    | Notes Service    | Calls `window.api.notes.create()`     |
+| 4    | Preload → Main   | IPC invoke crosses process boundary   |
+| 5    | IPC Handler      | Validates input with Zod schema       |
+| 6    | notes.ts         | Validates vault is open               |
+| 7    | notes.ts         | Generates unique ID (nanoid)          |
+| 8    | frontmatter.ts   | Creates frontmatter object            |
+| 9    | file-ops.ts      | Generates file path                   |
+| 10   | frontmatter.ts   | Serializes to markdown string         |
+| 11   | file-ops.ts      | Ensures directory exists              |
+| 12   | file-ops.ts      | **Atomic write to file system**       |
+| 13   | -                | File created on disk                  |
+| 14   | notes.ts         | Extracts metadata (tags, links, etc.) |
+| 15   | queries/notes.ts | Inserts into note_cache table         |
+| 16   | queries/notes.ts | Inserts tags into note_tags           |
+| 17   | queries/notes.ts | Inserts links into note_links         |
+| 18   | notes.ts         | Emits `notes:created` event           |
+| 19   | notes.ts         | Returns Note object                   |
+| 20   | Main → Preload   | IPC response returns                  |
+| 21   | Notes Service    | Returns result to hook                |
+| 22   | useNotes Hook    | Event listener fires (parallel)       |
+| 23   | useNotes Hook    | Updates React state                   |
 
 ### Reading a Note
+
 ```
 UI Component
     ↓ useNotes().getNote(id)
@@ -781,21 +827,22 @@ Custom error types in `src/main/lib/errors.ts`:
 
 ```typescript
 // Note errors
-NoteErrorCode.NOT_FOUND      // Note doesn't exist
+NoteErrorCode.NOT_FOUND // Note doesn't exist
 NoteErrorCode.ALREADY_EXISTS // Title conflict
-NoteErrorCode.INVALID_PATH   // Bad file path
-NoteErrorCode.READ_FAILED    // File read error
-NoteErrorCode.WRITE_FAILED   // File write error
-NoteErrorCode.DELETE_FAILED  // File delete error
+NoteErrorCode.INVALID_PATH // Bad file path
+NoteErrorCode.READ_FAILED // File read error
+NoteErrorCode.WRITE_FAILED // File write error
+NoteErrorCode.DELETE_FAILED // File delete error
 
 // Vault errors
-VaultErrorCode.NOT_OPEN      // No vault selected
-VaultErrorCode.NOT_FOUND     // Vault path missing
+VaultErrorCode.NOT_OPEN // No vault selected
+VaultErrorCode.NOT_FOUND // Vault path missing
 ```
 
 ## Database Schema
 
 ### noteCache Table
+
 ```sql
 CREATE TABLE note_cache (
   id TEXT PRIMARY KEY,
@@ -811,6 +858,7 @@ CREATE TABLE note_cache (
 ```
 
 ### noteTags Table
+
 ```sql
 CREATE TABLE note_tags (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -821,6 +869,7 @@ CREATE TABLE note_tags (
 ```
 
 ### noteLinks Table
+
 ```sql
 CREATE TABLE note_links (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -835,9 +884,11 @@ CREATE TABLE note_links (
 ## What's Implemented
 
 ### Phase 4: File Watcher (US2) - T049-T054 ✓
+
 **Status**: Complete
 
 Implemented:
+
 - `src/main/vault/watcher.ts` - chokidar file watcher with VaultWatcher class
 - Debounced event handling (100ms stabilization)
 - Cache updates on external file add/change/delete
@@ -845,6 +896,7 @@ Implemented:
 - Watcher starts on vault open, stops on vault close
 
 **Features**:
+
 - Watches `notes/` and `journal/` directories recursively
 - Filters: only `.md` files
 - Ignores: hidden files, `.git`, `node_modules`, `.memry/`
@@ -853,14 +905,17 @@ Implemented:
 - Emits IPC events to all renderer windows
 
 ### Phase 5: Rename Tracking (US3) - T055-T059 ✓
+
 **Status**: Complete
 
 Implemented:
+
 - `src/main/vault/rename-tracker.ts` - UUID-based rename detection
 - Automatic cache path/title update on rename
 - RENAMED event emission with `source: 'external'`
 
 **Features**:
+
 - 500ms detection window for rename events
 - chokidar emits 'unlink' then 'add' for renames - tracker matches by UUID
 - Pending delete tracking with timeout-based real delete processing
@@ -878,14 +933,17 @@ getPendingDeleteCount(): number
 ```
 
 ### Phase 6: Full-Text Search (US4) - T060-T067 ✓
+
 **Status**: Complete
 
 Implemented:
+
 - `src/main/database/fts.ts` - FTS5 virtual table and triggers
 - Automatic index sync via SQLite triggers
 - Search query functions
 
 **FTS5 Virtual Table**:
+
 ```sql
 CREATE VIRTUAL TABLE IF NOT EXISTS fts_notes USING fts5(
   id UNINDEXED,    -- Note UUID (not searchable)
@@ -897,11 +955,13 @@ CREATE VIRTUAL TABLE IF NOT EXISTS fts_notes USING fts5(
 ```
 
 **Automatic Triggers**:
+
 - INSERT on note_cache → Creates FTS entry (content/tags empty initially)
 - DELETE on note_cache → Removes FTS entry
 - UPDATE title on note_cache → Updates FTS title
 
 **Manual Content Updates** (required because files are source of truth):
+
 ```typescript
 // Key exports from fts.ts
 initializeFts(db: LibSQLDatabase): void          // Create table and triggers
@@ -920,25 +980,31 @@ ftsNoteExists(db, noteId): boolean                // Check if note in FTS
 ## What's NOT Implemented Yet
 
 ### Phase 7: Indexing Progress (US7) - T068-T070
+
 **Impact**: No progress indicator for large vaults.
 
 Missing:
+
 - Initial indexer with progress reporting
 - INDEX_PROGRESS IPC events
 - Progress UI
 
 ### Phase 8: Auto Recovery (US8) - T071-T073
+
 **Impact**: Corrupted index requires manual intervention.
 
 Missing:
+
 - Corruption detection
 - Automatic rebuild trigger
 - Recovery notifications
 
 ### UI Integration
+
 **Impact**: UI components may still use mock data.
 
 Components that need updating to use `useNotes()`:
+
 - Note editor component
 - Note list/sidebar component
 - Note preview component
@@ -949,6 +1015,7 @@ Components that need updating to use `useNotes()`:
 ## Testing the Implementation
 
 ### Quick Test via DevTools
+
 ```javascript
 // 1. Ensure vault is open
 const status = await window.api.vault.getStatus()
@@ -990,14 +1057,15 @@ console.log('Deleted:', deleted)
 ```
 
 ### Verify File Format
+
 Open any `.md` file in the vault. It should look like:
 
 ```markdown
 ---
-id: "a1b2c3d4e5f6"
-title: "Test Note"
-created: "2025-12-18T10:00:00.000Z"
-modified: "2025-12-18T10:00:00.000Z"
+id: 'a1b2c3d4e5f6'
+title: 'Test Note'
+created: '2025-12-18T10:00:00.000Z'
+modified: '2025-12-18T10:00:00.000Z'
 tags:
   - test
   - demo
@@ -1012,30 +1080,30 @@ This is a test.
 
 ## Related Files
 
-| Component | File Path |
-|-----------|-----------|
-| Frontmatter | `src/main/vault/frontmatter.ts` |
-| File Operations | `src/main/vault/file-ops.ts` |
-| Note CRUD | `src/main/vault/notes.ts` |
-| File Watcher | `src/main/vault/watcher.ts` |
-| Rename Tracker | `src/main/vault/rename-tracker.ts` |
-| Vault Manager | `src/main/vault/index.ts` |
-| DB Queries | `src/shared/db/queries/notes.ts` |
-| DB Schema | `src/shared/db/schema/notes-cache.ts` |
-| FTS5 Search | `src/main/database/fts.ts` |
-| Search Queries | `src/shared/db/queries/search.ts` |
-| Search Contract | `src/shared/contracts/search-api.ts` |
-| IPC Handlers (Notes) | `src/main/ipc/notes-handlers.ts` |
-| IPC Handlers (Search) | `src/main/ipc/search-handlers.ts` |
-| IPC Registration | `src/main/ipc/index.ts` |
-| Channel Constants | `src/shared/ipc-channels.ts` |
-| Preload | `src/preload/index.ts` |
-| Preload Types | `src/preload/index.d.ts` |
-| API Contract | `src/shared/contracts/notes-api.ts` |
-| Renderer Service (Notes) | `src/renderer/src/services/notes-service.ts` |
+| Component                 | File Path                                     |
+| ------------------------- | --------------------------------------------- |
+| Frontmatter               | `src/main/vault/frontmatter.ts`               |
+| File Operations           | `src/main/vault/file-ops.ts`                  |
+| Note CRUD                 | `src/main/vault/notes.ts`                     |
+| File Watcher              | `src/main/vault/watcher.ts`                   |
+| Rename Tracker            | `src/main/vault/rename-tracker.ts`            |
+| Vault Manager             | `src/main/vault/index.ts`                     |
+| DB Queries                | `src/shared/db/queries/notes.ts`              |
+| DB Schema                 | `src/shared/db/schema/notes-cache.ts`         |
+| FTS5 Search               | `src/main/database/fts.ts`                    |
+| Search Queries            | `src/shared/db/queries/search.ts`             |
+| Search Contract           | `src/shared/contracts/search-api.ts`          |
+| IPC Handlers (Notes)      | `src/main/ipc/notes-handlers.ts`              |
+| IPC Handlers (Search)     | `src/main/ipc/search-handlers.ts`             |
+| IPC Registration          | `src/main/ipc/index.ts`                       |
+| Channel Constants         | `src/shared/ipc-channels.ts`                  |
+| Preload                   | `src/preload/index.ts`                        |
+| Preload Types             | `src/preload/index.d.ts`                      |
+| API Contract              | `src/shared/contracts/notes-api.ts`           |
+| Renderer Service (Notes)  | `src/renderer/src/services/notes-service.ts`  |
 | Renderer Service (Search) | `src/renderer/src/services/search-service.ts` |
-| React Hook (Notes) | `src/renderer/src/hooks/use-notes.ts` |
-| React Hook (Search) | `src/renderer/src/hooks/use-search.ts` |
+| React Hook (Notes)        | `src/renderer/src/hooks/use-notes.ts`         |
+| React Hook (Search)       | `src/renderer/src/hooks/use-search.ts`        |
 
 ## References
 

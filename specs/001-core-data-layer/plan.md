@@ -11,6 +11,7 @@ Build the foundational data layer for Memry that enables local-first storage wit
 
 **Language/Version**: TypeScript 5.9+ with strict mode
 **Primary Dependencies**:
+
 - drizzle-orm ^0.38.x (TypeScript ORM - platform-agnostic query layer)
 - better-sqlite3 ^11.x (SQLite driver for Electron)
 - drizzle-kit ^0.30.x (migrations and schema tooling)
@@ -19,11 +20,13 @@ Build the foundational data layer for Memry that enables local-first storage wit
 - nanoid ^5.x (unique identifier generation)
 
 **Storage**:
+
 - SQLite via Drizzle ORM + better-sqlite3 driver (two databases: index.db, data.db)
 - File system via Node.js fs/promises
 - Vault folder location stored in electron-store
 
 **Future Platform Support**:
+
 - React Native: Same Drizzle schemas with expo-sqlite or op-sqlite driver
 - Code sharing: Schema definitions and queries shared across platforms
 
@@ -32,40 +35,44 @@ Build the foundational data layer for Memry that enables local-first storage wit
 **Project Type**: Electron desktop application (main + renderer processes)
 
 **Performance Goals**:
+
 - Search results in <50ms for 10,000 notes
 - File change detection within 500ms
 - Initial indexing <5s for 1,000 files
 - App startup to usable state <3s
 
 **Constraints**:
+
 - Main process handles all file/database operations
 - Renderer communicates via IPC only
 - Zero data loss tolerance
 - Files must be portable markdown (no proprietary formats)
 
 **Scale/Scope**:
+
 - Support 10,000+ notes
 - Support 1,000+ tasks
 - Vault sizes up to 10GB (with attachments)
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-| Principle | Status | Implementation |
-|-----------|--------|----------------|
-| **I. Local-First Architecture** | PASS | All data stored in user-selected vault folder; app works fully offline; notes are plain markdown files |
-| **II. E2EE** | N/A | Encryption layer is Phase 4 (separate feature); this phase focuses on local storage only |
-| **III. No Vendor Lock-In** | PASS | Notes as .md files with standard YAML frontmatter; tasks exportable to JSON/CSV; no proprietary formats |
-| **IV. Privacy by Design** | PASS | All data local; no network calls; no telemetry |
-| **V. Offline-First** | PASS | No internet dependency; all features work offline |
-| **VI. File System as Source of Truth** | PASS | Markdown files are authoritative for notes; index.db is rebuildable cache |
-| **VII. Database for Structured Data** | PASS | Tasks, projects, settings stored in data.db as source of truth |
-| **VIII. External Edit Detection** | PASS | chokidar watches vault for changes; automatic UI updates within 500ms |
-| **IX. Rename Tracking** | PASS | UUID in frontmatter tracks identity; file path is display name only |
-| **X. Single Source of Truth** | PASS | Each data type has exactly one authoritative location |
+| Principle                              | Status | Implementation                                                                                          |
+| -------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------- |
+| **I. Local-First Architecture**        | PASS   | All data stored in user-selected vault folder; app works fully offline; notes are plain markdown files  |
+| **II. E2EE**                           | N/A    | Encryption layer is Phase 4 (separate feature); this phase focuses on local storage only                |
+| **III. No Vendor Lock-In**             | PASS   | Notes as .md files with standard YAML frontmatter; tasks exportable to JSON/CSV; no proprietary formats |
+| **IV. Privacy by Design**              | PASS   | All data local; no network calls; no telemetry                                                          |
+| **V. Offline-First**                   | PASS   | No internet dependency; all features work offline                                                       |
+| **VI. File System as Source of Truth** | PASS   | Markdown files are authoritative for notes; index.db is rebuildable cache                               |
+| **VII. Database for Structured Data**  | PASS   | Tasks, projects, settings stored in data.db as source of truth                                          |
+| **VIII. External Edit Detection**      | PASS   | chokidar watches vault for changes; automatic UI updates within 500ms                                   |
+| **IX. Rename Tracking**                | PASS   | UUID in frontmatter tracks identity; file path is display name only                                     |
+| **X. Single Source of Truth**          | PASS   | Each data type has exactly one authoritative location                                                   |
 
 **Quality Standards Compliance**:
+
 - Type Safety: All IPC messages validated with Zod schemas at boundaries
 - Performance: FTS5 for search, debounced file watching, lazy loading
 - Accessibility: Not applicable to backend (UI responsibility)
@@ -160,16 +167,17 @@ drizzle.config.ts                    # Drizzle Kit configuration
 
 ## Complexity Tracking
 
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| Two SQLite databases | Separation of rebuildable cache (index.db) from source-of-truth data (data.db) | Single database would mix transient and permanent data, complicating recovery |
-| IPC abstraction layer | Type safety and validation at process boundary | Direct ipcRenderer calls would spread validation logic across components |
-| Drizzle ORM layer | Future React Native support requires shared schema/query code | Direct better-sqlite3 would require complete rewrite for mobile |
-| Shared src/shared/db folder | Platform-agnostic database code | Duplicating schemas between Electron and React Native is error-prone |
+| Violation                   | Why Needed                                                                     | Simpler Alternative Rejected Because                                          |
+| --------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| Two SQLite databases        | Separation of rebuildable cache (index.db) from source-of-truth data (data.db) | Single database would mix transient and permanent data, complicating recovery |
+| IPC abstraction layer       | Type safety and validation at process boundary                                 | Direct ipcRenderer calls would spread validation logic across components      |
+| Drizzle ORM layer           | Future React Native support requires shared schema/query code                  | Direct better-sqlite3 would require complete rewrite for mobile               |
+| Shared src/shared/db folder | Platform-agnostic database code                                                | Duplicating schemas between Electron and React Native is error-prone          |
 
 ## Implementation Phases
 
 ### Phase 1: Database Foundation
+
 1. Install Drizzle ORM, drizzle-kit, and better-sqlite3 with electron-rebuild
 2. Create shared schema definitions in `src/shared/db/schema/`
 3. Configure drizzle-kit for dual database (data.db, index.db)
@@ -179,6 +187,7 @@ drizzle.config.ts                    # Drizzle Kit configuration
 7. Create IPC handlers for database operations
 
 ### Phase 2: Vault Management
+
 1. Implement vault folder selection dialog
 2. Store vault location in electron-store
 3. Create vault structure initialization (.memry folder)
@@ -186,6 +195,7 @@ drizzle.config.ts                    # Drizzle Kit configuration
 5. Add multi-vault support infrastructure
 
 ### Phase 3: File Operations
+
 1. Implement note file CRUD with atomic writes
 2. Add gray-matter frontmatter parsing/serialization
 3. Implement UUID generation and tracking
@@ -193,6 +203,7 @@ drizzle.config.ts                    # Drizzle Kit configuration
 5. Add file path sanitization
 
 ### Phase 4: File Watching
+
 1. Set up chokidar watcher with optimal configuration
 2. Implement debounced event handling
 3. Add rename detection using UUID matching
@@ -200,6 +211,7 @@ drizzle.config.ts                    # Drizzle Kit configuration
 5. Handle exclusion patterns (.git, node_modules)
 
 ### Phase 5: Indexing & Search
+
 1. Implement initial vault indexing
 2. Create FTS5 full-text search index
 3. Add incremental index updates on file changes
@@ -207,6 +219,7 @@ drizzle.config.ts                    # Drizzle Kit configuration
 5. Add progress reporting for initial index
 
 ### Phase 6: Recovery & Resilience
+
 1. Implement index corruption detection
 2. Add automatic index rebuild from files
 3. Create data.db backup strategy
@@ -236,6 +249,7 @@ drizzle.config.ts                    # Drizzle Kit configuration
 ```
 
 **Future React Native Dependencies** (when mobile app is built):
+
 ```json
 {
   "dependencies": {
@@ -247,12 +261,12 @@ drizzle.config.ts                    # Drizzle Kit configuration
 
 ## Risk Assessment
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| better-sqlite3 native binding issues with electron-vite | Medium | High | Use @electron/rebuild; test on all platforms early |
-| Drizzle ORM performance overhead | Low | Low | Drizzle compiles to raw SQL; benchmark shows <1% overhead vs direct queries |
-| Large vault performance degradation | Low | Medium | Implement lazy loading; use FTS5; add pagination |
-| File watcher resource exhaustion | Low | Medium | Use chokidar v4 efficiency improvements; increase inotify limits on Linux |
-| Concurrent file access conflicts | Medium | Medium | Use atomic writes; implement file locking strategy |
-| Index corruption on unexpected shutdown | Medium | High | Design index as fully rebuildable; use WAL mode |
-| React Native driver differences | Low | Medium | Use Drizzle abstraction; write platform-specific tests |
+| Risk                                                    | Likelihood | Impact | Mitigation                                                                  |
+| ------------------------------------------------------- | ---------- | ------ | --------------------------------------------------------------------------- |
+| better-sqlite3 native binding issues with electron-vite | Medium     | High   | Use @electron/rebuild; test on all platforms early                          |
+| Drizzle ORM performance overhead                        | Low        | Low    | Drizzle compiles to raw SQL; benchmark shows <1% overhead vs direct queries |
+| Large vault performance degradation                     | Low        | Medium | Implement lazy loading; use FTS5; add pagination                            |
+| File watcher resource exhaustion                        | Low        | Medium | Use chokidar v4 efficiency improvements; increase inotify limits on Linux   |
+| Concurrent file access conflicts                        | Medium     | Medium | Use atomic writes; implement file locking strategy                          |
+| Index corruption on unexpected shutdown                 | Medium     | High   | Design index as fully rebuildable; use WAL mode                             |
+| React Native driver differences                         | Low        | Medium | Use Drizzle abstraction; write platform-specific tests                      |

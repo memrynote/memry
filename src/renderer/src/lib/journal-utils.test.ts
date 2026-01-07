@@ -33,7 +33,7 @@ import {
   isTomorrow,
   getSpecialDayLabel,
   getDaysInMonth,
-  getMonthStats,
+  getMonthStats
 } from './journal-utils'
 
 // =============================================================================
@@ -339,9 +339,11 @@ describe('journal-utils', () => {
         expect(todayEntry).toBeDefined()
         expect(todayEntry!.isToday).toBe(true)
         // Other days should not be today
-        result.filter((d) => d.date !== '2026-01-15').forEach((day) => {
-          expect(day.isToday).toBe(false)
-        })
+        result
+          .filter((d) => d.date !== '2026-01-15')
+          .forEach((day) => {
+            expect(day.isToday).toBe(false)
+          })
       })
 
       it('correctly sets isFuture for past days (should be false)', () => {
@@ -472,7 +474,7 @@ describe('journal-utils', () => {
           { date: '2026-01-14', expected: 'Wednesday' },
           { date: '2026-01-15', expected: 'Thursday' },
           { date: '2026-01-16', expected: 'Friday' },
-          { date: '2026-01-17', expected: 'Saturday' },
+          { date: '2026-01-17', expected: 'Saturday' }
         ]
         days.forEach(({ date, expected }) => {
           expect(formatDayHeader(date).dayName).toBe(expected)
@@ -528,7 +530,7 @@ describe('journal-utils', () => {
           { date: '2026-09-15', month: 'September', monthIndex: 8 },
           { date: '2026-10-15', month: 'October', monthIndex: 9 },
           { date: '2026-11-15', month: 'November', monthIndex: 10 },
-          { date: '2026-12-15', month: 'December', monthIndex: 11 },
+          { date: '2026-12-15', month: 'December', monthIndex: 11 }
         ]
         months.forEach(({ date, month, monthIndex }) => {
           const result = formatDateParts(date)
@@ -564,7 +566,7 @@ describe('journal-utils', () => {
           'September',
           'October',
           'November',
-          'December',
+          'December'
         ]
         expected.forEach((month, index) => {
           expect(getMonthName(index)).toBe(month)
@@ -950,7 +952,7 @@ describe('journal-utils', () => {
           'September',
           'October',
           'November',
-          'December',
+          'December'
         ]
         result.forEach((stat, index) => {
           expect(stat.monthName).toBe(expected[index])
@@ -961,7 +963,7 @@ describe('journal-utils', () => {
         const heatmapData = [
           { date: '2026-01-01', characterCount: 100, level: 1 as const },
           { date: '2026-01-02', characterCount: 200, level: 2 as const },
-          { date: '2026-01-03', characterCount: 0, level: 0 as const }, // No content
+          { date: '2026-01-03', characterCount: 0, level: 0 as const } // No content
         ]
         const result = getMonthStats(2026, heatmapData)
         expect(result[0].entryCount).toBe(2) // Only entries with content
@@ -971,7 +973,7 @@ describe('journal-utils', () => {
         const heatmapData = [
           { date: '2026-01-01', characterCount: 100, level: 1 as const },
           { date: '2026-01-02', characterCount: 200, level: 2 as const },
-          { date: '2026-01-03', characterCount: 50, level: 1 as const },
+          { date: '2026-01-03', characterCount: 50, level: 1 as const }
         ]
         const result = getMonthStats(2026, heatmapData)
         expect(result[0].totalChars).toBe(350)
@@ -989,7 +991,7 @@ describe('journal-utils', () => {
         const heatmapData = [
           { date: '2026-01-01', characterCount: 100, level: 2 as const },
           { date: '2026-01-08', characterCount: 200, level: 3 as const },
-          { date: '2026-01-15', characterCount: 300, level: 4 as const },
+          { date: '2026-01-15', characterCount: 300, level: 4 as const }
         ]
         const result = getMonthStats(2026, heatmapData)
         expect(Array.isArray(result[0].activityDots)).toBe(true)
@@ -1000,7 +1002,7 @@ describe('journal-utils', () => {
       it('activityDots contains valid values (0-4)', () => {
         const heatmapData = [
           { date: '2026-01-01', characterCount: 100, level: 2 as const },
-          { date: '2026-01-08', characterCount: 200, level: 3 as const },
+          { date: '2026-01-08', characterCount: 200, level: 3 as const }
         ]
         const result = getMonthStats(2026, heatmapData)
         result[0].activityDots.forEach((dot) => {
@@ -1013,7 +1015,7 @@ describe('journal-utils', () => {
         const heatmapData = [
           { date: '2026-01-01', characterCount: 100, level: 1 as const },
           { date: '2026-01-02', characterCount: 200, level: 3 as const },
-          { date: '2026-01-03', characterCount: 50, level: 2 as const },
+          { date: '2026-01-03', characterCount: 50, level: 2 as const }
         ]
         const result = getMonthStats(2026, heatmapData)
         // First week (days 1-7) should have max level 3
@@ -1023,7 +1025,7 @@ describe('journal-utils', () => {
       it('separates data by month correctly', () => {
         const heatmapData = [
           { date: '2026-01-15', characterCount: 100, level: 1 as const },
-          { date: '2026-02-15', characterCount: 200, level: 2 as const },
+          { date: '2026-02-15', characterCount: 200, level: 2 as const }
         ]
         const result = getMonthStats(2026, heatmapData)
         expect(result[0].entryCount).toBe(1)
@@ -1035,7 +1037,7 @@ describe('journal-utils', () => {
       it('handles year parameter correctly', () => {
         const heatmapData = [
           { date: '2026-01-15', characterCount: 100, level: 1 as const },
-          { date: '2025-01-15', characterCount: 200, level: 2 as const },
+          { date: '2025-01-15', characterCount: 200, level: 2 as const }
         ]
         const result = getMonthStats(2026, heatmapData)
         expect(result[0].entryCount).toBe(1)

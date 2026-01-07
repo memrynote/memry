@@ -1,6 +1,6 @@
-import type { Priority } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
-import { startOfDay, addDays } from "@/lib/task-utils"
+import type { Priority } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
+import { startOfDay, addDays } from '@/lib/task-utils'
 
 // ============================================================================
 // TYPES
@@ -34,7 +34,7 @@ const dayNameMap: Record<string, number> = {
   fri: 5,
   friday: 5,
   sat: 6,
-  saturday: 6,
+  saturday: 6
 }
 
 /**
@@ -63,7 +63,7 @@ const monthNameMap: Record<string, number> = {
   nov: 10,
   november: 10,
   dec: 11,
-  december: 11,
+  december: 11
 }
 
 /**
@@ -90,17 +90,17 @@ export const parseDateKeyword = (keyword: string): Date | null => {
   const lower = keyword.toLowerCase().trim()
 
   // today
-  if (lower === "today") {
+  if (lower === 'today') {
     return startOfDay(new Date())
   }
 
   // tomorrow
-  if (lower === "tomorrow" || lower === "tmr" || lower === "tom") {
+  if (lower === 'tomorrow' || lower === 'tmr' || lower === 'tom') {
     return addDays(startOfDay(new Date()), 1)
   }
 
   // next week (7 days from now)
-  if (lower === "nextweek" || lower === "next") {
+  if (lower === 'nextweek' || lower === 'next') {
     return addDays(startOfDay(new Date()), 7)
   }
 
@@ -142,17 +142,17 @@ export const parseDateKeyword = (keyword: string): Date | null => {
 // ============================================================================
 
 const priorityMap: Record<string, Priority> = {
-  urgent: "urgent",
-  u: "urgent",
-  high: "high",
-  h: "high",
-  medium: "medium",
-  med: "medium",
-  m: "medium",
-  low: "low",
-  l: "low",
-  none: "none",
-  n: "none",
+  urgent: 'urgent',
+  u: 'urgent',
+  high: 'high',
+  h: 'high',
+  medium: 'medium',
+  med: 'medium',
+  m: 'medium',
+  low: 'low',
+  l: 'low',
+  none: 'none',
+  n: 'none'
 }
 
 /**
@@ -170,10 +170,7 @@ export const parsePriorityKeyword = (keyword: string): Priority | null => {
 /**
  * Find project by name or ID (case-insensitive)
  */
-export const findProjectByName = (
-  name: string,
-  projects: Project[]
-): string | null => {
+export const findProjectByName = (name: string, projects: Project[]): string | null => {
   const lower = name.toLowerCase().trim()
 
   // Try exact ID match first
@@ -185,13 +182,11 @@ export const findProjectByName = (
   if (byName) return byName.id
 
   // Try partial name match (starts with)
-  const byPartial = projects.find((p) =>
-    p.name.toLowerCase().startsWith(lower)
-  )
+  const byPartial = projects.find((p) => p.name.toLowerCase().startsWith(lower))
   if (byPartial) return byPartial.id
 
   // Try kebab-case name match (e.g., "project-alpha" matches "Project Alpha")
-  const kebabName = lower.replace(/-/g, " ")
+  const kebabName = lower.replace(/-/g, ' ')
   const byKebab = projects.find((p) => p.name.toLowerCase() === kebabName)
   if (byKebab) return byKebab.id
 
@@ -214,13 +209,10 @@ export const findProjectByName = (
  * - "Buy groceries !today !!high" → title: "Buy groceries", due: today, priority: high
  * - "Review PR #work !tomorrow" → title: "Review PR", project: work, due: tomorrow
  */
-export const parseQuickAdd = (
-  input: string,
-  projects: Project[]
-): ParsedQuickAdd => {
+export const parseQuickAdd = (input: string, projects: Project[]): ParsedQuickAdd => {
   let title = input
   let dueDate: Date | null = null
-  let priority: Priority = "none"
+  let priority: Priority = 'none'
   let projectId: string | null = null
 
   // Parse due date: !keyword (single !)
@@ -232,7 +224,7 @@ export const parseQuickAdd = (
       const parsedDate = parseDateKeyword(keyword)
       if (parsedDate) {
         dueDate = parsedDate
-        title = title.replace(match, "").trim()
+        title = title.replace(match, '').trim()
         break // Only use first valid date
       }
     }
@@ -245,7 +237,7 @@ export const parseQuickAdd = (
     const parsedPriority = parsePriorityKeyword(keyword)
     if (parsedPriority) {
       priority = parsedPriority
-      title = title.replace(priorityMatch[0], "").trim()
+      title = title.replace(priorityMatch[0], '').trim()
     }
   }
 
@@ -256,18 +248,18 @@ export const parseQuickAdd = (
     const foundProjectId = findProjectByName(projectName, projects)
     if (foundProjectId) {
       projectId = foundProjectId
-      title = title.replace(projectMatch[0], "").trim()
+      title = title.replace(projectMatch[0], '').trim()
     }
   }
 
   // Clean up extra whitespace
-  title = title.replace(/\s+/g, " ").trim()
+  title = title.replace(/\s+/g, ' ').trim()
 
   return {
     title,
     dueDate,
     priority,
-    projectId,
+    projectId
   }
 }
 
@@ -279,9 +271,11 @@ export const parseQuickAdd = (
  * Check if input has any special syntax
  */
 export const hasSpecialSyntax = (input: string): boolean => {
-  return /(?<![!])![a-zA-Z0-9]+/.test(input) || // date
+  return (
+    /(?<![!])![a-zA-Z0-9]+/.test(input) || // date
     /!![a-zA-Z]+/.test(input) || // priority
-    /#[\w-]+/.test(input) // project
+    /#[\w-]+/.test(input)
+  ) // project
 }
 
 /**
@@ -304,12 +298,12 @@ export const getParsePreview = (
 
   return {
     hasDate: parsed.dueDate !== null,
-    hasPriority: parsed.priority !== "none",
+    hasPriority: parsed.priority !== 'none',
     hasProject: parsed.projectId !== null,
     dueDate: parsed.dueDate,
     priority: parsed.priority,
     projectId: parsed.projectId,
-    projectName: project?.name || null,
+    projectName: project?.name || null
   }
 }
 
@@ -328,16 +322,16 @@ export interface AutocompleteOption {
  */
 export const getDateOptions = (query: string): AutocompleteOption[] => {
   const options: AutocompleteOption[] = [
-    { value: "!today", label: "Today", icon: "📅" },
-    { value: "!tomorrow", label: "Tomorrow", icon: "📅" },
-    { value: "!nextweek", label: "Next Week", icon: "📅" },
-    { value: "!monday", label: "Monday", icon: "📅" },
-    { value: "!tuesday", label: "Tuesday", icon: "📅" },
-    { value: "!wednesday", label: "Wednesday", icon: "📅" },
-    { value: "!thursday", label: "Thursday", icon: "📅" },
-    { value: "!friday", label: "Friday", icon: "📅" },
-    { value: "!saturday", label: "Saturday", icon: "📅" },
-    { value: "!sunday", label: "Sunday", icon: "📅" },
+    { value: '!today', label: 'Today', icon: '📅' },
+    { value: '!tomorrow', label: 'Tomorrow', icon: '📅' },
+    { value: '!nextweek', label: 'Next Week', icon: '📅' },
+    { value: '!monday', label: 'Monday', icon: '📅' },
+    { value: '!tuesday', label: 'Tuesday', icon: '📅' },
+    { value: '!wednesday', label: 'Wednesday', icon: '📅' },
+    { value: '!thursday', label: 'Thursday', icon: '📅' },
+    { value: '!friday', label: 'Friday', icon: '📅' },
+    { value: '!saturday', label: 'Saturday', icon: '📅' },
+    { value: '!sunday', label: 'Sunday', icon: '📅' }
   ]
 
   if (!query) return options.slice(0, 5) // Show first 5 by default
@@ -345,8 +339,7 @@ export const getDateOptions = (query: string): AutocompleteOption[] => {
   const lowerQuery = query.toLowerCase()
   return options.filter(
     (opt) =>
-      opt.value.toLowerCase().includes(lowerQuery) ||
-      opt.label.toLowerCase().includes(lowerQuery)
+      opt.value.toLowerCase().includes(lowerQuery) || opt.label.toLowerCase().includes(lowerQuery)
   )
 }
 
@@ -355,10 +348,10 @@ export const getDateOptions = (query: string): AutocompleteOption[] => {
  */
 export const getPriorityOptions = (query: string): AutocompleteOption[] => {
   const options: AutocompleteOption[] = [
-    { value: "!!urgent", label: "Urgent", icon: "🔴" },
-    { value: "!!high", label: "High", icon: "🟠" },
-    { value: "!!medium", label: "Medium", icon: "🟡" },
-    { value: "!!low", label: "Low", icon: "🟢" },
+    { value: '!!urgent', label: 'Urgent', icon: '🔴' },
+    { value: '!!high', label: 'High', icon: '🟠' },
+    { value: '!!medium', label: 'Medium', icon: '🟡' },
+    { value: '!!low', label: 'Low', icon: '🟢' }
   ]
 
   if (!query) return options
@@ -366,38 +359,32 @@ export const getPriorityOptions = (query: string): AutocompleteOption[] => {
   const lowerQuery = query.toLowerCase()
   return options.filter(
     (opt) =>
-      opt.value.toLowerCase().includes(lowerQuery) ||
-      opt.label.toLowerCase().includes(lowerQuery)
+      opt.value.toLowerCase().includes(lowerQuery) || opt.label.toLowerCase().includes(lowerQuery)
   )
 }
 
 /**
  * Get project options for autocomplete, filtered by query
  */
-export const getProjectOptions = (
-  query: string,
-  projects: Project[]
-): AutocompleteOption[] => {
+export const getProjectOptions = (query: string, projects: Project[]): AutocompleteOption[] => {
   const activeProjects = projects.filter((p) => !p.isArchived)
 
   if (!query) {
     return activeProjects.map((p) => ({
       value: `#${p.id}`,
       label: p.name,
-      icon: "📁",
+      icon: '📁'
     }))
   }
 
   const lowerQuery = query.toLowerCase()
   return activeProjects
     .filter(
-      (p) =>
-        p.name.toLowerCase().includes(lowerQuery) ||
-        p.id.toLowerCase().includes(lowerQuery)
+      (p) => p.name.toLowerCase().includes(lowerQuery) || p.id.toLowerCase().includes(lowerQuery)
     )
     .map((p) => ({
       value: `#${p.id}`,
       label: p.name,
-      icon: "📁",
+      icon: '📁'
     }))
 }

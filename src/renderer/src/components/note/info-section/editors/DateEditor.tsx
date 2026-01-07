@@ -10,16 +10,9 @@ interface DateEditorProps {
   autoFocus?: boolean
 }
 
-export function DateEditor({
-  value,
-  onChange,
-  onBlur,
-  autoFocus = true
-}: DateEditorProps) {
+export function DateEditor({ value, onChange, onBlur, autoFocus = true }: DateEditorProps) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [localValue, setLocalValue] = useState(
-    value ? format(value, 'yyyy-MM-dd') : ''
-  )
+  const [localValue, setLocalValue] = useState(value ? format(value, 'yyyy-MM-dd') : '')
 
   useEffect(() => {
     setLocalValue(value ? format(value, 'yyyy-MM-dd') : '')

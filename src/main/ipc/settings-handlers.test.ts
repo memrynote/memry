@@ -62,7 +62,6 @@ describe('settings-handlers', () => {
     handleCalls.length = 0
     removeHandlerCalls.length = 0
     mockSend.mockClear()
-
     ;(getDatabase as Mock).mockReturnValue({})
   })
 
@@ -72,7 +71,6 @@ describe('settings-handlers', () => {
 
   it('gets and sets settings with change events', async () => {
     registerSettingsHandlers()
-
     ;(settingsQueries.getSetting as Mock).mockReturnValue('value-1')
 
     const getResult = await invokeHandler(SettingsChannels.invoke.GET, 'settings.key')
@@ -105,7 +103,6 @@ describe('settings-handlers', () => {
 
   it('gets and sets journal settings', async () => {
     registerSettingsHandlers()
-
     ;(settingsQueries.getSetting as Mock).mockReturnValue('template-1')
     const journalSettings = await invokeHandler(SettingsChannels.invoke.GET_JOURNAL_SETTINGS)
     expect(journalSettings).toEqual({ defaultTemplate: 'template-1' })
@@ -114,7 +111,11 @@ describe('settings-handlers', () => {
       defaultTemplate: 'template-2'
     })
     expect(setResult).toEqual({ success: true })
-    expect(settingsQueries.setSetting).toHaveBeenCalledWith({}, 'journal.defaultTemplate', 'template-2')
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith(
+      {},
+      'journal.defaultTemplate',
+      'template-2'
+    )
     expect(mockSend).toHaveBeenCalledWith(SettingsChannels.events.CHANGED, {
       key: 'journal',
       value: { defaultTemplate: 'template-2' }
@@ -129,7 +130,6 @@ describe('settings-handlers', () => {
 
   it('gets and sets AI settings', async () => {
     registerSettingsHandlers()
-
     ;(settingsQueries.getSetting as Mock).mockReturnValue('false')
     const aiSettings = await invokeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)
     expect(aiSettings).toEqual({ enabled: false })
@@ -145,7 +145,6 @@ describe('settings-handlers', () => {
 
   it('handles AI model status and load flows', async () => {
     registerSettingsHandlers()
-
     ;(embeddings.getModelInfo as Mock).mockReturnValue({
       name: 'all-MiniLM-L6-v2',
       dimension: 384,
@@ -166,16 +165,13 @@ describe('settings-handlers', () => {
 
   it('returns proper responses for model loading edge cases', async () => {
     registerSettingsHandlers()
-
     ;(embeddings.isModelLoaded as Mock).mockReturnValue(true)
     const loadedResult = await invokeHandler(SettingsChannels.invoke.LOAD_AI_MODEL)
     expect(loadedResult).toEqual({ success: true, message: 'Model already loaded' })
-
     ;(embeddings.isModelLoaded as Mock).mockReturnValue(false)
     ;(embeddings.isModelLoading as Mock).mockReturnValue(true)
     const loadingResult = await invokeHandler(SettingsChannels.invoke.LOAD_AI_MODEL)
     expect(loadingResult).toEqual({ success: false, error: 'Model is already loading' })
-
     ;(embeddings.isModelLoading as Mock).mockReturnValue(false)
     ;(embeddings.initEmbeddingModel as Mock).mockResolvedValue(false)
     ;(embeddings.getModelInfo as Mock).mockReturnValue({
@@ -194,7 +190,6 @@ describe('settings-handlers', () => {
 
     const reindexResult = await invokeHandler(SettingsChannels.invoke.REINDEX_EMBEDDINGS)
     expect(reindexResult).toEqual({ success: true, computed: 1, skipped: 0 })
-
     ;(settingsQueries.getSetting as Mock).mockReturnValue(null)
     const tabSettings = await invokeHandler(SettingsChannels.invoke.GET_TAB_SETTINGS)
     expect(tabSettings).toEqual(
@@ -243,5 +238,47 @@ describe('settings-handlers', () => {
       computed: 0,
       skipped: 0
     })
+  })
+
+  it('gets and sets note editor settings', async () => {
+    registerSettingsHandlers()
+    ;(settingsQueries.getSetting as Mock).mockReturnValue(null)
+    const defaultSettings = await invokeHandler(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS)
+    expect(defaultSettings).toEqual({ toolbarMode: 'floating' })
+    ;(settingsQueries.getSetting as Mock).mockReturnValue('sticky')
+    const stickySettings = await invokeHandler(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS)
+    expect(stickySettings).toEqual({ toolbarMode: 'sticky' })
+
+    const setResult = await invokeHandler(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS, {
+      toolbarMode: 'sticky'
+    })
+    expect(setResult).toEqual({ success: true })
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith({}, 'noteEditor.toolbarMode', 'sticky')
+    expect(mockSend).toHaveBeenCalledWith(SettingsChannels.events.CHANGED, {
+      key: 'noteEditor',
+      value: { toolbarMode: 'sticky' }
+    })
+  })
+
+  it('returns default note editor settings when no vault is open', async () => {
+    registerSettingsHandlers()
+    ;(getDatabase as Mock).mockImplementation(() => {
+      throw new Error('no db')
+    })
+
+    const result = await invokeHandler(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS)
+    expect(result).toEqual({ toolbarMode: 'floating' })
+  })
+
+  it('returns error when setting note editor settings without a vault', async () => {
+    registerSettingsHandlers()
+    ;(getDatabase as Mock).mockImplementation(() => {
+      throw new Error('no db')
+    })
+
+    const result = await invokeHandler(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS, {
+      toolbarMode: 'sticky'
+    })
+    expect(result).toEqual({ success: false, error: 'No vault open' })
   })
 })

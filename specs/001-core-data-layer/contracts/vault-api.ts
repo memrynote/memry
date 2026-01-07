@@ -5,34 +5,34 @@
  * All operations run in the main process.
  */
 
-import { z } from 'zod';
+import { z } from 'zod'
 
 // ============================================================================
 // Types
 // ============================================================================
 
 export interface VaultInfo {
-  path: string;
-  name: string;
-  noteCount: number;
-  taskCount: number;
-  lastOpened: string;
-  isDefault: boolean;
+  path: string
+  name: string
+  noteCount: number
+  taskCount: number
+  lastOpened: string
+  isDefault: boolean
 }
 
 export interface VaultStatus {
-  isOpen: boolean;
-  path: string | null;
-  isIndexing: boolean;
-  indexProgress: number; // 0-100
-  error: string | null;
+  isOpen: boolean
+  path: string | null
+  isIndexing: boolean
+  indexProgress: number // 0-100
+  error: string | null
 }
 
 export interface VaultConfig {
-  excludePatterns: string[];
-  defaultNoteFolder: string;
-  journalFolder: string;
-  attachmentsFolder: string;
+  excludePatterns: string[]
+  defaultNoteFolder: string
+  journalFolder: string
+  attachmentsFolder: string
 }
 
 // ============================================================================
@@ -40,34 +40,34 @@ export interface VaultConfig {
 // ============================================================================
 
 export const SelectVaultSchema = z.object({
-  path: z.string().optional(), // If not provided, shows folder picker
-});
+  path: z.string().optional() // If not provided, shows folder picker
+})
 
 export const CreateVaultSchema = z.object({
   path: z.string(),
-  name: z.string().min(1).max(100),
-});
+  name: z.string().min(1).max(100)
+})
 
 export const UpdateVaultConfigSchema = z.object({
   excludePatterns: z.array(z.string()).optional(),
   defaultNoteFolder: z.string().optional(),
   journalFolder: z.string().optional(),
-  attachmentsFolder: z.string().optional(),
-});
+  attachmentsFolder: z.string().optional()
+})
 
 // ============================================================================
 // Response Types
 // ============================================================================
 
 export interface SelectVaultResponse {
-  success: boolean;
-  vault: VaultInfo | null;
-  error?: string;
+  success: boolean
+  vault: VaultInfo | null
+  error?: string
 }
 
 export interface GetVaultsResponse {
-  vaults: VaultInfo[];
-  currentVault: string | null;
+  vaults: VaultInfo[]
+  currentVault: string | null
 }
 
 // ============================================================================
@@ -111,7 +111,7 @@ export const VaultChannels = {
     REMOVE: 'vault:remove',
 
     /** Trigger manual reindex */
-    REINDEX: 'vault:reindex',
+    REINDEX: 'vault:reindex'
   },
 
   // Event channels (main → renderer)
@@ -123,9 +123,9 @@ export const VaultChannels = {
     INDEX_PROGRESS: 'vault:index-progress',
 
     /** Vault error occurred */
-    ERROR: 'vault:error',
-  },
-} as const;
+    ERROR: 'vault:error'
+  }
+} as const
 
 // ============================================================================
 // Handler Signatures (for main process implementation)
@@ -134,29 +134,29 @@ export const VaultChannels = {
 export interface VaultHandlers {
   [VaultChannels.invoke.SELECT]: (
     input: z.infer<typeof SelectVaultSchema>
-  ) => Promise<SelectVaultResponse>;
+  ) => Promise<SelectVaultResponse>
 
   [VaultChannels.invoke.CREATE]: (
     input: z.infer<typeof CreateVaultSchema>
-  ) => Promise<SelectVaultResponse>;
+  ) => Promise<SelectVaultResponse>
 
-  [VaultChannels.invoke.GET_ALL]: () => Promise<GetVaultsResponse>;
+  [VaultChannels.invoke.GET_ALL]: () => Promise<GetVaultsResponse>
 
-  [VaultChannels.invoke.GET_STATUS]: () => Promise<VaultStatus>;
+  [VaultChannels.invoke.GET_STATUS]: () => Promise<VaultStatus>
 
-  [VaultChannels.invoke.GET_CONFIG]: () => Promise<VaultConfig>;
+  [VaultChannels.invoke.GET_CONFIG]: () => Promise<VaultConfig>
 
   [VaultChannels.invoke.UPDATE_CONFIG]: (
     input: z.infer<typeof UpdateVaultConfigSchema>
-  ) => Promise<VaultConfig>;
+  ) => Promise<VaultConfig>
 
-  [VaultChannels.invoke.CLOSE]: () => Promise<void>;
+  [VaultChannels.invoke.CLOSE]: () => Promise<void>
 
-  [VaultChannels.invoke.SWITCH]: (vaultPath: string) => Promise<SelectVaultResponse>;
+  [VaultChannels.invoke.SWITCH]: (vaultPath: string) => Promise<SelectVaultResponse>
 
-  [VaultChannels.invoke.REMOVE]: (vaultPath: string) => Promise<void>;
+  [VaultChannels.invoke.REMOVE]: (vaultPath: string) => Promise<void>
 
-  [VaultChannels.invoke.REINDEX]: () => Promise<void>;
+  [VaultChannels.invoke.REINDEX]: () => Promise<void>
 }
 
 // ============================================================================
@@ -183,14 +183,14 @@ export interface VaultHandlers {
  * ```
  */
 export interface VaultClientAPI {
-  select(path?: string): Promise<SelectVaultResponse>;
-  create(path: string, name: string): Promise<SelectVaultResponse>;
-  getAll(): Promise<GetVaultsResponse>;
-  getStatus(): Promise<VaultStatus>;
-  getConfig(): Promise<VaultConfig>;
-  updateConfig(config: Partial<VaultConfig>): Promise<VaultConfig>;
-  close(): Promise<void>;
-  switch(vaultPath: string): Promise<SelectVaultResponse>;
-  remove(vaultPath: string): Promise<void>;
-  reindex(): Promise<void>;
+  select(path?: string): Promise<SelectVaultResponse>
+  create(path: string, name: string): Promise<SelectVaultResponse>
+  getAll(): Promise<GetVaultsResponse>
+  getStatus(): Promise<VaultStatus>
+  getConfig(): Promise<VaultConfig>
+  updateConfig(config: Partial<VaultConfig>): Promise<VaultConfig>
+  close(): Promise<void>
+  switch(vaultPath: string): Promise<SelectVaultResponse>
+  remove(vaultPath: string): Promise<void>
+  reindex(): Promise<void>
 }

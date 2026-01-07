@@ -13,7 +13,7 @@
 - Q: What filter criteria should be supported and can users save filters? → A: Filters include project, priority, due date (Today/Tomorrow/This Week/Overdue/No Date/Custom Range), status, completion state, and repeating. Users CAN save filters for future use.
 - Q: What is the allowed depth for subtasks? → A: Single depth only. Main tasks can have subtasks, but subtasks CANNOT have their own subtasks.
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Persist Tasks Locally (Priority: P1)
 
@@ -40,6 +40,7 @@ As a user, I want to create tasks with title, description (rich text), due date,
 **Independent Test**: Can be fully tested by creating a task with all fields populated and verifying each field is saved and displayed correctly.
 
 **Task Fields**:
+
 - `id`: Unique identifier (auto-generated)
 - `title`: Required, task name
 - `description`: Optional, rich text content
@@ -108,6 +109,7 @@ As a user, I want to filter and sort tasks by various criteria (project, priorit
 **Independent Test**: Can be fully tested by creating diverse tasks, verifying each filter/sort combination shows the correct subset, and saving/loading filters.
 
 **Filter Criteria**:
+
 - Project: Filter by one or more projects
 - Priority: Filter by priority levels (none, low, medium, high, urgent)
 - Due date: Today, Tomorrow, This Week, Overdue, No Date, Custom Range
@@ -287,7 +289,7 @@ As a user, I want to drag tasks between status columns in Kanban view.
 - What happens when moving a task to an archived project? The task is also archived automatically.
 - What happens when a saved filter references a deleted project? The filter gracefully excludes the deleted project and shows remaining results.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -361,7 +363,7 @@ As a user, I want to drag tasks between status columns in Kanban view.
 - Task titles are limited to 500 characters; descriptions have no practical limit.
 - When a parent task is deleted, user is prompted to handle subtasks.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 

@@ -109,7 +109,10 @@ export interface ProjectWithStats extends Project {
 /**
  * Get all projects with task statistics.
  */
-export function getProjectsWithStats(db: DrizzleDb, includeArchived: boolean = false): ProjectWithStats[] {
+export function getProjectsWithStats(
+  db: DrizzleDb,
+  includeArchived: boolean = false
+): ProjectWithStats[] {
   const today = new Date().toISOString().split('T')[0]
 
   // Get base projects
@@ -310,7 +313,7 @@ export function getEquivalentStatus(
   // For in-progress statuses, find a non-default, non-done status
   // or fall back to default
   const targetStatuses = getStatusesByProject(db, targetProjectId)
-  const inProgressStatus = targetStatuses.find(s => !s.isDefault && !s.isDone)
+  const inProgressStatus = targetStatuses.find((s) => !s.isDefault && !s.isDone)
   if (inProgressStatus) return inProgressStatus
 
   // Final fallback: return the default status
@@ -463,11 +466,7 @@ export function createDefaultStatuses(db: DrizzleDb, projectId: string): Status[
  * Count tasks in a status.
  */
 export function countTasksInStatus(db: DrizzleDb, statusId: string): number {
-  const result = db
-    .select({ count: count() })
-    .from(tasks)
-    .where(eq(tasks.statusId, statusId))
-    .get()
+  const result = db.select({ count: count() }).from(tasks).where(eq(tasks.statusId, statusId)).get()
 
   return result?.count ?? 0
 }

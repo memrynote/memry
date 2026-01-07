@@ -446,7 +446,10 @@ export function createHookWrapper(options: WrapperOptions = {}) {
 // Custom renderHook with Providers
 // ============================================================================
 
-interface RenderHookWithProvidersOptions<TProps> extends Omit<RenderHookOptions<TProps>, 'wrapper'> {
+interface RenderHookWithProvidersOptions<TProps> extends Omit<
+  RenderHookOptions<TProps>,
+  'wrapper'
+> {
   queryClient?: QueryClient
   mockAPI?: MockAPIConfig
 }
@@ -598,16 +601,18 @@ export async function advanceTimersAndFlush(ms: number): Promise<void> {
 /**
  * Create a mock note object.
  */
-export function createMockNote(overrides: Partial<{
-  id: string
-  title: string
-  content: string
-  path: string
-  folder: string
-  tags: string[]
-  created: string
-  modified: string
-}> = {}) {
+export function createMockNote(
+  overrides: Partial<{
+    id: string
+    title: string
+    content: string
+    path: string
+    folder: string
+    tags: string[]
+    created: string
+    modified: string
+  }> = {}
+) {
   return {
     id: overrides.id ?? 'note-1',
     title: overrides.title ?? 'Test Note',
@@ -624,18 +629,20 @@ export function createMockNote(overrides: Partial<{
 /**
  * Create a mock task object.
  */
-export function createMockTask(overrides: Partial<{
-  id: string
-  title: string
-  description: string
-  projectId: string
-  statusId: string
-  priority: number
-  dueDate: string | null
-  completedAt: string | null
-  archivedAt: string | null
-  position: number
-}> = {}) {
+export function createMockTask(
+  overrides: Partial<{
+    id: string
+    title: string
+    description: string
+    projectId: string
+    statusId: string
+    priority: number
+    dueDate: string | null
+    completedAt: string | null
+    archivedAt: string | null
+    position: number
+  }> = {}
+) {
   return {
     id: overrides.id ?? 'task-1',
     title: overrides.title ?? 'Test Task',
@@ -654,14 +661,16 @@ export function createMockTask(overrides: Partial<{
 /**
  * Create a mock journal entry object.
  */
-export function createMockJournalEntry(overrides: Partial<{
-  id: string
-  date: string
-  content: string
-  tags: string[]
-  wordCount: number
-  activityLevel: number
-}> = {}) {
+export function createMockJournalEntry(
+  overrides: Partial<{
+    id: string
+    date: string
+    content: string
+    tags: string[]
+    wordCount: number
+    activityLevel: number
+  }> = {}
+) {
   return {
     id: overrides.id ?? 'journal-1',
     date: overrides.date ?? '2026-01-03',
@@ -676,15 +685,17 @@ export function createMockJournalEntry(overrides: Partial<{
 /**
  * Create a mock inbox item object.
  */
-export function createMockInboxItem(overrides: Partial<{
-  id: string
-  type: string
-  title: string
-  content: string
-  url: string | null
-  createdAt: string
-  snoozedUntil: string | null
-}> = {}) {
+export function createMockInboxItem(
+  overrides: Partial<{
+    id: string
+    type: string
+    title: string
+    content: string
+    url: string | null
+    createdAt: string
+    snoozedUntil: string | null
+  }> = {}
+) {
   return {
     id: overrides.id ?? 'inbox-1',
     type: overrides.type ?? 'text',
@@ -700,14 +711,16 @@ export function createMockInboxItem(overrides: Partial<{
 /**
  * Create a mock bookmark object.
  */
-export function createMockBookmark(overrides: Partial<{
-  id: string
-  itemType: string
-  itemId: string
-  itemTitle: string
-  position: number
-  createdAt: string
-}> = {}) {
+export function createMockBookmark(
+  overrides: Partial<{
+    id: string
+    itemType: string
+    itemId: string
+    itemTitle: string
+    position: number
+    createdAt: string
+  }> = {}
+) {
   return {
     id: overrides.id ?? 'bookmark-1',
     itemType: overrides.itemType ?? 'note',
@@ -722,14 +735,16 @@ export function createMockBookmark(overrides: Partial<{
 /**
  * Create a mock reminder object.
  */
-export function createMockReminder(overrides: Partial<{
-  id: string
-  targetType: string
-  targetId: string
-  dueAt: string
-  note: string
-  status: string
-}> = {}) {
+export function createMockReminder(
+  overrides: Partial<{
+    id: string
+    targetType: string
+    targetId: string
+    dueAt: string
+    note: string
+    status: string
+  }> = {}
+) {
   return {
     id: overrides.id ?? 'reminder-1',
     targetType: overrides.targetType ?? 'note',

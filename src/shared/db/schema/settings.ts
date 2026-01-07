@@ -4,7 +4,9 @@ import { sql } from 'drizzle-orm'
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
-  modifiedAt: text('modified_at').notNull().default(sql`(datetime('now'))`)
+  modifiedAt: text('modified_at')
+    .notNull()
+    .default(sql`(datetime('now'))`)
 })
 
 export const savedFilters = sqliteTable('saved_filters', {
@@ -12,7 +14,9 @@ export const savedFilters = sqliteTable('saved_filters', {
   name: text('name').notNull(),
   config: text('config', { mode: 'json' }).notNull(),
   position: integer('position').notNull().default(0),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`)
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`)
 })
 
 export type Setting = typeof settings.$inferSelect

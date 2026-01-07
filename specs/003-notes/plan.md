@@ -13,6 +13,7 @@ Implement a rich-text notes system with wiki-style linking, backlinks, tags, cus
 ## Current Implementation Status
 
 ### Backend (90% Complete)
+
 - ✅ Note CRUD operations (24 IPC handlers)
 - ✅ Tags management
 - ✅ Wiki link tracking & backlinks
@@ -23,6 +24,7 @@ Implement a rich-text notes system with wiki-style linking, backlinks, tags, cus
 - ⚠️ Properties sync layer (not implemented)
 
 ### Frontend (70% Complete)
+
 - ✅ BlockNote editor with markdown support
 - ✅ Title + emoji picker
 - ✅ Tags input with autocomplete UI
@@ -37,6 +39,7 @@ Implement a rich-text notes system with wiki-style linking, backlinks, tags, cus
 
 **Language/Version**: TypeScript 5.9+ (strict mode), Node.js 20+, React 19
 **Primary Dependencies**:
+
 - Electron 28+ with electron-vite
 - BlockNote (rich text editor - Notion-like blocks)
 - Drizzle ORM with better-sqlite3
@@ -45,6 +48,7 @@ Implement a rich-text notes system with wiki-style linking, backlinks, tags, cus
 - Zod (runtime validation)
 
 **Storage**:
+
 - **Files**: Markdown with YAML frontmatter in `vault/notes/` (source of truth)
 - **index.db**: SQLite cache for metadata, tags, links, FTS5 (rebuildable)
 - **data.db**: SQLite for tasks/projects (already exists, separate concern)
@@ -54,6 +58,7 @@ Implement a rich-text notes system with wiki-style linking, backlinks, tags, cus
 **Project Type**: Electron (main + renderer processes with IPC bridge)
 
 **Performance Goals**:
+
 - Note open to editable: <100ms
 - Auto-save without UI stutter
 - Search 10,000 notes: <50ms
@@ -61,6 +66,7 @@ Implement a rich-text notes system with wiki-style linking, backlinks, tags, cus
 - 50+ backlinks without blocking
 
 **Constraints**:
+
 - Offline-first (no network dependency)
 - File system as source of truth for notes
 - Zero data loss on crash
@@ -70,25 +76,25 @@ Implement a rich-text notes system with wiki-style linking, backlinks, tags, cus
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-| Principle | Status | Evidence |
-|-----------|--------|----------|
-| **I. Local-First Architecture** | PASS | Notes stored as plain markdown files in vault folder; works fully offline; editable in any text editor |
-| **II. End-to-End Encryption** | N/A | Phase 003 is local-only; encryption applies to future sync phase |
-| **III. No Vendor Lock-In** | PASS | Standard markdown format; YAML frontmatter is universal; trivial export |
-| **IV. Privacy by Design** | PASS | No telemetry; all data local; no network calls |
-| **V. Offline-First** | PASS | All note operations work without internet |
-| **VI. File System as Source of Truth** | PASS | Markdown files authoritative; SQLite is rebuildable cache only |
-| **VII. Database for Structured Data** | PASS | Tasks/projects in SQLite; notes in files |
-| **VIII. External Edit Detection** | PASS | chokidar file watcher already implemented; debounced 100ms |
-| **IX. Rename Tracking** | PASS | UUID in frontmatter; rename-tracker.ts preserves identity |
-| **X. Single Source of Truth** | PASS | Files = authoritative; cache = derived; FTS = derived |
-| **Type Safety** | PASS | Strict TypeScript; Zod validation at IPC boundaries |
-| **Performance** | REQUIRES VERIFICATION | Targets set; implementation must meet |
-| **Accessibility** | REQUIRES IMPLEMENTATION | Editor needs keyboard nav, ARIA labels |
-| **Error Handling** | PASS | NoteError classes; atomic writes; graceful degradation |
-| **Defensive Coding** | PASS | Zod validation; path sanitization; timeouts |
+| Principle                              | Status                  | Evidence                                                                                               |
+| -------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------ |
+| **I. Local-First Architecture**        | PASS                    | Notes stored as plain markdown files in vault folder; works fully offline; editable in any text editor |
+| **II. End-to-End Encryption**          | N/A                     | Phase 003 is local-only; encryption applies to future sync phase                                       |
+| **III. No Vendor Lock-In**             | PASS                    | Standard markdown format; YAML frontmatter is universal; trivial export                                |
+| **IV. Privacy by Design**              | PASS                    | No telemetry; all data local; no network calls                                                         |
+| **V. Offline-First**                   | PASS                    | All note operations work without internet                                                              |
+| **VI. File System as Source of Truth** | PASS                    | Markdown files authoritative; SQLite is rebuildable cache only                                         |
+| **VII. Database for Structured Data**  | PASS                    | Tasks/projects in SQLite; notes in files                                                               |
+| **VIII. External Edit Detection**      | PASS                    | chokidar file watcher already implemented; debounced 100ms                                             |
+| **IX. Rename Tracking**                | PASS                    | UUID in frontmatter; rename-tracker.ts preserves identity                                              |
+| **X. Single Source of Truth**          | PASS                    | Files = authoritative; cache = derived; FTS = derived                                                  |
+| **Type Safety**                        | PASS                    | Strict TypeScript; Zod validation at IPC boundaries                                                    |
+| **Performance**                        | REQUIRES VERIFICATION   | Targets set; implementation must meet                                                                  |
+| **Accessibility**                      | REQUIRES IMPLEMENTATION | Editor needs keyboard nav, ARIA labels                                                                 |
+| **Error Handling**                     | PASS                    | NoteError classes; atomic writes; graceful degradation                                                 |
+| **Defensive Coding**                   | PASS                    | Zod validation; path sanitization; timeouts                                                            |
 
 **Gate Result**: PASS (no violations; 2 items require implementation attention)
 
@@ -171,21 +177,24 @@ src/
 > No violations requiring justification. The architecture follows constitution principles.
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| *None* | *N/A* | *N/A* |
+| --------- | ---------- | ------------------------------------ |
+| _None_    | _N/A_      | _N/A_                                |
 
 ## Implementation Phases
 
 ### Phase 0: Research (Complete)
+
 - Technology decisions documented in research.md
 - Existing codebase patterns analyzed
 - No NEEDS CLARIFICATION items
 
 ### Phase 1: Design
+
 - Data model documented in data-model.md
 - API contracts in contracts/
 - Developer quickstart in quickstart.md
 
 ### Phase 2: Tasks
+
 - Generated by `/speckit.tasks` command
 - Ordered by priority and dependencies

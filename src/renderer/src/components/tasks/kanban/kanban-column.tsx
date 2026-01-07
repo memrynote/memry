@@ -1,17 +1,17 @@
-import { useMemo, useState, useCallback } from "react"
-import { useDroppable } from "@dnd-kit/core"
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
-import { Plus } from "lucide-react"
+import { useMemo, useState, useCallback } from 'react'
+import { useDroppable } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { Plus } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { KanbanCard } from "./kanban-card"
-import { KanbanCardEdit } from "./kanban-card-edit"
-import { KanbanEmptyColumn } from "./kanban-empty-column"
-import { getIconByName } from "@/components/icon-picker"
-import { startOfDay, isBefore } from "@/lib/task-utils"
-import type { Task } from "@/data/sample-tasks"
-import type { Status, StatusType } from "@/data/tasks-data"
+import { cn } from '@/lib/utils'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { KanbanCard } from './kanban-card'
+import { KanbanCardEdit } from './kanban-card-edit'
+import { KanbanEmptyColumn } from './kanban-empty-column'
+import { getIconByName } from '@/components/icon-picker'
+import { startOfDay, isBefore } from '@/lib/task-utils'
+import type { Task } from '@/data/sample-tasks'
+import type { Status, StatusType } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -22,7 +22,7 @@ export interface KanbanColumnData {
   title: string
   color: string
   icon?: string // For project columns
-  type: "status" | "project"
+  type: 'status' | 'project'
   statusType?: StatusType // For status columns
 }
 
@@ -67,32 +67,32 @@ export const KanbanColumn = ({
   // Selection props
   isSelectionMode = false,
   selectedIds,
-  onToggleSelect,
+  onToggleSelect
 }: KanbanColumnProps): React.JSX.Element => {
   const [isAddingTask, setIsAddingTask] = useState(false)
-  const [newTaskTitle, setNewTaskTitle] = useState("")
+  const [newTaskTitle, setNewTaskTitle] = useState('')
 
   const droppableData =
-    column.type === "project"
+    column.type === 'project'
       ? {
-          type: "project" as const,
+          type: 'project' as const,
           projectId: column.id,
-          project: { id: column.id, name: column.title },
+          project: { id: column.id, name: column.title }
         }
       : {
-          type: "column" as const,
+          type: 'column' as const,
           columnId: column.id,
-          column,
+          column
         }
 
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
-    data: droppableData,
+    data: droppableData
   })
 
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
 
-  const isDoneColumn = column.statusType === "done"
+  const isDoneColumn = column.statusType === 'done'
   const today = startOfDay(new Date())
 
   // Check if a task is overdue
@@ -113,17 +113,17 @@ export const KanbanColumn = ({
   const handleAddSubmit = (): void => {
     if (newTaskTitle.trim()) {
       onQuickAdd(newTaskTitle.trim(), column.id)
-      setNewTaskTitle("")
+      setNewTaskTitle('')
     }
     setIsAddingTask(false)
   }
 
   const handleAddKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       e.preventDefault()
       handleAddSubmit()
-    } else if (e.key === "Escape") {
-      setNewTaskTitle("")
+    } else if (e.key === 'Escape') {
+      setNewTaskTitle('')
       setIsAddingTask(false)
     }
   }
@@ -143,14 +143,14 @@ export const KanbanColumn = ({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex h-full w-[280px] shrink-0 flex-col rounded-lg bg-muted/30 transition-colors border border-transparent",
-        isOver && "bg-primary/5 border-dotted border-primary/60"
+        'flex h-full w-[280px] shrink-0 flex-col rounded-lg bg-muted/30 transition-colors border border-transparent',
+        isOver && 'bg-primary/5 border-dotted border-primary/60'
       )}
     >
       {/* Column Header */}
       <div className="flex items-center gap-2 px-3 py-3">
         {/* Color indicator / Icon */}
-        {column.type === "project" && IconComponent ? (
+        {column.type === 'project' && IconComponent ? (
           <IconComponent
             className="size-4 shrink-0"
             style={{ color: column.color }}
@@ -165,9 +165,7 @@ export const KanbanColumn = ({
         )}
 
         {/* Title */}
-        <span className="flex-1 truncate text-sm font-medium text-foreground">
-          {column.title}
-        </span>
+        <span className="flex-1 truncate text-sm font-medium text-foreground">{column.title}</span>
 
         {/* Count */}
         <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
@@ -244,9 +242,9 @@ export const KanbanColumn = ({
               placeholder="Task title..."
               autoFocus
               className={cn(
-                "w-full rounded-md border border-border bg-background px-3 py-2 text-sm",
-                "placeholder:text-muted-foreground",
-                "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                'w-full rounded-md border border-border bg-background px-3 py-2 text-sm',
+                'placeholder:text-muted-foreground',
+                'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'
               )}
             />
           ) : (
@@ -254,9 +252,9 @@ export const KanbanColumn = ({
               type="button"
               onClick={handleAddClick}
               className={cn(
-                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors",
-                "hover:bg-accent hover:text-foreground",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors',
+                'hover:bg-accent hover:text-foreground',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
               )}
             >
               <Plus className="size-4" />

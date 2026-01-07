@@ -18,6 +18,7 @@ This research consolidates technology decisions for the Memry notes system. The 
 **Rationale**: BlockNote is already integrated in `src/renderer/src/components/note/content-area/ContentArea.tsx`. It provides a Notion-like block editing experience with excellent UX.
 
 **Current Implementation**:
+
 - `@blocknote/core` v0.44.2
 - `@blocknote/react` v0.44.2
 - `@blocknote/shadcn` v0.44.2
@@ -31,6 +32,7 @@ This research consolidates technology decisions for the Memry notes system. The 
 | Slate.js | Highly customizable | More boilerplate, migration cost | Rejected |
 
 **Existing Features**:
+
 - Block-based editing (paragraphs, headings, lists, code blocks)
 - Markdown serialization via `editor.blocksToMarkdownLossy()`
 - Markdown parsing via `editor.tryParseMarkdownToBlocks()`
@@ -40,6 +42,7 @@ This research consolidates technology decisions for the Memry notes system. The 
 - Link click handling
 
 **Extensions Needed**:
+
 - Custom WikiLink inline content (using `createInlineContentSpec`)
 - Custom FileBlock for attachments (using `createBlockSpec`)
 
@@ -52,20 +55,21 @@ This research consolidates technology decisions for the Memry notes system. The 
 **Rationale**: Constitution principle VI mandates file system as source of truth. Markdown is universal, editable in any text editor, and already implemented.
 
 **Storage Pattern**:
+
 ```markdown
 ---
-id: "a1b2c3d4e5f6"
-title: "Note Title"
-created: "2025-12-23T10:00:00.000Z"
-modified: "2025-12-23T10:30:00.000Z"
+id: 'a1b2c3d4e5f6'
+title: 'Note Title'
+created: '2025-12-23T10:00:00.000Z'
+modified: '2025-12-23T10:30:00.000Z'
 tags:
   - work
   - research
-emoji: "📝"
+emoji: '📝'
 properties:
-  status: "draft"
+  status: 'draft'
   priority: 3
-  due: "2025-12-25"
+  due: '2025-12-25'
 ---
 
 # Note content here
@@ -74,6 +78,7 @@ This is [[wiki-linked]] content with #inline-tags.
 ```
 
 **Implementation Notes**:
+
 - BlockNote → Markdown: Use `editor.blocksToMarkdownLossy()`
 - Markdown → BlockNote: Use `editor.tryParseMarkdownToBlocks()`
 - Frontmatter parsed with `gray-matter`
@@ -87,18 +92,26 @@ This is [[wiki-linked]] content with #inline-tags.
 **Rationale**: Already implemented in `src/shared/db/schema/notes-cache.ts`. The cache is explicitly rebuildable per constitution principle VI.
 
 **Existing Schema**:
+
 ```typescript
 // noteCache - metadata cache
-{ id, path, title, contentHash, wordCount, createdAt, modifiedAt, indexedAt }
+{
+  ;(id, path, title, contentHash, wordCount, createdAt, modifiedAt, indexedAt)
+}
 
 // noteTags - many-to-many
-{ noteId, tag }
+{
+  ;(noteId, tag)
+}
 
 // noteLinks - wiki link tracking
-{ sourceId, targetId, targetTitle }
+{
+  ;(sourceId, targetId, targetTitle)
+}
 ```
 
 **Enhancements Needed**:
+
 - Add `emoji` column to noteCache
 - Add `noteProperties` table for custom properties
 - Add `propertyDefinitions` table for schema
@@ -112,6 +125,7 @@ This is [[wiki-linked]] content with #inline-tags.
 **Rationale**: Already implemented in `src/main/database/fts.ts`. FTS5 provides excellent performance for local search.
 
 **Existing Implementation**:
+
 ```sql
 CREATE VIRTUAL TABLE fts_notes USING fts5(
   id UNINDEXED,
@@ -123,6 +137,7 @@ CREATE VIRTUAL TABLE fts_notes USING fts5(
 ```
 
 **Current Behavior**:
+
 - Automatic triggers sync title on INSERT/DELETE
 - Manual `updateFtsContent()` required for content/tags
 - Porter stemmer for English language support
@@ -138,6 +153,7 @@ CREATE VIRTUAL TABLE fts_notes USING fts5(
 **Rationale**: Already implemented in `src/main/vault/watcher.ts`. Provides reliable cross-platform file watching.
 
 **Existing Features**:
+
 - Watches `notes/` and `journal/` directories
 - 100ms debounce per file
 - Emits events with `source: 'external'` flag
@@ -154,11 +170,13 @@ CREATE VIRTUAL TABLE fts_notes USING fts5(
 **Rationale**: Already implemented in `src/shared/db/queries/notes.ts`.
 
 **Resolution Strategy**:
+
 1. Exact title match
 2. Case-insensitive fallback
 3. Store `targetTitle` always, resolve `targetId` when possible
 
 **Backlink Computation**:
+
 - `getIncomingLinks(db, noteId)` returns all notes linking TO this note
 - Context snippets extracted during indexing
 
@@ -173,6 +191,7 @@ CREATE VIRTUAL TABLE fts_notes USING fts5(
 **Rationale**: Spec FR-003 requires "save automatically 1 second after user stops typing."
 
 **Current Implementation** (in `note.tsx`):
+
 ```typescript
 const debouncedSave = useCallback(
   debounce(async (markdown: string) => {
@@ -182,6 +201,7 @@ const debouncedSave = useCallback(
 ```
 
 **Enhancement Needed**:
+
 - Increase debounce to 1000ms
 - Add SaveStatus component (Saving.../Saved/Error)
 - Add save queue for rapid edits
@@ -207,6 +227,7 @@ const debouncedSave = useCallback(
 | rating | number (1-5) | Star rating |
 
 **Existing UI Components** (in `info-section/editors/`):
+
 - ✅ TextEditor
 - ✅ LongTextEditor
 - ✅ NumberEditor
@@ -217,6 +238,7 @@ const debouncedSave = useCallback(
 - ✅ UrlEditor
 
 **Backend Needed**:
+
 - `noteProperties` table (cache)
 - `propertyDefinitions` table (schema)
 - Properties sync layer (frontmatter ↔ DB)
@@ -230,11 +252,13 @@ const debouncedSave = useCallback(
 **Rationale**: Spec FR-031-034 require drag-drop upload with inline display.
 
 **Storage Pattern**:
+
 - Files stored in `vault/attachments/{nanoid}-{filename}`
 - Referenced in markdown as `![alt](../attachments/{filename})`
 - Unique prefix prevents collisions
 
 **Upload Flow**:
+
 1. User drops file on editor
 2. Copy file to attachments folder with unique name
 3. Insert markdown image/link syntax
@@ -265,6 +289,7 @@ const debouncedSave = useCallback(
 **Rationale**: Constitution mandates full keyboard navigation and screen reader support.
 
 **Implementation Checklist**:
+
 - [ ] All interactive elements have focus states
 - [ ] Keyboard shortcuts documented and consistent
 - [ ] ARIA labels on custom components
@@ -278,19 +303,19 @@ const debouncedSave = useCallback(
 
 These components already exist and are UI-complete:
 
-| Component | Location | Status |
-|-----------|----------|--------|
-| NoteLayout | `components/note/note-layout.tsx` | ✅ Complete |
-| RightSidebar | `components/note/right-sidebar.tsx` | ✅ Complete |
-| OutlineEdge | `components/note/outline-edge.tsx` | ✅ Complete |
-| ContentArea | `components/note/content-area/` | ✅ Complete |
-| NoteTitle + Emoji | `components/note/note-title/` | ✅ Complete |
-| TagsRow | `components/note/tags-row/` | ✅ Complete |
-| InfoSection | `components/note/info-section/` | ✅ Complete (8 editors) |
-| BacklinksSection | `components/note/backlinks/` | ⚠️ Demo data |
-| RelatedNotesTab | `components/note/related-notes/` | ⚠️ Demo data |
-| LinkedTasksSection | `components/note/linked-tasks/` | ✅ Wired |
-| AIAgentTab | `components/note/ai-agent/` | ⚠️ Demo data |
+| Component          | Location                            | Status                  |
+| ------------------ | ----------------------------------- | ----------------------- |
+| NoteLayout         | `components/note/note-layout.tsx`   | ✅ Complete             |
+| RightSidebar       | `components/note/right-sidebar.tsx` | ✅ Complete             |
+| OutlineEdge        | `components/note/outline-edge.tsx`  | ✅ Complete             |
+| ContentArea        | `components/note/content-area/`     | ✅ Complete             |
+| NoteTitle + Emoji  | `components/note/note-title/`       | ✅ Complete             |
+| TagsRow            | `components/note/tags-row/`         | ✅ Complete             |
+| InfoSection        | `components/note/info-section/`     | ✅ Complete (8 editors) |
+| BacklinksSection   | `components/note/backlinks/`        | ⚠️ Demo data            |
+| RelatedNotesTab    | `components/note/related-notes/`    | ⚠️ Demo data            |
+| LinkedTasksSection | `components/note/linked-tasks/`     | ✅ Wired                |
+| AIAgentTab         | `components/note/ai-agent/`         | ⚠️ Demo data            |
 
 ---
 
@@ -298,26 +323,26 @@ These components already exist and are UI-complete:
 
 These items are noted but explicitly out of scope for 003-notes:
 
-| Feature | Phase | Notes |
-|---------|-------|-------|
-| Encryption | 004-encryption | libsodium-wrappers, keytar, bip39 |
-| Sync | 005-sync | Hono.js on Cloudflare Workers |
-| AI Features | 006-ai | OpenAI embeddings + Ollama local |
-| Real-time collaboration | v2 | CRDT-based |
-| Templates | Future P3 | Basic implementation possible now |
-| Version history | Future P3 | Git-based or snapshot approach |
+| Feature                 | Phase          | Notes                             |
+| ----------------------- | -------------- | --------------------------------- |
+| Encryption              | 004-encryption | libsodium-wrappers, keytar, bip39 |
+| Sync                    | 005-sync       | Hono.js on Cloudflare Workers     |
+| AI Features             | 006-ai         | OpenAI embeddings + Ollama local  |
+| Real-time collaboration | v2             | CRDT-based                        |
+| Templates               | Future P3      | Basic implementation possible now |
+| Version history         | Future P3      | Git-based or snapshot approach    |
 
 ---
 
 ## Resolved Questions
 
-| Question | Resolution |
-|----------|------------|
-| Store HTML or Markdown? | Markdown (constitution requires editable files) |
-| Rich text → MD fidelity? | Accept minor formatting loss for portability |
-| Tiptap vs BlockNote? | **BlockNote** (already integrated, Notion-like UX) |
-| Property schema storage? | Separate table, not in frontmatter |
-| Attachment deduplication? | Not needed (unique prefix handles) |
+| Question                  | Resolution                                         |
+| ------------------------- | -------------------------------------------------- |
+| Store HTML or Markdown?   | Markdown (constitution requires editable files)    |
+| Rich text → MD fidelity?  | Accept minor formatting loss for portability       |
+| Tiptap vs BlockNote?      | **BlockNote** (already integrated, Notion-like UX) |
+| Property schema storage?  | Separate table, not in frontmatter                 |
+| Attachment deduplication? | Not needed (unique prefix handles)                 |
 
 ---
 

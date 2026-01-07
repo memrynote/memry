@@ -1,15 +1,11 @@
-"use client"
+'use client'
 
-import * as React from "react"
-import { ChevronRight } from "lucide-react"
-import { AnimatePresence, motion } from "framer-motion"
+import * as React from 'react'
+import { ChevronRight } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 
-import { cn } from "@/lib/utils"
-import {
-  SidebarGroup,
-  SidebarMenu,
-  useSidebar,
-} from "@/components/ui/sidebar"
+import { cn } from '@/lib/utils'
+import { SidebarGroup, SidebarMenu, useSidebar } from '@/components/ui/sidebar'
 
 interface SidebarSectionProps {
   id: string
@@ -28,15 +24,15 @@ export const SidebarSection = ({
   totalCount,
   children,
   className,
-  actions,
+  actions
 }: SidebarSectionProps): React.JSX.Element => {
   const { state } = useSidebar()
-  const isCollapsed = state === "collapsed"
+  const isCollapsed = state === 'collapsed'
 
   // Persist expanded state in localStorage
   const storageKey = `sidebar-section-${id}-expanded`
   const [isExpanded, setIsExpanded] = React.useState(() => {
-    if (typeof window === "undefined") return defaultExpanded
+    if (typeof window === 'undefined') return defaultExpanded
     try {
       const saved = localStorage.getItem(storageKey)
       return saved !== null ? JSON.parse(saved) : defaultExpanded
@@ -77,18 +73,18 @@ export const SidebarSection = ({
   // Keyboard navigation handler
   const handleKeyDown = (e: React.KeyboardEvent): void => {
     switch (e.key) {
-      case "Enter":
-      case " ":
+      case 'Enter':
+      case ' ':
         e.preventDefault()
         handleToggle()
         break
-      case "ArrowRight":
+      case 'ArrowRight':
         if (!isExpanded) {
           e.preventDefault()
           handleOpenChange(true)
         }
         break
-      case "ArrowLeft":
+      case 'ArrowLeft':
         if (isExpanded) {
           e.preventDefault()
           handleOpenChange(false)
@@ -107,7 +103,7 @@ export const SidebarSection = ({
   }
 
   return (
-    <div className={cn("group/collapsible", className)}>
+    <div className={cn('group/collapsible', className)}>
       <SidebarGroup className="py-0">
         {/* Section Header */}
         <div className="flex items-center gap-1">
@@ -117,21 +113,21 @@ export const SidebarSection = ({
             onClick={handleToggle}
             onKeyDown={handleKeyDown}
             className={cn(
-              "flex flex-1 cursor-pointer items-center gap-2 px-2 py-1.5 rounded-md",
-              "text-xs font-medium uppercase tracking-wide",
-              "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
-              "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              'flex flex-1 cursor-pointer items-center gap-2 px-2 py-1.5 rounded-md',
+              'text-xs font-medium uppercase tracking-wide',
+              'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50',
+              'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
             )}
             aria-expanded={isExpanded}
             aria-controls={contentId}
-            aria-label={`${label} section, ${isExpanded ? "expanded" : "collapsed"}${totalCount !== undefined ? `, ${totalCount} items` : ""}`}
+            aria-label={`${label} section, ${isExpanded ? 'expanded' : 'collapsed'}${totalCount !== undefined ? `, ${totalCount} items` : ''}`}
             tabIndex={0}
           >
             {/* Chevron */}
             <ChevronRight
               className={cn(
-                "size-3 shrink-0 transition-transform duration-200 ease-in-out",
-                isExpanded && "rotate-90"
+                'size-3 shrink-0 transition-transform duration-200 ease-in-out',
+                isExpanded && 'rotate-90'
               )}
               aria-hidden="true"
             />
@@ -163,14 +159,12 @@ export const SidebarSection = ({
               role="region"
               aria-labelledby={headerId}
               initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
+              animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
               className="overflow-hidden"
             >
-              <SidebarMenu className="mt-1 space-y-0.5">
-                {children}
-              </SidebarMenu>
+              <SidebarMenu className="mt-1 space-y-0.5">{children}</SidebarMenu>
             </motion.div>
           )}
         </AnimatePresence>
@@ -180,10 +174,3 @@ export const SidebarSection = ({
 }
 
 export default SidebarSection
-
-
-
-
-
-
-

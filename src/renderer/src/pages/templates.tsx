@@ -193,10 +193,7 @@ export function TemplatesPage() {
     <div className="h-full flex flex-col bg-background">
       {/* Editorial Header */}
       <header
-        className={cn(
-          'relative px-8 lg:px-12 pt-10 lg:pt-14 pb-8',
-          'border-b border-border/30'
-        )}
+        className={cn('relative px-8 lg:px-12 pt-10 lg:pt-14 pb-8', 'border-b border-border/30')}
       >
         {/* Decorative large count watermark */}
         {totalCount > 0 && (
@@ -235,12 +232,7 @@ export function TemplatesPage() {
           </h1>
 
           {/* Subtitle */}
-          <p
-            className={cn(
-              'font-serif text-base text-muted-foreground/70',
-              'max-w-md'
-            )}
-          >
+          <p className={cn('font-serif text-base text-muted-foreground/70', 'max-w-md')}>
             Curated structures for your notes.{' '}
             <span className="text-muted-foreground/50">
               {customTemplates.length === 0
@@ -340,9 +332,7 @@ export function TemplatesPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display text-xl">
-              Delete Template
-            </AlertDialogTitle>
+            <AlertDialogTitle className="font-display text-xl">Delete Template</AlertDialogTitle>
             <AlertDialogDescription className="font-serif">
               Are you sure you want to delete "{templateToDelete?.name}"?
               <span className="block mt-2 text-muted-foreground/60 text-sm">
@@ -351,10 +341,7 @@ export function TemplatesPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel
-              disabled={isDeleting}
-              className="font-medium"
-            >
+            <AlertDialogCancel disabled={isDeleting} className="font-medium">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -385,12 +372,7 @@ interface TemplateListRowProps {
   onDelete?: (template: TemplateListItem) => void
 }
 
-function TemplateListRow({
-  template,
-  onEdit,
-  onDuplicate,
-  onDelete
-}: TemplateListRowProps) {
+function TemplateListRow({ template, onEdit, onDuplicate, onDelete }: TemplateListRowProps) {
   return (
     <div
       className={cn(
@@ -429,13 +411,7 @@ function TemplateListRow({
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3
-            className={cn(
-              'font-medium text-sm',
-              'text-foreground/90',
-              'truncate'
-            )}
-          >
+          <h3 className={cn('font-medium text-sm', 'text-foreground/90', 'truncate')}>
             {template.name}
           </h3>
           {template.isBuiltIn && (
@@ -455,12 +431,7 @@ function TemplateListRow({
           )}
         </div>
         {template.description && (
-          <p
-            className={cn(
-              'text-sm text-muted-foreground/60',
-              'truncate mt-0.5'
-            )}
-          >
+          <p className={cn('text-sm text-muted-foreground/60', 'truncate mt-0.5')}>
             {template.description}
           </p>
         )}
@@ -582,9 +553,7 @@ function EmptyTemplatesState({ onCreateTemplate }: EmptyTemplatesStateProps) {
 
       {/* Content */}
       <div className="relative z-10 max-w-xs">
-        <h3 className="font-display text-lg text-foreground/80 mb-1.5">
-          Start Your Collection
-        </h3>
+        <h3 className="font-display text-lg text-foreground/80 mb-1.5">Start Your Collection</h3>
         <p className="font-serif text-sm text-muted-foreground/60 mb-5 leading-relaxed">
           Templates help you create notes with consistent structure.
         </p>

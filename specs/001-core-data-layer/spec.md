@@ -5,7 +5,7 @@
 **Status**: Draft
 **Input**: User description: "Build the core data layer for Memry that manages local storage with file system integration and SQLite database"
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Store Notes as Portable Markdown Files (Priority: P1)
 
@@ -174,7 +174,7 @@ As a user, I want to exclude certain folders from indexing (node_modules, .git).
 - What happens with unicode filenames and content? The system handles international characters correctly.
 - What happens when a file is locked by another application? The system handles gracefully and retries, or informs the user.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -213,9 +213,9 @@ As a user, I want to exclude certain folders from indexing (node_modules, .git).
 - The vault folder is on a local or locally-mounted file system (not a network share with high latency).
 - Files in the vault are text-based markdown or recognized binary formats.
 - Users understand that the app data folder inside the vault (.memry) should not be manually edited.
-- Standard default exclusion patterns (.git, node_modules, .DS_Store, *.tmp) cover most use cases.
+- Standard default exclusion patterns (.git, node_modules, .DS_Store, \*.tmp) cover most use cases.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 

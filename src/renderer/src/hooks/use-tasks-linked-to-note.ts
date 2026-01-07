@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 
-import { tasksService, type Task, onTaskCreated, onTaskUpdated, onTaskDeleted } from '@/services/tasks-service'
+import {
+  tasksService,
+  type Task,
+  onTaskCreated,
+  onTaskUpdated,
+  onTaskDeleted
+} from '@/services/tasks-service'
 
 // ============================================================================
 // TYPES

@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react"
-import { Check, X } from "lucide-react"
+import { useEffect, useState } from 'react'
+import { Check, X } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 
 export interface Toast {
   id: string
   message: string
-  type?: "success" | "error" | "info"
+  type?: 'success' | 'error' | 'info'
   onUndo?: () => void
 }
 
@@ -42,12 +42,10 @@ const ToastItem = ({ toast, onDismiss }: ToastItemProps): React.JSX.Element => {
   return (
     <div
       className={cn(
-        "flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg",
-        "transition-[transform,opacity] duration-[var(--duration-normal)] ease-[var(--ease-out)]",
-        "bg-foreground text-background",
-        isVisible
-          ? "translate-y-0 opacity-100"
-          : "translate-y-2 opacity-0"
+        'flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg',
+        'transition-[transform,opacity] duration-[var(--duration-normal)] ease-[var(--ease-out)]',
+        'bg-foreground text-background',
+        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
       )}
       role="alert"
       aria-live="polite"
@@ -66,9 +64,9 @@ const ToastItem = ({ toast, onDismiss }: ToastItemProps): React.JSX.Element => {
           type="button"
           onClick={handleUndo}
           className={cn(
-            "text-sm font-medium text-background/70 underline underline-offset-2",
-            "transition-[color,transform] duration-[var(--duration-instant)] ease-[var(--ease-out)]",
-            "hover:text-background hover:scale-105 active:scale-95"
+            'text-sm font-medium text-background/70 underline underline-offset-2',
+            'transition-[color,transform] duration-[var(--duration-instant)] ease-[var(--ease-out)]',
+            'hover:text-background hover:scale-105 active:scale-95'
           )}
         >
           Undo
@@ -83,9 +81,9 @@ const ToastItem = ({ toast, onDismiss }: ToastItemProps): React.JSX.Element => {
           setTimeout(() => onDismiss(toast.id), 150)
         }}
         className={cn(
-          "text-background/50 p-0.5",
-          "transition-[color,transform] duration-[var(--duration-instant)] ease-[var(--ease-out)]",
-          "hover:text-background hover:scale-110 active:scale-95"
+          'text-background/50 p-0.5',
+          'transition-[color,transform] duration-[var(--duration-instant)] ease-[var(--ease-out)]',
+          'hover:text-background hover:scale-110 active:scale-95'
         )}
         aria-label="Dismiss notification"
       >
@@ -116,4 +114,3 @@ const ToastContainer = ({ toasts, onDismiss }: ToastContainerProps): React.JSX.E
 }
 
 export { ToastItem, ToastContainer }
-

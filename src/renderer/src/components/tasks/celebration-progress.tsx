@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 
-import { SubtaskProgressBar } from "./subtask-progress-bar"
-import { cn } from "@/lib/utils"
-import type { SubtaskProgress } from "@/lib/subtask-utils"
+import { SubtaskProgressBar } from './subtask-progress-bar'
+import { cn } from '@/lib/utils'
+import type { SubtaskProgress } from '@/lib/subtask-utils'
 
 // ============================================================================
 // TYPES
@@ -11,7 +11,7 @@ import type { SubtaskProgress } from "@/lib/subtask-utils"
 
 interface CelebrationProgressProps {
   progress: SubtaskProgress
-  size?: "sm" | "md"
+  size?: 'sm' | 'md'
   showLabel?: boolean
   className?: string
 }
@@ -23,9 +23,9 @@ interface CelebrationProgressProps {
 
 export const CelebrationProgress = ({
   progress,
-  size = "sm",
+  size = 'sm',
   showLabel = true,
-  className,
+  className
 }: CelebrationProgressProps): React.JSX.Element | null => {
   const [showCelebration, setShowCelebration] = useState(false)
   const prevCompletedRef = useRef<number>(progress.completed)
@@ -61,14 +61,10 @@ export const CelebrationProgress = ({
   if (progress.total === 0) return null
 
   return (
-    <div className={cn("relative flex items-center overflow-visible", className)}>
+    <div className={cn('relative flex items-center overflow-visible', className)}>
       {/* Progress bar with celebration styling */}
-      <div className={cn("flex-1 relative", showCelebration && "z-10")}>
-        <SubtaskProgressBar
-          progress={progress}
-          size={size}
-          showLabel={showLabel}
-        />
+      <div className={cn('flex-1 relative', showCelebration && 'z-10')}>
+        <SubtaskProgressBar progress={progress} size={size} showLabel={showLabel} />
 
         {/* Pulse ring effect when complete */}
         <AnimatePresence>
@@ -76,7 +72,7 @@ export const CelebrationProgress = ({
             <motion.div
               initial={{ scale: 1, opacity: 0.8 }}
               animate={{ scale: 1.5, opacity: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
               className="absolute inset-0 rounded-full border-2 border-green-500 pointer-events-none"
             />
           )}
@@ -90,7 +86,7 @@ export const CelebrationProgress = ({
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
             className="ml-2 flex items-center justify-center w-4 h-4 rounded-full bg-green-500"
             aria-label="Complete"
           >
@@ -111,11 +107,3 @@ export const CelebrationProgress = ({
 }
 
 export default CelebrationProgress
-
-
-
-
-
-
-
-

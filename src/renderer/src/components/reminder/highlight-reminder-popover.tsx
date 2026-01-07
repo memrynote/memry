@@ -15,11 +15,7 @@ import * as React from 'react'
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Bell, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { ReminderPicker } from './reminder-picker'
 import { useCreateReminder } from '@/hooks/use-reminders'
@@ -152,22 +148,12 @@ export function HighlightReminderPopover({
           </Button>
         </PopoverTrigger>
 
-        <PopoverContent
-          className="w-80 p-0"
-          side="top"
-          align="center"
-          sideOffset={8}
-        >
+        <PopoverContent className="w-80 p-0" side="top" align="center" sideOffset={8}>
           <div className="p-4 space-y-4">
             {/* Header */}
             <div className="flex items-center justify-between">
               <h4 className="font-medium text-sm">Remind me about this</h4>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={handleClose}
-              >
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleClose}>
                 <X className="h-4 w-4" />
               </Button>
             </div>

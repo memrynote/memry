@@ -21,9 +21,9 @@ describe('database migrations', () => {
     runMigrations(dataDbPath)
 
     const sqlite = new Database(dataDbPath, { readonly: true })
-    const tables = sqlite
-      .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-      .all() as { name: string }[]
+    const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+      name: string
+    }[]
     const names = tables.map((table) => table.name)
 
     expect(names).toEqual(
@@ -38,9 +38,9 @@ describe('database migrations', () => {
     runIndexMigrations(indexDbPath)
 
     const sqlite = new Database(indexDbPath, { readonly: true })
-    const tables = sqlite
-      .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-      .all() as { name: string }[]
+    const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+      name: string
+    }[]
     const names = tables.map((table) => table.name)
 
     expect(names).toEqual(

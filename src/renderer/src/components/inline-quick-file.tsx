@@ -1,8 +1,8 @@
-import { useRef, useEffect } from "react"
-import { Folder, CornerDownLeft } from "lucide-react"
+import { useRef, useEffect } from 'react'
+import { Folder, CornerDownLeft } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import type { Folder as FolderType } from "@/types"
+import { cn } from '@/lib/utils'
+import type { Folder as FolderType } from '@/types'
 
 interface InlineQuickFileProps {
   query: string
@@ -25,7 +25,7 @@ const InlineQuickFile = ({
   onArrowUp,
   filteredFolders = [],
   onFolderSelect,
-  className,
+  className
 }: InlineQuickFileProps): React.JSX.Element => {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -36,7 +36,7 @@ const InlineQuickFile = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
     // Handle number keys 1-5 for quick folder selection
-    if (e.key >= "1" && e.key <= "5") {
+    if (e.key >= '1' && e.key <= '5') {
       const index = parseInt(e.key, 10) - 1
       if (filteredFolders.length > 0 && index < filteredFolders.length && onFolderSelect) {
         e.preventDefault()
@@ -46,19 +46,19 @@ const InlineQuickFile = ({
     }
 
     switch (e.key) {
-      case "Enter":
+      case 'Enter':
         e.preventDefault()
         onSubmit()
         break
-      case "Escape":
+      case 'Escape':
         e.preventDefault()
         onCancel()
         break
-      case "ArrowDown":
+      case 'ArrowDown':
         e.preventDefault()
         onArrowDown()
         break
-      case "ArrowUp":
+      case 'ArrowUp':
         e.preventDefault()
         onArrowUp()
         break
@@ -72,9 +72,9 @@ const InlineQuickFile = ({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 flex-1 min-w-0",
-        "animate-in fade-in-0 slide-in-from-left-2 duration-[var(--duration-fast)]",
-        "motion-reduce:animate-none",
+        'flex items-center gap-2 flex-1 min-w-0',
+        'animate-in fade-in-0 slide-in-from-left-2 duration-[var(--duration-fast)]',
+        'motion-reduce:animate-none',
         className
       )}
     >
@@ -82,10 +82,7 @@ const InlineQuickFile = ({
       <span className="text-muted-foreground text-sm shrink-0">→</span>
 
       {/* Folder icon */}
-      <Folder
-        className="size-4 text-muted-foreground shrink-0"
-        aria-hidden="true"
-      />
+      <Folder className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
 
       {/* Input field */}
       <input
@@ -110,4 +107,3 @@ const InlineQuickFile = ({
 }
 
 export { InlineQuickFile }
-

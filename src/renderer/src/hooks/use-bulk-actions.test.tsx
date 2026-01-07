@@ -46,10 +46,8 @@ import { tasksService } from '@/services/tasks-service'
 
 // Mock task-utils
 vi.mock('@/lib/task-utils', () => ({
-  getDefaultTodoStatus: (project: Project) =>
-    project.statuses.find((s) => s.type === 'todo'),
-  getDefaultDoneStatus: (project: Project) =>
-    project.statuses.find((s) => s.type === 'done')
+  getDefaultTodoStatus: (project: Project) => project.statuses.find((s) => s.type === 'todo'),
+  getDefaultDoneStatus: (project: Project) => project.statuses.find((s) => s.type === 'done')
 }))
 
 // ============================================================================
@@ -75,7 +73,12 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   isArchived: false,
   statuses: [
     createMockStatus({ id: 'todo-status', name: 'To Do', type: 'todo', isDefault: true }),
-    createMockStatus({ id: 'progress-status', name: 'In Progress', type: 'in_progress', isDefault: false }),
+    createMockStatus({
+      id: 'progress-status',
+      name: 'In Progress',
+      type: 'in_progress',
+      isDefault: false
+    }),
     createMockStatus({ id: 'done-status', name: 'Done', type: 'done', isDefault: false })
   ],
   ...overrides
@@ -121,9 +124,25 @@ describe('useBulkActions', () => {
 
     mockProject = createMockProject({ id: 'project-1' })
     mockTasks = [
-      createMockTask({ id: 'task-1', title: 'Task 1', projectId: 'project-1', statusId: 'todo-status' }),
-      createMockTask({ id: 'task-2', title: 'Task 2', projectId: 'project-1', statusId: 'todo-status' }),
-      createMockTask({ id: 'task-3', title: 'Task 3', projectId: 'project-1', statusId: 'done-status', completedAt: new Date() })
+      createMockTask({
+        id: 'task-1',
+        title: 'Task 1',
+        projectId: 'project-1',
+        statusId: 'todo-status'
+      }),
+      createMockTask({
+        id: 'task-2',
+        title: 'Task 2',
+        projectId: 'project-1',
+        statusId: 'todo-status'
+      }),
+      createMockTask({
+        id: 'task-3',
+        title: 'Task 3',
+        projectId: 'project-1',
+        statusId: 'done-status',
+        completedAt: new Date()
+      })
     ]
 
     mockOnUpdateTask = vi.fn()

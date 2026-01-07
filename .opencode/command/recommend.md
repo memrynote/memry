@@ -21,24 +21,24 @@ category: utility
 ```yaml
 language_mapping:
   turkish_keywords:
-    machine_learning: ["machine learning", "ml", "artificial intelligence", "ai"]
-    website: ["website", "web site", "site", "page"]
-    application: ["app", "application", "program", "software"]
-    error: ["error", "bug", "issue", "problem"]
-    performance: ["performance", "speed", "fast", "optimization"]
-    new: ["new", "create", "build", "start", "develop"]
-    analysis: ["analyze", "analysis", "examine", "research"]
+    machine_learning: ['machine learning', 'ml', 'artificial intelligence', 'ai']
+    website: ['website', 'web site', 'site', 'page']
+    application: ['app', 'application', 'program', 'software']
+    error: ['error', 'bug', 'issue', 'problem']
+    performance: ['performance', 'speed', 'fast', 'optimization']
+    new: ['new', 'create', 'build', 'start', 'develop']
+    analysis: ['analyze', 'analysis', 'examine', 'research']
 
   english_keywords:
-    machine learning: ["machine learning", "artificial intelligence", "ml", "ai"]
-    website: ["website", "site", "page", "web application"]
-    performance: ["performance", "speed", "optimization", "speed"]
-    error: ["error", "issue", "bug", "problem"]
+    machine learning: ['machine learning', 'artificial intelligence', 'ml', 'ai']
+    website: ['website', 'site', 'page', 'web application']
+    performance: ['performance', 'speed', 'optimization', 'speed']
+    error: ['error', 'issue', 'bug', 'problem']
 
   universal_patterns:
-    question_words: ["how", "what", "why", "which"]
-    action_words: ["do", "create", "build", "develop"]
-    help_words: ["help", "suggest", "recommend", "learn"]
+    question_words: ['how', 'what', 'why', 'which']
+    action_words: ['do', 'create', 'build', 'develop']
+    help_words: ['help', 'suggest', 'recommend', 'learn']
 ```
 
 ### Language Detection Algorithm
@@ -78,6 +78,7 @@ def detect_language_and_translate(input_text):
 ## SuperClaude Integrated Recommendation Engine
 
 ### 1. Keyword Extraction and Persona Matching
+
 ```yaml
 keyword_extraction:
   pattern_matching:
@@ -113,102 +114,105 @@ keyword_extraction:
 ```
 
 ### 2. SuperClaude Command Map
+
 ```yaml
 category_mapping:
   ml_category:
-    primary_commands: ["/sc:analyze --seq --c7", "/sc:design --seq --ultrathink"]
-    secondary_commands: ["/sc:build --feature --tdd", "/sc:improve --performance"]
-    mcp_servers: ["--c7", "--seq"]
-    personas: ["--persona-analyzer", "--persona-architect"]
-    flags: ["--think-hard", "--evidence", "--profile"]
+    primary_commands: ['/sc:analyze --seq --c7', '/sc:design --seq --ultrathink']
+    secondary_commands: ['/sc:build --feature --tdd', '/sc:improve --performance']
+    mcp_servers: ['--c7', '--seq']
+    personas: ['--persona-analyzer', '--persona-architect']
+    flags: ['--think-hard', '--evidence', '--profile']
 
   web_category:
-    primary_commands: ["/sc:build --feature --magic", "/sc:design --api --seq"]
-    secondary_commands: ["/sc:test --coverage --e2e --pup", "/sc:analyze --code"]
-    mcp_servers: ["--magic", "--c7", "--pup"]
-    personas: ["--persona-frontend", "--persona-qa"]
-    flags: ["--react", "--tdd", "--validate"]
+    primary_commands: ['/sc:build --feature --magic', '/sc:design --api --seq']
+    secondary_commands: ['/sc:test --coverage --e2e --pup', '/sc:analyze --code']
+    mcp_servers: ['--magic', '--c7', '--pup']
+    personas: ['--persona-frontend', '--persona-qa']
+    flags: ['--react', '--tdd', '--validate']
 
   api_category:
-    primary_commands: ["/sc:design --api --ddd --seq", "/sc:build --feature --tdd"]
-    secondary_commands: ["/sc:scan --security --owasp", "/sc:analyze --performance --pup"]
-    mcp_servers: ["--seq", "--c7", "--pup"]
-    personas: ["--persona-backend", "--persona-security"]
-    flags: ["--microservices", "--ultrathink", "--security"]
+    primary_commands: ['/sc:design --api --ddd --seq', '/sc:build --feature --tdd']
+    secondary_commands: ['/sc:scan --security --owasp', '/sc:analyze --performance --pup']
+    mcp_servers: ['--seq', '--c7', '--pup']
+    personas: ['--persona-backend', '--persona-security']
+    flags: ['--microservices', '--ultrathink', '--security']
 
   debug_category:
-    primary_commands: ["/sc:troubleshoot --investigate --seq", "/sc:analyze --code --seq"]
-    secondary_commands: ["/sc:scan --security", "/sc:improve --quality"]
-    mcp_servers: ["--seq", "--all-mcp"]
-    personas: ["--persona-analyzer", "--persona-security"]
-    flags: ["--evidence", "--think-hard", "--profile"]
+    primary_commands: ['/sc:troubleshoot --investigate --seq', '/sc:analyze --code --seq']
+    secondary_commands: ['/sc:scan --security', '/sc:improve --quality']
+    mcp_servers: ['--seq', '--all-mcp']
+    personas: ['--persona-analyzer', '--persona-security']
+    flags: ['--evidence', '--think-hard', '--profile']
 
   performance_category:
-    primary_commands: ["/sc:analyze --performance --pup --profile", "/sc:troubleshoot --seq"]
-    secondary_commands: ["/sc:improve --performance --iterate", "/sc:build --optimize"]
-    mcp_servers: ["--pup", "--seq"]
-    personas: ["--persona-performance", "--persona-analyzer"]
-    flags: ["--profile", "--monitoring", "--benchmark"]
+    primary_commands: ['/sc:analyze --performance --pup --profile', '/sc:troubleshoot --seq']
+    secondary_commands: ['/sc:improve --performance --iterate', '/sc:build --optimize']
+    mcp_servers: ['--pup', '--seq']
+    personas: ['--persona-performance', '--persona-analyzer']
+    flags: ['--profile', '--monitoring', '--benchmark']
 
   security_category:
-    primary_commands: ["/sc:scan --security --owasp --deps", "/sc:analyze --security --seq"]
-    secondary_commands: ["/sc:improve --security --harden", "/sc:troubleshoot --investigate"]
-    mcp_servers: ["--seq"]
-    personas: ["--persona-security", "--persona-analyzer"]
-    flags: ["--strict", "--validate", "--owasp"]
+    primary_commands: ['/sc:scan --security --owasp --deps', '/sc:analyze --security --seq']
+    secondary_commands: ['/sc:improve --security --harden', '/sc:troubleshoot --investigate']
+    mcp_servers: ['--seq']
+    personas: ['--persona-security', '--persona-analyzer']
+    flags: ['--strict', '--validate', '--owasp']
 
   create_category:
-    primary_commands: ["/sc:build --feature --tdd", "/sc:design --seq --ultrathink"]
-    secondary_commands: ["/sc:analyze --code --c7", "/sc:test --coverage --e2e"]
-    mcp_servers: ["--magic", "--c7", "--pup"]
-    personas: ["--persona-frontend", "--persona-backend", "--persona-architect"]
-    flags: ["--interactive", "--plan", "--think"]
+    primary_commands: ['/sc:build --feature --tdd', '/sc:design --seq --ultrathink']
+    secondary_commands: ['/sc:analyze --code --c7', '/sc:test --coverage --e2e']
+    mcp_servers: ['--magic', '--c7', '--pup']
+    personas: ['--persona-frontend', '--persona-backend', '--persona-architect']
+    flags: ['--interactive', '--plan', '--think']
 
   test_category:
-    primary_commands: ["/sc:test --coverage --e2e --pup", "/sc:scan --validate"]
-    secondary_commands: ["/sc:improve --quality", "/sc:troubleshoot --investigate"]
-    mcp_servers: ["--pup"]
-    personas: ["--persona-qa", "--persona-performance"]
-    flags: ["--validate", "--coverage", "--monitoring"]
+    primary_commands: ['/sc:test --coverage --e2e --pup', '/sc:scan --validate']
+    secondary_commands: ['/sc:improve --quality', '/sc:troubleshoot --investigate']
+    mcp_servers: ['--pup']
+    personas: ['--persona-qa', '--persona-performance']
+    flags: ['--validate', '--coverage', '--monitoring']
 
   improve_category:
-    primary_commands: ["/sc:improve --quality --iterate", "/sc:cleanup --code --all"]
-    secondary_commands: ["/sc:analyze --code --seq", "/sc:refactor --quality"]
-    mcp_servers: ["--seq"]
-    personas: ["--persona-refactorer", "--persona-mentor"]
-    flags: ["--threshold", "--iterate", "--profile"]
+    primary_commands: ['/sc:improve --quality --iterate', '/sc:cleanup --code --all']
+    secondary_commands: ['/sc:analyze --code --seq', '/sc:refactor --quality']
+    mcp_servers: ['--seq']
+    personas: ['--persona-refactorer', '--persona-mentor']
+    flags: ['--threshold', '--iterate', '--profile']
 
   learning_category:
-    primary_commands: ["/sc:document --user --examples", "/sc:analyze --code --c7"]
-    secondary_commands: ["/sc:brainstorm --interactive", "/sc:help --specific"]
-    mcp_servers: ["--c7"]
-    personas: ["--persona-mentor", "--persona-analyzer"]
-    flags: ["--examples", "--visual", "--interactive"]
+    primary_commands: ['/sc:document --user --examples', '/sc:analyze --code --c7']
+    secondary_commands: ['/sc:brainstorm --interactive', '/sc:help --specific']
+    mcp_servers: ['--c7']
+    personas: ['--persona-mentor', '--persona-analyzer']
+    flags: ['--examples', '--visual', '--interactive']
 ```
 
 ### 3. Expertise Level Detection and Customization
+
 ```yaml
 expertise_levels:
   beginner:
-    style: "detailed, step-by-step, explanatory"
-    recommended_commands: ["/sc:brainstorm --educational", "/sc:help --interactive"]
+    style: 'detailed, step-by-step, explanatory'
+    recommended_commands: ['/sc:brainstorm --educational', '/sc:help --interactive']
     extra_explanations: true
     step_by_step: true
 
   intermediate:
-    style: "balanced, technical but understandable"
-    recommended_commands: ["/sc:implement --guided", "/sc:design --template"]
+    style: 'balanced, technical but understandable'
+    recommended_commands: ['/sc:implement --guided', '/sc:design --template']
     some_explanations: true
 
   expert:
-    style: "fast, technical, direct"
-    recommended_commands: ["/sc:implement --advanced", "/sc:analyze --deep"]
+    style: 'fast, technical, direct'
+    recommended_commands: ['/sc:implement --advanced', '/sc:analyze --deep']
     minimal_explanations: true
 ```
 
 ## SuperClaude Integrated Real Examples
 
 ### Example 1: Beginner Level ML Project
+
 ```bash
 User: /sc:recommend "I'm new, I want to do machine learning"
 
@@ -241,6 +245,7 @@ User: /sc:recommend "I'm new, I want to do machine learning"
 ```
 
 ### Example 2: Web Performance Optimization
+
 ```bash
 User: /sc:recommend "my site is very slow, what should I do?"
 
@@ -273,6 +278,7 @@ User: /sc:recommend "my site is very slow, what should I do?"
 ```
 
 ### Example 3: Advanced API Security (English)
+
 ```bash
 User: /sc:recommend "Need to secure API with authentication and authorization"
 
@@ -307,6 +313,7 @@ User: /sc:recommend "Need to secure API with authentication and authorization"
 ```
 
 ### Example 4: React Component Development
+
 ```bash
 User: /sc:recommend "I'm going to create a new user profile component"
 
@@ -366,55 +373,55 @@ standard_response_format:
 project_detection:
   file_system_analysis:
     react_project:
-      indicators: ["package.json with react", "src/App.jsx", "public/", "node_modules/react"]
+      indicators: ['package.json with react', 'src/App.jsx', 'public/', 'node_modules/react']
       detection_commands:
-        primary: ["/sc:build --feature --magic --react", "/sc:test --coverage --e2e --pup"]
-        personas: ["--persona-frontend", "--persona-qa"]
-        mcp: ["--magic", "--c7", "--pup"]
+        primary: ['/sc:build --feature --magic --react', '/sc:test --coverage --e2e --pup']
+        personas: ['--persona-frontend', '--persona-qa']
+        mcp: ['--magic', '--c7', '--pup']
 
     vue_project:
-      indicators: ["package.json with vue", "src/App.vue", "vue.config.js"]
+      indicators: ['package.json with vue', 'src/App.vue', 'vue.config.js']
       detection_commands:
-        primary: ["/sc:build --feature --magic", "/sc:analyze --code --c7"]
-        personas: ["--persona-frontend"]
-        mcp: ["--magic", "--c7"]
+        primary: ['/sc:build --feature --magic', '/sc:analyze --code --c7']
+        personas: ['--persona-frontend']
+        mcp: ['--magic', '--c7']
 
     node_api_project:
-      indicators: ["package.json with express", "server.js", "routes/", "controllers/"]
+      indicators: ['package.json with express', 'server.js', 'routes/', 'controllers/']
       detection_commands:
-        primary: ["/sc:design --api --ddd --seq", "/sc:build --feature --tdd"]
-        personas: ["--persona-backend", "--persona-security"]
-        mcp: ["--seq", "--c7"]
+        primary: ['/sc:design --api --ddd --seq', '/sc:build --feature --tdd']
+        personas: ['--persona-backend', '--persona-security']
+        mcp: ['--seq', '--c7']
 
     python_project:
-      indicators: ["requirements.txt", "setup.py", "src/", "main.py", "Dockerfile"]
+      indicators: ['requirements.txt', 'setup.py', 'src/', 'main.py', 'Dockerfile']
       detection_commands:
-        primary: ["/sc:analyze --code --seq", "/sc:design --seq --ultrathink"]
-        personas: ["--persona-analyzer", "--persona-architect"]
-        mcp: ["--seq"]
+        primary: ['/sc:analyze --code --seq', '/sc:design --seq --ultrathink']
+        personas: ['--persona-analyzer', '--persona-architect']
+        mcp: ['--seq']
 
     database_project:
-      indicators: ["schema.sql", "migrations/", "models/", "prisma.schema"]
+      indicators: ['schema.sql', 'migrations/', 'models/', 'prisma.schema']
       detection_commands:
-        primary: ["/sc:migrate --database --validate", "/sc:analyze --security --seq"]
-        personas: ["--persona-backend", "--persona-security"]
-        mcp: ["--seq"]
+        primary: ['/sc:migrate --database --validate', '/sc:analyze --security --seq']
+        personas: ['--persona-backend', '--persona-security']
+        mcp: ['--seq']
 
   project_size_estimation:
     small_project:
-      file_count: "<50 files"
-      complexity: "simple"
-      recommended_approach: "direct implementation"
+      file_count: '<50 files'
+      complexity: 'simple'
+      recommended_approach: 'direct implementation'
 
     medium_project:
-      file_count: "50-200 files"
-      complexity: "moderate"
-      recommended_approach: "plan -> analyze -> implement"
+      file_count: '50-200 files'
+      complexity: 'moderate'
+      recommended_approach: 'plan -> analyze -> implement'
 
     large_project:
-      file_count: ">200 files"
-      complexity: "complex"
-      recommended_approach: "comprehensive analysis -> design -> implement"
+      file_count: '>200 files'
+      complexity: 'complex'
+      recommended_approach: 'comprehensive analysis -> design -> implement'
 ```
 
 ### Context-Aware Examples
@@ -520,21 +527,21 @@ streaming_mode:
 ```yaml
 alternative_engine:
   structure:
-    primary_recommendation: "Most suitable option"
-    alternatives: "2-3 different approaches"
-    comparison_matrix: "Advantage/disadvantage analysis"
-    community_preference: "Popularity rate"
+    primary_recommendation: 'Most suitable option'
+    alternatives: '2-3 different approaches'
+    comparison_matrix: 'Advantage/disadvantage analysis'
+    community_preference: 'Popularity rate'
 
   categories:
     technology_alternatives:
-      frontend: ["React", "Vue", "Angular", "Svelte"]
-      backend: ["Node.js", "Python", "Java", "Go"]
-      database: ["PostgreSQL", "MongoDB", "MySQL", "Redis"]
+      frontend: ['React', 'Vue', 'Angular', 'Svelte']
+      backend: ['Node.js', 'Python', 'Java', 'Go']
+      database: ['PostgreSQL', 'MongoDB', 'MySQL', 'Redis']
 
     approach_alternatives:
-      development: ["TDD", "BDD", "Agile", "Waterfall"]
-      deployment: ["Docker", "Kubernetes", "Serverless", "Traditional"]
-      testing: ["Unit", "Integration", "E2E", "Performance"]
+      development: ['TDD', 'BDD', 'Agile', 'Waterfall']
+      deployment: ['Docker', 'Kubernetes', 'Serverless', 'Traditional']
+      testing: ['Unit', 'Integration', 'E2E', 'Performance']
 ```
 
 ### Alternative Example
@@ -696,37 +703,37 @@ estimation_engine:
 smart_flag_engine:
   context_detection:
     project_size:
-      small: "--quick --simple --no-validation"
-      medium: "--plan --validate --profile"
-      large: "--plan --validate --seq --ultrathink"
+      small: '--quick --simple --no-validation'
+      medium: '--plan --validate --profile'
+      large: '--plan --validate --seq --ultrathink'
 
     security_requirements:
-      basic: "--basic-security"
-      standard: "--security --validate"
-      enterprise: "--security --owasp --strict --audit"
+      basic: '--basic-security'
+      standard: '--security --validate'
+      enterprise: '--security --owasp --strict --audit'
 
     performance_requirements:
-      low_traffic: "--basic-optimization"
-      medium_traffic: "--optimize --profile"
-      high_traffic: "--optimize --profile --monitoring --benchmark"
+      low_traffic: '--basic-optimization'
+      medium_traffic: '--optimize --profile'
+      high_traffic: '--optimize --profile --monitoring --benchmark'
 
     learning_mode:
-      beginner: "--tutorial --examples --step-by-step"
-      intermediate: "--guided --examples"
-      expert: "--advanced --no-explanations"
+      beginner: '--tutorial --examples --step-by-step'
+      intermediate: '--guided --examples'
+      expert: '--advanced --no-explanations'
 
   intelligent_suggestions:
     based_on_history:
-      if_previous_errors: "--validate --dry-run --backup"
-      if_security_issues: "--security --scan --strict"
-      if_performance_issues: "--profile --optimize --monitor"
-      if_large_refactor: "--plan --backup --validate"
+      if_previous_errors: '--validate --dry-run --backup'
+      if_security_issues: '--security --scan --strict'
+      if_performance_issues: '--profile --optimize --monitor'
+      if_large_refactor: '--plan --backup --validate'
 
     based_on_project_type:
-      ml_project: "--data-validation --model-monitoring"
-      api_project: "--security --rate-limiting --monitoring"
-      frontend_project: "--accessibility --responsive --performance"
-      mobile_project: "--offline --sync --battery-optimized"
+      ml_project: '--data-validation --model-monitoring'
+      api_project: '--security --rate-limiting --monitoring'
+      frontend_project: '--accessibility --responsive --performance'
+      mobile_project: '--offline --sync --battery-optimized'
 ```
 
 ### Smart Flag Examples
@@ -834,15 +841,15 @@ community_patterns:
 
 ```yaml
 recommend_command_implementation:
-  command_structure: "/sc:recommend [query] --options [flags]"
+  command_structure: '/sc:recommend [query] --options [flags]'
 
   available_options:
-    --estimate: "Includes time and budget estimation"
-    --alternatives: "Provides multiple solution recommendations"
-    --stream: "Continuous project tracking mode"
-    --community: "Includes community data"
-    --language [tr|en|auto]: "Language setting"
-    --expertise [beginner|intermediate|expert]: "Level setting"
+    --estimate: 'Includes time and budget estimation'
+    --alternatives: 'Provides multiple solution recommendations'
+    --stream: 'Continuous project tracking mode'
+    --community: 'Includes community data'
+    --language [tr|en|auto]: 'Language setting'
+    --expertise [beginner|intermediate|expert]: 'Level setting'
 
   response_format:
     analysis_section:

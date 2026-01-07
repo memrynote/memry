@@ -8,11 +8,7 @@ interface RatingEditorProps {
   maxRating?: number
 }
 
-export function RatingEditor({
-  value,
-  onChange,
-  maxRating = 5
-}: RatingEditorProps) {
+export function RatingEditor({ value, onChange, maxRating = 5 }: RatingEditorProps) {
   const [hoverValue, setHoverValue] = useState<number | null>(null)
 
   const handleClick = useCallback(
@@ -73,9 +69,7 @@ export function RatingEditor({
             <Star
               className={cn(
                 'h-4 w-4 transition-colors duration-100',
-                isFilled
-                  ? 'fill-amber-400 text-amber-400'
-                  : 'fill-transparent text-stone-300'
+                isFilled ? 'fill-amber-400 text-amber-400' : 'fill-transparent text-stone-300'
               )}
             />
           </button>

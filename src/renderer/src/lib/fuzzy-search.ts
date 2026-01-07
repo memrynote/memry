@@ -43,7 +43,7 @@ export function fuzzySearch<T>(items: T[], query: string, keys: (keyof T)[]): T[
       matches.push({
         item,
         score: bestScore,
-        matches: bestMatches,
+        matches: bestMatches
       })
     }
   }

@@ -15,6 +15,7 @@ This directory contains slash commands that are installed to `~/.claude/commands
 These commands are copies from `plugins/superclaude/commands/` for package distribution.
 
 When updating commands:
+
 1. Edit files in `plugins/superclaude/commands/`
 2. Copy changes to `src/superclaude/commands/`
 3. Both locations must stay in sync

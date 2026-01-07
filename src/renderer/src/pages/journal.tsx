@@ -49,6 +49,7 @@ import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useJournalProperties } from '@/hooks/use-journal-properties'
 import { useTemplates } from '@/hooks/use-templates'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
+import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -194,6 +195,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Journal settings (default template)
   const { settings: journalSettings, setDefaultTemplate: setJournalDefaultTemplate } =
     useJournalSettings()
+
+  // Editor settings (toolbar mode)
+  const { settings: editorSettings } = useNoteEditorSettings()
 
   // Bookmark state for journal entry
   const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('journal', entry?.date ?? '')
@@ -1211,6 +1215,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               ? "What's on your mind today..."
                               : 'Reflect on this day...'
                         }
+                        stickyToolbar={editorSettings.toolbarMode === 'sticky'}
                         onContentChange={handleContentChange}
                         onMarkdownChange={handleMarkdownChange}
                         onHeadingsChange={handleHeadingsChange}

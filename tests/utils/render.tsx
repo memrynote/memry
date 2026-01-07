@@ -180,7 +180,9 @@ export function configureMockApi(
 
     if (mock && typeof mock === 'function' && 'mockImplementation' in mock) {
       if (typeof value === 'function') {
-        ;(mock as ReturnType<typeof vi.fn>).mockImplementation(value as (...args: unknown[]) => unknown)
+        ;(mock as ReturnType<typeof vi.fn>).mockImplementation(
+          value as (...args: unknown[]) => unknown
+        )
       } else {
         ;(mock as ReturnType<typeof vi.fn>).mockResolvedValue(value)
       }

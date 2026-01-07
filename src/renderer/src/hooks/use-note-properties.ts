@@ -104,9 +104,7 @@ export function useNoteProperties(noteId: string | null): UseNotePropertiesRetur
       if (!noteId) return
 
       // Optimistic update
-      setProperties((prev) =>
-        prev.map((prop) => (prop.name === name ? { ...prop, value } : prop))
-      )
+      setProperties((prev) => prev.map((prop) => (prop.name === name ? { ...prop, value } : prop)))
 
       try {
         const newRecord = { ...propertiesRecord, [name]: value }

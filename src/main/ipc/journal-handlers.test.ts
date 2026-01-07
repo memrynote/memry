@@ -24,9 +24,7 @@ vi.mock('electron', () => ({
     })
   },
   BrowserWindow: {
-    getAllWindows: vi.fn(() => [
-      { webContents: { send: vi.fn() } }
-    ])
+    getAllWindows: vi.fn(() => [{ webContents: { send: vi.fn() } }])
   }
 }))
 
@@ -95,7 +93,6 @@ describe('journal-handlers', () => {
     vi.clearAllMocks()
     handleCalls.length = 0
     removeHandlerCalls.length = 0
-
     ;(getIndexDatabase as Mock).mockReturnValue({})
     ;(getDatabase as Mock).mockReturnValue({})
   })
@@ -111,19 +108,19 @@ describe('journal-handlers', () => {
 
   it('gets an entry and merges cached properties', async () => {
     registerJournalHandlers()
-
     ;(journalVault.readJournalEntry as Mock).mockResolvedValue({ ...baseEntry })
     ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue({ id: 'cache-1' })
     ;(notesQueries.getNotePropertiesAsRecord as Mock).mockReturnValue({ mood: 'good' })
 
     const result = await invokeHandler(JournalChannels.invoke.GET_ENTRY, { date: '2025-01-01' })
 
-    expect(result).toEqual(expect.objectContaining({ date: '2025-01-01', properties: { mood: 'good' } }))
+    expect(result).toEqual(
+      expect.objectContaining({ date: '2025-01-01', properties: { mood: 'good' } })
+    )
   })
 
   it('creates a journal entry and emits event', async () => {
     registerJournalHandlers()
-
     ;(journalVault.writeJournalEntry as Mock).mockResolvedValue({ ...baseEntry })
     ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
 
@@ -170,7 +167,6 @@ describe('journal-handlers', () => {
 
   it('deletes a journal entry and emits delete event', async () => {
     registerJournalHandlers()
-
     ;(journalVault.deleteJournalEntryFile as Mock).mockResolvedValue(true)
     ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue({ id: 'cache-1' })
 
@@ -182,7 +178,6 @@ describe('journal-handlers', () => {
 
   it('lists month entries with previews', async () => {
     registerJournalHandlers()
-
     ;(notesQueries.getJournalMonthEntries as Mock).mockReturnValue([
       { id: 'cache-1', date: '2025-01-01', wordCount: 2, characterCount: 13 }
     ])
@@ -207,13 +202,11 @@ describe('journal-handlers', () => {
 
   it('returns heatmap and year stats', async () => {
     registerJournalHandlers()
-
     ;(notesQueries.getHeatmapData as Mock).mockReturnValue([
       { date: '2025-01-01', characterCount: 50, level: 2 }
     ])
     const heatmap = await invokeHandler(JournalChannels.invoke.GET_HEATMAP, { year: 2025 })
     expect(heatmap).toEqual([{ date: '2025-01-01', characterCount: 50, level: 2 }])
-
     ;(notesQueries.getJournalYearStats as Mock).mockReturnValue([
       {
         month: 1,
@@ -238,7 +231,6 @@ describe('journal-handlers', () => {
 
   it('returns day context with mapped task priorities', async () => {
     registerJournalHandlers()
-
     ;(tasksQueries.getTasksByDueDate as Mock).mockReturnValue([
       {
         id: 'task-1',
@@ -255,28 +247,38 @@ describe('journal-handlers', () => {
     ])
     ;(tasksQueries.countOverdueTasksBeforeDate as Mock).mockReturnValue(2)
 
-    const result = await invokeHandler(JournalChannels.invoke.GET_DAY_CONTEXT, { date: '2025-01-01' })
+    const result = await invokeHandler(JournalChannels.invoke.GET_DAY_CONTEXT, {
+      date: '2025-01-01'
+    })
 
     expect(result).toEqual({
       date: '2025-01-01',
       events: [],
       overdueCount: 2,
       tasks: [
-        expect.objectContaining({ id: 'task-1', priority: 'low', completed: false, isOverdue: false }),
-        expect.objectContaining({ id: 'task-2', priority: 'urgent', completed: true, isOverdue: false })
+        expect.objectContaining({
+          id: 'task-1',
+          priority: 'low',
+          completed: false,
+          isOverdue: false
+        }),
+        expect.objectContaining({
+          id: 'task-2',
+          priority: 'urgent',
+          completed: true,
+          isOverdue: false
+        })
       ]
     })
   })
 
   it('returns tag summary and streak data', async () => {
     registerJournalHandlers()
-
     ;(notesQueries.getAllTagsWithColors as Mock).mockReturnValue([
       { tag: 'focus', count: 2, color: 'blue' }
     ])
     const tags = await invokeHandler(JournalChannels.invoke.GET_ALL_TAGS)
     expect(tags).toEqual([{ tag: 'focus', count: 2 }])
-
     ;(notesQueries.getJournalStreak as Mock).mockReturnValue({
       currentStreak: 3,
       longestStreak: 7,

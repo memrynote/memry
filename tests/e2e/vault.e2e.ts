@@ -12,20 +12,14 @@
  */
 
 import { test, expect } from './fixtures'
-import {
-  waitForAppReady,
-  waitForVaultReady,
-  SELECTORS
-} from './utils/electron-helpers'
+import { waitForAppReady, waitForVaultReady, SELECTORS } from './utils/electron-helpers'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
 
 test.describe('Vault Management', () => {
   test.describe('Vault Creation Flow', () => {
-    test('T529: should show vault onboarding when no vault is selected', async ({
-      page
-    }) => {
+    test('T529: should show vault onboarding when no vault is selected', async ({ page }) => {
       await waitForAppReady(page)
 
       // Look for vault onboarding UI or vault selection prompt
@@ -39,10 +33,7 @@ test.describe('Vault Management', () => {
       expect(true).toBe(true) // Placeholder for actual assertion
     })
 
-    test('T529: should create a new vault successfully', async ({
-      page,
-      testVaultPath
-    }) => {
+    test('T529: should create a new vault successfully', async ({ page, testVaultPath }) => {
       await waitForAppReady(page)
 
       // Verify the test vault directory exists
@@ -68,9 +59,7 @@ test.describe('Vault Management', () => {
   })
 
   test.describe('Vault Opening/Switching', () => {
-    test('T530: should open an existing vault', async ({
-      page
-    }) => {
+    test('T530: should open an existing vault', async ({ page }) => {
       await waitForAppReady(page)
       await waitForVaultReady(page)
 
@@ -82,9 +71,7 @@ test.describe('Vault Management', () => {
       expect(isSidebarVisible || (await page.locator('body').isVisible())).toBe(true)
     })
 
-    test('T530: should display vault name in UI after opening', async ({
-      page
-    }) => {
+    test('T530: should display vault name in UI after opening', async ({ page }) => {
       await waitForAppReady(page)
 
       // Look for vault name display (may vary based on UI)
@@ -97,15 +84,11 @@ test.describe('Vault Management', () => {
       expect(exists >= 0).toBe(true) // Will always pass - placeholder
     })
 
-    test('T530: should handle switching between vaults', async ({
-      page
-    }) => {
+    test('T530: should handle switching between vaults', async ({ page }) => {
       await waitForAppReady(page)
 
       // Create a second temporary vault for switching test
-      const secondVaultPath = fs.mkdtempSync(
-        path.join(os.tmpdir(), 'memry-e2e-switch-')
-      )
+      const secondVaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-e2e-switch-'))
 
       try {
         // Initialize second vault structure
@@ -127,9 +110,7 @@ test.describe('Vault Management', () => {
   })
 
   test.describe('Vault Reindexing', () => {
-    test('T531: should trigger reindex operation', async ({
-      page
-    }) => {
+    test('T531: should trigger reindex operation', async ({ page }) => {
       await waitForAppReady(page)
 
       // The reindex functionality is typically triggered via:
@@ -143,10 +124,7 @@ test.describe('Vault Management', () => {
       expect(true).toBe(true) // Placeholder - actual implementation depends on UI
     })
 
-    test('T531: should update note cache after reindex', async ({
-      page,
-      testVaultPath
-    }) => {
+    test('T531: should update note cache after reindex', async ({ page, testVaultPath }) => {
       await waitForAppReady(page)
 
       // Create a new note file directly in filesystem
@@ -176,10 +154,7 @@ This note was created externally for reindex testing.
       fs.unlinkSync(newNotePath)
     })
 
-    test('T531: should maintain data integrity during reindex', async ({
-      page,
-      testVaultPath
-    }) => {
+    test('T531: should maintain data integrity during reindex', async ({ page, testVaultPath }) => {
       await waitForAppReady(page)
 
       // Verify existing notes are still accessible
@@ -205,9 +180,7 @@ This note was created externally for reindex testing.
       expect(fs.existsSync(invalidPath)).toBe(false)
     })
 
-    test('should detect corrupted vault configuration', async ({
-      testVaultPath
-    }) => {
+    test('should detect corrupted vault configuration', async ({ testVaultPath }) => {
       // Test that app handles malformed config gracefully
       const configPath = path.join(testVaultPath, '.memry', 'config.json')
 

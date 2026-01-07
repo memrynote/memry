@@ -1,11 +1,11 @@
-import React, { useMemo } from "react"
+import React, { useMemo } from 'react'
 
-import { DayCell } from "./day-cell"
-import { formatDateKey, type CalendarDay } from "@/lib/task-utils"
-import type { Task } from "@/data/sample-tasks"
+import { DayCell } from './day-cell'
+import { formatDateKey, type CalendarDay } from '@/lib/task-utils'
+import type { Task } from '@/data/sample-tasks'
 
-const WEEKDAYS_SUN_START = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-const WEEKDAYS_MON_START = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+const WEEKDAYS_SUN_START = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const WEEKDAYS_MON_START = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 interface CalendarGridProps {
   days: CalendarDay[]
@@ -32,7 +32,7 @@ export const CalendarGrid = ({
   isCompact = false,
   onOpenDay,
   onTaskClick,
-  onAddTask,
+  onAddTask
 }: CalendarGridProps): React.JSX.Element => {
   const weekdayLabels = useMemo(
     () => (weekStartsOn === 0 ? WEEKDAYS_SUN_START : WEEKDAYS_MON_START),
@@ -88,4 +88,3 @@ export const CalendarGrid = ({
 }
 
 export default CalendarGrid
-

@@ -71,11 +71,7 @@ const BulkActionBar = ({
             />
           )}
 
-          <Button
-            variant="outline"
-            onClick={onArchiveAll}
-            className="gap-2"
-          >
+          <Button variant="outline" onClick={onArchiveAll} className="gap-2">
             <Archive className="size-4" aria-hidden="true" />
             Archive all
           </Button>

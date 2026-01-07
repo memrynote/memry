@@ -13,7 +13,9 @@ describe('tags-service', () => {
 
   beforeEach(() => {
     api = createMockApi()
-    api.tags.getNotesByTag = vi.fn().mockResolvedValue({ tag: 'focus', count: 0, pinnedNotes: [], unpinnedNotes: [] })
+    api.tags.getNotesByTag = vi
+      .fn()
+      .mockResolvedValue({ tag: 'focus', count: 0, pinnedNotes: [], unpinnedNotes: [] })
     api.tags.pinNoteToTag = vi.fn().mockResolvedValue({ success: true })
     api.tags.unpinNoteFromTag = vi.fn().mockResolvedValue({ success: true })
     api.tags.renameTag = vi.fn().mockResolvedValue({ success: true, affectedNotes: 0 })
@@ -25,7 +27,6 @@ describe('tags-service', () => {
     api.onTagColorUpdated = vi.fn().mockReturnValue(() => {})
     api.onTagDeleted = vi.fn().mockReturnValue(() => {})
     api.onTagNotesChanged = vi.fn().mockReturnValue(() => {})
-
     ;(window as Window & { api: unknown }).api = api
   })
 

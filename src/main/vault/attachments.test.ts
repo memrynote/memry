@@ -86,7 +86,6 @@ describe('getAttachmentPath', () => {
   })
 })
 
-
 describe('getAbsoluteAttachmentUrl', () => {
   it('T396: returns memry-file:// URL', () => {
     const result = getAbsoluteAttachmentUrl('/vault', 'note123', 'image.png')

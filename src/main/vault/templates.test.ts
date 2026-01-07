@@ -285,7 +285,12 @@ describe('template CRUD operations', () => {
     })
 
     it('T387: writes template to disk', async () => {
-      const template = await createTemplate({ name: 'Disk Test', tags: [], properties: [], content: '' })
+      const template = await createTemplate({
+        name: 'Disk Test',
+        tags: [],
+        properties: [],
+        content: ''
+      })
 
       const filePath = path.join(tempVault.path, '.memry', 'templates', `${template.id}.md`)
       expect(fs.existsSync(filePath)).toBe(true)
@@ -294,7 +299,12 @@ describe('template CRUD operations', () => {
 
   describe('updateTemplate', () => {
     it('T387: updates existing template', async () => {
-      const created = await createTemplate({ name: 'Original', tags: [], properties: [], content: '' })
+      const created = await createTemplate({
+        name: 'Original',
+        tags: [],
+        properties: [],
+        content: ''
+      })
 
       const updated = await updateTemplate({
         id: created.id,
@@ -329,7 +339,12 @@ describe('template CRUD operations', () => {
 
   describe('deleteTemplate', () => {
     it('T388: deletes custom template', async () => {
-      const template = await createTemplate({ name: 'To Delete', tags: [], properties: [], content: '' })
+      const template = await createTemplate({
+        name: 'To Delete',
+        tags: [],
+        properties: [],
+        content: ''
+      })
 
       await deleteTemplate(template.id)
 

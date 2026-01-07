@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useMemo,
-  type ReactNode,
-} from "react"
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react'
 import {
   DndContext,
   KeyboardSensor,
@@ -19,25 +12,25 @@ import {
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
-  type CollisionDetection,
-} from "@dnd-kit/core"
-import { sortableKeyboardCoordinates } from "@dnd-kit/sortable"
+  type CollisionDetection
+} from '@dnd-kit/core'
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 
-import type { Task } from "@/data/sample-tasks"
+import type { Task } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-export type DragSourceType = "list" | "kanban" | "calendar"
+export type DragSourceType = 'list' | 'kanban' | 'calendar'
 export type DropTargetType =
-  | "task"
-  | "section"
-  | "column"
-  | "date"
-  | "project"
-  | "trash"
-  | "archive"
+  | 'task'
+  | 'section'
+  | 'column'
+  | 'date'
+  | 'project'
+  | 'trash'
+  | 'archive'
   | null
 
 export interface DragState {
@@ -96,11 +89,11 @@ const initialDragState: DragState = {
   isDragging: false,
   activeId: null,
   activeIds: [],
-  sourceType: "list",
+  sourceType: 'list',
   sourceContainerId: null,
   overId: null,
   overType: null,
-  draggedTasks: [],
+  draggedTasks: []
 }
 
 // ============================================================================
@@ -117,7 +110,7 @@ const createCollisionDetection = (): CollisionDetection => {
     const pointerCollisions = pointerWithin(args)
     const sidebarCollision = pointerCollisions.find((collision) => {
       const type = collision.data?.droppableContainer?.data?.current?.type
-      return type === "project" || type === "trash" || type === "archive"
+      return type === 'project' || type === 'trash' || type === 'archive'
     })
 
     if (sidebarCollision) {
@@ -127,7 +120,7 @@ const createCollisionDetection = (): CollisionDetection => {
     // Check for date cells (calendar)
     const dateCollision = pointerCollisions.find((collision) => {
       const type = collision.data?.droppableContainer?.data?.current?.type
-      return type === "date"
+      return type === 'date'
     })
 
     if (dateCollision) {
@@ -139,7 +132,7 @@ const createCollisionDetection = (): CollisionDetection => {
     const rectCollisions = rectIntersection(args)
     const columnCollision = rectCollisions.find((collision) => {
       const type = collision.data?.droppableContainer?.data?.current?.type
-      return type === "column"
+      return type === 'column'
     })
 
     if (columnCollision) {
@@ -149,7 +142,7 @@ const createCollisionDetection = (): CollisionDetection => {
     // Check for section drop zones (date groups)
     const sectionCollision = rectCollisions.find((collision) => {
       const type = collision.data?.droppableContainer?.data?.current?.type
-      return type === "section"
+      return type === 'section'
     })
 
     if (sectionCollision) {
@@ -174,7 +167,7 @@ const DragContext = createContext<DragContextValue | null>(null)
 export const useDragContext = (): DragContextValue => {
   const context = useContext(DragContext)
   if (!context) {
-    throw new Error("useDragContext must be used within a DragProvider")
+    throw new Error('useDragContext must be used within a DragProvider')
   }
   return context
 }
@@ -190,7 +183,7 @@ export const DragProvider = ({
   onDragStart: onDragStartCallback,
   onDragOver: onDragOverCallback,
   onDragEnd: onDragEndCallback,
-  onDragCancel: onDragCancelCallback,
+  onDragCancel: onDragCancelCallback
 }: DragProviderProps): React.JSX.Element => {
   const [dragState, setDragStateInternal] = useState<DragState>(initialDragState)
 
@@ -198,17 +191,17 @@ export const DragProvider = ({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // 8px movement before drag starts
-      },
+        distance: 8 // 8px movement before drag starts
+      }
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
         delay: 200, // 200ms hold before drag on touch
-        tolerance: 5,
-      },
+        tolerance: 5
+      }
     }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+      coordinateGetter: sortableKeyboardCoordinates
     })
   )
 
@@ -238,9 +231,9 @@ export const DragProvider = ({
 
       // Only track task-based drags in this context
       const isTaskDrag =
-        activeData?.type === "task" ||
-        activeData?.type === "calendar-task" ||
-        activeData?.type === "subtask"
+        activeData?.type === 'task' ||
+        activeData?.type === 'calendar-task' ||
+        activeData?.type === 'subtask'
       if (!isTaskDrag) {
         return
       }
@@ -250,19 +243,17 @@ export const DragProvider = ({
       const shouldMultiDrag = isPartOfSelection && selectedIds.size > 1
 
       // Get the tasks being dragged
-      const draggedTaskIds = shouldMultiDrag
-        ? Array.from(selectedIds)
-        : [draggedId]
+      const draggedTaskIds = shouldMultiDrag ? Array.from(selectedIds) : [draggedId]
       const draggedTasks = tasks.filter((t) => draggedTaskIds.includes(t.id))
 
       // Determine source type
-      let sourceType: DragSourceType = "list"
+      let sourceType: DragSourceType = 'list'
       if (activeData?.sourceType) {
         sourceType = activeData.sourceType
-      } else if (activeData?.type === "task" && activeData?.columnId) {
-        sourceType = "kanban"
-      } else if (activeData?.type === "calendar-task") {
-        sourceType = "calendar"
+      } else if (activeData?.type === 'task' && activeData?.columnId) {
+        sourceType = 'kanban'
+      } else if (activeData?.type === 'calendar-task') {
+        sourceType = 'calendar'
       }
 
       const newState: DragState = {
@@ -273,13 +264,13 @@ export const DragProvider = ({
         sourceContainerId: activeData?.sectionId || activeData?.columnId || null,
         overId: null,
         overType: null,
-        draggedTasks,
+        draggedTasks
       }
 
       setDragStateInternal(newState)
 
       // Haptic feedback on mobile
-      if ("vibrate" in navigator) {
+      if ('vibrate' in navigator) {
         navigator.vibrate(50)
       }
 
@@ -309,7 +300,7 @@ export const DragProvider = ({
 
       setDragState({
         overId: over.id as string,
-        overType,
+        overType
       })
 
       // Call external callback
@@ -341,7 +332,7 @@ export const DragProvider = ({
       setDragState,
       resetDragState,
       isMultiDrag,
-      dragCount,
+      dragCount
     }),
     [dragState, setDragState, resetDragState, isMultiDrag, dragCount]
   )
@@ -368,78 +359,68 @@ export const DragProvider = ({
 
 export const dragAnnouncements = {
   onDragStart: ({ active }: DragStartEvent): string => {
-    const taskTitle = active.data.current?.task?.title || "Task"
+    const taskTitle = active.data.current?.task?.title || 'Task'
     return `Picked up task: ${taskTitle}. Use arrow keys to move.`
   },
   onDragOver: ({ over }: DragOverEvent): string => {
-    if (!over) return ""
+    if (!over) return ''
 
     const overData = over.data.current
     const type = overData?.type
 
-    if (type === "section") {
-      return `Over section: ${overData?.label || "Unknown"}. Release to drop.`
+    if (type === 'section') {
+      return `Over section: ${overData?.label || 'Unknown'}. Release to drop.`
     }
-    if (type === "column") {
-      return `Over column: ${overData?.column?.title || "Unknown"}. Release to change status.`
+    if (type === 'column') {
+      return `Over column: ${overData?.column?.title || 'Unknown'}. Release to change status.`
     }
-    if (type === "date") {
-      return `Over date: ${overData?.date?.toDateString() || "Unknown"}. Release to reschedule.`
+    if (type === 'date') {
+      return `Over date: ${overData?.date?.toDateString() || 'Unknown'}. Release to reschedule.`
     }
-    if (type === "project") {
-      return `Over project: ${overData?.project?.name || "Unknown"}. Release to move.`
+    if (type === 'project') {
+      return `Over project: ${overData?.project?.name || 'Unknown'}. Release to move.`
     }
-    if (type === "trash") {
-      return "Over trash. Release to delete."
+    if (type === 'trash') {
+      return 'Over trash. Release to delete.'
     }
-    if (type === "archive") {
-      return "Over archive. Release to archive."
+    if (type === 'archive') {
+      return 'Over archive. Release to archive.'
     }
 
-    return ""
+    return ''
   },
   onDragEnd: ({ active, over }: DragEndEvent): string => {
-    const taskTitle = active.data.current?.task?.title || "Task"
+    const taskTitle = active.data.current?.task?.title || 'Task'
 
     if (!over) {
-      return "Drop cancelled."
+      return 'Drop cancelled.'
     }
 
     const overData = over.data.current
     const type = overData?.type
 
-    if (type === "section") {
-      return `Task ${taskTitle} moved to ${overData?.label || "section"}.`
+    if (type === 'section') {
+      return `Task ${taskTitle} moved to ${overData?.label || 'section'}.`
     }
-    if (type === "column") {
-      return `Task ${taskTitle} status changed to ${overData?.column?.title || "new status"}.`
+    if (type === 'column') {
+      return `Task ${taskTitle} status changed to ${overData?.column?.title || 'new status'}.`
     }
-    if (type === "date") {
+    if (type === 'date') {
       return `Task ${taskTitle} rescheduled.`
     }
-    if (type === "project") {
-      return `Task ${taskTitle} moved to ${overData?.project?.name || "project"}.`
+    if (type === 'project') {
+      return `Task ${taskTitle} moved to ${overData?.project?.name || 'project'}.`
     }
-    if (type === "trash") {
+    if (type === 'trash') {
       return `Task ${taskTitle} deleted.`
     }
-    if (type === "archive") {
+    if (type === 'archive') {
       return `Task ${taskTitle} archived.`
     }
 
     return `Task ${taskTitle} dropped.`
   },
-  onDragCancel: (): string => "Drag cancelled.",
+  onDragCancel: (): string => 'Drag cancelled.'
 }
 
 export default DragProvider
-
-
-
-
-
-
-
-
-
-

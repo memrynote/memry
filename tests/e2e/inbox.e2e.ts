@@ -89,9 +89,7 @@ test.describe('Inbox Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T545: should handle empty submission gracefully', async ({
-      page
-    }) => {
+    test('T545: should handle empty submission gracefully', async ({ page }) => {
       const captureInput = page.locator(SELECTORS.captureInput)
       const hasCaptureInput = await captureInput.isVisible().catch(() => false)
 
@@ -197,9 +195,7 @@ test.describe('Inbox Management', () => {
   })
 
   test.describe('Filing to Folder', () => {
-    test('T547: should file item to folder via context menu', async ({
-      page
-    }) => {
+    test('T547: should file item to folder via context menu', async ({ page }) => {
       // First capture an item
       const captureInput = page.locator(SELECTORS.captureInput)
       const hasCaptureInput = await captureInput.isVisible().catch(() => false)
@@ -234,9 +230,7 @@ test.describe('Inbox Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T547: should convert item to note when filing', async ({
-      page
-    }) => {
+    test('T547: should convert item to note when filing', async ({ page }) => {
       // Capture an item
       const captureInput = page.locator(SELECTORS.captureInput)
       const hasCaptureInput = await captureInput.isVisible().catch(() => false)
@@ -260,9 +254,7 @@ test.describe('Inbox Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T547: should remove item from inbox after filing', async ({
-      page
-    }) => {
+    test('T547: should remove item from inbox after filing', async ({ page }) => {
       // Get initial inbox count
       const initialCount = await getElementCount(page, SELECTORS.inboxItem)
 
@@ -331,9 +323,7 @@ test.describe('Inbox Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T548: should hide snoozed items from main list', async ({
-      page
-    }) => {
+    test('T548: should hide snoozed items from main list', async ({ page }) => {
       // After snoozing, verify item is hidden
       // Get count before snooze
       const countBefore = await getElementCount(page, SELECTORS.inboxItem)
@@ -359,9 +349,7 @@ test.describe('Inbox Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T548: should show snoozed items in separate section', async ({
-      page
-    }) => {
+    test('T548: should show snoozed items in separate section', async ({ page }) => {
       // Look for snoozed items section
       const snoozedSection = page.locator('[data-testid="snoozed-items"]')
       const hasSnoozedSection = await snoozedSection.isVisible().catch(() => false)

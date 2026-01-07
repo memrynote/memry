@@ -262,10 +262,13 @@ export function useVaultList() {
     setCurrentVault(result.currentVault)
   }, [])
 
-  const removeVault = useCallback(async (path: string) => {
-    await vaultService.remove(path)
-    await refresh()
-  }, [refresh])
+  const removeVault = useCallback(
+    async (path: string) => {
+      await vaultService.remove(path)
+      await refresh()
+    },
+    [refresh]
+  )
 
   return {
     vaults,

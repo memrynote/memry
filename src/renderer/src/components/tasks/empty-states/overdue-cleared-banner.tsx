@@ -1,7 +1,7 @@
-import { motion } from "framer-motion"
-import { X, Sparkles } from "lucide-react"
+import { motion } from 'framer-motion'
+import { X, Sparkles } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
@@ -35,18 +35,18 @@ interface OverdueClearedBannerProps {
  */
 export const OverdueClearedBanner = ({
   onDismiss,
-  className,
+  className
 }: OverdueClearedBannerProps): React.JSX.Element => {
   return (
     <motion.div
       initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-      animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
+      animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
       className={cn(
-        "overflow-hidden rounded-lg",
-        "bg-emerald-50 dark:bg-emerald-950/30",
-        "border border-emerald-200 dark:border-emerald-800/50",
+        'overflow-hidden rounded-lg',
+        'bg-emerald-50 dark:bg-emerald-950/30',
+        'border border-emerald-200 dark:border-emerald-800/50',
         className
       )}
     >
@@ -58,7 +58,7 @@ export const OverdueClearedBanner = ({
             <motion.span
               initial={{ rotate: -15, scale: 0.8 }}
               animate={{ rotate: 0, scale: 1 }}
-              transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }}
+              transition={{ duration: 0.4, ease: 'easeOut', delay: 0.1 }}
               className="shrink-0"
             >
               <Sparkles
@@ -78,12 +78,12 @@ export const OverdueClearedBanner = ({
             type="button"
             onClick={onDismiss}
             className={cn(
-              "shrink-0 p-1 rounded-md",
-              "text-emerald-600 dark:text-emerald-400",
-              "hover:bg-emerald-100 dark:hover:bg-emerald-900/50",
-              "transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2",
-              "focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+              'shrink-0 p-1 rounded-md',
+              'text-emerald-600 dark:text-emerald-400',
+              'hover:bg-emerald-100 dark:hover:bg-emerald-900/50',
+              'transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2',
+              'focus-visible:ring-emerald-500 focus-visible:ring-offset-2'
             )}
             aria-label="Dismiss celebration banner"
           >
@@ -96,9 +96,3 @@ export const OverdueClearedBanner = ({
 }
 
 export default OverdueClearedBanner
-
-
-
-
-
-

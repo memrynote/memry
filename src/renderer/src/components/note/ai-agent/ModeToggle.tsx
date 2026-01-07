@@ -1,11 +1,6 @@
 import { Globe, Brain } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface ModeToggleProps {
   mode: 'web' | 'thinking'
@@ -44,9 +39,7 @@ export function ModeToggle({ mode, enabled, onToggle }: ModeToggleProps) {
               'h-8 w-8 rounded-full flex items-center justify-center',
               'transition-all duration-150',
               'focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1',
-              enabled
-                ? activeClass
-                : 'text-stone-400 hover:bg-stone-100 hover:text-stone-600',
+              enabled ? activeClass : 'text-stone-400 hover:bg-stone-100 hover:text-stone-600',
               enabled && 'animate-pulse-once'
             )}
           >

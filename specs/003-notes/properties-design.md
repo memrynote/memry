@@ -12,11 +12,11 @@ T005 and T006 in tasks.md specify creating `noteProperties` and `propertyDefinit
 
 **Follow the existing tag pattern**:
 
-| Component | Source of Truth | Purpose |
-|-----------|----------------|---------|
-| Property VALUES | Frontmatter (YAML) | Portable, human-readable, external-edit friendly |
-| Property CACHE | `noteProperties` table | Fast queries, filtering, sorting |
-| Property SCHEMA | `propertyDefinitions` table | Vault-wide type definitions |
+| Component       | Source of Truth             | Purpose                                          |
+| --------------- | --------------------------- | ------------------------------------------------ |
+| Property VALUES | Frontmatter (YAML)          | Portable, human-readable, external-edit friendly |
+| Property CACHE  | `noteProperties` table      | Fast queries, filtering, sorting                 |
+| Property SCHEMA | `propertyDefinitions` table | Vault-wide type definitions                      |
 
 ---
 
@@ -26,26 +26,25 @@ Properties live in the YAML frontmatter under a `properties` key:
 
 ```yaml
 ---
-id: "a1b2c3d4e5f6"
-title: "Project Planning"
-created: "2025-12-23T10:00:00.000Z"
-modified: "2025-12-23T10:30:00.000Z"
+id: 'a1b2c3d4e5f6'
+title: 'Project Planning'
+created: '2025-12-23T10:00:00.000Z'
+modified: '2025-12-23T10:30:00.000Z'
 tags:
   - work
   - planning
 properties:
-  status: "in-progress"           # text (select)
-  priority: 3                     # number
-  completed: false                # checkbox
-  due: "2025-12-25"              # date (ISO string)
-  category: "engineering"         # select
-  stakeholders:                   # multiselect
-    - "Alice"
-    - "Bob"
-  docs: "https://docs.example.com" # url
-  rating: 4                       # rating (1-5)
+  status: 'in-progress' # text (select)
+  priority: 3 # number
+  completed: false # checkbox
+  due: '2025-12-25' # date (ISO string)
+  category: 'engineering' # select
+  stakeholders: # multiselect
+    - 'Alice'
+    - 'Bob'
+  docs: 'https://docs.example.com' # url
+  rating: 4 # rating (1-5)
 ---
-
 # Project Planning
 
 Content here...
@@ -66,21 +65,26 @@ Content here...
 ### noteProperties Table (Rebuildable Cache)
 
 ```typescript
-export const noteProperties = sqliteTable('note_properties', {
-  noteId: text('note_id')
-    .notNull()
-    .references(() => noteCache.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  value: text('value'),           // JSON-encoded for arrays
-  type: text('type').notNull(),   // PropertyType enum
-}, (table) => [
-  primaryKey({ columns: [table.noteId, table.name] }),
-  index('idx_note_properties_name').on(table.name),
-  index('idx_note_properties_value').on(table.value)
-])
+export const noteProperties = sqliteTable(
+  'note_properties',
+  {
+    noteId: text('note_id')
+      .notNull()
+      .references(() => noteCache.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    value: text('value'), // JSON-encoded for arrays
+    type: text('type').notNull() // PropertyType enum
+  },
+  (table) => [
+    primaryKey({ columns: [table.noteId, table.name] }),
+    index('idx_note_properties_name').on(table.name),
+    index('idx_note_properties_value').on(table.value)
+  ]
+)
 ```
 
 **Key Points**:
+
 - **Rebuildable**: Can be regenerated from frontmatter at any time
 - **Cascades**: Deleted when note is deleted
 - **Indexed**: Fast filtering by property name and value
@@ -90,10 +94,10 @@ export const noteProperties = sqliteTable('note_properties', {
 ```typescript
 export const propertyDefinitions = sqliteTable('property_definitions', {
   name: text('name').primaryKey(),
-  type: text('type').notNull(),          // PropertyType
-  options: text('options'),               // JSON array for select/multiselect
+  type: text('type').notNull(), // PropertyType
+  options: text('options'), // JSON array for select/multiselect
   defaultValue: text('default_value'),
-  color: text('color'),                   // Optional color for select options
+  color: text('color'), // Optional color for select options
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`)
@@ -101,6 +105,7 @@ export const propertyDefinitions = sqliteTable('property_definitions', {
 ```
 
 **Key Points**:
+
 - **NOT rebuildable**: This is the source of truth for property schema
 - **Vault-wide**: Same property name = same type across all notes
 - **Options storage**: Select/multiselect options stored here, not in frontmatter
@@ -113,26 +118,26 @@ export const propertyDefinitions = sqliteTable('property_definitions', {
 
 ```typescript
 type PropertyType =
-  | 'text'        // Free text
-  | 'number'      // Numeric value
-  | 'checkbox'    // Boolean true/false
-  | 'date'        // ISO 8601 date string
-  | 'select'      // Single value from options
+  | 'text' // Free text
+  | 'number' // Numeric value
+  | 'checkbox' // Boolean true/false
+  | 'date' // ISO 8601 date string
+  | 'select' // Single value from options
   | 'multiselect' // Multiple values from options
-  | 'url'         // URL string
-  | 'rating'      // Number 1-5
+  | 'url' // URL string
+  | 'rating' // Number 1-5
 ```
 
 ### Type Mapping (Frontmatter → DB)
 
-| YAML Type | Example | DB value Column | DB type Column |
-|-----------|---------|-----------------|----------------|
-| string | `"draft"` | `"draft"` | `text` or `select` |
-| number | `3` | `"3"` | `number` |
-| boolean | `true` | `"true"` | `checkbox` |
-| array | `["a", "b"]` | `'["a","b"]'` | `multiselect` |
-| ISO date | `"2025-12-25"` | `"2025-12-25"` | `date` |
-| URL | `"https://..."` | `"https://..."` | `url` |
+| YAML Type | Example         | DB value Column | DB type Column     |
+| --------- | --------------- | --------------- | ------------------ |
+| string    | `"draft"`       | `"draft"`       | `text` or `select` |
+| number    | `3`             | `"3"`           | `number`           |
+| boolean   | `true`          | `"true"`        | `checkbox`         |
+| array     | `["a", "b"]`    | `'["a","b"]'`   | `multiselect`      |
+| ISO date  | `"2025-12-25"`  | `"2025-12-25"`  | `date`             |
+| URL       | `"https://..."` | `"https://..."` | `url`              |
 
 ---
 
@@ -165,7 +170,7 @@ emitNoteEvent(NotesChannels.events.UPDATED, {
     title,
     content: parsed.content,
     tags,
-    properties,  // NEW
+    properties, // NEW
     modified: new Date(parsed.frontmatter.modified)
   },
   source: 'external'
@@ -205,11 +210,7 @@ function inferPropertyType(name: string, value: unknown): PropertyType {
 When a new property is detected, auto-create a definition:
 
 ```typescript
-function ensurePropertyDefinition(
-  db: Database,
-  name: string,
-  inferredType: PropertyType
-): void {
+function ensurePropertyDefinition(db: Database, name: string, inferredType: PropertyType): void {
   const existing = getPropertyDefinition(db, name)
   if (!existing) {
     insertPropertyDefinition(db, {
@@ -235,9 +236,7 @@ export function setNoteProperties(
   properties: Record<string, unknown>
 ): void {
   // Clear existing properties for this note
-  db.delete(noteProperties)
-    .where(eq(noteProperties.noteId, noteId))
-    .run()
+  db.delete(noteProperties).where(eq(noteProperties.noteId, noteId)).run()
 
   // Insert new properties
   for (const [name, value] of Object.entries(properties)) {
@@ -259,16 +258,10 @@ export function setNoteProperties(
 ### Get Note Properties
 
 ```typescript
-export function getNoteProperties(
-  db: Database,
-  noteId: string
-): PropertyValue[] {
-  const rows = db.select()
-    .from(noteProperties)
-    .where(eq(noteProperties.noteId, noteId))
-    .all()
+export function getNoteProperties(db: Database, noteId: string): PropertyValue[] {
+  const rows = db.select().from(noteProperties).where(eq(noteProperties.noteId, noteId)).all()
 
-  return rows.map(row => ({
+  return rows.map((row) => ({
     name: row.name,
     value: JSON.parse(row.value),
     type: row.type as PropertyType
@@ -284,12 +277,10 @@ export function filterNotesByProperty(
   propertyName: string,
   propertyValue: string
 ): NoteCache[] {
-  return db.select()
+  return db
+    .select()
     .from(noteCache)
-    .innerJoin(
-      noteProperties,
-      eq(noteCache.id, noteProperties.noteId)
-    )
+    .innerJoin(noteProperties, eq(noteCache.id, noteProperties.noteId))
     .where(
       and(
         eq(noteProperties.name, propertyName),
@@ -313,7 +304,7 @@ function NoteProperties({ noteId }: { noteId: string }) {
 
   return (
     <div className="space-y-2">
-      {properties.map(prop => (
+      {properties.map((prop) => (
         <PropertyRow
           key={prop.name}
           property={prop}
@@ -477,12 +468,12 @@ The original tasks T005 and T006 should be updated:
 
 ## 10. Summary
 
-| Question | Answer |
-|----------|--------|
-| Store properties where? | **Frontmatter** (source of truth) |
-| Need DB? | **Yes** - for fast queries (cache) and schema (definitions) |
-| External edit handling? | **Extend watcher.ts** - sync properties like tags |
-| Type inference? | **Yes** - auto-infer types for externally-added properties |
-| Breaking changes? | **None** - properties key is optional in frontmatter |
+| Question                | Answer                                                      |
+| ----------------------- | ----------------------------------------------------------- |
+| Store properties where? | **Frontmatter** (source of truth)                           |
+| Need DB?                | **Yes** - for fast queries (cache) and schema (definitions) |
+| External edit handling? | **Extend watcher.ts** - sync properties like tags           |
+| Type inference?         | **Yes** - auto-infer types for externally-added properties  |
+| Breaking changes?       | **None** - properties key is optional in frontmatter        |
 
 This design follows the existing architecture patterns (tags, links) and ensures data integrity while supporting external editing workflows.

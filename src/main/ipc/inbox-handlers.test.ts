@@ -25,9 +25,7 @@ vi.mock('electron', () => ({
     })
   },
   BrowserWindow: {
-    getAllWindows: vi.fn(() => [
-      { webContents: { send: vi.fn() } }
-    ])
+    getAllWindows: vi.fn(() => [{ webContents: { send: vi.fn() } }])
   }
 }))
 
@@ -53,7 +51,7 @@ vi.mock('sharp', () => ({
 
 // Mock inbox modules
 vi.mock('../inbox/attachments', () => ({
-  resolveAttachmentUrl: vi.fn((path) => path ? `file://${path}` : null),
+  resolveAttachmentUrl: vi.fn((path) => (path ? `file://${path}` : null)),
   getItemAttachmentsDir: vi.fn(() => '/attachments/inbox/test'),
   storeInboxAttachment: vi.fn(),
   storeThumbnail: vi.fn()
@@ -634,11 +632,7 @@ describe('inbox-handlers', () => {
       const result = await invokeHandler(InboxChannels.invoke.FILE_ALL_STALE)
 
       expect(result.success).toBe(true)
-      expect(filingModule.bulkFileToFolder).toHaveBeenCalledWith(
-        ['item1', 'item2'],
-        'Unsorted',
-        []
-      )
+      expect(filingModule.bulkFileToFolder).toHaveBeenCalledWith(['item1', 'item2'], 'Unsorted', [])
     })
 
     it('should handle no stale items', async () => {
@@ -680,7 +674,10 @@ describe('inbox-handlers', () => {
     it('should get inbox statistics', async () => {
       const chainable = mockDb.select()
       chainable.get.mockReturnValue({ count: 10 })
-      chainable.all.mockReturnValue([{ type: 'note', count: 5 }, { type: 'link', count: 5 }])
+      chainable.all.mockReturnValue([
+        { type: 'note', count: 5 },
+        { type: 'link', count: 5 }
+      ])
 
       const result = await invokeHandler(InboxChannels.invoke.GET_STATS)
 
@@ -766,7 +763,10 @@ describe('inbox-handlers', () => {
     })
 
     it('GET_TAGS should get all inbox tags', async () => {
-      const mockTags = [{ tag: 'urgent', count: 5 }, { tag: 'review', count: 3 }]
+      const mockTags = [
+        { tag: 'urgent', count: 5 },
+        { tag: 'review', count: 3 }
+      ]
       const chainable = mockDb.select()
       chainable.all.mockReturnValue(mockTags)
 

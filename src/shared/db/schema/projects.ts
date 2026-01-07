@@ -9,8 +9,12 @@ export const projects = sqliteTable('projects', {
   icon: text('icon'),
   position: integer('position').notNull().default(0),
   isInbox: integer('is_inbox', { mode: 'boolean' }).notNull().default(false),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-  modifiedAt: text('modified_at').notNull().default(sql`(datetime('now'))`),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  modifiedAt: text('modified_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
   archivedAt: text('archived_at')
 })
 

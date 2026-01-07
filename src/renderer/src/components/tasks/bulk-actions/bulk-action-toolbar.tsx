@@ -1,20 +1,11 @@
-import {
-  Check,
-  Flag,
-  Calendar,
-  FolderOpen,
-  Columns3,
-  Archive,
-  Trash2,
-  X,
-} from "lucide-react"
+import { Check, Flag, Calendar, FolderOpen, Columns3, Archive, Trash2, X } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { SelectionCheckbox } from "./selection-checkbox"
-import { BulkActionButton } from "./bulk-action-button"
-import { BulkActionDropdown, type BulkActionOption } from "./bulk-action-dropdown"
-import { priorityConfig, type Priority } from "@/data/sample-tasks"
-import type { Project, Status } from "@/data/tasks-data"
+import { cn } from '@/lib/utils'
+import { SelectionCheckbox } from './selection-checkbox'
+import { BulkActionButton } from './bulk-action-button'
+import { BulkActionDropdown, type BulkActionOption } from './bulk-action-dropdown'
+import { priorityConfig, type Priority } from '@/data/sample-tasks'
+import type { Project, Status } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -61,42 +52,62 @@ interface BulkActionToolbarProps {
 
 const priorityOptions: BulkActionOption<Priority>[] = [
   {
-    value: "urgent",
-    label: "Urgent",
-    icon: <span className="size-2 rounded-full" style={{ backgroundColor: priorityConfig.urgent.color || undefined }} />,
-    color: priorityConfig.urgent.color || undefined,
+    value: 'urgent',
+    label: 'Urgent',
+    icon: (
+      <span
+        className="size-2 rounded-full"
+        style={{ backgroundColor: priorityConfig.urgent.color || undefined }}
+      />
+    ),
+    color: priorityConfig.urgent.color || undefined
   },
   {
-    value: "high",
-    label: "High",
-    icon: <span className="size-2 rounded-full" style={{ backgroundColor: priorityConfig.high.color || undefined }} />,
-    color: priorityConfig.high.color || undefined,
+    value: 'high',
+    label: 'High',
+    icon: (
+      <span
+        className="size-2 rounded-full"
+        style={{ backgroundColor: priorityConfig.high.color || undefined }}
+      />
+    ),
+    color: priorityConfig.high.color || undefined
   },
   {
-    value: "medium",
-    label: "Medium",
-    icon: <span className="size-2 rounded-full" style={{ backgroundColor: priorityConfig.medium.color || undefined }} />,
-    color: priorityConfig.medium.color || undefined,
+    value: 'medium',
+    label: 'Medium',
+    icon: (
+      <span
+        className="size-2 rounded-full"
+        style={{ backgroundColor: priorityConfig.medium.color || undefined }}
+      />
+    ),
+    color: priorityConfig.medium.color || undefined
   },
   {
-    value: "low",
-    label: "Low",
-    icon: <span className="size-2 rounded-full" style={{ backgroundColor: priorityConfig.low.color || undefined }} />,
-    color: priorityConfig.low.color || undefined,
+    value: 'low',
+    label: 'Low',
+    icon: (
+      <span
+        className="size-2 rounded-full"
+        style={{ backgroundColor: priorityConfig.low.color || undefined }}
+      />
+    ),
+    color: priorityConfig.low.color || undefined
   },
-  { value: "none", label: "None", isSeparator: false },
-  { value: "none", label: "Remove priority", isSeparator: false },
+  { value: 'none', label: 'None', isSeparator: false },
+  { value: 'none', label: 'Remove priority', isSeparator: false }
 ]
 
 const dueDateOptions: BulkActionOption<string>[] = [
-  { value: "today", label: "Today", icon: <Calendar className="size-4" /> },
-  { value: "tomorrow", label: "Tomorrow", icon: <Calendar className="size-4" /> },
-  { value: "next-week", label: "Next week", icon: <Calendar className="size-4" /> },
-  { value: "next-month", label: "Next month", icon: <Calendar className="size-4" /> },
-  { value: "separator", label: "", isSeparator: true },
-  { value: "pick-date", label: "Pick a date...", icon: <Calendar className="size-4" /> },
-  { value: "separator2", label: "", isSeparator: true },
-  { value: "remove", label: "Remove due date", icon: <X className="size-4" /> },
+  { value: 'today', label: 'Today', icon: <Calendar className="size-4" /> },
+  { value: 'tomorrow', label: 'Tomorrow', icon: <Calendar className="size-4" /> },
+  { value: 'next-week', label: 'Next week', icon: <Calendar className="size-4" /> },
+  { value: 'next-month', label: 'Next month', icon: <Calendar className="size-4" /> },
+  { value: 'separator', label: '', isSeparator: true },
+  { value: 'pick-date', label: 'Pick a date...', icon: <Calendar className="size-4" /> },
+  { value: 'separator2', label: '', isSeparator: true },
+  { value: 'remove', label: 'Remove due date', icon: <X className="size-4" /> }
 ]
 
 // ============================================================================
@@ -122,7 +133,7 @@ export const BulkActionToolbar = ({
   projects,
   statuses = [],
   showStatusAction = false,
-  className,
+  className
 }: BulkActionToolbarProps): React.JSX.Element => {
   // Build project options
   const projectOptions: BulkActionOption<string>[] = projects
@@ -130,31 +141,21 @@ export const BulkActionToolbar = ({
     .map((project) => ({
       value: project.id,
       label: project.name,
-      icon: (
-        <span
-          className="size-2 rounded-full"
-          style={{ backgroundColor: project.color }}
-        />
-      ),
+      icon: <span className="size-2 rounded-full" style={{ backgroundColor: project.color }} />
     }))
 
   // Build status options (for Kanban)
   const statusOptions: BulkActionOption<string>[] = statuses.map((status) => ({
     value: status.id,
     label: status.name,
-    icon: (
-      <span
-        className="size-2 rounded-full"
-        style={{ backgroundColor: status.color }}
-      />
-    ),
-    color: status.color,
+    icon: <span className="size-2 rounded-full" style={{ backgroundColor: status.color }} />,
+    color: status.color
   }))
 
   return (
     <div
       className={cn(
-        "flex items-center gap-4 border-b border-primary/20 bg-primary/5 px-4 py-3",
+        'flex items-center gap-4 border-b border-primary/20 bg-primary/5 px-4 py-3',
         className
       )}
       role="toolbar"
@@ -166,11 +167,9 @@ export const BulkActionToolbar = ({
           checked={allSelected}
           indeterminate={someSelected}
           onChange={onToggleSelectAll}
-          aria-label={allSelected ? "Deselect all" : "Select all"}
+          aria-label={allSelected ? 'Deselect all' : 'Select all'}
         />
-        <span className="font-medium text-primary">
-          {selectedCount} selected
-        </span>
+        <span className="font-medium text-primary">{selectedCount} selected</span>
       </div>
 
       {/* Divider */}
@@ -189,7 +188,7 @@ export const BulkActionToolbar = ({
         <BulkActionDropdown
           icon={<Flag className="size-4" />}
           label="Priority"
-          options={priorityOptions.filter((o) => !o.isSeparator || o.value !== "none")}
+          options={priorityOptions.filter((o) => !o.isSeparator || o.value !== 'none')}
           onSelect={onChangePriority}
           selectedCount={selectedCount}
         />
@@ -251,10 +250,10 @@ export const BulkActionToolbar = ({
         type="button"
         onClick={onCancel}
         className={cn(
-          "flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm",
-          "text-muted-foreground hover:text-foreground hover:bg-accent",
-          "transition-colors duration-150",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          'flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm',
+          'text-muted-foreground hover:text-foreground hover:bg-accent',
+          'transition-colors duration-150',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
         )}
         aria-label="Cancel selection"
       >
@@ -266,14 +265,3 @@ export const BulkActionToolbar = ({
 }
 
 export default BulkActionToolbar
-
-
-
-
-
-
-
-
-
-
-

@@ -1,10 +1,10 @@
-import { useState, useMemo } from "react"
-import { ChevronDown, Check } from "lucide-react"
+import { useState, useMemo } from 'react'
+import { ChevronDown, Check } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import type { Status, RepeatFilterType, HasTimeFilterType } from "@/data/tasks-data"
+import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
+import type { Status, RepeatFilterType, HasTimeFilterType } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -38,9 +38,9 @@ interface MoreFiltersDropdownProps {
 // ============================================================================
 
 const repeatOptions: { value: RepeatFilterType; label: string }[] = [
-  { value: "all", label: "All tasks" },
-  { value: "repeating", label: "Repeating only" },
-  { value: "one-time", label: "One-time only" },
+  { value: 'all', label: 'All tasks' },
+  { value: 'repeating', label: 'Repeating only' },
+  { value: 'one-time', label: 'One-time only' }
 ]
 
 // ============================================================================
@@ -48,9 +48,9 @@ const repeatOptions: { value: RepeatFilterType; label: string }[] = [
 // ============================================================================
 
 const timeOptions: { value: HasTimeFilterType; label: string }[] = [
-  { value: "all", label: "All tasks" },
-  { value: "with-time", label: "With time set" },
-  { value: "without-time", label: "Without time" },
+  { value: 'all', label: 'All tasks' },
+  { value: 'with-time', label: 'With time set' },
+  { value: 'without-time', label: 'Without time' }
 ]
 
 // ============================================================================
@@ -69,7 +69,7 @@ export const MoreFiltersDropdown = ({
   taskCountByStatus = {},
   taskCountByRepeat = { repeating: 0, oneTime: 0 },
   taskCountByTime = { withTime: 0, withoutTime: 0 },
-  className,
+  className
 }: MoreFiltersDropdownProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -77,8 +77,8 @@ export const MoreFiltersDropdown = ({
   const activeCount = useMemo(() => {
     let count = 0
     if (selectedStatusIds.length > 0) count++
-    if (repeatType !== "all") count++
-    if (hasTime !== "all") count++
+    if (repeatType !== 'all') count++
+    if (hasTime !== 'all') count++
     return count
   }, [selectedStatusIds, repeatType, hasTime])
 
@@ -93,8 +93,8 @@ export const MoreFiltersDropdown = ({
 
   const handleClear = (): void => {
     onStatusChange([])
-    onRepeatTypeChange("all")
-    onHasTimeChange("all")
+    onRepeatTypeChange('all')
+    onHasTimeChange('all')
   }
 
   const handleOpenChange = (open: boolean): void => {
@@ -107,11 +107,7 @@ export const MoreFiltersDropdown = ({
         <Button
           variant="outline"
           size="sm"
-          className={cn(
-            "h-9 gap-2",
-            hasSelection && "border-primary bg-primary/5",
-            className
-          )}
+          className={cn('h-9 gap-2', hasSelection && 'border-primary bg-primary/5', className)}
           aria-label="More filters"
         >
           <span>More</span>
@@ -142,9 +138,9 @@ export const MoreFiltersDropdown = ({
                     type="button"
                     onClick={() => handleToggleStatus(status.id)}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
-                      "hover:bg-accent focus:outline-none focus:bg-accent",
-                      isSelected && "font-medium"
+                      'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
+                      'hover:bg-accent focus:outline-none focus:bg-accent',
+                      isSelected && 'font-medium'
                     )}
                   >
                     <span className="flex items-center justify-center size-4">
@@ -172,8 +168,8 @@ export const MoreFiltersDropdown = ({
           {repeatOptions.map((option) => {
             const isSelected = repeatType === option.value
             let taskCount = 0
-            if (option.value === "repeating") taskCount = taskCountByRepeat.repeating
-            if (option.value === "one-time") taskCount = taskCountByRepeat.oneTime
+            if (option.value === 'repeating') taskCount = taskCountByRepeat.repeating
+            if (option.value === 'one-time') taskCount = taskCountByRepeat.oneTime
 
             return (
               <button
@@ -181,21 +177,21 @@ export const MoreFiltersDropdown = ({
                 type="button"
                 onClick={() => onRepeatTypeChange(option.value)}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
-                  "hover:bg-accent focus:outline-none focus:bg-accent",
-                  isSelected && "font-medium bg-accent"
+                  'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
+                  'hover:bg-accent focus:outline-none focus:bg-accent',
+                  isSelected && 'font-medium bg-accent'
                 )}
               >
                 <span className="flex items-center gap-2 flex-1">
                   <span
                     className={cn(
-                      "size-2 rounded-full",
-                      isSelected ? "bg-primary" : "bg-transparent"
+                      'size-2 rounded-full',
+                      isSelected ? 'bg-primary' : 'bg-transparent'
                     )}
                   />
                   <span>{option.label}</span>
                 </span>
-                {option.value !== "all" && (
+                {option.value !== 'all' && (
                   <span className="text-xs text-text-tertiary">{taskCount}</span>
                 )}
               </button>
@@ -211,8 +207,8 @@ export const MoreFiltersDropdown = ({
           {timeOptions.map((option) => {
             const isSelected = hasTime === option.value
             let taskCount = 0
-            if (option.value === "with-time") taskCount = taskCountByTime.withTime
-            if (option.value === "without-time") taskCount = taskCountByTime.withoutTime
+            if (option.value === 'with-time') taskCount = taskCountByTime.withTime
+            if (option.value === 'without-time') taskCount = taskCountByTime.withoutTime
 
             return (
               <button
@@ -220,21 +216,21 @@ export const MoreFiltersDropdown = ({
                 type="button"
                 onClick={() => onHasTimeChange(option.value)}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
-                  "hover:bg-accent focus:outline-none focus:bg-accent",
-                  isSelected && "font-medium bg-accent"
+                  'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
+                  'hover:bg-accent focus:outline-none focus:bg-accent',
+                  isSelected && 'font-medium bg-accent'
                 )}
               >
                 <span className="flex items-center gap-2 flex-1">
                   <span
                     className={cn(
-                      "size-2 rounded-full",
-                      isSelected ? "bg-primary" : "bg-transparent"
+                      'size-2 rounded-full',
+                      isSelected ? 'bg-primary' : 'bg-transparent'
                     )}
                   />
                   <span>{option.label}</span>
                 </span>
-                {option.value !== "all" && (
+                {option.value !== 'all' && (
                   <span className="text-xs text-text-tertiary">{taskCount}</span>
                 )}
               </button>

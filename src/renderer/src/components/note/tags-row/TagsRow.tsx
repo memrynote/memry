@@ -41,10 +41,7 @@ export function TagsRow({
     <div
       role="list"
       aria-label="Tags"
-      className={cn(
-        'relative flex min-h-8 flex-wrap items-center gap-2',
-        'mb-4'
-      )}
+      className={cn('relative flex min-h-8 flex-wrap items-center gap-2', 'mb-4')}
     >
       {/* Tag chips */}
       {tags.map((tag) => (
@@ -72,9 +69,7 @@ export function TagsRow({
       </div>
 
       {/* Empty state helper text */}
-      {tags.length === 0 && (
-        <span className="text-[13px] text-stone-400">Add tags</span>
-      )}
+      {tags.length === 0 && <span className="text-[13px] text-stone-400">Add tags</span>}
     </div>
   )
 }

@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react"
-import { toast } from "sonner"
+import { useState, useCallback } from 'react'
+import { toast } from 'sonner'
 
 import {
   createSubtask,
@@ -14,8 +14,8 @@ import {
   getSubtasks,
   hasIncompleteSubtasks,
   hasSubtasks,
-  type CreateSubtaskOptions,
-} from "@/lib/subtask-utils"
+  type CreateSubtaskOptions
+} from '@/lib/subtask-utils'
 import {
   checkAllSubtasksComplete,
   completeAllSubtasks,
@@ -23,11 +23,11 @@ import {
   setDueDateForAllSubtasks,
   setPriorityForAllSubtasks,
   deleteAllSubtasks,
-  completeParentTask,
-} from "@/lib/subtask-bulk-utils"
-import { useTaskSettings } from "./use-task-settings"
-import type { Task, Priority } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+  completeParentTask
+} from '@/lib/subtask-bulk-utils'
+import { useTaskSettings } from './use-task-settings'
+import type { Task, Priority } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -123,7 +123,7 @@ export const useSubtaskManagement = ({
   onAddTask,
   onUpdateTask,
   onDeleteTask,
-  onReorderTasks,
+  onReorderTasks
 }: UseSubtaskManagementOptions): UseSubtaskManagementReturn => {
   // Note: projects is available for future use (e.g., status handling)
   void _projects
@@ -138,7 +138,9 @@ export const useSubtaskManagement = ({
   // Complete parent dialog state
   const [completeParentDialogOpen, setCompleteParentDialogOpen] = useState(false)
   const [pendingCompleteParent, setPendingCompleteParent] = useState<Task | null>(null)
-  const [pendingCompleteIncompleteSubtasks, setPendingCompleteIncompleteSubtasks] = useState<Task[]>([])
+  const [pendingCompleteIncompleteSubtasks, setPendingCompleteIncompleteSubtasks] = useState<
+    Task[]
+  >([])
 
   // Parent picker dialog state
   const [parentPickerDialogOpen, setParentPickerDialogOpen] = useState(false)
@@ -163,7 +165,7 @@ export const useSubtaskManagement = ({
     (parentId: string, title: string): void => {
       const options: CreateSubtaskOptions = {
         parentId,
-        title,
+        title
       }
 
       const result = createSubtask(options, tasks)
@@ -175,9 +177,9 @@ export const useSubtaskManagement = ({
         } else {
           onTasksChange(result.updatedTasks)
         }
-        toast.success("Subtask added")
+        toast.success('Subtask added')
       } else {
-        toast.error(result.error || "Failed to add subtask")
+        toast.error(result.error || 'Failed to add subtask')
       }
     },
     [tasks, onTasksChange, onAddTask]
@@ -200,9 +202,9 @@ export const useSubtaskManagement = ({
         } else {
           onTasksChange(result.updatedTasks)
         }
-        toast.success(`${titles.length} subtask${titles.length > 1 ? "s" : ""} added`)
+        toast.success(`${titles.length} subtask${titles.length > 1 ? 's' : ''} added`)
       } else {
-        toast.error(result.error || "Failed to add subtasks")
+        toast.error(result.error || 'Failed to add subtasks')
       }
     },
     [tasks, onTasksChange, onAddTask]
@@ -227,7 +229,7 @@ export const useSubtaskManagement = ({
           onTasksChange(result.updatedTasks)
         }
       } else {
-        toast.error(result.error || "Failed to reorder subtasks")
+        toast.error(result.error || 'Failed to reorder subtasks')
       }
     },
     [tasks, onTasksChange, onReorderTasks]
@@ -251,7 +253,7 @@ export const useSubtaskManagement = ({
         }
         toast.success(`"${subtask?.title}" promoted to task`)
       } else {
-        toast.error(result.error || "Failed to promote subtask")
+        toast.error(result.error || 'Failed to promote subtask')
       }
     },
     [tasks, onTasksChange, onUpdateTask]
@@ -272,11 +274,11 @@ export const useSubtaskManagement = ({
         } else {
           onTasksChange(result.updatedTasks)
         }
-        toast.success("Subtask deleted", {
-          description: "The subtask has been removed",
+        toast.success('Subtask deleted', {
+          description: 'The subtask has been removed'
         })
       } else {
-        toast.error(result.error || "Failed to delete subtask")
+        toast.error(result.error || 'Failed to delete subtask')
       }
     },
     [tasks, onTasksChange, onDeleteTask]
@@ -302,21 +304,15 @@ export const useSubtaskManagement = ({
     (keepSubtasks: boolean): void => {
       if (!pendingDeleteParent) return
 
-      const result = deleteParentWithSubtasks(
-        pendingDeleteParent.id,
-        keepSubtasks,
-        tasks
-      )
+      const result = deleteParentWithSubtasks(pendingDeleteParent.id, keepSubtasks, tasks)
 
       if (result.success && result.updatedTasks) {
         onTasksChange(result.updatedTasks)
         toast.success(
-          keepSubtasks
-            ? "Task deleted, subtasks converted to tasks"
-            : "Task and subtasks deleted"
+          keepSubtasks ? 'Task deleted, subtasks converted to tasks' : 'Task and subtasks deleted'
         )
       } else {
-        toast.error(result.error || "Failed to delete task")
+        toast.error(result.error || 'Failed to delete task')
       }
 
       closeDeleteParentDialog()
@@ -348,21 +344,13 @@ export const useSubtaskManagement = ({
     (completeSubtasks: boolean): void => {
       if (!pendingCompleteParent) return
 
-      const result = completeParentWithSubtasks(
-        pendingCompleteParent.id,
-        completeSubtasks,
-        tasks
-      )
+      const result = completeParentWithSubtasks(pendingCompleteParent.id, completeSubtasks, tasks)
 
       if (result.success && result.updatedTasks) {
         onTasksChange(result.updatedTasks)
-        toast.success(
-          completeSubtasks
-            ? "Task and subtasks completed"
-            : "Task completed"
-        )
+        toast.success(completeSubtasks ? 'Task and subtasks completed' : 'Task completed')
       } else {
-        toast.error(result.error || "Failed to complete task")
+        toast.error(result.error || 'Failed to complete task')
       }
 
       closeCompleteParentDialog()
@@ -400,7 +388,7 @@ export const useSubtaskManagement = ({
         }
         toast.success(`Moved under "${parent?.title}"`)
       } else {
-        toast.error(result.error || "Failed to make subtask")
+        toast.error(result.error || 'Failed to make subtask')
       }
 
       closeParentPickerDialog()
@@ -432,7 +420,7 @@ export const useSubtaskManagement = ({
       // Simple delete for task without subtasks
       const updatedTasks = tasks.filter((t) => t.id !== taskId)
       onTasksChange(updatedTasks)
-      toast.success("Task deleted")
+      toast.success('Task deleted')
     },
     [tasks, onTasksChange, handleDeleteSubtask, openDeleteParentDialog]
   )
@@ -448,9 +436,7 @@ export const useSubtaskManagement = ({
 
       // If already completed, uncomplete
       if (task.completedAt !== null) {
-        const updatedTasks = tasks.map((t) =>
-          t.id === taskId ? { ...t, completedAt: null } : t
-        )
+        const updatedTasks = tasks.map((t) => (t.id === taskId ? { ...t, completedAt: null } : t))
         onTasksChange(updatedTasks)
         return
       }
@@ -466,7 +452,7 @@ export const useSubtaskManagement = ({
         t.id === taskId ? { ...t, completedAt: new Date() } : t
       )
       onTasksChange(updatedTasks)
-      toast.success("Task completed")
+      toast.success('Task completed')
     },
     [tasks, onTasksChange, openCompleteParentDialog]
   )
@@ -504,16 +490,12 @@ export const useSubtaskManagement = ({
       if (onUpdateTask) {
         onUpdateTask(subtaskId, { completedAt: now })
       } else {
-        const updatedTasks = tasks.map((t) =>
-          t.id === subtaskId ? { ...t, completedAt: now } : t
-        )
+        const updatedTasks = tasks.map((t) => (t.id === subtaskId ? { ...t, completedAt: now } : t))
         onTasksChange(updatedTasks)
       }
 
       // For auto-complete parent logic, we need to work with updated tasks
-      const updatedTasks = tasks.map((t) =>
-        t.id === subtaskId ? { ...t, completedAt: now } : t
-      )
+      const updatedTasks = tasks.map((t) => (t.id === subtaskId ? { ...t, completedAt: now } : t))
 
       // Check if all subtasks are now complete
       const allComplete = checkAllSubtasksComplete(parentId, updatedTasks)
@@ -528,21 +510,21 @@ export const useSubtaskManagement = ({
             // Use database-aware callback if available
             if (onUpdateTask) {
               onUpdateTask(parentId, { completedAt: new Date() })
-              toast.success("🎉 All subtasks complete! Task marked as done.", {
+              toast.success('🎉 All subtasks complete! Task marked as done.', {
                 duration: 10000, // T052: 10-second timeout for undo per spec
                 action: {
-                  label: "Undo",
+                  label: 'Undo',
                   onClick: () => {
                     onUpdateTask(parentId, { completedAt: null })
-                    toast.success("Task reopened")
-                  },
-                },
+                    toast.success('Task reopened')
+                  }
+                }
               })
             } else {
               const result = completeParentTask(parentId, updatedTasks)
               if (result.success && result.updatedTasks) {
                 onTasksChange(result.updatedTasks)
-                toast.success("🎉 All subtasks complete! Task marked as done.")
+                toast.success('🎉 All subtasks complete! Task marked as done.')
               }
             }
           }, 200) // Wait 0.2 seconds for celebration animation
@@ -569,7 +551,7 @@ export const useSubtaskManagement = ({
 
   const keepParentOpen = useCallback((): void => {
     closeAllSubtasksCompleteDialog()
-    toast.success("Task kept open")
+    toast.success('Task kept open')
   }, [closeAllSubtasksCompleteDialog])
 
   const autoCompleteParent = useCallback((): void => {
@@ -578,17 +560,23 @@ export const useSubtaskManagement = ({
     // Use database-aware callback if available
     if (onUpdateTask) {
       onUpdateTask(pendingAutoCompleteParent.id, { completedAt: new Date() })
-      toast.success("Task completed")
+      toast.success('Task completed')
     } else {
       const result = completeParentTask(pendingAutoCompleteParent.id, tasks)
       if (result.success && result.updatedTasks) {
         onTasksChange(result.updatedTasks)
-        toast.success("Task completed")
+        toast.success('Task completed')
       }
     }
 
     closeAllSubtasksCompleteDialog()
-  }, [pendingAutoCompleteParent, tasks, onTasksChange, onUpdateTask, closeAllSubtasksCompleteDialog])
+  }, [
+    pendingAutoCompleteParent,
+    tasks,
+    onTasksChange,
+    onUpdateTask,
+    closeAllSubtasksCompleteDialog
+  ])
 
   // ========================================================================
   // BULK COMPLETE ALL SUBTASKS
@@ -611,7 +599,7 @@ export const useSubtaskManagement = ({
         } else {
           onTasksChange(updatedTasks)
         }
-        toast.success(`${affectedCount} subtask${affectedCount !== 1 ? "s" : ""} completed`)
+        toast.success(`${affectedCount} subtask${affectedCount !== 1 ? 's' : ''} completed`)
 
         // Check if we should auto-complete parent (with delay for celebration)
         const allComplete = checkAllSubtasksComplete(parentId, updatedTasks)
@@ -620,18 +608,18 @@ export const useSubtaskManagement = ({
           setTimeout(() => {
             if (onUpdateTask) {
               onUpdateTask(parentId, { completedAt: new Date() })
-              toast.success("🎉 Task marked as done!")
+              toast.success('🎉 Task marked as done!')
             } else {
               const completeResult = completeParentTask(parentId, updatedTasks)
               if (completeResult.success && completeResult.updatedTasks) {
                 onTasksChange(completeResult.updatedTasks)
-                toast.success("🎉 Task marked as done!")
+                toast.success('🎉 Task marked as done!')
               }
             }
           }, 1500) // Wait 1.5 seconds for celebration animation
         }
       } else {
-        toast.error(result.error || "Failed to complete subtasks")
+        toast.error(result.error || 'Failed to complete subtasks')
       }
     },
     [tasks, onTasksChange, onUpdateTask, subtaskSettings.autoCompleteParent]
@@ -656,9 +644,9 @@ export const useSubtaskManagement = ({
         } else {
           onTasksChange(result.updatedTasks)
         }
-        toast.success(`${affectedCount} subtask${affectedCount !== 1 ? "s" : ""} marked incomplete`)
+        toast.success(`${affectedCount} subtask${affectedCount !== 1 ? 's' : ''} marked incomplete`)
       } else {
-        toast.error(result.error || "Failed to mark subtasks incomplete")
+        toast.error(result.error || 'Failed to mark subtasks incomplete')
       }
     },
     [tasks, onTasksChange, onUpdateTask]
@@ -702,11 +690,11 @@ export const useSubtaskManagement = ({
         onTasksChange(result.updatedTasks)
         toast.success(
           dueDate
-            ? `Due date set for ${result.affectedCount} subtask${result.affectedCount !== 1 ? "s" : ""}`
-            : `Due date cleared for ${result.affectedCount} subtask${result.affectedCount !== 1 ? "s" : ""}`
+            ? `Due date set for ${result.affectedCount} subtask${result.affectedCount !== 1 ? 's' : ''}`
+            : `Due date cleared for ${result.affectedCount} subtask${result.affectedCount !== 1 ? 's' : ''}`
         )
       } else {
-        toast.error(result.error || "Failed to set due date")
+        toast.error(result.error || 'Failed to set due date')
       }
 
       closeBulkDueDateDialog()
@@ -750,9 +738,11 @@ export const useSubtaskManagement = ({
 
       if (result.success && result.updatedTasks) {
         onTasksChange(result.updatedTasks)
-        toast.success(`Priority set for ${result.affectedCount} subtask${result.affectedCount !== 1 ? "s" : ""}`)
+        toast.success(
+          `Priority set for ${result.affectedCount} subtask${result.affectedCount !== 1 ? 's' : ''}`
+        )
       } else {
-        toast.error(result.error || "Failed to set priority")
+        toast.error(result.error || 'Failed to set priority')
       }
 
       closeBulkPriorityDialog()
@@ -790,9 +780,11 @@ export const useSubtaskManagement = ({
 
     if (result.success && result.updatedTasks) {
       onTasksChange(result.updatedTasks)
-      toast.success(`${result.affectedCount} subtask${result.affectedCount !== 1 ? "s" : ""} deleted`)
+      toast.success(
+        `${result.affectedCount} subtask${result.affectedCount !== 1 ? 's' : ''} deleted`
+      )
     } else {
-      toast.error(result.error || "Failed to delete subtasks")
+      toast.error(result.error || 'Failed to delete subtasks')
     }
 
     closeDeleteAllSubtasksDialog()
@@ -863,10 +855,8 @@ export const useSubtaskManagement = ({
     // Smart actions
     handleDeleteTask,
     handleCompleteTask,
-    handleCompleteSubtask,
+    handleCompleteSubtask
   }
 }
 
 export default useSubtaskManagement
-
-

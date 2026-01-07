@@ -1,7 +1,7 @@
-import { useState } from "react"
-import { CheckSquare, ChevronDown, ChevronRight, Loader2 } from "lucide-react"
+import { useState } from 'react'
+import { CheckSquare, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 import type { Task } from '@/services/tasks-service'
 
 // ============================================================================
@@ -32,22 +32,20 @@ const LinkedTaskItem = ({ task, onClick }: LinkedTaskItemProps): React.JSX.Eleme
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 w-full p-2 rounded-md text-left",
-        "hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors",
-        "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-        isCompleted && "opacity-60"
+        'flex items-center gap-2 w-full p-2 rounded-md text-left',
+        'hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors',
+        'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
+        isCompleted && 'opacity-60'
       )}
     >
       <CheckSquare
         className={cn(
-          "size-4 flex-shrink-0",
-          isCompleted ? "text-green-500" : "text-stone-400 dark:text-stone-500"
+          'size-4 flex-shrink-0',
+          isCompleted ? 'text-green-500' : 'text-stone-400 dark:text-stone-500'
         )}
         aria-hidden="true"
       />
-      <span
-        className={cn("text-sm truncate", isCompleted && "line-through text-muted-foreground")}
-      >
+      <span className={cn('text-sm truncate', isCompleted && 'line-through text-muted-foreground')}>
         {task.title}
       </span>
     </button>
@@ -62,14 +60,16 @@ export const LinkedTasksSection = ({
   tasks,
   isLoading = false,
   onTaskClick,
-  className,
+  className
 }: LinkedTasksSectionProps): React.JSX.Element | null => {
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   // Show loading state
   if (isLoading) {
     return (
-      <section className={cn("mt-6 pt-4 border-t border-stone-200 dark:border-stone-700", className)}>
+      <section
+        className={cn('mt-6 pt-4 border-t border-stone-200 dark:border-stone-700', className)}
+      >
         <div className="flex items-center gap-2">
           <Loader2 className="size-4 animate-spin text-stone-400" aria-hidden="true" />
           <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
@@ -94,7 +94,7 @@ export const LinkedTasksSection = ({
   }
 
   return (
-    <section className={cn("mt-6 pt-4 border-t border-stone-200 dark:border-stone-700", className)}>
+    <section className={cn('mt-6 pt-4 border-t border-stone-200 dark:border-stone-700', className)}>
       {/* Header */}
       <button
         type="button"

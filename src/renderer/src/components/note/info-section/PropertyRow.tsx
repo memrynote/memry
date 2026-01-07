@@ -29,7 +29,9 @@ export function PropertyRow({
   disabled,
   autoFocus = false
 }: PropertyRowProps) {
-  const [isEditing, setIsEditing] = useState(autoFocus && property.type !== 'checkbox' && property.type !== 'rating')
+  const [isEditing, setIsEditing] = useState(
+    autoFocus && property.type !== 'checkbox' && property.type !== 'rating'
+  )
   const [isHovered, setIsHovered] = useState(false)
 
   const config = PROPERTY_TYPE_CONFIG[property.type]
@@ -55,21 +57,11 @@ export function PropertyRow({
   const renderValue = () => {
     // Checkbox and rating are always interactive (no edit mode)
     if (property.type === 'checkbox') {
-      return (
-        <CheckboxEditor
-          value={Boolean(property.value)}
-          onChange={onValueChange}
-        />
-      )
+      return <CheckboxEditor value={Boolean(property.value)} onChange={onValueChange} />
     }
 
     if (property.type === 'rating') {
-      return (
-        <RatingEditor
-          value={Number(property.value) || 0}
-          onChange={onValueChange}
-        />
-      )
+      return <RatingEditor value={Number(property.value) || 0} onChange={onValueChange} />
     }
 
     // Other types show display value or editor
@@ -85,9 +77,7 @@ export function PropertyRow({
 
     // Empty state
     if (value === null || value === undefined || value === '') {
-      return (
-        <span className="text-[13px] text-stone-400">Empty</span>
-      )
+      return <span className="text-[13px] text-stone-400">Empty</span>
     }
 
     switch (property.type) {
@@ -100,9 +90,7 @@ export function PropertyRow({
 
       case 'url':
         return (
-          <span className="text-[13px] text-blue-600 truncate max-w-[200px]">
-            {String(value)}
-          </span>
+          <span className="text-[13px] text-blue-600 truncate max-w-[200px]">{String(value)}</span>
         )
 
       case 'multiSelect':
@@ -124,11 +112,7 @@ export function PropertyRow({
         )
 
       default:
-        return (
-          <span className="text-[13px] text-stone-900">
-            {String(value)}
-          </span>
-        )
+        return <span className="text-[13px] text-stone-900">{String(value)}</span>
     }
   }
 
@@ -218,11 +202,7 @@ export function PropertyRow({
 
       {/* Label */}
       <span
-        className={cn(
-          'w-24 flex-shrink-0',
-          'text-[13px] text-stone-500',
-          'truncate'
-        )}
+        className={cn('w-24 flex-shrink-0', 'text-[13px] text-stone-500', 'truncate')}
         title={property.name}
       >
         {property.name}
@@ -234,9 +214,9 @@ export function PropertyRow({
         className={cn(
           'flex-1 min-w-0',
           !isEditing &&
-          property.type !== 'checkbox' &&
-          property.type !== 'rating' &&
-          'cursor-pointer rounded px-1 -mx-1 hover:bg-stone-100'
+            property.type !== 'checkbox' &&
+            property.type !== 'rating' &&
+            'cursor-pointer rounded px-1 -mx-1 hover:bg-stone-100'
         )}
       >
         {renderValue()}

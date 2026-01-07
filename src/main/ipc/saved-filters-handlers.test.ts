@@ -46,7 +46,10 @@ vi.mock('@shared/db/queries/settings', () => ({
   reorderSavedFilters: vi.fn()
 }))
 
-import { registerSavedFiltersHandlers, unregisterSavedFiltersHandlers } from './saved-filters-handlers'
+import {
+  registerSavedFiltersHandlers,
+  unregisterSavedFiltersHandlers
+} from './saved-filters-handlers'
 import { getDatabase } from '../database'
 import * as settingsQueries from '@shared/db/queries/settings'
 
@@ -57,7 +60,6 @@ describe('saved-filters-handlers', () => {
     handleCalls.length = 0
     removeHandlerCalls.length = 0
     mockSend.mockClear()
-
     ;(getDatabase as Mock).mockReturnValue({})
   })
 
@@ -67,9 +69,14 @@ describe('saved-filters-handlers', () => {
 
   it('lists saved filters', async () => {
     registerSavedFiltersHandlers()
-
     ;(settingsQueries.listSavedFilters as Mock).mockReturnValue([
-      { id: 'sf-1', name: 'Today', config: { filters: {}, sort: undefined }, position: 0, createdAt: 'now' }
+      {
+        id: 'sf-1',
+        name: 'Today',
+        config: { filters: {}, sort: undefined },
+        position: 0,
+        createdAt: 'now'
+      }
     ])
 
     const result = await invokeHandler(SavedFiltersChannels.invoke.LIST)
@@ -79,7 +86,6 @@ describe('saved-filters-handlers', () => {
 
   it('creates, updates, deletes, and reorders saved filters', async () => {
     registerSavedFiltersHandlers()
-
     ;(settingsQueries.getNextSavedFilterPosition as Mock).mockReturnValue(1)
     ;(settingsQueries.insertSavedFilter as Mock).mockReturnValue({
       id: 'sf-2',
@@ -135,7 +141,6 @@ describe('saved-filters-handlers', () => {
 
   it('returns errors for missing saved filters', async () => {
     registerSavedFiltersHandlers()
-
     ;(settingsQueries.savedFilterExists as Mock).mockReturnValue(false)
 
     const updateResult = await invokeHandler(SavedFiltersChannels.invoke.UPDATE, {

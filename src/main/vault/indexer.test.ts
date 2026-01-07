@@ -26,12 +26,14 @@ const progressCalls: number[] = []
 
 // Mock the vault/index module
 vi.mock('./index', () => ({
-  getConfig: vi.fn((): VaultConfig => ({
-    excludePatterns: ['.git', 'node_modules', '.trash'],
-    defaultNoteFolder: 'notes',
-    journalFolder: 'journal',
-    attachmentsFolder: 'attachments'
-  })),
+  getConfig: vi.fn(
+    (): VaultConfig => ({
+      excludePatterns: ['.git', 'node_modules', '.trash'],
+      defaultNoteFolder: 'notes',
+      journalFolder: 'journal',
+      attachmentsFolder: 'attachments'
+    })
+  ),
   emitIndexProgress: vi.fn((progress: number) => {
     progressCalls.push(progress)
   })

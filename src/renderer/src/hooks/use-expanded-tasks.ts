@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect } from 'react'
 
-import type { Task } from "@/data/sample-tasks"
-import { hasSubtasks } from "@/lib/subtask-utils"
+import type { Task } from '@/data/sample-tasks'
+import { hasSubtasks } from '@/lib/subtask-utils'
 
 // ============================================================================
 // TYPES
@@ -35,7 +35,7 @@ interface UseExpandedTasksReturn {
 // STORAGE HELPERS
 // ============================================================================
 
-const STORAGE_PREFIX = "expandedTasks"
+const STORAGE_PREFIX = 'expandedTasks'
 
 const getStorageKey = (key: string): string => {
   return `${STORAGE_PREFIX}-${key}`
@@ -58,10 +58,7 @@ const loadFromStorage = (key: string): Set<string> => {
 
 const saveToStorage = (key: string, expandedIds: Set<string>): void => {
   try {
-    localStorage.setItem(
-      getStorageKey(key),
-      JSON.stringify(Array.from(expandedIds))
-    )
+    localStorage.setItem(getStorageKey(key), JSON.stringify(Array.from(expandedIds)))
   } catch (err) {
     // Ignore storage errors
   }
@@ -71,10 +68,8 @@ const saveToStorage = (key: string, expandedIds: Set<string>): void => {
 // USE EXPANDED TASKS HOOK
 // ============================================================================
 
-export const useExpandedTasks = (
-  options: UseExpandedTasksOptions = {}
-): UseExpandedTasksReturn => {
-  const { storageKey = "default", persist = true } = options
+export const useExpandedTasks = (options: UseExpandedTasksOptions = {}): UseExpandedTasksReturn => {
+  const { storageKey = 'default', persist = true } = options
 
   // Initialize from localStorage if persisting
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
@@ -136,9 +131,7 @@ export const useExpandedTasks = (
   }, [])
 
   const expandAll = useCallback((tasks: Task[]): void => {
-    const parentIds = tasks
-      .filter((t) => hasSubtasks(t))
-      .map((t) => t.id)
+    const parentIds = tasks.filter((t) => hasSubtasks(t)).map((t) => t.id)
     setExpandedIds(new Set(parentIds))
   }, [])
 
@@ -153,16 +146,8 @@ export const useExpandedTasks = (
     expand,
     collapse,
     expandAll,
-    collapseAll,
+    collapseAll
   }
 }
 
 export default useExpandedTasks
-
-
-
-
-
-
-
-

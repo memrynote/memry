@@ -76,9 +76,7 @@ export function WikiLinkMenu({
               {item.type === 'create' ? (
                 <>
                   <div className="font-medium">Create new note</div>
-                  <div className="text-xs text-muted-foreground">
-                    {item.target}
-                  </div>
+                  <div className="text-xs text-muted-foreground">{item.target}</div>
                 </>
               ) : (
                 <>

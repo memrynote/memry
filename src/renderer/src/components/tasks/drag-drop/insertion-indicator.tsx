@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 
 interface InsertionIndicatorProps {
   /** Position of the indicator relative to the item */
-  position: "before" | "after"
+  position: 'before' | 'after'
   /** Additional class names */
   className?: string
 }
@@ -21,24 +21,19 @@ interface InsertionIndicatorProps {
  */
 export const InsertionIndicator = ({
   position,
-  className,
+  className
 }: InsertionIndicatorProps): React.JSX.Element => {
   return (
     <div
       className={cn(
-        "absolute left-0 right-0 h-0.5 bg-primary pointer-events-none z-20",
-        position === "before" ? "-top-0.5" : "-bottom-0.5",
+        'absolute left-0 right-0 h-0.5 bg-primary pointer-events-none z-20',
+        position === 'before' ? '-top-0.5' : '-bottom-0.5',
         className
       )}
       aria-hidden="true"
     >
       {/* Circle at the start of the line */}
-      <div
-        className={cn(
-          "absolute -left-1 w-2 h-2 bg-primary rounded-full",
-          "-top-[3px]"
-        )}
-      />
+      <div className={cn('absolute -left-1 w-2 h-2 bg-primary rounded-full', '-top-[3px]')} />
     </div>
   )
 }
@@ -59,15 +54,15 @@ interface DropLineIndicatorProps {
  */
 export const DropLineIndicator = ({
   isVisible,
-  className,
+  className
 }: DropLineIndicatorProps): React.JSX.Element => {
   if (!isVisible) return <></>
 
   return (
     <div
       className={cn(
-        "h-0.5 bg-primary rounded-full mx-2 my-1 transition-opacity",
-        isVisible ? "opacity-100" : "opacity-0",
+        'h-0.5 bg-primary rounded-full mx-2 my-1 transition-opacity',
+        isVisible ? 'opacity-100' : 'opacity-0',
         className
       )}
       aria-hidden="true"
@@ -90,16 +85,16 @@ interface ColumnDropIndicatorProps {
  * A visual indicator for dropping into a Kanban column
  */
 export const ColumnDropIndicator = ({
-  label = "Drop here",
-  className,
+  label = 'Drop here',
+  className
 }: ColumnDropIndicatorProps): React.JSX.Element => {
   return (
     <div
       className={cn(
-        "flex items-center justify-center",
-        "m-2 p-4 border-2 border-dashed border-primary/50 rounded-lg",
-        "bg-primary/5 text-primary text-sm font-medium",
-        "transition-all duration-200",
+        'flex items-center justify-center',
+        'm-2 p-4 border-2 border-dashed border-primary/50 rounded-lg',
+        'bg-primary/5 text-primary text-sm font-medium',
+        'transition-all duration-200',
         className
       )}
     >
@@ -124,14 +119,14 @@ interface DateDropIndicatorProps {
  */
 export const DateDropIndicator = ({
   dateLabel,
-  className,
+  className
 }: DateDropIndicatorProps): React.JSX.Element => {
   return (
     <div
       className={cn(
-        "absolute inset-0 flex items-center justify-center",
-        "bg-primary/10 border-2 border-primary rounded-md",
-        "pointer-events-none z-10",
+        'absolute inset-0 flex items-center justify-center',
+        'bg-primary/10 border-2 border-primary rounded-md',
+        'pointer-events-none z-10',
         className
       )}
     >
@@ -157,15 +152,15 @@ interface InvalidDropIndicatorProps {
  * An indicator showing an invalid drop target
  */
 export const InvalidDropIndicator = ({
-  message = "Cannot drop here",
-  className,
+  message = 'Cannot drop here',
+  className
 }: InvalidDropIndicatorProps): React.JSX.Element => {
   return (
     <div
       className={cn(
-        "absolute inset-0 flex flex-col items-center justify-center gap-1",
-        "bg-destructive/10 border-2 border-destructive/50 rounded-md",
-        "pointer-events-none z-10",
+        'absolute inset-0 flex flex-col items-center justify-center gap-1',
+        'bg-destructive/10 border-2 border-destructive/50 rounded-md',
+        'pointer-events-none z-10',
         className
       )}
     >
@@ -176,14 +171,3 @@ export const InvalidDropIndicator = ({
 }
 
 export default InsertionIndicator
-
-
-
-
-
-
-
-
-
-
-

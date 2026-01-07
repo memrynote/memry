@@ -37,9 +37,7 @@ test.describe('Tasks Management', () => {
   })
 
   test.describe('Task Creation', () => {
-    test('T539: should create a task via quick-add input', async ({
-      page
-    }) => {
+    test('T539: should create a task via quick-add input', async ({ page }) => {
       const taskTitle = `Test Task ${Date.now()}`
 
       // Find and use the add task button/input
@@ -62,9 +60,7 @@ test.describe('Tasks Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T539: should parse quick-add date syntax (!tomorrow)', async ({
-      page
-    }) => {
+    test('T539: should parse quick-add date syntax (!tomorrow)', async ({ page }) => {
       // Test quick-add with date shortcut
       const addButton = page.locator(SELECTORS.addTaskButton)
       const hasAddButton = await addButton.isVisible().catch(() => false)
@@ -89,9 +85,7 @@ test.describe('Tasks Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T539: should parse quick-add priority syntax (!!high)', async ({
-      page
-    }) => {
+    test('T539: should parse quick-add priority syntax (!!high)', async ({ page }) => {
       const addButton = page.locator(SELECTORS.addTaskButton)
       const hasAddButton = await addButton.isVisible().catch(() => false)
 
@@ -111,9 +105,7 @@ test.describe('Tasks Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T539: should parse quick-add project syntax (#project)', async ({
-      page
-    }) => {
+    test('T539: should parse quick-add project syntax (#project)', async ({ page }) => {
       const addButton = page.locator(SELECTORS.addTaskButton)
       const hasAddButton = await addButton.isVisible().catch(() => false)
 
@@ -133,9 +125,7 @@ test.describe('Tasks Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T539: should parse combined quick-add syntax', async ({
-      page
-    }) => {
+    test('T539: should parse combined quick-add syntax', async ({ page }) => {
       // Test: "Buy groceries !today !!high #personal +shopping"
       const addButton = page.locator(SELECTORS.addTaskButton)
       const hasAddButton = await addButton.isVisible().catch(() => false)
@@ -158,9 +148,7 @@ test.describe('Tasks Management', () => {
   })
 
   test.describe('Task Completion', () => {
-    test('T540: should complete a task by clicking checkbox', async ({
-      page
-    }) => {
+    test('T540: should complete a task by clicking checkbox', async ({ page }) => {
       // First create a task
       await createTask(page, `Complete Test ${Date.now()}`)
       await page.waitForTimeout(500)
@@ -205,9 +193,7 @@ test.describe('Tasks Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T540: should move completed task to completed section', async ({
-      page
-    }) => {
+    test('T540: should move completed task to completed section', async ({ page }) => {
       await createTask(page, `Move to Completed ${Date.now()}`)
       await page.waitForTimeout(500)
 
@@ -248,9 +234,7 @@ test.describe('Tasks Management', () => {
   })
 
   test.describe('Task Drag and Drop', () => {
-    test('T541: should drag task between kanban columns', async ({
-      page
-    }) => {
+    test('T541: should drag task between kanban columns', async ({ page }) => {
       // Switch to kanban view if available
       const kanbanToggle = page.locator('[data-testid="kanban-view-toggle"]')
       const hasKanban = await kanbanToggle.isVisible().catch(() => false)
@@ -285,9 +269,7 @@ test.describe('Tasks Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T541: should reorder tasks within same column', async ({
-      page
-    }) => {
+    test('T541: should reorder tasks within same column', async ({ page }) => {
       // Create multiple tasks and reorder them
       await createTask(page, 'Task 1')
       await createTask(page, 'Task 2')
@@ -337,9 +319,7 @@ test.describe('Tasks Management', () => {
   })
 
   test.describe('Subtask Management', () => {
-    test('T542: should create a subtask under parent task', async ({
-      page
-    }) => {
+    test('T542: should create a subtask under parent task', async ({ page }) => {
       // Create parent task
       await createTask(page, 'Parent Task')
       await page.waitForTimeout(500)
@@ -368,9 +348,7 @@ test.describe('Tasks Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T542: should display subtask progress indicator', async ({
-      page: _page
-    }) => {
+    test('T542: should display subtask progress indicator', async ({ page: _page }) => {
       // Create task with subtasks and verify progress display
       expect(true).toBe(true)
     })
@@ -449,9 +427,7 @@ test.describe('Tasks Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T543: should show repeat indicator on recurring tasks', async ({
-      page: _page
-    }) => {
+    test('T543: should show repeat indicator on recurring tasks', async ({ page: _page }) => {
       // Verify repeat icon/indicator is visible
       // const repeatIndicator = page.locator('[data-testid="repeat-indicator"]')
       // Check visibility if tasks exist

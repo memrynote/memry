@@ -99,7 +99,10 @@ describe('vault-handlers', () => {
     })
 
     it('should select vault without path (shows folder picker)', async () => {
-      const mockResult = { success: true, vault: { path: '/selected/vault', name: 'Selected Vault' } }
+      const mockResult = {
+        success: true,
+        vault: { path: '/selected/vault', name: 'Selected Vault' }
+      }
       ;(vault.selectVault as Mock).mockResolvedValue(mockResult)
 
       const result = await invokeHandler(VaultChannels.invoke.SELECT, {})

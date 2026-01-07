@@ -90,7 +90,16 @@ export function TagInputPopup({
         }
       }
     },
-    [onClose, searchQuery, exactMatchExists, newTagColor, onCreateTag, filteredTags, currentTagIds, onAddTag]
+    [
+      onClose,
+      searchQuery,
+      exactMatchExists,
+      newTagColor,
+      onCreateTag,
+      filteredTags,
+      currentTagIds,
+      onAddTag
+    ]
   )
 
   const handleTagClick = useCallback(
@@ -144,9 +153,7 @@ export function TagInputPopup({
           {/* Recent tags */}
           {filteredRecentTags.length > 0 && !searchQuery && (
             <div className="mb-3">
-              <div className="mb-1.5 px-1 text-xs font-medium uppercase text-stone-400">
-                Recent
-              </div>
+              <div className="mb-1.5 px-1 text-xs font-medium uppercase text-stone-400">Recent</div>
               <div className="flex flex-wrap gap-1.5">
                 {filteredRecentTags.slice(0, 8).map((tag) => (
                   <TagOption
@@ -181,9 +188,7 @@ export function TagInputPopup({
 
           {/* Empty state */}
           {filteredTags.length === 0 && searchQuery && (
-            <div className="py-4 text-center text-sm text-stone-400">
-              No tags found
-            </div>
+            <div className="py-4 text-center text-sm text-stone-400">No tags found</div>
           )}
         </div>
       </ScrollArea>

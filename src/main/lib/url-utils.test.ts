@@ -46,9 +46,7 @@ describe('url-utils', () => {
     it('detects common social platforms', () => {
       expect(detectSocialPlatform('https://twitter.com/user/status/123')).toBe('twitter')
       expect(detectSocialPlatform('https://x.com/user/status/123')).toBe('twitter')
-      expect(detectSocialPlatform('https://www.linkedin.com/feed/update/123')).toBe(
-        'linkedin'
-      )
+      expect(detectSocialPlatform('https://www.linkedin.com/feed/update/123')).toBe('linkedin')
       expect(detectSocialPlatform('https://threads.net/@user/post/123')).toBe('threads')
       expect(detectSocialPlatform('https://bsky.app/profile/user/post/123')).toBe('bluesky')
       expect(detectSocialPlatform('https://mastodon.social/@user/123')).toBe('mastodon')

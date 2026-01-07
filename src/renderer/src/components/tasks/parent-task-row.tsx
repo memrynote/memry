@@ -1,19 +1,19 @@
-import { cn } from "@/lib/utils"
-import { formatDueDate } from "@/lib/task-utils"
-import { hasSubtasks, type SubtaskProgress } from "@/lib/subtask-utils"
+import { cn } from '@/lib/utils'
+import { formatDueDate } from '@/lib/task-utils'
+import { hasSubtasks, type SubtaskProgress } from '@/lib/subtask-utils'
 import {
   TaskCheckbox,
   ProjectBadge,
   PriorityBadge,
-  DueDateBadge,
-} from "@/components/tasks/task-badges"
-import { RepeatIndicator } from "@/components/tasks/repeat-indicator"
+  DueDateBadge
+} from '@/components/tasks/task-badges'
+import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 
-import { ExpandChevron } from "@/components/tasks/expand-chevron"
-import { SubtaskBadge } from "@/components/tasks/subtask-badge"
-import { SubtaskRow } from "@/components/tasks/subtask-row"
-import type { Task } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+import { ExpandChevron } from '@/components/tasks/expand-chevron'
+import { SubtaskBadge } from '@/components/tasks/subtask-badge'
+import { SubtaskRow } from '@/components/tasks/subtask-row'
+import type { Task } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -52,31 +52,31 @@ export const ParentTaskRow = ({
   onToggleComplete,
   onToggleSubtaskComplete,
   onClick,
-  className,
+  className
 }: ParentTaskRowProps): React.JSX.Element => {
   const taskHasSubtasks = hasSubtasks(task)
 
   // Check if overdue
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
-  const isOverdue = formattedDate?.status === "overdue" && !isCompleted
+  const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
 
   const handleRowClick = (): void => {
     onClick?.(task.id)
   }
 
   const handleRowKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === "Enter" && onClick) {
+    if (e.key === 'Enter' && onClick) {
       e.preventDefault()
       onClick(task.id)
     }
 
     // Keyboard navigation for expand/collapse
     if (taskHasSubtasks) {
-      if (e.key === "ArrowRight" && !isExpanded) {
+      if (e.key === 'ArrowRight' && !isExpanded) {
         e.preventDefault()
         onToggleExpand(task.id)
       }
-      if (e.key === "ArrowLeft" && isExpanded) {
+      if (e.key === 'ArrowLeft' && isExpanded) {
         e.preventDefault()
         onToggleExpand(task.id)
       }
@@ -94,7 +94,7 @@ export const ParentTaskRow = ({
   }
 
   return (
-    <div className={cn("group", className)}>
+    <div className={cn('group', className)}>
       {/* Parent task row */}
       <div
         role="button"
@@ -102,19 +102,17 @@ export const ParentTaskRow = ({
         onClick={handleRowClick}
         onKeyDown={onClick ? handleRowKeyDown : undefined}
         className={cn(
-          "flex items-center gap-2 rounded-md px-2 py-2.5 transition-colors duration-150",
-          "hover:bg-accent/50",
-          onClick && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          isOverdue && "border-l-2 border-l-destructive",
-          isSelected && "bg-primary/10 ring-2 ring-primary/30"
+          'flex items-center gap-2 rounded-md px-2 py-2.5 transition-colors duration-150',
+          'hover:bg-accent/50',
+          onClick &&
+            'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          isOverdue && 'border-l-2 border-l-destructive',
+          isSelected && 'bg-primary/10 ring-2 ring-primary/30'
         )}
-        aria-label={`Task: ${task.title}${isCompleted ? ", completed" : ""}${taskHasSubtasks ? `, ${subtasks.length} subtasks` : ""}`}
+        aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}${taskHasSubtasks ? `, ${subtasks.length} subtasks` : ''}`}
       >
         {/* Task checkbox */}
-        <TaskCheckbox
-          checked={isCompleted}
-          onChange={handleToggleComplete}
-        />
+        <TaskCheckbox checked={isCompleted} onChange={handleToggleComplete} />
 
         {/* Expand/collapse chevron - after checkbox for alignment */}
         <ExpandChevron
@@ -129,8 +127,8 @@ export const ParentTaskRow = ({
           <div className="flex items-center gap-2">
             <span
               className={cn(
-                "truncate text-sm",
-                isCompleted && "line-through text-muted-foreground"
+                'truncate text-sm',
+                isCompleted && 'line-through text-muted-foreground'
               )}
             >
               {task.title}
@@ -149,31 +147,22 @@ export const ParentTaskRow = ({
               />
             )}
           </div>
-
-
         </div>
 
         {/* Right side badges container */}
         <div className="flex items-center gap-3 shrink-0">
           {/* Project Badge (conditional) */}
-          {showProjectBadge && (
-            <ProjectBadge project={project} />
-          )}
+          {showProjectBadge && <ProjectBadge project={project} />}
 
           {/* Priority Badge (hidden when completed) */}
-          {!isCompleted && (
-            <PriorityBadge priority={task.priority} />
-          )}
+          {!isCompleted && <PriorityBadge priority={task.priority} />}
 
           {/* Due Date Badge */}
           <DueDateBadge
             dueDate={task.dueDate}
             dueTime={task.dueTime}
             isRepeating={task.isRepeating}
-            className={cn(
-              "min-w-[80px] text-right",
-              isCompleted && "opacity-60"
-            )}
+            className={cn('min-w-[80px] text-right', isCompleted && 'opacity-60')}
           />
         </div>
       </div>

@@ -58,7 +58,7 @@ describe('Natural Date Parser', () => {
 
   describe('parseNaturalDate - Relative Terms (T032)', () => {
     describe('"today"', () => {
-      it('should return today\'s date', () => {
+      it("should return today's date", () => {
         const result = parseNaturalDate('today')
         expect(isSuccess(result)).toBe(true)
         if (isSuccess(result)) {
@@ -93,7 +93,7 @@ describe('Natural Date Parser', () => {
     })
 
     describe('"tomorrow"', () => {
-      it('should return tomorrow\'s date', () => {
+      it("should return tomorrow's date", () => {
         const result = parseNaturalDate('tomorrow')
         expect(isSuccess(result)).toBe(true)
         if (isSuccess(result)) {
@@ -120,7 +120,7 @@ describe('Natural Date Parser', () => {
     })
 
     describe('"yesterday"', () => {
-      it('should return yesterday\'s date', () => {
+      it("should return yesterday's date", () => {
         const result = parseNaturalDate('yesterday')
         expect(isSuccess(result)).toBe(true)
         if (isSuccess(result)) {

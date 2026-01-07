@@ -3,176 +3,167 @@
  * Sidebar item component with tab integration
  */
 
-import { useMemo, useCallback } from 'react';
-import type { SidebarItem } from '@/contexts/tabs/types';
-import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation';
-import { SidebarItemContextMenu } from './sidebar-item-context-menu';
-import { TabIcon } from '@/components/tabs/tab-icon';
-import { cn } from '@/lib/utils';
+import { useMemo, useCallback } from 'react'
+import type { SidebarItem } from '@/contexts/tabs/types'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import { SidebarItemContextMenu } from './sidebar-item-context-menu'
+import { TabIcon } from '@/components/tabs/tab-icon'
+import { cn } from '@/lib/utils'
 
 interface SidebarNavItemProps {
-    /** Sidebar item data */
-    item: SidebarItem;
-    /** Nesting depth for indentation */
-    depth?: number;
-    /** Whether this item is currently selected (keyboard nav) */
-    isSelected?: boolean;
-    /** Optional callback for edit action */
-    onEdit?: () => void;
-    /** Optional callback for delete action */
-    onDelete?: () => void;
-    /** Additional CSS classes */
-    className?: string;
+  /** Sidebar item data */
+  item: SidebarItem
+  /** Nesting depth for indentation */
+  depth?: number
+  /** Whether this item is currently selected (keyboard nav) */
+  isSelected?: boolean
+  /** Optional callback for edit action */
+  onEdit?: () => void
+  /** Optional callback for delete action */
+  onDelete?: () => void
+  /** Additional CSS classes */
+  className?: string
 }
 
 /**
  * Sidebar navigation item with click handlers and context menu
  */
 export const SidebarNavItem = ({
-    item,
-    depth = 0,
-    isSelected = false,
-    onEdit,
-    onDelete,
-    className,
+  item,
+  depth = 0,
+  isSelected = false,
+  onEdit,
+  onDelete,
+  className
 }: SidebarNavItemProps): React.JSX.Element => {
-    const { openSidebarItem, isOpenInTab, isActiveItem, settings } = useSidebarNavigation();
+  const { openSidebarItem, isOpenInTab, isActiveItem, settings } = useSidebarNavigation()
 
-    // Check if this item is open in any tab
-    const isOpenTab = useMemo(() => isOpenInTab(item), [isOpenInTab, item]);
+  // Check if this item is open in any tab
+  const isOpenTab = useMemo(() => isOpenInTab(item), [isOpenInTab, item])
 
-    // Check if this item is the active tab
-    const isActive = useMemo(() => isActiveItem(item), [isActiveItem, item]);
+  // Check if this item is the active tab
+  const isActive = useMemo(() => isActiveItem(item), [isActiveItem, item])
 
-    // Handle single click
-    const handleClick = useCallback(
-        (e: React.MouseEvent): void => {
-            e.preventDefault();
+  // Handle single click
+  const handleClick = useCallback(
+    (e: React.MouseEvent): void => {
+      e.preventDefault()
 
-            // Check for modifier keys
-            const inNewTab = e.metaKey || e.ctrlKey;
-            const inBackground = e.shiftKey && inNewTab;
+      // Check for modifier keys
+      const inNewTab = e.metaKey || e.ctrlKey
+      const inBackground = e.shiftKey && inNewTab
 
-            // Single click with preview mode = preview tab (unless modifier)
-            const isPreview = settings.previewMode && !inNewTab;
+      // Single click with preview mode = preview tab (unless modifier)
+      const isPreview = settings.previewMode && !inNewTab
 
-            openSidebarItem(item, { inNewTab, inBackground, isPreview });
-        },
-        [openSidebarItem, item, settings.previewMode]
-    );
+      openSidebarItem(item, { inNewTab, inBackground, isPreview })
+    },
+    [openSidebarItem, item, settings.previewMode]
+  )
 
-    // Handle middle click
-    const handleMouseDown = useCallback(
-        (e: React.MouseEvent): void => {
-            if (e.button === 1) {
-                // Middle click
-                e.preventDefault();
-                openSidebarItem(item, { inNewTab: true, inBackground: true });
-            }
-        },
-        [openSidebarItem, item]
-    );
+  // Handle middle click
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent): void => {
+      if (e.button === 1) {
+        // Middle click
+        e.preventDefault()
+        openSidebarItem(item, { inNewTab: true, inBackground: true })
+      }
+    },
+    [openSidebarItem, item]
+  )
 
-    // Handle double click - always permanent tab
-    const handleDoubleClick = useCallback(
-        (e: React.MouseEvent): void => {
-            e.preventDefault();
-            openSidebarItem(item, { isPreview: false });
-        },
-        [openSidebarItem, item]
-    );
+  // Handle double click - always permanent tab
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent): void => {
+      e.preventDefault()
+      openSidebarItem(item, { isPreview: false })
+    },
+    [openSidebarItem, item]
+  )
 
-    return (
-        <SidebarItemContextMenu item={item} onEdit={onEdit} onDelete={onDelete}>
-            <button
-                type="button"
-                onClick={handleClick}
-                onMouseDown={handleMouseDown}
-                onDoubleClick={handleDoubleClick}
-                className={cn(
-                    // Base styles
-                    'group relative w-full flex items-center gap-2 py-1.5 rounded-md text-sm',
-                    'transition-colors duration-100 cursor-pointer',
-                    'outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1',
+  return (
+    <SidebarItemContextMenu item={item} onEdit={onEdit} onDelete={onDelete}>
+      <button
+        type="button"
+        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onDoubleClick={handleDoubleClick}
+        className={cn(
+          // Base styles
+          'group relative w-full flex items-center gap-2 py-1.5 rounded-md text-sm',
+          'transition-colors duration-100 cursor-pointer',
+          'outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1',
 
-                    // Hover state
-                    'hover:bg-gray-100 dark:hover:bg-gray-800',
+          // Hover state
+          'hover:bg-gray-100 dark:hover:bg-gray-800',
 
-                    // Active state (current tab)
-                    isActive && [
-                        'bg-blue-50 dark:bg-blue-900/20',
-                        'text-blue-700 dark:text-blue-300',
-                        'font-medium',
-                    ],
+          // Active state (current tab)
+          isActive && [
+            'bg-blue-50 dark:bg-blue-900/20',
+            'text-blue-700 dark:text-blue-300',
+            'font-medium'
+          ],
 
-                    // Selected state (keyboard nav)
-                    isSelected && !isActive && 'bg-gray-100 dark:bg-gray-800',
+          // Selected state (keyboard nav)
+          isSelected && !isActive && 'bg-gray-100 dark:bg-gray-800',
 
-                    // Open in tab indicator (not active)
-                    isOpenTab && !isActive && 'text-blue-600 dark:text-blue-400',
+          // Open in tab indicator (not active)
+          isOpenTab && !isActive && 'text-blue-600 dark:text-blue-400',
 
-                    className
-                )}
-                style={{ paddingLeft: `${8 + depth * 16}px`, paddingRight: '8px' }}
-                data-item-id={item.id}
-                data-item-type={item.type}
-            >
-                {/* Active indicator bar */}
-                {isActive && (
-                    <div
-                        className={cn(
-                            'absolute left-0 top-1 bottom-1 w-0.5 rounded-r',
-                            'bg-blue-500'
-                        )}
-                    />
-                )}
+          className
+        )}
+        style={{ paddingLeft: `${8 + depth * 16}px`, paddingRight: '8px' }}
+        data-item-id={item.id}
+        data-item-type={item.type}
+      >
+        {/* Active indicator bar */}
+        {isActive && (
+          <div className={cn('absolute left-0 top-1 bottom-1 w-0.5 rounded-r', 'bg-blue-500')} />
+        )}
 
-                {/* Color dot for projects */}
-                {item.color && (
-                    <div
-                        className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: item.color }}
-                    />
-                )}
+        {/* Color dot for projects */}
+        {item.color && (
+          <div
+            className="w-2 h-2 rounded-full flex-shrink-0"
+            style={{ backgroundColor: item.color }}
+          />
+        )}
 
-                {/* Icon */}
-                {!item.color && (
-                    <TabIcon
-                        type={item.type}
-                        icon={item.icon}
-                        className={cn(
-                            'w-4 h-4 flex-shrink-0',
-                            isActive
-                                ? 'text-blue-600 dark:text-blue-400'
-                                : 'text-gray-500 dark:text-gray-400'
-                        )}
-                    />
-                )}
+        {/* Icon */}
+        {!item.color && (
+          <TabIcon
+            type={item.type}
+            icon={item.icon}
+            className={cn(
+              'w-4 h-4 flex-shrink-0',
+              isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+            )}
+          />
+        )}
 
-                {/* Title */}
-                <span className="flex-1 truncate text-left">{item.title}</span>
+        {/* Title */}
+        <span className="flex-1 truncate text-left">{item.title}</span>
 
-                {/* Count badge */}
-                {item.count !== undefined && item.count > 0 && (
-                    <span
-                        className={cn(
-                            'text-xs tabular-nums',
-                            isActive
-                                ? 'text-blue-500 dark:text-blue-400'
-                                : 'text-gray-400 dark:text-gray-500'
-                        )}
-                    >
-                        {item.count}
-                    </span>
-                )}
+        {/* Count badge */}
+        {item.count !== undefined && item.count > 0 && (
+          <span
+            className={cn(
+              'text-xs tabular-nums',
+              isActive ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
+            )}
+          >
+            {item.count}
+          </span>
+        )}
 
-                {/* Open in tab indicator dot */}
-                {isOpenTab && !isActive && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
-                )}
-            </button>
-        </SidebarItemContextMenu>
-    );
-};
+        {/* Open in tab indicator dot */}
+        {isOpenTab && !isActive && (
+          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+        )}
+      </button>
+    </SidebarItemContextMenu>
+  )
+}
 
-export default SidebarNavItem;
+export default SidebarNavItem

@@ -96,10 +96,10 @@ describe('useTasksLinkedToNote', () => {
         .mockResolvedValueOnce(tasks1)
         .mockResolvedValueOnce(tasks2)
 
-      const { result, rerender } = renderHook(
-        ({ noteId }) => useTasksLinkedToNote(noteId),
-        { wrapper, initialProps: { noteId: 'note-1' } }
-      )
+      const { result, rerender } = renderHook(({ noteId }) => useTasksLinkedToNote(noteId), {
+        wrapper,
+        initialProps: { noteId: 'note-1' }
+      })
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
@@ -203,10 +203,10 @@ describe('useTasksLinkedToNote', () => {
 
       ;(window.api.tasks.getLinkedTasks as ReturnType<typeof vi.fn>).mockResolvedValue(tasks)
 
-      const { result, rerender } = renderHook(
-        ({ noteId }) => useTasksLinkedToNote(noteId),
-        { wrapper, initialProps: { noteId: 'note-1' as string | null } }
-      )
+      const { result, rerender } = renderHook(({ noteId }) => useTasksLinkedToNote(noteId), {
+        wrapper,
+        initialProps: { noteId: 'note-1' as string | null }
+      })
 
       await waitFor(() => {
         expect(result.current.tasks).toHaveLength(1)

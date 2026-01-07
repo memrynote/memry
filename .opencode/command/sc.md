@@ -18,26 +18,31 @@ All SuperClaude commands use the `/sc:` prefix:
 ## Available Commands
 
 ### Research & Analysis
+
 ```
 /sc:research [query]         - Deep web research with parallel search
 ```
 
 ### Repository Management
+
 ```
 /sc:index-repo              - Index repository for context optimization
 ```
 
 ### AI Agents
+
 ```
 /sc:agent [type]            - Launch specialized AI agents
 ```
 
 ### Recommendations
+
 ```
 /sc:recommend [context]     - Get command recommendations
 ```
 
 ### Help
+
 ```
 /sc                         - Show this help (all available commands)
 ```
@@ -45,6 +50,7 @@ All SuperClaude commands use the `/sc:` prefix:
 ## Command Namespace
 
 All commands are namespaced under `sc:` to keep them organized:
+
 - ✅ `/sc:research query`
 - ✅ `/sc:index-repo`
 - ✅ `/sc:agent type`
@@ -54,6 +60,7 @@ All commands are namespaced under `sc:` to keep them organized:
 ## Examples
 
 ### Research
+
 ```
 /sc:research React 18 new features
 /sc:research LLM agent architectures 2024
@@ -61,11 +68,13 @@ All commands are namespaced under `sc:` to keep them organized:
 ```
 
 ### Index Repository
+
 ```
 /sc:index-repo
 ```
 
 ### Agent
+
 ```
 /sc:agent deep-research
 /sc:agent self-review
@@ -73,19 +82,20 @@ All commands are namespaced under `sc:` to keep them organized:
 ```
 
 ### Recommendations
+
 ```
 /sc:recommend
 ```
 
 ## Quick Reference
 
-| Command | Description | Example |
-|---------|-------------|---------|
-| `/sc:research` | Deep web research | `/sc:research topic` |
-| `/sc:index-repo` | Repository indexing | `/sc:index-repo` |
-| `/sc:agent` | Specialized AI agents | `/sc:agent type` |
-| `/sc:recommend` | Command suggestions | `/sc:recommend` |
-| `/sc` | Show help | `/sc` |
+| Command          | Description           | Example              |
+| ---------------- | --------------------- | -------------------- |
+| `/sc:research`   | Deep web research     | `/sc:research topic` |
+| `/sc:index-repo` | Repository indexing   | `/sc:index-repo`     |
+| `/sc:agent`      | Specialized AI agents | `/sc:agent type`     |
+| `/sc:recommend`  | Command suggestions   | `/sc:recommend`      |
+| `/sc`            | Show help             | `/sc`                |
 
 ## Features
 
@@ -97,17 +107,20 @@ All commands are namespaced under `sc:` to keep them organized:
 ## Help
 
 For help on specific commands:
+
 ```
 /sc:research --help
 /sc:agent --help
 ```
 
 Or use the main help command:
+
 ```
 /sc
 ```
 
 Check the documentation:
+
 - PLANNING.md - Architecture and design
 - TASK.md - Current tasks and priorities
 - KNOWLEDGE.md - Tips and best practices
@@ -115,6 +128,7 @@ Check the documentation:
 ## Version
 
 SuperClaude v4.1.7
+
 - Python package: 0.4.0
 - Pytest plugin included
 - PM Agent patterns enabled

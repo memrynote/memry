@@ -559,7 +559,7 @@
 
 #### reminders Table (New)
 
-- [X] T191 [P] [US-R1] Create src/shared/db/schema/reminders.ts with reminders table:
+- [x] T191 [P] [US-R1] Create src/shared/db/schema/reminders.ts with reminders table:
 
   ```typescript
   reminders = sqliteTable('reminders', {
@@ -595,46 +595,46 @@
   })
   ```
 
-- [X] T192 [US-R1] Add indexes for reminders table (target_id, remind_at, status)
-- [X] T193 [US-R1] Run drizzle-kit generate to create migration
+- [x] T192 [US-R1] Add indexes for reminders table (target_id, remind_at, status)
+- [x] T193 [US-R1] Run drizzle-kit generate to create migration
 
 ### Backend - Reminder Service
 
-- [X] T194 [P] [US-R1] Create src/main/lib/reminders.ts with ReminderService class
-- [X] T195 [US-R1] Implement createReminder function
+- [x] T194 [P] [US-R1] Create src/main/lib/reminders.ts with ReminderService class
+- [x] T195 [US-R1] Implement createReminder function
   - Validates remind time is in the future
   - Supports note, journal, and highlight target types
   - For highlights: stores text and position offsets
-- [X] T196 [US-R1] Implement updateReminder function
+- [x] T196 [US-R1] Implement updateReminder function
   - Change remind time or add/update note
-- [X] T197 [US-R1] Implement deleteReminder function
-- [X] T198 [US-R1] Implement getReminder function (single)
-- [X] T199 [US-R1] Implement listReminders function
+- [x] T197 [US-R1] Implement deleteReminder function
+- [x] T198 [US-R1] Implement getReminder function (single)
+- [x] T199 [US-R1] Implement listReminders function
   - Filter by status, target type, date range
   - Sort by remind_at ascending
-- [X] T200 [US-R4] Implement getUpcomingReminders function
+- [x] T200 [US-R4] Implement getUpcomingReminders function
   - Returns pending reminders ordered by remind time
   - Optionally limit to next N days
-- [X] T201 [US-R1] Implement getDueReminders function
+- [x] T201 [US-R1] Implement getDueReminders function
   - Returns reminders where remind_at <= now and status = 'pending'
-- [X] T202 [US-R1] Implement dismissReminder function
+- [x] T202 [US-R1] Implement dismissReminder function
   - Sets status to 'dismissed' with timestamp
-- [X] T203 [US-R1] Implement snoozeReminder function
+- [x] T203 [US-R1] Implement snoozeReminder function
   - Sets snoozed_until and keeps status as 'pending'
 
 ### Backend - Reminder Scheduler
 
-- [X] T204 [US-R1] Create reminder scheduler in src/main/lib/reminders.ts
+- [x] T204 [US-R1] Create reminder scheduler in src/main/lib/reminders.ts
   - Checks for due reminders every 1 minute
   - Emits REMINDER_DUE event with reminder details
-- [X] T205 [US-R1] Add reminder check on app startup
+- [x] T205 [US-R1] Add reminder check on app startup
   - Process any reminders that became due while app was closed
-- [X] T206 [US-R1] Register reminder scheduler in src/main/index.ts
+- [x] T206 [US-R1] Register reminder scheduler in src/main/index.ts
   - Start on app ready, stop on app quit
 
 ### Backend - IPC Handlers
 
-- [X] T207 [P] [US-R1] Add ReminderChannels to src/shared/ipc-channels.ts
+- [x] T207 [P] [US-R1] Add ReminderChannels to src/shared/ipc-channels.ts
   ```typescript
   ReminderChannels = {
     CREATE: 'reminder:create',
@@ -648,13 +648,13 @@
     DUE: 'reminder:due' // Event channel
   }
   ```
-- [X] T208 [US-R1] Create src/main/ipc/reminder-handlers.ts with all handlers
-- [X] T209 [US-R1] Register reminder IPC handlers in src/main/ipc/index.ts
-- [X] T210 [US-R1] Add reminder API to preload in src/preload/index.ts
+- [x] T208 [US-R1] Create src/main/ipc/reminder-handlers.ts with all handlers
+- [x] T209 [US-R1] Register reminder IPC handlers in src/main/ipc/index.ts
+- [x] T210 [US-R1] Add reminder API to preload in src/preload/index.ts
 
 ### Frontend - Service Layer
 
-- [X] T211 [US-R1] Create src/renderer/src/services/reminder-service.ts
+- [x] T211 [US-R1] Create src/renderer/src/services/reminder-service.ts
   - createReminder(targetType, targetId, remindAt, options?)
   - updateReminder(id, updates)
   - deleteReminder(id)
@@ -663,29 +663,29 @@
   - getUpcomingReminders(days?)
   - dismissReminder(id)
   - snoozeReminder(id, snoozeUntil)
-- [X] T212 [US-R1] Add reminder event listener for REMINDER_DUE events
+- [x] T212 [US-R1] Add reminder event listener for REMINDER_DUE events
 
 ### Frontend - Reminder Picker Component
 
-- [X] T213 [US-R1] Create src/renderer/src/components/reminder/reminder-picker.tsx
+- [x] T213 [US-R1] Create src/renderer/src/components/reminder/reminder-picker.tsx
   - Similar to snooze picker with presets:
     - Tomorrow (9am)
     - Next Week (Monday 9am)
     - In 1 Month
     - Pick Date & Time
   - Optional note field for context
-- [X] T214 [US-R1] Create src/renderer/src/components/reminder/reminder-presets.ts
+- [x] T214 [US-R1] Create src/renderer/src/components/reminder/reminder-presets.ts
   - Helper functions for common reminder times
-- [X] T215 [US-R1] Style reminder picker to match existing UI
+- [x] T215 [US-R1] Style reminder picker to match existing UI
 
 ### Frontend - Note Reminders Integration
 
-- [X] T216 [US-R1] Add "Set Reminder" button to note header/actions in NotePage
+- [x] T216 [US-R1] Add "Set Reminder" button to note header/actions in NotePage
   - Bell icon that opens reminder picker
-- [X] T217 [US-R1] Show reminder indicator on notes that have active reminders
+- [x] T217 [US-R1] Show reminder indicator on notes that have active reminders
   - Small bell badge with tooltip showing when
-- [X] T218 [US-R1] Add reminder context menu option on right-click in note
-- [X] T219 [US-R1] Create src/renderer/src/hooks/use-note-reminders.ts
+- [x] T218 [US-R1] Add reminder context menu option on right-click in note
+- [x] T219 [US-R1] Create src/renderer/src/hooks/use-note-reminders.ts
   - Fetch reminders for current note
   - Create/update/delete reminders
 
@@ -708,14 +708,14 @@
 
 ### Frontend - Journal Reminders Integration
 
-- [X] T225 [US-R2] Add "Set Reminder" button to journal entry actions
+- [x] T225 [US-R2] Add "Set Reminder" button to journal entry actions
   - "Reflect on this in X days" preset options:
     - In 1 week
     - In 1 month
     - In 3 months
     - In 1 year (anniversary)
-- [X] T226 [US-R2] Show reminder indicator on journal entries with active reminders
-- [X] T227 [US-R2] Create src/renderer/src/hooks/use-journal-reminders.ts
+- [x] T226 [US-R2] Show reminder indicator on journal entries with active reminders
+- [x] T227 [US-R2] Create src/renderer/src/hooks/use-journal-reminders.ts
 
 ### Frontend - Reminders List View
 

@@ -140,11 +140,7 @@ export function createTestNote(vault: TestVaultResult, options: CreateNoteOption
 /**
  * Create a test journal entry file.
  */
-export function createTestJournalEntry(
-  vault: TestVaultResult,
-  date: string,
-  content = ''
-): string {
+export function createTestJournalEntry(vault: TestVaultResult, date: string, content = ''): string {
   const [year, month] = date.split('-')
   const yearDir = path.join(vault.journalDir, year)
   const monthDir = path.join(yearDir, month)

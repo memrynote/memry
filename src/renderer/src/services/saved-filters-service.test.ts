@@ -21,7 +21,6 @@ describe('saved-filters-service', () => {
     api.onSavedFilterCreated = vi.fn().mockReturnValue(() => {})
     api.onSavedFilterUpdated = vi.fn().mockReturnValue(() => {})
     api.onSavedFilterDeleted = vi.fn().mockReturnValue(() => {})
-
     ;(window as Window & { api: unknown }).api = api
   })
 

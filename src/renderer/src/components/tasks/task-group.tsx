@@ -1,16 +1,16 @@
-import { useMemo } from "react"
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
-import { useDroppable } from "@dnd-kit/core"
-import { AlertTriangle, Star } from "lucide-react"
+import { useMemo } from 'react'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useDroppable } from '@dnd-kit/core'
+import { AlertTriangle, Star } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { SortableTaskRow } from "@/components/tasks/drag-drop"
-import { SortableParentTaskRow } from "@/components/tasks/sortable-parent-task-row"
-import { startOfDay, addDays, type UrgencyLevel } from "@/lib/task-utils"
-import { createLookupContext, isTaskCompletedFast } from "@/lib/lookup-utils"
-import { getTopLevelTasks, getSubtasks, calculateProgress } from "@/lib/subtask-utils"
-import type { Task } from "@/data/sample-tasks"
-import type { Project, Status } from "@/data/tasks-data"
+import { cn } from '@/lib/utils'
+import { SortableTaskRow } from '@/components/tasks/drag-drop'
+import { SortableParentTaskRow } from '@/components/tasks/sortable-parent-task-row'
+import { startOfDay, addDays, type UrgencyLevel } from '@/lib/task-utils'
+import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
+import { getTopLevelTasks, getSubtasks, calculateProgress } from '@/lib/subtask-utils'
+import type { Task } from '@/data/sample-tasks'
+import type { Project, Status } from '@/data/tasks-data'
 
 // ============================================================================
 // URGENCY-BASED STYLING CONFIG
@@ -26,33 +26,35 @@ interface UrgencyStyleConfig {
 
 const urgencyStyles: Record<UrgencyLevel, UrgencyStyleConfig> = {
   critical: {
-    containerClass: "bg-red-50/30 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/50 rounded-lg",
-    headerClass: "text-red-700 dark:text-red-400 font-semibold",
-    countClass: "bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400",
-    accentClass: "border-l-[3px] border-l-red-500",
-    icon: <AlertTriangle className="size-4" aria-hidden="true" />,
+    containerClass:
+      'bg-red-50/30 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/50 rounded-lg',
+    headerClass: 'text-red-700 dark:text-red-400 font-semibold',
+    countClass: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400',
+    accentClass: 'border-l-[3px] border-l-red-500',
+    icon: <AlertTriangle className="size-4" aria-hidden="true" />
   },
   high: {
-    containerClass: "bg-blue-50/30 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-900/50 rounded-lg",
-    headerClass: "text-blue-700 dark:text-blue-400 font-semibold",
-    countClass: "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400",
-    accentClass: "border-l-[3px] border-l-blue-500",
-    icon: <Star className="size-4" aria-hidden="true" />,
+    containerClass:
+      'bg-blue-50/30 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-900/50 rounded-lg',
+    headerClass: 'text-blue-700 dark:text-blue-400 font-semibold',
+    countClass: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400',
+    accentClass: 'border-l-[3px] border-l-blue-500',
+    icon: <Star className="size-4" aria-hidden="true" />
   },
   normal: {
-    containerClass: "",
-    headerClass: "text-gray-600 dark:text-gray-400 font-medium",
-    countClass: "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400",
-    accentClass: "",
-    icon: null,
+    containerClass: '',
+    headerClass: 'text-gray-600 dark:text-gray-400 font-medium',
+    countClass: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+    accentClass: '',
+    icon: null
   },
   low: {
-    containerClass: "",
-    headerClass: "text-gray-400 dark:text-gray-500 font-medium",
-    countClass: "bg-gray-50 dark:bg-gray-800/50 text-gray-400 dark:text-gray-500",
-    accentClass: "",
-    icon: null,
-  },
+    containerClass: '',
+    headerClass: 'text-gray-400 dark:text-gray-500 font-medium',
+    countClass: 'bg-gray-50 dark:bg-gray-800/50 text-gray-400 dark:text-gray-500',
+    accentClass: '',
+    icon: null
+  }
 }
 
 // ============================================================================
@@ -68,21 +70,21 @@ const getDateFromLabel = (label: string): Date | null => {
   const today = startOfDay(new Date())
 
   switch (normalizedLabel) {
-    case "overdue":
+    case 'overdue':
       // For overdue, we'll use yesterday as the target (or keep original)
       return addDays(today, -1)
-    case "today":
+    case 'today':
       return today
-    case "tomorrow":
+    case 'tomorrow':
       return addDays(today, 1)
-    case "upcoming":
+    case 'upcoming':
       // Upcoming typically means within the next week, use 2 days from now
       return addDays(today, 2)
-    case "later":
+    case 'later':
       // Later means more than a week out, use next week
       return addDays(today, 7)
-    case "no due date":
-    case "noduedate":
+    case 'no due date':
+    case 'noduedate':
       return null
     default:
       return null
@@ -163,34 +165,27 @@ interface StatusTaskGroupProps {
 const TaskGroupHeader = ({
   label,
   count,
-  urgency = "normal",
+  urgency = 'normal',
   accentColor,
   isMuted = false,
-  className,
+  className
 }: TaskGroupHeaderProps): React.JSX.Element => {
   const styles = urgencyStyles[urgency]
-  const hasUrgentStyling = urgency === "critical" || urgency === "high"
+  const hasUrgentStyling = urgency === 'critical' || urgency === 'high'
 
   return (
-    <div
-      className={cn(
-        "flex items-center justify-between px-3 py-2",
-        className
-      )}
-    >
+    <div className={cn('flex items-center justify-between px-3 py-2', className)}>
       <div className="flex items-center gap-2">
         {/* Urgency Icon */}
-        {styles.icon && (
-          <span className={styles.headerClass}>
-            {styles.icon}
-          </span>
-        )}
+        {styles.icon && <span className={styles.headerClass}>{styles.icon}</span>}
         <h3
           className={cn(
-            "text-xs uppercase tracking-wide",
-            hasUrgentStyling ? styles.headerClass : (
-              isMuted ? "text-text-tertiary font-medium" : "text-text-secondary font-semibold"
-            )
+            'text-xs uppercase tracking-wide',
+            hasUrgentStyling
+              ? styles.headerClass
+              : isMuted
+                ? 'text-text-tertiary font-medium'
+                : 'text-text-secondary font-semibold'
           )}
           style={!hasUrgentStyling && accentColor ? { color: accentColor } : undefined}
         >
@@ -199,8 +194,8 @@ const TaskGroupHeader = ({
       </div>
       <span
         className={cn(
-          "text-xs px-1.5 py-0.5 rounded-full",
-          hasUrgentStyling ? styles.countClass : "text-text-tertiary"
+          'text-xs px-1.5 py-0.5 rounded-full',
+          hasUrgentStyling ? styles.countClass : 'text-text-tertiary'
         )}
       >
         {hasUrgentStyling ? count : `(${count})`}
@@ -218,7 +213,7 @@ export const TaskGroup = ({
   tasks,
   allTasks,
   projects,
-  urgency = "normal",
+  urgency = 'normal',
   accentColor,
   isMuted = false,
   showProjectBadge = false,
@@ -239,10 +234,10 @@ export const TaskGroup = ({
   onToggleExpand,
   // Subtask management props
   onAddSubtask,
-  onReorderSubtasks,
+  onReorderSubtasks
 }: TaskGroupProps): React.JSX.Element | null => {
   // Create a unique section ID based on label
-  const sectionId = `group-${label.toLowerCase().replace(/\s+/g, "-")}`
+  const sectionId = `group-${label.toLowerCase().replace(/\s+/g, '-')}`
 
   // Determine the target date for this section
   // Use explicit date prop if provided, otherwise derive from label
@@ -252,11 +247,11 @@ export const TaskGroup = ({
   const { setNodeRef, isOver } = useDroppable({
     id: sectionId,
     data: {
-      type: "section",
+      type: 'section',
       sectionId,
       label,
-      date: targetDate,
-    },
+      date: targetDate
+    }
   })
 
   // Filter to only top-level tasks (subtasks are rendered within their parent)
@@ -272,23 +267,20 @@ export const TaskGroup = ({
   if (topLevelCount === 0) return null
 
   // Create lookup context for O(1) project/status lookups
-  const lookupContext = useMemo(
-    () => createLookupContext(projects),
-    [projects]
-  )
+  const lookupContext = useMemo(() => createLookupContext(projects), [projects])
 
   // Get urgency-based styles
   const styles = urgencyStyles[urgency]
-  const hasUrgentStyling = urgency === "critical" || urgency === "high"
+  const hasUrgentStyling = urgency === 'critical' || urgency === 'high'
 
   return (
     <section
       ref={setNodeRef}
       className={cn(
-        "mb-4 transition-colors border border-transparent",
-        hasUrgentStyling ? styles.containerClass : "rounded-lg",
-        isOver && "border-dotted border-primary/60",
-        isOver && !hasUrgentStyling && "bg-primary/5",
+        'mb-4 transition-colors border border-transparent',
+        hasUrgentStyling ? styles.containerClass : 'rounded-lg',
+        isOver && 'border-dotted border-primary/60',
+        isOver && !hasUrgentStyling && 'bg-primary/5',
         className
       )}
       aria-labelledby={sectionId}
@@ -301,10 +293,7 @@ export const TaskGroup = ({
         isMuted={isMuted}
       />
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-        <div className={cn(
-          "flex flex-col",
-          hasUrgentStyling && "px-1 pb-1"
-        )}>
+        <div className={cn('flex flex-col', hasUrgentStyling && 'px-1 pb-1')}>
           {topLevelTasks.map((task) => {
             // Use lookup context for O(1) project lookup
             const project = lookupContext.projectMap.get(task.projectId)
@@ -405,7 +394,7 @@ export const StatusTaskGroup = ({
   onToggleExpand,
   // Subtask management props
   onAddSubtask,
-  onReorderSubtasks,
+  onReorderSubtasks
 }: StatusTaskGroupProps): React.JSX.Element | null => {
   // Create section ID from status
   const sectionId = `status-${status.id}`
@@ -415,13 +404,13 @@ export const StatusTaskGroup = ({
   const { setNodeRef, isOver } = useDroppable({
     id: sectionId,
     data: {
-      type: "column",
+      type: 'column',
       columnId: status.id,
       statusId: status.id,
       status,
       project,
-      label: status.name,
-    },
+      label: status.name
+    }
   })
 
   // Filter to only top-level tasks
@@ -430,7 +419,7 @@ export const StatusTaskGroup = ({
   // Get task IDs for SortableContext (only top-level)
   const taskIds = topLevelTasks.map((t) => t.id)
 
-  const isDoneStatus = status.type === "done"
+  const isDoneStatus = status.type === 'done'
   const topLevelCount = topLevelTasks.length
 
   // Don't render empty groups - same as TaskGroup
@@ -441,8 +430,8 @@ export const StatusTaskGroup = ({
     <section
       ref={setNodeRef}
       className={cn(
-        "mb-4 rounded-lg border border-transparent",
-        isOver && "bg-primary/5 border-dotted border-primary/60",
+        'mb-4 rounded-lg border border-transparent',
+        isOver && 'bg-primary/5 border-dotted border-primary/60',
         className
       )}
       aria-labelledby={sectionId}
@@ -456,7 +445,7 @@ export const StatusTaskGroup = ({
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
         <div className="flex flex-col">
           {topLevelTasks.map((task) => {
-            const completed = status.type === "done"
+            const completed = status.type === 'done'
             const isCheckedForSelection = selectedIds?.has(task.id) ?? false
             const subtasks = getSubtasks(task.id, allTasks || tasks)
             const progress = calculateProgress(subtasks)

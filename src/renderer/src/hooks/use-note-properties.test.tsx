@@ -78,10 +78,9 @@ describe('useNoteProperties', () => {
     })
 
     it('should refetch when noteId changes', async () => {
-      const { result, rerender } = renderHook(
-        ({ noteId }) => useNoteProperties(noteId),
-        { initialProps: { noteId: 'note-1' } }
-      )
+      const { result, rerender } = renderHook(({ noteId }) => useNoteProperties(noteId), {
+        initialProps: { noteId: 'note-1' }
+      })
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
@@ -509,9 +508,7 @@ describe('useNoteProperties', () => {
         await result.current.refresh()
       })
 
-      expect(result.current.properties).toEqual([
-        { name: 'fresh', value: 'data', type: 'text' }
-      ])
+      expect(result.current.properties).toEqual([{ name: 'fresh', value: 'data', type: 'text' }])
     })
   })
 })

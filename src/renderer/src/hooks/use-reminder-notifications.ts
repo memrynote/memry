@@ -141,7 +141,9 @@ export function useReminderNotifications(): void {
   // Handle desktop notification click events (navigate to target)
   useEffect(() => {
     const unsubscribeClicked = window.api.onReminderClicked((event: ReminderClickedEvent) => {
-      console.log(`[ReminderNotifications] Desktop notification clicked for reminder ${event.reminder.id}`)
+      console.log(
+        `[ReminderNotifications] Desktop notification clicked for reminder ${event.reminder.id}`
+      )
       navigateToTarget(event.reminder)
     })
 

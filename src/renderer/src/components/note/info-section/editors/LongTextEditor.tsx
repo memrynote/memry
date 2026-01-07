@@ -38,12 +38,9 @@ export function LongTextEditor({
     }
   }, [localValue])
 
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setLocalValue(e.target.value)
-    },
-    []
-  )
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setLocalValue(e.target.value)
+  }, [])
 
   const handleBlur = useCallback(() => {
     onChange(localValue)

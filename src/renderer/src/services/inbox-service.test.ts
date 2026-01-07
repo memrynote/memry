@@ -45,7 +45,6 @@ describe('inbox-service', () => {
     api.onInboxTranscriptionComplete = vi.fn().mockReturnValue(() => {})
     api.onInboxMetadataComplete = vi.fn().mockReturnValue(() => {})
     api.onInboxProcessingError = vi.fn().mockReturnValue(() => {})
-
     ;(window as Window & { api: unknown }).api = api
   })
 

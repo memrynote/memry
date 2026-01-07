@@ -11,11 +11,7 @@ import * as React from 'react'
 import { useState } from 'react'
 import { Bell, Calendar, Clock, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -141,9 +137,7 @@ export function ReminderPicker({
       <PopoverContent className="w-80 p-0" align="start">
         {mode === 'presets' ? (
           <div className="p-2">
-            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-              Remind me
-            </div>
+            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Remind me</div>
 
             <div className="space-y-0.5">
               {presets.map((preset) => (
@@ -154,9 +148,7 @@ export function ReminderPicker({
                 >
                   <span>{preset.label}</span>
                   {preset.description && (
-                    <span className="text-xs text-muted-foreground">
-                      {preset.description}
-                    </span>
+                    <span className="text-xs text-muted-foreground">{preset.description}</span>
                   )}
                 </button>
               ))}

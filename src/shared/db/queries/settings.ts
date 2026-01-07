@@ -20,7 +20,11 @@ type DrizzleDb = BetterSQLite3Database<typeof schema>
  * Get a setting value by key.
  */
 export function getSetting(db: DrizzleDb, key: string): string | null {
-  const result = db.select({ value: settings.value }).from(settings).where(eq(settings.key, key)).get()
+  const result = db
+    .select({ value: settings.value })
+    .from(settings)
+    .where(eq(settings.key, key))
+    .get()
   return result?.value ?? null
 }
 
@@ -100,21 +104,14 @@ export function getNextSavedFilterPosition(db: DrizzleDb): number {
 /**
  * Reorder saved filters by updating positions.
  */
-export function reorderSavedFilters(
-  db: DrizzleDb,
-  ids: string[],
-  positions: number[]
-): void {
+export function reorderSavedFilters(db: DrizzleDb, ids: string[], positions: number[]): void {
   if (ids.length !== positions.length) {
     throw new Error('ids and positions arrays must have the same length')
   }
 
   // Update each filter's position
   for (let i = 0; i < ids.length; i++) {
-    db.update(savedFilters)
-      .set({ position: positions[i] })
-      .where(eq(savedFilters.id, ids[i]))
-      .run()
+    db.update(savedFilters).set({ position: positions[i] }).where(eq(savedFilters.id, ids[i])).run()
   }
 }
 
@@ -122,6 +119,10 @@ export function reorderSavedFilters(
  * Check if a saved filter exists.
  */
 export function savedFilterExists(db: DrizzleDb, id: string): boolean {
-  const result = db.select({ id: savedFilters.id }).from(savedFilters).where(eq(savedFilters.id, id)).get()
+  const result = db
+    .select({ id: savedFilters.id })
+    .from(savedFilters)
+    .where(eq(savedFilters.id, id))
+    .get()
   return result !== undefined
 }

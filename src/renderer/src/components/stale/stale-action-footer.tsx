@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button"
-import { getNudgeMessage } from "@/lib/stale-utils"
+import { Button } from '@/components/ui/button'
+import { getNudgeMessage } from '@/lib/stale-utils'
 
 interface StaleActionFooterProps {
   itemCount: number
@@ -13,15 +13,13 @@ interface StaleActionFooterProps {
 export const StaleActionFooter = ({
   itemCount,
   onFileAllToUnsorted,
-  onReviewOneByOne,
+  onReviewOneByOne
 }: StaleActionFooterProps): React.JSX.Element => {
   const nudgeMessage = getNudgeMessage(itemCount)
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 bg-amber-500/5 dark:bg-amber-500/10 border-t border-amber-500/20 rounded-b-lg">
-      <p className="text-sm text-[var(--muted-foreground)]">
-        {nudgeMessage}
-      </p>
+      <p className="text-sm text-[var(--muted-foreground)]">{nudgeMessage}</p>
       <div className="flex items-center gap-2">
         <Button
           variant="outline"
@@ -44,4 +42,3 @@ export const StaleActionFooter = ({
     </div>
   )
 }
-

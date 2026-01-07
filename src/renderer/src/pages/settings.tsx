@@ -44,7 +44,8 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
-  RefreshCw
+  RefreshCw,
+  PenLine
 } from 'lucide-react'
 import {
   Select,
@@ -57,6 +58,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { useTemplates } from '@/hooks/use-templates'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
+import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
 import { useTabPreferences } from '@/hooks/use-tab-preferences'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
@@ -66,7 +68,14 @@ import { cn } from '@/lib/utils'
 // Types
 // ============================================================================
 
-type SettingsSection = 'general' | 'templates' | 'journal' | 'vault' | 'appearance' | 'ai'
+type SettingsSection =
+  | 'general'
+  | 'editor'
+  | 'templates'
+  | 'journal'
+  | 'vault'
+  | 'appearance'
+  | 'ai'
 
 // ============================================================================
 // Main Component
@@ -96,6 +105,12 @@ export function SettingsPage() {
             label="Templates"
             isActive={activeSection === 'templates'}
             onClick={() => setActiveSection('templates')}
+          />
+          <SettingsNavItem
+            icon={<PenLine className="w-4 h-4" />}
+            label="Editor"
+            isActive={activeSection === 'editor'}
+            onClick={() => setActiveSection('editor')}
           />
           <SettingsNavItem
             icon={<BookOpen className="w-4 h-4" />}
@@ -129,6 +144,7 @@ export function SettingsPage() {
         <ScrollArea className="h-full">
           <div className="p-6 max-w-3xl">
             {activeSection === 'general' && <GeneralSettings />}
+            {activeSection === 'editor' && <EditorSettings />}
             {activeSection === 'templates' && <TemplatesSettings />}
             {activeSection === 'journal' && <JournalSettings />}
             {activeSection === 'vault' && <VaultSettings />}
@@ -298,6 +314,85 @@ function GeneralSettings() {
           <p className="text-muted-foreground">
             Tab settings take effect immediately. Preview mode is useful for quickly browsing items
             - single-click to preview, double-click to keep open.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// Editor Settings
+// ============================================================================
+
+function EditorSettings() {
+  const { settings, isLoading, setToolbarMode } = useNoteEditorSettings()
+
+  const handleToolbarModeChange = useCallback(
+    async (enabled: boolean) => {
+      const newMode = enabled ? 'sticky' : 'floating'
+      const success = await setToolbarMode(newMode)
+      if (success) {
+        toast.success(
+          enabled ? 'Sticky toolbar enabled' : 'Floating toolbar enabled (shows on text selection)'
+        )
+      } else {
+        toast.error('Failed to update setting')
+      }
+    },
+    [setToolbarMode]
+  )
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold">Editor</h3>
+          <p className="text-sm text-muted-foreground">Loading settings...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold">Editor</h3>
+        <p className="text-sm text-muted-foreground">Note editor settings and preferences</p>
+      </div>
+
+      <Separator />
+
+      {/* Toolbar Mode Section */}
+      <div className="space-y-6">
+        <div>
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Toolbar
+          </h4>
+        </div>
+
+        {/* Sticky Toolbar Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="sticky-toolbar">Sticky Formatting Toolbar</Label>
+            <p className="text-sm text-muted-foreground">
+              Always show the formatting toolbar above the editor instead of on text selection
+            </p>
+          </div>
+          <Switch
+            id="sticky-toolbar"
+            checked={settings.toolbarMode === 'sticky'}
+            onCheckedChange={handleToolbarModeChange}
+          />
+        </div>
+
+        {/* Info hint */}
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+          <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+          <p className="text-muted-foreground">
+            When disabled (floating mode), the formatting toolbar appears only when you select text.
+            Enable sticky mode to always have quick access to Bold, Italic, and other formatting
+            options.
           </p>
         </div>
       </div>

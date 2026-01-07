@@ -52,32 +52,32 @@ All checklist items pass. The specification is ready for `/speckit.clarify` or `
 
 ### Phase Status
 
-| Phase | Status | Tasks | Notes |
-|-------|--------|-------|-------|
-| Phase 1: Setup | ✅ Complete | T001-T002 | Dependencies verified |
-| Phase 2: Foundation | 🔲 Not Started | T003-T023 | Properties tables + sync layer |
-| Phase 3: US1 Rich Text | 🔲 Partial | T024-T030 | UI exists, needs wiring |
-| Phase 4: US2 Auto-Save | 🔲 Partial | T031-T035 | Basic debounce exists |
-| Phase 5: US3 Tags | 🔲 Partial | T036-T040 | UI exists, needs wiring |
-| Phase 6: US4 Wiki Links | 🔲 Not Started | T041-T049 | Needs BlockNote extension |
-| Phase 7: US5 Backlinks | 🔲 Partial | T050-T055 | UI exists (demo data) |
-| Phase 8-17: P2/P3 | 🔲 Not Started | T056-T105 | Future phases |
+| Phase                   | Status         | Tasks     | Notes                          |
+| ----------------------- | -------------- | --------- | ------------------------------ |
+| Phase 1: Setup          | ✅ Complete    | T001-T002 | Dependencies verified          |
+| Phase 2: Foundation     | 🔲 Not Started | T003-T023 | Properties tables + sync layer |
+| Phase 3: US1 Rich Text  | 🔲 Partial     | T024-T030 | UI exists, needs wiring        |
+| Phase 4: US2 Auto-Save  | 🔲 Partial     | T031-T035 | Basic debounce exists          |
+| Phase 5: US3 Tags       | 🔲 Partial     | T036-T040 | UI exists, needs wiring        |
+| Phase 6: US4 Wiki Links | 🔲 Not Started | T041-T049 | Needs BlockNote extension      |
+| Phase 7: US5 Backlinks  | 🔲 Partial     | T050-T055 | UI exists (demo data)          |
+| Phase 8-17: P2/P3       | 🔲 Not Started | T056-T105 | Future phases                  |
 
 ### User Story Progress
 
-| Story | Priority | UI | Backend | Wired |
-|-------|----------|----|---------| ------|
-| US1 Rich Text | P1 | ✅ | ✅ | ⚠️ |
-| US2 Auto-Save | P1 | ⚠️ | ✅ | ⚠️ |
-| US3 Tags | P1 | ✅ | ✅ | ⚠️ |
-| US4 Wiki Links | P1 | 🔲 | ✅ | 🔲 |
-| US5 Backlinks | P1 | ✅ | ✅ | ⚠️ |
-| US6 Properties | P2 | ✅ | 🔲 | 🔲 |
-| US7 Emoji | P2 | ✅ | ⚠️ | ⚠️ |
-| US8 Attachments | P2 | 🔲 | 🔲 | 🔲 |
-| US9 Outline | P2 | ✅ | N/A | ⚠️ |
-| US10 Folders | P2 | ⚠️ | ✅ | 🔲 |
-| US11-14 | P3 | 🔲 | 🔲 | 🔲 |
+| Story           | Priority | UI  | Backend | Wired |
+| --------------- | -------- | --- | ------- | ----- |
+| US1 Rich Text   | P1       | ✅  | ✅      | ⚠️    |
+| US2 Auto-Save   | P1       | ⚠️  | ✅      | ⚠️    |
+| US3 Tags        | P1       | ✅  | ✅      | ⚠️    |
+| US4 Wiki Links  | P1       | 🔲  | ✅      | 🔲    |
+| US5 Backlinks   | P1       | ✅  | ✅      | ⚠️    |
+| US6 Properties  | P2       | ✅  | 🔲      | 🔲    |
+| US7 Emoji       | P2       | ✅  | ⚠️      | ⚠️    |
+| US8 Attachments | P2       | 🔲  | 🔲      | 🔲    |
+| US9 Outline     | P2       | ✅  | N/A     | ⚠️    |
+| US10 Folders    | P2       | ⚠️  | ✅      | 🔲    |
+| US11-14         | P3       | 🔲  | 🔲      | 🔲    |
 
 **Legend**: ✅ Complete | ⚠️ Partial | 🔲 Not Started | N/A Not Applicable
 
@@ -100,17 +100,17 @@ All checklist items pass. The specification is ready for `/speckit.clarify` or `
 
 ### Existing Infrastructure
 
-| Component | Location | Status |
-|-----------|----------|--------|
-| Notes IPC | `notes-handlers.ts` | 24 handlers ✅ |
-| Vault Ops | `vault/notes.ts` | 26 functions ✅ |
-| DB Queries | `queries/notes.ts` | 35 functions ✅ |
-| Notes Service | `notes-service.ts` | 18 methods ✅ |
-| useNotes Hook | `use-notes.ts` | Complete ✅ |
-| BlockNote Editor | `content-area/` | Complete ✅ |
-| Properties UI | `info-section/` | 8 editors ✅ |
-| Tags UI | `tags-row/` | Complete ✅ |
-| Backlinks UI | `backlinks/` | Demo data ⚠️ |
+| Component        | Location            | Status          |
+| ---------------- | ------------------- | --------------- |
+| Notes IPC        | `notes-handlers.ts` | 24 handlers ✅  |
+| Vault Ops        | `vault/notes.ts`    | 26 functions ✅ |
+| DB Queries       | `queries/notes.ts`  | 35 functions ✅ |
+| Notes Service    | `notes-service.ts`  | 18 methods ✅   |
+| useNotes Hook    | `use-notes.ts`      | Complete ✅     |
+| BlockNote Editor | `content-area/`     | Complete ✅     |
+| Properties UI    | `info-section/`     | 8 editors ✅    |
+| Tags UI          | `tags-row/`         | Complete ✅     |
+| Backlinks UI     | `backlinks/`        | Demo data ⚠️    |
 
 ### Files to Reference
 

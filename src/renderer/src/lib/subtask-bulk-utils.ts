@@ -1,5 +1,5 @@
-import { generateTaskId, type Task, type Priority } from "@/data/sample-tasks"
-import { getSubtasks } from "./subtask-utils"
+import { generateTaskId, type Task, type Priority } from '@/data/sample-tasks'
+import { getSubtasks } from './subtask-utils'
 
 // ============================================================================
 // TYPES
@@ -22,10 +22,7 @@ export interface BulkOperationResult {
 /**
  * Check if all subtasks of a parent task are complete
  */
-export const checkAllSubtasksComplete = (
-  parentId: string,
-  allTasks: Task[]
-): boolean => {
+export const checkAllSubtasksComplete = (parentId: string, allTasks: Task[]): boolean => {
   const subtasks = getSubtasks(parentId, allTasks)
   if (subtasks.length === 0) return false
   return subtasks.every((s) => s.completedAt !== null)
@@ -34,10 +31,7 @@ export const checkAllSubtasksComplete = (
 /**
  * Get count of incomplete subtasks for a parent
  */
-export const getIncompleteSubtaskCount = (
-  parentId: string,
-  allTasks: Task[]
-): number => {
+export const getIncompleteSubtaskCount = (parentId: string, allTasks: Task[]): number => {
   const subtasks = getSubtasks(parentId, allTasks)
   return subtasks.filter((s) => s.completedAt === null).length
 }
@@ -49,18 +43,15 @@ export const getIncompleteSubtaskCount = (
 /**
  * Mark all subtasks of a parent as complete
  */
-export const completeAllSubtasks = (
-  parentId: string,
-  allTasks: Task[]
-): BulkOperationResult => {
+export const completeAllSubtasks = (parentId: string, allTasks: Task[]): BulkOperationResult => {
   const parent = allTasks.find((t) => t.id === parentId)
   if (!parent) {
-    return { success: false, error: "Parent task not found" }
+    return { success: false, error: 'Parent task not found' }
   }
 
   const subtasks = getSubtasks(parentId, allTasks)
   if (subtasks.length === 0) {
-    return { success: false, error: "No subtasks to complete" }
+    return { success: false, error: 'No subtasks to complete' }
   }
 
   const now = new Date()
@@ -68,7 +59,7 @@ export const completeAllSubtasks = (
   const incompleteIds = new Set(incompleteSubtasks.map((s) => s.id))
 
   if (incompleteIds.size === 0) {
-    return { success: false, error: "All subtasks are already complete" }
+    return { success: false, error: 'All subtasks are already complete' }
   }
 
   const updatedTasks = allTasks.map((t) =>
@@ -79,7 +70,7 @@ export const completeAllSubtasks = (
     success: true,
     updatedTasks,
     affectedCount: incompleteIds.size,
-    completedSubtasks: incompleteSubtasks,
+    completedSubtasks: incompleteSubtasks
   }
 }
 
@@ -96,19 +87,19 @@ export const markAllSubtasksIncomplete = (
 ): BulkOperationResult => {
   const parent = allTasks.find((t) => t.id === parentId)
   if (!parent) {
-    return { success: false, error: "Parent task not found" }
+    return { success: false, error: 'Parent task not found' }
   }
 
   const subtasks = getSubtasks(parentId, allTasks)
   if (subtasks.length === 0) {
-    return { success: false, error: "No subtasks to mark incomplete" }
+    return { success: false, error: 'No subtasks to mark incomplete' }
   }
 
   const completedSubtasks = subtasks.filter((s) => s.completedAt !== null)
   const completedIds = new Set(completedSubtasks.map((s) => s.id))
 
   if (completedIds.size === 0) {
-    return { success: false, error: "All subtasks are already incomplete" }
+    return { success: false, error: 'All subtasks are already incomplete' }
   }
 
   const updatedTasks = allTasks.map((t) =>
@@ -119,7 +110,7 @@ export const markAllSubtasksIncomplete = (
     success: true,
     updatedTasks,
     affectedCount: completedIds.size,
-    incompleteSubtasks: completedSubtasks, // Return the subtasks that were marked incomplete
+    incompleteSubtasks: completedSubtasks // Return the subtasks that were marked incomplete
   }
 }
 
@@ -138,12 +129,12 @@ export const setDueDateForAllSubtasks = (
 ): BulkOperationResult => {
   const parent = allTasks.find((t) => t.id === parentId)
   if (!parent) {
-    return { success: false, error: "Parent task not found" }
+    return { success: false, error: 'Parent task not found' }
   }
 
   const subtasks = getSubtasks(parentId, allTasks)
   if (subtasks.length === 0) {
-    return { success: false, error: "No subtasks to update" }
+    return { success: false, error: 'No subtasks to update' }
   }
 
   const targetSubtasks = includeCompleted
@@ -151,19 +142,17 @@ export const setDueDateForAllSubtasks = (
     : subtasks.filter((s) => s.completedAt === null)
 
   if (targetSubtasks.length === 0) {
-    return { success: false, error: "No matching subtasks to update" }
+    return { success: false, error: 'No matching subtasks to update' }
   }
 
   const targetIds = new Set(targetSubtasks.map((s) => s.id))
 
-  const updatedTasks = allTasks.map((t) =>
-    targetIds.has(t.id) ? { ...t, dueDate } : t
-  )
+  const updatedTasks = allTasks.map((t) => (targetIds.has(t.id) ? { ...t, dueDate } : t))
 
   return {
     success: true,
     updatedTasks,
-    affectedCount: targetIds.size,
+    affectedCount: targetIds.size
   }
 }
 
@@ -182,12 +171,12 @@ export const setPriorityForAllSubtasks = (
 ): BulkOperationResult => {
   const parent = allTasks.find((t) => t.id === parentId)
   if (!parent) {
-    return { success: false, error: "Parent task not found" }
+    return { success: false, error: 'Parent task not found' }
   }
 
   const subtasks = getSubtasks(parentId, allTasks)
   if (subtasks.length === 0) {
-    return { success: false, error: "No subtasks to update" }
+    return { success: false, error: 'No subtasks to update' }
   }
 
   const targetSubtasks = includeCompleted
@@ -195,19 +184,17 @@ export const setPriorityForAllSubtasks = (
     : subtasks.filter((s) => s.completedAt === null)
 
   if (targetSubtasks.length === 0) {
-    return { success: false, error: "No matching subtasks to update" }
+    return { success: false, error: 'No matching subtasks to update' }
   }
 
   const targetIds = new Set(targetSubtasks.map((s) => s.id))
 
-  const updatedTasks = allTasks.map((t) =>
-    targetIds.has(t.id) ? { ...t, priority } : t
-  )
+  const updatedTasks = allTasks.map((t) => (targetIds.has(t.id) ? { ...t, priority } : t))
 
   return {
     success: true,
     updatedTasks,
-    affectedCount: targetIds.size,
+    affectedCount: targetIds.size
   }
 }
 
@@ -218,18 +205,15 @@ export const setPriorityForAllSubtasks = (
 /**
  * Delete all subtasks of a parent
  */
-export const deleteAllSubtasks = (
-  parentId: string,
-  allTasks: Task[]
-): BulkOperationResult => {
+export const deleteAllSubtasks = (parentId: string, allTasks: Task[]): BulkOperationResult => {
   const parent = allTasks.find((t) => t.id === parentId)
   if (!parent) {
-    return { success: false, error: "Parent task not found" }
+    return { success: false, error: 'Parent task not found' }
   }
 
   const subtasks = getSubtasks(parentId, allTasks)
   if (subtasks.length === 0) {
-    return { success: false, error: "No subtasks to delete" }
+    return { success: false, error: 'No subtasks to delete' }
   }
 
   const subtaskIds = new Set(subtasks.map((s) => s.id))
@@ -237,7 +221,7 @@ export const deleteAllSubtasks = (
   // Update parent to clear subtaskIds
   const updatedParent: Task = {
     ...parent,
-    subtaskIds: [],
+    subtaskIds: []
   }
 
   // Remove subtasks and update parent
@@ -248,7 +232,7 @@ export const deleteAllSubtasks = (
   return {
     success: true,
     updatedTasks,
-    affectedCount: subtaskIds.size,
+    affectedCount: subtaskIds.size
   }
 }
 
@@ -267,7 +251,7 @@ export const duplicateTaskWithSubtasks = (
 ): BulkOperationResult => {
   const task = allTasks.find((t) => t.id === taskId)
   if (!task) {
-    return { success: false, error: "Task not found" }
+    return { success: false, error: 'Task not found' }
   }
 
   const newTaskId = generateTaskId()
@@ -282,7 +266,7 @@ export const duplicateTaskWithSubtasks = (
     completedAt: null,
     archivedAt: null,
     subtaskIds: [],
-    createdAt: now,
+    createdAt: now
   }
 
   let updatedTasks = [...allTasks, duplicatedTask]
@@ -301,7 +285,7 @@ export const duplicateTaskWithSubtasks = (
         parentId: newTaskId,
         completedAt: null,
         archivedAt: null,
-        createdAt: now,
+        createdAt: now
       }
 
       updatedTasks.push(duplicatedSubtask)
@@ -318,7 +302,7 @@ export const duplicateTaskWithSubtasks = (
   return {
     success: true,
     updatedTasks,
-    affectedCount: subtaskCount + 1, // task + subtasks
+    affectedCount: subtaskCount + 1 // task + subtasks
   }
 }
 
@@ -329,17 +313,14 @@ export const duplicateTaskWithSubtasks = (
 /**
  * Complete parent task (used after all subtasks are complete)
  */
-export const completeParentTask = (
-  parentId: string,
-  allTasks: Task[]
-): BulkOperationResult => {
+export const completeParentTask = (parentId: string, allTasks: Task[]): BulkOperationResult => {
   const parent = allTasks.find((t) => t.id === parentId)
   if (!parent) {
-    return { success: false, error: "Parent task not found" }
+    return { success: false, error: 'Parent task not found' }
   }
 
   if (parent.completedAt !== null) {
-    return { success: false, error: "Parent task is already complete" }
+    return { success: false, error: 'Parent task is already complete' }
   }
 
   const updatedTasks = allTasks.map((t) =>
@@ -348,36 +329,23 @@ export const completeParentTask = (
 
   return {
     success: true,
-    updatedTasks,
+    updatedTasks
   }
 }
 
 /**
  * Uncomplete parent task (for undo functionality)
  */
-export const uncompleteParentTask = (
-  parentId: string,
-  allTasks: Task[]
-): BulkOperationResult => {
+export const uncompleteParentTask = (parentId: string, allTasks: Task[]): BulkOperationResult => {
   const parent = allTasks.find((t) => t.id === parentId)
   if (!parent) {
-    return { success: false, error: "Parent task not found" }
+    return { success: false, error: 'Parent task not found' }
   }
 
-  const updatedTasks = allTasks.map((t) =>
-    t.id === parentId ? { ...t, completedAt: null } : t
-  )
+  const updatedTasks = allTasks.map((t) => (t.id === parentId ? { ...t, completedAt: null } : t))
 
   return {
     success: true,
-    updatedTasks,
+    updatedTasks
   }
 }
-
-
-
-
-
-
-
-

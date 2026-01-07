@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react"
-import { FileText, Loader2 } from "lucide-react"
+import { useState, useEffect } from 'react'
+import { FileText, Loader2 } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { notesService, type Note } from "@/services/notes-service"
+import { cn } from '@/lib/utils'
+import { notesService, type Note } from '@/services/notes-service'
 
 // ============================================================================
 // TYPES
@@ -20,10 +20,10 @@ interface TaskMetadataProps {
 // ============================================================================
 
 const formatMetadataDate = (date: Date): string => {
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
   })
 }
 
@@ -35,7 +35,7 @@ export const TaskMetadata = ({
   createdAt,
   completedAt,
   sourceNoteId,
-  className,
+  className
 }: TaskMetadataProps): React.JSX.Element => {
   const [sourceNote, setSourceNote] = useState<Note | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -54,7 +54,7 @@ export const TaskMetadata = ({
   }, [sourceNoteId])
 
   return (
-    <div className={cn("flex flex-col gap-1 text-xs text-muted-foreground", className)}>
+    <div className={cn('flex flex-col gap-1 text-xs text-muted-foreground', className)}>
       {/* Created date */}
       <p>Created {formatMetadataDate(createdAt)}</p>
 

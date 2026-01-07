@@ -1,6 +1,6 @@
-import { X } from "lucide-react"
+import { X } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
@@ -23,10 +23,10 @@ export const FilterChip = ({
   icon,
   color,
   onRemove,
-  className,
+  className
 }: FilterChipProps): React.JSX.Element => {
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === "Enter" || e.key === " " || e.key === "Backspace" || e.key === "Delete") {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Backspace' || e.key === 'Delete') {
       e.preventDefault()
       onRemove()
     }
@@ -35,8 +35,8 @@ export const FilterChip = ({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 px-2 py-1 bg-muted rounded-full text-sm",
-        "group transition-colors hover:bg-muted/80",
+        'inline-flex items-center gap-1.5 px-2 py-1 bg-muted rounded-full text-sm',
+        'group transition-colors hover:bg-muted/80',
         className
       )}
     >
@@ -54,9 +54,9 @@ export const FilterChip = ({
         onClick={onRemove}
         onKeyDown={handleKeyDown}
         className={cn(
-          "ml-0.5 p-0.5 rounded-full transition-colors",
-          "text-muted-foreground hover:text-foreground hover:bg-muted-foreground/20",
-          "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+          'ml-0.5 p-0.5 rounded-full transition-colors',
+          'text-muted-foreground hover:text-foreground hover:bg-muted-foreground/20',
+          'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1'
         )}
         aria-label={`Remove ${label} filter`}
         tabIndex={0}

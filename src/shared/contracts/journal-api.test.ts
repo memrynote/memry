@@ -319,12 +319,8 @@ describe('DayContextSchema', () => {
   it('should validate correct day context', () => {
     const result = DayContextSchema.safeParse({
       date: '2025-01-03',
-      tasks: [
-        { id: 't1', title: 'Task 1', completed: false }
-      ],
-      events: [
-        { id: 'e1', time: '09:00', title: 'Standup', type: 'meeting' }
-      ],
+      tasks: [{ id: 't1', title: 'Task 1', completed: false }],
+      events: [{ id: 'e1', time: '09:00', title: 'Standup', type: 'meeting' }],
       overdueCount: 2
     })
     expect(result.success).toBe(true)
@@ -608,9 +604,7 @@ describe('GetAllTagsOutputSchema', () => {
   })
 
   it('should reject negative count', () => {
-    const result = GetAllTagsOutputSchema.safeParse([
-      { tag: 'work', count: -1 }
-    ])
+    const result = GetAllTagsOutputSchema.safeParse([{ tag: 'work', count: -1 }])
     expect(result.success).toBe(false)
   })
 })

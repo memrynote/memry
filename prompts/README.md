@@ -12,19 +12,19 @@ Memry is a local-first, end-to-end encrypted PKM (Personal Knowledge Management)
 
 ## Prompt Files
 
-| File | Speckit Command | Purpose |
-|------|-----------------|---------|
-| `00-constitution.md` | `/speckit.constitution` | Project principles and standards |
-| `01-specify-core-data.md` | `/speckit.specify` | File system & SQLite data layer |
-| `02-specify-tasks.md` | `/speckit.specify` | Task management system |
-| `03-specify-notes.md` | `/speckit.specify` | Note-taking with wiki links |
-| `04-specify-journal.md` | `/speckit.specify` | Daily journaling system |
-| `05-specify-inbox.md` | `/speckit.specify` | Quick capture & inbox |
-| `06-specify-sync.md` | `/speckit.specify` | Sync engine & E2E encryption |
-| `07-specify-search.md` | `/speckit.specify` | Search & discovery |
-| `08-specify-settings.md` | `/speckit.specify` | Settings & preferences |
-| `09-specify-ai-assistant.md` | `/speckit.specify` | AI-powered features |
-| `10-plan-backend.md` | `/speckit.plan` | Tech stack & implementation plan |
+| File                         | Speckit Command         | Purpose                          |
+| ---------------------------- | ----------------------- | -------------------------------- |
+| `00-constitution.md`         | `/speckit.constitution` | Project principles and standards |
+| `01-specify-core-data.md`    | `/speckit.specify`      | File system & SQLite data layer  |
+| `02-specify-tasks.md`        | `/speckit.specify`      | Task management system           |
+| `03-specify-notes.md`        | `/speckit.specify`      | Note-taking with wiki links      |
+| `04-specify-journal.md`      | `/speckit.specify`      | Daily journaling system          |
+| `05-specify-inbox.md`        | `/speckit.specify`      | Quick capture & inbox            |
+| `06-specify-sync.md`         | `/speckit.specify`      | Sync engine & E2E encryption     |
+| `07-specify-search.md`       | `/speckit.specify`      | Search & discovery               |
+| `08-specify-settings.md`     | `/speckit.specify`      | Settings & preferences           |
+| `09-specify-ai-assistant.md` | `/speckit.specify`      | AI-powered features              |
+| `10-plan-backend.md`         | `/speckit.plan`         | Tech stack & implementation plan |
 
 ## Execution Order
 
@@ -144,6 +144,7 @@ Memry is a local-first, end-to-end encrypted PKM (Personal Knowledge Management)
 ## Tech Stack Summary
 
 ### Frontend (Existing)
+
 - Electron + electron-vite
 - React 19 + TypeScript
 - Tailwind CSS + shadcn/ui
@@ -151,6 +152,7 @@ Memry is a local-first, end-to-end encrypted PKM (Personal Knowledge Management)
 - @dnd-kit (drag and drop)
 
 ### Backend (To Build)
+
 - better-sqlite3 (local database)
 - chokidar (file watching)
 - libsodium-wrappers (encryption)
@@ -158,36 +160,39 @@ Memry is a local-first, end-to-end encrypted PKM (Personal Knowledge Management)
 - bip39 (recovery phrase)
 
 ### Sync Server
+
 - Hono.js on Cloudflare Workers
 - Cloudflare R2 (blob storage)
 - Cloudflare D1 (user metadata)
 - OAuth (Google, Apple, GitHub)
 
 ### Mobile (Future)
+
 - React Native + Expo
 - expo-sqlite
 - Same encryption library
 
 ## Implementation Timeline
 
-| Phase | Focus | Duration |
-|-------|-------|----------|
-| 1 | Core Data Layer | 2 weeks |
-| 2 | Task Backend | 2 weeks |
-| 3 | Notes & Journal | 2 weeks |
-| 4 | Encryption | 2 weeks |
-| 5 | Sync Server | 3 weeks |
-| 6 | Sync Client | 3 weeks |
-| 7 | Inbox | 2 weeks |
-| 8 | Search & AI | 3 weeks |
-| 9 | Settings & Polish | 2 weeks |
-| 10 | Mobile App | 4+ weeks |
+| Phase | Focus             | Duration |
+| ----- | ----------------- | -------- |
+| 1     | Core Data Layer   | 2 weeks  |
+| 2     | Task Backend      | 2 weeks  |
+| 3     | Notes & Journal   | 2 weeks  |
+| 4     | Encryption        | 2 weeks  |
+| 5     | Sync Server       | 3 weeks  |
+| 6     | Sync Client       | 3 weeks  |
+| 7     | Inbox             | 2 weeks  |
+| 8     | Search & AI       | 3 weeks  |
+| 9     | Settings & Polish | 2 weeks  |
+| 10    | Mobile App        | 4+ weeks |
 
 **Total: ~25 weeks** (6 months) for full feature set
 
 ## Contributing
 
 When adding new prompts:
+
 1. Follow the numbered naming convention
 2. Include user stories with priorities (P1/P2/P3)
 3. Define clear data models

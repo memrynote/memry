@@ -10,11 +10,7 @@
 import * as React from 'react'
 import { Bell, BellRing } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ReminderPicker } from '@/components/reminder'
 import { formatReminderDate } from '@/components/reminder/reminder-presets'
 import { useNoteReminders } from '@/hooks/use-note-reminders'
@@ -39,8 +35,7 @@ export function NoteReminderButton({
   disabled = false,
   className
 }: NoteReminderButtonProps): React.ReactElement {
-  const { hasActiveReminder, nextReminder, activeReminderCount, actions } =
-    useNoteReminders(noteId)
+  const { hasActiveReminder, nextReminder, activeReminderCount, actions } = useNoteReminders(noteId)
 
   const handleSetReminder = async (date: Date, note?: string): Promise<void> => {
     await actions.setReminder(date, note)

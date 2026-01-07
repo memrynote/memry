@@ -8,12 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
-import {
-  useSearch,
-  useQuickSearch,
-  useSearchStats,
-  useRecentSearches
-} from './use-search'
+import { useSearch, useQuickSearch, useSearchStats, useRecentSearches } from './use-search'
 import {
   createTestQueryClient,
   setupHookTestEnvironment,
@@ -353,9 +348,7 @@ describe('useQuickSearch', () => {
     })
 
     it('should perform quick search with minimal delay', async () => {
-      const mockNotes = [
-        { id: 'note-1', title: 'Quick Result', path: 'notes/quick.md' }
-      ]
+      const mockNotes = [{ id: 'note-1', title: 'Quick Result', path: 'notes/quick.md' }]
 
       ;(window.api.search.quick as ReturnType<typeof vi.fn>).mockResolvedValue({
         notes: mockNotes
@@ -486,8 +479,13 @@ describe('useSearchStats', () => {
   })
 
   it('should rebuild search index', async () => {
-    ;(window.api.search.getStats as ReturnType<typeof vi.fn>).mockResolvedValue({ indexed: 0, pending: 0 })
-    ;(window.api.search.rebuildIndex as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true })
+    ;(window.api.search.getStats as ReturnType<typeof vi.fn>).mockResolvedValue({
+      indexed: 0,
+      pending: 0
+    })
+    ;(window.api.search.rebuildIndex as ReturnType<typeof vi.fn>).mockResolvedValue({
+      success: true
+    })
 
     const { result } = renderHook(() => useSearchStats(), { wrapper })
 
@@ -504,7 +502,10 @@ describe('useSearchStats', () => {
   })
 
   it('should refresh stats', async () => {
-    ;(window.api.search.getStats as ReturnType<typeof vi.fn>).mockResolvedValue({ indexed: 50, pending: 0 })
+    ;(window.api.search.getStats as ReturnType<typeof vi.fn>).mockResolvedValue({
+      indexed: 50,
+      pending: 0
+    })
 
     const { result } = renderHook(() => useSearchStats(), { wrapper })
 
@@ -596,7 +597,9 @@ describe('useRecentSearches', () => {
 
   it('should clear recent searches', async () => {
     ;(window.api.search.getRecent as ReturnType<typeof vi.fn>).mockResolvedValue(['one', 'two'])
-    ;(window.api.search.clearRecent as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true })
+    ;(window.api.search.clearRecent as ReturnType<typeof vi.fn>).mockResolvedValue({
+      success: true
+    })
 
     const { result } = renderHook(() => useRecentSearches(), { wrapper })
 

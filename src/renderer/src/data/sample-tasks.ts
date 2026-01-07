@@ -2,13 +2,13 @@
 // TASK TYPES AND INTERFACES
 // ============================================================================
 
-export type Priority = "none" | "low" | "medium" | "high" | "urgent"
+export type Priority = 'none' | 'low' | 'medium' | 'high' | 'urgent'
 
-export type RepeatFrequency = "daily" | "weekly" | "monthly" | "yearly"
+export type RepeatFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly'
 
-export type MonthlyType = "dayOfMonth" | "weekPattern"
+export type MonthlyType = 'dayOfMonth' | 'weekPattern'
 
-export type RepeatEndType = "never" | "date" | "count"
+export type RepeatEndType = 'never' | 'date' | 'count'
 
 export interface RepeatConfig {
   // Base frequency
@@ -76,10 +76,10 @@ export const priorityConfig: Record<
   { color: string | null; label: string | null; order: number }
 > = {
   none: { color: null, label: null, order: 4 },
-  low: { color: "#6b7280", label: "Low", order: 3 },
-  medium: { color: "#f59e0b", label: "Medium", order: 2 },
-  high: { color: "#f97316", label: "High", order: 1 },
-  urgent: { color: "#ef4444", label: "Urgent", order: 0 },
+  low: { color: '#6b7280', label: 'Low', order: 3 },
+  medium: { color: '#f59e0b', label: 'Medium', order: 2 },
+  high: { color: '#f97316', label: 'High', order: 1 },
+  urgent: { color: '#ef4444', label: 'Urgent', order: 0 }
 }
 
 // ============================================================================
@@ -106,16 +106,16 @@ export const sampleTasks: Task[] = []
 export const createDefaultTask = (
   projectId: string,
   statusId: string,
-  title: string = "",
+  title: string = '',
   dueDate: Date | null = null,
   parentId: string | null = null
 ): Task => ({
   id: generateTaskId(),
   title,
-  description: "",
+  description: '',
   projectId,
   statusId,
-  priority: "none",
+  priority: 'none',
   dueDate,
   dueTime: null,
   isRepeating: false,
@@ -126,6 +126,5 @@ export const createDefaultTask = (
   subtaskIds: [],
   createdAt: new Date(),
   completedAt: null,
-  archivedAt: null,
+  archivedAt: null
 })
-

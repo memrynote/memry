@@ -83,16 +83,19 @@ describe('reminders service', () => {
 
   const seedNoteCache = (id: string, title: string): void => {
     const now = '2025-01-01T00:00:00.000Z'
-    indexDb.db.insert(noteCache).values({
-      id,
-      path: `notes/${id}.md`,
-      title,
-      contentHash: 'hash',
-      wordCount: 0,
-      characterCount: 0,
-      createdAt: now,
-      modifiedAt: now
-    }).run()
+    indexDb.db
+      .insert(noteCache)
+      .values({
+        id,
+        path: `notes/${id}.md`,
+        title,
+        contentHash: 'hash',
+        wordCount: 0,
+        characterCount: 0,
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
   }
 
   beforeEach(async () => {
