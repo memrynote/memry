@@ -47,18 +47,24 @@ export const SELECTORS = {
   // Inbox
   inboxList: '[data-testid="inbox-list"], [class*="inbox-list"]',
   inboxItem: '[data-testid="inbox-item"], [class*="inbox-item"]',
-  captureInput: '[data-testid="capture-input"], textarea[placeholder*="capture"], textarea[placeholder*="thought"]',
+  captureInput:
+    '[data-testid="capture-input"], textarea[placeholder*="capture"], textarea[placeholder*="thought"]',
 
   // Journal
   journalEditor: '[data-testid="journal-editor"], .bn-editor',
   journalCalendar: '[data-testid="journal-calendar"], [class*="calendar"]',
   journalEntry: '[data-testid="journal-entry"], [class*="journal"]',
 
-  // Search - command palette
-  searchModal: '[data-testid="search-modal"], [role="dialog"][class*="command"], [class*="cmdk"]',
-  searchInput: '[data-testid="search-input"], input[placeholder*="search"], input[placeholder*="Search"]',
-  searchResults: '[data-testid="search-results"], [class*="command-list"], [class*="results"]',
-  searchResultItem: '[data-testid="search-result-item"], [class*="command-item"], [class*="result-item"]',
+  // Search - command palette (cmdk-based)
+  searchModal:
+    '[role="dialog"][cmdk-dialog], [role="dialog"]:has([cmdk-root]), [data-testid="search-modal"]',
+  searchInput: '[cmdk-input], input[placeholder*="Search notes"]',
+  searchResults: '[cmdk-list]',
+  searchResultItem: '[cmdk-item]',
+  searchGroup: '[cmdk-group]',
+  searchGroupHeading: '[cmdk-group-heading]',
+  searchEmpty: '[cmdk-empty]',
+  searchLoading: '[cmdk-loading]',
 
   // Vault
   vaultSwitcher: '[data-testid="vault-switcher"], button[title*="vault"]',
@@ -149,9 +155,11 @@ export async function navigateTo(
   const displayName = viewNames[view] || view
 
   // Try multiple selector strategies
-  const navItem = page.locator(
-    `[data-testid="nav-${view}"], button:has-text("${displayName}"), a:has-text("${displayName}"), span:text("${displayName}")`
-  ).first()
+  const navItem = page
+    .locator(
+      `[data-testid="nav-${view}"], button:has-text("${displayName}"), a:has-text("${displayName}"), span:text("${displayName}")`
+    )
+    .first()
 
   try {
     await navItem.click({ timeout: 10000 })
@@ -191,11 +199,7 @@ export async function closeModal(page: Page): Promise<void> {
  * Create a new note via UI
  * Uses Meta+N keyboard shortcut, then fills in title and content
  */
-export async function createNote(
-  page: Page,
-  title: string,
-  content?: string
-): Promise<void> {
+export async function createNote(page: Page, title: string, content?: string): Promise<void> {
   // Trigger new note via keyboard shortcut
   await page.keyboard.press(SHORTCUTS.newNote)
 
@@ -269,7 +273,8 @@ export async function createTask(
 
       // Wait for modal to open
       const modal = page.locator(SELECTORS.taskModal).first()
-      const modalOpened = await modal.waitFor({ state: 'visible', timeout: 2000 })
+      const modalOpened = await modal
+        .waitFor({ state: 'visible', timeout: 2000 })
         .then(() => true)
         .catch(() => false)
 
@@ -297,13 +302,12 @@ export async function createTask(
  * Toggle task completion by clicking the checkbox
  * Task items have aria-label="Task: {title}, ..."
  */
-export async function toggleTaskCompletion(
-  page: Page,
-  taskTitle: string
-): Promise<void> {
+export async function toggleTaskCompletion(page: Page, taskTitle: string): Promise<void> {
   try {
     // Find task by aria-label containing the title
-    const task = page.locator(`[role="button"][aria-label*="Task:"][aria-label*="${taskTitle}"]`).first()
+    const task = page
+      .locator(`[role="button"][aria-label*="Task:"][aria-label*="${taskTitle}"]`)
+      .first()
     const taskVisible = await task.isVisible({ timeout: 2000 }).catch(() => false)
 
     if (taskVisible) {
@@ -338,10 +342,7 @@ export async function search(page: Page, query: string): Promise<void> {
 /**
  * Select a search result by index
  */
-export async function selectSearchResult(
-  page: Page,
-  index: number
-): Promise<void> {
+export async function selectSearchResult(page: Page, index: number): Promise<void> {
   const results = page.locator(SELECTORS.searchResultItem)
   await results.nth(index).click()
 }
@@ -362,11 +363,7 @@ export async function getToastMessage(page: Page): Promise<string | null> {
 /**
  * Wait for a toast notification with specific text
  */
-export async function waitForToast(
-  page: Page,
-  text: string,
-  timeout = 5000
-): Promise<void> {
+export async function waitForToast(page: Page, text: string, timeout = 5000): Promise<void> {
   const toast = page.locator(`${SELECTORS.toast}:has-text("${text}")`)
   await toast.waitFor({ state: 'visible', timeout })
 }
@@ -374,10 +371,7 @@ export async function waitForToast(
 /**
  * Take a screenshot with a descriptive name
  */
-export async function takeScreenshot(
-  page: Page,
-  name: string
-): Promise<void> {
+export async function takeScreenshot(page: Page, name: string): Promise<void> {
   await page.screenshot({
     path: `test-results/screenshots/${name}.png`,
     fullPage: true
@@ -394,10 +388,7 @@ export async function getCurrentRoute(page: Page): Promise<string> {
 /**
  * Check if an element is visible
  */
-export async function isVisible(
-  page: Page,
-  selector: string
-): Promise<boolean> {
+export async function isVisible(page: Page, selector: string): Promise<boolean> {
   const element = page.locator(selector)
   return element.isVisible()
 }
@@ -433,10 +424,7 @@ export async function dragAndDrop(
 /**
  * Get count of elements matching selector
  */
-export async function getElementCount(
-  page: Page,
-  selector: string
-): Promise<number> {
+export async function getElementCount(page: Page, selector: string): Promise<number> {
   const elements = page.locator(selector)
   return elements.count()
 }
@@ -461,9 +449,7 @@ export async function executeIpc(
 /**
  * Get app version
  */
-export async function getAppVersion(
-  electronApp: ElectronApplication
-): Promise<string> {
+export async function getAppVersion(electronApp: ElectronApplication): Promise<string> {
   return electronApp.evaluate(async ({ app }) => {
     return app.getVersion()
   })
@@ -472,9 +458,7 @@ export async function getAppVersion(
 /**
  * Check if app is in development mode
  */
-export async function isDevelopment(
-  electronApp: ElectronApplication
-): Promise<boolean> {
+export async function isDevelopment(electronApp: ElectronApplication): Promise<boolean> {
   return electronApp.evaluate(async () => {
     return process.env.NODE_ENV === 'development'
   })
