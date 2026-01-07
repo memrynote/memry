@@ -195,7 +195,9 @@ export const SearchChannels = {
     /** Find notes by tag */
     FIND_BY_TAG: 'search:find-by-tag',
     /** Find notes by backlink */
-    FIND_BACKLINKS: 'search:find-backlinks'
+    FIND_BACKLINKS: 'search:find-backlinks',
+    /** Advanced search with operators */
+    ADVANCED_SEARCH: 'search:advanced'
   },
   events: {
     /** Index rebuild started */

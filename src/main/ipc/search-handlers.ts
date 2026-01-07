@@ -11,6 +11,7 @@ import {
   SearchQuerySchema,
   QuickSearchSchema,
   SuggestionsSchema,
+  AdvancedSearchSchema,
   type SearchResponse,
   type QuickSearchResponse,
   type SuggestionsResponse,
@@ -24,9 +25,10 @@ import {
   findNotesByTag,
   findBacklinks,
   getSearchableCount,
-  isFtsHealthy
+  isFtsHealthy,
+  advancedSearch
 } from '@shared/db/queries/search'
-import { getIndexDatabase } from '../database'
+import { getIndexDatabase, getRawIndexDatabase } from '../database'
 
 // ============================================================================
 // Recent Searches (in-memory store)
@@ -288,6 +290,59 @@ export function registerSearchHandlers(): void {
         modified: r.modifiedAt,
         tags: r.tags
       }))
+    })
+  )
+
+  // search:advanced - Advanced search with operators, filters, and sorting
+  ipcMain.handle(
+    SearchChannels.invoke.ADVANCED_SEARCH,
+    createValidatedHandler(AdvancedSearchSchema, async (input) => {
+      const startTime = performance.now()
+      const db = getIndexDatabase()
+      const rawDb = getRawIndexDatabase()
+
+      try {
+        const results = advancedSearch(db, rawDb, {
+          text: input.text,
+          operators: input.operators,
+          titleOnly: input.titleOnly,
+          sortBy: input.sortBy,
+          sortDirection: input.sortDirection,
+          folder: input.folder,
+          dateFrom: input.dateFrom,
+          dateTo: input.dateTo,
+          limit: input.limit,
+          offset: input.offset
+        })
+
+        // Add to recent searches if there's a text query
+        if (input.text && input.text.trim()) {
+          addRecentSearch(input.text)
+        }
+
+        const queryTime = Math.round(performance.now() - startTime)
+        console.log(
+          `[Search] Advanced search completed in ${queryTime}ms, found ${results.length} results`
+        )
+
+        return results.map((r) => ({
+          type: 'note' as const,
+          id: r.id,
+          path: r.path,
+          title: r.title,
+          emoji: r.emoji,
+          snippet: r.snippet,
+          score: r.score,
+          matchedIn: r.matchedIn,
+          created: r.createdAt,
+          modified: r.modifiedAt,
+          tags: r.tags
+        }))
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Advanced search failed'
+        console.error('[Search] Advanced search error:', message)
+        return []
+      }
     })
   )
 

@@ -219,7 +219,24 @@ const api = {
       ipcRenderer.invoke(SearchChannels.invoke.SEARCH_NOTES, { query, ...options }),
     findByTag: (tag: string) => ipcRenderer.invoke(SearchChannels.invoke.FIND_BY_TAG, tag),
     findBacklinks: (noteId: string) =>
-      ipcRenderer.invoke(SearchChannels.invoke.FIND_BACKLINKS, noteId)
+      ipcRenderer.invoke(SearchChannels.invoke.FIND_BACKLINKS, noteId),
+    advancedSearch: (input: {
+      text?: string
+      operators?: {
+        path?: string
+        file?: string
+        tags?: string[]
+        properties?: { name: string; value: string }[]
+      }
+      titleOnly?: boolean
+      sortBy?: 'relevance' | 'modified' | 'created' | 'title'
+      sortDirection?: 'asc' | 'desc'
+      folder?: string
+      dateFrom?: string
+      dateTo?: string
+      limit?: number
+      offset?: number
+    }) => ipcRenderer.invoke(SearchChannels.invoke.ADVANCED_SEARCH, input)
   },
 
   // Tasks API
