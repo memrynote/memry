@@ -21,7 +21,7 @@ import { TasksProvider } from '@/contexts/tasks'
 import { TabBarWithDrag, TabDragProvider, TabErrorBoundary } from '@/components/tabs'
 import { SplitViewContainer, SinglePaneContent } from '@/components/split-view'
 import { ChordIndicator, KeyboardShortcutsDialog } from '@/components/keyboard'
-import { SearchModal } from '@/components/search'
+import { CommandPalette } from '@/components/search'
 import {
   useTabKeyboardShortcuts,
   useChordShortcuts,
@@ -116,14 +116,11 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
   useFolderViewEvents() // Global cache invalidation for folder-view tabs
 
-  // Handle search result selection - open note or journal in appropriate tab
-  const handleSelectSearchResult = useCallback(
-    (noteId: string, path: string) => {
-      // Check if this is a journal entry (pattern: journal/YYYY-MM-DD.md)
+  const openNoteOrJournalTab = useCallback(
+    (noteId: string, path: string, isPreview: boolean) => {
       const journalDateMatch = path.match(/^journal\/(\d{4}-\d{2}-\d{2})\.md$/)
 
       if (journalDateMatch) {
-        // Open journal tab with the specific date
         const date = journalDateMatch[1]
         openTab({
           type: 'journal',
@@ -138,22 +135,36 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
           viewState: { date }
         })
       } else {
-        // Regular note - open in note tab
         openTab({
           type: 'note',
-          title: 'Note', // Will be updated when note loads
+          title: 'Note',
           icon: 'file-text',
           path: `/note/${noteId}`,
           entityId: noteId,
           isPinned: false,
           isModified: false,
-          isPreview: true,
+          isPreview,
           isDeleted: false
         })
       }
+    },
+    [openTab]
+  )
+
+  const handleSelectSearchResult = useCallback(
+    (noteId: string, path: string) => {
+      openNoteOrJournalTab(noteId, path, true)
       onSearchOpenChange(false)
     },
-    [openTab, onSearchOpenChange]
+    [openNoteOrJournalTab, onSearchOpenChange]
+  )
+
+  const handleSelectSearchResultNewTab = useCallback(
+    (noteId: string, path: string) => {
+      openNoteOrJournalTab(noteId, path, false)
+      onSearchOpenChange(false)
+    },
+    [openNoteOrJournalTab, onSearchOpenChange]
   )
 
   // Get active group for tab bar
@@ -188,10 +199,9 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
               <div
                 key={groupId}
                 style={{ width: `${width}%` }}
-                className={`h-full overflow-hidden shrink-0 transition-all duration-200 ease-out ${index > 0
-                  ? 'border-l border-gray-200/60 dark:border-gray-700/40'
-                  : ''
-                  }`}
+                className={`h-full overflow-hidden shrink-0 transition-all duration-200 ease-out ${
+                  index > 0 ? 'border-l border-gray-200/60 dark:border-gray-700/40' : ''
+                }`}
               >
                 <TabBarWithDrag groupId={groupId} />
               </div>
@@ -220,20 +230,14 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
       </header>
 
       {/* Main Content Area - Split View or Single Pane */}
-      <div
-        className="flex flex-1 overflow-hidden dark:bg-gray-900"
-        id="main-content"
-      >
+      <div className="flex flex-1 overflow-hidden dark:bg-gray-900" id="main-content">
         {isSplitView ? (
           // Multiple panes - use SplitViewContainer with matching header spacers
           <>
             {/* Left spacer - matches header's sidebar trigger area for alignment */}
             <div className="flex items-center gap-2.5 px-3 shrink-0" aria-hidden="true">
               <div className="size-7 -ml-1" />
-              <Separator
-                orientation="vertical"
-                className="mr-2 h-5 invisible"
-              />
+              <Separator orientation="vertical" className="mr-2 h-5 invisible" />
             </div>
 
             {/* Split view container with smooth transitions */}
@@ -261,11 +265,12 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
         onClose={() => setShowShortcutsDialog(false)}
       />
 
-      {/* Search Modal */}
-      <SearchModal
+      {/* Command Palette (Advanced Search) */}
+      <CommandPalette
         isOpen={searchOpen}
         onClose={() => onSearchOpenChange(false)}
         onSelectNote={handleSelectSearchResult}
+        onSelectNoteNewTab={handleSelectSearchResultNewTab}
       />
     </TabDragProvider>
   )

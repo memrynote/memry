@@ -7,7 +7,9 @@ import type {
   SearchResultNote,
   SearchStats,
   IndexRebuildProgressEvent,
-  IndexRebuildCompletedEvent
+  IndexRebuildCompletedEvent,
+  AdvancedSearchInput,
+  AdvancedSearchResultNote
 } from '../../../preload/index.d'
 
 /**
@@ -91,11 +93,12 @@ export const searchService: SearchClientAPI = {
     return window.api.search.findByTag(tag)
   },
 
-  /**
-   * Find notes linking to a note (backlinks).
-   */
   findBacklinks: (noteId: string): Promise<SearchResultNote[]> => {
     return window.api.search.findBacklinks(noteId)
+  },
+
+  advancedSearch: (input: AdvancedSearchInput): Promise<AdvancedSearchResultNote[]> => {
+    return window.api.search.advancedSearch(input)
   }
 }
 
@@ -214,5 +217,7 @@ export type {
   SearchSuggestion,
   SearchStats,
   IndexRebuildProgressEvent,
-  IndexRebuildCompletedEvent
+  IndexRebuildCompletedEvent,
+  AdvancedSearchInput,
+  AdvancedSearchResultNote
 } from '../../../preload/index.d'

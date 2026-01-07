@@ -7,9 +7,11 @@
 
 import { sql } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import type Database from 'better-sqlite3'
 import * as schema from '../schema'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
+type RawSqliteDb = Database.Database
 
 // ============================================================================
 // Types
@@ -32,6 +34,37 @@ export interface SearchOptions {
   offset?: number
   tags?: string[]
   folder?: string
+}
+
+export interface AdvancedSearchOptions {
+  text?: string
+  operators?: {
+    path?: string
+    file?: string
+    tags?: string[]
+    properties?: { name: string; value: string }[]
+  }
+  titleOnly?: boolean
+  sortBy?: 'relevance' | 'modified' | 'created' | 'title'
+  sortDirection?: 'asc' | 'desc'
+  folder?: string
+  dateFrom?: string
+  dateTo?: string
+  limit?: number
+  offset?: number
+}
+
+export interface AdvancedSearchResultNote {
+  id: string
+  path: string
+  title: string
+  emoji?: string | null
+  snippet: string
+  score: number
+  matchedIn: ('title' | 'content' | 'tags')[]
+  createdAt: string
+  modifiedAt: string
+  tags: string[]
 }
 
 export interface QuickSearchResult {
@@ -131,6 +164,23 @@ export function extractSnippet(text: string, query: string, contextChars: number
 
   // Highlight all terms in snippet
   return highlightTerms(snippet, query)
+}
+
+// ============================================================================
+// Path Normalization
+// ============================================================================
+
+const ROOT_FOLDER = 'notes'
+
+function normalizePathFilter(pathFilter: string): string {
+  let normalized = pathFilter.trim()
+  if (normalized.startsWith(ROOT_FOLDER + '/')) {
+    normalized = normalized.slice(ROOT_FOLDER.length + 1)
+  }
+  if (normalized.startsWith('/')) {
+    normalized = normalized.slice(1)
+  }
+  return normalized
 }
 
 // ============================================================================
@@ -323,15 +373,241 @@ export function quickSearch(db: DrizzleDb, query: string, limit: number = 5): Qu
   return { notes }
 }
 
-/**
- * Get search suggestions based on a prefix.
- * Includes tags, recent titles, and completions.
- *
- * @param db - Drizzle database instance
- * @param prefix - Prefix to search for
- * @param limit - Maximum suggestions (default 5)
- * @returns Array of search suggestions
- */
+export function advancedSearch(
+  db: DrizzleDb,
+  rawDb: RawSqliteDb,
+  options: AdvancedSearchOptions
+): AdvancedSearchResultNote[] {
+  const {
+    text = '',
+    operators = {},
+    titleOnly = false,
+    sortBy = 'modified',
+    sortDirection = 'desc',
+    folder,
+    dateFrom,
+    dateTo,
+    limit = 50,
+    offset = 0
+  } = options
+
+  const hasTextQuery = text.trim().length > 0
+  const hasFilters =
+    operators.path ||
+    operators.file ||
+    (operators.tags && operators.tags.length > 0) ||
+    (operators.properties && operators.properties.length > 0) ||
+    folder ||
+    dateFrom ||
+    dateTo
+
+  if (!hasTextQuery && !hasFilters) {
+    return getRecentNotes(db, limit, offset, sortBy, sortDirection)
+  }
+
+  let baseQuery: string
+  let queryParams: unknown[] = []
+
+  if (hasTextQuery) {
+    const escapedQuery = escapeSearchQuery(text)
+    const ftsQuery = titleOnly ? buildTitleOnlyQuery(escapedQuery) : buildPrefixQuery(escapedQuery)
+
+    if (!ftsQuery) {
+      return hasFilters ? getFilteredNotes(db, rawDb, options) : []
+    }
+
+    baseQuery = `
+      SELECT
+        nc.id,
+        nc.path,
+        nc.title,
+        nc.emoji,
+        snippet(fts_notes, 2, '<mark>', '</mark>', '...', 30) as snippet,
+        bm25(fts_notes, 2.0, 1.0, 1.0) as score,
+        nc.created_at as createdAt,
+        nc.modified_at as modifiedAt
+      FROM fts_notes
+      INNER JOIN note_cache nc ON nc.id = fts_notes.id
+      WHERE fts_notes MATCH ?
+    `
+    queryParams.push(ftsQuery)
+  } else {
+    baseQuery = `
+      SELECT
+        nc.id,
+        nc.path,
+        nc.title,
+        nc.emoji,
+        nc.snippet as snippet,
+        1.0 as score,
+        nc.created_at as createdAt,
+        nc.modified_at as modifiedAt
+      FROM note_cache nc
+      WHERE 1=1
+    `
+  }
+
+  if (operators.path) {
+    const normalizedPath = normalizePathFilter(operators.path)
+    baseQuery += ` AND nc.path LIKE ?`
+    queryParams.push(`%${normalizedPath}%`)
+  }
+
+  if (operators.file) {
+    baseQuery += ` AND nc.path LIKE ?`
+    queryParams.push(`%/${operators.file}%`)
+  }
+
+  if (folder) {
+    const normalizedFolder = normalizePathFilter(folder)
+    baseQuery += ` AND nc.path LIKE ?`
+    queryParams.push(`%${normalizedFolder}%`)
+  }
+
+  if (operators.file) {
+    baseQuery += ` AND nc.path LIKE ?`
+    queryParams.push(`%/${operators.file}%`)
+  }
+
+  if (folder) {
+    const normalizedFolder = normalizePathFilter(folder)
+    baseQuery += ` AND nc.path LIKE ?`
+    queryParams.push(`%${normalizedFolder}%`)
+  }
+
+  if (dateFrom) {
+    baseQuery += ` AND nc.modified_at >= ?`
+    queryParams.push(dateFrom)
+  }
+
+  if (dateTo) {
+    baseQuery += ` AND nc.modified_at <= ?`
+    queryParams.push(dateTo)
+  }
+
+  if (operators.tags && operators.tags.length > 0) {
+    const tagPlaceholders = operators.tags.map(() => '?').join(', ')
+    baseQuery += ` AND nc.id IN (
+      SELECT note_id FROM note_tags WHERE LOWER(tag) IN (${tagPlaceholders})
+    )`
+    queryParams.push(...operators.tags.map((t) => t.toLowerCase()))
+  }
+
+  if (operators.properties && operators.properties.length > 0) {
+    for (const prop of operators.properties) {
+      baseQuery += ` AND nc.id IN (
+        SELECT note_id FROM note_properties WHERE name = ? AND value = ?
+      )`
+      queryParams.push(prop.name, prop.value)
+    }
+  }
+
+  const orderClause = buildOrderClause(sortBy, sortDirection, hasTextQuery)
+  baseQuery += ` ${orderClause} LIMIT ? OFFSET ?`
+  queryParams.push(limit, offset)
+
+  const stmt = rawDb.prepare(baseQuery)
+  const results = stmt.all(...queryParams) as {
+    id: string
+    path: string
+    title: string
+    emoji: string | null
+    snippet: string
+    score: number
+    createdAt: string
+    modifiedAt: string
+  }[]
+
+  return results.map((row) => ({
+    id: row.id,
+    path: row.path,
+    title: row.title,
+    emoji: row.emoji,
+    snippet: row.snippet || '',
+    score: Math.abs(row.score),
+    matchedIn: hasTextQuery ? (['title', 'content'] as const) : ([] as const),
+    createdAt: row.createdAt,
+    modifiedAt: row.modifiedAt,
+    tags: getTagsForNote(db, row.id)
+  }))
+}
+
+function buildTitleOnlyQuery(query: string): string {
+  const terms = query.split(/\s+/).filter((t) => t.length > 0)
+  if (terms.length === 0) return ''
+  return terms.map((term) => `title:"${term}"*`).join(' ')
+}
+
+function buildOrderClause(sortBy: string, sortDirection: string, hasTextQuery: boolean): string {
+  const dir = sortDirection === 'asc' ? 'ASC' : 'DESC'
+
+  switch (sortBy) {
+    case 'relevance':
+      return hasTextQuery ? `ORDER BY score ${dir}` : `ORDER BY modified_at DESC`
+    case 'created':
+      return `ORDER BY created_at ${dir}`
+    case 'title':
+      return `ORDER BY title ${dir}`
+    case 'modified':
+    default:
+      return `ORDER BY modified_at ${dir}`
+  }
+}
+
+function getRecentNotes(
+  db: DrizzleDb,
+  limit: number,
+  offset: number,
+  sortBy: string,
+  sortDirection: string
+): AdvancedSearchResultNote[] {
+  const orderClause = buildOrderClause(sortBy, sortDirection, false)
+
+  const results = db.all<{
+    id: string
+    path: string
+    title: string
+    emoji: string | null
+    snippet: string | null
+    createdAt: string
+    modifiedAt: string
+  }>(sql`
+    SELECT
+      id,
+      path,
+      title,
+      emoji,
+      snippet,
+      created_at as createdAt,
+      modified_at as modifiedAt
+    FROM note_cache
+    ${sql.raw(orderClause)}
+    LIMIT ${limit}
+    OFFSET ${offset}
+  `)
+
+  return results.map((row) => ({
+    id: row.id,
+    path: row.path,
+    title: row.title,
+    emoji: row.emoji,
+    snippet: row.snippet || '',
+    score: 1.0,
+    matchedIn: [],
+    createdAt: row.createdAt,
+    modifiedAt: row.modifiedAt,
+    tags: getTagsForNote(db, row.id)
+  }))
+}
+
+function getFilteredNotes(
+  db: DrizzleDb,
+  rawDb: RawSqliteDb,
+  options: AdvancedSearchOptions
+): AdvancedSearchResultNote[] {
+  return advancedSearch(db, rawDb, { ...options, text: '' })
+}
+
 export function getSuggestions(
   db: DrizzleDb,
   prefix: string,

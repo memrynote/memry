@@ -1022,6 +1022,29 @@ export interface TasksClientAPI {
   seedDemo(): Promise<{ success: boolean; message: string }>
 }
 
+// Advanced search types
+export interface AdvancedSearchInput {
+  text?: string
+  operators?: {
+    path?: string
+    file?: string
+    tags?: string[]
+    properties?: { name: string; value: string }[]
+  }
+  titleOnly?: boolean
+  sortBy?: 'relevance' | 'modified' | 'created' | 'title'
+  sortDirection?: 'asc' | 'desc'
+  folder?: string
+  dateFrom?: string
+  dateTo?: string
+  limit?: number
+  offset?: number
+}
+
+export interface AdvancedSearchResultNote extends SearchResultNote {
+  emoji?: string | null
+}
+
 // Search client API interface
 export interface SearchClientAPI {
   query(input: SearchQueryInput): Promise<SearchResponse>
@@ -1038,6 +1061,7 @@ export interface SearchClientAPI {
   ): Promise<SearchResultNote[]>
   findByTag(tag: string): Promise<SearchResultNote[]>
   findBacklinks(noteId: string): Promise<SearchResultNote[]>
+  advancedSearch(input: AdvancedSearchInput): Promise<AdvancedSearchResultNote[]>
 }
 
 // Saved Filters client API interface
