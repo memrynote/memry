@@ -74,11 +74,8 @@ export function registerSearchHandlers(): void {
           limit: input.limit,
           offset: input.offset,
           tags: input.tags,
-          folder: undefined // Could add folder filter if needed
+          folder: undefined
         })
-
-        // Add to recent searches
-        addRecentSearch(input.query)
 
         const queryTime = Math.round(performance.now() - startTime)
 
@@ -314,11 +311,6 @@ export function registerSearchHandlers(): void {
           limit: input.limit,
           offset: input.offset
         })
-
-        // Add to recent searches if there's a text query
-        if (input.text && input.text.trim()) {
-          addRecentSearch(input.text)
-        }
 
         const queryTime = Math.round(performance.now() - startTime)
         console.log(
