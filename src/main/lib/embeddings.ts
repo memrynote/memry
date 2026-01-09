@@ -184,10 +184,10 @@ export async function generateEmbedding(text: string): Promise<Float32Array | nu
     const truncated = text.substring(0, MAX_CONTENT_LENGTH)
 
     // Generate embedding with mean pooling and normalization
-    const output = await extractor(truncated, {
+    const output = (await extractor(truncated, {
       pooling: 'mean',
       normalize: true
-    })
+    })) as { data: ArrayLike<number> }
 
     // Extract data as Float32Array
     const embedding = new Float32Array(output.data)

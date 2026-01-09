@@ -354,10 +354,10 @@ export async function fileToFolder(
     })
 
     // Mark inbox item as filed
-    await markItemAsFiled(itemId, note.path, 'folder')
+    markItemAsFiled(itemId, note.path, 'folder')
 
     // Record filing history
-    await recordFilingHistory(item.type, item.content, note.path, 'folder', mergedTags)
+    recordFilingHistory(item.type, item.content, note.path, 'folder', mergedTags)
 
     return {
       success: true,
@@ -413,10 +413,10 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
     console.log(`[Filing] Converted to note: ${note.id}`)
 
     // Mark inbox item as filed
-    await markItemAsFiled(itemId, note.path, 'note')
+    markItemAsFiled(itemId, note.path, 'note')
 
     // Record filing history
-    await recordFilingHistory(item.type, item.content, note.path, 'note', mergedTags)
+    recordFilingHistory(item.type, item.content, note.path, 'note', mergedTags)
 
     return {
       success: true,
@@ -539,10 +539,10 @@ export async function linkToNotes(
     }
 
     // Mark inbox item as filed (linked to first target note for reference)
-    await markItemAsFiled(itemId, targetNotes[0].path, 'linked')
+    markItemAsFiled(itemId, targetNotes[0].path, 'linked')
 
     // Record filing history
-    await recordFilingHistory(item.type, item.content, targetNotes[0].path, 'linked', mergedTags)
+    recordFilingHistory(item.type, item.content, targetNotes[0].path, 'linked', mergedTags)
 
     return { success: true, linkedCount: targetNotes.length }
   } catch (error) {

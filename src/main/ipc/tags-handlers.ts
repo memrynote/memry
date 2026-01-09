@@ -92,7 +92,7 @@ export function registerTagsHandlers(): void {
   // tags:get-notes-by-tag - Get notes for a specific tag with pinned status
   ipcMain.handle(
     TagsChannels.invoke.GET_NOTES_BY_TAG,
-    createValidatedHandler(GetNotesByTagSchema, async (input) => {
+    createValidatedHandler(GetNotesByTagSchema, (input) => {
       const db = requireIndexDatabase()
 
       // Get tag definition for color
@@ -135,7 +135,7 @@ export function registerTagsHandlers(): void {
   // tags:pin-note-to-tag - Pin a note to a tag
   ipcMain.handle(
     TagsChannels.invoke.PIN_NOTE_TO_TAG,
-    createValidatedHandler(PinNoteToTagSchema, async (input) => {
+    createValidatedHandler(PinNoteToTagSchema, (input) => {
       const db = requireIndexDatabase()
 
       try {
@@ -159,7 +159,7 @@ export function registerTagsHandlers(): void {
   // tags:unpin-note-from-tag - Unpin a note from a tag
   ipcMain.handle(
     TagsChannels.invoke.UNPIN_NOTE_FROM_TAG,
-    createValidatedHandler(UnpinNoteFromTagSchema, async (input) => {
+    createValidatedHandler(UnpinNoteFromTagSchema, (input) => {
       const db = requireIndexDatabase()
 
       try {
@@ -183,7 +183,7 @@ export function registerTagsHandlers(): void {
   // tags:rename - Rename a tag across all notes
   ipcMain.handle(
     TagsChannels.invoke.RENAME_TAG,
-    createValidatedHandler(RenameTagSchema, async (input) => {
+    createValidatedHandler(RenameTagSchema, (input) => {
       const db = requireIndexDatabase()
 
       try {
@@ -210,7 +210,7 @@ export function registerTagsHandlers(): void {
   // tags:update-color - Update tag color
   ipcMain.handle(
     TagsChannels.invoke.UPDATE_TAG_COLOR,
-    createValidatedHandler(UpdateTagColorSchema, async (input) => {
+    createValidatedHandler(UpdateTagColorSchema, (input) => {
       const db = requireIndexDatabase()
 
       try {
@@ -236,7 +236,7 @@ export function registerTagsHandlers(): void {
   // tags:delete - Delete a tag from all notes
   ipcMain.handle(
     TagsChannels.invoke.DELETE_TAG,
-    createStringHandler(async (tag: string) => {
+    createStringHandler((tag: string) => {
       const db = requireIndexDatabase()
 
       try {
@@ -262,7 +262,7 @@ export function registerTagsHandlers(): void {
   // tags:remove-from-note - Remove tag from a specific note
   ipcMain.handle(
     TagsChannels.invoke.REMOVE_TAG_FROM_NOTE,
-    createValidatedHandler(RemoveTagFromNoteSchema, async (input) => {
+    createValidatedHandler(RemoveTagFromNoteSchema, (input) => {
       const db = requireIndexDatabase()
 
       try {

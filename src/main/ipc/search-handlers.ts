@@ -65,7 +65,7 @@ export function registerSearchHandlers(): void {
   // search:query - Full search with all options
   ipcMain.handle(
     SearchChannels.invoke.SEARCH,
-    createValidatedHandler(SearchQuerySchema, async (input) => {
+    createValidatedHandler(SearchQuerySchema, (input) => {
       const startTime = performance.now()
       const db = getIndexDatabase()
 
@@ -115,7 +115,7 @@ export function registerSearchHandlers(): void {
   // search:quick - Quick search for command palette
   ipcMain.handle(
     SearchChannels.invoke.QUICK_SEARCH,
-    createValidatedHandler(QuickSearchSchema, async (input) => {
+    createValidatedHandler(QuickSearchSchema, (input) => {
       const db = getIndexDatabase()
 
       try {
@@ -148,7 +148,7 @@ export function registerSearchHandlers(): void {
   // search:suggestions - Get search suggestions
   ipcMain.handle(
     SearchChannels.invoke.SUGGESTIONS,
-    createValidatedHandler(SuggestionsSchema, async (input) => {
+    createValidatedHandler(SuggestionsSchema, (input) => {
       const db = getIndexDatabase()
 
       try {
@@ -169,7 +169,7 @@ export function registerSearchHandlers(): void {
   // search:get-recent - Get recent searches
   ipcMain.handle(
     SearchChannels.invoke.GET_RECENT,
-    createHandler(async () => {
+    createHandler(() => {
       return recentSearches
     })
   )
@@ -177,7 +177,7 @@ export function registerSearchHandlers(): void {
   // search:clear-recent - Clear recent searches
   ipcMain.handle(
     SearchChannels.invoke.CLEAR_RECENT,
-    createHandler(async () => {
+    createHandler(() => {
       recentSearches = []
     })
   )
@@ -185,7 +185,7 @@ export function registerSearchHandlers(): void {
   // search:add-recent - Add to recent searches
   ipcMain.handle(
     SearchChannels.invoke.ADD_RECENT,
-    createStringHandler(async (query) => {
+    createStringHandler((query) => {
       addRecentSearch(query)
     })
   )
@@ -193,7 +193,7 @@ export function registerSearchHandlers(): void {
   // search:get-stats - Get search index stats
   ipcMain.handle(
     SearchChannels.invoke.GET_STATS,
-    createHandler(async () => {
+    createHandler(() => {
       const db = getIndexDatabase()
 
       const totalNotes = getSearchableCount(db)
@@ -214,7 +214,7 @@ export function registerSearchHandlers(): void {
   // search:rebuild-index - Force rebuild search index
   ipcMain.handle(
     SearchChannels.invoke.REBUILD_INDEX,
-    createHandler(async () => {
+    createHandler(() => {
       // TODO: Implement full index rebuild
       // This would clear FTS and re-index all notes from files
       console.log('[Search] Index rebuild requested - not yet implemented')
@@ -226,7 +226,7 @@ export function registerSearchHandlers(): void {
     SearchChannels.invoke.SEARCH_NOTES,
     createValidatedHandler(
       QuickSearchSchema, // Reuse quick search schema
-      async (input) => {
+      (input) => {
         const db = getIndexDatabase()
         const results = searchNotes(db, input.query, { limit: input.limit })
 
@@ -249,7 +249,7 @@ export function registerSearchHandlers(): void {
   // search:find-by-tag - Find notes by tag
   ipcMain.handle(
     SearchChannels.invoke.FIND_BY_TAG,
-    createStringHandler(async (tag) => {
+    createStringHandler((tag) => {
       const db = getIndexDatabase()
       const results = findNotesByTag(db, tag)
 
@@ -271,7 +271,7 @@ export function registerSearchHandlers(): void {
   // search:find-backlinks - Find notes linking to a note
   ipcMain.handle(
     SearchChannels.invoke.FIND_BACKLINKS,
-    createStringHandler(async (noteId) => {
+    createStringHandler((noteId) => {
       const db = getIndexDatabase()
       const results = findBacklinks(db, noteId)
 
@@ -293,7 +293,7 @@ export function registerSearchHandlers(): void {
   // search:advanced - Advanced search with operators, filters, and sorting
   ipcMain.handle(
     SearchChannels.invoke.ADVANCED_SEARCH,
-    createValidatedHandler(AdvancedSearchSchema, async (input) => {
+    createValidatedHandler(AdvancedSearchSchema, (input) => {
       const startTime = performance.now()
       const db = getIndexDatabase()
       const rawDb = getRawIndexDatabase()

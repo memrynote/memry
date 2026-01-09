@@ -351,7 +351,7 @@ export async function deleteNoteAttachments(noteId: string): Promise<void> {
 
   try {
     await rm(attachmentsDir, { recursive: true, force: true })
-  } catch (error) {
+  } catch {
     throw new AttachmentError(
       `Failed to delete attachments folder for note: ${noteId}`,
       AttachmentErrorCode.DELETE_FAILED
@@ -393,7 +393,7 @@ export async function listNoteAttachments(noteId: string): Promise<AttachmentInf
     }
 
     return attachments
-  } catch (error) {
+  } catch {
     return []
   }
 }
@@ -401,7 +401,7 @@ export async function listNoteAttachments(noteId: string): Promise<AttachmentInf
 /**
  * Check if an attachment exists
  */
-export async function attachmentExists(noteId: string, filename: string): Promise<boolean> {
+export function attachmentExists(noteId: string, filename: string): boolean {
   try {
     const vaultPath = getVaultPath()
     const filePath = getAttachmentPath(vaultPath, noteId, filename)

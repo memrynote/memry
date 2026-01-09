@@ -99,6 +99,25 @@ const BulkFilePanel = ({
   // Get first 3 folders as suggested
   const suggestedFolders = useMemo(() => vaultFolders.slice(0, 3), [vaultFolders])
 
+  // Handle filing items - defined before useEffect that uses it
+  const handleFileItems = useCallback(async (): Promise<void> => {
+    if (!selectedFolder || itemCount === 0) return
+
+    setIsLoading(true)
+
+    // Simulate a brief delay for filing
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    onFile(
+      items.map((item) => item.id),
+      selectedFolder.id,
+      tags
+    )
+
+    setIsLoading(false)
+    onClose()
+  }, [selectedFolder, itemCount, onFile, items, tags, onClose])
+
   // Reset state when panel opens, pre-populate with common tags
   useEffect(() => {
     if (isOpen) {
@@ -117,14 +136,14 @@ const BulkFilePanel = ({
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault()
         if (selectedFolder && itemCount > 0) {
-          handleFileItems()
+          void handleFileItems()
         }
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, selectedFolder, itemCount])
+  }, [isOpen, selectedFolder, itemCount, handleFileItems])
 
   const handleFolderSelect = useCallback((folder: Folder): void => {
     setSelectedFolder(folder)
@@ -133,24 +152,6 @@ const BulkFilePanel = ({
   const handleTagsChange = useCallback((newTags: string[]): void => {
     setTags(newTags)
   }, [])
-
-  const handleFileItems = async (): Promise<void> => {
-    if (!selectedFolder || itemCount === 0) return
-
-    setIsLoading(true)
-
-    // Simulate a brief delay for filing
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    onFile(
-      items.map((item) => item.id),
-      selectedFolder.id,
-      tags
-    )
-
-    setIsLoading(false)
-    onClose()
-  }
 
   const handleOpenChange = (open: boolean): void => {
     if (!open) {
@@ -218,7 +219,12 @@ const BulkFilePanel = ({
 
         {/* Footer */}
         <SheetFooter className="px-6 py-4 border-t border-[var(--border)] shrink-0 flex-col gap-3">
-          <Button onClick={handleFileItems} disabled={!canFile} className="w-full" size="lg">
+          <Button
+            onClick={() => void handleFileItems()}
+            disabled={!canFile}
+            className="w-full"
+            size="lg"
+          >
             {isLoading ? (
               <>
                 <Loader2 className="size-4 animate-spin mr-2" aria-hidden="true" />

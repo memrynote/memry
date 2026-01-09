@@ -48,7 +48,6 @@ type MockedFunction<T extends (...args: unknown[]) => unknown> = ReturnType<
  * are Vitest Mocks with preserved signatures.
  */
 export type MockedAPI<T> = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [K in keyof T]: T[K] extends (...args: any[]) => any ? MockedFunction<T[K]> : never
 }
 

@@ -26,15 +26,25 @@ const BulkTagPopover = ({
   onOpenChange,
   onApplyTags
 }: BulkTagPopoverProps): React.JSX.Element => {
+  // Reset tags when popover opens using key pattern instead of useEffect
+  const [openCount, setOpenCount] = useState(0)
+  const [prevIsOpen, setPrevIsOpen] = useState(false)
+
+  // Track open state changes to reset tags
+  if (isOpen && !prevIsOpen) {
+    setOpenCount((c) => c + 1)
+  }
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen)
+  }
+
   const [tags, setTags] = useState<string[]>([])
   const [isApplying, setIsApplying] = useState(false)
 
-  // Reset state when popover opens
+  // Reset tags when openCount changes (popover opened)
   useEffect(() => {
-    if (isOpen) {
-      setTags([])
-    }
-  }, [isOpen])
+    setTags([])
+  }, [openCount])
 
   const handleTagsChange = useCallback((newTags: string[]): void => {
     setTags(newTags)
@@ -79,7 +89,12 @@ const BulkTagPopover = ({
 
         {/* Footer */}
         <div className="px-4 py-3 border-t border-border">
-          <Button onClick={handleApplyTags} disabled={!canApply} className="w-full" size="sm">
+          <Button
+            onClick={() => void handleApplyTags()}
+            disabled={!canApply}
+            className="w-full"
+            size="sm"
+          >
             {isApplying ? (
               <>
                 <Loader2 className="size-4 animate-spin mr-2" aria-hidden="true" />

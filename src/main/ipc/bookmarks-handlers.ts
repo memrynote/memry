@@ -152,7 +152,7 @@ export function registerBookmarksHandlers(): void {
   // bookmarks:create - Create a new bookmark
   ipcMain.handle(
     BookmarksChannels.invoke.CREATE,
-    createValidatedHandler(BookmarkCreateSchema, async (input) => {
+    createValidatedHandler(BookmarkCreateSchema, (input) => {
       const db = requireDatabase()
 
       // Check if already bookmarked
@@ -183,7 +183,7 @@ export function registerBookmarksHandlers(): void {
   // bookmarks:delete - Delete a bookmark by ID
   ipcMain.handle(
     BookmarksChannels.invoke.DELETE,
-    createStringHandler(async (id) => {
+    createStringHandler((id) => {
       const db = requireDatabase()
 
       const bookmark = bookmarkQueries.getBookmarkById(db, id)
@@ -206,7 +206,7 @@ export function registerBookmarksHandlers(): void {
   // bookmarks:get - Get a bookmark by ID
   ipcMain.handle(
     BookmarksChannels.invoke.GET,
-    createStringHandler(async (id) => {
+    createStringHandler((id) => {
       const db = requireDatabase()
       return bookmarkQueries.getBookmarkById(db, id) ?? null
     })
@@ -215,7 +215,7 @@ export function registerBookmarksHandlers(): void {
   // bookmarks:list - List bookmarks with optional filters
   ipcMain.handle(
     BookmarksChannels.invoke.LIST,
-    createValidatedHandler(BookmarkListSchema, async (input) => {
+    createValidatedHandler(BookmarkListSchema, (input) => {
       const db = requireDatabase()
 
       const bookmarks = bookmarkQueries.listBookmarks(db, {
@@ -239,7 +239,7 @@ export function registerBookmarksHandlers(): void {
   // bookmarks:is-bookmarked - Check if an item is bookmarked
   ipcMain.handle(
     BookmarksChannels.invoke.IS_BOOKMARKED,
-    createValidatedHandler(BookmarkCheckSchema, async (input) => {
+    createValidatedHandler(BookmarkCheckSchema, (input) => {
       const db = requireDatabase()
       return bookmarkQueries.isBookmarked(db, input.itemType, input.itemId)
     })
@@ -248,7 +248,7 @@ export function registerBookmarksHandlers(): void {
   // bookmarks:toggle - Toggle bookmark status (create or delete)
   ipcMain.handle(
     BookmarksChannels.invoke.TOGGLE,
-    createValidatedHandler(BookmarkToggleSchema, async (input) => {
+    createValidatedHandler(BookmarkToggleSchema, (input) => {
       const db = requireDatabase()
 
       const result = bookmarkQueries.toggleBookmark(db, input.itemType, input.itemId, generateId)
@@ -278,7 +278,7 @@ export function registerBookmarksHandlers(): void {
   // bookmarks:get-by-item - Get bookmark for a specific item
   ipcMain.handle(
     BookmarksChannels.invoke.GET_BY_ITEM,
-    createValidatedHandler(BookmarkCheckSchema, async (input) => {
+    createValidatedHandler(BookmarkCheckSchema, (input) => {
       const db = requireDatabase()
       return bookmarkQueries.getBookmarkByItem(db, input.itemType, input.itemId) ?? null
     })
@@ -291,7 +291,7 @@ export function registerBookmarksHandlers(): void {
   // bookmarks:reorder - Reorder bookmarks
   ipcMain.handle(
     BookmarksChannels.invoke.REORDER,
-    createValidatedHandler(BookmarkReorderSchema, async (input) => {
+    createValidatedHandler(BookmarkReorderSchema, (input) => {
       const db = requireDatabase()
       bookmarkQueries.reorderBookmarks(db, input.bookmarkIds)
 
@@ -306,7 +306,7 @@ export function registerBookmarksHandlers(): void {
   // bookmarks:list-by-type - List bookmarks by item type
   ipcMain.handle(
     BookmarksChannels.invoke.LIST_BY_TYPE,
-    createStringHandler(async (itemType) => {
+    createStringHandler((itemType) => {
       const db = requireDatabase()
 
       const bookmarks = bookmarkQueries.listBookmarksByType(db, itemType)
@@ -323,7 +323,7 @@ export function registerBookmarksHandlers(): void {
   // bookmarks:bulk-delete - Delete multiple bookmarks
   ipcMain.handle(
     BookmarksChannels.invoke.BULK_DELETE,
-    createValidatedHandler(BookmarkBulkDeleteSchema, async (input) => {
+    createValidatedHandler(BookmarkBulkDeleteSchema, (input) => {
       const db = requireDatabase()
       const deletedCount = bookmarkQueries.bulkDeleteBookmarks(db, input.bookmarkIds)
 
@@ -340,7 +340,7 @@ export function registerBookmarksHandlers(): void {
   // bookmarks:bulk-create - Create multiple bookmarks
   ipcMain.handle(
     BookmarksChannels.invoke.BULK_CREATE,
-    createValidatedHandler(BookmarkBulkCreateSchema, async (input) => {
+    createValidatedHandler(BookmarkBulkCreateSchema, (input) => {
       const db = requireDatabase()
       const createdCount = bookmarkQueries.bulkCreateBookmarks(db, input.items, generateId)
 

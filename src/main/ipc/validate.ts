@@ -26,7 +26,7 @@ import type { IpcMainInvokeEvent } from 'electron'
  */
 export function createValidatedHandler<TSchema extends z.ZodSchema, TResult>(
   schema: TSchema,
-  handler: (input: z.infer<TSchema>) => Promise<TResult>
+  handler: (input: z.infer<TSchema>) => TResult | Promise<TResult>
 ): (event: IpcMainInvokeEvent, rawInput: unknown) => Promise<TResult> {
   return async (_event: IpcMainInvokeEvent, rawInput: unknown): Promise<TResult> => {
     try {
@@ -63,7 +63,7 @@ export function createValidatedHandler<TSchema extends z.ZodSchema, TResult>(
  * ```
  */
 export function createHandler<TResult>(
-  handler: () => Promise<TResult>
+  handler: () => TResult | Promise<TResult>
 ): (event: IpcMainInvokeEvent) => Promise<TResult> {
   return async (_event: IpcMainInvokeEvent): Promise<TResult> => {
     return handler()
@@ -87,7 +87,7 @@ export function createHandler<TResult>(
  * ```
  */
 export function createStringHandler<TResult>(
-  handler: (input: string) => Promise<TResult>
+  handler: (input: string) => TResult | Promise<TResult>
 ): (event: IpcMainInvokeEvent, rawInput: unknown) => Promise<TResult> {
   return createValidatedHandler(z.string(), handler)
 }

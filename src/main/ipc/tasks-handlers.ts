@@ -5,7 +5,7 @@
  * @module ipc/tasks-handlers
  */
 
-/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/require-await */
 // IPC handlers must be async for Electron compatibility, but use synchronous better-sqlite3 operations
 // Electron IPC passes untyped arguments that are validated by Zod schemas in each handler
 

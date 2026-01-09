@@ -155,22 +155,42 @@ export const QuickAddInput = ({
   // Detect triggers for autocomplete - compute during render instead of useEffect
   const { showAutocomplete, autocompleteType, autocompleteQuery } = useMemo(() => {
     if (!isFocused) {
-      return { showAutocomplete: false, autocompleteType: null as AutocompleteType, autocompleteQuery: '' }
+      return {
+        showAutocomplete: false,
+        autocompleteType: null as AutocompleteType,
+        autocompleteQuery: ''
+      }
     }
 
     const lastWord = value.split(' ').pop() || ''
 
     // Check for priority trigger first (!! before !)
     if (lastWord.startsWith('!!')) {
-      return { showAutocomplete: true, autocompleteType: 'priority' as AutocompleteType, autocompleteQuery: lastWord.slice(2) }
+      return {
+        showAutocomplete: true,
+        autocompleteType: 'priority' as AutocompleteType,
+        autocompleteQuery: lastWord.slice(2)
+      }
     } else if (lastWord.startsWith('!')) {
       // Date trigger (single !)
-      return { showAutocomplete: true, autocompleteType: 'date' as AutocompleteType, autocompleteQuery: lastWord.slice(1) }
+      return {
+        showAutocomplete: true,
+        autocompleteType: 'date' as AutocompleteType,
+        autocompleteQuery: lastWord.slice(1)
+      }
     } else if (lastWord.startsWith('#')) {
       // Project trigger
-      return { showAutocomplete: true, autocompleteType: 'project' as AutocompleteType, autocompleteQuery: lastWord.slice(1) }
+      return {
+        showAutocomplete: true,
+        autocompleteType: 'project' as AutocompleteType,
+        autocompleteQuery: lastWord.slice(1)
+      }
     } else {
-      return { showAutocomplete: false, autocompleteType: null as AutocompleteType, autocompleteQuery: '' }
+      return {
+        showAutocomplete: false,
+        autocompleteType: null as AutocompleteType,
+        autocompleteQuery: ''
+      }
     }
   }, [value, isFocused])
 

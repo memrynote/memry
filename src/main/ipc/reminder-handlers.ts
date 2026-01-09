@@ -110,7 +110,7 @@ export function registerReminderHandlers(): void {
   // reminder:create - Create a new reminder
   ipcMain.handle(
     ReminderChannels.invoke.CREATE,
-    createValidatedHandler(CreateReminderSchema, async (input) => {
+    createValidatedHandler(CreateReminderSchema, (input) => {
       ensureDb()
 
       try {
@@ -129,7 +129,7 @@ export function registerReminderHandlers(): void {
   // reminder:update - Update an existing reminder
   ipcMain.handle(
     ReminderChannels.invoke.UPDATE,
-    createValidatedHandler(UpdateReminderSchema, async (input) => {
+    createValidatedHandler(UpdateReminderSchema, (input) => {
       ensureDb()
 
       try {
@@ -151,7 +151,7 @@ export function registerReminderHandlers(): void {
   // reminder:delete - Delete a reminder
   ipcMain.handle(
     ReminderChannels.invoke.DELETE,
-    createStringHandler(async (id) => {
+    createStringHandler((id) => {
       ensureDb()
 
       const deleted = remindersService.deleteReminder(id)
@@ -165,7 +165,7 @@ export function registerReminderHandlers(): void {
   // reminder:get - Get a reminder by ID
   ipcMain.handle(
     ReminderChannels.invoke.GET,
-    createStringHandler(async (id) => {
+    createStringHandler((id) => {
       ensureDb()
 
       const reminder = remindersService.getReminder(id)
@@ -185,7 +185,7 @@ export function registerReminderHandlers(): void {
   // reminder:list - List reminders with filters
   ipcMain.handle(
     ReminderChannels.invoke.LIST,
-    createValidatedHandler(ListRemindersSchema, async (input) => {
+    createValidatedHandler(ListRemindersSchema, (input) => {
       ensureDb()
 
       const result = remindersService.listReminders(input)
@@ -205,7 +205,7 @@ export function registerReminderHandlers(): void {
   // reminder:get-upcoming - Get upcoming reminders (next N days)
   ipcMain.handle(
     ReminderChannels.invoke.GET_UPCOMING,
-    createValidatedHandler(z.number().int().min(1).max(365).optional(), async (days) => {
+    createValidatedHandler(z.number().int().min(1).max(365).optional(), (days) => {
       ensureDb()
 
       const result = remindersService.getUpcomingReminders(days ?? 7)
@@ -221,7 +221,7 @@ export function registerReminderHandlers(): void {
   // reminder:get-due - Get due reminders
   ipcMain.handle(
     ReminderChannels.invoke.GET_DUE,
-    createHandler(async () => {
+    createHandler(() => {
       ensureDb()
 
       const reminders = remindersService.getDueReminders()
@@ -232,7 +232,7 @@ export function registerReminderHandlers(): void {
   // reminder:get-for-target - Get reminders for a specific target
   ipcMain.handle(
     ReminderChannels.invoke.GET_FOR_TARGET,
-    createValidatedHandler(GetForTargetSchema, async (input) => {
+    createValidatedHandler(GetForTargetSchema, (input) => {
       ensureDb()
 
       return remindersService.getRemindersForTarget(input.targetType, input.targetId)
@@ -242,7 +242,7 @@ export function registerReminderHandlers(): void {
   // reminder:count-pending - Count pending reminders (for badge)
   ipcMain.handle(
     ReminderChannels.invoke.COUNT_PENDING,
-    createHandler(async () => {
+    createHandler(() => {
       ensureDb()
 
       return remindersService.countPendingReminders()
@@ -256,7 +256,7 @@ export function registerReminderHandlers(): void {
   // reminder:dismiss - Dismiss a reminder
   ipcMain.handle(
     ReminderChannels.invoke.DISMISS,
-    createStringHandler(async (id) => {
+    createStringHandler((id) => {
       ensureDb()
 
       try {
@@ -278,7 +278,7 @@ export function registerReminderHandlers(): void {
   // reminder:snooze - Snooze a reminder
   ipcMain.handle(
     ReminderChannels.invoke.SNOOZE,
-    createValidatedHandler(SnoozeReminderSchema, async (input) => {
+    createValidatedHandler(SnoozeReminderSchema, (input) => {
       ensureDb()
 
       try {
@@ -300,7 +300,7 @@ export function registerReminderHandlers(): void {
   // reminder:bulk-dismiss - Bulk dismiss reminders
   ipcMain.handle(
     ReminderChannels.invoke.BULK_DISMISS,
-    createValidatedHandler(BulkDismissSchema, async (input) => {
+    createValidatedHandler(BulkDismissSchema, (input) => {
       ensureDb()
 
       try {

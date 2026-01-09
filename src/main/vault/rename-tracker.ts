@@ -118,7 +118,7 @@ export function trackPendingDelete(
  * @param newPath - Relative path of the new file
  * @returns The old path if this was a rename, null if it's a new file
  */
-export async function checkForRename(id: string, newPath: string): Promise<string | null> {
+export function checkForRename(id: string, newPath: string): string | null {
   const pending = pendingDeletes.get(id)
 
   if (!pending) {
@@ -134,7 +134,7 @@ export async function checkForRename(id: string, newPath: string): Promise<strin
   pendingDeletes.delete(id)
 
   // Process the rename
-  await processRename(id, pending.path, newPath)
+  processRename(id, pending.path, newPath)
 
   return pending.path
 }
@@ -189,7 +189,7 @@ export function getPendingDeleteCount(): number {
  * @param oldPath - Old relative path
  * @param newPath - New relative path
  */
-async function processRename(id: string, oldPath: string, newPath: string): Promise<void> {
+function processRename(id: string, oldPath: string, newPath: string): void {
   const db = getIndexDatabase()
 
   // Extract old and new titles from filenames

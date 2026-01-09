@@ -131,23 +131,23 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+    void shell.openExternal(details.url)
     return { action: 'deny' }
   })
 
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    void mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    void mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(async () => {
+void app.whenReady().then(async () => {
   // Load React DevTools using new session.extensions API (Electron 38+)
   // Note: Some console errors about "sandboxed_renderer.bundle.js" and "Autofill"
   // are expected and harmless - they're caused by Chrome DevTools internals
@@ -432,12 +432,12 @@ function showQuickCaptureWindow(): void {
     const baseUrl = devUrl.endsWith('/') ? devUrl.slice(0, -1) : devUrl
     const url = `${baseUrl}/#/quick-capture`
     console.log('[QuickCapture] Loading URL:', url)
-    quickCaptureWindow.loadURL(url)
+    void quickCaptureWindow.loadURL(url)
   } else {
     // In production, load the HTML file with hash
     const filePath = join(__dirname, '../renderer/index.html')
     console.log('[QuickCapture] Loading file:', filePath)
-    quickCaptureWindow.loadFile(filePath, {
+    void quickCaptureWindow.loadFile(filePath, {
       hash: 'quick-capture'
     })
   }
@@ -503,7 +503,7 @@ function registerQuickCaptureShortcut(): void {
 let isShuttingDown = false
 
 // Graceful shutdown: close vault and databases before quitting
-app.on('before-quit', async (event) => {
+app.on('before-quit', (event) => {
   // Prevent duplicate shutdown handling
   if (isShuttingDown) return
   isShuttingDown = true
@@ -518,25 +518,26 @@ app.on('before-quit', async (event) => {
     app.exit(1)
   }, 5000) // 5 second timeout
 
-  try {
-    // Stop the snooze scheduler
-    console.log('[Shutdown] Stopping snooze scheduler...')
-    stopSnoozeScheduler()
+  // Stop the snooze scheduler
+  console.log('[Shutdown] Stopping snooze scheduler...')
+  stopSnoozeScheduler()
 
-    // Stop the reminder scheduler
-    console.log('[Shutdown] Stopping reminder scheduler...')
-    stopReminderScheduler()
+  // Stop the reminder scheduler
+  console.log('[Shutdown] Stopping reminder scheduler...')
+  stopReminderScheduler()
 
-    console.log('[Shutdown] Closing vault and stopping watcher...')
-    await closeVault() // This also closes databases
-    console.log('[Shutdown] Cleanup complete')
-    clearTimeout(shutdownTimeout)
-    app.exit(0)
-  } catch (error) {
-    console.error('[Shutdown] Error during cleanup:', error)
-    clearTimeout(shutdownTimeout)
-    app.exit(1)
-  }
+  console.log('[Shutdown] Closing vault and stopping watcher...')
+  closeVault()
+    .then(() => {
+      console.log('[Shutdown] Cleanup complete')
+      clearTimeout(shutdownTimeout)
+      app.exit(0)
+    })
+    .catch((error) => {
+      console.error('[Shutdown] Error during cleanup:', error)
+      clearTimeout(shutdownTimeout)
+      app.exit(1)
+    })
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

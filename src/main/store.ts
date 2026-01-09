@@ -47,7 +47,8 @@ function readConfig(): StoreSchema {
     const configPath = getConfigPath()
     if (fs.existsSync(configPath)) {
       const content = fs.readFileSync(configPath, 'utf-8')
-      return { ...defaultData, ...JSON.parse(content) }
+      const parsed = JSON.parse(content) as Partial<StoreSchema>
+      return { ...defaultData, ...parsed }
     }
   } catch (error) {
     console.error('Error reading config:', error)

@@ -405,12 +405,9 @@ export function registerFolderViewHandlers(): void {
   )
 
   // folder-view:folder-exists - Check if a folder exists (T115)
-  ipcMain.handle(
-    FolderViewChannels.invoke.FOLDER_EXISTS,
-    async (_event, folderPath: string): Promise<boolean> => {
-      return folderExists(folderPath)
-    }
-  )
+  ipcMain.handle(FolderViewChannels.invoke.FOLDER_EXISTS, (_event, folderPath: string): boolean => {
+    return folderExists(folderPath)
+  })
 }
 
 /**

@@ -747,7 +747,7 @@ export async function deleteNote(id: string): Promise<void> {
  * List notes with filtering and pagination.
  * Optimized to use batch tag/property queries and cached snippets (no file reads).
  */
-export async function listNotes(options: NoteListOptions = {}): Promise<NoteListResponse> {
+export function listNotes(options: NoteListOptions = {}): NoteListResponse {
   const db = getIndexDatabase()
   const limit = options.limit ?? 100
   const offset = options.offset ?? 0
@@ -823,7 +823,7 @@ export function getTagsWithCounts(): { tag: string; color: string; count: number
 /**
  * Get links for a note (outgoing and incoming).
  */
-export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
+export function getNoteLinks(id: string): NoteLinksResponse {
   const db = getIndexDatabase()
 
   // Get outgoing links
@@ -837,18 +837,16 @@ export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
 
   // Get incoming links (backlinks)
   const incoming = getIncomingLinks(db, id)
-  const backlinks: Backlink[] = await Promise.all(
-    incoming.map(async (link) => {
-      const sourceCache = getNoteCacheById(db, link.sourceId)
-      return {
-        sourceId: link.sourceId,
-        sourcePath: sourceCache?.path ?? '',
-        sourceTitle: sourceCache?.title ?? '',
-        context: '', // TODO: Extract context from content
-        lineNumber: 0
-      }
-    })
-  )
+  const backlinks: Backlink[] = incoming.map((link) => {
+    const sourceCache = getNoteCacheById(db, link.sourceId)
+    return {
+      sourceId: link.sourceId,
+      sourcePath: sourceCache?.path ?? '',
+      sourceTitle: sourceCache?.title ?? '',
+      context: '', // TODO: Extract context from content
+      lineNumber: 0
+    }
+  })
 
   return { outgoing: outgoingLinks, incoming: backlinks }
 }
@@ -906,7 +904,7 @@ export async function deleteFolder(folderPath: string): Promise<void> {
 /**
  * Check if a note exists by title or path.
  */
-export async function noteExists(titleOrPath: string): Promise<boolean> {
+export function noteExists(titleOrPath: string): boolean {
   const db = getIndexDatabase()
 
   // Check by path first
@@ -938,7 +936,7 @@ export async function openExternal(id: string): Promise<void> {
 /**
  * Reveal a note in the file explorer.
  */
-export async function revealInFinder(id: string): Promise<void> {
+export function revealInFinder(id: string): void {
   const db = getIndexDatabase()
   const cached = getNoteCacheById(db, id)
 

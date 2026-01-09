@@ -234,7 +234,7 @@ export function registerNotesHandlers(): void {
   // notes:get-tags - Get all tags with counts
   ipcMain.handle(
     NotesChannels.invoke.GET_TAGS,
-    createHandler(async () => {
+    createHandler(() => {
       return getTagsWithCounts()
     })
   )
@@ -328,7 +328,7 @@ export function registerNotesHandlers(): void {
   // T015: notes:get-properties - Get properties for a note
   ipcMain.handle(
     NotesChannels.invoke.GET_PROPERTIES,
-    createStringHandler(async (noteId) => {
+    createStringHandler((noteId) => {
       const db = getIndexDatabase()
       return getNoteProperties(db, noteId)
     })
@@ -357,7 +357,7 @@ export function registerNotesHandlers(): void {
   // T017: notes:get-property-definitions - Get all property definitions
   ipcMain.handle(
     NotesChannels.invoke.GET_PROPERTY_DEFINITIONS,
-    createHandler(async () => {
+    createHandler(() => {
       const db = getIndexDatabase()
       return getAllPropertyDefinitions(db)
     })
@@ -366,7 +366,7 @@ export function registerNotesHandlers(): void {
   // T018: notes:create-property-definition - Create a new property definition
   ipcMain.handle(
     NotesChannels.invoke.CREATE_PROPERTY_DEFINITION,
-    createValidatedHandler(CreatePropertyDefinitionSchema, async (input) => {
+    createValidatedHandler(CreatePropertyDefinitionSchema, (input) => {
       try {
         const db = getIndexDatabase()
         const definition = insertPropertyDefinition(db, {
@@ -388,7 +388,7 @@ export function registerNotesHandlers(): void {
   // notes:update-property-definition - Update a property definition
   ipcMain.handle(
     NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION,
-    createValidatedHandler(UpdatePropertyDefinitionSchema, async (input) => {
+    createValidatedHandler(UpdatePropertyDefinitionSchema, (input) => {
       try {
         const db = getIndexDatabase()
         const { name, ...updates } = input
@@ -626,7 +626,7 @@ export function registerNotesHandlers(): void {
   // notes:get-versions - Get version history for a note
   ipcMain.handle(
     NotesChannels.invoke.GET_VERSIONS,
-    createStringHandler(async (noteId) => {
+    createStringHandler((noteId) => {
       return getVersionHistory(noteId)
     })
   )
@@ -634,7 +634,7 @@ export function registerNotesHandlers(): void {
   // notes:get-version - Get a specific version with content
   ipcMain.handle(
     NotesChannels.invoke.GET_VERSION,
-    createStringHandler(async (snapshotId) => {
+    createStringHandler((snapshotId) => {
       return getVersion(snapshotId)
     })
   )
@@ -656,7 +656,7 @@ export function registerNotesHandlers(): void {
   // notes:delete-version - Delete a specific version
   ipcMain.handle(
     NotesChannels.invoke.DELETE_VERSION,
-    createStringHandler(async (snapshotId) => {
+    createStringHandler((snapshotId) => {
       try {
         const db = getIndexDatabase()
         deleteNoteSnapshot(db, snapshotId)
@@ -670,7 +670,7 @@ export function registerNotesHandlers(): void {
 
   ipcMain.handle(
     NotesChannels.invoke.GET_POSITIONS,
-    createValidatedHandler(NoteGetPositionsSchema, async (input) => {
+    createValidatedHandler(NoteGetPositionsSchema, (input) => {
       try {
         const db = getDatabase()
         const positions = getNotesInFolder(db, input.folderPath)
@@ -684,7 +684,7 @@ export function registerNotesHandlers(): void {
 
   ipcMain.handle(
     NotesChannels.invoke.GET_ALL_POSITIONS,
-    createHandler(async () => {
+    createHandler(() => {
       try {
         const db = getDatabase()
         const positions = getAllNotePositions(db)
@@ -702,7 +702,7 @@ export function registerNotesHandlers(): void {
 
   ipcMain.handle(
     NotesChannels.invoke.REORDER,
-    createValidatedHandler(NoteReorderSchema, async (input) => {
+    createValidatedHandler(NoteReorderSchema, (input) => {
       try {
         const db = getDatabase()
         reorderNotesInFolder(db, input.folderPath, input.notePaths)

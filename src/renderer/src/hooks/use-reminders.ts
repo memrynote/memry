@@ -98,7 +98,10 @@ export function useReminders(options?: ListRemindersInput): {
 /**
  * Hook for getting reminders for a specific target (note, journal, highlight)
  */
-export function useRemindersForTarget(targetType: ReminderTargetType, targetId: string): {
+export function useRemindersForTarget(
+  targetType: ReminderTargetType,
+  targetId: string
+): {
   reminders: Array<any>
   isLoading: boolean
   error: any

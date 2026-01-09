@@ -36,7 +36,7 @@ export async function atomicWrite(filePath: string, content: string): Promise<vo
 
     // Atomic rename (overwrites existing file)
     await rename(tempPath, filePath)
-  } catch (error) {
+  } catch {
     // Clean up temp file on error
     try {
       if (existsSync(tempPath)) {

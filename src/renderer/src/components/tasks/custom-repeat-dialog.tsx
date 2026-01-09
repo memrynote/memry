@@ -379,7 +379,7 @@ const CustomRepeatDialogInner = ({
         frequency: initialConfig.frequency,
         interval: initialConfig.interval,
         daysOfWeek: initialConfig.daysOfWeek || [effectiveDueDate.getDay()],
-        monthlyType: initialConfig.monthlyType || 'dayOfMonth' as MonthlyType,
+        monthlyType: initialConfig.monthlyType || ('dayOfMonth' as MonthlyType),
         dayOfMonth: initialConfig.dayOfMonth || effectiveDueDate.getDate(),
         weekOfMonth: initialConfig.weekOfMonth || Math.ceil(effectiveDueDate.getDate() / 7),
         dayOfWeekForMonth: initialConfig.dayOfWeekForMonth ?? effectiveDueDate.getDay(),

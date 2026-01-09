@@ -31,19 +31,19 @@ export function registerVaultHandlers(): void {
   // vault:get-status - Get current vault status
   ipcMain.handle(
     VaultChannels.invoke.GET_STATUS,
-    createHandler(async () => getStatus())
+    createHandler(() => getStatus())
   )
 
   // vault:get-config - Get vault configuration
   ipcMain.handle(
     VaultChannels.invoke.GET_CONFIG,
-    createHandler(async () => getConfig())
+    createHandler(() => getConfig())
   )
 
   // vault:update-config - Update vault configuration
   ipcMain.handle(
     VaultChannels.invoke.UPDATE_CONFIG,
-    createValidatedHandler(UpdateVaultConfigSchema, async (input) => updateConfig(input))
+    createValidatedHandler(UpdateVaultConfigSchema, (input) => updateConfig(input))
   )
 
   // vault:close - Close current vault
@@ -52,7 +52,7 @@ export function registerVaultHandlers(): void {
   // vault:get-all - Get list of known vaults
   ipcMain.handle(
     VaultChannels.invoke.GET_ALL,
-    createHandler(async () => getAllVaults())
+    createHandler(() => getAllVaults())
   )
 
   // vault:switch - Switch to a different vault

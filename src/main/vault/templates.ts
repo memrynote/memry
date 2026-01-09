@@ -339,25 +339,41 @@ function emitTemplateEvent(channel: string, payload: unknown): void {
 }
 
 /**
+ * Frontmatter data structure for template files.
+ */
+interface TemplateFrontmatter {
+  id?: string
+  name?: string
+  description?: string
+  icon?: string | null
+  isBuiltIn?: boolean
+  tags?: string[]
+  properties?: TemplateProperty[]
+  createdAt?: string
+  modifiedAt?: string
+}
+
+/**
  * Parse a template file.
  */
 function parseTemplate(content: string, filePath: string): Template {
   const { data, content: body } = matter(content)
+  const frontmatter = data as TemplateFrontmatter
 
   // Extract id from filename if not in frontmatter
-  const id = data.id || path.basename(filePath, '.md')
+  const id = frontmatter.id ?? path.basename(filePath, '.md')
 
   return {
     id,
-    name: data.name || id,
-    description: data.description,
-    icon: data.icon || null,
-    isBuiltIn: data.isBuiltIn === true,
-    tags: Array.isArray(data.tags) ? data.tags : [],
-    properties: Array.isArray(data.properties) ? data.properties : [],
+    name: frontmatter.name ?? id,
+    description: frontmatter.description,
+    icon: frontmatter.icon ?? null,
+    isBuiltIn: frontmatter.isBuiltIn === true,
+    tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
+    properties: Array.isArray(frontmatter.properties) ? frontmatter.properties : [],
     content: body.trim(),
-    createdAt: data.createdAt || new Date().toISOString(),
-    modifiedAt: data.modifiedAt || new Date().toISOString()
+    createdAt: frontmatter.createdAt ?? new Date().toISOString(),
+    modifiedAt: frontmatter.modifiedAt ?? new Date().toISOString()
   }
 }
 

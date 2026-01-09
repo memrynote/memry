@@ -67,7 +67,7 @@ export function registerSavedFiltersHandlers(): void {
   // saved-filters:list - List all saved filters
   ipcMain.handle(
     SavedFiltersChannels.invoke.LIST,
-    createHandler(async () => {
+    createHandler(() => {
       const db = requireDatabase()
       const filters = settingsQueries.listSavedFilters(db)
       return {
@@ -79,7 +79,7 @@ export function registerSavedFiltersHandlers(): void {
   // saved-filters:create - Create a new saved filter
   ipcMain.handle(
     SavedFiltersChannels.invoke.CREATE,
-    createValidatedHandler(SavedFilterCreateSchema, async (input) => {
+    createValidatedHandler(SavedFilterCreateSchema, (input) => {
       const db = requireDatabase()
       const id = generateId()
       const position = settingsQueries.getNextSavedFilterPosition(db)
@@ -101,7 +101,7 @@ export function registerSavedFiltersHandlers(): void {
   // saved-filters:update - Update a saved filter
   ipcMain.handle(
     SavedFiltersChannels.invoke.UPDATE,
-    createValidatedHandler(SavedFilterUpdateSchema, async (input) => {
+    createValidatedHandler(SavedFilterUpdateSchema, (input) => {
       const db = requireDatabase()
 
       // Check if filter exists
@@ -129,7 +129,7 @@ export function registerSavedFiltersHandlers(): void {
   // saved-filters:delete - Delete a saved filter
   ipcMain.handle(
     SavedFiltersChannels.invoke.DELETE,
-    createValidatedHandler(SavedFilterDeleteSchema, async (input) => {
+    createValidatedHandler(SavedFilterDeleteSchema, (input) => {
       const db = requireDatabase()
 
       // Check if filter exists
@@ -147,7 +147,7 @@ export function registerSavedFiltersHandlers(): void {
   // saved-filters:reorder - Reorder saved filters
   ipcMain.handle(
     SavedFiltersChannels.invoke.REORDER,
-    createValidatedHandler(SavedFilterReorderSchema, async (input) => {
+    createValidatedHandler(SavedFilterReorderSchema, (input) => {
       const db = requireDatabase()
       settingsQueries.reorderSavedFilters(db, input.ids, input.positions)
       return { success: true }

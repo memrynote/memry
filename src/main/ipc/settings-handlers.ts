@@ -116,7 +116,7 @@ function getDbOrNull() {
  */
 export function registerSettingsHandlers(): void {
   // Get a setting by key
-  ipcMain.handle(SettingsChannels.invoke.GET, async (_event, key: string) => {
+  ipcMain.handle(SettingsChannels.invoke.GET, (_event, key: string) => {
     const db = getDbOrNull()
     if (!db) {
       return null
@@ -127,7 +127,7 @@ export function registerSettingsHandlers(): void {
   // Set a setting value
   ipcMain.handle(
     SettingsChannels.invoke.SET,
-    async (_event, { key, value }: { key: string; value: string }) => {
+    (_event, { key, value }: { key: string; value: string }) => {
       const db = getDbOrNull()
       if (!db) {
         return { success: false, error: 'No vault open' }
@@ -144,7 +144,7 @@ export function registerSettingsHandlers(): void {
   )
 
   // Get journal settings
-  ipcMain.handle(SettingsChannels.invoke.GET_JOURNAL_SETTINGS, async () => {
+  ipcMain.handle(SettingsChannels.invoke.GET_JOURNAL_SETTINGS, () => {
     const db = getDbOrNull()
     if (!db) {
       return { defaultTemplate: null }
@@ -157,7 +157,7 @@ export function registerSettingsHandlers(): void {
   // Set journal settings
   ipcMain.handle(
     SettingsChannels.invoke.SET_JOURNAL_SETTINGS,
-    async (_event, settings: Partial<JournalSettings>) => {
+    (_event, settings: Partial<JournalSettings>) => {
       const db = getDbOrNull()
       if (!db) {
         return { success: false, error: 'No vault open' }
@@ -185,7 +185,7 @@ export function registerSettingsHandlers(): void {
   )
 
   // Get AI settings (simplified - just enabled flag)
-  ipcMain.handle(SettingsChannels.invoke.GET_AI_SETTINGS, async () => {
+  ipcMain.handle(SettingsChannels.invoke.GET_AI_SETTINGS, () => {
     const db = getDbOrNull()
     if (!db) {
       return DEFAULT_AI_SETTINGS
@@ -201,7 +201,7 @@ export function registerSettingsHandlers(): void {
   // Set AI settings
   ipcMain.handle(
     SettingsChannels.invoke.SET_AI_SETTINGS,
-    async (_event, settings: Partial<AISettings>) => {
+    (_event, settings: Partial<AISettings>) => {
       const db = getDbOrNull()
       if (!db) {
         return { success: false, error: 'No vault open' }
@@ -281,7 +281,7 @@ export function registerSettingsHandlers(): void {
   })
 
   // Get tab settings
-  ipcMain.handle(SettingsChannels.invoke.GET_TAB_SETTINGS, async () => {
+  ipcMain.handle(SettingsChannels.invoke.GET_TAB_SETTINGS, () => {
     const db = getDbOrNull()
     if (!db) {
       return DEFAULT_TAB_SETTINGS
@@ -306,7 +306,7 @@ export function registerSettingsHandlers(): void {
   // Set tab settings
   ipcMain.handle(
     SettingsChannels.invoke.SET_TAB_SETTINGS,
-    async (_event, settings: Partial<TabSettings>) => {
+    (_event, settings: Partial<TabSettings>) => {
       const db = getDbOrNull()
       if (!db) {
         return { success: false, error: 'No vault open' }
@@ -339,7 +339,7 @@ export function registerSettingsHandlers(): void {
   )
 
   // Get note editor settings
-  ipcMain.handle(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS, async () => {
+  ipcMain.handle(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS, () => {
     const db = getDbOrNull()
     if (!db) {
       return DEFAULT_NOTE_EDITOR_SETTINGS
@@ -357,7 +357,7 @@ export function registerSettingsHandlers(): void {
   // Set note editor settings
   ipcMain.handle(
     SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS,
-    async (_event, settings: Partial<NoteEditorSettings>) => {
+    (_event, settings: Partial<NoteEditorSettings>) => {
       const db = getDbOrNull()
       if (!db) {
         return { success: false, error: 'No vault open' }

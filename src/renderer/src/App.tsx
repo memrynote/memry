@@ -286,9 +286,9 @@ function App(): React.JSX.Element {
   const isVaultOpen = vaultStatus?.isOpen ?? false
 
   // Navigation state
-  // Note: setCurrentPage is unused because navigation is now handled by tabs
+  // Note: navigation is now handled by tabs
   // currentPage is still used for sidebar highlight state
-  const [currentPage, _setCurrentPage] = useState<AppPage>('inbox')
+  const [currentPage] = useState<AppPage>('inbox')
 
   // Task-related state (lifted from TasksPage)
   const [projects, setProjects] = useState<Project[]>(initialProjects)
@@ -364,7 +364,8 @@ function App(): React.JSX.Element {
             }
 
             // Handle other updates if present
-            const { completedAt: _completed, ...otherUpdates } = updates
+            const { completedAt: _, ...otherUpdates } = updates
+            void _
             if (Object.keys(otherUpdates).length > 0) {
               let dueDateValue: string | null | undefined = undefined
               if ('dueDate' in otherUpdates) {
@@ -398,7 +399,8 @@ function App(): React.JSX.Element {
             }
 
             // Handle other updates if present
-            const { archivedAt: _archived, ...otherUpdates } = updates
+            const { archivedAt: __, ...otherUpdates } = updates
+            void __
             if (Object.keys(otherUpdates).length > 0) {
               let dueDateValue: string | null | undefined = undefined
               if ('dueDate' in otherUpdates) {
@@ -447,7 +449,7 @@ function App(): React.JSX.Element {
         }
       }
     },
-    [isVaultOpen]
+    [isVaultOpen, priorityReverseMap]
   )
 
   // Task delete handler - persists to database when vault is open
@@ -555,7 +557,11 @@ function App(): React.JSX.Element {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <SidebarProvider>
-        <DragProvider tasks={tasks} selectedIds={selectedTaskIds} onDragEnd={handleDragEnd}>
+        <DragProvider
+          tasks={tasks}
+          selectedIds={selectedTaskIds}
+          onDragEnd={(event, state) => void handleDragEnd(event, state)}
+        >
           {mainContent}
         </DragProvider>
       </SidebarProvider>

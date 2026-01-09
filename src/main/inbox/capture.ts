@@ -136,7 +136,7 @@ function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]): InboxI
     pageCount: metadata?.pageCount as number | undefined,
     // Voice transcription fields
     transcription: row.transcription,
-    transcriptionStatus: row.transcriptionStatus as InboxItemListItem['transcriptionStatus'],
+    transcriptionStatus: row.transcriptionStatus as InboxItemListItem['transcriptionStatus']
   }
 }
 

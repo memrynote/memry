@@ -120,7 +120,8 @@ export function readVaultConfig(vaultPath: string): typeof DEFAULT_CONFIG {
 
   try {
     const content = fs.readFileSync(configPath, 'utf-8')
-    return { ...DEFAULT_CONFIG, ...JSON.parse(content) }
+    const parsed = JSON.parse(content) as Partial<typeof DEFAULT_CONFIG>
+    return { ...DEFAULT_CONFIG, ...parsed }
   } catch {
     return DEFAULT_CONFIG
   }

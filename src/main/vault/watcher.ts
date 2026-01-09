@@ -215,9 +215,9 @@ export class VaultWatcher {
 
     // Set up event handlers
     this.watcher
-      .on('add', (filePath) => this.handleFileAdd(filePath))
+      .on('add', (filePath) => void this.handleFileAdd(filePath))
       .on('change', (filePath) => this.debouncedChange?.(filePath))
-      .on('unlink', (filePath) => this.handleFileDelete(filePath))
+      .on('unlink', (filePath) => void this.handleFileDelete(filePath))
       .on('ready', () => {
         this.isReady = true
       })
@@ -474,7 +474,7 @@ export class VaultWatcher {
    * Handle file deletion.
    * Tracks as pending delete to detect renames (delete + add with same UUID).
    */
-  private async handleFileDelete(absolutePath: string): Promise<void> {
+  private handleFileDelete(absolutePath: string): void {
     if (!this.vaultPath) return
 
     try {
@@ -514,6 +514,9 @@ export class VaultWatcher {
             source: 'external'
           })
         }
+
+        // Return void to match the expected signature
+        await Promise.resolve()
       })
     } catch (error) {
       this.onError?.(error instanceof Error ? error : new Error(String(error)))

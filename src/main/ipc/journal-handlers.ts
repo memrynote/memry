@@ -334,7 +334,7 @@ export function registerJournalHandlers(): void {
   // journal:getHeatmap - Get heatmap data for a year
   ipcMain.handle(
     JournalChannels.invoke.GET_HEATMAP,
-    createValidatedHandler(GetHeatmapInputSchema, async (input): Promise<HeatmapEntry[]> => {
+    createValidatedHandler(GetHeatmapInputSchema, (input): HeatmapEntry[] => {
       const db = getIndexDatabase()
       const data = getHeatmapData(db, input.year)
       return data.map((d) => ({
@@ -391,7 +391,7 @@ export function registerJournalHandlers(): void {
   // journal:getYearStats - Get stats for all months in a year
   ipcMain.handle(
     JournalChannels.invoke.GET_YEAR_STATS,
-    createValidatedHandler(GetYearStatsInputSchema, async (input): Promise<MonthStats[]> => {
+    createValidatedHandler(GetYearStatsInputSchema, (input): MonthStats[] => {
       const db = getIndexDatabase()
       const stats = getJournalYearStats(db, input.year)
       return stats.map((s) => ({
@@ -412,7 +412,7 @@ export function registerJournalHandlers(): void {
   // journal:getDayContext - Get tasks and events for a specific date
   ipcMain.handle(
     JournalChannels.invoke.GET_DAY_CONTEXT,
-    createValidatedHandler(GetDayContextInputSchema, async (input): Promise<DayContext> => {
+    createValidatedHandler(GetDayContextInputSchema, (input): DayContext => {
       const dataDb = getDatabase()
 
       // Get tasks due on the specified date (including completed)
@@ -449,7 +449,7 @@ export function registerJournalHandlers(): void {
   // Note: Now uses unified tag system (note_tags + tag_definitions)
   ipcMain.handle(
     JournalChannels.invoke.GET_ALL_TAGS,
-    createHandler(async (): Promise<GetAllTagsOutput> => {
+    createHandler((): GetAllTagsOutput => {
       const db = getIndexDatabase()
       // Get all tags with colors from unified system
       const tagsWithColors = getAllTagsWithColors(db)
@@ -466,11 +466,11 @@ export function registerJournalHandlers(): void {
   ipcMain.handle(
     JournalChannels.invoke.GET_STREAK,
     createHandler(
-      async (): Promise<{
+      (): {
         currentStreak: number
         longestStreak: number
         lastEntryDate: string | null
-      }> => {
+      } => {
         const db = getIndexDatabase()
         return getJournalStreak(db)
       }
