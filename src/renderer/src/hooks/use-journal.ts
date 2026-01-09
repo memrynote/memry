@@ -410,7 +410,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     const unsubscribeCreated = onJournalEntryCreated((event) => {
       if (event.date === currentDateRef.current) {
         // Update cache with the new entry
-        queryClient.setQueryData(journalKeys.entry(event.date), event.entry as JournalEntry)
+        queryClient.setQueryData(journalKeys.entry(event.date), event.entry)
       }
     })
 
@@ -427,7 +427,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         // For external changes, always update and remount editor
         // For internal changes, only update if not dirty
         if (isExternal) {
-          queryClient.setQueryData(journalKeys.entry(event.date), event.entry as JournalEntry)
+          queryClient.setQueryData(journalKeys.entry(event.date), event.entry)
           // Clear dirty state since external content is authoritative
           setIsDirty(false)
           pendingContentRef.current = null
@@ -435,7 +435,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
           // Increment to trigger editor remount
           setExternalUpdateCount((c) => c + 1)
         } else if (!isDirtyRef.current) {
-          queryClient.setQueryData(journalKeys.entry(event.date), event.entry as JournalEntry)
+          queryClient.setQueryData(journalKeys.entry(event.date), event.entry)
         }
       }
     })

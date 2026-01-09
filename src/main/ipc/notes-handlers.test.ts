@@ -404,10 +404,10 @@ describe('notes-handlers', () => {
       }
       ;(notesVault.listNotes as Mock).mockResolvedValue(mockNotes)
 
-      const result = (await invokeHandler(NotesChannels.invoke.LIST, {
+      const result = await invokeHandler(NotesChannels.invoke.LIST, {
         limit: 50,
         offset: 0
-      })) as { hasMore: boolean; total: number }
+      })
 
       expect(result.hasMore).toBe(true)
       expect(result.total).toBe(100)

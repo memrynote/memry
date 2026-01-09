@@ -35,7 +35,7 @@ interface UndoEntry {
 
 // Global undo stack - shared across all components
 let globalUndoStack: UndoEntry[] = []
-let globalUndoListeners: Set<() => void> = new Set()
+const globalUndoListeners: Set<() => void> = new Set()
 
 // Clean up expired entries periodically
 let cleanupInterval: ReturnType<typeof setInterval> | null = null

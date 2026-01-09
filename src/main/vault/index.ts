@@ -204,7 +204,7 @@ async function openVault(vaultPath: string): Promise<void> {
   seedDefaults(getDatabase())
 
   // Check index database health before proceeding
-  let indexHealth: IndexHealth = checkIndexHealth(indexDbPath)
+  const indexHealth: IndexHealth = checkIndexHealth(indexDbPath)
   console.log(`[Vault] Index health check: ${indexHealth}`)
 
   updateStatus({ isIndexing: true, indexProgress: 0 })

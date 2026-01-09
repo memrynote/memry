@@ -275,7 +275,7 @@ const VirtualItemRenderer = memo(
         return <DroppableSectionHeader item={item} />
 
       case 'task': {
-        const taskItem = item as TaskItem
+        const taskItem = item
         const isCompleted = isTaskCompletedFast(taskItem.task, lookupContext.completionMap)
         const isCheckedForSelection = selectedIds?.has(taskItem.task.id) ?? false
         const styles =
@@ -307,7 +307,7 @@ const VirtualItemRenderer = memo(
       }
 
       case 'parent-task': {
-        const parentItem = item as ParentTaskItem
+        const parentItem = item
         const isCompleted = isTaskCompletedFast(parentItem.task, lookupContext.completionMap)
         const isCheckedForSelection = selectedIds?.has(parentItem.task.id) ?? false
         const isExpanded = expandedIds.has(parentItem.task.id)
@@ -345,7 +345,7 @@ const VirtualItemRenderer = memo(
       }
 
       case 'add-task-button': {
-        const addItem = item as AddTaskButtonItem
+        const addItem = item
         return (
           <button
             type="button"

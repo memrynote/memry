@@ -352,7 +352,7 @@ export const TasksProvider = ({
     if (!isVaultOpen) return
 
     const unsubTaskCreated = onTaskCreated((event) => {
-      const uiTask = dbTaskToUiTask(event.task as DbTask)
+      const uiTask = dbTaskToUiTask(event.task)
       setTasks((prev) => {
         if (prev.some((t) => t.id === uiTask.id)) return prev
         // T038: If this is a subtask, update parent's subtaskIds
@@ -367,7 +367,7 @@ export const TasksProvider = ({
     })
 
     const unsubTaskUpdated = onTaskUpdated((event) => {
-      const uiTask = dbTaskToUiTask(event.task as DbTask)
+      const uiTask = dbTaskToUiTask(event.task)
       setTasks((prev) => {
         const oldTask = prev.find((t) => t.id === event.id)
         let updated = prev.map((t) => (t.id === event.id ? uiTask : t))
@@ -411,12 +411,12 @@ export const TasksProvider = ({
 
     // T026: Subscribe to task completed events to update completedAt in state
     const unsubTaskCompleted = onTaskCompleted((event) => {
-      const uiTask = dbTaskToUiTask(event.task as DbTask)
+      const uiTask = dbTaskToUiTask(event.task)
       setTasks((prev) => prev.map((t) => (t.id === event.id ? uiTask : t)))
     })
 
     const unsubProjectCreated = onProjectCreated((event) => {
-      const uiProject = dbProjectToUiProject(event.project as DbProject)
+      const uiProject = dbProjectToUiProject(event.project)
       setProjects((prev) => {
         if (prev.some((p) => p.id === uiProject.id)) return prev
         return [...prev, uiProject]
@@ -424,7 +424,7 @@ export const TasksProvider = ({
     })
 
     const unsubProjectUpdated = onProjectUpdated((event) => {
-      const uiProject = dbProjectToUiProject(event.project as DbProject)
+      const uiProject = dbProjectToUiProject(event.project)
       setProjects((prev) => prev.map((p) => (p.id === event.id ? uiProject : p)))
     })
 

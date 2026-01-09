@@ -88,9 +88,7 @@ export const TabBarWithOverflow = ({
   useEffect(() => {
     if (!tabsRef.current || !group?.activeTabId) return
 
-    const activeTab = tabsRef.current.querySelector(
-      `[data-tab-id="${group.activeTabId}"]`
-    ) as HTMLElement | null
+    const activeTab = tabsRef.current.querySelector(`[data-tab-id="${group.activeTabId}"]`)
 
     if (activeTab) {
       activeTab.scrollIntoView({
