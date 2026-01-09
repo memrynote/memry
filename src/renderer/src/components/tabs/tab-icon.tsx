@@ -19,7 +19,11 @@ import {
   Settings,
   Bookmark,
   File,
-  LayoutTemplate
+  LayoutTemplate,
+  FileType2,
+  Image,
+  Music,
+  Video
 } from 'lucide-react'
 import type { TabType } from '@/contexts/tabs/types'
 import { cn } from '@/lib/utils'
@@ -53,7 +57,12 @@ const ICON_COMPONENTS: Record<string, React.ComponentType<{ className?: string }
   settings: Settings,
   bookmark: Bookmark,
   file: File,
-  'layout-template': LayoutTemplate
+  'layout-template': LayoutTemplate,
+  // File type icons
+  'file-pdf': FileType2,
+  'file-image': Image,
+  'file-audio': Music,
+  'file-video': Video
 }
 
 /**
@@ -69,6 +78,7 @@ const TYPE_TO_ICON: Record<TabType, string> = {
   completed: 'check-circle',
   project: 'folder',
   note: 'file-text',
+  file: 'file', // Non-markdown files (icon overridden based on file type)
   folder: 'folder', // Folder view
   journal: 'book-open',
   search: 'search',

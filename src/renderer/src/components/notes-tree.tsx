@@ -42,6 +42,7 @@ import {
   FolderOpen,
   FilePlus,
   FolderPlus,
+  Import,
   LayoutTemplate,
   LayoutGrid,
   X,
@@ -68,6 +69,7 @@ import {
 import { TemplateSelector } from '@/components/note/template-selector'
 import { VirtualizedNotesTree } from '@/components/virtualized-notes-tree'
 import { shouldVirtualize } from '@/lib/virtualized-tree-utils'
+import { getTabIconForFileType, type FileType } from '@shared/file-types'
 
 // ============================================================================
 // Types
@@ -552,12 +554,15 @@ export function NotesTree({ onActionsReady, scrollContainerRef }: NotesTreeProps
       if (noteIds.length === 1) {
         const note = noteMap.get(noteIds[0])
         if (note) {
+          const fileType = (note.fileType ?? 'markdown') as FileType
+          const isMarkdown = fileType === 'markdown'
+
           openTab({
-            type: 'note',
+            type: isMarkdown ? 'note' : 'file',
             title: getDisplayName(note.path),
-            icon: 'file-text',
-            emoji: note.emoji,
-            path: `/notes/${note.id}`,
+            icon: getTabIconForFileType(fileType),
+            emoji: isMarkdown ? note.emoji : undefined,
+            path: isMarkdown ? `/notes/${note.id}` : `/file/${note.id}`,
             entityId: note.id,
             isPinned: false,
             isModified: false,
@@ -721,6 +726,33 @@ export function NotesTree({ onActionsReady, scrollContainerRef }: NotesTreeProps
       setIsCreatingFolder(false)
     }
   }, [isCreatingFolder, createFolder, folders, targetFolder, refreshFolders])
+
+  // Handle importing files
+  const handleImportFiles = useCallback(async () => {
+    try {
+      // Show file dialog
+      const dialogResult = await notesService.showImportDialog()
+      if (dialogResult.canceled || dialogResult.filePaths.length === 0) {
+        return
+      }
+
+      // Import files to current folder
+      const result = await notesService.importFiles(dialogResult.filePaths, targetFolder || '')
+
+      if (result.imported > 0) {
+        toast.success(`Imported ${result.imported} file${result.imported > 1 ? 's' : ''}`)
+      }
+
+      if (result.failed > 0) {
+        toast.error(`Failed to import ${result.failed} file${result.failed > 1 ? 's' : ''}`, {
+          description: result.errors.join('\n')
+        })
+      }
+    } catch (err) {
+      console.error('Failed to import files:', err)
+      toast.error('Failed to import files')
+    }
+  }, [targetFolder])
 
   // Handle creating a note in a specific folder (from context menu)
   const handleCreateNoteInFolder = useCallback(
@@ -1481,9 +1513,26 @@ export function NotesTree({ onActionsReady, scrollContainerRef }: NotesTreeProps
             <p>New folder{targetFolder ? ` in ${targetFolder}` : ''}</p>
           </TooltipContent>
         </Tooltip>
+        {/* Import Files button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={handleImportFiles}
+            >
+              <Import className="h-3.5 w-3.5" />
+              <span className="sr-only">Import Files</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>Import files{targetFolder ? ` to ${targetFolder}` : ''}</p>
+          </TooltipContent>
+        </Tooltip>
       </>
     ),
-    [handleCreateNote, handleCreateFolder, isCreating, isCreatingFolder, targetFolder]
+    [handleCreateNote, handleCreateFolder, handleImportFiles, isCreating, isCreatingFolder, targetFolder]
   )
 
   // Notify parent about action buttons (must be before early returns)

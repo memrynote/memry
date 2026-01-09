@@ -77,9 +77,14 @@ async function findVaultFiles(
         // Recursively scan subdirectories
         const subFiles = await findVaultFiles(fullPath, basePath, excludePatterns)
         files.push(...subFiles)
-      } else if (entry.isFile() && isSupportedPath(fullPath)) {
-        // Add supported file (relative path from vault root)
-        files.push(path.relative(basePath, fullPath))
+      } else if (entry.isFile()) {
+        const supported = isSupportedPath(fullPath)
+        if (supported) {
+          // Add supported file (relative path from vault root)
+          files.push(path.relative(basePath, fullPath))
+        } else {
+          console.log(`[Indexer] Skipping unsupported file: ${entry.name}`)
+        }
       }
     }
   } catch (error) {
@@ -220,6 +225,7 @@ async function indexNonMarkdownFile(
     const title = path.basename(absolutePath, path.extname(absolutePath))
 
     // Sync to cache
+    console.log(`[Indexer] Syncing file to cache:`, { id, path: relativePath, title, fileType, mimeType })
     syncFileToCache(db, {
       id,
       path: relativePath,
@@ -231,7 +237,7 @@ async function indexNonMarkdownFile(
       modifiedAt: stats.mtime
     })
 
-    console.log(`[Indexer] Indexed: ${relativePath} (${fileType})`)
+    console.log(`[Indexer] Successfully indexed: ${relativePath} (${fileType})`)
     return 'indexed'
   } catch (error) {
     console.error(`[Indexer] Error indexing file ${relativePath}:`, error)
@@ -284,6 +290,9 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
   }
 
   console.log(`[Indexer] Found ${allFiles.length} files to index`)
+  if (allFiles.length > 0) {
+    console.log(`[Indexer] Files found:`, allFiles.slice(0, 20)) // Log first 20 files
+  }
 
   if (allFiles.length === 0) {
     emitIndexProgress(100)

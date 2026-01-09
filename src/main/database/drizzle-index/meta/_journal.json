@@ -71,6 +71,13 @@
       "when": 1767972672019,
       "tag": "0009_yummy_ultimatum",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1768002000000,
+      "tag": "0010_make_columns_nullable",
+      "breakpoints": true
     }
   ]
 }

@@ -63,6 +63,13 @@ export const notesService: NotesClientAPI = {
   },
 
   /**
+   * Get file metadata by ID (for non-markdown files).
+   */
+  getFile: (id: string) => {
+    return window.api.notes.getFile(id)
+  },
+
+  /**
    * Update an existing note.
    */
   update: (input: {
@@ -362,6 +369,20 @@ export const notesService: NotesClientAPI = {
     notePaths: string[]
   ): Promise<{ success: boolean; error?: string }> => {
     return window.api.notes.reorder(folderPath, notePaths)
+  },
+
+  /**
+   * Import files from external paths into the vault.
+   */
+  importFiles: (sourcePaths: string[], targetFolder?: string) => {
+    return window.api.notes.importFiles(sourcePaths, targetFolder)
+  },
+
+  /**
+   * Show a file dialog to select files for import.
+   */
+  showImportDialog: () => {
+    return window.api.notes.showImportDialog()
   }
 }
 

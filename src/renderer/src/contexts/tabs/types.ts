@@ -20,6 +20,7 @@ export type TabType =
   | 'completed' // Legacy - kept for backwards compatibility
   | 'project' // Legacy - kept for backwards compatibility
   | 'note'
+  | 'file' // Non-markdown files (PDF, image, audio, video)
   | 'folder' // Folder view (Bases-like database view)
   | 'journal'
   | 'search'

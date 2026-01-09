@@ -97,6 +97,21 @@ export interface NoteListItem {
   fileSize?: number | null // File size in bytes
 }
 
+/**
+ * File metadata for non-markdown files (PDF, image, audio, video)
+ */
+export interface FileMetadata {
+  id: string
+  path: string // Relative path within vault
+  absolutePath: string // Full filesystem path for viewers
+  title: string
+  fileType: 'pdf' | 'image' | 'audio' | 'video'
+  mimeType: string | null
+  fileSize: number | null
+  created: Date
+  modified: Date
+}
+
 export interface NoteCreateInput {
   title: string
   content?: string
@@ -400,6 +415,48 @@ export async function getNoteById(id: string): Promise<Note | null> {
     wordCount: cached.wordCount ?? 0,
     properties, // T013: Include properties
     emoji: cached.emoji ?? (parsed.frontmatter as { emoji?: string }).emoji ?? null // T028: Include emoji from cache or frontmatter
+  }
+}
+
+/**
+ * Get file metadata by ID (for non-markdown files).
+ * Returns metadata without reading file content.
+ */
+export async function getFileById(id: string): Promise<FileMetadata | null> {
+  const db = getIndexDatabase()
+
+  // Get from cache
+  const cached = getNoteCacheById(db, id)
+  if (!cached) {
+    return null
+  }
+
+  // Only return for non-markdown files
+  const fileType = cached.fileType ?? 'markdown'
+  if (fileType === 'markdown') {
+    return null
+  }
+
+  // Check file exists
+  const absolutePath = toAbsolutePath(cached.path)
+  try {
+    await fs.access(absolutePath)
+  } catch {
+    // File was deleted externally, remove from cache
+    deleteNoteCache(db, id)
+    return null
+  }
+
+  return {
+    id: cached.id,
+    path: cached.path,
+    absolutePath,
+    title: cached.title,
+    fileType: fileType as 'pdf' | 'image' | 'audio' | 'video',
+    mimeType: cached.mimeType ?? null,
+    fileSize: cached.fileSize ?? null,
+    created: new Date(cached.createdAt),
+    modified: new Date(cached.modifiedAt)
   }
 }
 
@@ -1188,4 +1245,91 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
   })
 
   return restoredNote
+}
+
+// ============================================================================
+// File Import
+// ============================================================================
+
+export interface ImportFilesInput {
+  /** Array of absolute source file paths to import */
+  sourcePaths: string[]
+  /** Target folder within vault (relative to notes folder, e.g., 'projects' or '') */
+  targetFolder?: string
+}
+
+export interface ImportFilesResult {
+  success: boolean
+  imported: number
+  failed: number
+  errors: string[]
+}
+
+/**
+ * Import external files into the vault.
+ * Copies files to the target folder and the watcher will automatically index them.
+ */
+export async function importFiles(input: ImportFilesInput): Promise<ImportFilesResult> {
+  const { sourcePaths, targetFolder = '' } = input
+  const status = getStatus()
+
+  if (!status.isOpen || !status.path) {
+    throw new Error('No vault is open')
+  }
+
+  const notesPath = path.join(status.path, 'notes', targetFolder)
+
+  // Ensure target folder exists
+  await ensureDirectory(notesPath)
+
+  const errors: string[] = []
+  let imported = 0
+  let failed = 0
+
+  for (const sourcePath of sourcePaths) {
+    try {
+      // Check source exists
+      await fs.access(sourcePath)
+
+      // Get source filename
+      const filename = path.basename(sourcePath)
+
+      // Generate unique filename if exists
+      let destFilename = filename
+      let destPath = path.join(notesPath, destFilename)
+      let counter = 1
+
+      while (true) {
+        try {
+          await fs.access(destPath)
+          // File exists, try another name
+          const ext = path.extname(filename)
+          const base = path.basename(filename, ext)
+          destFilename = `${base} (${counter})${ext}`
+          destPath = path.join(notesPath, destFilename)
+          counter++
+        } catch {
+          // File doesn't exist, we can use this name
+          break
+        }
+      }
+
+      // Copy file
+      await fs.copyFile(sourcePath, destPath)
+      imported++
+
+      // Note: The watcher will automatically pick up the new file and index it
+    } catch (error) {
+      failed++
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      errors.push(`Failed to import ${path.basename(sourcePath)}: ${message}`)
+    }
+  }
+
+  return {
+    success: failed === 0,
+    imported,
+    failed,
+    errors
+  }
 }

@@ -240,6 +240,46 @@ void app.whenReady().then(async () => {
     }
 
     try {
+      const { statSync, createReadStream } = await import('fs')
+      const { lookup } = await import('mime-types')
+      const stats = statSync(filePath)
+      const fileSize = stats.size
+      const mimeType = lookup(filePath) || 'application/octet-stream'
+
+      // Check for Range header (needed for video/audio seeking)
+      const rangeHeader = request.headers.get('Range')
+
+      if (rangeHeader) {
+        // Parse Range header (e.g., "bytes=0-1023")
+        const match = rangeHeader.match(/bytes=(\d*)-(\d*)/)
+        if (match) {
+          const start = match[1] ? parseInt(match[1], 10) : 0
+          const end = match[2] ? parseInt(match[2], 10) : fileSize - 1
+          const chunkSize = end - start + 1
+
+          // Create readable stream for the range
+          const stream = createReadStream(filePath, { start, end })
+          const chunks: Buffer[] = []
+
+          for await (const chunk of stream) {
+            chunks.push(Buffer.from(chunk))
+          }
+
+          const buffer = Buffer.concat(chunks)
+
+          return new Response(buffer, {
+            status: 206,
+            headers: {
+              'Content-Type': mimeType,
+              'Content-Length': String(chunkSize),
+              'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+              'Accept-Ranges': 'bytes'
+            }
+          })
+        }
+      }
+
+      // No Range header - return full file
       return net.fetch(`file://${filePath}`)
     } catch {
       // Return 404 for any errors
