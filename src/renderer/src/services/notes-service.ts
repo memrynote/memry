@@ -70,6 +70,15 @@ export const notesService: NotesClientAPI = {
   },
 
   /**
+   * Resolve a WikiLink target by title.
+   * Returns metadata for format-aware WikiLink handling.
+   * Used to determine whether to open a note editor or file viewer.
+   */
+  resolveByTitle: (title: string) => {
+    return window.api.notes.resolveByTitle(title)
+  },
+
+  /**
    * Update an existing note.
    */
   update: (input: {

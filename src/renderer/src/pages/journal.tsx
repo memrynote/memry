@@ -60,6 +60,8 @@ import {
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
 import { toast } from 'sonner'
+import { useTabs } from '@/contexts/tabs'
+import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import {
   formatDateToISO,
   formatDateParts,
@@ -299,6 +301,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   // Sync left sidebar with focus mode (hide when focus mode is on)
   const { open: sidebarOpen, setOpen: setSidebarOpen } = useSidebar()
+  const { openTab } = useTabs()
   const previousSidebarState = useRef<boolean | null>(null)
 
   useEffect(() => {
@@ -576,10 +579,64 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     window.open(href, '_blank', 'noopener,noreferrer')
   }, [])
 
-  const handleInternalLinkClick = useCallback((noteId: string) => {
-    console.log('Navigate to note:', noteId)
-    // TODO: Navigate to linked note
-  }, [])
+  const handleInternalLinkClick = useCallback(
+    async (linkedNoteIdOrTitle: string) => {
+      const target = linkedNoteIdOrTitle?.trim()
+      if (!target) return
+
+      try {
+        // Use format-aware resolution to handle notes and files
+        const resolution = await resolveWikiLink(target)
+
+        switch (resolution.type) {
+          case 'file':
+            // Open file in appropriate viewer (image, video, PDF, audio)
+            openTab({
+              type: 'file',
+              title: resolution.title,
+              icon: resolution.icon,
+              path: `/file/${resolution.id}`,
+              entityId: resolution.id,
+              isPinned: false,
+              isModified: false,
+              isPreview: false,
+              isDeleted: false
+            })
+            break
+
+          case 'note':
+            // Open note in editor
+            openTab({
+              type: 'note',
+              title: resolution.title,
+              icon: 'file-text',
+              path: `/notes/${resolution.id}`,
+              entityId: resolution.id,
+              isPinned: false,
+              isModified: false,
+              isPreview: true,
+              isDeleted: false
+            })
+            break
+
+          case 'create':
+            // For journal, just show info that note doesn't exist
+            // (don't auto-create from journal context)
+            toast.info(`Note "${target}" not found`)
+            break
+
+          case 'not-found':
+            // File-like target not found - show error
+            toast.error(`File not found: ${target}`)
+            break
+        }
+      } catch (err) {
+        console.error('[JournalPage] Failed to resolve wiki link:', err)
+        toast.error('Failed to open linked item')
+      }
+    },
+    [openTab]
+  )
 
   // Heading handlers for outline panel
   const handleHeadingClick = useCallback((headingId: string) => {

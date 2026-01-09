@@ -452,7 +452,7 @@ export async function getFileById(id: string): Promise<FileMetadata | null> {
     path: cached.path,
     absolutePath,
     title: cached.title,
-    fileType: fileType as 'pdf' | 'image' | 'audio' | 'video',
+    fileType: fileType,
     mimeType: cached.mimeType ?? null,
     fileSize: cached.fileSize ?? null,
     created: new Date(cached.createdAt),

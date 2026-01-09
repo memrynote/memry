@@ -57,7 +57,8 @@ import {
   getNoteProperties,
   getAllPropertyDefinitions,
   insertPropertyDefinition,
-  updatePropertyDefinition
+  updatePropertyDefinition,
+  resolveNoteByTitle
 } from '@shared/db/queries/notes'
 import { getIndexDatabase, getDatabase } from '../database'
 import {
@@ -176,6 +177,26 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.GET_FILE,
     createStringHandler(async (id) => {
       return getFileById(id)
+    })
+  )
+
+  // notes:resolve-by-title - Resolve a WikiLink target by title
+  // Returns note/file metadata for format-aware WikiLink handling
+  ipcMain.handle(
+    NotesChannels.invoke.RESOLVE_BY_TITLE,
+    createStringHandler((title) => {
+      const db = getIndexDatabase()
+      const result = resolveNoteByTitle(db, title)
+      if (!result) {
+        return null
+      }
+      // Return the essential fields for WikiLink resolution
+      return {
+        id: result.id,
+        path: result.path,
+        title: result.title,
+        fileType: result.fileType ?? 'markdown'
+      }
     })
   )
 
