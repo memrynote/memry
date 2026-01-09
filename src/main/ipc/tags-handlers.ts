@@ -64,7 +64,7 @@ function toTagNoteItem(
     title: string
     createdAt: string
     modifiedAt: string
-    wordCount: number
+    wordCount: number | null
     isPinned: boolean
     pinnedAt: string | null
     emoji?: string | null
@@ -78,7 +78,7 @@ function toTagNoteItem(
     created: note.createdAt,
     modified: note.modifiedAt,
     tags,
-    wordCount: note.wordCount,
+    wordCount: note.wordCount ?? 0,
     isPinned: note.isPinned,
     pinnedAt: note.pinnedAt,
     emoji: note.emoji

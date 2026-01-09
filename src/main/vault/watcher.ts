@@ -8,6 +8,7 @@
  */
 
 import path from 'path'
+import fs from 'fs/promises'
 import chokidar from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import { BrowserWindow } from 'electron'
@@ -21,12 +22,18 @@ import {
 } from './frontmatter'
 import { safeRead, atomicWrite } from './file-ops'
 import { generateNoteId } from '../lib/id'
-import { syncNoteToCache } from './note-sync'
+import { syncNoteToCache, syncFileToCache } from './note-sync'
 import { deleteNoteCache, getNoteCacheByPath, getNoteCacheById } from '@shared/db/queries/notes'
 import { getIndexDatabase } from '../database'
 import { NotesChannels, JournalChannels } from '@shared/ipc-channels'
 import { trackPendingDelete, checkForRename, clearAllPendingDeletes } from './rename-tracker'
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
+import {
+  isSupportedPath,
+  getFileType,
+  getMimeType,
+  getExtension
+} from '@shared/file-types'
 
 // ============================================================================
 // Types
@@ -168,7 +175,7 @@ export class VaultWatcher {
     this.watcher = chokidar.watch(watchPaths, {
       persistent: true,
 
-      // Ignore hidden files, excluded patterns, non-.md files
+      // Ignore hidden files, excluded patterns, unsupported file types
       ignored: (filePath: string, stats) => {
         const basename = path.basename(filePath)
 
@@ -183,9 +190,9 @@ export class VaultWatcher {
           if (filePath.includes(`/${pattern}/`) || filePath.includes(`\\${pattern}\\`)) return true
         }
 
-        // For files, only watch .md files
+        // For files, only watch supported file types (md, pdf, images, audio, video)
         if (stats?.isFile()) {
-          return !filePath.endsWith('.md')
+          return !isSupportedPath(filePath)
         }
 
         return false
@@ -267,28 +274,21 @@ export class VaultWatcher {
   /**
    * Handle new file creation.
    * Also checks if this might be a rename (matching UUID with pending delete).
+   * Supports all file types: markdown, pdf, images, audio, video.
    */
   private async handleFileAdd(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
 
     try {
       const relativePath = path.relative(this.vaultPath, absolutePath)
+      const fileType = getFileType(getExtension(absolutePath))
 
-      // Read and parse the file
-      const content = await safeRead(absolutePath)
-      if (!content) {
+      if (!fileType) {
+        // Unsupported file type, skip
         return
       }
 
-      const parsed = parseNote(content, relativePath)
       const db = getIndexDatabase()
-
-      // Check if this is a rename (UUID matches a pending delete)
-      const oldPath = await checkForRename(parsed.frontmatter.id, relativePath)
-      if (oldPath !== null) {
-        // This was a rename - rename-tracker already handled cache update and event
-        return
-      }
 
       // Check if already in cache (might have been added by internal operation)
       const existing = getNoteCacheByPath(db, relativePath)
@@ -297,78 +297,12 @@ export class VaultWatcher {
         return
       }
 
-      // Check if a note with this ID exists at a different path (copy-paste scenario)
-      const existingById = getNoteCacheById(db, parsed.frontmatter.id)
-      if (existingById && existingById.path !== relativePath) {
-        // This is a copy of an existing note - regenerate ID
-        const newId = generateNoteId()
-        parsed.frontmatter.id = newId
-
-        // Write back to file with new ID
-        try {
-          const newContent = serializeNote(parsed.frontmatter, parsed.content)
-          await atomicWrite(absolutePath, newContent)
-        } catch {
-          return
-        }
-      }
-
-      // Sync to cache using NoteSyncService (handles tags, properties, FTS, links)
-      const syncResult = syncNoteToCache(
-        db,
-        {
-          id: parsed.frontmatter.id,
-          path: relativePath,
-          fileContent: content,
-          frontmatter: parsed.frontmatter,
-          parsedContent: parsed.content
-        },
-        { isNew: true }
-      )
-
-      // Extract tags and properties for event emission
-      const tags = extractTags(parsed.frontmatter)
-      const properties = extractProperties(parsed.frontmatter)
-
-      // Create list item for event
-      const noteListItem: NoteListItem = {
-        id: parsed.frontmatter.id,
-        path: relativePath,
-        title: parsed.frontmatter.title ?? path.basename(relativePath, '.md'),
-        created: new Date(parsed.frontmatter.created),
-        modified: new Date(parsed.frontmatter.modified),
-        tags,
-        wordCount: syncResult.wordCount,
-        snippet: syncResult.snippet
-      }
-
-      // Emit event to renderer
-      emitEvent(NotesChannels.events.CREATED, {
-        note: noteListItem,
-        properties, // T012: Include properties in event
-        source: 'external'
-      })
-
-      // Queue embedding update for AI suggestions (batched for performance)
-      queueEmbeddingUpdate(parsed.frontmatter.id)
-
-      // Also emit journal event if this is a journal entry
-      const config = getConfig()
-      if (isJournalPath(relativePath, config.journalFolder)) {
-        const journalDate = extractJournalDate(relativePath)
-        emitEvent(JournalChannels.events.ENTRY_CREATED, {
-          date: journalDate,
-          entry: {
-            date: journalDate,
-            content: parsed.content,
-            tags,
-            wordCount: syncResult.wordCount,
-            characterCount: syncResult.characterCount,
-            modified: new Date(parsed.frontmatter.modified),
-            created: new Date(parsed.frontmatter.created)
-          },
-          source: 'external'
-        })
+      // Handle markdown files with full frontmatter support
+      if (fileType === 'markdown') {
+        await this.handleMarkdownFileAdd(absolutePath, relativePath, db)
+      } else {
+        // Handle non-markdown files (PDF, images, audio, video)
+        await this.handleNonMarkdownFileAdd(absolutePath, relativePath, fileType, db)
       }
     } catch (error) {
       this.onError?.(error instanceof Error ? error : new Error(String(error)))
@@ -376,98 +310,316 @@ export class VaultWatcher {
   }
 
   /**
+   * Handle markdown file creation with full frontmatter parsing.
+   */
+  private async handleMarkdownFileAdd(
+    absolutePath: string,
+    relativePath: string,
+    db: ReturnType<typeof getIndexDatabase>
+  ): Promise<void> {
+    // Read and parse the file
+    const content = await safeRead(absolutePath)
+    if (!content) {
+      return
+    }
+
+    const parsed = parseNote(content, relativePath)
+
+    // Check if this is a rename (UUID matches a pending delete)
+    const oldPath = await checkForRename(parsed.frontmatter.id, relativePath)
+    if (oldPath !== null) {
+      // This was a rename - rename-tracker already handled cache update and event
+      return
+    }
+
+    // Check if a note with this ID exists at a different path (copy-paste scenario)
+    const existingById = getNoteCacheById(db, parsed.frontmatter.id)
+    if (existingById && existingById.path !== relativePath) {
+      // This is a copy of an existing note - regenerate ID
+      const newId = generateNoteId()
+      parsed.frontmatter.id = newId
+
+      // Write back to file with new ID
+      try {
+        const newContent = serializeNote(parsed.frontmatter, parsed.content)
+        await atomicWrite(absolutePath, newContent)
+      } catch {
+        return
+      }
+    }
+
+    // Sync to cache using NoteSyncService (handles tags, properties, FTS, links)
+    const syncResult = syncNoteToCache(
+      db,
+      {
+        id: parsed.frontmatter.id,
+        path: relativePath,
+        fileContent: content,
+        frontmatter: parsed.frontmatter,
+        parsedContent: parsed.content
+      },
+      { isNew: true }
+    )
+
+    // Extract tags and properties for event emission
+    const tags = extractTags(parsed.frontmatter)
+    const properties = extractProperties(parsed.frontmatter)
+
+    // Create list item for event
+    const noteListItem: NoteListItem = {
+      id: parsed.frontmatter.id,
+      path: relativePath,
+      title: parsed.frontmatter.title ?? path.basename(relativePath, '.md'),
+      created: new Date(parsed.frontmatter.created),
+      modified: new Date(parsed.frontmatter.modified),
+      tags,
+      wordCount: syncResult.wordCount,
+      snippet: syncResult.snippet
+    }
+
+    // Emit event to renderer
+    emitEvent(NotesChannels.events.CREATED, {
+      note: noteListItem,
+      properties, // T012: Include properties in event
+      source: 'external'
+    })
+
+    // Queue embedding update for AI suggestions (batched for performance)
+    queueEmbeddingUpdate(parsed.frontmatter.id)
+
+    // Also emit journal event if this is a journal entry
+    const config = getConfig()
+    if (isJournalPath(relativePath, config.journalFolder)) {
+      const journalDate = extractJournalDate(relativePath)
+      emitEvent(JournalChannels.events.ENTRY_CREATED, {
+        date: journalDate,
+        entry: {
+          date: journalDate,
+          content: parsed.content,
+          tags,
+          wordCount: syncResult.wordCount,
+          characterCount: syncResult.characterCount,
+          modified: new Date(parsed.frontmatter.modified),
+          created: new Date(parsed.frontmatter.created)
+        },
+        source: 'external'
+      })
+    }
+  }
+
+  /**
+   * Handle non-markdown file creation (PDF, images, audio, video).
+   * These files don't have frontmatter, so we generate an ID and cache basic metadata.
+   */
+  private async handleNonMarkdownFileAdd(
+    absolutePath: string,
+    relativePath: string,
+    fileType: 'pdf' | 'image' | 'audio' | 'video',
+    db: ReturnType<typeof getIndexDatabase>
+  ): Promise<void> {
+    // Get file stats for metadata
+    const stats = await fs.stat(absolutePath)
+
+    // Generate a new ID for this file
+    const id = generateNoteId()
+
+    // Get MIME type
+    const ext = getExtension(absolutePath)
+    const mimeType = getMimeType(ext)
+
+    // Derive title from filename (without extension)
+    const title = path.basename(absolutePath, path.extname(absolutePath))
+
+    // Sync to cache
+    syncFileToCache(db, {
+      id,
+      path: relativePath,
+      title,
+      fileType,
+      mimeType,
+      fileSize: stats.size,
+      createdAt: stats.birthtime,
+      modifiedAt: stats.mtime
+    })
+
+    // Create list item for event
+    const fileListItem: NoteListItem = {
+      id,
+      path: relativePath,
+      title,
+      created: stats.birthtime,
+      modified: stats.mtime,
+      tags: [],
+      wordCount: 0
+    }
+
+    // Emit event to renderer (using same channel for unified tree)
+    emitEvent(NotesChannels.events.CREATED, {
+      note: fileListItem,
+      properties: {},
+      source: 'external',
+      fileType // Include file type so renderer knows this is not markdown
+    })
+  }
+
+  /**
    * Handle file modification.
+   * Supports all file types: markdown, pdf, images, audio, video.
    */
   private async handleFileChange(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
 
     try {
       const relativePath = path.relative(this.vaultPath, absolutePath)
+      const fileType = getFileType(getExtension(absolutePath))
 
-      // Read and parse the file
-      const content = await safeRead(absolutePath)
-      if (!content) {
+      if (!fileType) {
+        // Unsupported file type, skip
         return
       }
 
-      const parsed = parseNote(content, relativePath)
       const db = getIndexDatabase()
 
       // Get cached version
       const cached = getNoteCacheByPath(db, relativePath)
 
-      // Calculate new hash
-      const contentHash = generateContentHash(content)
-
-      // Check if content actually changed
-      if (cached && cached.contentHash === contentHash) {
-        // No actual change, skip
+      if (!cached) {
+        // File not in cache, treat as add
+        await this.handleFileAdd(absolutePath)
         return
       }
 
-      if (cached) {
-        // Sync to cache using NoteSyncService (handles tags, properties, FTS, links)
-        const syncResult = syncNoteToCache(
-          db,
-          {
-            id: cached.id,
-            path: relativePath,
-            fileContent: content,
-            frontmatter: parsed.frontmatter,
-            parsedContent: parsed.content
-          },
-          { isNew: false }
-        )
-
-        // Extract tags and properties for event emission
-        const tags = extractTags(parsed.frontmatter)
-        const properties = extractProperties(parsed.frontmatter)
-        const title = parsed.frontmatter.title ?? path.basename(relativePath, '.md')
-
-        // Emit update event for notes
-        emitEvent(NotesChannels.events.UPDATED, {
-          id: cached.id,
-          changes: {
-            title,
-            content: parsed.content,
-            tags,
-            properties, // T012: Include properties in event
-            modified: new Date(parsed.frontmatter.modified),
-            wordCount: syncResult.wordCount,
-            snippet: syncResult.snippet
-          },
-          source: 'external'
-        })
-
-        // Queue embedding update for AI suggestions (batched for performance)
-        queueEmbeddingUpdate(cached.id)
-
-        // Also emit journal event if this is a journal entry
-        const config = getConfig()
-        if (isJournalPath(relativePath, config.journalFolder)) {
-          const journalDate = extractJournalDate(relativePath)
-          emitEvent(JournalChannels.events.ENTRY_UPDATED, {
-            date: journalDate,
-            entry: {
-              date: journalDate,
-              content: parsed.content,
-              tags,
-              wordCount: syncResult.wordCount,
-              characterCount: syncResult.characterCount,
-              modified: new Date(parsed.frontmatter.modified),
-              created: new Date(parsed.frontmatter.created)
-            },
-            source: 'external'
-          })
-        }
+      // Handle markdown files with full frontmatter support
+      if (fileType === 'markdown') {
+        await this.handleMarkdownFileChange(absolutePath, relativePath, cached, db)
       } else {
-        // File not in cache, treat as add
-        await this.handleFileAdd(absolutePath)
+        // Handle non-markdown files (PDF, images, audio, video)
+        await this.handleNonMarkdownFileChange(absolutePath, relativePath, fileType, cached, db)
       }
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err))
       this.onError?.(error)
     }
+  }
+
+  /**
+   * Handle markdown file modification with full frontmatter parsing.
+   */
+  private async handleMarkdownFileChange(
+    absolutePath: string,
+    relativePath: string,
+    cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
+    db: ReturnType<typeof getIndexDatabase>
+  ): Promise<void> {
+    // Read and parse the file
+    const content = await safeRead(absolutePath)
+    if (!content) {
+      return
+    }
+
+    const parsed = parseNote(content, relativePath)
+
+    // Calculate new hash
+    const contentHash = generateContentHash(content)
+
+    // Check if content actually changed
+    if (cached.contentHash === contentHash) {
+      // No actual change, skip
+      return
+    }
+
+    // Sync to cache using NoteSyncService (handles tags, properties, FTS, links)
+    const syncResult = syncNoteToCache(
+      db,
+      {
+        id: cached.id,
+        path: relativePath,
+        fileContent: content,
+        frontmatter: parsed.frontmatter,
+        parsedContent: parsed.content
+      },
+      { isNew: false }
+    )
+
+    // Extract tags and properties for event emission
+    const tags = extractTags(parsed.frontmatter)
+    const properties = extractProperties(parsed.frontmatter)
+    const title = parsed.frontmatter.title ?? path.basename(relativePath, '.md')
+
+    // Emit update event for notes
+    emitEvent(NotesChannels.events.UPDATED, {
+      id: cached.id,
+      changes: {
+        title,
+        content: parsed.content,
+        tags,
+        properties, // T012: Include properties in event
+        modified: new Date(parsed.frontmatter.modified),
+        wordCount: syncResult.wordCount,
+        snippet: syncResult.snippet
+      },
+      source: 'external'
+    })
+
+    // Queue embedding update for AI suggestions (batched for performance)
+    queueEmbeddingUpdate(cached.id)
+
+    // Also emit journal event if this is a journal entry
+    const config = getConfig()
+    if (isJournalPath(relativePath, config.journalFolder)) {
+      const journalDate = extractJournalDate(relativePath)
+      emitEvent(JournalChannels.events.ENTRY_UPDATED, {
+        date: journalDate,
+        entry: {
+          date: journalDate,
+          content: parsed.content,
+          tags,
+          wordCount: syncResult.wordCount,
+          characterCount: syncResult.characterCount,
+          modified: new Date(parsed.frontmatter.modified),
+          created: new Date(parsed.frontmatter.created)
+        },
+        source: 'external'
+      })
+    }
+  }
+
+  /**
+   * Handle non-markdown file modification (PDF, images, audio, video).
+   * For these files, we mainly update the modified timestamp and file size.
+   */
+  private async handleNonMarkdownFileChange(
+    absolutePath: string,
+    relativePath: string,
+    fileType: 'pdf' | 'image' | 'audio' | 'video',
+    cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
+    db: ReturnType<typeof getIndexDatabase>
+  ): Promise<void> {
+    // Get file stats for updated metadata
+    const stats = await fs.stat(absolutePath)
+
+    // Update cache with new metadata
+    syncFileToCache(db, {
+      id: cached.id,
+      path: relativePath,
+      title: cached.title,
+      fileType,
+      mimeType: cached.mimeType,
+      fileSize: stats.size,
+      createdAt: new Date(cached.createdAt),
+      modifiedAt: stats.mtime
+    })
+
+    // Emit update event
+    emitEvent(NotesChannels.events.UPDATED, {
+      id: cached.id,
+      changes: {
+        modified: stats.mtime,
+        fileSize: stats.size
+      },
+      source: 'external',
+      fileType
+    })
   }
 
   /**

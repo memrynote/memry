@@ -1,5 +1,6 @@
 import { sqliteTable, text, integer, index, primaryKey } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
+import type { FileType } from '../../file-types'
 
 export const noteCache = sqliteTable(
   'note_cache',
@@ -7,12 +8,20 @@ export const noteCache = sqliteTable(
     id: text('id').primaryKey(),
     path: text('path').notNull().unique(),
     title: text('title').notNull(),
-    emoji: text('emoji'), // T003: Emoji icon for visual identification
-    contentHash: text('content_hash').notNull(),
-    wordCount: integer('word_count').notNull().default(0),
-    // Unified: characterCount for activity level calculation (journal + notes)
-    characterCount: integer('character_count').notNull().default(0),
-    // Cached snippet for list views (first ~150 chars, no file read needed)
+    // File type discriminator: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
+    fileType: text('file_type').$type<FileType>().notNull().default('markdown'),
+    // MIME type for the file (e.g., 'application/pdf', 'image/png')
+    mimeType: text('mime_type'),
+    // File size in bytes
+    fileSize: integer('file_size'),
+    emoji: text('emoji'), // T003: Emoji icon for visual identification (markdown only)
+    // Content hash for change detection (markdown only - nullable for other types)
+    contentHash: text('content_hash'),
+    // Word count (markdown only - nullable for other types)
+    wordCount: integer('word_count'),
+    // Unified: characterCount for activity level calculation (markdown only)
+    characterCount: integer('character_count'),
+    // Cached snippet for list views (markdown only - first ~150 chars)
     snippet: text('snippet'),
     // Unified: date field for journal entries (YYYY-MM-DD), null for regular notes
     date: text('date'),
@@ -26,7 +35,9 @@ export const noteCache = sqliteTable(
     index('idx_note_cache_path').on(table.path),
     index('idx_note_cache_modified').on(table.modifiedAt),
     // Index for journal date-based queries (heatmap, calendar)
-    index('idx_note_cache_date').on(table.date)
+    index('idx_note_cache_date').on(table.date),
+    // Index for filtering by file type
+    index('idx_note_cache_file_type').on(table.fileType)
   ]
 )
 

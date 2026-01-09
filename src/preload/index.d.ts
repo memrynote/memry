@@ -250,6 +250,9 @@ export interface NoteListItem {
   wordCount: number
   snippet?: string
   emoji?: string | null // T028: Emoji icon for visual identification
+  fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video' // File type discriminator
+  mimeType?: string | null // MIME type (e.g., 'application/pdf')
+  fileSize?: number | null // File size in bytes
 }
 
 export interface NoteCreateInput {
