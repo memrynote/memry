@@ -186,11 +186,15 @@ export function useSearch(options: UseSearchOptions = {}): UseSearchReturn {
   }, [])
 
   // Auto-search when debounced query changes
+  // Use a ref to avoid including search in dependencies
+  const searchRef = useRef(search)
+  searchRef.current = search
+
   useEffect(() => {
     if (autoSearch) {
-      search(debouncedQuery)
+      searchRef.current(debouncedQuery)
     }
-  }, [debouncedQuery, autoSearch, search])
+  }, [debouncedQuery, autoSearch])
 
   return {
     query,
@@ -225,14 +229,14 @@ export interface UseQuickSearchReturn {
  */
 export function useQuickSearch(debounceMs: number = 50): UseQuickSearchReturn {
   const [query, setQuery] = useState('')
-  const [notes, setNotes] = useState<SearchResultNote[]>([])
+  const [searchNotes, setSearchNotes] = useState<SearchResultNote[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   const debouncedQuery = useDebouncedValue(query, debounceMs)
 
   useEffect(() => {
+    // Skip search if query is empty
     if (!debouncedQuery.trim()) {
-      setNotes([])
       return
     }
 
@@ -243,9 +247,9 @@ export function useQuickSearch(debounceMs: number = 50): UseQuickSearchReturn {
           query: debouncedQuery,
           limit: 5
         })
-        setNotes(response.notes)
+        setSearchNotes(response.notes)
       } catch {
-        setNotes([])
+        setSearchNotes([])
       } finally {
         setIsLoading(false)
       }
@@ -254,9 +258,12 @@ export function useQuickSearch(debounceMs: number = 50): UseQuickSearchReturn {
     doSearch()
   }, [debouncedQuery])
 
+  // Compute notes during render - empty array when query is empty
+  const notes = query.trim() ? searchNotes : []
+
   const clear = useCallback(() => {
     setQuery('')
-    setNotes([])
+    setSearchNotes([])
   }, [])
 
   return { query, notes, isLoading, setQuery, clear }
@@ -380,10 +387,13 @@ export function useRecentSearches(): UseRecentSearchesReturn {
     }
   }, [])
 
-  // Load on mount
+  // Load on mount - use ref to avoid refresh dependency
+  const refreshRef = useRef(refresh)
+  refreshRef.current = refresh
+
   useEffect(() => {
-    refresh()
-  }, [refresh])
+    refreshRef.current()
+  }, [])
 
   return { recent, isLoading, addRecent, clearRecent, refresh }
 }

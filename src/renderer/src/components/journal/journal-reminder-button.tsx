@@ -58,7 +58,7 @@ export function JournalReminderButton({
       <TooltipTrigger asChild>
         <div className="relative">
           <ReminderPicker
-            onSelect={handleSetReminder}
+            onSelect={(time, note) => void handleSetReminder(time, note)}
             presetType="journal"
             showNote
             disabled={disabled}

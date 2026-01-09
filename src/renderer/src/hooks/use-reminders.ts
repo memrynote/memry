@@ -46,7 +46,14 @@ export const reminderKeys = {
 /**
  * Hook for listing reminders with optional filters
  */
-export function useReminders(options?: ListRemindersInput) {
+export function useReminders(options?: ListRemindersInput): {
+  reminders: Array<any>
+  total: number
+  hasMore: boolean
+  isLoading: boolean
+  error: any
+  refetch: () => void
+} {
   const queryClient = useQueryClient()
 
   const query = useQuery({
@@ -91,7 +98,12 @@ export function useReminders(options?: ListRemindersInput) {
 /**
  * Hook for getting reminders for a specific target (note, journal, highlight)
  */
-export function useRemindersForTarget(targetType: ReminderTargetType, targetId: string) {
+export function useRemindersForTarget(targetType: ReminderTargetType, targetId: string): {
+  reminders: Array<any>
+  isLoading: boolean
+  error: any
+  refetch: () => void
+} {
   const queryClient = useQueryClient()
 
   const query = useQuery({

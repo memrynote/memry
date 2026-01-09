@@ -450,7 +450,7 @@ const VoicePreview = ({
             <Button
               size="icon"
               variant="secondary"
-              onClick={handlePlayPause}
+              onClick={() => void handlePlayPause()}
               className="size-12 rounded-full bg-[var(--primary)] hover:bg-[var(--primary)]/90"
             >
               {isPlaying ? (

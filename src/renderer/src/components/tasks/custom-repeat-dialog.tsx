@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { CalendarIcon } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -360,57 +360,63 @@ const RepeatPreview = ({ config, startDate }: RepeatPreviewProps): React.JSX.Ele
 // CUSTOM REPEAT DIALOG COMPONENT
 // ============================================================================
 
-export const CustomRepeatDialog = ({
-  isOpen,
+// Inner component that gets reset via key prop
+const CustomRepeatDialogInner = ({
   onClose,
   onSave,
   initialConfig,
-  dueDate
-}: CustomRepeatDialogProps): React.JSX.Element => {
-  const effectiveDueDate = dueDate || new Date()
-
-  // Initialize form state
-  const [frequency, setFrequency] = useState<RepeatFrequency>('weekly')
-  const [interval, setInterval] = useState(1)
-  const [daysOfWeek, setDaysOfWeek] = useState<number[]>([effectiveDueDate.getDay()])
-  const [monthlyType, setMonthlyType] = useState<MonthlyType>('dayOfMonth')
-  const [dayOfMonth, setDayOfMonth] = useState(effectiveDueDate.getDate())
-  const [weekOfMonth, setWeekOfMonth] = useState(Math.ceil(effectiveDueDate.getDate() / 7))
-  const [dayOfWeekForMonth, setDayOfWeekForMonth] = useState(effectiveDueDate.getDay())
-  const [endType, setEndType] = useState<RepeatEndType>('never')
-  const [endDate, setEndDate] = useState<Date | null>(null)
-  const [endCount, setEndCount] = useState(10)
-
-  // Reset form when dialog opens or initialConfig changes
-  useEffect(() => {
-    if (isOpen) {
-      if (initialConfig) {
-        setFrequency(initialConfig.frequency)
-        setInterval(initialConfig.interval)
-        setDaysOfWeek(initialConfig.daysOfWeek || [effectiveDueDate.getDay()])
-        setMonthlyType(initialConfig.monthlyType || 'dayOfMonth')
-        setDayOfMonth(initialConfig.dayOfMonth || effectiveDueDate.getDate())
-        setWeekOfMonth(initialConfig.weekOfMonth || Math.ceil(effectiveDueDate.getDate() / 7))
-        setDayOfWeekForMonth(initialConfig.dayOfWeekForMonth ?? effectiveDueDate.getDay())
-        setEndType(initialConfig.endType)
-        setEndDate(initialConfig.endDate || null)
-        setEndCount(initialConfig.endCount || 10)
-      } else {
-        // Reset to defaults based on due date
-        const defaultConfig = createDefaultRepeatConfig('weekly', effectiveDueDate)
-        setFrequency(defaultConfig.frequency)
-        setInterval(defaultConfig.interval)
-        setDaysOfWeek(defaultConfig.daysOfWeek || [effectiveDueDate.getDay()])
-        setMonthlyType('dayOfMonth')
-        setDayOfMonth(effectiveDueDate.getDate())
-        setWeekOfMonth(Math.ceil(effectiveDueDate.getDate() / 7))
-        setDayOfWeekForMonth(effectiveDueDate.getDay())
-        setEndType('never')
-        setEndDate(null)
-        setEndCount(10)
+  effectiveDueDate
+}: {
+  onClose: () => void
+  onSave: (config: RepeatConfig) => void
+  initialConfig?: RepeatConfig | null
+  effectiveDueDate: Date
+}): React.JSX.Element => {
+  // Compute initial state from props - no useEffect needed!
+  const getInitialState = useCallback(() => {
+    if (initialConfig) {
+      return {
+        frequency: initialConfig.frequency,
+        interval: initialConfig.interval,
+        daysOfWeek: initialConfig.daysOfWeek || [effectiveDueDate.getDay()],
+        monthlyType: initialConfig.monthlyType || 'dayOfMonth' as MonthlyType,
+        dayOfMonth: initialConfig.dayOfMonth || effectiveDueDate.getDate(),
+        weekOfMonth: initialConfig.weekOfMonth || Math.ceil(effectiveDueDate.getDate() / 7),
+        dayOfWeekForMonth: initialConfig.dayOfWeekForMonth ?? effectiveDueDate.getDay(),
+        endType: initialConfig.endType,
+        endDate: initialConfig.endDate || null,
+        endCount: initialConfig.endCount || 10
       }
     }
-  }, [isOpen, initialConfig, effectiveDueDate])
+
+    const defaultConfig = createDefaultRepeatConfig('weekly', effectiveDueDate)
+    return {
+      frequency: defaultConfig.frequency,
+      interval: defaultConfig.interval,
+      daysOfWeek: defaultConfig.daysOfWeek || [effectiveDueDate.getDay()],
+      monthlyType: 'dayOfMonth' as MonthlyType,
+      dayOfMonth: effectiveDueDate.getDate(),
+      weekOfMonth: Math.ceil(effectiveDueDate.getDate() / 7),
+      dayOfWeekForMonth: effectiveDueDate.getDay(),
+      endType: 'never' as RepeatEndType,
+      endDate: null,
+      endCount: 10
+    }
+  }, [initialConfig, effectiveDueDate])
+
+  const initialState = useMemo(() => getInitialState(), [getInitialState])
+
+  // Initialize form state directly from computed initial state
+  const [frequency, setFrequency] = useState<RepeatFrequency>(initialState.frequency)
+  const [interval, setInterval] = useState(initialState.interval)
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>(initialState.daysOfWeek)
+  const [monthlyType, setMonthlyType] = useState<MonthlyType>(initialState.monthlyType)
+  const [dayOfMonth, setDayOfMonth] = useState(initialState.dayOfMonth)
+  const [weekOfMonth, setWeekOfMonth] = useState(initialState.weekOfMonth)
+  const [dayOfWeekForMonth, setDayOfWeekForMonth] = useState(initialState.dayOfWeekForMonth)
+  const [endType, setEndType] = useState<RepeatEndType>(initialState.endType)
+  const [endDate, setEndDate] = useState<Date | null>(initialState.endDate)
+  const [endCount, setEndCount] = useState(initialState.endCount)
 
   // Build current config for preview
   const currentConfig = useMemo(
@@ -474,18 +480,96 @@ export const CustomRepeatDialog = ({
     []
   )
 
-  const frequencyLabel = useMemo(() => {
-    switch (frequency) {
-      case 'daily':
-        return interval === 1 ? 'day' : 'days'
-      case 'weekly':
-        return interval === 1 ? 'week' : 'weeks'
-      case 'monthly':
-        return interval === 1 ? 'month' : 'months'
-      case 'yearly':
-        return interval === 1 ? 'year' : 'years'
-    }
-  }, [frequency, interval])
+  return (
+    <div className="flex flex-col gap-6 py-4">
+      {/* Frequency selector */}
+      <div className="flex flex-col gap-2">
+        <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Frequency
+        </Label>
+        <div className="flex items-center gap-2">
+          <span className="text-sm">Repeat every</span>
+          <Input
+            type="number"
+            min={1}
+            max={99}
+            value={interval}
+            onChange={(e) => setInterval(Math.max(1, parseInt(e.target.value, 10) || 1))}
+            className="w-[60px] h-8"
+          />
+          <Select value={frequency} onValueChange={(val) => setFrequency(val as RepeatFrequency)}>
+            <SelectTrigger className="w-[100px] h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">day{interval > 1 ? 's' : ''}</SelectItem>
+              <SelectItem value="weekly">week{interval > 1 ? 's' : ''}</SelectItem>
+              <SelectItem value="monthly">month{interval > 1 ? 's' : ''}</SelectItem>
+              <SelectItem value="yearly">year{interval > 1 ? 's' : ''}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Day of week picker (for weekly) */}
+      {frequency === 'weekly' && (
+        <DayOfWeekPicker selectedDays={daysOfWeek} onChange={setDaysOfWeek} />
+      )}
+
+      {/* Monthly options */}
+      {frequency === 'monthly' && (
+        <MonthlyRepeatOptions
+          monthlyType={monthlyType}
+          dayOfMonth={dayOfMonth}
+          weekOfMonth={weekOfMonth}
+          dayOfWeekForMonth={dayOfWeekForMonth}
+          onChange={handleMonthlyChange}
+        />
+      )}
+
+      {/* End options */}
+      <RepeatEndOptions
+        endType={endType}
+        endDate={endDate}
+        endCount={endCount}
+        onChange={handleEndChange}
+      />
+
+      {/* Separator */}
+      <div className="h-px bg-border" />
+
+      {/* Preview */}
+      <RepeatPreview config={currentConfig} startDate={effectiveDueDate} />
+
+      {/* Footer buttons */}
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button onClick={handleSave}>Save</Button>
+      </DialogFooter>
+    </div>
+  )
+}
+
+// Outer wrapper component that handles dialog state with key-based reset
+export const CustomRepeatDialog = ({
+  isOpen,
+  onClose,
+  onSave,
+  initialConfig,
+  dueDate
+}: CustomRepeatDialogProps): React.JSX.Element => {
+  const effectiveDueDate = dueDate || new Date()
+
+  // Create a stable key that changes when dialog opens/closes or config changes
+  // This causes React to unmount/remount the inner component, resetting all state
+  const dialogKey = useMemo(() => {
+    if (!isOpen) return 'closed'
+    const configId = initialConfig ? JSON.stringify(initialConfig) : 'new'
+    const dateId = effectiveDueDate.getTime()
+    return `${configId}-${dateId}`
+  }, [isOpen, initialConfig, effectiveDueDate])
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -493,77 +577,15 @@ export const CustomRepeatDialog = ({
         <DialogHeader>
           <DialogTitle>Custom Repeat</DialogTitle>
         </DialogHeader>
-
-        <div className="flex flex-col gap-6 py-4">
-          {/* Frequency selector */}
-          <div className="flex flex-col gap-2">
-            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Frequency
-            </Label>
-            <div className="flex items-center gap-2">
-              <span className="text-sm">Repeat every</span>
-              <Input
-                type="number"
-                min={1}
-                max={99}
-                value={interval}
-                onChange={(e) => setInterval(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                className="w-[60px] h-8"
-              />
-              <Select
-                value={frequency}
-                onValueChange={(val) => setFrequency(val as RepeatFrequency)}
-              >
-                <SelectTrigger className="w-[100px] h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">day{interval > 1 ? 's' : ''}</SelectItem>
-                  <SelectItem value="weekly">week{interval > 1 ? 's' : ''}</SelectItem>
-                  <SelectItem value="monthly">month{interval > 1 ? 's' : ''}</SelectItem>
-                  <SelectItem value="yearly">year{interval > 1 ? 's' : ''}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Day of week picker (for weekly) */}
-          {frequency === 'weekly' && (
-            <DayOfWeekPicker selectedDays={daysOfWeek} onChange={setDaysOfWeek} />
-          )}
-
-          {/* Monthly options */}
-          {frequency === 'monthly' && (
-            <MonthlyRepeatOptions
-              monthlyType={monthlyType}
-              dayOfMonth={dayOfMonth}
-              weekOfMonth={weekOfMonth}
-              dayOfWeekForMonth={dayOfWeekForMonth}
-              onChange={handleMonthlyChange}
-            />
-          )}
-
-          {/* End options */}
-          <RepeatEndOptions
-            endType={endType}
-            endDate={endDate}
-            endCount={endCount}
-            onChange={handleEndChange}
+        {isOpen && (
+          <CustomRepeatDialogInner
+            key={dialogKey}
+            onClose={onClose}
+            onSave={onSave}
+            initialConfig={initialConfig}
+            effectiveDueDate={effectiveDueDate}
           />
-
-          {/* Separator */}
-          <div className="h-px bg-border" />
-
-          {/* Preview */}
-          <RepeatPreview config={currentConfig} startDate={effectiveDueDate} />
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave}>Save</Button>
-        </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   )

@@ -36,24 +36,24 @@ export function useFolderViewEvents(): void {
     // This ensures all tabs (mounted or not) get fresh data when activated
 
     const unsubMoved = onNoteMoved(() => {
-      queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
+      void queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
     })
 
     const unsubDeleted = onNoteDeleted(() => {
-      queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
+      void queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
     })
 
     const unsubCreated = onNoteCreated(() => {
-      queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
+      void queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
     })
 
     const unsubUpdated = onNoteUpdated(() => {
-      queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
+      void queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
     })
 
     // Handle external file changes (edited outside the app)
     const unsubExternal = onNoteExternalChange(() => {
-      queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
+      void queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
     })
 
     return () => {

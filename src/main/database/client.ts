@@ -188,9 +188,9 @@ export async function withTimeout<T>(
         clearTimeout(timer)
         resolve(result)
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         clearTimeout(timer)
-        reject(error)
+        reject(error instanceof Error ? error : new Error(String(error)))
       })
   })
 }

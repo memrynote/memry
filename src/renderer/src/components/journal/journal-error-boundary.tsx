@@ -59,7 +59,7 @@ export class JournalErrorBoundary extends Component<
 
   handleCopyContent = (): void => {
     if (this.props.pendingContent) {
-      navigator.clipboard.writeText(this.props.pendingContent)
+      void navigator.clipboard.writeText(this.props.pendingContent)
     }
   }
 

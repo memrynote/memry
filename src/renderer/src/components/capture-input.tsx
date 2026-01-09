@@ -141,7 +141,7 @@ export function CaptureInput({
       // Enter to submit (unless Shift is held for multi-line)
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
-        handleSubmit()
+        void handleSubmit()
       }
     },
     [handleSubmit]

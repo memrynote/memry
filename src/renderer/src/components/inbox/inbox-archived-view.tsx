@@ -68,7 +68,7 @@ export function InboxArchivedView({ className }: InboxArchivedViewProps): React.
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
-          loadMore()
+          void loadMore()
         }
       },
       { threshold: 0.1 }

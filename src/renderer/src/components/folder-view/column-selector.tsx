@@ -432,7 +432,7 @@ export function ColumnSelector({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirmDelete}
+              onClick={() => void handleConfirmDelete()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete

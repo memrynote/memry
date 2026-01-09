@@ -147,7 +147,7 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
                     note={note}
                     isPinned
                     onClick={() => handleNoteClick(note)}
-                    onPin={() => pinNote(note.id)}
+                    onPin={() => void pinNote(note.id)}
                     onUnpin={() => unpinNote(note.id)}
                   />
                 ))}

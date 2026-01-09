@@ -7,8 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import * as fs from 'fs/promises'
-import { existsSync, mkdirSync, writeFileSync, rmSync } from 'fs'
+import { existsSync, mkdirSync, rmSync } from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 import {

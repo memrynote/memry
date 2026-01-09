@@ -11,7 +11,7 @@
 import { BrowserWindow } from 'electron'
 import { eq } from 'drizzle-orm'
 
-import { getDatabase } from '../database'
+import { getDatabase, type DrizzleDb } from '../database'
 import { generateId } from '../lib/id'
 import { inboxItems, inboxItemTags } from '@shared/db/schema/inbox'
 import { InboxChannels } from '@shared/ipc-channels'
@@ -19,6 +19,7 @@ import {
   CaptureVoiceSchema,
   type CaptureResponse,
   type InboxItem,
+  type InboxItemListItem,
   type VoiceMetadata
 } from '@shared/contracts/inbox-api'
 import { storeInboxAttachment, resolveAttachmentUrl } from './attachments'
@@ -43,7 +44,7 @@ export interface CaptureVoiceInput {
 /**
  * Get data database, throwing if not available
  */
-function requireDatabase() {
+function requireDatabase(): DrizzleDb {
   try {
     return getDatabase()
   } catch {
@@ -115,12 +116,12 @@ function toInboxItem(row: typeof inboxItems.$inferSelect, tags: string[]): Inbox
 /**
  * Convert database row to list item (lighter weight)
  */
-function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]) {
+function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]): InboxItemListItem {
   const metadata = row.metadata as Record<string, unknown> | null
 
   return {
     id: row.id,
-    type: row.type,
+    type: row.type as InboxItemListItem['type'],
     title: row.title,
     content: row.content,
     createdAt: new Date(row.createdAt),
@@ -128,14 +129,14 @@ function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]) {
     sourceUrl: row.sourceUrl,
     tags,
     isStale: isStale(row.createdAt),
-    processingStatus: row.processingStatus || 'complete',
+    processingStatus: (row.processingStatus || 'complete') as InboxItemListItem['processingStatus'],
     // Type-specific fields
     duration: metadata?.duration as number | undefined,
     excerpt: metadata?.excerpt as string | undefined,
     pageCount: metadata?.pageCount as number | undefined,
     // Voice transcription fields
     transcription: row.transcription,
-    transcriptionStatus: row.transcriptionStatus
+    transcriptionStatus: row.transcriptionStatus as InboxItemListItem['transcriptionStatus'],
   }
 }
 

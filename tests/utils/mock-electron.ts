@@ -19,7 +19,7 @@ export class MockBrowserWindow {
   private _isDestroyed = false
   private _bounds = { x: 0, y: 0, width: 800, height: 600 }
 
-  constructor(_options?: Record<string, unknown>) {
+  constructor(_?: Record<string, unknown>) {
     this.id = Math.floor(Math.random() * 10000)
     this.webContents = new MockWebContents(this.id)
   }

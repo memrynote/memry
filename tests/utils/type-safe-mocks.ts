@@ -242,6 +242,7 @@ export function createTypeSafeAPI(config: TypeSafeAPIConfig = {}): TypeSafeWindo
  *
  * If NotesClientAPI changes and our mocks don't match, TypeScript will error here.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function _verifyMockTypesMatchRealAPI(): void {
   // This would fail to compile if types don't match
   const _notesMock: NotesClientAPI = {} as TypeSafeNotesAPI

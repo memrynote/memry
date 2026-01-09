@@ -330,7 +330,7 @@ export function ViewSwitcher({
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={() => {
-                      handleDuplicateView(view)
+                      void handleDuplicateView(view)
                       setIsDropdownOpen(false)
                     }}
                   >

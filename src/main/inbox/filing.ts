@@ -8,7 +8,7 @@
  */
 
 import { BrowserWindow } from 'electron'
-import { getDatabase } from '../database'
+import { getDatabase, type DrizzleDb } from '../database'
 import { createNote, getNoteById, updateNote, createFolder, getFolders } from '../vault/notes'
 import { inboxItems, inboxItemTags, filingHistory } from '@shared/db/schema/inbox'
 import { generateId } from '../lib/id'
@@ -45,7 +45,7 @@ function emitInboxEvent(channel: string, data: unknown): void {
 /**
  * Get data database, throwing if not available
  */
-function requireDatabase() {
+function requireDatabase(): DrizzleDb {
   try {
     return getDatabase()
   } catch {
@@ -177,10 +177,10 @@ function generateNoteContent(item: InboxItemRow): string {
 
       // Add metadata info if available
       if (metadata) {
-        if (metadata.author) {
+        if (metadata.author && typeof metadata.author === 'string') {
           content += `**Author:** ${metadata.author}\n`
         }
-        if (metadata.siteName) {
+        if (metadata.siteName && typeof metadata.siteName === 'string') {
           content += `**Site:** ${metadata.siteName}\n`
         }
       }
@@ -248,11 +248,11 @@ function generateInboxCaptureEntry(item: InboxItemRow, noteTitle: string): strin
  * Mark inbox item as filed (update DB, don't delete)
  * Also clears any snooze status since the item is now filed
  */
-async function markItemAsFiled(
+function markItemAsFiled(
   itemId: string,
   filedTo: string,
   filedAction: 'folder' | 'note' | 'linked'
-): Promise<void> {
+): void {
   const db = requireDatabase()
   const now = new Date().toISOString()
 
@@ -280,13 +280,13 @@ async function markItemAsFiled(
 /**
  * Record filing decision for future AI suggestions
  */
-async function recordFilingHistory(
+function recordFilingHistory(
   itemType: string,
   itemContent: string | null,
   filedTo: string,
   filedAction: 'folder' | 'note' | 'linked',
   tags: string[]
-): Promise<void> {
+): void {
   const db = requireDatabase()
 
   db.insert(filingHistory)

@@ -91,13 +91,13 @@ export function trackPendingDelete(
 
   console.log(`[RenameTracker] Tracking pending delete: ${id} at ${relativePath}`)
 
-  const timeout = setTimeout(async () => {
+  const timeout = setTimeout(() => {
     // No matching 'add' event arrived - this is a real delete
     const pending = pendingDeletes.get(id)
     if (pending) {
       console.log(`[RenameTracker] No rename detected for ${id}, processing as delete`)
       pendingDeletes.delete(id)
-      await pending.onRealDelete()
+      void pending.onRealDelete()
     }
   }, RENAME_WINDOW_MS)
 

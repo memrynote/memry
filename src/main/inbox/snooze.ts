@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call */
+// Dynamic require for circular dependency avoidance returns untyped module
+
 /**
  * Inbox Snooze Service
  *
@@ -9,7 +12,7 @@
 
 import { BrowserWindow } from 'electron'
 import { eq, and, isNotNull, lte, isNull } from 'drizzle-orm'
-import { getDatabase } from '../database'
+import { getDatabase, type DrizzleDb } from '../database'
 import { inboxItems, inboxItemTags } from '@shared/db/schema/inbox'
 import { InboxChannels } from '@shared/ipc-channels'
 import type { InboxItem, InboxItemListItem } from '@shared/contracts/inbox-api'
@@ -67,7 +70,7 @@ let isSchedulerRunning = false
 /**
  * Get database instance, throwing if not available
  */
-function requireDatabase() {
+function requireDatabase(): DrizzleDb {
   try {
     return getDatabase()
   } catch {

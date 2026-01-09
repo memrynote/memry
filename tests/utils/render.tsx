@@ -3,7 +3,7 @@
  * Provides common providers and utilities.
  */
 
-import React, { ReactElement, ReactNode } from 'react'
+import { ReactElement, ReactNode } from 'react'
 import { render, RenderOptions, RenderResult } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { vi } from 'vitest'

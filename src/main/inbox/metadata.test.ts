@@ -8,8 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import * as fs from 'fs/promises'
-import { existsSync, mkdirSync, rmSync } from 'fs'
+import { mkdirSync, rmSync } from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 import { fetchUrlMetadata, downloadImage, isValidUrl, extractDomain } from './metadata'
@@ -244,8 +243,8 @@ describe('URL Metadata Extraction', () => {
           Readable: {
             fromWeb: vi.fn(() => ({
               pipe: vi.fn().mockReturnThis(),
-              on: vi.fn((event, cb) => {
-                if (event === 'end') setTimeout(cb, 0)
+              on: vi.fn((event, cb: () => void) => {
+                if (event === 'end') setTimeout(() => cb(), 0)
                 return { on: vi.fn() }
               })
             }))
@@ -301,15 +300,15 @@ describe('URL Metadata Extraction', () => {
         { contentType: 'image/webp', expected: '.webp' }
       ]
 
-      for (const { contentType, expected } of testCases) {
+      for (const { contentType } of testCases) {
         mockFetch.mockResolvedValueOnce({
           ok: true,
           headers: new Map([['content-type', contentType]]),
           body: null // Will cause early return
         })
 
-        const filename = await downloadImage('https://example.com/image', testDir)
-        // We can't fully test filename due to early return, but coverage is achieved
+        await downloadImage('https://example.com/image', testDir)
+        // Coverage achieved for content-type handling
       }
     })
 

@@ -130,7 +130,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Get initial date from tab viewState (e.g., from search navigation) or default to today
   const initialDate = (activeTab?.viewState?.date as string) || today
   const [selectedDate, setSelectedDate] = useState(initialDate)
-  const [focusMode, setFocusMode] = useState(false)
+  const [focusMode, setFocusMode] = useState(() => {
+    const saved = localStorage.getItem('memry_journal_focus_mode')
+    return saved === 'true'
+  })
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
 
@@ -901,12 +904,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [focusMode, viewState, navigateBack])
 
-  // Persist focus mode
-  useEffect(() => {
-    const saved = localStorage.getItem('memry_journal_focus_mode')
-    if (saved === 'true') setFocusMode(true)
-  }, [])
-
+  // Persist focus mode - save to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('memry_journal_focus_mode', focusMode.toString())
   }, [focusMode])

@@ -150,40 +150,27 @@ export const QuickAddInput = ({
 }: QuickAddInputProps): React.JSX.Element => {
   const [value, setValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
-  const [showAutocomplete, setShowAutocomplete] = useState(false)
-  const [autocompleteType, setAutocompleteType] = useState<AutocompleteType>(null)
-  const [autocompleteQuery, setAutocompleteQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Detect triggers for autocomplete
-  useEffect(() => {
+  // Detect triggers for autocomplete - compute during render instead of useEffect
+  const { showAutocomplete, autocompleteType, autocompleteQuery } = useMemo(() => {
     if (!isFocused) {
-      setShowAutocomplete(false)
-      setAutocompleteType(null)
-      return
+      return { showAutocomplete: false, autocompleteType: null as AutocompleteType, autocompleteQuery: '' }
     }
 
     const lastWord = value.split(' ').pop() || ''
 
     // Check for priority trigger first (!! before !)
     if (lastWord.startsWith('!!')) {
-      setAutocompleteType('priority')
-      setAutocompleteQuery(lastWord.slice(2))
-      setShowAutocomplete(true)
+      return { showAutocomplete: true, autocompleteType: 'priority' as AutocompleteType, autocompleteQuery: lastWord.slice(2) }
     } else if (lastWord.startsWith('!')) {
       // Date trigger (single !)
-      setAutocompleteType('date')
-      setAutocompleteQuery(lastWord.slice(1))
-      setShowAutocomplete(true)
+      return { showAutocomplete: true, autocompleteType: 'date' as AutocompleteType, autocompleteQuery: lastWord.slice(1) }
     } else if (lastWord.startsWith('#')) {
       // Project trigger
-      setAutocompleteType('project')
-      setAutocompleteQuery(lastWord.slice(1))
-      setShowAutocomplete(true)
+      return { showAutocomplete: true, autocompleteType: 'project' as AutocompleteType, autocompleteQuery: lastWord.slice(1) }
     } else {
-      setShowAutocomplete(false)
-      setAutocompleteType(null)
-      setAutocompleteQuery('')
+      return { showAutocomplete: false, autocompleteType: null as AutocompleteType, autocompleteQuery: '' }
     }
   }, [value, isFocused])
 

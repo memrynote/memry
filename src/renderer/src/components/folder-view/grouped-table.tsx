@@ -283,18 +283,19 @@ export function GroupedTable({
     return [groupBy.property]
   }, [groupBy?.property])
 
-  // Expanded state - start collapsed if groupBy.collapsed is true
+  // Expanded state - reset when groupBy.property changes (different grouping)
   const [expanded, setExpanded] = useState<ExpandedState>(() => {
     if (groupBy?.collapsed) return {}
     return true // All expanded by default
   })
 
-  // Reset expanded state when groupBy changes
+  const prevGroupProperty = useRef(groupBy?.property)
   useEffect(() => {
-    if (groupBy?.collapsed) {
-      setExpanded({})
-    } else {
-      setExpanded(true)
+    // Only reset expanded state when the grouping property itself changes
+    // (not when collapsed preference changes, which should be handled by user interaction)
+    if (prevGroupProperty.current !== groupBy?.property) {
+      prevGroupProperty.current = groupBy?.property
+      setExpanded(groupBy?.collapsed ? {} : true)
     }
   }, [groupBy?.property, groupBy?.collapsed])
 
@@ -355,21 +356,14 @@ export function GroupedTable({
   const onSortingChangeRef = useRef(onSortingChange)
   onSortingChangeRef.current = onSortingChange
 
-  const isInitialMount = useRef(true)
-
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false
-      return
-    }
-    if (onSortingChangeRef.current) {
-      onSortingChangeRef.current(sortingStateToOrderConfig(sorting))
-    }
-  }, [sorting])
-
   const handleSortingChange = useCallback(
     (updater: SortingState | ((old: SortingState) => SortingState)) => {
-      setSorting(updater)
+      setSorting((prevSorting) => {
+        const newSorting = typeof updater === 'function' ? updater(prevSorting) : updater
+        // Notify parent of change directly in the handler, not in useEffect
+        onSortingChangeRef.current?.(sortingStateToOrderConfig(newSorting))
+        return newSorting
+      })
     },
     []
   )
@@ -886,6 +880,8 @@ export function GroupedTable({
     [focusedRowId, table, onNoteOpen, onMoveToFolder, selectedRowIds, setSelectedRowIds]
   )
 
+  // Scroll to focused row when it changes
+  // This is a legitimate external synchronization (syncing virtualizer scroll with state)
   useEffect(() => {
     if (focusedRowId) {
       const rowIndex = rows.findIndex((r) => r.original?.id === focusedRowId)
@@ -894,11 +890,6 @@ export function GroupedTable({
       }
     }
   }, [focusedRowId, rows, rowVirtualizer])
-
-  useEffect(() => {
-    setFocusedRowId(null)
-    setSelectedRowIds(new Set())
-  }, [notes, setSelectedRowIds])
 
   // ============================================================================
   // Rendering

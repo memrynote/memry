@@ -163,7 +163,7 @@ export function RowContextMenu({
             <ContextMenuSeparator />
 
             {/* External actions */}
-            <ContextMenuItem onClick={handleOpenExternal}>
+            <ContextMenuItem onClick={() => void handleOpenExternal()}>
               <ExternalLink className="mr-2 h-4 w-4" />
               Open in External Editor
             </ContextMenuItem>

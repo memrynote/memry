@@ -94,7 +94,7 @@ export const TabContextMenu = ({
           })
           break
         case 'copy-path':
-          navigator.clipboard.writeText(tab.path)
+          void navigator.clipboard.writeText(tab.path)
           break
         case 'reveal':
           window.dispatchEvent(

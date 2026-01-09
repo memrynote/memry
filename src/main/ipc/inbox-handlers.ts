@@ -7,6 +7,10 @@
  * @module ipc/inbox-handlers
  */
 
+/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-unsafe-argument */
+// IPC handlers must be async for Electron compatibility, but use synchronous better-sqlite3 operations
+// Electron IPC passes untyped arguments that are validated by Zod schemas in each handler
+
 import { ipcMain, BrowserWindow } from 'electron'
 import { InboxChannels } from '@shared/ipc-channels'
 import {
@@ -33,7 +37,7 @@ import {
   type FilingHistoryEntry
 } from '@shared/contracts/inbox-api'
 import sharp from 'sharp'
-import { getDatabase } from '../database'
+import { getDatabase, type DrizzleDb } from '../database'
 import { generateId } from '../lib/id'
 import { inboxItems, inboxItemTags } from '@shared/db/schema/inbox'
 import { eq, desc, asc, and, isNull, sql } from 'drizzle-orm'
@@ -389,7 +393,7 @@ function emitInboxEvent(channel: string, data: unknown): void {
 /**
  * Get data database, throwing if not available
  */
-function requireDatabase() {
+function requireDatabase(): DrizzleDb {
   try {
     return getDatabase()
   } catch {

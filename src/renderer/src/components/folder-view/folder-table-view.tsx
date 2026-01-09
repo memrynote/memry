@@ -312,30 +312,19 @@ export function FolderTableView({
     [columnConfig, onColumnsChange]
   )
 
-  // Keep a stable ref to onSortingChange to avoid effect re-runs
+  // Keep a stable ref to onSortingChange to avoid stale closures
   const onSortingChangeRef = useRef(onSortingChange)
   onSortingChangeRef.current = onSortingChange
 
-  // Track if this is the initial render (skip notifying parent on mount)
-  const isInitialMount = useRef(true)
-
-  // Notify parent when sorting changes (after render, not during)
-  useEffect(() => {
-    // Skip the initial mount - we don't want to notify on first render
-    if (isInitialMount.current) {
-      isInitialMount.current = false
-      return
-    }
-
-    if (onSortingChangeRef.current) {
-      onSortingChangeRef.current(sortingStateToOrderConfig(sorting))
-    }
-  }, [sorting]) // Only depend on sorting, not onSortingChange
-
-  // Handle sorting change - just update local state, useEffect handles parent notification
+  // Handle sorting change and notify parent directly in the handler
   const handleSortingChange = useCallback(
     (updater: SortingState | ((old: SortingState) => SortingState)) => {
-      setSorting(updater)
+      setSorting((prevSorting) => {
+        const newSorting = typeof updater === 'function' ? updater(prevSorting) : updater
+        // Notify parent of change directly in the handler, not in useEffect
+        onSortingChangeRef.current?.(sortingStateToOrderConfig(newSorting))
+        return newSorting
+      })
     },
     []
   )
@@ -918,6 +907,8 @@ export function FolderTableView({
    * Scroll focused row into view when it changes.
    * Uses virtualizer's scrollToIndex for efficient scrolling with virtualized rows.
    */
+  // Scroll to focused row when it changes
+  // This is a legitimate external synchronization (syncing virtualizer scroll with state)
   useEffect(() => {
     if (focusedRowId) {
       // Find the row index for the focused row
@@ -928,14 +919,6 @@ export function FolderTableView({
       }
     }
   }, [focusedRowId, rows, rowVirtualizer])
-
-  /**
-   * Clear selection when notes data changes (filter applied, data refreshed)
-   */
-  useEffect(() => {
-    setFocusedRowId(null)
-    setSelectedRowIds(new Set())
-  }, [notes, setSelectedRowIds])
 
   // Calculate total width of all columns for table min-width
   // (Must be before early returns to satisfy React hook rules)

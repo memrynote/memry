@@ -50,7 +50,7 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
 
     // Save after debounce delay
     saveTimeoutRef.current = setTimeout(() => {
-      storage.save(serialized).then(() => {
+      void storage.save(serialized).then(() => {
         lastSavedRef.current = json
       })
     }, debounceMs)

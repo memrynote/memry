@@ -55,7 +55,7 @@ export function NoteReminderButton({
       <TooltipTrigger asChild>
         <div className="relative">
           <ReminderPicker
-            onSelect={handleSetReminder}
+            onSelect={(time, note) => void handleSetReminder(time, note)}
             presetType="standard"
             showNote
             disabled={disabled}

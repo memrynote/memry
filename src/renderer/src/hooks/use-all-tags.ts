@@ -181,8 +181,8 @@ export function useAllTags(): UseAllTagsResult {
   )
 
   const refetch = useCallback(() => {
-    notesQuery.refetch()
-    inboxQuery.refetch()
+    void notesQuery.refetch()
+    void inboxQuery.refetch()
   }, [notesQuery, inboxQuery])
 
   return {

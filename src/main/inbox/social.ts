@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
+// External social media APIs return dynamic JSON structures - type safety not feasible without extensive runtime validation
+
 /**
  * Social Media Post Extraction
  *
@@ -409,7 +412,7 @@ async function extractBlueskyPost(url: string): Promise<SocialExtractionResult> 
  * LinkedIn has very limited public access. We extract what we can from the URL
  * and basic page metadata.
  */
-async function extractLinkedInPost(url: string): Promise<SocialExtractionResult> {
+function extractLinkedInPost(url: string): SocialExtractionResult {
   // LinkedIn doesn't have a public oEmbed API that works without authentication
   // Return partial metadata with the URL
   return {
@@ -431,7 +434,7 @@ async function extractLinkedInPost(url: string): Promise<SocialExtractionResult>
  *
  * Threads doesn't have a public API yet. We can only store the URL.
  */
-async function extractThreadsPost(url: string): Promise<SocialExtractionResult> {
+function extractThreadsPost(url: string): SocialExtractionResult {
   // Parse URL to get username at minimum
   // Format: https://www.threads.net/@username/post/...
   try {

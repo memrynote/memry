@@ -111,7 +111,7 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
   useTabKeyboardShortcuts()
   const isChordActive = useChordShortcuts()
   useSearchShortcut(() => onSearchOpenChange(true))
-  useNewNoteShortcut(handleNewNote)
+  useNewNoteShortcut(() => void handleNewNote())
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
   useFolderViewEvents() // Global cache invalidation for folder-view tabs

@@ -145,13 +145,13 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
     const unsubUpdated = onNoteUpdated((event) => {
       if (event.id === id) {
         // Invalidate this specific note
-        queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
+        void queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
       }
     })
 
     const unsubRenamed = onNoteRenamed((event) => {
       if (event.id === id) {
-        queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
+        void queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
       }
     })
 
@@ -164,7 +164,7 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
 
     const unsubExternal = onNoteExternalChange((event) => {
       if (event.id === id) {
-        queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
+        void queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
       }
     })
 
@@ -209,22 +209,22 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
   useEffect(() => {
     const unsubCreated = onNoteCreated(() => {
       // New note added, invalidate lists
-      queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     })
 
     const unsubDeleted = onNoteDeleted(() => {
       // Note removed, invalidate lists
-      queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     })
 
     const unsubRenamed = onNoteRenamed(() => {
       // Title changed, may affect sort order
-      queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     })
 
     const unsubMoved = onNoteMoved(() => {
       // Folder changed, invalidate lists
-      queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     })
 
     return () => {
@@ -300,7 +300,7 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
   const createFolderMutation = useMutation({
     mutationFn: (path: string) => notesService.createFolder(path),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
+      void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
     }
   })
 
@@ -353,7 +353,7 @@ export function useNoteLinksQuery(noteId: string | null, options: { enabled?: bo
     if (!noteId) return
 
     const refresh = () => {
-      queryClient.invalidateQueries({ queryKey: notesKeys.links(noteId) })
+      void queryClient.invalidateQueries({ queryKey: notesKeys.links(noteId) })
     }
 
     // Only refresh on content changes, not all updates
@@ -398,7 +398,7 @@ export function useNoteMutations() {
     mutationFn: notesService.create,
     onSuccess: () => {
       // Invalidate lists to show new note
-      queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     }
   })
 
@@ -409,7 +409,7 @@ export function useNoteMutations() {
         // Update single note cache
         queryClient.setQueryData(notesKeys.note(variables.id), result.note)
         // Invalidate lists in background
-        queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+        void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
       }
     }
   })
@@ -420,7 +420,7 @@ export function useNoteMutations() {
       // Remove from cache
       queryClient.removeQueries({ queryKey: notesKeys.note(noteId) })
       // Invalidate lists
-      queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     }
   })
 
@@ -430,7 +430,7 @@ export function useNoteMutations() {
     onSuccess: (result, variables) => {
       if (result.success && result.note) {
         queryClient.setQueryData(notesKeys.note(variables.id), result.note)
-        queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+        void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
       }
     }
   })
@@ -441,8 +441,8 @@ export function useNoteMutations() {
     onSuccess: (result, variables) => {
       if (result.success && result.note) {
         queryClient.setQueryData(notesKeys.note(variables.id), result.note)
-        queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-        queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
+        void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+        void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
       }
     }
   })

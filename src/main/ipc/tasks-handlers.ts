@@ -5,6 +5,10 @@
  * @module ipc/tasks-handlers
  */
 
+/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-unsafe-argument */
+// IPC handlers must be async for Electron compatibility, but use synchronous better-sqlite3 operations
+// Electron IPC passes untyped arguments that are validated by Zod schemas in each handler
+
 import { ipcMain, BrowserWindow } from 'electron'
 import { TasksChannels } from '@shared/ipc-channels'
 import {
@@ -26,7 +30,7 @@ import {
   GetUpcomingSchema
 } from '@shared/contracts/tasks-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
-import { getDatabase } from '../database'
+import { getDatabase, type DrizzleDb } from '../database'
 import { generateId } from '../lib/id'
 import * as taskQueries from '@shared/db/queries/tasks'
 import * as projectQueries from '@shared/db/queries/projects'
@@ -44,7 +48,7 @@ function emitTaskEvent(channel: string, data: unknown): void {
  * Helper to get database, throwing a user-friendly error if not available.
  * Database is fetched lazily when handlers are called, not at registration time.
  */
-function requireDatabase() {
+function requireDatabase(): DrizzleDb {
   try {
     return getDatabase()
   } catch {

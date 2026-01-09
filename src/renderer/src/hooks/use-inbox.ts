@@ -7,8 +7,25 @@
  */
 
 import { useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
-import type { InboxItem, InboxItemListItem, InboxStats } from '../../../preload/index.d'
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useInfiniteQuery,
+  type UseQueryResult,
+  type UseMutationResult
+} from '@tanstack/react-query'
+import type {
+  InboxItem,
+  InboxItemListItem,
+  InboxStats,
+  InboxCaptureResponse,
+  InboxFileResponse,
+  InboxBulkResponse,
+  InboxSuggestionsResponse,
+  InboxCapturePattern,
+  InboxFilingHistoryResponse
+} from '../../../preload/index.d'
 import {
   inboxService,
   onInboxCaptured,
@@ -160,27 +177,27 @@ export function useInboxList(options: UseInboxListOptions = {}): UseInboxListRes
   // Subscribe to inbox events for real-time updates
   useEffect(() => {
     const unsubCaptured = onInboxCaptured(() => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     })
 
     const unsubUpdated = onInboxUpdated(() => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
     })
 
     const unsubArchived = onInboxArchived(() => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     })
 
     const unsubFiled = onInboxFiled(() => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     })
 
     const unsubSnoozeDue = onInboxSnoozeDue(() => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.snoozed() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.snoozed() })
     })
 
     return () => {
@@ -199,8 +216,12 @@ export function useInboxList(options: UseInboxListOptions = {}): UseInboxListRes
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error,
-    refetch: () => query.refetch(),
-    loadMore: () => query.fetchNextPage(),
+    refetch: (): void => {
+      void query.refetch()
+    },
+    loadMore: (): void => {
+      void query.fetchNextPage()
+    },
     isLoadingMore: query.isFetchingNextPage
   }
 }
@@ -231,7 +252,7 @@ export function useInboxItem(id: string | null): UseInboxItemResult {
 
     const unsubUpdated = onInboxUpdated((event) => {
       if (event.id === id) {
-        queryClient.invalidateQueries({ queryKey: inboxKeys.item(id) })
+        void queryClient.invalidateQueries({ queryKey: inboxKeys.item(id) })
       }
     })
 
@@ -243,13 +264,13 @@ export function useInboxItem(id: string | null): UseInboxItemResult {
 
     const unsubTranscription = onInboxTranscriptionComplete((event) => {
       if (event.id === id) {
-        queryClient.invalidateQueries({ queryKey: inboxKeys.item(id) })
+        void queryClient.invalidateQueries({ queryKey: inboxKeys.item(id) })
       }
     })
 
     const unsubMetadata = onInboxMetadataComplete((event) => {
       if (event.id === id) {
-        queryClient.invalidateQueries({ queryKey: inboxKeys.item(id) })
+        void queryClient.invalidateQueries({ queryKey: inboxKeys.item(id) })
       }
     })
 
@@ -265,7 +286,9 @@ export function useInboxItem(id: string | null): UseInboxItemResult {
     item: query.data ?? null,
     isLoading: query.isLoading,
     error: query.error,
-    refetch: () => query.refetch()
+    refetch: (): void => {
+      void query.refetch()
+    }
   }
 }
 
@@ -290,15 +313,15 @@ export function useInboxStats(): UseInboxStatsResult {
   // Subscribe to events that affect stats
   useEffect(() => {
     const unsubCaptured = onInboxCaptured(() => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     })
 
     const unsubArchived = onInboxArchived(() => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     })
 
     const unsubFiled = onInboxFiled(() => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     })
 
     return () => {
@@ -312,7 +335,9 @@ export function useInboxStats(): UseInboxStatsResult {
     stats: query.data ?? null,
     isLoading: query.isLoading,
     error: query.error,
-    refetch: () => query.refetch()
+    refetch: (): void => {
+      void query.refetch()
+    }
   }
 }
 
@@ -323,7 +348,7 @@ export function useInboxStats(): UseInboxStatsResult {
 /**
  * Hook for fetching inbox tags with counts.
  */
-export function useInboxTags() {
+export function useInboxTags(): UseQueryResult<Array<{ tag: string; count: number }>> {
   return useQuery({
     queryKey: inboxKeys.tags(),
     queryFn: () => inboxService.getTags(),
@@ -341,7 +366,9 @@ export function useInboxTags() {
  * @param itemId - Item ID
  * @returns Suggestions state
  */
-export function useInboxSuggestions(itemId: string | null) {
+export function useInboxSuggestions(
+  itemId: string | null
+): UseQueryResult<InboxSuggestionsResponse> {
   return useQuery({
     queryKey: inboxKeys.suggestions(itemId ?? ''),
     queryFn: () => inboxService.getSuggestions(itemId!),
@@ -357,7 +384,7 @@ export function useInboxSuggestions(itemId: string | null) {
 /**
  * Hook for fetching snoozed inbox items.
  */
-export function useInboxSnoozed() {
+export function useInboxSnoozed(): UseQueryResult<InboxItemListItem[]> {
   const queryClient = useQueryClient()
 
   const query = useQuery({
@@ -369,11 +396,11 @@ export function useInboxSnoozed() {
   // Subscribe to snooze events
   useEffect(() => {
     const unsubSnoozed = onInboxSnoozed(() => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.snoozed() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.snoozed() })
     })
 
     const unsubSnoozeDue = onInboxSnoozeDue(() => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.snoozed() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.snoozed() })
     })
 
     return () => {
@@ -392,7 +419,7 @@ export function useInboxSnoozed() {
 /**
  * Hook for fetching capture patterns analytics.
  */
-export function useInboxPatterns() {
+export function useInboxPatterns(): UseQueryResult<InboxCapturePattern[]> {
   return useQuery({
     queryKey: inboxKeys.patterns(),
     queryFn: () => inboxService.getPatterns(),
@@ -407,7 +434,12 @@ export function useInboxPatterns() {
 /**
  * Hook for getting and setting the stale threshold.
  */
-export function useInboxStaleThreshold() {
+export function useInboxStaleThreshold(): {
+  threshold: number
+  isLoading: boolean
+  setThreshold: (days: number) => void
+  isUpdating: boolean
+} {
   const queryClient = useQueryClient()
 
   const query = useQuery({
@@ -418,9 +450,9 @@ export function useInboxStaleThreshold() {
   const mutation = useMutation({
     mutationFn: (days: number) => inboxService.setStaleThreshold(days),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.staleThreshold() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.staleThreshold() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
     }
   })
 
@@ -439,14 +471,14 @@ export function useInboxStaleThreshold() {
 /**
  * Hook for capturing text content.
  */
-export function useCaptureText() {
+export function useCaptureText(): UseMutationResult<InboxCaptureResponse, Error, CaptureTextInput> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (input: CaptureTextInput) => inboxService.captureText(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     }
   })
 }
@@ -454,14 +486,14 @@ export function useCaptureText() {
 /**
  * Hook for capturing a link.
  */
-export function useCaptureLink() {
+export function useCaptureLink(): UseMutationResult<InboxCaptureResponse, Error, CaptureLinkInput> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (input: CaptureLinkInput) => inboxService.captureLink(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     }
   })
 }
@@ -470,14 +502,18 @@ export function useCaptureLink() {
  * Hook for capturing a voice memo.
  * Handles audio blob conversion and triggers transcription.
  */
-export function useCaptureVoice() {
+export function useCaptureVoice(): UseMutationResult<
+  InboxCaptureResponse,
+  Error,
+  CaptureVoiceInput
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (input: CaptureVoiceInput) => inboxService.captureVoice(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     }
   })
 }
@@ -485,14 +521,18 @@ export function useCaptureVoice() {
 /**
  * Hook for capturing an image.
  */
-export function useCaptureImage() {
+export function useCaptureImage(): UseMutationResult<
+  InboxCaptureResponse,
+  Error,
+  CaptureImageInput
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (input: CaptureImageInput) => inboxService.captureImage(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     }
   })
 }
@@ -504,14 +544,14 @@ export function useCaptureImage() {
 /**
  * Hook for updating an inbox item.
  */
-export function useUpdateInboxItem() {
+export function useUpdateInboxItem(): UseMutationResult<InboxItem, Error, InboxUpdateInput> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (input: InboxUpdateInput) => inboxService.update(input),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.item(variables.id) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.item(variables.id) })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
     }
   })
 }
@@ -519,15 +559,15 @@ export function useUpdateInboxItem() {
 /**
  * Hook for archiving an inbox item.
  */
-export function useArchiveInboxItem() {
+export function useArchiveInboxItem(): UseMutationResult<void, Error, string> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (id: string) => inboxService.archive(id),
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: inboxKeys.item(id) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     }
   })
 }
@@ -539,15 +579,15 @@ export function useArchiveInboxItem() {
 /**
  * Hook for filing an inbox item.
  */
-export function useFileInboxItem() {
+export function useFileInboxItem(): UseMutationResult<InboxFileResponse, Error, FileItemInput> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (input: FileItemInput) => inboxService.file(input),
     onSuccess: (_, variables) => {
       queryClient.removeQueries({ queryKey: inboxKeys.item(variables.itemId) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     }
   })
 }
@@ -555,15 +595,15 @@ export function useFileInboxItem() {
 /**
  * Hook for converting an inbox item to a note.
  */
-export function useConvertToNote() {
+export function useConvertToNote(): UseMutationResult<InboxFileResponse, Error, string> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (itemId: string) => inboxService.convertToNote(itemId),
     onSuccess: (_, itemId) => {
       queryClient.removeQueries({ queryKey: inboxKeys.item(itemId) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     }
   })
 }
@@ -571,16 +611,20 @@ export function useConvertToNote() {
 /**
  * Hook for linking an inbox item to an existing note.
  */
-export function useLinkToNote() {
+export function useLinkToNote(): UseMutationResult<
+  InboxFileResponse,
+  Error,
+  { itemId: string; noteId: string }
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({ itemId, noteId }: { itemId: string; noteId: string }) =>
       inboxService.linkToNote(itemId, noteId),
     onSuccess: (_, { itemId }) => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     }
   })
 }
@@ -592,16 +636,16 @@ export function useLinkToNote() {
 /**
  * Hook for adding a tag to an inbox item.
  */
-export function useAddInboxTag() {
+export function useAddInboxTag(): UseMutationResult<void, Error, { itemId: string; tag: string }> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({ itemId, tag }: { itemId: string; tag: string }) =>
       inboxService.addTag(itemId, tag),
     onSuccess: (_, { itemId }) => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.tags() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.tags() })
     }
   })
 }
@@ -609,16 +653,20 @@ export function useAddInboxTag() {
 /**
  * Hook for removing a tag from an inbox item.
  */
-export function useRemoveInboxTag() {
+export function useRemoveInboxTag(): UseMutationResult<
+  void,
+  Error,
+  { itemId: string; tag: string }
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({ itemId, tag }: { itemId: string; tag: string }) =>
       inboxService.removeTag(itemId, tag),
     onSuccess: (_, { itemId }) => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.tags() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.tags() })
     }
   })
 }
@@ -630,15 +678,15 @@ export function useRemoveInboxTag() {
 /**
  * Hook for snoozing an inbox item.
  */
-export function useSnoozeInboxItem() {
+export function useSnoozeInboxItem(): UseMutationResult<void, Error, SnoozeInput> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (input: SnoozeInput) => inboxService.snooze(input),
     onSuccess: (_, { itemId }) => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.snoozed() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.snoozed() })
     }
   })
 }
@@ -646,15 +694,15 @@ export function useSnoozeInboxItem() {
 /**
  * Hook for unsnoozing an inbox item.
  */
-export function useUnsnoozeInboxItem() {
+export function useUnsnoozeInboxItem(): UseMutationResult<void, Error, string> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (itemId: string) => inboxService.unsnooze(itemId),
     onSuccess: (_, itemId) => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.snoozed() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.snoozed() })
     }
   })
 }
@@ -666,7 +714,11 @@ export function useUnsnoozeInboxItem() {
 /**
  * Hook for bulk archiving inbox items.
  */
-export function useBulkArchiveInboxItems() {
+export function useBulkArchiveInboxItems(): UseMutationResult<
+  InboxBulkResponse,
+  Error,
+  BulkArchiveInput
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -675,8 +727,8 @@ export function useBulkArchiveInboxItems() {
       itemIds.forEach((id) => {
         queryClient.removeQueries({ queryKey: inboxKeys.item(id) })
       })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     }
   })
 }
@@ -684,14 +736,14 @@ export function useBulkArchiveInboxItems() {
 /**
  * Hook for bulk tagging inbox items.
  */
-export function useBulkTagInboxItems() {
+export function useBulkTagInboxItems(): UseMutationResult<InboxBulkResponse, Error, BulkTagInput> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (input: BulkTagInput) => inboxService.bulkTag(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.tags() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.tags() })
     }
   })
 }
@@ -699,14 +751,14 @@ export function useBulkTagInboxItems() {
 /**
  * Hook for filing all stale items.
  */
-export function useFileAllStale() {
+export function useFileAllStale(): UseMutationResult<InboxBulkResponse, Error, void> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: () => inboxService.fileAllStale(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     }
   })
 }
@@ -718,13 +770,13 @@ export function useFileAllStale() {
 /**
  * Hook for retrying transcription on a voice item.
  */
-export function useRetryTranscription() {
+export function useRetryTranscription(): UseMutationResult<void, Error, string> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (itemId: string) => inboxService.retryTranscription(itemId),
     onSuccess: (_, itemId) => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
     }
   })
 }
@@ -736,14 +788,14 @@ export function useRetryTranscription() {
 /**
  * Hook for retrying metadata fetch on a link item.
  */
-export function useRetryMetadata() {
+export function useRetryMetadata(): UseMutationResult<void, Error, string> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (itemId: string) => inboxService.retryMetadata(itemId),
     onSuccess: (_, itemId) => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
     }
   })
 }
@@ -759,7 +811,7 @@ export function useRetryMetadata() {
  */
 export function useInboxProcessingErrors(
   callback: (event: { id: string; operation: string; error: string }) => void
-) {
+): void {
   useEffect(() => {
     const unsub = onInboxProcessingError(callback)
     return unsub
@@ -772,7 +824,7 @@ export interface ArchivedListOptions {
   enabled?: boolean
 }
 
-export function useInboxArchived(options: ArchivedListOptions = {}) {
+export function useInboxArchived(options: ArchivedListOptions = {}): UseInboxListResult {
   const queryClient = useQueryClient()
   const { enabled = true, ...listOptions } = options
 
@@ -802,7 +854,7 @@ export function useInboxArchived(options: ArchivedListOptions = {}) {
 
   useEffect(() => {
     const unsubArchived = onInboxArchived(() => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.archived({}) })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.archived({}) })
     })
     return () => {
       unsubArchived()
@@ -816,39 +868,45 @@ export function useInboxArchived(options: ArchivedListOptions = {}) {
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error,
-    refetch: () => query.refetch(),
-    loadMore: () => query.fetchNextPage(),
+    refetch: (): void => {
+      void query.refetch()
+    },
+    loadMore: (): void => {
+      void query.fetchNextPage()
+    },
     isLoadingMore: query.isFetchingNextPage
   }
 }
 
-export function useUnarchiveInboxItem() {
+export function useUnarchiveInboxItem(): UseMutationResult<void, Error, string> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (id: string) => inboxService.unarchive(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.archived({}) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.archived({}) })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     }
   })
 }
 
-export function useDeletePermanentInboxItem() {
+export function useDeletePermanentInboxItem(): UseMutationResult<void, Error, string> {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (id: string) => inboxService.deletePermanent(id),
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: inboxKeys.item(id) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.archived({}) })
-      queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.archived({}) })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
     }
   })
 }
 
-export function useInboxFilingHistory(options?: { limit?: number }) {
+export function useInboxFilingHistory(options?: {
+  limit?: number
+}): UseQueryResult<InboxFilingHistoryResponse> {
   return useQuery({
     queryKey: inboxKeys.filingHistory(),
     queryFn: () => inboxService.getFilingHistory(options),
@@ -856,7 +914,34 @@ export function useInboxFilingHistory(options?: { limit?: number }) {
   })
 }
 
-export function useInboxOperations() {
+export function useInboxOperations(): {
+  captureText: (input: CaptureTextInput) => Promise<InboxCaptureResponse>
+  captureLink: (input: CaptureLinkInput) => Promise<InboxCaptureResponse>
+  isCaptureTextPending: boolean
+  isCaptureLinkPending: boolean
+  updateItem: (input: InboxUpdateInput) => Promise<InboxItem>
+  archiveItem: (id: string) => Promise<void>
+  isUpdatePending: boolean
+  isArchivePending: boolean
+  fileItem: (input: FileItemInput) => Promise<InboxFileResponse>
+  convertToNote: (itemId: string) => Promise<InboxFileResponse>
+  isFilePending: boolean
+  isConvertPending: boolean
+  addTag: (input: { itemId: string; tag: string }) => Promise<void>
+  removeTag: (input: { itemId: string; tag: string }) => Promise<void>
+  snoozeItem: (input: SnoozeInput) => Promise<void>
+  unsnoozeItem: (itemId: string) => Promise<void>
+  bulkArchive: (input: BulkArchiveInput) => Promise<InboxBulkResponse>
+  bulkTag: (input: BulkTagInput) => Promise<InboxBulkResponse>
+  fileAllStale: () => Promise<InboxBulkResponse>
+  isBulkArchivePending: boolean
+  isBulkTagPending: boolean
+  isFileAllStalePending: boolean
+  retryTranscription: (itemId: string) => Promise<void>
+  isRetryTranscriptionPending: boolean
+  retryMetadata: (itemId: string) => Promise<void>
+  isRetryMetadataPending: boolean
+} {
   const captureText = useCaptureText()
   const captureLink = useCaptureLink()
   const updateItem = useUpdateInboxItem()

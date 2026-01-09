@@ -71,13 +71,11 @@ function createPathDebouncer(
     }
 
     // Set new timeout
-    const timeout = setTimeout(async () => {
+    const timeout = setTimeout(() => {
       pending.delete(filePath)
-      try {
-        await handler(filePath)
-      } catch (error) {
+      handler(filePath).catch((error: unknown) => {
         console.error(`[Watcher] Error processing ${filePath}:`, error)
-      }
+      })
     }, delayMs)
 
     pending.set(filePath, timeout)
