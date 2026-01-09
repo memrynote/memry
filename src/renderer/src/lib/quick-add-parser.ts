@@ -119,7 +119,7 @@ export const parseDateKeyword = (keyword: string): Date | null => {
 
     if (monthIndex !== undefined && day >= 1 && day <= 31) {
       const today = new Date()
-      let year = today.getFullYear()
+      const year = today.getFullYear()
 
       // Create the date
       const date = new Date(year, monthIndex, day)

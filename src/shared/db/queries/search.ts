@@ -406,7 +406,7 @@ export function advancedSearch(
   }
 
   let baseQuery: string
-  let queryParams: unknown[] = []
+  const queryParams: unknown[] = []
 
   if (hasTextQuery) {
     const escapedQuery = escapeSearchQuery(text)

@@ -171,10 +171,10 @@ const VirtualItemRenderer = memo(
   }: VirtualItemRendererProps): React.JSX.Element | null => {
     switch (item.type) {
       case 'status-header':
-        return <DroppableStatusHeader item={item as StatusHeaderItem} />
+        return <DroppableStatusHeader item={item} />
 
       case 'task': {
-        const taskItem = item as TaskItem
+        const taskItem = item
         const isCompleted = isTaskCompletedFast(taskItem.task, lookupContext.completionMap)
         const isCheckedForSelection = selectedIds?.has(taskItem.task.id) ?? false
 
@@ -200,7 +200,7 @@ const VirtualItemRenderer = memo(
       }
 
       case 'parent-task': {
-        const parentItem = item as ParentTaskItem
+        const parentItem = item
         const isCompleted = isTaskCompletedFast(parentItem.task, lookupContext.completionMap)
         const isCheckedForSelection = selectedIds?.has(parentItem.task.id) ?? false
         const isExpanded = expandedIds.has(parentItem.task.id)

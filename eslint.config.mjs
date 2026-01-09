@@ -4,10 +4,18 @@ import eslintConfigPrettier from '@electron-toolkit/eslint-config-prettier'
 import eslintPluginReact from 'eslint-plugin-react'
 import eslintPluginReactHooks from 'eslint-plugin-react-hooks'
 import eslintPluginReactRefresh from 'eslint-plugin-react-refresh'
+import reactYouMightNotNeedAnEffect from 'eslint-plugin-react-you-might-not-need-an-effect'
 
 export default defineConfig(
-  { ignores: ['**/node_modules', '**/dist', '**/out', '**/build', '**/coverage', '**/*.min.js'] },
+  { ignores: ['**/node_modules', '**/dist', '**/out', '**/build', '**/coverage', '**/*.min.js', '*.config.ts', '*.config.mjs', '*.config.js', 'vitest.workspace.ts', 'scripts/**', 'specs/**', 'docs/**'] },
   tseslint.configs.recommended,
+  {
+    languageOptions: {
+      parserOptions: {
+        projectService: true
+      }
+    }
+  },
   eslintPluginReact.configs.flat.recommended,
   eslintPluginReact.configs.flat['jsx-runtime'],
   {
@@ -25,8 +33,10 @@ export default defineConfig(
     },
     rules: {
       ...eslintPluginReactHooks.configs.recommended.rules,
-      ...eslintPluginReactRefresh.configs.vite.rules
+      ...eslintPluginReactRefresh.configs.vite.rules,
     }
   },
-  eslintConfigPrettier
+  tseslint.configs.recommendedTypeChecked,
+  eslintConfigPrettier,
+  reactYouMightNotNeedAnEffect.configs.recommended
 )

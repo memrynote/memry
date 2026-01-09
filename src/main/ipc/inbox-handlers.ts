@@ -277,7 +277,7 @@ async function fetchAndUpdateSocialMetadata(
           processingStatus: 'complete',
           processingError: null,
           modifiedAt: now,
-          metadata: metadata as SocialMetadata
+          metadata: metadata
         })
         .where(eq(inboxItems.id, itemId))
         .run()

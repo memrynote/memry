@@ -169,7 +169,7 @@ export function configureMockApi(
 
   for (const [path, value] of Object.entries(config)) {
     const parts = path.split('.')
-    let current = api as Record<string, unknown>
+    let current = api
 
     for (let i = 0; i < parts.length - 1; i++) {
       current = current[parts[i]] as Record<string, unknown>

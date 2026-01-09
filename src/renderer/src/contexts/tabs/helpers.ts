@@ -139,7 +139,7 @@ const TAB_PATHS: Partial<Record<TabType, string>> = {
  */
 export const getDefaultPath = (type: TabType, entityId?: string): string => {
   if (TAB_PATHS[type]) {
-    return TAB_PATHS[type]!
+    return TAB_PATHS[type]
   }
 
   // Dynamic paths for entity-based tabs
