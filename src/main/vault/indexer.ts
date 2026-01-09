@@ -225,7 +225,13 @@ async function indexNonMarkdownFile(
     const title = path.basename(absolutePath, path.extname(absolutePath))
 
     // Sync to cache
-    console.log(`[Indexer] Syncing file to cache:`, { id, path: relativePath, title, fileType, mimeType })
+    console.log(`[Indexer] Syncing file to cache:`, {
+      id,
+      path: relativePath,
+      title,
+      fileType,
+      mimeType
+    })
     syncFileToCache(db, {
       id,
       path: relativePath,

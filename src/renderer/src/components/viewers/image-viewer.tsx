@@ -6,13 +6,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import {
-  ZoomIn,
-  ZoomOut,
-  RotateCw,
-  Maximize2,
-  Move
-} from 'lucide-react'
+import { ZoomIn, ZoomOut, RotateCw, Maximize2, Move } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -33,11 +27,7 @@ interface ImageViewerProps {
 // Image Viewer Component
 // ============================================================================
 
-export function ImageViewer({
-  src,
-  alt = 'Image',
-  className
-}: ImageViewerProps) {
+export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
 
@@ -146,10 +136,7 @@ export function ImageViewer({
   if (error) {
     return (
       <div
-        className={cn(
-          'flex h-full items-center justify-center bg-muted/30 rounded-lg',
-          className
-        )}
+        className={cn('flex h-full items-center justify-center bg-muted/30 rounded-lg', className)}
       >
         <div className="text-center p-8">
           <p className="text-destructive font-medium mb-2">Failed to load image</p>
@@ -188,13 +175,7 @@ export function ImageViewer({
           <div className="w-px h-5 bg-border" />
 
           {/* Rotate */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={rotate}
-            className="h-8 w-8 p-0"
-            title="Rotate"
-          >
+          <Button variant="ghost" size="sm" onClick={rotate} className="h-8 w-8 p-0" title="Rotate">
             <RotateCw className="h-4 w-4" />
           </Button>
 
@@ -208,7 +189,6 @@ export function ImageViewer({
             </>
           )}
         </div>
-
       </div>
 
       {/* Image container */}

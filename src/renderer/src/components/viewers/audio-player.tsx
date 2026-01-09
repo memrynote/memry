@@ -6,16 +6,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import {
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  Volume1,
-  SkipBack,
-  SkipForward,
-  Music
-} from 'lucide-react'
+import { Play, Pause, Volume2, VolumeX, Volume1, SkipBack, SkipForward, Music } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
@@ -139,10 +130,7 @@ export function AudioPlayer({ src, fileName = 'Audio', className }: AudioPlayerP
   if (error) {
     return (
       <div
-        className={cn(
-          'flex h-full items-center justify-center bg-muted/30 rounded-lg',
-          className
-        )}
+        className={cn('flex h-full items-center justify-center bg-muted/30 rounded-lg', className)}
       >
         <div className="text-center p-8">
           <p className="text-destructive font-medium mb-2">Failed to load audio</p>
@@ -202,11 +190,7 @@ export function AudioPlayer({ src, fileName = 'Audio', className }: AudioPlayerP
               onClick={togglePlay}
               className="h-16 w-16 rounded-full p-0"
             >
-              {isPlaying ? (
-                <Pause className="h-8 w-8" />
-              ) : (
-                <Play className="h-8 w-8 ml-1" />
-              )}
+              {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 ml-1" />}
             </Button>
 
             <Button
@@ -222,12 +206,7 @@ export function AudioPlayer({ src, fileName = 'Audio', className }: AudioPlayerP
 
           {/* Volume control */}
           <div className="flex items-center justify-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleMute}
-              className="h-8 w-8 p-0"
-            >
+            <Button variant="ghost" size="sm" onClick={toggleMute} className="h-8 w-8 p-0">
               <VolumeIcon className="h-4 w-4" />
             </Button>
             <Slider
@@ -238,7 +217,6 @@ export function AudioPlayer({ src, fileName = 'Audio', className }: AudioPlayerP
               className="w-24 cursor-pointer"
             />
           </div>
-
         </div>
       </div>
     </div>

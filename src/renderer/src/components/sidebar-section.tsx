@@ -2,7 +2,6 @@
 
 import * as React from 'react'
 import { ChevronRight } from 'lucide-react'
-import { AnimatePresence, motion } from 'framer-motion'
 
 import { cn } from '@/lib/utils'
 import { SidebarGroup, SidebarMenu, useSidebar } from '@/components/ui/sidebar'
@@ -151,23 +150,12 @@ export const SidebarSection = ({
           )}
         </div>
 
-        {/* Section Content with Animation */}
-        <AnimatePresence initial={false}>
-          {isExpanded && (
-            <motion.div
-              id={contentId}
-              role="region"
-              aria-labelledby={headerId}
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-              className="overflow-hidden"
-            >
-              <SidebarMenu className="mt-1 space-y-0.5">{children}</SidebarMenu>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Section Content */}
+        {isExpanded && (
+          <div id={contentId} role="region" aria-labelledby={headerId}>
+            <SidebarMenu>{children}</SidebarMenu>
+          </div>
+        )}
       </SidebarGroup>
     </div>
   )

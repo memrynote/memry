@@ -96,10 +96,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
   if (error) {
     return (
       <div
-        className={cn(
-          'flex h-full items-center justify-center bg-muted/30 rounded-lg',
-          className
-        )}
+        className={cn('flex h-full items-center justify-center bg-muted/30 rounded-lg', className)}
       >
         <div className="text-center p-8">
           <p className="text-destructive font-medium mb-2">Failed to load PDF</p>
@@ -110,7 +107,10 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
   }
 
   return (
-    <div ref={containerRef} className={cn('flex h-full flex-col bg-muted/20 min-h-0 overflow-hidden', className)}>
+    <div
+      ref={containerRef}
+      className={cn('flex h-full flex-col bg-muted/20 min-h-0 overflow-hidden', className)}
+    >
       {/* Toolbar - fixed at top */}
       <div className="flex items-center justify-between gap-1 sm:gap-2 px-2 sm:px-4 py-2 border-b border-border bg-background/80 backdrop-blur-sm flex-shrink-0">
         <div className="flex items-center gap-1 sm:gap-2">
@@ -159,13 +159,25 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
 
         <div className="flex items-center gap-1 sm:gap-2">
           {/* Zoom controls */}
-          <Button variant="ghost" size="sm" onClick={zoomOut} className="h-8 w-8 p-0" title="Zoom out">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={zoomOut}
+            className="h-8 w-8 p-0"
+            title="Zoom out"
+          >
             <ZoomOut className="h-4 w-4" />
           </Button>
           <span className="text-sm text-muted-foreground min-w-[40px] sm:min-w-[50px] text-center">
             {Math.round(scale * 100)}%
           </span>
-          <Button variant="ghost" size="sm" onClick={zoomIn} className="h-8 w-8 p-0" title="Zoom in">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={zoomIn}
+            className="h-8 w-8 p-0"
+            title="Zoom in"
+          >
             <ZoomIn className="h-4 w-4" />
           </Button>
 
@@ -182,13 +194,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
           <div className="w-px h-5 bg-border hidden sm:block" />
 
           {/* Rotate */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={rotate}
-            className="h-8 w-8 p-0"
-            title="Rotate"
-          >
+          <Button variant="ghost" size="sm" onClick={rotate} className="h-8 w-8 p-0" title="Rotate">
             <RotateCw className="h-4 w-4" />
           </Button>
         </div>

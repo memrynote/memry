@@ -28,12 +28,7 @@ import { getIndexDatabase } from '../database'
 import { NotesChannels, JournalChannels } from '@shared/ipc-channels'
 import { trackPendingDelete, checkForRename, clearAllPendingDeletes } from './rename-tracker'
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
-import {
-  isSupportedPath,
-  getFileType,
-  getMimeType,
-  getExtension
-} from '@shared/file-types'
+import { isSupportedPath, getFileType, getMimeType, getExtension } from '@shared/file-types'
 
 // ============================================================================
 // Types

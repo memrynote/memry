@@ -24,7 +24,8 @@ import {
 } from '@/hooks/use-notes-query'
 import { useNoteProperties } from '@/hooks/use-note-properties'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
-import { notesService, onNoteDeleted, onNoteUpdated } from '@/services/notes-service'
+import { onNoteDeleted, onNoteUpdated } from '@/services/notes-service'
+import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { MoreHorizontal, History, Bookmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -575,51 +576,70 @@ export function NotePage({ noteId }: NotePageProps) {
       const target = linkedNoteIdOrTitle?.trim()
       if (!target) return
 
-      let resolvedId = target
-      let resolvedTitle = 'Note'
-
       try {
-        // Try to get note by ID first
-        const byId = await notesService.get(target)
-        if (byId) {
-          resolvedId = byId.id
-          resolvedTitle = byId.title
-        } else {
-          // Search by title
-          const listResult = await notesService.list({ sortBy: 'title', limit: 500 })
-          const match = listResult.notes.find((n) => n.title.toLowerCase() === target.toLowerCase())
+        // Use format-aware resolution to handle notes and files
+        const resolution = await resolveWikiLink(target)
 
-          if (match) {
-            resolvedId = match.id
-            resolvedTitle = match.title
-          } else {
+        switch (resolution.type) {
+          case 'file':
+            // Open file in appropriate viewer (image, video, PDF, audio)
+            openTab({
+              type: 'file',
+              title: resolution.title,
+              icon: resolution.icon,
+              path: `/file/${resolution.id}`,
+              entityId: resolution.id,
+              isPinned: false,
+              isModified: false,
+              isPreview: false,
+              isDeleted: false
+            })
+            break
+
+          case 'note':
+            // Open note in editor
+            openTab({
+              type: 'note',
+              title: resolution.title,
+              icon: 'file-text',
+              path: `/notes/${resolution.id}`,
+              entityId: resolution.id,
+              isPinned: false,
+              isModified: false,
+              isPreview: true,
+              isDeleted: false
+            })
+            break
+
+          case 'create':
             // Create new note with this title
             const result = await createNote.mutateAsync({ title: target })
             if (!result.success || !result.note) {
               toast.error('Failed to create linked note')
               return
             }
-            resolvedId = result.note.id
-            resolvedTitle = result.note.title
-          }
+            openTab({
+              type: 'note',
+              title: result.note.title,
+              icon: 'file-text',
+              path: `/notes/${result.note.id}`,
+              entityId: result.note.id,
+              isPinned: false,
+              isModified: false,
+              isPreview: true,
+              isDeleted: false
+            })
+            break
+
+          case 'not-found':
+            // File-like target not found - show error instead of creating a note
+            toast.error(`File not found: ${target}`)
+            break
         }
       } catch (err) {
         console.error('[NotePage] Failed to resolve wiki link:', err)
-        toast.error('Failed to open linked note')
-        return
+        toast.error('Failed to open linked item')
       }
-
-      openTab({
-        type: 'note',
-        title: resolvedTitle,
-        icon: 'file-text',
-        path: `/notes/${resolvedId}`,
-        entityId: resolvedId,
-        isPinned: false,
-        isModified: false,
-        isPreview: true,
-        isDeleted: false
-      })
     },
     [openTab, createNote.mutateAsync]
   )

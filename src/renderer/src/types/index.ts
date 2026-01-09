@@ -116,4 +116,5 @@ export interface LinkedNote {
   id: string
   title: string
   type: 'note' | 'folder'
+  emoji?: string | null
 }

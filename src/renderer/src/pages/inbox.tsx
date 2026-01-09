@@ -43,6 +43,7 @@ import {
   useFileInboxItem,
   inboxKeys
 } from '@/hooks/use-inbox'
+import { notesKeys } from '@/hooks/use-notes-query'
 
 interface InboxPageProps {
   className?: string
@@ -410,6 +411,14 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           if (result.success) {
             // Invalidate queries to refresh the list
             queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+
+            // Invalidate linked notes cache so open tabs refresh
+            if (linkedNoteIds.length > 0) {
+              linkedNoteIds.forEach((noteId) => {
+                queryClient.invalidateQueries({ queryKey: notesKeys.note(noteId) })
+              })
+            }
+
             addToast({
               message:
                 linkedNoteIds.length > 1

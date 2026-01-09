@@ -516,6 +516,8 @@ export type TreeNodeTriggerProps = ComponentProps<typeof motion.div> & {
   contextMenuContent?: ReactNode
   /** Whether to show the default icon context menu (default: true) */
   showIconMenu?: boolean
+  /** When true, clicking only expands/collapses without triggering selection (faster for folders) */
+  expandOnly?: boolean
 }
 
 export const TreeNodeTrigger = ({
@@ -524,6 +526,7 @@ export const TreeNodeTrigger = ({
   onClick,
   contextMenuContent,
   showIconMenu = true,
+  expandOnly = false,
   ...props
 }: TreeNodeTriggerProps) => {
   const {
@@ -753,7 +756,10 @@ export const TreeNodeTrigger = ({
             onClick={(e) => {
               setFocusedId(nodeId)
               toggleExpanded(nodeId)
-              handleSelection(nodeId, e.ctrlKey || e.metaKey, e.shiftKey)
+              // Skip selection handling for expandOnly mode (faster folder expand/collapse)
+              if (!expandOnly) {
+                handleSelection(nodeId, e.ctrlKey || e.metaKey, e.shiftKey)
+              }
               onClick?.(e)
             }}
             onFocus={() => setFocusedId(nodeId)}

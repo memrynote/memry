@@ -51,7 +51,13 @@ const LinkedNoteCard = ({ note, onRemove }: LinkedNoteCardProps): React.JSX.Elem
       )}
     >
       <div className="flex items-center justify-center size-8 rounded-md bg-background border border-border/50 shrink-0">
-        <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
+        {note.emoji ? (
+          <span className="text-base" aria-hidden="true">
+            {note.emoji}
+          </span>
+        ) : (
+          <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{note.title}</p>
@@ -106,7 +112,13 @@ const SearchResultItem = ({
       role="option"
       aria-selected={isHighlighted}
     >
-      <Icon className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+      {note.emoji ? (
+        <span className="size-4 text-center shrink-0" aria-hidden="true">
+          {note.emoji}
+        </span>
+      ) : (
+        <Icon className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+      )}
       <span className="text-sm truncate flex-1">{note.title}</span>
     </button>
   )
@@ -138,16 +150,21 @@ export const LinkInput = ({
   // Debounced search query
   const debouncedQuery = useDebounce(searchQuery, 200)
 
-  // Fetch notes for search
+  // Fetch notes for search (by title only)
   const { data: searchResults = [], isLoading: isSearching } = useQuery({
-    queryKey: ['notes', 'search', debouncedQuery],
+    queryKey: ['notes', 'search', 'title', debouncedQuery],
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return []
-      const results = await window.api.search.searchNotes(debouncedQuery, { limit: 10 })
+      const results = await window.api.search.advancedSearch({
+        text: debouncedQuery,
+        titleOnly: true,
+        limit: 10
+      })
       return results.map((note) => ({
         id: note.id,
         title: note.title,
-        type: 'note' as const
+        type: 'note' as const,
+        emoji: note.emoji
       }))
     },
     enabled: debouncedQuery.length >= 2

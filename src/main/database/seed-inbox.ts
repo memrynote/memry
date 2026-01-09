@@ -317,92 +317,104 @@ interface DailyStats {
   archivedCount: number
 }
 
-const SAMPLE_STATS: DailyStats[] = [
-  {
-    daysAgo: 0,
-    captureCountLink: 2,
-    captureCountNote: 2,
-    captureCountImage: 0,
-    captureCountVoice: 1,
-    captureCountClip: 0,
-    captureCountPdf: 0,
-    captureCountSocial: 0,
-    processedCount: 3,
-    archivedCount: 0
-  },
-  {
-    daysAgo: 1,
-    captureCountLink: 3,
-    captureCountNote: 1,
-    captureCountImage: 1,
-    captureCountVoice: 0,
-    captureCountClip: 0,
-    captureCountPdf: 0,
-    captureCountSocial: 0,
-    processedCount: 4,
-    archivedCount: 1
-  },
-  {
-    daysAgo: 2,
-    captureCountLink: 1,
-    captureCountNote: 2,
-    captureCountImage: 0,
-    captureCountVoice: 0,
-    captureCountClip: 0,
-    captureCountPdf: 0,
-    captureCountSocial: 0,
-    processedCount: 2,
-    archivedCount: 0
-  },
-  {
-    daysAgo: 3,
-    captureCountLink: 4,
-    captureCountNote: 0,
-    captureCountImage: 0,
-    captureCountVoice: 0,
-    captureCountClip: 0,
-    captureCountPdf: 0,
-    captureCountSocial: 1,
-    processedCount: 3,
-    archivedCount: 1
-  },
-  {
-    daysAgo: 4,
-    captureCountLink: 2,
-    captureCountNote: 1,
-    captureCountImage: 0,
-    captureCountVoice: 0,
-    captureCountClip: 0,
-    captureCountPdf: 0,
-    captureCountSocial: 0,
-    processedCount: 2,
-    archivedCount: 0
-  },
-  {
-    daysAgo: 5,
-    captureCountLink: 1,
-    captureCountNote: 0,
-    captureCountImage: 0,
-    captureCountVoice: 0,
-    captureCountClip: 1,
-    captureCountPdf: 0,
-    captureCountSocial: 0,
-    processedCount: 1,
-    archivedCount: 0
-  },
-  {
-    daysAgo: 6,
-    captureCountLink: 3,
-    captureCountNote: 2,
-    captureCountImage: 0,
-    captureCountVoice: 0,
-    captureCountClip: 0,
-    captureCountPdf: 0,
-    captureCountSocial: 0,
-    processedCount: 4,
-    archivedCount: 2
+/**
+ * Seeded random number generator for reproducible stats
+ * Uses a simple linear congruential generator
+ */
+function createSeededRandom(seed: number): () => number {
+  let state = seed
+  return () => {
+    state = (state * 1103515245 + 12345) & 0x7fffffff
+    return state / 0x7fffffff
   }
-]
+}
+
+/**
+ * Generate realistic inbox stats for the past 12 months (365 days)
+ * with natural variation patterns:
+ * - Weekdays are more active than weekends
+ * - Links are the most common capture type
+ * - Some days have no activity (holidays, vacations)
+ * - Processing rate varies but generally keeps up with captures
+ */
+function generateYearlyStats(): DailyStats[] {
+  const stats: DailyStats[] = []
+  const random = createSeededRandom(42) // Consistent seed for reproducibility
+
+  for (let daysAgo = 0; daysAgo < 365; daysAgo++) {
+    const date = new Date()
+    date.setDate(date.getDate() - daysAgo)
+    const dayOfWeek = date.getDay() // 0 = Sunday, 6 = Saturday
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+
+    // Base activity multiplier (weekends are quieter)
+    const activityMultiplier = isWeekend ? 0.4 : 1.0
+
+    // Random chance of a "quiet day" (vacation, holiday, etc.)
+    const isQuietDay = random() < 0.1
+
+    if (isQuietDay) {
+      // Quiet days have minimal or no activity
+      stats.push({
+        daysAgo,
+        captureCountLink: random() < 0.3 ? 1 : 0,
+        captureCountNote: 0,
+        captureCountImage: 0,
+        captureCountVoice: 0,
+        captureCountClip: 0,
+        captureCountPdf: 0,
+        captureCountSocial: 0,
+        processedCount: random() < 0.5 ? 1 : 0,
+        archivedCount: 0
+      })
+      continue
+    }
+
+    // Generate capture counts with realistic distribution
+    // Links are most common, followed by notes, then others
+    const captureCountLink = Math.floor(random() * 5 * activityMultiplier)
+    const captureCountNote = Math.floor(random() * 3 * activityMultiplier)
+    const captureCountImage = random() < 0.2 * activityMultiplier ? Math.floor(random() * 2) + 1 : 0
+    const captureCountVoice = random() < 0.15 * activityMultiplier ? 1 : 0
+    const captureCountClip = random() < 0.1 * activityMultiplier ? 1 : 0
+    const captureCountPdf = random() < 0.08 * activityMultiplier ? 1 : 0
+    const captureCountSocial = random() < 0.12 * activityMultiplier ? Math.floor(random() * 2) + 1 : 0
+
+    const totalCaptures =
+      captureCountLink +
+      captureCountNote +
+      captureCountImage +
+      captureCountVoice +
+      captureCountClip +
+      captureCountPdf +
+      captureCountSocial
+
+    // Processing rate: usually process 60-90% of captures
+    const processingRate = 0.6 + random() * 0.3
+    const processedCount = Math.floor(totalCaptures * processingRate)
+
+    // Archive rate: occasionally archive some items (10-20% of processed)
+    const archivedCount = random() < 0.3 ? Math.floor(processedCount * (0.1 + random() * 0.1)) : 0
+
+    stats.push({
+      daysAgo,
+      captureCountLink,
+      captureCountNote,
+      captureCountImage,
+      captureCountVoice,
+      captureCountClip,
+      captureCountPdf,
+      captureCountSocial,
+      processedCount,
+      archivedCount
+    })
+  }
+
+  return stats
+}
+
+// Generate stats for all 12 months
+const SAMPLE_STATS: DailyStats[] = generateYearlyStats()
 
 export function seedSampleInboxItems(db: DrizzleDb): void {
   console.log('Seeding sample inbox items...')
@@ -526,7 +538,7 @@ export function seedInboxStats(db: DrizzleDb): void {
     seededCount++
   }
 
-  console.log(`Seeded ${seededCount} days of inbox stats`)
+  console.log(`Seeded ${seededCount} days of inbox stats (12 months)`)
 }
 
 export function seedAllInboxData(db: DrizzleDb): void {

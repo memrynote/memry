@@ -67,8 +67,6 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { TemplateSelector } from '@/components/note/template-selector'
-import { VirtualizedNotesTree } from '@/components/virtualized-notes-tree'
-import { shouldVirtualize } from '@/lib/virtualized-tree-utils'
 import { getTabIconForFileType, type FileType } from '@shared/file-types'
 
 // ============================================================================
@@ -101,9 +99,7 @@ function getDisplayName(notePath: string): string {
  * Get the appropriate icon component for a file based on its type.
  * Returns the icon element to render in the tree.
  */
-function getFileIcon(
-  note: NoteListItem
-): React.ReactElement {
+function getFileIcon(note: NoteListItem): React.ReactElement {
   // Emoji takes priority for markdown files
   if (note.emoji) {
     return (
@@ -380,14 +376,11 @@ function NotesTreeError({ error }: { error: string }) {
 interface NotesTreeProps {
   /** Callback to receive action buttons for external rendering */
   onActionsReady?: (actions: React.ReactNode) => void
-  /** Optional scroll container for virtualized rendering */
-  scrollContainerRef?: React.RefObject<HTMLElement>
 }
 
-export function NotesTree({ onActionsReady, scrollContainerRef }: NotesTreeProps = {}) {
+export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   // Load all notes so the tree can correctly show files in all folders
   // Tree views need complete data - pagination doesn't make sense here
-  // Virtualization (enabled at 100+ items) handles render performance
   const { notes, isLoading, error } = useNotesList({ limit: 10000 })
   const mutations = useNoteMutations()
   // Extract stable mutateAsync functions to avoid infinite re-render loops
@@ -503,11 +496,6 @@ export function NotesTree({ onActionsReady, scrollContainerRef }: NotesTreeProps
   const tree = useMemo(() => {
     return buildTreeFromNotes(notes, folders, notePositions)
   }, [notes, folders, notePositions])
-
-  // Check if we should use virtualized rendering (100+ items)
-  const useVirtualization = useMemo(() => {
-    return shouldVirtualize(tree)
-  }, [tree])
 
   // Map of noteId to note for quick lookup
   const noteMap = useMemo(() => {
@@ -1516,12 +1504,7 @@ export function NotesTree({ onActionsReady, scrollContainerRef }: NotesTreeProps
         {/* Import Files button */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={handleImportFiles}
-            >
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleImportFiles}>
               <Import className="h-3.5 w-3.5" />
               <span className="sr-only">Import Files</span>
             </Button>
@@ -1532,7 +1515,14 @@ export function NotesTree({ onActionsReady, scrollContainerRef }: NotesTreeProps
         </Tooltip>
       </>
     ),
-    [handleCreateNote, handleCreateFolder, handleImportFiles, isCreating, isCreatingFolder, targetFolder]
+    [
+      handleCreateNote,
+      handleCreateFolder,
+      handleImportFiles,
+      isCreating,
+      isCreatingFolder,
+      targetFolder
+    ]
   )
 
   // Notify parent about action buttons (must be before early returns)
@@ -1639,6 +1629,7 @@ export function NotesTree({ onActionsReady, scrollContainerRef }: NotesTreeProps
     return (
       <TreeNode key={folder.path} nodeId={`folder-${folder.path}`} level={level} isLast={isLast}>
         <TreeNodeTrigger
+          expandOnly
           contextMenuContent={
             <>
               <ContextMenuItem onClick={() => handleCreateNoteInFolder(folder.path)}>
@@ -1741,64 +1732,35 @@ export function NotesTree({ onActionsReady, scrollContainerRef }: NotesTreeProps
     )
   }
 
-  const rootClassName = scrollContainerRef ? 'flex flex-col' : 'flex flex-col h-full'
-  const virtualizedClassName = scrollContainerRef ? undefined : 'flex-1'
-
   return (
-    <div ref={treeContainerRef} className={rootClassName} tabIndex={-1}>
-      {/* Use virtualized tree for 100+ items, otherwise use standard tree */}
-      {useVirtualization ? (
-        <VirtualizedNotesTree
-          tree={tree}
-          selectedIds={selectedIds}
-          onSelectionChange={handleSelectionChange}
-          onMove={handleMove}
-          onBulkDelete={handleBulkDelete}
-          onRenameNote={handleRenameClick}
-          onDeleteNote={handleDeleteClick}
-          onOpenExternal={handleOpenExternal}
-          onRevealInFinder={handleRevealInFinder}
-          onCreateNote={handleCreateNoteInFolder}
-          onCreateFolder={handleCreateSubfolder}
-          onRenameFolder={handleRenameFolderClick}
-          onDeleteFolder={handleDeleteFolderClick}
-          onSetFolderTemplate={handleSetFolderTemplate}
-          onClearFolderTemplate={handleClearFolderTemplate}
-          folderTemplateNames={folderTemplateNames}
-          noteMap={noteMap}
-          isDragDisabled={!!renamingNoteId || !!renamingFolderPath || isMoving}
-          className={virtualizedClassName}
-          scrollContainerRef={scrollContainerRef}
-        />
-      ) : (
-        <TreeProvider
-          selectedIds={selectedIds}
-          onSelectionChange={handleSelectionChange}
-          draggable={!renamingNoteId && !renamingFolderPath && !isMoving}
-          onMove={handleMove}
-          animateExpand={true}
-          multiSelect={true}
-          indent={16}
-        >
-          {/* Handle reveal-in-sidebar requests */}
-          <RevealHandler />
-          <TreeView>
-            {/* Folders first */}
-            {tree.folders.map((folder, index) =>
-              renderFolder(
-                folder,
-                0,
-                index === tree.folders.length - 1 && tree.rootNotes.length === 0
-              )
-            )}
+    <div ref={treeContainerRef} className="flex flex-col" tabIndex={-1}>
+      <TreeProvider
+        selectedIds={selectedIds}
+        onSelectionChange={handleSelectionChange}
+        draggable={!renamingNoteId && !renamingFolderPath && !isMoving}
+        onMove={handleMove}
+        animateExpand={false}
+        multiSelect={true}
+        indent={16}
+      >
+        {/* Handle reveal-in-sidebar requests */}
+        <RevealHandler />
+        <TreeView>
+          {/* Folders first */}
+          {tree.folders.map((folder, index) =>
+            renderFolder(
+              folder,
+              0,
+              index === tree.folders.length - 1 && tree.rootNotes.length === 0
+            )
+          )}
 
-            {/* Root notes after folders */}
-            {tree.rootNotes.map((note, index) =>
-              renderNote(note, 0, index === tree.rootNotes.length - 1)
-            )}
-          </TreeView>
-        </TreeProvider>
-      )}
+          {/* Root notes after folders */}
+          {tree.rootNotes.map((note, index) =>
+            renderNote(note, 0, index === tree.rootNotes.length - 1)
+          )}
+        </TreeView>
+      </TreeProvider>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

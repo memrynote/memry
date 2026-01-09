@@ -5,7 +5,15 @@ import { cn } from '@/lib/utils'
 import type { Folder as FolderType } from '@/types'
 
 // Highlight matching text in folder name
-const HighlightedText = ({ text, query }: { text: string; query: string }): React.JSX.Element => {
+const HighlightedText = ({
+  text,
+  query,
+  isRowHighlighted
+}: {
+  text: string
+  query: string
+  isRowHighlighted: boolean
+}): React.JSX.Element => {
   if (!query.trim()) {
     return <>{text}</>
   }
@@ -25,7 +33,14 @@ const HighlightedText = ({ text, query }: { text: string; query: string }): Reac
   return (
     <>
       {before}
-      <span className="font-semibold text-[var(--foreground)]">{match}</span>
+      <span
+        className={cn(
+          'font-semibold',
+          isRowHighlighted ? 'text-[var(--primary-foreground)]' : 'text-[var(--foreground)]'
+        )}
+      >
+        {match}
+      </span>
       {after}
     </>
   )
@@ -53,7 +68,9 @@ const QuickFileDropdownItem = ({
       className={cn(
         'flex items-center gap-2 px-3 py-2 cursor-pointer',
         'dropdown-highlight', // smooth background transition
-        isHighlighted ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+        isHighlighted
+          ? 'bg-primary text-primary-foreground'
+          : 'text-foreground hover:bg-muted'
       )}
       onClick={handleClick}
       role="option"
@@ -67,7 +84,7 @@ const QuickFileDropdownItem = ({
         aria-hidden="true"
       />
       <span className="text-sm truncate">
-        <HighlightedText text={folder.path} query={query} />
+        <HighlightedText text={folder.path} query={query} isRowHighlighted={isHighlighted} />
       </span>
     </div>
   )

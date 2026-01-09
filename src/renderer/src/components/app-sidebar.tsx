@@ -319,7 +319,7 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
           defaultExpanded={false}
           actions={notesActions}
         >
-          <NotesTree onActionsReady={setNotesActions} scrollContainerRef={sidebarScrollRef} />
+          <NotesTree onActionsReady={setNotesActions} />
         </SidebarSection>
 
         {/* BOOKMARKS Section - Collapsible */}

@@ -40,7 +40,12 @@ interface MemryFilePlayerProps {
   onPause?: () => void
   onEnded?: () => void
   onError?: () => void
-  onProgress?: (state: { played: number; playedSeconds: number; loaded: number; loadedSeconds: number }) => void
+  onProgress?: (state: {
+    played: number
+    playedSeconds: number
+    loaded: number
+    loadedSeconds: number
+  }) => void
   onDuration?: (duration: number) => void
 }
 
@@ -106,7 +111,10 @@ const MemryFilePlayer = forwardRef<HTMLVideoElement, MemryFilePlayerProps>(
       onProgress({
         played: video.currentTime / video.duration || 0,
         playedSeconds: video.currentTime,
-        loaded: video.buffered.length > 0 ? video.buffered.end(video.buffered.length - 1) / video.duration : 0,
+        loaded:
+          video.buffered.length > 0
+            ? video.buffered.end(video.buffered.length - 1) / video.duration
+            : 0,
         loadedSeconds: video.buffered.length > 0 ? video.buffered.end(video.buffered.length - 1) : 0
       })
     }, [onProgress, videoRef])
@@ -177,10 +185,7 @@ export function VideoPlayer({ src, className }: VideoPlayerProps) {
   if (error) {
     return (
       <div
-        className={cn(
-          'flex h-full items-center justify-center bg-muted/30 rounded-lg',
-          className
-        )}
+        className={cn('flex h-full items-center justify-center bg-muted/30 rounded-lg', className)}
       >
         <div className="text-center p-8">
           <p className="text-destructive font-medium mb-2">Failed to load video</p>

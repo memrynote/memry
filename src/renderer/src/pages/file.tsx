@@ -93,8 +93,12 @@ function FileInfoBar({ file }: { file: FileMetadata }) {
     <div className="flex items-center justify-between gap-2 px-2 sm:px-4 py-2 border-b border-border bg-muted/30 flex-shrink-0">
       <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
         <h1 className="font-medium truncate flex-1 min-w-0">{file.title}</h1>
-        <span className="text-xs text-muted-foreground uppercase flex-shrink-0 hidden sm:inline">{file.fileType}</span>
-        <span className="text-xs text-muted-foreground flex-shrink-0 hidden md:inline">{formatFileSize(file.fileSize)}</span>
+        <span className="text-xs text-muted-foreground uppercase flex-shrink-0 hidden sm:inline">
+          {file.fileType}
+        </span>
+        <span className="text-xs text-muted-foreground flex-shrink-0 hidden md:inline">
+          {formatFileSize(file.fileSize)}
+        </span>
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
         <Button

@@ -123,17 +123,25 @@ async function ensureFolderExists(folderPath: string): Promise<void> {
 
 /**
  * Generate note title based on inbox item
+ * Priority: item.title > content-based > default fallback
  */
 function generateNoteTitle(item: InboxItemRow): string {
   const now = new Date()
 
+  // Always prioritize the inbox item's title first (this is what's shown in inbox UI)
+  if (item.title && item.title.trim().length > 0) {
+    // For links, don't use title if it's just the URL
+    if (item.type === 'link' && item.title === item.sourceUrl) {
+      // Fall through to type-specific handling below
+    } else {
+      return item.title.trim()
+    }
+  }
+
+  // Type-specific fallbacks when no meaningful title exists
   switch (item.type) {
     case 'link': {
-      // Use extracted title or URL domain
-      if (item.title && item.title !== item.sourceUrl) {
-        return item.title
-      }
-      // Extract domain from URL
+      // Extract domain from URL as fallback
       try {
         const url = new URL(item.sourceUrl || '')
         return `Link from ${url.hostname}`
@@ -144,7 +152,7 @@ function generateNoteTitle(item: InboxItemRow): string {
     case 'note':
     case 'clip':
     default:
-      // Use first line of content or default
+      // Use first line of content as fallback
       if (item.content) {
         const firstLine = item.content.split('\n')[0].trim()
         if (firstLine.length > 0 && firstLine.length <= 100) {
@@ -398,9 +406,8 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
     // Merge tags with 'inbox' tag
     const mergedTags = [...new Set([...existingTags, 'inbox'])]
 
-    // Generate title with date/time format
-    const now = new Date()
-    const title = `Inbox Note - ${formatDateTime(now)}`
+    // Generate title from item content
+    const title = generateNoteTitle(item)
     const content = generateNoteContent(item)
 
     // Create note in root folder
