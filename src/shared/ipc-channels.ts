@@ -115,6 +115,8 @@ export const NotesChannels = {
     REORDER: 'notes:reorder',
     /** Get file metadata by ID (for non-markdown files) */
     GET_FILE: 'notes:get-file',
+    /** Resolve a WikiLink target by title (returns note or file metadata) */
+    RESOLVE_BY_TITLE: 'notes:resolve-by-title',
     /** Import files from external paths into the vault */
     IMPORT_FILES: 'notes:import-files',
     /** Open a file dialog to select files for import */

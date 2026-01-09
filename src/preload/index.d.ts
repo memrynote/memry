@@ -270,6 +270,17 @@ export interface FileMetadata {
   modified: Date
 }
 
+/**
+ * WikiLink resolution result for format-aware link handling.
+ * Used to determine whether to open a note or file viewer.
+ */
+export interface WikiLinkResolution {
+  id: string
+  path: string
+  title: string
+  fileType: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
+}
+
 export interface NoteCreateInput {
   title: string
   content?: string
@@ -911,6 +922,7 @@ export interface NotesClientAPI {
   get(id: string): Promise<Note | null>
   getByPath(path: string): Promise<Note | null>
   getFile(id: string): Promise<FileMetadata | null>
+  resolveByTitle(title: string): Promise<WikiLinkResolution | null>
   update(input: NoteUpdateInput): Promise<NoteUpdateResponse>
   rename(id: string, newTitle: string): Promise<NoteUpdateResponse>
   move(id: string, newFolder: string): Promise<NoteUpdateResponse>

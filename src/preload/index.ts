@@ -48,6 +48,8 @@ const api = {
     get: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.GET, id),
     getByPath: (path: string) => ipcRenderer.invoke(NotesChannels.invoke.GET_BY_PATH, path),
     getFile: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.GET_FILE, id),
+    resolveByTitle: (title: string) =>
+      ipcRenderer.invoke(NotesChannels.invoke.RESOLVE_BY_TITLE, title),
     update: (input: {
       id: string
       title?: string
