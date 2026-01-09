@@ -56,6 +56,23 @@ export function ImageViewer({
     }
   }, [scale])
 
+  // Attach wheel event with passive: false to allow preventDefault
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleWheelEvent = (e: WheelEvent) => {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? -0.1 : 0.1
+      setScale((s) => Math.max(0.25, Math.min(5, s + delta)))
+    }
+
+    container.addEventListener('wheel', handleWheelEvent, { passive: false })
+    return () => {
+      container.removeEventListener('wheel', handleWheelEvent)
+    }
+  }, [])
+
   const zoomIn = useCallback(() => {
     setScale((s) => Math.min(s + 0.25, 5))
   }, [])
@@ -88,15 +105,6 @@ export function ImageViewer({
       setPosition({ x: 0, y: 0 })
     }
   }, [])
-
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      e.preventDefault()
-      const delta = e.deltaY > 0 ? -0.1 : 0.1
-      setScale((s) => Math.max(0.25, Math.min(5, s + delta)))
-    },
-    []
-  )
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -211,7 +219,6 @@ export function ImageViewer({
           scale > 1 ? 'cursor-grab' : 'cursor-default',
           isDragging && 'cursor-grabbing'
         )}
-        onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}

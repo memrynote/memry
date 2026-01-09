@@ -32,9 +32,6 @@ export function VideoPlayer({ src, className }: VideoPlayerProps) {
     console.error('[VideoPlayer] Error loading video:', src)
   }, [src])
 
-  const handleReady = useCallback(() => {
-    console.log('[VideoPlayer] Player ready')
-  }, [])
 
   if (error) {
     return (
