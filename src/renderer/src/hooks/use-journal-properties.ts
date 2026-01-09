@@ -7,7 +7,7 @@
  * @module hooks/use-journal-properties
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { journalService } from '@/services/journal-service'
 
 export interface PropertyValue {
@@ -100,68 +100,87 @@ export function useJournalProperties(
   date: string | null,
   initialProperties?: Record<string, unknown>
 ): UseJournalPropertiesReturn {
-  const [properties, setProperties] = useState<PropertyValue[]>(() =>
-    initialProperties ? recordToProperties(initialProperties) : []
-  )
+  // Track local edits separately from initialProperties (optimistic updates pattern)
+  const [localEdits, setLocalEdits] = useState<Record<string, unknown>>({})
+  const [deletedKeys, setDeletedKeys] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Convert properties array to Record for easy access
+  // Ref for stabilizing fetchProperties callback
+  const fetchPropertiesRef = useRef<() => Promise<void>>()
+
+  // Compute merged properties during render (derived state done correctly)
   const propertiesRecord = useMemo(() => {
-    const record: Record<string, unknown> = {}
-    for (const prop of properties) {
-      record[prop.name] = prop.value
+    const base = initialProperties ?? {}
+    const merged = { ...base, ...localEdits }
+    // Remove deleted keys
+    for (const key of deletedKeys) {
+      delete merged[key]
     }
-    return record
-  }, [properties])
+    return merged
+  }, [initialProperties, localEdits, deletedKeys])
 
-  // Update properties when initialProperties changes
+  // Convert to PropertyValue array
+  const properties = useMemo(() => recordToProperties(propertiesRecord), [propertiesRecord])
+
+  // Clear local edits (used after successful API calls or refresh)
+  const clearLocalEdits = useCallback(() => {
+    setLocalEdits({})
+    setDeletedKeys(new Set())
+  }, [])
+
+  // Fetch properties (reload from entry) - use ref pattern to stabilize callback
   useEffect(() => {
-    if (initialProperties) {
-      setProperties(recordToProperties(initialProperties))
-    } else {
-      setProperties([])
-    }
-  }, [initialProperties])
-
-  // Fetch properties (reload from entry)
-  const fetchProperties = useCallback(async () => {
-    if (!date) {
-      setProperties([])
-      return
-    }
-
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const entry = await journalService.getEntry(date)
-      if (entry?.properties) {
-        setProperties(recordToProperties(entry.properties))
-      } else {
-        setProperties([])
+    fetchPropertiesRef.current = async () => {
+      if (!date) {
+        clearLocalEdits()
+        return
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load properties'
-      setError(message)
-      console.error('[useJournalProperties] Error fetching properties:', err)
-    } finally {
-      setIsLoading(false)
+
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        // Fetching will update initialProperties via parent, so clear local edits
+        await journalService.getEntry(date)
+        clearLocalEdits()
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load properties'
+        setError(message)
+        console.error('[useJournalProperties] Error fetching properties:', err)
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }, [date])
+  }, [date, clearLocalEdits])
+
+  // Stable reference to fetchProperties
+  const fetchProperties = useCallback(async () => {
+    await fetchPropertiesRef.current?.()
+  }, [])
 
   // Update a single property
   const updateProperty = useCallback(
     async (name: string, value: unknown) => {
       if (!date) return
 
-      // Optimistic update
-      setProperties((prev) =>
-        prev.map((prop) => (prop.name === name ? { ...prop, value, type: inferType(value) } : prop))
-      )
+      // Capture current record before optimistic update
+      const currentRecord = { ...propertiesRecord }
+
+      // Optimistic update via local edits
+      setLocalEdits((prev) => ({ ...prev, [name]: value }))
+      // If it was deleted, un-delete it
+      setDeletedKeys((prev) => {
+        if (prev.has(name)) {
+          const next = new Set(prev)
+          next.delete(name)
+          return next
+        }
+        return prev
+      })
 
       try {
-        const newRecord = { ...propertiesRecord, [name]: value }
+        const newRecord = { ...currentRecord, [name]: value }
         await journalService.updateEntry({ date, properties: newRecord })
       } catch (err) {
         console.error('[useJournalProperties] Error updating property:', err)
@@ -178,12 +197,23 @@ export function useJournalProperties(
     async (name: string, value: unknown) => {
       if (!date) return
 
-      // Optimistic update
-      const type = inferType(value)
-      setProperties((prev) => [...prev, { name, value, type }])
+      // Capture current record before optimistic update
+      const currentRecord = { ...propertiesRecord }
+
+      // Optimistic update via local edits
+      setLocalEdits((prev) => ({ ...prev, [name]: value }))
+      // If it was deleted, un-delete it
+      setDeletedKeys((prev) => {
+        if (prev.has(name)) {
+          const next = new Set(prev)
+          next.delete(name)
+          return next
+        }
+        return prev
+      })
 
       try {
-        const newRecord = { ...propertiesRecord, [name]: value }
+        const newRecord = { ...currentRecord, [name]: value }
         await journalService.updateEntry({ date, properties: newRecord })
       } catch (err) {
         console.error('[useJournalProperties] Error adding property:', err)
@@ -200,11 +230,23 @@ export function useJournalProperties(
     async (name: string) => {
       if (!date) return
 
-      // Optimistic update
-      setProperties((prev) => prev.filter((prop) => prop.name !== name))
+      // Capture current record before optimistic update
+      const currentRecord = { ...propertiesRecord }
+
+      // Optimistic update via deletedKeys
+      setDeletedKeys((prev) => new Set(prev).add(name))
+      // Remove from local edits if present
+      setLocalEdits((prev) => {
+        if (name in prev) {
+          const next = { ...prev }
+          delete next[name]
+          return next
+        }
+        return prev
+      })
 
       try {
-        const newRecord = { ...propertiesRecord }
+        const newRecord = { ...currentRecord }
         delete newRecord[name]
         await journalService.updateEntry({ date, properties: newRecord })
       } catch (err) {
@@ -222,8 +264,16 @@ export function useJournalProperties(
     async (newProperties: Record<string, unknown>) => {
       if (!date) return
 
-      // Optimistic update
-      setProperties(recordToProperties(newProperties))
+      // For setAll, we replace everything with local edits matching the new properties
+      // and mark all other keys as deleted
+      const base = initialProperties ?? {}
+      const allBaseKeys = Object.keys(base)
+
+      // Set local edits to the new values
+      setLocalEdits(newProperties)
+      // Mark keys that exist in base but not in new as deleted
+      const toDelete = allBaseKeys.filter((k) => !(k in newProperties))
+      setDeletedKeys(new Set(toDelete))
 
       try {
         await journalService.updateEntry({ date, properties: newProperties })
@@ -234,7 +284,7 @@ export function useJournalProperties(
         throw err
       }
     },
-    [date, fetchProperties]
+    [date, initialProperties, fetchProperties]
   )
 
   return {
