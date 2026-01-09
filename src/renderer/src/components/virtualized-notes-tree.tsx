@@ -46,6 +46,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
+import { getTabIconForFileType, type FileType } from '@shared/file-types'
 
 // ============================================================================
 // Types
@@ -701,12 +702,21 @@ export function VirtualizedNotesTree({
     }
 
     const scrollElement = scrollContainerRef.current
+    let rafId: number | null = null
+
     const updateScrollMargin = () => {
       if (!parentRef.current) return
       const scrollRect = scrollElement.getBoundingClientRect()
       const listRect = parentRef.current.getBoundingClientRect()
       const offset = listRect.top - scrollRect.top + scrollElement.scrollTop
-      setScrollMargin(offset)
+      // Defer state update to avoid flushSync warning during render
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId)
+      }
+      rafId = requestAnimationFrame(() => {
+        setScrollMargin(offset)
+        rafId = null
+      })
     }
 
     updateScrollMargin()
@@ -715,7 +725,12 @@ export function VirtualizedNotesTree({
     resizeObserver.observe(scrollElement)
     resizeObserver.observe(parentRef.current)
 
-    return () => resizeObserver.disconnect()
+    return () => {
+      resizeObserver.disconnect()
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId)
+      }
+    }
   }, [scrollContainerRef])
 
   // Virtual list setup
@@ -776,12 +791,15 @@ export function VirtualizedNotesTree({
         if (!isFolder(itemId)) {
           const note = noteMap.get(itemId)
           if (note) {
+            const fileType = (note.fileType ?? 'markdown') as FileType
+            const isMarkdown = fileType === 'markdown'
+
             openTab({
-              type: 'note',
+              type: isMarkdown ? 'note' : 'file',
               title: getDisplayName(note.path),
-              icon: 'file-text',
-              emoji: note.emoji,
-              path: `/notes/${note.id}`,
+              icon: getTabIconForFileType(fileType),
+              emoji: isMarkdown ? note.emoji : undefined,
+              path: isMarkdown ? `/notes/${note.id}` : `/file/${note.id}`,
               entityId: note.id,
               isPinned: false,
               isModified: false,
@@ -798,12 +816,15 @@ export function VirtualizedNotesTree({
   // Handle note double-click (open in non-preview mode)
   const handleNoteDoubleClick = useCallback(
     (note: NoteListItem) => {
+      const fileType = (note.fileType ?? 'markdown') as FileType
+      const isMarkdown = fileType === 'markdown'
+
       openTab({
-        type: 'note',
+        type: isMarkdown ? 'note' : 'file',
         title: getDisplayName(note.path),
-        icon: 'file-text',
-        emoji: note.emoji,
-        path: `/notes/${note.id}`,
+        icon: getTabIconForFileType(fileType),
+        emoji: isMarkdown ? note.emoji : undefined,
+        path: isMarkdown ? `/notes/${note.id}` : `/file/${note.id}`,
         entityId: note.id,
         isPinned: false,
         isModified: false,

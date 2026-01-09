@@ -47,6 +47,7 @@ const api = {
       ipcRenderer.invoke(NotesChannels.invoke.CREATE, input),
     get: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.GET, id),
     getByPath: (path: string) => ipcRenderer.invoke(NotesChannels.invoke.GET_BY_PATH, path),
+    getFile: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.GET_FILE, id),
     update: (input: {
       id: string
       title?: string
@@ -152,7 +153,12 @@ const api = {
       ipcRenderer.invoke(NotesChannels.invoke.GET_POSITIONS, { folderPath }),
     getAllPositions: () => ipcRenderer.invoke(NotesChannels.invoke.GET_ALL_POSITIONS),
     reorder: (folderPath: string, notePaths: string[]) =>
-      ipcRenderer.invoke(NotesChannels.invoke.REORDER, { folderPath, notePaths })
+      ipcRenderer.invoke(NotesChannels.invoke.REORDER, { folderPath, notePaths }),
+
+    // File import API
+    importFiles: (sourcePaths: string[], targetFolder?: string) =>
+      ipcRenderer.invoke(NotesChannels.invoke.IMPORT_FILES, { sourcePaths, targetFolder }),
+    showImportDialog: () => ipcRenderer.invoke(NotesChannels.invoke.SHOW_IMPORT_DIALOG)
   },
 
   // Templates API

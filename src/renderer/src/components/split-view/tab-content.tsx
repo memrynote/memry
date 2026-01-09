@@ -12,6 +12,7 @@ import { InboxPage } from '@/pages/inbox'
 import { JournalPage } from '@/pages/journal'
 import { TasksPage } from '@/pages/tasks'
 import { NotePage } from '@/pages/note'
+import { FilePage } from '@/pages/file'
 import { FolderViewPage } from '@/pages/folder-view'
 import { SettingsPage } from '@/pages/settings'
 import { TemplateEditorPage } from '@/pages/template-editor'
@@ -108,6 +109,9 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
 
       case 'note':
         return <NotePage noteId={tab.entityId} />
+
+      case 'file':
+        return <FilePage fileId={tab.entityId} />
 
       case 'folder':
         return <FolderViewPage folderPath={tab.entityId} />

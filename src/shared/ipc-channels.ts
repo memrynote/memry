@@ -112,7 +112,13 @@ export const NotesChannels = {
     /** Get all note positions */
     GET_ALL_POSITIONS: 'notes:get-all-positions',
     /** Reorder notes in a folder */
-    REORDER: 'notes:reorder'
+    REORDER: 'notes:reorder',
+    /** Get file metadata by ID (for non-markdown files) */
+    GET_FILE: 'notes:get-file',
+    /** Import files from external paths into the vault */
+    IMPORT_FILES: 'notes:import-files',
+    /** Open a file dialog to select files for import */
+    SHOW_IMPORT_DIALOG: 'notes:show-import-dialog'
   },
   events: {
     /** Note was created (externally or internally) */

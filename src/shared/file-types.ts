@@ -158,6 +158,21 @@ export function getFileTypeIconName(fileType: FileType): string {
   return icons[fileType]
 }
 
+/**
+ * Get the tab icon identifier for a file type
+ * Used when opening file tabs to set the correct icon
+ */
+export function getTabIconForFileType(fileType: FileType): string {
+  const icons: Record<FileType, string> = {
+    markdown: 'file-text',
+    pdf: 'file-pdf',
+    image: 'file-image',
+    audio: 'file-audio',
+    video: 'file-video'
+  }
+  return icons[fileType]
+}
+
 // ============================================================================
 // Glob Patterns (for file watching)
 // ============================================================================
