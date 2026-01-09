@@ -160,7 +160,7 @@ export function ImageViewer({
   }
 
   return (
-    <div className={cn('flex h-full flex-col bg-muted/20', className)}>
+    <div className={cn('flex h-full flex-col bg-muted/20 min-h-0', className)}>
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-border bg-background/80 backdrop-blur-sm">
         <div className="flex items-center gap-2">

@@ -153,7 +153,7 @@ export function AudioPlayer({ src, fileName = 'Audio', className }: AudioPlayerP
   }
 
   return (
-    <div className={cn('flex h-full flex-col bg-muted/20', className)}>
+    <div className={cn('flex h-full flex-col bg-muted/20 min-h-0', className)}>
       <audio ref={audioRef} src={src} preload="metadata" />
 
       {/* Main content - centered player */}
