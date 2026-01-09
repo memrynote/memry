@@ -16,7 +16,7 @@ export const useFocusManagement = (): void => {
   useEffect(() => {
     const handleFocusIn = (e: FocusEvent): void => {
       const target = e.target as HTMLElement
-      const pane = target.closest('[data-pane-id]') as HTMLElement | null
+      const pane = target.closest('[data-pane-id]')
 
       if (pane) {
         const paneId = pane.getAttribute('data-pane-id')

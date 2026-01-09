@@ -10,7 +10,7 @@ import { STORAGE_VERSION } from './types'
  * Migrate persisted state to current schema version
  */
 export const migratePersistedState = (persisted: PersistedTabState): PersistedTabState => {
-  let migrated = { ...persisted }
+  const migrated = { ...persisted }
 
   // No migrations needed if already at current version
   if (migrated.version >= STORAGE_VERSION) {

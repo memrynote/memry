@@ -78,7 +78,7 @@ describe('reminders service', () => {
     }
 
     dataDb.db.insert(reminders).values(reminder).run()
-    return reminder.id as string
+    return reminder.id
   }
 
   const seedNoteCache = (id: string, title: string): void => {

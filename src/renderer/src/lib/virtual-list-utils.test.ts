@@ -375,13 +375,11 @@ describe('virtual-list-utils', () => {
       )
 
       const overdueHeader = result.find(
-        (item) =>
-          item.type === 'section-header' && (item as SectionHeaderItem).sectionKey === 'overdue'
+        (item) => item.type === 'section-header' && item.sectionKey === 'overdue'
       ) as SectionHeaderItem
 
       const todayHeader = result.find(
-        (item) =>
-          item.type === 'section-header' && (item as SectionHeaderItem).sectionKey === 'today'
+        (item) => item.type === 'section-header' && item.sectionKey === 'today'
       ) as SectionHeaderItem
 
       expect(overdueHeader).toBeDefined()
@@ -408,7 +406,7 @@ describe('virtual-list-utils', () => {
 
       const headers = result
         .filter((item) => item.type === 'section-header')
-        .map((item) => (item as SectionHeaderItem).sectionKey)
+        .map((item) => item.sectionKey)
 
       expect(headers).toEqual(['overdue', 'today', 'tomorrow', 'upcoming', 'later', 'noDueDate'])
     })
@@ -451,7 +449,7 @@ describe('virtual-list-utils', () => {
       // Should only have today header, task, and add button
       const headers = result.filter((item) => item.type === 'section-header')
       expect(headers.length).toBe(1)
-      expect((headers[0] as SectionHeaderItem).sectionKey).toBe('today')
+      expect(headers[0].sectionKey).toBe('today')
     })
 
     it('should handle parent tasks with subtasks as parent-task type', () => {
@@ -632,8 +630,7 @@ describe('virtual-list-utils', () => {
       )
 
       const overdueHeader = result.find(
-        (item) =>
-          item.type === 'section-header' && (item as SectionHeaderItem).sectionKey === 'overdue'
+        (item) => item.type === 'section-header' && item.sectionKey === 'overdue'
       ) as SectionHeaderItem
 
       expect(overdueHeader).toBeDefined()
@@ -653,8 +650,7 @@ describe('virtual-list-utils', () => {
       )
 
       const todayHeader = result.find(
-        (item) =>
-          item.type === 'section-header' && (item as SectionHeaderItem).sectionKey === 'today'
+        (item) => item.type === 'section-header' && item.sectionKey === 'today'
       ) as SectionHeaderItem
 
       expect(todayHeader).toBeDefined()
@@ -674,8 +670,7 @@ describe('virtual-list-utils', () => {
       )
 
       const todayHeader = result.find(
-        (item) =>
-          item.type === 'section-header' && (item as SectionHeaderItem).sectionKey === 'today'
+        (item) => item.type === 'section-header' && item.sectionKey === 'today'
       ) as SectionHeaderItem
 
       expect(todayHeader).toBeDefined()
@@ -694,8 +689,7 @@ describe('virtual-list-utils', () => {
       )
 
       const overdueHeader = result.find(
-        (item) =>
-          item.type === 'section-header' && (item as SectionHeaderItem).sectionKey === 'overdue'
+        (item) => item.type === 'section-header' && item.sectionKey === 'overdue'
       ) as SectionHeaderItem
 
       expect(overdueHeader.urgency).toBe('critical')
@@ -715,8 +709,7 @@ describe('virtual-list-utils', () => {
       )
 
       const todayHeader = result.find(
-        (item) =>
-          item.type === 'section-header' && (item as SectionHeaderItem).sectionKey === 'today'
+        (item) => item.type === 'section-header' && item.sectionKey === 'today'
       ) as SectionHeaderItem
 
       expect(todayHeader.urgency).toBe('high')
@@ -791,7 +784,7 @@ describe('virtual-list-utils', () => {
         false
       )
 
-      const headers = result.filter((item) => item.type === 'section-header') as SectionHeaderItem[]
+      const headers = result.filter((item) => item.type === 'section-header')
       expect(headers).toHaveLength(2)
       expect(headers[0].sectionKey).toBe('overdue')
       expect(headers[1].sectionKey).toBe('today')
@@ -858,7 +851,7 @@ describe('virtual-list-utils', () => {
 
       const result = flattenTasksByStatus([], mockProject, emptyExpandedIds, [])
 
-      const headers = result.filter((item) => item.type === 'status-header') as StatusHeaderItem[]
+      const headers = result.filter((item) => item.type === 'status-header')
       expect(headers).toHaveLength(3)
       expect(headers[0].status.id).toBe('status-todo')
       expect(headers[1].status.id).toBe('status-in-progress')
@@ -880,7 +873,7 @@ describe('virtual-list-utils', () => {
 
       const result = flattenTasksByStatus([], mockProject, emptyExpandedIds, [])
 
-      const headers = result.filter((item) => item.type === 'status-header') as StatusHeaderItem[]
+      const headers = result.filter((item) => item.type === 'status-header')
       expect(headers).toHaveLength(3)
       headers.forEach((header) => {
         expect(header.count).toBe(0)
@@ -907,8 +900,7 @@ describe('virtual-list-utils', () => {
 
       // Find tasks after each header
       const todoHeaderIndex = result.findIndex(
-        (item) =>
-          item.type === 'status-header' && (item as StatusHeaderItem).status.id === 'status-todo'
+        (item) => item.type === 'status-header' && item.status.id === 'status-todo'
       )
       const todoTaskItem = result[todoHeaderIndex + 1] as TaskItem
       expect(todoTaskItem.type).toBe('task')
@@ -975,7 +967,7 @@ describe('virtual-list-utils', () => {
       const allTasks = [task1, task2, task3]
       const result = flattenTasksByStatus(allTasks, mockProject, emptyExpandedIds, allTasks)
 
-      const headers = result.filter((item) => item.type === 'status-header') as StatusHeaderItem[]
+      const headers = result.filter((item) => item.type === 'status-header')
       expect(headers[0].count).toBe(2) // todo
       expect(headers[1].count).toBe(1) // in-progress
       expect(headers[2].count).toBe(0) // done

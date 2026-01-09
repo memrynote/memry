@@ -154,7 +154,7 @@ test.describe('Notes Management', () => {
       const notesDir = path.join(testVaultPath, 'notes')
 
       // Get initial file modification times
-      let initialStats: Map<string, number> = new Map()
+      const initialStats: Map<string, number> = new Map()
       if (fs.existsSync(notesDir)) {
         const files = fs.readdirSync(notesDir)
         for (const file of files) {

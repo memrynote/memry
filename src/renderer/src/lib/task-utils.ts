@@ -518,7 +518,7 @@ export const sortTasksForDay = (tasks: Task[]): Task[] => {
 
     // Both timed: chronological
     if (aHasTime && bHasTime && aMinutes !== bMinutes) {
-      return (aMinutes as number) - (bMinutes as number)
+      return aMinutes - bMinutes
     }
 
     // Priority (lower order is higher priority)

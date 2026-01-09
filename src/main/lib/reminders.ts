@@ -418,7 +418,7 @@ export function listReminders(options: Partial<ListRemindersInput> = {}): {
       if (Array.isArray(status) && status.length > 0) {
         const statusCondition = or(...status.map((s) => eq(reminders.status, s)))
         if (statusCondition) {
-          conditions.push(statusCondition as ReturnType<typeof eq>)
+          conditions.push(statusCondition)
         }
       } else if (typeof status === 'string') {
         conditions.push(eq(reminders.status, status))
@@ -426,11 +426,11 @@ export function listReminders(options: Partial<ListRemindersInput> = {}): {
     }
 
     if (fromDate) {
-      conditions.push(gte(reminders.remindAt, fromDate) as ReturnType<typeof eq>)
+      conditions.push(gte(reminders.remindAt, fromDate))
     }
 
     if (toDate) {
-      conditions.push(lte(reminders.remindAt, toDate) as ReturnType<typeof eq>)
+      conditions.push(lte(reminders.remindAt, toDate))
     }
 
     if (conditions.length > 0) {

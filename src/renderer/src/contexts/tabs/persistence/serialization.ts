@@ -70,7 +70,7 @@ export const deserializeTabState = (persisted: PersistedTabState): Partial<TabSy
 
   const tabGroups: Record<string, TabGroup> = {}
 
-  const persistedTabGroups = migrated.tabGroups as Record<string, PersistedTabGroup>
+  const persistedTabGroups = migrated.tabGroups
 
   for (const [groupId, group] of Object.entries(persistedTabGroups)) {
     // Convert persisted tabs to full tabs

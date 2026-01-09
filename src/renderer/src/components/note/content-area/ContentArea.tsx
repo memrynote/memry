@@ -85,7 +85,7 @@ function extractHeadings(blocks: Block[]): HeadingInfo[] {
     }
   }
 
-  blocks.forEach((block) => processBlock(block as Block))
+  blocks.forEach((block) => processBlock(block))
   return headings
 }
 
@@ -471,7 +471,7 @@ export const ContentArea = memo(function ContentArea({
         if (typeof initialContent === 'string' && initialContent.trim()) {
           try {
             let content = initialContent
-            let fileBlocksToInsert: Array<{
+            const fileBlocksToInsert: Array<{
               url: string
               name: string
               size: number
@@ -514,7 +514,7 @@ export const ContentArea = memo(function ContentArea({
           }
         } else if (Array.isArray(initialContent) && initialContent.length > 0) {
           // If it's already blocks, replace the document
-          const normalized = normalizeWikiLinks(initialContent as Block[])
+          const normalized = normalizeWikiLinks(initialContent)
           editor.replaceBlocks(editor.document, normalized.blocks)
         }
       } finally {

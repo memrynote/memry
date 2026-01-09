@@ -159,7 +159,7 @@ export const useChordShortcuts = (): boolean => {
       let targetGroupId: string | null = null
       let minDistance = Infinity
 
-      const entries = Object.entries(groupPositions) as [string, GroupPosition][]
+      const entries = Object.entries(groupPositions)
       for (const [groupId, position] of entries) {
         if (groupId === state.activeGroupId) continue
 

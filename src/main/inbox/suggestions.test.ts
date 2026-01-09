@@ -136,8 +136,8 @@ describe('inbox suggestions', () => {
     expect(suggestions[1]?.destination.path).toBe('archive')
     expect(suggestions[2]?.destination.path).toBe('recent')
 
-    expect(suggestions[0]!.confidence).toBeGreaterThan(suggestions[1]!.confidence)
-    expect(suggestions[1]!.confidence).toBeGreaterThan(suggestions[2]!.confidence)
+    expect(suggestions[0].confidence).toBeGreaterThan(suggestions[1].confidence)
+    expect(suggestions[1].confidence).toBeGreaterThan(suggestions[2].confidence)
   })
 
   // ==========================================================================

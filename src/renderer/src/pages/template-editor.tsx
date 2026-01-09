@@ -247,7 +247,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
         }
       } else {
         const result = await updateTemplate({
-          id: templateId!,
+          id: templateId,
           name: name.trim(),
           description: description.trim() || undefined,
           icon,

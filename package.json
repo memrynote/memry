@@ -174,6 +174,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.26",
+    "eslint-plugin-react-you-might-not-need-an-effect": "^0.8.3",
     "happy-dom": "^20.0.11",
     "jsdom": "^27.4.0",
     "postcss": "^8.5.6",
