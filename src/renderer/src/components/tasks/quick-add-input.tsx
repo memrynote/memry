@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import { Plus, Calendar, Folder } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -265,8 +265,10 @@ export const QuickAddInput = ({
         return // Let AutocompleteDropdown handle selection
       }
       if (e.key === 'Escape') {
+        // Close autocomplete by adding space (changes last word, hides dropdown)
         e.preventDefault()
-        setShowAutocomplete(false)
+        e.stopPropagation()
+        setValue((prev) => prev + ' ')
         return
       }
     }
@@ -305,7 +307,6 @@ export const QuickAddInput = ({
     // Delay to allow click on autocomplete/chips
     setTimeout(() => {
       setIsFocused(false)
-      setShowAutocomplete(false)
     }, 150)
   }
 
@@ -330,12 +331,12 @@ export const QuickAddInput = ({
       words.push(selectedValue)
       return words.join(' ') + ' '
     })
-    setShowAutocomplete(false)
     inputRef.current?.focus()
   }, [])
 
   const handleAutocompleteClose = useCallback((): void => {
-    setShowAutocomplete(false)
+    // Close autocomplete by adding space (changes last word, hides dropdown)
+    setValue((prev) => prev + ' ')
   }, [])
 
   const showPreview =
