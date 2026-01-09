@@ -110,10 +110,10 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
   }
 
   return (
-    <div ref={containerRef} className={cn('flex h-full flex-col bg-muted/20', className)}>
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-border bg-background/80 backdrop-blur-sm">
-        <div className="flex items-center gap-2">
+    <div ref={containerRef} className={cn('flex h-full flex-col bg-muted/20 min-h-0 overflow-hidden', className)}>
+      {/* Toolbar - fixed at top */}
+      <div className="flex items-center justify-between gap-1 sm:gap-2 px-2 sm:px-4 py-2 border-b border-border bg-background/80 backdrop-blur-sm flex-shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2">
           {/* Sidebar toggle */}
           <Button
             variant="ghost"
@@ -129,7 +129,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
             )}
           </Button>
 
-          <div className="w-px h-5 bg-border" />
+          <div className="w-px h-5 bg-border hidden sm:block" />
 
           {/* Page navigation */}
           <Button
@@ -138,10 +138,11 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage <= 1}
             className="h-8 w-8 p-0"
+            title="Previous page"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm text-muted-foreground min-w-[80px] text-center">
+          <span className="text-sm text-muted-foreground min-w-[60px] sm:min-w-[80px] text-center">
             {currentPage} / {numPages}
           </span>
           <Button
@@ -150,20 +151,21 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
             onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage >= numPages}
             className="h-8 w-8 p-0"
+            title="Next page"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           {/* Zoom controls */}
-          <Button variant="ghost" size="sm" onClick={zoomOut} className="h-8 w-8 p-0">
+          <Button variant="ghost" size="sm" onClick={zoomOut} className="h-8 w-8 p-0" title="Zoom out">
             <ZoomOut className="h-4 w-4" />
           </Button>
-          <span className="text-sm text-muted-foreground min-w-[50px] text-center">
+          <span className="text-sm text-muted-foreground min-w-[40px] sm:min-w-[50px] text-center">
             {Math.round(scale * 100)}%
           </span>
-          <Button variant="ghost" size="sm" onClick={zoomIn} className="h-8 w-8 p-0">
+          <Button variant="ghost" size="sm" onClick={zoomIn} className="h-8 w-8 p-0" title="Zoom in">
             <ZoomIn className="h-4 w-4" />
           </Button>
 
@@ -177,7 +179,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
             <Maximize2 className="h-4 w-4" />
           </Button>
 
-          <div className="w-px h-5 bg-border" />
+          <div className="w-px h-5 bg-border hidden sm:block" />
 
           {/* Rotate */}
           <Button
@@ -189,15 +191,14 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
           >
             <RotateCw className="h-4 w-4" />
           </Button>
-
         </div>
       </div>
 
       {/* Main content */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Thumbnail sidebar */}
         {sidebarOpen && (
-          <div className="w-[140px] border-r border-border bg-muted/30 flex-shrink-0">
+          <div className="w-[140px] border-r border-border bg-muted/30 flex-shrink-0 hidden sm:block">
             <ScrollArea className="h-full">
               <div className="p-2 space-y-2">
                 {!loading && (
@@ -231,32 +232,30 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
           </div>
         )}
 
-        {/* PDF content */}
-        <ScrollArea className="flex-1 overflow-hidden">
-          <div className="flex justify-center items-center p-4 min-h-full">
-            <div className="overflow-hidden">
-              <Document
-                file={src}
-                onLoadSuccess={handleLoadSuccess}
-                onLoadError={handleLoadError}
-                loading={
-                  <div className="flex h-[600px] items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  </div>
-                }
-              >
-                <Page
-                  pageNumber={currentPage}
-                  scale={scale}
-                  rotate={rotation}
-                  renderTextLayer={true}
-                  renderAnnotationLayer={true}
-                  className="shadow-lg"
-                />
-              </Document>
-            </div>
+        {/* PDF content - with both horizontal and vertical scrolling */}
+        <div className="flex-1 overflow-auto min-h-0">
+          <div className="inline-flex justify-center min-w-full p-4">
+            <Document
+              file={src}
+              onLoadSuccess={handleLoadSuccess}
+              onLoadError={handleLoadError}
+              loading={
+                <div className="flex h-[600px] items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              }
+            >
+              <Page
+                pageNumber={currentPage}
+                scale={scale}
+                rotate={rotation}
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+                className="shadow-lg"
+              />
+            </Document>
           </div>
-        </ScrollArea>
+        </div>
       </div>
     </div>
   )
