@@ -1395,8 +1395,8 @@ export function getHeatmapData(
     .all()
     .map((row) => ({
       date: row.date!,
-      characterCount: row.characterCount,
-      level: calculateActivityLevel(row.characterCount)
+      characterCount: row.characterCount ?? 0,
+      level: calculateActivityLevel(row.characterCount ?? 0)
     }))
 }
 

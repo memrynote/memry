@@ -1,7 +1,8 @@
 /**
  * Initial Vault Indexer
  *
- * Scans vault folders for markdown files and populates the notes cache.
+ * Scans vault folders for supported files and populates the cache.
+ * Supports markdown, PDF, images, audio, and video files.
  * Called when a vault is first opened or when reindexing.
  *
  * @module vault/indexer
@@ -23,13 +24,14 @@ import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { parseNote, serializeNote } from './frontmatter'
 import { safeRead, atomicWrite } from './file-ops'
 import { generateNoteId } from '../lib/id'
-import { syncNoteToCache } from './note-sync'
+import { syncNoteToCache, syncFileToCache } from './note-sync'
 import {
   getNoteCacheByPath,
   getNoteCacheById,
   countNotes,
   countJournalEntries
 } from '@shared/db/queries/notes'
+import { isSupportedPath, getFileType, getMimeType, getExtension } from '@shared/file-types'
 
 // ============================================================================
 // Types
@@ -46,12 +48,13 @@ interface IndexResult {
 // ============================================================================
 
 /**
- * Recursively find all markdown files in a directory.
+ * Recursively find all supported files in a directory.
+ * Supports markdown, PDF, images, audio, and video files.
  * @param dirPath - Directory to scan
  * @param basePath - Vault root path for relative path calculation
  * @param excludePatterns - Patterns to exclude from scanning
  */
-async function findMarkdownFiles(
+async function findVaultFiles(
   dirPath: string,
   basePath: string,
   excludePatterns: string[] = []
@@ -72,10 +75,10 @@ async function findMarkdownFiles(
 
       if (entry.isDirectory()) {
         // Recursively scan subdirectories
-        const subFiles = await findMarkdownFiles(fullPath, basePath, excludePatterns)
+        const subFiles = await findVaultFiles(fullPath, basePath, excludePatterns)
         files.push(...subFiles)
-      } else if (entry.isFile() && entry.name.endsWith('.md')) {
-        // Add markdown file (relative path from vault root)
+      } else if (entry.isFile() && isSupportedPath(fullPath)) {
+        // Add supported file (relative path from vault root)
         files.push(path.relative(basePath, fullPath))
       }
     }
@@ -91,26 +94,23 @@ async function findMarkdownFiles(
 // ============================================================================
 
 /**
- * Index a single markdown file into the cache.
- * Uses syncNoteToCache() for unified cache operations.
+ * Index a single file into the cache.
+ * Handles both markdown files (with frontmatter) and non-markdown files (basic metadata).
  */
 async function indexFile(
   vaultPath: string,
   relativePath: string
 ): Promise<'indexed' | 'skipped' | 'error'> {
   const absolutePath = path.join(vaultPath, relativePath)
+  const fileType = getFileType(getExtension(absolutePath))
+
+  if (!fileType) {
+    console.warn(`[Indexer] Unsupported file type: ${relativePath}`)
+    return 'error'
+  }
 
   try {
     const db = getIndexDatabase()
-
-    // Read and parse the file first
-    const content = await safeRead(absolutePath)
-    if (!content) {
-      console.warn(`[Indexer] Could not read file: ${relativePath}`)
-      return 'error'
-    }
-
-    const parsed = parseNote(content, relativePath)
 
     // Check if already in cache by path
     const existingByPath = getNoteCacheByPath(db, relativePath)
@@ -118,49 +118,120 @@ async function indexFile(
       return 'skipped'
     }
 
-    // Check if already in cache by ID (possible duplicate/copied file)
-    const existingById = getNoteCacheById(db, parsed.frontmatter.id)
-    if (existingById) {
-      // This is a copy of an existing note - regenerate ID
-      console.log(`[Indexer] Duplicate ID detected, regenerating for: ${relativePath}`)
-      const newId = generateNoteId()
-      parsed.frontmatter.id = newId
-
-      // Write back to file with new ID
-      try {
-        const newContent = serializeNote(parsed.frontmatter, parsed.content)
-        await atomicWrite(absolutePath, newContent)
-        console.log(`[Indexer] Regenerated ID for ${relativePath}: ${existingById.id} → ${newId}`)
-      } catch (writeError) {
-        console.error(`[Indexer] Failed to write new ID for ${relativePath}:`, writeError)
-        return 'error'
-      }
+    // Handle markdown files with frontmatter support
+    if (fileType === 'markdown') {
+      return await indexMarkdownFile(vaultPath, relativePath, absolutePath, db)
     }
 
-    // Use syncNoteToCache for unified cache operations
+    // Handle non-markdown files (PDF, images, audio, video)
+    return await indexNonMarkdownFile(vaultPath, relativePath, absolutePath, fileType, db)
+  } catch (error) {
+    console.error(`[Indexer] Error indexing file ${relativePath}:`, error)
+    return 'error'
+  }
+}
+
+/**
+ * Index a markdown file with full frontmatter support.
+ */
+async function indexMarkdownFile(
+  _vaultPath: string,
+  relativePath: string,
+  absolutePath: string,
+  db: ReturnType<typeof getIndexDatabase>
+): Promise<'indexed' | 'error'> {
+  // Read and parse the file
+  const content = await safeRead(absolutePath)
+  if (!content) {
+    console.warn(`[Indexer] Could not read file: ${relativePath}`)
+    return 'error'
+  }
+
+  const parsed = parseNote(content, relativePath)
+
+  // Check if already in cache by ID (possible duplicate/copied file)
+  const existingById = getNoteCacheById(db, parsed.frontmatter.id)
+  if (existingById) {
+    // This is a copy of an existing note - regenerate ID
+    console.log(`[Indexer] Duplicate ID detected, regenerating for: ${relativePath}`)
+    const newId = generateNoteId()
+    parsed.frontmatter.id = newId
+
+    // Write back to file with new ID
     try {
-      const result = syncNoteToCache(
-        db,
-        {
-          id: parsed.frontmatter.id,
-          path: relativePath,
-          fileContent: content,
-          frontmatter: parsed.frontmatter,
-          parsedContent: parsed.content
-        },
-        { isNew: true }
-      )
-      console.log(
-        `[Indexer] Indexed: ${relativePath}${result.date ? ` (journal: ${result.date})` : ''}`
-      )
-    } catch (syncError) {
-      console.error(`[Indexer] Sync failed for ${relativePath}:`, syncError)
+      const newContent = serializeNote(parsed.frontmatter, parsed.content)
+      await atomicWrite(absolutePath, newContent)
+      console.log(`[Indexer] Regenerated ID for ${relativePath}: ${existingById.id} → ${newId}`)
+    } catch (writeError) {
+      console.error(`[Indexer] Failed to write new ID for ${relativePath}:`, writeError)
       return 'error'
     }
+  }
 
-    // Queue embedding update for AI suggestions (batched for performance)
-    queueEmbeddingUpdate(parsed.frontmatter.id)
+  // Use syncNoteToCache for unified cache operations
+  try {
+    const result = syncNoteToCache(
+      db,
+      {
+        id: parsed.frontmatter.id,
+        path: relativePath,
+        fileContent: content,
+        frontmatter: parsed.frontmatter,
+        parsedContent: parsed.content
+      },
+      { isNew: true }
+    )
+    console.log(
+      `[Indexer] Indexed: ${relativePath}${result.date ? ` (journal: ${result.date})` : ''}`
+    )
+  } catch (syncError) {
+    console.error(`[Indexer] Sync failed for ${relativePath}:`, syncError)
+    return 'error'
+  }
 
+  // Queue embedding update for AI suggestions (batched for performance)
+  queueEmbeddingUpdate(parsed.frontmatter.id)
+
+  return 'indexed'
+}
+
+/**
+ * Index a non-markdown file (PDF, images, audio, video).
+ */
+async function indexNonMarkdownFile(
+  _vaultPath: string,
+  relativePath: string,
+  absolutePath: string,
+  fileType: 'pdf' | 'image' | 'audio' | 'video',
+  db: ReturnType<typeof getIndexDatabase>
+): Promise<'indexed' | 'error'> {
+  try {
+    // Get file stats for metadata
+    const stats = await stat(absolutePath)
+
+    // Generate a new ID for this file
+    const id = generateNoteId()
+
+    // Get MIME type
+    const ext = getExtension(absolutePath)
+    const mimeType = getMimeType(ext)
+
+    // Derive title from filename (without extension)
+    const title = path.basename(absolutePath, path.extname(absolutePath))
+
+    // Sync to cache
+    syncFileToCache(db, {
+      id,
+      path: relativePath,
+      title,
+      fileType,
+      mimeType,
+      fileSize: stats.size,
+      createdAt: stats.birthtime,
+      modifiedAt: stats.mtime
+    })
+
+    console.log(`[Indexer] Indexed: ${relativePath} (${fileType})`)
     return 'indexed'
   } catch (error) {
     console.error(`[Indexer] Error indexing file ${relativePath}:`, error)
@@ -173,8 +244,9 @@ async function indexFile(
 // ============================================================================
 
 /**
- * Index all notes in the vault.
+ * Index all files in the vault.
  * Scans notes and journal folders, populates cache.
+ * Supports markdown, PDF, images, audio, and video files.
  *
  * @param vaultPath - Absolute path to the vault
  * @returns Index result with counts
@@ -196,13 +268,13 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
     path.join(vaultPath, config.journalFolder)
   ]
 
-  // Find all markdown files (respecting exclude patterns)
+  // Find all supported files (respecting exclude patterns)
   const allFiles: string[] = []
   for (const folder of foldersToScan) {
     try {
       const folderStat = await stat(folder)
       if (folderStat.isDirectory()) {
-        const files = await findMarkdownFiles(folder, vaultPath, excludePatterns)
+        const files = await findVaultFiles(folder, vaultPath, excludePatterns)
         allFiles.push(...files)
       }
     } catch {
@@ -211,7 +283,7 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
     }
   }
 
-  console.log(`[Indexer] Found ${allFiles.length} markdown files to index`)
+  console.log(`[Indexer] Found ${allFiles.length} files to index`)
 
   if (allFiles.length === 0) {
     emitIndexProgress(100)

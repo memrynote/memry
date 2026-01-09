@@ -292,7 +292,7 @@ export function registerFolderViewHandlers(): void {
           tags: tagsByNote.get(note.id) || [],
           created: note.created,
           modified: note.modified,
-          wordCount: note.wordCount,
+          wordCount: note.wordCount ?? 0,
           properties: propertiesMap.get(note.id) || {}
         }))
 

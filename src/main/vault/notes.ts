@@ -92,6 +92,9 @@ export interface NoteListItem {
   snippet?: string
   emoji?: string | null // T028: Emoji icon for visual identification
   properties?: Record<string, unknown> // T040: Optional properties for folder view
+  fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video' // File type discriminator
+  mimeType?: string | null // MIME type (e.g., 'application/pdf')
+  fileSize?: number | null // File size in bytes
 }
 
 export interface NoteCreateInput {
@@ -394,7 +397,7 @@ export async function getNoteById(id: string): Promise<Note | null> {
     modified: new Date(parsed.frontmatter.modified),
     tags,
     aliases: parsed.frontmatter.aliases ?? [],
-    wordCount: cached.wordCount,
+    wordCount: cached.wordCount ?? 0,
     properties, // T013: Include properties
     emoji: cached.emoji ?? (parsed.frontmatter as { emoji?: string }).emoji ?? null // T028: Include emoji from cache or frontmatter
   }
@@ -781,9 +784,12 @@ export function listNotes(options: NoteListOptions = {}): NoteListResponse {
     created: new Date(c.createdAt),
     modified: new Date(c.modifiedAt),
     tags: tagsMap.get(c.id) ?? [],
-    wordCount: c.wordCount,
+    wordCount: c.wordCount ?? 0,
     snippet: c.snippet ?? undefined, // Use cached snippet from database
     emoji: c.emoji, // T028: Include emoji
+    fileType: c.fileType ?? 'markdown', // File type (default to markdown for backward compat)
+    mimeType: c.mimeType, // MIME type
+    fileSize: c.fileSize, // File size in bytes
     ...(propertiesMap && { properties: propertiesMap.get(c.id) ?? {} }) // T040: Include properties if requested
   }))
 

@@ -30,9 +30,11 @@ import {
   getPropertyType,
   deleteLinksToNote,
   extractDateFromPath,
-  resolveNotesByTitles
+  resolveNotesByTitles,
+  getNoteCacheByPath
 } from '@shared/db/queries/notes'
 import { queueFtsUpdate } from '../database'
+import type { FileType } from '@shared/file-types'
 
 // ============================================================================
 // Types
@@ -325,4 +327,97 @@ export function syncLinksWithResolvedTitles(
   })
 
   setNoteLinks(db, sourceId, links)
+}
+
+// ============================================================================
+// File Sync (Non-Markdown Files)
+// ============================================================================
+
+/**
+ * Input for syncing a non-markdown file to the cache.
+ */
+export interface FileSyncInput {
+  /** Unique file ID */
+  id: string
+  /** Relative path from vault root */
+  path: string
+  /** Title derived from filename */
+  title: string
+  /** File type: 'pdf' | 'image' | 'audio' | 'video' */
+  fileType: Exclude<FileType, 'markdown'>
+  /** MIME type (e.g., 'application/pdf') */
+  mimeType: string | null
+  /** File size in bytes */
+  fileSize: number
+  /** File creation time */
+  createdAt: Date
+  /** File modification time */
+  modifiedAt: Date
+}
+
+/**
+ * Result of syncing a file to cache.
+ */
+export interface FileSyncResult {
+  id: string
+  path: string
+  title: string
+  fileType: Exclude<FileType, 'markdown'>
+  mimeType: string | null
+  fileSize: number
+}
+
+/**
+ * Sync a non-markdown file to the database cache.
+ * This is simpler than note sync - just stores basic file metadata.
+ *
+ * @param db - Database instance
+ * @param input - File sync input
+ * @returns Sync result
+ */
+export function syncFileToCache(db: DrizzleDb, input: FileSyncInput): FileSyncResult {
+  const { id, path, title, fileType, mimeType, fileSize, createdAt, modifiedAt } = input
+
+  // Check if file already exists in cache
+  const existing = getNoteCacheByPath(db, path)
+
+  if (existing) {
+    // Update existing cache entry
+    updateNoteCache(db, existing.id, {
+      path,
+      title,
+      fileType,
+      mimeType,
+      fileSize,
+      modifiedAt: modifiedAt.toISOString()
+    })
+  } else {
+    // Insert new cache entry
+    insertNoteCache(db, {
+      id,
+      path,
+      title,
+      fileType,
+      mimeType,
+      fileSize,
+      // Non-markdown files don't have these
+      contentHash: null,
+      wordCount: null,
+      characterCount: null,
+      snippet: null,
+      emoji: null,
+      date: null,
+      createdAt: createdAt.toISOString(),
+      modifiedAt: modifiedAt.toISOString()
+    })
+  }
+
+  return {
+    id: existing?.id ?? id,
+    path,
+    title,
+    fileType,
+    mimeType,
+    fileSize
+  }
 }

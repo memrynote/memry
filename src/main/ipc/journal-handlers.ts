@@ -375,9 +375,9 @@ export function registerJournalHandlers(): void {
             return {
               date: entry.date!,
               preview,
-              wordCount: entry.wordCount,
-              characterCount: entry.characterCount,
-              activityLevel: calculateActivityLevelFromCharCount(entry.characterCount),
+              wordCount: entry.wordCount ?? 0,
+              characterCount: entry.characterCount ?? 0,
+              activityLevel: calculateActivityLevelFromCharCount(entry.characterCount ?? 0),
               tags
             }
           })

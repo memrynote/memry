@@ -23,7 +23,11 @@ import {
   Trash2,
   LayoutTemplate,
   X,
-  ExternalLink
+  ExternalLink,
+  FileType2,
+  Image,
+  Music,
+  Video
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTabActions } from '@/contexts/tabs'
@@ -113,7 +117,42 @@ interface VirtualizedNotesTreeProps {
  */
 function getDisplayName(notePath: string): string {
   const filename = notePath.split('/').pop() || notePath
-  return filename.replace(/\.md$/i, '')
+  // Remove any extension (not just .md)
+  const lastDot = filename.lastIndexOf('.')
+  return lastDot > 0 ? filename.slice(0, lastDot) : filename
+}
+
+/**
+ * Get the appropriate icon component for a file based on its type.
+ * Returns the icon element to render in the tree.
+ */
+function getFileIcon(note: NoteListItem): React.ReactElement {
+  // Emoji takes priority for markdown files
+  if (note.emoji) {
+    return (
+      <span className="text-sm leading-none shrink-0" role="img" aria-label="note icon">
+        {note.emoji}
+      </span>
+    )
+  }
+
+  // Get icon based on file type
+  const fileType = note.fileType ?? 'markdown'
+  const iconClass = 'h-4 w-4 text-muted-foreground shrink-0'
+
+  switch (fileType) {
+    case 'pdf':
+      return <FileType2 className={`${iconClass} text-red-500`} aria-hidden="true" />
+    case 'image':
+      return <Image className={`${iconClass} text-blue-500`} aria-hidden="true" />
+    case 'audio':
+      return <Music className={`${iconClass} text-green-500`} aria-hidden="true" />
+    case 'video':
+      return <Video className={`${iconClass} text-purple-500`} aria-hidden="true" />
+    case 'markdown':
+    default:
+      return <FileText className={iconClass} aria-hidden="true" />
+  }
 }
 
 /**
@@ -545,13 +584,7 @@ function NoteRow({
           )}
 
           {/* Note icon or emoji */}
-          {item.note.emoji ? (
-            <span className="text-sm leading-none shrink-0" role="img" aria-label="note icon">
-              {item.note.emoji}
-            </span>
-          ) : (
-            <FileText className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
-          )}
+          {getFileIcon(item.note)}
 
           {/* Note name */}
           <span className="text-sm truncate flex-1">{getDisplayName(item.note.path)}</span>
