@@ -255,6 +255,21 @@ export interface NoteListItem {
   fileSize?: number | null // File size in bytes
 }
 
+/**
+ * File metadata for non-markdown files (PDF, image, audio, video)
+ */
+export interface FileMetadata {
+  id: string
+  path: string // Relative path within vault
+  absolutePath: string // Full filesystem path for viewers
+  title: string
+  fileType: 'pdf' | 'image' | 'audio' | 'video'
+  mimeType: string | null
+  fileSize: number | null
+  created: Date
+  modified: Date
+}
+
 export interface NoteCreateInput {
   title: string
   content?: string
@@ -895,6 +910,7 @@ export interface NotesClientAPI {
   create(input: NoteCreateInput): Promise<NoteCreateResponse>
   get(id: string): Promise<Note | null>
   getByPath(path: string): Promise<Note | null>
+  getFile(id: string): Promise<FileMetadata | null>
   update(input: NoteUpdateInput): Promise<NoteUpdateResponse>
   rename(id: string, newTitle: string): Promise<NoteUpdateResponse>
   move(id: string, newFolder: string): Promise<NoteUpdateResponse>
@@ -946,6 +962,13 @@ export interface NotesClientAPI {
     error?: string
   }>
   reorder(folderPath: string, notePaths: string[]): Promise<{ success: boolean; error?: string }>
+
+  // File import API
+  importFiles(
+    sourcePaths: string[],
+    targetFolder?: string
+  ): Promise<{ success: boolean; imported: number; failed: number; errors: string[] }>
+  showImportDialog(): Promise<{ canceled: boolean; filePaths: string[] }>
 }
 
 // Tasks client API interface

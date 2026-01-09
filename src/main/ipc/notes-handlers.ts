@@ -25,6 +25,7 @@ import {
   createNote,
   getNoteById,
   getNoteByPath,
+  getFileById,
   updateNote,
   renameNote,
   moveNote,
@@ -42,8 +43,11 @@ import {
   // Version history (T114)
   getVersionHistory,
   getVersion,
-  restoreVersion
+  restoreVersion,
+  // File import
+  importFiles
 } from '../vault/notes'
+import { getAllSupportedExtensions } from '@shared/file-types'
 import { deleteNoteSnapshot } from '@shared/db/queries/notes'
 import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
 import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault/folders'
@@ -164,6 +168,14 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.GET_BY_PATH,
     createStringHandler(async (path) => {
       return getNoteByPath(path)
+    })
+  )
+
+  // notes:get-file - Get file metadata by ID (for non-markdown files)
+  ipcMain.handle(
+    NotesChannels.invoke.GET_FILE,
+    createStringHandler(async (id) => {
+      return getFileById(id)
     })
   )
 
@@ -711,6 +723,46 @@ export function registerNotesHandlers(): void {
         const message = error instanceof Error ? error.message : 'Failed to reorder notes'
         return { success: false, error: message }
       }
+    })
+  )
+
+  // notes:import-files - Import files from external paths into the vault
+  ipcMain.handle(
+    NotesChannels.invoke.IMPORT_FILES,
+    createValidatedHandler(
+      z.object({
+        sourcePaths: z.array(z.string()),
+        targetFolder: z.string().optional()
+      }),
+      async (input) => {
+        try {
+          return await importFiles(input)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Failed to import files'
+          return { success: false, imported: 0, failed: 0, errors: [message] }
+        }
+      }
+    )
+  )
+
+  // notes:show-import-dialog - Open a file dialog to select files for import
+  ipcMain.handle(
+    NotesChannels.invoke.SHOW_IMPORT_DIALOG,
+    createHandler(async () => {
+      const extensions = getAllSupportedExtensions()
+      const result = await dialog.showOpenDialog({
+        properties: ['openFile', 'multiSelections'],
+        filters: [
+          { name: 'Supported Files', extensions },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      })
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { canceled: true, filePaths: [] }
+      }
+
+      return { canceled: false, filePaths: result.filePaths }
     })
   )
 }
