@@ -73,14 +73,16 @@
   height: 28px !important;
 }
 
-/* Compact slash menu (suggestion menu) */
-[data-suggestion-menu] {
+/* ===== COMPACT SLASH MENU (Suggestion Menu) ===== */
+/* BlockNote uses .bn-suggestion-menu class and [role="option"] for items */
+.bn-suggestion-menu {
   max-height: 300px !important;
   min-width: 180px !important;
   padding: 4px !important;
 }
 
-[data-suggestion-menu-label] {
+/* Group labels (e.g., "Subheadings", "Others") */
+.bn-suggestion-menu > div:not([role='option']) {
   font-size: 9px !important;
   padding: 4px 8px 2px !important;
   text-transform: uppercase;
@@ -88,45 +90,41 @@
   opacity: 0.5;
 }
 
-[data-suggestion-menu-item] {
+/* Menu items - compact layout */
+.bn-suggestion-menu [role='option'] {
   padding: 4px 8px !important;
-  gap: 8px !important;
+  gap: 6px !important;
   min-height: 28px !important;
   border-radius: 4px !important;
 }
 
-[data-suggestion-menu-item] [class*='subtitle'],
-[data-suggestion-menu-item] [class*='Subtitle'],
-[data-suggestion-menu-item] p:last-of-type,
-.bn-suggestion-menu-item-subtitle,
-.bn-mt-1 {
+/* HIDE SUBTEXT - removes descriptions like "Resizable image with caption" */
+.bn-suggestion-menu [role='option'] .flex-1 > .text-xs {
   display: none !important;
 }
 
-[data-suggestion-menu-item] [class*='title'],
-[data-suggestion-menu-item] [class*='Title'],
-[data-suggestion-menu-item] p:first-of-type {
-  font-size: 12px !important;
+/* Title text - compact */
+.bn-suggestion-menu [role='option'] .flex-1 > .text-base {
+  font-size: 13px !important;
   font-weight: 500 !important;
-  margin: 0 !important;
+  line-height: 1.2 !important;
 }
 
-[data-suggestion-menu-item] [class*='badge'],
-[data-suggestion-menu-item] kbd {
-  font-size: 9px !important;
-  padding: 1px 3px !important;
-  opacity: 0.5;
+/* Icon container - remove extra padding */
+.bn-suggestion-menu [role='option'] [data-position='left'] {
+  padding: 0 !important;
 }
 
-[data-suggestion-menu-item] > div:first-child {
-  width: 20px !important;
-  height: 20px !important;
-  min-width: 20px !important;
+/* Badge/shortcut - subtle styling */
+.bn-suggestion-menu [role='option'] [data-position='right'] {
+  font-size: 10px !important;
+  opacity: 0.6;
 }
 
-[data-suggestion-menu-item] svg {
-  width: 14px !important;
-  height: 14px !important;
+/* Icon size - compact */
+.bn-suggestion-menu [role='option'] svg {
+  width: 16px !important;
+  height: 16px !important;
 }
 
 .content-area .bn-editor {
