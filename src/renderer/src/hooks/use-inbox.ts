@@ -200,12 +200,17 @@ export function useInboxList(options: UseInboxListOptions = {}): UseInboxListRes
       void queryClient.invalidateQueries({ queryKey: inboxKeys.snoozed() })
     })
 
+    const unsubMetadata = onInboxMetadataComplete(() => {
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+    })
+
     return () => {
       unsubCaptured()
       unsubUpdated()
       unsubArchived()
       unsubFiled()
       unsubSnoozeDue()
+      unsubMetadata()
     }
   }, [queryClient])
 
