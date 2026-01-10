@@ -16,7 +16,7 @@ export function InboxSegmentControl({
   return (
     <div
       className={cn(
-        'inline-flex h-10 items-center justify-center rounded-full bg-muted/40 p-1 text-muted-foreground',
+        'inline-flex h-10 items-center justify-center rounded-lg bg-muted/40 p-1 text-muted-foreground',
         className
       )}
       role="tablist"
@@ -51,7 +51,7 @@ function SegmentButton({ label, isActive, onClick }: SegmentButtonProps): React.
       aria-selected={isActive}
       onClick={onClick}
       className={cn(
-        'group relative flex items-center justify-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'group relative flex items-center justify-center gap-2 rounded-sm px-4 py-1.5 text-sm font-medium transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         'font-serif tracking-wide',
         isActive
           ? 'bg-background text-foreground shadow-sm ring-0'
