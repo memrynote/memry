@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Command } from 'cmdk'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
@@ -23,6 +23,7 @@ import {
   type AdvancedSearchResultNote,
   type AdvancedSearchInput
 } from '@/services/search-service'
+import { notesService, type NoteListItem } from '@/services/notes-service'
 import { useRecentSearches } from '@/hooks/use-search'
 import { cn } from '@/lib/utils'
 import { subDays, startOfDay } from 'date-fns'
@@ -106,13 +107,15 @@ export function CommandPalette({
 
   const [sortBy, setSortBy] = useState<SortOption>('modified')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-  const [titleOnly, setTitleOnly] = useState(false)
+  const [titleOnly, setTitleOnly] = useState(true)
   const [folder, setFolder] = useState<string>('')
   const [dateFilter, setDateFilter] = useState<DateFilterOption>('any')
 
   const [results, setResults] = useState<AdvancedSearchResultNote[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [folders, setFolders] = useState<string[]>([])
+  const [recentNotes, setRecentNotes] = useState<NoteListItem[]>([])
+  const [isLoadingRecent, setIsLoadingRecent] = useState(false)
 
   const { recent, addRecent } = useRecentSearches()
 
@@ -124,9 +127,34 @@ export function CommandPalette({
     }
   }, [isOpen])
 
+  // Fetch recent notes when dialog opens
+  useEffect(() => {
+    if (!isOpen) return
+
+    const loadRecentNotes = async () => {
+      setIsLoadingRecent(true)
+      try {
+        const response = await notesService.list({
+          sortBy: 'modified',
+          sortOrder: 'desc',
+          limit: 50
+        })
+        setRecentNotes(response.notes)
+      } catch (error) {
+        console.error('Failed to load recent notes:', error)
+        setRecentNotes([])
+      } finally {
+        setIsLoadingRecent(false)
+      }
+    }
+
+    loadRecentNotes()
+  }, [isOpen])
+
   useEffect(() => {
     const performSearch = async () => {
-      const hasFilters = folder || dateFilter !== 'any' || titleOnly
+      // Note: titleOnly is a search modifier, not a filter that triggers search
+      const hasFilters = folder || dateFilter !== 'any'
 
       if (!actualDebouncedQuery.trim() && !hasFilters) {
         setResults([])
@@ -172,6 +200,7 @@ export function CommandPalette({
     if (!isOpen) {
       setQuery('')
       setResults([])
+      setRecentNotes([])
     }
   }, [isOpen])
 
@@ -187,6 +216,14 @@ export function CommandPalette({
   const groupedResults = useMemo(() => {
     return groupByDateWithLabels(results, (item) => item.modified)
   }, [results])
+
+  // Show recent notes when no query and no active filters
+  const showRecentNotes = !query.trim() && !folder && dateFilter === 'any'
+
+  const groupedRecentNotes = useMemo(() => {
+    if (!showRecentNotes) return []
+    return groupByDateWithLabels(recentNotes, (item) => item.modified)
+  }, [recentNotes, showRecentNotes])
 
   const operatorSuggestions = useMemo(() => {
     return getOperatorSuggestions(query)
@@ -205,6 +242,10 @@ export function CommandPalette({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="p-0 gap-0 max-w-3xl overflow-hidden bg-popover text-popover-foreground shadow-2xl border-none ring-0 outline-none">
+        <DialogTitle className="sr-only">Search</DialogTitle>
+        <DialogDescription className="sr-only">
+          Search for notes, tasks, and more. Use arrow keys to navigate and Enter to select.
+        </DialogDescription>
         <Command className="flex flex-col h-[65vh] w-full bg-transparent" shouldFilter={false} loop>
           <div className="flex flex-col border-b border-border/40 bg-background/50 backdrop-blur-sm">
             <div className="flex items-center px-4 py-3 gap-3">
@@ -228,11 +269,6 @@ export function CommandPalette({
               {isLoading && (
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               )}
-              <div className="flex items-center gap-1">
-                <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-                  <span className="text-xs">ESC</span>
-                </kbd>
-              </div>
             </div>
 
             <div className="flex items-center gap-2 px-4 pb-3 overflow-x-auto scrollbar-hide">
@@ -445,28 +481,82 @@ export function CommandPalette({
               </Command.Group>
             )}
 
-            {!isLoading && results.length === 0 && operatorSuggestions.length === 0 && (
-              <div className="py-12 text-center text-sm text-muted-foreground">
-                {query ? 'No results found.' : 'Search for notes, tasks, and more...'}
-              </div>
-            )}
+            {/* Empty state: only show when not loading, no results, no recent notes to display */}
+            {!isLoading &&
+              !isLoadingRecent &&
+              results.length === 0 &&
+              operatorSuggestions.length === 0 &&
+              (!showRecentNotes || recentNotes.length === 0) && (
+                <div className="py-12 text-center text-sm text-muted-foreground">
+                  {query ? 'No results found.' : 'No recent notes yet'}
+                </div>
+              )}
 
-            {!query && !results.length && recent.length > 0 && (
-              <Command.Group heading="Recent Searches" className="mb-2">
-                {recent.map((r) => (
-                  <Command.Item
-                    key={r}
-                    value={`recent-${r}`}
-                    onSelect={() => setQuery(r)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-md aria-selected:bg-accent aria-selected:text-accent-foreground cursor-pointer group"
-                  >
-                    <Clock className="h-4 w-4 text-muted-foreground/50 group-aria-selected:text-muted-foreground" />
-                    <span className="flex-1">{r}</span>
-                  </Command.Item>
-                ))}
-              </Command.Group>
-            )}
+            {/* Recent searches: show only when no query, no results, no recent notes, but have recent searches */}
+            {!query &&
+              !results.length &&
+              recent.length > 0 &&
+              (!showRecentNotes || recentNotes.length === 0) && (
+                <Command.Group heading="Recent Searches" className="mb-2">
+                  {recent.map((r) => (
+                    <Command.Item
+                      key={r}
+                      value={`recent-${r}`}
+                      onSelect={() => setQuery(r)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-md aria-selected:bg-accent aria-selected:text-accent-foreground cursor-pointer group"
+                    >
+                      <Clock className="h-4 w-4 text-muted-foreground/50 group-aria-selected:text-muted-foreground" />
+                      <span className="flex-1">{r}</span>
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              )}
 
+            {/* Recent notes: show when no query and no filters */}
+            {showRecentNotes &&
+              groupedRecentNotes.map((group) => (
+                <Command.Group
+                  key={`recent-${group.group}`}
+                  heading={group.label}
+                  className="mb-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground"
+                >
+                  {group.items.map((note) => (
+                    <Command.Item
+                      key={note.id}
+                      value={note.id}
+                      onSelect={() => handleSelect(note.id, note.path)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          onSelectNoteNewTab?.(note.id, note.path)
+                          onClose()
+                        }
+                      }}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-md aria-selected:bg-accent aria-selected:text-accent-foreground cursor-pointer group transition-colors"
+                    >
+                      <div className="flex items-center justify-center h-8 w-8 rounded-md bg-muted/50 text-muted-foreground group-aria-selected:bg-background group-aria-selected:text-foreground transition-colors text-lg">
+                        {note.emoji || <FileText className="h-4 w-4" />}
+                      </div>
+
+                      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm truncate">{note.title}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground group-aria-selected:text-muted-foreground/80">
+                          <span className="truncate max-w-[200px] opacity-70">{note.path}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
+                        <span>{formatRelativeDate(note.modified)}</span>
+                      </div>
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              ))}
+
+            {/* Search results */}
             {groupedResults.map((group) => (
               <Command.Group
                 key={group.group}
@@ -536,7 +626,12 @@ export function CommandPalette({
                 <span>New tab</span>
               </span>
             </div>
-            <div>{results.length > 0 && <span>{results.length} results</span>}</div>
+            <div>
+              {results.length > 0 && <span>{results.length} results</span>}
+              {showRecentNotes && recentNotes.length > 0 && results.length === 0 && (
+                <span>{recentNotes.length} recent notes</span>
+              )}
+            </div>
           </div>
         </Command>
       </DialogContent>
