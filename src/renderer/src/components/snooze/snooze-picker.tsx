@@ -19,6 +19,13 @@ import {
 import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
+} from '@/components/ui/dialog'
 import { snoozePresets, formatSnoozeTime } from './snooze-presets'
 
 // ============================================================================
@@ -55,7 +62,7 @@ export function SnoozePicker({
   const [isOpen, setIsOpen] = React.useState(false)
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(undefined)
   const [selectedTime, setSelectedTime] = React.useState('09:00')
-  const [showCustomPicker, setShowCustomPicker] = React.useState(false)
+  const [showCustomDialog, setShowCustomDialog] = React.useState(false)
 
   // Handle preset selection
   const handlePresetSelect = (preset: (typeof snoozePresets)[0]) => {
@@ -83,8 +90,7 @@ export function SnoozePicker({
 
     setTimeError(null)
     onSnooze(snoozeTime.toISOString())
-    setIsOpen(false)
-    setShowCustomPicker(false)
+    setShowCustomDialog(false)
     setSelectedDate(undefined)
   }
 
@@ -106,13 +112,20 @@ export function SnoozePicker({
     }
   }, [selectedDate, selectedTime])
 
-  // Reset custom picker when closing
+  // Reset dropdown state when closing
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open)
+  }
+
+  // Handle dialog open state changes
+  const handleDialogOpenChange = (open: boolean) => {
+    setShowCustomDialog(open)
     if (!open) {
-      setShowCustomPicker(false)
       setSelectedDate(undefined)
       setTimeError(null)
+    } else {
+      // Set default date to today when dialog opens
+      setSelectedDate(new Date())
     }
   }
 
@@ -140,61 +153,87 @@ export function SnoozePicker({
     </Button>
   )
 
+  // Compute preview date for display
+  const previewDate = React.useMemo(() => {
+    if (!selectedDate) return null
+    const [hours, minutes] = selectedTime.split(':').map(Number)
+    const date = new Date(selectedDate)
+    date.setHours(hours, minutes, 0, 0)
+    return date
+  }, [selectedDate, selectedTime])
+
   return (
-    <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
-      <DropdownMenuTrigger asChild>{trigger || defaultTrigger}</DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
-        {!showCustomPicker ? (
-          <>
-            {/* Preset Options */}
-            {snoozePresets.map((preset) => {
-              const time = preset.getTime()
-              return (
-                <DropdownMenuItem
-                  key={preset.id}
-                  onClick={() => handlePresetSelect(preset)}
-                  className="flex items-center gap-2"
-                >
-                  {getPresetIcon(preset.id)}
-                  <div className="flex flex-col flex-1">
-                    <span>{preset.label}</span>
-                    <span className="text-xs text-muted-foreground">{formatSnoozeTime(time)}</span>
-                  </div>
-                </DropdownMenuItem>
-              )
-            })}
-
-            <DropdownMenuSeparator />
-
-            {/* Custom Date/Time Option */}
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.preventDefault()
-                setShowCustomPicker(true)
-              }}
-              className="flex items-center gap-2"
-            >
-              <CalendarDays className="h-4 w-4" />
-              <span>Pick Date & Time</span>
-              <ChevronRight className="h-4 w-4 ml-auto" />
-            </DropdownMenuItem>
-          </>
-        ) : (
-          /* Custom Date/Time Picker */
-          <div className="p-2 space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowCustomPicker(false)}
-                className="h-6 px-2"
+    <>
+      <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
+        <DropdownMenuTrigger asChild>{trigger || defaultTrigger}</DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
+          {/* Preset Options */}
+          {snoozePresets.map((preset) => {
+            const time = preset.getTime()
+            return (
+              <DropdownMenuItem
+                key={preset.id}
+                onClick={() => handlePresetSelect(preset)}
+                className="flex items-center gap-2"
               >
-                &larr; Back
-              </Button>
-              <span>Pick Date & Time</span>
-            </div>
+                {getPresetIcon(preset.id)}
+                <div className="flex flex-col flex-1">
+                  <span>{preset.label}</span>
+                  <span className="text-xs text-muted-foreground">{formatSnoozeTime(time)}</span>
+                </div>
+              </DropdownMenuItem>
+            )
+          })}
 
-            {/* Calendar */}
+          <DropdownMenuSeparator />
+
+          {/* Custom Date/Time Option - Opens Dialog */}
+          <DropdownMenuItem
+            onClick={() => {
+              setIsOpen(false)
+              handleDialogOpenChange(true)
+            }}
+            className="flex items-center gap-2"
+          >
+            <CalendarDays className="h-4 w-4" />
+            <span>Pick Date & Time</span>
+            <ChevronRight className="h-4 w-4 ml-auto" />
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Explicit backdrop to block all background interactions */}
+      {showCustomDialog && (
+        <div
+          className="fixed inset-0 z-[9999] bg-black/50 pointer-events-auto"
+          aria-hidden="true"
+          onClick={() => handleDialogOpenChange(false)}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        />
+      )}
+
+      {/* Custom Date/Time Dialog */}
+      <Dialog open={showCustomDialog} onOpenChange={handleDialogOpenChange} modal>
+        <DialogContent
+          className="sm:max-w-[400px] z-[10000]"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            // Stop propagation for all keys except Escape to prevent background shortcuts
+            if (e.key !== 'Escape') {
+              e.stopPropagation()
+            }
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Pick Date & Time</DialogTitle>
+            <DialogDescription>Select when to be reminded about this item</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Calendar - properly sized with larger cells */}
             <Calendar
               mode="single"
               selected={selectedDate}
@@ -208,11 +247,11 @@ export function SnoozePicker({
                 return compareDate < today
               }}
               initialFocus
-              className="rounded-md border"
+              className="rounded-md border mx-auto [--cell-size:2.5rem]"
             />
 
             {/* Time Picker */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-2">
               <Clock className="h-4 w-4 text-muted-foreground" />
               <Input
                 type="time"
@@ -227,28 +266,22 @@ export function SnoozePicker({
               <div
                 className={`text-xs text-center ${timeError ? 'text-destructive' : 'text-muted-foreground'}`}
               >
-                {timeError ||
-                  (() => {
-                    const [hours, minutes] = selectedTime.split(':').map(Number)
-                    const previewDate = new Date(selectedDate)
-                    previewDate.setHours(hours, minutes, 0, 0)
-                    return formatSnoozeTime(previewDate)
-                  })()}
+                {timeError || (previewDate ? formatSnoozeTime(previewDate) : '')}
               </div>
             )}
 
+            {/* Snooze Button */}
             <Button
               onClick={handleCustomSnooze}
               disabled={!selectedDate || !!timeError}
               className="w-full"
-              size="sm"
             >
               Snooze
             </Button>
           </div>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

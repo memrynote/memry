@@ -43,6 +43,7 @@ interface StaleItemRowProps {
   isExiting?: boolean
   density?: DisplayDensity
   onArchive: (id: string) => void
+  onSnooze?: (id: string, snoozeUntil: string) => void
   onFocus: (id: string) => void
   onPreview: (id: string) => void
   onSelectionToggle: (id: string, shiftKey: boolean) => void
@@ -59,6 +60,7 @@ export const StaleItemRow = ({
   isExiting = false,
   density = 'comfortable',
   onArchive,
+  onSnooze,
   onFocus,
   onPreview,
   onSelectionToggle
@@ -152,7 +154,7 @@ export const StaleItemRow = ({
                 isFocused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
               )}
             >
-              <QuickActions itemId={item.id} onArchive={onArchive} variant="row" />
+              <QuickActions itemId={item.id} onArchive={onArchive} onSnooze={onSnooze} variant="row" />
             </div>
           )}
         </div>

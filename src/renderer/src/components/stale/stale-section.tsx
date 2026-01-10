@@ -42,6 +42,7 @@ interface StaleSectionProps {
   focusedItemId: string | null
   density?: DisplayDensity
   onArchive: (id: string) => void
+  onSnooze?: (id: string, snoozeUntil: string) => void
   onFocus: (id: string) => void
   onPreview: (id: string) => void
   onSelectionToggle: (id: string, shiftKey: boolean) => void
@@ -60,6 +61,7 @@ export const StaleSection = ({
   focusedItemId,
   density = 'comfortable',
   onArchive,
+  onSnooze,
   onFocus,
   onPreview,
   onSelectionToggle,
@@ -101,6 +103,7 @@ export const StaleSection = ({
               isExiting={exitingItemIds.has(item.id)}
               density={density}
               onArchive={onArchive}
+              onSnooze={onSnooze}
               onFocus={onFocus}
               onPreview={onPreview}
               onSelectionToggle={onSelectionToggle}
