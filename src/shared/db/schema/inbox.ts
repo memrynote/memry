@@ -22,6 +22,7 @@ export const inboxItemType = {
   NOTE: 'note',
   IMAGE: 'image',
   VOICE: 'voice',
+  VIDEO: 'video',
   CLIP: 'clip',
   PDF: 'pdf',
   SOCIAL: 'social',

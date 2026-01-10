@@ -19,7 +19,9 @@ import {
   Check,
   Loader2,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  FileType,
+  Video
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -104,8 +106,11 @@ export const TypeIcon = ({ type, className = 'size-5' }: TypeIconProps): React.J
       return <Image className={iconClass} aria-hidden="true" />
     case 'voice':
       return <Mic className={iconClass} aria-hidden="true" />
-    case 'clip':
     case 'pdf':
+      return <FileType className={iconClass} aria-hidden="true" />
+    case 'video':
+      return <Video className={iconClass} aria-hidden="true" />
+    case 'clip':
     case 'social':
     default:
       return <FileText className={iconClass} aria-hidden="true" />
@@ -577,6 +582,106 @@ const VoicePreview = ({
 }
 
 // =============================================================================
+// PDF Preview Content
+// =============================================================================
+
+interface PdfPreviewProps {
+  item: InboxItem | InboxItemListItem
+}
+
+const PdfPreview = ({ item }: PdfPreviewProps): React.JSX.Element => {
+  const pdfUrl = 'attachmentUrl' in item ? item.attachmentUrl : null
+  const metadata = 'metadata' in item ? (item.metadata as Record<string, unknown> | null) : null
+
+  return (
+    <div className="space-y-4">
+      {pdfUrl ? (
+        <div className="relative overflow-hidden rounded-lg bg-[var(--muted)] border border-[var(--border)]">
+          <iframe
+            src={pdfUrl}
+            title={item.title}
+            className="w-full h-[400px]"
+            style={{ border: 'none' }}
+          />
+        </div>
+      ) : (
+        <div className="flex items-center justify-center h-[200px] bg-[var(--muted)] rounded-lg">
+          <FileText className="size-12 text-[var(--muted-foreground)]" />
+        </div>
+      )}
+
+      {/* PDF metadata */}
+      {(() => {
+        const fileSize = metadata?.fileSize
+        const originalFilename = metadata?.originalFilename
+        return (
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-[var(--muted-foreground)] px-1">
+            <span className="uppercase font-medium">PDF</span>
+            {typeof fileSize === 'number' && <span>{formatFileSize(fileSize)}</span>}
+            {typeof originalFilename === 'string' && (
+              <span className="truncate max-w-[200px]" title={originalFilename}>
+                {originalFilename}
+              </span>
+            )}
+          </div>
+        )
+      })()}
+    </div>
+  )
+}
+
+// =============================================================================
+// Video Preview Content
+// =============================================================================
+
+interface VideoPreviewProps {
+  item: InboxItem | InboxItemListItem
+}
+
+const VideoPreview = ({ item }: VideoPreviewProps): React.JSX.Element => {
+  const videoUrl = 'attachmentUrl' in item ? item.attachmentUrl : null
+  const metadata = 'metadata' in item ? (item.metadata as Record<string, unknown> | null) : null
+
+  return (
+    <div className="space-y-4">
+      {videoUrl ? (
+        <div className="relative overflow-hidden rounded-lg bg-black">
+          <video
+            src={videoUrl}
+            controls
+            className="w-full max-h-[400px]"
+            preload="metadata"
+          >
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      ) : (
+        <div className="flex items-center justify-center h-[200px] bg-[var(--muted)] rounded-lg">
+          <FileText className="size-12 text-[var(--muted-foreground)]" />
+        </div>
+      )}
+
+      {/* Video metadata */}
+      {(() => {
+        const fileSize = metadata?.fileSize
+        const originalFilename = metadata?.originalFilename
+        return (
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-[var(--muted-foreground)] px-1">
+            <span className="uppercase font-medium">Video</span>
+            {typeof fileSize === 'number' && <span>{formatFileSize(fileSize)}</span>}
+            {typeof originalFilename === 'string' && (
+              <span className="truncate max-w-[200px]" title={originalFilename}>
+                {originalFilename}
+              </span>
+            )}
+          </div>
+        )
+      })()}
+    </div>
+  )
+}
+
+// =============================================================================
 // Simple Text Content (Editable with BlockNote)
 // =============================================================================
 
@@ -629,8 +734,11 @@ export const ContentSection = ({
           isRetrying={isRetrying}
         />
       )
-    case 'clip':
     case 'pdf':
+      return <PdfPreview item={item} />
+    case 'video':
+      return <VideoPreview item={item} />
+    case 'clip':
     case 'social':
     default:
       return <SimpleContent item={item} onContentChange={onContentChange} />

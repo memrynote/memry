@@ -25,6 +25,7 @@ export const MAX_INBOX_FILE_SIZE = 50 * 1024 * 1024
 
 /**
  * Allowed image MIME types
+ * Matches: png, jpg, jpeg, gif, webp, svg
  */
 export const ALLOWED_IMAGE_TYPES = [
   'image/png',
@@ -36,8 +37,31 @@ export const ALLOWED_IMAGE_TYPES = [
 
 /**
  * Allowed audio MIME types
+ * Matches: mp3, wav, ogg, m4a, flac, aac, webm (voice)
  */
-export const ALLOWED_AUDIO_TYPES = ['audio/webm', 'audio/mp3', 'audio/mpeg', 'audio/wav']
+export const ALLOWED_AUDIO_TYPES = [
+  'audio/mpeg', // mp3
+  'audio/mp3', // mp3 alternative
+  'audio/wav',
+  'audio/ogg',
+  'audio/mp4', // m4a
+  'audio/x-m4a', // m4a alternative
+  'audio/flac',
+  'audio/aac',
+  'audio/webm' // voice recording
+]
+
+/**
+ * Allowed video MIME types
+ * Matches: mp4, webm, mov, avi, mkv
+ */
+export const ALLOWED_VIDEO_TYPES = [
+  'video/mp4',
+  'video/webm',
+  'video/quicktime', // mov
+  'video/x-msvideo', // avi
+  'video/x-matroska' // mkv
+]
 
 /**
  * Allowed document MIME types
@@ -45,11 +69,12 @@ export const ALLOWED_AUDIO_TYPES = ['audio/webm', 'audio/mp3', 'audio/mpeg', 'au
 export const ALLOWED_DOCUMENT_TYPES = ['application/pdf']
 
 /**
- * All allowed MIME types
+ * All allowed MIME types for inbox attachments
  */
 export const ALLOWED_MIME_TYPES = [
   ...ALLOWED_IMAGE_TYPES,
   ...ALLOWED_AUDIO_TYPES,
+  ...ALLOWED_VIDEO_TYPES,
   ...ALLOWED_DOCUMENT_TYPES
 ]
 
@@ -77,7 +102,7 @@ export interface InboxAttachmentInfo {
   path: string
   size: number
   mimeType: string
-  type: 'image' | 'audio' | 'document'
+  type: 'image' | 'audio' | 'video' | 'document'
 }
 
 // ============================================================================
@@ -139,9 +164,10 @@ export function getItemAttachmentsDir(itemId: string): string {
 /**
  * Determine attachment type from MIME type
  */
-function getAttachmentType(mimeType: string): 'image' | 'audio' | 'document' | null {
+function getAttachmentType(mimeType: string): 'image' | 'audio' | 'video' | 'document' | null {
   if (ALLOWED_IMAGE_TYPES.includes(mimeType)) return 'image'
   if (ALLOWED_AUDIO_TYPES.includes(mimeType)) return 'audio'
+  if (ALLOWED_VIDEO_TYPES.includes(mimeType)) return 'video'
   if (ALLOWED_DOCUMENT_TYPES.includes(mimeType)) return 'document'
   return null
 }
@@ -151,15 +177,29 @@ function getAttachmentType(mimeType: string): 'image' | 'audio' | 'document' | n
  */
 function getExtensionFromMimeType(mimeType: string): string {
   const mimeToExt: Record<string, string> = {
+    // Images
     'image/png': 'png',
     'image/jpeg': 'jpg',
     'image/gif': 'gif',
     'image/webp': 'webp',
     'image/svg+xml': 'svg',
-    'audio/webm': 'webm',
-    'audio/mp3': 'mp3',
+    // Audio
     'audio/mpeg': 'mp3',
+    'audio/mp3': 'mp3',
     'audio/wav': 'wav',
+    'audio/ogg': 'ogg',
+    'audio/mp4': 'm4a',
+    'audio/x-m4a': 'm4a',
+    'audio/flac': 'flac',
+    'audio/aac': 'aac',
+    'audio/webm': 'webm',
+    // Video
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'video/quicktime': 'mov',
+    'video/x-msvideo': 'avi',
+    'video/x-matroska': 'mkv',
+    // Documents
     'application/pdf': 'pdf'
   }
   return mimeToExt[mimeType] || 'bin'
@@ -333,15 +373,34 @@ export async function listInboxAttachments(itemId: string): Promise<InboxAttachm
 
     // Determine type from extension
     const ext = path.extname(file.name).toLowerCase().slice(1)
-    let type: 'image' | 'audio' | 'document' = 'document'
+    let type: 'image' | 'audio' | 'video' | 'document' = 'document'
     let mimeType = 'application/octet-stream'
 
     if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) {
       type = 'image'
-      mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`
-    } else if (['webm', 'mp3', 'wav'].includes(ext)) {
+      mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext === 'svg' ? 'svg+xml' : ext}`
+    } else if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'webm'].includes(ext)) {
       type = 'audio'
-      mimeType = `audio/${ext}`
+      const audioMimeMap: Record<string, string> = {
+        mp3: 'audio/mpeg',
+        wav: 'audio/wav',
+        ogg: 'audio/ogg',
+        m4a: 'audio/mp4',
+        flac: 'audio/flac',
+        aac: 'audio/aac',
+        webm: 'audio/webm'
+      }
+      mimeType = audioMimeMap[ext] || `audio/${ext}`
+    } else if (['mp4', 'mov', 'avi', 'mkv'].includes(ext)) {
+      type = 'video'
+      const videoMimeMap: Record<string, string> = {
+        mp4: 'video/mp4',
+        webm: 'video/webm',
+        mov: 'video/quicktime',
+        avi: 'video/x-msvideo',
+        mkv: 'video/x-matroska'
+      }
+      mimeType = videoMimeMap[ext] || `video/${ext}`
     } else if (ext === 'pdf') {
       type = 'document'
       mimeType = 'application/pdf'

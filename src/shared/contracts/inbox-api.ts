@@ -22,6 +22,7 @@ export type InboxItemType =
   | 'note'
   | 'image'
   | 'voice'
+  | 'video'
   | 'clip'
   | 'pdf'
   | 'social'
@@ -286,10 +287,39 @@ const binaryDataSchema = z.custom<Buffer | Uint8Array | ArrayBuffer | Record<str
   { message: 'Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer)' }
 )
 
+/**
+ * Schema for capturing attachments (images, audio, video, PDF).
+ * Accepts all viewable file types in the application.
+ */
 export const CaptureImageSchema = z.object({
   data: binaryDataSchema,
   filename: z.string().min(1).max(255),
-  mimeType: z.enum(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']),
+  mimeType: z.enum([
+    // Images
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+    'image/svg+xml',
+    // Audio
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/wav',
+    'audio/ogg',
+    'audio/mp4',
+    'audio/x-m4a',
+    'audio/flac',
+    'audio/aac',
+    'audio/webm',
+    // Video
+    'video/mp4',
+    'video/webm',
+    'video/quicktime',
+    'video/x-msvideo',
+    'video/x-matroska',
+    // Documents
+    'application/pdf'
+  ]),
   tags: z.array(z.string().max(50)).max(20).optional()
 })
 

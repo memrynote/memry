@@ -46,7 +46,11 @@ import {
   getItemAttachmentsDir,
   storeInboxAttachment,
   storeThumbnail,
-  deleteInboxAttachments
+  deleteInboxAttachments,
+  ALLOWED_IMAGE_TYPES,
+  ALLOWED_AUDIO_TYPES,
+  ALLOWED_VIDEO_TYPES,
+  ALLOWED_DOCUMENT_TYPES
 } from '../inbox/attachments'
 import { fetchUrlMetadata, downloadImage } from '../inbox/metadata'
 import {
@@ -1003,10 +1007,21 @@ async function handleSetStaleThreshold(days: number): Promise<{ success: boolean
 // ============================================================================
 
 /**
- * Capture an image with thumbnail generation
+ * Determine inbox item type from MIME type
+ */
+function getInboxTypeFromMime(mimeType: string): 'image' | 'voice' | 'video' | 'pdf' {
+  if (ALLOWED_IMAGE_TYPES.includes(mimeType)) return 'image'
+  if (ALLOWED_AUDIO_TYPES.includes(mimeType)) return 'voice'
+  if (ALLOWED_VIDEO_TYPES.includes(mimeType)) return 'video'
+  if (ALLOWED_DOCUMENT_TYPES.includes(mimeType)) return 'pdf'
+  return 'image' // fallback
+}
+
+/**
+ * Capture an attachment (image, audio, video, or PDF)
  *
- * Accepts image data, validates format, extracts metadata,
- * generates thumbnail, and creates inbox item.
+ * For images: validates format, extracts metadata, generates thumbnail
+ * For audio/video/PDF: stores file directly without image processing
  */
 async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
   try {
@@ -1016,22 +1031,26 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
     const id = generateId()
     const now = new Date().toISOString()
 
-    // Convert data to Buffer for sharp processing
+    // Determine file type from MIME
+    const inboxType = getInboxTypeFromMime(parsed.mimeType)
+    const isImage = ALLOWED_IMAGE_TYPES.includes(parsed.mimeType)
+
+    // Convert data to Buffer
     // IPC serialization may convert Buffer/ArrayBuffer to Uint8Array or plain object with numeric keys
-    let imageBuffer: Buffer
+    let fileBuffer: Buffer
     if (Buffer.isBuffer(parsed.data)) {
-      imageBuffer = parsed.data
+      fileBuffer = parsed.data
     } else if (parsed.data instanceof Uint8Array) {
-      imageBuffer = Buffer.from(parsed.data)
+      fileBuffer = Buffer.from(parsed.data)
     } else if (parsed.data instanceof ArrayBuffer) {
-      imageBuffer = Buffer.from(parsed.data)
+      fileBuffer = Buffer.from(parsed.data)
     } else if (typeof parsed.data === 'object' && parsed.data !== null) {
       // Handle plain object from IPC serialization (has numeric keys like {0: 255, 1: 216, ...})
       // Check if it looks like a serialized buffer (has 'type' and 'data' properties from Buffer.toJSON())
       const data = parsed.data as Record<string, unknown>
       if (data.type === 'Buffer' && Array.isArray(data.data)) {
         // Electron serializes Buffer as {type: 'Buffer', data: [bytes...]}
-        imageBuffer = Buffer.from(data.data as number[])
+        fileBuffer = Buffer.from(data.data as number[])
       } else {
         // Plain object with numeric keys
         const values = Object.values(data).filter((v): v is number => typeof v === 'number')
@@ -1039,54 +1058,32 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
           return {
             success: false,
             item: null,
-            error: 'Invalid image data format: empty or non-numeric data'
+            error: 'Invalid file data format: empty or non-numeric data'
           }
         }
-        imageBuffer = Buffer.from(values)
+        fileBuffer = Buffer.from(values)
       }
     } else {
       return {
         success: false,
         item: null,
-        error: 'Invalid image data format'
+        error: 'Invalid file data format'
       }
     }
 
-    // Validate we have actual image data
-    if (imageBuffer.length === 0) {
+    // Validate we have actual data
+    if (fileBuffer.length === 0) {
       return {
         success: false,
         item: null,
-        error: 'Empty image data'
+        error: 'Empty file data'
       }
     }
 
-    // Extract image metadata using sharp
-    let metadata: sharp.Metadata
-    try {
-      metadata = await sharp(imageBuffer).metadata()
-    } catch (err) {
-      console.error('[Image] Failed to read image metadata:', err)
-      return {
-        success: false,
-        item: null,
-        error: 'Invalid or corrupted image file'
-      }
-    }
-
-    // Validate image has dimensions
-    if (!metadata.width || !metadata.height) {
-      return {
-        success: false,
-        item: null,
-        error: 'Could not determine image dimensions'
-      }
-    }
-
-    // Store the original image
+    // Store the file
     const storeResult = await storeInboxAttachment(
       id,
-      imageBuffer,
+      fileBuffer,
       parsed.filename,
       parsed.mimeType
     )
@@ -1095,45 +1092,64 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
       return {
         success: false,
         item: null,
-        error: storeResult.error || 'Failed to store image'
+        error: storeResult.error || 'Failed to store file'
       }
     }
 
-    // Generate thumbnail (max 400x400, JPEG for smaller size)
     let thumbnailPath: string | null = null
-    try {
-      const thumbnailBuffer = await sharp(imageBuffer)
-        .resize(400, 400, {
-          fit: 'inside',
-          withoutEnlargement: true
-        })
-        .jpeg({ quality: 80 })
-        .toBuffer()
-
-      const thumbnailResult = await storeThumbnail(id, thumbnailBuffer, 'jpg')
-      if (thumbnailResult.success && thumbnailResult.thumbnailPath) {
-        thumbnailPath = thumbnailResult.thumbnailPath
-      }
-    } catch (err) {
-      // Thumbnail generation failed - not fatal, continue without thumbnail
-      console.warn('[Image] Failed to generate thumbnail:', err)
+    let itemMetadata: Record<string, unknown> = {
+      originalFilename: parsed.filename,
+      fileSize: fileBuffer.length,
+      mimeType: parsed.mimeType
     }
 
-    // Build image metadata for database
-    const imageMetadata: ImageMetadata = {
-      originalFilename: parsed.filename,
-      format: metadata.format || 'unknown',
-      width: metadata.width,
-      height: metadata.height,
-      fileSize: imageBuffer.length,
-      hasExif: !!(metadata.exif || metadata.icc)
+    // For images: extract metadata and generate thumbnail
+    if (isImage) {
+      try {
+        const metadata = await sharp(fileBuffer).metadata()
+
+        if (metadata.width && metadata.height) {
+          // Build image metadata
+          const imageMetadata: ImageMetadata = {
+            originalFilename: parsed.filename,
+            format: metadata.format || 'unknown',
+            width: metadata.width,
+            height: metadata.height,
+            fileSize: fileBuffer.length,
+            hasExif: !!(metadata.exif || metadata.icc)
+          }
+          itemMetadata = imageMetadata as unknown as Record<string, unknown>
+
+          // Generate thumbnail (max 400x400, JPEG for smaller size)
+          try {
+            const thumbnailBuffer = await sharp(fileBuffer)
+              .resize(400, 400, {
+                fit: 'inside',
+                withoutEnlargement: true
+              })
+              .jpeg({ quality: 80 })
+              .toBuffer()
+
+            const thumbnailResult = await storeThumbnail(id, thumbnailBuffer, 'jpg')
+            if (thumbnailResult.success && thumbnailResult.thumbnailPath) {
+              thumbnailPath = thumbnailResult.thumbnailPath
+            }
+          } catch (err) {
+            // Thumbnail generation failed - not fatal, continue without thumbnail
+            console.warn('[Attachment] Failed to generate thumbnail:', err)
+          }
+        }
+      } catch (err) {
+        // Image metadata extraction failed - not fatal for storage
+        console.warn('[Attachment] Failed to read image metadata:', err)
+      }
     }
 
     // Insert inbox item
     db.insert(inboxItems)
       .values({
         id,
-        type: 'image',
+        type: inboxType,
         title: parsed.filename.replace(/\.[^.]+$/, ''), // Remove extension for title
         content: null,
         createdAt: now,
@@ -1141,7 +1157,7 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
         processingStatus: 'complete',
         attachmentPath: storeResult.path || null,
         thumbnailPath,
-        metadata: imageMetadata
+        metadata: itemMetadata
       })
       .run()
 
@@ -1171,12 +1187,12 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
     // Emit captured event
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
 
-    console.log(`[Image] Captured image: ${parsed.filename} (${metadata.width}x${metadata.height})`)
+    console.log(`[Attachment] Captured ${inboxType}: ${parsed.filename} (${fileBuffer.length} bytes)`)
 
     return { success: true, item }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Image] Capture failed:', message)
+    console.error('[Attachment] Capture failed:', message)
     return { success: false, item: null, error: message }
   }
 }

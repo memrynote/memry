@@ -8,13 +8,17 @@
  */
 
 import { BrowserWindow } from 'electron'
+import path from 'path'
+import { rename, copyFile, unlink } from 'fs/promises'
+import { existsSync } from 'fs'
 import { getDatabase, type DrizzleDb } from '../database'
 import { createNote, getNoteById, updateNote, createFolder, getFolders } from '../vault/notes'
+import { getStatus, getConfig } from '../vault/index'
 import { inboxItems, inboxItemTags, filingHistory } from '@shared/db/schema/inbox'
 import { generateId } from '../lib/id'
 import { eq } from 'drizzle-orm'
 import { InboxChannels } from '@shared/ipc-channels'
-import { resolveAttachmentUrl } from './attachments'
+import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
 
 // ============================================================================
 // Types
@@ -32,6 +36,49 @@ type InboxItemRow = typeof inboxItems.$inferSelect
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+/**
+ * Get vault path, throwing if not available
+ */
+function getVaultPath(): string {
+  const status = getStatus()
+  if (!status.isOpen || !status.path) {
+    throw new Error('No vault is open. Please open a vault first.')
+  }
+  return status.path
+}
+
+/**
+ * Check if inbox item type is binary (moves file directly).
+ * Binary types: image, voice, pdf, video
+ * Text types (everything else): note, clip, link, social, reminder
+ */
+function isBinaryType(type: string): boolean {
+  return ['image', 'voice', 'pdf', 'video'].includes(type)
+}
+
+/**
+ * Get a unique file path by appending -1, -2, etc. if file exists
+ */
+function getUniqueFilePath(filePath: string): string {
+  if (!existsSync(filePath)) {
+    return filePath
+  }
+
+  const dir = path.dirname(filePath)
+  const ext = path.extname(filePath)
+  const base = path.basename(filePath, ext)
+
+  let counter = 1
+  let newPath = filePath
+
+  while (existsSync(newPath)) {
+    newPath = path.join(dir, `${base}-${counter}${ext}`)
+    counter++
+  }
+
+  return newPath
+}
 
 /**
  * Emit inbox event to all windows
@@ -315,11 +362,99 @@ function recordFilingHistory(
 // ============================================================================
 
 /**
- * File an inbox item to a folder by creating a new note
+ * File a binary inbox item (image, voice, pdf, video) to a folder.
+ * Moves the file directly without creating a markdown wrapper.
  *
  * @param itemId - Inbox item ID
  * @param folderPath - Target folder path (relative to vault, empty string for root)
- * @param tags - Additional tags to add to the note
+ */
+async function fileBinaryToFolder(
+  itemId: string,
+  folderPath: string
+): Promise<FileResponse> {
+  try {
+    const db = requireDatabase()
+
+    // Get inbox item
+    const item = getInboxItem(db, itemId)
+    if (!item) {
+      return { success: false, filedTo: null, error: 'Inbox item not found' }
+    }
+
+    // Check if already filed
+    if (item.filedAt) {
+      return { success: false, filedTo: null, error: 'Item has already been filed' }
+    }
+
+    // Verify attachment exists
+    if (!item.attachmentPath) {
+      return { success: false, filedTo: null, error: 'No attachment found for this item' }
+    }
+
+    // Ensure destination folder exists
+    await ensureFolderExists(folderPath)
+
+    // Build source and destination paths
+    const vaultPath = getVaultPath()
+    const config = getConfig()
+    const sourcePath = path.join(vaultPath, item.attachmentPath)
+    const filename = path.basename(item.attachmentPath)
+
+    // Destination is vault/notes/{folderPath}/ (or root of notes folder)
+    const destFolder = path.join(vaultPath, config.defaultNoteFolder, folderPath || '')
+    const destPath = path.join(destFolder, filename)
+
+    // Handle filename conflicts by appending -1, -2, etc.
+    const finalPath = getUniqueFilePath(destPath)
+
+    // Move the file (try rename first, fall back to copy+delete for cross-device)
+    try {
+      await rename(sourcePath, finalPath)
+    } catch (renameError) {
+      // Cross-device link error - use copy + delete
+      if ((renameError as NodeJS.ErrnoException).code === 'EXDEV') {
+        await copyFile(sourcePath, finalPath)
+        await unlink(sourcePath)
+      } else {
+        throw renameError
+      }
+    }
+
+    // Clean up the inbox attachment folder
+    await deleteInboxAttachments(itemId)
+
+    // Calculate relative path from vault root for storage
+    const relativePath = path.relative(vaultPath, finalPath)
+
+    // Mark inbox item as filed
+    markItemAsFiled(itemId, relativePath, 'folder')
+
+    // Record filing history (no content for binary files)
+    recordFilingHistory(item.type, null, relativePath, 'folder', [])
+
+    console.log(`[Filing] Filed binary item to: ${relativePath}`)
+
+    return {
+      success: true,
+      filedTo: relativePath
+      // Note: No noteId returned - this isn't a markdown note
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[Filing] Error filing binary to folder:', message)
+    return { success: false, filedTo: null, error: message }
+  }
+}
+
+/**
+ * File an inbox item to a folder.
+ * Routes to appropriate handler based on item type:
+ * - Text types (note, clip): Creates a markdown note
+ * - Binary types (image, voice, pdf, video): Moves file directly
+ *
+ * @param itemId - Inbox item ID
+ * @param folderPath - Target folder path (relative to vault, empty string for root)
+ * @param tags - Additional tags to add to the note (only for text types)
  */
 export async function fileToFolder(
   itemId: string,
@@ -340,6 +475,17 @@ export async function fileToFolder(
       return { success: false, filedTo: null, error: 'Item has already been filed' }
     }
 
+    // Skip link type (handled separately in another task)
+    if (item.type === 'link') {
+      return { success: false, filedTo: null, error: 'Link filing not implemented yet' }
+    }
+
+    // Binary types: move file directly (no markdown wrapper, no tags)
+    if (isBinaryType(item.type)) {
+      return fileBinaryToFolder(itemId, folderPath)
+    }
+
+    // Text types: create markdown note (existing logic)
     // Ensure folder exists
     await ensureFolderExists(folderPath)
 
@@ -457,13 +603,141 @@ export async function linkToNote(
 }
 
 /**
- * Link an inbox item to multiple existing notes
- * Creates an inbox note and appends wikilinks to "## Inbox Captures" section of all target notes
+ * Link a binary file to existing notes.
+ * Moves file to folder and adds wiki-link references to target notes.
+ *
+ * @param itemId - Inbox item ID
+ * @param item - Inbox item row
+ * @param noteIds - Array of target note IDs
+ * @param folderPath - Optional folder path for the file
+ */
+async function linkBinaryToNotes(
+  itemId: string,
+  item: InboxItemRow,
+  noteIds: string[],
+  folderPath?: string
+): Promise<{ success: boolean; error?: string; linkedCount?: number }> {
+  try {
+    // Verify attachment exists
+    if (!item.attachmentPath) {
+      return { success: false, error: 'No attachment found for this item' }
+    }
+
+    // Validate all target notes exist first
+    const targetNotes: Array<{ id: string; content: string; path: string }> = []
+    for (const noteId of noteIds) {
+      const targetNote = await getNoteById(noteId)
+      if (!targetNote) {
+        return { success: false, error: `Target note not found: ${noteId}` }
+      }
+      targetNotes.push({ id: noteId, content: targetNote.content, path: targetNote.path })
+    }
+
+    // Determine destination folder:
+    // 1. Use provided folderPath
+    // 2. Or same folder as first target note
+    // 3. Or root notes folder
+    let destFolder: string
+    if (folderPath) {
+      await ensureFolderExists(folderPath)
+      destFolder = folderPath
+    } else if (targetNotes[0].path.includes('/')) {
+      // Extract folder from first target note's path
+      destFolder = path.dirname(targetNotes[0].path)
+    } else {
+      destFolder = '' // Root folder
+    }
+
+    // Build source and destination paths
+    const vaultPath = getVaultPath()
+    const config = getConfig()
+    const sourcePath = path.join(vaultPath, item.attachmentPath)
+    const filename = path.basename(item.attachmentPath)
+
+    // Destination is vault/notes/{destFolder}/
+    const destFolderPath = path.join(vaultPath, config.defaultNoteFolder, destFolder)
+    const destPath = path.join(destFolderPath, filename)
+
+    // Handle filename conflicts
+    const finalPath = getUniqueFilePath(destPath)
+
+    // Move the file (try rename first, fall back to copy+delete for cross-device)
+    try {
+      await rename(sourcePath, finalPath)
+    } catch (renameError) {
+      if ((renameError as NodeJS.ErrnoException).code === 'EXDEV') {
+        await copyFile(sourcePath, finalPath)
+        await unlink(sourcePath)
+      } else {
+        throw renameError
+      }
+    }
+
+    // Clean up the inbox attachment folder
+    await deleteInboxAttachments(itemId)
+
+    // Generate wiki-link entry
+    // Use title (filename without extension) for wiki-link because that's how
+    // files are indexed in the database (watcher sets title = basename without ext)
+    const fileTitle = path.basename(finalPath, path.extname(finalPath))
+    // Use ![[]] for images to embed them inline, [[]] for other files
+    const isImage = item.type === 'image'
+    const wikiLink = isImage ? `[[${fileTitle}]]` : `[[${fileTitle}]]`
+    const dateStr = formatDate(new Date())
+    const captureEntry = `- ${wikiLink} *(${dateStr})*`
+
+    const inboxCapturesRegex = /^## Inbox Captures$/m
+
+    // Add wiki-link to ALL target notes
+    for (const targetNote of targetNotes) {
+      let updatedContent = targetNote.content
+
+      if (inboxCapturesRegex.test(updatedContent)) {
+        // Append to existing section
+        updatedContent = updatedContent.replace(/^(## Inbox Captures)$/m, `$1\n${captureEntry}`)
+      } else {
+        // Add new section at the end
+        updatedContent = `${updatedContent.trimEnd()}\n\n## Inbox Captures\n\n${captureEntry}`
+      }
+
+      // Update target note
+      await updateNote({
+        id: targetNote.id,
+        content: updatedContent
+      })
+
+      console.log(`[Filing] Linked binary item to note: ${targetNote.id}`)
+    }
+
+    // Calculate relative path for storage
+    const relativePath = path.relative(vaultPath, finalPath)
+
+    // Mark inbox item as filed
+    markItemAsFiled(itemId, relativePath, 'linked')
+
+    // Record filing history (no content for binary files)
+    recordFilingHistory(item.type, null, relativePath, 'linked', [])
+
+    console.log(`[Filing] Linked binary item to ${targetNotes.length} note(s): ${relativePath}`)
+
+    return { success: true, linkedCount: targetNotes.length }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[Filing] Error linking binary to notes:', message)
+    return { success: false, error: message }
+  }
+}
+
+/**
+ * Link an inbox item to multiple existing notes.
+ * Routes to appropriate handler based on item type:
+ * - Text types (note, clip): Creates markdown note and adds wikilinks
+ * - Binary types (image, voice, pdf, video): Moves file and adds wikilinks
  *
  * @param itemId - Inbox item ID
  * @param noteIds - Array of target note IDs
- * @param tags - Additional tags to add to the created note
- * @param folderPath - Optional folder path for the created inbox note
+ * @param tags - Additional tags to add to the created note (only for text types)
+ * @param folderPath - Optional folder path for the created note/file
  */
 export async function linkToNotes(
   itemId: string,
@@ -489,6 +763,17 @@ export async function linkToNotes(
       return { success: false, error: 'Item has already been filed' }
     }
 
+    // Skip link type (handled separately in another task)
+    if (item.type === 'link') {
+      return { success: false, error: 'Link filing not implemented yet' }
+    }
+
+    // Binary types: move file and add wiki-links to target notes
+    if (isBinaryType(item.type)) {
+      return linkBinaryToNotes(itemId, item, noteIds, folderPath)
+    }
+
+    // Text types: create markdown note and add wiki-links (existing logic)
     // Ensure folder exists if specified
     if (folderPath) {
       await ensureFolderExists(folderPath)

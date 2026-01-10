@@ -1318,6 +1318,7 @@ export type InboxItemType =
   | 'note'
   | 'image'
   | 'voice'
+  | 'video'
   | 'clip'
   | 'pdf'
   | 'social'

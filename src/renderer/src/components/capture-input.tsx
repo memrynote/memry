@@ -14,15 +14,38 @@ import { useCaptureText, useCaptureLink, useCaptureVoice, useCaptureImage } from
 import { type DisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
 import { VoiceRecorder } from './voice-recorder'
 
-const ALLOWED_IMAGE_TYPES = [
+/**
+ * All allowed attachment MIME types for inbox capture.
+ * Matches the viewable file types in the application.
+ */
+const ALLOWED_ATTACHMENT_TYPES = [
+  // Images
   'image/png',
   'image/jpeg',
   'image/gif',
   'image/webp',
-  'image/svg+xml'
+  'image/svg+xml',
+  // Audio
+  'audio/mpeg', // mp3
+  'audio/mp3',
+  'audio/wav',
+  'audio/ogg',
+  'audio/mp4', // m4a
+  'audio/x-m4a',
+  'audio/flac',
+  'audio/aac',
+  'audio/webm',
+  // Video
+  'video/mp4',
+  'video/webm',
+  'video/quicktime', // mov
+  'video/x-msvideo', // avi
+  'video/x-matroska', // mkv
+  // Documents
+  'application/pdf'
 ] as const
 
-type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number]
+type AllowedAttachmentType = (typeof ALLOWED_ATTACHMENT_TYPES)[number]
 
 interface CaptureInputProps {
   onCaptureSuccess?: () => void
@@ -203,7 +226,7 @@ export function CaptureInput({
         fileInputRef.current.value = ''
       }
 
-      if (!ALLOWED_IMAGE_TYPES.includes(file.type as AllowedImageType)) {
+      if (!ALLOWED_ATTACHMENT_TYPES.includes(file.type as AllowedAttachmentType)) {
         onCaptureError?.(`Unsupported file type: ${file.type}`)
         return
       }
@@ -219,7 +242,7 @@ export function CaptureInput({
         if (result.success) {
           onCaptureSuccess?.()
         } else {
-          onCaptureError?.(result.error || 'Failed to capture image')
+          onCaptureError?.(result.error || 'Failed to capture file')
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'File capture failed'
@@ -310,8 +333,8 @@ export function CaptureInput({
             'hover:bg-foreground/5 hover:text-foreground/70',
             'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent'
           )}
-          aria-label="Attach image"
-          title="Attach image (PNG, JPG, GIF, WebP, SVG)"
+          aria-label="Attach file"
+          title="Attach file (Images, Audio, Video, PDF)"
         >
           <Paperclip className="size-4" aria-hidden="true" />
         </button>
@@ -338,7 +361,7 @@ export function CaptureInput({
         <input
           ref={fileInputRef}
           type="file"
-          accept={ALLOWED_IMAGE_TYPES.join(',')}
+          accept={ALLOWED_ATTACHMENT_TYPES.join(',')}
           onChange={handleFileSelect}
           className="hidden"
           aria-hidden="true"
