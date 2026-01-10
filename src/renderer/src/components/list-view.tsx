@@ -443,6 +443,7 @@ const ListView = ({
           focusedItemId={focusedItemId}
           density={density}
           onArchive={onArchive}
+          onSnooze={onSnooze}
           onFocus={handleItemFocus}
           onPreview={onPreview}
           onSelectionToggle={handleSelectionToggle}
