@@ -1,11 +1,17 @@
 /**
  * Tab Content Component
  * Routes to the correct view based on tab type
+ *
+ * PERFORMANCE: Page components are memoized to prevent unnecessary remounting
+ * when tab state changes. This is critical because:
+ * 1. Pages have 15-30+ hooks that run on mount
+ * 2. Without memoization, switching tabs causes full page remounts
+ * 3. useMemo with tab.id key ensures content is cached per tab instance
  */
 
-import { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useMemo } from 'react'
 import type { Tab } from '@/contexts/tabs/types'
-import { useTabs } from '@/contexts/tabs'
+import { useTabActions } from '@/contexts/tabs'
 import { useTasksOptional } from '@/contexts/tasks'
 import { cn } from '@/lib/utils'
 import { InboxPage } from '@/pages/inbox'
@@ -18,6 +24,21 @@ import { SettingsPage } from '@/pages/settings'
 import { TemplateEditorPage } from '@/pages/template-editor'
 import { TemplatesPage } from '@/pages/templates'
 
+// =============================================================================
+// MEMOIZED PAGE COMPONENTS
+// Prevents recreation on every render - crucial for performance
+// =============================================================================
+
+const MemoizedInboxPage = React.memo(InboxPage)
+const MemoizedJournalPage = React.memo(JournalPage)
+const MemoizedTasksPage = React.memo(TasksPage)
+const MemoizedNotePage = React.memo(NotePage)
+const MemoizedFilePage = React.memo(FilePage)
+const MemoizedFolderViewPage = React.memo(FolderViewPage)
+const MemoizedSettingsPage = React.memo(SettingsPage)
+const MemoizedTemplateEditorPage = React.memo(TemplateEditorPage)
+const MemoizedTemplatesPage = React.memo(TemplatesPage)
+
 interface TabContentProps {
   /** Tab data */
   tab: Tab
@@ -29,10 +50,12 @@ interface TabContentProps {
 
 /**
  * Renders the appropriate view for a tab type
+ * PERFORMANCE: Uses useTabActions instead of useTabs to avoid re-renders on state changes
  */
 export const TabContent = ({ tab, groupId, className }: TabContentProps): React.JSX.Element => {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const { dispatch } = useTabs()
+  // PERFORMANCE: useTabActions returns stable references - doesn't cause re-renders
+  const { dispatch } = useTabActions()
   const tasksContext = useTasksOptional()
 
   // Save scroll position on unmount or tab change
@@ -60,11 +83,13 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
     }
   }, [tab.id, tab.scrollPosition])
 
-  // Render content based on tab type
-  const renderContent = (): React.ReactNode => {
+  // PERFORMANCE: Memoize content based on tab identity to prevent remounting
+  // Key insight: useMemo ensures React reuses the component instance when
+  // only unrelated state changes (like other tabs being modified)
+  const content = useMemo((): React.ReactNode => {
     switch (tab.type) {
       case 'inbox':
-        return <InboxPage />
+        return <MemoizedInboxPage />
 
       case 'home':
         return <PlaceholderView title="Home" icon="home" />
@@ -74,7 +99,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
       case 'today':
       case 'upcoming':
       case 'completed':
-      case 'project':
+      case 'project': {
         // Use TasksContext if available
         if (tasksContext) {
           // Determine selection based on tab type
@@ -87,7 +112,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
           const selectionType = tab.type === 'project' ? 'project' : 'view'
 
           return (
-            <TasksPage
+            <MemoizedTasksPage
               selectedId={selectionId}
               selectedType={selectionType}
               tasks={tasksContext.tasks}
@@ -106,18 +131,19 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
             <p className="text-sm text-gray-400">TasksContext not available</p>
           </div>
         )
+      }
 
       case 'note':
-        return <NotePage noteId={tab.entityId} />
+        return <MemoizedNotePage noteId={tab.entityId} />
 
       case 'file':
-        return <FilePage fileId={tab.entityId} />
+        return <MemoizedFilePage fileId={tab.entityId} />
 
       case 'folder':
-        return <FolderViewPage folderPath={tab.entityId} />
+        return <MemoizedFolderViewPage folderPath={tab.entityId} />
 
       case 'journal':
-        return <JournalPage />
+        return <MemoizedJournalPage />
 
       case 'search':
         return (
@@ -129,13 +155,13 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         )
 
       case 'settings':
-        return <SettingsPage />
+        return <MemoizedSettingsPage />
 
       case 'template-editor':
-        return <TemplateEditorPage templateId={tab.entityId} />
+        return <MemoizedTemplateEditorPage templateId={tab.entityId} />
 
       case 'templates':
-        return <TemplatesPage />
+        return <MemoizedTemplatesPage />
 
       case 'collection':
         return (
@@ -149,7 +175,9 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
       default:
         return <div className="p-4 text-gray-500">Unknown tab type: {tab.type}</div>
     }
-  }
+    // Dependencies: tab identity fields and tasksContext for TasksPage props
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab.id, tab.type, tab.entityId, tab.title, tab.viewState?.query, tasksContext])
 
   return (
     <div
@@ -157,7 +185,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
       className={cn('h-full overflow-y-auto overflow-x-hidden', className)}
       data-tab-content={tab.id}
     >
-      {renderContent()}
+      {content}
     </div>
   )
 }

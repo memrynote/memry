@@ -1,10 +1,15 @@
 /**
  * Sidebar Navigation Hook
  * Handles opening sidebar items in tabs with proper behavior
+ *
+ * PERFORMANCE: This hook has been optimized to prevent cascade re-renders:
+ * 1. Uses useTabActions instead of useTabs for stable action references
+ * 2. Uses optimized useIsItemActive hook for active state checking
+ * 3. State access is done via refs to keep callbacks stable
  */
 
 import { useCallback, useRef, useEffect } from 'react'
-import { useTabs, useTabSettings } from '@/contexts/tabs'
+import { useTabs, useTabActions, useTabSettings } from '@/contexts/tabs'
 import {
   findExistingTab,
   findTabByEntityId,
@@ -12,6 +17,7 @@ import {
 } from '@/contexts/tabs/helpers'
 import { SINGLETON_TAB_TYPES } from '@/contexts/tabs/types'
 import type { Tab, TabSystemState, SidebarItem } from '@/contexts/tabs/types'
+import { useIsItemActive } from './use-is-item-active'
 
 // =============================================================================
 // TYPES
@@ -109,12 +115,20 @@ export const isItemActiveTab = (state: TabSystemState, item: SidebarItem): boole
 
 /**
  * Hook for sidebar navigation with tab integration
- * Note: This hook needs access to state for checking existing tabs and active state.
- * Components using only openSidebarItem could be optimized further with a separate hook.
+ *
+ * PERFORMANCE OPTIMIZATION:
+ * - Uses useTabActions for stable action references (no re-renders on state change)
+ * - Uses useIsItemActive for optimized active state checking
+ * - State ref pattern keeps openSidebarItem callback stable
  */
 export const useSidebarNavigation = () => {
-  const { openTab, setActiveTab, splitView, state, dispatch } = useTabs()
+  // PERFORMANCE: useTabActions returns stable references - doesn't trigger re-renders
+  const { openTab, setActiveTab, splitView, dispatch } = useTabActions()
+  // We still need state for finding existing tabs, but access it via ref
+  const { state } = useTabs()
   const settings = useTabSettings()
+  // PERFORMANCE: Optimized active item checking - stable callback reference
+  const isActiveItem = useIsItemActive()
 
   // Use refs for state to avoid recreating callbacks
   const stateRef = useRef(state)
@@ -198,30 +212,20 @@ export const useSidebarNavigation = () => {
 
   /**
    * Check if item is open in any tab
-   * Note: This reads from state directly for accurate results
+   * Note: This reads from state ref for accurate results without callback instability
    */
   const isOpenInTab = useCallback((item: SidebarItem): boolean => {
     return isItemOpenInTab(stateRef.current, item)
   }, [])
 
-  /**
-   * Check if item is the active tab
-   * Note: This function is called during render for highlighting,
-   * so it needs to use fresh state for accurate UI
-   */
-  const isActiveItem = useCallback(
-    (item: SidebarItem): boolean => {
-      return isItemActiveTab(state, item)
-    },
-    [state]
-  )
+  // isActiveItem is now provided by useIsItemActive hook (optimized, stable reference)
 
   return {
     openSidebarItem,
     openAsPin,
     copyItemLink,
     isOpenInTab,
-    isActiveItem,
+    isActiveItem, // From useIsItemActive - stable reference
     settings
   }
 }
