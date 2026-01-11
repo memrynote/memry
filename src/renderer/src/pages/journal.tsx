@@ -7,29 +7,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import {
-  Sun,
-  Sunrise,
-  Sunset,
-  Moon,
-  Maximize2,
-  Minimize2,
-  Loader2,
-  FileText,
-  MoreHorizontal,
-  History,
-  Bookmark
-} from 'lucide-react'
+import { Loader2, FileText } from 'lucide-react'
 import { useSidebar } from '@/components/ui/sidebar'
 import {
   JournalCalendar,
   AIConnectionsPanel,
   DayContextSidebar,
-  DateBreadcrumb,
   JournalMonthView,
   JournalYearView,
   DefaultTemplateIndicator,
   JournalErrorBoundary,
+  JournalNavigationRow,
+  JournalDateDisplay,
   type ScheduleEvent,
   type JournalViewState
 } from '@/components/journal'
@@ -50,13 +39,6 @@ import { useJournalProperties } from '@/hooks/use-journal-properties'
 import { useTemplates } from '@/hooks/use-templates'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
 import { toast } from 'sonner'
@@ -68,7 +50,6 @@ import {
   getTodayString,
   parseISODate,
   addDays,
-  getTimeBasedGreeting,
   getMonthStats,
   getMonthName,
   type MonthStat
@@ -87,7 +68,6 @@ import { parseConnectionDate } from '@/services/ai-connections-service'
 import { journalService } from '@/services/journal-service'
 import { useActiveTab } from '@/contexts/tabs'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
-import { JournalReminderButton } from '@/components/journal/journal-reminder-button'
 
 // =============================================================================
 // CONSTANTS
@@ -96,26 +76,6 @@ import { JournalReminderButton } from '@/components/journal/journal-reminder-but
 // Note: Calendar events are not yet implemented (spec mentions "can be mocked initially")
 // Using empty array - will be populated when calendar integration is added
 const EMPTY_EVENTS: ScheduleEvent[] = []
-
-// =============================================================================
-// GREETING HELPERS
-// =============================================================================
-
-function getGreetingIcon(icon: string): React.ReactNode {
-  const iconClass = 'size-4'
-  switch (icon) {
-    case '🌅':
-      return <Sunrise className={cn(iconClass, 'text-amber-500')} />
-    case '☀️':
-      return <Sun className={cn(iconClass, 'text-amber-400')} />
-    case '🌆':
-      return <Sunset className={cn(iconClass, 'text-orange-500')} />
-    case '🌙':
-      return <Moon className={cn(iconClass, 'text-indigo-400')} />
-    default:
-      return <Sun className={cn(iconClass, 'text-amber-400')} />
-  }
-}
 
 // =============================================================================
 // MAIN COMPONENT
@@ -132,9 +92,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Get initial date from tab viewState (e.g., from search navigation) or default to today
   const initialDate = (activeTab?.viewState?.date as string) || today
   const [selectedDate, setSelectedDate] = useState(initialDate)
-  const [focusMode, setFocusMode] = useState(() => {
-    const saved = localStorage.getItem('memry_journal_focus_mode')
-    return saved === 'true'
+  const [isCompactMode, setIsCompactMode] = useState(() => {
+    const saved = localStorage.getItem('memry_journal_compact_mode')
+    return saved === 'true' // Default to false (Full Mode)
   })
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
@@ -352,9 +312,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Get date parts for current selected date
   const dateParts = useMemo(() => formatDateParts(selectedDate), [selectedDate])
 
-  // Get greeting for today
-  const greeting = useMemo(() => (isToday ? getTimeBasedGreeting() : null), [isToday])
-
   // Load real heatmap data from backend
   const currentYear = useMemo(() => dateParts.year, [dateParts.year])
   const { data: heatmapData } = useJournalHeatmap(currentYear)
@@ -561,6 +518,67 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     const nextDay = addDays(selectedDateObj, 1)
     navigateToDay(formatDateToISO(nextDay))
   }, [selectedDateObj, navigateToDay])
+
+  // Navigate to previous month (for month view)
+  const handlePreviousMonth = useCallback(() => {
+    if (viewState.type === 'month') {
+      const newMonth = viewState.month === 0 ? 11 : viewState.month - 1
+      const newYear = viewState.month === 0 ? viewState.year - 1 : viewState.year
+      setViewState({ type: 'month', year: newYear, month: newMonth })
+    }
+  }, [viewState])
+
+  // Navigate to next month (for month view)
+  const handleNextMonth = useCallback(() => {
+    if (viewState.type === 'month') {
+      const newMonth = viewState.month === 11 ? 0 : viewState.month + 1
+      const newYear = viewState.month === 11 ? viewState.year + 1 : viewState.year
+      setViewState({ type: 'month', year: newYear, month: newMonth })
+    }
+  }, [viewState])
+
+  // Navigate to previous year (for year view)
+  const handlePreviousYear = useCallback(() => {
+    if (viewState.type === 'year') {
+      setViewState({ type: 'year', year: viewState.year - 1 })
+    }
+  }, [viewState])
+
+  // Navigate to next year (for year view)
+  const handleNextYear = useCallback(() => {
+    if (viewState.type === 'year') {
+      setViewState({ type: 'year', year: viewState.year + 1 })
+    }
+  }, [viewState])
+
+  // Unified navigation handlers for JournalNavigationRow
+  const handleNavigationPrevious = useCallback(() => {
+    switch (viewState.type) {
+      case 'day':
+        handlePreviousDay()
+        break
+      case 'month':
+        handlePreviousMonth()
+        break
+      case 'year':
+        handlePreviousYear()
+        break
+    }
+  }, [viewState.type, handlePreviousDay, handlePreviousMonth, handlePreviousYear])
+
+  const handleNavigationNext = useCallback(() => {
+    switch (viewState.type) {
+      case 'day':
+        handleNextDay()
+        break
+      case 'month':
+        handleNextMonth()
+        break
+      case 'year':
+        handleNextYear()
+        break
+    }
+  }, [viewState.type, handleNextDay, handleNextMonth, handleNextYear])
 
   // BlockNote content handlers - save markdown content via journal service
   const handleMarkdownChange = useCallback(
@@ -961,10 +979,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [focusMode, viewState, navigateBack])
 
-  // Persist focus mode - save to localStorage when it changes
+  // Persist compact mode - save to localStorage when it changes
   useEffect(() => {
-    localStorage.setItem('memry_journal_focus_mode', focusMode.toString())
-  }, [focusMode])
+    localStorage.setItem('memry_journal_compact_mode', isCompactMode.toString())
+  }, [isCompactMode])
 
   // Handle error boundary recovery
   const handleErrorRecover = useCallback(() => {
@@ -997,312 +1015,216 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           )}
         >
           {/* Scrollable content area */}
-          <div className={cn('h-full overflow-y-auto', focusMode ? 'px-8' : 'px-6 lg:px-8')}>
+          <div className={cn('h-full overflow-y-auto')}>
             <div
               className={cn(
                 'mx-auto min-h-full flex flex-col',
                 'transition-all duration-500 ease-out',
-                focusMode ? 'max-w-xl' : 'max-w-2xl',
-                focusMode ? 'py-20 lg:py-28' : 'py-10 lg:py-16'
+                focusMode ? 'max-w-none' : 'max-w-3xl',
+                'pt-0 pb-10 lg:pb-16'
               )}
             >
-              {/* Header - Centered Breadcrumb Navigation */}
-              <header className={cn('relative mb-8 lg:mb-12', '')}>
-                {/* Content layer */}
-                <div className="relative z-10">
-                  {/* Top bar with greeting (left), breadcrumb (center), focus toggle (right) */}
-                  <div className="flex items-center justify-between gap-4">
-                    {/* Left side - Greeting (only for today in day view, hidden in focus mode) */}
-                    <div className="flex-1 flex justify-start">
-                      {viewState.type === 'day' && greeting && !focusMode && (
-                        <div
-                          className={cn(
-                            'hidden sm:flex items-center gap-2',
-                            'px-3 py-1.5 rounded-lg',
-                            'bg-gradient-to-r from-amber-50/80 to-orange-50/60',
-                            'dark:from-amber-950/30 dark:to-orange-950/20',
-                            'journal-greeting-glow',
-                            'transition-all duration-300',
-                            ''
-                          )}
-                        >
-                          {getGreetingIcon(greeting.icon)}
-                          <span className="text-sm font-medium text-amber-800/80 dark:text-amber-200/80">
-                            {greeting.greeting}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Center - Breadcrumb Navigation */}
-                    <DateBreadcrumb
-                      viewState={viewState}
-                      onMonthClick={navigateToMonth}
-                      onYearClick={navigateToYear}
-                      onBackClick={navigateBack}
-                      onPreviousDay={handlePreviousDay}
-                      onNextDay={handleNextDay}
-                    />
-
-                    {/* Right side - Focus Mode Toggle */}
-                    <div className="flex-1 flex items-center justify-end gap-2">
-                      {/* Focus Mode Toggle */}
-                      {viewState.type === 'day' && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            'size-8 rounded-lg',
-                            'text-muted-foreground/60 hover:text-foreground',
-                            'hover:bg-foreground/5',
-                            'transition-all duration-200',
-                            focusMode && 'bg-foreground/5 text-foreground',
-                            ''
-                          )}
-                          onClick={() => setFocusMode(!focusMode)}
-                          aria-pressed={focusMode}
-                          aria-label={focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
-                          title={focusMode ? 'Exit Focus Mode (Esc)' : 'Enter Focus Mode (⌘\\)'}
-                        >
-                          {focusMode ? (
-                            <Minimize2 className="size-4" />
-                          ) : (
-                            <Maximize2 className="size-4" />
-                          )}
-                        </Button>
-                      )}
-
-                      {/* Reminder Button */}
-                      {viewState.type === 'day' && entry && (
-                        <JournalReminderButton journalDate={entry.date} disabled={false} />
-                      )}
-
-                      {/* Bookmark Button */}
-                      {viewState.type === 'day' && entry && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-all duration-200"
-                          onClick={toggleBookmark}
-                          title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
-                        >
-                          <Bookmark
-                            className={`size-4 ${isBookmarked ? 'fill-current text-amber-500' : ''}`}
-                          />
-                          <span className="sr-only">
-                            {isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
-                          </span>
-                        </Button>
-                      )}
-
-                      {/* More Options Menu (3 dots) */}
-                      {viewState.type === 'day' && entry && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-all duration-200"
-                            >
-                              <MoreHorizontal className="size-4" />
-                              <span className="sr-only">More options</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setIsVersionHistoryOpen(true)}>
-                              <History className="mr-2 h-4 w-4" />
-                              Version History
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>
-                              Export
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Month view subtitle */}
-                  {viewState.type === 'month' && (
-                    <p className="text-center font-serif text-sm text-muted-foreground/60 italic mt-2 ">
-                      All journal entries for this month
-                    </p>
-                  )}
-
-                  {/* Year view subtitle */}
-                  {viewState.type === 'year' && (
-                    <p className="text-center font-serif text-sm text-muted-foreground/60 italic mt-2 ">
-                      Select a month to view entries
-                    </p>
-                  )}
-                </div>
+              {/* Header - Navigation Row + Date Display */}
+              <header className={cn('relative mb-8 lg:mb-12')}>
+                {/* Date Display with Greeting, Gradient, and Navigation Row inside */}
+                <JournalDateDisplay
+                  viewState={viewState}
+                  dateParts={dateParts}
+                  isToday={isToday}
+                  focusMode={focusMode}
+                  variant={focusMode ? 'flush' : 'card'}
+                >
+                  <JournalNavigationRow
+                    viewState={viewState}
+                    isToday={isToday}
+                    focusMode={focusMode}
+                    isBookmarked={isBookmarked}
+                    hasEntry={!!entry}
+                    journalDate={entry?.date ?? null}
+                    onPrevious={handleNavigationPrevious}
+                    onNext={handleNavigationNext}
+                    onToday={handleTodayClick}
+                    onFocusToggle={() => setFocusMode(!focusMode)}
+                    onBookmarkToggle={toggleBookmark}
+                    onVersionHistory={() => setIsVersionHistoryOpen(true)}
+                    onExport={() => setIsExportDialogOpen(true)}
+                  />
+                </JournalDateDisplay>
               </header>
 
-              {/* Error Banner */}
-              {entryError && (
-                <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                  <span className="font-medium">Error:</span> {entryError}
-                </div>
-              )}
+              {/* Editor/Content Area with its own max-width constraints if needed */}
+              <div
+                className={cn(
+                  'flex-1 flex flex-col',
+                  focusMode ? 'max-w-5xl mx-auto w-full px-8 lg:px-12' : 'w-full'
+                )}
+              >
+                {/* Error Banner */}
+                {entryError && (
+                  <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                    <span className="font-medium">Error:</span> {entryError}
+                  </div>
+                )}
 
-              {/* Conditional Content Rendering */}
-              {viewState.type === 'day' && (
-                /* Journal Editor - Main Writing Area (BlockNote) + Backlinks */
-                <>
-                  {/* Template Prompt - Show when there's no entry and not loading */}
-                  {!isEntryLoading && !entry && !focusMode && (
-                    <div className="mb-6 ">
-                      {/* Default template is set - show indicator and auto-apply */}
-                      {defaultTemplateInfo ? (
-                        <DefaultTemplateIndicator
-                          templateName={defaultTemplateInfo.name}
-                          templateIcon={defaultTemplateInfo.icon}
-                          isCreating={isApplyingDefaultTemplate}
-                          onChangeTemplate={() => setShowTemplateSelector(true)}
-                          onStartBlank={handleStartBlank}
-                        />
-                      ) : (
-                        /* No default template - show original prompt */
-                        <button
-                          onClick={() => setShowTemplateSelector(true)}
-                          className={cn(
-                            'w-full flex items-center gap-3 px-4 py-3 rounded-lg',
-                            'border border-dashed border-amber-300/50 dark:border-amber-700/50',
-                            'bg-gradient-to-r from-amber-50/50 to-orange-50/30',
-                            'dark:from-amber-950/20 dark:to-orange-950/10',
-                            'hover:border-amber-400/60 dark:hover:border-amber-600/60',
-                            'hover:from-amber-50/70 hover:to-orange-50/50',
-                            'dark:hover:from-amber-950/30 dark:hover:to-orange-950/20',
-                            'transition-all duration-200',
-                            'text-left group'
-                          )}
-                        >
-                          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/30 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/30 shadow-sm">
-                            <FileText className="w-4 h-4 text-amber-700 dark:text-amber-400" />
-                          </div>
-                          <div className="flex-1">
-                            <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                              Start with a template
+                {/* Conditional Content Rendering */}
+                {viewState.type === 'day' && (
+                  /* Journal Editor - Main Writing Area (BlockNote) + Backlinks */
+                  <>
+                    {/* Template Prompt - Show when there's no entry and not loading */}
+                    {!isEntryLoading && !entry && !focusMode && (
+                      <div className="mb-6 ">
+                        {/* Default template is set - show indicator and auto-apply */}
+                        {defaultTemplateInfo ? (
+                          <DefaultTemplateIndicator
+                            templateName={defaultTemplateInfo.name}
+                            templateIcon={defaultTemplateInfo.icon}
+                            isCreating={isApplyingDefaultTemplate}
+                            onChangeTemplate={() => setShowTemplateSelector(true)}
+                            onStartBlank={handleStartBlank}
+                          />
+                        ) : (
+                          /* No default template - show original prompt */
+                          <button
+                            onClick={() => setShowTemplateSelector(true)}
+                            className={cn(
+                              'w-full flex items-center gap-3 px-4 py-3 rounded-lg',
+                              'border border-dashed border-amber-300/50 dark:border-amber-700/50',
+                              'bg-gradient-to-r from-amber-50/50 to-orange-50/30',
+                              'dark:from-amber-950/20 dark:to-orange-950/10',
+                              'hover:border-amber-400/60 dark:hover:border-amber-600/60',
+                              'hover:from-amber-50/70 hover:to-orange-50/50',
+                              'dark:hover:from-amber-950/30 dark:hover:to-orange-950/20',
+                              'transition-all duration-200',
+                              'text-left group'
+                            )}
+                          >
+                            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/30 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/30 shadow-sm">
+                              <FileText className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+                            </div>
+                            <div className="flex-1">
+                              <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                                Start with a template
+                              </span>
+                              <p className="text-xs text-amber-600/70 dark:text-amber-400/60 mt-0.5">
+                                Morning pages, daily reflection, gratitude journal, and more
+                              </p>
+                            </div>
+                            <span className="text-xs text-amber-500/60 dark:text-amber-400/50 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
+                              Choose template
                             </span>
-                            <p className="text-xs text-amber-600/70 dark:text-amber-400/60 mt-0.5">
-                              Morning pages, daily reflection, gratitude journal, and more
-                            </p>
-                          </div>
-                          <span className="text-xs text-amber-500/60 dark:text-amber-400/50 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
-                            Choose template
-                          </span>
-                        </button>
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Tags Section - Hidden in focus mode */}
+                    {!focusMode && entry && (
+                      <div className="mb-4 " style={{ paddingLeft: '24px' }}>
+                        <TagsRow
+                          tags={journalTags}
+                          availableTags={availableTags}
+                          recentTags={recentTags}
+                          onAddTag={handleAddTag}
+                          onCreateTag={handleCreateTag}
+                          onRemoveTag={handleRemoveTag}
+                        />
+                      </div>
+                    )}
+
+                    {/* Properties Section - Hidden in focus mode */}
+                    {!focusMode && entry && (
+                      <div className="mb-4 " style={{ paddingLeft: '24px' }}>
+                        <InfoSection
+                          properties={properties}
+                          isExpanded={isInfoExpanded}
+                          onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
+                          onPropertyChange={handlePropertyChange}
+                          onAddProperty={handleAddProperty}
+                          onDeleteProperty={handleDeleteProperty}
+                        />
+                      </div>
+                    )}
+
+                    <div
+                      className={cn(
+                        'editor-click-area min-h-[300px] relative',
+                        '',
+                        // Notebook margin line (only when not in focus mode)
+                        !focusMode && 'journal-margin-line pl-6 lg:pl-8'
+                      )}
+                      onMouseDown={(e) => {
+                        const target = e.target as HTMLElement
+                        // If clicking directly on editable text, let it work normally
+                        if (
+                          target.closest('[contenteditable="true"]')?.contains(target) &&
+                          target.closest('.bn-block-content')
+                        ) {
+                          return
+                        }
+                        // If clicking on buttons or links, let it work normally
+                        if (target.closest('button, a, input')) {
+                          return
+                        }
+                        // Focus editor for all other clicks (empty areas)
+                        const editor = (e.currentTarget as HTMLElement).querySelector(
+                          '.bn-editor [contenteditable="true"]'
+                        ) as HTMLElement
+                        if (editor) {
+                          e.preventDefault()
+                          editor.focus()
+                        }
+                      }}
+                    >
+                      {showEditorLoading ? (
+                        <div className="flex items-center justify-center h-[300px]">
+                          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : (
+                        <ContentArea
+                          key={editorState.key}
+                          initialContent={editorState.content}
+                          contentType="markdown"
+                          placeholder={
+                            selectedDate > today
+                              ? 'What are you planning...'
+                              : isToday
+                                ? "What's on your mind today..."
+                                : 'Reflect on this day...'
+                          }
+                          stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                          onContentChange={handleContentChange}
+                          onMarkdownChange={handleMarkdownChange}
+                          onHeadingsChange={handleHeadingsChange}
+                          onLinkClick={handleLinkClick}
+                          onInternalLinkClick={handleInternalLinkClick}
+                        />
                       )}
                     </div>
-                  )}
+                  </>
+                )}
 
-                  {/* Tags Section - Hidden in focus mode */}
-                  {!focusMode && entry && (
-                    <div className="mb-4 " style={{ paddingLeft: '24px' }}>
-                      <TagsRow
-                        tags={journalTags}
-                        availableTags={availableTags}
-                        recentTags={recentTags}
-                        onAddTag={handleAddTag}
-                        onCreateTag={handleCreateTag}
-                        onRemoveTag={handleRemoveTag}
-                      />
-                    </div>
-                  )}
+                {viewState.type === 'month' && (
+                  /* Month View - List of all entries */
+                  <JournalMonthView
+                    year={viewState.year}
+                    month={viewState.month}
+                    entries={monthEntries}
+                    heatmapData={heatmapData}
+                    onDayClick={navigateToDay}
+                    className="flex-1"
+                  />
+                )}
 
-                  {/* Properties Section - Hidden in focus mode */}
-                  {!focusMode && entry && (
-                    <div className="mb-4 " style={{ paddingLeft: '24px' }}>
-                      <InfoSection
-                        properties={properties}
-                        isExpanded={isInfoExpanded}
-                        onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
-                        onPropertyChange={handlePropertyChange}
-                        onAddProperty={handleAddProperty}
-                        onDeleteProperty={handleDeleteProperty}
-                      />
-                    </div>
-                  )}
-
-                  <div
-                    className={cn(
-                      'editor-click-area min-h-[300px] relative',
-                      '',
-                      // Notebook margin line (only when not in focus mode)
-                      !focusMode && 'journal-margin-line pl-6 lg:pl-8'
-                    )}
-                    onMouseDown={(e) => {
-                      const target = e.target as HTMLElement
-                      // If clicking directly on editable text, let it work normally
-                      if (
-                        target.closest('[contenteditable="true"]')?.contains(target) &&
-                        target.closest('.bn-block-content')
-                      ) {
-                        return
-                      }
-                      // If clicking on buttons or links, let it work normally
-                      if (target.closest('button, a, input')) {
-                        return
-                      }
-                      // Focus editor for all other clicks (empty areas)
-                      const editor = (e.currentTarget as HTMLElement).querySelector(
-                        '.bn-editor [contenteditable="true"]'
-                      ) as HTMLElement
-                      if (editor) {
-                        e.preventDefault()
-                        editor.focus()
-                      }
-                    }}
-                  >
-                    {showEditorLoading ? (
-                      <div className="flex items-center justify-center h-[300px]">
-                        <Loader2 className="size-6 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : (
-                      <ContentArea
-                        key={editorState.key}
-                        initialContent={editorState.content}
-                        contentType="markdown"
-                        placeholder={
-                          selectedDate > today
-                            ? 'What are you planning...'
-                            : isToday
-                              ? "What's on your mind today..."
-                              : 'Reflect on this day...'
-                        }
-                        stickyToolbar={editorSettings.toolbarMode === 'sticky'}
-                        onContentChange={handleContentChange}
-                        onMarkdownChange={handleMarkdownChange}
-                        onHeadingsChange={handleHeadingsChange}
-                        onLinkClick={handleLinkClick}
-                        onInternalLinkClick={handleInternalLinkClick}
-                      />
-                    )}
-                  </div>
-                </>
-              )}
-
-              {viewState.type === 'month' && (
-                /* Month View - List of all entries */
-                <JournalMonthView
-                  year={viewState.year}
-                  month={viewState.month}
-                  entries={monthEntries}
-                  heatmapData={heatmapData}
-                  onDayClick={navigateToDay}
-                  className="flex-1"
-                />
-              )}
-
-              {viewState.type === 'year' && (
-                /* Year View - Grid of month cards */
-                <JournalYearView
-                  year={viewState.year}
-                  monthStats={monthStats}
-                  onMonthClick={(month) => navigateToMonth(viewState.year, month)}
-                  className="flex-1"
-                />
-              )}
+                {viewState.type === 'year' && (
+                  /* Year View - Grid of month cards */
+                  <JournalYearView
+                    year={viewState.year}
+                    monthStats={monthStats}
+                    onMonthClick={(month) => navigateToMonth(viewState.year, month)}
+                    className="flex-1"
+                  />
+                )}
+              </div>
             </div>
           </div>
 
