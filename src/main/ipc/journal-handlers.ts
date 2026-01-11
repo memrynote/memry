@@ -26,17 +26,17 @@ import {
 import { createValidatedHandler, createHandler } from './validate'
 import {
   readJournalEntry,
-  writeJournalEntry,
+  writeJournalEntryWithContent,
   deleteJournalEntryFile,
   getJournalRelativePath,
   extractPreview,
   serializeJournalEntry
 } from '../vault/journal'
 import { maybeCreateSignificantSnapshot } from '../vault/notes'
+import { syncNoteToCache } from '../vault/note-sync'
+import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import {
   // Unified CRUD operations (using note_cache)
-  insertNoteCache,
-  updateNoteCache,
   deleteNoteCache,
   getNoteCacheByPath,
   // Journal-specific queries
@@ -46,7 +46,6 @@ import {
   getJournalYearStats,
   getJournalStreak,
   // Tag operations (using note_tags)
-  setNoteTags,
   getNoteTags,
   getAllTagsWithColors,
   // Property operations (using note_properties)
@@ -114,29 +113,32 @@ export function registerJournalHandlers(): void {
       const db = getIndexDatabase()
 
       // Write to file
-      const entry = await writeJournalEntry(input.date, input.content ?? '', input.tags)
+      const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
+        input.date,
+        input.content ?? '',
+        input.tags
+      )
 
-      // Insert into unified note_cache
-      insertNoteCache(db, {
-        id: entry.id,
-        path: getJournalRelativePath(entry.date),
-        title: entry.date, // Use date as title for journal entries
-        contentHash: '', // Will be computed on next index
-        wordCount: entry.wordCount,
-        characterCount: entry.characterCount,
-        date: entry.date, // Set date field for journal entries
-        createdAt: entry.createdAt,
-        modifiedAt: entry.modifiedAt
-      })
+      const journalPath = getJournalRelativePath(entry.date)
+      const cached = getJournalEntryByDate(db, entry.date)
+      const cacheId = cached?.id ?? entry.id
 
-      // Set tags using unified note_tags
-      if (entry.tags.length > 0) {
-        setNoteTags(db, entry.id, entry.tags)
-      }
+      syncNoteToCache(
+        db,
+        {
+          id: cacheId,
+          path: journalPath,
+          fileContent,
+          frontmatter,
+          parsedContent: entry.content
+        },
+        { isNew: !cached }
+      )
+      queueEmbeddingUpdate(cacheId)
 
       // Set properties using unified note_properties
       if (input.properties && Object.keys(input.properties).length > 0) {
-        setNoteProperties(db, entry.id, input.properties, inferPropertyType)
+        setNoteProperties(db, cacheId, input.properties, inferPropertyType)
         entry.properties = input.properties
       }
 
@@ -168,44 +170,29 @@ export function registerJournalHandlers(): void {
       const existing = await readJournalEntry(input.date)
       if (!existing) {
         // If entry doesn't exist, create it
-        const entry = await writeJournalEntry(input.date, input.content ?? '', input.tags ?? [])
+        const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
+          input.date,
+          input.content ?? '',
+          input.tags ?? []
+        )
+        const cacheId = cached?.id ?? entry.id
 
-        // Check if there's a cache entry (by date or path)
-        if (cached) {
-          // Update the existing cache entry (also set date field if missing)
-          updateNoteCache(db, cached.id, {
+        syncNoteToCache(
+          db,
+          {
+            id: cacheId,
             path: journalPath,
-            title: entry.date,
-            wordCount: entry.wordCount,
-            characterCount: entry.characterCount,
-            date: entry.date, // Ensure date is set
-            createdAt: entry.createdAt,
-            modifiedAt: entry.modifiedAt
-          })
-          setNoteTags(db, cached.id, entry.tags)
-        } else {
-          // No cache entry, insert fresh
-          insertNoteCache(db, {
-            id: entry.id,
-            path: journalPath,
-            title: entry.date,
-            contentHash: '',
-            wordCount: entry.wordCount,
-            characterCount: entry.characterCount,
-            date: entry.date,
-            createdAt: entry.createdAt,
-            modifiedAt: entry.modifiedAt
-          })
-
-          if (entry.tags.length > 0) {
-            setNoteTags(db, entry.id, entry.tags)
-          }
-        }
+            fileContent,
+            frontmatter,
+            parsedContent: entry.content
+          },
+          { isNew: !cached }
+        )
+        queueEmbeddingUpdate(cacheId)
 
         // Set properties if provided
         if (input.properties && Object.keys(input.properties).length > 0) {
-          const entryId = cached?.id ?? entry.id
-          setNoteProperties(db, entryId, input.properties, inferPropertyType)
+          setNoteProperties(db, cacheId, input.properties, inferPropertyType)
           entry.properties = input.properties
         }
 
@@ -250,39 +237,30 @@ export function registerJournalHandlers(): void {
       }
 
       // Write to file
-      const entry = await writeJournalEntry(input.date, newContent, newTags)
+      const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
+        input.date,
+        newContent,
+        newTags,
+        existing
+      )
+      const cacheId = cached?.id ?? entry.id
 
-      // Update unified cache
-      if (cached) {
-        updateNoteCache(db, cached.id, {
-          wordCount: entry.wordCount,
-          characterCount: entry.characterCount,
-          date: entry.date, // Ensure date is set
-          modifiedAt: entry.modifiedAt
-        })
-        setNoteTags(db, cached.id, entry.tags)
-      } else {
-        // Entry exists in file but not in cache - insert it
-        insertNoteCache(db, {
-          id: entry.id,
+      syncNoteToCache(
+        db,
+        {
+          id: cacheId,
           path: journalPath,
-          title: entry.date,
-          contentHash: '',
-          wordCount: entry.wordCount,
-          characterCount: entry.characterCount,
-          date: entry.date,
-          createdAt: entry.createdAt,
-          modifiedAt: entry.modifiedAt
-        })
-        if (entry.tags.length > 0) {
-          setNoteTags(db, entry.id, entry.tags)
-        }
-      }
+          fileContent,
+          frontmatter,
+          parsedContent: entry.content
+        },
+        { isNew: !cached }
+      )
+      queueEmbeddingUpdate(cacheId)
 
       // Update properties if provided
       if (input.properties !== undefined) {
-        const entryId = cached?.id ?? entry.id
-        setNoteProperties(db, entryId, input.properties, inferPropertyType)
+        setNoteProperties(db, cacheId, input.properties, inferPropertyType)
         entry.properties = input.properties
       } else if (existing.properties) {
         // Keep existing properties if not updating

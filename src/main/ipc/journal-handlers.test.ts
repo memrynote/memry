@@ -36,6 +36,7 @@ vi.mock('../database', () => ({
 vi.mock('../vault/journal', () => ({
   readJournalEntry: vi.fn(),
   writeJournalEntry: vi.fn(),
+  writeJournalEntryWithContent: vi.fn(),
   deleteJournalEntryFile: vi.fn(),
   getJournalRelativePath: vi.fn(),
   extractPreview: vi.fn(),
@@ -44,6 +45,14 @@ vi.mock('../vault/journal', () => ({
 
 vi.mock('../vault/notes', () => ({
   maybeCreateSignificantSnapshot: vi.fn()
+}))
+
+vi.mock('../vault/note-sync', () => ({
+  syncNoteToCache: vi.fn()
+}))
+
+vi.mock('../inbox/embedding-queue', () => ({
+  queueEmbeddingUpdate: vi.fn()
 }))
 
 vi.mock('@shared/db/queries/notes', () => ({
@@ -73,6 +82,7 @@ vi.mock('@shared/db/queries/tasks', () => ({
 import { registerJournalHandlers, unregisterJournalHandlers } from './journal-handlers'
 import { getIndexDatabase, getDatabase } from '../database'
 import * as journalVault from '../vault/journal'
+import * as noteSync from '../vault/note-sync'
 import * as notesQueries from '@shared/db/queries/notes'
 import * as tasksQueries from '@shared/db/queries/tasks'
 
@@ -121,7 +131,17 @@ describe('journal-handlers', () => {
 
   it('creates a journal entry and emits event', async () => {
     registerJournalHandlers()
-    ;(journalVault.writeJournalEntry as Mock).mockResolvedValue({ ...baseEntry })
+    ;(journalVault.writeJournalEntryWithContent as Mock).mockResolvedValue({
+      entry: { ...baseEntry },
+      fileContent: 'serialized',
+      frontmatter: {
+        id: baseEntry.id,
+        date: baseEntry.date,
+        created: baseEntry.createdAt,
+        modified: baseEntry.modifiedAt,
+        tags: baseEntry.tags
+      }
+    })
     ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
 
     const result = await invokeHandler(JournalChannels.invoke.CREATE_ENTRY, {
@@ -132,8 +152,7 @@ describe('journal-handlers', () => {
     })
 
     expect(result).toEqual(expect.objectContaining({ id: 'j2025-01-01' }))
-    expect(notesQueries.insertNoteCache).toHaveBeenCalled()
-    expect(notesQueries.setNoteTags).toHaveBeenCalled()
+    expect(noteSync.syncNoteToCache).toHaveBeenCalled()
     expect(notesQueries.setNoteProperties).toHaveBeenCalled()
   })
 
@@ -149,7 +168,17 @@ describe('journal-handlers', () => {
     }
 
     ;(journalVault.readJournalEntry as Mock).mockResolvedValue({ ...baseEntry })
-    ;(journalVault.writeJournalEntry as Mock).mockResolvedValue(updatedEntry)
+    ;(journalVault.writeJournalEntryWithContent as Mock).mockResolvedValue({
+      entry: updatedEntry,
+      fileContent: 'serialized',
+      frontmatter: {
+        id: updatedEntry.id,
+        date: updatedEntry.date,
+        created: updatedEntry.createdAt,
+        modified: updatedEntry.modifiedAt,
+        tags: updatedEntry.tags
+      }
+    })
     ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
     ;(journalVault.serializeJournalEntry as Mock).mockReturnValue('serialized')
     ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue({ id: 'cache-1' })
@@ -161,8 +190,7 @@ describe('journal-handlers', () => {
     })
 
     expect(result).toEqual(expect.objectContaining({ content: 'Updated content' }))
-    expect(notesQueries.updateNoteCache).toHaveBeenCalled()
-    expect(notesQueries.setNoteTags).toHaveBeenCalled()
+    expect(noteSync.syncNoteToCache).toHaveBeenCalled()
   })
 
   it('deletes a journal entry and emits delete event', async () => {
