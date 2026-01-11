@@ -18,6 +18,10 @@ export * from './journal-entry-list-item'
 export * from './journal-month-view'
 export * from './journal-year-view'
 
+// New Navigation Components
+export * from './journal-navigation-row'
+export * from './journal-date-display'
+
 // Template Indicator
 export * from './default-template-indicator'
 

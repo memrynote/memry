@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { Check, Loader2, AlertCircle, Clock, AlignJustify, LayoutGrid } from 'lucide-react'
+import { Check, Loader2, AlertCircle, Clock } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { useTabs } from '@/contexts/tabs'
@@ -13,8 +13,6 @@ import { Button } from '@/components/ui/button'
 import { ToastContainer, type Toast } from '@/components/ui/toast'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ListView } from '@/components/list-view'
 import { InboxDetailPanel } from '@/components/inbox-detail'
 import { BulkActionBar, type ClusterSuggestion } from '@/components/bulk/bulk-action-bar'
@@ -25,7 +23,7 @@ import { EmptyState } from '@/components/empty-state/empty-state'
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
 import { SRAnnouncer } from '@/components/sr-announcer'
 import { CaptureInput } from '@/components/capture-input'
-import { InboxSegmentControl, type InboxView } from '@/components/inbox/inbox-segment-control'
+import type { InboxView } from '@/components/inbox/inbox-segment-control'
 import { InboxInsightsView } from '@/components/inbox/inbox-insights-view'
 import { InboxArchivedView } from '@/components/inbox/inbox-archived-view'
 import { inboxService, onInboxSnoozeDue } from '@/services/inbox-service'
@@ -34,7 +32,7 @@ import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
 import { getStaleItems, getNonStaleItems } from '@/lib/stale-utils'
 import { cn } from '@/lib/utils'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
-import { useDisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
+import { DENSITY_CONFIG } from '@/hooks/use-display-density'
 import {
   useInboxList,
   useInboxItem,
@@ -52,13 +50,13 @@ interface InboxPageProps {
 export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [showSnoozedItems, setShowSnoozedItems] = useState(false)
-  const [currentView, setCurrentView] = useState<InboxView>('inbox')
+  const currentView: InboxView = 'inbox'
   const queryClient = useQueryClient()
   const { openTab } = useTabs()
 
-  // Display density preference (comfortable vs compact)
-  const { density, setDensity } = useDisplayDensity()
-  const densityConfig = DENSITY_CONFIG[density]
+  // Display density is fixed to compact for the inbox.
+  const density = 'compact'
+  const densityConfig = DENSITY_CONFIG.compact
 
   // Backend data hooks
   const {
@@ -336,12 +334,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const handleSelectionChange = useCallback((newSelection: Set<string>): void => {
     setSelectedItemIds(newSelection)
   }, [])
-
-  // Handle select all
-  const handleSelectAll = useCallback((): void => {
-    const allIds = new Set(items.map((item) => item.id))
-    setSelectedItemIds(allIds)
-  }, [items])
 
   // Handle deselect all
   const handleDeselectAll = useCallback((): void => {
@@ -1267,19 +1259,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     return () => window.removeEventListener('paste', handlePaste)
   }, [handleImageCapture])
 
-  // Calculate today's items count for header
-  const todayItemsCount = useMemo(() => {
-    const today = new Date()
-    return items.filter((item) => {
-      const itemDate = item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt)
-      return (
-        itemDate.getDate() === today.getDate() &&
-        itemDate.getMonth() === today.getMonth() &&
-        itemDate.getFullYear() === today.getFullYear()
-      )
-    }).length
-  }, [items])
-
   return (
     <div
       className={cn(
@@ -1381,112 +1360,39 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 <h1 className="font-display text-2xl lg:text-3xl font-normal tracking-tight text-foreground/90 mb-1">
                   Inbox
                 </h1>
-                <p className="font-serif text-sm text-muted-foreground/70 tracking-wide">
-                  {currentView === 'inbox'
-                    ? items.length === 0
-                      ? 'All caught up'
-                      : todayItemsCount > 0
-                        ? `${todayItemsCount} item${todayItemsCount !== 1 ? 's' : ''} arrived today`
-                        : `${items.length} item${items.length !== 1 ? 's' : ''} waiting`
-                    : currentView === 'archived'
+                {currentView !== 'inbox' && (
+                  <p className="font-serif text-sm text-muted-foreground/70 tracking-wide">
+                    {currentView === 'archived'
                       ? 'Previously processed items'
                       : 'Capture patterns & insights'}
-                </p>
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center gap-3">
                 {/* View-specific controls */}
                 {currentView === 'inbox' && (
-                  <>
-                    {items.length > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleSelectAll}
-                        className={cn(
-                          'text-muted-foreground/60 hover:text-foreground',
-                          'hover:bg-foreground/5'
-                        )}
-                      >
-                        Select all
-                      </Button>
-                    )}
-
-                    {/* Show snoozed items toggle */}
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id="show-snoozed"
-                        checked={showSnoozedItems}
-                        onCheckedChange={setShowSnoozedItems}
-                        className="scale-90"
-                      />
-                      <Label
-                        htmlFor="show-snoozed"
-                        className="text-xs text-muted-foreground/70 cursor-pointer whitespace-nowrap"
-                      >
-                        <Clock className="inline-block size-3 mr-1" />
-                        Show snoozed
-                      </Label>
-                    </div>
-
-                    {/* Display density toggle */}
-                    <div className="flex items-center">
-                      <ToggleGroup
-                        type="single"
-                        value={density}
-                        onValueChange={(value) => {
-                          if (value) setDensity(value as 'comfortable' | 'compact')
-                        }}
-                        size="sm"
-                        className="bg-muted/30 rounded-md p-0.5"
-                      >
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <ToggleGroupItem
-                              value="comfortable"
-                              aria-label="Comfortable view"
-                              className={cn(
-                                'h-7 w-7 p-0',
-                                'data-[state=on]:bg-background data-[state=on]:shadow-sm'
-                              )}
-                            >
-                              <LayoutGrid className="size-3.5" />
-                            </ToggleGroupItem>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="text-xs">
-                            Comfortable
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <ToggleGroupItem
-                              value="compact"
-                              aria-label="Compact view"
-                              className={cn(
-                                'h-7 w-7 p-0',
-                                'data-[state=on]:bg-background data-[state=on]:shadow-sm'
-                              )}
-                            >
-                              <AlignJustify className="size-3.5" />
-                            </ToggleGroupItem>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="text-xs">
-                            Compact
-                          </TooltipContent>
-                        </Tooltip>
-                      </ToggleGroup>
-                    </div>
-                  </>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="show-snoozed"
+                      checked={showSnoozedItems}
+                      onCheckedChange={setShowSnoozedItems}
+                      className="scale-90"
+                    />
+                    <Label
+                      htmlFor="show-snoozed"
+                      className="text-xs text-muted-foreground/70 cursor-pointer whitespace-nowrap"
+                    >
+                      <Clock className="inline-block size-3 mr-1" />
+                      Show snoozed
+                    </Label>
+                  </div>
                 )}
               </div>
             </div>
           )}
         </div>
 
-        {/* Segment Control - view switcher */}
-        <div className="mt-4">
-          <InboxSegmentControl value={currentView} onChange={setCurrentView} />
-        </div>
       </header>
 
       {/* Quick Capture Input - only in inbox view */}
