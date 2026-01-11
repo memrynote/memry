@@ -34,6 +34,7 @@ export interface JournalFrontmatter {
   created: string
   modified: string
   tags?: string[]
+  [key: string]: unknown
 }
 
 /**
@@ -43,6 +44,15 @@ export interface ParsedJournalEntry {
   frontmatter: JournalFrontmatter
   content: string
   hadFrontmatter: boolean
+}
+
+/**
+ * Result of writing a journal entry, including the serialized file content.
+ */
+export interface JournalWriteResult {
+  entry: JournalEntry
+  fileContent: string
+  frontmatter: JournalFrontmatter
 }
 
 // ============================================================================
@@ -205,13 +215,14 @@ export async function readJournalEntry(date: string): Promise<JournalEntry | nul
  * @param date - Date in YYYY-MM-DD format
  * @param content - Markdown content (without frontmatter)
  * @param tags - Optional tags
- * @returns The created/updated journal entry
+ * @returns The created/updated journal entry and serialized file content
  */
-export async function writeJournalEntry(
+export async function writeJournalEntryWithContent(
   date: string,
   content: string,
-  tags?: string[]
-): Promise<JournalEntry> {
+  tags?: string[],
+  existingEntry?: JournalEntry | null
+): Promise<JournalWriteResult> {
   const filePath = getJournalPath(date)
   const journalDir = getJournalDir()
 
@@ -219,7 +230,7 @@ export async function writeJournalEntry(
   await ensureDirectory(journalDir)
 
   // Check if entry already exists
-  const existing = await readJournalEntry(date)
+  const existing = existingEntry ?? (await readJournalEntry(date))
   let frontmatter: JournalFrontmatter
 
   if (existing) {
@@ -240,19 +251,44 @@ export async function writeJournalEntry(
   const fileContent = serializeJournalEntry(frontmatter, content)
   await atomicWrite(filePath, fileContent)
 
-  const wordCount = countWords(content)
-  const characterCount = content.length
+  const parsed = parseJournalEntry(fileContent, date)
+  const wordCount = countWords(parsed.content)
+  const characterCount = parsed.content.length
 
-  return {
-    id: frontmatter.id,
-    date: frontmatter.date,
-    content,
+  const entry: JournalEntry = {
+    id: parsed.frontmatter.id,
+    date: parsed.frontmatter.date,
+    content: parsed.content,
     wordCount,
     characterCount,
-    tags: frontmatter.tags ?? [],
-    createdAt: frontmatter.created,
-    modifiedAt: frontmatter.modified
+    tags: parsed.frontmatter.tags ?? [],
+    createdAt: parsed.frontmatter.created,
+    modifiedAt: parsed.frontmatter.modified
   }
+
+  return {
+    entry,
+    fileContent,
+    frontmatter: parsed.frontmatter
+  }
+}
+
+/**
+ * Write a journal entry to the file system.
+ * Creates the file if it doesn't exist, updates it if it does.
+ *
+ * @param date - Date in YYYY-MM-DD format
+ * @param content - Markdown content (without frontmatter)
+ * @param tags - Optional tags
+ * @returns The created/updated journal entry
+ */
+export async function writeJournalEntry(
+  date: string,
+  content: string,
+  tags?: string[]
+): Promise<JournalEntry> {
+  const result = await writeJournalEntryWithContent(date, content, tags)
+  return result.entry
 }
 
 /**
