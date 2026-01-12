@@ -17,6 +17,7 @@ export interface InfoSectionProps {
   onDeleteProperty: (propertyId: string) => void
   disabled?: boolean
   initialVisibleCount?: number
+  variant?: 'default' | 'embedded'
 }
 
 export const InfoSection = memo(function InfoSection({
@@ -28,7 +29,8 @@ export const InfoSection = memo(function InfoSection({
   onAddProperty,
   onDeleteProperty,
   disabled = false,
-  initialVisibleCount = 4
+  initialVisibleCount = 4,
+  variant = 'default'
 }: InfoSectionProps) {
   const [showAllProperties, setShowAllProperties] = useState(false)
   const [isAddPopupOpen, setIsAddPopupOpen] = useState(false)
@@ -118,15 +120,19 @@ export const InfoSection = memo(function InfoSection({
   )
 
   return (
-    <div className="mb-4" role="region" aria-label="Note properties">
+    <div className={cn(variant === 'default' && 'mb-4')} role="region" aria-label="Note properties">
       {/* Toggle Header */}
-      <InfoHeader isExpanded={isExpanded} onToggle={onToggleExpand} />
+      {variant === 'default' && <InfoHeader isExpanded={isExpanded} onToggle={onToggleExpand} />}
 
       {/* Collapsible Content - Only rendered when expanded to prevent focus trap */}
-      {isExpanded && (
+      {(isExpanded || variant === 'embedded') && (
         <div
           id="properties-content"
-          className={cn('mt-1 rounded-lg', 'bg-transparent', 'py-2 px-4')}
+          className={cn(
+            'mt-1 rounded-lg',
+            'bg-transparent',
+            variant === 'default' ? 'py-2 px-4' : 'py-0 px-0'
+          )}
         >
           {/* Section Header */}
           {folderProperties && folderProperties.length > 0 && (

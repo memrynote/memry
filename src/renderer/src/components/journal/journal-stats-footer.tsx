@@ -79,7 +79,9 @@ export const JournalStatsFooter = memo(function JournalStatsFooter({
         <span>{wordCount.toLocaleString()} words</span>
       </div>
 
-      <span className="text-border" aria-hidden="true">·</span>
+      <span className="text-border" aria-hidden="true">
+        ·
+      </span>
 
       {/* Character Count */}
       <div className="flex items-center gap-1.5" title="Character count">
@@ -87,7 +89,9 @@ export const JournalStatsFooter = memo(function JournalStatsFooter({
         <span>{characterCount.toLocaleString()} chars</span>
       </div>
 
-      <span className="text-border" aria-hidden="true">·</span>
+      <span className="text-border" aria-hidden="true">
+        ·
+      </span>
 
       {/* Reading Time */}
       <div className="flex items-center gap-1.5" title="Estimated reading time">
@@ -95,7 +99,9 @@ export const JournalStatsFooter = memo(function JournalStatsFooter({
         <span>{readingTime} read</span>
       </div>
 
-      <span className="text-border" aria-hidden="true">·</span>
+      <span className="text-border" aria-hidden="true">
+        ·
+      </span>
 
       {/* Modified Date */}
       <div className="flex items-center gap-1.5" title="Last modified">
