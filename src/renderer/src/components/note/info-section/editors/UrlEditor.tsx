@@ -63,7 +63,7 @@ export function UrlEditor({
   }, [value])
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1 min-h-[20px]">
       <input
         ref={inputRef}
         type="url"
@@ -73,12 +73,10 @@ export function UrlEditor({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className={cn(
-          'flex-1 rounded px-2 py-1',
-          'text-[13px] text-foreground',
-          'bg-background/50 border border-border/60',
-          'placeholder:text-muted-foreground/40',
-          'outline-none',
-          'focus:bg-background focus:border-border focus:ring-1 focus:ring-border/40 shadow-sm'
+          'flex-1 bg-transparent border-none p-0',
+          'text-[13px] text-foreground leading-tight',
+          'placeholder:text-muted-foreground/30',
+          'outline-none focus:ring-0 shadow-none'
         )}
       />
       {value && (
@@ -87,13 +85,13 @@ export function UrlEditor({
           onClick={handleOpenUrl}
           aria-label="Open URL"
           className={cn(
-            'flex h-7 w-7 items-center justify-center',
-            'rounded text-muted-foreground/50',
+            'flex h-4 w-4 items-center justify-center shrink-0',
+            'rounded text-muted-foreground/40',
             'transition-colors duration-150',
             'hover:bg-muted hover:text-muted-foreground'
           )}
         >
-          <ExternalLink className="h-3.5 w-3.5" />
+          <ExternalLink className="h-3 w-3" />
         </button>
       )}
     </div>

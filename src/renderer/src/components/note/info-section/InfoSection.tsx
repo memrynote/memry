@@ -122,10 +122,15 @@ export const InfoSection = memo(function InfoSection({
   return (
     <div className={cn(variant === 'default' && 'mb-4')} role="region" aria-label="Note properties">
       {/* Toggle Header */}
-      {variant === 'default' && <InfoHeader isExpanded={isExpanded} onToggle={onToggleExpand} />}
+      <InfoHeader
+        isExpanded={isExpanded}
+        onToggle={onToggleExpand}
+        variant={variant}
+        propertyCount={properties.length}
+      />
 
       {/* Collapsible Content - Only rendered when expanded to prevent focus trap */}
-      {(isExpanded || variant === 'embedded') && (
+      {isExpanded && (
         <div
           id="properties-content"
           className={cn(
@@ -198,7 +203,7 @@ export const InfoSection = memo(function InfoSection({
           )}
 
           {/* Add Property Button */}
-          <div className="mt-2 border-t border-border/40 pt-2">
+          <div className="mt-1 pt-1">
             <button
               ref={addButtonRef}
               type="button"
@@ -206,15 +211,15 @@ export const InfoSection = memo(function InfoSection({
               disabled={disabled}
               className={cn(
                 'flex items-center gap-1.5',
-                'text-[13px] text-stone-500',
+                'text-[12px] text-stone-400',
                 'transition-colors duration-150',
-                'hover:text-stone-700',
+                'hover:text-stone-600',
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
               aria-label="Add a new property to this note"
               aria-haspopup="dialog"
             >
-              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+              <Plus className="h-3 w-3" aria-hidden="true" />
               Add property
             </button>
           </div>
