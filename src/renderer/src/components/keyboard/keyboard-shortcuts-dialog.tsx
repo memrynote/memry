@@ -70,6 +70,7 @@ const getShortcutGroups = (): ShortcutGroup[] => {
       shortcuts: [
         { keys: [mod, 'B'], description: 'Toggle sidebar' },
         { keys: [mod, 'P'], description: 'Quick open' },
+        { keys: [mod, ','], description: 'Settings' },
         { keys: [mod, 'F'], description: 'Search in view' },
         { keys: [mod, shift, 'F'], description: 'Search everywhere' },
         { keys: ['?'], description: 'Show shortcuts' }
