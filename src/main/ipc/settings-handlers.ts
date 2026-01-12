@@ -22,6 +22,7 @@ const SETTINGS_KEYS = {
   JOURNAL_SHOW_SCHEDULE: 'journal.showSchedule',
   JOURNAL_SHOW_TASKS: 'journal.showTasks',
   JOURNAL_SHOW_AI_CONNECTIONS: 'journal.showAIConnections',
+  JOURNAL_SHOW_STATS_FOOTER: 'journal.showStatsFooter',
   AI_ENABLED: 'ai.enabled',
   // Tab settings
   TAB_PREVIEW_MODE: 'tabs.previewMode',
@@ -40,6 +41,7 @@ export interface JournalSettings {
   showSchedule: boolean
   showTasks: boolean
   showAIConnections: boolean
+  showStatsFooter: boolean
 }
 
 // ============================================================================
@@ -157,7 +159,8 @@ export function registerSettingsHandlers(): void {
         defaultTemplate: null,
         showSchedule: true,
         showTasks: true,
-        showAIConnections: true
+        showAIConnections: true,
+        showStatsFooter: false
       }
     }
 
@@ -165,12 +168,14 @@ export function registerSettingsHandlers(): void {
     const showScheduleStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_SCHEDULE)
     const showTasksStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_TASKS)
     const showAIConnectionsStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_AI_CONNECTIONS)
+    const showStatsFooterStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_STATS_FOOTER)
 
     return {
       defaultTemplate,
       showSchedule: showScheduleStr !== 'false', // Default true
       showTasks: showTasksStr !== 'false', // Default true
-      showAIConnections: showAIConnectionsStr !== 'false' // Default true
+      showAIConnections: showAIConnectionsStr !== 'false', // Default true
+      showStatsFooter: showStatsFooterStr === 'true' // Default false
     }
   })
 
@@ -204,6 +209,13 @@ export function registerSettingsHandlers(): void {
           db,
           SETTINGS_KEYS.JOURNAL_SHOW_AI_CONNECTIONS,
           settings.showAIConnections ? 'true' : 'false'
+        )
+      }
+      if (settings.showStatsFooter !== undefined) {
+        setSetting(
+          db,
+          SETTINGS_KEYS.JOURNAL_SHOW_STATS_FOOTER,
+          settings.showStatsFooter ? 'true' : 'false'
         )
       }
 

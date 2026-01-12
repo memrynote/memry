@@ -732,6 +732,18 @@ function JournalSettings() {
     [updateSettings]
   )
 
+  const handleShowStatsFooterChange = useCallback(
+    async (checked: boolean) => {
+      const success = await updateSettings({ showStatsFooter: checked })
+      if (success) {
+        toast.success(checked ? 'Stats footer shown' : 'Stats footer hidden')
+      } else {
+        toast.error('Failed to update setting')
+      }
+    },
+    [updateSettings]
+  )
+
   // Find the current default template name for display
   const defaultTemplateName = settings.defaultTemplate
     ? templates.find((t) => t.id === settings.defaultTemplate)?.name
@@ -871,6 +883,35 @@ function JournalSettings() {
             The mini calendar at the top of the sidebar is always visible for quick navigation.
             These settings only affect the additional panels below it.
           </p>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Footer Section */}
+      <div className="space-y-6">
+        <div>
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Footer
+          </h4>
+          <p className="text-sm text-muted-foreground mt-1">
+            Display document statistics at the bottom of journal entries.
+          </p>
+        </div>
+
+        {/* Show Stats Footer Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="show-stats-footer">Show Stats Footer</Label>
+            <p className="text-sm text-muted-foreground">
+              Display word count, reading time, and timestamps at the bottom
+            </p>
+          </div>
+          <Switch
+            id="show-stats-footer"
+            checked={settings.showStatsFooter}
+            onCheckedChange={handleShowStatsFooterChange}
+          />
         </div>
       </div>
     </div>

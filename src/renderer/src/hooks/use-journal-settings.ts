@@ -45,7 +45,8 @@ export function useJournalSettings(): UseJournalSettingsReturn {
     defaultTemplate: null,
     showSchedule: true,
     showTasks: true,
-    showAIConnections: true
+    showAIConnections: true,
+    showStatsFooter: false
   })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
