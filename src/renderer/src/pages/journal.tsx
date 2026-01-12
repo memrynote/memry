@@ -473,7 +473,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     (markdown: string) => updateContent(markdown),
     [updateContent]
   )
-  const handleContentChange = useCallback((_newBlocks: Block[]) => { }, [])
+  const handleContentChange = useCallback((_newBlocks: Block[]) => {}, [])
   const handleLinkClick = useCallback(
     (href: string) => window.open(href, '_blank', 'noopener,noreferrer'),
     []
@@ -788,7 +788,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         console.error('[JournalPage] Error caught by boundary:', error, errorInfo)
       }}
     >
-      <div className={cn('flex h-full w-full overflow-hidden bg-background', className)} >
+      <div className={cn('flex h-full w-full overflow-hidden bg-background', className)}>
         {/* Main Content Area */}
         <main className={cn('flex-1 min-w-0 h-full relative transition-all duration-500 ease-out')}>
           <div className={cn('h-full overflow-y-auto')}>
@@ -830,9 +830,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
                 <div
                   className={cn(
-                    'flex flex-col transition-all duration-500 ease-in-out shrink-0 px-8 lg:px-12',
-                    isCompactMode ? 'w-full max-w-3xl' : 'w-full max-w-none'
+                    'flex flex-col transition-all duration-500 ease-in-out shrink-0 px-8 lg:px-12'
                   )}
+                  style={{
+                    width: isCompactMode ? 'min(100%, 48rem)' : '100%'
+                  }}
                 >
                   {entryError && (
                     <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
@@ -883,8 +885,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
                       {entry && (
                         <div
-                          className="mb-4 transition-all duration-500 ease-in-out"
-                          style={{ paddingLeft: isCompactMode ? '0' : '24px' }}
+                          className={cn(
+                            'mb-4 transition-all duration-500 ease-in-out',
+                            isCompactMode ? 'pl-0' : 'pl-6 lg:pl-8'
+                          )}
                         >
                           <TagsRow
                             tags={journalTags}
@@ -899,8 +903,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
                       {entry && (
                         <div
-                          className="mb-4 transition-all duration-500 ease-in-out"
-                          style={{ paddingLeft: isCompactMode ? '0' : '24px' }}
+                          className={cn(
+                            'mb-4 transition-all duration-500 ease-in-out',
+                            isCompactMode ? 'pl-0' : 'pl-6 lg:pl-8'
+                          )}
                         >
                           <InfoSection
                             properties={properties}
@@ -915,8 +921,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
                       <div
                         className={cn(
-                          'editor-click-area min-h-[300px] relative',
-                          !isCompactMode && 'journal-margin-line pl-6 lg:pl-8'
+                          'editor-click-area min-h-[300px] relative transition-all duration-500 ease-in-out',
+                          isCompactMode ? 'pl-0' : 'note-margin-line pl-6 lg:pl-8'
                         )}
                         onMouseDown={(e) => {
                           const target = e.target as HTMLElement
