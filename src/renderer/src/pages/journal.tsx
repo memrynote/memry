@@ -151,8 +151,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     removeProperty: removeBackendProperty
   } = useJournalProperties(entry?.date ?? null, entry?.properties)
 
-  // State for InfoSection expansion
-  const [isInfoExpanded, setIsInfoExpanded] = useState(true)
+  // State for InfoSection expansion (collapsed by default)
+  const [isInfoExpanded, setIsInfoExpanded] = useState(false)
 
   // Template selector state
   const [showTemplateSelector, setShowTemplateSelector] = useState(false)

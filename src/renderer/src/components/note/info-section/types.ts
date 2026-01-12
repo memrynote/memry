@@ -4,12 +4,8 @@ import {
   Hash,
   Calendar,
   CheckSquare,
-  List,
-  Tags,
   Star,
   Link,
-  CornerUpRight,
-  User,
   type LucideIcon
 } from 'lucide-react'
 
@@ -19,12 +15,8 @@ export type PropertyType =
   | 'number'
   | 'date'
   | 'checkbox'
-  | 'select'
-  | 'multiSelect'
   | 'rating'
   | 'url'
-  | 'relation'
-  | 'person'
 
 export interface Property {
   id: string
@@ -60,12 +52,8 @@ export const PROPERTY_TYPE_CONFIG: Record<PropertyType, PropertyTypeConfig> = {
   number: { label: 'Number', icon: Hash },
   date: { label: 'Date', icon: Calendar },
   checkbox: { label: 'Checkbox', icon: CheckSquare },
-  select: { label: 'Select', icon: List },
-  multiSelect: { label: 'Multi-Select', icon: Tags },
   rating: { label: 'Rating', icon: Star },
-  url: { label: 'URL', icon: Link },
-  relation: { label: 'Relation', icon: CornerUpRight },
-  person: { label: 'Person', icon: User }
+  url: { label: 'URL', icon: Link }
 }
 
 export const PROPERTY_TYPES = Object.keys(PROPERTY_TYPE_CONFIG) as PropertyType[]

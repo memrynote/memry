@@ -941,9 +941,10 @@ export const ContentArea = memo(function ContentArea({
     }
   }, [isImageFile, handleNonImageDrop])
 
-  // Regular drag leave handler for visual feedback
+  // Reset drag state when drop occurs (for both image and non-image files)
   const handleDrop = useCallback(() => {
     setIsDragging(false)
+    setDropTarget(null)
   }, [])
 
   // T220-T222: Track text selection for highlight reminders

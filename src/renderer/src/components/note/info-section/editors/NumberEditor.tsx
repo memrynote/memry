@@ -41,18 +41,52 @@ export function NumberEditor({
   }, [localValue, onChange, onBlur])
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      // Handle Enter - save value
       if (e.key === 'Enter') {
         e.preventDefault()
         const num = localValue ? parseFloat(localValue) : null
         onChange(num !== null && !isNaN(num) ? num : null)
         onBlur?.()
+        return
       }
+
+      // Handle Escape - revert value
       if (e.key === 'Escape') {
         e.preventDefault()
         setLocalValue(value?.toString() ?? '')
         onBlur?.()
+        return
       }
+
+      // Allow control keys
+      const allowedKeys = [
+        'Backspace',
+        'Delete',
+        'Tab',
+        'ArrowLeft',
+        'ArrowRight',
+        'ArrowUp',
+        'ArrowDown',
+        'Home',
+        'End'
+      ]
+      if (allowedKeys.includes(e.key)) return
+
+      // Allow Ctrl/Cmd shortcuts (copy, paste, select all, cut)
+      if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) return
+
+      // Allow decimal point (only one)
+      if (e.key === '.' && !localValue.includes('.')) return
+
+      // Allow minus sign (only at start when cursor is at position 0)
+      if (e.key === '-' && e.currentTarget.selectionStart === 0 && !localValue.includes('-')) return
+
+      // Allow digits
+      if (/^\d$/.test(e.key)) return
+
+      // Block everything else (letters, special characters, etc.)
+      e.preventDefault()
     },
     [localValue, value, onChange, onBlur]
   )

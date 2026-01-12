@@ -339,8 +339,9 @@ export function inferPropertyType(name: string, value: unknown): PropertyType {
 
   // Number with contextual hints
   if (typeof value === 'number') {
-    // Check if this looks like a rating (1-5 range and name contains "rating")
-    if (value >= 1 && value <= 5 && name.toLowerCase().includes('rating')) {
+    // Check if this looks like a rating (0-5 range and name contains "rating")
+    // Note: 0 is included because it's the default value when creating a new rating property
+    if (value >= 0 && value <= 5 && name.toLowerCase().includes('rating')) {
       return 'rating'
     }
     return 'number'

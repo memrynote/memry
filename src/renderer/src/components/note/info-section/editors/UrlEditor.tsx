@@ -10,6 +10,23 @@ interface UrlEditorProps {
   autoFocus?: boolean
 }
 
+// URL validation: must have a dot and be parseable as URL
+const isValidUrl = (input: string): boolean => {
+  if (!input) return true // Empty is valid
+  if (!input.includes('.')) return false // Must have at least one dot
+  try {
+    new URL(input)
+    return true
+  } catch {
+    try {
+      new URL(`https://${input}`)
+      return true
+    } catch {
+      return false
+    }
+  }
+}
+
 export function UrlEditor({
   value,
   onChange,
@@ -19,9 +36,11 @@ export function UrlEditor({
 }: UrlEditorProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [localValue, setLocalValue] = useState(value)
+  const [isValid, setIsValid] = useState(true)
 
   useEffect(() => {
     setLocalValue(value)
+    setIsValid(true)
   }, [value])
 
   useEffect(() => {
@@ -32,11 +51,20 @@ export function UrlEditor({
   }, [autoFocus])
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalValue(e.target.value)
+    const newValue = e.target.value
+    setLocalValue(newValue)
+    const valid = isValidUrl(newValue)
+    console.log('[UrlEditor] validation:', { newValue, valid })
+    setIsValid(valid)
   }, [])
 
   const handleBlur = useCallback(() => {
-    onChange(localValue)
+    // Validate directly to avoid stale state issues
+    const valid = isValidUrl(localValue)
+    setIsValid(valid)
+    if (valid) {
+      onChange(localValue)
+    }
     onBlur?.()
   }, [localValue, onChange, onBlur])
 
@@ -44,12 +72,18 @@ export function UrlEditor({
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault()
-        onChange(localValue)
+        // Validate directly to avoid stale state issues
+        const valid = isValidUrl(localValue)
+        setIsValid(valid)
+        if (valid) {
+          onChange(localValue)
+        }
         onBlur?.()
       }
       if (e.key === 'Escape') {
         e.preventDefault()
         setLocalValue(value)
+        setIsValid(true)
         onBlur?.()
       }
     },
@@ -66,20 +100,22 @@ export function UrlEditor({
     <div className="flex items-center gap-1 min-h-[20px]">
       <input
         ref={inputRef}
-        type="url"
+        type="text"
         value={localValue}
         onChange={handleChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className={cn(
-          'flex-1 bg-transparent border-none p-0',
+          'flex-1 bg-transparent p-0',
           'text-[13px] text-foreground leading-tight',
           'placeholder:text-muted-foreground/30',
-          'outline-none focus:ring-0 shadow-none'
+          'outline-none focus:ring-0 shadow-none',
+          // Red border + background when URL is invalid (matching DateEditor)
+          !isValid && 'border border-red-500 bg-red-500/10 rounded px-1 -mx-1'
         )}
       />
-      {value && (
+      {value && isValid && (
         <button
           type="button"
           onClick={handleOpenUrl}

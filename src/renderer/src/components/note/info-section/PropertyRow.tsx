@@ -8,7 +8,6 @@ import {
   NumberEditor,
   CheckboxEditor,
   RatingEditor,
-  SelectEditor,
   DateEditor,
   UrlEditor,
   LongTextEditor
@@ -84,7 +83,7 @@ export function PropertyRow({
       case 'date':
         return (
           <span className="text-[13px] text-foreground">
-            {format(new Date(value as string | number | Date), 'MMM d, yyyy')}
+            {format(new Date(value as string | number | Date), 'dd.MM.yyyy')}
           </span>
         )
 
@@ -93,24 +92,6 @@ export function PropertyRow({
           <span className="text-[13px] text-blue-600 truncate max-w-[200px] hover:underline hover:text-blue-700">
             {String(value)}
           </span>
-        )
-
-      case 'multiSelect':
-        const items = Array.isArray(value) ? value : []
-        if (items.length === 0) {
-          return <span className="text-[13px] text-muted-foreground/50">Empty</span>
-        }
-        return (
-          <div className="flex flex-wrap gap-1">
-            {items.map((item, index) => (
-              <span
-                key={index}
-                className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-              >
-                {item}
-              </span>
-            ))}
-          </div>
         )
 
       default:
@@ -152,16 +133,6 @@ export function PropertyRow({
           <DateEditor
             value={property.value ? new Date(property.value as string | number | Date) : null}
             onChange={(date) => onValueChange(date?.toISOString() ?? null)}
-            onBlur={handleEndEdit}
-          />
-        )
-
-      case 'select':
-        return (
-          <SelectEditor
-            value={property.value as string | null}
-            options={property.options || []}
-            onChange={onValueChange}
             onBlur={handleEndEdit}
           />
         )

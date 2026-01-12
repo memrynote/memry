@@ -20,8 +20,8 @@ export interface UseNotePropertiesReturn {
   error: string | null
   /** Update a single property */
   updateProperty: (name: string, value: unknown) => Promise<void>
-  /** Add a new property */
-  addProperty: (name: string, value: unknown) => Promise<void>
+  /** Add a new property with optional explicit type */
+  addProperty: (name: string, value: unknown, explicitType?: string) => Promise<void>
   /** Remove a property */
   removeProperty: (name: string) => Promise<void>
   /** Refresh properties from server */
@@ -124,11 +124,11 @@ export function useNoteProperties(noteId: string | null): UseNotePropertiesRetur
 
   // Add a new property
   const addProperty = useCallback(
-    async (name: string, value: unknown) => {
+    async (name: string, value: unknown, explicitType?: string) => {
       if (!noteId) return
 
-      // Optimistic update - infer type from value
-      const type = inferType(value)
+      // Optimistic update - use explicit type if provided, otherwise infer from value
+      const type = (explicitType as PropertyValue['type']) ?? inferType(value)
       setProperties((prev) => [...prev, { name, value, type }])
 
       try {

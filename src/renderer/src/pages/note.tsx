@@ -535,10 +535,12 @@ export function NotePage({ noteId }: NotePageProps) {
       const defaultValue = getDefaultValueForType(newProp.type)
       console.log('[NotePage] Adding property with default value:', {
         name: newProp.name,
+        type: newProp.type,
         defaultValue
       })
       try {
-        await addBackendProperty(newProp.name, defaultValue)
+        // Pass explicit type to ensure correct editor renders (fixes Rating/Checkbox bugs)
+        await addBackendProperty(newProp.name, defaultValue, newProp.type)
         console.log('[NotePage] Property added successfully')
       } catch (err) {
         console.error('[NotePage] Failed to add property:', err)
