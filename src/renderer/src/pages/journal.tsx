@@ -158,8 +158,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const { templates, getTemplate } = useTemplates({ autoLoad: true })
 
   // Journal settings
-  const { settings: journalSettings, setDefaultTemplate: setJournalDefaultTemplate } =
-    useJournalSettings()
+  const {
+    settings: journalSettings,
+    isLoading: isJournalSettingsLoading,
+    setDefaultTemplate: setJournalDefaultTemplate
+  } = useJournalSettings()
 
   // Editor settings
   const { settings: editorSettings } = useNoteEditorSettings()
@@ -1039,29 +1042,36 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 heatmapData={heatmapData}
               />
             </section>
-            <section className="relative">
-              <DayContextSidebar
-                events={EMPTY_EVENTS}
-                tasks={dayTasks}
-                overdueCount={overdueCount}
-                isToday={isToday}
-                isPast={selectedDate < today}
-                onTaskClick={(id) => console.log('Task clicked:', id)}
-                onTaskToggle={handleTaskToggle}
-                onEventClick={(id) => console.log('Event clicked:', id)}
-              />
-            </section>
-            <section className="relative">
-              <AIConnectionsPanel
-                connections={aiConnections}
-                isLoading={isAILoading}
-                error={aiError}
-                isNewUser={!entry && aiConnections.length === 0}
-                onConnectionClick={handleConnectionClick}
-                onRefresh={refreshAIConnections}
-                maxItems={3}
-              />
-            </section>
+            {!isJournalSettingsLoading &&
+              (journalSettings.showSchedule || journalSettings.showTasks) && (
+                <section className="relative">
+                  <DayContextSidebar
+                    events={EMPTY_EVENTS}
+                    tasks={dayTasks}
+                    overdueCount={overdueCount}
+                    isToday={isToday}
+                    isPast={selectedDate < today}
+                    showSchedule={journalSettings.showSchedule}
+                    showTasks={journalSettings.showTasks}
+                    onTaskClick={(id) => console.log('Task clicked:', id)}
+                    onTaskToggle={handleTaskToggle}
+                    onEventClick={(id) => console.log('Event clicked:', id)}
+                  />
+                </section>
+              )}
+            {!isJournalSettingsLoading && journalSettings.showAIConnections && (
+              <section className="relative">
+                <AIConnectionsPanel
+                  connections={aiConnections}
+                  isLoading={isAILoading}
+                  error={aiError}
+                  isNewUser={!entry && aiConnections.length === 0}
+                  onConnectionClick={handleConnectionClick}
+                  onRefresh={refreshAIConnections}
+                  maxItems={3}
+                />
+              </section>
+            )}
           </div>
         </aside>
 

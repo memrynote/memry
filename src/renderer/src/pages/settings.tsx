@@ -82,7 +82,15 @@ type SettingsSection =
 // ============================================================================
 
 export function SettingsPage() {
-  const [activeSection, setActiveSection] = useState<SettingsSection>('templates')
+  const [activeSection, setActiveSection] = useState<SettingsSection>(() => {
+    const saved = localStorage.getItem('memry_settings_section')
+    return (saved as SettingsSection) || 'templates'
+  })
+
+  // Persist section changes to localStorage
+  useEffect(() => {
+    localStorage.setItem('memry_settings_section', activeSection)
+  }, [activeSection])
 
   return (
     <div className="h-full flex">
@@ -672,7 +680,8 @@ function TemplateListItem({ template, onEdit, onDuplicate, onDelete }: TemplateL
 
 function JournalSettings() {
   const { templates, isLoading: isLoadingTemplates } = useTemplates()
-  const { settings, setDefaultTemplate, isLoading: isLoadingSettings } = useJournalSettings()
+  const { settings, updateSettings, setDefaultTemplate, isLoading: isLoadingSettings } =
+    useJournalSettings()
 
   const handleTemplateChange = useCallback(
     async (value: string) => {
@@ -687,10 +696,57 @@ function JournalSettings() {
     [setDefaultTemplate]
   )
 
+  const handleShowScheduleChange = useCallback(
+    async (checked: boolean) => {
+      const success = await updateSettings({ showSchedule: checked })
+      if (success) {
+        toast.success(checked ? 'Schedule section shown' : 'Schedule section hidden')
+      } else {
+        toast.error('Failed to update setting')
+      }
+    },
+    [updateSettings]
+  )
+
+  const handleShowTasksChange = useCallback(
+    async (checked: boolean) => {
+      const success = await updateSettings({ showTasks: checked })
+      if (success) {
+        toast.success(checked ? 'Tasks section shown' : 'Tasks section hidden')
+      } else {
+        toast.error('Failed to update setting')
+      }
+    },
+    [updateSettings]
+  )
+
+  const handleShowAIConnectionsChange = useCallback(
+    async (checked: boolean) => {
+      const success = await updateSettings({ showAIConnections: checked })
+      if (success) {
+        toast.success(checked ? 'AI Connections shown' : 'AI Connections hidden')
+      } else {
+        toast.error('Failed to update setting')
+      }
+    },
+    [updateSettings]
+  )
+
   // Find the current default template name for display
   const defaultTemplateName = settings.defaultTemplate
     ? templates.find((t) => t.id === settings.defaultTemplate)?.name
     : null
+
+  if (isLoadingSettings) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold">Journal</h3>
+          <p className="text-sm text-muted-foreground">Loading settings...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -748,6 +804,72 @@ function JournalSettings() {
             When a default template is set, new journal entries will be created with the template
             content automatically. A small indicator will appear letting you change the template or
             start blank.
+          </p>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Sidebar Visibility Section */}
+      <div className="space-y-6">
+        <div>
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Sidebar Visibility
+          </h4>
+          <p className="text-sm text-muted-foreground mt-1">
+            Choose which sections to display in the journal sidebar. The calendar is always visible.
+          </p>
+        </div>
+
+        {/* Show Schedule Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="show-schedule">Show Schedule</Label>
+            <p className="text-sm text-muted-foreground">
+              Display today's events and calendar schedule
+            </p>
+          </div>
+          <Switch
+            id="show-schedule"
+            checked={settings.showSchedule}
+            onCheckedChange={handleShowScheduleChange}
+          />
+        </div>
+
+        {/* Show Tasks Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="show-tasks">Show Tasks</Label>
+            <p className="text-sm text-muted-foreground">Display tasks due on the selected day</p>
+          </div>
+          <Switch
+            id="show-tasks"
+            checked={settings.showTasks}
+            onCheckedChange={handleShowTasksChange}
+          />
+        </div>
+
+        {/* Show AI Connections Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="show-ai-connections">Show AI Connections</Label>
+            <p className="text-sm text-muted-foreground">
+              Display AI-powered connections to related entries and notes
+            </p>
+          </div>
+          <Switch
+            id="show-ai-connections"
+            checked={settings.showAIConnections}
+            onCheckedChange={handleShowAIConnectionsChange}
+          />
+        </div>
+
+        {/* Info hint */}
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+          <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+          <p className="text-muted-foreground">
+            The mini calendar at the top of the sidebar is always visible for quick navigation.
+            These settings only affect the additional panels below it.
           </p>
         </div>
       </div>

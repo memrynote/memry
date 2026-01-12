@@ -4,7 +4,7 @@
  */
 
 import { useRef, useState, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, PanelRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { useTabGroup, useTabs } from '@/contexts/tabs'
 import { RegularTab } from './regular-tab'
 import { PinnedTab } from './pinned-tab'
@@ -22,7 +22,7 @@ interface TabBarProps {
  * Tab bar component with pinned tabs, regular tabs, and action buttons
  */
 export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element | null => {
-  const { state, openTab, splitView } = useTabs()
+  const { state, openTab } = useTabs()
   const group = useTabGroup(groupId)
 
   // Scroll state
@@ -92,11 +92,6 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
       },
       { groupId }
     )
-  }
-
-  // Handle split view
-  const handleSplitRight = (): void => {
-    splitView('horizontal', groupId)
   }
 
   return (
@@ -199,11 +194,6 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
 
       {/* Tab actions */}
       <div className="flex items-center px-1 gap-0.5 border-l border-gray-200 dark:border-gray-700">
-        <TabBarAction
-          icon={<PanelRight className="w-4 h-4" />}
-          tooltip="Split Right"
-          onClick={handleSplitRight}
-        />
         <TabBarAction
           icon={<Plus className="w-4 h-4" />}
           tooltip="New Tab"

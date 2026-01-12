@@ -99,7 +99,7 @@ function Greeting({ timeOfDay, className }: GreetingProps) {
   return (
     <div className={cn('flex items-center gap-2.5', className)}>
       <Icon className={cn('size-5', config.iconColor)} />
-      <span className={cn('text-base font-medium', config.labFColor)}>{config.label}</span>
+      <span className={cn('text-base font-medium', config.labelColor)}>{config.label}</span>
     </div>
   )
 }
@@ -131,9 +131,9 @@ export function JournalDateDisplay({
     return (
       <div
         className={cn(
-          'relative transition-all duration-500 ease-out',
+          'relative transition-all duration-500 ease-out w-full lg:px-12',
           variant === 'card' ? 'rounded-b-3xl shadow-sm' : 'rounded-none',
-          'px-8 pt-6 pb-10',
+          'pt-6 pb-10',
           showGradient && ['bg-gradient-to-br', todayConfig.gradient, todayConfig.darkGradient],
           className
         )}
@@ -146,24 +146,34 @@ export function JournalDateDisplay({
           />
 
           <div
-            className="transition-all duration-500 ease-in-out shrink-0"
+            className={cn('transition-all duration-500 ease-in-out shrink-0 min-w-0')}
             style={{
               width: isCompact ? 'min(100%, 48rem)' : '100%'
             }}
           >
-            {/* Navigation / Actions Slot */}
-            {children && <div className="mb-6">{children}</div>}
+            {/* Inner wrapper for baseline alignment and page margins */}
+            <div
+              className={cn(
+                'flex flex-col transition-all duration-500 ease-in-out px-8 lg:px-12',
+                !isCompact && 'pl-6 lg:pl-8'
+              )}
+            >
+              {/* Navigation / Actions Slot */}
+              {children && <div className="mb-6">{children}</div>}
 
-            {/* Greeting */}
-            {showGreeting && <Greeting timeOfDay={timeOfDay} className="mb-6" />}
+              {/* Greeting */}
+              {showGreeting && <Greeting timeOfDay={timeOfDay} className="mb-6" />}
 
-            {/* Large date: "January 11, 2026" */}
-            <h1 className="font-display text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
-              {dateParts.month} {dateParts.day}, {dateParts.year}
-            </h1>
+              {/* Large date: "January 11, 2026" */}
+              <h1 className="font-display text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
+                {dateParts.month} {dateParts.day}, {dateParts.year}
+              </h1>
 
-            {/* Day of week */}
-            <p className="font-serif text-lg text-muted-foreground/70 mt-1">{dateParts.dayName}</p>
+              {/* Day of week */}
+              <p className="font-serif text-lg text-muted-foreground/70 mt-1">
+                {dateParts.dayName}
+              </p>
+            </div>
           </div>
 
           {/* Right Spacer - Always grows to take remaining space */}
@@ -178,16 +188,18 @@ export function JournalDateDisplay({
     const monthName = getMonthName(viewState.month)
 
     return (
-      <div className={cn('px-1 py-6', className)}>
-        {/* Large date: "December 2024" */}
-        <h1 className="font-display text-3xl lg:text-4xl font-normal tracking-tight text-foreground">
-          {monthName} {viewState.year}
-        </h1>
+      <div className={cn('py-6 w-full', className)}>
+        <div className="px-8 lg:px-12">
+          {/* Large date: "December 2024" */}
+          <h1 className="font-display text-3xl lg:text-4xl font-normal tracking-tight text-foreground">
+            {monthName} {viewState.year}
+          </h1>
 
-        {/* Subtitle */}
-        <p className="font-serif text-lg text-muted-foreground/70 mt-1 italic">
-          All journal entries for this month
-        </p>
+          {/* Subtitle */}
+          <p className="font-serif text-lg text-muted-foreground/70 mt-1 italic">
+            All journal entries for this month
+          </p>
+        </div>
       </div>
     )
   }
@@ -195,16 +207,18 @@ export function JournalDateDisplay({
   // Render year view
   if (viewState.type === 'year') {
     return (
-      <div className={cn('px-1 py-6', className)}>
-        {/* Large date: "2024" */}
-        <h1 className="font-display text-3xl lg:text-4xl font-normal tracking-tight text-foreground">
-          {viewState.year}
-        </h1>
+      <div className={cn('py-6 w-full', className)}>
+        <div className="px-8 lg:px-12">
+          {/* Large date: "2024" */}
+          <h1 className="font-display text-3xl lg:text-4xl font-normal tracking-tight text-foreground">
+            {viewState.year}
+          </h1>
 
-        {/* Subtitle */}
-        <p className="font-serif text-lg text-muted-foreground/70 mt-1 italic">
-          Select a month to view entries
-        </p>
+          {/* Subtitle */}
+          <p className="font-serif text-lg text-muted-foreground/70 mt-1 italic">
+            Select a month to view entries
+          </p>
+        </div>
       </div>
     )
   }

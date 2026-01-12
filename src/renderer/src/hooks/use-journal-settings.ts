@@ -41,7 +41,12 @@ interface UseJournalSettingsReturn {
  * ```
  */
 export function useJournalSettings(): UseJournalSettingsReturn {
-  const [settings, setSettings] = useState<JournalSettings>({ defaultTemplate: null })
+  const [settings, setSettings] = useState<JournalSettings>({
+    defaultTemplate: null,
+    showSchedule: true,
+    showTasks: true,
+    showAIConnections: true
+  })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
