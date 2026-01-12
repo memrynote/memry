@@ -296,9 +296,7 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
   }
 
   console.log(`[Indexer] Found ${allFiles.length} files to index`)
-  if (allFiles.length > 0) {
-    console.log(`[Indexer] Files found:`, allFiles.slice(0, 20)) // Log first 20 files
-  }
+
 
   if (allFiles.length === 0) {
     emitIndexProgress(100)

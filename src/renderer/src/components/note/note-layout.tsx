@@ -37,7 +37,7 @@ export function NoteLayout({
       {/* Main content area with floating outline edge */}
       <div className="flex-1 relative">
         {/* Main content zone */}
-        <div className="h-full overflow-y-auto overflow-x-hidden">
+        <div className="h-full overflow-y-auto overflow-x-visible">
           {/* Centered content wrapper */}
           <div className="mx-auto w-full max-w-5xl px-6 md:px-12 lg:px-16 py-8">{children}</div>
         </div>
