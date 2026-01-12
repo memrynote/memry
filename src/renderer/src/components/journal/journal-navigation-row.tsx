@@ -19,6 +19,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { JournalReminderButton } from './journal-reminder-button'
@@ -170,27 +172,6 @@ export function JournalNavigationRow({
 
       {/* Right side - Action buttons */}
       <div className="flex items-center gap-1">
-        {/* Focus Mode Toggle - always visible in day view */}
-        {viewState.type === 'day' && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              'size-8 rounded-lg',
-              'text-foreground/60 hover:text-foreground',
-              'hover:bg-foreground/10',
-              'transition-all duration-200',
-              isCompact && 'bg-foreground/10 text-foreground'
-            )}
-            onClick={onFocusToggle}
-            aria-pressed={isCompact}
-            aria-label={isCompact ? 'Exit Compact Mode' : 'Enter Compact Mode'}
-            title={isCompact ? 'Exit Compact Mode (Esc)' : 'Enter Compact Mode (⌘\\)'}
-          >
-            {isCompact ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
-          </Button>
-        )}
-
         {/* Reminder Button - only in day view with entry */}
         {viewState.type === 'day' && hasEntry && journalDate && (
           <JournalReminderButton journalDate={journalDate} disabled={false} />
@@ -215,8 +196,8 @@ export function JournalNavigationRow({
           </Button>
         )}
 
-        {/* More Options Menu - only in day view with entry */}
-        {viewState.type === 'day' && hasEntry && (
+        {/* More Options Menu - always in day view */}
+        {viewState.type === 'day' && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -233,12 +214,33 @@ export function JournalNavigationRow({
                 <span className="sr-only">More options</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onVersionHistory}>
-                <History className="mr-2 h-4 w-4" />
-                Version History
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={onFocusToggle}>
+                {isCompact ? (
+                  <>
+                    <Maximize2 className="mr-2 size-4" />
+                    <span>Full Mode</span>
+                    <DropdownMenuShortcut>⌘\</DropdownMenuShortcut>
+                  </>
+                ) : (
+                  <>
+                    <Minimize2 className="mr-2 size-4" />
+                    <span>Compact Mode</span>
+                    <DropdownMenuShortcut>⌘\</DropdownMenuShortcut>
+                  </>
+                )}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onExport}>Export</DropdownMenuItem>
+
+              {hasEntry && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onVersionHistory}>
+                    <History className="mr-2 size-4" />
+                    Version History
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onExport}>Export</DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
