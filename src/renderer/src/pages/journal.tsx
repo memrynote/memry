@@ -821,7 +821,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               </header>
 
               {/* Editor/Content Area with Sliding Animation */}
-              <div className="flex-1 flex w-full overflow-hidden">
+              <div className="flex-1 flex w-full overflow-hidden min-w-0">
                 {/* Left Spacer */}
                 <div
                   className="transition-all duration-500 ease-in-out"
@@ -830,10 +830,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
                 <div
                   className={cn(
-                    'flex flex-col transition-all duration-500 ease-in-out shrink-0 px-8 lg:px-12'
+                    'flex flex-col transition-all duration-500 ease-in-out min-w-0 overflow-hidden px-8 lg:px-12'
                   )}
                   style={{
-                    width: isCompactMode ? 'min(100%, 48rem)' : '100%'
+                    width: isCompactMode ? 'min(100%, 48rem)' : '100%',
+                    maxWidth: '100%'
                   }}
                 >
                   {entryError && (
@@ -921,9 +922,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
                       <div
                         className={cn(
-                          'editor-click-area min-h-[300px] relative transition-all duration-500 ease-in-out',
+                          'editor-click-area min-h-[300px] relative transition-all duration-500 ease-in-out overflow-hidden',
                           isCompactMode ? 'pl-0' : 'note-margin-line pl-6 lg:pl-8'
                         )}
+                        style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                         onMouseDown={(e) => {
                           const target = e.target as HTMLElement
                           if (
