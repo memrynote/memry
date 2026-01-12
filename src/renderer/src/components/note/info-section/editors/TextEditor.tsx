@@ -66,11 +66,11 @@ export function TextEditor({
       placeholder={placeholder}
       className={cn(
         'w-full rounded px-2 py-1',
-        'text-[13px] text-stone-900',
-        'bg-white border border-stone-300',
-        'placeholder:text-stone-400',
+        'text-[13px] text-foreground',
+        'bg-background/50 border border-border/60',
+        'placeholder:text-muted-foreground/40',
         'outline-none',
-        'focus:border-stone-400 focus:ring-1 focus:ring-stone-400'
+        'focus:bg-background focus:border-border focus:ring-1 focus:ring-border/40 shadow-sm'
       )}
     />
   )

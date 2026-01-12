@@ -33,8 +33,8 @@ export interface JournalNavigationRowProps {
   viewState: JournalViewState
   /** Whether currently viewing today's date */
   isToday: boolean
-  /** Whether focus mode is enabled */
-  focusMode: boolean
+  /** Whether the view is in compact mode */
+  isCompact?: boolean
   /** Whether the current entry is bookmarked */
   isBookmarked: boolean
   /** Whether an entry exists for the current date */
@@ -123,7 +123,7 @@ function TodayButton({ onClick }: TodayButtonProps) {
 
 export function JournalNavigationRow({
   viewState,
-  focusMode,
+  isCompact = false,
   isBookmarked,
   hasEntry,
   journalDate,
@@ -180,14 +180,14 @@ export function JournalNavigationRow({
               'text-foreground/60 hover:text-foreground',
               'hover:bg-foreground/10',
               'transition-all duration-200',
-              focusMode && 'bg-foreground/10 text-foreground'
+              isCompact && 'bg-foreground/10 text-foreground'
             )}
             onClick={onFocusToggle}
-            aria-pressed={focusMode}
-            aria-label={focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
-            title={focusMode ? 'Exit Focus Mode (Esc)' : 'Enter Focus Mode (⌘\\)'}
+            aria-pressed={isCompact}
+            aria-label={isCompact ? 'Exit Compact Mode' : 'Enter Compact Mode'}
+            title={isCompact ? 'Exit Compact Mode (Esc)' : 'Enter Compact Mode (⌘\\)'}
           >
-            {focusMode ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+            {isCompact ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
           </Button>
         )}
 
