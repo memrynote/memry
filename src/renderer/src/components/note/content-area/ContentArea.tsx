@@ -302,6 +302,47 @@ function normalizeWikiLinks(blocks: Block[]): { blocks: Block[]; didChange: bool
   return { blocks: didChange ? nextBlocks : blocks, didChange }
 }
 
+function normalizeMarkdownHardBreaks(markdown: string): string {
+  const lines = markdown.split('\n')
+  const normalized: string[] = []
+  let inCodeBlock = false
+
+  for (const line of lines) {
+    let lineBody = line
+    let lineEnding = ''
+
+    if (lineBody.endsWith('\r')) {
+      lineEnding = '\r'
+      lineBody = lineBody.slice(0, -1)
+    }
+
+    const trimmed = lineBody.trimStart()
+    const isFence = trimmed.startsWith('```') || trimmed.startsWith('~~~')
+
+    if (isFence) {
+      inCodeBlock = !inCodeBlock
+      normalized.push(lineBody + lineEnding)
+      continue
+    }
+
+    if (!inCodeBlock) {
+      const match = lineBody.match(/(\\+)$/)
+      if (match && match[1].length % 2 === 1) {
+        const nextLine = lineBody.slice(0, -1)
+        if (nextLine.trim() === '') {
+          continue
+        }
+        normalized.push(nextLine + lineEnding)
+        continue
+      }
+    }
+
+    normalized.push(lineBody + lineEnding)
+  }
+
+  return normalized.join('\n')
+}
+
 // =============================================================================
 // CONTENT AREA COMPONENT
 // =============================================================================
@@ -516,6 +557,7 @@ export const ContentArea = memo(function ContentArea({
               }
               // Remove markers from content before parsing
               content = content.replace(FILE_BLOCK_REGEX, '').trim()
+              content = normalizeMarkdownHardBreaks(content)
             }
 
             let blocks

@@ -274,20 +274,24 @@ export function CaptureInput({
           'relative flex items-center',
           densityConfig.captureGap,
           densityConfig.capturePadding,
-          'bg-muted/20 hover:bg-muted/30',
-          'border border-border/40',
+          // Enhanced foundation - soft gradient with depth
+          'bg-linear-to-r from-muted/30 via-muted/40 to-muted/30',
+          'hover:from-muted/35 hover:via-muted/45 hover:to-muted/35',
+          'border border-border/60',
+          'shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)]',
           densityConfig.captureRadius,
-          'transition-all duration-200',
-          isFocused && 'bg-muted/40 border-border/60 shadow-sm'
+          'transition-all duration-300',
+          // Focused state with warm amber glow
+          isFocused && 'bg-muted/50 border-border shadow-sm ring-1 ring-amber-500/20'
         )}
       >
         {/* Type indicator icon */}
         <div
           className={cn(
-            'flex-shrink-0',
-            'text-muted-foreground/50',
+            'shrink-0',
+            'text-muted-foreground/70', // More visible
             'transition-colors duration-200',
-            isFocused && 'text-muted-foreground/70'
+            isFocused && 'text-amber-600 dark:text-amber-400' // Amber on focus
           )}
         >
           {isUrl ? (
@@ -305,14 +309,16 @@ export function CaptureInput({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           onKeyDown={handleKeyDown}
-          placeholder="Capture a thought or paste a link..."
+          placeholder="What's on your mind?"
           disabled={isCapturing}
           rows={1}
           className={cn(
             'flex-1 min-h-[24px] max-h-[200px]',
             'bg-transparent',
             'text-sm text-foreground/90 leading-6',
-            'placeholder:text-muted-foreground/50',
+            // Editorial placeholder - serif, italic, more visible
+            'placeholder:font-serif placeholder:italic',
+            'placeholder:text-muted-foreground/60',
             'resize-none',
             'focus:outline-none',
             'disabled:opacity-50 disabled:cursor-not-allowed',
@@ -326,11 +332,11 @@ export function CaptureInput({
           onClick={handleAttachClick}
           disabled={isCapturing}
           className={cn(
-            'flex-shrink-0',
+            'shrink-0',
             'p-1.5 rounded-lg',
-            'text-muted-foreground/50',
+            'text-muted-foreground/60', // More visible
             'transition-all duration-200',
-            'hover:bg-foreground/5 hover:text-foreground/70',
+            'hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400', // Amber hover
             'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent'
           )}
           aria-label="Attach file"
@@ -344,11 +350,11 @@ export function CaptureInput({
           onClick={handleMicClick}
           disabled={isCapturing}
           className={cn(
-            'flex-shrink-0',
+            'shrink-0',
             'p-1.5 rounded-lg',
-            'text-muted-foreground/50',
+            'text-muted-foreground/60', // More visible
             'transition-all duration-200',
-            'hover:bg-foreground/5 hover:text-foreground/70',
+            'hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400', // Amber hover
             'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent'
           )}
           aria-label="Record voice memo"
@@ -372,13 +378,14 @@ export function CaptureInput({
           onClick={handleSubmit}
           disabled={!value.trim() || isCapturing}
           className={cn(
-            'flex-shrink-0',
+            'shrink-0',
             'p-1.5 rounded-lg',
-            'text-muted-foreground/50',
+            'text-muted-foreground/60', // More visible
             'transition-all duration-200',
-            'hover:bg-foreground/5 hover:text-foreground/70',
+            'hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400', // Amber hover
             'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent',
-            value.trim() && !isCapturing && 'text-amber-600 dark:text-amber-400'
+            // Active state when there's content
+            value.trim() && !isCapturing && 'text-amber-600 dark:text-amber-400 bg-amber-500/10'
           )}
           aria-label={isUrl ? 'Capture link' : 'Capture note'}
         >
@@ -393,21 +400,31 @@ export function CaptureInput({
       {/* Hint text */}
       <div
         className={cn(
-          'mt-1.5 px-4',
-          'text-xs text-muted-foreground/40',
-          'transition-opacity duration-200',
-          !isFocused && 'opacity-0'
+          'mt-2 px-4',
+          'text-xs text-muted-foreground/60', // More visible
+          'transition-all duration-200',
+          !isFocused && 'opacity-0 translate-y-1',
+          isFocused && 'opacity-100 translate-y-0'
         )}
       >
         {isUrl ? (
           <span>
-            Press <kbd className="px-1 py-0.5 bg-muted/50 rounded text-[10px]">Enter</kbd> to
-            capture link
+            Press{' '}
+            <kbd className="px-1.5 py-0.5 bg-muted/70 rounded border border-border/50 text-[10px] font-medium">
+              Enter
+            </kbd>{' '}
+            to capture link
           </span>
         ) : (
           <span>
-            Press <kbd className="px-1 py-0.5 bg-muted/50 rounded text-[10px]">Enter</kbd> to
-            capture, <kbd className="px-1 py-0.5 bg-muted/50 rounded text-[10px]">Shift+Enter</kbd>{' '}
+            Press{' '}
+            <kbd className="px-1.5 py-0.5 bg-muted/70 rounded border border-border/50 text-[10px] font-medium">
+              Enter
+            </kbd>{' '}
+            to capture,{' '}
+            <kbd className="px-1.5 py-0.5 bg-muted/70 rounded border border-border/50 text-[10px] font-medium">
+              Shift+Enter
+            </kbd>{' '}
             for new line
           </span>
         )}
