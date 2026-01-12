@@ -959,6 +959,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                         ) : (
                           <ContentArea
                             key={editorState.key}
+                            noteId={entry?.id}
                             initialContent={editorState.content}
                             contentType="markdown"
                             placeholder={

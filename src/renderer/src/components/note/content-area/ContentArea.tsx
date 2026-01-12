@@ -28,6 +28,8 @@ import { notesService } from '@/services/notes-service'
 import type { ContentAreaProps, HeadingInfo } from './types'
 import { createWikiLinkInlineContent, WikiLink } from './wiki-link'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
+import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
+import { findDropTarget, type DropTarget } from './drop-target-utils'
 import {
   createFileBlock,
   createFileBlockContent,
@@ -379,9 +381,15 @@ export const ContentArea = memo(function ContentArea({
   // T069: Drag state for visual feedback
   const [isDragging, setIsDragging] = useState(false)
 
+  // Block-level drop target state (for Notion-style file drops)
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
+
   // T220-T222: Text selection state for highlight reminders
   const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
   const editorContainerRef = useRef<HTMLDivElement>(null)
+
+  // Container ref for drag-drop position calculations (intercepts drops before BlockNote)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // Ref to hold current noteId for upload function (since editor is created once)
   const noteIdRef = useRef<string | undefined>(noteId)
@@ -406,6 +414,51 @@ export const ContentArea = memo(function ContentArea({
       if (headingsDebounceRef.current) clearTimeout(headingsDebounceRef.current)
     }
   }, [])
+
+  // Global event listeners to reset drag state when drag is cancelled or tab loses focus
+  // This fixes the bug where the overlay gets stuck when user cancels the drag
+  useEffect(() => {
+    const resetDragState = (): void => {
+      setIsDragging(false)
+      setDropTarget(null)
+    }
+
+    // dragend fires when the drag operation ends (including cancel via Escape)
+    window.addEventListener('dragend', resetDragState)
+
+    // Reset when user switches to another tab
+    const handleVisibilityChange = (): void => {
+      if (document.hidden) {
+        resetDragState()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // Reset when window loses focus
+    window.addEventListener('blur', resetDragState)
+
+    return () => {
+      window.removeEventListener('dragend', resetDragState)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('blur', resetDragState)
+    }
+  }, [])
+
+  // Apply subtle highlight to the target block when dragging over it
+  useEffect(() => {
+    if (!dropTarget || !containerRef.current) return
+
+    const blockElement = containerRef.current.querySelector(`[data-id="${dropTarget.blockId}"]`)
+    if (!blockElement) return
+
+    // Add highlight class
+    blockElement.classList.add('bg-primary/5', 'transition-colors', 'duration-150')
+
+    return () => {
+      // Remove highlight class on cleanup
+      blockElement.classList.remove('bg-primary/5', 'transition-colors', 'duration-150')
+    }
+  }, [dropTarget])
 
   // T069/T071: Schema with FileBlock for attachments
   const schema = useMemo(
@@ -721,22 +774,36 @@ export const ContentArea = memo(function ContentArea({
     return imageTypes.includes(file.type.toLowerCase())
   }, [])
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    // Only show drag state for file drops, not internal BlockNote drags
-    if (e.dataTransfer.types.includes('Files')) {
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      // Only show drag state for file drops, not internal BlockNote drags
+      if (!e.dataTransfer.types.includes('Files')) return
+
       setIsDragging(true)
-    }
-  }, [])
+
+      // Find the drop target based on cursor position (for block-level targeting)
+      const target = findDropTarget(e.clientY, containerRef)
+      setDropTarget(target)
+    },
+    [containerRef]
+  )
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    // Only reset if leaving the container (not entering a child)
-    const relatedTarget = e.relatedTarget as HTMLElement | null
-    if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
+
+    // Use bounding rect check instead of relatedTarget (more reliable)
+    // relatedTarget can be null or unreliable with shadow DOM elements
+    const rect = e.currentTarget.getBoundingClientRect()
+    const { clientX: x, clientY: y } = e
+
+    // Only reset if cursor has actually left the container bounds
+    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
       setIsDragging(false)
+      setDropTarget(null)
     }
   }, [])
 
@@ -757,7 +824,11 @@ export const ContentArea = memo(function ContentArea({
       // We have non-image files - prevent BlockNote from trying to handle them
       e.preventDefault()
       e.stopPropagation()
+
+      // Capture the drop target position before clearing state
+      const insertTarget = dropTarget
       setIsDragging(false)
+      setDropTarget(null)
 
       // Skip if no noteId (can't upload attachments without a note)
       if (!noteId) {
@@ -767,6 +838,18 @@ export const ContentArea = memo(function ContentArea({
 
       // Skip if not editable
       if (!editable) return true
+
+      // Determine reference block and placement from drop target
+      // If we have a specific drop target, use it; otherwise fall back to cursor position
+      let referenceBlockId: string
+      let placement: 'before' | 'after' = 'after'
+
+      if (insertTarget) {
+        referenceBlockId = insertTarget.blockId
+        placement = insertTarget.position
+      } else {
+        referenceBlockId = editor.getTextCursorPosition().block.id
+      }
 
       // Process each file (both images and non-images)
       for (const file of files) {
@@ -779,7 +862,7 @@ export const ContentArea = memo(function ContentArea({
             continue
           }
 
-          // Insert appropriate block based on file type
+          // Insert appropriate block based on file type at the target position
           if (result.type === 'image' && result.path) {
             // Insert image block (BlockNote's built-in image block)
             editor.insertBlocks(
@@ -793,8 +876,8 @@ export const ContentArea = memo(function ContentArea({
                   }
                 }
               ],
-              editor.getTextCursorPosition().block,
-              'after'
+              referenceBlockId,
+              placement
             )
           } else if (result.path) {
             // Insert file block (custom FileBlock for PDFs, docs, etc.)
@@ -807,10 +890,14 @@ export const ContentArea = memo(function ContentArea({
                   mimeType: result.mimeType || file.type
                 })
               ],
-              editor.getTextCursorPosition().block,
-              'after'
+              referenceBlockId,
+              placement
             )
           }
+
+          // After inserting the first file, subsequent files should go after it
+          // This keeps files in the order they were dropped
+          placement = 'after'
         } catch (error) {
           console.error('[ContentArea] Failed to upload file:', file.name, error)
         }
@@ -818,12 +905,10 @@ export const ContentArea = memo(function ContentArea({
 
       return true
     },
-    [noteId, editable, editor, isImageFile]
+    [noteId, editable, editor, isImageFile, dropTarget]
   )
 
   // Use capture phase to intercept drops before BlockNote
-  const containerRef = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -924,30 +1009,18 @@ export const ContentArea = memo(function ContentArea({
       role="region"
       aria-label="Note editor"
       aria-busy={!isContentReadyRef.current}
-      className={cn(
-        'content-area h-full flex flex-col relative',
-        isDragging && 'ring-2 ring-primary ring-offset-2 bg-primary/5',
-        className
-      )}
+      className={cn('content-area h-full flex flex-col relative', className)}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Drag overlay */}
-      {isDragging && (
-        <div
-          className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none"
-          aria-live="polite"
-          aria-label="Drop zone active - release to attach files"
-        >
-          <div className="text-center">
-            <div className="text-4xl mb-2" aria-hidden="true">
-              📎
-            </div>
-            <p className="text-lg font-medium text-muted-foreground">Drop files to attach</p>
-          </div>
-        </div>
+      {/* Block-level drop indicator - shows where file will be inserted */}
+      {isDragging && dropTarget && (
+        <BlockDropIndicator dropTarget={dropTarget} containerRef={containerRef} />
       )}
+
+      {/* Empty document drop indicator - simple line at top when no blocks */}
+      {isDragging && !dropTarget && <EmptyDocumentDropIndicator />}
 
       {/* BlockNote Editor */}
       <div
