@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, memo } from 'react'
 import { cn } from '@/lib/utils'
 import { TagChip, Tag } from './TagChip'
 import { AddTagButton } from './AddTagButton'
@@ -14,7 +14,7 @@ export interface TagsRowProps {
   disabled?: boolean
 }
 
-export function TagsRow({
+export const TagsRow = memo(function TagsRow({
   tags,
   availableTags,
   recentTags,
@@ -72,4 +72,4 @@ export function TagsRow({
       {tags.length === 0 && <span className="text-[13px] text-stone-400">Add tags</span>}
     </div>
   )
-}
+})

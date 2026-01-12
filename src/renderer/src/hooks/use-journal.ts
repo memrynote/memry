@@ -321,14 +321,24 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     [scheduleSave]
   )
 
-  // Update tags (triggers debounced save)
+  // Update tags with optimistic UI update (no debounce - discrete action)
+  // Tags are instant user actions (clicks), not continuous typing, so we:
+  // 1. Update the UI immediately via queryClient
+  // 2. Save in background without debounce delay
   const updateTags = useCallback(
     (tags: string[]) => {
+      // Optimistic update - show tags immediately in UI
+      queryClient.setQueryData(
+        journalKeys.entry(currentDateRef.current),
+        (old: JournalEntry | undefined) => (old ? { ...old, tags } : old)
+      )
+
+      // Store pending tags and save immediately (no debounce)
       pendingTagsRef.current = tags
       setIsDirty(true)
-      scheduleSave()
+      void performSave()
     },
-    [scheduleSave]
+    [queryClient, performSave]
   )
 
   // Force save now
@@ -887,6 +897,11 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastAnalyzedContentRef = useRef<string | null>(null)
 
+  // Content ref to avoid effect re-runs on every keystroke
+  // The effect uses this ref instead of content in dependencies
+  const contentRef = useRef(content)
+  contentRef.current = content
+
   // Analysis function
   const analyzeContent = useCallback(async (contentToAnalyze: string) => {
     // Cancel any pending request
@@ -938,48 +953,66 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
     }
   }, [])
 
-  // Debounced analysis trigger
+  // Debounced analysis trigger using interval-based polling
+  // This prevents effect re-runs on every keystroke while still detecting content changes
+  // The interval checks for content changes and triggers analysis after debounce period
   useEffect(() => {
-    // Clear any pending debounce timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current)
-      debounceTimerRef.current = null
-    }
+    let lastCheckedContent = contentRef.current
+    let pendingAnalysisTimeout: ReturnType<typeof setTimeout> | null = null
 
-    // If content is too short, clear connections immediately
-    if (content.length < MIN_CONTENT_LENGTH) {
-      // Cancel any pending analysis
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
-        abortControllerRef.current = null
+    // Check interval - polls for content changes every 500ms (half of debounce delay)
+    const checkInterval = setInterval(() => {
+      const currentContent = contentRef.current
+
+      // If content hasn't changed since last check, do nothing
+      if (currentContent === lastCheckedContent) {
+        return
       }
-      setConnections([])
-      setIsLoading(false)
-      setError(null)
-      lastAnalyzedContentRef.current = null
-      return
-    }
 
-    // Set loading state to indicate we're waiting to analyze
-    // (but only if content has changed from last analysis)
-    if (content !== lastAnalyzedContentRef.current) {
-      // Don't set loading here - we're just debouncing
-      // Loading will be set when actual analysis starts
-    }
+      // Content changed - update last checked and schedule analysis
+      lastCheckedContent = currentContent
 
-    // Schedule analysis after debounce delay
-    debounceTimerRef.current = setTimeout(() => {
-      analyzeContent(content)
-    }, AI_ANALYSIS_DEBOUNCE_MS)
+      // Clear any pending analysis
+      if (pendingAnalysisTimeout) {
+        clearTimeout(pendingAnalysisTimeout)
+      }
+
+      // If content is too short, clear connections immediately
+      if (currentContent.length < MIN_CONTENT_LENGTH) {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort()
+          abortControllerRef.current = null
+        }
+        setConnections([])
+        setIsLoading(false)
+        setError(null)
+        lastAnalyzedContentRef.current = null
+        return
+      }
+
+      // Schedule analysis after debounce delay
+      pendingAnalysisTimeout = setTimeout(() => {
+        if (currentContent !== lastAnalyzedContentRef.current) {
+          analyzeContent(currentContent)
+        }
+      }, AI_ANALYSIS_DEBOUNCE_MS)
+    }, 500)
+
+    // Initial check after mount
+    if (contentRef.current.length >= MIN_CONTENT_LENGTH) {
+      pendingAnalysisTimeout = setTimeout(() => {
+        analyzeContent(contentRef.current)
+      }, AI_ANALYSIS_DEBOUNCE_MS)
+    }
 
     // Cleanup
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current)
-        debounceTimerRef.current = null
+      clearInterval(checkInterval)
+      if (pendingAnalysisTimeout) {
+        clearTimeout(pendingAnalysisTimeout)
       }
     }
-  }, [content, analyzeContent])
+  }, [analyzeContent])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -1006,8 +1039,8 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
       debounceTimerRef.current = null
     }
 
-    analyzeContent(content)
-  }, [content, analyzeContent])
+    analyzeContent(contentRef.current)
+  }, [analyzeContent])
 
   return {
     connections,

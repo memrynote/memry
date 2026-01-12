@@ -171,6 +171,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const [isApplyingDefaultTemplate, setIsApplyingDefaultTemplate] = useState(false)
   const hasAppliedDefaultForDateRef = useRef<string | null>(null)
 
+  // Ref to track current entry tags for stable callbacks (prevents re-renders on content changes)
+  const entryTagsRef = useRef<string[]>([])
+  entryTagsRef.current = entry?.tags ?? []
+
   // Get default template info
   const defaultTemplateInfo = useMemo(() => {
     if (!journalSettings.defaultTemplate) return null
@@ -543,33 +547,34 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     )
   }, [])
 
-  // Tag Handlers
+  // Tag Handlers - use refs to avoid dependency on entry (which changes on every keystroke)
   const handleAddTag = useCallback(
     (tagId: string) => {
       const tagToAdd = availableTags.find((t) => t.id === tagId)
-      if (tagToAdd && entry && !entry.tags.includes(tagToAdd.name)) {
-        updateTags([...entry.tags, tagToAdd.name])
+      const currentTags = entryTagsRef.current
+      if (tagToAdd && !currentTags.includes(tagToAdd.name)) {
+        updateTags([...currentTags, tagToAdd.name])
       }
     },
-    [availableTags, entry, updateTags]
+    [availableTags, updateTags]
   )
 
   const handleCreateTag = useCallback(
     (name: string, _color: string) => {
-      if (entry && !entry.tags.includes(name)) {
-        updateTags([...entry.tags, name])
+      const currentTags = entryTagsRef.current
+      if (!currentTags.includes(name)) {
+        updateTags([...currentTags, name])
       }
     },
-    [entry, updateTags]
+    [updateTags]
   )
 
   const handleRemoveTag = useCallback(
     (tagId: string) => {
-      if (entry) {
-        updateTags(entry.tags.filter((t) => t !== tagId))
-      }
+      const currentTags = entryTagsRef.current
+      updateTags(currentTags.filter((t) => t !== tagId))
     },
-    [entry, updateTags]
+    [updateTags]
   )
 
   // Property Handlers
@@ -1028,18 +1033,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               aria-hidden="true"
             />
             <section className="relative">
-              <h3 className="journal-section-label mb-3">Calendar</h3>
               <JournalCalendar
                 selectedDate={selectedDate}
                 onDayClick={handleDayClick}
-                onTodayClick={handleTodayClick}
                 heatmapData={heatmapData}
               />
             </section>
             <section className="relative">
-              <h3 className="journal-section-label mb-3">
-                {isToday ? "Today's Schedule" : 'Schedule'}
-              </h3>
               <DayContextSidebar
                 events={EMPTY_EVENTS}
                 tasks={dayTasks}
@@ -1052,7 +1052,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               />
             </section>
             <section className="relative">
-              <h3 className="journal-section-label mb-3">Connected Thoughts</h3>
               <AIConnectionsPanel
                 connections={aiConnections}
                 isLoading={isAILoading}
