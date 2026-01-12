@@ -74,11 +74,11 @@ export function UrlEditor({
         placeholder={placeholder}
         className={cn(
           'flex-1 rounded px-2 py-1',
-          'text-[13px] text-stone-900',
-          'bg-white border border-stone-300',
-          'placeholder:text-stone-400',
+          'text-[13px] text-foreground',
+          'bg-background/50 border border-border/60',
+          'placeholder:text-muted-foreground/40',
           'outline-none',
-          'focus:border-stone-400 focus:ring-1 focus:ring-stone-400'
+          'focus:bg-background focus:border-border focus:ring-1 focus:ring-border/40 shadow-sm'
         )}
       />
       {value && (
@@ -88,9 +88,9 @@ export function UrlEditor({
           aria-label="Open URL"
           className={cn(
             'flex h-7 w-7 items-center justify-center',
-            'rounded text-stone-400',
+            'rounded text-muted-foreground/50',
             'transition-colors duration-150',
-            'hover:bg-stone-100 hover:text-stone-600'
+            'hover:bg-muted hover:text-muted-foreground'
           )}
         >
           <ExternalLink className="h-3.5 w-3.5" />

@@ -63,13 +63,13 @@ export function RatingEditor({ value, onChange, maxRating = 5 }: RatingEditorPro
             className={cn(
               'p-0.5 transition-transform duration-100',
               'hover:scale-110',
-              'focus:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:rounded'
+              'focus:outline-none focus-visible:ring-1 focus-visible:ring-border/40 focus-visible:rounded'
             )}
           >
             <Star
               className={cn(
                 'h-4 w-4 transition-colors duration-100',
-                isFilled ? 'fill-amber-400 text-amber-400' : 'fill-transparent text-stone-300'
+                isFilled ? 'fill-amber-400 text-amber-400' : 'fill-transparent text-border'
               )}
             />
           </button>

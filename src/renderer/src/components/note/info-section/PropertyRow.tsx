@@ -77,33 +77,35 @@ export function PropertyRow({
 
     // Empty state
     if (value === null || value === undefined || value === '') {
-      return <span className="text-[13px] text-stone-400">Empty</span>
+      return <span className="text-[13px] text-muted-foreground/50">Empty</span>
     }
 
     switch (property.type) {
       case 'date':
         return (
-          <span className="text-[13px] text-stone-900">
+          <span className="text-[13px] text-foreground">
             {format(new Date(value as string | number | Date), 'MMM d, yyyy')}
           </span>
         )
 
       case 'url':
         return (
-          <span className="text-[13px] text-blue-600 truncate max-w-[200px]">{String(value)}</span>
+          <span className="text-[13px] text-blue-600 truncate max-w-[200px] hover:underline hover:text-blue-700">
+            {String(value)}
+          </span>
         )
 
       case 'multiSelect':
         const items = Array.isArray(value) ? value : []
         if (items.length === 0) {
-          return <span className="text-[13px] text-stone-400">Empty</span>
+          return <span className="text-[13px] text-muted-foreground/50">Empty</span>
         }
         return (
           <div className="flex flex-wrap gap-1">
             {items.map((item, index) => (
               <span
                 key={index}
-                className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-700"
+                className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
               >
                 {item}
               </span>
@@ -112,7 +114,7 @@ export function PropertyRow({
         )
 
       default:
-        return <span className="text-[13px] text-stone-900">{String(value)}</span>
+        return <span className="text-[13px] text-foreground">{String(value)}</span>
     }
   }
 
@@ -192,17 +194,17 @@ export function PropertyRow({
         'flex items-start py-1.5',
         'border-b border-transparent',
         'transition-colors duration-150',
-        isHovered && !isEditing && 'border-stone-200'
+        isHovered && !isEditing && 'border-border/60'
       )}
     >
       {/* Icon */}
-      <span className="mr-2 flex-shrink-0 text-stone-400">
+      <span className="mr-2 flex-shrink-0 text-muted-foreground/60">
         <IconComponent className="h-4 w-4" />
       </span>
 
       {/* Label */}
       <span
-        className={cn('w-24 flex-shrink-0', 'text-[13px] text-stone-500', 'truncate')}
+        className={cn('w-24 flex-shrink-0', 'text-[13px] text-muted-foreground', 'truncate')}
         title={property.name}
       >
         {property.name}
@@ -216,7 +218,7 @@ export function PropertyRow({
           !isEditing &&
             property.type !== 'checkbox' &&
             property.type !== 'rating' &&
-            'cursor-pointer rounded px-1 -mx-1 hover:bg-stone-100'
+            'cursor-pointer rounded px-1 -mx-1 hover:bg-muted/50'
         )}
       >
         {renderValue()}
@@ -230,9 +232,9 @@ export function PropertyRow({
           aria-label={`Delete property: ${property.name}`}
           className={cn(
             'ml-2 flex h-6 w-6 items-center justify-center',
-            'rounded text-stone-400',
+            'rounded text-muted-foreground/50',
             'transition-colors duration-150',
-            'hover:bg-red-50 hover:text-red-500'
+            'hover:bg-destructive/10 hover:text-destructive'
           )}
         >
           <Trash2 className="h-3.5 w-3.5" />

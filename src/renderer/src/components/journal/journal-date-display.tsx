@@ -31,10 +31,10 @@ export interface JournalDateDisplayProps {
   dateParts: DateParts | null
   /** Whether currently viewing today's date */
   isToday: boolean
-  /** Whether focus mode is enabled (hides greeting) */
-  focusMode: boolean
   /** Layout variant */
-  variant?: 'card' | 'flush'
+  variant?: 'card' | 'flush' | 'compact'
+  /** Whether the view is in compact mode (centers content) */
+  isCompact?: boolean
   /** Optional navigation or actions to render inside the header */
   children?: React.ReactNode
   /** Additional CSS classes */
@@ -99,7 +99,7 @@ function Greeting({ timeOfDay, className }: GreetingProps) {
   return (
     <div className={cn('flex items-center gap-2.5', className)}>
       <Icon className={cn('size-5', config.iconColor)} />
-      <span className={cn('text-base font-medium', config.labelColor)}>{config.label}</span>
+      <span className={cn('text-base font-medium', config.labFColor)}>{config.label}</span>
     </div>
   )
 }
@@ -111,7 +111,7 @@ function Greeting({ timeOfDay, className }: GreetingProps) {
 export function JournalDateDisplay({
   viewState,
   dateParts,
-  focusMode,
+  isCompact = false,
   variant = 'card',
   children,
   className
@@ -120,8 +120,8 @@ export function JournalDateDisplay({
   const timeOfDay = useMemo(() => getTimeOfDay(), [])
   const todayConfig = timeOfDayConfig[timeOfDay]
 
-  // Should show greeting (only for day view, not in focus mode)
-  const showGreeting = viewState.type === 'day' && !focusMode
+  // Should show greeting (only for day view)
+  const showGreeting = viewState.type === 'day'
 
   // Should apply gradient background (only for day view)
   const showGradient = viewState.type === 'day'
@@ -132,24 +132,43 @@ export function JournalDateDisplay({
       <div
         className={cn(
           'relative transition-all duration-500 ease-out',
-          variant === 'card' ? 'rounded-b-3xl px-8 pt-6 pb-10' : 'rounded-none px-8 pt-8 pb-12',
+          variant === 'card' ? 'rounded-b-3xl shadow-sm' : 'rounded-none',
+          'px-8 pt-6 pb-10',
           showGradient && ['bg-gradient-to-br', todayConfig.gradient, todayConfig.darkGradient],
           className
         )}
       >
-        {/* Navigation / Actions Slot */}
-        {children && <div className="mb-6">{children}</div>}
+        <div className="flex w-full overflow-hidden">
+          {/* Left Spacer - Animates from 0 to 1 flex-grow to push content to center */}
+          <div
+            className="transition-all duration-500 ease-in-out"
+            style={{ flexGrow: isCompact ? 1 : 0 }}
+          />
 
-        {/* Greeting */}
-        {showGreeting && <Greeting timeOfDay={timeOfDay} className="mb-6" />}
+          <div
+            className="transition-all duration-500 ease-in-out shrink-0"
+            style={{
+              width: isCompact ? 'min(100%, 48rem)' : '100%'
+            }}
+          >
+            {/* Navigation / Actions Slot */}
+            {children && <div className="mb-6">{children}</div>}
 
-        {/* Large date: "January 11, 2026" */}
-        <h1 className="font-display text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
-          {dateParts.month} {dateParts.day}, {dateParts.year}
-        </h1>
+            {/* Greeting */}
+            {showGreeting && <Greeting timeOfDay={timeOfDay} className="mb-6" />}
 
-        {/* Day of week */}
-        <p className="font-serif text-lg text-muted-foreground/70 mt-1">{dateParts.dayName}</p>
+            {/* Large date: "January 11, 2026" */}
+            <h1 className="font-display text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
+              {dateParts.month} {dateParts.day}, {dateParts.year}
+            </h1>
+
+            {/* Day of week */}
+            <p className="font-serif text-lg text-muted-foreground/70 mt-1">{dateParts.dayName}</p>
+          </div>
+
+          {/* Right Spacer - Always grows to take remaining space */}
+          <div className="flex-grow transition-all duration-500 ease-in-out" />
+        </div>
       </div>
     )
   }

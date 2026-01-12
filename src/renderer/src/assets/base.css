@@ -10,6 +10,7 @@
 :root .bn-editor,
 :root .bn-container {
   background-color: var(--background) !important;
+  padding-inline: 0px;
 }
 
 .dark .bn-editor,
@@ -979,35 +980,6 @@
 
 .dark .journal-day-watermark {
   opacity: 0.04;
-}
-
-/* Journal notebook margin line */
-.journal-margin-line::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 2rem;
-  bottom: 2rem;
-  width: 1px;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    rgba(180, 120, 100, 0.15) 15%,
-    rgba(180, 120, 100, 0.2) 50%,
-    rgba(180, 120, 100, 0.15) 85%,
-    transparent
-  );
-}
-
-.dark .journal-margin-line::before {
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    rgba(200, 160, 140, 0.08) 15%,
-    rgba(200, 160, 140, 0.12) 50%,
-    rgba(200, 160, 140, 0.08) 85%,
-    transparent
-  );
 }
 
 /* Journal focus mode paper effect */
