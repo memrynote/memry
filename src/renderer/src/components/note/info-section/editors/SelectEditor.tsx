@@ -62,18 +62,17 @@ export function SelectEditor({
         onKeyDown={handleKeyDown}
         className={cn(
           'flex w-full items-center justify-between gap-2',
-          'rounded px-2 py-1',
+          'bg-transparent border-none p-0',
           'text-[13px] text-left',
-          'bg-background/50 border border-border/60',
-          'outline-none',
-          'hover:border-border',
-          isOpen && 'bg-background border-border ring-1 ring-border/40 shadow-sm'
+          'outline-none focus:ring-0 shadow-none'
         )}
       >
-        <span className={value ? 'text-stone-900' : 'text-stone-400'}>{value || placeholder}</span>
+        <span className={value ? 'text-foreground' : 'text-muted-foreground/30'}>
+          {value || placeholder}
+        </span>
         <ChevronDown
           className={cn(
-            'h-3.5 w-3.5 text-stone-400 transition-transform duration-150',
+            'h-3.5 w-3.5 text-muted-foreground/40 transition-transform duration-150',
             isOpen && 'rotate-180'
           )}
         />
