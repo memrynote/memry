@@ -190,21 +190,16 @@ export function PropertyRow({
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={cn(
-        'flex items-start py-1.5',
-        'border-b border-transparent',
-        'transition-colors duration-150',
-        isHovered && !isEditing && 'border-border/60'
-      )}
+      className={cn('flex items-start py-1', 'transition-colors duration-150')}
     >
       {/* Icon */}
-      <span className="mr-2 flex-shrink-0 text-muted-foreground/60">
-        <IconComponent className="h-4 w-4" />
+      <span className="mr-2 mt-0.5 flex-shrink-0 text-muted-foreground/40">
+        <IconComponent className="h-3.5 w-3.5" />
       </span>
 
       {/* Label */}
       <span
-        className={cn('w-24 flex-shrink-0', 'text-[13px] text-muted-foreground', 'truncate')}
+        className={cn('w-24 flex-shrink-0', 'text-[13px] text-muted-foreground/60', 'truncate')}
         title={property.name}
       >
         {property.name}
@@ -214,11 +209,11 @@ export function PropertyRow({
       <div
         onClick={handleStartEdit}
         className={cn(
-          'flex-1 min-w-0',
+          'flex-1 min-w-0 transition-colors rounded px-1 -mx-1',
           !isEditing &&
             property.type !== 'checkbox' &&
             property.type !== 'rating' &&
-            'cursor-pointer rounded px-1 -mx-1 hover:bg-muted/50'
+            'cursor-pointer hover:bg-muted/10'
         )}
       >
         {renderValue()}

@@ -152,7 +152,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   } = useJournalProperties(entry?.date ?? null, entry?.properties)
 
   // State for InfoSection expansion
-  const [isInfoExpanded, setIsInfoExpanded] = useState(false)
+  const [isInfoExpanded, setIsInfoExpanded] = useState(true)
 
   // Template selector state
   const [showTemplateSelector, setShowTemplateSelector] = useState(false)
