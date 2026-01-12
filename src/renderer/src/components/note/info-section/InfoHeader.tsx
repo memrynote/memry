@@ -28,7 +28,7 @@ export function InfoHeader({ isExpanded, onToggle }: InfoHeaderProps) {
           'group-hover:text-stone-700'
         )}
       >
-        Info
+        Properties
       </span>
     </button>
   )
