@@ -213,20 +213,6 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
             <TabBarWithDrag groupId={activeGroupId} />
           </div>
         )}
-
-        {/* Global Actions with refined styling */}
-        <div className="flex items-center gap-1.5 px-3 shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowShortcutsDialog(true)}
-            className="p-2 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
-              hover:bg-gray-200/50 dark:hover:bg-gray-700/50
-              transition-all duration-150 ease-out"
-            title="Keyboard shortcuts (?)"
-          >
-            <span className="text-xs font-medium tracking-wide">?</span>
-          </button>
-        </div>
       </header>
 
       {/* Main Content Area - Split View or Single Pane */}

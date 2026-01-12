@@ -19,6 +19,9 @@ import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from 
 
 const SETTINGS_KEYS = {
   JOURNAL_DEFAULT_TEMPLATE: 'journal.defaultTemplate',
+  JOURNAL_SHOW_SCHEDULE: 'journal.showSchedule',
+  JOURNAL_SHOW_TASKS: 'journal.showTasks',
+  JOURNAL_SHOW_AI_CONNECTIONS: 'journal.showAIConnections',
   AI_ENABLED: 'ai.enabled',
   // Tab settings
   TAB_PREVIEW_MODE: 'tabs.previewMode',
@@ -34,6 +37,9 @@ const SETTINGS_KEYS = {
 
 export interface JournalSettings {
   defaultTemplate: string | null
+  showSchedule: boolean
+  showTasks: boolean
+  showAIConnections: boolean
 }
 
 // ============================================================================
@@ -147,11 +153,25 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle(SettingsChannels.invoke.GET_JOURNAL_SETTINGS, () => {
     const db = getDbOrNull()
     if (!db) {
-      return { defaultTemplate: null }
+      return {
+        defaultTemplate: null,
+        showSchedule: true,
+        showTasks: true,
+        showAIConnections: true
+      }
     }
 
     const defaultTemplate = getSetting(db, SETTINGS_KEYS.JOURNAL_DEFAULT_TEMPLATE)
-    return { defaultTemplate }
+    const showScheduleStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_SCHEDULE)
+    const showTasksStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_TASKS)
+    const showAIConnectionsStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_AI_CONNECTIONS)
+
+    return {
+      defaultTemplate,
+      showSchedule: showScheduleStr !== 'false', // Default true
+      showTasks: showTasksStr !== 'false', // Default true
+      showAIConnections: showAIConnectionsStr !== 'false' // Default true
+    }
   })
 
   // Set journal settings
@@ -170,6 +190,21 @@ export function registerSettingsHandlers(): void {
         } else {
           setSetting(db, SETTINGS_KEYS.JOURNAL_DEFAULT_TEMPLATE, settings.defaultTemplate)
         }
+      }
+
+      // Handle sidebar visibility settings
+      if (settings.showSchedule !== undefined) {
+        setSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_SCHEDULE, settings.showSchedule ? 'true' : 'false')
+      }
+      if (settings.showTasks !== undefined) {
+        setSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_TASKS, settings.showTasks ? 'true' : 'false')
+      }
+      if (settings.showAIConnections !== undefined) {
+        setSetting(
+          db,
+          SETTINGS_KEYS.JOURNAL_SHOW_AI_CONNECTIONS,
+          settings.showAIConnections ? 'true' : 'false'
+        )
       }
 
       // Emit settings changed event

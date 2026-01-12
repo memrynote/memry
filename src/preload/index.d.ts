@@ -1653,6 +1653,12 @@ export interface ContextMenuItem {
 // Settings types
 export interface JournalSettings {
   defaultTemplate: string | null
+  /** Whether to show the Schedule section in the journal sidebar */
+  showSchedule: boolean
+  /** Whether to show the Tasks section in the journal sidebar */
+  showTasks: boolean
+  /** Whether to show the AI Connections panel in the journal sidebar */
+  showAIConnections: boolean
 }
 
 export interface AISettings {

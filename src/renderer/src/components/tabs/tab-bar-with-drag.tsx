@@ -6,9 +6,9 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
-import { ChevronLeft, ChevronRight, PanelRight, Bot } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Bot } from 'lucide-react'
 import { useAIAgent } from '@/contexts/ai-agent-context'
-import { useTabGroup, useTabs } from '@/contexts/tabs'
+import { useTabGroup } from '@/contexts/tabs'
 import { SortableTab } from './sortable-tab'
 import { PinnedTab } from './pinned-tab'
 import { TabBarAction } from './tab-bar-action'
@@ -31,7 +31,6 @@ export const TabBarWithDrag = ({
   groupId,
   className
 }: TabBarWithDragProps): React.JSX.Element | null => {
-  const { splitView } = useTabs()
   const group = useTabGroup(groupId)
   const { toggle: toggleAIAgent, isOpen: isAIAgentOpen } = useAIAgent()
 
@@ -79,11 +78,6 @@ export const TabBarWithDrag = ({
 
   const scrollRight = (): void => {
     scrollRef.current?.scrollBy({ left: 200, behavior: 'smooth' })
-  }
-
-  // Handle split view
-  const handleSplitRight = (): void => {
-    splitView('horizontal', groupId)
   }
 
   return (
@@ -188,11 +182,6 @@ export const TabBarWithDrag = ({
 
         {/* Tab actions */}
         <div className="flex items-center px-2 gap-1 mb-1.5 ml-auto self-center">
-          <TabBarAction
-            icon={<PanelRight className="w-4 h-4" />}
-            tooltip="Split Right"
-            onClick={handleSplitRight}
-          />
           <TabBarAction
             icon={
               <Bot

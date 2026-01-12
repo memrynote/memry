@@ -428,8 +428,12 @@ const api = {
     set: (key: string, value: string) =>
       ipcRenderer.invoke(SettingsChannels.invoke.SET, { key, value }),
     getJournalSettings: () => ipcRenderer.invoke(SettingsChannels.invoke.GET_JOURNAL_SETTINGS),
-    setJournalSettings: (settings: { defaultTemplate?: string | null }) =>
-      ipcRenderer.invoke(SettingsChannels.invoke.SET_JOURNAL_SETTINGS, settings),
+    setJournalSettings: (settings: {
+      defaultTemplate?: string | null
+      showSchedule?: boolean
+      showTasks?: boolean
+      showAIConnections?: boolean
+    }) => ipcRenderer.invoke(SettingsChannels.invoke.SET_JOURNAL_SETTINGS, settings),
     // AI Settings (simplified - no API key needed, uses local model)
     getAISettings: () => ipcRenderer.invoke(SettingsChannels.invoke.GET_AI_SETTINGS),
     setAISettings: (settings: { enabled?: boolean }) =>
