@@ -12,6 +12,7 @@ export interface TagsRowProps {
   onCreateTag: (name: string, color: string) => void
   onRemoveTag: (tagId: string) => void
   disabled?: boolean
+  className?: string
 }
 
 export const TagsRow = memo(function TagsRow({
@@ -21,7 +22,8 @@ export const TagsRow = memo(function TagsRow({
   onAddTag,
   onCreateTag,
   onRemoveTag,
-  disabled = false
+  disabled = false,
+  className
 }: TagsRowProps) {
   const [isPopupOpen, setIsPopupOpen] = useState(false)
 
@@ -41,7 +43,7 @@ export const TagsRow = memo(function TagsRow({
     <div
       role="list"
       aria-label="Tags"
-      className={cn('relative flex min-h-8 flex-wrap items-center gap-2', 'mb-4')}
+      className={cn('relative flex min-h-8 flex-wrap items-center gap-2', className || 'mb-4')}
     >
       {/* Tag chips */}
       {tags.map((tag) => (
