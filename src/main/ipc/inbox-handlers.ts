@@ -1081,12 +1081,7 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
     }
 
     // Store the file
-    const storeResult = await storeInboxAttachment(
-      id,
-      fileBuffer,
-      parsed.filename,
-      parsed.mimeType
-    )
+    const storeResult = await storeInboxAttachment(id, fileBuffer, parsed.filename, parsed.mimeType)
 
     if (!storeResult.success) {
       return {
@@ -1187,7 +1182,9 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
     // Emit captured event
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
 
-    console.log(`[Attachment] Captured ${inboxType}: ${parsed.filename} (${fileBuffer.length} bytes)`)
+    console.log(
+      `[Attachment] Captured ${inboxType}: ${parsed.filename} (${fileBuffer.length} bytes)`
+    )
 
     return { success: true, item }
   } catch (error) {

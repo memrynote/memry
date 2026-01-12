@@ -378,7 +378,8 @@ function generateYearlyStats(): DailyStats[] {
     const captureCountVoice = random() < 0.15 * activityMultiplier ? 1 : 0
     const captureCountClip = random() < 0.1 * activityMultiplier ? 1 : 0
     const captureCountPdf = random() < 0.08 * activityMultiplier ? 1 : 0
-    const captureCountSocial = random() < 0.12 * activityMultiplier ? Math.floor(random() * 2) + 1 : 0
+    const captureCountSocial =
+      random() < 0.12 * activityMultiplier ? Math.floor(random() * 2) + 1 : 0
 
     const totalCaptures =
       captureCountLink +

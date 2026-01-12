@@ -646,12 +646,7 @@ const VideoPreview = ({ item }: VideoPreviewProps): React.JSX.Element => {
     <div className="space-y-4">
       {videoUrl ? (
         <div className="relative overflow-hidden rounded-lg bg-black">
-          <video
-            src={videoUrl}
-            controls
-            className="w-full max-h-[400px]"
-            preload="metadata"
-          >
+          <video src={videoUrl} controls className="w-full max-h-[400px]" preload="metadata">
             Your browser does not support the video tag.
           </video>
         </div>

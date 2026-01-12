@@ -199,7 +199,11 @@ export function registerSettingsHandlers(): void {
 
       // Handle sidebar visibility settings
       if (settings.showSchedule !== undefined) {
-        setSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_SCHEDULE, settings.showSchedule ? 'true' : 'false')
+        setSetting(
+          db,
+          SETTINGS_KEYS.JOURNAL_SHOW_SCHEDULE,
+          settings.showSchedule ? 'true' : 'false'
+        )
       }
       if (settings.showTasks !== undefined) {
         setSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_TASKS, settings.showTasks ? 'true' : 'false')

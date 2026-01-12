@@ -680,8 +680,12 @@ function TemplateListItem({ template, onEdit, onDuplicate, onDelete }: TemplateL
 
 function JournalSettings() {
   const { templates, isLoading: isLoadingTemplates } = useTemplates()
-  const { settings, updateSettings, setDefaultTemplate, isLoading: isLoadingSettings } =
-    useJournalSettings()
+  const {
+    settings,
+    updateSettings,
+    setDefaultTemplate,
+    isLoading: isLoadingSettings
+  } = useJournalSettings()
 
   const handleTemplateChange = useCallback(
     async (value: string) => {

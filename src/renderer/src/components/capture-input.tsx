@@ -271,7 +271,7 @@ export function CaptureInput({
       {/* Input container with editorial styling */}
       <div
         className={cn(
-          'relative flex items-start',
+          'relative flex items-center',
           densityConfig.captureGap,
           densityConfig.capturePadding,
           'bg-muted/20 hover:bg-muted/30',
@@ -284,7 +284,7 @@ export function CaptureInput({
         {/* Type indicator icon */}
         <div
           className={cn(
-            'mt-1 flex-shrink-0',
+            'flex-shrink-0',
             'text-muted-foreground/50',
             'transition-colors duration-200',
             isFocused && 'text-muted-foreground/70'
@@ -311,12 +311,12 @@ export function CaptureInput({
           className={cn(
             'flex-1 min-h-[24px] max-h-[200px]',
             'bg-transparent',
-            'text-sm text-foreground/90',
+            'text-sm text-foreground/90 leading-6',
             'placeholder:text-muted-foreground/50',
             'resize-none',
             'focus:outline-none',
             'disabled:opacity-50 disabled:cursor-not-allowed',
-            'font-serif tracking-wide'
+            'tracking-wide'
           )}
           aria-label="Capture input"
         />
@@ -326,7 +326,7 @@ export function CaptureInput({
           onClick={handleAttachClick}
           disabled={isCapturing}
           className={cn(
-            'mt-0.5 flex-shrink-0',
+            'flex-shrink-0',
             'p-1.5 rounded-lg',
             'text-muted-foreground/50',
             'transition-all duration-200',
@@ -344,7 +344,7 @@ export function CaptureInput({
           onClick={handleMicClick}
           disabled={isCapturing}
           className={cn(
-            'mt-0.5 flex-shrink-0',
+            'flex-shrink-0',
             'p-1.5 rounded-lg',
             'text-muted-foreground/50',
             'transition-all duration-200',
@@ -372,7 +372,7 @@ export function CaptureInput({
           onClick={handleSubmit}
           disabled={!value.trim() || isCapturing}
           className={cn(
-            'mt-0.5 flex-shrink-0',
+            'flex-shrink-0',
             'p-1.5 rounded-lg',
             'text-muted-foreground/50',
             'transition-all duration-200',

@@ -368,10 +368,7 @@ function recordFilingHistory(
  * @param itemId - Inbox item ID
  * @param folderPath - Target folder path (relative to vault, empty string for root)
  */
-async function fileBinaryToFolder(
-  itemId: string,
-  folderPath: string
-): Promise<FileResponse> {
+async function fileBinaryToFolder(itemId: string, folderPath: string): Promise<FileResponse> {
   try {
     const db = requireDatabase()
 

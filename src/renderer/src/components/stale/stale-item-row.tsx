@@ -154,7 +154,12 @@ export const StaleItemRow = ({
                 isFocused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
               )}
             >
-              <QuickActions itemId={item.id} onArchive={onArchive} onSnooze={onSnooze} variant="row" />
+              <QuickActions
+                itemId={item.id}
+                onArchive={onArchive}
+                onSnooze={onSnooze}
+                variant="row"
+              />
             </div>
           )}
         </div>
