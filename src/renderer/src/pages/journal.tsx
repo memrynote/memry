@@ -18,6 +18,7 @@ import {
   JournalErrorBoundary,
   JournalNavigationRow,
   JournalDateDisplay,
+  JournalStatsFooter,
   type ScheduleEvent,
   type JournalViewState
 } from '@/components/journal'
@@ -1004,6 +1005,19 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 <div className="flex-grow transition-all duration-500 ease-in-out" />
               </div>
             </div>
+
+            {/* Stats Footer - sticky at bottom of scroll area */}
+            {!isJournalSettingsLoading &&
+              journalSettings.showStatsFooter &&
+              viewState.type === 'day' &&
+              documentStats && (
+                <JournalStatsFooter
+                  wordCount={documentStats.wordCount}
+                  characterCount={documentStats.characterCount}
+                  createdAt={documentStats.createdAt}
+                  modifiedAt={documentStats.modifiedAt}
+                />
+              )}
           </div>
 
           {viewState.type === 'day' && !isCompactMode && (

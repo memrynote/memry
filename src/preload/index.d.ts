@@ -1659,6 +1659,8 @@ export interface JournalSettings {
   showTasks: boolean
   /** Whether to show the AI Connections panel in the journal sidebar */
   showAIConnections: boolean
+  /** Whether to show the stats footer at the bottom of journal entries */
+  showStatsFooter: boolean
 }
 
 export interface AISettings {

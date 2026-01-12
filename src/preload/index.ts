@@ -433,6 +433,7 @@ const api = {
       showSchedule?: boolean
       showTasks?: boolean
       showAIConnections?: boolean
+      showStatsFooter?: boolean
     }) => ipcRenderer.invoke(SettingsChannels.invoke.SET_JOURNAL_SETTINGS, settings),
     // AI Settings (simplified - no API key needed, uses local model)
     getAISettings: () => ipcRenderer.invoke(SettingsChannels.invoke.GET_AI_SETTINGS),
