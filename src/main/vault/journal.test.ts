@@ -17,7 +17,8 @@ import {
   journalEntryExists,
   getJournalPath,
   calculateActivityLevelFromContent,
-  extractPreview
+  extractPreview,
+  extractJournalProperties
 } from './journal'
 
 // ============================================================================
@@ -193,6 +194,102 @@ describe('serializeJournalEntry', () => {
 
     expect(result).toContain('Padded content')
     expect(result).not.toContain('  Padded')
+  })
+})
+
+// ============================================================================
+// extractJournalProperties Tests
+// ============================================================================
+
+describe('extractJournalProperties', () => {
+  it('extracts properties from explicit properties object', () => {
+    const frontmatter = {
+      id: 'j2026-01-15',
+      date: '2026-01-15',
+      created: FIXED_ISO,
+      modified: FIXED_ISO,
+      tags: ['daily'],
+      properties: {
+        mood: 'happy',
+        energy: 5,
+        weather: 'sunny'
+      }
+    }
+
+    const result = extractJournalProperties(frontmatter)
+
+    expect(result).toEqual({
+      mood: 'happy',
+      energy: 5,
+      weather: 'sunny'
+    })
+  })
+
+  it('extracts top-level properties when no explicit properties object', () => {
+    const frontmatter = {
+      id: 'j2026-01-15',
+      date: '2026-01-15',
+      created: FIXED_ISO,
+      modified: FIXED_ISO,
+      tags: ['daily'],
+      mood: 'happy',
+      energy: 5
+    }
+
+    const result = extractJournalProperties(frontmatter)
+
+    expect(result).toEqual({
+      mood: 'happy',
+      energy: 5
+    })
+  })
+
+  it('ignores reserved frontmatter keys', () => {
+    const frontmatter = {
+      id: 'j2026-01-15',
+      date: '2026-01-15',
+      created: FIXED_ISO,
+      modified: FIXED_ISO,
+      tags: ['daily'],
+      customProp: 'value'
+    }
+
+    const result = extractJournalProperties(frontmatter)
+
+    expect(result).toEqual({ customProp: 'value' })
+    expect(result).not.toHaveProperty('id')
+    expect(result).not.toHaveProperty('date')
+    expect(result).not.toHaveProperty('created')
+    expect(result).not.toHaveProperty('modified')
+    expect(result).not.toHaveProperty('tags')
+  })
+
+  it('returns undefined for frontmatter with no custom properties', () => {
+    const frontmatter = {
+      id: 'j2026-01-15',
+      date: '2026-01-15',
+      created: FIXED_ISO,
+      modified: FIXED_ISO,
+      tags: ['daily']
+    }
+
+    const result = extractJournalProperties(frontmatter)
+
+    expect(result).toBeUndefined()
+  })
+
+  it('returns undefined for empty properties object', () => {
+    const frontmatter = {
+      id: 'j2026-01-15',
+      date: '2026-01-15',
+      created: FIXED_ISO,
+      modified: FIXED_ISO,
+      properties: {}
+    }
+
+    const result = extractJournalProperties(frontmatter)
+
+    expect(result).toBeUndefined()
   })
 })
 

@@ -34,42 +34,56 @@ export function DateEditor({ value, onChange, onBlur, autoFocus = true }: DateEd
     if (!input) return null
     if (!DATE_PATTERN.test(input)) return null
     const parsed = parse(input, DATE_FORMAT, new Date())
-    return isValid(parsed) ? parsed : null
+    if (!isValid(parsed)) return null
+    if (format(parsed, DATE_FORMAT) !== input) return null
+    return parsed
   }, [])
+
+  const resetToStoredValue = useCallback(() => {
+    setLocalValue(value ? format(value, DATE_FORMAT) : '')
+    setIsValidFormat(true)
+  }, [value])
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
     setLocalValue(newValue)
-    // Validate format in real-time (empty is valid)
-    const valid = !newValue || DATE_PATTERN.test(newValue)
-    console.log('[DateEditor] validation:', { newValue, valid, pattern: DATE_PATTERN.toString() })
+    const valid = !newValue || validateAndParse(newValue) !== null
     setIsValidFormat(valid)
-  }, [])
+  }, [validateAndParse])
 
   const handleBlur = useCallback(() => {
-    if (localValue && isValidFormat) {
-      const parsed = validateAndParse(localValue)
-      if (parsed) {
-        onChange(parsed)
-      }
-      // If invalid date (e.g., 32.01.2026), don't save
-    } else if (!localValue) {
+    const parsed = validateAndParse(localValue)
+    const valid = !localValue || parsed !== null
+    setIsValidFormat(valid)
+    if (!valid) {
+      resetToStoredValue()
+      onBlur?.()
+      return
+    }
+    if (!localValue) {
       onChange(null)
+    } else if (parsed) {
+      onChange(parsed)
     }
     onBlur?.()
-  }, [localValue, isValidFormat, validateAndParse, onChange, onBlur])
+  }, [localValue, validateAndParse, onChange, onBlur])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault()
-        if (localValue && isValidFormat) {
-          const parsed = validateAndParse(localValue)
-          if (parsed) {
-            onChange(parsed)
-          }
-        } else if (!localValue) {
+        const parsed = validateAndParse(localValue)
+        const valid = !localValue || parsed !== null
+        setIsValidFormat(valid)
+        if (!valid) {
+          resetToStoredValue()
+          onBlur?.()
+          return
+        }
+        if (!localValue) {
           onChange(null)
+        } else if (parsed) {
+          onChange(parsed)
         }
         onBlur?.()
       }
@@ -80,7 +94,7 @@ export function DateEditor({ value, onChange, onBlur, autoFocus = true }: DateEd
         onBlur?.()
       }
     },
-    [localValue, isValidFormat, value, validateAndParse, onChange, onBlur]
+    [localValue, value, validateAndParse, onChange, onBlur, resetToStoredValue]
   )
 
   return (

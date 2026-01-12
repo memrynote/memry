@@ -176,6 +176,43 @@ export function createJournalFrontmatter(date: string, tags?: string[]): Journal
 }
 
 // ============================================================================
+// Properties Extraction
+// ============================================================================
+
+/**
+ * Reserved frontmatter keys that are NOT custom properties.
+ */
+const RESERVED_JOURNAL_KEYS = new Set(['id', 'date', 'created', 'modified', 'tags', 'properties'])
+
+/**
+ * Extract custom properties from journal frontmatter.
+ * Properties can be stored under the `properties` key or as top-level keys
+ * (excluding reserved keys like id, date, created, modified, tags).
+ *
+ * @param frontmatter - Parsed frontmatter object
+ * @returns Record of property names to values, or undefined if no properties
+ */
+export function extractJournalProperties(
+  frontmatter: JournalFrontmatter
+): Record<string, unknown> | undefined {
+  // Check for explicit `properties` object first
+  if (frontmatter.properties && typeof frontmatter.properties === 'object') {
+    const props = frontmatter.properties as Record<string, unknown>
+    return Object.keys(props).length > 0 ? props : undefined
+  }
+
+  // Fall back to extracting non-reserved top-level keys
+  const properties: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(frontmatter)) {
+    if (!RESERVED_JOURNAL_KEYS.has(key) && value !== undefined) {
+      properties[key] = value
+    }
+  }
+
+  return Object.keys(properties).length > 0 ? properties : undefined
+}
+
+// ============================================================================
 // File Operations
 // ============================================================================
 
@@ -196,6 +233,9 @@ export async function readJournalEntry(date: string): Promise<JournalEntry | nul
   const wordCount = countWords(parsed.content)
   const characterCount = parsed.content.length
 
+  // Extract properties from frontmatter
+  const properties = extractJournalProperties(parsed.frontmatter)
+
   return {
     id: parsed.frontmatter.id,
     date: parsed.frontmatter.date,
@@ -204,7 +244,8 @@ export async function readJournalEntry(date: string): Promise<JournalEntry | nul
     characterCount,
     tags: parsed.frontmatter.tags ?? [],
     createdAt: parsed.frontmatter.created,
-    modifiedAt: parsed.frontmatter.modified
+    modifiedAt: parsed.frontmatter.modified,
+    properties
   }
 }
 
@@ -215,13 +256,16 @@ export async function readJournalEntry(date: string): Promise<JournalEntry | nul
  * @param date - Date in YYYY-MM-DD format
  * @param content - Markdown content (without frontmatter)
  * @param tags - Optional tags
+ * @param existingEntry - Optional existing entry data (to avoid re-reading)
+ * @param properties - Optional custom properties to store in frontmatter
  * @returns The created/updated journal entry and serialized file content
  */
 export async function writeJournalEntryWithContent(
   date: string,
   content: string,
   tags?: string[],
-  existingEntry?: JournalEntry | null
+  existingEntry?: JournalEntry | null,
+  properties?: Record<string, unknown>
 ): Promise<JournalWriteResult> {
   const filePath = getJournalPath(date)
   const journalDir = getJournalDir()
@@ -242,9 +286,26 @@ export async function writeJournalEntryWithContent(
       modified: new Date().toISOString(),
       tags: tags ?? existing.tags
     }
+
+    // Add properties if provided, or preserve existing properties
+    if (properties !== undefined) {
+      // Explicitly provided properties (can be empty object to clear)
+      if (Object.keys(properties).length > 0) {
+        frontmatter.properties = properties
+      }
+      // If properties is empty object, don't add to frontmatter (effectively clearing)
+    } else if (existing.properties && Object.keys(existing.properties).length > 0) {
+      // Preserve existing properties if not updating
+      frontmatter.properties = existing.properties
+    }
   } else {
     // Create new entry
     frontmatter = createJournalFrontmatter(date, tags)
+
+    // Add properties for new entry if provided
+    if (properties && Object.keys(properties).length > 0) {
+      frontmatter.properties = properties
+    }
   }
 
   // Serialize and write
@@ -255,6 +316,9 @@ export async function writeJournalEntryWithContent(
   const wordCount = countWords(parsed.content)
   const characterCount = parsed.content.length
 
+  // Extract properties from the written frontmatter
+  const writtenProperties = extractJournalProperties(parsed.frontmatter)
+
   const entry: JournalEntry = {
     id: parsed.frontmatter.id,
     date: parsed.frontmatter.date,
@@ -263,7 +327,8 @@ export async function writeJournalEntryWithContent(
     characterCount,
     tags: parsed.frontmatter.tags ?? [],
     createdAt: parsed.frontmatter.created,
-    modifiedAt: parsed.frontmatter.modified
+    modifiedAt: parsed.frontmatter.modified,
+    properties: writtenProperties
   }
 
   return {
@@ -280,14 +345,16 @@ export async function writeJournalEntryWithContent(
  * @param date - Date in YYYY-MM-DD format
  * @param content - Markdown content (without frontmatter)
  * @param tags - Optional tags
+ * @param properties - Optional custom properties
  * @returns The created/updated journal entry
  */
 export async function writeJournalEntry(
   date: string,
   content: string,
-  tags?: string[]
+  tags?: string[],
+  properties?: Record<string, unknown>
 ): Promise<JournalEntry> {
-  const result = await writeJournalEntryWithContent(date, content, tags)
+  const result = await writeJournalEntryWithContent(date, content, tags, null, properties)
   return result.entry
 }
 

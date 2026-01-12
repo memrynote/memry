@@ -131,15 +131,17 @@ describe('journal-handlers', () => {
 
   it('creates a journal entry and emits event', async () => {
     registerJournalHandlers()
+    // Properties are now passed to writeJournalEntryWithContent and serialized to frontmatter
     ;(journalVault.writeJournalEntryWithContent as Mock).mockResolvedValue({
-      entry: { ...baseEntry },
+      entry: { ...baseEntry, properties: { mood: 'good' } },
       fileContent: 'serialized',
       frontmatter: {
         id: baseEntry.id,
         date: baseEntry.date,
         created: baseEntry.createdAt,
         modified: baseEntry.modifiedAt,
-        tags: baseEntry.tags
+        tags: baseEntry.tags,
+        properties: { mood: 'good' }
       }
     })
     ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
@@ -151,9 +153,19 @@ describe('journal-handlers', () => {
       properties: { mood: 'good' }
     })
 
-    expect(result).toEqual(expect.objectContaining({ id: 'j2025-01-01' }))
+    expect(result).toEqual(
+      expect.objectContaining({ id: 'j2025-01-01', properties: { mood: 'good' } })
+    )
     expect(noteSync.syncNoteToCache).toHaveBeenCalled()
-    expect(notesQueries.setNoteProperties).toHaveBeenCalled()
+    // Properties are now serialized to frontmatter and synced via syncNoteToCache
+    // instead of being set separately via setNoteProperties
+    expect(journalVault.writeJournalEntryWithContent).toHaveBeenCalledWith(
+      '2025-01-01',
+      'Hello journal',
+      ['focus'],
+      null, // existingEntry
+      { mood: 'good' } // properties
+    )
   })
 
   it('updates a journal entry and emits update event', async () => {

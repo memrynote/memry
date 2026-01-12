@@ -13,8 +13,8 @@ interface UrlEditorProps {
 // URL validation: must have a dot and be parseable as URL
 const isValidUrl = (input: string): boolean => {
   if (!input) return true // Empty is valid
-  if (!input.includes('.')) return false // Must have at least one dot
   try {
+    if (!input.includes('.')) return false // Must have at least one dot
     new URL(input)
     return true
   } catch {
@@ -54,30 +54,35 @@ export function UrlEditor({
     const newValue = e.target.value
     setLocalValue(newValue)
     const valid = isValidUrl(newValue)
-    console.log('[UrlEditor] validation:', { newValue, valid })
     setIsValid(valid)
   }, [])
 
   const handleBlur = useCallback(() => {
-    // Validate directly to avoid stale state issues
     const valid = isValidUrl(localValue)
     setIsValid(valid)
-    if (valid) {
-      onChange(localValue)
+    if (!valid) {
+      setLocalValue(value)
+      setIsValid(true)
+      onBlur?.()
+      return
     }
+    onChange(localValue)
     onBlur?.()
-  }, [localValue, onChange, onBlur])
+  }, [localValue, onChange, onBlur, value])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault()
-        // Validate directly to avoid stale state issues
         const valid = isValidUrl(localValue)
         setIsValid(valid)
-        if (valid) {
-          onChange(localValue)
+        if (!valid) {
+          setLocalValue(value)
+          setIsValid(true)
+          onBlur?.()
+          return
         }
+        onChange(localValue)
         onBlur?.()
       }
       if (e.key === 'Escape') {
