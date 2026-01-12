@@ -1307,23 +1307,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         </div>
       )}
 
-      {/* Header with Dramatic Item Count */}
+      {/* Header */}
       <header className={cn('relative', densityConfig.headerMargin)}>
-        {/* Large decorative item count watermark */}
-        {!isInBulkMode && items.length > 0 && (
-          <div
-            className={cn(
-              'absolute',
-              densityConfig.watermarkOffset,
-              densityConfig.watermarkSize,
-              'journal-day-watermark'
-            )}
-            aria-hidden="true"
-          >
-            {items.length}
-          </div>
-        )}
-
         {/* Content layer */}
         <div className="relative z-10">
           {isInBulkMode ? (
@@ -1354,18 +1339,26 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
               </Button>
             </div>
           ) : (
-            /* Normal Header */
+            /* Normal Header with Capture Input */
             <div className="flex items-start justify-between gap-6">
-              <div>
-                <h1 className="font-display text-2xl lg:text-3xl font-normal tracking-tight text-foreground/90 mb-1">
-                  Inbox
-                </h1>
-                {currentView !== 'inbox' && (
-                  <p className="font-serif text-sm text-muted-foreground/70 tracking-wide">
-                    {currentView === 'archived'
-                      ? 'Previously processed items'
-                      : 'Capture patterns & insights'}
-                  </p>
+              <div className="flex-1">
+                {/* Quick Capture Input - only in inbox view */}
+                {currentView === 'inbox' && (
+                  <CaptureInput
+                    density={density}
+                    onCaptureSuccess={() => {
+                      addToast({
+                        message: 'Item captured',
+                        type: 'success'
+                      })
+                    }}
+                    onCaptureError={(errorMsg) => {
+                      addToast({
+                        message: errorMsg,
+                        type: 'error'
+                      })
+                    }}
+                  />
                 )}
               </div>
 
@@ -1392,29 +1385,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             </div>
           )}
         </div>
-
       </header>
-
-      {/* Quick Capture Input - only in inbox view */}
-      {currentView === 'inbox' && (
-        <div className={densityConfig.captureMargin}>
-          <CaptureInput
-            density={density}
-            onCaptureSuccess={() => {
-              addToast({
-                message: 'Item captured',
-                type: 'success'
-              })
-            }}
-            onCaptureError={(errorMsg) => {
-              addToast({
-                message: errorMsg,
-                type: 'error'
-              })
-            }}
-          />
-        </div>
-      )}
 
       {/* Content: Scrollable area with view-based rendering */}
       <div

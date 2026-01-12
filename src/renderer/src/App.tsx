@@ -29,6 +29,7 @@ import {
   useTaskOrder,
   useVault,
   useSearchShortcut,
+  useSettingsShortcut,
   useNewNoteShortcut,
   useUndoKeyboardShortcut,
   useReminderNotifications
@@ -111,6 +112,18 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
   useTabKeyboardShortcuts()
   const isChordActive = useChordShortcuts()
   useSearchShortcut(() => onSearchOpenChange(true))
+  useSettingsShortcut(() => {
+    openTab({
+      type: 'settings',
+      title: 'Settings',
+      icon: 'settings',
+      path: '/settings',
+      isPinned: false,
+      isModified: false,
+      isPreview: false,
+      isDeleted: false
+    })
+  })
   useNewNoteShortcut(() => void handleNewNote())
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders

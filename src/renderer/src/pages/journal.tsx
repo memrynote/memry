@@ -481,7 +481,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     (markdown: string) => updateContent(markdown),
     [updateContent]
   )
-  const handleContentChange = useCallback((_newBlocks: Block[]) => {}, [])
+  const handleContentChange = useCallback((_newBlocks: Block[]) => { }, [])
   const handleLinkClick = useCallback(
     (href: string) => window.open(href, '_blank', 'noopener,noreferrer'),
     []
@@ -896,7 +896,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                       {entry && (
                         <div
                           className={cn(
-                            'mb-4 transition-all duration-500 ease-in-out',
+                            'mb-4 mt-1 transition-all duration-500 ease-in-out',
                             isCompactMode ? 'pl-0' : 'pl-6 lg:pl-8'
                           )}
                         >
