@@ -70,15 +70,15 @@ export function DateEditor({ value, onChange, onBlur, autoFocus = true }: DateEd
         onKeyDown={handleKeyDown}
         className={cn(
           'w-full rounded px-2 py-1 pr-8',
-          'text-[13px] text-stone-900',
-          'bg-white border border-stone-300',
-          'placeholder:text-stone-400',
+          'text-[13px] text-foreground',
+          'bg-background/50 border border-border/60',
+          'placeholder:text-muted-foreground/40',
           'outline-none',
-          'focus:border-stone-400 focus:ring-1 focus:ring-stone-400',
+          'focus:bg-background focus:border-border focus:ring-1 focus:ring-border/40 shadow-sm',
           '[&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-8 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer'
         )}
       />
-      <Calendar className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
+      <Calendar className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
     </div>
   )
 }

@@ -64,10 +64,10 @@ export function SelectEditor({
           'flex w-full items-center justify-between gap-2',
           'rounded px-2 py-1',
           'text-[13px] text-left',
-          'bg-white border border-stone-300',
+          'bg-background/50 border border-border/60',
           'outline-none',
-          'hover:border-stone-400',
-          isOpen && 'border-stone-400 ring-1 ring-stone-400'
+          'hover:border-border',
+          isOpen && 'bg-background border-border ring-1 ring-border/40 shadow-sm'
         )}
       >
         <span className={value ? 'text-stone-900' : 'text-stone-400'}>{value || placeholder}</span>

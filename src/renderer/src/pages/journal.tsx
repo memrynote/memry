@@ -8,7 +8,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Loader2, FileText } from 'lucide-react'
-import { useSidebar } from '@/components/ui/sidebar'
 import {
   JournalCalendar,
   AIConnectionsPanel,
@@ -42,7 +41,7 @@ import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
 import { toast } from 'sonner'
-import { useTabs } from '@/contexts/tabs'
+import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import {
   formatDateToISO,
@@ -66,15 +65,12 @@ import {
 import { tasksService } from '@/services/tasks-service'
 import { parseConnectionDate } from '@/services/ai-connections-service'
 import { journalService } from '@/services/journal-service'
-import { useActiveTab } from '@/contexts/tabs'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
 
 // =============================================================================
 // CONSTANTS
 // =============================================================================
 
-// Note: Calendar events are not yet implemented (spec mentions "can be mocked initially")
-// Using empty array - will be populated when calendar integration is added
 const EMPTY_EVENTS: ScheduleEvent[] = []
 
 // =============================================================================
@@ -87,22 +83,26 @@ interface JournalPageProps {
 
 export function JournalPage({ className }: JournalPageProps): React.JSX.Element {
   const activeTab = useActiveTab()
+  const { openTab } = useTabs()
   const today = getTodayString()
 
-  // Get initial date from tab viewState (e.g., from search navigation) or default to today
+  // Get initial date from tab viewState or default to today
   const initialDate = (activeTab?.viewState?.date as string) || today
   const [selectedDate, setSelectedDate] = useState(initialDate)
+
+  // Layout state: Full Mode (default) or Compact Mode
   const [isCompactMode, setIsCompactMode] = useState(() => {
     const saved = localStorage.getItem('memry_journal_compact_mode')
-    return saved === 'true' // Default to false (Full Mode)
+    return saved === 'true'
   })
+
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
 
   // Headings state for outline panel
   const [headings, setHeadings] = useState<HeadingItem[]>([])
 
-  // Journal entry hook - loads/saves entry for selected date
+  // Journal entry hook
   const {
     entry,
     isLoading: isEntryLoading,
@@ -128,7 +128,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             retrySave()
           }
         },
-        duration: Infinity, // Keep until dismissed or retry succeeds
+        duration: Infinity,
         onDismiss: () => {
           dismissSaveError()
         }
@@ -136,13 +136,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
   }, [saveError, retrySave, dismissSaveError])
 
-  // Day context hook - loads tasks for selected date
+  // Day context hook
   const { tasks: dayTasks, overdueCount } = useDayContext(selectedDate)
 
-  // Tags hook - get available tags from the system
+  // Tags hook
   const { tags: allAvailableTags } = useNoteTagsQuery()
 
-  // Properties hook - manage journal entry properties
+  // Properties hook
   const {
     properties: backendProperties,
     updateProperty: updateBackendProperty,
@@ -157,21 +157,21 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const [showTemplateSelector, setShowTemplateSelector] = useState(false)
   const { templates, getTemplate } = useTemplates({ autoLoad: true })
 
-  // Journal settings (default template)
+  // Journal settings
   const { settings: journalSettings, setDefaultTemplate: setJournalDefaultTemplate } =
     useJournalSettings()
 
-  // Editor settings (toolbar mode)
+  // Editor settings
   const { settings: editorSettings } = useNoteEditorSettings()
 
-  // Bookmark state for journal entry
+  // Bookmark state
   const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('journal', entry?.date ?? '')
 
-  // Track if we're auto-applying the default template
+  // Track auto-applying default template
   const [isApplyingDefaultTemplate, setIsApplyingDefaultTemplate] = useState(false)
   const hasAppliedDefaultForDateRef = useRef<string | null>(null)
 
-  // Get default template info for the indicator
+  // Get default template info
   const defaultTemplateInfo = useMemo(() => {
     if (!journalSettings.defaultTemplate) return null
     const template = templates.find((t) => t.id === journalSettings.defaultTemplate)
@@ -183,7 +183,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
   }, [journalSettings.defaultTemplate, templates])
 
-  // AI connections hook - analyzes entry content and finds related entries/notes
+  // AI connections hook
   const {
     connections: aiConnections,
     isLoading: isAILoading,
@@ -191,42 +191,25 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     refresh: refreshAIConnections
   } = useAIConnections(entry?.content ?? '')
 
-  // Track when we've loaded content for the editor
-  // Using a counter + ref approach to ensure proper remounting
+  // Track editor loading
   const [editorLoadCount, setEditorLoadCount] = useState(0)
   const lastLoadedDateRef = useRef<string | null>(null)
 
-  // Sync editor when entry finishes loading for selected date
   useEffect(() => {
-    // Skip if still loading
-    if (isEntryLoading) {
-      return
-    }
+    if (isEntryLoading) return
+    if (loadedForDate !== selectedDate) return
+    if (lastLoadedDateRef.current === selectedDate) return
 
-    // Skip if data is not for the selected date
-    if (loadedForDate !== selectedDate) {
-      return
-    }
-
-    // Skip if we already loaded for this date
-    if (lastLoadedDateRef.current === selectedDate) {
-      return
-    }
-
-    // Mark as loaded and trigger editor remount by incrementing counter
     lastLoadedDateRef.current = selectedDate
     setEditorLoadCount((c) => c + 1)
   }, [selectedDate, isEntryLoading, loadedForDate])
 
-  // Reset the ref when selected date changes (to allow loading new date)
   useEffect(() => {
     if (lastLoadedDateRef.current !== null && lastLoadedDateRef.current !== selectedDate) {
       lastLoadedDateRef.current = null
     }
   }, [selectedDate])
 
-  // Editor state derived directly from entry
-  // Key includes loadCount and externalUpdateCount to force remount when content loads or is externally updated
   const editorState = useMemo(
     () => ({
       key: `${selectedDate}-${editorLoadCount}-${externalUpdateCount}`,
@@ -235,99 +218,47 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [selectedDate, editorLoadCount, externalUpdateCount, entry?.content]
   )
 
-  // Determine if we should show loading state
-  // Show loading when:
-  // 1. Hook is actively loading, OR
-  // 2. Data hasn't been loaded for the selected date yet
   const isDataPending = isEntryLoading || loadedForDate !== selectedDate
-
-  // Delayed loading indicator - only show spinner if loading takes > 150ms
-  // This prevents the flash of loading state for cached/fast responses
   const [showLoadingSpinner, setShowLoadingSpinner] = useState(false)
 
   useEffect(() => {
     if (isDataPending) {
-      // Start a timer to show the spinner after 150ms
       const timer = setTimeout(() => setShowLoadingSpinner(true), 150)
       return () => clearTimeout(timer)
     }
-    // Data is ready - hide spinner immediately
     setShowLoadingSpinner(false)
     return undefined
   }, [isDataPending])
 
-  // Final loading state for rendering
   const showEditorLoading = isDataPending && showLoadingSpinner
 
-  // Sync left sidebar with focus mode (hide when focus mode is on)
-  const { open: sidebarOpen, setOpen: setSidebarOpen } = useSidebar()
-  const { openTab } = useTabs()
-  const previousSidebarState = useRef<boolean | null>(null)
-
-  useEffect(() => {
-    // Store the previous sidebar state before hiding
-    if (previousSidebarState.current === null) {
-      previousSidebarState.current = sidebarOpen
-    }
-
-    if (focusMode) {
-      // Hide left sidebar when focus mode is enabled
-      setSidebarOpen(false)
-    } else {
-      // Restore left sidebar when focus mode is disabled
-      if (previousSidebarState.current !== null) {
-        setSidebarOpen(previousSidebarState.current)
-      }
-    }
-  }, [focusMode]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Restore sidebar state on unmount
-  useEffect(() => {
-    return () => {
-      if (previousSidebarState.current !== null) {
-        setSidebarOpen(previousSidebarState.current)
-      }
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Sync date when navigating from search (tab viewState changes externally)
-  // This effect fires when a user clicks a journal entry in search results,
-  // which updates the tab's viewState with the target date
+  // Sync date from tab viewState
   useEffect(() => {
     const tabDate = activeTab?.viewState?.date as string
     if (tabDate && tabDate !== selectedDate) {
       setSelectedDate(tabDate)
-      // Also update the local viewState to show day view for that date
       setViewState({ type: 'day', date: tabDate })
     }
-  }, [activeTab?.viewState?.date]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab?.viewState?.date])
 
-  // View state for breadcrumb navigation
+  // View state for navigation
   const [viewState, setViewState] = useState<JournalViewState>({ type: 'day', date: initialDate })
 
-  // Calculate if selected date is today
+  // Date parts and heatmap
   const isToday = selectedDate === today
   const selectedDateObj = parseISODate(selectedDate)
-
-  // Get date parts for current selected date
   const dateParts = useMemo(() => formatDateParts(selectedDate), [selectedDate])
 
-  // Load real heatmap data from backend
   const currentYear = useMemo(() => dateParts.year, [dateParts.year])
   const { data: heatmapData } = useJournalHeatmap(currentYear)
 
-  // Get month and year for the current view
   const viewMonth = viewState.type === 'month' ? viewState.month : dateParts.monthIndex
   const viewYear =
     viewState.type === 'month' || viewState.type === 'year' ? viewState.year : dateParts.year
 
-  // Load real month entries data when in month view
-  const { data: monthEntriesData } = useMonthEntries(viewYear, viewMonth + 1) // +1 because API uses 1-12
-
-  // Load real year stats when in year view
+  const { data: monthEntriesData } = useMonthEntries(viewYear, viewMonth + 1)
   const { data: yearStatsData } = useYearStats(viewYear)
 
-  // Transform monthEntriesData to Map for JournalMonthView component
   const monthEntries = useMemo(() => {
     const entries = new Map<string, { preview: string; characterCount: number }>()
     monthEntriesData.forEach((entry) => {
@@ -339,22 +270,16 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return entries
   }, [monthEntriesData])
 
-  // Transform yearStatsData to MonthStat[] for JournalYearView component
-  // If we have real data from the backend, transform it; otherwise use heatmap-based fallback
   const monthStats: MonthStat[] = useMemo(() => {
     if (yearStatsData.length > 0) {
-      // Transform backend MonthStats[] to UI MonthStat[]
-      // Backend returns data only for months with entries, so fill all 12 months
       const statsMap = new Map(yearStatsData.map((s) => [s.month, s]))
       const result: MonthStat[] = []
 
       for (let month = 0; month < 12; month++) {
-        const backendStats = statsMap.get(month + 1) // Backend uses 1-12
+        const backendStats = statsMap.get(month + 1)
         const monthName = getMonthName(month)
 
         if (backendStats) {
-          // Calculate activity dots from entry count and average level
-          // We'll create 5 dots based on the average level
           const avgLevel = Math.round(backendStats.averageLevel) as 0 | 1 | 2 | 3 | 4
           const activityDots: (0 | 1 | 2 | 3 | 4)[] = Array(5).fill(
             backendStats.entryCount > 0 ? avgLevel : 0
@@ -368,7 +293,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             activityDots
           })
         } else {
-          // No entries for this month
           result.push({
             month,
             monthName,
@@ -381,18 +305,15 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       return result
     }
 
-    // Fallback to heatmap-based calculation (for initial render before backend data loads)
     const year = viewState.type === 'year' ? viewState.year : dateParts.year
     return getMonthStats(year, heatmapData)
   }, [yearStatsData, viewState, dateParts.year, heatmapData])
 
-  // Track active heading based on scroll position (for outline panel)
   const { activeHeadingId } = useActiveHeading({
     headings,
-    offset: 120 // Account for header height
+    offset: 120
   })
 
-  // Compute document stats for the Info tab in OutlineInfoPanel
   const documentStats = useMemo(() => {
     if (!entry) return undefined
     return {
@@ -403,11 +324,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
   }, [entry])
 
-  // ==========================================================================
-  // TAGS & PROPERTIES COMPUTATIONS
-  // ==========================================================================
-
-  // Build a lookup map of tag colors from backend
+  // Tags & Properties
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
@@ -416,7 +333,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return map
   }, [allAvailableTags])
 
-  // Convert entry tags to Tag[] format for TagsRow
   const journalTags: Tag[] = useMemo(() => {
     return (entry?.tags || []).map((tagName) => ({
       id: tagName,
@@ -425,7 +341,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }))
   }, [entry?.tags, tagColorMap])
 
-  // Convert available tags to Tag[] format
   const availableTags: Tag[] = useMemo(() => {
     return allAvailableTags.map((t) => ({
       id: t.tag,
@@ -434,12 +349,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }))
   }, [allAvailableTags])
 
-  // Recent tags for quick access
   const recentTags = useMemo(() => {
     return availableTags.slice(0, 4)
   }, [availableTags])
 
-  // Type mapping for backend PropertyValue to UI Property
   const mapPropertyType = useCallback((backendType: string): PropertyType => {
     const typeMap: Record<string, PropertyType> = {
       text: 'text',
@@ -454,7 +367,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return typeMap[backendType] ?? 'text'
   }, [])
 
-  // Convert backend properties to UI format
   const properties: Property[] = useMemo(() => {
     return backendProperties.map((prop) => ({
       id: prop.name,
@@ -465,27 +377,20 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }))
   }, [backendProperties, mapPropertyType])
 
-  // ==========================================================================
-  // NAVIGATION CALLBACKS
-  // ==========================================================================
-
-  // Navigate to month view
+  // Navigation
   const navigateToMonth = useCallback((year: number, month: number) => {
     setViewState({ type: 'month', year, month })
   }, [])
 
-  // Navigate to year view
   const navigateToYear = useCallback((year: number) => {
     setViewState({ type: 'year', year })
   }, [])
 
-  // Navigate to specific day
   const navigateToDay = useCallback((date: string) => {
     setSelectedDate(date)
     setViewState({ type: 'day', date })
   }, [])
 
-  // Navigate back one level
   const navigateBack = useCallback(() => {
     if (viewState.type === 'month') {
       navigateToYear(viewState.year)
@@ -494,32 +399,19 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
   }, [viewState, selectedDate, navigateToYear, navigateToDay])
 
-  // Handle calendar day click
-  const handleDayClick = useCallback(
-    (date: string) => {
-      navigateToDay(date)
-    },
-    [navigateToDay]
-  )
+  const handleDayClick = useCallback((date: string) => navigateToDay(date), [navigateToDay])
+  const handleTodayClick = useCallback(() => navigateToDay(today), [today, navigateToDay])
 
-  // Handle today click
-  const handleTodayClick = useCallback(() => {
-    navigateToDay(today)
-  }, [today, navigateToDay])
-
-  // Navigate to previous day
   const handlePreviousDay = useCallback(() => {
     const prevDay = addDays(selectedDateObj, -1)
     navigateToDay(formatDateToISO(prevDay))
   }, [selectedDateObj, navigateToDay])
 
-  // Navigate to next day
   const handleNextDay = useCallback(() => {
     const nextDay = addDays(selectedDateObj, 1)
     navigateToDay(formatDateToISO(nextDay))
   }, [selectedDateObj, navigateToDay])
 
-  // Navigate to previous month (for month view)
   const handlePreviousMonth = useCallback(() => {
     if (viewState.type === 'month') {
       const newMonth = viewState.month === 0 ? 11 : viewState.month - 1
@@ -528,7 +420,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
   }, [viewState])
 
-  // Navigate to next month (for month view)
   const handleNextMonth = useCallback(() => {
     if (viewState.type === 'month') {
       const newMonth = viewState.month === 11 ? 0 : viewState.month + 1
@@ -537,21 +428,18 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
   }, [viewState])
 
-  // Navigate to previous year (for year view)
   const handlePreviousYear = useCallback(() => {
     if (viewState.type === 'year') {
       setViewState({ type: 'year', year: viewState.year - 1 })
     }
   }, [viewState])
 
-  // Navigate to next year (for year view)
   const handleNextYear = useCallback(() => {
     if (viewState.type === 'year') {
       setViewState({ type: 'year', year: viewState.year + 1 })
     }
   }, [viewState])
 
-  // Unified navigation handlers for JournalNavigationRow
   const handleNavigationPrevious = useCallback(() => {
     switch (viewState.type) {
       case 'day':
@@ -580,35 +468,25 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
   }, [viewState.type, handleNextDay, handleNextMonth, handleNextYear])
 
-  // BlockNote content handlers - save markdown content via journal service
+  // Editor Handlers
   const handleMarkdownChange = useCallback(
-    (markdown: string) => {
-      updateContent(markdown)
-    },
+    (markdown: string) => updateContent(markdown),
     [updateContent]
   )
-
-  // Block change handler (we don't need this for saving, but keep for potential future use)
-  const handleContentChange = useCallback((_newBlocks: Block[]) => {
-    // Content changes are handled by handleMarkdownChange
-  }, [])
-
-  const handleLinkClick = useCallback((href: string) => {
-    window.open(href, '_blank', 'noopener,noreferrer')
-  }, [])
+  const handleContentChange = useCallback((_newBlocks: Block[]) => { }, [])
+  const handleLinkClick = useCallback(
+    (href: string) => window.open(href, '_blank', 'noopener,noreferrer'),
+    []
+  )
 
   const handleInternalLinkClick = useCallback(
     async (linkedNoteIdOrTitle: string) => {
       const target = linkedNoteIdOrTitle?.trim()
       if (!target) return
-
       try {
-        // Use format-aware resolution to handle notes and files
         const resolution = await resolveWikiLink(target)
-
         switch (resolution.type) {
           case 'file':
-            // Open file in appropriate viewer (image, video, PDF, audio)
             openTab({
               type: 'file',
               title: resolution.title,
@@ -621,9 +499,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               isDeleted: false
             })
             break
-
           case 'note':
-            // Open note in editor
             openTab({
               type: 'note',
               title: resolution.title,
@@ -636,15 +512,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               isDeleted: false
             })
             break
-
           case 'create':
-            // For journal, just show info that note doesn't exist
-            // (don't auto-create from journal context)
             toast.info(`Note "${target}" not found`)
             break
-
           case 'not-found':
-            // File-like target not found - show error
             toast.error(`File not found: ${target}`)
             break
         }
@@ -656,12 +527,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [openTab]
   )
 
-  // Heading handlers for outline panel
   const handleHeadingClick = useCallback((headingId: string) => {
     const element = document.querySelector(`[data-id="${headingId}"]`)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
+    if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
 
   const handleHeadingsChange = useCallback((newHeadings: HeadingInfo[]) => {
@@ -675,16 +543,12 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     )
   }, [])
 
-  // ==========================================================================
-  // TAG HANDLERS
-  // ==========================================================================
-
+  // Tag Handlers
   const handleAddTag = useCallback(
     (tagId: string) => {
       const tagToAdd = availableTags.find((t) => t.id === tagId)
       if (tagToAdd && entry && !entry.tags.includes(tagToAdd.name)) {
-        const newTags = [...entry.tags, tagToAdd.name]
-        updateTags(newTags)
+        updateTags([...entry.tags, tagToAdd.name])
       }
     },
     [availableTags, entry, updateTags]
@@ -693,8 +557,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const handleCreateTag = useCallback(
     (name: string, _color: string) => {
       if (entry && !entry.tags.includes(name)) {
-        const newTags = [...entry.tags, name]
-        updateTags(newTags)
+        updateTags([...entry.tags, name])
       }
     },
     [entry, updateTags]
@@ -703,18 +566,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const handleRemoveTag = useCallback(
     (tagId: string) => {
       if (entry) {
-        const newTags = entry.tags.filter((t) => t !== tagId)
-        updateTags(newTags)
+        updateTags(entry.tags.filter((t) => t !== tagId))
       }
     },
     [entry, updateTags]
   )
 
-  // ==========================================================================
-  // PROPERTY HANDLERS
-  // ==========================================================================
-
-  // Default values for property types when creating new properties
+  // Property Handlers
   const getDefaultValueForType = useCallback((type: PropertyType): unknown => {
     switch (type) {
       case 'checkbox':
@@ -765,19 +623,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [removeBackendProperty]
   )
 
-  // ==========================================================================
-  // TEMPLATE HANDLERS
-  // ==========================================================================
-
+  // Template Handlers
   const handleTemplateSelect = useCallback(
     async (templateId: string | null) => {
       setShowTemplateSelector(false)
-
       if (!templateId || templateId === 'blank') {
-        // User selected blank template or cancelled - create empty entry
         try {
           await journalService.createEntry({ date: selectedDate, content: '' })
-          // Force editor remount to show the new entry
           lastLoadedDateRef.current = null
           setEditorLoadCount((c) => c + 1)
         } catch (err) {
@@ -785,37 +637,22 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         }
         return
       }
-
-      // Get the full template
       const template = await getTemplate(templateId)
-      if (!template) {
-        console.error('[JournalPage] Template not found:', templateId)
-        return
-      }
-
-      // Apply template: replace {{title}} placeholder with the date
+      if (!template) return
       const parts = formatDateParts(selectedDate)
       const dateTitle = `${parts.month} ${parts.day}, ${parts.year}`
       const content = template.content.replace(/\{\{title\}\}/g, dateTitle)
-
-      // Convert template properties array to record
       const properties: Record<string, unknown> = {}
       if (template.properties) {
-        for (const prop of template.properties) {
-          properties[prop.name] = prop.value
-        }
+        for (const prop of template.properties) properties[prop.name] = prop.value
       }
-
       try {
-        // Create the journal entry with template content, tags, and properties
         await journalService.createEntry({
           date: selectedDate,
           content,
           tags: template.tags ?? [],
           properties
         })
-
-        // Force editor remount to show the new content
         lastLoadedDateRef.current = null
         setEditorLoadCount((c) => c + 1)
       } catch (err) {
@@ -825,43 +662,30 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [selectedDate, getTemplate]
   )
 
-  // Auto-apply default template when navigating to a new date with no entry
   const handleApplyDefaultTemplate = useCallback(async () => {
     if (!defaultTemplateInfo?.id) return
     if (hasAppliedDefaultForDateRef.current === selectedDate) return
-
     setIsApplyingDefaultTemplate(true)
     hasAppliedDefaultForDateRef.current = selectedDate
-
     try {
       const template = await getTemplate(defaultTemplateInfo.id)
       if (!template) {
-        console.error('[JournalPage] Default template not found:', defaultTemplateInfo.id)
         setIsApplyingDefaultTemplate(false)
         return
       }
-
-      // Apply template: replace {{title}} placeholder with the date
       const parts = formatDateParts(selectedDate)
       const dateTitle = `${parts.month} ${parts.day}, ${parts.year}`
       const content = template.content.replace(/\{\{title\}\}/g, dateTitle)
-
-      // Convert template properties array to record
       const properties: Record<string, unknown> = {}
       if (template.properties) {
-        for (const prop of template.properties) {
-          properties[prop.name] = prop.value
-        }
+        for (const prop of template.properties) properties[prop.name] = prop.value
       }
-
       await journalService.createEntry({
         date: selectedDate,
         content,
         tags: template.tags ?? [],
         properties
       })
-
-      // Force editor remount to show the new content
       lastLoadedDateRef.current = null
       setEditorLoadCount((c) => c + 1)
     } catch (err) {
@@ -871,15 +695,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
   }, [selectedDate, defaultTemplateInfo?.id, getTemplate])
 
-  // Handle start blank - create empty entry
   const handleStartBlank = useCallback(async () => {
     hasAppliedDefaultForDateRef.current = selectedDate
     try {
-      await journalService.createEntry({
-        date: selectedDate,
-        content: ''
-      })
-      // Force editor remount
+      await journalService.createEntry({ date: selectedDate, content: '' })
       lastLoadedDateRef.current = null
       setEditorLoadCount((c) => c + 1)
     } catch (err) {
@@ -887,13 +706,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
   }, [selectedDate])
 
-  // Auto-apply default template when navigating to a date with no entry
   useEffect(() => {
-    // Only auto-apply if:
-    // 1. Not loading
-    // 2. No entry exists for this date
-    // 3. Default template is set
-    // 4. Haven't already applied for this date
     if (
       !isEntryLoading &&
       loadedForDate === selectedDate &&
@@ -901,7 +714,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       defaultTemplateInfo?.id &&
       hasAppliedDefaultForDateRef.current !== selectedDate
     ) {
-      // Auto-apply the default template
       handleApplyDefaultTemplate()
     }
   }, [
@@ -913,20 +725,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     handleApplyDefaultTemplate
   ])
 
-  // Handle task completion toggle from DayContextSidebar
   const handleTaskToggle = useCallback(
     async (taskId: string) => {
-      // Find the task to determine if it's completed
       const task = dayTasks.find((t) => t.id === taskId)
       if (!task) return
-
       try {
-        if (task.completed) {
-          await tasksService.uncomplete(taskId)
-        } else {
-          await tasksService.complete({ id: taskId })
-        }
-        // Note: The useDayContext hook will auto-refresh via task events
+        if (task.completed) await tasksService.uncomplete(taskId)
+        else await tasksService.complete({ id: taskId })
       } catch (error) {
         console.error('Failed to toggle task completion:', error)
       }
@@ -934,59 +739,43 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [dayTasks]
   )
 
-  // Handle AI connection click - navigate to related content
   const handleConnectionClick = useCallback(
     (connection: AIConnection) => {
       if (connection.type === 'journal' && connection.date) {
-        // Parse the human-readable date (e.g., "Nov 15, 2024") to ISO format
         const isoDate = parseConnectionDate(connection.date)
-        if (isoDate) {
-          navigateToDay(isoDate)
-        } else {
-          console.warn('Could not parse connection date:', connection.date)
-        }
+        if (isoDate) navigateToDay(isoDate)
       } else if (connection.type === 'note' && connection.title) {
-        // Log for now - will integrate with notes navigation in future
         console.log('Navigate to note:', connection.title)
       }
     },
     [navigateToDay]
   )
 
-  // Keyboard shortcuts
+  // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Escape: Navigate back or exit focus mode
       if (e.key === 'Escape') {
-        // If in month or year view, navigate back
         if (viewState.type === 'month' || viewState.type === 'year') {
           e.preventDefault()
           navigateBack()
           return
         }
-        // Otherwise exit focus mode if active
-        if (focusMode) {
-          setFocusMode(false)
-        }
+        if (isCompactMode) setIsCompactMode(false)
       }
-      // Cmd/Ctrl + \ toggles focus mode
       if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
         e.preventDefault()
-        setFocusMode((prev) => !prev)
+        setIsCompactMode((prev) => !prev)
       }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [focusMode, viewState, navigateBack])
+  }, [isCompactMode, viewState, navigateBack])
 
-  // Persist compact mode - save to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('memry_journal_compact_mode', isCompactMode.toString())
   }, [isCompactMode])
 
-  // Handle error boundary recovery
   const handleErrorRecover = useCallback(() => {
-    // Force reload entry
     lastLoadedDateRef.current = null
     setEditorLoadCount((c) => c + 1)
   }, [])
@@ -999,52 +788,31 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         console.error('[JournalPage] Error caught by boundary:', error, errorInfo)
       }}
     >
-      <div
-        className={cn(
-          'flex h-full w-full overflow-hidden bg-background',
-          'transition-all duration-500 ease-out',
-          className
-        )}
-      >
-        {/* Main Content Area - Journal Writing */}
-        <main
-          className={cn(
-            'flex-1 min-w-0 h-full relative',
-            'transition-all duration-500 ease-out',
-            focusMode ? 'journal-focus-paper' : ''
-          )}
-        >
-          {/* Scrollable content area */}
+      <div className={cn('flex h-full w-full overflow-hidden bg-background', className)} >
+        {/* Main Content Area */}
+        <main className={cn('flex-1 min-w-0 h-full relative transition-all duration-500 ease-out')}>
           <div className={cn('h-full overflow-y-auto')}>
-            <div
-              className={cn(
-                'mx-auto min-h-full flex flex-col',
-                'transition-all duration-500 ease-out',
-                focusMode ? 'max-w-none' : 'max-w-3xl',
-                'pt-0 pb-10 lg:pb-16'
-              )}
-            >
-              {/* Header - Navigation Row + Date Display */}
-              <header className={cn('relative mb-8 lg:mb-12')}>
-                {/* Date Display with Greeting, Gradient, and Navigation Row inside */}
+            <div className={cn('mx-auto min-h-full flex flex-col pt-0 pb-10 lg:pb-16')}>
+              {/* Header */}
+              <header className="relative mb-8 lg:mb-6 w-full">
                 <JournalDateDisplay
                   viewState={viewState}
                   dateParts={dateParts}
                   isToday={isToday}
-                  focusMode={focusMode}
-                  variant={focusMode ? 'flush' : 'card'}
+                  isCompact={isCompactMode}
+                  variant={isCompactMode ? 'compact' : 'flush'}
                 >
                   <JournalNavigationRow
                     viewState={viewState}
                     isToday={isToday}
-                    focusMode={focusMode}
+                    isCompact={isCompactMode}
                     isBookmarked={isBookmarked}
                     hasEntry={!!entry}
                     journalDate={entry?.date ?? null}
                     onPrevious={handleNavigationPrevious}
                     onNext={handleNavigationNext}
                     onToday={handleTodayClick}
-                    onFocusToggle={() => setFocusMode(!focusMode)}
+                    onFocusToggle={() => setIsCompactMode(!isCompactMode)}
                     onBookmarkToggle={toggleBookmark}
                     onVersionHistory={() => setIsVersionHistoryOpen(true)}
                     onExport={() => setIsExportDialogOpen(true)}
@@ -1052,184 +820,177 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 </JournalDateDisplay>
               </header>
 
-              {/* Editor/Content Area with its own max-width constraints if needed */}
-              <div
-                className={cn(
-                  'flex-1 flex flex-col',
-                  focusMode ? 'max-w-5xl mx-auto w-full px-8 lg:px-12' : 'w-full'
-                )}
-              >
-                {/* Error Banner */}
-                {entryError && (
-                  <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                    <span className="font-medium">Error:</span> {entryError}
-                  </div>
-                )}
+              {/* Editor/Content Area with Sliding Animation */}
+              <div className="flex-1 flex w-full overflow-hidden">
+                {/* Left Spacer */}
+                <div
+                  className="transition-all duration-500 ease-in-out"
+                  style={{ flexGrow: isCompactMode ? 1 : 0 }}
+                />
 
-                {/* Conditional Content Rendering */}
-                {viewState.type === 'day' && (
-                  /* Journal Editor - Main Writing Area (BlockNote) + Backlinks */
-                  <>
-                    {/* Template Prompt - Show when there's no entry and not loading */}
-                    {!isEntryLoading && !entry && !focusMode && (
-                      <div className="mb-6 ">
-                        {/* Default template is set - show indicator and auto-apply */}
-                        {defaultTemplateInfo ? (
-                          <DefaultTemplateIndicator
-                            templateName={defaultTemplateInfo.name}
-                            templateIcon={defaultTemplateInfo.icon}
-                            isCreating={isApplyingDefaultTemplate}
-                            onChangeTemplate={() => setShowTemplateSelector(true)}
-                            onStartBlank={handleStartBlank}
-                          />
-                        ) : (
-                          /* No default template - show original prompt */
-                          <button
-                            onClick={() => setShowTemplateSelector(true)}
-                            className={cn(
-                              'w-full flex items-center gap-3 px-4 py-3 rounded-lg',
-                              'border border-dashed border-amber-300/50 dark:border-amber-700/50',
-                              'bg-gradient-to-r from-amber-50/50 to-orange-50/30',
-                              'dark:from-amber-950/20 dark:to-orange-950/10',
-                              'hover:border-amber-400/60 dark:hover:border-amber-600/60',
-                              'hover:from-amber-50/70 hover:to-orange-50/50',
-                              'dark:hover:from-amber-950/30 dark:hover:to-orange-950/20',
-                              'transition-all duration-200',
-                              'text-left group'
-                            )}
-                          >
-                            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/30 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/30 shadow-sm">
-                              <FileText className="w-4 h-4 text-amber-700 dark:text-amber-400" />
-                            </div>
-                            <div className="flex-1">
-                              <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                                Start with a template
+                <div
+                  className={cn(
+                    'flex flex-col transition-all duration-500 ease-in-out shrink-0 px-8 lg:px-12',
+                    isCompactMode ? 'w-full max-w-3xl' : 'w-full max-w-none'
+                  )}
+                >
+                  {entryError && (
+                    <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                      <span className="font-medium">Error:</span> {entryError}
+                    </div>
+                  )}
+
+                  {viewState.type === 'day' && (
+                    <>
+                      {!isEntryLoading && !entry && (
+                        <div className="mb-6">
+                          {defaultTemplateInfo ? (
+                            <DefaultTemplateIndicator
+                              templateName={defaultTemplateInfo.name}
+                              templateIcon={defaultTemplateInfo.icon}
+                              isCreating={isApplyingDefaultTemplate}
+                              onChangeTemplate={() => setShowTemplateSelector(true)}
+                              onStartBlank={handleStartBlank}
+                            />
+                          ) : (
+                            <button
+                              onClick={() => setShowTemplateSelector(true)}
+                              className={cn(
+                                'w-full flex items-center gap-3 px-4 py-3 rounded-lg',
+                                'border border-dashed border-amber-300/50 dark:border-amber-700/50',
+                                'bg-gradient-to-r from-amber-50/50 to-orange-50/30 dark:from-amber-950/20 dark:to-orange-950/10',
+                                'hover:border-amber-400/60 dark:hover:border-amber-600/60 transition-all duration-200 text-left group'
+                              )}
+                            >
+                              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/30 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/30 shadow-sm">
+                                <FileText className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+                              </div>
+                              <div className="flex-1">
+                                <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                                  Start with a template
+                                </span>
+                                <p className="text-xs text-amber-600/70 dark:text-amber-400/60 mt-0.5">
+                                  Morning pages, daily reflection, gratitude journal, and more
+                                </p>
+                              </div>
+                              <span className="text-xs text-amber-500/60 dark:text-amber-400/50 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
+                                Choose template
                               </span>
-                              <p className="text-xs text-amber-600/70 dark:text-amber-400/60 mt-0.5">
-                                Morning pages, daily reflection, gratitude journal, and more
-                              </p>
-                            </div>
-                            <span className="text-xs text-amber-500/60 dark:text-amber-400/50 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
-                              Choose template
-                            </span>
-                          </button>
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {entry && (
+                        <div
+                          className="mb-4 transition-all duration-500 ease-in-out"
+                          style={{ paddingLeft: isCompactMode ? '0' : '24px' }}
+                        >
+                          <TagsRow
+                            tags={journalTags}
+                            availableTags={availableTags}
+                            recentTags={recentTags}
+                            onAddTag={handleAddTag}
+                            onCreateTag={handleCreateTag}
+                            onRemoveTag={handleRemoveTag}
+                          />
+                        </div>
+                      )}
+
+                      {entry && (
+                        <div
+                          className="mb-4 transition-all duration-500 ease-in-out"
+                          style={{ paddingLeft: isCompactMode ? '0' : '24px' }}
+                        >
+                          <InfoSection
+                            properties={properties}
+                            isExpanded={isInfoExpanded}
+                            onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
+                            onPropertyChange={handlePropertyChange}
+                            onAddProperty={handleAddProperty}
+                            onDeleteProperty={handleDeleteProperty}
+                          />
+                        </div>
+                      )}
+
+                      <div
+                        className={cn(
+                          'editor-click-area min-h-[300px] relative',
+                          !isCompactMode && 'journal-margin-line pl-6 lg:pl-8'
+                        )}
+                        onMouseDown={(e) => {
+                          const target = e.target as HTMLElement
+                          if (
+                            target.closest('[contenteditable="true"]')?.contains(target) &&
+                            target.closest('.bn-block-content')
+                          )
+                            return
+                          if (target.closest('button, a, input')) return
+                          const editor = (e.currentTarget as HTMLElement).querySelector(
+                            '.bn-editor [contenteditable="true"]'
+                          ) as HTMLElement
+                          if (editor) {
+                            e.preventDefault()
+                            editor.focus()
+                          }
+                        }}
+                      >
+                        {showEditorLoading ? (
+                          <div className="flex items-center justify-center h-[300px]">
+                            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : (
+                          <ContentArea
+                            key={editorState.key}
+                            initialContent={editorState.content}
+                            contentType="markdown"
+                            placeholder={
+                              selectedDate > today
+                                ? 'What are you planning...'
+                                : isToday
+                                  ? "What's on your mind today..."
+                                  : 'Reflect on this day...'
+                            }
+                            stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                            onContentChange={handleContentChange}
+                            onMarkdownChange={handleMarkdownChange}
+                            onHeadingsChange={handleHeadingsChange}
+                            onLinkClick={handleLinkClick}
+                            onInternalLinkClick={handleInternalLinkClick}
+                          />
                         )}
                       </div>
-                    )}
+                    </>
+                  )}
 
-                    {/* Tags Section - Hidden in focus mode */}
-                    {!focusMode && entry && (
-                      <div className="mb-4 " style={{ paddingLeft: '24px' }}>
-                        <TagsRow
-                          tags={journalTags}
-                          availableTags={availableTags}
-                          recentTags={recentTags}
-                          onAddTag={handleAddTag}
-                          onCreateTag={handleCreateTag}
-                          onRemoveTag={handleRemoveTag}
-                        />
-                      </div>
-                    )}
+                  {viewState.type === 'month' && (
+                    <JournalMonthView
+                      year={viewState.year}
+                      month={viewState.month}
+                      entries={monthEntries}
+                      heatmapData={heatmapData}
+                      onDayClick={navigateToDay}
+                      className="flex-1"
+                    />
+                  )}
 
-                    {/* Properties Section - Hidden in focus mode */}
-                    {!focusMode && entry && (
-                      <div className="mb-4 " style={{ paddingLeft: '24px' }}>
-                        <InfoSection
-                          properties={properties}
-                          isExpanded={isInfoExpanded}
-                          onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
-                          onPropertyChange={handlePropertyChange}
-                          onAddProperty={handleAddProperty}
-                          onDeleteProperty={handleDeleteProperty}
-                        />
-                      </div>
-                    )}
+                  {viewState.type === 'year' && (
+                    <JournalYearView
+                      year={viewState.year}
+                      monthStats={monthStats}
+                      onMonthClick={(month) => navigateToMonth(viewState.year, month)}
+                      className="flex-1"
+                    />
+                  )}
+                </div>
 
-                    <div
-                      className={cn(
-                        'editor-click-area min-h-[300px] relative',
-                        '',
-                        // Notebook margin line (only when not in focus mode)
-                        !focusMode && 'journal-margin-line pl-6 lg:pl-8'
-                      )}
-                      onMouseDown={(e) => {
-                        const target = e.target as HTMLElement
-                        // If clicking directly on editable text, let it work normally
-                        if (
-                          target.closest('[contenteditable="true"]')?.contains(target) &&
-                          target.closest('.bn-block-content')
-                        ) {
-                          return
-                        }
-                        // If clicking on buttons or links, let it work normally
-                        if (target.closest('button, a, input')) {
-                          return
-                        }
-                        // Focus editor for all other clicks (empty areas)
-                        const editor = (e.currentTarget as HTMLElement).querySelector(
-                          '.bn-editor [contenteditable="true"]'
-                        ) as HTMLElement
-                        if (editor) {
-                          e.preventDefault()
-                          editor.focus()
-                        }
-                      }}
-                    >
-                      {showEditorLoading ? (
-                        <div className="flex items-center justify-center h-[300px]">
-                          <Loader2 className="size-6 animate-spin text-muted-foreground" />
-                        </div>
-                      ) : (
-                        <ContentArea
-                          key={editorState.key}
-                          initialContent={editorState.content}
-                          contentType="markdown"
-                          placeholder={
-                            selectedDate > today
-                              ? 'What are you planning...'
-                              : isToday
-                                ? "What's on your mind today..."
-                                : 'Reflect on this day...'
-                          }
-                          stickyToolbar={editorSettings.toolbarMode === 'sticky'}
-                          onContentChange={handleContentChange}
-                          onMarkdownChange={handleMarkdownChange}
-                          onHeadingsChange={handleHeadingsChange}
-                          onLinkClick={handleLinkClick}
-                          onInternalLinkClick={handleInternalLinkClick}
-                        />
-                      )}
-                    </div>
-                  </>
-                )}
-
-                {viewState.type === 'month' && (
-                  /* Month View - List of all entries */
-                  <JournalMonthView
-                    year={viewState.year}
-                    month={viewState.month}
-                    entries={monthEntries}
-                    heatmapData={heatmapData}
-                    onDayClick={navigateToDay}
-                    className="flex-1"
-                  />
-                )}
-
-                {viewState.type === 'year' && (
-                  /* Year View - Grid of month cards */
-                  <JournalYearView
-                    year={viewState.year}
-                    monthStats={monthStats}
-                    onMonthClick={(month) => navigateToMonth(viewState.year, month)}
-                    className="flex-1"
-                  />
-                )}
+                {/* Right Spacer */}
+                <div className="flex-grow transition-all duration-500 ease-in-out" />
               </div>
             </div>
           </div>
 
-          {/* Floating outline panel with Info tab - only show in day view, hidden in focus mode */}
-          {viewState.type === 'day' && !focusMode && (
+          {viewState.type === 'day' && !isCompactMode && (
             <OutlineInfoPanel
               headings={headings}
               onHeadingClick={handleHeadingClick}
@@ -1239,47 +1000,26 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           )}
         </main>
 
-        {/* Right Sidebar - Context Panel */}
+        {/* Right Sidebar */}
         <aside
           className={cn(
-            'shrink-0 h-full overflow-hidden',
-            'border-l border-border/30',
-            'journal-sidebar-gradient',
-            // Hide on smaller screens
-            'hidden lg:block',
-            // Smooth transition for width and opacity
-            'transition-[width,opacity] duration-500 ease-out',
-            // Collapsed state
-            focusMode || viewState.type !== 'day'
+            'shrink-0 h-full overflow-hidden border-l border-border/30 journal-sidebar-gradient hidden lg:block transition-[width,opacity] duration-500 ease-out',
+            viewState.type !== 'day'
               ? 'w-0 opacity-0 border-l-0'
               : 'w-[320px] xl:w-[360px] opacity-100'
           )}
         >
           <div
             className={cn(
-              'h-full overflow-y-auto scrollbar-thin',
-              'p-5 xl:p-6',
-              'flex flex-col gap-6',
-              'w-[320px] xl:w-[360px]',
-              // Fade content
-              'transition-opacity duration-500 ease-out',
-              focusMode || viewState.type !== 'day' ? 'opacity-0' : 'opacity-100'
+              'h-full overflow-y-auto scrollbar-thin p-5 xl:p-6 flex flex-col gap-6 w-[320px] xl:w-[360px] transition-opacity duration-500 ease-out',
+              viewState.type !== 'day' ? 'opacity-0' : 'opacity-100'
             )}
           >
-            {/* Decorative corner accent */}
             <div
-              className={cn(
-                'absolute top-0 right-0 w-24 h-24',
-                'bg-gradient-to-bl from-amber-500/[0.04] to-transparent',
-                'dark:from-amber-400/[0.03]',
-                'rounded-bl-[60px]',
-                'pointer-events-none'
-              )}
+              className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-amber-500/[0.04] to-transparent dark:from-amber-400/[0.03] rounded-bl-[60px] pointer-events-none"
               aria-hidden="true"
             />
-
-            {/* Mini Calendar */}
-            <section className="relative ">
+            <section className="relative">
               <h3 className="journal-section-label mb-3">Calendar</h3>
               <JournalCalendar
                 selectedDate={selectedDate}
@@ -1288,9 +1028,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 heatmapData={heatmapData}
               />
             </section>
-
-            {/* Day Context - Events & Tasks */}
-            <section className="relative ">
+            <section className="relative">
               <h3 className="journal-section-label mb-3">
                 {isToday ? "Today's Schedule" : 'Schedule'}
               </h3>
@@ -1305,9 +1043,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 onEventClick={(id) => console.log('Event clicked:', id)}
               />
             </section>
-
-            {/* AI Connections */}
-            <section className="relative ">
+            <section className="relative">
               <h3 className="journal-section-label mb-3">Connected Thoughts</h3>
               <AIConnectionsPanel
                 connections={aiConnections}
@@ -1322,7 +1058,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           </div>
         </aside>
 
-        {/* Template Selector Dialog */}
+        {/* Dialogs */}
         <TemplateSelector
           isOpen={showTemplateSelector}
           onClose={() => setShowTemplateSelector(false)}
@@ -1331,8 +1067,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           journalDefaultTemplateId={journalSettings.defaultTemplate}
           onSetJournalDefault={setJournalDefaultTemplate}
         />
-
-        {/* Export Dialog */}
         {entry && (
           <ExportDialog
             open={isExportDialogOpen}
@@ -1341,8 +1075,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             noteTitle={`Journal - ${formatDateParts(selectedDate).month} ${formatDateParts(selectedDate).day}, ${formatDateParts(selectedDate).year}`}
           />
         )}
-
-        {/* Version History Panel */}
         {entry && (
           <VersionHistory
             open={isVersionHistoryOpen}
@@ -1350,9 +1082,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             noteId={entry.id}
             noteTitle={`Journal - ${formatDateParts(selectedDate).month} ${formatDateParts(selectedDate).day}, ${formatDateParts(selectedDate).year}`}
             onRestore={async () => {
-              // Force reload entry after restore (discards pending changes)
               await forceReload()
-              // Reset editor load tracking to force remount with new content
               lastLoadedDateRef.current = null
               setEditorLoadCount((c) => c + 1)
             }}

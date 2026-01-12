@@ -126,7 +126,7 @@ export function InfoSection({
       {isExpanded && (
         <div
           id="properties-content"
-          className={cn('mt-2 rounded-lg', 'border border-stone-200', 'bg-[#fafaf9]', 'p-4')}
+          className={cn('mt-1 rounded-lg', 'bg-transparent', 'py-2 px-4')}
         >
           {/* Section Header */}
           {folderProperties && folderProperties.length > 0 && (
@@ -192,7 +192,7 @@ export function InfoSection({
           )}
 
           {/* Add Property Button */}
-          <div className="mt-3 border-t border-stone-200 pt-3">
+          <div className="mt-2 border-t border-border/40 pt-2">
             <button
               ref={addButtonRef}
               type="button"
