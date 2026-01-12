@@ -481,7 +481,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     (markdown: string) => updateContent(markdown),
     [updateContent]
   )
-  const handleContentChange = useCallback((_newBlocks: Block[]) => { }, [])
+  const handleContentChange = useCallback((_newBlocks: Block[]) => {}, [])
   const handleLinkClick = useCallback(
     (href: string) => window.open(href, '_blank', 'noopener,noreferrer'),
     []
@@ -896,36 +896,36 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                       {entry && (
                         <div
                           className={cn(
-                            'mb-4 mt-1 transition-all duration-500 ease-in-out',
+                            'mb-8 transition-all duration-500 ease-in-out',
                             isCompactMode ? 'pl-0' : 'pl-6 lg:pl-8'
                           )}
                         >
-                          <TagsRow
-                            tags={journalTags}
-                            availableTags={availableTags}
-                            recentTags={recentTags}
-                            onAddTag={handleAddTag}
-                            onCreateTag={handleCreateTag}
-                            onRemoveTag={handleRemoveTag}
-                          />
-                        </div>
-                      )}
+                          <div className="flex flex-col gap-3">
+                            {/* Tags Row */}
+                            <TagsRow
+                              tags={journalTags}
+                              availableTags={availableTags}
+                              recentTags={recentTags}
+                              onAddTag={handleAddTag}
+                              onCreateTag={handleCreateTag}
+                              onRemoveTag={handleRemoveTag}
+                              className="mb-0"
+                            />
 
-                      {entry && (
-                        <div
-                          className={cn(
-                            'mb-4 transition-all duration-500 ease-in-out',
-                            isCompactMode ? 'pl-0' : 'pl-6 lg:pl-8'
-                          )}
-                        >
-                          <InfoSection
-                            properties={properties}
-                            isExpanded={isInfoExpanded}
-                            onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
-                            onPropertyChange={handlePropertyChange}
-                            onAddProperty={handleAddProperty}
-                            onDeleteProperty={handleDeleteProperty}
-                          />
+                            {/* Divider - subtle */}
+                            <div className="h-px w-full bg-border/40" />
+
+                            {/* Properties Section */}
+                            <InfoSection
+                              properties={properties}
+                              isExpanded={isInfoExpanded}
+                              variant="embedded"
+                              onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
+                              onPropertyChange={handlePropertyChange}
+                              onAddProperty={handleAddProperty}
+                              onDeleteProperty={handleDeleteProperty}
+                            />
+                          </div>
                         </div>
                       )}
 
