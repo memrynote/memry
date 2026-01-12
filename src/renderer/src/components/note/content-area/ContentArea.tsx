@@ -251,6 +251,13 @@ function normalizeTableContent(tableContent: any): { content: any; didChange: bo
 }
 
 function normalizeWikiLinks(blocks: Block[]): { blocks: Block[]; didChange: boolean } {
+  // Quick check: if no wiki link markers exist in the content, skip the expensive tree walk
+  // This is a performance optimization since most content won't have wiki links
+  const blockStr = JSON.stringify(blocks)
+  if (!blockStr.includes('[[')) {
+    return { blocks, didChange: false }
+  }
+
   let didChange = false
 
   const nextBlocks = blocks.map((block) => {
@@ -346,6 +353,18 @@ export const ContentArea = memo(function ContentArea({
 
   // Track if content is ready for saving (prevents saving empty content before load completes)
   const isContentReadyRef = useRef(false)
+
+  // Debounce timers for expensive operations (prevents lag during typing)
+  const markdownDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const headingsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cleanup debounce timers on unmount
+  useEffect(() => {
+    return () => {
+      if (markdownDebounceRef.current) clearTimeout(markdownDebounceRef.current)
+      if (headingsDebounceRef.current) clearTimeout(headingsDebounceRef.current)
+    }
+  }, [])
 
   // T069/T071: Schema with FileBlock for attachments
   const schema = useMemo(
@@ -537,51 +556,63 @@ export const ContentArea = memo(function ContentArea({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor])
 
-  // Handle content changes
-  const handleChange = useCallback(async () => {
+  // Handle content changes with debouncing for expensive operations
+  // This prevents typing lag by deferring markdown conversion and heading extraction
+  const handleChange = useCallback(() => {
     const blocks = editor.document
+
+    // Check for wiki links that need normalization (fast check with early exit optimization)
     const normalized = normalizeWikiLinks(blocks as Block[])
     if (normalized.didChange) {
       editor.replaceBlocks(editor.document, normalized.blocks)
       return
     }
 
-    // Notify parent of content changes (blocks)
+    // Notify parent of content changes (blocks) - synchronous, lightweight
     onContentChange?.(blocks as Block[])
 
-    // Notify parent of markdown changes if callback provided
-    // Only save if initial content has been loaded (prevents saving empty content from race condition)
+    // Debounce markdown conversion (150ms) - expensive async operation
+    // This is the main performance optimization: converts blocks to markdown only after typing pauses
     if (onMarkdownChange && isContentReadyRef.current) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/await-thenable -- BlockNote types are incorrect, this is async
-        let markdown = await editor.blocksToMarkdownLossy(blocks)
-
-        // Serialize file blocks to markers (they're lost in markdown conversion)
-        const fileBlocks = (blocks as Block[]).filter((b) => b.type === 'file')
-        if (fileBlocks.length > 0) {
-          // Append file block markers at the end
-          const markers = fileBlocks.map((b) => {
-            const props = b.props as unknown as {
-              url: string
-              name: string
-              size: number
-              mimeType: string
-            }
-            return serializeFileBlock(props)
-          })
-          markdown = markdown + '\n\n' + markers.join('\n')
-        }
-
-        onMarkdownChange(markdown)
-      } catch (error) {
-        console.error('Failed to convert blocks to markdown:', error)
+      if (markdownDebounceRef.current) {
+        clearTimeout(markdownDebounceRef.current)
       }
+      markdownDebounceRef.current = setTimeout(async () => {
+        try {
+          // eslint-disable-next-line @typescript-eslint/await-thenable -- BlockNote types are incorrect, this is async
+          let markdown = await editor.blocksToMarkdownLossy(editor.document)
+
+          // Serialize file blocks to markers (they're lost in markdown conversion)
+          const fileBlocks = (editor.document as Block[]).filter((b) => b.type === 'file')
+          if (fileBlocks.length > 0) {
+            const markers = fileBlocks.map((b) => {
+              const props = b.props as unknown as {
+                url: string
+                name: string
+                size: number
+                mimeType: string
+              }
+              return serializeFileBlock(props)
+            })
+            markdown = markdown + '\n\n' + markers.join('\n')
+          }
+
+          onMarkdownChange(markdown)
+        } catch (error) {
+          console.error('Failed to convert blocks to markdown:', error)
+        }
+      }, 150)
     }
 
-    // Extract and emit headings for outline
+    // Debounce heading extraction (200ms) - requires tree walk
     if (onHeadingsChange) {
-      const headings = extractHeadings(blocks as Block[])
-      onHeadingsChange(headings)
+      if (headingsDebounceRef.current) {
+        clearTimeout(headingsDebounceRef.current)
+      }
+      headingsDebounceRef.current = setTimeout(() => {
+        const headings = extractHeadings(editor.document as Block[])
+        onHeadingsChange(headings)
+      }, 200)
     }
   }, [editor, onContentChange, onMarkdownChange, onHeadingsChange])
 

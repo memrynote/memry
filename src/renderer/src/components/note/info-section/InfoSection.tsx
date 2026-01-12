@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -19,7 +19,7 @@ export interface InfoSectionProps {
   initialVisibleCount?: number
 }
 
-export function InfoSection({
+export const InfoSection = memo(function InfoSection({
   properties,
   folderProperties,
   isExpanded,
@@ -229,4 +229,4 @@ export function InfoSection({
         )}
     </div>
   )
-}
+})

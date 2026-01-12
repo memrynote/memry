@@ -125,6 +125,7 @@ function TodayButton({ onClick }: TodayButtonProps) {
 
 export function JournalNavigationRow({
   viewState,
+  isToday,
   isCompact = false,
   isBookmarked,
   hasEntry,
@@ -162,8 +163,8 @@ export function JournalNavigationRow({
         <NavArrow direction="prev" onClick={onPrevious} label={navLabels.prev} />
         <NavArrow direction="next" onClick={onNext} label={navLabels.next} />
 
-        {/* Today button - always show in day view */}
-        {viewState.type === 'day' && (
+        {/* Today button - show in day view if not today */}
+        {viewState.type === 'day' && !isToday && (
           <div className="ml-1">
             <TodayButton onClick={onToday} />
           </div>
