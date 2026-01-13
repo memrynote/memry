@@ -1,5 +1,4 @@
-import { useRef, useCallback, useEffect } from 'react'
-import { GripVertical } from 'lucide-react'
+import { useRef, useCallback, useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useClickOutside } from '../note-title/use-click-outside'
 import { PropertyType, PROPERTY_TYPE_CONFIG, PROPERTY_TYPES, NewProperty } from './types'
@@ -9,12 +8,28 @@ interface AddPropertyPopupProps {
   onClose: () => void
   onAdd: (property: NewProperty) => void
   position?: { top: number; left: number }
+  existingPropertyNames?: string[]
 }
 
-export function AddPropertyPopup({ isOpen, onClose, onAdd, position }: AddPropertyPopupProps) {
+export function AddPropertyPopup({
+  isOpen,
+  onClose,
+  onAdd,
+  position,
+  existingPropertyNames = []
+}: AddPropertyPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [propertyName, setPropertyName] = useState('')
 
   useClickOutside(popupRef, onClose, isOpen)
+
+  // Reset property name when popup opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      setPropertyName('')
+    }
+  }, [isOpen])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -26,23 +41,32 @@ export function AddPropertyPopup({ isOpen, onClose, onAdd, position }: AddProper
     [onClose]
   )
 
-  const handleTypeSelect = useCallback(
-    (type: PropertyType) => {
-      // Get the default label for this type as the property name
-      const config = PROPERTY_TYPE_CONFIG[type]
-      onAdd({ name: config.label, type })
-      onClose()
-    },
-    [onAdd, onClose]
-  )
-
-  // Focus first item when opened
-  useEffect(() => {
-    if (isOpen && popupRef.current) {
-      const firstButton = popupRef.current.querySelector(
+  const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      // Focus the first type button when Enter is pressed
+      const firstButton = popupRef.current?.querySelector(
         'button[role="option"]'
       ) as HTMLButtonElement
       firstButton?.focus()
+    }
+  }, [])
+
+  const handleTypeSelect = useCallback(
+    (type: PropertyType) => {
+      const config = PROPERTY_TYPE_CONFIG[type]
+      // Use custom name if provided, otherwise use type label
+      const baseName = propertyName.trim() || config.label
+      onAdd({ name: baseName, type })
+      onClose()
+    },
+    [onAdd, onClose, propertyName]
+  )
+
+  // Focus input when opened
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus()
     }
   }, [isOpen])
 
@@ -57,21 +81,35 @@ export function AddPropertyPopup({ isOpen, onClose, onAdd, position }: AddProper
       className={cn(
         'fixed z-[9999]',
         'w-[240px] max-h-[400px] overflow-y-auto',
-        'rounded-lg border border-stone-200 bg-white',
+        'rounded-lg border border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900',
         'shadow-lg',
         'py-1',
         'animate-in fade-in-0 zoom-in-95 duration-150'
       )}
       style={position ? { top: position.top, left: position.left } : undefined}
     >
-      {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-stone-100">
-        <GripVertical className="h-4 w-4 text-stone-300" />
-        <span className="text-sm text-stone-400">Add property</span>
+      {/* Property name input */}
+      <div className="px-3 py-2 border-b border-stone-100 dark:border-stone-800">
+        <input
+          ref={inputRef}
+          type="text"
+          value={propertyName}
+          onChange={(e) => setPropertyName(e.target.value)}
+          onKeyDown={handleInputKeyDown}
+          placeholder="Property name"
+          className={cn(
+            'w-full px-2 py-1.5 text-sm',
+            'bg-stone-50 dark:bg-stone-800',
+            'border border-stone-200 dark:border-stone-700 rounded',
+            'placeholder:text-stone-400 dark:placeholder:text-stone-500',
+            'focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-500'
+          )}
+          aria-label="Property name"
+        />
       </div>
 
       {/* Type section header */}
-      <div className="px-3 py-2 text-[11px] font-medium text-stone-400 uppercase tracking-wide">
+      <div className="px-3 py-2 text-[11px] font-medium text-stone-400 dark:text-stone-500 uppercase tracking-wide">
         Type
       </div>
 
@@ -91,11 +129,11 @@ export function AddPropertyPopup({ isOpen, onClose, onAdd, position }: AddProper
               'flex w-full items-center gap-3',
               'px-3 py-2 text-left text-sm',
               'transition-colors duration-100',
-              'text-stone-700 hover:bg-stone-50',
-              'focus:bg-stone-100 focus:outline-none'
+              'text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800',
+              'focus:bg-stone-100 dark:focus:bg-stone-800 focus:outline-none'
             )}
           >
-            <span className="text-stone-400">
+            <span className="text-stone-400 dark:text-stone-500">
               <IconComponent className="h-4 w-4" />
             </span>
             <span>{config.label}</span>

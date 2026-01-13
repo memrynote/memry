@@ -992,6 +992,15 @@ export interface PropertiesClientAPI {
    * Set properties for any entity (note or journal entry) by ID.
    */
   set(entityId: string, properties: Record<string, unknown>): Promise<SetPropertiesResponse>
+  /**
+   * Rename a property for a specific entity (note-only scope).
+   * Does not propagate to other entities - only affects this entity's frontmatter.
+   */
+  rename(
+    entityId: string,
+    oldName: string,
+    newName: string
+  ): Promise<{ success: true } | { success: false; error: string }>
 }
 
 // Tasks client API interface

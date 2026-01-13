@@ -144,7 +144,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     properties: backendProperties,
     updateProperty: updateBackendProperty,
     addProperty: addBackendProperty,
-    removeProperty: removeBackendProperty
+    removeProperty: removeBackendProperty,
+    renameProperty: renameBackendProperty
   } = useProperties(entry?.id ?? null)
 
   // State for InfoSection expansion (collapsed by default)
@@ -599,6 +600,17 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [removeBackendProperty]
   )
 
+  const handlePropertyNameChange = useCallback(
+    async (propertyId: string, newName: string) => {
+      try {
+        await renameBackendProperty(propertyId, newName)
+      } catch (err) {
+        console.error('[JournalPage] Failed to rename property:', err)
+      }
+    },
+    [renameBackendProperty]
+  )
+
   // Template Handlers
   const handleTemplateSelect = useCallback(
     async (templateId: string | null) => {
@@ -889,6 +901,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               variant="embedded"
                               onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
                               onPropertyChange={handlePropertyChange}
+                              onPropertyNameChange={handlePropertyNameChange}
                               onAddProperty={handleAddProperty}
                               onDeleteProperty={handleDeleteProperty}
                             />
