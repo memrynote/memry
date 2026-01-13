@@ -327,11 +327,11 @@ function isURL(value: string): boolean {
  * T008: Used when syncing externally-edited properties that don't have
  * a pre-existing type definition.
  *
- * @param name - Property name (used for contextual hints like "rating")
+ * @param _name - Property name (unused, kept for API compatibility)
  * @param value - Property value to infer type from
  * @returns Inferred property type
  */
-export function inferPropertyType(name: string, value: unknown): PropertyType {
+export function inferPropertyType(_name: string, value: unknown): PropertyType {
   // Boolean -> checkbox
   if (typeof value === 'boolean') {
     return 'checkbox'
@@ -339,17 +339,12 @@ export function inferPropertyType(name: string, value: unknown): PropertyType {
 
   // Number with contextual hints
   if (typeof value === 'number') {
-    // Check if this looks like a rating (0-5 range and name contains "rating")
-    // Note: 0 is included because it's the default value when creating a new rating property
-    if (value >= 0 && value <= 5 && name.toLowerCase().includes('rating')) {
-      return 'rating'
-    }
     return 'number'
   }
 
-  // Array -> multiselect
+  // Array -> text (arrays no longer supported, convert to JSON string)
   if (Array.isArray(value)) {
-    return 'multiselect'
+    return 'text'
   }
 
   // String with format detection
@@ -404,20 +399,12 @@ export function deserializePropertyValue(value: string | null, type: PropertyTyp
 
   switch (type) {
     case 'number':
-    case 'rating':
       return Number(value)
     case 'checkbox':
       return value === 'true'
-    case 'multiselect':
-      try {
-        return JSON.parse(value)
-      } catch {
-        return []
-      }
     case 'text':
     case 'date':
     case 'url':
-    case 'select':
     default:
       return value
   }

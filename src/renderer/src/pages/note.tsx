@@ -12,7 +12,7 @@ import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
-import { InfoSection, Property, NewProperty, PropertyType } from '@/components/note/info-section'
+import { InfoSection, Property, NewProperty } from '@/components/note/info-section'
 import { BacklinksSection, Backlink } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import {
@@ -22,7 +22,8 @@ import {
   useNoteTagsQuery,
   type Note
 } from '@/hooks/use-notes-query'
-import { useNoteProperties } from '@/hooks/use-note-properties'
+import { useProperties } from '@/hooks/use-properties'
+import { getDefaultValueForType, mapPropertyType } from '@/lib/property-utils'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { onNoteDeleted, onNoteUpdated } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
@@ -46,23 +47,6 @@ import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
 
 interface NotePageProps {
   noteId?: string
-}
-
-// Default values for property types when creating new properties
-function getDefaultValueForType(type: PropertyType): unknown {
-  switch (type) {
-    case 'checkbox':
-      return false
-    case 'number':
-    case 'rating':
-      return 0
-    case 'multiSelect':
-      return []
-    case 'date':
-      return null
-    default:
-      return ''
-  }
 }
 
 // ============================================================================
@@ -118,10 +102,10 @@ export function NotePage({ noteId }: NotePageProps) {
   const initialHighlight = useMemo(() => {
     const viewState = activeTab?.viewState as
       | {
-          highlightStart?: number
-          highlightEnd?: number
-          highlightText?: string
-        }
+        highlightStart?: number
+        highlightEnd?: number
+        highlightText?: string
+      }
       | undefined
 
     if (viewState?.highlightText) {
@@ -134,13 +118,13 @@ export function NotePage({ noteId }: NotePageProps) {
     return undefined
   }, [activeTab?.viewState])
 
-  // Properties from backend
+  // Properties from backend (unified hook works for notes and journal entries)
   const {
     properties: backendProperties,
     updateProperty: updateBackendProperty,
     addProperty: addBackendProperty,
     removeProperty: removeBackendProperty
-  } = useNoteProperties(noteId ?? null)
+  } = useProperties(noteId ?? null)
 
   // Bookmark state
   const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('note', noteId ?? '')
@@ -164,21 +148,6 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Refs for debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Type mapping for backend PropertyValue → UI Property
-  const mapPropertyType = useCallback((backendType: string): PropertyType => {
-    const typeMap: Record<string, PropertyType> = {
-      text: 'text',
-      number: 'number',
-      checkbox: 'checkbox',
-      date: 'date',
-      select: 'select',
-      multiselect: 'multiSelect',
-      url: 'url',
-      rating: 'rating'
-    }
-    return typeMap[backendType] ?? 'text'
-  }, [])
 
   // Convert backend properties to UI format
   const properties: Property[] = useMemo(() => {
@@ -326,13 +295,13 @@ export function NotePage({ noteId }: NotePageProps) {
         date: new Date(),
         mentions: bl.context
           ? [
-              {
-                id: `mention-${bl.sourceId}`,
-                snippet: bl.context,
-                linkStart: 0,
-                linkEnd: 0
-              }
-            ]
+            {
+              id: `mention-${bl.sourceId}`,
+              snippet: bl.context,
+              linkStart: 0,
+              linkEnd: 0
+            }
+          ]
           : []
       }
     })
@@ -552,14 +521,12 @@ export function NotePage({ noteId }: NotePageProps) {
 
   const handleDeleteProperty = useCallback(
     async (propertyId: string) => {
-      console.log('[NotePage] handleDeleteProperty called:', { propertyId, noteId })
       if (isDeleted) {
         toast.error('Cannot delete property - this note was deleted')
         return
       }
       try {
         await removeBackendProperty(propertyId)
-        console.log('[NotePage] Property deleted successfully')
       } catch (err) {
         console.error('[NotePage] Failed to delete property:', err)
         toast.error('Failed to delete property')

@@ -3,15 +3,7 @@ import { Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Property, PROPERTY_TYPE_CONFIG } from './types'
-import {
-  TextEditor,
-  NumberEditor,
-  CheckboxEditor,
-  RatingEditor,
-  DateEditor,
-  UrlEditor,
-  LongTextEditor
-} from './editors'
+import { TextEditor, NumberEditor, CheckboxEditor, DateEditor, UrlEditor } from './editors'
 
 interface PropertyRowProps {
   property: Property
@@ -28,9 +20,7 @@ export function PropertyRow({
   disabled,
   autoFocus = false
 }: PropertyRowProps) {
-  const [isEditing, setIsEditing] = useState(
-    autoFocus && property.type !== 'checkbox' && property.type !== 'rating'
-  )
+  const [isEditing, setIsEditing] = useState(autoFocus && property.type !== 'checkbox')
   const [isHovered, setIsHovered] = useState(false)
 
   const config = PROPERTY_TYPE_CONFIG[property.type]
@@ -38,13 +28,13 @@ export function PropertyRow({
 
   // Handle autoFocus - start editing when mounted with autoFocus
   useEffect(() => {
-    if (autoFocus && property.type !== 'checkbox' && property.type !== 'rating') {
+    if (autoFocus && property.type !== 'checkbox') {
       setIsEditing(true)
     }
   }, [autoFocus, property.type])
 
   const handleStartEdit = useCallback(() => {
-    if (!disabled && property.type !== 'checkbox' && property.type !== 'rating') {
+    if (!disabled && property.type !== 'checkbox') {
       setIsEditing(true)
     }
   }, [disabled, property.type])
@@ -54,13 +44,9 @@ export function PropertyRow({
   }, [])
 
   const renderValue = () => {
-    // Checkbox and rating are always interactive (no edit mode)
+    // Checkbox is always interactive (no edit mode)
     if (property.type === 'checkbox') {
       return <CheckboxEditor value={Boolean(property.value)} onChange={onValueChange} />
-    }
-
-    if (property.type === 'rating') {
-      return <RatingEditor value={Number(property.value) || 0} onChange={onValueChange} />
     }
 
     // Other types show display value or editor
@@ -104,15 +90,6 @@ export function PropertyRow({
       case 'text':
         return (
           <TextEditor
-            value={String(property.value ?? '')}
-            onChange={onValueChange}
-            onBlur={handleEndEdit}
-          />
-        )
-
-      case 'longText':
-        return (
-          <LongTextEditor
             value={String(property.value ?? '')}
             onChange={onValueChange}
             onBlur={handleEndEdit}
@@ -181,10 +158,7 @@ export function PropertyRow({
         onClick={handleStartEdit}
         className={cn(
           'flex-1 min-w-0 transition-colors rounded px-1 -mx-1',
-          !isEditing &&
-            property.type !== 'checkbox' &&
-            property.type !== 'rating' &&
-            'cursor-pointer hover:bg-muted/10'
+          !isEditing && property.type !== 'checkbox' && 'cursor-pointer hover:bg-muted/10'
         )}
       >
         {renderValue()}

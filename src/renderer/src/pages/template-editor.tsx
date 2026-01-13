@@ -35,10 +35,7 @@ function getDefaultValueForType(type: PropertyType): unknown {
     case 'checkbox':
       return false
     case 'number':
-    case 'rating':
       return 0
-    case 'multiSelect':
-      return []
     case 'date':
       return null
     default:
@@ -47,34 +44,27 @@ function getDefaultValueForType(type: PropertyType): unknown {
 }
 
 // Map PropertyType to TemplatePropertyType
+// Note: Templates support more property types than the unified properties system
 function mapToTemplatePropertyType(type: PropertyType): TemplateProperty['type'] {
   const typeMap: Record<PropertyType, TemplateProperty['type']> = {
     text: 'text',
-    longText: 'text',
     number: 'number',
     date: 'date',
     checkbox: 'checkbox',
-    select: 'select',
-    multiSelect: 'multiselect',
-    rating: 'rating',
-    url: 'url',
-    relation: 'text',
-    person: 'text'
+    url: 'url'
   }
   return typeMap[type] ?? 'text'
 }
 
 // Map TemplatePropertyType to PropertyType
+// Unsupported template types fall back to 'text'
 function mapFromTemplatePropertyType(type: TemplateProperty['type']): PropertyType {
-  const typeMap: Record<TemplateProperty['type'], PropertyType> = {
+  const typeMap: Partial<Record<TemplateProperty['type'], PropertyType>> = {
     text: 'text',
     number: 'number',
     checkbox: 'checkbox',
     date: 'date',
-    select: 'select',
-    multiselect: 'multiSelect',
-    url: 'url',
-    rating: 'rating'
+    url: 'url'
   }
   return typeMap[type] ?? 'text'
 }

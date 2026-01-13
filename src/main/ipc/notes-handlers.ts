@@ -54,7 +54,6 @@ import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault
 import { renderNoteAsHtml, sanitizeFilename } from '../lib/export-utils'
 import { SetFolderConfigSchema } from '@shared/contracts/templates-api'
 import {
-  getNoteProperties,
   getAllPropertyDefinitions,
   insertPropertyDefinition,
   updatePropertyDefinition,
@@ -68,13 +67,9 @@ import {
 } from '@shared/db/queries/note-positions'
 
 // ============================================================================
-// Zod Schemas for Properties (T015-T018)
+// Zod Schemas for Property Definitions (T017-T018)
+// Note: T015-T016 (get/set properties) moved to properties-handlers.ts
 // ============================================================================
-
-const SetPropertiesSchema = z.object({
-  noteId: z.string().min(1),
-  properties: z.record(z.string(), z.unknown())
-})
 
 const CreatePropertyDefinitionSchema = z.object({
   name: z.string().min(1),
@@ -83,10 +78,7 @@ const CreatePropertyDefinitionSchema = z.object({
     PropertyTypes.NUMBER,
     PropertyTypes.CHECKBOX,
     PropertyTypes.DATE,
-    PropertyTypes.SELECT,
-    PropertyTypes.MULTISELECT,
-    PropertyTypes.URL,
-    PropertyTypes.RATING
+    PropertyTypes.URL
   ]),
   options: z.array(z.string()).optional(),
   defaultValue: z.unknown().optional(),
@@ -116,10 +108,7 @@ const UpdatePropertyDefinitionSchema = z.object({
       PropertyTypes.NUMBER,
       PropertyTypes.CHECKBOX,
       PropertyTypes.DATE,
-      PropertyTypes.SELECT,
-      PropertyTypes.MULTISELECT,
-      PropertyTypes.URL,
-      PropertyTypes.RATING
+      PropertyTypes.URL
     ])
     .optional(),
   options: z.array(z.string()).optional(),
@@ -355,37 +344,9 @@ export function registerNotesHandlers(): void {
   )
 
   // =========================================================================
-  // T015-T018: Properties IPC Handlers
+  // T017-T018: Property Definitions IPC Handlers
+  // Note: T015-T016 (get/set properties) moved to properties-handlers.ts
   // =========================================================================
-
-  // T015: notes:get-properties - Get properties for a note
-  ipcMain.handle(
-    NotesChannels.invoke.GET_PROPERTIES,
-    createStringHandler((noteId) => {
-      const db = getIndexDatabase()
-      return getNoteProperties(db, noteId)
-    })
-  )
-
-  // T016: notes:set-properties - Set properties for a note
-  // IMPORTANT: Must save to frontmatter file (source of truth), not just DB cache
-  ipcMain.handle(
-    NotesChannels.invoke.SET_PROPERTIES,
-    createValidatedHandler(SetPropertiesSchema, async (input) => {
-      try {
-        // Use updateNote to save properties to frontmatter (source of truth)
-        // The updateNote function handles both file write and DB cache update
-        await updateNote({
-          id: input.noteId,
-          properties: input.properties
-        })
-        return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to set properties'
-        return { success: false, error: message }
-      }
-    })
-  )
 
   // T017: notes:get-property-definitions - Get all property definitions
   ipcMain.handle(

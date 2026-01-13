@@ -1,15 +1,18 @@
 /**
- * T022: Note Properties Hook
+ * Unified Properties Hook
  *
- * Provides reactive access to a note's properties with optimistic updates.
+ * Provides reactive access to properties with optimistic updates.
+ * Works with any entity ID (note or journal entry).
  *
- * @module hooks/use-note-properties
+ * @module hooks/use-properties
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { notesService, type PropertyValue } from '@/services/notes-service'
+import { propertiesService, type PropertyValue } from '@/services/properties-service'
+import { inferType } from '@/lib/property-utils'
+import { toast } from 'sonner'
 
-export interface UseNotePropertiesReturn {
+export interface UsePropertiesReturn {
   /** Current properties as an array of PropertyValue */
   properties: PropertyValue[]
   /** Properties as a Record for easy access by name */
@@ -29,16 +32,21 @@ export interface UseNotePropertiesReturn {
 }
 
 /**
- * Hook for managing note properties.
+ * Hook for managing properties on any entity (note or journal entry).
  *
- * @param noteId - The ID of the note to get properties for
+ * @param entityId - The ID of the entity (note ID or journal entry ID)
  * @returns Object with properties state and mutation functions
  *
  * @example
  * ```tsx
- * function NotePropertiesPanel({ noteId }) {
- *   const { properties, updateProperty, addProperty, removeProperty, isLoading } =
- *     useNoteProperties(noteId)
+ * function PropertiesPanel({ entityId }) {
+ *   const {
+ *     properties,
+ *     updateProperty,
+ *     addProperty,
+ *     removeProperty,
+ *     isLoading
+ *   } = useProperties(entityId)
  *
  *   if (isLoading) return <Spinner />
  *
@@ -57,7 +65,7 @@ export interface UseNotePropertiesReturn {
  * }
  * ```
  */
-export function useNoteProperties(noteId: string | null): UseNotePropertiesReturn {
+export function useProperties(entityId: string | null): UsePropertiesReturn {
   const [properties, setProperties] = useState<PropertyValue[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -71,9 +79,9 @@ export function useNoteProperties(noteId: string | null): UseNotePropertiesRetur
     return record
   }, [properties])
 
-  // Fetch properties
+  // Fetch properties from server
   const fetchProperties = useCallback(async () => {
-    if (!noteId) {
+    if (!entityId) {
       setProperties([])
       return
     }
@@ -82,96 +90,99 @@ export function useNoteProperties(noteId: string | null): UseNotePropertiesRetur
     setError(null)
 
     try {
-      const result = await notesService.getProperties(noteId)
+      const result = await propertiesService.get(entityId)
       setProperties(result)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load properties'
       setError(message)
-      console.error('[useNoteProperties] Error fetching properties:', err)
+      console.error('[useProperties] Error fetching:', err)
     } finally {
       setIsLoading(false)
     }
-  }, [noteId])
+  }, [entityId])
 
   // Initial fetch
   useEffect(() => {
     fetchProperties()
   }, [fetchProperties])
 
-  // Update a property
+  // Update a single property
   const updateProperty = useCallback(
     async (name: string, value: unknown) => {
-      if (!noteId) return
+      if (!entityId) return
 
       // Optimistic update
-      setProperties((prev) => prev.map((prop) => (prop.name === name ? { ...prop, value } : prop)))
+      setProperties((prev) => prev.map((p) => (p.name === name ? { ...p, value } : p)))
 
       try {
         const newRecord = { ...propertiesRecord, [name]: value }
-        const result = await notesService.setProperties(noteId, newRecord)
+        const result = await propertiesService.set(entityId, newRecord)
         if (!result.success) {
           throw new Error(result.error ?? 'Failed to update property')
         }
       } catch (err) {
-        console.error('[useNoteProperties] Error updating property:', err)
+        console.error('[useProperties] Error updating:', err)
+        toast.error('Failed to update property')
         // Revert on error
         await fetchProperties()
         throw err
       }
     },
-    [noteId, propertiesRecord, fetchProperties]
+    [entityId, propertiesRecord, fetchProperties]
   )
 
   // Add a new property
   const addProperty = useCallback(
     async (name: string, value: unknown, explicitType?: string) => {
-      if (!noteId) return
+      if (!entityId) return
 
-      // Optimistic update - use explicit type if provided, otherwise infer from value
-      const type = (explicitType as PropertyValue['type']) ?? inferType(value)
+      // Optimistic update
+      const type = explicitType ?? inferType(value)
       setProperties((prev) => [...prev, { name, value, type }])
 
       try {
         const newRecord = { ...propertiesRecord, [name]: value }
-        const result = await notesService.setProperties(noteId, newRecord)
+        const result = await propertiesService.set(entityId, newRecord)
         if (!result.success) {
           throw new Error(result.error ?? 'Failed to add property')
         }
-        // Refresh to get the correct type from server
+        // Refresh to get correct type from server
         await fetchProperties()
       } catch (err) {
-        console.error('[useNoteProperties] Error adding property:', err)
+        console.error('[useProperties] Error adding:', err)
+        toast.error('Failed to add property')
         // Revert on error
         await fetchProperties()
         throw err
       }
     },
-    [noteId, propertiesRecord, fetchProperties]
+    [entityId, propertiesRecord, fetchProperties]
   )
 
   // Remove a property
   const removeProperty = useCallback(
     async (name: string) => {
-      if (!noteId) return
+      if (!entityId) return
 
       // Optimistic update
-      setProperties((prev) => prev.filter((prop) => prop.name !== name))
+      setProperties((prev) => prev.filter((p) => p.name !== name))
 
       try {
         const newRecord = { ...propertiesRecord }
         delete newRecord[name]
-        const result = await notesService.setProperties(noteId, newRecord)
+        const result = await propertiesService.set(entityId, newRecord)
         if (!result.success) {
           throw new Error(result.error ?? 'Failed to remove property')
         }
       } catch (err) {
-        console.error('[useNoteProperties] Error removing property:', err)
+        console.error('[useProperties] Error removing:', err)
+        toast.error('Failed to delete property')
         // Revert on error
         await fetchProperties()
         throw err
       }
     },
-    [noteId, propertiesRecord, fetchProperties]
+    [entityId, propertiesRecord, fetchProperties]
   )
 
   return {
@@ -184,22 +195,4 @@ export function useNoteProperties(noteId: string | null): UseNotePropertiesRetur
     removeProperty,
     refresh: fetchProperties
   }
-}
-
-/**
- * Infer property type from value (client-side helper).
- */
-function inferType(
-  value: unknown
-): 'text' | 'number' | 'checkbox' | 'date' | 'multiselect' | 'url' {
-  if (typeof value === 'boolean') return 'checkbox'
-  if (typeof value === 'number') return 'number'
-  if (Array.isArray(value)) return 'multiselect'
-  if (typeof value === 'string') {
-    // Check for ISO date
-    if (/^\d{4}-\d{2}-\d{2}/.test(value)) return 'date'
-    // Check for URL
-    if (/^https?:\/\//.test(value)) return 'url'
-  }
-  return 'text'
 }

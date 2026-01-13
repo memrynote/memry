@@ -264,7 +264,8 @@ describe('notes cache queries', () => {
     const inferType = (name: string, value: unknown): PropertyType => {
       if (typeof value === 'number') return 'number'
       if (typeof value === 'boolean') return 'checkbox'
-      if (Array.isArray(value)) return 'multiselect'
+      // Arrays no longer supported, fallback to text
+      if (Array.isArray(value)) return 'text'
       if (name === 'date') return 'date'
       return 'text'
     }
@@ -272,20 +273,20 @@ describe('notes cache queries', () => {
     setNoteProperties(
       db,
       'note-20',
-      { rating: 5, archived: false, labels: ['a', 'b'], date: '2026-01-10' },
+      { priority: 5, archived: false, date: '2026-01-10' },
       inferType
     )
 
     const properties = getNoteProperties(db, 'note-20')
     expect(properties).toEqual(
       expect.arrayContaining([
-        { name: 'rating', value: 5, type: 'number' },
+        { name: 'priority', value: 5, type: 'number' },
         { name: 'archived', value: false, type: 'checkbox' }
       ])
     )
 
     const record = getNotePropertiesAsRecord(db, 'note-20')
-    expect(record.rating).toBe(5)
+    expect(record.priority).toBe(5)
   })
 
   it('manages property definitions', () => {

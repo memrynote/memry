@@ -191,9 +191,10 @@ describe('properties helpers', () => {
 
   it('inferPropertyType detects common property types', () => {
     expect(inferPropertyType('done', true)).toBe('checkbox')
-    expect(inferPropertyType('rating', 4)).toBe('rating')
+    expect(inferPropertyType('score', 4)).toBe('number')
     expect(inferPropertyType('count', 10)).toBe('number')
-    expect(inferPropertyType('labels', ['a', 'b'])).toBe('multiselect')
+    // Arrays are no longer supported, fallback to text
+    expect(inferPropertyType('labels', ['a', 'b'])).toBe('text')
     expect(inferPropertyType('published', '2026-01-15')).toBe('date')
     expect(inferPropertyType('site', 'https://example.com')).toBe('url')
     expect(inferPropertyType('title', 'Hello')).toBe('text')
@@ -209,10 +210,7 @@ describe('properties helpers', () => {
     expect(serializePropertyValue({ key: 'value' })).toBe('{"key":"value"}')
 
     expect(deserializePropertyValue('5', 'number')).toBe(5)
-    expect(deserializePropertyValue('4', 'rating')).toBe(4)
     expect(deserializePropertyValue('true', 'checkbox')).toBe(true)
-    expect(deserializePropertyValue('["a"]', 'multiselect')).toEqual(['a'])
-    expect(deserializePropertyValue('not-json', 'multiselect')).toEqual([])
     expect(deserializePropertyValue('hello', 'text')).toBe('hello')
     expect(deserializePropertyValue(null, 'text')).toBeNull()
   })
