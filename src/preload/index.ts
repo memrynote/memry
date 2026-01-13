@@ -165,7 +165,9 @@ const api = {
   properties: {
     get: (entityId: string) => ipcRenderer.invoke(PropertiesChannels.invoke.GET, { entityId }),
     set: (entityId: string, properties: Record<string, unknown>) =>
-      ipcRenderer.invoke(PropertiesChannels.invoke.SET, { entityId, properties })
+      ipcRenderer.invoke(PropertiesChannels.invoke.SET, { entityId, properties }),
+    rename: (entityId: string, oldName: string, newName: string) =>
+      ipcRenderer.invoke(PropertiesChannels.invoke.RENAME, { entityId, oldName, newName })
   },
 
   // Templates API

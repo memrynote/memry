@@ -7,12 +7,26 @@ import { InfoHeader } from './InfoHeader'
 import { PropertyRow } from './PropertyRow'
 import { AddPropertyPopup } from './AddPropertyPopup'
 
+/**
+ * Generate a unique property name by adding incrementing suffix if needed.
+ * E.g., "URL" → "URL", "URL 1", "URL 2", etc.
+ */
+function getUniquePropertyName(baseName: string, existingNames: string[]): string {
+  if (!existingNames.includes(baseName)) return baseName
+  let counter = 1
+  while (existingNames.includes(`${baseName} ${counter}`)) {
+    counter++
+  }
+  return `${baseName} ${counter}`
+}
+
 export interface InfoSectionProps {
   properties: Property[]
   folderProperties?: PropertyTemplate[]
   isExpanded: boolean
   onToggleExpand: () => void
   onPropertyChange: (propertyId: string, value: unknown) => void
+  onPropertyNameChange?: (propertyId: string, newName: string) => void
   onAddProperty: (property: NewProperty) => void
   onDeleteProperty: (propertyId: string) => void
   disabled?: boolean
@@ -26,6 +40,7 @@ export const InfoSection = memo(function InfoSection({
   isExpanded,
   onToggleExpand,
   onPropertyChange,
+  onPropertyNameChange,
   onAddProperty,
   onDeleteProperty,
   disabled = false,
@@ -38,23 +53,15 @@ export const InfoSection = memo(function InfoSection({
   const [newlyAddedPropertyId, setNewlyAddedPropertyId] = useState<string | null>(null)
   const addButtonRef = useRef<HTMLButtonElement>(null)
 
-  // Split properties into visible and hidden
+  // Split properties into visible and hidden (keep insertion order)
   const { visibleProperties, hiddenProperties } = useMemo(() => {
     if (showAllProperties) {
       return { visibleProperties: properties, hiddenProperties: [] }
     }
 
-    // Properties with values come first
-    const withValue = properties.filter(
-      (p) => p.value !== null && p.value !== undefined && p.value !== ''
-    )
-    const withoutValue = properties.filter(
-      (p) => p.value === null || p.value === undefined || p.value === ''
-    )
-
-    const sorted = [...withValue, ...withoutValue]
-    const visible = sorted.slice(0, initialVisibleCount)
-    const hidden = sorted.slice(initialVisibleCount)
+    // Keep insertion order - no sorting
+    const visible = properties.slice(0, initialVisibleCount)
+    const hidden = properties.slice(initialVisibleCount)
 
     return { visibleProperties: visible, hiddenProperties: hidden }
   }, [properties, showAllProperties, initialVisibleCount])
@@ -64,6 +71,13 @@ export const InfoSection = memo(function InfoSection({
       onPropertyChange(propertyId, value)
     },
     [onPropertyChange]
+  )
+
+  const handlePropertyNameChange = useCallback(
+    (propertyId: string) => (newName: string) => {
+      onPropertyNameChange?.(propertyId, newName)
+    },
+    [onPropertyNameChange]
   )
 
   const handleDeleteProperty = useCallback(
@@ -111,12 +125,19 @@ export const InfoSection = memo(function InfoSection({
     prevPropertiesLength.current = properties.length
   }, [properties])
 
-  // Handle adding new property
+  // Get list of existing property names for uniqueness check
+  const existingPropertyNames = useMemo(
+    () => properties.map((p) => p.name),
+    [properties]
+  )
+
+  // Handle adding new property with auto-increment for duplicate names
   const handleAddProperty = useCallback(
     (newProp: NewProperty) => {
-      onAddProperty(newProp)
+      const uniqueName = getUniquePropertyName(newProp.name, existingPropertyNames)
+      onAddProperty({ ...newProp, name: uniqueName })
     },
-    [onAddProperty]
+    [onAddProperty, existingPropertyNames]
   )
 
   return (
@@ -160,6 +181,9 @@ export const InfoSection = memo(function InfoSection({
                 key={property.id}
                 property={property}
                 onValueChange={handlePropertyChange(property.id)}
+                onNameChange={
+                  onPropertyNameChange ? handlePropertyNameChange(property.id) : undefined
+                }
                 onDelete={property.isCustom ? handleDeleteProperty(property.id) : undefined}
                 disabled={disabled}
                 autoFocus={property.id === newlyAddedPropertyId}
@@ -235,6 +259,7 @@ export const InfoSection = memo(function InfoSection({
             onClose={handleCloseAddPopup}
             onAdd={handleAddProperty}
             position={popupPosition}
+            existingPropertyNames={existingPropertyNames}
           />,
           document.body
         )}

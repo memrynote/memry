@@ -49,6 +49,16 @@ export const SetPropertiesSchema = z.object({
   properties: z.record(z.string(), z.unknown())
 })
 
+/**
+ * Schema for renaming a property on an entity.
+ * Note-only scope: rename only affects the current entity's frontmatter.
+ */
+export const RenamePropertySchema = z.object({
+  entityId: z.string().min(1, 'Entity ID is required'),
+  oldName: z.string().min(1, 'Old property name is required'),
+  newName: z.string().min(1, 'New property name is required')
+})
+
 // ============================================================================
 // Response Types
 // ============================================================================
@@ -58,9 +68,15 @@ export const SetPropertiesSchema = z.object({
  */
 export type SetPropertiesResponse = { success: true } | { success: false; error: string }
 
+/**
+ * Response from rename property operation.
+ */
+export type RenamePropertyResponse = { success: true } | { success: false; error: string }
+
 // ============================================================================
 // Inferred Types
 // ============================================================================
 
 export type GetPropertiesInput = z.infer<typeof GetPropertiesSchema>
 export type SetPropertiesInput = z.infer<typeof SetPropertiesSchema>
+export type RenamePropertyInput = z.infer<typeof RenamePropertySchema>
