@@ -26,12 +26,11 @@ import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
 
 import { TemplateSelector } from '@/components/note/template-selector'
 import { TagsRow, type Tag } from '@/components/note/tags-row'
-import { InfoSection, type Property, type NewProperty } from '@/components/note/info-section'
+import { InfoSection } from '@/components/note/info-section'
 import { OutlineInfoPanel, type HeadingItem } from '@/components/shared'
 import { useActiveHeading } from '@/hooks/use-active-heading'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
-import { useProperties } from '@/hooks/use-properties'
-import { getDefaultValueForType, mapPropertyType } from '@/lib/property-utils'
+import { usePropertySection } from '@/hooks/use-property-section'
 import { useTemplates } from '@/hooks/use-templates'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
@@ -138,15 +137,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   // Tags hook
   const { tags: allAvailableTags } = useNoteTagsQuery()
-
-  // Properties hook - use entry ID for unified properties API
-  const {
-    properties: backendProperties,
-    updateProperty: updateBackendProperty,
-    addProperty: addBackendProperty,
-    removeProperty: removeBackendProperty,
-    renameProperty: renameBackendProperty
-  } = useProperties(entry?.id ?? null)
 
   // State for InfoSection expansion (collapsed by default)
   const [isInfoExpanded, setIsInfoExpanded] = useState(false)
@@ -358,15 +348,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return availableTags.slice(0, 4)
   }, [availableTags])
 
-  const properties: Property[] = useMemo(() => {
-    return backendProperties.map((prop) => ({
-      id: prop.name,
-      name: prop.name,
-      type: mapPropertyType(prop.type),
-      value: prop.value,
-      isCustom: true
-    }))
-  }, [backendProperties, mapPropertyType])
+  const {
+    properties,
+    handlePropertyChange,
+    handleAddProperty,
+    handleDeleteProperty,
+    handlePropertyNameChange
+  } = usePropertySection({ entityId: entry?.id ?? null })
 
   // Navigation
   const navigateToMonth = useCallback((year: number, month: number) => {
@@ -562,53 +550,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       updateTags(currentTags.filter((t) => t !== tagId))
     },
     [updateTags]
-  )
-
-  // Property Handlers
-
-  const handlePropertyChange = useCallback(
-    async (propertyId: string, value: unknown) => {
-      try {
-        await updateBackendProperty(propertyId, value)
-      } catch (err) {
-        console.error('[JournalPage] Failed to update property:', err)
-      }
-    },
-    [updateBackendProperty]
-  )
-
-  const handleAddProperty = useCallback(
-    async (newProp: NewProperty) => {
-      const defaultValue = getDefaultValueForType(newProp.type)
-      try {
-        await addBackendProperty(newProp.name, defaultValue)
-      } catch (err) {
-        console.error('[JournalPage] Failed to add property:', err)
-      }
-    },
-    [addBackendProperty, getDefaultValueForType]
-  )
-
-  const handleDeleteProperty = useCallback(
-    async (propertyId: string) => {
-      try {
-        await removeBackendProperty(propertyId)
-      } catch (err) {
-        console.error('[JournalPage] Failed to delete property:', err)
-      }
-    },
-    [removeBackendProperty]
-  )
-
-  const handlePropertyNameChange = useCallback(
-    async (propertyId: string, newName: string) => {
-      try {
-        await renameBackendProperty(propertyId, newName)
-      } catch (err) {
-        console.error('[JournalPage] Failed to rename property:', err)
-      }
-    },
-    [renameBackendProperty]
   )
 
   // Template Handlers
