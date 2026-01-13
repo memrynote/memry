@@ -14,6 +14,7 @@ import {
   useQueryClient,
   type InfiniteData
 } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { DEFAULT_COLUMNS, BUILT_IN_COLUMNS } from '@shared/contracts/folder-view-api'
 import type {
   FilterExpression,
@@ -21,6 +22,8 @@ import type {
   GroupByConfig
 } from '@shared/contracts/folder-view-api'
 import { evaluateFilter } from '@/lib/filter-evaluator'
+import { propertiesService } from '@/services/properties-service'
+import { notesService } from '@/services/notes-service'
 
 // ============================================================================
 // Types (mirrored from preload for renderer use)
@@ -195,6 +198,10 @@ interface UseFolderViewResult {
   refresh: () => Promise<void>
   /** Optimistically remove notes from local state (for immediate UI feedback) */
   removeNotesOptimistically: (noteIds: string[]) => void
+  /** Update a property value on a note */
+  updateNoteProperty: (noteId: string, propertyId: string, value: unknown) => Promise<void>
+  /** Update tags on a note */
+  updateNoteTags: (noteId: string, tags: string[]) => Promise<void>
   /** Total unfiltered note count (for "showing X of Y") */
   unfilteredCount: number
 }
@@ -706,6 +713,104 @@ export function useFolderView({
   )
 
   /**
+   * Update a single property on a note with optimistic cache update.
+   */
+  const updateNoteProperty = useCallback(
+    async (noteId: string, propertyId: string, value: unknown) => {
+      const previousData = queryClient.getQueryData<InfiniteData<ListWithPropertiesResponse>>(
+        folderViewKeys.notes(folderPath)
+      )
+
+      const currentProperties = (() => {
+        if (!previousData) return {}
+        for (const page of previousData.pages) {
+          const note = page.notes.find((item) => item.id === noteId)
+          if (note) return note.properties ?? {}
+        }
+        return {}
+      })()
+
+      const nextProperties: Record<string, unknown> = { ...currentProperties }
+      if (value === undefined) {
+        delete nextProperties[propertyId]
+      } else {
+        nextProperties[propertyId] = value
+      }
+
+      queryClient.setQueryData<InfiniteData<ListWithPropertiesResponse>>(
+        folderViewKeys.notes(folderPath),
+        (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              notes: page.notes.map((note) =>
+                note.id === noteId ? { ...note, properties: nextProperties } : note
+              )
+            }))
+          }
+        }
+      )
+
+      try {
+        const result = await propertiesService.set(noteId, nextProperties)
+        if (!result.success) {
+          throw new Error(result.error ?? 'Failed to update property')
+        }
+      } catch (err) {
+        console.error('[useFolderView] Failed to update property:', err)
+        toast.error('Failed to update property')
+        if (previousData) {
+          queryClient.setQueryData(folderViewKeys.notes(folderPath), previousData)
+        }
+      }
+    },
+    [folderPath, queryClient]
+  )
+
+  /**
+   * Update tags for a note with optimistic cache update.
+   */
+  const updateNoteTags = useCallback(
+    async (noteId: string, tags: string[]) => {
+      const previousData = queryClient.getQueryData<InfiniteData<ListWithPropertiesResponse>>(
+        folderViewKeys.notes(folderPath)
+      )
+
+      queryClient.setQueryData<InfiniteData<ListWithPropertiesResponse>>(
+        folderViewKeys.notes(folderPath),
+        (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              notes: page.notes.map((note) =>
+                note.id === noteId ? { ...note, tags } : note
+              )
+            }))
+          }
+        }
+      )
+
+      try {
+        const result = await notesService.update({ id: noteId, tags })
+        if (!result.success) {
+          throw new Error(result.error ?? 'Failed to update tags')
+        }
+      } catch (err) {
+        console.error('[useFolderView] Failed to update tags:', err)
+        toast.error('Failed to update tags')
+        if (previousData) {
+          queryClient.setQueryData(folderViewKeys.notes(folderPath), previousData)
+        }
+      }
+    },
+    [folderPath, queryClient]
+  )
+
+  /**
    * Refresh all data by invalidating queries
    */
   const refresh = useCallback(async () => {
@@ -868,7 +973,9 @@ export function useFolderView({
     deleteFormula,
     loadMore,
     refresh,
-    removeNotesOptimistically
+    removeNotesOptimistically,
+    updateNoteProperty,
+    updateNoteTags
   }
 }
 

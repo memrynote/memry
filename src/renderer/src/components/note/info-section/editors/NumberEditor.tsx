@@ -7,6 +7,7 @@ interface NumberEditorProps {
   onBlur?: () => void
   placeholder?: string
   autoFocus?: boolean
+  className?: string
 }
 
 export function NumberEditor({
@@ -14,7 +15,8 @@ export function NumberEditor({
   onChange,
   onBlur,
   placeholder = 'Empty',
-  autoFocus = true
+  autoFocus = true,
+  className
 }: NumberEditorProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [localValue, setLocalValue] = useState(value?.toString() ?? '')
@@ -105,7 +107,8 @@ export function NumberEditor({
         'text-[13px] text-foreground',
         'placeholder:text-muted-foreground/30',
         'outline-none focus:ring-0 shadow-none',
-        '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
+        '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
+        className
       )}
     />
   )

@@ -54,13 +54,14 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useDisplayDensity } from '@/hooks/use-display-density'
 import { useTabs } from '@/contexts/tabs'
+import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { GroupedTable } from '@/components/folder-view/grouped-table'
 import { FolderViewToolbar } from '@/components/folder-view/folder-view-toolbar'
 import { ViewSwitcher } from '@/components/folder-view/view-switcher'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import { useFolderView } from '@/hooks/use-folder-view'
-import { useNoteMutations } from '@/hooks/use-notes-query'
+import { useNoteMutations, useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
 import {
   DEFAULT_COLUMNS,
@@ -79,6 +80,8 @@ interface FolderViewPageProps {
  */
 export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.Element {
   const { openTab, closeTab, getActiveTab } = useTabs()
+  const { openTag } = useSidebarDrillDown()
+  const { tags: allTags } = useNoteTagsQuery()
 
   // Use mutations hook for creating new notes (with folder template support)
   const { createNote } = useNoteMutations()
@@ -115,7 +118,9 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     updateFormula,
     deleteFormula,
     refresh,
-    removeNotesOptimistically
+    removeNotesOptimistically,
+    updateNoteProperty,
+    updateNoteTags
   } = useFolderView({ folderPath: folderPath ?? '' })
 
   // Get first note for formula preview in editor
@@ -232,6 +237,14 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     return map
   }, [availableProperties])
 
+  const tagColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const tag of allTags) {
+      map.set(tag.tag.toLowerCase(), tag.color)
+    }
+    return map
+  }, [allTags])
+
   // Handle opening a note (single click opens permanent tab)
   const handleNoteOpen = (noteId: string): void => {
     const note = notes.find((n) => n.id === noteId)
@@ -271,9 +284,23 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   }
 
   // Handle clicking a tag
-  const handleTagClick = (_tag: string): void => {
-    // TODO: Open search/filter for this tag
-  }
+  const handleTagClick = useCallback(
+    (tag: string): void => {
+      const color = tagColorMap.get(tag.toLowerCase()) ?? 'stone'
+      openTag(tag, color)
+    },
+    [openTag, tagColorMap]
+  )
+
+  const handleTagRemove = useCallback(
+    (noteId: string, tag: string): void => {
+      const note = notes.find((n) => n.id === noteId)
+      if (!note) return
+      const nextTags = note.tags.filter((t) => t !== tag)
+      void updateNoteTags(noteId, nextTags)
+    },
+    [notes, updateNoteTags]
+  )
 
   // Handle opening note in new tab (for context menu)
   const handleOpenInNewTab = useCallback(
@@ -629,6 +656,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               onOpenInNewTab={handleOpenInNewTab}
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
+              onTagRemove={handleTagRemove}
+              onPropertyUpdate={updateNoteProperty}
               onColumnsChange={updateColumns}
               onSortingChange={updateSorting}
               onDisplayNameChange={updateDisplayName}
@@ -660,6 +689,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               onOpenInNewTab={handleOpenInNewTab}
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
+              onTagRemove={handleTagRemove}
+              onPropertyUpdate={updateNoteProperty}
               onColumnsChange={updateColumns}
               onSortingChange={updateSorting}
               onDisplayNameChange={updateDisplayName}

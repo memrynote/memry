@@ -11,10 +11,17 @@
  * T117: Added TruncatedTooltip component for shadcn tooltip on truncated content.
  */
 
-import { memo, useState, useRef, useEffect } from 'react'
+import { memo, useState, useRef, useEffect, useCallback } from 'react'
 import { format } from 'date-fns'
 import { Check, X, ExternalLink, Folder, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  TextEditor,
+  NumberEditor,
+  CheckboxEditor,
+  DateEditor,
+  UrlEditor
+} from '@/components/note/info-section/editors'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 // ============================================================================
@@ -40,6 +47,11 @@ interface PropertyCellProps {
   highlightQuery?: string
   /** Additional CSS classes */
   className?: string
+}
+
+interface EditablePropertyCellProps extends PropertyCellProps {
+  /** Called when a property value is saved */
+  onSave?: (value: unknown) => void
 }
 
 interface TitleCellProps {
@@ -69,6 +81,8 @@ interface TagsCellProps {
   tags: string[]
   /** Click handler for individual tag */
   onTagClick?: (tag: string) => void
+  /** Remove handler for individual tag */
+  onTagRemove?: (tag: string) => void
   /** Query to highlight in tags */
   highlightQuery?: string
   /** Additional CSS classes */
@@ -193,6 +207,17 @@ function getTagColor(tag: string): string {
   return colors[Math.abs(hash) % colors.length]
 }
 
+/**
+ * Shallow equality check for property values.
+ */
+function valuesAreEqual(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false
+    return a.every((item, index) => Object.is(item, b[index]))
+  }
+  return Object.is(a, b)
+}
+
 // ============================================================================
 // Generic Property Cell
 // ============================================================================
@@ -200,12 +225,21 @@ function getTagColor(tag: string): string {
 /**
  * Renders a property value based on its type.
  */
-export const PropertyCell = memo(function PropertyCell({
+interface RenderPropertyValueOptions {
+  value: unknown
+  type: PropertyType
+  highlightQuery?: string
+  className?: string
+  urlAsLink?: boolean
+}
+
+function renderPropertyValue({
   value,
   type,
   highlightQuery,
-  className
-}: PropertyCellProps): React.JSX.Element {
+  className,
+  urlAsLink = true
+}: RenderPropertyValueOptions): React.JSX.Element {
   if (value === null || value === undefined || value === '') {
     return <span className={cn('text-muted-foreground/50', className)}>—</span>
   }
@@ -229,7 +263,11 @@ export const PropertyCell = memo(function PropertyCell({
     }
 
     case 'url':
-      return <UrlCell value={String(value)} className={className} />
+      return urlAsLink ? (
+        <UrlCell value={String(value)} className={className} />
+      ) : (
+        <TextCell value={String(value)} highlightQuery={highlightQuery} className={className} />
+      )
 
     case 'rating': {
       const rating = typeof value === 'number' ? value : parseInt(String(value), 10) || 0
@@ -238,10 +276,175 @@ export const PropertyCell = memo(function PropertyCell({
 
     case 'text':
     default:
-      return (
-        <TextCell value={String(value)} highlightQuery={highlightQuery} className={className} />
-      )
+      return <TextCell value={String(value)} highlightQuery={highlightQuery} className={className} />
   }
+}
+
+export const PropertyCell = memo(function PropertyCell({
+  value,
+  type,
+  highlightQuery,
+  className
+}: PropertyCellProps): React.JSX.Element {
+  return renderPropertyValue({ value, type, highlightQuery, className })
+})
+
+export const EditablePropertyCell = memo(function EditablePropertyCell({
+  value,
+  type,
+  highlightQuery,
+  className,
+  onSave
+}: EditablePropertyCellProps): React.JSX.Element {
+  const [isEditing, setIsEditing] = useState(false)
+
+  useEffect(() => {
+    if (!onSave && isEditing) {
+      setIsEditing(false)
+    }
+  }, [onSave, isEditing])
+
+  const stopPropagation = useCallback((event: React.SyntheticEvent) => {
+    event.stopPropagation()
+  }, [])
+
+  const handleStartEdit = useCallback(
+    (event: React.MouseEvent) => {
+      if (!onSave) return
+      event.stopPropagation()
+      setIsEditing(true)
+    },
+    [onSave]
+  )
+
+  const handleStopEditing = useCallback(() => {
+    setIsEditing(false)
+  }, [])
+
+  const handleCommit = useCallback(
+    (nextValue: unknown) => {
+      if (!onSave || valuesAreEqual(value, nextValue)) return
+      onSave(nextValue)
+    },
+    [onSave, value]
+  )
+
+  if (!onSave) {
+    return renderPropertyValue({ value, type, highlightQuery, className })
+  }
+
+  if (type === 'checkbox') {
+    return (
+      <div
+        className={cn(
+          'w-full focus-within:ring-1 focus-within:ring-amber-400/60 dark:focus-within:ring-amber-600/60',
+          className
+        )}
+        onClick={stopPropagation}
+        onDoubleClick={stopPropagation}
+        onKeyDown={stopPropagation}
+      >
+        <CheckboxEditor value={Boolean(value)} onChange={handleCommit} />
+      </div>
+    )
+  }
+
+  if (isEditing) {
+    const textValue =
+      value === null || value === undefined
+        ? ''
+        : Array.isArray(value)
+          ? value.map(String).join(', ')
+          : String(value)
+    const numberValue =
+      typeof value === 'number'
+        ? value
+        : (() => {
+          const parsed = parseFloat(String(value))
+          return Number.isFinite(parsed) ? parsed : null
+        })()
+    const dateValue = (() => {
+      if (!value) return null
+      const parsed = new Date(String(value))
+      return isNaN(parsed.getTime()) ? null : parsed
+    })()
+
+    return (
+      <div
+        className={cn(
+          'w-full  focus-within:ring-1 focus-within:ring-amber-400/60 dark:focus-within:ring-amber-600/60',
+          className
+        )}
+        onMouseDown={stopPropagation}
+        onClick={stopPropagation}
+        onDoubleClick={stopPropagation}
+        onKeyDown={stopPropagation}
+      >
+        {(() => {
+          switch (type) {
+            case 'number':
+            case 'rating':
+              return (
+                <NumberEditor
+                  value={numberValue}
+                  onChange={handleCommit}
+                  onBlur={handleStopEditing}
+                  className="w-full"
+                />
+              )
+            case 'date':
+              return (
+                <DateEditor
+                  value={dateValue}
+                  onChange={(date) => handleCommit(date?.toISOString() ?? null)}
+                  onBlur={handleStopEditing}
+                />
+              )
+            case 'url':
+              return (
+                <UrlEditor
+                  value={textValue}
+                  onChange={handleCommit}
+                  onBlur={handleStopEditing}
+                />
+              )
+            case 'multiselect':
+              return (
+                <TextEditor
+                  value={textValue}
+                  onChange={(nextValue) => {
+                    const items = nextValue
+                      .split(',')
+                      .map((item) => item.trim())
+                      .filter(Boolean)
+                    handleCommit(items)
+                  }}
+                  onBlur={handleStopEditing}
+                />
+              )
+            case 'text':
+            case 'select':
+            default:
+              return (
+                <TextEditor value={textValue} onChange={handleCommit} onBlur={handleStopEditing} />
+              )
+          }
+        })()}
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      tabIndex={-1}
+      onClick={handleStartEdit}
+      onDoubleClick={stopPropagation}
+      className={cn('w-full text-left focus:outline-none cursor-text')}
+    >
+      {renderPropertyValue({ value, type, highlightQuery, className, urlAsLink: false })}
+    </button>
+  )
 })
 
 // ============================================================================
@@ -513,6 +716,7 @@ export const FolderCell = memo(function FolderCell({
 export const TagsCell = memo(function TagsCell({
   tags,
   onTagClick,
+  onTagRemove,
   highlightQuery,
   className
 }: TagsCellProps): React.JSX.Element {
@@ -522,37 +726,52 @@ export const TagsCell = memo(function TagsCell({
 
   return (
     <div className={cn('flex flex-wrap gap-1', className)}>
-      {tags.slice(0, 3).map((tag) => {
+      {tags.map((tag) => {
         const shouldHighlight =
           highlightQuery && tag.toLowerCase().includes(highlightQuery.toLowerCase())
         return (
-          <button
+          <span
             key={tag}
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onTagClick?.(tag)
-            }}
             className={cn(
-              'inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium',
+              'inline-flex items-center rounded text-xs font-medium',
               'transition-opacity hover:opacity-80',
-              'focus:outline-none focus:ring-1 focus:ring-primary/50',
               getTagColor(tag)
             )}
             title={tag}
           >
-            #{shouldHighlight ? highlightText(tag, highlightQuery) : tag}
-          </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onTagClick?.(tag)
+              }}
+              className={cn(
+                'px-1.5 py-0.5',
+                'focus:outline-none focus:ring-1 focus:ring-primary/50 rounded'
+              )}
+            >
+              #{shouldHighlight ? highlightText(tag, highlightQuery) : tag}
+            </button>
+            {onTagRemove && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onTagRemove(tag)
+                }}
+                aria-label={`Remove tag ${tag}`}
+                className={cn(
+                  'pr-1.5 pl-0.5 py-0.5',
+                  'opacity-70 hover:opacity-100',
+                  'focus:outline-none focus:ring-1 focus:ring-primary/50 rounded'
+                )}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </span>
         )
       })}
-      {tags.length > 3 && (
-        <span
-          className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground"
-          title={tags.slice(3).join(', ')}
-        >
-          +{tags.length - 3}
-        </span>
-      )}
     </div>
   )
 })
