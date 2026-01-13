@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -8,6 +8,7 @@ import { TextEditor, NumberEditor, CheckboxEditor, DateEditor, UrlEditor } from 
 interface PropertyRowProps {
   property: Property
   onValueChange: (value: unknown) => void
+  onNameChange?: (newName: string) => void
   onDelete?: () => void
   disabled?: boolean
   autoFocus?: boolean
@@ -16,12 +17,16 @@ interface PropertyRowProps {
 export function PropertyRow({
   property,
   onValueChange,
+  onNameChange,
   onDelete,
   disabled,
   autoFocus = false
 }: PropertyRowProps) {
   const [isEditing, setIsEditing] = useState(autoFocus && property.type !== 'checkbox')
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editedName, setEditedName] = useState(property.name)
   const [isHovered, setIsHovered] = useState(false)
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   const config = PROPERTY_TYPE_CONFIG[property.type]
   const IconComponent = config.icon
@@ -42,6 +47,44 @@ export function PropertyRow({
   const handleEndEdit = useCallback(() => {
     setIsEditing(false)
   }, [])
+
+  // Name editing handlers
+  const handleStartNameEdit = useCallback(() => {
+    if (!disabled && onNameChange) {
+      setEditedName(property.name)
+      setIsEditingName(true)
+    }
+  }, [disabled, onNameChange, property.name])
+
+  const handleEndNameEdit = useCallback(() => {
+    const trimmedName = editedName.trim()
+    if (trimmedName && trimmedName !== property.name && onNameChange) {
+      onNameChange(trimmedName)
+    }
+    setIsEditingName(false)
+  }, [editedName, property.name, onNameChange])
+
+  const handleNameKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        handleEndNameEdit()
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        setEditedName(property.name)
+        setIsEditingName(false)
+      }
+    },
+    [handleEndNameEdit, property.name]
+  )
+
+  // Focus name input when editing starts
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus()
+      nameInputRef.current.select()
+    }
+  }, [isEditingName])
 
   const renderValue = () => {
     // Checkbox is always interactive (no edit mode)
@@ -146,12 +189,49 @@ export function PropertyRow({
       </span>
 
       {/* Label */}
-      <span
-        className={cn('w-24 flex-shrink-0', 'text-[13px] text-muted-foreground/60', 'truncate')}
-        title={property.name}
-      >
-        {property.name}
-      </span>
+      {isEditingName ? (
+        <input
+          ref={nameInputRef}
+          type="text"
+          value={editedName}
+          onChange={(e) => setEditedName(e.target.value)}
+          onBlur={handleEndNameEdit}
+          onKeyDown={handleNameKeyDown}
+          className={cn(
+            'w-24 flex-shrink-0',
+            'text-[13px] text-muted-foreground',
+            'bg-transparent border-b border-muted-foreground/30',
+            'focus:outline-none focus:border-muted-foreground/60',
+            'px-0 py-0'
+          )}
+          aria-label="Edit property name"
+        />
+      ) : (
+        <span
+          onClick={onNameChange ? handleStartNameEdit : undefined}
+          className={cn(
+            'w-24 flex-shrink-0',
+            'text-[13px] text-muted-foreground/60',
+            'truncate',
+            onNameChange && !disabled && 'cursor-pointer hover:text-muted-foreground'
+          )}
+          title={property.name}
+          role={onNameChange ? 'button' : undefined}
+          tabIndex={onNameChange && !disabled ? 0 : undefined}
+          onKeyDown={
+            onNameChange && !disabled
+              ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    handleStartNameEdit()
+                  }
+                }
+              : undefined
+          }
+        >
+          {property.name}
+        </span>
+      )}
 
       {/* Value */}
       <div
@@ -164,8 +244,8 @@ export function PropertyRow({
         {renderValue()}
       </div>
 
-      {/* Delete button (only for custom properties) */}
-      {property.isCustom && onDelete && isHovered && !isEditing && (
+      {/* Delete button (only for custom properties) - always rendered to prevent layout shift */}
+      {property.isCustom && onDelete && (
         <button
           type="button"
           onClick={onDelete}
@@ -173,8 +253,11 @@ export function PropertyRow({
           className={cn(
             'ml-2 flex h-6 w-6 items-center justify-center',
             'rounded text-muted-foreground/50',
-            'transition-colors duration-150',
-            'hover:bg-destructive/10 hover:text-destructive'
+            'transition-all duration-150',
+            'hover:bg-destructive/10 hover:text-destructive',
+            isHovered && !isEditing
+              ? 'opacity-100'
+              : 'opacity-0 pointer-events-none'
           )}
         >
           <Trash2 className="h-3.5 w-3.5" />

@@ -59,8 +59,10 @@ export function getDefaultValueForType(type: PropertyType): unknown {
     case 'number':
       return 0
     case 'date':
-      return null
+      // Return current date so inferType() recognizes it as date
+      return new Date().toISOString()
     case 'url':
+      return ''
     case 'text':
     default:
       return ''

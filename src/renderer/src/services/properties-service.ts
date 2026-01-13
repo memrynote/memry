@@ -18,6 +18,11 @@ export interface SetPropertiesResponse {
   error?: string
 }
 
+export interface RenamePropertyResponse {
+  success: boolean
+  error?: string
+}
+
 /**
  * Unified properties service.
  * Works with any entity ID (note or journal entry).
@@ -40,5 +45,21 @@ export const propertiesService = {
    */
   set: (entityId: string, properties: Record<string, unknown>): Promise<SetPropertiesResponse> => {
     return window.api.properties.set(entityId, properties)
+  },
+
+  /**
+   * Rename a property for an entity.
+   * Note-only scope: rename only affects this entity's frontmatter.
+   * @param entityId - Note ID or journal entry ID
+   * @param oldName - Current property name
+   * @param newName - New property name
+   * @returns Response with success status
+   */
+  rename: (
+    entityId: string,
+    oldName: string,
+    newName: string
+  ): Promise<RenamePropertyResponse> => {
+    return window.api.properties.rename(entityId, oldName, newName)
   }
 }

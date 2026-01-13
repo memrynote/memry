@@ -27,6 +27,8 @@ export interface UsePropertiesReturn {
   addProperty: (name: string, value: unknown, explicitType?: string) => Promise<void>
   /** Remove a property */
   removeProperty: (name: string) => Promise<void>
+  /** Rename a property (note-only scope) */
+  renameProperty: (oldName: string, newName: string) => Promise<void>
   /** Refresh properties from server */
   refresh: () => Promise<void>
 }
@@ -146,8 +148,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
         if (!result.success) {
           throw new Error(result.error ?? 'Failed to add property')
         }
-        // Refresh to get correct type from server
-        await fetchProperties()
+        // Don't refresh - trust optimistic update to preserve order and type
       } catch (err) {
         console.error('[useProperties] Error adding:', err)
         toast.error('Failed to add property')
@@ -185,6 +186,33 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
     [entityId, propertiesRecord, fetchProperties]
   )
 
+  // Rename a property (note-only scope)
+  const renameProperty = useCallback(
+    async (oldName: string, newName: string) => {
+      if (!entityId) return
+
+      // Don't rename to same name
+      if (oldName === newName) return
+
+      // Optimistic update
+      setProperties((prev) => prev.map((p) => (p.name === oldName ? { ...p, name: newName } : p)))
+
+      try {
+        const result = await propertiesService.rename(entityId, oldName, newName)
+        if (!result.success) {
+          throw new Error(result.error ?? 'Failed to rename property')
+        }
+      } catch (err) {
+        console.error('[useProperties] Error renaming:', err)
+        toast.error('Failed to rename property')
+        // Revert on error
+        await fetchProperties()
+        throw err
+      }
+    },
+    [entityId, fetchProperties]
+  )
+
   return {
     properties,
     propertiesRecord,
@@ -193,6 +221,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
     updateProperty,
     addProperty,
     removeProperty,
+    renameProperty,
     refresh: fetchProperties
   }
 }

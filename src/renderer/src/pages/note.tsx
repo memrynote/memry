@@ -123,7 +123,8 @@ export function NotePage({ noteId }: NotePageProps) {
     properties: backendProperties,
     updateProperty: updateBackendProperty,
     addProperty: addBackendProperty,
-    removeProperty: removeBackendProperty
+    removeProperty: removeBackendProperty,
+    renameProperty: renameBackendProperty
   } = useProperties(noteId ?? null)
 
   // Bookmark state
@@ -495,22 +496,15 @@ export function NotePage({ noteId }: NotePageProps) {
 
   const handleAddProperty = useCallback(
     async (newProp: NewProperty) => {
-      console.log('[NotePage] handleAddProperty called:', { newProp, noteId })
       if (isDeleted) {
         toast.error('Cannot add property - this note was deleted')
         return
       }
       // Get default value based on type
       const defaultValue = getDefaultValueForType(newProp.type)
-      console.log('[NotePage] Adding property with default value:', {
-        name: newProp.name,
-        type: newProp.type,
-        defaultValue
-      })
       try {
         // Pass explicit type to ensure correct editor renders (fixes Rating/Checkbox bugs)
         await addBackendProperty(newProp.name, defaultValue, newProp.type)
-        console.log('[NotePage] Property added successfully')
       } catch (err) {
         console.error('[NotePage] Failed to add property:', err)
         toast.error('Failed to add property')
@@ -533,6 +527,22 @@ export function NotePage({ noteId }: NotePageProps) {
       }
     },
     [removeBackendProperty, isDeleted, noteId]
+  )
+
+  const handlePropertyNameChange = useCallback(
+    async (propertyId: string, newName: string) => {
+      if (isDeleted) {
+        toast.error('Cannot rename property - this note was deleted')
+        return
+      }
+      try {
+        await renameBackendProperty(propertyId, newName)
+      } catch (err) {
+        console.error('[NotePage] Failed to rename property:', err)
+        toast.error('Failed to rename property')
+      }
+    },
+    [renameBackendProperty, isDeleted]
   )
 
   // Link handlers
@@ -755,6 +765,7 @@ export function NotePage({ noteId }: NotePageProps) {
                 isExpanded={isInfoExpanded}
                 onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
                 onPropertyChange={handlePropertyChange}
+                onPropertyNameChange={handlePropertyNameChange}
                 onAddProperty={handleAddProperty}
                 onDeleteProperty={handleDeleteProperty}
                 disabled={isDeleted}
