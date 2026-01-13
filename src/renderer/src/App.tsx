@@ -7,6 +7,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { Toaster } from '@/components/ui/sonner'
 import { DragProvider, type DragState } from '@/contexts/drag-context'
 import { AIAgentProvider } from '@/contexts/ai-agent-context'
+import { SidebarDrillDownProvider } from '@/contexts/sidebar-drill-down'
 import { GlobalAIPanel } from '@/components/ai-agent'
 import { TaskDragOverlay } from '@/components/tasks/drag-drop'
 import { initialProjects, taskViews, type Project } from '@/data/tasks-data'
@@ -526,14 +527,16 @@ function App(): React.JSX.Element {
         <AIAgentProvider>
           <TabProvider>
             <TabPersistenceManager>
-              <AppSidebar
-                currentPage={currentPage}
-                viewCounts={viewCounts}
-                onOpenSearch={() => setSearchOpen(true)}
-              />
-              <SidebarInset className="flex flex-col">
-                <AppContent searchOpen={searchOpen} onSearchOpenChange={setSearchOpen} />
-              </SidebarInset>
+              <SidebarDrillDownProvider>
+                <AppSidebar
+                  currentPage={currentPage}
+                  viewCounts={viewCounts}
+                  onOpenSearch={() => setSearchOpen(true)}
+                />
+                <SidebarInset className="flex flex-col">
+                  <AppContent searchOpen={searchOpen} onSearchOpenChange={setSearchOpen} />
+                </SidebarInset>
+              </SidebarDrillDownProvider>
               {/* Drag Overlay - only for task drag to sidebar */}
               <TaskDragOverlay projects={projectsWithCounts} />
             </TabPersistenceManager>

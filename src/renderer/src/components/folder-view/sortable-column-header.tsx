@@ -12,7 +12,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import type { Header } from '@tanstack/react-table'
 import type { NoteWithProperties, ColumnConfig } from '@shared/contracts/folder-view-api'
-import { GripVertical } from 'lucide-react'
+import { GripVertical, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface SortableColumnHeaderProps {
@@ -20,6 +20,8 @@ interface SortableColumnHeaderProps {
   header: Header<NoteWithProperties, unknown>
   /** Column configuration from view config */
   columnConfig: ColumnConfig
+  /** Optional icon for the column */
+  icon?: LucideIcon
   /** Sort index for multi-sort (1-based, undefined if not sorted) */
   sortIndex?: number
   /** Total number of sorted columns (for showing sort index) */
@@ -54,6 +56,7 @@ function formatColumnName(str: string): string {
 export function SortableColumnHeader({
   header,
   columnConfig,
+  icon: Icon,
   sortIndex,
   totalSortedColumns = 0,
   onWidthChange,
@@ -267,6 +270,10 @@ export function SortableColumnHeader({
         >
           <GripVertical className="h-4 w-4" />
         </div>
+
+        {Icon && (
+          <Icon className="h-3.5 w-3.5 text-muted-foreground/70 flex-shrink-0" aria-hidden />
+        )}
 
         {isEditing ? (
           <input

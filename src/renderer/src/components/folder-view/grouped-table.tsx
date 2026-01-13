@@ -46,37 +46,53 @@ import {
   sortableKeyboardCoordinates
 } from '@dnd-kit/sortable'
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
-import { ChevronRight, ChevronDown } from 'lucide-react'
-import type {
-  NoteWithProperties,
-  ColumnConfig,
-  SummaryConfig,
-  GroupByConfig
-} from '@shared/contracts/folder-view-api'
-import { cn } from '@/lib/utils'
 import {
-  TitleCell,
-  FolderCell,
-  TagsCell,
-  DateCell,
-  WordCountCell,
-  PropertyCell,
-  CheckboxCell,
-  NumberCell,
-  TextCell,
-  type PropertyType
-} from './property-cell'
+  AlignLeft,
+  Calendar,
+  CheckSquare,
+  ChevronRight,
+  ChevronDown,
+  FileText,
+  Folder,
+  Hash,
+  Link,
+  List,
+  Sigma,
+  Star,
+  Tag,
+  Tags,
+  type LucideIcon
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { evaluateFormula } from '@/lib/expression-evaluator'
-import { SortableColumnHeader } from './sortable-column-header'
-import { RowContextMenu } from './row-context-menu'
-import { FolderViewEmptyState } from './folder-view-empty-state'
-import { SummaryRow } from './summary-row'
 import {
   getColumnValues,
   computeSummary,
   formatSummaryValue,
   getSummaryTypeSymbol
 } from '@/lib/summary-evaluator'
+import type {
+  NoteWithProperties,
+  ColumnConfig,
+  SummaryConfig,
+  GroupByConfig
+} from '@shared/contracts/folder-view-api'
+import {
+  TitleCell,
+  FolderCell,
+  TagsCell,
+  DateCell,
+  WordCountCell,
+  EditablePropertyCell,
+  CheckboxCell,
+  NumberCell,
+  TextCell,
+  type PropertyType
+} from './property-cell'
+import { SortableColumnHeader } from './sortable-column-header'
+import { RowContextMenu } from './row-context-menu'
+import { FolderViewEmptyState } from './folder-view-empty-state'
+import { SummaryRow } from './summary-row'
 
 // ============================================================================
 // Types
@@ -117,6 +133,10 @@ interface GroupedTableProps {
   onFolderClick?: (folderPath: string) => void
   /** Called when a tag is clicked */
   onTagClick?: (tag: string) => void
+  /** Called when a tag is removed */
+  onTagRemove?: (noteId: string, tag: string) => void
+  /** Called when a property value is updated */
+  onPropertyUpdate?: (noteId: string, propertyId: string, value: unknown) => void
   /** Called when column config changes (resize, reorder) */
   onColumnsChange?: (columns: ColumnConfig[]) => void
   /** Called when display name changes for a column */
@@ -188,6 +208,37 @@ function getColumnType(columnId: string): PropertyType {
   }
 }
 
+const PROPERTY_TYPE_ICONS: Record<PropertyType, LucideIcon> = {
+  text: AlignLeft,
+  number: Hash,
+  checkbox: CheckSquare,
+  date: Calendar,
+  select: List,
+  multiselect: Tags,
+  url: Link,
+  rating: Star
+}
+
+const BUILT_IN_COLUMN_ICONS: Record<string, LucideIcon> = {
+  title: FileText,
+  folder: Folder,
+  tags: Tag,
+  created: Calendar,
+  modified: Calendar,
+  wordCount: Hash
+}
+
+function getColumnIcon(
+  columnId: string,
+  propertyTypes: Record<string, PropertyType>
+): LucideIcon | undefined {
+  const builtInIcon = BUILT_IN_COLUMN_ICONS[columnId]
+  if (builtInIcon) return builtInIcon
+  if (columnId.startsWith('formula.')) return Sigma
+  const type = propertyTypes[columnId] ?? getColumnType(columnId)
+  return PROPERTY_TYPE_ICONS[type]
+}
+
 /**
  * Convert OrderConfig[] to TanStack SortingState
  */
@@ -252,6 +303,8 @@ export function GroupedTable({
   onOpenInNewTab,
   onFolderClick,
   onTagClick,
+  onTagRemove,
+  onPropertyUpdate,
   onColumnsChange,
   onDisplayNameChange,
   onSortingChange,
@@ -407,9 +460,22 @@ export function GroupedTable({
   const renderTagsCell = useCallback(
     (info: CellContext<NoteWithProperties, unknown>) => {
       const note = info.row.original
-      return <TagsCell tags={note.tags} onTagClick={onTagClick} highlightQuery={highlightQuery} />
+      return (
+        <TagsCell
+          tags={note.tags}
+          onTagClick={onTagClick}
+          onTagRemove={
+            onTagRemove
+              ? (tag) => {
+                  onTagRemove(note.id, tag)
+                }
+              : undefined
+          }
+          highlightQuery={highlightQuery}
+        />
+      )
     },
-    [onTagClick, highlightQuery]
+    [onTagClick, onTagRemove, highlightQuery]
   )
 
   const renderDateCell = useCallback((info: CellContext<NoteWithProperties, unknown>) => {
@@ -430,14 +496,28 @@ export function GroupedTable({
       const PropertyCellRenderer = (
         info: CellContext<NoteWithProperties, unknown>
       ): React.JSX.Element => {
+        const note = info.row.original
         const value = info.getValue()
         // T116: Use propertyTypes from available properties if available
         const type = propertyTypes[columnId] ?? getColumnType(columnId)
-        return <PropertyCell value={value} type={type} highlightQuery={highlightQuery} />
+        return (
+          <EditablePropertyCell
+            value={value}
+            type={type}
+            highlightQuery={highlightQuery}
+            onSave={
+              onPropertyUpdate
+                ? (nextValue) => {
+                    onPropertyUpdate(note.id, columnId, nextValue)
+                  }
+                : undefined
+            }
+          />
+        )
       }
       return PropertyCellRenderer
     },
-    [highlightQuery, propertyTypes]
+    [highlightQuery, onPropertyUpdate, propertyTypes]
   )
 
   const renderFormulaCell = useCallback(
@@ -966,11 +1046,13 @@ export function GroupedTable({
                     const config = columnConfigMap.get(header.column.id) || {
                       id: header.column.id
                     }
+                    const icon = getColumnIcon(header.column.id, propertyTypes)
                     return (
                       <SortableColumnHeader
                         key={header.id}
                         header={header}
                         columnConfig={config}
+                        icon={icon}
                         sortIndex={getSortIndex(header.column.id)}
                         totalSortedColumns={sortedColumnsCount}
                         onWidthChange={handleWidthChange}
@@ -1055,6 +1137,7 @@ export function GroupedTable({
                     className={cn(
                       'border-b border-border/50',
                       'transition-colors',
+                      'items-center',
                       'cursor-pointer',
                       !isSelected && 'hover:bg-muted/50',
                       isSelected && 'border-l-2 border-amber-400 dark:border-amber-600',

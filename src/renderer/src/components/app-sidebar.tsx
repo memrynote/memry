@@ -29,7 +29,7 @@ import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-do
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { useTabActions } from '@/contexts/tabs'
 import { notesService } from '@/services/notes-service'
-import { SidebarDrillDownProvider, useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
+import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useInboxList } from '@/hooks/use-inbox'
 import type { SidebarItem, TabType } from '@/contexts/tabs/types'
 import type { AppPage } from '@/App'
@@ -115,14 +115,12 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 export function AppSidebar({ currentPage, viewCounts, onOpenSearch, ...props }: AppSidebarProps) {
   return (
-    <SidebarDrillDownProvider>
-      <AppSidebarInner
-        currentPage={currentPage}
-        viewCounts={viewCounts}
-        onOpenSearch={onOpenSearch}
-        {...props}
-      />
-    </SidebarDrillDownProvider>
+    <AppSidebarInner
+      currentPage={currentPage}
+      viewCounts={viewCounts}
+      onOpenSearch={onOpenSearch}
+      {...props}
+    />
   )
 }
 
