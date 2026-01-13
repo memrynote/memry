@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 import { NotesChannels } from '@shared/ipc-channels'
 import { noteCache, noteTags, noteLinks } from '@shared/db/schema/notes-cache'
 import { createTestVault, createTestNote } from '@tests/utils/test-vault'
-import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { MockBrowserWindow } from '@tests/utils/mock-electron'
 import { BrowserWindow } from 'electron'
 import { parseNote, serializeNote } from './frontmatter'
@@ -32,6 +32,7 @@ vi.mock('chokidar', () => ({
 
 vi.mock('../database', () => ({
   getIndexDatabase: vi.fn(),
+  getDatabase: vi.fn(),
   updateFtsContent: vi.fn()
 }))
 
@@ -43,21 +44,24 @@ vi.mock('./index', () => ({
   getConfig: vi.fn(() => baseConfig)
 }))
 
-import { getIndexDatabase, updateFtsContent } from '../database'
+import { getIndexDatabase, getDatabase, updateFtsContent } from '../database'
 import { updateNoteEmbedding } from '../inbox/suggestions'
 import { getConfig } from './index'
 import { VaultWatcher, getWatcher, startWatcher, stopWatcher } from './watcher'
 
 describe('vault watcher', () => {
   let vault: ReturnType<typeof createTestVault>
+  let dataDb: TestDatabaseResult
   let indexDb: TestDatabaseResult
   let window: MockBrowserWindow
 
   beforeEach(() => {
     vault = createTestVault('watcher')
+    dataDb = createTestDataDb()
     indexDb = createTestIndexDb()
     indexDb.sqlite.pragma('foreign_keys = ON')
 
+    vi.mocked(getDatabase).mockReturnValue(dataDb.db)
     vi.mocked(getIndexDatabase).mockReturnValue(indexDb.db)
     vi.mocked(updateFtsContent).mockImplementation(() => undefined)
     vi.mocked(updateNoteEmbedding).mockResolvedValue(undefined)
@@ -71,6 +75,7 @@ describe('vault watcher', () => {
   afterEach(() => {
     clearAllPendingDeletes()
     indexDb.close()
+    dataDb.close()
     vault.cleanup()
     vi.clearAllMocks()
     vi.useRealTimers()

@@ -21,7 +21,7 @@ import {
   type DeleteTagResponse
 } from '@shared/contracts/tags-api'
 import { createValidatedHandler, createStringHandler } from './validate'
-import { getIndexDatabase } from '../database'
+import { getDatabase, getIndexDatabase } from '../database'
 import {
   findNotesWithTagInfo,
   pinNoteToTag,
@@ -29,7 +29,9 @@ import {
   renameTag,
   deleteTag,
   removeTagFromNote,
-  getTagDefinition,
+  getOrCreateTag,
+  renameTagDefinition,
+  deleteTagDefinition,
   updateTagColor,
   getNoteTags
 } from '@shared/db/queries/notes'
@@ -49,6 +51,17 @@ function emitTagEvent(channel: string, data: unknown): void {
 function requireIndexDatabase() {
   try {
     return getIndexDatabase()
+  } catch {
+    throw new Error('No vault is open. Please open a vault first.')
+  }
+}
+
+/**
+ * Helper to get data database, throwing a user-friendly error if not available.
+ */
+function requireDatabase() {
+  try {
+    return getDatabase()
   } catch {
     throw new Error('No vault is open. Please open a vault first.')
   }
@@ -93,14 +106,14 @@ export function registerTagsHandlers(): void {
   ipcMain.handle(
     TagsChannels.invoke.GET_NOTES_BY_TAG,
     createValidatedHandler(GetNotesByTagSchema, (input) => {
-      const db = requireIndexDatabase()
+      const indexDb = requireIndexDatabase()
+      const dataDb = requireDatabase()
 
-      // Get tag definition for color
-      const tagDef = getTagDefinition(db, input.tag)
-      const color = tagDef?.color ?? 'gray'
+      // Get tag definition for color (create if missing)
+      const { color } = getOrCreateTag(dataDb, input.tag)
 
       // Get notes with pinned info
-      const notes = findNotesWithTagInfo(db, input.tag, {
+      const notes = findNotesWithTagInfo(indexDb, input.tag, {
         sortBy: input.sortBy,
         sortOrder: input.sortOrder
       })
@@ -110,7 +123,7 @@ export function registerTagsHandlers(): void {
       const unpinnedNotes: TagNoteItem[] = []
 
       for (const note of notes) {
-        const noteTags = getNoteTags(db, note.id)
+        const noteTags = getNoteTags(indexDb, note.id)
         const item = toTagNoteItem(note, noteTags)
 
         if (note.isPinned) {
@@ -184,10 +197,12 @@ export function registerTagsHandlers(): void {
   ipcMain.handle(
     TagsChannels.invoke.RENAME_TAG,
     createValidatedHandler(RenameTagSchema, (input) => {
-      const db = requireIndexDatabase()
+      const indexDb = requireIndexDatabase()
+      const dataDb = requireDatabase()
 
       try {
-        const affectedNotes = renameTag(db, input.oldName, input.newName)
+        const affectedNotes = renameTag(indexDb, input.oldName, input.newName)
+        renameTagDefinition(dataDb, input.oldName, input.newName)
 
         // Emit event
         emitTagEvent(TagsChannels.events.RENAMED, {
@@ -211,10 +226,11 @@ export function registerTagsHandlers(): void {
   ipcMain.handle(
     TagsChannels.invoke.UPDATE_TAG_COLOR,
     createValidatedHandler(UpdateTagColorSchema, (input) => {
-      const db = requireIndexDatabase()
+      const dataDb = requireDatabase()
 
       try {
-        updateTagColor(db, input.tag, input.color)
+        getOrCreateTag(dataDb, input.tag)
+        updateTagColor(dataDb, input.tag, input.color)
 
         // Emit event
         emitTagEvent(TagsChannels.events.COLOR_UPDATED, {
@@ -237,10 +253,12 @@ export function registerTagsHandlers(): void {
   ipcMain.handle(
     TagsChannels.invoke.DELETE_TAG,
     createStringHandler((tag: string) => {
-      const db = requireIndexDatabase()
+      const indexDb = requireIndexDatabase()
+      const dataDb = requireDatabase()
 
       try {
-        const affectedNotes = deleteTag(db, tag)
+        const affectedNotes = deleteTag(indexDb, tag)
+        deleteTagDefinition(dataDb, tag)
 
         // Emit event
         emitTagEvent(TagsChannels.events.DELETED, {

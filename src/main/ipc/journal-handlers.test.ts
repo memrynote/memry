@@ -67,7 +67,7 @@ vi.mock('@shared/db/queries/notes', () => ({
   getJournalStreak: vi.fn(),
   setNoteTags: vi.fn(),
   getNoteTags: vi.fn(),
-  getAllTagsWithColors: vi.fn(),
+  getAllTags: vi.fn(),
   getNotePropertiesAsRecord: vi.fn(),
   setNoteProperties: vi.fn(),
   inferPropertyType: vi.fn(),
@@ -314,9 +314,7 @@ describe('journal-handlers', () => {
 
   it('returns tag summary and streak data', async () => {
     registerJournalHandlers()
-    ;(notesQueries.getAllTagsWithColors as Mock).mockReturnValue([
-      { tag: 'focus', count: 2, color: 'blue' }
-    ])
+    ;(notesQueries.getAllTags as Mock).mockReturnValue([{ tag: 'focus', count: 2 }])
     const tags = await invokeHandler(JournalChannels.invoke.GET_ALL_TAGS)
     expect(tags).toEqual([{ tag: 'focus', count: 2 }])
     ;(notesQueries.getJournalStreak as Mock).mockReturnValue({

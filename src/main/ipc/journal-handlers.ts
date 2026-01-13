@@ -47,7 +47,7 @@ import {
   getJournalStreak,
   // Tag operations (using note_tags)
   getNoteTags,
-  getAllTagsWithColors,
+  getAllTags,
   // Property operations (using note_properties)
   getNotePropertiesAsRecord,
   // Utilities
@@ -413,15 +413,13 @@ export function registerJournalHandlers(): void {
   // =========================================================================
 
   // journal:getAllTags - Get all tags used in journal entries
-  // Note: Now uses unified tag system (note_tags + tag_definitions)
+  // Note: Uses note_tags in index.db for counts.
   ipcMain.handle(
     JournalChannels.invoke.GET_ALL_TAGS,
     createHandler((): GetAllTagsOutput => {
       const db = getIndexDatabase()
-      // Get all tags with colors from unified system
-      const tagsWithColors = getAllTagsWithColors(db)
-      // Return in expected format (tag + count, without color for backward compat)
-      return tagsWithColors.map((t) => ({ tag: t.tag, count: t.count }))
+      const tagsWithCounts = getAllTags(db)
+      return tagsWithCounts.map((t) => ({ tag: t.tag, count: t.count }))
     })
   )
 

@@ -29,7 +29,8 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('../database', () => ({
-  getIndexDatabase: vi.fn()
+  getIndexDatabase: vi.fn(),
+  getDatabase: vi.fn()
 }))
 
 vi.mock('@shared/db/queries/notes', () => ({
@@ -37,15 +38,17 @@ vi.mock('@shared/db/queries/notes', () => ({
   pinNoteToTag: vi.fn(),
   unpinNoteFromTag: vi.fn(),
   renameTag: vi.fn(),
+  renameTagDefinition: vi.fn(),
   deleteTag: vi.fn(),
+  deleteTagDefinition: vi.fn(),
   removeTagFromNote: vi.fn(),
-  getTagDefinition: vi.fn(),
+  getOrCreateTag: vi.fn(),
   updateTagColor: vi.fn(),
   getNoteTags: vi.fn()
 }))
 
 import { registerTagsHandlers } from './tags-handlers'
-import { getIndexDatabase } from '../database'
+import { getIndexDatabase, getDatabase } from '../database'
 import * as notesQueries from '@shared/db/queries/notes'
 
 describe('tags-handlers', () => {
@@ -56,6 +59,7 @@ describe('tags-handlers', () => {
     removeHandlerCalls.length = 0
     mockSend.mockClear()
     ;(getIndexDatabase as Mock).mockReturnValue({})
+    ;(getDatabase as Mock).mockReturnValue({})
   })
 
   afterEach(() => {
@@ -64,7 +68,7 @@ describe('tags-handlers', () => {
 
   it('lists notes by tag with pinned separation', async () => {
     registerTagsHandlers()
-    ;(notesQueries.getTagDefinition as Mock).mockReturnValue({ color: 'blue' })
+    ;(notesQueries.getOrCreateTag as Mock).mockReturnValue({ name: 'focus', color: 'blue' })
     ;(notesQueries.findNotesWithTagInfo as Mock).mockReturnValue([
       {
         id: 'note-1',
@@ -131,6 +135,7 @@ describe('tags-handlers', () => {
       newName: 'new'
     })
     expect(renameResult).toEqual({ success: true, affectedNotes: 3 })
+    expect(notesQueries.renameTagDefinition).toHaveBeenCalledWith({}, 'old', 'new')
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.RENAMED,
       expect.objectContaining({ oldName: 'old', newName: 'new' })
@@ -142,11 +147,13 @@ describe('tags-handlers', () => {
       color: '#ff0000'
     })
     expect(colorResult).toEqual({ success: true })
+    expect(notesQueries.getOrCreateTag).toHaveBeenCalledWith({}, 'new')
     expect(notesQueries.updateTagColor).toHaveBeenCalledWith({}, 'new', '#ff0000')
     expect(mockSend).toHaveBeenCalledWith('notes:tags-changed', {})
     ;(notesQueries.deleteTag as Mock).mockReturnValue(5)
     const deleteResult = await invokeHandler(TagsChannels.invoke.DELETE_TAG, 'new')
     expect(deleteResult).toEqual({ success: true, affectedNotes: 5 })
+    expect(notesQueries.deleteTagDefinition).toHaveBeenCalledWith({}, 'new')
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.DELETED,
       expect.objectContaining({ tag: 'new', affectedNotes: 5 })

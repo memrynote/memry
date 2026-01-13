@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   tagsService,
   onTagNotesChanged,
+  onTagColorUpdated,
   type TagNoteItem,
   type GetNotesByTagResponse
 } from '@/services/tags-service'
@@ -18,6 +19,7 @@ export interface UseTagDetailOptions {
   tag: string
   sortBy?: TagSortBy
   sortOrder?: TagSortOrder
+  fallbackColor?: string
 }
 
 export interface UseTagDetailReturn {
@@ -50,7 +52,7 @@ export interface UseTagDetailReturn {
  * Fetches notes for a tag and provides actions for pinning/unpinning.
  */
 export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
-  const { tag } = options
+  const { tag, fallbackColor } = options
   const [data, setData] = useState<GetNotesByTagResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -90,6 +92,16 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
     const unsubscribe = onTagNotesChanged((event) => {
       if (event.tag.toLowerCase() === tag.toLowerCase()) {
         // Refresh the list when notes change for this tag
+        fetchNotes()
+      }
+    })
+
+    return unsubscribe
+  }, [tag, fetchNotes])
+
+  useEffect(() => {
+    const unsubscribe = onTagColorUpdated((event) => {
+      if (event.tag.toLowerCase() === tag.toLowerCase()) {
         fetchNotes()
       }
     })
@@ -152,7 +164,7 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
   return useMemo(
     () => ({
       tag: data?.tag ?? tag,
-      color: data?.color ?? 'gray',
+      color: data?.color ?? fallbackColor ?? 'gray',
       count: data?.count ?? 0,
       pinnedNotes: data?.pinnedNotes ?? [],
       unpinnedNotes: data?.unpinnedNotes ?? [],

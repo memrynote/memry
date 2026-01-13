@@ -17,6 +17,7 @@ import {
   initIndexDatabase,
   runIndexMigrations,
   initializeFts,
+  getDatabase,
   getIndexDatabase,
   closeIndexDatabase
 } from '../database'
@@ -29,7 +30,8 @@ import {
   getNoteCacheByPath,
   getNoteCacheById,
   countNotes,
-  countJournalEntries
+  countJournalEntries,
+  ensureTagDefinitions
 } from '@shared/db/queries/notes'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@shared/file-types'
 
@@ -189,6 +191,9 @@ async function indexMarkdownFile(
     console.log(
       `[Indexer] Indexed: ${relativePath}${result.date ? ` (journal: ${result.date})` : ''}`
     )
+    if (result.tags.length > 0) {
+      ensureTagDefinitions(getDatabase(), result.tags)
+    }
   } catch (syncError) {
     console.error(`[Indexer] Sync failed for ${relativePath}:`, syncError)
     return 'error'

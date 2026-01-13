@@ -78,6 +78,13 @@
       "when": 1768002000000,
       "tag": "0010_make_columns_nullable",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1768336044711,
+      "tag": "0011_purple_madame_masque",
+      "breakpoints": true
     }
   ]
 }
