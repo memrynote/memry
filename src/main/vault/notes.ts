@@ -40,7 +40,9 @@ import {
   countNotes,
   getNoteTags,
   getTagsForNotes,
-  getAllTagsWithColors,
+  getAllTags,
+  getAllTagDefinitions,
+  getOrCreateTag,
   ensureTagDefinitions,
   getNotePropertiesAsRecord,
   getPropertiesForNotes,
@@ -56,7 +58,7 @@ import {
   pruneOldSnapshots
 } from '@shared/db/queries/notes'
 import { SnapshotReasons, type SnapshotReason } from '@shared/db/schema/notes-cache'
-import { getIndexDatabase } from '../database'
+import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@shared/contracts/notes-api'
@@ -248,6 +250,7 @@ function emitNoteEvent(channel: string, payload: unknown): void {
 export async function createNote(input: NoteCreateInput): Promise<Note> {
   const notesDir = getNotesDir()
   const db = getIndexDatabase()
+  const dataDb = getDatabase()
 
   // T096.6: Apply template if specified or folder has default
   let templateContent = ''
@@ -312,6 +315,8 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     },
     { isNew: true }
   )
+
+  ensureTagDefinitions(dataDb, mergedTags)
 
   // Build response
   const note: Note = {
@@ -520,6 +525,7 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
  */
 export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   const db = getIndexDatabase()
+  const dataDb = getDatabase()
 
   // Get existing note
   const existing = await getNoteById(input.id)
@@ -599,7 +605,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
 
   if (tagsChanged) {
     // Ensure all tags have definitions (creates new tags with auto-assigned colors)
-    ensureTagDefinitions(db, newTags)
+    ensureTagDefinitions(dataDb, newTags)
   }
 
   // Build response
@@ -879,8 +885,38 @@ function noteToListItem(note: Note): NoteListItem {
  * Returns tags sorted by usage count descending.
  */
 export function getTagsWithCounts(): { tag: string; color: string; count: number }[] {
-  const db = getIndexDatabase()
-  return getAllTagsWithColors(db)
+  const indexDb = getIndexDatabase()
+  const dataDb = getDatabase()
+
+  const definitions = getAllTagDefinitions(dataDb)
+  const usageCounts = getAllTags(indexDb)
+
+  const defMap = new Map(definitions.map((d) => [d.name, d.color]))
+  const countMap = new Map(usageCounts.map((u) => [u.tag, u.count]))
+
+  const results: { tag: string; color: string; count: number }[] = []
+
+  for (const def of definitions) {
+    results.push({
+      tag: def.name,
+      color: def.color,
+      count: countMap.get(def.name) ?? 0
+    })
+  }
+
+  for (const usage of usageCounts) {
+    if (!defMap.has(usage.tag)) {
+      const { color } = getOrCreateTag(dataDb, usage.tag)
+      defMap.set(usage.tag, color)
+      results.push({
+        tag: usage.tag,
+        color,
+        count: usage.count
+      })
+    }
+  }
+
+  return results.sort((a, b) => b.count - a.count)
 }
 
 /**
@@ -1169,6 +1205,7 @@ export function getVersion(snapshotId: string): SnapshotDetail | null {
  */
 export async function restoreVersion(snapshotId: string): Promise<Note> {
   const db = getIndexDatabase()
+  const dataDb = getDatabase()
   const snapshot = getNoteSnapshotById(db, snapshotId)
 
   if (!snapshot) {
@@ -1219,7 +1256,7 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
   )
 
   // Ensure all tags have definitions (creates new tags with auto-assigned colors)
-  ensureTagDefinitions(db, syncResult.tags)
+  ensureTagDefinitions(dataDb, syncResult.tags)
 
   // Build the restored note object
   const restoredNote: Note = {

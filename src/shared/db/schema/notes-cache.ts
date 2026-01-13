@@ -58,18 +58,6 @@ export const noteTags = sqliteTable(
   ]
 )
 
-// ============================================================================
-// Tag Definitions Table (vault-wide tag registry with persistent colors)
-// ============================================================================
-
-export const tagDefinitions = sqliteTable('tag_definitions', {
-  name: text('name').primaryKey(),
-  color: text('color').notNull(),
-  createdAt: text('created_at')
-    .notNull()
-    .default(sql`(datetime('now'))`)
-})
-
 export const noteLinks = sqliteTable(
   'note_links',
   {
@@ -129,8 +117,6 @@ export type NoteCache = typeof noteCache.$inferSelect
 export type NewNoteCache = typeof noteCache.$inferInsert
 export type NoteTag = typeof noteTags.$inferSelect
 export type NewNoteTag = typeof noteTags.$inferInsert
-export type TagDefinition = typeof tagDefinitions.$inferSelect
-export type NewTagDefinition = typeof tagDefinitions.$inferInsert
 export type NoteLink = typeof noteLinks.$inferSelect
 export type NewNoteLink = typeof noteLinks.$inferInsert
 export type NoteProperty = typeof noteProperties.$inferSelect

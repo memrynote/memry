@@ -1,6 +1,6 @@
 /**
  * Note cache query functions for Drizzle ORM.
- * These queries operate on index.db (rebuildable cache).
+ * Note-cache queries use index.db; tag definition helpers use data.db.
  *
  * @module db/queries/notes
  */
@@ -10,7 +10,6 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   noteCache,
   noteTags,
-  tagDefinitions,
   noteLinks,
   noteProperties,
   propertyDefinitions,
@@ -19,8 +18,6 @@ import {
   type NewNoteCache,
   type NoteTag,
   type NewNoteTag,
-  type TagDefinition,
-  type NewTagDefinition,
   type NoteLink,
   type NewNoteLink,
   type NoteProperty,
@@ -32,6 +29,7 @@ import {
   type NewNoteSnapshot,
   type SnapshotReason
 } from '../schema/notes-cache'
+import { tagDefinitions } from '../schema/tag-definitions'
 import * as schema from '../schema'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
@@ -426,7 +424,7 @@ export function unpinNoteFromTag(db: DrizzleDb, noteId: string, tag: string): vo
 
 /**
  * Rename a tag across all notes.
- * Updates both note_tags and tag_definitions tables.
+ * Updates note_tags table.
  */
 export function renameTag(db: DrizzleDb, oldName: string, newName: string): number {
   const normalizedOld = oldName.toLowerCase().trim()
@@ -443,39 +441,18 @@ export function renameTag(db: DrizzleDb, oldName: string, newName: string): numb
     .where(eq(noteTags.tag, normalizedOld))
     .run()
 
-  // Update tag_definitions - first check if new name exists
-  const existingNew = db
-    .select()
-    .from(tagDefinitions)
-    .where(eq(tagDefinitions.name, normalizedNew))
-    .get()
-
-  if (existingNew) {
-    // New tag already exists, just delete the old definition
-    db.delete(tagDefinitions).where(eq(tagDefinitions.name, normalizedOld)).run()
-  } else {
-    // Rename the definition
-    db.update(tagDefinitions)
-      .set({ name: normalizedNew })
-      .where(eq(tagDefinitions.name, normalizedOld))
-      .run()
-  }
-
   return result.changes
 }
 
 /**
  * Delete a tag from all notes.
- * Removes from both note_tags and tag_definitions tables.
+ * Removes from note_tags table.
  */
 export function deleteTag(db: DrizzleDb, tag: string): number {
   const normalizedTag = tag.toLowerCase().trim()
 
   // Delete from note_tags
   const result = db.delete(noteTags).where(eq(noteTags.tag, normalizedTag)).run()
-
-  // Delete from tag_definitions
-  db.delete(tagDefinitions).where(eq(tagDefinitions.name, normalizedTag)).run()
 
   return result.changes
 }
@@ -557,55 +534,16 @@ export function getOrCreateTag(db: DrizzleDb, name: string): { name: string; col
 }
 
 /**
- * Get all tag definitions with usage counts.
- * Returns tags sorted by usage count descending.
+ * Get all tag definitions (name + color).
  */
-export function getAllTagsWithColors(
-  db: DrizzleDb
-): { tag: string; color: string; count: number }[] {
-  // Get all tag definitions
-  const definitions = db.select().from(tagDefinitions).all()
-  const defMap = new Map(definitions.map((d) => [d.name, d.color]))
-
-  // Get usage counts from noteTags
-  const usageCounts = db
+export function getAllTagDefinitions(db: DrizzleDb): { name: string; color: string }[] {
+  return db
     .select({
-      tag: noteTags.tag,
-      count: count()
+      name: tagDefinitions.name,
+      color: tagDefinitions.color
     })
-    .from(noteTags)
-    .groupBy(noteTags.tag)
+    .from(tagDefinitions)
     .all()
-
-  const countMap = new Map(usageCounts.map((u) => [u.tag, u.count]))
-
-  // Combine definitions with counts, including unused tags
-  const results: { tag: string; color: string; count: number }[] = []
-
-  // Add all defined tags (even if unused)
-  for (const def of definitions) {
-    results.push({
-      tag: def.name,
-      color: def.color,
-      count: countMap.get(def.name) ?? 0
-    })
-  }
-
-  // Add any tags in noteTags that don't have definitions (legacy data)
-  // and create definitions for them
-  for (const usage of usageCounts) {
-    if (!defMap.has(usage.tag)) {
-      const { color } = getOrCreateTag(db, usage.tag)
-      results.push({
-        tag: usage.tag,
-        color,
-        count: usage.count
-      })
-    }
-  }
-
-  // Sort by count descending
-  return results.sort((a, b) => b.count - a.count)
 }
 
 /**
@@ -617,11 +555,38 @@ export function updateTagColor(db: DrizzleDb, name: string, color: string): void
 }
 
 /**
- * Get a single tag definition by name.
+ * Rename a tag definition.
  */
-export function getTagDefinition(db: DrizzleDb, name: string): TagDefinition | undefined {
+export function renameTagDefinition(db: DrizzleDb, oldName: string, newName: string): void {
+  const normalizedOld = oldName.toLowerCase().trim()
+  const normalizedNew = newName.toLowerCase().trim()
+
+  if (normalizedOld === normalizedNew) {
+    return
+  }
+
+  const existingNew = db
+    .select()
+    .from(tagDefinitions)
+    .where(eq(tagDefinitions.name, normalizedNew))
+    .get()
+
+  if (existingNew) {
+    db.delete(tagDefinitions).where(eq(tagDefinitions.name, normalizedOld)).run()
+  } else {
+    db.update(tagDefinitions)
+      .set({ name: normalizedNew })
+      .where(eq(tagDefinitions.name, normalizedOld))
+      .run()
+  }
+}
+
+/**
+ * Delete a tag definition by name.
+ */
+export function deleteTagDefinition(db: DrizzleDb, name: string): void {
   const normalizedName = name.toLowerCase().trim()
-  return db.select().from(tagDefinitions).where(eq(tagDefinitions.name, normalizedName)).get()
+  db.delete(tagDefinitions).where(eq(tagDefinitions.name, normalizedName)).run()
 }
 
 /**
@@ -632,7 +597,10 @@ export function ensureTagDefinitions(
   db: DrizzleDb,
   tags: string[]
 ): { name: string; color: string }[] {
-  return tags.map((tag) => getOrCreateTag(db, tag))
+  const normalized = Array.from(
+    new Set(tags.map((tag) => tag.toLowerCase().trim()).filter(Boolean))
+  )
+  return normalized.map((tag) => getOrCreateTag(db, tag))
 }
 
 // ============================================================================
@@ -1265,8 +1233,6 @@ export type {
   NewNoteLink,
   NoteProperty,
   NewNoteProperty,
-  TagDefinition,
-  NewTagDefinition,
   PropertyDefinition,
   NewPropertyDefinition,
   PropertyType,

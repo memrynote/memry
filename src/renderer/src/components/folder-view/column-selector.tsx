@@ -12,7 +12,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react'
-import { ChevronDown, SlidersHorizontal, Search, Plus, Pencil, Trash2 } from 'lucide-react'
+import { SlidersHorizontal, Search, Plus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -316,7 +316,6 @@ export function ColumnSelector({
           </TooltipTrigger>
           <TooltipContent side="bottom">Properties</TooltipContent>
         </Tooltip>
-      </Popover>
 
         <PopoverContent align="start" className="w-72 p-0">
           {/* Search input */}
@@ -444,7 +443,7 @@ export function ColumnSelector({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </TooltipProvider>
   )
 }
 

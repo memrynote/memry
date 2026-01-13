@@ -22,7 +22,8 @@ import {
   onNoteDeleted,
   onNoteRenamed,
   onNoteMoved,
-  onNoteExternalChange
+  onNoteExternalChange,
+  onTagsChanged
 } from '@/services/notes-service'
 
 // =============================================================================
@@ -258,6 +259,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
  */
 export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options
+  const queryClient = useQueryClient()
 
   const query = useQuery({
     queryKey: notesKeys.tags(),
@@ -269,6 +271,14 @@ export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
 
   // Memoize tags to avoid recreating array reference
   const tags = useMemo(() => query.data ?? EMPTY_TAGS, [query.data])
+
+  useEffect(() => {
+    const unsubscribe = onTagsChanged(() => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.tags() })
+    })
+
+    return unsubscribe
+  }, [queryClient])
 
   return {
     tags,

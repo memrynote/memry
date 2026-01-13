@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TestDatabaseResult, TestDb } from '@tests/utils/test-db'
-import { createTestIndexDb, sql } from '@tests/utils/test-db'
+import { createTestDataDb, createTestIndexDb, sql } from '@tests/utils/test-db'
 import type { NewNoteCache, PropertyType } from '../schema/notes-cache'
 import {
   insertNoteCache,
@@ -22,7 +22,9 @@ import {
   deleteTag,
   removeTagFromNote,
   getOrCreateTag,
-  getAllTagsWithColors,
+  getAllTagDefinitions,
+  renameTagDefinition,
+  deleteTagDefinition,
   updateTagColor,
   setNoteLinks,
   getOutgoingLinks,
@@ -173,7 +175,6 @@ describe('notes cache queries', () => {
 
     expect(getNoteTags(db, 'note-14')).toEqual(['alpha'])
 
-    getOrCreateTag(db, 'alpha')
     renameTag(db, 'alpha', 'beta')
     expect(getNoteTags(db, 'note-14')).toEqual(['beta'])
 
@@ -186,19 +187,28 @@ describe('notes cache queries', () => {
   })
 
   it('manages tag definitions and colors', () => {
-    getOrCreateTag(db, 'alpha')
-    getOrCreateTag(db, 'beta')
-    updateTagColor(db, 'alpha', 'red')
+    const dataDbResult = createTestDataDb()
+    const dataDb = dataDbResult.db
 
-    createNote('note-15')
-    setNoteTags(db, 'note-15', ['legacy'])
+    try {
+      getOrCreateTag(dataDb, 'alpha')
+      getOrCreateTag(dataDb, 'beta')
+      updateTagColor(dataDb, 'alpha', 'red')
+      renameTagDefinition(dataDb, 'beta', 'gamma')
 
-    const tagsWithColors = getAllTagsWithColors(db)
-    const alpha = tagsWithColors.find((t) => t.tag === 'alpha')
-    const legacy = tagsWithColors.find((t) => t.tag === 'legacy')
+      const definitions = getAllTagDefinitions(dataDb)
+      const alpha = definitions.find((t) => t.name === 'alpha')
+      const gamma = definitions.find((t) => t.name === 'gamma')
 
-    expect(alpha?.color).toBe('red')
-    expect(legacy?.count).toBe(1)
+      expect(alpha?.color).toBe('red')
+      expect(gamma).toBeDefined()
+
+      deleteTagDefinition(dataDb, 'alpha')
+      const afterDelete = getAllTagDefinitions(dataDb)
+      expect(afterDelete.find((t) => t.name === 'alpha')).toBeUndefined()
+    } finally {
+      dataDbResult.close()
+    }
   })
 
   it('manages note links and link resolution', () => {

@@ -23,8 +23,13 @@ import {
 import { safeRead, atomicWrite } from './file-ops'
 import { generateNoteId } from '../lib/id'
 import { syncNoteToCache, syncFileToCache } from './note-sync'
-import { deleteNoteCache, getNoteCacheByPath, getNoteCacheById } from '@shared/db/queries/notes'
-import { getIndexDatabase } from '../database'
+import {
+  deleteNoteCache,
+  getNoteCacheByPath,
+  getNoteCacheById,
+  ensureTagDefinitions
+} from '@shared/db/queries/notes'
+import { getDatabase, getIndexDatabase } from '../database'
 import { NotesChannels, JournalChannels } from '@shared/ipc-channels'
 import { trackPendingDelete, checkForRename, clearAllPendingDeletes } from './rename-tracker'
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
@@ -360,6 +365,10 @@ export class VaultWatcher {
     const tags = extractTags(parsed.frontmatter)
     const properties = extractProperties(parsed.frontmatter)
 
+    if (tags.length > 0) {
+      ensureTagDefinitions(getDatabase(), tags)
+    }
+
     // Create list item for event
     const noteListItem: NoteListItem = {
       id: parsed.frontmatter.id,
@@ -540,6 +549,10 @@ export class VaultWatcher {
     const tags = extractTags(parsed.frontmatter)
     const properties = extractProperties(parsed.frontmatter)
     const title = parsed.frontmatter.title ?? path.basename(relativePath, '.md')
+
+    if (tags.length > 0) {
+      ensureTagDefinitions(getDatabase(), tags)
+    }
 
     // Emit update event for notes
     emitEvent(NotesChannels.events.UPDATED, {
