@@ -147,10 +147,7 @@ export const PropertyTypes = {
   NUMBER: 'number',
   CHECKBOX: 'checkbox',
   DATE: 'date',
-  SELECT: 'select',
-  MULTISELECT: 'multiselect',
-  URL: 'url',
-  RATING: 'rating'
+  URL: 'url'
 } as const
 
 export type PropertyType = (typeof PropertyTypes)[keyof typeof PropertyTypes]

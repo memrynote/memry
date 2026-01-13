@@ -937,9 +937,8 @@ export interface NotesClientAPI {
   exists(titleOrPath: string): Promise<boolean>
   openExternal(id: string): Promise<void>
   revealInFinder(id: string): Promise<void>
-  // T020: Properties API
-  getProperties(noteId: string): Promise<PropertyValue[]>
-  setProperties(noteId: string, properties: Record<string, unknown>): Promise<SetPropertiesResponse>
+  // Property Definitions API (T017-T018)
+  // Note: get/set properties moved to unified PropertiesClientAPI
   getPropertyDefinitions(): Promise<PropertyDefinition[]>
   createPropertyDefinition(
     input: CreatePropertyDefinitionInput
@@ -981,6 +980,18 @@ export interface NotesClientAPI {
     targetFolder?: string
   ): Promise<{ success: boolean; imported: number; failed: number; errors: string[] }>
   showImportDialog(): Promise<{ canceled: boolean; filePaths: string[] }>
+}
+
+// Unified Properties API (works with notes and journal entries)
+export interface PropertiesClientAPI {
+  /**
+   * Get properties for any entity (note or journal entry) by ID.
+   */
+  get(entityId: string): Promise<PropertyValue[]>
+  /**
+   * Set properties for any entity (note or journal entry) by ID.
+   */
+  set(entityId: string, properties: Record<string, unknown>): Promise<SetPropertiesResponse>
 }
 
 // Tasks client API interface
@@ -2015,6 +2026,7 @@ interface WindowAPI {
 interface API extends WindowAPI {
   vault: VaultClientAPI
   notes: NotesClientAPI
+  properties: PropertiesClientAPI
   search: SearchClientAPI
   tasks: TasksClientAPI
   savedFilters: SavedFiltersClientAPI

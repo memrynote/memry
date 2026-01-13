@@ -59,8 +59,6 @@ const createMockApi = () => ({
     exists: vi.fn().mockResolvedValue(false),
     openExternal: vi.fn().mockResolvedValue({ success: true }),
     revealInFinder: vi.fn().mockResolvedValue({ success: true }),
-    getProperties: vi.fn().mockResolvedValue({}),
-    setProperties: vi.fn().mockResolvedValue({ success: true }),
     getPropertyDefinitions: vi.fn().mockResolvedValue([]),
     createPropertyDefinition: vi.fn().mockResolvedValue({ success: true }),
     updatePropertyDefinition: vi.fn().mockResolvedValue({ success: true }),
@@ -76,6 +74,12 @@ const createMockApi = () => ({
     getVersion: vi.fn().mockResolvedValue(null),
     restoreVersion: vi.fn().mockResolvedValue({ success: true }),
     deleteVersion: vi.fn().mockResolvedValue({ success: true })
+  },
+
+  // Properties API (unified for notes and journal)
+  properties: {
+    get: vi.fn().mockResolvedValue([]),
+    set: vi.fn().mockResolvedValue({ success: true })
   },
 
   // Tasks API

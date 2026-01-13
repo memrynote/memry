@@ -15,7 +15,8 @@ import {
   TagsChannels,
   InboxChannels,
   ReminderChannels,
-  FolderViewChannels
+  FolderViewChannels,
+  PropertiesChannels
 } from '@shared/ipc-channels'
 
 // Custom APIs for renderer
@@ -82,11 +83,8 @@ const api = {
     openExternal: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.OPEN_EXTERNAL, id),
     revealInFinder: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.REVEAL_IN_FINDER, id),
 
-    // T019: Properties API
-    getProperties: (noteId: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.GET_PROPERTIES, noteId),
-    setProperties: (noteId: string, properties: Record<string, unknown>) =>
-      ipcRenderer.invoke(NotesChannels.invoke.SET_PROPERTIES, { noteId, properties }),
+    // Property Definitions API (T017-T018)
+    // Note: get/set properties moved to unified properties API
     getPropertyDefinitions: () => ipcRenderer.invoke(NotesChannels.invoke.GET_PROPERTY_DEFINITIONS),
     createPropertyDefinition: (input: {
       name: string
@@ -161,6 +159,13 @@ const api = {
     importFiles: (sourcePaths: string[], targetFolder?: string) =>
       ipcRenderer.invoke(NotesChannels.invoke.IMPORT_FILES, { sourcePaths, targetFolder }),
     showImportDialog: () => ipcRenderer.invoke(NotesChannels.invoke.SHOW_IMPORT_DIALOG)
+  },
+
+  // Unified Properties API (works with notes and journal entries)
+  properties: {
+    get: (entityId: string) => ipcRenderer.invoke(PropertiesChannels.invoke.GET, { entityId }),
+    set: (entityId: string, properties: Record<string, unknown>) =>
+      ipcRenderer.invoke(PropertiesChannels.invoke.SET, { entityId, properties })
   },
 
   // Templates API

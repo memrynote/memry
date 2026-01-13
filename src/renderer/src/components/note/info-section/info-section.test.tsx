@@ -19,33 +19,26 @@ const createProperty = (
   name: string,
   type: Property['type'],
   value: unknown,
-  isCustom = false,
-  options?: string[]
+  isCustom = false
 ): Property => ({
   id,
   name,
   type,
   value,
-  isCustom,
-  options
+  isCustom
 })
 
 const mockProperties: Property[] = [
-  createProperty('prop-1', 'Status', 'select', 'In Progress', false, [
-    'Draft',
-    'In Progress',
-    'Done'
-  ]),
+  createProperty('prop-1', 'Status', 'text', 'In Progress', false),
   createProperty('prop-2', 'Priority', 'number', 3, false),
   createProperty('prop-3', 'Due Date', 'date', '2026-01-15', false),
   createProperty('prop-4', 'Completed', 'checkbox', false, false),
-  createProperty('prop-5', 'Rating', 'rating', 4, false),
-  createProperty('prop-6', 'Notes', 'text', 'Some notes', true),
-  createProperty('prop-7', 'URL', 'url', 'https://example.com', true)
+  createProperty('prop-5', 'Notes', 'text', 'Some notes', true),
+  createProperty('prop-6', 'URL', 'url', 'https://example.com', true)
 ]
 
 const mockFolderProperties: PropertyTemplate[] = [
-  { id: 'tpl-1', name: 'Category', type: 'select', options: ['A', 'B', 'C'] },
+  { id: 'tpl-1', name: 'Category', type: 'text' },
   { id: 'tpl-2', name: 'Author', type: 'text' }
 ]
 

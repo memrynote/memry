@@ -955,16 +955,9 @@ function deserializeValue(value: string | null, type: PropertyType): unknown {
 
   switch (type) {
     case 'number':
-    case 'rating':
       return Number(value)
     case 'checkbox':
       return value === 'true'
-    case 'multiselect':
-      try {
-        return JSON.parse(value)
-      } catch {
-        return []
-      }
     default:
       return value
   }
@@ -1581,7 +1574,8 @@ export function clearJournalCache(db: DrizzleDb): void {
 export function inferPropertyType(value: unknown): PropertyType {
   if (typeof value === 'boolean') return 'checkbox'
   if (typeof value === 'number') return 'number'
-  if (Array.isArray(value)) return 'multiselect'
+  // Arrays are no longer supported, fallback to text
+  if (Array.isArray(value)) return 'text'
   if (typeof value === 'string') {
     if (/^\d{4}-\d{2}-\d{2}/.test(value)) return 'date'
     if (/^https?:\/\//.test(value)) return 'url'

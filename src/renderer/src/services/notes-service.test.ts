@@ -46,8 +46,7 @@ describe('notes-service', () => {
     expect(api.notes.list).toHaveBeenCalledWith({ folder: 'projects', limit: 5 })
   })
 
-  it('forwards properties, attachments, and export helpers', async () => {
-    api.notes.setProperties = vi.fn().mockResolvedValue({ success: true })
+  it('forwards attachments, export, and version helpers', async () => {
     api.notes.uploadAttachment = vi.fn().mockResolvedValue({ success: true })
     api.notes.exportPdf = vi.fn().mockResolvedValue({ success: true })
     api.notes.getFolderConfig = vi.fn().mockResolvedValue({ template: 'default' })
@@ -55,10 +54,6 @@ describe('notes-service', () => {
     api.notes.getFolderTemplate = vi.fn().mockResolvedValue('default')
     api.notes.getVersions = vi.fn().mockResolvedValue([])
     api.notes.restoreVersion = vi.fn().mockResolvedValue({ success: true })
-
-    const propertiesResult = await notesService.setProperties('note-1', { status: 'open' })
-    expect(api.notes.setProperties).toHaveBeenCalledWith('note-1', { status: 'open' })
-    expect(propertiesResult).toEqual({ success: true })
 
     const file = new File(['data'], 'note.txt', { type: 'text/plain' })
     await notesService.uploadAttachment('note-1', file)

@@ -12,9 +12,7 @@ import type {
   NoteRenamedEvent,
   NoteMovedEvent,
   NoteExternalChangeEvent,
-  PropertyValue,
   PropertyDefinition,
-  SetPropertiesResponse,
   CreatePropertyDefinitionInput,
   CreatePropertyDefinitionResponse,
   UpdatePropertyDefinitionInput,
@@ -193,24 +191,6 @@ export const notesService: NotesClientAPI = {
   // =========================================================================
   // T021: Properties API
   // =========================================================================
-
-  /**
-   * Get properties for a note.
-   */
-  getProperties: (noteId: string): Promise<PropertyValue[]> => {
-    return window.api.notes.getProperties(noteId)
-  },
-
-  /**
-   * Set properties for a note.
-   */
-  setProperties: async (
-    noteId: string,
-    properties: Record<string, unknown>
-  ): Promise<SetPropertiesResponse> => {
-    const result = await window.api.notes.setProperties(noteId, properties)
-    return result
-  },
 
   /**
    * Get all property definitions.
@@ -464,9 +444,7 @@ export type {
   NoteRenamedEvent,
   NoteMovedEvent,
   NoteExternalChangeEvent,
-  PropertyValue,
   PropertyDefinition,
-  SetPropertiesResponse,
   CreatePropertyDefinitionInput,
   CreatePropertyDefinitionResponse,
   UpdatePropertyDefinitionInput,

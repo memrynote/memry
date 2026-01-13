@@ -73,10 +73,6 @@ export const NotesChannels = {
     OPEN_EXTERNAL: 'notes:open-external',
     /** Reveal note in file explorer */
     REVEAL_IN_FINDER: 'notes:reveal-in-finder',
-    /** Get properties for a note (T015) */
-    GET_PROPERTIES: 'notes:get-properties',
-    /** Set properties for a note (T016) */
-    SET_PROPERTIES: 'notes:set-properties',
     /** Get all property definitions (T017) */
     GET_PROPERTY_DEFINITIONS: 'notes:get-property-definitions',
     /** Create a property definition (T018) */
@@ -337,6 +333,22 @@ export const TemplatesChannels = {
     DELETED: 'templates:deleted'
   }
 } as const
+
+// ============================================================================
+// Properties Channels (Unified for Notes & Journal)
+// ============================================================================
+
+export const PropertiesChannels = {
+  invoke: {
+    /** Get properties for any entity (note or journal) by ID */
+    GET: 'properties:get',
+    /** Set properties for any entity (note or journal) by ID */
+    SET: 'properties:set'
+  }
+} as const
+
+export type PropertiesInvokeChannel =
+  (typeof PropertiesChannels.invoke)[keyof typeof PropertiesChannels.invoke]
 
 // ============================================================================
 // Type Exports

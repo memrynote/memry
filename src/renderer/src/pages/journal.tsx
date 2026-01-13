@@ -26,16 +26,12 @@ import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
 
 import { TemplateSelector } from '@/components/note/template-selector'
 import { TagsRow, type Tag } from '@/components/note/tags-row'
-import {
-  InfoSection,
-  type Property,
-  type NewProperty,
-  type PropertyType
-} from '@/components/note/info-section'
+import { InfoSection, type Property, type NewProperty } from '@/components/note/info-section'
 import { OutlineInfoPanel, type HeadingItem } from '@/components/shared'
 import { useActiveHeading } from '@/hooks/use-active-heading'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
-import { useJournalProperties } from '@/hooks/use-journal-properties'
+import { useProperties } from '@/hooks/use-properties'
+import { getDefaultValueForType, mapPropertyType } from '@/lib/property-utils'
 import { useTemplates } from '@/hooks/use-templates'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
@@ -143,13 +139,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Tags hook
   const { tags: allAvailableTags } = useNoteTagsQuery()
 
-  // Properties hook
+  // Properties hook - use entry ID for unified properties API
   const {
     properties: backendProperties,
     updateProperty: updateBackendProperty,
     addProperty: addBackendProperty,
     removeProperty: removeBackendProperty
-  } = useJournalProperties(entry?.date ?? null, entry?.properties)
+  } = useProperties(entry?.id ?? null)
 
   // State for InfoSection expansion (collapsed by default)
   const [isInfoExpanded, setIsInfoExpanded] = useState(false)
@@ -168,8 +164,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Editor settings
   const { settings: editorSettings } = useNoteEditorSettings()
 
-  // Bookmark state
-  const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('journal', entry?.date ?? '')
+  // Bookmark state - use entry.id (e.g., "j2026-01-13") to match notes_cache lookup
+  const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('journal', entry?.id ?? '')
 
   // Track auto-applying default template
   const [isApplyingDefaultTemplate, setIsApplyingDefaultTemplate] = useState(false)
@@ -360,20 +356,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const recentTags = useMemo(() => {
     return availableTags.slice(0, 4)
   }, [availableTags])
-
-  const mapPropertyType = useCallback((backendType: string): PropertyType => {
-    const typeMap: Record<string, PropertyType> = {
-      text: 'text',
-      number: 'number',
-      checkbox: 'checkbox',
-      date: 'date',
-      select: 'select',
-      multiselect: 'multiSelect',
-      url: 'url',
-      rating: 'rating'
-    }
-    return typeMap[backendType] ?? 'text'
-  }, [])
 
   const properties: Property[] = useMemo(() => {
     return backendProperties.map((prop) => ({
@@ -582,21 +564,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   )
 
   // Property Handlers
-  const getDefaultValueForType = useCallback((type: PropertyType): unknown => {
-    switch (type) {
-      case 'checkbox':
-        return false
-      case 'number':
-      case 'rating':
-        return 0
-      case 'multiSelect':
-        return []
-      case 'date':
-        return null
-      default:
-        return ''
-    }
-  }, [])
 
   const handlePropertyChange = useCallback(
     async (propertyId: string, value: unknown) => {

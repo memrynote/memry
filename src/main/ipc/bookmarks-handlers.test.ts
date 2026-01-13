@@ -179,4 +179,79 @@ describe('bookmarks-handlers', () => {
     })
     expect(bulkCreate).toEqual({ success: true, createdCount: 2 })
   })
+
+  it('emits DELETED event when un-bookmarking via toggle', async () => {
+    registerBookmarksHandlers()
+
+    // Setup: bookmark exists before toggle
+    const existingBookmark = {
+      id: 'bookmark-to-remove',
+      itemType: BookmarkItemTypes.NOTE,
+      itemId: 'note-123',
+      position: 0
+    }
+    ;(bookmarkQueries.getBookmarkByItem as Mock).mockReturnValue(existingBookmark)
+
+    // Toggle returns isBookmarked: false (bookmark was removed)
+    ;(bookmarkQueries.toggleBookmark as Mock).mockReturnValue({
+      isBookmarked: false,
+      bookmark: null
+    })
+
+    mockSend.mockClear()
+
+    const toggleResult = await invokeHandler(BookmarksChannels.invoke.TOGGLE, {
+      itemType: BookmarkItemTypes.NOTE,
+      itemId: 'note-123'
+    })
+
+    expect(toggleResult).toEqual({
+      success: true,
+      isBookmarked: false,
+      bookmark: null
+    })
+
+    // Verify DELETED event was emitted with correct data
+    expect(mockSend).toHaveBeenCalledWith(BookmarksChannels.events.DELETED, {
+      id: 'bookmark-to-remove',
+      itemType: BookmarkItemTypes.NOTE,
+      itemId: 'note-123'
+    })
+  })
+
+  it('emits CREATED event when bookmarking via toggle', async () => {
+    registerBookmarksHandlers()
+
+    // Setup: no existing bookmark
+    ;(bookmarkQueries.getBookmarkByItem as Mock).mockReturnValue(undefined)
+
+    const newBookmark = {
+      id: 'new-bookmark',
+      itemType: BookmarkItemTypes.JOURNAL,
+      itemId: 'j2026-01-13',
+      position: 0
+    }
+    ;(bookmarkQueries.toggleBookmark as Mock).mockReturnValue({
+      isBookmarked: true,
+      bookmark: newBookmark
+    })
+
+    mockSend.mockClear()
+
+    const toggleResult = await invokeHandler(BookmarksChannels.invoke.TOGGLE, {
+      itemType: BookmarkItemTypes.JOURNAL,
+      itemId: 'j2026-01-13'
+    })
+
+    expect(toggleResult).toEqual({
+      success: true,
+      isBookmarked: true,
+      bookmark: newBookmark
+    })
+
+    // Verify CREATED event was emitted
+    expect(mockSend).toHaveBeenCalledWith(BookmarksChannels.events.CREATED, {
+      bookmark: newBookmark
+    })
+  })
 })

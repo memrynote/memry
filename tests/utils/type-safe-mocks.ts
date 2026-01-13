@@ -117,8 +117,6 @@ export function createNotesMock(
     exists: vi.fn().mockResolvedValue(false),
     openExternal: vi.fn().mockResolvedValue(undefined),
     revealInFinder: vi.fn().mockResolvedValue(undefined),
-    getProperties: vi.fn().mockResolvedValue([]),
-    setProperties: vi.fn().mockResolvedValue({ success: true }),
     getPropertyDefinitions: vi.fn().mockResolvedValue([]),
     createPropertyDefinition: vi.fn().mockResolvedValue({ success: true, definition: null }),
     updatePropertyDefinition: vi.fn().mockResolvedValue({ success: true, definition: null }),
