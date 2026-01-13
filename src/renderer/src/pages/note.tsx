@@ -12,7 +12,7 @@ import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
-import { InfoSection, Property, NewProperty } from '@/components/note/info-section'
+import { InfoSection } from '@/components/note/info-section'
 import { BacklinksSection, Backlink } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import {
@@ -22,8 +22,7 @@ import {
   useNoteTagsQuery,
   type Note
 } from '@/hooks/use-notes-query'
-import { useProperties } from '@/hooks/use-properties'
-import { getDefaultValueForType, mapPropertyType } from '@/lib/property-utils'
+import { usePropertySection, type PropertySectionAction } from '@/hooks/use-property-section'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { onNoteDeleted, onNoteUpdated } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
@@ -118,21 +117,6 @@ export function NotePage({ noteId }: NotePageProps) {
     return undefined
   }, [activeTab?.viewState])
 
-  // Properties from backend (unified hook works for notes and journal entries)
-  const {
-    properties: backendProperties,
-    updateProperty: updateBackendProperty,
-    addProperty: addBackendProperty,
-    removeProperty: removeBackendProperty,
-    renameProperty: renameBackendProperty
-  } = useProperties(noteId ?? null)
-
-  // Bookmark state
-  const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('note', noteId ?? '')
-
-  // Editor settings (toolbar mode)
-  const { settings: editorSettings } = useNoteEditorSettings()
-
   // Convert query error to string
   const error = noteError?.message ?? null
 
@@ -144,22 +128,40 @@ export function NotePage({ noteId }: NotePageProps) {
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
   const [externalUpdateCount, setExternalUpdateCount] = useState(0)
 
+  const handlePropertyBlocked = useCallback((action: PropertySectionAction) => {
+    const messages: Record<PropertySectionAction, string> = {
+      update: 'Cannot update property - this note was deleted',
+      add: 'Cannot add property - this note was deleted',
+      remove: 'Cannot delete property - this note was deleted',
+      rename: 'Cannot rename property - this note was deleted'
+    }
+    toast.error(messages[action])
+  }, [])
+
+  const {
+    properties,
+    handlePropertyChange,
+    handleAddProperty,
+    handleDeleteProperty,
+    handlePropertyNameChange
+  } = usePropertySection({
+    entityId: noteId ?? null,
+    canEdit: () => !isDeleted,
+    onBlocked: handlePropertyBlocked,
+    includeExplicitType: true
+  })
+
+  // Bookmark state
+  const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('note', noteId ?? '')
+
+  // Editor settings (toolbar mode)
+  const { settings: editorSettings } = useNoteEditorSettings()
+
   // Content tracking for change detection
   const lastSavedContent = useRef<string>('')
 
   // Refs for debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Convert backend properties to UI format
-  const properties: Property[] = useMemo(() => {
-    return backendProperties.map((prop) => ({
-      id: prop.name,
-      name: prop.name,
-      type: mapPropertyType(prop.type),
-      value: prop.value,
-      isCustom: true
-    }))
-  }, [backendProperties, mapPropertyType])
 
   // Compute document stats for the Info tab in OutlineInfoPanel
   const documentStats = useMemo(() => {
@@ -473,76 +475,6 @@ export function NotePage({ noteId }: NotePageProps) {
       }
     },
     [noteId, note, updateNote.mutateAsync, isDeleted]
-  )
-
-  // Property handlers - wired to backend
-  const handlePropertyChange = useCallback(
-    async (propertyId: string, value: unknown) => {
-      console.log('[NotePage] handlePropertyChange called:', { propertyId, value, noteId })
-      if (isDeleted) {
-        toast.error('Cannot update property - this note was deleted')
-        return
-      }
-      try {
-        await updateBackendProperty(propertyId, value)
-        console.log('[NotePage] Property updated successfully')
-      } catch (err) {
-        console.error('[NotePage] Failed to update property:', err)
-        toast.error('Failed to update property')
-      }
-    },
-    [updateBackendProperty, isDeleted, noteId]
-  )
-
-  const handleAddProperty = useCallback(
-    async (newProp: NewProperty) => {
-      if (isDeleted) {
-        toast.error('Cannot add property - this note was deleted')
-        return
-      }
-      // Get default value based on type
-      const defaultValue = getDefaultValueForType(newProp.type)
-      try {
-        // Pass explicit type to ensure correct editor renders (fixes Rating/Checkbox bugs)
-        await addBackendProperty(newProp.name, defaultValue, newProp.type)
-      } catch (err) {
-        console.error('[NotePage] Failed to add property:', err)
-        toast.error('Failed to add property')
-      }
-    },
-    [addBackendProperty, isDeleted, noteId]
-  )
-
-  const handleDeleteProperty = useCallback(
-    async (propertyId: string) => {
-      if (isDeleted) {
-        toast.error('Cannot delete property - this note was deleted')
-        return
-      }
-      try {
-        await removeBackendProperty(propertyId)
-      } catch (err) {
-        console.error('[NotePage] Failed to delete property:', err)
-        toast.error('Failed to delete property')
-      }
-    },
-    [removeBackendProperty, isDeleted, noteId]
-  )
-
-  const handlePropertyNameChange = useCallback(
-    async (propertyId: string, newName: string) => {
-      if (isDeleted) {
-        toast.error('Cannot rename property - this note was deleted')
-        return
-      }
-      try {
-        await renameBackendProperty(propertyId, newName)
-      } catch (err) {
-        console.error('[NotePage] Failed to rename property:', err)
-        toast.error('Failed to rename property')
-      }
-    },
-    [renameBackendProperty, isDeleted]
   )
 
   // Link handlers
