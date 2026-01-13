@@ -936,7 +936,13 @@ function serializeValue(value: unknown): string | null {
  * T010: Get properties for a note.
  */
 export function getNoteProperties(db: DrizzleDb, noteId: string): PropertyValue[] {
-  const results = db.select().from(noteProperties).where(eq(noteProperties.noteId, noteId)).all()
+  const results = db
+    .select()
+    .from(noteProperties)
+    .where(eq(noteProperties.noteId, noteId))
+    // Preserve frontmatter insertion order from setNoteProperties
+    .orderBy(sql`rowid`)
+    .all()
 
   return results.map((row) => ({
     name: row.name,

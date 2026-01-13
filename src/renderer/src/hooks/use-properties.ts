@@ -29,6 +29,8 @@ export interface UsePropertiesReturn {
   removeProperty: (name: string) => Promise<void>
   /** Rename a property (note-only scope) */
   renameProperty: (oldName: string, newName: string) => Promise<void>
+  /** Reorder properties by name (persists order in frontmatter) */
+  reorderProperties: (orderedNames: string[]) => Promise<void>
   /** Refresh properties from server */
   refresh: () => Promise<void>
 }
@@ -213,6 +215,49 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
     [entityId, fetchProperties]
   )
 
+  // Reorder properties
+  const reorderProperties = useCallback(
+    async (orderedNames: string[]) => {
+      if (!entityId) return
+
+      const currentOrder = properties.map((prop) => prop.name)
+      const isSameOrder =
+        orderedNames.length === currentOrder.length &&
+        orderedNames.every((name, index) => name === currentOrder[index])
+
+      if (isSameOrder) return
+
+      const orderSet = new Set(orderedNames)
+      const propertyMap = new Map(properties.map((prop) => [prop.name, prop]))
+      const orderedProperties = [
+        ...orderedNames
+          .map((name) => propertyMap.get(name))
+          .filter((prop): prop is PropertyValue => Boolean(prop)),
+        ...properties.filter((prop) => !orderSet.has(prop.name))
+      ]
+
+      // Optimistic update
+      setProperties(orderedProperties)
+
+      try {
+        const newRecord: Record<string, unknown> = {}
+        for (const prop of orderedProperties) {
+          newRecord[prop.name] = prop.value
+        }
+        const result = await propertiesService.set(entityId, newRecord)
+        if (!result.success) {
+          throw new Error(result.error ?? 'Failed to reorder properties')
+        }
+      } catch (err) {
+        console.error('[useProperties] Error reordering:', err)
+        toast.error('Failed to reorder properties')
+        await fetchProperties()
+        throw err
+      }
+    },
+    [entityId, properties, fetchProperties]
+  )
+
   return {
     properties,
     propertiesRecord,
@@ -222,6 +267,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
     addProperty,
     removeProperty,
     renameProperty,
+    reorderProperties,
     refresh: fetchProperties
   }
 }

@@ -456,7 +456,7 @@ export const TitleCell = memo(function TitleCell({
         onClick?.()
       }}
       className={cn(
-        'flex items-center gap-2 text-left hover:text-primary hover:underline transition-colors truncate w-full',
+        'group flex items-center gap-2 text-left hover:text-primary transition-colors truncate w-full',
         'focus:outline-none focus:text-primary cursor-pointer',
         className
       )}
@@ -467,7 +467,7 @@ export const TitleCell = memo(function TitleCell({
       ) : (
         <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
       )}
-      <span className="truncate font-medium">
+      <span className="truncate font-medium group-hover:underline">
         {highlightQuery ? highlightText(title, highlightQuery) : title}
       </span>
     </button>

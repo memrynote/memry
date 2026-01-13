@@ -1067,10 +1067,10 @@ export function FolderTableView({
                       'cursor-pointer',
                       // Hover styling (only when not selected)
                       !isSelected && 'hover:bg-muted/50',
-                      // Selected row styling - more prominent background
-                      isSelected && 'bg-primary/15 hover:bg-primary/20',
+                      // Selected row styling - thin warm border
+                      isSelected && 'border-l-2',
                       // Focused row styling (keyboard navigation cursor)
-                      isFocused && 'ring-2 ring-primary ring-inset',
+                      isFocused && 'ring-2x ring-inset',
                       // T121: Exit animation - simple opacity fade
                       isExiting && 'opacity-0 transition-opacity duration-200'
                     )}
