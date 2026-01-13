@@ -131,7 +131,7 @@ export function JournalDateDisplay({
     return (
       <div
         className={cn(
-          'relative transition-all duration-500 ease-out w-full lg:px-12',
+          'relative transition-all duration-500 ease-out w-full lg:px-12  lg:pr-[10px]',
           variant === 'card' ? 'rounded-b-3xl shadow-sm' : 'rounded-none',
           'pt-6 pb-10',
           showGradient && ['bg-gradient-to-br', todayConfig.gradient, todayConfig.darkGradient],

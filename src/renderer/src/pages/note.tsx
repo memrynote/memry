@@ -133,7 +133,8 @@ export function NotePage({ noteId }: NotePageProps) {
       update: 'Cannot update property - this note was deleted',
       add: 'Cannot add property - this note was deleted',
       remove: 'Cannot delete property - this note was deleted',
-      rename: 'Cannot rename property - this note was deleted'
+      rename: 'Cannot rename property - this note was deleted',
+      reorder: 'Cannot reorder properties - this note was deleted'
     }
     toast.error(messages[action])
   }, [])
@@ -143,7 +144,8 @@ export function NotePage({ noteId }: NotePageProps) {
     handlePropertyChange,
     handleAddProperty,
     handleDeleteProperty,
-    handlePropertyNameChange
+    handlePropertyNameChange,
+    handlePropertyOrderChange
   } = usePropertySection({
     entityId: noteId ?? null,
     canEdit: () => !isDeleted,
@@ -698,6 +700,7 @@ export function NotePage({ noteId }: NotePageProps) {
                 onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
                 onPropertyChange={handlePropertyChange}
                 onPropertyNameChange={handlePropertyNameChange}
+                onPropertyOrderChange={handlePropertyOrderChange}
                 onAddProperty={handleAddProperty}
                 onDeleteProperty={handleDeleteProperty}
                 disabled={isDeleted}

@@ -1057,8 +1057,8 @@ export function GroupedTable({
                       'transition-colors',
                       'cursor-pointer',
                       !isSelected && 'hover:bg-muted/50',
-                      isSelected && 'bg-primary/15 hover:bg-primary/20',
-                      isFocused && 'ring-2 ring-primary ring-inset',
+                      isSelected && 'border-l-2 border-amber-400 dark:border-amber-600',
+                      isFocused && 'ring-2 ring-amber-400/50 ring-inset dark:ring-amber-600/50',
                       // T121: Exit animation - simple opacity fade
                       isExiting && 'opacity-0 transition-opacity duration-200'
                     )}

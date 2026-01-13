@@ -353,7 +353,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     handlePropertyChange,
     handleAddProperty,
     handleDeleteProperty,
-    handlePropertyNameChange
+    handlePropertyNameChange,
+    handlePropertyOrderChange
   } = usePropertySection({ entityId: entry?.id ?? null })
 
   // Navigation
@@ -843,6 +844,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
                               onPropertyChange={handlePropertyChange}
                               onPropertyNameChange={handlePropertyNameChange}
+                              onPropertyOrderChange={handlePropertyOrderChange}
                               onAddProperty={handleAddProperty}
                               onDeleteProperty={handleDeleteProperty}
                             />

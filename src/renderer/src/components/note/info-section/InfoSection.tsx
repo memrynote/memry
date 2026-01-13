@@ -1,5 +1,21 @@
 import { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react'
 import { createPortal } from 'react-dom'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove
+} from '@dnd-kit/sortable'
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 import { Plus, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Property, PropertyTemplate, NewProperty } from './types'
@@ -27,6 +43,7 @@ export interface InfoSectionProps {
   onToggleExpand: () => void
   onPropertyChange: (propertyId: string, value: unknown) => void
   onPropertyNameChange?: (propertyId: string, newName: string) => void
+  onPropertyOrderChange?: (newOrder: string[]) => void
   onAddProperty: (property: NewProperty) => void
   onDeleteProperty: (propertyId: string) => void
   disabled?: boolean
@@ -41,6 +58,7 @@ export const InfoSection = memo(function InfoSection({
   onToggleExpand,
   onPropertyChange,
   onPropertyNameChange,
+  onPropertyOrderChange,
   onAddProperty,
   onDeleteProperty,
   disabled = false,
@@ -52,6 +70,18 @@ export const InfoSection = memo(function InfoSection({
   const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null)
   const [newlyAddedPropertyId, setNewlyAddedPropertyId] = useState<string | null>(null)
   const addButtonRef = useRef<HTMLButtonElement>(null)
+  const isSortable = Boolean(onPropertyOrderChange) && !disabled && properties.length > 1
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 6
+      }
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates
+    })
+  )
 
   // Split properties into visible and hidden (keep insertion order)
   const { visibleProperties, hiddenProperties } = useMemo(() => {
@@ -140,6 +170,34 @@ export const InfoSection = memo(function InfoSection({
     [onAddProperty, existingPropertyNames]
   )
 
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      if (!onPropertyOrderChange) return
+
+      const { active, over } = event
+      if (!over || active.id === over.id) return
+
+      const oldIndex = properties.findIndex((property) => property.id === active.id)
+      const newIndex = properties.findIndex((property) => property.id === over.id)
+
+      if (oldIndex === -1 || newIndex === -1) return
+
+      const newOrder = arrayMove(
+        properties.map((property) => property.id),
+        oldIndex,
+        newIndex
+      )
+
+      onPropertyOrderChange(newOrder)
+    },
+    [onPropertyOrderChange, properties]
+  )
+
+  const sortableIds = useMemo(
+    () => visibleProperties.map((property) => property.id),
+    [visibleProperties]
+  )
+
   return (
     <div className={cn(variant === 'default' && 'mb-4')} role="region" aria-label="Note properties">
       {/* Toggle Header */}
@@ -175,21 +233,31 @@ export const InfoSection = memo(function InfoSection({
           )}
 
           {/* Properties List */}
-          <div className="space-y-0.5" role="list" aria-label="Properties list">
-            {visibleProperties.map((property) => (
-              <PropertyRow
-                key={property.id}
-                property={property}
-                onValueChange={handlePropertyChange(property.id)}
-                onNameChange={
-                  onPropertyNameChange ? handlePropertyNameChange(property.id) : undefined
-                }
-                onDelete={property.isCustom ? handleDeleteProperty(property.id) : undefined}
-                disabled={disabled}
-                autoFocus={property.id === newlyAddedPropertyId}
-              />
-            ))}
-          </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+            modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+          >
+            <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+              <div className="space-y-0.5" role="list" aria-label="Properties list">
+                {visibleProperties.map((property) => (
+                  <PropertyRow
+                    key={property.id}
+                    property={property}
+                    onValueChange={handlePropertyChange(property.id)}
+                    onNameChange={
+                      onPropertyNameChange ? handlePropertyNameChange(property.id) : undefined
+                    }
+                    onDelete={property.isCustom ? handleDeleteProperty(property.id) : undefined}
+                    disabled={disabled}
+                    autoFocus={property.id === newlyAddedPropertyId}
+                    isSortable={isSortable}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
 
           {/* Show More Toggle */}
           {hiddenProperties.length > 0 && (

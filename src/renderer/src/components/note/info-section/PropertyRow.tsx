@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Trash2 } from 'lucide-react'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { GripVertical, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Property, PROPERTY_TYPE_CONFIG } from './types'
@@ -12,6 +14,7 @@ interface PropertyRowProps {
   onDelete?: () => void
   disabled?: boolean
   autoFocus?: boolean
+  isSortable?: boolean
 }
 
 export function PropertyRow({
@@ -20,16 +23,31 @@ export function PropertyRow({
   onNameChange,
   onDelete,
   disabled,
-  autoFocus = false
+  autoFocus = false,
+  isSortable = false
 }: PropertyRowProps) {
   const [isEditing, setIsEditing] = useState(autoFocus && property.type !== 'checkbox')
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(property.name)
   const [isHovered, setIsHovered] = useState(false)
+  const [isNameHovered, setIsNameHovered] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
 
   const config = PROPERTY_TYPE_CONFIG[property.type]
   const IconComponent = config.icon
+  const isDragEnabled = isSortable && !disabled
+
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: property.id,
+    disabled: !isDragEnabled
+  })
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition: transition || 'transform 150ms ease'
+  }
+
+  const showDragHandle = isDragEnabled && !isEditingName && (isNameHovered || isDragging)
 
   // Handle autoFocus - start editing when mounted with autoFocus
   useEffect(() => {
@@ -179,59 +197,90 @@ export function PropertyRow({
 
   return (
     <div
+      ref={setNodeRef}
+      style={style}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={cn('flex items-start py-1', 'transition-colors duration-150')}
-    >
-      {/* Icon */}
-      <span className="mr-2 mt-0.5 flex-shrink-0 text-muted-foreground/40">
-        <IconComponent className="h-3.5 w-3.5" />
-      </span>
-
-      {/* Label */}
-      {isEditingName ? (
-        <input
-          ref={nameInputRef}
-          type="text"
-          value={editedName}
-          onChange={(e) => setEditedName(e.target.value)}
-          onBlur={handleEndNameEdit}
-          onKeyDown={handleNameKeyDown}
-          className={cn(
-            'w-24 flex-shrink-0',
-            'text-[13px] text-muted-foreground',
-            'bg-transparent border-b border-muted-foreground/30',
-            'focus:outline-none focus:border-muted-foreground/60',
-            'px-0 py-0'
-          )}
-          aria-label="Edit property name"
-        />
-      ) : (
-        <span
-          onClick={onNameChange ? handleStartNameEdit : undefined}
-          className={cn(
-            'w-24 flex-shrink-0',
-            'text-[13px] text-muted-foreground/60',
-            'truncate',
-            onNameChange && !disabled && 'cursor-pointer hover:text-muted-foreground'
-          )}
-          title={property.name}
-          role={onNameChange ? 'button' : undefined}
-          tabIndex={onNameChange && !disabled ? 0 : undefined}
-          onKeyDown={
-            onNameChange && !disabled
-              ? (e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    handleStartNameEdit()
-                  }
-                }
-              : undefined
-          }
-        >
-          {property.name}
-        </span>
+      className={cn(
+        'flex items-start py-1',
+        'transition-colors duration-150',
+        isDragging && 'opacity-60 bg-muted/20 rounded'
       )}
+    >
+      <div
+        className="flex items-start"
+        onMouseEnter={() => setIsNameHovered(true)}
+        onMouseLeave={() => setIsNameHovered(false)}
+      >
+        {/* Icon / Drag Handle */}
+        <span className="mr-2 mt-0.5 flex-shrink-0 text-muted-foreground/40">
+          {showDragHandle ? (
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              data-drag-handle
+              aria-label={`Drag to reorder property: ${property.name}`}
+              className={cn(
+                'flex items-center justify-center',
+                'cursor-grab text-muted-foreground/60',
+                'hover:text-muted-foreground',
+                'active:cursor-grabbing',
+                'touch-none'
+              )}
+            >
+              <GripVertical className="h-3.5 w-3.5" />
+            </button>
+          ) : (
+            <IconComponent className="h-3.5 w-3.5" aria-hidden="true" />
+          )}
+        </span>
+
+        {/* Label */}
+        {isEditingName ? (
+          <input
+            ref={nameInputRef}
+            type="text"
+            value={editedName}
+            onChange={(e) => setEditedName(e.target.value)}
+            onBlur={handleEndNameEdit}
+            onKeyDown={handleNameKeyDown}
+            className={cn(
+              'w-24 flex-shrink-0',
+              'text-[13px] text-muted-foreground',
+              'bg-transparent border-b border-muted-foreground/30',
+              'focus:outline-none focus:border-muted-foreground/60',
+              'px-0 py-0'
+            )}
+            aria-label="Edit property name"
+          />
+        ) : (
+          <span
+            onClick={onNameChange ? handleStartNameEdit : undefined}
+            className={cn(
+              'w-24 flex-shrink-0',
+              'text-[13px] text-muted-foreground/60',
+              'truncate',
+              onNameChange && !disabled && 'cursor-pointer hover:text-muted-foreground'
+            )}
+            title={property.name}
+            role={onNameChange ? 'button' : undefined}
+            tabIndex={onNameChange && !disabled ? 0 : undefined}
+            onKeyDown={
+              onNameChange && !disabled
+                ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      handleStartNameEdit()
+                    }
+                  }
+                : undefined
+            }
+          >
+            {property.name}
+          </span>
+        )}
+      </div>
 
       {/* Value */}
       <div

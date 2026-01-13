@@ -304,15 +304,19 @@ export function ColumnSelector({
   const canManageFormulas = Boolean(onFormulaAdd && onFormulaEdit && onFormulaDelete)
 
   return (
-    <>
+    <TooltipProvider>
       <Popover open={isOpen} onOpenChange={handleOpenChange}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className={cn('gap-1.5', className)}>
-            <SlidersHorizontal className="h-4 w-4" />
-            <span>Properties</span>
-            <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-          </Button>
-        </PopoverTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn('gap-1.5 px-2', className)}>
+                <SlidersHorizontal className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Properties</TooltipContent>
+        </Tooltip>
+      </Popover>
 
         <PopoverContent align="start" className="w-72 p-0">
           {/* Search input */}

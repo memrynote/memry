@@ -3,7 +3,7 @@ import { type NewProperty, type Property } from '@/components/note/info-section'
 import { useProperties } from '@/hooks/use-properties'
 import { getDefaultValueForType, mapPropertyType } from '@/lib/property-utils'
 
-export type PropertySectionAction = 'update' | 'add' | 'remove' | 'rename'
+export type PropertySectionAction = 'update' | 'add' | 'remove' | 'rename' | 'reorder'
 
 export interface UsePropertySectionOptions {
   entityId: string | null
@@ -19,6 +19,7 @@ export interface UsePropertySectionResult {
   handleAddProperty: (property: NewProperty) => void
   handleDeleteProperty: (propertyId: string) => void
   handlePropertyNameChange: (propertyId: string, newName: string) => void
+  handlePropertyOrderChange: (newOrder: string[]) => void
 }
 
 export function usePropertySection({
@@ -33,7 +34,8 @@ export function usePropertySection({
     updateProperty,
     addProperty,
     removeProperty,
-    renameProperty
+    renameProperty,
+    reorderProperties
   } = useProperties(entityId)
 
   const properties: Property[] = useMemo(() => {
@@ -105,11 +107,24 @@ export function usePropertySection({
     [canPerformAction, renameProperty, onError]
   )
 
+  const handlePropertyOrderChange = useCallback(
+    async (newOrder: string[]) => {
+      if (!canPerformAction('reorder')) return
+      try {
+        await reorderProperties(newOrder)
+      } catch (error) {
+        onError?.('reorder', error)
+      }
+    },
+    [canPerformAction, reorderProperties, onError]
+  )
+
   return {
     properties,
     handlePropertyChange,
     handleAddProperty,
     handleDeleteProperty,
-    handlePropertyNameChange
+    handlePropertyNameChange,
+    handlePropertyOrderChange
   }
 }
