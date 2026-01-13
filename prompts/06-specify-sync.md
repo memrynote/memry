@@ -1340,6 +1340,617 @@ NOT SYNCED (local only):
 
 ---
 
+## BINARY FILE SYNC (Attachments)
+
+Binary files (PDFs, videos, images, audio) require special handling due to size, memory constraints, and lack of merge semantics.
+
+### Architecture: Chunked Content-Addressable Storage
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Original File (e.g., 50MB PDF)                                     │
+│                                                                     │
+│  ┌──────────┬──────────┬──────────┬──────────┬──────────┬────────┐  │
+│  │ Chunk 1  │ Chunk 2  │ Chunk 3  │ Chunk 4  │ Chunk 5  │ Chunk 6│  │
+│  │   8MB    │   8MB    │   8MB    │   8MB    │   8MB    │  10MB  │  │
+│  └────┬─────┴────┬─────┴────┬─────┴────┬─────┴────┬─────┴───┬────┘  │
+│       │          │          │          │          │         │       │
+│       ▼          ▼          ▼          ▼          ▼         ▼       │
+│  ┌─────────┐┌─────────┐┌─────────┐┌─────────┐┌─────────┐┌─────────┐ │
+│  │Encrypt  ││Encrypt  ││Encrypt  ││Encrypt  ││Encrypt  ││Encrypt  │ │
+│  │+ Hash   ││+ Hash   ││+ Hash   ││+ Hash   ││+ Hash   ││+ Hash   │ │
+│  └────┬────┘└────┬────┘└────┬────┘└────┬────┘└────┬────┘└────┬────┘ │
+│       │          │          │          │          │         │       │
+│       ▼          ▼          ▼          ▼          ▼         ▼       │
+│    hash_a     hash_b     hash_c     hash_d     hash_e    hash_f    │
+│                                                                     │
+│  Manifest (encrypted with file key):                                │
+│  {                                                                  │
+│    "filename": "document.pdf",                                      │
+│    "size": 50000000,                                                │
+│    "mimeType": "application/pdf",                                   │
+│    "chunks": ["hash_a", "hash_b", ...],                             │
+│    "chunkSize": 8388608                                             │
+│  }                                                                  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Data Structures
+
+```typescript
+// Attachment reference (stored with note/task)
+interface AttachmentRef {
+  id: string                    // Unique ID for this attachment
+  manifestId: string            // Points to encrypted manifest
+  filename: string              // Original filename
+  size: number                  // For progress display
+  mimeType: string
+  thumbnail?: string            // Base64 thumbnail for images/videos/PDFs
+  createdAt: number
+}
+
+// Manifest (encrypted, stored on server)
+interface AttachmentManifest {
+  id: string
+  filename: string
+  size: number
+  mimeType: string
+  checksum: string              // SHA-256 of original file
+  chunks: ChunkRef[]
+  chunkSize: number             // e.g., 8MB (8388608 bytes)
+  createdAt: number
+}
+
+interface ChunkRef {
+  index: number
+  hash: string                  // Content hash (for dedup + verification)
+  encryptedHash: string         // Hash of encrypted chunk (for server lookup)
+  size: number                  // Actual chunk size
+}
+
+// Encrypted chunk (stored on server)
+interface EncryptedChunk {
+  hash: string                  // Content-addressable ID
+  encryptedData: Uint8Array     // Encrypted chunk data
+  nonce: string
+}
+```
+
+### Upload Process
+
+```typescript
+const CHUNK_SIZE = 8 * 1024 * 1024  // 8MB chunks
+
+async function uploadAttachment(
+  file: File,
+  noteId: string,
+  vaultKey: Uint8Array,
+  onProgress: (progress: number) => void
+): Promise<AttachmentRef> {
+  // 1. Generate file key for this attachment
+  const fileKey = crypto.getRandomValues(new Uint8Array(32))
+
+  // 2. Calculate total chunks
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
+  const chunks: ChunkRef[] = []
+
+  // 3. Process each chunk
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * CHUNK_SIZE
+    const end = Math.min(start + CHUNK_SIZE, file.size)
+    const chunkData = await file.slice(start, end).arrayBuffer()
+
+    // Hash original chunk (for dedup check)
+    const contentHash = await sha256(new Uint8Array(chunkData))
+
+    // Check if chunk already exists on server (dedup)
+    const exists = await api.checkChunkExists(base64Encode(contentHash))
+
+    let encryptedHash: Uint8Array
+
+    if (!exists) {
+      // Encrypt chunk
+      const nonce = crypto.getRandomValues(new Uint8Array(24))
+      const encryptedData = await xchacha20poly1305Encrypt(
+        fileKey,
+        nonce,
+        new Uint8Array(chunkData)
+      )
+
+      encryptedHash = await sha256(encryptedData)
+
+      // Upload encrypted chunk
+      await api.uploadChunk({
+        hash: base64Encode(contentHash),
+        encryptedHash: base64Encode(encryptedHash),
+        encryptedData,
+        nonce: base64Encode(nonce)
+      })
+    } else {
+      // Chunk exists, get its encrypted hash
+      const existing = await api.getChunkMeta(base64Encode(contentHash))
+      encryptedHash = base64Decode(existing.encryptedHash)
+    }
+
+    chunks.push({
+      index: i,
+      hash: base64Encode(contentHash),
+      encryptedHash: base64Encode(encryptedHash),
+      size: end - start
+    })
+
+    onProgress((i + 1) / totalChunks)
+  }
+
+  // 4. Create and encrypt manifest
+  const manifest: AttachmentManifest = {
+    id: crypto.randomUUID(),
+    filename: file.name,
+    size: file.size,
+    mimeType: file.type,
+    checksum: await sha256File(file),
+    chunks,
+    chunkSize: CHUNK_SIZE,
+    createdAt: Date.now()
+  }
+
+  // Encrypt manifest with file key
+  const manifestNonce = crypto.getRandomValues(new Uint8Array(24))
+  const encryptedManifest = await xchacha20poly1305Encrypt(
+    fileKey,
+    manifestNonce,
+    new TextEncoder().encode(JSON.stringify(manifest))
+  )
+
+  // 5. Encrypt file key with vault key
+  const keyNonce = crypto.getRandomValues(new Uint8Array(24))
+  const encryptedFileKey = await xchacha20poly1305Encrypt(vaultKey, keyNonce, fileKey)
+
+  // 6. Upload manifest + encrypted file key
+  await api.uploadManifest(manifest.id, {
+    encryptedManifest: base64Encode(encryptedManifest),
+    manifestNonce: base64Encode(manifestNonce),
+    encryptedFileKey: base64Encode(encryptedFileKey),
+    keyNonce: base64Encode(keyNonce)
+  })
+
+  // 7. Generate thumbnail for preview
+  const thumbnail = await generateThumbnail(file)
+
+  return {
+    id: crypto.randomUUID(),
+    manifestId: manifest.id,
+    filename: file.name,
+    size: file.size,
+    mimeType: file.type,
+    thumbnail,
+    createdAt: Date.now()
+  }
+}
+```
+
+### Download Process
+
+```typescript
+async function downloadAttachment(
+  attachmentRef: AttachmentRef,
+  vaultKey: Uint8Array,
+  onProgress: (progress: number) => void
+): Promise<Blob> {
+  // 1. Fetch manifest and file key
+  const {
+    encryptedManifest,
+    manifestNonce,
+    encryptedFileKey,
+    keyNonce
+  } = await api.getManifest(attachmentRef.manifestId)
+
+  // 2. Decrypt file key
+  const fileKey = await xchacha20poly1305Decrypt(
+    vaultKey,
+    base64Decode(keyNonce),
+    base64Decode(encryptedFileKey)
+  )
+
+  // 3. Decrypt manifest
+  const manifestBytes = await xchacha20poly1305Decrypt(
+    fileKey,
+    base64Decode(manifestNonce),
+    base64Decode(encryptedManifest)
+  )
+  const manifest: AttachmentManifest = JSON.parse(
+    new TextDecoder().decode(manifestBytes)
+  )
+
+  // 4. Download and decrypt chunks
+  const decryptedChunks: Uint8Array[] = []
+
+  for (let i = 0; i < manifest.chunks.length; i++) {
+    const chunkRef = manifest.chunks[i]
+
+    // Fetch encrypted chunk
+    const { encryptedData, nonce } = await api.getChunk(chunkRef.hash)
+
+    // Decrypt chunk
+    const decrypted = await xchacha20poly1305Decrypt(
+      fileKey,
+      base64Decode(nonce),
+      encryptedData
+    )
+
+    // Verify content hash
+    const computedHash = await sha256(decrypted)
+    if (base64Encode(computedHash) !== chunkRef.hash) {
+      throw new Error(`Chunk ${i} integrity check failed`)
+    }
+
+    decryptedChunks.push(decrypted)
+    onProgress((i + 1) / manifest.chunks.length)
+  }
+
+  // 5. Reassemble file
+  const fullFile = concatenateChunks(decryptedChunks)
+
+  // 6. Verify full file checksum
+  const fileHash = await sha256(fullFile)
+  if (base64Encode(fileHash) !== manifest.checksum) {
+    throw new Error('File integrity check failed')
+  }
+
+  return new Blob([fullFile], { type: manifest.mimeType })
+}
+
+function concatenateChunks(chunks: Uint8Array[]): Uint8Array {
+  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0)
+  const result = new Uint8Array(totalLength)
+  let offset = 0
+  for (const chunk of chunks) {
+    result.set(chunk, offset)
+    offset += chunk.length
+  }
+  return result
+}
+```
+
+### Streaming for Large Files
+
+For very large files (videos > 100MB), use streaming to avoid memory issues:
+
+```typescript
+async function streamDownloadAttachment(
+  attachmentRef: AttachmentRef,
+  vaultKey: Uint8Array
+): Promise<ReadableStream<Uint8Array>> {
+  // Fetch and decrypt manifest first
+  const { manifest, fileKey } = await fetchManifestAndKey(attachmentRef, vaultKey)
+
+  let chunkIndex = 0
+
+  return new ReadableStream({
+    async pull(controller) {
+      if (chunkIndex >= manifest.chunks.length) {
+        controller.close()
+        return
+      }
+
+      const chunkRef = manifest.chunks[chunkIndex]
+      const { encryptedData, nonce } = await api.getChunk(chunkRef.hash)
+
+      const decrypted = await xchacha20poly1305Decrypt(
+        fileKey,
+        base64Decode(nonce),
+        encryptedData
+      )
+
+      // Verify chunk
+      const computedHash = await sha256(decrypted)
+      if (base64Encode(computedHash) !== chunkRef.hash) {
+        controller.error(new Error(`Chunk ${chunkIndex} integrity failed`))
+        return
+      }
+
+      controller.enqueue(decrypted)
+      chunkIndex++
+    }
+  })
+}
+
+// Usage: Stream video to player or save to disk
+async function playVideo(attachmentRef: AttachmentRef, vaultKey: Uint8Array) {
+  const stream = await streamDownloadAttachment(attachmentRef, vaultKey)
+  const response = new Response(stream, {
+    headers: { 'Content-Type': attachmentRef.mimeType }
+  })
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  videoElement.src = url
+}
+```
+
+### Resumable Uploads
+
+```typescript
+interface UploadSession {
+  id: string
+  manifestId: string
+  filename: string
+  totalChunks: number
+  uploadedChunks: number[]     // Indices of completed chunks
+  encryptedFileKey: string     // Encrypted with vault key for resumption
+  keyNonce: string
+  createdAt: number
+  expiresAt: number            // Sessions expire after 7 days
+}
+
+async function createUploadSession(
+  file: File,
+  vaultKey: Uint8Array
+): Promise<UploadSession> {
+  const fileKey = crypto.getRandomValues(new Uint8Array(32))
+  const keyNonce = crypto.getRandomValues(new Uint8Array(24))
+  const encryptedFileKey = await xchacha20poly1305Encrypt(vaultKey, keyNonce, fileKey)
+
+  const session: UploadSession = {
+    id: crypto.randomUUID(),
+    manifestId: crypto.randomUUID(),
+    filename: file.name,
+    totalChunks: Math.ceil(file.size / CHUNK_SIZE),
+    uploadedChunks: [],
+    encryptedFileKey: base64Encode(encryptedFileKey),
+    keyNonce: base64Encode(keyNonce),
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000  // 7 days
+  }
+
+  await saveUploadSession(session)
+  return session
+}
+
+async function resumeUpload(
+  sessionId: string,
+  file: File,
+  vaultKey: Uint8Array,
+  onProgress: (progress: number) => void
+): Promise<AttachmentRef> {
+  const session = await getUploadSession(sessionId)
+
+  if (Date.now() > session.expiresAt) {
+    await deleteUploadSession(sessionId)
+    throw new Error('Upload session expired')
+  }
+
+  // Decrypt file key from session
+  const fileKey = await xchacha20poly1305Decrypt(
+    vaultKey,
+    base64Decode(session.keyNonce),
+    base64Decode(session.encryptedFileKey)
+  )
+
+  // Find missing chunks
+  const allChunks = Array.from({ length: session.totalChunks }, (_, i) => i)
+  const missingChunks = allChunks.filter(i => !session.uploadedChunks.includes(i))
+
+  const chunks: ChunkRef[] = []
+
+  // Upload only missing chunks
+  for (const i of missingChunks) {
+    const start = i * CHUNK_SIZE
+    const end = Math.min(start + CHUNK_SIZE, file.size)
+    const chunkData = await file.slice(start, end).arrayBuffer()
+
+    const contentHash = await sha256(new Uint8Array(chunkData))
+    const nonce = crypto.getRandomValues(new Uint8Array(24))
+    const encryptedData = await xchacha20poly1305Encrypt(
+      fileKey,
+      nonce,
+      new Uint8Array(chunkData)
+    )
+    const encryptedHash = await sha256(encryptedData)
+
+    await api.uploadChunk({
+      hash: base64Encode(contentHash),
+      encryptedHash: base64Encode(encryptedHash),
+      encryptedData,
+      nonce: base64Encode(nonce)
+    })
+
+    chunks[i] = {
+      index: i,
+      hash: base64Encode(contentHash),
+      encryptedHash: base64Encode(encryptedHash),
+      size: end - start
+    }
+
+    // Update session progress
+    session.uploadedChunks.push(i)
+    await saveUploadSession(session)
+
+    onProgress(session.uploadedChunks.length / session.totalChunks)
+  }
+
+  // Finalize upload
+  const attachment = await finalizeUpload(session, file, fileKey, vaultKey, chunks)
+  await deleteUploadSession(sessionId)
+
+  return attachment
+}
+```
+
+### Thumbnail Generation
+
+```typescript
+async function generateThumbnail(file: File): Promise<string | undefined> {
+  const maxSize = 200  // px
+
+  try {
+    if (file.type.startsWith('image/')) {
+      return await generateImageThumbnail(file, maxSize)
+    }
+
+    if (file.type === 'application/pdf') {
+      return await generatePdfThumbnail(file, maxSize)
+    }
+
+    if (file.type.startsWith('video/')) {
+      return await generateVideoThumbnail(file, maxSize)
+    }
+
+    // No thumbnail for audio, archives, etc.
+    return undefined
+  } catch (error) {
+    console.warn('Failed to generate thumbnail:', error)
+    return undefined
+  }
+}
+
+async function generateImageThumbnail(file: File, maxSize: number): Promise<string> {
+  const img = await createImageBitmap(file)
+  const scale = Math.min(maxSize / img.width, maxSize / img.height, 1)
+
+  const canvas = new OffscreenCanvas(
+    Math.round(img.width * scale),
+    Math.round(img.height * scale)
+  )
+  const ctx = canvas.getContext('2d')!
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+  const blob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.7 })
+  return blobToBase64(blob)
+}
+
+async function generatePdfThumbnail(file: File, maxSize: number): Promise<string> {
+  // Using pdf.js
+  const pdfjsLib = await import('pdfjs-dist')
+  const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise
+  const page = await pdf.getPage(1)
+
+  const viewport = page.getViewport({ scale: 1 })
+  const scale = Math.min(maxSize / viewport.width, maxSize / viewport.height, 1)
+  const scaledViewport = page.getViewport({ scale })
+
+  const canvas = new OffscreenCanvas(
+    Math.round(scaledViewport.width),
+    Math.round(scaledViewport.height)
+  )
+  await page.render({
+    canvasContext: canvas.getContext('2d')!,
+    viewport: scaledViewport
+  }).promise
+
+  const blob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.7 })
+  return blobToBase64(blob)
+}
+
+async function generateVideoThumbnail(file: File, maxSize: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    video.preload = 'metadata'
+    video.muted = true
+
+    video.onloadedmetadata = () => {
+      // Seek to 1 second or 10% of video, whichever is smaller
+      video.currentTime = Math.min(1, video.duration * 0.1)
+    }
+
+    video.onseeked = async () => {
+      const scale = Math.min(maxSize / video.videoWidth, maxSize / video.videoHeight, 1)
+      const canvas = new OffscreenCanvas(
+        Math.round(video.videoWidth * scale),
+        Math.round(video.videoHeight * scale)
+      )
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+      const blob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.7 })
+      URL.revokeObjectURL(video.src)
+      resolve(await blobToBase64(blob))
+    }
+
+    video.onerror = () => {
+      URL.revokeObjectURL(video.src)
+      reject(new Error('Failed to load video'))
+    }
+
+    video.src = URL.createObjectURL(file)
+  })
+}
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  const buffer = await blob.arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return `data:${blob.type};base64,${btoa(binary)}`
+}
+```
+
+### Deduplication Benefits
+
+Content-addressable chunks enable automatic deduplication:
+
+```
+Scenario 1: Same file attached to multiple notes
+─────────────────────────────────────────────────
+User uploads 50MB PDF to Note A
+  → 7 chunks uploaded: hash_a, hash_b, hash_c, hash_d, hash_e, hash_f, hash_g
+  → Storage used: 50MB
+
+User attaches SAME PDF to Note B
+  → Server: "All 7 chunks already exist"
+  → Only new manifest uploaded (< 1KB)
+  → Additional storage: ~1KB (not 50MB!)
+
+Scenario 2: Similar files (e.g., document revisions)
+─────────────────────────────────────────────────
+User uploads report_v1.pdf (50MB)
+  → 7 chunks uploaded
+
+User uploads report_v2.pdf (52MB, 90% same content)
+  → 6 chunks already exist (dedup!)
+  → Only 2 new chunks uploaded (~10MB)
+  → Storage: 60MB total (not 102MB)
+```
+
+### Supported File Types
+
+| Type | Extensions | Thumbnail | Notes |
+|------|------------|-----------|-------|
+| Images | jpg, png, webp, gif, svg | Yes | Full preview support |
+| Documents | pdf | Yes (first page) | Rendered via pdf.js |
+| Video | mp4, mov, webm, mkv | Yes (frame at 1s) | Streaming playback |
+| Audio | mp3, wav, m4a, ogg, flac | No | Waveform visualization possible |
+| Archives | zip, tar, gz, 7z | No | List contents locally |
+| Other | * | No | Download only |
+
+### Performance Targets
+
+| Operation | File Size | Target |
+|-----------|-----------|--------|
+| Upload small file | < 8MB | < 3 seconds |
+| Upload medium file | 8-50MB | < 30 seconds |
+| Upload large file | 50-500MB | < 3 minutes |
+| Download small file | < 8MB | < 2 seconds |
+| Download medium file | 8-50MB | < 20 seconds |
+| Stream video start | Any | < 5 seconds to first frame |
+| Thumbnail generation | Any | < 1 second |
+
+### Acceptance Criteria (Attachments)
+
+- [ ] Files split into 8MB chunks
+- [ ] Each chunk encrypted with file key
+- [ ] Content-addressable storage (SHA-256 hash)
+- [ ] Deduplication works (same chunk not re-uploaded)
+- [ ] Resumable uploads (session persists)
+- [ ] Progress indicator shows upload/download %
+- [ ] Thumbnails generated for images/PDF/video
+- [ ] Streaming download for large files
+- [ ] Integrity verification (chunk + file hash)
+- [ ] Failed chunk upload retries automatically
+
+---
+
 ## KEY ROTATION
 
 When user wants to rotate keys (security best practice, or after device compromise):
