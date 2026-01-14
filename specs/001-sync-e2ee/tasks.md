@@ -59,6 +59,7 @@
 ### Crypto Module Foundation
 
 - [ ] T020 [P] Implement HKDF key derivation with context strings in src/main/crypto/keys.ts
+- [ ] T020a [P] Implement canonical CBOR encoder helper in src/main/crypto/cbor.ts (cborg)
 - [ ] T021 [P] Implement BIP39 recovery phrase generation in src/main/crypto/recovery.ts
 - [ ] T022 [P] Implement BIP39 recovery phrase validation in src/main/crypto/recovery.ts
 - [ ] T023 Implement Argon2id master key derivation in src/main/crypto/keys.ts
@@ -75,6 +76,7 @@
 - [ ] T031 [P] Implement JWT validation middleware in sync-server/src/middleware/auth.ts
 - [ ] T032 [P] Implement rate limiting middleware in sync-server/src/middleware/rate-limit.ts
 - [ ] T033 Create base error handling in sync-server/src/lib/errors.ts
+- [ ] T033a [P] Implement canonical CBOR encoder helper in sync-server/src/lib/cbor.ts (cborg)
 - [ ] T034 [P] Set up Resend email service in sync-server/src/services/email.ts
 
 ### IPC Foundation
