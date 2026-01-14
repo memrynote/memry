@@ -81,6 +81,9 @@
 
 - [ ] T035 Register sync IPC handlers entry point in src/main/ipc/sync-handlers.ts
 - [ ] T036 [P] Register crypto IPC handlers entry point in src/main/ipc/crypto-handlers.ts
+- [ ] T036a [P] Implement encrypt-item IPC handler in src/main/ipc/crypto-handlers.ts
+- [ ] T036b [P] Implement decrypt-item IPC handler in src/main/ipc/crypto-handlers.ts
+- [ ] T036c [P] Implement verify-signature IPC handler in src/main/ipc/crypto-handlers.ts
 - [ ] T037 Update src/main/ipc/index.ts to register sync and crypto handlers
 - [ ] T038 Expose sync API methods in src/preload/index.ts
 - [ ] T039 Update preload types in src/preload/index.d.ts for sync/crypto APIs
@@ -108,6 +111,11 @@
 - [ ] T045 [P] [US1] Implement password validation service in sync-server/src/services/password.ts
 - [ ] T046 [US1] Implement Argon2id password hashing in sync-server/src/services/password.ts
 - [ ] T047 [P] [US1] Create verification email template in sync-server/src/emails/verification.tsx
+- [ ] T047a [P] [US1] Implement forgot-password endpoint in sync-server/src/routes/auth.ts
+- [ ] T047b [P] [US1] Implement reset-password endpoint in sync-server/src/routes/auth.ts
+- [ ] T047c [US1] Implement change-password endpoint (authenticated) in sync-server/src/routes/auth.ts
+- [ ] T047d [P] [US1] Implement resend-verification endpoint in sync-server/src/routes/auth.ts
+- [ ] T047e [P] [US1] Create password reset email template in sync-server/src/emails/password-reset.tsx
 - [ ] T048 [US1] Implement OAuth initiation endpoint for Google/Apple/GitHub in sync-server/src/routes/auth.ts
 - [ ] T049 [US1] Implement OAuth callback handler in sync-server/src/routes/auth.ts
 - [ ] T050 [US1] Implement device registration endpoint in sync-server/src/routes/auth.ts
@@ -120,6 +128,11 @@
 - [ ] T054 [US1] Implement IPC handler for email signup in src/main/ipc/sync-handlers.ts
 - [ ] T055 [US1] Implement IPC handler for email verification in src/main/ipc/sync-handlers.ts
 - [ ] T056 [US1] Implement IPC handler for email login in src/main/ipc/sync-handlers.ts
+- [ ] T056a [US1] Implement IPC handler for forgot-password in src/main/ipc/sync-handlers.ts
+- [ ] T056b [US1] Implement IPC handler for reset-password in src/main/ipc/sync-handlers.ts
+- [ ] T056c [US1] Implement IPC handler for change-password in src/main/ipc/sync-handlers.ts
+- [ ] T056d [US1] Implement IPC handler for resend-verification in src/main/ipc/sync-handlers.ts
+- [ ] T056e [US1] Implement password validation logic (12+ chars, uppercase, lowercase, number, special) in src/main/ipc/sync-handlers.ts
 - [ ] T057 [US1] Implement IPC handler for OAuth first device setup in src/main/ipc/sync-handlers.ts
 - [ ] T058 [US1] Implement master key derivation from recovery phrase in src/main/crypto/keys.ts
 - [ ] T059 [US1] Implement vault key derivation via HKDF in src/main/crypto/keys.ts
@@ -138,6 +151,9 @@
 - [ ] T069 [US1] Create first device setup wizard page in src/renderer/src/pages/settings/setup-wizard.tsx
 - [ ] T070 [US1] Implement password strength indicator in src/renderer/src/components/sync/password-strength.tsx
 - [ ] T071 [US1] Implement email verification pending screen in src/renderer/src/components/sync/verification-pending.tsx
+- [ ] T071a [P] [US1] Create forgot-password form in src/renderer/src/components/sync/forgot-password-form.tsx
+- [ ] T071b [P] [US1] Create reset-password form in src/renderer/src/components/sync/reset-password-form.tsx
+- [ ] T071c [US1] Create change-password dialog in src/renderer/src/components/sync/change-password-dialog.tsx
 
 ### Services for US1
 
@@ -198,9 +214,19 @@
 
 ### Task Sync Integration for US2
 
-- [ ] T101 [US2] Add vector clock fields to tasks table in src/shared/db/schema/data-schema.ts
+- [ ] T101 [US2] Add clock JSON column to tasks table for vector clock storage in src/shared/db/schema/data-schema.ts
 - [ ] T102 [US2] Implement task sync handlers (create, update, delete) in src/main/ipc/tasks-handlers.ts
 - [ ] T103 [US2] Update TasksProvider to subscribe to sync events in src/renderer/src/contexts/tasks/
+
+### Additional Sync Integrations for US2
+
+- [ ] T103a [US2] Add clock JSON column to inbox_items table in src/shared/db/schema/data-schema.ts
+- [ ] T103b [US2] Implement inbox item sync handlers in src/main/ipc/sync-handlers.ts
+- [ ] T103c [US2] Add clock JSON column to saved_filters table in src/shared/db/schema/data-schema.ts
+- [ ] T103d [US2] Implement saved filter sync handlers in src/main/ipc/sync-handlers.ts
+- [ ] T103e [US2] Implement synced settings structure in src/shared/contracts/sync-api.ts
+- [ ] T103f [US2] Implement settings sync with field-level vector clocks in src/main/sync/engine.ts
+- [ ] T103g [US2] Create settings sync IPC handlers in src/main/ipc/sync-handlers.ts
 
 **Checkpoint**: User Story 2 complete - notes and tasks sync automatically across devices
 
@@ -235,7 +261,7 @@
 - [ ] T116 [P] [US3] Create QR code scanner component in src/renderer/src/components/sync/qr-scanner.tsx
 - [ ] T117 [US3] Create linking approval dialog in src/renderer/src/components/sync/linking-approval-dialog.tsx
 - [ ] T118 [US3] Create waiting for approval screen in src/renderer/src/components/sync/linking-pending.tsx
-- [ ] T119 [US3] Implement 5-minute expiration timer display in src/renderer/src/components/sync/qr-linking.tsx
+- [ ] T119 [US3] Implement 5-minute expiration timer display and expired QR error dialog in src/renderer/src/components/sync/qr-linking.tsx
 
 ### Linking Events for US3
 
@@ -340,6 +366,12 @@
 - [ ] T151 [US7] Implement upload session management in src/main/sync/attachments.ts
 - [ ] T152 [US7] Implement resumable upload tracking in src/main/sync/attachments.ts
 
+### Thumbnail Generation for US7
+
+- [ ] T152a [US7] Implement image thumbnail generation (sharp/canvas) in src/main/sync/attachments.ts
+- [ ] T152b [US7] Implement PDF thumbnail generation (first page) in src/main/sync/attachments.ts
+- [ ] T152c [US7] Implement video thumbnail extraction (ffmpeg) in src/main/sync/attachments.ts
+
 ### Server Blob Endpoints for US7
 
 - [ ] T153 [P] [US7] Implement upload session initiation in sync-server/src/routes/blob.ts
@@ -360,6 +392,12 @@
 
 - [ ] T163 [P] [US7] Create upload progress component in src/renderer/src/components/sync/upload-progress.tsx
 - [ ] T164 [P] [US7] Create download progress component in src/renderer/src/components/sync/download-progress.tsx
+
+### Streaming Playback for US7
+
+- [ ] T164a [P] [US7] Create video player component with streaming support in src/renderer/src/components/sync/video-player.tsx
+- [ ] T164b [US7] Implement chunk-based video streaming in src/main/sync/attachments.ts
+- [ ] T164c [US7] Add Range header support for partial content delivery in src/main/sync/attachments.ts
 
 **Checkpoint**: User Story 7 complete - attachments sync with progress and deduplication
 
@@ -421,7 +459,7 @@
 ### Manual Sync for US10
 
 - [ ] T180 [US10] Add "Sync Now" button to sync status menu in src/renderer/src/components/sync/sync-status.tsx
-- [ ] T181 [US10] Handle manual sync when already syncing (show message)
+- [ ] T181 [US10] Queue manual sync request when sync already in progress (merge with current operation)
 - [ ] T182 [US10] Handle manual sync when offline (show message)
 
 **Checkpoint**: User Story 10 complete - users can force manual sync
@@ -462,7 +500,7 @@
 - [ ] T190 [US12] Implement worker thread for sync operations in src/main/sync/worker.ts
 - [ ] T191 [US12] Implement batched sync to avoid blocking main thread
 - [ ] T192 [US12] Implement concurrent edit handling with incoming sync updates
-- [ ] T193 [US12] Ensure CRDT merges don't disrupt cursor position in editor
+- [ ] T193 [US12] Ensure CRDT merges don't disrupt cursor position in editor (write integration test to verify)
 
 ### Initial Sync Progress for US12
 
@@ -586,12 +624,27 @@
 
 ### Performance
 
-- [ ] T234 [P] Profile and optimize sync for 10,000+ items
-- [ ] T235 [P] Optimize Yjs document size management
+- [ ] T234 [P] Profile and optimize sync for 10,000+ items (target: <5min initial sync, <100ms per-item)
+- [ ] T235 [P] Optimize Yjs document size management (compact docs >1MB to <500KB via snapshot)
 
 ### Run Quickstart Validation
 
 - [ ] T236 Validate implementation against quickstart.md test scenarios
+
+### Edge Case Handling
+
+- [ ] T237 Implement app version compatibility check on sync connect in src/main/sync/websocket.ts
+- [ ] T238 Implement corrupt data detection and recovery (re-fetch from server) in src/main/sync/engine.ts
+- [ ] T239 Handle device removal with unsynced local changes (warn user, offer export) in src/main/sync/engine.ts
+- [ ] T240 Implement storage quota exceeded error handling with user notification in src/main/sync/engine.ts
+- [ ] T241 Handle concurrent device linking attempts (reject second, show error) in sync-server/src/routes/auth.ts
+- [ ] T242 Implement extended offline mode with sync resumption on reconnect in src/main/sync/engine.ts
+- [ ] T243 Handle network disconnect during attachment upload (auto-resume) in src/main/sync/attachments.ts
+- [ ] T244 Normalize timestamps to UTC for cross-timezone consistency in src/main/sync/engine.ts
+
+### Crypto Version Handling
+
+- [ ] T245 Implement multi-version crypto decryption for forward compatibility in src/main/crypto/encryption.ts
 
 ---
 
@@ -697,4 +750,4 @@ With multiple developers:
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
 - Server and client tasks for same feature can often run in parallel
-- Total tasks: 236
+- Total tasks: 272
