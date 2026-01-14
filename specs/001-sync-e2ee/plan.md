@@ -271,3 +271,63 @@ tests/
 - Selective sync
 - Data usage
 - Key rotation
+
+### Phase 12: Performance Testing & Optimization
+
+Validate performance targets before release.
+
+#### Test Scenarios
+
+| Scenario | Target | Method |
+|----------|--------|--------|
+| Single item sync | < 2s | Automated benchmark |
+| Batch sync (100 items) | < 30s | Automated benchmark |
+| Initial sync (1000 items) | < 5 min | Automated benchmark |
+| Initial sync (10000 items) | < 15 min | Manual test |
+| Note edit latency | < 500ms | Real-time measurement |
+| 50MB attachment upload | < 30s | Automated benchmark |
+| Video streaming start | < 5s | Manual test |
+| Memory usage (10k items) | < 500MB | Profiling |
+| WebSocket reconnection | < 5s | Network simulation |
+
+#### Test Infrastructure
+
+```typescript
+// tests/perf/sync-benchmark.ts
+import { describe, bench } from 'vitest'
+
+describe('sync performance', () => {
+  bench('single item sync', async () => {
+    await syncEngine.push([createTestItem()])
+  }, { iterations: 100 })
+
+  bench('batch sync 100 items', async () => {
+    const items = Array.from({ length: 100 }, createTestItem)
+    await syncEngine.push(items)
+  }, { iterations: 10 })
+})
+```
+
+#### CI Integration
+
+- Run perf tests on every PR to `main`
+- Fail build if any target regresses > 20%
+- Store historical benchmarks for trend analysis
+- Alert on significant regressions
+
+#### Load Testing
+
+```bash
+# Using k6 for server load testing
+k6 run --vus 100 --duration 5m tests/load/sync-push.js
+k6 run --vus 50 --duration 10m tests/load/attachment-upload.js
+```
+
+#### Profiling Checklist
+
+- [ ] Memory profiling with Chrome DevTools
+- [ ] CPU profiling during initial sync
+- [ ] Network waterfall analysis
+- [ ] SQLite query performance (EXPLAIN QUERY PLAN)
+- [ ] Yjs document size growth over time
+- [ ] R2 egress costs estimation

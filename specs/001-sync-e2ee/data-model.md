@@ -41,6 +41,89 @@ This document defines all entities, relationships, and state transitions for the
 
 ---
 
+## Key Derivation Hierarchy
+
+The master key is derived from the BIP39 recovery phrase and used to derive all other keys via HKDF.
+
+```
+Recovery Phrase (24 words)
+        │
+        ▼ BIP39 → Seed (64 bytes)
+        │
+        ▼ Argon2id (salt from server)
+        │
+   Master Key (32 bytes)
+        │
+        ├──► HKDF("memry-vault-key-v1") ──► Vault Key (32 bytes)
+        │                                        │
+        │                                        └──► Encrypts per-item File Keys
+        │
+        ├──► HKDF("memry-signing-key-v1") ──► Ed25519 Seed (32 bytes)
+        │                                        │
+        │                                        └──► Ed25519 Keypair (signing)
+        │
+        └──► HKDF("memry-device-key-v1") ──► X25519 Seed (32 bytes)
+                                                 │
+                                                 └──► X25519 Keypair (device linking)
+```
+
+### HKDF Context Strings
+
+All HKDF derivations use SHA-256 with the following parameters:
+
+```typescript
+const HKDF_CONTEXTS = {
+  // Key for encrypting/decrypting file keys
+  VAULT_KEY: 'memry-vault-key-v1',
+
+  // Seed for Ed25519 signing keypair
+  SIGNING_KEY: 'memry-signing-key-v1',
+
+  // Seed for X25519 key exchange (device linking)
+  DEVICE_KEY: 'memry-device-key-v1',
+
+  // Per-item file key derivation (itemId is appended)
+  FILE_KEY: 'memry-file-key-v1',
+} as const
+
+// HKDF parameters
+const HKDF_PARAMS = {
+  hash: 'SHA-256',
+  salt: null,           // No salt (extracted from master key)
+  keyLength: 32,        // 256 bits
+}
+
+// Example derivation
+function deriveVaultKey(masterKey: Uint8Array): Uint8Array {
+  return hkdf(masterKey, HKDF_CONTEXTS.VAULT_KEY, HKDF_PARAMS)
+}
+```
+
+### Signature Scope
+
+Ed25519 signatures cover the following fields to prevent tampering:
+
+```typescript
+interface SignaturePayload {
+  id: string            // Item UUID
+  type: string          // Item type
+  cryptoVersion: number // Algorithm version
+  encryptedData: string // The encrypted content (Base64)
+  dataNonce: string     // Encryption nonce (Base64)
+  signedAt: number      // Unix timestamp (milliseconds)
+}
+
+// Signature is computed as:
+// signature = Ed25519.sign(JSON.stringify(SignaturePayload), signingPrivateKey)
+
+// Verification:
+// 1. Reconstruct SignaturePayload from received data
+// 2. Verify signature against sender's public key
+// 3. Check signedAt is within acceptable time window (±5 minutes)
+```
+
+---
+
 ## 1. User Account
 
 Represents a user identity created via email/password or OAuth provider.
@@ -354,12 +437,31 @@ interface SyncItem {
 
 Structure of encrypted content stored in R2.
 
+### Crypto Algorithm Versioning
+
+All encrypted items include a version field for algorithm agility:
+
+```typescript
+type CryptoVersion = 1  // Current version
+
+// Version 1 algorithms:
+// - Encryption: XChaCha20-Poly1305 (24-byte nonce)
+// - Key Derivation: Argon2id (64MB, 3 iterations)
+// - Signatures: Ed25519
+// - Key Exchange: X25519
+// - Hash: SHA-256
+
+// Future versions can introduce new algorithms while
+// maintaining backward compatibility for decryption
+```
+
 ### TypeScript Type
 
 ```typescript
 interface EncryptedItem {
   id: string                      // Item UUID
   type: 'note' | 'task' | 'project' | 'settings'
+  cryptoVersion: number           // Algorithm version (currently 1)
 
   // Encrypted content
   encryptedKey: string            // File key encrypted with Vault Key (Base64)
@@ -367,8 +469,9 @@ interface EncryptedItem {
   encryptedData: string           // Content encrypted with File Key (Base64)
   dataNonce: string               // Nonce for data encryption (Base64)
 
-  // Integrity
+  // Integrity - signature covers: id + type + cryptoVersion + encryptedData + dataNonce
   signature: string               // Ed25519 signature (Base64)
+  signedAt: number                // Unix timestamp when signed (included in signature)
 
   // Sync metadata (for non-CRDT items)
   clock?: VectorClock
@@ -519,7 +622,134 @@ interface SyncHistoryEntry {
 
 ---
 
-## 10. Vector Clock
+## 10. Inbox Item
+
+Quick capture items that sync across devices.
+
+### Schema (Local - SQLite via Drizzle)
+
+```typescript
+// Already exists in data-schema.ts, adding sync fields
+export const inboxItems = sqliteTable('inbox_items', {
+  id: text('id').primaryKey(),
+  content: text('content').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  processedAt: integer('processed_at', { mode: 'timestamp' }),
+  // Sync fields
+  clock: text('clock'),                    // JSON vector clock
+  syncedAt: integer('synced_at', { mode: 'timestamp' }),
+  localOnly: integer('local_only', { mode: 'boolean' }).default(false),
+})
+```
+
+### Sync Behavior
+
+- Inbox items sync as encrypted blobs (like tasks)
+- Use vector clock for conflict resolution (LWW)
+- When processed (converted to task/note), both items sync
+
+---
+
+## 11. Saved Filter
+
+Custom task filters that roam across devices.
+
+### Schema (Local - SQLite via Drizzle)
+
+```typescript
+// Already exists in data-schema.ts, adding sync fields
+export const savedFilters = sqliteTable('saved_filters', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  filter: text('filter').notNull(),        // JSON filter definition
+  icon: text('icon'),
+  color: text('color'),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+  // Sync fields
+  clock: text('clock'),                    // JSON vector clock
+  syncedAt: integer('synced_at', { mode: 'timestamp' }),
+})
+```
+
+### Sync Behavior
+
+- Filters sync as part of user settings
+- Use vector clock for conflict resolution
+- Sort order conflicts resolved by taking higher value
+
+---
+
+## 12. Synced Settings
+
+User preferences that roam across devices.
+
+### Schema
+
+```typescript
+interface SyncedSettings {
+  // Synced across all devices
+  general: {
+    defaultView: 'inbox' | 'today' | 'upcoming' | 'all'
+    weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6  // Sunday = 0
+    dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD'
+    timeFormat: '12h' | '24h'
+    language: string                          // ISO 639-1 code
+  }
+
+  tasks: {
+    defaultProject: string | null             // Project ID
+    defaultPriority: 1 | 2 | 3 | 4
+    autoArchiveCompleted: boolean
+    archiveAfterDays: number
+  }
+
+  notes: {
+    defaultFolder: string
+    autoSaveInterval: number                  // milliseconds
+    spellCheck: boolean
+  }
+
+  sync: {
+    autoSync: boolean
+    syncOnStartup: boolean
+    conflictResolution: 'local' | 'remote' | 'newest'
+  }
+
+  // NOT synced (device-specific)
+  // - theme (light/dark/system)
+  // - font size
+  // - window position/size
+  // - sidebar width
+  // - keyboard shortcuts
+}
+```
+
+### Sync Behavior
+
+- Settings sync as a single encrypted blob
+- Use vector clock at field level for merging
+- Device-specific settings stored locally only
+
+### Settings Sync Item
+
+```typescript
+interface SettingsSyncItem extends EncryptedItem {
+  type: 'settings'
+  // The encrypted payload contains SyncedSettings JSON
+  fieldClocks: {
+    'general.defaultView': VectorClock
+    'general.weekStartsOn': VectorClock
+    'tasks.defaultProject': VectorClock
+    // ... per-field clocks for LWW merge
+  }
+}
+```
+
+---
+
+## 13. Vector Clock
 
 For tracking causality in non-CRDT items.
 
@@ -579,6 +809,71 @@ function compareClock(a: VectorClock, b: VectorClock): -1 | 0 | 1 {
 
 ---
 
+## Tombstone Retention Policy
+
+Soft-deleted items (where `deleted_at` is set) are retained for cross-device propagation and potential recovery.
+
+### Retention Rules
+
+```typescript
+const TOMBSTONE_POLICY = {
+  // How long tombstones are kept after deletion
+  retentionPeriod: 90 * 24 * 60 * 60 * 1000,  // 90 days in ms
+
+  // Minimum sync window - tombstones younger than this are never purged
+  minRetention: 7 * 24 * 60 * 60 * 1000,       // 7 days
+
+  // How often to run cleanup job
+  cleanupInterval: 24 * 60 * 60 * 1000,        // Daily
+
+  // Batch size for cleanup operations
+  cleanupBatchSize: 1000,
+}
+```
+
+### Cleanup Process
+
+```sql
+-- Server-side cleanup job (runs daily)
+-- 1. Find tombstones older than 90 days
+SELECT id, blob_key FROM sync_items
+WHERE deleted_at IS NOT NULL
+  AND deleted_at < (strftime('%s', 'now') - 7776000) * 1000  -- 90 days ago
+LIMIT 1000;
+
+-- 2. Delete R2 blobs for each item
+-- 3. Hard delete from sync_items
+DELETE FROM sync_items WHERE id IN (...);
+
+-- 4. For attachments, also delete orphaned chunks
+DELETE FROM attachment_chunks
+WHERE attachment_id NOT IN (SELECT id FROM sync_items WHERE type = 'attachment');
+```
+
+### Client-Side Handling
+
+```typescript
+// Client pulls tombstones to propagate deletes
+interface DeletedItemRef {
+  id: string
+  type: string
+  deletedAt: number
+}
+
+// When client sees a tombstone:
+// 1. Delete local copy of item
+// 2. Keep tombstone in local sync_state until next full sync
+// 3. After 90 days, tombstone disappears from server responses
+```
+
+### GDPR Considerations
+
+- **Right to Erasure**: Users can request immediate hard delete via support
+- **Data Export**: Tombstones are excluded from data exports
+- **Account Deletion**: All data (including tombstones) deleted within 30 days
+
+---
+
 ## Entity Summary
 
 | Entity | Storage | Encrypted | Sync Strategy |
@@ -591,6 +886,9 @@ function compareClock(a: VectorClock, b: VectorClock): -1 | 0 | 1 {
 | Note | Client files + R2 | Yes | CRDT (Yjs) |
 | Task | Client SQLite + R2 | Yes | Vector Clock LWW |
 | Project | Client SQLite + R2 | Yes | Vector Clock LWW |
+| Inbox Item | Client SQLite + R2 | Yes | Vector Clock LWW |
+| Saved Filter | Client SQLite + R2 | Yes | Vector Clock LWW |
+| Settings | Client SQLite + R2 | Yes | Field-level Vector Clock |
 | Attachment | Client files + R2 | Yes | Chunked |
 | Sync State | Client SQLite | No | Local only |
 | Sync History | Client SQLite | No | Local only |

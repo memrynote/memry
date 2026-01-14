@@ -123,6 +123,41 @@ channels:
         error:
           type: string
 
+  auth:resend-verification:
+    description: Resend email verification
+    request:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+  auth:validate-password:
+    description: Validate password strength (client-side helper)
+    request:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+    response:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: string
+          description: List of validation errors
+
   # ============================================
   # SETUP & DEVICE MANAGEMENT
   # ============================================
@@ -366,6 +401,52 @@ channels:
         failed:
           type: number
 
+  sync:pause:
+    description: Pause automatic sync operations
+    request:
+      type: object
+      properties: {}
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        wasPaused:
+          type: boolean
+          description: Whether sync was already paused
+
+  sync:resume:
+    description: Resume automatic sync operations
+    request:
+      type: object
+      properties: {}
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        pendingCount:
+          type: number
+          description: Number of items that will sync
+
+  sync:rename-device:
+    description: Rename a linked device
+    request:
+      type: object
+      required: [deviceId, newName]
+      properties:
+        deviceId:
+          type: string
+        newName:
+          type: string
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+
   # ============================================
   # ENCRYPTION OPERATIONS
   # ============================================
@@ -444,6 +525,43 @@ channels:
       properties:
         valid:
           type: boolean
+
+  crypto:rotate-keys:
+    description: Initiate key rotation (generates new recovery phrase)
+    request:
+      type: object
+      properties:
+        confirm:
+          type: boolean
+          description: Must be true to proceed
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        newRecoveryPhrase:
+          type: string
+          description: New 24-word recovery phrase (show once)
+        error:
+          type: string
+
+  crypto:get-rotation-progress:
+    description: Get key rotation progress
+    request:
+      type: object
+      properties: {}
+    response:
+      type: object
+      properties:
+        inProgress:
+          type: boolean
+        totalItems:
+          type: number
+        processedItems:
+          type: number
+        phase:
+          type: string
+          enum: [preparing, re-encrypting, finalizing, complete]
 
   # ============================================
   # ATTACHMENT OPERATIONS
@@ -627,6 +745,72 @@ events:
           type: number
         status:
           type: string
+
+  sync:initial-sync-progress:
+    description: Progress update during initial sync on new device
+    payload:
+      type: object
+      properties:
+        phase:
+          type: string
+          enum: [manifest, notes, tasks, attachments, complete]
+        totalItems:
+          type: number
+        processedItems:
+          type: number
+        currentItemType:
+          type: string
+
+  sync:queue-cleared:
+    description: All pending items have been synced
+    payload:
+      type: object
+      properties:
+        itemCount:
+          type: number
+        duration:
+          type: number
+          description: Time taken in milliseconds
+
+  sync:paused:
+    description: Sync has been paused
+    payload:
+      type: object
+      properties:
+        pendingCount:
+          type: number
+
+  sync:resumed:
+    description: Sync has been resumed
+    payload:
+      type: object
+      properties:
+        pendingCount:
+          type: number
+
+  crypto:key-rotation-progress:
+    description: Key rotation progress update
+    payload:
+      type: object
+      properties:
+        phase:
+          type: string
+          enum: [preparing, re-encrypting, finalizing, complete]
+        totalItems:
+          type: number
+        processedItems:
+          type: number
+        error:
+          type: string
+
+  auth:session-expired:
+    description: User session has expired, re-authentication required
+    payload:
+      type: object
+      properties:
+        reason:
+          type: string
+          enum: [token_expired, device_revoked, server_error]
 
 # TypeScript Type Generation
 typescript:

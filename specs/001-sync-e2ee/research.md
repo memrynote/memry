@@ -597,6 +597,238 @@ async function processQueue() {
 
 ---
 
+## 12. Email Service Provider
+
+### Decision: Resend for transactional emails
+
+### Rationale
+
+Resend offers the best developer experience for a small team:
+- **Simple API**: Clean REST/SDK, no complex configuration
+- **Deliverability**: Good inbox placement, DKIM/SPF built-in
+- **Pricing**: Free tier (100 emails/day), affordable scaling
+- **React Email**: First-class support for email templates
+- **Cloudflare Workers**: Native fetch compatibility
+
+### Alternatives Considered
+
+| Provider | Pros | Cons | Decision |
+|----------|------|------|----------|
+| **Resend** | Simple, modern DX, React Email | Newer service | **Selected** |
+| **SendGrid** | Mature, high volume | Complex setup, overkill | Rejected |
+| **Postmark** | Great deliverability | More expensive | Backup option |
+| **Cloudflare Email** | Native integration | Limited features, no templates | Rejected |
+| **AWS SES** | Cheap at scale | Complex setup, cold start | Rejected |
+
+### Implementation Notes
+
+```typescript
+// sync-server/src/services/email.ts
+import { Resend } from 'resend'
+
+const resend = new Resend(env.RESEND_API_KEY)
+
+export async function sendVerificationEmail(email: string, token: string) {
+  await resend.emails.send({
+    from: 'Memry <noreply@memry.app>',
+    to: email,
+    subject: 'Verify your email',
+    react: VerificationEmail({ token }),
+  })
+}
+```
+
+### Email Types
+
+| Email | Trigger | Expiry |
+|-------|---------|--------|
+| Email verification | Signup | 24 hours |
+| Password reset | Forgot password | 1 hour |
+| Device linked | New device approved | N/A |
+| Device removed | Device revoked | N/A |
+
+---
+
+## 13. Sync State Machine
+
+### Client Sync States
+
+```
+                                    ┌─────────────────┐
+                                    │                 │
+                           ┌────────│   INITIALIZING  │
+                           │        │                 │
+                           │        └────────┬────────┘
+                           │                 │
+                           │            (keys loaded)
+                           │                 │
+                           ▼                 ▼
+┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐
+│                 │   │                 │   │                 │
+│   OFFLINE       │◄──│     IDLE        │◄──│   SYNCING       │
+│                 │   │                 │   │                 │
+└────────┬────────┘   └────────┬────────┘   └────────┬────────┘
+         │                     │                     │
+         │                     │                     │
+    (reconnect)           (change)              (complete)
+         │                     │                     │
+         │                     ▼                     │
+         │            ┌─────────────────┐            │
+         │            │                 │            │
+         └───────────►│   SYNCING       │◄───────────┘
+                      │                 │
+                      └────────┬────────┘
+                               │
+                          (error)
+                               │
+                               ▼
+                      ┌─────────────────┐
+                      │                 │
+                      │     ERROR       │──────► (retry) ──► SYNCING
+                      │                 │
+                      └─────────────────┘
+```
+
+### State Transitions
+
+```typescript
+type SyncState = 'initializing' | 'idle' | 'syncing' | 'offline' | 'error'
+
+interface SyncStateContext {
+  state: SyncState
+  lastSyncAt?: number
+  pendingCount: number
+  errorMessage?: string
+  retryCount: number
+}
+
+const transitions: Record<SyncState, SyncState[]> = {
+  initializing: ['idle', 'offline', 'error'],
+  idle: ['syncing', 'offline'],
+  syncing: ['idle', 'error', 'offline'],
+  offline: ['syncing', 'idle'],
+  error: ['syncing', 'offline'],
+}
+```
+
+### WebSocket Connection States
+
+```
+┌──────────┐  connect   ┌────────────┐  open    ┌───────────┐
+│          │───────────►│            │─────────►│           │
+│  CLOSED  │            │ CONNECTING │          │   OPEN    │
+│          │◄───────────│            │◄─────────│           │
+└──────────┘   close    └────────────┘  error   └───────────┘
+      ▲                        │                      │
+      │                        │                      │
+      │              (max retries)              (server close)
+      │                        │                      │
+      │                        ▼                      │
+      │               ┌────────────┐                  │
+      │               │            │                  │
+      └───────────────│   FAILED   │◄─────────────────┘
+                      │            │
+                      └────────────┘
+```
+
+### WebSocket Reconnection Strategy
+
+```typescript
+const RECONNECT_CONFIG = {
+  initialDelay: 1000,       // 1 second
+  maxDelay: 60000,          // 60 seconds
+  multiplier: 2,            // Double each attempt
+  jitter: 0.3,              // ±30% randomization
+  maxAttempts: 10,          // Before falling back to polling
+}
+
+function getReconnectDelay(attempt: number): number {
+  const baseDelay = Math.min(
+    RECONNECT_CONFIG.initialDelay * Math.pow(RECONNECT_CONFIG.multiplier, attempt),
+    RECONNECT_CONFIG.maxDelay
+  )
+
+  // Add jitter to prevent thundering herd
+  const jitter = baseDelay * RECONNECT_CONFIG.jitter * (Math.random() * 2 - 1)
+  return Math.round(baseDelay + jitter)
+}
+
+// Reconnection attempts: 1s, 2s, 4s, 8s, 16s, 32s, 60s, 60s, 60s, 60s
+// With jitter: actual delays vary ±30%
+```
+
+---
+
+## 14. Multi-Window Handling
+
+### Challenge
+
+Electron apps can have multiple windows. Each window shares:
+- The same IndexedDB database
+- The same SQLite databases (via main process)
+- The same sync queue
+
+### Strategy: Single Writer
+
+Only one window manages sync at a time:
+
+```typescript
+// Main process maintains sync ownership
+let syncOwnerWindowId: number | null = null
+
+function acquireSyncLock(windowId: number): boolean {
+  if (syncOwnerWindowId === null || !BrowserWindow.fromId(syncOwnerWindowId)) {
+    syncOwnerWindowId = windowId
+    return true
+  }
+  return false
+}
+
+// When window closes, release lock
+app.on('browser-window-closed', (_, window) => {
+  if (syncOwnerWindowId === window.id) {
+    syncOwnerWindowId = null
+    // Next window to call acquireSyncLock gets ownership
+  }
+})
+```
+
+### Window Communication
+
+```typescript
+// All windows receive sync status updates via IPC
+function broadcastSyncStatus(status: SyncStatus) {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send('sync:status-changed', status)
+  }
+}
+
+// Item changes are broadcast to all windows
+function broadcastItemSynced(item: SyncedItem) {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send('sync:item-synced', item)
+  }
+}
+```
+
+### CRDT Sync Across Windows
+
+Yjs documents are shared via IndexedDB persistence:
+
+```typescript
+// Each window creates its own Y.Doc instance
+// y-indexeddb syncs them automatically
+const doc = new Y.Doc()
+const persistence = new IndexeddbPersistence(`note-${noteId}`, doc)
+
+// Changes in one window propagate to others via IndexedDB
+persistence.on('synced', () => {
+  // Document is now in sync with other windows
+})
+```
+
+---
+
 ## Open Questions Resolved
 
 | Question | Resolution |
@@ -606,6 +838,9 @@ async function processQueue() {
 | Real-time WebSocket | Always connected when app is foreground |
 | Selective sync on desktop | Full sync only (P3 feature for mobile) |
 | Key rotation frequency | Manual only, prompted after device removal |
+| Email service provider | Resend for transactional emails |
+| Multi-window sync | Single writer pattern, broadcast updates |
+| WebSocket reconnection | Exponential backoff with jitter, max 60s |
 
 ---
 

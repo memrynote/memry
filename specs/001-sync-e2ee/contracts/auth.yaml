@@ -545,6 +545,46 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
+  # Rate Limiting Configuration
+  x-rate-limits:
+    auth-endpoints:
+      description: Authentication endpoints (login, signup, password reset)
+      requests: 10
+      window: 60
+      unit: seconds
+      burst: 5
+      per: ip
+      response:
+        status: 429
+        headers:
+          Retry-After: seconds until reset
+          X-RateLimit-Limit: max requests
+          X-RateLimit-Remaining: requests left
+          X-RateLimit-Reset: reset timestamp
+
+    device-linking:
+      description: Device linking operations
+      requests: 5
+      window: 300
+      unit: seconds
+      per: user
+      notes: Prevents brute-force linking attempts
+
+    token-refresh:
+      description: Token refresh endpoint
+      requests: 30
+      window: 60
+      unit: seconds
+      per: user
+
+    verification-emails:
+      description: Email verification and password reset emails
+      requests: 3
+      window: 3600
+      unit: seconds
+      per: email
+      notes: Prevents email flooding
+
   schemas:
     AuthResult:
       type: object

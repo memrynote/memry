@@ -417,6 +417,48 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
+  # Rate Limiting Configuration
+  x-rate-limits:
+    blob-upload:
+      description: Blob upload operations
+      requests: 50
+      window: 60
+      unit: seconds
+      per: user
+      notes: Standard blob uploads
+
+    chunk-upload:
+      description: Attachment chunk uploads
+      requests: 100
+      window: 60
+      unit: seconds
+      per: user
+      notes: Higher for chunked uploads, allows parallel chunks
+
+    blob-download:
+      description: Blob download operations
+      requests: 200
+      window: 60
+      unit: seconds
+      per: user
+      notes: Higher limit for downloads
+
+    stream:
+      description: Video/media streaming
+      requests: 50
+      window: 60
+      unit: seconds
+      per: user
+      notes: Range requests for streaming
+
+    upload-sessions:
+      description: Initiating new upload sessions
+      requests: 20
+      window: 60
+      unit: seconds
+      per: user
+      notes: Prevents session flooding
+
   schemas:
     UploadSession:
       type: object

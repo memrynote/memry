@@ -315,6 +315,48 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
+  # Rate Limiting Configuration
+  x-rate-limits:
+    sync-push:
+      description: Push sync operations
+      requests: 100
+      window: 60
+      unit: seconds
+      per: user
+      burst: 20
+      notes: Allows burst for initial sync
+
+    sync-pull:
+      description: Pull sync operations
+      requests: 200
+      window: 60
+      unit: seconds
+      per: user
+      notes: Higher limit for read operations
+
+    sync-manifest:
+      description: Full manifest fetch (expensive operation)
+      requests: 10
+      window: 60
+      unit: seconds
+      per: user
+
+    note-updates:
+      description: CRDT incremental updates
+      requests: 300
+      window: 60
+      unit: seconds
+      per: user
+      notes: High frequency for real-time editing
+
+    websocket-messages:
+      description: WebSocket message rate
+      requests: 100
+      window: 10
+      unit: seconds
+      per: connection
+      notes: Per WebSocket connection
+
   schemas:
     SyncStatus:
       type: object
