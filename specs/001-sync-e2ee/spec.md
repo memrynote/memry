@@ -140,7 +140,92 @@ As a user, I want to see clear sync status indicators so that I know when my dat
 
 ---
 
-### User Story 9 - Key Rotation (Priority: P3)
+### User Story 9 - Sync Activity History (Priority: P2)
+
+As a user, I want to view a history of sync activity so that I can verify what was synced and troubleshoot issues.
+
+**Why this priority**: Users need transparency into sync operations, especially when debugging issues or verifying that important changes were synchronized.
+
+**Independent Test**: Can be fully tested by making changes, viewing the sync history, and verifying entries match the actual sync operations.
+
+**Acceptance Scenarios**:
+
+1. **Given** I have been using the app, **When** I open Settings > Sync > Activity History, **Then** I see a chronological list of recent sync operations
+2. **Given** a sync operation completed, **When** I view the history, **Then** I see the timestamp, number of items synced, and sync direction (push/pull)
+3. **Given** a sync error occurred, **When** I view the history, **Then** I see the error details and which items failed
+4. **Given** I want to find a specific sync event, **When** I filter by date or type, **Then** I can narrow down the history view
+
+---
+
+### User Story 10 - Manual Force Sync (Priority: P2)
+
+As a user, I want to manually trigger a sync when I need to ensure my data is up to date immediately.
+
+**Why this priority**: While sync is automatic, users sometimes need immediate control, especially before switching devices or after making critical changes.
+
+**Independent Test**: Can be fully tested by making changes, triggering manual sync, and verifying changes appear on other devices immediately.
+
+**Acceptance Scenarios**:
+
+1. **Given** I have made recent changes, **When** I click "Sync Now" in the sync status menu, **Then** sync begins immediately regardless of automatic sync schedule
+2. **Given** automatic sync failed, **When** I trigger manual sync, **Then** the system retries the sync operation
+3. **Given** I am offline, **When** I click "Sync Now", **Then** I see a message that sync will occur when connection is restored
+4. **Given** sync is already in progress, **When** I click "Sync Now", **Then** I see a message indicating sync is already running
+
+---
+
+### User Story 11 - Local-Only Content (Priority: P2)
+
+As a user, I want to mark specific notes as "local-only" so that sensitive content stays on one device and never syncs to the server.
+
+**Why this priority**: Some users have content they want to keep strictly private or device-specific, even with E2EE. This gives users granular control over what syncs.
+
+**Independent Test**: Can be fully tested by marking a note as local-only, verifying it doesn't appear on other devices, and confirming it survives app restarts.
+
+**Acceptance Scenarios**:
+
+1. **Given** I have a note, **When** I mark it as "Local Only" in note settings, **Then** the note is excluded from sync
+2. **Given** a note is marked local-only, **When** I view it on another device, **Then** the note does not appear
+3. **Given** a note is marked local-only, **When** I unmark it, **Then** the note begins syncing to other devices
+4. **Given** I have local-only notes, **When** I view sync status, **Then** I see a count of local-only items excluded from sync
+
+---
+
+### User Story 12 - Non-Blocking Background Sync (Priority: P2)
+
+As a user, I want sync operations to run in the background without blocking my work so that I can continue editing while sync happens.
+
+**Why this priority**: Users should never have to wait for sync to complete before continuing their work. Background sync ensures a smooth experience.
+
+**Independent Test**: Can be fully tested by starting a large sync operation and verifying the UI remains responsive for editing.
+
+**Acceptance Scenarios**:
+
+1. **Given** a large sync is in progress (100+ items), **When** I try to edit a note, **Then** editing is smooth and responsive with no visible lag
+2. **Given** I am editing a note, **When** sync receives updates for that note, **Then** the changes merge in without disrupting my cursor position
+3. **Given** initial sync is running on a new device, **When** I start using the app, **Then** I can access already-synced items while others continue downloading
+4. **Given** attachment uploads are in progress, **When** I navigate to other notes, **Then** uploads continue in the background
+
+---
+
+### User Story 13 - Device Management (Priority: P2)
+
+As a user, I want to view and manage all devices linked to my account so that I can maintain security and remove devices I no longer use.
+
+**Why this priority**: Users need visibility and control over which devices have access to their encrypted data, especially if a device is lost or sold.
+
+**Independent Test**: Can be fully tested by viewing device list, removing a device, and verifying it can no longer access the account.
+
+**Acceptance Scenarios**:
+
+1. **Given** I have multiple devices, **When** I go to Settings > Devices, **Then** I see a list of all linked devices with their names and last sync time
+2. **Given** I want to identify a device, **When** I view the device list, **Then** I see the device type (desktop/mobile), OS, and when it was linked
+3. **Given** I want to remove a device, **When** I click "Remove" and confirm, **Then** the device is unlinked and can no longer sync
+4. **Given** a device was removed, **When** that device tries to sync, **Then** it receives an error and must re-link to regain access
+
+---
+
+### User Story 14 - Key Rotation (Priority: P3)
 
 As a security-conscious user, I want to rotate my encryption keys periodically so that my data remains protected even if an old key is compromised.
 
@@ -156,7 +241,7 @@ As a security-conscious user, I want to rotate my encryption keys periodically s
 
 ---
 
-### User Story 10 - Note Sharing (Priority: P3)
+### User Story 15 - Note Sharing (Priority: P3)
 
 As a user, I want to share specific notes with collaborators so that we can work together while maintaining end-to-end encryption.
 
@@ -170,6 +255,57 @@ As a user, I want to share specific notes with collaborators so that we can work
 2. **Given** I am invited to a shared note, **When** I accept, **Then** I can view and edit the note (based on my permission level)
 3. **Given** I shared a note with write access, **When** the collaborator edits, **Then** I see their changes in real-time
 4. **Given** I want to revoke access, **When** I remove a collaborator, **Then** they can no longer access the note
+
+---
+
+### User Story 16 - Selective Sync (Priority: P3)
+
+As a mobile user with limited storage, I want to choose which content syncs to my device so that I don't fill up my phone's storage.
+
+**Why this priority**: Mobile devices have limited storage. This is a nice-to-have optimization that becomes important as users accumulate more data.
+
+**Independent Test**: Can be fully tested by configuring selective sync rules and verifying only selected content downloads to the device.
+
+**Acceptance Scenarios**:
+
+1. **Given** I am on a mobile device, **When** I go to Settings > Sync > Storage, **Then** I can choose to sync "All content", "Recent only", or "On-demand"
+2. **Given** I choose "Recent only", **When** sync occurs, **Then** only notes modified in the last 30 days are fully downloaded
+3. **Given** I choose "On-demand", **When** I open an older note, **Then** it downloads on first access with a loading indicator
+4. **Given** attachments are set to "On-demand", **When** I view a note with attachments, **Then** I see placeholders until I tap to download
+
+---
+
+### User Story 17 - Data Usage Visibility (Priority: P3)
+
+As a user, I want to see how much data sync is using so that I can manage my storage and bandwidth.
+
+**Why this priority**: Power users and mobile users want to understand their data footprint. Useful for troubleshooting and planning.
+
+**Independent Test**: Can be fully tested by viewing data usage statistics and verifying they match actual storage consumption.
+
+**Acceptance Scenarios**:
+
+1. **Given** I want to see my sync data usage, **When** I go to Settings > Sync > Data Usage, **Then** I see total synced data size
+2. **Given** I view data usage, **When** I look at the breakdown, **Then** I see usage split by notes, tasks, and attachments
+3. **Given** I want to understand trends, **When** I view usage over time, **Then** I see a chart of data synced per week/month
+4. **Given** I want to free space, **When** I view large items, **Then** I can identify and manage large attachments
+
+---
+
+### User Story 18 - Metered Connection Control (Priority: P3)
+
+As a mobile user, I want to pause or limit sync when on cellular data so that I don't use up my data plan.
+
+**Why this priority**: Mobile data can be expensive. Users on metered connections need control over when large syncs happen.
+
+**Independent Test**: Can be fully tested by enabling metered mode, making changes, and verifying sync only occurs on WiFi.
+
+**Acceptance Scenarios**:
+
+1. **Given** I am on a metered connection, **When** I enable "WiFi-only sync", **Then** sync pauses until I connect to WiFi
+2. **Given** WiFi-only sync is enabled, **When** I make changes on cellular, **Then** changes queue locally and sync when WiFi is available
+3. **Given** I need to sync urgently on cellular, **When** I click "Sync Now", **Then** I see a warning about data usage with option to proceed
+4. **Given** I am on WiFi, **When** I view sync settings, **Then** I see current connection type and whether sync is active
 
 ---
 
@@ -230,21 +366,65 @@ As a user, I want to share specific notes with collaborators so that we can work
 - **FR-029**: System MUST generate thumbnails for images, PDFs, and videos
 - **FR-030**: System MUST support streaming playback for video attachments
 
-**Sync Status**
+**Sync Status & History**
 - **FR-031**: System MUST display current sync status (idle, syncing, offline, error)
 - **FR-032**: System MUST show item count during active sync
 - **FR-033**: System MUST show pending change count when offline
 - **FR-034**: System MUST provide manual retry option for failed syncs
+- **FR-035**: System MUST maintain a sync activity history log
+- **FR-036**: System MUST show sync history with timestamps, item counts, and direction
+- **FR-037**: System MUST log sync errors with details for troubleshooting
+- **FR-038**: System MUST support filtering sync history by date and type
+
+**Manual Sync Control**
+- **FR-039**: System MUST provide a "Sync Now" button to trigger immediate sync
+- **FR-040**: System MUST allow manual sync even when automatic sync is running
+
+**Local-Only Content**
+- **FR-041**: System MUST support marking notes as "local-only"
+- **FR-042**: System MUST exclude local-only items from sync operations
+- **FR-043**: System MUST persist local-only flag across app restarts
+- **FR-044**: System MUST allow users to convert local-only items to synced items
+
+**Background Sync**
+- **FR-045**: System MUST perform sync operations without blocking the UI
+- **FR-046**: System MUST allow editing during active sync operations
+- **FR-047**: System MUST handle concurrent local edits and incoming sync updates
+- **FR-048**: System MUST continue background uploads when navigating away
+
+**Device Management**
+- **FR-049**: System MUST display all linked devices with name, type, and last sync time
+- **FR-050**: System MUST allow users to remove linked devices
+- **FR-051**: System MUST revoke sync access when a device is removed
+- **FR-052**: System MUST show device linking timestamp and platform information
 
 **Key Management**
-- **FR-035**: System MUST support key rotation with new recovery phrase generation
-- **FR-036**: System MUST re-encrypt file keys (not content) during key rotation
+- **FR-053**: System MUST support key rotation with new recovery phrase generation
+- **FR-054**: System MUST re-encrypt file keys (not content) during key rotation
+
+**Selective Sync (Mobile)**
+- **FR-055**: System MUST support sync mode options: "All content", "Recent only", "On-demand"
+- **FR-056**: System MUST download content on-demand when accessed in on-demand mode
+- **FR-057**: System MUST show loading indicators for on-demand content
+- **FR-058**: System MUST cache recently accessed content locally
+
+**Data Usage**
+- **FR-059**: System MUST track and display total synced data size
+- **FR-060**: System MUST show data usage breakdown by content type
+- **FR-061**: System MUST display sync data trends over time
+- **FR-062**: System MUST identify large items for storage management
+
+**Metered Connection**
+- **FR-063**: System MUST detect metered/cellular connections
+- **FR-064**: System MUST support "WiFi-only sync" mode
+- **FR-065**: System MUST queue changes when WiFi-only is enabled on cellular
+- **FR-066**: System MUST warn users before syncing on metered connections
 
 **Collaboration (Future)**
-- **FR-037**: System MUST support sharing individual notes with other users
-- **FR-038**: System MUST support read and write permission levels for shared notes
-- **FR-039**: System MUST encrypt shared file keys for recipient's public key
-- **FR-040**: System MUST support real-time presence (cursors) for collaborators
+- **FR-067**: System MUST support sharing individual notes with other users
+- **FR-068**: System MUST support read and write permission levels for shared notes
+- **FR-069**: System MUST encrypt shared file keys for recipient's public key
+- **FR-070**: System MUST support real-time presence (cursors) for collaborators
 
 ### Key Entities
 
@@ -277,6 +457,13 @@ As a user, I want to share specific notes with collaborators so that we can work
 - **SC-013**: 95% of users successfully link a second device on first attempt
 - **SC-014**: Zero plain-text user content visible in server logs or storage
 - **SC-015**: App remains responsive during background sync operations
+- **SC-016**: Sync history shows last 30 days of activity with accurate timestamps
+- **SC-017**: Manual "Sync Now" initiates sync within 1 second of user action
+- **SC-018**: Local-only notes never appear in server storage or sync traffic
+- **SC-019**: Device removal revokes sync access within 5 seconds
+- **SC-020**: On-demand content downloads begin within 2 seconds of user request
+- **SC-021**: Data usage statistics are accurate within 5% of actual storage
+- **SC-022**: WiFi-only mode correctly detects and respects metered connections
 
 ### Assumptions
 

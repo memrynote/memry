@@ -35,6 +35,14 @@
 - The detailed technical document at `prompts/06-specify-sync.md` serves as the implementation reference
 - This spec focuses on user-facing requirements and success criteria
 - Collaboration features (P3) are marked as future but included for completeness
-- All 10 user stories have acceptance scenarios with Given/When/Then format
-- 40 functional requirements cover all aspects of the sync and encryption system
-- 15 measurable success criteria ensure verifiable outcomes
+- All 18 user stories have acceptance scenarios with Given/When/Then format
+- 70 functional requirements cover all aspects of the sync and encryption system
+- 22 measurable success criteria ensure verifiable outcomes
+
+### User Story Summary
+
+| Priority | Count | Stories |
+|----------|-------|---------|
+| P1 | 4 | First Device Setup, Cross-Device Sync, QR Linking, Conflict Resolution (Notes) |
+| P2 | 9 | Recovery Phrase Linking, Task Sync, Attachments, Sync Status, Sync History, Force Sync, Local-Only, Background Sync, Device Management |
+| P3 | 5 | Key Rotation, Note Sharing, Selective Sync, Data Usage, Metered Connection |

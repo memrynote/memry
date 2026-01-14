@@ -1,0 +1,569 @@
+# IPC Channel Contracts for Electron Main-Renderer Communication
+# These are TypeScript interface definitions, not REST APIs
+
+channels:
+  # ============================================
+  # SETUP & DEVICE MANAGEMENT
+  # ============================================
+
+  sync:setup-first-device:
+    description: Complete first device setup with OAuth token
+    request:
+      type: object
+      required: [oauthToken, provider]
+      properties:
+        oauthToken:
+          type: string
+        provider:
+          type: string
+          enum: [google, apple, github]
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        recoveryPhrase:
+          type: string
+          description: 24-word BIP39 phrase (show once, never store)
+        deviceId:
+          type: string
+        error:
+          type: string
+
+  sync:confirm-recovery-phrase:
+    description: User confirms they've saved recovery phrase
+    request:
+      type: object
+      required: [confirmed]
+      properties:
+        confirmed:
+          type: boolean
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+
+  sync:generate-linking-qr:
+    description: Generate QR code for device linking
+    request:
+      type: object
+      properties: {}
+    response:
+      type: object
+      properties:
+        qrData:
+          type: string
+          description: JSON to encode in QR code
+        sessionId:
+          type: string
+        expiresAt:
+          type: number
+
+  sync:link-via-qr:
+    description: Link new device by scanning QR code
+    request:
+      type: object
+      required: [qrData, oauthToken, provider]
+      properties:
+        qrData:
+          type: string
+        oauthToken:
+          type: string
+        provider:
+          type: string
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        status:
+          type: string
+          enum: [waiting_approval, approved, error]
+        error:
+          type: string
+
+  sync:link-via-recovery:
+    description: Link device using recovery phrase
+    request:
+      type: object
+      required: [recoveryPhrase, oauthToken, provider]
+      properties:
+        recoveryPhrase:
+          type: string
+          description: 24-word BIP39 phrase
+        oauthToken:
+          type: string
+        provider:
+          type: string
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+
+  sync:approve-linking:
+    description: Approve device linking request
+    request:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId:
+          type: string
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+
+  sync:get-devices:
+    description: Get list of linked devices
+    request:
+      type: object
+      properties: {}
+    response:
+      type: object
+      properties:
+        devices:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              platform:
+                type: string
+              linkedAt:
+                type: number
+              lastSyncAt:
+                type: number
+              isCurrentDevice:
+                type: boolean
+
+  sync:remove-device:
+    description: Remove a linked device
+    request:
+      type: object
+      required: [deviceId]
+      properties:
+        deviceId:
+          type: string
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+
+  # ============================================
+  # SYNC OPERATIONS
+  # ============================================
+
+  sync:get-status:
+    description: Get current sync status
+    request:
+      type: object
+      properties: {}
+    response:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [idle, syncing, offline, error]
+        lastSyncAt:
+          type: number
+        pendingCount:
+          type: number
+        error:
+          type: string
+
+  sync:trigger-sync:
+    description: Manually trigger sync
+    request:
+      type: object
+      properties: {}
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+
+  sync:get-history:
+    description: Get sync activity history
+    request:
+      type: object
+      properties:
+        limit:
+          type: number
+          default: 50
+        offset:
+          type: number
+          default: 0
+    response:
+      type: object
+      properties:
+        entries:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+                enum: [push, pull, error]
+              itemCount:
+                type: number
+              direction:
+                type: string
+              details:
+                type: object
+              createdAt:
+                type: number
+        total:
+          type: number
+
+  sync:get-queue-size:
+    description: Get number of items pending sync
+    request:
+      type: object
+      properties: {}
+    response:
+      type: object
+      properties:
+        pending:
+          type: number
+        failed:
+          type: number
+
+  # ============================================
+  # ENCRYPTION OPERATIONS
+  # ============================================
+
+  crypto:encrypt-item:
+    description: Encrypt an item for sync
+    request:
+      type: object
+      required: [itemId, type, content]
+      properties:
+        itemId:
+          type: string
+        type:
+          type: string
+          enum: [note, task, project, settings]
+        content:
+          type: object
+          description: Plaintext content to encrypt
+    response:
+      type: object
+      properties:
+        encryptedKey:
+          type: string
+        keyNonce:
+          type: string
+        encryptedData:
+          type: string
+        dataNonce:
+          type: string
+        signature:
+          type: string
+
+  crypto:decrypt-item:
+    description: Decrypt an item from sync
+    request:
+      type: object
+      required: [encryptedKey, keyNonce, encryptedData, dataNonce, signature]
+      properties:
+        encryptedKey:
+          type: string
+        keyNonce:
+          type: string
+        encryptedData:
+          type: string
+        dataNonce:
+          type: string
+        signature:
+          type: string
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        content:
+          type: object
+        error:
+          type: string
+          description: e.g., "Invalid signature"
+
+  crypto:verify-signature:
+    description: Verify signature on encrypted item
+    request:
+      type: object
+      required: [itemId, encryptedData, dataNonce, signature]
+      properties:
+        itemId:
+          type: string
+        encryptedData:
+          type: string
+        dataNonce:
+          type: string
+        signature:
+          type: string
+    response:
+      type: object
+      properties:
+        valid:
+          type: boolean
+
+  # ============================================
+  # ATTACHMENT OPERATIONS
+  # ============================================
+
+  sync:upload-attachment:
+    description: Start attachment upload
+    request:
+      type: object
+      required: [noteId, filePath]
+      properties:
+        noteId:
+          type: string
+        filePath:
+          type: string
+          description: Local file path
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        attachmentId:
+          type: string
+        sessionId:
+          type: string
+        error:
+          type: string
+
+  sync:get-upload-progress:
+    description: Get attachment upload progress
+    request:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId:
+          type: string
+    response:
+      type: object
+      properties:
+        progress:
+          type: number
+          description: 0.0 to 1.0
+        uploadedChunks:
+          type: number
+        totalChunks:
+          type: number
+        status:
+          type: string
+          enum: [uploading, paused, completed, failed]
+
+  sync:download-attachment:
+    description: Download attachment to local file
+    request:
+      type: object
+      required: [attachmentId]
+      properties:
+        attachmentId:
+          type: string
+        targetPath:
+          type: string
+          description: Optional custom download path
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        filePath:
+          type: string
+        error:
+          type: string
+
+  sync:get-download-progress:
+    description: Get attachment download progress
+    request:
+      type: object
+      required: [attachmentId]
+      properties:
+        attachmentId:
+          type: string
+    response:
+      type: object
+      properties:
+        progress:
+          type: number
+        downloadedChunks:
+          type: number
+        totalChunks:
+          type: number
+        status:
+          type: string
+
+  # ============================================
+  # EVENTS (Main → Renderer)
+  # ============================================
+
+events:
+  sync:status-changed:
+    description: Sync status changed
+    payload:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [idle, syncing, offline, error]
+        lastSyncAt:
+          type: number
+        pendingCount:
+          type: number
+        error:
+          type: string
+
+  sync:item-synced:
+    description: Item successfully synced
+    payload:
+      type: object
+      properties:
+        itemId:
+          type: string
+        type:
+          type: string
+        operation:
+          type: string
+          enum: [push, pull]
+
+  sync:conflict-detected:
+    description: Sync conflict detected (for non-CRDT items)
+    payload:
+      type: object
+      properties:
+        itemId:
+          type: string
+        type:
+          type: string
+        localVersion:
+          type: object
+        remoteVersion:
+          type: object
+
+  sync:linking-request:
+    description: Device linking request received
+    payload:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        newDeviceName:
+          type: string
+        newDevicePlatform:
+          type: string
+
+  sync:linking-approved:
+    description: Device linking approved (for new device)
+    payload:
+      type: object
+      properties:
+        sessionId:
+          type: string
+
+  sync:upload-progress:
+    description: Attachment upload progress update
+    payload:
+      type: object
+      properties:
+        attachmentId:
+          type: string
+        sessionId:
+          type: string
+        progress:
+          type: number
+        status:
+          type: string
+
+  sync:download-progress:
+    description: Attachment download progress update
+    payload:
+      type: object
+      properties:
+        attachmentId:
+          type: string
+        progress:
+          type: number
+        status:
+          type: string
+
+# TypeScript Type Generation
+typescript:
+  namespace: SyncIPC
+
+  types: |
+    // Generated from ipc.yaml contracts
+
+    export namespace SyncIPC {
+      // Setup
+      export interface SetupFirstDeviceRequest {
+        oauthToken: string
+        provider: 'google' | 'apple' | 'github'
+      }
+
+      export interface SetupFirstDeviceResponse {
+        success: boolean
+        recoveryPhrase?: string
+        deviceId?: string
+        error?: string
+      }
+
+      // Status
+      export type SyncStatus = 'idle' | 'syncing' | 'offline' | 'error'
+
+      export interface GetStatusResponse {
+        status: SyncStatus
+        lastSyncAt?: number
+        pendingCount: number
+        error?: string
+      }
+
+      // Devices
+      export interface Device {
+        id: string
+        name: string
+        platform: 'macos' | 'windows' | 'linux' | 'ios' | 'android'
+        linkedAt: number
+        lastSyncAt?: number
+        isCurrentDevice: boolean
+      }
+
+      // History
+      export interface SyncHistoryEntry {
+        id: string
+        type: 'push' | 'pull' | 'error'
+        itemCount: number
+        direction?: 'upload' | 'download'
+        details?: Record<string, unknown>
+        createdAt: number
+      }
+
+      // Encryption
+      export interface EncryptedItem {
+        encryptedKey: string
+        keyNonce: string
+        encryptedData: string
+        dataNonce: string
+        signature: string
+      }
+    }
