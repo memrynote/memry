@@ -198,6 +198,9 @@ export async function deriveKeys(phrase: string, kdfSalt: Uint8Array) {
 Store `kdf_salt` (plaintext) and `key_verifier` (HMAC) on the server during first device
 setup so new devices can derive and validate the master key without circular dependencies.
 
+Use canonical CBOR (RFC 8949) when creating signature/HMAC payloads to ensure deterministic
+encoding across platforms.
+
 ### Step 2: Keychain Integration (0.5 day)
 
 ```typescript

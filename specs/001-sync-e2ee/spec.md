@@ -353,6 +353,7 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 - **FR-013**: System MUST use per-item file keys encrypted with the vault key
 - **FR-014**: System MUST sign all encrypted items with a user-level signing key for authenticity verification
 - **FR-014a**: Signatures MUST cover encrypted keys, nonces, and merge metadata (clocks/state vectors)
+- **FR-014b**: Signature payloads MUST use canonical CBOR encoding (RFC 8949)
 - **FR-015**: System MUST reject items with invalid signatures or mismatched signed metadata
 - **FR-016**: Server MUST only store encrypted blobs with no ability to decrypt
 

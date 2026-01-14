@@ -517,7 +517,7 @@ components:
           type: string
         manifest_signature:
           type: string
-          description: Ed25519 signature over encrypted manifest fields (Base64)
+          description: Ed25519 signature over canonical CBOR of encrypted manifest fields (Base64)
 
     ChunkRef:
       type: object

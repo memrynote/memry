@@ -49,9 +49,9 @@
 
 ### Database Schema
 
-- [ ] T014 Create D1 users table schema in sync-server/schema/d1.sql
-- [ ] T015 Create D1 devices table schema in sync-server/schema/d1.sql
-- [ ] T016 Create D1 linking_sessions table schema in sync-server/schema/d1.sql
+- [ ] T014 Create D1 users table schema (kdf_salt, key_verifier) in sync-server/schema/d1.sql
+- [ ] T015 Create D1 devices table schema (auth_public_key optional) in sync-server/schema/d1.sql
+- [ ] T016 Create D1 linking_sessions table schema (new_device_confirm, key_confirm) in sync-server/schema/d1.sql
 - [ ] T017 Create D1 sync_items table schema in sync-server/schema/d1.sql
 - [ ] T018 Add sync-related tables (devices, sync_queue, sync_state, sync_history) to src/shared/db/schema/data-schema.ts
 - [ ] T019 Run drizzle migrations for local sync tables
@@ -64,8 +64,8 @@
 - [ ] T023 Implement Argon2id master key derivation in src/main/crypto/keys.ts
 - [ ] T024 [P] Implement XChaCha20-Poly1305 encryption in src/main/crypto/encryption.ts
 - [ ] T025 [P] Implement XChaCha20-Poly1305 decryption in src/main/crypto/encryption.ts
-- [ ] T026 [P] Implement Ed25519 signing in src/main/crypto/signatures.ts
-- [ ] T027 [P] Implement Ed25519 signature verification in src/main/crypto/signatures.ts
+- [ ] T026 [P] Implement Ed25519 signing over canonical CBOR in src/main/crypto/signatures.ts
+- [ ] T027 [P] Implement Ed25519 signature verification over canonical CBOR in src/main/crypto/signatures.ts
 - [ ] T028 Implement keychain storage with keytar in src/main/crypto/keychain.ts
 - [ ] T029 Create crypto module index exports in src/main/crypto/index.ts
 
@@ -250,7 +250,7 @@
 
 - [ ] T109 [US3] Implement X25519 key pair generation in src/main/crypto/keys.ts
 - [ ] T110 [US3] Implement ECDH shared secret computation and HKDF enc/mac keys in src/main/crypto/keys.ts
-- [ ] T110a [US3] Implement linking HMAC proofs (new_device_confirm, key_confirm) in src/main/crypto/keys.ts
+- [ ] T110a [US3] Implement linking HMAC proofs using canonical CBOR (new_device_confirm, key_confirm) in src/main/crypto/keys.ts
 - [ ] T111 [US3] Implement master key encryption with enc_key in src/main/crypto/encryption.ts
 - [ ] T112 [US3] Implement generate linking QR IPC handler in src/main/ipc/sync-handlers.ts
 - [ ] T113 [US3] Implement link via QR IPC handler in src/main/ipc/sync-handlers.ts
@@ -286,7 +286,7 @@
 ### Client Recovery for US4
 
 - [ ] T123 [US4] Implement recovery phrase to master key derivation in src/main/crypto/recovery.ts
-- [ ] T124 [US4] Implement verification hash validation in src/main/crypto/recovery.ts
+- [ ] T124 [US4] Implement key_verifier validation in src/main/crypto/recovery.ts
 - [ ] T125 [US4] Implement link via recovery phrase IPC handler in src/main/ipc/sync-handlers.ts
 
 ### UI Components for US4

@@ -107,7 +107,7 @@ function deriveVerifyKey(masterKey: Uint8Array): Uint8Array {
 ### Signature Scope
 
 Ed25519 signatures cover all fields that influence decryption and merge behavior.
-Use a canonical encoding (CBOR or stable JSON) to avoid signature mismatches.
+Use canonical CBOR (RFC 8949) for deterministic encoding across platforms.
 
 ```typescript
 interface SignaturePayloadV1 {
@@ -133,6 +133,11 @@ interface SignaturePayloadV1 {
 // 1. Reconstruct SignaturePayloadV1 from received data
 // 2. Verify signature against the user's public signing key
 ```
+
+### Canonical Encoding
+
+All HMAC/signature inputs use canonical CBOR (RFC 8949, Section 4.2). The encoded bytes are
+fed directly into HMAC-SHA-256 or Ed25519; do not sign JSON strings.
 
 ---
 

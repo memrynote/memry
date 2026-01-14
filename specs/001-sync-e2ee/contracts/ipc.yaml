@@ -524,7 +524,7 @@ channels:
           description: e.g., "Invalid signature"
 
   crypto:verify-signature:
-    description: Verify signature on encrypted item with user-level signing key
+    description: Verify signature on encrypted item with user-level signing key (canonical CBOR payload)
     request:
       type: object
       required: [itemId, type, encryptedKey, keyNonce, encryptedData, dataNonce, signature]
