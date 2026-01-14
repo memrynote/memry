@@ -171,7 +171,7 @@ export function validateRecoveryPhrase(phrase: string): boolean {
   return bip39.validateMnemonic(phrase)
 }
 
-export async function deriveKeys(phrase: string, salt: Uint8Array) {
+export async function deriveKeys(phrase: string, kdfSalt: Uint8Array) {
   const seed = await bip39.mnemonicToSeed(phrase)
 
   // Derive master key with Argon2id
@@ -179,7 +179,7 @@ export async function deriveKeys(phrase: string, salt: Uint8Array) {
   sodium.crypto_pwhash(
     masterKey,
     Buffer.from(seed),
-    salt,
+    kdfSalt,
     ARGON2_PARAMS.timeCost,
     ARGON2_PARAMS.memoryCost * 1024,
     sodium.crypto_pwhash_ALG_ARGON2ID13
@@ -188,10 +188,15 @@ export async function deriveKeys(phrase: string, salt: Uint8Array) {
   // Derive purpose-specific keys with HKDF
   const vaultKey = hkdfDerive(masterKey, 'vault-key')
   const signingKey = hkdfDerive(masterKey, 'signing-key')
+  const verifyKey = hkdfDerive(masterKey, 'verify-key')
+  const keyVerifier = hmacSha256(verifyKey, 'memry-key-verify-v1')
 
-  return { masterKey, vaultKey, signingKey }
+  return { masterKey, vaultKey, signingKey, verifyKey, keyVerifier }
 }
 ```
+
+Store `kdf_salt` (plaintext) and `key_verifier` (HMAC) on the server during first device
+setup so new devices can derive and validate the master key without circular dependencies.
 
 ### Step 2: Keychain Integration (0.5 day)
 

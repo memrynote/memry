@@ -119,7 +119,7 @@
 - [ ] T048 [US1] Implement OAuth initiation endpoint for Google/Apple/GitHub in sync-server/src/routes/auth.ts
 - [ ] T049 [US1] Implement OAuth callback handler in sync-server/src/routes/auth.ts
 - [ ] T050 [US1] Implement device registration endpoint in sync-server/src/routes/auth.ts
-- [ ] T051 [US1] Implement first device setup endpoint (stores encrypted salt, verification hash) in sync-server/src/routes/auth.ts
+- [ ] T051 [US1] Implement first device setup endpoint (stores kdf_salt, key_verifier) in sync-server/src/routes/auth.ts
 - [ ] T052 [US1] Implement JWT token issuance service in sync-server/src/services/auth.ts
 - [ ] T053 [US1] Implement user service (create, get, update) in sync-server/src/services/user.ts
 
@@ -134,9 +134,9 @@
 - [ ] T056d [US1] Implement IPC handler for resend-verification in src/main/ipc/sync-handlers.ts
 - [ ] T056e [US1] Implement password validation logic (12+ chars, uppercase, lowercase, number, special) in src/main/ipc/sync-handlers.ts
 - [ ] T057 [US1] Implement IPC handler for OAuth first device setup in src/main/ipc/sync-handlers.ts
-- [ ] T058 [US1] Implement master key derivation from recovery phrase in src/main/crypto/keys.ts
+- [ ] T058 [US1] Implement master key derivation from recovery phrase and key verifier generation in src/main/crypto/keys.ts
 - [ ] T059 [US1] Implement vault key derivation via HKDF in src/main/crypto/keys.ts
-- [ ] T060 [US1] Implement signing key derivation via HKDF in src/main/crypto/keys.ts
+- [ ] T060 [US1] Implement signing/verify key derivation via HKDF in src/main/crypto/keys.ts
 - [ ] T061 [US1] Store master key in OS keychain in src/main/crypto/keychain.ts
 - [ ] T062 [US1] Implement recovery phrase confirmation IPC handler in src/main/ipc/sync-handlers.ts
 
@@ -241,16 +241,17 @@
 ### Server Linking Endpoints for US3
 
 - [ ] T104 [US3] Implement linking session initiation endpoint in sync-server/src/routes/auth.ts
-- [ ] T105 [US3] Implement QR scan endpoint in sync-server/src/routes/auth.ts
-- [ ] T106 [US3] Implement linking approval endpoint in sync-server/src/routes/auth.ts
-- [ ] T107 [US3] Implement linking completion endpoint in sync-server/src/routes/auth.ts
+- [ ] T105 [US3] Implement QR scan endpoint (accept new_device_confirm) in sync-server/src/routes/auth.ts
+- [ ] T106 [US3] Implement linking approval endpoint (verify new_device_confirm, return key_confirm) in sync-server/src/routes/auth.ts
+- [ ] T107 [US3] Implement linking completion endpoint (return encrypted key + key_confirm) in sync-server/src/routes/auth.ts
 - [ ] T108 [US3] Create LinkingSession Durable Object in sync-server/src/durable-objects/linking-session.ts
 
 ### Client Linking for US3
 
 - [ ] T109 [US3] Implement X25519 key pair generation in src/main/crypto/keys.ts
-- [ ] T110 [US3] Implement ECDH shared secret computation in src/main/crypto/keys.ts
-- [ ] T111 [US3] Implement master key encryption with shared secret in src/main/crypto/encryption.ts
+- [ ] T110 [US3] Implement ECDH shared secret computation and HKDF enc/mac keys in src/main/crypto/keys.ts
+- [ ] T110a [US3] Implement linking HMAC proofs (new_device_confirm, key_confirm) in src/main/crypto/keys.ts
+- [ ] T111 [US3] Implement master key encryption with enc_key in src/main/crypto/encryption.ts
 - [ ] T112 [US3] Implement generate linking QR IPC handler in src/main/ipc/sync-handlers.ts
 - [ ] T113 [US3] Implement link via QR IPC handler in src/main/ipc/sync-handlers.ts
 - [ ] T114 [US3] Implement approve linking IPC handler in src/main/ipc/sync-handlers.ts
