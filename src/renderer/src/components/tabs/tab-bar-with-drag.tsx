@@ -39,14 +39,7 @@ export const TabBarWithDrag = ({
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
 
-  // If group doesn't exist, don't render
-  if (!group) return null
-
-  // Separate pinned and regular tabs
-  const pinnedTabs = group.tabs.filter((t) => t.isPinned)
-  const regularTabs = group.tabs.filter((t) => !t.isPinned)
-
-  // Check scroll state
+  // Check scroll state - must be before early return (rules of hooks)
   const checkScroll = useCallback(() => {
     if (!scrollRef.current) return
     const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current
@@ -54,7 +47,10 @@ export const TabBarWithDrag = ({
     setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1)
   }, [])
 
-  // Set up scroll listener
+  // Compute tabs length safely before early return for useEffect dependency
+  const regularTabsLength = group?.tabs.filter((t) => !t.isPinned).length ?? 0
+
+  // Set up scroll listener - must be before early return (rules of hooks)
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
@@ -69,7 +65,14 @@ export const TabBarWithDrag = ({
       el.removeEventListener('scroll', checkScroll)
       resizeObserver.disconnect()
     }
-  }, [checkScroll, regularTabs.length])
+  }, [checkScroll, regularTabsLength])
+
+  // If group doesn't exist, don't render (after all hooks)
+  if (!group) return null
+
+  // Separate pinned and regular tabs
+  const pinnedTabs = group.tabs.filter((t) => t.isPinned)
+  const regularTabs = group.tabs.filter((t) => !t.isPinned)
 
   // Scroll handlers
   const scrollLeft = (): void => {
