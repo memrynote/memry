@@ -465,6 +465,12 @@ channels:
         content:
           type: object
           description: Plaintext content to encrypt
+        operation:
+          type: string
+          enum: [create, update, delete]
+        metadata:
+          type: object
+          description: Signed metadata (clocks/state vectors)
     response:
       type: object
       properties:
@@ -483,8 +489,13 @@ channels:
     description: Decrypt an item from sync
     request:
       type: object
-      required: [encryptedKey, keyNonce, encryptedData, dataNonce, signature]
+      required: [itemId, type, encryptedKey, keyNonce, encryptedData, dataNonce, signature]
       properties:
+        itemId:
+          type: string
+        type:
+          type: string
+          enum: [note, task, project, settings]
         encryptedKey:
           type: string
         keyNonce:
@@ -495,6 +506,12 @@ channels:
           type: string
         signature:
           type: string
+        operation:
+          type: string
+          enum: [create, update, delete]
+        metadata:
+          type: object
+          description: Signed metadata (clocks/state vectors)
     response:
       type: object
       properties:
@@ -510,9 +527,16 @@ channels:
     description: Verify signature on encrypted item
     request:
       type: object
-      required: [itemId, encryptedData, dataNonce, signature]
+      required: [itemId, type, encryptedKey, keyNonce, encryptedData, dataNonce, signature]
       properties:
         itemId:
+          type: string
+        type:
+          type: string
+          enum: [note, task, project, settings]
+        encryptedKey:
+          type: string
+        keyNonce:
           type: string
         encryptedData:
           type: string
@@ -520,6 +544,12 @@ channels:
           type: string
         signature:
           type: string
+        operation:
+          type: string
+          enum: [create, update, delete]
+        metadata:
+          type: object
+          description: Signed metadata (clocks/state vectors)
     response:
       type: object
       properties:

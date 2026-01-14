@@ -347,7 +347,7 @@ paths:
     post:
       operationId: setupFirstDevice
       summary: Complete first device setup
-      description: Stores encrypted salt and verification hash
+      description: Stores KDF salt and key verifier
       tags: [Auth]
       security:
         - bearerAuth: []
@@ -357,14 +357,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [encrypted_salt, verification_hash]
+              required: [kdf_salt, key_verifier]
               properties:
-                encrypted_salt:
+                kdf_salt:
                   type: string
-                  description: Salt encrypted with vault key (Base64)
-                verification_hash:
+                  description: KDF salt for master key derivation (Base64, plaintext)
+                key_verifier:
                   type: string
-                  description: Hash to verify master key (Base64)
+                  description: HMAC verifier of master key (Base64)
       responses:
         '200':
           description: Setup complete
@@ -419,7 +419,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [new_device_public_key, token]
+              required: [new_device_public_key, token, new_device_confirm]
               properties:
                 new_device_public_key:
                   type: string
@@ -427,6 +427,9 @@ paths:
                 token:
                   type: string
                   description: One-time token from QR code
+                new_device_confirm:
+                  type: string
+                  description: HMAC proof of possession from new device (Base64)
       responses:
         '200':
           description: Scan registered, waiting for approval
@@ -456,7 +459,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [encrypted_master_key, nonce]
+              required: [encrypted_master_key, nonce, key_confirm]
               properties:
                 encrypted_master_key:
                   type: string
@@ -464,6 +467,9 @@ paths:
                 nonce:
                   type: string
                   description: Encryption nonce (Base64)
+                key_confirm:
+                  type: string
+                  description: HMAC confirmation for encrypted master key (Base64)
       responses:
         '200':
           description: Linking approved
@@ -505,6 +511,8 @@ paths:
                     type: string
                   nonce:
                     type: string
+                  key_confirm:
+                    type: string
                   device:
                     $ref: '#/components/schemas/Device'
         '404':
@@ -531,9 +539,9 @@ paths:
               schema:
                 type: object
                 properties:
-                  encrypted_salt:
+                  kdf_salt:
                     type: string
-                  verification_hash:
+                  key_verifier:
                     type: string
         '404':
           $ref: '#/components/responses/NotFound'
@@ -658,7 +666,7 @@ components:
 
     DeviceRegistration:
       type: object
-      required: [name, platform, app_version, public_key]
+      required: [name, platform, app_version]
       properties:
         name:
           type: string
@@ -670,9 +678,9 @@ components:
           type: string
         app_version:
           type: string
-        public_key:
+        auth_public_key:
           type: string
-          description: Ed25519 public key (Base64)
+          description: Optional device auth public key (Base64)
 
     LinkingSession:
       type: object

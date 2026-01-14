@@ -56,7 +56,8 @@ As an existing user, I want to securely link a new device to my account by scann
 1. **Given** I am on my existing device, **When** I go to Settings > Devices > Link New Device, **Then** a QR code is displayed with a 5-minute expiration timer
 2. **Given** I have the QR code displayed, **When** I scan it with my new device after signing in with OAuth, **Then** I see "Waiting for approval" on the new device
 3. **Given** a linking request is pending, **When** I approve on my existing device, **Then** my new device receives the encrypted master key and begins syncing
-4. **Given** a QR code has expired, **When** I try to scan it, **Then** I see a clear error message that the QR code is expired
+4. **Given** linking completes, **When** my new device receives the encrypted master key, **Then** it verifies key confirmation before storing it
+5. **Given** a QR code has expired, **When** I try to scan it, **Then** I see a clear error message that the QR code is expired
 
 ---
 
@@ -333,22 +334,26 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 - **FR-001c**: System MUST hash passwords with Argon2id before storage
 - **FR-002**: System MUST generate a 24-word BIP39 recovery phrase during first device setup
 - **FR-003**: System MUST require user confirmation of recovery phrase before proceeding
-- **FR-004**: System MUST derive the master encryption key from the recovery phrase (not generate separately)
+- **FR-004**: System MUST derive the master encryption key from the recovery phrase using Argon2id with a per-user `kdf_salt`
+- **FR-004a**: System MUST store `kdf_salt` in plaintext on the server (non-secret) for key derivation on new devices
+- **FR-004b**: System MUST store a `key_verifier` derived from the master key for recovery phrase validation
 - **FR-005**: System MUST store the master key in the OS keychain, never in plain storage
 - **FR-006**: System MUST never store the recovery phrase after initial setup confirmation
 
 **Device Linking**
-- **FR-007**: System MUST support device linking via QR code with ephemeral key exchange
+- **FR-007**: System MUST support device linking via QR code with ephemeral ECDH and key confirmation
 - **FR-008**: System MUST expire QR codes after 5 minutes
-- **FR-009**: System MUST require approval from existing device before completing QR-based linking
+- **FR-009**: System MUST require approval from existing device and verify new-device proof before completing QR-based linking
+- **FR-009a**: System MUST provide key confirmation so the new device can verify the encrypted master key
 - **FR-010**: System MUST support device linking via recovery phrase as backup method
 - **FR-011**: System MUST display linked devices in settings with option to remove
 
 **Data Encryption**
 - **FR-012**: System MUST encrypt all user content before transmission or storage
 - **FR-013**: System MUST use per-item file keys encrypted with the vault key
-- **FR-014**: System MUST sign all encrypted items for authenticity verification
-- **FR-015**: System MUST reject items with invalid signatures
+- **FR-014**: System MUST sign all encrypted items with a user-level signing key for authenticity verification
+- **FR-014a**: Signatures MUST cover encrypted keys, nonces, and merge metadata (clocks/state vectors)
+- **FR-015**: System MUST reject items with invalid signatures or mismatched signed metadata
 - **FR-016**: Server MUST only store encrypted blobs with no ability to decrypt
 
 **Sync Protocol**
@@ -434,8 +439,9 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 ### Key Entities
 
 - **User Account**: Represents a user identity linked to OAuth provider, owns a vault and recovery capability
-- **Device**: A client device linked to a user account, has unique device ID and authentication keys
+- **Device**: A client device linked to a user account with a unique device ID (device auth keys optional; content signing is user-level)
 - **Vault**: Container for all user's encrypted content, protected by vault key derived from master key
+- **User Signing Key**: Ed25519 keypair derived from the master key, shared across devices for content signatures
 - **Note**: Rich text document with metadata, tags, and properties - synced as CRDT
 - **Task**: Structured item with title, status, priority, dates, and project association - synced with vector clocks
 - **Project**: Organizational container for tasks with its own properties

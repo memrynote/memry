@@ -50,21 +50,21 @@ Recovery Phrase (24 words)
         │
         ▼ BIP39 → Seed (64 bytes)
         │
-        ▼ Argon2id (salt from server)
+        ▼ Argon2id (kdf_salt from server, plaintext)
         │
    Master Key (32 bytes)
         │
         ├──► HKDF("memry-vault-key-v1") ──► Vault Key (32 bytes)
         │                                        │
-        │                                        └──► Encrypts per-item File Keys
+        │                                        └──► Wraps per-item random File Keys
         │
         ├──► HKDF("memry-signing-key-v1") ──► Ed25519 Seed (32 bytes)
         │                                        │
-        │                                        └──► Ed25519 Keypair (signing)
+        │                                        └──► Ed25519 Keypair (user-level signing)
         │
-        └──► HKDF("memry-device-key-v1") ──► X25519 Seed (32 bytes)
+        └──► HKDF("memry-verify-key-v1") ──► Verify Key (32 bytes)
                                                  │
-                                                 └──► X25519 Keypair (device linking)
+                                                 └──► HMAC-SHA-256 key verifier
 ```
 
 ### HKDF Context Strings
@@ -76,14 +76,11 @@ const HKDF_CONTEXTS = {
   // Key for encrypting/decrypting file keys
   VAULT_KEY: 'memry-vault-key-v1',
 
-  // Seed for Ed25519 signing keypair
+  // Seed for Ed25519 signing keypair (user-level)
   SIGNING_KEY: 'memry-signing-key-v1',
 
-  // Seed for X25519 key exchange (device linking)
-  DEVICE_KEY: 'memry-device-key-v1',
-
-  // Per-item file key derivation (itemId is appended)
-  FILE_KEY: 'memry-file-key-v1',
+  // Key verifier (stored server-side for recovery phrase checks)
+  VERIFY_KEY: 'memry-verify-key-v1'
 } as const
 
 // HKDF parameters
@@ -97,29 +94,44 @@ const HKDF_PARAMS = {
 function deriveVaultKey(masterKey: Uint8Array): Uint8Array {
   return hkdf(masterKey, HKDF_CONTEXTS.VAULT_KEY, HKDF_PARAMS)
 }
+
+function deriveVerifyKey(masterKey: Uint8Array): Uint8Array {
+  return hkdf(masterKey, HKDF_CONTEXTS.VERIFY_KEY, HKDF_PARAMS)
+}
+
+// Per-item file keys are random (32 bytes) and wrapped with the vault key.
+// Key verifier stored on the server:
+// keyVerifier = HMAC-SHA-256(deriveVerifyKey(masterKey), 'memry-key-verify-v1')
 ```
 
 ### Signature Scope
 
-Ed25519 signatures cover the following fields to prevent tampering:
+Ed25519 signatures cover all fields that influence decryption and merge behavior.
+Use a canonical encoding (CBOR or stable JSON) to avoid signature mismatches.
 
 ```typescript
-interface SignaturePayload {
-  id: string            // Item UUID
-  type: string          // Item type
-  cryptoVersion: number // Algorithm version
-  encryptedData: string // The encrypted content (Base64)
-  dataNonce: string     // Encryption nonce (Base64)
-  signedAt: number      // Unix timestamp (milliseconds)
+interface SignaturePayloadV1 {
+  id: string                // Item UUID
+  type: string              // Item type
+  operation?: string        // create | update | delete (if applicable)
+  cryptoVersion: number     // Algorithm version
+  encryptedKey: string      // Wrapped file key (Base64)
+  keyNonce: string          // Nonce for key wrapping (Base64)
+  encryptedData: string     // The encrypted content (Base64)
+  dataNonce: string         // Encryption nonce (Base64)
+  metadata?: {
+    clock?: VectorClock
+    fieldClocks?: { [field: string]: VectorClock }
+    stateVector?: string
+  }
 }
 
 // Signature is computed as:
-// signature = Ed25519.sign(JSON.stringify(SignaturePayload), signingPrivateKey)
+// signature = Ed25519.sign(canonicalEncode(SignaturePayloadV1), signingPrivateKey)
 
 // Verification:
-// 1. Reconstruct SignaturePayload from received data
+// 1. Reconstruct SignaturePayloadV1 from received data
 // 2. Verify signature against sender's public key
-// 3. Check signedAt is within acceptable time window (±5 minutes)
 ```
 
 ---
@@ -140,8 +152,8 @@ CREATE TABLE users (
   auth_provider_id TEXT,                        -- Provider's user ID (NULL for email auth)
   password_hash TEXT,                           -- Argon2id hash (only for email auth)
   password_salt TEXT,                           -- Salt for password hash (only for email auth)
-  encrypted_salt TEXT NOT NULL,                 -- Salt encrypted with vault key (for E2EE)
-  verification_hash TEXT NOT NULL,              -- Hash to verify master key
+  kdf_salt TEXT NOT NULL,                       -- KDF salt for master key (Base64, plaintext)
+  key_verifier TEXT NOT NULL,                   -- HMAC-SHA-256 verifier of master key (Base64)
   email_verification_token TEXT,                -- Token for email verification
   email_verification_expires INTEGER,           -- Token expiry timestamp
   password_reset_token TEXT,                    -- Token for password reset
@@ -168,8 +180,8 @@ interface User {
   authProviderId?: string                        // Only for OAuth users
   passwordHash?: string                          // Only for email users (never sent to client)
   passwordSalt?: string                          // Only for email users (never sent to client)
-  encryptedSalt: string                          // Base64 (for E2EE key derivation)
-  verificationHash: string                       // Base64
+  kdfSalt: string                                // Base64 (plaintext KDF salt)
+  keyVerifier: string                            // Base64 (HMAC verifier)
   storageUsed: number
   storageLimit: number
   createdAt: Date
@@ -195,7 +207,8 @@ interface UserPublic {
 - `authMethod`: Must be 'email' or 'oauth'
 - `authProvider`: Required if authMethod is 'oauth', must be one of allowed providers
 - `password` (for email auth): Min 12 chars, must contain uppercase, lowercase, number, special char
-- `encryptedSalt`: Base64-encoded, 32+ bytes when decoded
+- `kdfSalt`: Base64-encoded, 16+ bytes when decoded (non-secret)
+- `keyVerifier`: Base64-encoded, 32 bytes when decoded
 - `storageUsed`: >= 0, <= storageLimit
 
 ---
@@ -214,7 +227,7 @@ CREATE TABLE devices (
   platform TEXT NOT NULL,                       -- 'macos' | 'windows' | 'linux' | 'ios' | 'android'
   os_version TEXT,                              -- e.g., '14.0', '11'
   app_version TEXT NOT NULL,                    -- e.g., '1.0.0'
-  public_key TEXT NOT NULL,                     -- Ed25519 public key (Base64)
+  auth_public_key TEXT,                         -- Optional device auth public key (Base64, not used for content signing)
   push_token TEXT,                              -- For push notifications (optional)
   created_at INTEGER NOT NULL,
   last_sync_at INTEGER,
@@ -250,7 +263,7 @@ interface Device {
   platform: 'macos' | 'windows' | 'linux' | 'ios' | 'android'
   osVersion?: string
   appVersion: string
-  publicKey?: string              // Only on server
+  authPublicKey?: string          // Only on server (optional, device auth only)
   linkedAt: Date
   lastSyncAt?: Date
   isCurrentDevice?: boolean       // Only on client
@@ -295,8 +308,10 @@ CREATE TABLE linking_sessions (
   initiator_device_id TEXT NOT NULL REFERENCES devices(id),
   ephemeral_public_key TEXT NOT NULL,           -- X25519 public key (Base64)
   new_device_public_key TEXT,                   -- Set when new device scans
+  new_device_confirm TEXT,                      -- HMAC proof from new device (Base64)
   encrypted_master_key TEXT,                    -- Set when approved
   encrypted_key_nonce TEXT,                     -- Nonce for encrypted key
+  key_confirm TEXT,                             -- HMAC confirmation for encrypted key (Base64)
   status TEXT NOT NULL DEFAULT 'pending',       -- 'pending' | 'scanned' | 'approved' | 'completed' | 'expired'
   created_at INTEGER NOT NULL,
   expires_at INTEGER NOT NULL,                  -- 5 minutes from creation
@@ -316,8 +331,10 @@ interface LinkingSession {
   initiatorDeviceId: string
   ephemeralPublicKey: string      // Base64
   newDevicePublicKey?: string     // Base64, set after scan
+  newDeviceConfirm?: string       // Base64, proof of possession
   encryptedMasterKey?: string     // Base64, set after approval
   encryptedKeyNonce?: string      // Base64
+  keyConfirm?: string             // Base64, key confirmation
   status: 'pending' | 'scanned' | 'approved' | 'completed' | 'expired'
   createdAt: Date
   expiresAt: Date
@@ -338,6 +355,27 @@ interface LinkingSession {
                │ Expired │
                └─────────┘
 ```
+
+Linking uses per-session X25519 ECDH between the existing device's ephemeral key and the new
+device's ephemeral key. The new device submits `new_device_confirm` (HMAC proof) so the
+existing device can verify possession before approval. The existing device returns
+`key_confirm` so the new device can verify the encrypted master key on completion.
+
+### Linking Handshake (QR)
+
+1. Existing device generates an ephemeral X25519 keypair and a one-time token, then creates
+   a linking session. QR payload includes: `session_id`, `token`, `ephemeral_public_key`.
+2. New device generates its ephemeral X25519 keypair and computes:
+   `shared = X25519(new_priv, ephemeral_public_key)`.
+   Derive `enc_key` and `mac_key` via HKDF from `shared`.
+3. New device posts `new_device_public_key` and
+   `new_device_confirm = HMAC(mac_key, session_id || token || new_device_public_key)`.
+4. Existing device fetches the session, computes the same `shared`, verifies
+   `new_device_confirm`, then encrypts the master key with `enc_key`.
+5. Existing device posts `encrypted_master_key`, `nonce`, and
+   `key_confirm = HMAC(mac_key, encrypted_master_key || nonce || session_id)`.
+6. New device completes the session, verifies `key_confirm`, then decrypts and stores the
+   master key.
 
 ---
 
@@ -469,9 +507,10 @@ interface EncryptedItem {
   encryptedData: string           // Content encrypted with File Key (Base64)
   dataNonce: string               // Nonce for data encryption (Base64)
 
-  // Integrity - signature covers: id + type + cryptoVersion + encryptedData + dataNonce
+  // Integrity - signature covers: id + type + cryptoVersion + encryptedKey + keyNonce +
+  // encryptedData + dataNonce + clock/fieldClocks when present
   signature: string               // Ed25519 signature (Base64)
-  signedAt: number                // Unix timestamp when signed (included in signature)
+  signedAt?: number               // Optional timestamp for diagnostics
 
   // Sync metadata (for non-CRDT items)
   clock?: VectorClock
@@ -493,7 +532,7 @@ interface EncryptedCrdtItem {
   keyNonce: string
 
   // Integrity
-  signature: string
+  signature: string               // Signature includes encryptedSnapshot + snapshotNonce + stateVector + encryptedKey
 
   // Incremental updates
   updates: EncryptedUpdate[]
@@ -503,7 +542,7 @@ interface EncryptedUpdate {
   encryptedData: string           // Yjs update (Base64)
   nonce: string
   timestamp: number
-  signature: string
+  signature: string               // Signature includes note id + encryptedData + nonce + timestamp
 }
 ```
 
@@ -527,6 +566,14 @@ interface AttachmentManifest {
   createdAt: number
 }
 
+interface EncryptedAttachmentManifest {
+  encryptedManifest: string       // Base64 encrypted AttachmentManifest
+  manifestNonce: string           // Nonce (Base64)
+  encryptedFileKey: string        // File key encrypted with Vault Key (Base64)
+  keyNonce: string                // Nonce for key encryption (Base64)
+  manifestSignature: string       // Ed25519 signature over encryptedManifest + manifestNonce + encryptedFileKey + keyNonce
+}
+
 interface ChunkRef {
   index: number                   // Position in file (0-based)
   hash: string                    // SHA-256 of plaintext chunk
@@ -534,6 +581,9 @@ interface ChunkRef {
   size: number                    // Actual chunk size
 }
 ```
+
+Chunks are encrypted with the attachment file key using AEAD and unique nonces.
+Clients verify `encryptedHash` before decrypting and `hash` after decrypting.
 
 ### Reference Structure (In Note/Task)
 

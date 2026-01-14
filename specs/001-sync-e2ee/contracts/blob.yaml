@@ -214,7 +214,7 @@ paths:
               required: [manifest]
               properties:
                 manifest:
-                  $ref: '#/components/schemas/AttachmentManifest'
+                  $ref: '#/components/schemas/EncryptedAttachmentManifest'
       responses:
         '200':
           description: Upload complete
@@ -305,17 +305,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  encrypted_manifest:
-                    type: string
-                    description: Base64 encrypted manifest
-                  manifest_nonce:
-                    type: string
-                  encrypted_file_key:
-                    type: string
-                  key_nonce:
-                    type: string
+                $ref: '#/components/schemas/EncryptedAttachmentManifest'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -486,6 +476,7 @@ components:
 
     AttachmentManifest:
       type: object
+      description: Plaintext manifest structure (encrypted before upload)
       required: [id, filename, mime_type, size, checksum, chunks, chunk_size]
       properties:
         id:
@@ -510,6 +501,23 @@ components:
           default: 8388608
         created_at:
           type: integer
+
+    EncryptedAttachmentManifest:
+      type: object
+      required: [encrypted_manifest, manifest_nonce, encrypted_file_key, key_nonce, manifest_signature]
+      properties:
+        encrypted_manifest:
+          type: string
+          description: Base64 encrypted manifest
+        manifest_nonce:
+          type: string
+        encrypted_file_key:
+          type: string
+        key_nonce:
+          type: string
+        manifest_signature:
+          type: string
+          description: Ed25519 signature over encrypted manifest fields (Base64)
 
     ChunkRef:
       type: object

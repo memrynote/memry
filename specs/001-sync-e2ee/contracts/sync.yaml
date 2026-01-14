@@ -480,7 +480,7 @@ components:
           description: Nonce for data encryption (Base64)
         signature:
           type: string
-          description: Ed25519 signature (Base64)
+          description: Ed25519 signature over id, type, operation, encrypted_key, key_nonce, encrypted_data, data_nonce, and clock/fieldClocks metadata (Base64)
 
     PushResponse:
       type: object
@@ -551,6 +551,7 @@ components:
           type: string
         signature:
           type: string
+          description: Ed25519 signature over note_id, encrypted_data, nonce, and timestamp (Base64)
         timestamp:
           type: integer
 
@@ -572,6 +573,7 @@ components:
           type: string
         signature:
           type: string
+          description: Ed25519 signature over note_id, encrypted_snapshot, snapshot_nonce, state_vector, encrypted_key, and key_nonce (Base64)
         updates:
           type: array
           items:
