@@ -1,5 +1,8 @@
 # AGENTS.md
 
+When writing complex features or significant refactors, use an ExecPlan (as described in .agent/PLANS.md) from design to implementation.
+
+
 Guidelines for AI coding agents working in the Memry codebase.
 
 ## Quick Reference
