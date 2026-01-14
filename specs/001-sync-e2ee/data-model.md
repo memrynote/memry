@@ -131,7 +131,7 @@ interface SignaturePayloadV1 {
 
 // Verification:
 // 1. Reconstruct SignaturePayloadV1 from received data
-// 2. Verify signature against sender's public key
+// 2. Verify signature against the user's public signing key
 ```
 
 ---
@@ -367,13 +367,14 @@ existing device can verify possession before approval. The existing device retur
    a linking session. QR payload includes: `session_id`, `token`, `ephemeral_public_key`.
 2. New device generates its ephemeral X25519 keypair and computes:
    `shared = X25519(new_priv, ephemeral_public_key)`.
-   Derive `enc_key` and `mac_key` via HKDF from `shared`.
+   Derive `enc_key = HKDF(shared, 'memry-linking-enc-v1')` and
+   `mac_key = HKDF(shared, 'memry-linking-mac-v1')`.
 3. New device posts `new_device_public_key` and
-   `new_device_confirm = HMAC(mac_key, session_id || token || new_device_public_key)`.
+   `new_device_confirm = HMAC(mac_key, canonicalEncode({ session_id, token, new_device_public_key }))`.
 4. Existing device fetches the session, computes the same `shared`, verifies
    `new_device_confirm`, then encrypts the master key with `enc_key`.
 5. Existing device posts `encrypted_master_key`, `nonce`, and
-   `key_confirm = HMAC(mac_key, encrypted_master_key || nonce || session_id)`.
+   `key_confirm = HMAC(mac_key, canonicalEncode({ session_id, encrypted_master_key, nonce }))`.
 6. New device completes the session, verifies `key_confirm`, then decrypts and stores the
    master key.
 

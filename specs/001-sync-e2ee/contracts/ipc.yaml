@@ -217,7 +217,7 @@ channels:
           type: number
 
   sync:link-via-qr:
-    description: Link new device by scanning QR code
+    description: Link new device by scanning QR code (includes new_device_confirm proof + key confirmation)
     request:
       type: object
       required: [qrData, oauthToken, provider]
@@ -261,7 +261,7 @@ channels:
           type: string
 
   sync:approve-linking:
-    description: Approve device linking request
+    description: Approve device linking request (verifies proof and returns key_confirm)
     request:
       type: object
       required: [sessionId]
@@ -524,7 +524,7 @@ channels:
           description: e.g., "Invalid signature"
 
   crypto:verify-signature:
-    description: Verify signature on encrypted item
+    description: Verify signature on encrypted item with user-level signing key
     request:
       type: object
       required: [itemId, type, encryptedKey, keyNonce, encryptedData, dataNonce, signature]

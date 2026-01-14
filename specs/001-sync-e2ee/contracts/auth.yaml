@@ -429,7 +429,7 @@ paths:
                   description: One-time token from QR code
                 new_device_confirm:
                   type: string
-                  description: HMAC proof of possession from new device (Base64)
+                  description: HMAC(mac_key, canonicalEncode({session_id, token, new_device_public_key})) (Base64)
       responses:
         '200':
           description: Scan registered, waiting for approval
@@ -469,7 +469,7 @@ paths:
                   description: Encryption nonce (Base64)
                 key_confirm:
                   type: string
-                  description: HMAC confirmation for encrypted master key (Base64)
+                  description: HMAC(mac_key, canonicalEncode({session_id, encrypted_master_key, nonce})) (Base64)
       responses:
         '200':
           description: Linking approved
@@ -513,6 +513,7 @@ paths:
                     type: string
                   key_confirm:
                     type: string
+                    description: HMAC(mac_key, canonicalEncode({session_id, encrypted_master_key, nonce})) (Base64)
                   device:
                     $ref: '#/components/schemas/Device'
         '404':
@@ -541,8 +542,10 @@ paths:
                 properties:
                   kdf_salt:
                     type: string
+                    description: KDF salt for master key derivation (Base64, plaintext)
                   key_verifier:
                     type: string
+                    description: HMAC verifier of master key (Base64)
         '404':
           $ref: '#/components/responses/NotFound'
 
