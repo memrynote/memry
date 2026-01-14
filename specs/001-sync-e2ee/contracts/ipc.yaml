@@ -3,6 +3,127 @@
 
 channels:
   # ============================================
+  # EMAIL AUTHENTICATION
+  # ============================================
+
+  auth:email-signup:
+    description: Sign up with email and password
+    request:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        userId:
+          type: string
+        message:
+          type: string
+          description: e.g., "Verification email sent"
+        error:
+          type: string
+
+  auth:email-verify:
+    description: Verify email with token from email link
+    request:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        recoveryPhrase:
+          type: string
+          description: 24-word BIP39 phrase (show once)
+        deviceId:
+          type: string
+        error:
+          type: string
+
+  auth:email-login:
+    description: Log in with email and password
+    request:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        needsRecoverySetup:
+          type: boolean
+          description: True if this is first login on this device
+        error:
+          type: string
+
+  auth:forgot-password:
+    description: Request password reset email
+    request:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+  auth:reset-password:
+    description: Reset password with token
+    request:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token:
+          type: string
+        newPassword:
+          type: string
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+
+  auth:change-password:
+    description: Change password (authenticated user)
+    request:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+    response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+
+  # ============================================
   # SETUP & DEVICE MANAGEMENT
   # ============================================
 

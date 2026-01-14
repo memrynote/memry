@@ -22,7 +22,8 @@ pnpm add -g wrangler
 ### Required Accounts
 
 - **Cloudflare Account**: For Workers, D1, R2
-- **OAuth App Credentials**: Google, Apple, GitHub
+- **OAuth App Credentials**: Google, Apple, GitHub (optional if only using email auth)
+- **Email Service**: For verification emails (Resend, SendGrid, or Cloudflare Email)
 
 ## Project Setup
 

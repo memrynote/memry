@@ -9,6 +9,206 @@ servers:
     description: Production
 
 paths:
+  # ============================================
+  # EMAIL/PASSWORD AUTHENTICATION
+  # ============================================
+
+  /auth/email/signup:
+    post:
+      operationId: emailSignup
+      summary: Sign up with email and password
+      tags: [Auth, Email]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 12
+                  description: Min 12 chars, must include uppercase, lowercase, number, special char
+      responses:
+        '201':
+          description: Account created, verification email sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Verification email sent
+                  user_id:
+                    type: string
+        '400':
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Email already registered
+
+  /auth/email/verify:
+    post:
+      operationId: verifyEmail
+      summary: Verify email with token
+      tags: [Auth, Email]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                  description: Token from verification email
+      responses:
+        '200':
+          description: Email verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '400':
+          description: Invalid or expired token
+
+  /auth/email/resend-verification:
+    post:
+      operationId: resendVerification
+      summary: Resend verification email
+      tags: [Auth, Email]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Verification email sent (if account exists)
+        '429':
+          description: Too many requests
+
+  /auth/email/login:
+    post:
+      operationId: emailLogin
+      summary: Log in with email and password
+      tags: [Auth, Email]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '401':
+          description: Invalid email or password
+        '403':
+          description: Email not verified
+
+  /auth/email/forgot-password:
+    post:
+      operationId: forgotPassword
+      summary: Request password reset email
+      tags: [Auth, Email]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Reset email sent (if account exists)
+        '429':
+          description: Too many requests
+
+  /auth/email/reset-password:
+    post:
+      operationId: resetPassword
+      summary: Reset password with token
+      tags: [Auth, Email]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, new_password]
+              properties:
+                token:
+                  type: string
+                new_password:
+                  type: string
+                  minLength: 12
+      responses:
+        '200':
+          description: Password reset successful
+        '400':
+          description: Invalid or expired token
+
+  /auth/email/change-password:
+    post:
+      operationId: changePassword
+      summary: Change password (authenticated)
+      tags: [Auth, Email]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password:
+                  type: string
+                new_password:
+                  type: string
+                  minLength: 12
+      responses:
+        '200':
+          description: Password changed
+        '401':
+          description: Current password incorrect
+
+  # ============================================
+  # OAUTH AUTHENTICATION
+  # ============================================
+
   /auth/oauth/{provider}:
     get:
       operationId: initiateOAuth
@@ -367,9 +567,14 @@ components:
           format: email
         email_verified:
           type: boolean
+        auth_method:
+          type: string
+          enum: [email, oauth]
+          description: Authentication method used
         auth_provider:
           type: string
           enum: [google, apple, github]
+          description: OAuth provider (only if auth_method is oauth)
         storage_used:
           type: integer
         storage_limit:

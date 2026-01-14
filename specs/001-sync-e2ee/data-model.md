@@ -43,26 +43,34 @@ This document defines all entities, relationships, and state transitions for the
 
 ## 1. User Account
 
-Represents a user identity created via OAuth.
+Represents a user identity created via email/password or OAuth provider.
 
 ### Schema (Server - D1)
 
 ```sql
 CREATE TABLE users (
   id TEXT PRIMARY KEY,                          -- UUID
-  email TEXT UNIQUE NOT NULL,                   -- From OAuth provider
+  email TEXT UNIQUE NOT NULL,                   -- User's email
   email_verified INTEGER NOT NULL DEFAULT 0,    -- Boolean
-  auth_provider TEXT NOT NULL,                  -- 'google' | 'apple' | 'github'
-  auth_provider_id TEXT NOT NULL,               -- Provider's user ID
-  encrypted_salt TEXT NOT NULL,                 -- Salt encrypted with vault key
+  auth_method TEXT NOT NULL,                    -- 'email' | 'oauth'
+  auth_provider TEXT,                           -- 'google' | 'apple' | 'github' | NULL for email
+  auth_provider_id TEXT,                        -- Provider's user ID (NULL for email auth)
+  password_hash TEXT,                           -- Argon2id hash (only for email auth)
+  password_salt TEXT,                           -- Salt for password hash (only for email auth)
+  encrypted_salt TEXT NOT NULL,                 -- Salt encrypted with vault key (for E2EE)
   verification_hash TEXT NOT NULL,              -- Hash to verify master key
+  email_verification_token TEXT,                -- Token for email verification
+  email_verification_expires INTEGER,           -- Token expiry timestamp
+  password_reset_token TEXT,                    -- Token for password reset
+  password_reset_expires INTEGER,               -- Token expiry timestamp
   storage_used INTEGER NOT NULL DEFAULT 0,      -- Bytes used
   storage_limit INTEGER NOT NULL DEFAULT 5368709120, -- 5GB default
   created_at INTEGER NOT NULL,                  -- Unix timestamp
   updated_at INTEGER NOT NULL                   -- Unix timestamp
 );
 
-CREATE UNIQUE INDEX idx_users_provider ON users(auth_provider, auth_provider_id);
+CREATE UNIQUE INDEX idx_users_provider ON users(auth_provider, auth_provider_id)
+  WHERE auth_provider IS NOT NULL;
 ```
 
 ### TypeScript Type
@@ -72,21 +80,38 @@ interface User {
   id: string
   email: string
   emailVerified: boolean
-  authProvider: 'google' | 'apple' | 'github'
-  authProviderId: string
-  encryptedSalt: string           // Base64
-  verificationHash: string        // Base64
+  authMethod: 'email' | 'oauth'
+  authProvider?: 'google' | 'apple' | 'github'  // Only for OAuth users
+  authProviderId?: string                        // Only for OAuth users
+  passwordHash?: string                          // Only for email users (never sent to client)
+  passwordSalt?: string                          // Only for email users (never sent to client)
+  encryptedSalt: string                          // Base64 (for E2EE key derivation)
+  verificationHash: string                       // Base64
   storageUsed: number
   storageLimit: number
   createdAt: Date
   updatedAt: Date
+}
+
+// Client-safe user (excludes sensitive fields)
+interface UserPublic {
+  id: string
+  email: string
+  emailVerified: boolean
+  authMethod: 'email' | 'oauth'
+  authProvider?: 'google' | 'apple' | 'github'
+  storageUsed: number
+  storageLimit: number
+  createdAt: Date
 }
 ```
 
 ### Validation Rules
 
 - `email`: Valid email format, max 255 chars
-- `authProvider`: Must be one of allowed providers
+- `authMethod`: Must be 'email' or 'oauth'
+- `authProvider`: Required if authMethod is 'oauth', must be one of allowed providers
+- `password` (for email auth): Min 12 chars, must contain uppercase, lowercase, number, special char
 - `encryptedSalt`: Base64-encoded, 32+ bytes when decoded
 - `storageUsed`: >= 0, <= storageLimit
 

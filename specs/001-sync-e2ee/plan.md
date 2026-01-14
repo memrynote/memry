@@ -216,7 +216,9 @@ tests/
 - Unit tests for all crypto
 
 ### Phase 2: First Device Setup
-- OAuth flow integration
+- Email/password signup with verification
+- OAuth flow integration (Google, Apple, GitHub)
+- Password validation (min 12 chars, complexity)
 - Recovery phrase UI
 - Master key generation and storage
 - Device registration

@@ -18,9 +18,11 @@ As a new user, I want to set up my account on my first device so that I can star
 **Acceptance Scenarios**:
 
 1. **Given** I am a new user, **When** I sign up with OAuth (Google/Apple/GitHub), **Then** I am prompted with a 24-word recovery phrase that I must confirm
-2. **Given** I have confirmed my recovery phrase, **When** setup completes, **Then** my master key is securely stored in the OS keychain and never exposed
-3. **Given** setup is complete, **When** I create my first note or task, **Then** the content is encrypted before any network transmission
-4. **Given** I am on the recovery phrase screen, **When** I try to proceed without confirming all words, **Then** I cannot continue until confirmation is complete
+2. **Given** I am a new user, **When** I sign up with email/password, **Then** I receive a verification email and must verify before proceeding
+3. **Given** I sign up with email, **When** I enter a password shorter than 12 characters, **Then** I see an error explaining password requirements
+4. **Given** I have confirmed my recovery phrase, **When** setup completes, **Then** my master key is securely stored in the OS keychain and never exposed
+5. **Given** setup is complete, **When** I create my first note or task, **Then** the content is encrypted before any network transmission
+6. **Given** I am on the recovery phrase screen, **When** I try to proceed without confirming all words, **Then** I cannot continue until confirmation is complete
 
 ---
 
@@ -326,6 +328,9 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 
 **First Device Setup**
 - **FR-001**: System MUST support OAuth signup via Google, Apple, and GitHub
+- **FR-001a**: System MUST support email/password signup with email verification
+- **FR-001b**: System MUST enforce password requirements (min 12 chars, complexity rules)
+- **FR-001c**: System MUST hash passwords with Argon2id before storage
 - **FR-002**: System MUST generate a 24-word BIP39 recovery phrase during first device setup
 - **FR-003**: System MUST require user confirmation of recovery phrase before proceeding
 - **FR-004**: System MUST derive the master encryption key from the recovery phrase (not generate separately)

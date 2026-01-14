@@ -10,12 +10,13 @@ This document captures research findings and decisions for implementing the sync
 2. [Key Derivation Parameters](#2-key-derivation-parameters)
 3. [CRDT Library for Notes](#3-crdt-library-for-notes)
 4. [Sync Server Architecture](#4-sync-server-architecture)
-5. [OAuth Provider Integration](#5-oauth-provider-integration)
-6. [QR Code Device Linking Protocol](#6-qr-code-device-linking-protocol)
-7. [Chunked Attachment Storage](#7-chunked-attachment-storage)
-8. [WebSocket vs Polling for Real-time Sync](#8-websocket-vs-polling-for-real-time-sync)
-9. [Vector Clock Implementation](#9-vector-clock-implementation)
-10. [Offline Queue Persistence](#10-offline-queue-persistence)
+5. [Email/Password Authentication](#5-emailpassword-authentication)
+6. [OAuth Provider Integration](#6-oauth-provider-integration)
+7. [QR Code Device Linking Protocol](#7-qr-code-device-linking-protocol)
+8. [Chunked Attachment Storage](#8-chunked-attachment-storage)
+9. [WebSocket vs Polling for Real-time Sync](#9-websocket-vs-polling-for-real-time-sync)
+10. [Vector Clock Implementation](#10-vector-clock-implementation)
+11. [Offline Queue Persistence](#11-offline-queue-persistence)
 
 ---
 
@@ -195,7 +196,124 @@ Cloudflare Workers provides the best combination of:
 
 ---
 
-## 5. OAuth Provider Integration
+## 5. Email/Password Authentication
+
+### Decision: Argon2id password hashing with email verification
+
+### Rationale
+
+For users who prefer not to use OAuth, email/password authentication provides a familiar, privacy-respecting alternative. Security requirements:
+- **Password hashing**: Argon2id (same as key derivation, consistent with crypto choices)
+- **Email verification**: Required before account is fully activated
+- **Password requirements**: Min 12 chars, complexity enforced
+
+### Password Requirements
+
+```typescript
+const PASSWORD_REQUIREMENTS = {
+  minLength: 12,
+  maxLength: 128,
+  requireUppercase: true,
+  requireLowercase: true,
+  requireNumber: true,
+  requireSpecialChar: true,
+  // Matches: ^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{12,128}$
+}
+
+function validatePassword(password: string): { valid: boolean; errors: string[] } {
+  const errors: string[] = []
+
+  if (password.length < PASSWORD_REQUIREMENTS.minLength) {
+    errors.push('Password must be at least 12 characters')
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push('Password must contain a lowercase letter')
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Password must contain an uppercase letter')
+  }
+  if (!/\d/.test(password)) {
+    errors.push('Password must contain a number')
+  }
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    errors.push('Password must contain a special character')
+  }
+
+  return { valid: errors.length === 0, errors }
+}
+```
+
+### Password Hashing Parameters
+
+Use same Argon2id parameters as key derivation for consistency:
+
+```typescript
+const PASSWORD_HASH_PARAMS = {
+  memoryCost: 65536,      // 64 MB
+  timeCost: 3,            // 3 iterations
+  parallelism: 4,
+  hashLength: 32,
+  saltLength: 32
+}
+
+async function hashPassword(password: string): Promise<{ hash: string; salt: string }> {
+  const salt = sodium.randombytes_buf(PASSWORD_HASH_PARAMS.saltLength)
+  const hash = Buffer.alloc(PASSWORD_HASH_PARAMS.hashLength)
+
+  sodium.crypto_pwhash(
+    hash,
+    Buffer.from(password),
+    salt,
+    PASSWORD_HASH_PARAMS.timeCost,
+    PASSWORD_HASH_PARAMS.memoryCost * 1024,
+    sodium.crypto_pwhash_ALG_ARGON2ID13
+  )
+
+  return {
+    hash: hash.toString('base64'),
+    salt: salt.toString('base64')
+  }
+}
+```
+
+### Email Verification Flow
+
+```
+User                        Server                      Email Service
+─────                       ──────                      ─────────────
+1. POST /auth/email/signup
+   { email, password }
+                    ──────────────────────────>
+                    2. Validate email/password
+                    3. Hash password with Argon2id
+                    4. Generate verification token
+                    5. Store user (email_verified=false)
+                    6. Send verification email
+                    ───────────────────────────────────>
+                    <───────────────────────────────────
+                    7. Return { message: "Check email" }
+<──────────────────────────────
+8. User clicks email link
+9. POST /auth/email/verify
+   { token }
+                    ──────────────────────────>
+                    10. Validate token
+                    11. Set email_verified=true
+                    12. Return AuthResult with tokens
+<──────────────────────────────
+```
+
+### Security Measures
+
+- **Rate limiting**: Max 5 signup/login attempts per email per hour
+- **Token expiry**: Verification tokens expire in 24 hours
+- **Password reset tokens**: Expire in 1 hour
+- **Constant-time comparison**: For password verification to prevent timing attacks
+- **No user enumeration**: Same response whether email exists or not
+
+---
+
+## 6. OAuth Provider Integration
 
 ### Decision: Google, Apple, GitHub via Cloudflare Workers
 
@@ -234,7 +352,7 @@ app.get('/auth/github/callback', handleGitHubCallback)
 
 ---
 
-## 6. QR Code Device Linking Protocol
+## 7. QR Code Device Linking Protocol
 
 ### Decision: X25519 ECDH with 5-minute expiring sessions
 
@@ -284,7 +402,7 @@ EXISTING DEVICE                     SERVER                      NEW DEVICE
 
 ---
 
-## 7. Chunked Attachment Storage
+## 8. Chunked Attachment Storage
 
 ### Decision: 8MB chunks with content-addressable storage
 
@@ -324,7 +442,7 @@ Same file attached to multiple notes → store chunks once:
 
 ---
 
-## 8. WebSocket vs Polling for Real-time Sync
+## 9. WebSocket vs Polling for Real-time Sync
 
 ### Decision: WebSocket via Durable Objects, with polling fallback
 
@@ -368,7 +486,7 @@ export class UserSyncState {
 
 ---
 
-## 9. Vector Clock Implementation
+## 10. Vector Clock Implementation
 
 ### Decision: Per-field vector clocks for structured data
 
@@ -411,7 +529,7 @@ function mergeTask(local: TaskWithSync, remote: TaskWithSync): TaskWithSync {
 
 ---
 
-## 10. Offline Queue Persistence
+## 11. Offline Queue Persistence
 
 ### Decision: IndexedDB via `idb` library
 
