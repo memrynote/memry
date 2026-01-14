@@ -1,0 +1,478 @@
+openapi: 3.1.0
+info:
+  title: Memry Sync API - Authentication
+  version: 1.0.0
+  description: OAuth authentication and device management endpoints
+
+servers:
+  - url: https://sync.memry.app/v1
+    description: Production
+
+paths:
+  /auth/oauth/{provider}:
+    get:
+      operationId: initiateOAuth
+      summary: Initiate OAuth flow
+      description: Redirects to OAuth provider's authorization page
+      tags: [Auth]
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, apple, github]
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+            description: CSRF protection token
+        - name: code_challenge
+          in: query
+          required: true
+          schema:
+            type: string
+            description: PKCE code challenge
+        - name: code_challenge_method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [S256]
+      responses:
+        '302':
+          description: Redirect to OAuth provider
+
+  /auth/oauth/{provider}/callback:
+    post:
+      operationId: handleOAuthCallback
+      summary: Handle OAuth callback
+      description: Exchange authorization code for tokens
+      tags: [Auth]
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, apple, github]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, state, code_verifier]
+              properties:
+                code:
+                  type: string
+                  description: Authorization code from provider
+                state:
+                  type: string
+                  description: CSRF protection token
+                code_verifier:
+                  type: string
+                  description: PKCE code verifier
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      summary: Refresh access token
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/device/register:
+    post:
+      operationId: registerDevice
+      summary: Register a new device
+      description: Called during first device setup
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRegistration'
+      responses:
+        '201':
+          description: Device registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/device/setup:
+    post:
+      operationId: setupFirstDevice
+      summary: Complete first device setup
+      description: Stores encrypted salt and verification hash
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [encrypted_salt, verification_hash]
+              properties:
+                encrypted_salt:
+                  type: string
+                  description: Salt encrypted with vault key (Base64)
+                verification_hash:
+                  type: string
+                  description: Hash to verify master key (Base64)
+      responses:
+        '200':
+          description: Setup complete
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/linking/initiate:
+    post:
+      operationId: initiateLinking
+      summary: Start device linking session
+      description: Generate QR code data for linking new device
+      tags: [Auth, Linking]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ephemeral_public_key]
+              properties:
+                ephemeral_public_key:
+                  type: string
+                  description: X25519 public key (Base64)
+      responses:
+        '201':
+          description: Linking session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkingSession'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/linking/{session_id}/scan:
+    post:
+      operationId: scanLinkingCode
+      summary: New device scans QR code
+      tags: [Auth, Linking]
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [new_device_public_key, token]
+              properties:
+                new_device_public_key:
+                  type: string
+                  description: New device's X25519 public key (Base64)
+                token:
+                  type: string
+                  description: One-time token from QR code
+      responses:
+        '200':
+          description: Scan registered, waiting for approval
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          description: Session expired
+
+  /auth/linking/{session_id}/approve:
+    post:
+      operationId: approveLinking
+      summary: Existing device approves linking
+      tags: [Auth, Linking]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [encrypted_master_key, nonce]
+              properties:
+                encrypted_master_key:
+                  type: string
+                  description: Master key encrypted with ECDH shared secret (Base64)
+                nonce:
+                  type: string
+                  description: Encryption nonce (Base64)
+      responses:
+        '200':
+          description: Linking approved
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /auth/linking/{session_id}/complete:
+    post:
+      operationId: completeLinking
+      summary: New device retrieves encrypted key
+      tags: [Auth, Linking]
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device]
+              properties:
+                device:
+                  $ref: '#/components/schemas/DeviceRegistration'
+      responses:
+        '200':
+          description: Linking complete
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  encrypted_master_key:
+                    type: string
+                  nonce:
+                    type: string
+                  device:
+                    $ref: '#/components/schemas/Device'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Session not yet approved
+
+  /auth/recovery:
+    get:
+      operationId: getRecoveryData
+      summary: Get data needed for recovery phrase restoration
+      tags: [Auth]
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Recovery data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  encrypted_salt:
+                    type: string
+                  verification_hash:
+                    type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AuthResult:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        tokens:
+          $ref: '#/components/schemas/TokenPair'
+        is_new_user:
+          type: boolean
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        email_verified:
+          type: boolean
+        auth_provider:
+          type: string
+          enum: [google, apple, github]
+        storage_used:
+          type: integer
+        storage_limit:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    TokenPair:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          description: Seconds until access token expires
+
+    Device:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        platform:
+          type: string
+          enum: [macos, windows, linux, ios, android]
+        os_version:
+          type: string
+        app_version:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_sync_at:
+          type: string
+          format: date-time
+
+    DeviceRegistration:
+      type: object
+      required: [name, platform, app_version, public_key]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        platform:
+          type: string
+          enum: [macos, windows, linux, ios, android]
+        os_version:
+          type: string
+        app_version:
+          type: string
+        public_key:
+          type: string
+          description: Ed25519 public key (Base64)
+
+    LinkingSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        token:
+          type: string
+          description: One-time token for QR code
+        ephemeral_public_key:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        qr_data:
+          type: string
+          description: JSON to encode in QR code
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

@@ -73,7 +73,7 @@ const DEFAULT_VIEW: ViewConfig = {
   type: 'table',
   default: true,
   columns: DEFAULT_COLUMNS,
-  order: [{ property: 'modified', direction: 'desc' }]
+  order: [{ property: 'title', direction: 'asc' }]
 }
 
 // ============================================================================
