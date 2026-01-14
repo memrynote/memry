@@ -17,6 +17,7 @@ Implement a comprehensive sync engine with end-to-end encryption (E2EE) for Memr
 - libsodium-wrappers / sodium-native (crypto)
 - keytar (OS keychain)
 - bip39 (recovery phrases)
+- cborg (canonical CBOR encoding for signatures/HMAC)
 - Yjs + y-indexeddb (CRDTs)
 - Hono.js (sync server on Cloudflare Workers)
 

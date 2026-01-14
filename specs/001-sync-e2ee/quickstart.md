@@ -33,6 +33,9 @@ pnpm add -g wrangler
 # Client-side crypto
 pnpm add libsodium-wrappers keytar bip39
 
+# Canonical CBOR for signatures/HMAC
+pnpm add cborg
+
 # For main process (faster native bindings)
 pnpm add sodium-native
 
@@ -58,6 +61,7 @@ pnpm create cloudflare@latest . -- --template hono
 
 # Add dependencies
 pnpm add hono @hono/zod-validator zod jose
+pnpm add cborg
 pnpm add -D @cloudflare/workers-types wrangler
 ```
 
