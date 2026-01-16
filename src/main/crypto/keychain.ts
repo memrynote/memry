@@ -299,3 +299,69 @@ export async function hasSyncSession(): Promise<boolean> {
 export async function clearSyncSession(): Promise<void> {
   await clearAllKeychainEntries()
 }
+
+// =============================================================================
+// Pending Signup Storage
+// =============================================================================
+
+/**
+ * Pending signup data structure.
+ * Stored temporarily during signup flow until device setup completes.
+ */
+export interface PendingSignupData {
+  email: string
+  password: string
+  deviceName: string
+  recoveryPhrase: string
+  userId?: string
+  createdAt: number
+}
+
+/**
+ * Store pending signup data in keychain.
+ * This allows the signup flow to survive app restarts.
+ *
+ * @param data - Pending signup data to store
+ */
+export async function savePendingSignup(data: PendingSignupData): Promise<void> {
+  const json = JSON.stringify(data)
+  await saveToKeychain(KEYCHAIN_KEYS.PENDING_SIGNUP, json)
+}
+
+/**
+ * Get pending signup data from keychain.
+ *
+ * @returns Pending signup data, or null if not found or expired (30 min)
+ */
+export async function getPendingSignup(): Promise<PendingSignupData | null> {
+  const json = await getFromKeychain(KEYCHAIN_KEYS.PENDING_SIGNUP)
+
+  if (!json) {
+    return null
+  }
+
+  try {
+    const data = JSON.parse(json) as PendingSignupData
+
+    // Check expiry (30 minutes)
+    const THIRTY_MINUTES = 30 * 60 * 1000
+    if (Date.now() - data.createdAt > THIRTY_MINUTES) {
+      await deletePendingSignup()
+      return null
+    }
+
+    return data
+  } catch {
+    // Invalid JSON, clear it
+    await deletePendingSignup()
+    return null
+  }
+}
+
+/**
+ * Delete pending signup data from keychain.
+ * Called after successful device setup or on timeout.
+ */
+export async function deletePendingSignup(): Promise<boolean> {
+  return deleteFromKeychain(KEYCHAIN_KEYS.PENDING_SIGNUP)
+}

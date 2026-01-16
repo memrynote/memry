@@ -52,6 +52,9 @@ import {
   hasMasterKey,
   getUserId,
   getDeviceId,
+  savePendingSignup,
+  getPendingSignup,
+  deletePendingSignup,
 } from '../crypto/keychain'
 import { app } from 'electron'
 import os from 'os'
@@ -180,12 +183,14 @@ function getDevicePlatform(): 'macos' | 'windows' | 'linux' {
 /**
  * Clear pending signup state
  */
-function clearPendingSignup(): void {
+async function clearPendingSignup(): Promise<void> {
   pendingSignup = null
   if (signupTimeout) {
     clearTimeout(signupTimeout)
     signupTimeout = null
   }
+  // Also clear from keychain
+  await deletePendingSignup()
 }
 
 /**
@@ -260,6 +265,20 @@ export function registerSyncHandlers(): void {
   ipcMain.handle(
     SYNC_CHANNELS.SETUP_FIRST_DEVICE,
     createHandler(async () => {
+      // If not in memory, try to load from keychain (survives app restart)
+      if (!pendingSignup) {
+        const keychainData = await getPendingSignup()
+        if (keychainData) {
+          pendingSignup = {
+            email: keychainData.email,
+            password: keychainData.password,
+            deviceName: keychainData.deviceName,
+            recoveryPhrase: keychainData.recoveryPhrase,
+            userId: keychainData.userId,
+          }
+        }
+      }
+
       // Verify we have a pending signup
       if (!pendingSignup) {
         throw new Error('No pending signup. Please start the signup process again.')
@@ -361,7 +380,7 @@ export function registerSyncHandlers(): void {
         // Create account on server (sends verification email)
         const result = await syncApi.instance.emailSignup(email, password)
 
-        // Store pending signup state (cleared after 30 minutes or completion)
+        // Store pending signup state in memory AND keychain (survives app restart)
         pendingSignup = {
           email,
           password,
@@ -370,9 +389,22 @@ export function registerSyncHandlers(): void {
           userId: result.user_id,
         }
 
+        // Persist to keychain so it survives app restart
+        await savePendingSignup({
+          email,
+          password,
+          deviceName,
+          recoveryPhrase,
+          userId: result.user_id,
+          createdAt: Date.now(),
+        })
+
+        // Clear any existing timeout (don't clear keychain data)
+        if (signupTimeout) {
+          clearTimeout(signupTimeout)
+        }
         // Set timeout to clear state after 30 minutes
-        clearPendingSignup() // Clear any existing timeout
-        signupTimeout = setTimeout(clearPendingSignup, 30 * 60 * 1000)
+        signupTimeout = setTimeout(() => void clearPendingSignup(), 30 * 60 * 1000)
 
         return {
           success: true,
@@ -402,6 +434,20 @@ export function registerSyncHandlers(): void {
     SYNC_CHANNELS.EMAIL_VERIFY,
     createValidatedHandler(EmailVerifyInputSchema, async (input: EmailVerifyInput) => {
       const { token } = input
+
+      // If not in memory, try to load from keychain
+      if (!pendingSignup) {
+        const keychainData = await getPendingSignup()
+        if (keychainData) {
+          pendingSignup = {
+            email: keychainData.email,
+            password: keychainData.password,
+            deviceName: keychainData.deviceName,
+            recoveryPhrase: keychainData.recoveryPhrase,
+            userId: keychainData.userId,
+          }
+        }
+      }
 
       try {
         const result = await syncApi.instance.emailVerify(token)
@@ -488,6 +534,20 @@ export function registerSyncHandlers(): void {
   ipcMain.handle(
     SYNC_CHANNELS.RESEND_VERIFICATION,
     createHandler(async () => {
+      // If not in memory, try to load from keychain
+      if (!pendingSignup) {
+        const keychainData = await getPendingSignup()
+        if (keychainData) {
+          pendingSignup = {
+            email: keychainData.email,
+            password: keychainData.password,
+            deviceName: keychainData.deviceName,
+            recoveryPhrase: keychainData.recoveryPhrase,
+            userId: keychainData.userId,
+          }
+        }
+      }
+
       // Get email from pending signup or throw
       if (!pendingSignup?.email) {
         throw new Error('No pending signup. Please start the signup process again.')

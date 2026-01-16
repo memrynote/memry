@@ -296,6 +296,7 @@ export const KEYCHAIN_KEYS = {
   USER_ID: 'user-id',
   ACCESS_TOKEN: 'access-token',
   REFRESH_TOKEN: 'refresh-token',
+  PENDING_SIGNUP: 'pending-signup',
 } as const
 
 export type KeychainKey = (typeof KEYCHAIN_KEYS)[keyof typeof KEYCHAIN_KEYS]
