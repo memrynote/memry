@@ -8,7 +8,13 @@
  */
 
 import { z } from 'zod'
-import type { SyncStatus, SyncHistoryEntry, LinkingSession, SyncedSettings, DevicePlatform } from './sync-api'
+import type {
+  SyncStatus,
+  SyncHistoryEntry,
+  LinkingSession,
+  SyncedSettings,
+  DevicePlatform
+} from './sync-api'
 
 // Re-export types that are used in handler response types
 export type { Device, LinkingQRPayload, UserPublic, AuthResult } from './sync-api'
@@ -72,7 +78,7 @@ export const SYNC_CHANNELS = {
 
   // Events (renderer -> main, for subscriptions)
   SUBSCRIBE_STATUS: 'sync:subscribe-status',
-  UNSUBSCRIBE_STATUS: 'sync:unsubscribe-status',
+  UNSUBSCRIBE_STATUS: 'sync:unsubscribe-status'
 } as const
 
 /**
@@ -105,7 +111,7 @@ export const CRYPTO_CHANNELS = {
 
   // Keychain
   HAS_MASTER_KEY: 'crypto:has-master-key',
-  CLEAR_KEYCHAIN: 'crypto:clear-keychain',
+  CLEAR_KEYCHAIN: 'crypto:clear-keychain'
 } as const
 
 /**
@@ -129,7 +135,7 @@ export const SYNC_EVENTS = {
 
   // Progress events
   INITIAL_SYNC_PROGRESS: 'sync:initial-sync-progress',
-  KEY_ROTATION_PROGRESS: 'crypto:rotation-progress',
+  KEY_ROTATION_PROGRESS: 'crypto:rotation-progress'
 } as const
 
 // =============================================================================
@@ -145,7 +151,7 @@ export interface SetupFirstDeviceInput {
 
 export const SetupFirstDeviceInputSchema = z.object({
   kdfSalt: z.string(),
-  keyVerifier: z.string(),
+  keyVerifier: z.string()
 })
 
 export interface SetupStatus {
@@ -153,6 +159,7 @@ export interface SetupStatus {
   hasUser: boolean
   hasDevice: boolean
   hasMasterKey: boolean
+  hasTokens: boolean
 }
 
 // --- Auth (Email) ---
@@ -166,7 +173,7 @@ export interface EmailSignupInput {
 export const EmailSignupInputSchema = z.object({
   email: z.string().email(),
   password: z.string().min(12).max(128),
-  deviceName: z.string().min(1).max(100),
+  deviceName: z.string().min(1).max(100)
 })
 
 export interface EmailLoginInput {
@@ -178,7 +185,7 @@ export interface EmailLoginInput {
 export const EmailLoginInputSchema = z.object({
   email: z.string().email(),
   password: z.string(),
-  deviceName: z.string().min(1).max(100),
+  deviceName: z.string().min(1).max(100)
 })
 
 export interface EmailVerifyInput {
@@ -186,7 +193,7 @@ export interface EmailVerifyInput {
 }
 
 export const EmailVerifyInputSchema = z.object({
-  token: z.string(),
+  token: z.string()
 })
 
 export interface ForgotPasswordInput {
@@ -194,7 +201,7 @@ export interface ForgotPasswordInput {
 }
 
 export const ForgotPasswordInputSchema = z.object({
-  email: z.string().email(),
+  email: z.email()
 })
 
 export interface ResetPasswordInput {
@@ -204,7 +211,7 @@ export interface ResetPasswordInput {
 
 export const ResetPasswordInputSchema = z.object({
   token: z.string(),
-  newPassword: z.string().min(12).max(128),
+  newPassword: z.string().min(12).max(128)
 })
 
 export interface ChangePasswordInput {
@@ -214,7 +221,7 @@ export interface ChangePasswordInput {
 
 export const ChangePasswordInputSchema = z.object({
   currentPassword: z.string(),
-  newPassword: z.string().min(12).max(128),
+  newPassword: z.string().min(12).max(128)
 })
 
 // --- Auth (OAuth) ---
@@ -226,7 +233,7 @@ export interface OAuthStartInput {
 
 export const OAuthStartInputSchema = z.object({
   provider: z.enum(['google', 'apple', 'github']),
-  deviceName: z.string().min(1).max(100),
+  deviceName: z.string().min(1).max(100)
 })
 
 export interface OAuthCallbackInput {
@@ -236,7 +243,7 @@ export interface OAuthCallbackInput {
 
 export const OAuthCallbackInputSchema = z.object({
   code: z.string(),
-  state: z.string(),
+  state: z.string()
 })
 
 // --- Sync Status ---
@@ -246,7 +253,7 @@ export interface TriggerSyncInput {
 }
 
 export const TriggerSyncInputSchema = z.object({
-  force: z.boolean().optional(),
+  force: z.boolean().optional()
 })
 
 // --- Sync History ---
@@ -260,7 +267,7 @@ export interface GetHistoryInput {
 export const GetHistoryInputSchema = z.object({
   limit: z.number().optional(),
   offset: z.number().optional(),
-  type: z.enum(['push', 'pull', 'error']).optional(),
+  type: z.enum(['push', 'pull', 'error']).optional()
 })
 
 export interface GetHistoryOutput {
@@ -276,7 +283,7 @@ export interface RemoveDeviceInput {
 }
 
 export const RemoveDeviceInputSchema = z.object({
-  deviceId: z.string(),
+  deviceId: z.string()
 })
 
 export interface RenameDeviceInput {
@@ -286,7 +293,7 @@ export interface RenameDeviceInput {
 
 export const RenameDeviceInputSchema = z.object({
   deviceId: z.string(),
-  name: z.string().min(1).max(100),
+  name: z.string().min(1).max(100)
 })
 
 // --- Device Linking (QR) ---
@@ -303,7 +310,7 @@ export interface LinkViaQRInput {
 
 export const LinkViaQRInputSchema = z.object({
   qrData: z.string(),
-  deviceName: z.string().min(1).max(100),
+  deviceName: z.string().min(1).max(100)
 })
 
 export interface ApproveLinkingInput {
@@ -313,7 +320,7 @@ export interface ApproveLinkingInput {
 
 export const ApproveLinkingInputSchema = z.object({
   sessionId: z.string(),
-  approve: z.boolean(),
+  approve: z.boolean()
 })
 
 // --- Device Linking (Recovery Phrase) ---
@@ -327,7 +334,7 @@ export interface LinkViaRecoveryInput {
 export const LinkViaRecoveryInputSchema = z.object({
   recoveryPhrase: z.string(),
   email: z.string().email(),
-  deviceName: z.string().min(1).max(100),
+  deviceName: z.string().min(1).max(100)
 })
 
 // --- Settings ---
@@ -348,7 +355,7 @@ export interface ValidateRecoveryPhraseInput {
 }
 
 export const ValidateRecoveryPhraseInputSchema = z.object({
-  phrase: z.string(),
+  phrase: z.string()
 })
 
 export interface ConfirmRecoveryPhraseInput {
@@ -361,9 +368,9 @@ export const ConfirmRecoveryPhraseInputSchema = z.object({
   confirmationWords: z.array(
     z.object({
       index: z.number(),
-      word: z.string(),
+      word: z.string()
     })
-  ),
+  )
 })
 
 // --- Crypto: Encryption/Decryption ---
@@ -375,7 +382,7 @@ export interface EncryptItemInput {
 
 export const EncryptItemInputSchema = z.object({
   data: z.string(),
-  type: z.enum(['note', 'task', 'project', 'settings']),
+  type: z.enum(['note', 'task', 'project', 'settings'])
 })
 
 export interface EncryptItemOutput {
@@ -399,7 +406,7 @@ export const DecryptItemInputSchema = z.object({
   nonce: z.string(),
   encryptedKey: z.string(),
   keyNonce: z.string(),
-  signature: z.string(),
+  signature: z.string()
 })
 
 export interface DecryptItemOutput {
@@ -414,7 +421,7 @@ export interface SignDataInput {
 }
 
 export const SignDataInputSchema = z.object({
-  data: z.string(),
+  data: z.string()
 })
 
 export interface SignDataOutput {
@@ -430,7 +437,7 @@ export interface VerifySignatureInput {
 export const VerifySignatureInputSchema = z.object({
   data: z.string(),
   signature: z.string(),
-  publicKey: z.string().optional(),
+  publicKey: z.string().optional()
 })
 
 export interface VerifySignatureOutput {
