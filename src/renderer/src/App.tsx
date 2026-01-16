@@ -14,6 +14,7 @@ import { initialProjects, taskViews, type Project } from '@/data/tasks-data'
 import { sampleTasks, type Task } from '@/data/sample-tasks'
 import { getFilteredTasks } from '@/lib/task-utils'
 import { ThemeProvider } from 'next-themes'
+import { AuthProvider } from '@/contexts/auth-context'
 
 // Tab System imports
 import { TabProvider, useTabs, getOrderedGroupWidths } from '@/contexts/tabs'
@@ -550,7 +551,9 @@ function App(): React.JSX.Element {
   if (!vaultLoading && !isVaultOpen) {
     return (
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-        <VaultOnboarding />
+        <AuthProvider>
+          <VaultOnboarding />
+        </AuthProvider>
         <Toaster />
       </ThemeProvider>
     )
@@ -558,15 +561,17 @@ function App(): React.JSX.Element {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <SidebarProvider>
-        <DragProvider
-          tasks={tasks}
-          selectedIds={selectedTaskIds}
-          onDragEnd={(event, state) => void handleDragEnd(event, state)}
-        >
-          {mainContent}
-        </DragProvider>
-      </SidebarProvider>
+      <AuthProvider>
+        <SidebarProvider>
+          <DragProvider
+            tasks={tasks}
+            selectedIds={selectedTaskIds}
+            onDragEnd={(event, state) => void handleDragEnd(event, state)}
+          >
+            {mainContent}
+          </DragProvider>
+        </SidebarProvider>
+      </AuthProvider>
       <Toaster />
     </ThemeProvider>
   )

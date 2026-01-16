@@ -174,7 +174,7 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
   const {
     signup,
     login,
-    verifyEmail: _verifyEmail,
+    verifyEmail,
     resendVerification,
     forgotPassword,
     startOAuth,
@@ -184,16 +184,12 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
     confirmRecoveryPhrase,
     isSigningUp,
     isLoggingIn,
-    isVerifying: _isVerifying,
+    isVerifying,
     isResending,
     isForgotPassword,
     isStartingOAuth,
     isConfirmingPhrase
   } = useAuth()
-
-  // Note: verifyEmail and isVerifying are reserved for future deep-link verification handling
-  void _verifyEmail
-  void _isVerifying
 
   const [step, setStep] = useState<WizardStep>('welcome')
   const [authMode, setAuthMode] = useState<AuthMode>('signup')
@@ -325,6 +321,22 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
       setError(err instanceof Error ? err.message : 'Failed to resend')
     }
   }, [resendVerification])
+
+  // Handle manual token verification
+  const handleVerifyToken = useCallback(async (token: string) => {
+    setError(null)
+    try {
+      const result = await verifyEmail(token)
+      if (result.success) {
+        // Move to recovery phrase step after verification
+        setStep('recovery-phrase')
+      } else {
+        setError(result.error || 'Verification failed')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Verification failed')
+    }
+  }, [verifyEmail])
 
   // Handle recovery phrase confirmation
   const handleConfirmPhrase = useCallback(
@@ -483,8 +495,10 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
           <VerificationPending
             email={email}
             onResend={handleResendVerification}
+            onVerifyToken={handleVerifyToken}
             onChangeEmail={goBack}
             isResending={isResending}
+            isVerifying={isVerifying}
             error={error}
           />
         )

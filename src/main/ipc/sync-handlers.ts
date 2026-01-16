@@ -289,10 +289,10 @@ export function registerSyncHandlers(): void {
         const keyVerifierBase64 = keyVerifier.toString('base64')
 
         // Send KDF salt and key verifier to server
-        await syncApi.setupDevice(kdfSaltBase64, keyVerifierBase64, tokens.accessToken)
+        await syncApi.instance.setupDevice(kdfSaltBase64, keyVerifierBase64, tokens.accessToken)
 
         // Register device with server
-        const device = await syncApi.registerDevice(
+        const device = await syncApi.instance.registerDevice(
           deviceName,
           getDevicePlatform(),
           app.getVersion(),
@@ -359,7 +359,7 @@ export function registerSyncHandlers(): void {
 
       try {
         // Create account on server (sends verification email)
-        const result = await syncApi.emailSignup(email, password)
+        const result = await syncApi.instance.emailSignup(email, password)
 
         // Store pending signup state (cleared after 30 minutes or completion)
         pendingSignup = {
@@ -404,7 +404,7 @@ export function registerSyncHandlers(): void {
       const { token } = input
 
       try {
-        const result = await syncApi.emailVerify(token)
+        const result = await syncApi.instance.emailVerify(token)
 
         // Store tokens and user ID in keychain (master key comes later in setup)
         await saveTokens(result.tokens.accessToken, result.tokens.refreshToken)
@@ -444,12 +444,12 @@ export function registerSyncHandlers(): void {
 
       try {
         // Login to server
-        const result = await syncApi.emailLogin(email, password)
+        const result = await syncApi.instance.emailLogin(email, password)
 
         // Check if this is a new device (needs recovery phrase)
         if (result.needsDeviceSetup) {
           // Get recovery data from server
-          const recoveryData = await syncApi.getRecoveryData(result.user.id)
+          const recoveryData = await syncApi.instance.getRecoveryData(result.user.id)
 
           return {
             success: true,
@@ -494,7 +494,7 @@ export function registerSyncHandlers(): void {
       }
 
       try {
-        await syncApi.resendVerification(pendingSignup.email)
+        await syncApi.instance.resendVerification(pendingSignup.email)
         return { success: true, message: 'Verification email sent' }
       } catch (error) {
         if (error instanceof SyncApiError) {
@@ -512,7 +512,7 @@ export function registerSyncHandlers(): void {
     SYNC_CHANNELS.FORGOT_PASSWORD,
     createValidatedHandler(ForgotPasswordInputSchema, async (input: ForgotPasswordInput) => {
       try {
-        await syncApi.forgotPassword(input.email)
+        await syncApi.instance.forgotPassword(input.email)
         return {
           success: true,
           message: 'If an account exists with this email, a password reset link has been sent',
@@ -542,7 +542,7 @@ export function registerSyncHandlers(): void {
       }
 
       try {
-        await syncApi.resetPassword(token, newPassword)
+        await syncApi.instance.resetPassword(token, newPassword)
         return { success: true, message: 'Password has been reset successfully' }
       } catch (error) {
         if (error instanceof SyncApiError) {
@@ -574,7 +574,7 @@ export function registerSyncHandlers(): void {
       }
 
       try {
-        await syncApi.changePassword(currentPassword, newPassword, tokens.accessToken)
+        await syncApi.instance.changePassword(currentPassword, newPassword, tokens.accessToken)
         return { success: true, message: 'Password changed successfully' }
       } catch (error) {
         if (error instanceof SyncApiError) {
@@ -631,7 +631,7 @@ export function registerSyncHandlers(): void {
 
       // Get OAuth URL
       const redirectUri = 'memry://oauth/callback'
-      const authUrl = syncApi.getOAuthUrl(provider, redirectUri, state, codeChallenge)
+      const authUrl = syncApi.instance.getOAuthUrl(provider, redirectUri, state, codeChallenge)
 
       // Open in default browser
       await shell.openExternal(authUrl)
@@ -664,7 +664,7 @@ export function registerSyncHandlers(): void {
 
       try {
         // Exchange code for tokens
-        const result = await syncApi.oauthCallback(provider, code, state, codeVerifier)
+        const result = await syncApi.instance.oauthCallback(provider, code, state, codeVerifier)
 
         // Store tokens
         await saveTokens(result.tokens.accessToken, result.tokens.refreshToken)
@@ -697,7 +697,7 @@ export function registerSyncHandlers(): void {
         }
 
         // Existing OAuth user needs to enter recovery phrase
-        const recoveryData = await syncApi.getRecoveryData(result.user.id)
+        const recoveryData = await syncApi.instance.getRecoveryData(result.user.id)
 
         return {
           success: true,
@@ -874,7 +874,7 @@ export function registerSyncHandlers(): void {
         // Note: For recovery-based linking, we need a different endpoint
         // For now, we'll get the recovery data and verify the phrase
         // deviceName will be used when we implement device registration
-        const recoveryData = await syncApi.getRecoveryData(email)
+        const recoveryData = await syncApi.instance.getRecoveryData(email)
 
         // Derive seed from recovery phrase
         const seed = await mnemonicToSeed(recoveryPhrase)

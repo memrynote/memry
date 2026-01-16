@@ -23,15 +23,24 @@ import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } fro
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 
 // Load .env file from project root (must be before any env access)
-// In development, load from project root; in production, from app resources
-const envPath = app.isPackaged
-  ? join(process.resourcesPath, '.env')
-  : join(app.getAppPath(), '.env')
+// In development, load .env.development first, then .env as fallback
+// In production, load from app resources
+if (app.isPackaged) {
+  const envPath = join(process.resourcesPath, '.env')
+  config({ path: envPath })
+} else {
+  // Development: try .env.development first, then .env
+  const appPath = app.getAppPath()
+  const devEnvPath = join(appPath, '.env.development')
+  const envPath = join(appPath, '.env')
 
-const envResult = config({ path: envPath })
-if (envResult.error) {
-  // Try loading from current working directory as fallback
-  config()
+  // Load .env.development (development-specific settings)
+  if (existsSync(devEnvPath)) {
+    config({ path: devEnvPath })
+  }
+
+  // Load .env (can override or add to .env.development)
+  config({ path: envPath })
 }
 
 // Register custom protocol as privileged before app is ready

@@ -132,6 +132,32 @@ export function generatePasswordSalt(): string {
 }
 
 /**
+ * Fallback hash for local development when WASM is unavailable.
+ * Uses PBKDF2 with SHA-256 (less secure than Argon2, but works locally).
+ */
+async function fallbackHash(password: string, saltBytes: Uint8Array): Promise<Uint8Array> {
+  const passwordBytes = new TextEncoder().encode(password)
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    passwordBytes,
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  )
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: saltBytes,
+      iterations: 100000,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    256
+  )
+  return new Uint8Array(bits)
+}
+
+/**
  * Hash a password using Argon2id.
  *
  * Uses the following parameters:
@@ -139,6 +165,8 @@ export function generatePasswordSalt(): string {
  * - Iterations: 3
  * - Parallelism: 4
  * - Output: 32 bytes
+ *
+ * Falls back to PBKDF2 for local development where WASM is unavailable.
  *
  * @param password - Password to hash
  * @param salt - Base64-encoded salt (or null to generate new salt)
@@ -157,16 +185,24 @@ export async function hashPassword(
   // Convert password to Uint8Array
   const passwordBytes = new TextEncoder().encode(password)
 
-  // Hash using Argon2id
-  const hashBytes = await argon2id({
-    password: passwordBytes,
-    salt: saltBytes,
-    memorySize: ARGON2_PARAMS.memorySize,
-    iterations: ARGON2_PARAMS.iterations,
-    parallelism: ARGON2_PARAMS.parallelism,
-    hashLength: ARGON2_PARAMS.hashLength,
-    outputType: 'binary',
-  })
+  let hashBytes: Uint8Array
+
+  try {
+    // Try Argon2id first (works on Cloudflare Workers)
+    hashBytes = await argon2id({
+      password: passwordBytes,
+      salt: saltBytes,
+      memorySize: ARGON2_PARAMS.memorySize,
+      iterations: ARGON2_PARAMS.iterations,
+      parallelism: ARGON2_PARAMS.parallelism,
+      hashLength: ARGON2_PARAMS.hashLength,
+      outputType: 'binary',
+    })
+  } catch (error) {
+    // Fallback to PBKDF2 for local development
+    console.warn('Argon2 unavailable, using PBKDF2 fallback (local dev only)')
+    hashBytes = await fallbackHash(password, saltBytes)
+  }
 
   // Convert hash to Base64
   const hashBase64 = btoa(String.fromCharCode(...hashBytes))

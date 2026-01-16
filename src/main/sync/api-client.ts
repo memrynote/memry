@@ -11,8 +11,16 @@
 // Configuration
 // =============================================================================
 
-/** Default sync server URL (can be overridden via environment) */
-const DEFAULT_SERVER_URL = process.env.SYNC_SERVER_URL || 'https://api.memry.app'
+/**
+ * Get sync server URL at runtime (lazy evaluation)
+ *
+ * This must be a function, not a constant, because:
+ * - Constants are evaluated at bundle time (before dotenv loads)
+ * - Functions are evaluated at runtime (after dotenv loads)
+ */
+function getServerUrl(): string {
+  return process.env.SYNC_SERVER_URL || 'https://api.memry.app'
+}
 
 /** API version prefix */
 const API_PREFIX = '/api/v1'
@@ -95,8 +103,8 @@ export interface RefreshResponse {
 export class SyncApiClient {
   private readonly baseUrl: string
 
-  constructor(baseUrl: string = DEFAULT_SERVER_URL) {
-    this.baseUrl = baseUrl
+  constructor(baseUrl?: string) {
+    this.baseUrl = baseUrl ?? getServerUrl()
   }
 
   // ---------------------------------------------------------------------------
@@ -416,8 +424,23 @@ export class SyncApiError extends Error {
 }
 
 // =============================================================================
-// Singleton Instance
+// Singleton Instance (Lazy)
 // =============================================================================
 
-/** Default API client instance */
-export const syncApi = new SyncApiClient()
+/** Cached API client instance */
+let _syncApiInstance: SyncApiClient | null = null
+
+/**
+ * Lazy singleton API client
+ *
+ * Uses a getter to defer instantiation until first access,
+ * which happens after dotenv has loaded environment variables.
+ */
+export const syncApi = {
+  get instance(): SyncApiClient {
+    if (!_syncApiInstance) {
+      _syncApiInstance = new SyncApiClient()
+    }
+    return _syncApiInstance
+  }
+}

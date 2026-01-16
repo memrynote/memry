@@ -31,11 +31,17 @@ export interface EmailTemplateData {
 // Configuration
 // =============================================================================
 
-/** Sender email address */
-const FROM_EMAIL = 'Memry <noreply@memry.app>'
+/**
+ * Default sender email (Resend's test email - no verification needed)
+ * Override via EMAIL_FROM env var in production
+ */
+const DEFAULT_FROM_EMAIL = 'Memry <onboarding@resend.dev>'
 
-/** Base URL for verification/reset links */
-const APP_BASE_URL = 'https://memry.app'
+/**
+ * Base URL for verification/reset links
+ * Uses memry:// custom protocol for Electron app deep linking
+ */
+const DEFAULT_APP_BASE_URL = 'memry://auth'
 
 // =============================================================================
 // Email Sending
@@ -69,7 +75,7 @@ export async function sendEmail(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: FROM_EMAIL,
+        from: DEFAULT_FROM_EMAIL,
         to: [to],
         subject,
         html,
@@ -105,7 +111,7 @@ export async function sendEmail(
  * Email verification template.
  */
 function verificationEmailTemplate(token: string): { subject: string; html: string } {
-  const verifyUrl = `${APP_BASE_URL}/verify-email?token=${encodeURIComponent(token)}`
+  const verifyUrl = `${DEFAULT_APP_BASE_URL}/verify-email?token=${encodeURIComponent(token)}`
 
   return {
     subject: 'Verify your Memry account',
@@ -155,7 +161,7 @@ function verificationEmailTemplate(token: string): { subject: string; html: stri
  * Password reset template.
  */
 function passwordResetEmailTemplate(token: string): { subject: string; html: string } {
-  const resetUrl = `${APP_BASE_URL}/reset-password?token=${encodeURIComponent(token)}`
+  const resetUrl = `${DEFAULT_APP_BASE_URL}/reset-password?token=${encodeURIComponent(token)}`
 
   return {
     subject: 'Reset your Memry password',

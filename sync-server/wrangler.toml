@@ -3,6 +3,10 @@ main = "src/index.ts"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Enable local WASM for argon2
+[dev]
+local_protocol = "http"
+
 # Development environment
 [env.development]
 vars = { ENVIRONMENT = "development" }
@@ -17,7 +21,7 @@ vars = { ENVIRONMENT = "production" }
 [[d1_databases]]
 binding = "DB"
 database_name = "memry-sync"
-database_id = "placeholder-update-after-creation"
+database_id = "8cbddebe-50fc-4f5e-bcb1-3f030213b2d4"
 
 # R2 Bucket binding
 # Run: wrangler r2 bucket create memry-blobs

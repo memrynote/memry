@@ -45,7 +45,10 @@ import {
   CheckCircle,
   XCircle,
   RefreshCw,
-  PenLine
+  PenLine,
+  Cloud,
+  LogOut,
+  User
 } from 'lucide-react'
 import {
   Select,
@@ -63,6 +66,8 @@ import { useTabPreferences } from '@/hooks/use-tab-preferences'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/auth-context'
+import { SetupWizard } from '@/pages/settings/setup-wizard'
 
 // ============================================================================
 // Types
@@ -76,6 +81,7 @@ type SettingsSection =
   | 'vault'
   | 'appearance'
   | 'ai'
+  | 'sync'
 
 // ============================================================================
 // Main Component
@@ -144,6 +150,12 @@ export function SettingsPage() {
             isActive={activeSection === 'ai'}
             onClick={() => setActiveSection('ai')}
           />
+          <SettingsNavItem
+            icon={<Cloud className="w-4 h-4" />}
+            label="Sync & Account"
+            isActive={activeSection === 'sync'}
+            onClick={() => setActiveSection('sync')}
+          />
         </nav>
       </div>
 
@@ -158,6 +170,7 @@ export function SettingsPage() {
             {activeSection === 'vault' && <VaultSettings />}
             {activeSection === 'appearance' && <AppearanceSettings />}
             {activeSection === 'ai' && <AISettings />}
+            {activeSection === 'sync' && <SyncSettings />}
           </div>
         </ScrollArea>
       </div>
@@ -1287,6 +1300,178 @@ function AppearanceSettings() {
       </div>
       <Separator />
       <div className="text-muted-foreground text-sm">Appearance settings coming soon...</div>
+    </div>
+  )
+}
+
+// ============================================================================
+// Sync & Account Settings
+// ============================================================================
+
+function SyncSettings() {
+  const { isFullySetup, isLoading, setupStatus } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold">Sync & Account</h3>
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show setup wizard if user is not fully set up
+  if (!isFullySetup) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold">Sync & Account</h3>
+          <p className="text-sm text-muted-foreground">
+            Set up sync to access your data across devices with end-to-end encryption
+          </p>
+        </div>
+        <Separator />
+        <SetupWizard />
+      </div>
+    )
+  }
+
+  // Show account overview when fully set up
+  return <AccountOverview setupStatus={setupStatus} />
+}
+
+// ============================================================================
+// Account Overview (when logged in)
+// ============================================================================
+
+interface AccountOverviewProps {
+  setupStatus: {
+    hasUser: boolean
+    hasDevice: boolean
+    hasMasterKey: boolean
+    userId?: string
+    deviceId?: string
+    email?: string
+  } | null
+}
+
+function AccountOverview({ setupStatus }: AccountOverviewProps) {
+  const { logout } = useAuth()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      await logout()
+      toast.success('Logged out successfully')
+    } catch (error) {
+      toast.error('Failed to logout')
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold">Sync & Account</h3>
+        <p className="text-sm text-muted-foreground">
+          Manage your account and sync settings
+        </p>
+      </div>
+
+      <Separator />
+
+      {/* Account Status */}
+      <div className="space-y-4">
+        <div>
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Account
+          </h4>
+        </div>
+
+        <div className="rounded-lg border p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">{setupStatus?.email || 'Account'}</p>
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3 text-green-500" />
+                  Synced
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Sync Status */}
+      <div className="space-y-4">
+        <div>
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Sync Status
+          </h4>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="rounded-lg border p-3">
+            <div className="flex items-center gap-2 text-sm">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="text-muted-foreground">Master Key</span>
+            </div>
+            <p className="text-sm font-medium mt-1">Stored in Keychain</p>
+          </div>
+          <div className="rounded-lg border p-3">
+            <div className="flex items-center gap-2 text-sm">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="text-muted-foreground">Device</span>
+            </div>
+            <p className="text-sm font-medium mt-1">Registered</p>
+          </div>
+        </div>
+
+        {/* Info hint */}
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+          <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+          <p className="text-muted-foreground">
+            Your data is encrypted with your master key before syncing. Only you can decrypt it.
+          </p>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Actions */}
+      <div className="space-y-4">
+        <div>
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Actions
+          </h4>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="justify-start"
+          >
+            {isLoggingOut ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <LogOut className="w-4 h-4 mr-2" />
+            )}
+            Sign Out
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

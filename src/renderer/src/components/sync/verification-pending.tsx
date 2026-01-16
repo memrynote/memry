@@ -7,8 +7,9 @@
  */
 
 import { useState, useCallback, useEffect } from 'react'
-import { Mail, Loader2, CheckCircle, RefreshCw } from 'lucide-react'
+import { Mail, Loader2, CheckCircle, RefreshCw, KeyRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
 // =============================================================================
@@ -20,7 +21,9 @@ interface VerificationPendingProps {
   onResend: () => Promise<void>
   onChangeEmail?: () => void
   onVerified?: () => void
+  onVerifyToken?: (token: string) => Promise<void>
   isResending?: boolean
+  isVerifying?: boolean
   error?: string | null
   className?: string
   checkInterval?: number // Interval to check verification status (ms)
@@ -38,7 +41,9 @@ export function VerificationPending({
   onResend,
   onChangeEmail,
   onVerified: _onVerified,
+  onVerifyToken,
   isResending = false,
+  isVerifying = false,
   error,
   className,
   checkInterval: _checkInterval = 5000
@@ -49,6 +54,8 @@ export function VerificationPending({
   const [resendCooldown, setResendCooldown] = useState(0)
   const [localError, setLocalError] = useState<string | null>(null)
   const [resendSuccess, setResendSuccess] = useState(false)
+  const [token, setToken] = useState('')
+  const [showTokenInput, setShowTokenInput] = useState(false)
 
   // Cooldown timer
   useEffect(() => {
@@ -73,6 +80,18 @@ export function VerificationPending({
       setLocalError(err instanceof Error ? err.message : 'Failed to resend email')
     }
   }, [onResend])
+
+  // Handle token verification
+  const handleVerifyToken = useCallback(async () => {
+    if (!token.trim() || !onVerifyToken) return
+    setLocalError(null)
+
+    try {
+      await onVerifyToken(token.trim())
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : 'Failed to verify token')
+    }
+  }, [token, onVerifyToken])
 
   const displayError = error || localError
   const canResend = resendCooldown === 0 && !isResending
@@ -102,6 +121,45 @@ export function VerificationPending({
           the email, check your spam folder.
         </p>
       </div>
+
+      {/* Manual Token Entry */}
+      {onVerifyToken && (
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => setShowTokenInput(!showTokenInput)}
+            className="text-sm text-primary hover:underline flex items-center gap-1 mx-auto"
+          >
+            <KeyRound className="size-3" />
+            {showTokenInput ? 'Hide' : 'Enter verification code manually'}
+          </button>
+
+          {showTokenInput && (
+            <div className="space-y-2">
+              <Input
+                placeholder="Paste verification token from email"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                className="font-mono text-xs"
+              />
+              <Button
+                onClick={handleVerifyToken}
+                disabled={!token.trim() || isVerifying}
+                className="w-full"
+              >
+                {isVerifying ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  'Verify'
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Success Message */}
       {resendSuccess && (
