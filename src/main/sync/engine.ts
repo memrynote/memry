@@ -31,7 +31,7 @@ import type {
 
 import { getSyncQueue } from './queue'
 import { getNetworkMonitor } from './network'
-import { getWebSocketManager } from './websocket'
+import { getWebSocketManager, type LinkingRequestPayload } from './websocket'
 import { withRetry, isRetryableError } from './retry'
 import {
   createClock,
@@ -175,6 +175,29 @@ export class SyncEngine extends EventEmitter {
       this.pullSingleItem(wsPayload.itemId, wsPayload.type as SyncItemType).catch((err) =>
         this.emit('error', err)
       )
+    })
+
+    // T120: Forward linking request events to renderer
+    // When a new device scans the QR code, notify the existing device so it can show the approval dialog
+    wsManager.on('linking-request', (payload: LinkingRequestPayload) => {
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(SYNC_EVENTS.LINKING_REQUEST, {
+          sessionId: payload.sessionId,
+          deviceName: payload.deviceName,
+          devicePlatform: payload.devicePlatform
+        })
+      })
+    })
+
+    // T121: Forward linking approved events to renderer
+    // When the existing device approves linking, notify the new device so it can complete the process
+    wsManager.on('linking-approved', (sessionId: string) => {
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(SYNC_EVENTS.LINKING_APPROVED, {
+          sessionId,
+          deviceId: '' // Will be populated by complete linking
+        })
+      })
     })
 
     // Set initial state based on network
