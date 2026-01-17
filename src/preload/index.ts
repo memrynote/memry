@@ -1595,6 +1595,50 @@ const api = {
     return () => ipcRenderer.removeListener(SyncChannels.events.INITIAL_SYNC_PROGRESS, handler)
   },
 
+  /** Subscribe to OAuth auth success events (loopback flow) */
+  onAuthSuccess: (
+    callback: (event: {
+      success: true
+      isNewUser: boolean
+      user: { id: string; email: string }
+      recoveryPhrase?: string
+      needsSetup?: boolean
+      needsRecoveryPhrase?: boolean
+      kdfSalt?: string
+      keyVerifier?: string
+      deviceName?: string
+    }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: {
+        success: true
+        isNewUser: boolean
+        user: { id: string; email: string }
+        recoveryPhrase?: string
+        needsSetup?: boolean
+        needsRecoveryPhrase?: boolean
+        kdfSalt?: string
+        keyVerifier?: string
+        deviceName?: string
+      }
+    ): void => callback(data)
+    ipcRenderer.on(SyncChannels.events.AUTH_SUCCESS, handler)
+    return () => ipcRenderer.removeListener(SyncChannels.events.AUTH_SUCCESS, handler)
+  },
+
+  /** Subscribe to OAuth auth error events (loopback flow) */
+  onAuthError: (
+    callback: (event: { error: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { error: string }
+    ): void => callback(data)
+    ipcRenderer.on(SyncChannels.events.AUTH_ERROR, handler)
+    return () => ipcRenderer.removeListener(SyncChannels.events.AUTH_ERROR, handler)
+  },
+
   // ==========================================================================
   // Crypto event subscription helpers
   // ==========================================================================

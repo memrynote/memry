@@ -41,6 +41,7 @@ import {
 import type { SyncStatus } from '@shared/contracts/sync-api'
 import { createValidatedHandler, createHandler } from './validate'
 import { syncApi, SyncApiError } from '../sync/api-client'
+import { startOAuthServer, getOAuthCallbackUrl, isLoopbackOAuth } from '../sync/oauth-server'
 import { generateRecoveryPhrase, validateRecoveryPhrase, mnemonicToSeed } from '../crypto/recovery'
 import {
   deriveMasterKey,
@@ -90,6 +91,8 @@ interface OAuthState {
   deviceName: string
   state: string
   codeVerifier: string
+  redirectUri: string
+  closeServer?: () => void
 }
 
 // =============================================================================
@@ -697,6 +700,7 @@ export function registerSyncHandlers(): void {
    * T057 - OAuth Start
    *
    * Opens OAuth provider authorization URL in default browser.
+   * Uses loopback server for callback when configured.
    */
   ipcMain.handle(
     SYNC_CHANNELS.OAUTH_START,
@@ -709,20 +713,70 @@ export function registerSyncHandlers(): void {
       // Generate state for CSRF protection
       const state = randomBytes(16).toString('hex')
 
-      // Store OAuth state
-      pendingOAuth = {
-        provider,
-        deviceName,
-        state,
-        codeVerifier
+      let redirectUri: string
+      let closeServer: (() => void) | undefined
+
+      if (isLoopbackOAuth()) {
+        // Start loopback server for callback
+        const server = await startOAuthServer()
+        redirectUri = getOAuthCallbackUrl(server.port)
+        closeServer = server.close
+
+        // Store OAuth state with server reference
+        pendingOAuth = {
+          provider,
+          deviceName,
+          state,
+          codeVerifier,
+          redirectUri,
+          closeServer
+        }
+
+        // Get OAuth URL and open in browser
+        const authUrl = syncApi.instance.getOAuthUrl(provider, redirectUri, state, codeChallenge)
+        await shell.openExternal(authUrl)
+
+        // Wait for callback in background and emit event
+        server
+          .waitForCallback()
+          .then(async (callbackParams) => {
+            // Process callback automatically
+            try {
+              await processOAuthCallback(callbackParams.code, callbackParams.state)
+            } catch (error) {
+              console.error('[OAuth] Failed to process callback:', error)
+              // Emit error event to renderer
+              const { BrowserWindow } = await import('electron')
+              const mainWindow = BrowserWindow.getAllWindows()[0]
+              if (mainWindow) {
+                mainWindow.webContents.send(SYNC_EVENTS.AUTH_ERROR, {
+                  error: error instanceof Error ? error.message : 'OAuth failed'
+                })
+              }
+            }
+          })
+          .catch((error) => {
+            console.error('[OAuth] Callback error:', error)
+            pendingOAuth?.closeServer?.()
+            pendingOAuth = null
+          })
+      } else {
+        // Use production callback URL
+        redirectUri = getOAuthCallbackUrl()
+
+        // Store OAuth state
+        pendingOAuth = {
+          provider,
+          deviceName,
+          state,
+          codeVerifier,
+          redirectUri
+        }
+
+        // Get OAuth URL and open in browser
+        const authUrl = syncApi.instance.getOAuthUrl(provider, redirectUri, state, codeChallenge)
+        await shell.openExternal(authUrl)
       }
-
-      // Get OAuth URL
-      const redirectUri = 'memry://oauth/callback'
-      const authUrl = syncApi.instance.getOAuthUrl(provider, redirectUri, state, codeChallenge)
-
-      // Open in default browser
-      await shell.openExternal(authUrl)
 
       return {
         success: true,
@@ -733,10 +787,95 @@ export function registerSyncHandlers(): void {
   )
 
   /**
+   * Process OAuth callback internally (used by loopback server)
+   */
+  async function processOAuthCallback(code: string, state: string) {
+    // Verify state matches
+    if (!pendingOAuth || pendingOAuth.state !== state) {
+      throw new Error('Invalid OAuth state. Please try again.')
+    }
+
+    const { provider, deviceName, codeVerifier, redirectUri, closeServer } = pendingOAuth
+
+    try {
+      // Exchange code for tokens
+      const result = await syncApi.instance.oauthCallback(
+        provider,
+        code,
+        state,
+        codeVerifier,
+        redirectUri
+      )
+
+      // Store tokens
+      await saveTokens(result.tokens.accessToken, result.tokens.refreshToken)
+      const keychain = await import('../crypto/keychain')
+      await keychain.saveUserId(result.user.id)
+
+      // Close server if running
+      closeServer?.()
+
+      // Clear OAuth state
+      pendingOAuth = null
+
+      // Import BrowserWindow to send events
+      const { BrowserWindow } = await import('electron')
+      const mainWindow = BrowserWindow.getAllWindows()[0]
+
+      if (result.isNewUser) {
+        // Generate recovery phrase for new OAuth users
+        const recoveryPhrase = generateRecoveryPhrase()
+
+        // Store as pending signup
+        pendingSignup = {
+          email: result.user.email,
+          password: '', // OAuth users don't have password
+          deviceName,
+          recoveryPhrase,
+          userId: result.user.id
+        }
+
+        // Emit success event to renderer
+        if (mainWindow) {
+          mainWindow.webContents.send(SYNC_EVENTS.AUTH_SUCCESS, {
+            success: true,
+            isNewUser: true,
+            user: result.user,
+            recoveryPhrase,
+            needsSetup: true
+          })
+        }
+        return
+      }
+
+      // Existing OAuth user needs to enter recovery phrase
+      const recoveryData = await syncApi.instance.getRecoveryData(result.user.id)
+
+      // Emit success event to renderer
+      if (mainWindow) {
+        mainWindow.webContents.send(SYNC_EVENTS.AUTH_SUCCESS, {
+          success: true,
+          isNewUser: false,
+          user: result.user,
+          needsRecoveryPhrase: true,
+          kdfSalt: recoveryData.kdf_salt,
+          keyVerifier: recoveryData.key_verifier,
+          deviceName
+        })
+      }
+    } catch (error) {
+      closeServer?.()
+      pendingOAuth = null
+      throw error
+    }
+  }
+
+  /**
    * T057 - OAuth Callback
    *
    * Handles OAuth callback after user authorizes.
    * For new users, generates recovery phrase.
+   * Note: With loopback OAuth, this is called automatically by the loopback server.
    */
   ipcMain.handle(
     SYNC_CHANNELS.OAUTH_CALLBACK,
@@ -748,16 +887,25 @@ export function registerSyncHandlers(): void {
         throw new Error('Invalid OAuth state. Please try again.')
       }
 
-      const { provider, deviceName, codeVerifier } = pendingOAuth
+      const { provider, deviceName, codeVerifier, redirectUri, closeServer } = pendingOAuth
 
       try {
         // Exchange code for tokens
-        const result = await syncApi.instance.oauthCallback(provider, code, state, codeVerifier)
+        const result = await syncApi.instance.oauthCallback(
+          provider,
+          code,
+          state,
+          codeVerifier,
+          redirectUri
+        )
 
         // Store tokens
         await saveTokens(result.tokens.accessToken, result.tokens.refreshToken)
         const keychain = await import('../crypto/keychain')
         await keychain.saveUserId(result.user.id)
+
+        // Close server if running
+        closeServer?.()
 
         // Clear OAuth state
         pendingOAuth = null
@@ -797,6 +945,7 @@ export function registerSyncHandlers(): void {
           deviceName
         }
       } catch (error) {
+        closeServer?.()
         pendingOAuth = null
         if (error instanceof SyncApiError) {
           throw new Error(error.message)

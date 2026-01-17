@@ -133,6 +133,10 @@ export const SYNC_EVENTS = {
   SESSION_EXPIRED: 'sync:session-expired',
   DEVICE_REMOVED: 'sync:device-removed',
 
+  // Auth events (for loopback OAuth)
+  AUTH_SUCCESS: 'sync:auth-success',
+  AUTH_ERROR: 'sync:auth-error',
+
   // Progress events
   INITIAL_SYNC_PROGRESS: 'sync:initial-sync-progress',
   KEY_ROTATION_PROGRESS: 'crypto:rotation-progress'

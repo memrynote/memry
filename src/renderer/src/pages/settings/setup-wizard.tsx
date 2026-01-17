@@ -23,6 +23,9 @@ import {
   ForgotPasswordForm
 } from '@/components/sync'
 import { useAuth } from '@/contexts/auth-context'
+import { authKeys } from '@/hooks/use-auth'
+import { useQueryClient } from '@tanstack/react-query'
+import type { OAuthSuccessEvent } from '../../../../preload/index.d'
 
 // =============================================================================
 // Types
@@ -201,6 +204,10 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
   const [deviceName, setDeviceName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [oauthProvider, setOauthProvider] = useState<'google' | 'apple' | 'github' | null>(null)
+  const [oauthResult, setOauthResult] = useState<OAuthSuccessEvent | null>(null)
+
+  // Get query client to invalidate auth queries on OAuth success
+  const queryClient = useQueryClient()
 
   // Get default device name
   const defaultDeviceName = useMemo(() => {
@@ -243,10 +250,47 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
 
   // Recovery phrase is generated during signup in the main process
   useEffect(() => {
-    if (step === 'recovery-phrase' && !recoveryPhrase && authMode === 'signup') {
+    if (step === 'recovery-phrase' && !recoveryPhrase && !oauthResult?.recoveryPhrase && authMode === 'signup') {
       setError('Missing recovery phrase. Please restart signup.')
     }
-  }, [step, recoveryPhrase, authMode])
+  }, [step, recoveryPhrase, oauthResult, authMode])
+
+  // Listen for loopback OAuth success/error events
+  useEffect(() => {
+    const unsubSuccess = window.api.onAuthSuccess((event) => {
+      setOauthProvider(null)
+      setOauthResult(event)
+
+      // Store email and device name from OAuth result
+      if (event.user?.email) {
+        setEmail(event.user.email)
+      }
+      if (event.deviceName) {
+        setDeviceName(event.deviceName)
+      }
+
+      // Invalidate auth queries so context refreshes
+      queryClient.invalidateQueries({ queryKey: authKeys.all })
+
+      if (event.isNewUser && event.recoveryPhrase) {
+        // New OAuth user - show recovery phrase
+        setStep('recovery-phrase')
+      } else if (event.needsRecoveryPhrase) {
+        // Existing user - need to enter recovery phrase
+        setStep('enter-phrase')
+      }
+    })
+
+    const unsubError = window.api.onAuthError((event) => {
+      setOauthProvider(null)
+      setError(event.error)
+    })
+
+    return () => {
+      unsubSuccess()
+      unsubError()
+    }
+  }, [queryClient])
 
   // Handle signup
   const handleSignup = useCallback(
@@ -371,12 +415,14 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
   // Handle recovery phrase confirmation
   const handleConfirmPhrase = useCallback(
     async (confirmationWords: Array<{ index: number; word: string }>) => {
-      if (!recoveryPhrase) return
+      // Use OAuth result phrase if available (loopback flow), otherwise use hook
+      const phraseToConfirm = oauthResult?.recoveryPhrase || recoveryPhrase
+      if (!phraseToConfirm) return
       setError(null)
       try {
         // Step 1: Confirm recovery phrase words
         const confirmResult = await confirmRecoveryPhrase({
-          phrase: recoveryPhrase,
+          phrase: phraseToConfirm,
           confirmationWords
         })
         if (!confirmResult.success) {
@@ -398,7 +444,7 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
         setError(err instanceof Error ? err.message : 'Setup failed')
       }
     },
-    [recoveryPhrase, confirmRecoveryPhrase, setupFirstDevice, onComplete]
+    [oauthResult?.recoveryPhrase, recoveryPhrase, confirmRecoveryPhrase, setupFirstDevice, onComplete]
   )
 
   // Handle entering existing recovery phrase (login on new device)
@@ -577,8 +623,10 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
           />
         )
 
-      case 'recovery-phrase':
-        if (isGeneratingPhrase || !recoveryPhrase) {
+      case 'recovery-phrase': {
+        // Use OAuth result phrase if available (loopback flow), otherwise use hook
+        const phraseToDisplay = oauthResult?.recoveryPhrase || recoveryPhrase
+        if (isGeneratingPhrase || !phraseToDisplay) {
           return (
             <div className="flex flex-col items-center justify-center space-y-4 py-12">
               <Loader2 className="size-8 animate-spin text-primary" aria-hidden="true" />
@@ -588,25 +636,29 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
         }
         return (
           <RecoveryPhraseDisplay
-            phrase={recoveryPhrase}
+            phrase={phraseToDisplay}
             onContinue={() => setStep('confirm-phrase')}
           />
         )
+      }
 
-      case 'confirm-phrase':
-        if (!recoveryPhrase) {
+      case 'confirm-phrase': {
+        // Use OAuth result phrase if available (loopback flow), otherwise use hook
+        const phraseToConfirm = oauthResult?.recoveryPhrase || recoveryPhrase
+        if (!phraseToConfirm) {
           setStep('recovery-phrase')
           return null
         }
         return (
           <RecoveryPhraseConfirm
-            phrase={recoveryPhrase}
+            phrase={phraseToConfirm}
             onConfirm={handleConfirmPhrase}
             onBack={goBack}
             isLoading={isConfirmingPhrase || isSettingUpDevice}
             error={error}
           />
         )
+      }
 
       case 'complete':
         return (

@@ -846,7 +846,11 @@ export const SyncChannels = {
     /** Device was removed by another device */
     DEVICE_REMOVED: 'sync:device-removed',
     /** Initial sync progress update */
-    INITIAL_SYNC_PROGRESS: 'sync:initial-sync-progress'
+    INITIAL_SYNC_PROGRESS: 'sync:initial-sync-progress',
+    /** OAuth auth success (loopback flow) */
+    AUTH_SUCCESS: 'sync:auth-success',
+    /** OAuth auth error (loopback flow) */
+    AUTH_ERROR: 'sync:auth-error'
   }
 } as const
 

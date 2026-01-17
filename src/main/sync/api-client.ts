@@ -341,16 +341,18 @@ export class SyncApiClient {
    * @param code - Authorization code
    * @param state - CSRF state token
    * @param codeVerifier - PKCE code verifier
+   * @param redirectUri - The redirect URI used in the authorization request
    * @returns Auth result with tokens
    */
   async oauthCallback(
     provider: 'google' | 'apple' | 'github',
     code: string,
     state: string,
-    codeVerifier: string
+    codeVerifier: string,
+    redirectUri: string
   ): Promise<AuthResult> {
     return this.request<AuthResult>('POST', `/auth/oauth/${provider}/callback`, {
-      body: { code, state, code_verifier: codeVerifier }
+      body: { code, state, code_verifier: codeVerifier, redirect_uri: redirectUri }
     })
   }
 

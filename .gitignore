@@ -15,3 +15,4 @@ Thumbs.db
 .vscode
 test-results
 .worktrees
+.dev.vars

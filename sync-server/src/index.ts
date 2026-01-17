@@ -37,6 +37,7 @@ export interface Env {
   OAUTH_GITHUB_CLIENT_ID?: string
   OAUTH_GITHUB_CLIENT_SECRET?: string
   RESEND_API_KEY?: string
+  OAUTH_CALLBACK_URL?: string
 }
 
 // Create Hono app with environment bindings

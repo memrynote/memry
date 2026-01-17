@@ -100,7 +100,8 @@ const deviceSetupSchema = z.object({
 const oauthCallbackSchema = z.object({
   code: z.string().min(1),
   state: z.string().min(1),
-  code_verifier: z.string().min(1)
+  code_verifier: z.string().min(1),
+  redirect_uri: z.string().min(1)
 })
 
 // =============================================================================
@@ -443,7 +444,7 @@ auth.get('/oauth/:provider', async (c) => {
 
 auth.post('/oauth/:provider/callback', zValidator('json', oauthCallbackSchema), async (c) => {
   const provider = c.req.param('provider')
-  const { code, state, code_verifier } = c.req.valid('json')
+  const { code, state, code_verifier, redirect_uri } = c.req.valid('json')
 
   // Validate provider
   if (!['google', 'apple', 'github'].includes(provider)) {
@@ -455,7 +456,7 @@ auth.post('/oauth/:provider/callback', zValidator('json', oauthCallbackSchema), 
 
   switch (provider) {
     case 'google':
-      userProfile = await exchangeGoogleCode(code, code_verifier, c.env)
+      userProfile = await exchangeGoogleCode(code, code_verifier, redirect_uri, c.env)
       break
     case 'apple':
       userProfile = await exchangeAppleCode(code, code_verifier, c.env)
@@ -607,6 +608,7 @@ function buildGitHubAuthUrl(redirectUri: string, state: string, env: Env): strin
 async function exchangeGoogleCode(
   code: string,
   codeVerifier: string,
+  redirectUri: string,
   env: Env
 ): Promise<{ email: string; providerId: string }> {
   // Exchange code for tokens
@@ -619,7 +621,7 @@ async function exchangeGoogleCode(
       client_secret: env.OAUTH_GOOGLE_CLIENT_SECRET || '',
       code_verifier: codeVerifier,
       grant_type: 'authorization_code',
-      redirect_uri: 'memry://oauth/callback'
+      redirect_uri: redirectUri
     }).toString()
   })
 

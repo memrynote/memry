@@ -2112,6 +2112,24 @@ export interface SyncInitialProgressEvent {
   currentItem?: string
 }
 
+/** OAuth authentication success event (loopback flow) */
+export interface OAuthSuccessEvent {
+  success: true
+  isNewUser: boolean
+  user: { id: string; email: string }
+  recoveryPhrase?: string
+  needsSetup?: boolean
+  needsRecoveryPhrase?: boolean
+  kdfSalt?: string
+  keyVerifier?: string
+  deviceName?: string
+}
+
+/** OAuth authentication error event (loopback flow) */
+export interface OAuthErrorEvent {
+  error: string
+}
+
 // Sync client API interface
 export interface SyncClientAPI {
   // Setup
@@ -2407,6 +2425,8 @@ interface API extends WindowAPI {
   onSyncLinkingRejected: (callback: (event: SyncLinkingRejectedEvent) => void) => () => void
   onSyncSessionExpired: (callback: (event: SyncSessionExpiredEvent) => void) => () => void
   onSyncInitialProgress: (callback: (event: SyncInitialProgressEvent) => void) => () => void
+  onAuthSuccess: (callback: (event: OAuthSuccessEvent) => void) => () => void
+  onAuthError: (callback: (event: OAuthErrorEvent) => void) => () => void
 
   // Crypto event subscriptions
   onCryptoRotationProgress: (callback: (event: KeyRotationProgress) => void) => () => void
