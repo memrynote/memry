@@ -493,6 +493,7 @@ export class SyncApiClient {
    * Called by new device after scanning QR.
    *
    * @param sessionId - Linking session ID
+   * @param token - One-time token from QR code
    * @param newDevicePublicKey - Base64-encoded X25519 public key
    * @param newDeviceConfirm - Base64-encoded HMAC proof
    * @param deviceName - Name for the new device
@@ -501,6 +502,7 @@ export class SyncApiClient {
    */
   async scanLinkingQR(
     sessionId: string,
+    token: string,
     newDevicePublicKey: string,
     newDeviceConfirm: string,
     deviceName: string,
@@ -509,6 +511,7 @@ export class SyncApiClient {
     return this.request<MessageResponse>('POST', `/auth/linking/${sessionId}/scan`, {
       body: {
         new_device_public_key: newDevicePublicKey,
+        token,
         new_device_confirm: newDeviceConfirm,
         device_name: deviceName,
         device_platform: devicePlatform

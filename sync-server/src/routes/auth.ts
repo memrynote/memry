@@ -124,7 +124,9 @@ const linkingInitiateSchema = z.object({
 const linkingScanSchema = z.object({
   new_device_public_key: z.string().min(1), // X25519 public key (Base64)
   token: z.string().min(1), // One-time token from QR
-  new_device_confirm: z.string().min(1) // HMAC proof (Base64)
+  new_device_confirm: z.string().min(1), // HMAC proof (Base64)
+  device_name: z.string().min(1).max(100).optional(), // Device name for registration
+  device_platform: z.enum(['macos', 'windows', 'linux', 'ios', 'android']).optional() // Device platform
 })
 
 const linkingApproveSchema = z.object({
@@ -604,6 +606,18 @@ auth.post(
   async (c) => {
     const { ephemeral_public_key } = c.req.valid('json')
     const authUser = c.get('user')
+
+    // Verify device exists before attempting linking
+    // This prevents FK constraint failures when using temp device IDs from initial login
+    const deviceExists = await c.env.DB.prepare(
+      'SELECT 1 FROM devices WHERE id = ? AND user_id = ? AND revoked_at IS NULL'
+    )
+      .bind(authUser.deviceId, authUser.userId)
+      .first()
+
+    if (!deviceExists) {
+      throw new ValidationError('Device not registered. Please complete device setup first.')
+    }
 
     // Generate session ID and one-time token
     const sessionId = crypto.randomUUID()

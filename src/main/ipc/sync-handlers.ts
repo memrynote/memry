@@ -1301,6 +1301,7 @@ export function registerSyncHandlers(): void {
         // Call server to scan QR
         await syncApi.instance.scanLinkingQR(
           sessionId,
+          token,
           myPublicKeyBase64,
           newDeviceConfirm.toString('base64'),
           deviceName,
