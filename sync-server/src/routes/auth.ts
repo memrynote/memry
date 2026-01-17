@@ -530,7 +530,23 @@ auth.post(
       authPublicKey: input.auth_public_key
     })
 
-    return c.json(toPublicDevice(device), 201)
+    // Generate new tokens with the REAL device ID
+    // This fixes the issue where the initial login token contains a temp device ID
+    // that isn't in the devices table, causing FK constraint failures in linking
+    const tokens = await generateTokens(
+      { id: authUser.userId, email: authUser.email } as User,
+      device.id,
+      c.env.JWT_SECRET
+    )
+
+    return c.json({
+      ...toPublicDevice(device),
+      tokens: {
+        access_token: tokens.accessToken,
+        refresh_token: tokens.refreshToken,
+        expires_in: tokens.expiresIn
+      }
+    }, 201)
   }
 )
 
@@ -631,7 +647,7 @@ auth.post(
 
     return c.json(
       {
-        id: sessionId,
+        session_id: sessionId,
         token,
         ephemeral_public_key,
         expires_at: new Date(expiresAt).toISOString(),

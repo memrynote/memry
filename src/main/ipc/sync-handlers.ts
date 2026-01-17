@@ -378,6 +378,7 @@ export function registerSyncHandlers(): void {
         )
 
         // Save complete session to keychain
+        // Use NEW tokens from device registration (contain real device ID, not temp ID)
         const userId = await getUserId()
         if (!userId) {
           throw new Error('User ID not found in keychain')
@@ -386,8 +387,8 @@ export function registerSyncHandlers(): void {
         await saveSyncSession({
           userId,
           deviceId: device.id,
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
+          accessToken: device.tokens.access_token,
+          refreshToken: device.tokens.refresh_token,
           masterKey
         })
 
@@ -1751,11 +1752,12 @@ export function registerSyncHandlers(): void {
         )
 
         // Save complete session to keychain (including master key)
+        // Use NEW tokens from device registration (contain real device ID, not temp ID)
         await saveSyncSession({
           userId,
           deviceId: device.id,
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
+          accessToken: device.tokens.access_token,
+          refreshToken: device.tokens.refresh_token,
           masterKey
         })
 

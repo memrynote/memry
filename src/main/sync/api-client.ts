@@ -72,6 +72,15 @@ export interface DevicePublic {
   lastSyncAt?: string
 }
 
+/** Device registration response (includes new tokens with real device ID) */
+export interface DeviceRegistrationResponse extends DevicePublic {
+  tokens: {
+    access_token: string
+    refresh_token: string
+    expires_in: number
+  }
+}
+
 /** Recovery data for device linking */
 export interface RecoveryData {
   kdf_salt: string
@@ -398,7 +407,7 @@ export class SyncApiClient {
    * @param accessToken - JWT access token
    * @param osVersion - Optional OS version
    * @param authPublicKey - Optional Ed25519 public key
-   * @returns Registered device info
+   * @returns Registered device info with new tokens
    */
   async registerDevice(
     name: string,
@@ -407,8 +416,8 @@ export class SyncApiClient {
     accessToken: string,
     osVersion?: string,
     authPublicKey?: string
-  ): Promise<DevicePublic> {
-    return this.request<DevicePublic>('POST', '/auth/device/register', {
+  ): Promise<DeviceRegistrationResponse> {
+    return this.request<DeviceRegistrationResponse>('POST', '/auth/device/register', {
       body: {
         name,
         platform,

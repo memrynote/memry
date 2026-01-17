@@ -16,6 +16,13 @@ import { join } from 'path'
 import { homedir } from 'node:os'
 import { existsSync, readdirSync } from 'node:fs'
 import { config } from 'dotenv'
+
+// Allow overriding userData directory for testing multiple instances
+// Must be called before app is ready
+if (process.env.MEMRY_USER_DATA_DIR) {
+  app.setPath('userData', process.env.MEMRY_USER_DATA_DIR)
+}
+
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllHandlers } from './ipc'
 import { autoOpenLastVault, closeVault } from './vault'
