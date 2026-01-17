@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS linking_sessions (
   user_id TEXT NOT NULL,                        -- FK to users
   initiator_device_id TEXT NOT NULL,            -- FK to devices (existing device)
   ephemeral_public_key TEXT NOT NULL,           -- X25519 public key from existing device (Base64)
+  token_hash TEXT NOT NULL,                     -- SHA-256 hash of QR token for polling validation
   new_device_public_key TEXT,                   -- X25519 public key from new device (Base64)
   new_device_confirm TEXT,                      -- HMAC proof from new device (Base64)
   device_name TEXT,                             -- New device name (for approval UI)

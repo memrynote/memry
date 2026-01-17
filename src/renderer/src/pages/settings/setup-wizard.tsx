@@ -512,7 +512,7 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
     [linkViaQR]
   )
 
-  // Listen for linking approval/rejection events
+  // Listen for linking approval/rejection/expiry events
   // Note: Main process now owns completion - it auto-completes and emits this event with result
   useLinkingEvents({
     onLinkingApproved: useCallback(
@@ -536,6 +536,19 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
         }
 
         setError(event.reason || 'Linking request was rejected')
+        setStep('link-device')
+        setLinkingSessionId(null)
+      },
+      [linkingSessionId]
+    ),
+    onLinkingExpired: useCallback(
+      (event) => {
+        // Verify this event is for our session
+        if (event.sessionId !== linkingSessionId) {
+          return
+        }
+
+        setError('Session expired. Please try again.')
         setStep('link-device')
         setLinkingSessionId(null)
       },

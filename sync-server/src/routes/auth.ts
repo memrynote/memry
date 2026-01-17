@@ -620,14 +620,31 @@ auth.post(
     const now = Date.now()
     const expiresAt = now + 5 * 60 * 1000 // 5 minutes
 
+    // Calculate token hash for D1 polling validation (bypasses DO status checks)
+    const tokenHashBuffer = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(token)
+    )
+    const tokenHash = Array.from(new Uint8Array(tokenHashBuffer))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+
     // Store in D1 linking_sessions table
     await c.env.DB.prepare(
       `INSERT INTO linking_sessions (
-        id, user_id, initiator_device_id, ephemeral_public_key,
+        id, user_id, initiator_device_id, ephemeral_public_key, token_hash,
         status, created_at, expires_at
-      ) VALUES (?, ?, ?, ?, 'pending', ?, ?)`
+      ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`
     )
-      .bind(sessionId, authUser.userId, authUser.deviceId, ephemeral_public_key, now, expiresAt)
+      .bind(
+        sessionId,
+        authUser.userId,
+        authUser.deviceId,
+        ephemeral_public_key,
+        tokenHash,
+        now,
+        expiresAt
+      )
       .run()
 
     // Initialize Durable Object for real-time WebSocket updates
@@ -967,9 +984,9 @@ auth.get(
     const tokenParam = c.req.query('token')
     const authHeader = c.req.header('Authorization')
 
-    // Find session in D1 (include token for validation)
+    // Find session in D1 (include token_hash for validation)
     const session = await c.env.DB.prepare(
-      `SELECT id, user_id, status, expires_at,
+      `SELECT id, user_id, status, expires_at, token_hash,
               new_device_public_key, new_device_confirm,
               device_name, device_platform
        FROM linking_sessions WHERE id = ?`
@@ -980,6 +997,7 @@ auth.get(
         user_id: string
         status: string
         expires_at: number
+        token_hash: string
         new_device_public_key: string | null
         new_device_confirm: string | null
         device_name: string | null
@@ -998,7 +1016,8 @@ auth.get(
       const accessToken = authHeader.slice(7)
       try {
         const payload = await verifyToken(accessToken, c.env.JWT_SECRET)
-        if (payload.userId === session.user_id) {
+        // Must be access token (not refresh) and match session owner
+        if (payload.type === 'access' && payload.sub === session.user_id) {
           callerRole = 'existing'
         }
       } catch {
@@ -1007,22 +1026,18 @@ auth.get(
     }
 
     if (!callerRole && tokenParam) {
-      // New device: validate QR token via Durable Object
-      const doId = c.env.LINKING_SESSION.idFromName(sessionId)
-      const linkingDO = c.env.LINKING_SESSION.get(doId)
+      // New device: validate QR token via D1 hash comparison
+      // This bypasses DO status checks, allowing polling after scan/approved states
+      const providedHashBuffer = await crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode(tokenParam)
+      )
+      const providedHash = Array.from(new Uint8Array(providedHashBuffer))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
 
-      try {
-        const tokenValidation = await linkingDO.fetch(
-          new Request('https://internal/validate-token', {
-            method: 'POST',
-            body: JSON.stringify({ token: tokenParam })
-          })
-        )
-        if (tokenValidation.ok) {
-          callerRole = 'new'
-        }
-      } catch {
-        // Invalid token
+      if (session.token_hash === providedHash) {
+        callerRole = 'new'
       }
     }
 

@@ -126,9 +126,9 @@ export const RATE_LIMITS = {
     message: 'Too many device linking attempts. Please try again later.',
   },
 
-  /** Linking status polling: 200 per 5 minutes per session (supports 2.5s polling for 8+ minutes) */
+  /** Linking status polling: 500 per 5 minutes per session (supports 2 devices at 2.5s for 10+ minutes) */
   LINKING_STATUS: {
-    limit: 200,
+    limit: 500,
     windowMs: 5 * 60 * 1000,
     keyGenerator: (c: { req: { param: (name: string) => string } }) => {
       const sessionId = c.req.param('session_id') || 'unknown'
