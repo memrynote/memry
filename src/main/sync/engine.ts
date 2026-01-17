@@ -26,7 +26,7 @@ import type {
   SyncPullResponse,
   VectorClock,
   SyncItemType,
-  SyncOperation,
+  SyncOperation
 } from '@shared/contracts/sync-api'
 
 import { getSyncQueue } from './queue'
@@ -40,7 +40,7 @@ import {
   compareClock,
   ClockComparison,
   serializeClock,
-  deserializeClock,
+  deserializeClock
 } from './vector-clock'
 
 import {
@@ -54,7 +54,7 @@ import {
   signItem,
   verifyItem,
   deriveSigningKeySeed,
-  generateSigningKeyPair,
+  generateSigningKeyPair
 } from '../crypto'
 
 // =============================================================================
@@ -78,15 +78,25 @@ const DEFAULT_CONFIG: SyncEngineConfig = {
   pushBatchSize: 50,
   pullBatchSize: 100,
   autoSyncInterval: 0, // Disabled by default, use WebSocket
-  syncOnStartup: true,
+  syncOnStartup: true
 }
 
 /** Sync engine events */
 export interface SyncEngineEvents {
   'status-changed': (status: SyncStatus) => void
-  'item-synced': (item: { id: string; type: SyncItemType; operation: SyncOperation; direction: 'push' | 'pull' }) => void
+  'item-synced': (item: {
+    id: string
+    type: SyncItemType
+    operation: SyncOperation
+    direction: 'push' | 'pull'
+  }) => void
   error: (error: Error) => void
-  'conflict-detected': (item: { id: string; type: SyncItemType; localClock: VectorClock; remoteClock: VectorClock }) => void
+  'conflict-detected': (item: {
+    id: string
+    type: SyncItemType
+    localClock: VectorClock
+    remoteClock: VectorClock
+  }) => void
 }
 
 /** Internal sync result */
@@ -162,7 +172,9 @@ export class SyncEngine extends EventEmitter {
     const wsManager = getWebSocketManager()
     wsManager.on('item-synced', (wsPayload: { itemId: string; type: string }) => {
       // Another device pushed an item, pull it
-      this.pullSingleItem(wsPayload.itemId, wsPayload.type as SyncItemType).catch((err) => this.emit('error', err))
+      this.pullSingleItem(wsPayload.itemId, wsPayload.type as SyncItemType).catch((err) =>
+        this.emit('error', err)
+      )
     })
 
     // Set initial state based on network
@@ -360,15 +372,12 @@ export class SyncEngine extends EventEmitter {
         throw new Error('No access token available')
       }
 
-      const response = await withRetry(
-        () => this.sendPushRequest(pushItems, tokens.accessToken),
-        {
-          maxAttempts: 3,
-          onRetry: (attempt, delay) => {
-            console.log(`Push retry ${attempt}, waiting ${delay}ms`)
-          },
+      const response = await withRetry(() => this.sendPushRequest(pushItems, tokens.accessToken), {
+        maxAttempts: 3,
+        onRetry: (attempt, delay) => {
+          console.log(`Push retry ${attempt}, waiting ${delay}ms`)
         }
-      )
+      })
 
       // Process response
       for (const acceptedId of response.accepted) {
@@ -380,7 +389,7 @@ export class SyncEngine extends EventEmitter {
             id: queueItem.itemId,
             type: queueItem.type as SyncItemType,
             operation: queueItem.operation as SyncOperation,
-            direction: 'push',
+            direction: 'push'
           })
         }
       }
@@ -395,7 +404,7 @@ export class SyncEngine extends EventEmitter {
             id: conflict.id,
             type: conflict.type,
             localClock: this._deviceClock,
-            remoteClock: conflict.serverClock,
+            remoteClock: conflict.serverClock
           })
         }
       }
@@ -447,8 +456,8 @@ export class SyncEngine extends EventEmitter {
           this.emit('item-synced', {
             id: item.id,
             type: item.type,
-            operation: item.deletedAt ? 'delete' : 'update',
-            direction: 'pull',
+            operation: item.operation ?? (item.deletedAt ? 'delete' : 'update'),
+            direction: 'pull'
           })
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error)
@@ -507,7 +516,7 @@ export class SyncEngine extends EventEmitter {
       pendingCount: 0, // Will be updated async
       errorMessage: undefined,
       retryCount: 0,
-      isOnline: networkMonitor.isOnline,
+      isOnline: networkMonitor.isOnline
     }
   }
 
@@ -547,7 +556,11 @@ export class SyncEngine extends EventEmitter {
     // Fetch payload if empty (on-demand data fetching)
     let payload: string | null = item.payload
     if (!payload || payload === '') {
-      payload = await this.fetchPayloadForItem(item.type as SyncItemType, item.itemId, item.operation as SyncOperation)
+      payload = await this.fetchPayloadForItem(
+        item.type as SyncItemType,
+        item.itemId,
+        item.operation as SyncOperation
+      )
       if (!payload) {
         // Item may have been deleted or doesn't exist
         console.warn(`[Sync] No payload found for ${item.type}/${item.itemId}, skipping`)
@@ -572,7 +585,7 @@ export class SyncEngine extends EventEmitter {
       encryptedKey: encrypted.encryptedKey,
       keyNonce: encrypted.keyNonce,
       encryptedData: encrypted.encryptedData,
-      dataNonce: encrypted.dataNonce,
+      dataNonce: encrypted.dataNonce
     }
 
     const signature = signItem(signaturePayload, secretKey)
@@ -586,7 +599,7 @@ export class SyncEngine extends EventEmitter {
       operation: item.operation as SyncOperation,
       encryptedData: JSON.stringify(encrypted),
       signature: signature.toString('base64'),
-      clock: this._deviceClock,
+      clock: this._deviceClock
     }
   }
 
@@ -612,8 +625,10 @@ export class SyncEngine extends EventEmitter {
     const signingKeySeed = deriveSigningKeySeed(masterKey)
     const { publicKey } = generateSigningKeyPair(signingKeySeed)
 
-    // Infer operation from deletedAt presence
-    const operation = item.deletedAt ? 'delete' : 'update'
+    // Use operation from server if available, otherwise infer from deletedAt
+    // Note: Inference only distinguishes 'delete' vs 'update', never 'create'
+    // Server should provide operation field for correct signature verification
+    const operation = item.operation ?? (item.deletedAt ? 'delete' : 'update')
 
     const signaturePayload = {
       id: item.id,
@@ -623,10 +638,14 @@ export class SyncEngine extends EventEmitter {
       encryptedKey: encrypted.encryptedKey,
       keyNonce: encrypted.keyNonce,
       encryptedData: encrypted.encryptedData,
-      dataNonce: encrypted.dataNonce,
+      dataNonce: encrypted.dataNonce
     }
 
-    const signatureValid = verifyItem(Buffer.from(item.signature, 'base64'), signaturePayload, publicKey)
+    const signatureValid = verifyItem(
+      Buffer.from(item.signature, 'base64'),
+      signaturePayload,
+      publicKey
+    )
 
     if (!signatureValid) {
       throw new Error('Invalid signature')
@@ -654,7 +673,7 @@ export class SyncEngine extends EventEmitter {
           id: item.id,
           type: item.type,
           localClock: this._deviceClock,
-          remoteClock: item.clock,
+          remoteClock: item.clock
         })
         // For now, use LWW (last write wins) - apply the remote change
       }
@@ -691,7 +710,7 @@ export class SyncEngine extends EventEmitter {
         id,
         type,
         operation: deletedAt ? 'delete' : 'update',
-        payload,
+        payload
       })
     })
   }
@@ -701,7 +720,8 @@ export class SyncEngine extends EventEmitter {
    */
   private async deleteLocalItem(type: SyncItemType, id: string): Promise<void> {
     const db = getDatabase()
-    const { tasks, projects, inboxItems, savedFilters, settings } = await import('@shared/db/schema')
+    const { tasks, projects, inboxItems, savedFilters, settings } =
+      await import('@shared/db/schema')
 
     switch (type) {
       case 'task':
@@ -742,7 +762,8 @@ export class SyncEngine extends EventEmitter {
    */
   private async upsertLocalItem(type: SyncItemType, _id: string, payload: unknown): Promise<void> {
     const db = getDatabase()
-    const { tasks, projects, inboxItems, savedFilters, settings } = await import('@shared/db/schema')
+    const { tasks, projects, inboxItems, savedFilters, settings } =
+      await import('@shared/db/schema')
 
     // Cast payload for type safety
     const data = payload as Record<string, unknown>
@@ -771,7 +792,7 @@ export class SyncEngine extends EventEmitter {
             archivedAt: data.archivedAt as string | null,
             createdAt: (data.createdAt as string) ?? now,
             modifiedAt: (data.modifiedAt as string) ?? now,
-            clock: data.clock as Record<string, number> | null,
+            clock: data.clock as Record<string, number> | null
           })
           .onConflictDoUpdate({
             target: tasks.id,
@@ -792,8 +813,8 @@ export class SyncEngine extends EventEmitter {
               completedAt: data.completedAt as string | null,
               archivedAt: data.archivedAt as string | null,
               modifiedAt: now,
-              clock: data.clock as Record<string, number> | null,
-            },
+              clock: data.clock as Record<string, number> | null
+            }
           })
         break
       }
@@ -810,7 +831,7 @@ export class SyncEngine extends EventEmitter {
             isInbox: (data.isInbox as boolean) ?? false,
             createdAt: (data.createdAt as string) ?? now,
             modifiedAt: (data.modifiedAt as string) ?? now,
-            archivedAt: data.archivedAt as string | null,
+            archivedAt: data.archivedAt as string | null
           })
           .onConflictDoUpdate({
             target: projects.id,
@@ -822,8 +843,8 @@ export class SyncEngine extends EventEmitter {
               position: (data.position as number) ?? 0,
               isInbox: (data.isInbox as boolean) ?? false,
               modifiedAt: now,
-              archivedAt: data.archivedAt as string | null,
-            },
+              archivedAt: data.archivedAt as string | null
+            }
           })
         break
       }
@@ -853,7 +874,7 @@ export class SyncEngine extends EventEmitter {
             sourceUrl: data.sourceUrl as string | null,
             sourceTitle: data.sourceTitle as string | null,
             archivedAt: data.archivedAt as string | null,
-            clock: data.clock as Record<string, number> | null,
+            clock: data.clock as Record<string, number> | null
           })
           .onConflictDoUpdate({
             target: inboxItems.id,
@@ -878,8 +899,8 @@ export class SyncEngine extends EventEmitter {
               sourceUrl: data.sourceUrl as string | null,
               sourceTitle: data.sourceTitle as string | null,
               archivedAt: data.archivedAt as string | null,
-              clock: data.clock as Record<string, number> | null,
-            },
+              clock: data.clock as Record<string, number> | null
+            }
           })
         break
       }
@@ -892,7 +913,7 @@ export class SyncEngine extends EventEmitter {
             config: data.config as Record<string, unknown>,
             position: (data.position as number) ?? 0,
             createdAt: (data.createdAt as string) ?? now,
-            clock: data.clock as Record<string, number> | null,
+            clock: data.clock as Record<string, number> | null
           })
           .onConflictDoUpdate({
             target: savedFilters.id,
@@ -900,8 +921,8 @@ export class SyncEngine extends EventEmitter {
               name: data.name as string,
               config: data.config as Record<string, unknown>,
               position: (data.position as number) ?? 0,
-              clock: data.clock as Record<string, number> | null,
-            },
+              clock: data.clock as Record<string, number> | null
+            }
           })
         break
       }
@@ -912,15 +933,15 @@ export class SyncEngine extends EventEmitter {
             key: data.key as string,
             value: data.value as string,
             modifiedAt: (data.modifiedAt as string) ?? now,
-            clock: data.clock as Record<string, number> | null,
+            clock: data.clock as Record<string, number> | null
           })
           .onConflictDoUpdate({
             target: settings.key,
             set: {
               value: data.value as string,
               modifiedAt: now,
-              clock: data.clock as Record<string, number> | null,
-            },
+              clock: data.clock as Record<string, number> | null
+            }
           })
         break
       }
@@ -958,7 +979,8 @@ export class SyncEngine extends EventEmitter {
     }
 
     const db = getDatabase()
-    const { tasks, projects, inboxItems, savedFilters, settings } = await import('@shared/db/schema')
+    const { tasks, projects, inboxItems, savedFilters, settings } =
+      await import('@shared/db/schema')
 
     switch (type) {
       case 'task': {
@@ -1021,12 +1043,12 @@ export class SyncEngine extends EventEmitter {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token}`
       },
       body: JSON.stringify({
         items,
-        deviceClock: this._deviceClock,
-      }),
+        deviceClock: this._deviceClock
+      })
     })
 
     if (!response.ok) {
@@ -1040,20 +1062,23 @@ export class SyncEngine extends EventEmitter {
   /**
    * Send pull request to server.
    */
-  private async sendPullRequest(since: number | undefined, token: string): Promise<SyncPullResponse> {
+  private async sendPullRequest(
+    since: number | undefined,
+    token: string
+  ): Promise<SyncPullResponse> {
     const url = `${this.getServerUrl()}/api/v1/sync/pull`
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token}`
       },
       body: JSON.stringify({
         deviceClock: this._deviceClock,
         since,
-        limit: this._config.pullBatchSize,
-      }),
+        limit: this._config.pullBatchSize
+      })
     })
 
     if (!response.ok) {
@@ -1096,7 +1121,7 @@ export class SyncEngine extends EventEmitter {
 
     // Load device clock
     const clockEntry = await db.query.syncState.findFirst({
-      where: eq(syncState.key, SYNC_STATE_KEYS.DEVICE_CLOCK),
+      where: eq(syncState.key, SYNC_STATE_KEYS.DEVICE_CLOCK)
     })
     if (clockEntry) {
       this._deviceClock = deserializeClock(clockEntry.value)
@@ -1104,7 +1129,7 @@ export class SyncEngine extends EventEmitter {
 
     // Load last sync time
     const lastSyncEntry = await db.query.syncState.findFirst({
-      where: eq(syncState.key, SYNC_STATE_KEYS.LAST_SYNC_AT),
+      where: eq(syncState.key, SYNC_STATE_KEYS.LAST_SYNC_AT)
     })
     if (lastSyncEntry) {
       this._lastSyncAt = parseInt(lastSyncEntry.value, 10)
@@ -1124,14 +1149,14 @@ export class SyncEngine extends EventEmitter {
       .values({
         key: SYNC_STATE_KEYS.DEVICE_CLOCK,
         value: serializeClock(this._deviceClock),
-        updatedAt: now,
+        updatedAt: now
       })
       .onConflictDoUpdate({
         target: syncState.key,
         set: {
           value: serializeClock(this._deviceClock),
-          updatedAt: now,
-        },
+          updatedAt: now
+        }
       })
 
     // Save last sync time
@@ -1141,14 +1166,14 @@ export class SyncEngine extends EventEmitter {
         .values({
           key: SYNC_STATE_KEYS.LAST_SYNC_AT,
           value: String(this._lastSyncAt),
-          updatedAt: now,
+          updatedAt: now
         })
         .onConflictDoUpdate({
           target: syncState.key,
           set: {
             value: String(this._lastSyncAt),
-            updatedAt: now,
-          },
+            updatedAt: now
+          }
         })
     }
   }
@@ -1170,7 +1195,7 @@ export class SyncEngine extends EventEmitter {
       itemCount,
       direction,
       durationMs,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toISOString()
     })
   }
 }
@@ -1204,4 +1229,3 @@ export async function resetSyncEngine(): Promise<void> {
     _syncEngine = null
   }
 }
-

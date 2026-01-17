@@ -55,7 +55,7 @@ export const SyncStatusSchema = z.object({
   pendingCount: z.number(),
   errorMessage: z.string().optional(),
   retryCount: z.number(),
-  isOnline: z.boolean(),
+  isOnline: z.boolean()
 })
 
 // =============================================================================
@@ -65,7 +65,14 @@ export const SyncStatusSchema = z.object({
 /**
  * Types of items that can be synced
  */
-export type SyncItemType = 'note' | 'task' | 'project' | 'settings' | 'attachment' | 'inbox_item' | 'saved_filter'
+export type SyncItemType =
+  | 'note'
+  | 'task'
+  | 'project'
+  | 'settings'
+  | 'attachment'
+  | 'inbox_item'
+  | 'saved_filter'
 
 /**
  * Sync operation types
@@ -107,7 +114,7 @@ export const SyncItemSchema = z.object({
   blobKey: z.string(),
   size: z.number(),
   stateVector: z.string().optional(),
-  clock: VectorClockSchema.optional(),
+  clock: VectorClockSchema.optional()
 })
 
 // =============================================================================
@@ -150,7 +157,7 @@ export const SyncQueueItemSchema = z.object({
   lastAttempt: z.number().optional(),
   errorMessage: z.string().optional(),
   createdAt: z.number(),
-  status: z.enum(['pending', 'in_progress', 'failed']),
+  status: z.enum(['pending', 'in_progress', 'failed'])
 })
 
 // =============================================================================
@@ -189,7 +196,7 @@ export const DeviceSchema = z.object({
   linkedAt: z.number(),
   lastSyncAt: z.number().optional(),
   isCurrentDevice: z.boolean().optional(),
-  revokedAt: z.number().optional(),
+  revokedAt: z.number().optional()
 })
 
 // =============================================================================
@@ -218,7 +225,7 @@ export const LinkingQRPayloadSchema = z.object({
   sessionId: z.string(),
   token: z.string(),
   ephemeralPublicKey: z.string(),
-  expiresAt: z.number(),
+  expiresAt: z.number()
 })
 
 /**
@@ -242,7 +249,7 @@ export const LinkingSessionSchema = z.object({
   createdAt: z.number(),
   expiresAt: z.number(),
   newDeviceName: z.string().optional(),
-  newDevicePlatform: z.enum(['macos', 'windows', 'linux', 'ios', 'android']).optional(),
+  newDevicePlatform: z.enum(['macos', 'windows', 'linux', 'ios', 'android']).optional()
 })
 
 // =============================================================================
@@ -277,15 +284,23 @@ export const SyncPushRequestSchema = z.object({
   items: z.array(
     z.object({
       id: z.string(),
-      type: z.enum(['note', 'task', 'project', 'settings', 'attachment', 'inbox_item', 'saved_filter']),
+      type: z.enum([
+        'note',
+        'task',
+        'project',
+        'settings',
+        'attachment',
+        'inbox_item',
+        'saved_filter'
+      ]),
       operation: z.enum(['create', 'update', 'delete']),
       encryptedData: z.string(),
       signature: z.string(),
       clock: VectorClockSchema.optional(),
-      stateVector: z.string().optional(),
+      stateVector: z.string().optional()
     })
   ),
-  deviceClock: VectorClockSchema,
+  deviceClock: VectorClockSchema
 })
 
 /**
@@ -317,12 +332,20 @@ export const SyncPushResponseSchema = z.object({
   conflicts: z.array(
     z.object({
       id: z.string(),
-      type: z.enum(['note', 'task', 'project', 'settings', 'attachment', 'inbox_item', 'saved_filter']),
+      type: z.enum([
+        'note',
+        'task',
+        'project',
+        'settings',
+        'attachment',
+        'inbox_item',
+        'saved_filter'
+      ]),
       serverVersion: z.number(),
-      serverClock: VectorClockSchema,
+      serverClock: VectorClockSchema
     })
   ),
-  serverClock: VectorClockSchema,
+  serverClock: VectorClockSchema
 })
 
 /**
@@ -340,9 +363,13 @@ export interface SyncPullRequest {
  */
 export const SyncPullRequestSchema = z.object({
   since: z.number().optional(),
-  types: z.array(z.enum(['note', 'task', 'project', 'settings', 'attachment', 'inbox_item', 'saved_filter'])).optional(),
+  types: z
+    .array(
+      z.enum(['note', 'task', 'project', 'settings', 'attachment', 'inbox_item', 'saved_filter'])
+    )
+    .optional(),
   limit: z.number().optional(),
-  deviceClock: VectorClockSchema,
+  deviceClock: VectorClockSchema
 })
 
 /**
@@ -362,6 +389,7 @@ export interface SyncPullItem {
   id: string
   type: SyncItemType
   version: number
+  operation?: SyncOperation // Optional for backwards compatibility with server
   encryptedData: string // Base64
   signature: string // Base64
   clock?: VectorClock
@@ -377,19 +405,28 @@ export const SyncPullResponseSchema = z.object({
   items: z.array(
     z.object({
       id: z.string(),
-      type: z.enum(['note', 'task', 'project', 'settings', 'attachment', 'inbox_item', 'saved_filter']),
+      type: z.enum([
+        'note',
+        'task',
+        'project',
+        'settings',
+        'attachment',
+        'inbox_item',
+        'saved_filter'
+      ]),
       version: z.number(),
+      operation: z.enum(['create', 'update', 'delete']).optional(), // Optional for backwards compatibility
       encryptedData: z.string(),
       signature: z.string(),
       clock: VectorClockSchema.optional(),
       stateVector: z.string().optional(),
       modifiedAt: z.number(),
-      deletedAt: z.number().optional(),
+      deletedAt: z.number().optional()
     })
   ),
   hasMore: z.boolean(),
   serverClock: VectorClockSchema,
-  serverTimestamp: z.number(),
+  serverTimestamp: z.number()
 })
 
 // =============================================================================
@@ -439,11 +476,11 @@ export const SyncHistoryEntrySchema = z.object({
       tasks: z.number().optional(),
       attachments: z.number().optional(),
       error: z.string().optional(),
-      failedItems: z.array(z.string()).optional(),
+      failedItems: z.array(z.string()).optional()
     })
     .optional(),
   durationMs: z.number().optional(),
-  createdAt: z.number(),
+  createdAt: z.number()
 })
 
 // =============================================================================
@@ -485,27 +522,35 @@ export interface SyncedSettings {
 export const SyncedSettingsSchema = z.object({
   general: z.object({
     defaultView: z.enum(['inbox', 'today', 'upcoming', 'all']),
-    weekStartsOn: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6)]),
+    weekStartsOn: z.union([
+      z.literal(0),
+      z.literal(1),
+      z.literal(2),
+      z.literal(3),
+      z.literal(4),
+      z.literal(5),
+      z.literal(6)
+    ]),
     dateFormat: z.enum(['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD']),
     timeFormat: z.enum(['12h', '24h']),
-    language: z.string(),
+    language: z.string()
   }),
   tasks: z.object({
     defaultProject: z.string().nullable(),
     defaultPriority: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
     autoArchiveCompleted: z.boolean(),
-    archiveAfterDays: z.number(),
+    archiveAfterDays: z.number()
   }),
   notes: z.object({
     defaultFolder: z.string(),
     autoSaveInterval: z.number(),
-    spellCheck: z.boolean(),
+    spellCheck: z.boolean()
   }),
   sync: z.object({
     autoSync: z.boolean(),
     syncOnStartup: z.boolean(),
-    conflictResolution: z.enum(['local', 'remote', 'newest']),
-  }),
+    conflictResolution: z.enum(['local', 'remote', 'newest'])
+  })
 })
 
 // =============================================================================
@@ -547,7 +592,7 @@ export const UserPublicSchema = z.object({
   authProvider: z.literal('google').optional(),
   storageUsed: z.number(),
   storageLimit: z.number(),
-  createdAt: z.number(),
+  createdAt: z.number()
 })
 
 // =============================================================================
@@ -571,7 +616,7 @@ export const EmailSignupRequestSchema = z.object({
   email: z.string().email(),
   password: z.string().min(12).max(128),
   deviceName: z.string().min(1).max(100),
-  devicePlatform: z.enum(['macos', 'windows', 'linux', 'ios', 'android']),
+  devicePlatform: z.enum(['macos', 'windows', 'linux', 'ios', 'android'])
 })
 
 /**
@@ -591,7 +636,7 @@ export const EmailLoginRequestSchema = z.object({
   email: z.string().email(),
   password: z.string(),
   deviceName: z.string().min(1).max(100),
-  devicePlatform: z.enum(['macos', 'windows', 'linux', 'ios', 'android']),
+  devicePlatform: z.enum(['macos', 'windows', 'linux', 'ios', 'android'])
 })
 
 /**
@@ -613,7 +658,7 @@ export const AuthResultSchema = z.object({
   device: DeviceSchema,
   accessToken: z.string(),
   refreshToken: z.string(),
-  kdfSalt: z.string(),
+  kdfSalt: z.string()
 })
 
 /**
@@ -629,5 +674,5 @@ export interface FirstDeviceSetupRequest {
  */
 export const FirstDeviceSetupRequestSchema = z.object({
   kdfSalt: z.string(),
-  keyVerifier: z.string(),
+  keyVerifier: z.string()
 })
