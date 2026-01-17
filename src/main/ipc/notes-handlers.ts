@@ -65,6 +65,7 @@ import {
   reorderNotesInFolder,
   getAllNotePositions
 } from '@shared/db/queries/note-positions'
+import { queueNoteSync, queueAttachmentSync } from '../sync/triggers'
 
 // ============================================================================
 // Zod Schemas for Property Definitions (T017-T018)
@@ -137,6 +138,12 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(NoteCreateSchema, async (input) => {
       try {
         const note = await createNote(input)
+        // Queue note for sync
+        if (note?.id) {
+          queueNoteSync(note.id, 'create').catch((err) =>
+            console.error('[Sync] Failed to queue note create:', err)
+          )
+        }
         return { success: true, note }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to create note'
@@ -195,6 +202,12 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(NoteUpdateSchema, async (input) => {
       try {
         const note = await updateNote(input)
+        // Queue note for sync
+        if (note?.id) {
+          queueNoteSync(note.id, 'update').catch((err) =>
+            console.error('[Sync] Failed to queue note update:', err)
+          )
+        }
         return { success: true, note }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update note'
@@ -209,6 +222,12 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(NoteRenameSchema, async (input) => {
       try {
         const note = await renameNote(input.id, input.newTitle)
+        // Queue note for sync (rename is an update operation)
+        if (note?.id) {
+          queueNoteSync(note.id, 'update').catch((err) =>
+            console.error('[Sync] Failed to queue note rename:', err)
+          )
+        }
         return { success: true, note }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to rename note'
@@ -223,6 +242,12 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(NoteMoveSchema, async (input) => {
       try {
         const note = await moveNote(input.id, input.newFolder)
+        // Queue note for sync (move is an update operation)
+        if (note?.id) {
+          queueNoteSync(note.id, 'update').catch((err) =>
+            console.error('[Sync] Failed to queue note move:', err)
+          )
+        }
         return { success: true, note }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to move note'
@@ -236,6 +261,10 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.DELETE,
     createStringHandler(async (id) => {
       try {
+        // Queue note for sync BEFORE deleting (need the id for sync)
+        queueNoteSync(id, 'delete').catch((err) =>
+          console.error('[Sync] Failed to queue note delete:', err)
+        )
         await deleteNote(id)
         return { success: true }
       } catch (error) {
@@ -413,7 +442,16 @@ export function registerNotesHandlers(): void {
       const data = Array.isArray(input.data)
         ? Buffer.from(input.data)
         : Buffer.from(new Uint8Array(input.data))
-      return saveAttachment(input.noteId, data, input.filename)
+      const result = await saveAttachment(input.noteId, data, input.filename)
+      // Queue attachment for sync
+      if (result.success && result.path) {
+        // Use the attachment path as a unique id
+        const attachmentId = `${input.noteId}/${input.filename}`
+        queueAttachmentSync(attachmentId, 'create').catch((err) =>
+          console.error('[Sync] Failed to queue attachment upload:', err)
+        )
+      }
+      return result
     })
   )
 
@@ -430,6 +468,11 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.DELETE_ATTACHMENT,
     createValidatedHandler(DeleteAttachmentSchema, async (input) => {
       try {
+        // Queue attachment for sync BEFORE deleting
+        const attachmentId = `${input.noteId}/${input.filename}`
+        queueAttachmentSync(attachmentId, 'delete').catch((err) =>
+          console.error('[Sync] Failed to queue attachment delete:', err)
+        )
         await deleteAttachment(input.noteId, input.filename)
         return { success: true }
       } catch (error) {

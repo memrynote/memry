@@ -84,6 +84,7 @@ import {
 } from '../inbox/stats'
 import { snoozeItem, unsnoozeItem, getSnoozedItems, bulkSnoozeItems } from '../inbox/snooze'
 import type { SnoozeInput, SnoozedItem } from '../inbox/snooze'
+import { queueInboxItemSync } from '../sync/triggers'
 
 // ============================================================================
 // Constants
@@ -546,6 +547,11 @@ async function handleCaptureText(input: unknown): Promise<CaptureResponse> {
     // Emit event
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
 
+    // Queue for sync
+    queueInboxItemSync(id, 'create').catch((err) =>
+      console.error('[Sync] Failed to queue inbox item create:', err)
+    )
+
     return { success: true, item }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
@@ -629,6 +635,11 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
 
     // Emit captured event immediately (UI shows pending state)
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
+
+    // Queue for sync
+    queueInboxItemSync(id, 'create').catch((err) =>
+      console.error('[Sync] Failed to queue inbox link create:', err)
+    )
 
     // Trigger background metadata fetch (don't await - non-blocking)
     // Use specialized social extraction for social posts
@@ -767,6 +778,11 @@ async function handleUpdate(input: unknown): Promise<CaptureResponse> {
 
     emitInboxEvent(InboxChannels.events.UPDATED, { id: parsed.id, changes: updates })
 
+    // Queue for sync
+    queueInboxItemSync(parsed.id, 'update').catch((err) =>
+      console.error('[Sync] Failed to queue inbox item update:', err)
+    )
+
     return { success: true, item }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
@@ -796,6 +812,11 @@ async function handleArchive(id: string): Promise<{ success: boolean; error?: st
     incrementArchivedCount()
 
     emitInboxEvent(InboxChannels.events.ARCHIVED, { id })
+
+    // Queue for sync (archive is an update operation)
+    queueInboxItemSync(id, 'update').catch((err) =>
+      console.error('[Sync] Failed to queue inbox item archive:', err)
+    )
 
     return { success: true }
   } catch (error) {
@@ -1181,6 +1202,11 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
 
     // Emit captured event
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
+
+    // Queue for sync
+    queueInboxItemSync(id, 'create').catch((err) =>
+      console.error('[Sync] Failed to queue inbox image create:', err)
+    )
 
     console.log(
       `[Attachment] Captured ${inboxType}: ${parsed.filename} (${fileBuffer.length} bytes)`

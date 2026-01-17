@@ -961,35 +961,64 @@ export function registerSyncHandlers(): void {
 
   ipcMain.handle(SYNC_CHANNELS.GET_STATUS, createHandler(getSyncStatus))
 
+  // T094: Trigger sync
   ipcMain.handle(
     SYNC_CHANNELS.TRIGGER_SYNC,
     createValidatedHandler(TriggerSyncInputSchema, async (_input) => {
-      // TODO: Implement in Phase 3+ (User Story 3)
-      return { success: true, message: 'Sync not yet implemented' }
+      const { getSyncEngine } = await import('../sync/engine')
+      const engine = getSyncEngine()
+
+      try {
+        const result = await engine.sync()
+        return {
+          success: result.errors.length === 0,
+          pushed: result.pushed,
+          pulled: result.pulled,
+          conflicts: result.conflicts,
+          errors: result.errors
+        }
+      } catch (error) {
+        return {
+          success: false,
+          pushed: 0,
+          pulled: 0,
+          conflicts: 0,
+          errors: [error instanceof Error ? error.message : String(error)]
+        }
+      }
     })
   )
 
+  // T097: Pause sync
   ipcMain.handle(
     SYNC_CHANNELS.PAUSE_SYNC,
     createHandler(async () => {
-      // TODO: Implement in Phase 3+
+      const { getSyncEngine } = await import('../sync/engine')
+      const engine = getSyncEngine()
+      engine.pause()
       return { success: true }
     })
   )
 
+  // T097: Resume sync
   ipcMain.handle(
     SYNC_CHANNELS.RESUME_SYNC,
     createHandler(async () => {
-      // TODO: Implement in Phase 3+
+      const { getSyncEngine } = await import('../sync/engine')
+      const engine = getSyncEngine()
+      engine.resume()
       return { success: true }
     })
   )
 
+  // T096: Get queue size
   ipcMain.handle(
     SYNC_CHANNELS.GET_QUEUE_SIZE,
     createHandler(async () => {
-      // TODO: Implement in Phase 3+
-      return { size: 0 }
+      const { getSyncQueue } = await import('../sync/queue')
+      const queue = getSyncQueue()
+      const size = await queue.getPendingCount()
+      return { size }
     })
   )
 
@@ -999,16 +1028,51 @@ export function registerSyncHandlers(): void {
 
   ipcMain.handle(
     SYNC_CHANNELS.GET_HISTORY,
-    createValidatedHandler(GetHistoryInputSchema, async (_input) => {
-      // TODO: Implement in Phase 3+
-      return { entries: [], total: 0, hasMore: false }
+    createValidatedHandler(GetHistoryInputSchema, async (input) => {
+      const { getDatabase } = await import('../database/client')
+      const { syncHistory } = await import('@shared/db/schema/sync')
+      const { desc, count } = await import('drizzle-orm')
+
+      const db = getDatabase()
+      const limit = input.limit ?? 50
+      const offset = input.offset ?? 0
+
+      // Get total count
+      const [countResult] = await db.select({ count: count() }).from(syncHistory)
+      const total = countResult?.count ?? 0
+
+      // Get entries
+      const entries = await db
+        .select()
+        .from(syncHistory)
+        .orderBy(desc(syncHistory.createdAt))
+        .limit(limit)
+        .offset(offset)
+
+      return {
+        entries: entries.map(e => ({
+          id: e.id,
+          type: e.type as 'push' | 'pull' | 'error',
+          itemCount: e.itemCount,
+          direction: e.direction as 'upload' | 'download' | undefined,
+          details: e.details as Record<string, unknown> | undefined,
+          durationMs: e.durationMs ?? undefined,
+          createdAt: new Date(e.createdAt).getTime()
+        })),
+        total,
+        hasMore: offset + entries.length < total
+      }
     })
   )
 
   ipcMain.handle(
     SYNC_CHANNELS.CLEAR_HISTORY,
     createHandler(async () => {
-      // TODO: Implement in Phase 3+
+      const { getDatabase } = await import('../database/client')
+      const { syncHistory } = await import('@shared/db/schema/sync')
+
+      const db = getDatabase()
+      await db.delete(syncHistory)
       return { success: true }
     })
   )

@@ -34,6 +34,8 @@ import { getDatabase, type DrizzleDb } from '../database'
 import { generateId } from '../lib/id'
 import * as taskQueries from '@shared/db/queries/tasks'
 import * as projectQueries from '@shared/db/queries/projects'
+import { queueTaskSync, queueProjectSync, queueBulkSync } from '../sync/triggers'
+import type { SyncItemType } from '@shared/db/schema/sync'
 
 /**
  * Emit task event to all windows
@@ -108,6 +110,11 @@ export function registerTasksHandlers(): void {
         }
 
         emitTaskEvent(TasksChannels.events.CREATED, { task: enrichedTask })
+
+        // Queue for sync (non-blocking)
+        queueTaskSync(id, 'create').catch((err) =>
+          console.error('[Sync] Failed to queue task create:', err)
+        )
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -191,6 +198,11 @@ export function registerTasksHandlers(): void {
 
         emitTaskEvent(TasksChannels.events.UPDATED, { id, task: enrichedTask, changes: updates })
 
+        // Queue for sync (non-blocking)
+        queueTaskSync(id, 'update').catch((err) =>
+          console.error('[Sync] Failed to queue task update:', err)
+        )
+
         return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update task'
@@ -207,6 +219,12 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         taskQueries.deleteTask(db, id)
         emitTaskEvent(TasksChannels.events.DELETED, { id })
+
+        // Queue for sync (non-blocking)
+        queueTaskSync(id, 'delete').catch((err) =>
+          console.error('[Sync] Failed to queue task delete:', err)
+        )
+
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to delete task'
@@ -271,6 +289,11 @@ export function registerTasksHandlers(): void {
         }
 
         emitTaskEvent(TasksChannels.events.COMPLETED, { id: input.id, task: enrichedTask })
+
+        // Queue for sync (non-blocking)
+        queueTaskSync(input.id, 'update').catch((err) =>
+          console.error('[Sync] Failed to queue task complete:', err)
+        )
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -411,6 +434,11 @@ export function registerTasksHandlers(): void {
         }
 
         emitTaskEvent(TasksChannels.events.MOVED, { id: input.taskId, task: enrichedTask })
+
+        // Queue for sync (non-blocking)
+        queueTaskSync(input.taskId, 'update').catch((err) =>
+          console.error('[Sync] Failed to queue task move:', err)
+        )
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -593,6 +621,11 @@ export function registerTasksHandlers(): void {
 
         emitTaskEvent(TasksChannels.events.PROJECT_CREATED, { project })
 
+        // Queue for sync (non-blocking)
+        queueProjectSync(id, 'create').catch((err) =>
+          console.error('[Sync] Failed to queue project create:', err)
+        )
+
         return { success: true, project }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to create project'
@@ -625,6 +658,11 @@ export function registerTasksHandlers(): void {
 
         emitTaskEvent(TasksChannels.events.PROJECT_UPDATED, { id, project })
 
+        // Queue for sync (non-blocking)
+        queueProjectSync(id, 'update').catch((err) =>
+          console.error('[Sync] Failed to queue project update:', err)
+        )
+
         return { success: true, project }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update project'
@@ -641,6 +679,12 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         projectQueries.deleteProject(db, id)
         emitTaskEvent(TasksChannels.events.PROJECT_DELETED, { id })
+
+        // Queue for sync (non-blocking)
+        queueProjectSync(id, 'delete').catch((err) =>
+          console.error('[Sync] Failed to queue project delete:', err)
+        )
+
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to delete project'
@@ -815,6 +859,11 @@ export function registerTasksHandlers(): void {
           }
         }
 
+        // Queue all tasks for sync (non-blocking)
+        queueBulkSync(
+          input.ids.map((id) => ({ type: 'task' as SyncItemType, itemId: id, operation: 'update' as const }))
+        ).catch((err) => console.error('[Sync] Failed to queue bulk complete:', err))
+
         return { success: true, count }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to complete tasks'
@@ -831,6 +880,12 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         const count = taskQueries.bulkDeleteTasks(db, input.ids)
         input.ids.forEach((id) => emitTaskEvent(TasksChannels.events.DELETED, { id }))
+
+        // Queue all tasks for sync (non-blocking)
+        queueBulkSync(
+          input.ids.map((id) => ({ type: 'task' as SyncItemType, itemId: id, operation: 'delete' as const }))
+        ).catch((err) => console.error('[Sync] Failed to queue bulk delete:', err))
+
         return { success: true, count }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to delete tasks'
@@ -863,6 +918,11 @@ export function registerTasksHandlers(): void {
           }
         }
 
+        // Queue all tasks for sync (non-blocking)
+        queueBulkSync(
+          input.ids.map((id) => ({ type: 'task' as SyncItemType, itemId: id, operation: 'update' as const }))
+        ).catch((err) => console.error('[Sync] Failed to queue bulk move:', err))
+
         return { success: true, count }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to move tasks'
@@ -894,6 +954,11 @@ export function registerTasksHandlers(): void {
             })
           }
         }
+
+        // Queue all tasks for sync (non-blocking)
+        queueBulkSync(
+          input.ids.map((id) => ({ type: 'task' as SyncItemType, itemId: id, operation: 'update' as const }))
+        ).catch((err) => console.error('[Sync] Failed to queue bulk archive:', err))
 
         return { success: true, count }
       } catch (error) {

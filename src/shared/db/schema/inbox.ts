@@ -169,7 +169,10 @@ export const inboxItems = sqliteTable(
     // ========================================================================
 
     /** When the item was archived (soft delete) */
-    archivedAt: text('archived_at')
+    archivedAt: text('archived_at'),
+
+    // Sync: Vector clock for conflict detection (JSON)
+    clock: text('clock', { mode: 'json' })
   },
   (table) => [
     index('idx_inbox_items_type').on(table.type),

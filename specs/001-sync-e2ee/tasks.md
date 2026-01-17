@@ -174,61 +174,61 @@
 
 ### Sync Engine Core for US2
 
-- [ ] T074 [US2] Implement sync queue manager in src/main/sync/queue.ts
-- [ ] T075 [US2] Implement sync queue persistence to SQLite in src/main/sync/queue.ts
-- [ ] T076 [US2] Implement sync engine class in src/main/sync/engine.ts
-- [ ] T077 [US2] Implement WebSocket connection manager in src/main/sync/websocket.ts
-- [ ] T078 [US2] Implement network status monitoring in src/main/sync/network.ts
-- [ ] T079 [US2] Implement retry logic with exponential backoff in src/main/sync/retry.ts
-- [ ] T080 [US2] Implement item encryption before sync in src/main/sync/engine.ts
-- [ ] T081 [US2] Implement item decryption after sync in src/main/sync/engine.ts
+- [X] T074 [US2] Implement sync queue manager in src/main/sync/queue.ts
+- [X] T075 [US2] Implement sync queue persistence to SQLite in src/main/sync/queue.ts
+- [X] T076 [US2] Implement sync engine class in src/main/sync/engine.ts
+- [X] T077 [US2] Implement WebSocket connection manager in src/main/sync/websocket.ts
+- [X] T078 [US2] Implement network status monitoring in src/main/sync/network.ts
+- [X] T079 [US2] Implement retry logic with exponential backoff in src/main/sync/retry.ts
+- [X] T080 [US2] Implement item encryption before sync in src/main/sync/engine.ts
+- [X] T081 [US2] Implement item decryption after sync in src/main/sync/engine.ts
 
 ### Server Sync Endpoints for US2
 
-- [ ] T082 [P] [US2] Implement sync status endpoint in sync-server/src/routes/sync.ts
-- [ ] T083 [P] [US2] Implement sync manifest endpoint in sync-server/src/routes/sync.ts
-- [ ] T084 [US2] Implement sync changes endpoint (since timestamp) in sync-server/src/routes/sync.ts
-- [ ] T085 [US2] Implement sync push endpoint in sync-server/src/routes/sync.ts
-- [ ] T086 [US2] Implement sync pull endpoint in sync-server/src/routes/sync.ts
-- [ ] T087 [US2] Implement single item get endpoint in sync-server/src/routes/sync.ts
-- [ ] T088 [US2] Implement item delete endpoint in sync-server/src/routes/sync.ts
-- [ ] T089 [US2] Implement sync service with D1/R2 integration in sync-server/src/services/sync.ts
+- [X] T082 [P] [US2] Implement sync status endpoint in sync-server/src/routes/sync.ts
+- [X] T083 [P] [US2] Implement sync manifest endpoint in sync-server/src/routes/sync.ts
+- [X] T084 [US2] Implement sync changes endpoint (since timestamp) in sync-server/src/routes/sync.ts
+- [X] T085 [US2] Implement sync push endpoint in sync-server/src/routes/sync.ts
+- [X] T086 [US2] Implement sync pull endpoint in sync-server/src/routes/sync.ts
+- [X] T087 [US2] Implement single item get endpoint in sync-server/src/routes/sync.ts
+- [X] T088 [US2] Implement item delete endpoint in sync-server/src/routes/sync.ts
+- [X] T089 [US2] Implement sync service with D1/R2 integration in sync-server/src/services/sync.ts
 
 ### WebSocket/Durable Objects for US2
 
-- [ ] T090 [US2] Create UserSyncState Durable Object in sync-server/src/durable-objects/user-state.ts
-- [ ] T091 [US2] Implement WebSocket upgrade handling in UserSyncState
-- [ ] T092 [US2] Implement broadcast to connected devices in UserSyncState
-- [ ] T093 [US2] Configure Durable Object binding in sync-server/wrangler.toml
+- [X] T090 [US2] Create UserSyncState Durable Object in sync-server/src/durable-objects/user-state.ts
+- [X] T091 [US2] Implement WebSocket upgrade handling in UserSyncState
+- [X] T092 [US2] Implement broadcast to connected devices in UserSyncState
+- [X] T093 [US2] Configure Durable Object binding in sync-server/wrangler.toml
 
 ### Client Sync IPC for US2
 
-- [ ] T094 [US2] Implement get sync status IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T095 [US2] Implement trigger sync IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T096 [US2] Implement get queue size IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T097 [US2] Implement pause/resume sync IPC handlers in src/main/ipc/sync-handlers.ts
+- [X] T094 [US2] Implement get sync status IPC handler in src/main/ipc/sync-handlers.ts
+- [X] T095 [US2] Implement trigger sync IPC handler in src/main/ipc/sync-handlers.ts
+- [X] T096 [US2] Implement get queue size IPC handler in src/main/ipc/sync-handlers.ts
+- [X] T097 [US2] Implement pause/resume sync IPC handlers in src/main/ipc/sync-handlers.ts
 
 ### Sync Events for US2
 
-- [ ] T098 [US2] Implement sync status changed event broadcasting in src/main/sync/engine.ts
-- [ ] T099 [US2] Implement item synced event broadcasting in src/main/sync/engine.ts
-- [ ] T100 [US2] Set up IPC event listeners in renderer for sync events in src/renderer/src/contexts/sync-context.tsx
+- [X] T098 [US2] Implement sync status changed event broadcasting in src/main/sync/engine.ts
+- [X] T099 [US2] Implement item synced event broadcasting in src/main/sync/engine.ts
+- [X] T100 [US2] Set up IPC event listeners in renderer for sync events in src/renderer/src/contexts/sync-context.tsx
 
 ### Task Sync Integration for US2
 
-- [ ] T101 [US2] Add clock JSON column to tasks table for vector clock storage in src/shared/db/schema/data-schema.ts
-- [ ] T102 [US2] Implement task sync handlers (create, update, delete) in src/main/ipc/tasks-handlers.ts
-- [ ] T103 [US2] Update TasksProvider to subscribe to sync events in src/renderer/src/contexts/tasks/
+- [X] T101 [US2] Add clock JSON column to tasks table for vector clock storage in src/shared/db/schema/data-schema.ts
+- [X] T102 [US2] Implement task sync handlers (create, update, delete) in src/main/ipc/tasks-handlers.ts
+- [X] T103 [US2] Update TasksProvider to subscribe to sync events in src/renderer/src/contexts/tasks/
 
 ### Additional Sync Integrations for US2
 
-- [ ] T103a [US2] Add clock JSON column to inbox_items table in src/shared/db/schema/data-schema.ts
-- [ ] T103b [US2] Implement inbox item sync handlers in src/main/ipc/sync-handlers.ts
-- [ ] T103c [US2] Add clock JSON column to saved_filters table in src/shared/db/schema/data-schema.ts
-- [ ] T103d [US2] Implement saved filter sync handlers in src/main/ipc/sync-handlers.ts
-- [ ] T103e [US2] Implement synced settings structure in src/shared/contracts/sync-api.ts
-- [ ] T103f [US2] Implement settings sync with field-level vector clocks in src/main/sync/engine.ts
-- [ ] T103g [US2] Create settings sync IPC handlers in src/main/ipc/sync-handlers.ts
+- [X] T103a [US2] Add clock JSON column to inbox_items table in src/shared/db/schema/data-schema.ts
+- [X] T103b [US2] Implement inbox item sync handlers in src/main/ipc/inbox-handlers.ts
+- [X] T103c [US2] Add clock JSON column to saved_filters table in src/shared/db/schema/data-schema.ts
+- [X] T103d [US2] Implement saved filter sync handlers in src/main/ipc/saved-filters-handlers.ts
+- [X] T103e [US2] Implement synced settings structure in src/shared/contracts/sync-api.ts
+- [X] T103f [US2] Implement settings sync with field-level vector clocks in src/main/sync/engine.ts
+- [X] T103g [US2] Create settings sync IPC handlers in src/main/ipc/settings-handlers.ts
 
 **Checkpoint**: User Story 2 complete - notes and tasks sync automatically across devices
 

@@ -18,6 +18,7 @@ import { createValidatedHandler, createHandler } from './validate'
 import { getDatabase } from '../database'
 import { generateId } from '../lib/id'
 import * as settingsQueries from '@shared/db/queries/settings'
+import { queueSavedFilterSync } from '../sync/triggers'
 
 /**
  * Emit saved filter event to all windows
@@ -94,6 +95,11 @@ export function registerSavedFiltersHandlers(): void {
       const apiFilter = toApiFilter(filter)!
       emitSavedFilterEvent(SavedFiltersChannels.events.CREATED, { savedFilter: apiFilter })
 
+      // Queue for sync
+      queueSavedFilterSync(id, 'create').catch((err) =>
+        console.error('[Sync] Failed to queue saved filter create:', err)
+      )
+
       return { success: true, savedFilter: apiFilter }
     })
   )
@@ -122,6 +128,11 @@ export function registerSavedFiltersHandlers(): void {
         savedFilter: apiFilter
       })
 
+      // Queue for sync
+      queueSavedFilterSync(input.id, 'update').catch((err) =>
+        console.error('[Sync] Failed to queue saved filter update:', err)
+      )
+
       return { success: true, savedFilter: apiFilter }
     })
   )
@@ -136,6 +147,11 @@ export function registerSavedFiltersHandlers(): void {
       if (!settingsQueries.savedFilterExists(db, input.id)) {
         return { success: false, error: 'Saved filter not found' }
       }
+
+      // Queue for sync BEFORE delete
+      queueSavedFilterSync(input.id, 'delete').catch((err) =>
+        console.error('[Sync] Failed to queue saved filter delete:', err)
+      )
 
       settingsQueries.deleteSavedFilter(db, input.id)
       emitSavedFilterEvent(SavedFiltersChannels.events.DELETED, { id: input.id })

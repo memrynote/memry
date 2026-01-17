@@ -12,6 +12,7 @@ import { SettingsChannels } from '@shared/ipc-channels'
 import { getDatabase } from '../database'
 import { getSetting, setSetting, deleteSetting } from '@shared/db/queries/settings'
 import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from '../lib/embeddings'
+import { queueSettingsSync } from '../sync/triggers'
 
 // ============================================================================
 // Settings Keys
@@ -147,6 +148,11 @@ export function registerSettingsHandlers(): void {
         win.webContents.send(SettingsChannels.events.CHANGED, { key, value })
       })
 
+      // Queue for sync
+      queueSettingsSync(key, 'update').catch((err) =>
+        console.error('[Sync] Failed to queue setting update:', err)
+      )
+
       return { success: true }
     }
   )
@@ -231,6 +237,14 @@ export function registerSettingsHandlers(): void {
         })
       })
 
+      // Queue for sync (sync all journal settings as a group)
+      const journalKeys = Object.values(SETTINGS_KEYS).filter((k) => k.startsWith('journal.'))
+      for (const key of journalKeys) {
+        queueSettingsSync(key, 'update').catch((err) =>
+          console.error('[Sync] Failed to queue journal setting:', err)
+        )
+      }
+
       return { success: true }
     }
   )
@@ -269,6 +283,11 @@ export function registerSettingsHandlers(): void {
           value: settings
         })
       })
+
+      // Queue for sync
+      queueSettingsSync(SETTINGS_KEYS.AI_ENABLED, 'update').catch((err) =>
+        console.error('[Sync] Failed to queue AI setting:', err)
+      )
 
       return { success: true }
     }
@@ -385,6 +404,14 @@ export function registerSettingsHandlers(): void {
         })
       })
 
+      // Queue for sync (sync all tab settings as a group)
+      const tabKeys = Object.values(SETTINGS_KEYS).filter((k) => k.startsWith('tabs.'))
+      for (const key of tabKeys) {
+        queueSettingsSync(key, 'update').catch((err) =>
+          console.error('[Sync] Failed to queue tab setting:', err)
+        )
+      }
+
       return { success: true }
     }
   )
@@ -425,6 +452,11 @@ export function registerSettingsHandlers(): void {
           value: settings
         })
       })
+
+      // Queue for sync
+      queueSettingsSync(SETTINGS_KEYS.NOTE_EDITOR_TOOLBAR_MODE, 'update').catch((err) =>
+        console.error('[Sync] Failed to queue note editor setting:', err)
+      )
 
       return { success: true }
     }

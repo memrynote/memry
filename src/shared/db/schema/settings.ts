@@ -6,7 +6,9 @@ export const settings = sqliteTable('settings', {
   value: text('value').notNull(),
   modifiedAt: text('modified_at')
     .notNull()
-    .default(sql`(datetime('now'))`)
+    .default(sql`(datetime('now'))`),
+  // Sync: Vector clock for field-level conflict detection (JSON)
+  clock: text('clock', { mode: 'json' })
 })
 
 export const savedFilters = sqliteTable('saved_filters', {
@@ -16,7 +18,9 @@ export const savedFilters = sqliteTable('saved_filters', {
   position: integer('position').notNull().default(0),
   createdAt: text('created_at')
     .notNull()
-    .default(sql`(datetime('now'))`)
+    .default(sql`(datetime('now'))`),
+  // Sync: Vector clock for conflict detection (JSON)
+  clock: text('clock', { mode: 'json' })
 })
 
 export type Setting = typeof settings.$inferSelect
