@@ -139,6 +139,7 @@ interface LinkingEventCallbacks {
   }) => void
   onLinkingApproved?: (e: { sessionId: string; deviceId: string }) => void
   onLinkingRejected?: (e: { sessionId: string; reason: string }) => void
+  onLinkingExpired?: (e: { sessionId: string }) => void
 }
 
 /**
@@ -174,6 +175,13 @@ export function useLinkingEvents(callbacks: LinkingEventCallbacks) {
       })
     )
 
+    // Subscribe to linking expired events
+    unsubs.push(
+      window.api.onSyncLinkingExpired((event) => {
+        callbacksRef.current.onLinkingExpired?.(event)
+      })
+    )
+
     return () => {
       unsubs.forEach((fn) => fn())
     }
@@ -194,6 +202,7 @@ export function useExistingDeviceLinking(callbacks?: {
     newDevicePublicKey: string
     newDeviceConfirm: string
   }) => void
+  onLinkingExpired?: (e: { sessionId: string }) => void
 }) {
   const generateQR = useGenerateLinkingQR()
   const approveLinking = useApproveLinking()
@@ -201,7 +210,8 @@ export function useExistingDeviceLinking(callbacks?: {
   const cancelLinking = useCancelLinking()
 
   useLinkingEvents({
-    onLinkingRequest: callbacks?.onLinkingRequest
+    onLinkingRequest: callbacks?.onLinkingRequest,
+    onLinkingExpired: callbacks?.onLinkingExpired
   })
 
   return {
@@ -221,13 +231,15 @@ export function useExistingDeviceLinking(callbacks?: {
 export function useNewDeviceLinking(callbacks?: {
   onLinkingApproved?: (e: { sessionId: string; deviceId: string }) => void
   onLinkingRejected?: (e: { sessionId: string; reason: string }) => void
+  onLinkingExpired?: (e: { sessionId: string }) => void
 }) {
   const linkViaQR = useLinkViaQR()
   const cancelLinking = useCancelLinking()
 
   useLinkingEvents({
     onLinkingApproved: callbacks?.onLinkingApproved,
-    onLinkingRejected: callbacks?.onLinkingRejected
+    onLinkingRejected: callbacks?.onLinkingRejected,
+    onLinkingExpired: callbacks?.onLinkingExpired
   })
 
   return {

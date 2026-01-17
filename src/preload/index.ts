@@ -1571,6 +1571,18 @@ const api = {
     return () => ipcRenderer.removeListener(SyncChannels.events.LINKING_REJECTED, handler)
   },
 
+  /** Subscribe to device linking expired events */
+  onSyncLinkingExpired: (
+    callback: (event: { sessionId: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { sessionId: string }
+    ): void => callback(data)
+    ipcRenderer.on(SyncChannels.events.LINKING_EXPIRED, handler)
+    return () => ipcRenderer.removeListener(SyncChannels.events.LINKING_EXPIRED, handler)
+  },
+
   /** Subscribe to session expired events */
   onSyncSessionExpired: (
     callback: (event: { reason: 'token_expired' | 'device_removed' | 'key_rotated' }) => void

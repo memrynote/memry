@@ -2103,6 +2103,10 @@ export interface SyncLinkingRejectedEvent {
   reason: string
 }
 
+export interface SyncLinkingExpiredEvent {
+  sessionId: string
+}
+
 export interface SyncSessionExpiredEvent {
   reason: 'token_expired' | 'device_removed' | 'key_rotated'
 }
@@ -2437,6 +2441,7 @@ interface API extends WindowAPI {
   onSyncLinkingRequest: (callback: (event: SyncLinkingRequestEvent) => void) => () => void
   onSyncLinkingApproved: (callback: (event: SyncLinkingApprovedEvent) => void) => () => void
   onSyncLinkingRejected: (callback: (event: SyncLinkingRejectedEvent) => void) => () => void
+  onSyncLinkingExpired: (callback: (event: SyncLinkingExpiredEvent) => void) => () => void
   onSyncSessionExpired: (callback: (event: SyncSessionExpiredEvent) => void) => () => void
   onSyncInitialProgress: (callback: (event: SyncInitialProgressEvent) => void) => () => void
   onAuthSuccess: (callback: (event: OAuthSuccessEvent) => void) => () => void

@@ -587,16 +587,28 @@ export class SyncApiClient {
    * Get linking session status
    *
    * @param sessionId - Linking session ID
-   * @param accessToken - JWT access token (optional, depends on who's checking)
+   * @param auth - Authentication: either { accessToken } for existing device or { qrToken } for new device
    * @returns Session status
    */
   async getLinkingStatus(
     sessionId: string,
-    accessToken?: string
+    auth?: { accessToken: string } | { qrToken: string }
   ): Promise<LinkingStatusResponse> {
-    return this.request<LinkingStatusResponse>('GET', `/auth/linking/${sessionId}/status`, {
-      token: accessToken
-    })
+    // Determine auth method
+    let token: string | undefined
+    let queryParams = ''
+
+    if (auth && 'accessToken' in auth) {
+      token = auth.accessToken
+    } else if (auth && 'qrToken' in auth) {
+      queryParams = `?token=${encodeURIComponent(auth.qrToken)}`
+    }
+
+    return this.request<LinkingStatusResponse>(
+      'GET',
+      `/auth/linking/${sessionId}/status${queryParams}`,
+      { token }
+    )
   }
 }
 

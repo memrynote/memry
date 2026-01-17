@@ -1489,6 +1489,7 @@ export function registerSyncHandlers(): void {
           sessionId,
           role: 'new',
           expiresAt: pendingExpiresAt,
+          qrToken: token, // QR token for authenticated polling
           onStatusChange: async (status: LinkingStatusResponse) => {
             if (status.status === 'approved' && pendingLinkingRequest) {
               try {

@@ -513,36 +513,34 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
   )
 
   // Listen for linking approval/rejection events
+  // Note: Main process now owns completion - it auto-completes and emits this event with result
   useLinkingEvents({
-    onLinkingApproved: useCallback(async () => {
-      if (!linkingSessionId) {
-        setError('No linking session found')
-        setStep('link-device')
-        return
-      }
-
-      try {
-        // Complete the linking process by fetching/decrypting the master key and storing tokens
-        const result = await window.api.sync.completeLinking(linkingSessionId)
-        if (result.success) {
-          setStep('complete')
-          onComplete?.()
-        } else {
-          setError(result.error || 'Failed to complete device linking')
-          setStep('link-device')
-          setLinkingSessionId(null)
+    onLinkingApproved: useCallback(
+      (event) => {
+        // Verify this event is for our session
+        if (event.sessionId !== linkingSessionId) {
+          return
         }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to complete device linking')
+
+        // Main process already completed linking, just update UI
+        setStep('complete')
+        onComplete?.()
+      },
+      [linkingSessionId, onComplete]
+    ),
+    onLinkingRejected: useCallback(
+      (event) => {
+        // Verify this event is for our session
+        if (event.sessionId !== linkingSessionId) {
+          return
+        }
+
+        setError(event.reason || 'Linking request was rejected')
         setStep('link-device')
         setLinkingSessionId(null)
-      }
-    }, [linkingSessionId, onComplete]),
-    onLinkingRejected: useCallback((event) => {
-      setError(event.reason || 'Linking request was rejected')
-      setStep('link-device')
-      setLinkingSessionId(null)
-    }, [])
+      },
+      [linkingSessionId]
+    )
   })
 
   // Navigation helpers

@@ -40,6 +40,9 @@ export interface LinkingPollerConfig {
   /** Access token for authenticated requests (existing device only) */
   accessToken?: string
 
+  /** QR token for authenticated requests (new device only) */
+  qrToken?: string
+
   /** Called when status changes */
   onStatusChange: (status: LinkingStatusResponse) => void
 
@@ -131,10 +134,14 @@ export class LinkingPoller {
     }
 
     try {
-      const status = await syncApi.instance.getLinkingStatus(
-        this.config.sessionId,
-        this.config.accessToken
-      )
+      // Build auth parameter based on role
+      const auth = this.config.accessToken
+        ? { accessToken: this.config.accessToken }
+        : this.config.qrToken
+          ? { qrToken: this.config.qrToken }
+          : undefined
+
+      const status = await syncApi.instance.getLinkingStatus(this.config.sessionId, auth)
 
       // Check for status change
       if (status.status !== this.lastStatus) {

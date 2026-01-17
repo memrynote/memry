@@ -15,7 +15,7 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import type { Env } from '../index'
-import { authMiddleware, type AuthContext } from '../middleware/auth'
+import { authMiddleware, verifyToken, type AuthContext } from '../middleware/auth'
 import {
   createUser,
   getUserByEmail,
@@ -136,12 +136,7 @@ const linkingApproveSchema = z.object({
 })
 
 const linkingCompleteSchema = z.object({
-  device: z.object({
-    name: z.string().min(1).max(100),
-    platform: z.enum(['macos', 'windows', 'linux', 'ios', 'android']),
-    app_version: z.string().min(1),
-    os_version: z.string().optional()
-  })
+  new_device_public_key: z.string().min(1) // X25519 public key for verification (Base64)
 })
 
 // =============================================================================
@@ -861,12 +856,13 @@ auth.post(
   zValidator('json', linkingCompleteSchema),
   async (c) => {
     const sessionId = c.req.param('session_id')
-    const { device } = c.req.valid('json')
+    const { new_device_public_key } = c.req.valid('json')
 
-    // Find session in D1
+    // Find session in D1 (including device info stored during scan)
     const session = await c.env.DB.prepare(
       `SELECT id, user_id, status, expires_at,
-              encrypted_master_key, encrypted_key_nonce, key_confirm
+              encrypted_master_key, encrypted_key_nonce, key_confirm,
+              new_device_public_key, device_name, device_platform
        FROM linking_sessions WHERE id = ?`
     )
       .bind(sessionId)
@@ -878,6 +874,9 @@ auth.post(
         encrypted_master_key: string | null
         encrypted_key_nonce: string | null
         key_confirm: string | null
+        new_device_public_key: string | null
+        device_name: string | null
+        device_platform: string | null
       }>()
 
     if (!session) {
@@ -900,19 +899,24 @@ auth.post(
       throw new LinkingSessionError('Encrypted key data not available', 'SESSION_INVALID')
     }
 
+    // Verify the public key matches what was submitted during scan
+    if (session.new_device_public_key !== new_device_public_key) {
+      throw new ValidationError('Public key does not match the scanning device')
+    }
+
     // Get user for token generation
     const user = await getUserById(c.env.DB, session.user_id)
     if (!user) {
       throw new NotFoundError('User')
     }
 
-    // Register new device
+    // Register new device using info stored during scan
     const newDevice = await registerDevice(c.env.DB, {
       userId: session.user_id,
-      name: device.name,
-      platform: device.platform,
-      osVersion: device.os_version,
-      appVersion: device.app_version
+      name: session.device_name || 'Unknown Device',
+      platform: (session.device_platform as 'macos' | 'windows' | 'linux' | 'ios' | 'android') || 'linux',
+      osVersion: undefined,
+      appVersion: '1.0.0' // Default version, could be passed during scan if needed
     })
 
     // Generate tokens for new device
@@ -932,9 +936,9 @@ auth.post(
       key_confirm: session.key_confirm,
       device: toPublicDevice(newDevice),
       tokens: {
-        access_token: tokens.accessToken,
-        refresh_token: tokens.refreshToken,
-        expires_in: tokens.expiresIn
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresIn: tokens.expiresIn
       }
     })
   }
@@ -943,22 +947,27 @@ auth.post(
 // -----------------------------------------------------------------------------
 // T108: Linking Status Endpoint (Polling)
 // GET /auth/linking/:session_id/status
+//
+// Token-gated: requires either:
+// - Authorization header with access token (existing device)
+// - ?token= query param with QR token (new device)
 // -----------------------------------------------------------------------------
 
 auth.get(
   '/linking/:session_id/status',
   rateLimit({
-    ...RATE_LIMITS.DEVICE_LINKING,
+    ...RATE_LIMITS.LINKING_STATUS,
     keyGenerator: (c) => {
-      const ip =
-        c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown'
-      return `linking_status:${ip}`
+      const sessionId = c.req.param('session_id') || 'unknown'
+      return `linking_status:${sessionId}`
     }
   }),
   async (c) => {
     const sessionId = c.req.param('session_id')
+    const tokenParam = c.req.query('token')
+    const authHeader = c.req.header('Authorization')
 
-    // Find session in D1
+    // Find session in D1 (include token for validation)
     const session = await c.env.DB.prepare(
       `SELECT id, user_id, status, expires_at,
               new_device_public_key, new_device_confirm,
@@ -981,6 +990,46 @@ auth.get(
       throw new NotFoundError('Linking session')
     }
 
+    // Determine caller role based on auth method
+    let callerRole: 'existing' | 'new' | null = null
+
+    if (authHeader?.startsWith('Bearer ')) {
+      // Existing device: validate access token and session ownership
+      const accessToken = authHeader.slice(7)
+      try {
+        const payload = await verifyToken(accessToken, c.env.JWT_SECRET)
+        if (payload.userId === session.user_id) {
+          callerRole = 'existing'
+        }
+      } catch {
+        // Invalid token - fall through to check QR token
+      }
+    }
+
+    if (!callerRole && tokenParam) {
+      // New device: validate QR token via Durable Object
+      const doId = c.env.LINKING_SESSION.idFromName(sessionId)
+      const linkingDO = c.env.LINKING_SESSION.get(doId)
+
+      try {
+        const tokenValidation = await linkingDO.fetch(
+          new Request('https://internal/validate-token', {
+            method: 'POST',
+            body: JSON.stringify({ token: tokenParam })
+          })
+        )
+        if (tokenValidation.ok) {
+          callerRole = 'new'
+        }
+      } catch {
+        // Invalid token
+      }
+    }
+
+    if (!callerRole) {
+      throw new AuthenticationError('Valid access token or QR token required')
+    }
+
     // Check if expired
     const now = Date.now()
     if (session.expires_at < now && session.status !== 'completed') {
@@ -991,7 +1040,7 @@ auth.get(
       })
     }
 
-    // Build response - include proof data when status is 'scanned'
+    // Build response
     const response: {
       status: string
       new_device_public_key?: string
@@ -1006,8 +1055,8 @@ auth.get(
       server_timestamp: now
     }
 
-    // Include proof data for 'scanned' status (existing device needs this to approve)
-    if (session.status === 'scanned') {
+    // Include proof data for 'scanned' status ONLY for existing device (they need it to approve)
+    if (session.status === 'scanned' && callerRole === 'existing') {
       if (session.new_device_public_key) {
         response.new_device_public_key = session.new_device_public_key
       }
