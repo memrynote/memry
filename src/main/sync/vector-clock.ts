@@ -174,10 +174,12 @@ export function compareClock(a: VectorClock, b: VectorClock): ClockComparison {
     const timeB = b[device] ?? 0
 
     if (timeA > timeB) {
-      bLessOrEqual = false
+      // A has higher value at this device, so A is NOT <= B
+      aLessOrEqual = false
     }
     if (timeB > timeA) {
-      aLessOrEqual = false
+      // B has higher value at this device, so B is NOT <= A
+      bLessOrEqual = false
     }
   }
 
