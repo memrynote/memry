@@ -9,9 +9,45 @@
  */
 
 import { getSyncQueue } from './queue'
+import { getSyncEngine } from './engine'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { SyncItemType, SyncOperation } from '@shared/db/schema/sync'
 import { hasMasterKey, getDeviceId } from '../crypto/keychain'
+
+// =============================================================================
+// Debounced Auto-Sync
+// =============================================================================
+
+/** Debounce delay for auto-sync after queue changes (ms) */
+const SYNC_DEBOUNCE_MS = 500
+
+/** Timer for debounced sync */
+let syncDebounceTimer: NodeJS.Timeout | null = null
+
+/**
+ * Trigger a debounced sync after queue operations.
+ * Batches rapid changes together to avoid excessive sync calls.
+ */
+function triggerDebouncedSync(): void {
+  if (syncDebounceTimer) {
+    clearTimeout(syncDebounceTimer)
+  }
+
+  syncDebounceTimer = setTimeout(async () => {
+    syncDebounceTimer = null
+    try {
+      const engine = getSyncEngine()
+      if (engine.isReady()) {
+        console.log('[Sync] Auto-triggering sync after queue change')
+        await engine.sync()
+      } else {
+        console.log('[Sync] Engine not ready, skipping auto-sync')
+      }
+    } catch (err) {
+      console.error('[Sync] Auto-sync failed:', err)
+    }
+  }, SYNC_DEBOUNCE_MS)
+}
 
 // =============================================================================
 // Types
@@ -84,6 +120,7 @@ export async function queueTaskSync(
     payload: options.payload ?? '',
     priority: options.priority ?? 50
   })
+  triggerDebouncedSync()
 }
 
 /**
@@ -112,6 +149,7 @@ export async function queueProjectSync(
     payload: options.payload ?? '',
     priority: options.priority ?? 40
   })
+  triggerDebouncedSync()
 }
 
 /**
@@ -140,6 +178,7 @@ export async function queueInboxItemSync(
     payload: options.payload ?? '',
     priority: options.priority ?? 50
   })
+  triggerDebouncedSync()
 }
 
 /**
@@ -168,6 +207,7 @@ export async function queueSavedFilterSync(
     payload: options.payload ?? '',
     priority: options.priority ?? 30
   })
+  triggerDebouncedSync()
 }
 
 /**
@@ -196,6 +236,7 @@ export async function queueSettingsSync(
     payload: options.payload ?? '',
     priority: options.priority ?? 20
   })
+  triggerDebouncedSync()
 }
 
 /**
@@ -224,6 +265,7 @@ export async function queueNoteSync(
     payload: options.payload ?? '',
     priority: options.priority ?? 50
   })
+  triggerDebouncedSync()
 }
 
 /**
@@ -252,6 +294,7 @@ export async function queueAttachmentSync(
     payload: options.payload ?? '',
     priority: options.priority ?? 60
   })
+  triggerDebouncedSync()
 }
 
 // =============================================================================
@@ -288,4 +331,5 @@ export async function queueBulkSync(
       priority: item.priority ?? 50
     })
   }
+  triggerDebouncedSync()
 }

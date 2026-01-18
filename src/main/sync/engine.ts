@@ -308,11 +308,15 @@ export class SyncEngine extends EventEmitter {
    * Perform a full sync cycle (push then pull).
    */
   async sync(): Promise<SyncResult> {
+    console.log('[Sync] sync() called')
+
     if (this._syncInProgress || this._isPaused) {
+      console.log('[Sync] Skipping sync - already in progress or paused')
       return { pushed: 0, pulled: 0, conflicts: 0, errors: [] }
     }
 
     if (this._state === 'offline') {
+      console.log('[Sync] Skipping sync - device is offline')
       return { pushed: 0, pulled: 0, conflicts: 0, errors: ['Device is offline'] }
     }
 
@@ -360,6 +364,7 @@ export class SyncEngine extends EventEmitter {
    * Push local changes to the server.
    */
   async push(): Promise<{ pushed: number; conflicts: number; errors: string[] }> {
+    console.log('[Sync] push() starting, checking queue...')
     const queue = getSyncQueue()
     const result = { pushed: 0, conflicts: 0, errors: [] as string[] }
 
@@ -368,6 +373,7 @@ export class SyncEngine extends EventEmitter {
 
     // Get items to push
     const items = await queue.getNextItems(this._config.pushBatchSize)
+    console.log(`[Sync] Found ${items.length} items to push`)
     if (items.length === 0) {
       return result
     }
@@ -406,8 +412,10 @@ export class SyncEngine extends EventEmitter {
     try {
       const tokens = await getTokens()
       if (!tokens?.accessToken) {
+        console.error('[Sync] No access token available - cannot push')
         throw new Error('No access token available')
       }
+      console.log('[Sync] Access token available, sending push request...')
 
       const response = await withRetry(() => this.sendPushRequest(pushItems, tokens.accessToken), {
         maxAttempts: 3,
@@ -1076,7 +1084,10 @@ export class SyncEngine extends EventEmitter {
    * Send push request to server.
    */
   private async sendPushRequest(items: SyncPushItem[], token: string): Promise<SyncPushResponse> {
-    const response = await fetch(`${this.getServerUrl()}/api/v1/sync/push`, {
+    const url = `${this.getServerUrl()}/api/v1/sync/push`
+    console.log(`[Sync] Sending ${items.length} items to ${url}`)
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1090,9 +1101,11 @@ export class SyncEngine extends EventEmitter {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }))
+      console.error(`[Sync] Push failed: ${response.status} ${response.statusText}`, error)
       throw new Error(error.message || `Push failed with status ${response.status}`)
     }
 
+    console.log('[Sync] Push successful')
     return response.json()
   }
 
