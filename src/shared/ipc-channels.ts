@@ -789,6 +789,8 @@ export const SyncChannels = {
     RESUME_SYNC: 'sync:resume-sync',
     /** Get number of items in sync queue */
     GET_QUEUE_SIZE: 'sync:get-queue-size',
+    /** Get sync diagnostics for debugging */
+    GET_DIAGNOSTICS: 'sync:get-diagnostics',
 
     // Sync History
     /** Get sync history entries */

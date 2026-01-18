@@ -91,6 +91,13 @@ export class SyncQueueManager {
   async addItem(input: QueueItemInput): Promise<SyncQueueItem> {
     const db = getDatabase()
 
+    console.log('[Sync Queue] Adding item:', {
+      type: input.type,
+      itemId: input.itemId,
+      operation: input.operation,
+      priority: input.priority ?? SyncPriority.NORMAL
+    })
+
     // Check for existing pending item with same type and itemId
     const existing = await db.query.syncQueue.findFirst({
       where: and(
@@ -102,6 +109,7 @@ export class SyncQueueManager {
 
     if (existing) {
       // Update existing item with new payload
+      console.log(`[Sync Queue] Deduplicating: updating existing item ${existing.id}`)
       const [updated] = await db
         .update(syncQueue)
         .set({
@@ -131,6 +139,7 @@ export class SyncQueueManager {
 
     const [inserted] = await db.insert(syncQueue).values(newItem).returning()
 
+    console.log(`[Sync Queue] Item added: ${inserted.id}`)
     return inserted
   }
 

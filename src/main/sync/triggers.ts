@@ -37,8 +37,19 @@ export interface SyncTriggerOptions {
 export async function isSyncEnabled(): Promise<boolean> {
   try {
     const [hasKey, deviceId] = await Promise.all([hasMasterKey(), getDeviceId()])
-    return hasKey && !!deviceId
-  } catch {
+    const enabled = hasKey && !!deviceId
+
+    if (!enabled) {
+      console.warn('[Sync] isSyncEnabled=false:', {
+        hasMasterKey: hasKey,
+        hasDeviceId: !!deviceId,
+        deviceIdPrefix: deviceId ? deviceId.substring(0, 8) + '...' : null
+      })
+    }
+
+    return enabled
+  } catch (error) {
+    console.error('[Sync] isSyncEnabled check failed:', error)
     return false
   }
 }
@@ -59,8 +70,12 @@ export async function queueTaskSync(
   operation: SyncOperation,
   options: SyncTriggerOptions = {}
 ): Promise<void> {
-  if (!(await isSyncEnabled())) return
+  if (!(await isSyncEnabled())) {
+    console.debug(`[Sync] Skipping task sync (disabled): ${taskId} ${operation}`)
+    return
+  }
 
+  console.log(`[Sync] Queueing task: ${taskId} ${operation}`)
   const queue = getSyncQueue()
   await queue.addItem({
     type: 'task' as SyncItemType,
@@ -83,8 +98,12 @@ export async function queueProjectSync(
   operation: SyncOperation,
   options: SyncTriggerOptions = {}
 ): Promise<void> {
-  if (!(await isSyncEnabled())) return
+  if (!(await isSyncEnabled())) {
+    console.debug(`[Sync] Skipping project sync (disabled): ${projectId} ${operation}`)
+    return
+  }
 
+  console.log(`[Sync] Queueing project: ${projectId} ${operation}`)
   const queue = getSyncQueue()
   await queue.addItem({
     type: 'project' as SyncItemType,
@@ -107,8 +126,12 @@ export async function queueInboxItemSync(
   operation: SyncOperation,
   options: SyncTriggerOptions = {}
 ): Promise<void> {
-  if (!(await isSyncEnabled())) return
+  if (!(await isSyncEnabled())) {
+    console.debug(`[Sync] Skipping inbox item sync (disabled): ${itemId} ${operation}`)
+    return
+  }
 
+  console.log(`[Sync] Queueing inbox item: ${itemId} ${operation}`)
   const queue = getSyncQueue()
   await queue.addItem({
     type: 'inbox_item' as SyncItemType,
@@ -131,8 +154,12 @@ export async function queueSavedFilterSync(
   operation: SyncOperation,
   options: SyncTriggerOptions = {}
 ): Promise<void> {
-  if (!(await isSyncEnabled())) return
+  if (!(await isSyncEnabled())) {
+    console.debug(`[Sync] Skipping saved filter sync (disabled): ${filterId} ${operation}`)
+    return
+  }
 
+  console.log(`[Sync] Queueing saved filter: ${filterId} ${operation}`)
   const queue = getSyncQueue()
   await queue.addItem({
     type: 'saved_filter' as SyncItemType,
@@ -155,8 +182,12 @@ export async function queueSettingsSync(
   operation: SyncOperation,
   options: SyncTriggerOptions = {}
 ): Promise<void> {
-  if (!(await isSyncEnabled())) return
+  if (!(await isSyncEnabled())) {
+    console.debug(`[Sync] Skipping settings sync (disabled): ${settingKey} ${operation}`)
+    return
+  }
 
+  console.log(`[Sync] Queueing settings: ${settingKey} ${operation}`)
   const queue = getSyncQueue()
   await queue.addItem({
     type: 'settings' as SyncItemType,
@@ -179,8 +210,12 @@ export async function queueNoteSync(
   operation: SyncOperation,
   options: SyncTriggerOptions = {}
 ): Promise<void> {
-  if (!(await isSyncEnabled())) return
+  if (!(await isSyncEnabled())) {
+    console.debug(`[Sync] Skipping note sync (disabled): ${noteId} ${operation}`)
+    return
+  }
 
+  console.log(`[Sync] Queueing note: ${noteId} ${operation}`)
   const queue = getSyncQueue()
   await queue.addItem({
     type: 'note' as SyncItemType,
@@ -203,8 +238,12 @@ export async function queueAttachmentSync(
   operation: SyncOperation,
   options: SyncTriggerOptions = {}
 ): Promise<void> {
-  if (!(await isSyncEnabled())) return
+  if (!(await isSyncEnabled())) {
+    console.debug(`[Sync] Skipping attachment sync (disabled): ${attachmentId} ${operation}`)
+    return
+  }
 
+  console.log(`[Sync] Queueing attachment: ${attachmentId} ${operation}`)
   const queue = getSyncQueue()
   await queue.addItem({
     type: 'attachment' as SyncItemType,
@@ -233,8 +272,12 @@ export async function queueBulkSync(
     priority?: number
   }>
 ): Promise<void> {
-  if (!(await isSyncEnabled())) return
+  if (!(await isSyncEnabled())) {
+    console.debug(`[Sync] Skipping bulk sync (disabled): ${items.length} items`)
+    return
+  }
 
+  console.log(`[Sync] Queueing bulk sync: ${items.length} items`)
   const queue = getSyncQueue()
   for (const item of items) {
     await queue.addItem({

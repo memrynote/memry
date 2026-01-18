@@ -77,6 +77,9 @@ export const SYNC_CHANNELS = {
   GET_SYNCED_SETTINGS: 'sync:get-synced-settings',
   UPDATE_SYNCED_SETTINGS: 'sync:update-synced-settings',
 
+  // Diagnostics
+  GET_DIAGNOSTICS: 'sync:get-diagnostics',
+
   // Events (renderer -> main, for subscriptions)
   SUBSCRIBE_STATUS: 'sync:subscribe-status',
   UNSUBSCRIBE_STATUS: 'sync:unsubscribe-status'
@@ -368,6 +371,38 @@ export const LinkViaRecoveryInputSchema = z.object({
 
 export interface UpdateSyncedSettingsInput {
   settings: Partial<SyncedSettings>
+}
+
+// --- Diagnostics ---
+
+export interface SyncDiagnostics {
+  /** Keychain state */
+  keychain: {
+    hasMasterKey: boolean
+    hasDeviceId: boolean
+    hasUserId: boolean
+    hasTokens: boolean
+    deviceIdPrefix: string | null
+    userIdPrefix: string | null
+  }
+  /** Whether sync is enabled (hasMasterKey && hasDeviceId) */
+  syncEnabled: boolean
+  /** Queue statistics */
+  queue: {
+    total: number
+    pending: number
+    inProgress: number
+    failed: number
+    byType: Record<string, number>
+  }
+  /** Sync engine state */
+  engine: {
+    ready: boolean
+    state: string
+    lastSyncAt: number | null
+    pendingCount: number
+    isOnline: boolean
+  }
 }
 
 // --- Crypto: Recovery Phrase ---

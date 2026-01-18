@@ -340,6 +340,19 @@ async function handleCompleteLinking(
     pendingLinkingRequest.linkingKeys.macKey.fill(0)
     pendingLinkingRequest = null
 
+    // Initialize and start sync engine after successful linking
+    try {
+      const { getSyncEngine } = await import('../sync/engine')
+      const engine = getSyncEngine()
+      await engine.initialize()
+      if (engine.isReady()) {
+        await engine.start()
+        console.log('[Sync] Engine started after QR device linking')
+      }
+    } catch (err) {
+      console.warn('[Sync] Failed to start engine after linking:', err)
+    }
+
     return {
       success: true,
       deviceId: response.device.id,
@@ -494,6 +507,19 @@ export function registerSyncHandlers(): void {
 
         // Clear pending signup state
         clearPendingSignup()
+
+        // Initialize and start sync engine after successful setup
+        try {
+          const { getSyncEngine } = await import('../sync/engine')
+          const engine = getSyncEngine()
+          await engine.initialize()
+          if (engine.isReady()) {
+            await engine.start()
+            console.log('[Sync] Engine started after first device setup')
+          }
+        } catch (err) {
+          console.warn('[Sync] Failed to start engine after setup:', err)
+        }
 
         return {
           success: true,
@@ -1178,6 +1204,59 @@ export function registerSyncHandlers(): void {
       const queue = getSyncQueue()
       const size = await queue.getPendingCount()
       return { size }
+    })
+  )
+
+  // Get sync diagnostics for debugging
+  ipcMain.handle(
+    SYNC_CHANNELS.GET_DIAGNOSTICS,
+    createHandler(async () => {
+      const { hasMasterKey, getDeviceId, getUserId, getTokens } = await import('../crypto/keychain')
+      const { getSyncQueue } = await import('../sync/queue')
+      const { getSyncEngine } = await import('../sync/engine')
+
+      // Get keychain state
+      const [masterKeyExists, deviceId, userId, tokens] = await Promise.all([
+        hasMasterKey(),
+        getDeviceId(),
+        getUserId(),
+        getTokens()
+      ])
+
+      // Get queue stats
+      const queue = getSyncQueue()
+      const stats = await queue.getStats()
+
+      // Get engine state
+      const engine = getSyncEngine()
+      const engineReady = engine.isReady()
+      const status = await engine.getStatus()
+
+      return {
+        keychain: {
+          hasMasterKey: masterKeyExists,
+          hasDeviceId: !!deviceId,
+          hasUserId: !!userId,
+          hasTokens: !!tokens,
+          deviceIdPrefix: deviceId ? deviceId.substring(0, 8) + '...' : null,
+          userIdPrefix: userId ? userId.substring(0, 8) + '...' : null
+        },
+        syncEnabled: masterKeyExists && !!deviceId,
+        queue: {
+          total: stats.total,
+          pending: stats.pending,
+          inProgress: stats.inProgress,
+          failed: stats.failed,
+          byType: stats.byType
+        },
+        engine: {
+          ready: engineReady,
+          state: status.state,
+          lastSyncAt: status.lastSyncAt,
+          pendingCount: status.pendingCount,
+          isOnline: status.isOnline
+        }
+      }
     })
   )
 
@@ -1934,6 +2013,19 @@ export function registerSyncHandlers(): void {
           refreshToken: device.tokens.refresh_token,
           masterKey
         })
+
+        // Initialize and start sync engine after successful recovery
+        try {
+          const { getSyncEngine } = await import('../sync/engine')
+          const engine = getSyncEngine()
+          await engine.initialize()
+          if (engine.isReady()) {
+            await engine.start()
+            console.log('[Sync] Engine started after recovery phrase linking')
+          }
+        } catch (err) {
+          console.warn('[Sync] Failed to start engine after recovery:', err)
+        }
 
         return {
           success: true,

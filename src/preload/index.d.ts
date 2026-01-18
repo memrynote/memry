@@ -2003,6 +2003,32 @@ export interface SyncStatus {
   currentOperation: string | null
 }
 
+export interface SyncDiagnostics {
+  keychain: {
+    hasMasterKey: boolean
+    hasDeviceId: boolean
+    hasUserId: boolean
+    hasTokens: boolean
+    deviceIdPrefix: string | null
+    userIdPrefix: string | null
+  }
+  syncEnabled: boolean
+  queue: {
+    total: number
+    pending: number
+    inProgress: number
+    failed: number
+    byType: Record<string, number>
+  }
+  engine: {
+    ready: boolean
+    state: string
+    lastSyncAt: number | null
+    pendingCount: number
+    isOnline: boolean
+  }
+}
+
 export interface SetupStatus {
   isSetup: boolean
   hasUser: boolean
@@ -2184,6 +2210,7 @@ export interface SyncClientAPI {
   pauseSync(): Promise<{ success: boolean }>
   resumeSync(): Promise<{ success: boolean }>
   getQueueSize(): Promise<{ size: number }>
+  getDiagnostics(): Promise<SyncDiagnostics>
 
   // Sync History
   getHistory(options?: {

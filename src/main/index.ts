@@ -403,6 +403,34 @@ void app.whenReady().then(async () => {
   // Auto-open the last vault if one was previously open
   await autoOpenLastVault()
 
+  // Initialize sync engine if user has an existing sync session
+  try {
+    const { hasMasterKey, getDeviceId, getUserId } = await import('./crypto/keychain')
+    const [hasMaster, deviceId, userId] = await Promise.all([
+      hasMasterKey(),
+      getDeviceId(),
+      getUserId()
+    ])
+
+    if (hasMaster && deviceId && userId) {
+      console.log('[Startup] Existing sync session found, initializing engine...')
+      const { getSyncEngine } = await import('./sync/engine')
+      const engine = getSyncEngine()
+      await engine.initialize()
+      if (engine.isReady()) {
+        await engine.start()
+        console.log('[Startup] Sync engine started successfully')
+      } else {
+        console.warn('[Startup] Sync engine failed to become ready')
+      }
+    } else {
+      console.log('[Startup] No sync session found (hasMasterKey:', hasMaster, ', hasDeviceId:', !!deviceId, ', hasUserId:', !!userId, ')')
+    }
+  } catch (error) {
+    // Sync initialization is non-critical - log and continue
+    console.warn('[Startup] Failed to initialize sync engine:', error)
+  }
+
   // Start the snooze scheduler for inbox items
   // This checks for due items on startup and then every minute
   try {

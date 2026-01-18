@@ -1357,6 +1357,8 @@ const api = {
     resumeSync: () => ipcRenderer.invoke(SyncChannels.invoke.RESUME_SYNC),
     /** Get number of items in sync queue */
     getQueueSize: () => ipcRenderer.invoke(SyncChannels.invoke.GET_QUEUE_SIZE),
+    /** Get sync diagnostics for debugging */
+    getDiagnostics: () => ipcRenderer.invoke(SyncChannels.invoke.GET_DIAGNOSTICS),
 
     // Sync History
     /** Get sync history entries */
