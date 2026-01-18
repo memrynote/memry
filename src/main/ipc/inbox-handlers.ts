@@ -84,7 +84,8 @@ import {
 } from '../inbox/stats'
 import { snoozeItem, unsnoozeItem, getSnoozedItems, bulkSnoozeItems } from '../inbox/snooze'
 import type { SnoozeInput, SnoozedItem } from '../inbox/snooze'
-import { queueInboxItemSync } from '../sync/triggers'
+import { queueInboxItemSync, queueBulkSync } from '../sync/triggers'
+import type { SyncItemType } from '@shared/db/schema/sync'
 
 // ============================================================================
 // Constants
@@ -862,6 +863,11 @@ async function handleAddTag(
       })
       .run()
 
+    // Queue for sync (non-blocking)
+    queueInboxItemSync(itemId, 'update').catch((err) =>
+      console.error('[Sync] Failed to queue inbox add-tag:', err)
+    )
+
     return { success: true }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
@@ -882,6 +888,11 @@ async function handleRemoveTag(
     db.delete(inboxItemTags)
       .where(and(eq(inboxItemTags.itemId, itemId), eq(inboxItemTags.tag, tag)))
       .run()
+
+    // Queue for sync (non-blocking)
+    queueInboxItemSync(itemId, 'update').catch((err) =>
+      console.error('[Sync] Failed to queue inbox remove-tag:', err)
+    )
 
     return { success: true }
   } catch (error) {
@@ -1421,6 +1432,14 @@ async function handleSnooze(input: unknown): Promise<{ success: boolean; error?:
     }
 
     const result = snoozeItem(snoozeInput)
+
+    if (result.success) {
+      // Queue for sync (non-blocking)
+      queueInboxItemSync(snoozeInput.itemId, 'update').catch((err) =>
+        console.error('[Sync] Failed to queue inbox snooze:', err)
+      )
+    }
+
     return { success: result.success, error: result.error }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
@@ -1438,6 +1457,14 @@ async function handleUnsnooze(itemId: string): Promise<{ success: boolean; error
     }
 
     const result = unsnoozeItem(itemId)
+
+    if (result.success) {
+      // Queue for sync (non-blocking)
+      queueInboxItemSync(itemId, 'update').catch((err) =>
+        console.error('[Sync] Failed to queue inbox unsnooze:', err)
+      )
+    }
+
     return { success: result.success, error: result.error }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
@@ -1471,6 +1498,11 @@ async function handleMarkViewed(itemId: string): Promise<{ success: boolean; err
       id: itemId,
       changes: { viewedAt: now }
     })
+
+    // Queue for sync (non-blocking)
+    queueInboxItemSync(itemId, 'update').catch((err) =>
+      console.error('[Sync] Failed to queue inbox mark-viewed:', err)
+    )
 
     console.log(`[Inbox] Marked item ${itemId} as viewed`)
     return { success: true }
@@ -1528,7 +1560,21 @@ async function handleBulkSnooze(input: unknown): Promise<{
       }
     }
 
-    return bulkSnoozeItems(itemIds, snoozeUntil, reason)
+    const result = bulkSnoozeItems(itemIds, snoozeUntil, reason)
+
+    // Queue successfully snoozed items for sync (non-blocking)
+    if (result.processedCount > 0) {
+      // Get the IDs that were successfully processed (those not in errors)
+      const errorIds = new Set(result.errors.map((e) => e.itemId))
+      const successIds = itemIds.filter((id) => !errorIds.has(id))
+      if (successIds.length > 0) {
+        queueBulkSync(
+          successIds.map((id) => ({ type: 'inbox_item' as SyncItemType, itemId: id, operation: 'update' as const }))
+        ).catch((err) => console.error('[Sync] Failed to queue bulk snooze:', err))
+      }
+    }
+
+    return result
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     return { success: false, processedCount: 0, errors: [{ itemId: '', error: message }] }
@@ -1616,6 +1662,17 @@ async function handleBulkTag(input: unknown): Promise<BulkResponse> {
     // Emit update events for each item
     for (const itemId of itemIds) {
       emitInboxEvent(InboxChannels.events.UPDATED, { id: itemId, changes: { tags } })
+    }
+
+    // Queue successfully tagged items for sync (non-blocking)
+    if (processedCount > 0) {
+      const errorIds = new Set(errors.map((e) => e.itemId))
+      const successIds = itemIds.filter((id) => !errorIds.has(id))
+      if (successIds.length > 0) {
+        queueBulkSync(
+          successIds.map((id) => ({ type: 'inbox_item' as SyncItemType, itemId: id, operation: 'update' as const }))
+        ).catch((err) => console.error('[Sync] Failed to queue bulk tag:', err))
+      }
     }
 
     return {
@@ -1797,6 +1854,11 @@ async function handleUnarchive(id: string): Promise<{ success: boolean; error?: 
 
     emitInboxEvent(InboxChannels.events.UPDATED, { id, changes: { archivedAt: null } })
 
+    // Queue for sync (non-blocking)
+    queueInboxItemSync(id, 'update').catch((err) =>
+      console.error('[Sync] Failed to queue inbox unarchive:', err)
+    )
+
     return { success: true }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
@@ -1818,6 +1880,11 @@ async function handleDeletePermanent(id: string): Promise<{ success: boolean; er
     db.delete(inboxItemTags).where(eq(inboxItemTags.itemId, id)).run()
 
     db.delete(inboxItems).where(eq(inboxItems.id, id)).run()
+
+    // Queue for sync (non-blocking)
+    queueInboxItemSync(id, 'delete').catch((err) =>
+      console.error('[Sync] Failed to queue inbox delete-permanent:', err)
+    )
 
     return { success: true }
   } catch (error) {

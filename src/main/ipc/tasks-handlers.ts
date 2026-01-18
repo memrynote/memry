@@ -325,6 +325,11 @@ export function registerTasksHandlers(): void {
           changes: { completedAt: null }
         })
 
+        // Queue for sync (non-blocking)
+        queueTaskSync(id, 'update').catch((err) =>
+          console.error('[Sync] Failed to queue task uncomplete:', err)
+        )
+
         return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to uncomplete task'
@@ -354,6 +359,12 @@ export function registerTasksHandlers(): void {
           task: enrichedTask,
           changes: { archivedAt: task.archivedAt }
         })
+
+        // Queue for sync (non-blocking)
+        queueTaskSync(id, 'update').catch((err) =>
+          console.error('[Sync] Failed to queue task archive:', err)
+        )
+
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to archive task'
@@ -383,6 +394,12 @@ export function registerTasksHandlers(): void {
           task: enrichedTask,
           changes: { archivedAt: null }
         })
+
+        // Queue for sync (non-blocking)
+        queueTaskSync(id, 'update').catch((err) =>
+          console.error('[Sync] Failed to queue task unarchive:', err)
+        )
+
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to unarchive task'
@@ -455,6 +472,12 @@ export function registerTasksHandlers(): void {
       try {
         const db = requireDatabase()
         taskQueries.reorderTasks(db, input.taskIds, input.positions)
+
+        // Queue all reordered tasks for sync (non-blocking)
+        queueBulkSync(
+          input.taskIds.map((id) => ({ type: 'task' as SyncItemType, itemId: id, operation: 'update' as const }))
+        ).catch((err) => console.error('[Sync] Failed to queue task reorder:', err))
+
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to reorder tasks'
@@ -563,6 +586,12 @@ export function registerTasksHandlers(): void {
           ...task,
           linkedNoteIds: taskQueries.getTaskNoteIds(db, input.taskId)
         }
+
+        // Queue for sync (non-blocking)
+        queueTaskSync(input.taskId, 'update').catch((err) =>
+          console.error('[Sync] Failed to queue convert to subtask:', err)
+        )
+
         return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to convert to subtask'
@@ -585,6 +614,12 @@ export function registerTasksHandlers(): void {
           ...task,
           linkedNoteIds: taskQueries.getTaskNoteIds(db, taskId)
         }
+
+        // Queue for sync (non-blocking)
+        queueTaskSync(taskId, 'update').catch((err) =>
+          console.error('[Sync] Failed to queue convert to task:', err)
+        )
+
         return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to convert to task'
@@ -725,6 +760,12 @@ export function registerTasksHandlers(): void {
       try {
         const db = requireDatabase()
         projectQueries.reorderProjects(db, input.projectIds, input.positions)
+
+        // Queue all reordered projects for sync (non-blocking)
+        queueBulkSync(
+          input.projectIds.map((id) => ({ type: 'project' as SyncItemType, itemId: id, operation: 'update' as const }))
+        ).catch((err) => console.error('[Sync] Failed to queue project reorder:', err))
+
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to reorder projects'

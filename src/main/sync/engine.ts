@@ -33,6 +33,7 @@ import { getSyncQueue } from './queue'
 import { getNetworkMonitor } from './network'
 import { getWebSocketManager, type LinkingRequestPayload } from './websocket'
 import { withRetry, isRetryableError } from './retry'
+import { syncApi } from './api-client'
 import {
   createClock,
   incrementClock,
@@ -1089,68 +1090,38 @@ export class SyncEngine extends EventEmitter {
 
   /**
    * Send push request to server.
+   * Uses SyncApiClient which handles automatic token refresh on 401 errors.
    */
   private async sendPushRequest(items: SyncPushItem[], token: string): Promise<SyncPushResponse> {
-    const url = `${this.getServerUrl()}/api/v1/sync/push`
-    console.log(`[Sync] Sending ${items.length} items to ${url}`)
+    console.log(`[Sync] Sending ${items.length} items to sync server`)
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        items,
-        deviceClock: this._deviceClock
-      })
-    })
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Unknown error' }))
-      console.error(`[Sync] Push failed: ${response.status} ${response.statusText}`, error)
-      throw new Error(error.message || `Push failed with status ${response.status}`)
-    }
+    const response = await syncApi.instance.syncPush(items, this._deviceClock, token)
 
     console.log('[Sync] Push successful')
-    return response.json()
+    return response
   }
 
   /**
    * Send pull request to server.
+   * Uses SyncApiClient which handles automatic token refresh on 401 errors.
    */
   private async sendPullRequest(
     since: number | undefined,
     token: string
   ): Promise<SyncPullResponse> {
-    const url = `${this.getServerUrl()}/api/v1/sync/pull`
-    console.log(`[Sync] Pulling from ${url}`, { since, limit: this._config.pullBatchSize })
+    console.log(`[Sync] Pulling from sync server`, { since, limit: this._config.pullBatchSize })
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
+    const response = await syncApi.instance.syncPull(
+      {
         deviceClock: this._deviceClock,
         since,
         limit: this._config.pullBatchSize
-      })
-    })
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Unknown error' }))
-      console.error(`[Sync] Pull failed: ${response.status} ${response.statusText}`, error)
-      throw new Error(error.message || `Pull failed with status ${response.status}`)
-    }
+      },
+      token
+    )
 
     console.log('[Sync] Pull request successful')
-    return response.json()
-  }
-
-  private getServerUrl(): string {
-    return process.env.SYNC_SERVER_URL || 'https://api.memry.app'
+    return response
   }
 
   // ---------------------------------------------------------------------------

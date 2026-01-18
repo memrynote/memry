@@ -13,6 +13,7 @@
 
 import { BrowserWindow } from 'electron'
 import { SYNC_EVENTS } from '@shared/contracts/ipc-sync'
+import type { SyncPullResponse, SyncPushItem, SyncPushResponse } from '@shared/contracts/sync-api'
 import { getTokens, saveTokens } from '../crypto/keychain'
 
 /**
@@ -609,6 +610,50 @@ export class SyncApiClient {
       `/auth/linking/${sessionId}/status${queryParams}`,
       { token }
     )
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sync Endpoints
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Pull items from the sync server
+   *
+   * @param params - Pull parameters (deviceClock, since, limit)
+   * @param accessToken - JWT access token
+   * @returns Pull response with items and server state
+   */
+  async syncPull(
+    params: {
+      deviceClock: Record<string, number>
+      since?: number
+      limit: number
+    },
+    accessToken: string
+  ): Promise<SyncPullResponse> {
+    return this.request<SyncPullResponse>('POST', '/sync/pull', {
+      body: params as unknown as Record<string, unknown>,
+      token: accessToken
+    })
+  }
+
+  /**
+   * Push items to the sync server
+   *
+   * @param items - Items to push
+   * @param deviceClock - Current device vector clock
+   * @param accessToken - JWT access token
+   * @returns Push response with accepted/conflict info
+   */
+  async syncPush(
+    items: SyncPushItem[],
+    deviceClock: Record<string, number>,
+    accessToken: string
+  ): Promise<SyncPushResponse> {
+    return this.request<SyncPushResponse>('POST', '/sync/push', {
+      body: { items, deviceClock } as unknown as Record<string, unknown>,
+      token: accessToken
+    })
   }
 }
 
