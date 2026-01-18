@@ -126,3 +126,10 @@ export {
   queueBulkSync,
 } from './triggers'
 export type { SyncTriggerOptions } from './triggers'
+
+// =============================================================================
+// Bootstrap
+// =============================================================================
+
+export { performBootstrap, hasBootstrapped, markBootstrapped } from './bootstrap'
+export type { BootstrapResult } from './bootstrap'

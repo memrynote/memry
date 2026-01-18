@@ -348,6 +348,10 @@ async function handleCompleteLinking(
       if (engine.isReady()) {
         await engine.start()
         console.log('[Sync] Engine started after QR device linking')
+
+        // Bootstrap existing data for initial sync
+        const { performBootstrap } = await import('../sync/bootstrap')
+        performBootstrap().catch((err) => console.error('[Bootstrap] Failed:', err))
       }
     } catch (err) {
       console.warn('[Sync] Failed to start engine after linking:', err)
@@ -516,6 +520,10 @@ export function registerSyncHandlers(): void {
           if (engine.isReady()) {
             await engine.start()
             console.log('[Sync] Engine started after first device setup')
+
+            // Bootstrap existing data for initial sync
+            const { performBootstrap } = await import('../sync/bootstrap')
+            performBootstrap().catch((err) => console.error('[Bootstrap] Failed:', err))
           }
         } catch (err) {
           console.warn('[Sync] Failed to start engine after setup:', err)
@@ -2022,6 +2030,10 @@ export function registerSyncHandlers(): void {
           if (engine.isReady()) {
             await engine.start()
             console.log('[Sync] Engine started after recovery phrase linking')
+
+            // Bootstrap existing data for initial sync
+            const { performBootstrap } = await import('../sync/bootstrap')
+            performBootstrap().catch((err) => console.error('[Bootstrap] Failed:', err))
           }
         } catch (err) {
           console.warn('[Sync] Failed to start engine after recovery:', err)

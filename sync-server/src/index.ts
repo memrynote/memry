@@ -103,8 +103,69 @@ app.onError((err, c) => {
   )
 })
 
+// =============================================================================
+// WebSocket Route Handler
+// =============================================================================
+
+/**
+ * Handle WebSocket upgrade requests for /ws route.
+ *
+ * Validates the token and forwards the request to the UserSyncState Durable Object.
+ */
+async function handleWebSocketUpgrade(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url)
+
+  // Extract auth params from query string
+  const userId = url.searchParams.get('userId')
+  const deviceId = url.searchParams.get('deviceId')
+  const token = url.searchParams.get('token')
+
+  // Validate required params
+  if (!userId) {
+    return new Response('userId query param required', { status: 400 })
+  }
+  if (!deviceId) {
+    return new Response('deviceId query param required', { status: 400 })
+  }
+  if (!token) {
+    return new Response('token query param required', { status: 400 })
+  }
+
+  // TODO: Validate JWT token matches userId
+  // For now, accept connections with valid params (DO also validates deviceId)
+
+  // Get or create the UserSyncState Durable Object for this user
+  const doId = env.USER_STATE.idFromName(userId)
+  const stub = env.USER_STATE.get(doId)
+
+  // Forward the WebSocket upgrade request to the DO
+  return stub.fetch(request)
+}
+
+// =============================================================================
+// Worker Fetch Handler
+// =============================================================================
+
+/**
+ * Main fetch handler that routes WebSocket upgrades to the DO
+ * and all other requests to the Hono app.
+ */
+const worker = {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url)
+
+    // Handle WebSocket upgrades to /ws
+    if (url.pathname === '/ws' && request.headers.get('Upgrade') === 'websocket') {
+      return handleWebSocketUpgrade(request, env)
+    }
+
+    // Pass all other requests to Hono
+    return app.fetch(request, env, ctx)
+  },
+}
+
 // Export for Cloudflare Workers
-export default app
+export default worker
 
 // =============================================================================
 // Durable Object: UserSyncState (T090-T093)
