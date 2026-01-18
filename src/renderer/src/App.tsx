@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { AppSidebar } from '@/components/app-sidebar'
@@ -74,6 +74,7 @@ interface LinkingRequestData {
 function GlobalLinkingApproval(): React.JSX.Element | null {
   const [linkingRequest, setLinkingRequest] = useState<LinkingRequestData | null>(null)
   const [approvalError, setApprovalError] = useState<string | null>(null)
+  const approvedRef = useRef(false) // Track approval success to prevent rejection on dialog close
 
   const approveLinking = useApproveLinking()
   const rejectLinking = useRejectLinking()
@@ -81,6 +82,7 @@ function GlobalLinkingApproval(): React.JSX.Element | null {
   // Subscribe to linking request events globally
   useEffect(() => {
     const unsubscribe = window.api.onSyncLinkingRequest((event) => {
+      approvedRef.current = false // Reset on new request
       setLinkingRequest(event)
       setApprovalError(null)
     })
@@ -107,7 +109,8 @@ function GlobalLinkingApproval(): React.JSX.Element | null {
         return
       }
 
-      // Success - close dialog
+      // Success - mark as approved before closing dialog
+      approvedRef.current = true
       setLinkingRequest(null)
     } catch (err) {
       setApprovalError(err instanceof Error ? err.message : 'Failed to approve linking')
@@ -116,14 +119,19 @@ function GlobalLinkingApproval(): React.JSX.Element | null {
 
   // Handle reject
   const handleReject = useCallback(async () => {
-    if (!linkingRequest) return
+    // Skip if already approved (prevents race condition when dialog closes after approval)
+    if (!linkingRequest || approvedRef.current) {
+      approvedRef.current = false // Reset for next request
+      return
+    }
 
     try {
       await rejectLinking.mutateAsync({ sessionId: linkingRequest.sessionId })
-    } catch (err) {
-      // Ignore reject errors
+    } catch {
+      // Ignore reject errors - session might already be gone
     }
 
+    approvedRef.current = false // Reset for next request
     setLinkingRequest(null)
   }, [linkingRequest, rejectLinking])
 

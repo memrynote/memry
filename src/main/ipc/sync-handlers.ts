@@ -1492,6 +1492,10 @@ export function registerSyncHandlers(): void {
           qrToken: token, // QR token for authenticated polling
           onStatusChange: async (status: LinkingStatusResponse) => {
             if (status.status === 'approved' && pendingLinkingRequest) {
+              // Stop poller immediately - we're about to complete or fail
+              // This prevents infinite polling if /complete fails
+              pendingLinkingRequest.poller?.stop()
+
               try {
                 // Auto-complete the linking
                 const completeResult = await handleCompleteLinking(sessionId)
@@ -1512,6 +1516,14 @@ export function registerSyncHandlers(): void {
                     reason: error instanceof Error ? error.message : 'Failed to complete linking'
                   })
                 })
+              }
+
+              // Cleanup pending request (poller already stopped above)
+              if (pendingLinkingRequest?.sessionId === sessionId) {
+                pendingLinkingRequest.myKeyPair.secretKey.fill(0)
+                pendingLinkingRequest.linkingKeys.encKey.fill(0)
+                pendingLinkingRequest.linkingKeys.macKey.fill(0)
+                pendingLinkingRequest = null
               }
             } else if (status.status === 'rejected') {
               // Emit LINKING_REJECTED to all windows

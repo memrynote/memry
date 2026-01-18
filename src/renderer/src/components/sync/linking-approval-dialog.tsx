@@ -10,7 +10,6 @@
 import { useState, useCallback } from 'react'
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -101,12 +100,16 @@ export function LinkingApprovalDialog({
   error
 }: LinkingApprovalDialogProps) {
   const [localError, setLocalError] = useState<string | null>(null)
+  // Track approval started locally (before async call begins) to prevent
+  // race condition where dialog closes before isApproving prop updates
+  const [isApprovingLocal, setIsApprovingLocal] = useState(false)
 
   const PlatformIcon = platformIcons[devicePlatform] || Monitor
   const platformName = platformNames[devicePlatform] || devicePlatform
 
   const handleApprove = useCallback(async () => {
     setLocalError(null)
+    setIsApprovingLocal(true) // Mark BEFORE async call to prevent race condition
     try {
       await onApprove({
         sessionId,
@@ -115,6 +118,7 @@ export function LinkingApprovalDialog({
       })
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : 'Failed to approve linking')
+      setIsApprovingLocal(false) // Reset on error so user can retry or reject
     }
   }, [onApprove, sessionId, newDevicePublicKey, newDeviceConfirm])
 
@@ -123,15 +127,16 @@ export function LinkingApprovalDialog({
     onOpenChange(false)
   }, [onReject, onOpenChange])
 
-  // Handle escape key to reject
+  // Handle escape key to reject (only if not approving)
   const handleOpenChange = useCallback(
     (open: boolean) => {
-      if (!open && !isApproving) {
+      // Don't reject if approval was started (locally tracked or prop)
+      if (!open && !isApproving && !isApprovingLocal) {
         handleReject()
       }
       onOpenChange(open)
     },
-    [isApproving, handleReject, onOpenChange]
+    [isApproving, isApprovingLocal, handleReject, onOpenChange]
   )
 
   const displayError = error || localError
@@ -190,28 +195,27 @@ export function LinkingApprovalDialog({
             <Button
               variant="outline"
               onClick={handleReject}
-              disabled={isApproving}
+              disabled={isApproving || isApprovingLocal}
               className="w-full sm:w-auto"
             >
               Reject
             </Button>
           </AlertDialogCancel>
-          <AlertDialogAction asChild>
-            <Button
-              onClick={handleApprove}
-              disabled={isApproving}
-              className="w-full sm:w-auto"
-            >
-              {isApproving ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
-                  Approving...
-                </>
-              ) : (
-                'Approve'
-              )}
-            </Button>
-          </AlertDialogAction>
+          {/* Use regular Button instead of AlertDialogAction to prevent auto-close */}
+          <Button
+            onClick={handleApprove}
+            disabled={isApproving || isApprovingLocal}
+            className="w-full sm:w-auto"
+          >
+            {isApproving || isApprovingLocal ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+                Approving...
+              </>
+            ) : (
+              'Approve'
+            )}
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
