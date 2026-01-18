@@ -269,6 +269,29 @@ async function openVault(vaultPath: string): Promise<void> {
       console.error('[Vault] Background embedding model load failed:', err)
     })
   }
+
+  // Trigger sync after vault opens (only if user is logged in)
+  try {
+    const { isSyncEnabled } = await import('../sync/triggers')
+
+    // Only attempt sync if user is logged in (has master key + device ID)
+    // Skip silently if not logged in - this is expected behavior
+    if (await isSyncEnabled()) {
+      const { getSyncEngine } = await import('../sync/engine')
+      const engine = getSyncEngine()
+
+      if (engine.isReady()) {
+        console.log('[Vault] Triggering sync after vault open...')
+        // Run sync in background - don't block vault opening
+        engine.sync().catch((error) => {
+          console.warn('[Vault] Post-open sync failed:', error)
+        })
+      }
+    }
+  } catch (error) {
+    // Only log unexpected errors, not missing credentials
+    console.warn('[Vault] Sync check failed:', error)
+  }
 }
 
 /**

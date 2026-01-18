@@ -480,18 +480,23 @@ export class SyncEngine extends EventEmitter {
    * Pull remote changes from the server.
    */
   async pull(since?: number): Promise<{ pulled: number; conflicts: number; errors: string[] }> {
+    console.log('[Sync] pull() starting...', { since: since ?? this._lastSyncAt ?? 'none' })
     const result = { pulled: 0, conflicts: 0, errors: [] as string[] }
 
     try {
       const tokens = await getTokens()
       if (!tokens?.accessToken) {
+        console.error('[Sync] No access token available - cannot pull')
         throw new Error('No access token available')
       }
+      console.log('[Sync] Access token available, sending pull request...')
 
       const response = await withRetry(
         () => this.sendPullRequest(since ?? this._lastSyncAt ?? undefined, tokens.accessToken),
         { maxAttempts: 3 }
       )
+
+      console.log(`[Sync] Pull response: ${response.items.length} items, hasMore: ${response.hasMore}`)
 
       // Process pulled items
       for (const item of response.items) {
@@ -522,10 +527,12 @@ export class SyncEngine extends EventEmitter {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
+      console.error('[Sync] Pull failed:', errorMessage)
       result.errors.push(`Pull failed: ${errorMessage}`)
       throw error
     }
 
+    console.log(`[Sync] Pull complete: ${result.pulled} items pulled, ${result.errors.length} errors`)
     return result
   }
 
@@ -1117,6 +1124,7 @@ export class SyncEngine extends EventEmitter {
     token: string
   ): Promise<SyncPullResponse> {
     const url = `${this.getServerUrl()}/api/v1/sync/pull`
+    console.log(`[Sync] Pulling from ${url}`, { since, limit: this._config.pullBatchSize })
 
     const response = await fetch(url, {
       method: 'POST',
@@ -1133,9 +1141,11 @@ export class SyncEngine extends EventEmitter {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }))
+      console.error(`[Sync] Pull failed: ${response.status} ${response.statusText}`, error)
       throw new Error(error.message || `Pull failed with status ${response.status}`)
     }
 
+    console.log('[Sync] Pull request successful')
     return response.json()
   }
 
