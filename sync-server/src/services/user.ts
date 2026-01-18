@@ -107,7 +107,7 @@ export function toPublicUser(user: User): UserPublic {
     authProvider: user.auth_provider as 'google' | undefined,
     storageUsed: user.storage_used,
     storageLimit: user.storage_limit,
-    createdAt: new Date(user.created_at),
+    createdAt: new Date(user.created_at)
   }
 }
 
@@ -229,7 +229,10 @@ export async function getUserByOAuthProvider(
  * @param token - Email verification token
  * @returns User or null if not found
  */
-export async function getUserByVerificationToken(db: D1Database, token: string): Promise<User | null> {
+export async function getUserByVerificationToken(
+  db: D1Database,
+  token: string
+): Promise<User | null> {
   const result = await db
     .prepare('SELECT * FROM users WHERE email_verification_token = ?')
     .bind(token)
@@ -261,7 +264,11 @@ export async function getUserByResetToken(db: D1Database, token: string): Promis
  * @returns Updated user
  * @throws NotFoundError if user not found
  */
-export async function updateUser(db: D1Database, id: string, updates: UpdateUserInput): Promise<User> {
+export async function updateUser(
+  db: D1Database,
+  id: string,
+  updates: UpdateUserInput
+): Promise<User> {
   const now = Date.now()
 
   // Build dynamic update query

@@ -9,18 +9,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import {
-  Loader2,
-  Copy,
-  Check,
-  RefreshCw,
-  AlertCircle,
-  QrCode,
-  X
-} from 'lucide-react'
+import { Loader2, Copy, Check, RefreshCw, AlertCircle, QrCode, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { useGenerateLinkingQR, useCancelLinking, useLinkingEvents } from '@/hooks/use-device-linking'
+import {
+  useGenerateLinkingQR,
+  useCancelLinking,
+  useLinkingEvents
+} from '@/hooks/use-device-linking'
 
 // =============================================================================
 // Types
@@ -77,7 +73,13 @@ function ExpirationTimer({ expiresAt, onExpired }: ExpirationTimerProps) {
   const isCritical = timeRemaining < 30
 
   return (
-    <div className={cn('text-center', isCritical && 'text-destructive', isLow && !isCritical && 'text-yellow-500')}>
+    <div
+      className={cn(
+        'text-center',
+        isCritical && 'text-destructive',
+        isLow && !isCritical && 'text-yellow-500'
+      )}
+    >
       <p className="text-sm text-muted-foreground">Code expires in</p>
       <p className="text-2xl font-mono tabular-nums">
         {minutes}:{seconds.toString().padStart(2, '0')}
@@ -163,20 +165,15 @@ export function QRLinking({ onCancel, onLinkingRequest, className }: QRLinkingPr
           <QrCode className="size-5 text-primary" aria-hidden="true" />
           <h2 className="text-lg font-semibold">Link a New Device</h2>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleCancel}
-          aria-label="Cancel linking"
-        >
+        <Button variant="ghost" size="icon" onClick={handleCancel} aria-label="Cancel linking">
           <X className="size-4" />
         </Button>
       </div>
 
       {/* Description */}
       <p className="text-sm text-muted-foreground">
-        On your new device, open the app and select &quot;Link to Existing Account&quot;.
-        Then scan this QR code or paste the linking code.
+        On your new device, open the app and select &quot;Link to Existing Account&quot;. Then scan
+        this QR code or paste the linking code.
       </p>
 
       {/* QR Code Display */}
@@ -192,17 +189,9 @@ export function QRLinking({ onCancel, onLinkingRequest, className }: QRLinkingPr
         {qrState === 'active' && qrData && (
           <>
             <div className="rounded-lg border bg-white p-4">
-              <QRCodeSVG
-                value={qrData.qrData}
-                size={192}
-                level="M"
-                includeMargin={false}
-              />
+              <QRCodeSVG value={qrData.qrData} size={192} level="M" includeMargin={false} />
             </div>
-            <ExpirationTimer
-              expiresAt={qrData.expiresAt}
-              onExpired={handleExpired}
-            />
+            <ExpirationTimer expiresAt={qrData.expiresAt} onExpired={handleExpired} />
           </>
         )}
 
@@ -227,12 +216,7 @@ export function QRLinking({ onCancel, onLinkingRequest, className }: QRLinkingPr
       <div className="space-y-3">
         {/* Copy Button - only show when active */}
         {qrState === 'active' && (
-          <Button
-            variant="outline"
-            onClick={handleCopy}
-            className="w-full"
-            disabled={!qrData}
-          >
+          <Button variant="outline" onClick={handleCopy} className="w-full" disabled={!qrData}>
             {copied ? (
               <>
                 <Check className="mr-2 size-4 text-green-500" aria-hidden="true" />
@@ -278,9 +262,8 @@ export function QRLinking({ onCancel, onLinkingRequest, className }: QRLinkingPr
       {/* Help Text */}
       <div className="rounded-lg border bg-muted/30 p-4">
         <p className="text-xs text-muted-foreground">
-          <strong>Security note:</strong> This code contains encrypted session
-          information. Only share it with devices you own. The code expires in
-          5 minutes for security.
+          <strong>Security note:</strong> This code contains encrypted session information. Only
+          share it with devices you own. The code expires in 5 minutes for security.
         </p>
       </div>
     </div>

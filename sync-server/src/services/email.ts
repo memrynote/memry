@@ -72,14 +72,14 @@ export async function sendEmail(
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         from: DEFAULT_FROM_EMAIL,
         to: [to],
         subject,
-        html,
-      }),
+        html
+      })
     })
 
     if (!response.ok) {
@@ -92,13 +92,13 @@ export async function sendEmail(
 
     return {
       success: true,
-      messageId: result.id,
+      messageId: result.id
     }
   } catch (error) {
     console.error('Email send error:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : 'Unknown error'
     }
   }
 }
@@ -153,7 +153,7 @@ function verificationEmailTemplate(token: string): { subject: string; html: stri
   </div>
 </body>
 </html>
-    `.trim(),
+    `.trim()
   }
 }
 
@@ -203,14 +203,17 @@ function passwordResetEmailTemplate(token: string): { subject: string; html: str
   </div>
 </body>
 </html>
-    `.trim(),
+    `.trim()
   }
 }
 
 /**
  * New device linked notification template.
  */
-function deviceLinkedEmailTemplate(deviceName: string, devicePlatform: string): { subject: string; html: string } {
+function deviceLinkedEmailTemplate(
+  deviceName: string,
+  devicePlatform: string
+): { subject: string; html: string } {
   return {
     subject: 'New device linked to your Memry account',
     html: `
@@ -244,7 +247,7 @@ function deviceLinkedEmailTemplate(deviceName: string, devicePlatform: string): 
   </div>
 </body>
 </html>
-    `.trim(),
+    `.trim()
   }
 }
 
@@ -259,7 +262,11 @@ function deviceLinkedEmailTemplate(deviceName: string, devicePlatform: string): 
  * @param token - Verification token
  * @param apiKey - Resend API key
  */
-export async function sendVerificationEmail(to: string, token: string, apiKey: string): Promise<EmailResult> {
+export async function sendVerificationEmail(
+  to: string,
+  token: string,
+  apiKey: string
+): Promise<EmailResult> {
   const { subject, html } = verificationEmailTemplate(token)
   return sendEmail(to, subject, html, apiKey)
 }
@@ -271,7 +278,11 @@ export async function sendVerificationEmail(to: string, token: string, apiKey: s
  * @param token - Reset token
  * @param apiKey - Resend API key
  */
-export async function sendPasswordResetEmail(to: string, token: string, apiKey: string): Promise<EmailResult> {
+export async function sendPasswordResetEmail(
+  to: string,
+  token: string,
+  apiKey: string
+): Promise<EmailResult> {
   const { subject, html } = passwordResetEmailTemplate(token)
   return sendEmail(to, subject, html, apiKey)
 }

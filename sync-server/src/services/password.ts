@@ -27,7 +27,7 @@ const PASSWORD_REQUIREMENTS = {
   /** Require number */
   requireNumber: true,
   /** Require special character */
-  requireSpecial: true,
+  requireSpecial: true
 }
 
 /**
@@ -41,7 +41,7 @@ const ARGON2_PARAMS = {
   memorySize: 65536, // 64 MiB in KiB
   iterations: 3,
   parallelism: 4,
-  hashLength: 32,
+  hashLength: 32
 }
 
 /** Salt length in bytes */
@@ -91,13 +91,16 @@ export function validatePasswordStrength(password: string): PasswordValidationRe
     errors.push('Password must contain at least one number')
   }
 
-  if (PASSWORD_REQUIREMENTS.requireSpecial && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password)) {
+  if (
+    PASSWORD_REQUIREMENTS.requireSpecial &&
+    !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password)
+  ) {
     errors.push('Password must contain at least one special character')
   }
 
   return {
     valid: errors.length === 0,
-    errors,
+    errors
   }
 }
 
@@ -111,7 +114,7 @@ export function assertValidPassword(password: string): void {
   const result = validatePasswordStrength(password)
   if (!result.valid) {
     throw new ValidationError('Password does not meet requirements', {
-      password: result.errors,
+      password: result.errors
     })
   }
 }
@@ -137,19 +140,15 @@ export function generatePasswordSalt(): string {
  */
 async function fallbackHash(password: string, saltBytes: Uint8Array): Promise<Uint8Array> {
   const passwordBytes = new TextEncoder().encode(password)
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    passwordBytes,
-    'PBKDF2',
-    false,
-    ['deriveBits']
-  )
+  const keyMaterial = await crypto.subtle.importKey('raw', passwordBytes, 'PBKDF2', false, [
+    'deriveBits'
+  ])
   const bits = await crypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
       salt: saltBytes,
       iterations: 100000,
-      hash: 'SHA-256',
+      hash: 'SHA-256'
     },
     keyMaterial,
     256
@@ -196,7 +195,7 @@ export async function hashPassword(
       iterations: ARGON2_PARAMS.iterations,
       parallelism: ARGON2_PARAMS.parallelism,
       hashLength: ARGON2_PARAMS.hashLength,
-      outputType: 'binary',
+      outputType: 'binary'
     })
   } catch (error) {
     // Fallback to PBKDF2 for local development
@@ -209,7 +208,7 @@ export async function hashPassword(
 
   return {
     hash: hashBase64,
-    salt: saltBase64,
+    salt: saltBase64
   }
 }
 
@@ -281,5 +280,5 @@ export const TOKEN_EXPIRY = {
   /** Email verification token expiry (24 hours) */
   EMAIL_VERIFICATION: 24 * 60 * 60 * 1000,
   /** Password reset token expiry (1 hour) */
-  PASSWORD_RESET: 60 * 60 * 1000,
+  PASSWORD_RESET: 60 * 60 * 1000
 }

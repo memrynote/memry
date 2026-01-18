@@ -15,8 +15,8 @@ vi.mock('keytar', () => ({
     setPassword: vi.fn(),
     getPassword: vi.fn(),
     deletePassword: vi.fn(),
-    findCredentials: vi.fn(),
-  },
+    findCredentials: vi.fn()
+  }
 }))
 
 // Import after mocking
@@ -41,14 +41,14 @@ import {
   saveSyncSession,
   getSyncSession,
   hasSyncSession,
-  clearSyncSession,
+  clearSyncSession
 } from './keychain'
 import {
   TEST_MASTER_KEY,
   TEST_DEVICE_ID,
   TEST_USER_ID,
   TEST_ACCESS_TOKEN,
-  TEST_REFRESH_TOKEN,
+  TEST_REFRESH_TOKEN
 } from './__fixtures__'
 
 const mockedKeytar = vi.mocked(keytar)
@@ -265,7 +265,7 @@ describe('keychain', () => {
 
       expect(result).toEqual({
         accessToken: TEST_ACCESS_TOKEN,
-        refreshToken: TEST_REFRESH_TOKEN,
+        refreshToken: TEST_REFRESH_TOKEN
       })
     })
 
@@ -357,7 +357,7 @@ describe('keychain', () => {
       deviceId: TEST_DEVICE_ID,
       accessToken: TEST_ACCESS_TOKEN,
       refreshToken: TEST_REFRESH_TOKEN,
-      masterKey: TEST_MASTER_KEY,
+      masterKey: TEST_MASTER_KEY
     }
 
     it('should save complete sync session', async () => {

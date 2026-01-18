@@ -304,9 +304,7 @@ export function PropertyRow({
             'rounded text-muted-foreground/50',
             'transition-all duration-150',
             'hover:bg-destructive/10 hover:text-destructive',
-            isHovered && !isEditing
-              ? 'opacity-100'
-              : 'opacity-0 pointer-events-none'
+            isHovered && !isEditing ? 'opacity-100' : 'opacity-0 pointer-events-none'
           )}
         >
           <Trash2 className="h-3.5 w-3.5" />

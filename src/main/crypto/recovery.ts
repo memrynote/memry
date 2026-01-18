@@ -9,7 +9,10 @@
  */
 
 import * as bip39 from 'bip39'
-import { type RecoveryPhraseValidation, DEFAULT_RECOVERY_PHRASE_CONFIG } from '@shared/contracts/crypto'
+import {
+  type RecoveryPhraseValidation,
+  DEFAULT_RECOVERY_PHRASE_CONFIG
+} from '@shared/contracts/crypto'
 
 // =============================================================================
 // Recovery Phrase Generation
@@ -42,7 +45,7 @@ export function generateRecoveryPhraseWithWordCount(wordCount: 12 | 15 | 18 | 21
     15: 160,
     18: 192,
     21: 224,
-    24: 256,
+    24: 256
   }
 
   return bip39.generateMnemonic(entropyBits[wordCount])
@@ -71,7 +74,7 @@ export function validateRecoveryPhrase(phrase: string): RecoveryPhraseValidation
   if (!normalizedPhrase) {
     return {
       valid: false,
-      error: 'Recovery phrase is empty',
+      error: 'Recovery phrase is empty'
     }
   }
 
@@ -85,7 +88,7 @@ export function validateRecoveryPhrase(phrase: string): RecoveryPhraseValidation
     return {
       valid: false,
       error: `Invalid word count: ${wordCount}. Must be 12, 15, 18, 21, or 24 words.`,
-      wordCount,
+      wordCount
     }
   }
 
@@ -105,7 +108,7 @@ export function validateRecoveryPhrase(phrase: string): RecoveryPhraseValidation
       valid: false,
       error: `Invalid words: ${invalidWords.join(', ')}`,
       wordCount,
-      checksumValid: false,
+      checksumValid: false
     }
   }
 
@@ -117,14 +120,14 @@ export function validateRecoveryPhrase(phrase: string): RecoveryPhraseValidation
       valid: false,
       error: 'Invalid checksum. Please check your recovery phrase.',
       wordCount,
-      checksumValid: false,
+      checksumValid: false
     }
   }
 
   return {
     valid: true,
     wordCount,
-    checksumValid: true,
+    checksumValid: true
   }
 }
 
@@ -139,10 +142,7 @@ export function validateRecoveryPhrase(phrase: string): RecoveryPhraseValidation
  * @returns Normalized phrase
  */
 export function normalizePhrase(phrase: string): string {
-  return phrase
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ' ')
+  return phrase.toLowerCase().trim().replace(/\s+/g, ' ')
 }
 
 // =============================================================================

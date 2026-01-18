@@ -129,10 +129,10 @@ import * as syncSchemas from '@shared/contracts/sync-api'
 
 export function registerSyncHandlers() {
   // Setup
-  ipcMain.handle('sync:setup-first-device', createValidatedHandler(
-    syncSchemas.SetupFirstDeviceSchema,
-    handleSetupFirstDevice
-  ))
+  ipcMain.handle(
+    'sync:setup-first-device',
+    createValidatedHandler(syncSchemas.SetupFirstDeviceSchema, handleSetupFirstDevice)
+  )
 
   // Status
   ipcMain.handle('sync:get-status', handleGetSyncStatus)
@@ -161,7 +161,7 @@ import sodium from 'sodium-native'
 import * as bip39 from 'bip39'
 
 const ARGON2_PARAMS = {
-  memoryCost: 65536,  // 64 MB
+  memoryCost: 65536, // 64 MB
   timeCost: 3,
   parallelism: 4,
   hashLength: 32
@@ -468,6 +468,7 @@ const ciphertext = Buffer.from(result.ciphertext, 'base64')
 5. Begin sync queue implementation
 
 Refer to:
+
 - [plan.md](./plan.md) - Full implementation phases
 - [research.md](./research.md) - Technology decisions
 - [data-model.md](./data-model.md) - Entity schemas

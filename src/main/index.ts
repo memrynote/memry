@@ -424,7 +424,15 @@ void app.whenReady().then(async () => {
         console.warn('[Startup] Sync engine failed to become ready')
       }
     } else {
-      console.log('[Startup] No sync session found (hasMasterKey:', hasMaster, ', hasDeviceId:', !!deviceId, ', hasUserId:', !!userId, ')')
+      console.log(
+        '[Startup] No sync session found (hasMasterKey:',
+        hasMaster,
+        ', hasDeviceId:',
+        !!deviceId,
+        ', hasUserId:',
+        !!userId,
+        ')'
+      )
     }
   } catch (error) {
     // Sync initialization is non-critical - log and continue

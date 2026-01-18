@@ -23,7 +23,7 @@ import {
   type NewSyncQueueItem,
   type SyncItemType,
   type SyncOperation,
-  type SyncQueueStatus,
+  type SyncQueueStatus
 } from '@shared/db/schema/sync'
 import { MAX_RETRY_ATTEMPTS } from './retry'
 
@@ -42,7 +42,7 @@ export const SyncPriority = {
   /** Low priority (e.g., background sync) */
   LOW: 25,
   /** Background operations (e.g., cleanup) */
-  BACKGROUND: 0,
+  BACKGROUND: 0
 } as const
 
 export type SyncPriorityLevel = (typeof SyncPriority)[keyof typeof SyncPriority]
@@ -104,7 +104,7 @@ export class SyncQueueManager {
         eq(syncQueue.type, input.type),
         eq(syncQueue.itemId, input.itemId),
         eq(syncQueue.status, syncQueueStatus.PENDING)
-      ),
+      )
     })
 
     if (existing) {
@@ -116,7 +116,7 @@ export class SyncQueueManager {
           payload: input.payload,
           operation: input.operation,
           priority: input.priority ?? SyncPriority.NORMAL,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().toISOString()
         })
         .where(eq(syncQueue.id, existing.id))
         .returning()
@@ -134,7 +134,7 @@ export class SyncQueueManager {
       priority: input.priority ?? SyncPriority.NORMAL,
       attempts: 0,
       status: syncQueueStatus.PENDING,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toISOString()
     }
 
     const [inserted] = await db.insert(syncQueue).values(newItem).returning()
@@ -213,7 +213,7 @@ export class SyncQueueManager {
   async getItem(id: string): Promise<SyncQueueItem | undefined> {
     const db = getDatabase()
     return db.query.syncQueue.findFirst({
-      where: eq(syncQueue.id, id),
+      where: eq(syncQueue.id, id)
     })
   }
 
@@ -227,7 +227,7 @@ export class SyncQueueManager {
     const db = getDatabase()
     return db.query.syncQueue.findMany({
       where: eq(syncQueue.itemId, itemId),
-      orderBy: [desc(syncQueue.createdAt)],
+      orderBy: [desc(syncQueue.createdAt)]
     })
   }
 
@@ -249,7 +249,7 @@ export class SyncQueueManager {
       .set({
         status: syncQueueStatus.IN_PROGRESS,
         lastAttempt: new Date().toISOString(),
-        attempts: sql`COALESCE(${syncQueue.attempts}, 0) + 1`,
+        attempts: sql`COALESCE(${syncQueue.attempts}, 0) + 1`
       })
       .where(eq(syncQueue.id, id))
       .returning()
@@ -295,8 +295,10 @@ export class SyncQueueManager {
       .update(syncQueue)
       .set({
         status: isPermanentFailure ? syncQueueStatus.FAILED : syncQueueStatus.PENDING,
-        errorMessage: isPermanentFailure ? `Permanently failed after ${attempts} attempts: ${error}` : error,
-        lastAttempt: new Date().toISOString(),
+        errorMessage: isPermanentFailure
+          ? `Permanently failed after ${attempts} attempts: ${error}`
+          : error,
+        lastAttempt: new Date().toISOString()
         // Don't update attempts - already incremented by markInProgress
       })
       .where(eq(syncQueue.id, id))
@@ -320,7 +322,7 @@ export class SyncQueueManager {
         status: syncQueueStatus.PENDING,
         errorMessage: null,
         attempts: 0,
-        lastAttempt: null,
+        lastAttempt: null
       })
       .where(eq(syncQueue.id, id))
       .returning()
@@ -384,7 +386,7 @@ export class SyncQueueManager {
     const statusCounts = await db
       .select({
         status: syncQueue.status,
-        count: count(),
+        count: count()
       })
       .from(syncQueue)
       .groupBy(syncQueue.status)
@@ -393,7 +395,7 @@ export class SyncQueueManager {
     const typeCounts = await db
       .select({
         type: syncQueue.type,
-        count: count(),
+        count: count()
       })
       .from(syncQueue)
       .groupBy(syncQueue.type)
@@ -404,7 +406,7 @@ export class SyncQueueManager {
       pending: 0,
       inProgress: 0,
       failed: 0,
-      byType: {} as Record<SyncItemType, number>,
+      byType: {} as Record<SyncItemType, number>
     }
 
     for (const { status, count: cnt } of statusCounts) {
@@ -449,7 +451,12 @@ export class SyncQueueManager {
     const db = getDatabase()
     const result = await db
       .delete(syncQueue)
-      .where(and(eq(syncQueue.status, syncQueueStatus.FAILED), sql`${syncQueue.attempts} >= ${MAX_RETRY_ATTEMPTS}`))
+      .where(
+        and(
+          eq(syncQueue.status, syncQueueStatus.FAILED),
+          sql`${syncQueue.attempts} >= ${MAX_RETRY_ATTEMPTS}`
+        )
+      )
     return result.changes
   }
 
@@ -466,7 +473,7 @@ export class SyncQueueManager {
         status: syncQueueStatus.PENDING,
         attempts: 0,
         errorMessage: null,
-        lastAttempt: null,
+        lastAttempt: null
       })
       .where(eq(syncQueue.status, syncQueueStatus.FAILED))
     return result.changes
@@ -498,10 +505,13 @@ export class SyncQueueManager {
     const result = await db
       .update(syncQueue)
       .set({
-        status: syncQueueStatus.PENDING,
+        status: syncQueueStatus.PENDING
       })
       .where(
-        and(eq(syncQueue.status, syncQueueStatus.IN_PROGRESS), sql`${syncQueue.lastAttempt} < ${fiveMinutesAgo}`)
+        and(
+          eq(syncQueue.status, syncQueueStatus.IN_PROGRESS),
+          sql`${syncQueue.lastAttempt} < ${fiveMinutesAgo}`
+        )
       )
 
     return result.changes

@@ -65,7 +65,12 @@ export function deriveKey(masterKey: Buffer, context: string): Buffer {
 
   // sodium.crypto_kdf_derive_from_key only supports up to 64-bit subkey IDs
   // For longer context strings, we use a different approach
-  sodium.crypto_kdf_derive_from_key(derivedKey, Number(subkeyId & BigInt(0x7fffffff)), contextBuffer, masterKey)
+  sodium.crypto_kdf_derive_from_key(
+    derivedKey,
+    Number(subkeyId & BigInt(0x7fffffff)),
+    contextBuffer,
+    masterKey
+  )
 
   return derivedKey
 }
@@ -237,10 +242,10 @@ export function deriveAllKeys(masterKey: Buffer): DerivedKeys {
     vaultKey: new Uint8Array(vaultKey),
     signingKeyPair: {
       publicKey: new Uint8Array(signingKeyPair.publicKey),
-      secretKey: new Uint8Array(signingKeyPair.secretKey),
+      secretKey: new Uint8Array(signingKeyPair.secretKey)
     },
     verifyKey: new Uint8Array(verifyKey),
-    keyVerifier: new Uint8Array(keyVerifier),
+    keyVerifier: new Uint8Array(keyVerifier)
   }
 }
 
@@ -287,10 +292,14 @@ export function generateX25519KeyPair(): { publicKey: Buffer; secretKey: Buffer 
  */
 export function computeX25519SharedSecret(mySecretKey: Buffer, theirPublicKey: Buffer): Buffer {
   if (mySecretKey.length !== X25519_SECRET_KEY_LENGTH) {
-    throw new Error(`Secret key must be ${X25519_SECRET_KEY_LENGTH} bytes, got ${mySecretKey.length}`)
+    throw new Error(
+      `Secret key must be ${X25519_SECRET_KEY_LENGTH} bytes, got ${mySecretKey.length}`
+    )
   }
   if (theirPublicKey.length !== X25519_PUBLIC_KEY_LENGTH) {
-    throw new Error(`Public key must be ${X25519_PUBLIC_KEY_LENGTH} bytes, got ${theirPublicKey.length}`)
+    throw new Error(
+      `Public key must be ${X25519_PUBLIC_KEY_LENGTH} bytes, got ${theirPublicKey.length}`
+    )
   }
 
   const sharedSecret = Buffer.alloc(32)

@@ -58,10 +58,7 @@ import {
   computeKeyConfirm,
   verifyKeyConfirm
 } from '../crypto/keys'
-import {
-  encryptMasterKeyForLinking,
-  decryptMasterKeyForLinking
-} from '../crypto/encryption'
+import { encryptMasterKeyForLinking, decryptMasterKeyForLinking } from '../crypto/encryption'
 import {
   saveSyncSession,
   getSyncSession,
@@ -1308,7 +1305,7 @@ export function registerSyncHandlers(): void {
         .offset(offset)
 
       return {
-        entries: entries.map(e => ({
+        entries: entries.map((e) => ({
           id: e.id,
           type: e.type as 'push' | 'pull' | 'error',
           itemCount: e.itemCount,
@@ -1471,19 +1468,22 @@ export function registerSyncHandlers(): void {
         activeLinkingSession.poller = poller
 
         // Set timeout to clean up expired sessions (5 minutes + buffer)
-        setTimeout(() => {
-          if (activeLinkingSession?.sessionId === response.session_id) {
-            // Stop poller
-            activeLinkingSession.poller?.stop()
-            // Zero out secret key before clearing
-            activeLinkingSession.ephemeralKeyPair.secretKey.fill(0)
-            if (activeLinkingSession.linkingKeys) {
-              activeLinkingSession.linkingKeys.encKey.fill(0)
-              activeLinkingSession.linkingKeys.macKey.fill(0)
+        setTimeout(
+          () => {
+            if (activeLinkingSession?.sessionId === response.session_id) {
+              // Stop poller
+              activeLinkingSession.poller?.stop()
+              // Zero out secret key before clearing
+              activeLinkingSession.ephemeralKeyPair.secretKey.fill(0)
+              if (activeLinkingSession.linkingKeys) {
+                activeLinkingSession.linkingKeys.encKey.fill(0)
+                activeLinkingSession.linkingKeys.macKey.fill(0)
+              }
+              activeLinkingSession = null
             }
-            activeLinkingSession = null
-          }
-        }, 6 * 60 * 1000) // 6 minutes
+          },
+          6 * 60 * 1000
+        ) // 6 minutes
 
         // Return QR data - stringify the payload per GenerateLinkingQROutput contract
         return {
@@ -1537,10 +1537,7 @@ export function registerSyncHandlers(): void {
 
       try {
         // Compute shared secret (T110)
-        const sharedSecret = computeX25519SharedSecret(
-          myKeyPair.secretKey,
-          existingDevicePublicKey
-        )
+        const sharedSecret = computeX25519SharedSecret(myKeyPair.secretKey, existingDevicePublicKey)
 
         // Derive linking keys (T110)
         const linkingKeys = deriveLinkingKeys(sharedSecret)
@@ -1661,17 +1658,20 @@ export function registerSyncHandlers(): void {
         pendingLinkingRequest.poller = poller
 
         // Set timeout to clean up
-        setTimeout(() => {
-          if (pendingLinkingRequest?.sessionId === sessionId) {
-            // Stop poller
-            pendingLinkingRequest.poller?.stop()
-            // Zero out key material
-            pendingLinkingRequest.myKeyPair.secretKey.fill(0)
-            pendingLinkingRequest.linkingKeys.encKey.fill(0)
-            pendingLinkingRequest.linkingKeys.macKey.fill(0)
-            pendingLinkingRequest = null
-          }
-        }, 6 * 60 * 1000)
+        setTimeout(
+          () => {
+            if (pendingLinkingRequest?.sessionId === sessionId) {
+              // Stop poller
+              pendingLinkingRequest.poller?.stop()
+              // Zero out key material
+              pendingLinkingRequest.myKeyPair.secretKey.fill(0)
+              pendingLinkingRequest.linkingKeys.encKey.fill(0)
+              pendingLinkingRequest.linkingKeys.macKey.fill(0)
+              pendingLinkingRequest = null
+            }
+          },
+          6 * 60 * 1000
+        )
 
         return {
           success: true,

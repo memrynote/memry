@@ -1395,9 +1395,7 @@ function AccountOverview({ setupStatus }: AccountOverviewProps) {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold">Sync & Account</h3>
-        <p className="text-sm text-muted-foreground">
-          Manage your account and sync settings
-        </p>
+        <p className="text-sm text-muted-foreground">Manage your account and sync settings</p>
       </div>
 
       <Separator />
@@ -1488,16 +1486,14 @@ function AccountOverview({ setupStatus }: AccountOverviewProps) {
         <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
           <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
           <p className="text-muted-foreground">
-            Link another device to sync your data securely. A QR code will be generated for the new device to scan.
+            Link another device to sync your data securely. A QR code will be generated for the new
+            device to scan.
           </p>
         </div>
       </div>
 
       {/* Linking Modal */}
-      <LinkingModal
-        isOpen={showLinkingModal}
-        onClose={() => setShowLinkingModal(false)}
-      />
+      <LinkingModal isOpen={showLinkingModal} onClose={() => setShowLinkingModal(false)} />
 
       <Separator />
 
@@ -1534,9 +1530,7 @@ function AccountOverview({ setupStatus }: AccountOverviewProps) {
               <h4 className="text-sm font-medium text-amber-600 uppercase tracking-wider">
                 Dev Tools
               </h4>
-              <p className="text-sm text-muted-foreground">
-                Development-only tools for testing
-              </p>
+              <p className="text-sm text-muted-foreground">Development-only tools for testing</p>
             </div>
 
             <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/50 p-4 space-y-3">

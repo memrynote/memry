@@ -63,9 +63,7 @@ function CheckItem({ label, passed }: CheckItemProps) {
       ) : (
         <X className="size-4 text-muted-foreground" aria-hidden="true" />
       )}
-      <span className={cn(passed ? 'text-foreground' : 'text-muted-foreground')}>
-        {label}
-      </span>
+      <span className={cn(passed ? 'text-foreground' : 'text-muted-foreground')}>{label}</span>
     </div>
   )
 }
@@ -171,10 +169,7 @@ interface PasswordStrengthCompactProps {
 /**
  * Compact password strength indicator (bar only).
  */
-export function PasswordStrengthCompact({
-  password,
-  className
-}: PasswordStrengthCompactProps) {
+export function PasswordStrengthCompact({ password, className }: PasswordStrengthCompactProps) {
   return <PasswordStrength password={password} className={className} showChecks={false} />
 }
 

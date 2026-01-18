@@ -25,19 +25,19 @@
 
 **Purpose**: Project initialization, dependencies, and basic structure
 
-- [X] T001 Install crypto dependencies (libsodium-wrappers, sodium-native, keytar, bip39) via pnpm
-- [X] T002 Install CRDT dependencies (yjs, y-indexeddb, idb) via pnpm
-- [X] T003 [P] Create sync-server Cloudflare Workers project in sync-server/
-- [X] T004 [P] Create directory structure src/main/crypto/ for crypto module
-- [X] T005 [P] Create directory structure src/main/sync/ for sync engine module
-- [X] T006 [P] Create directory structure src/renderer/src/components/sync/ for sync UI
-- [X] T007 [P] Create directory structure src/shared/contracts/ for shared type contracts
-- [X] T008 Configure Cloudflare D1 database binding in sync-server/wrangler.toml
-- [X] T009 Configure Cloudflare R2 bucket binding in sync-server/wrangler.toml
-- [X] T010 Add sync-related environment variables to .env.development
-- [X] T011 [P] Create shared TypeScript types in src/shared/contracts/sync-api.ts
-- [X] T012 [P] Create shared crypto types in src/shared/contracts/crypto.ts
-- [X] T013 [P] Create IPC channel types in src/shared/contracts/ipc-sync.ts
+- [x] T001 Install crypto dependencies (libsodium-wrappers, sodium-native, keytar, bip39) via pnpm
+- [x] T002 Install CRDT dependencies (yjs, y-indexeddb, idb) via pnpm
+- [x] T003 [P] Create sync-server Cloudflare Workers project in sync-server/
+- [x] T004 [P] Create directory structure src/main/crypto/ for crypto module
+- [x] T005 [P] Create directory structure src/main/sync/ for sync engine module
+- [x] T006 [P] Create directory structure src/renderer/src/components/sync/ for sync UI
+- [x] T007 [P] Create directory structure src/shared/contracts/ for shared type contracts
+- [x] T008 Configure Cloudflare D1 database binding in sync-server/wrangler.toml
+- [x] T009 Configure Cloudflare R2 bucket binding in sync-server/wrangler.toml
+- [x] T010 Add sync-related environment variables to .env.development
+- [x] T011 [P] Create shared TypeScript types in src/shared/contracts/sync-api.ts
+- [x] T012 [P] Create shared crypto types in src/shared/contracts/crypto.ts
+- [x] T013 [P] Create IPC channel types in src/shared/contracts/ipc-sync.ts
 
 ---
 
@@ -49,51 +49,51 @@
 
 ### Database Schema
 
-- [X] T014 Create D1 users table schema (kdf_salt, key_verifier) in sync-server/schema/d1.sql
-- [X] T015 Create D1 devices table schema (auth_public_key optional) in sync-server/schema/d1.sql
-- [X] T016 Create D1 linking_sessions table schema (new_device_confirm, key_confirm) in sync-server/schema/d1.sql
-- [X] T017 Create D1 sync_items table schema in sync-server/schema/d1.sql
-- [X] T018 Add sync-related tables (devices, sync_queue, sync_state, sync_history) to src/shared/db/schema/data-schema.ts
-- [X] T019 Run drizzle migrations for local sync tables
+- [x] T014 Create D1 users table schema (kdf_salt, key_verifier) in sync-server/schema/d1.sql
+- [x] T015 Create D1 devices table schema (auth_public_key optional) in sync-server/schema/d1.sql
+- [x] T016 Create D1 linking_sessions table schema (new_device_confirm, key_confirm) in sync-server/schema/d1.sql
+- [x] T017 Create D1 sync_items table schema in sync-server/schema/d1.sql
+- [x] T018 Add sync-related tables (devices, sync_queue, sync_state, sync_history) to src/shared/db/schema/data-schema.ts
+- [x] T019 Run drizzle migrations for local sync tables
 
 ### Crypto Module Foundation
 
-- [X] T020 [P] Implement HKDF key derivation with context strings in src/main/crypto/keys.ts
-- [X] T020a [P] Implement canonical CBOR encoder helper in src/main/crypto/cbor.ts (cborg)
-- [X] T021 [P] Implement BIP39 recovery phrase generation in src/main/crypto/recovery.ts
-- [X] T022 [P] Implement BIP39 recovery phrase validation in src/main/crypto/recovery.ts
-- [X] T023 Implement Argon2id master key derivation in src/main/crypto/keys.ts
-- [X] T024 [P] Implement XChaCha20-Poly1305 encryption in src/main/crypto/encryption.ts
-- [X] T025 [P] Implement XChaCha20-Poly1305 decryption in src/main/crypto/encryption.ts
-- [X] T026 [P] Implement Ed25519 signing over canonical CBOR in src/main/crypto/signatures.ts
-- [X] T027 [P] Implement Ed25519 signature verification over canonical CBOR in src/main/crypto/signatures.ts
-- [X] T028 Implement keychain storage with keytar in src/main/crypto/keychain.ts
-- [X] T029 Create crypto module index exports in src/main/crypto/index.ts
+- [x] T020 [P] Implement HKDF key derivation with context strings in src/main/crypto/keys.ts
+- [x] T020a [P] Implement canonical CBOR encoder helper in src/main/crypto/cbor.ts (cborg)
+- [x] T021 [P] Implement BIP39 recovery phrase generation in src/main/crypto/recovery.ts
+- [x] T022 [P] Implement BIP39 recovery phrase validation in src/main/crypto/recovery.ts
+- [x] T023 Implement Argon2id master key derivation in src/main/crypto/keys.ts
+- [x] T024 [P] Implement XChaCha20-Poly1305 encryption in src/main/crypto/encryption.ts
+- [x] T025 [P] Implement XChaCha20-Poly1305 decryption in src/main/crypto/encryption.ts
+- [x] T026 [P] Implement Ed25519 signing over canonical CBOR in src/main/crypto/signatures.ts
+- [x] T027 [P] Implement Ed25519 signature verification over canonical CBOR in src/main/crypto/signatures.ts
+- [x] T028 Implement keychain storage with keytar in src/main/crypto/keychain.ts
+- [x] T029 Create crypto module index exports in src/main/crypto/index.ts
 
 ### Server Foundation
 
-- [X] T030 Set up Hono.js app entry point in sync-server/src/index.ts
-- [X] T031 [P] Implement JWT validation middleware in sync-server/src/middleware/auth.ts
-- [X] T032 [P] Implement rate limiting middleware in sync-server/src/middleware/rate-limit.ts
-- [X] T033 Create base error handling in sync-server/src/lib/errors.ts
-- [X] T033a [P] Implement canonical CBOR encoder helper in sync-server/src/lib/cbor.ts (cborg)
-- [X] T034 [P] Set up Resend email service in sync-server/src/services/email.ts
+- [x] T030 Set up Hono.js app entry point in sync-server/src/index.ts
+- [x] T031 [P] Implement JWT validation middleware in sync-server/src/middleware/auth.ts
+- [x] T032 [P] Implement rate limiting middleware in sync-server/src/middleware/rate-limit.ts
+- [x] T033 Create base error handling in sync-server/src/lib/errors.ts
+- [x] T033a [P] Implement canonical CBOR encoder helper in sync-server/src/lib/cbor.ts (cborg)
+- [x] T034 [P] Set up Resend email service in sync-server/src/services/email.ts
 
 ### IPC Foundation
 
-- [X] T035 Register sync IPC handlers entry point in src/main/ipc/sync-handlers.ts
-- [X] T036 [P] Register crypto IPC handlers entry point in src/main/ipc/crypto-handlers.ts
-- [X] T036a [P] Implement encrypt-item IPC handler in src/main/ipc/crypto-handlers.ts
-- [X] T036b [P] Implement decrypt-item IPC handler in src/main/ipc/crypto-handlers.ts
-- [X] T036c [P] Implement verify-signature IPC handler in src/main/ipc/crypto-handlers.ts
-- [X] T037 Update src/main/ipc/index.ts to register sync and crypto handlers
-- [X] T038 Expose sync API methods in src/preload/index.ts
-- [X] T039 Update preload types in src/preload/index.d.ts for sync/crypto APIs
+- [x] T035 Register sync IPC handlers entry point in src/main/ipc/sync-handlers.ts
+- [x] T036 [P] Register crypto IPC handlers entry point in src/main/ipc/crypto-handlers.ts
+- [x] T036a [P] Implement encrypt-item IPC handler in src/main/ipc/crypto-handlers.ts
+- [x] T036b [P] Implement decrypt-item IPC handler in src/main/ipc/crypto-handlers.ts
+- [x] T036c [P] Implement verify-signature IPC handler in src/main/ipc/crypto-handlers.ts
+- [x] T037 Update src/main/ipc/index.ts to register sync and crypto handlers
+- [x] T038 Expose sync API methods in src/preload/index.ts
+- [x] T039 Update preload types in src/preload/index.d.ts for sync/crypto APIs
 
 ### Vector Clock Foundation
 
-- [X] T040 Implement vector clock data structure in src/main/sync/vector-clock.ts
-- [X] T041 Implement vector clock operations (increment, merge, compare) in src/main/sync/vector-clock.ts
+- [x] T040 Implement vector clock data structure in src/main/sync/vector-clock.ts
+- [x] T041 Implement vector clock operations (increment, merge, compare) in src/main/sync/vector-clock.ts
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -107,60 +107,60 @@
 
 ### Server Implementation for US1
 
-- [X] T042 [P] [US1] Implement email signup endpoint in sync-server/src/routes/auth.ts
-- [X] T043 [P] [US1] Implement email verification endpoint in sync-server/src/routes/auth.ts
-- [X] T044 [P] [US1] Implement email login endpoint in sync-server/src/routes/auth.ts
-- [X] T045 [P] [US1] Implement password validation service in sync-server/src/services/password.ts
-- [X] T046 [US1] Implement Argon2id password hashing in sync-server/src/services/password.ts
-- [X] T047 [P] [US1] Create verification email template in sync-server/src/emails/verification.tsx
-- [X] T047a [P] [US1] Implement forgot-password endpoint in sync-server/src/routes/auth.ts
-- [X] T047b [P] [US1] Implement reset-password endpoint in sync-server/src/routes/auth.ts
-- [X] T047c [US1] Implement change-password endpoint (authenticated) in sync-server/src/routes/auth.ts
-- [X] T047d [P] [US1] Implement resend-verification endpoint in sync-server/src/routes/auth.ts
-- [X] T047e [P] [US1] Create password reset email template in sync-server/src/emails/password-reset.tsx
-- [X] T048 [US1] Implement OAuth initiation endpoint for Google/Apple/GitHub in sync-server/src/routes/auth.ts
-- [X] T049 [US1] Implement OAuth callback handler in sync-server/src/routes/auth.ts
-- [X] T050 [US1] Implement device registration endpoint in sync-server/src/routes/auth.ts
-- [X] T051 [US1] Implement first device setup endpoint (stores kdf_salt, key_verifier) in sync-server/src/routes/auth.ts
-- [X] T052 [US1] Implement JWT token issuance service in sync-server/src/services/auth.ts
-- [X] T053 [US1] Implement user service (create, get, update) in sync-server/src/services/user.ts
+- [x] T042 [P] [US1] Implement email signup endpoint in sync-server/src/routes/auth.ts
+- [x] T043 [P] [US1] Implement email verification endpoint in sync-server/src/routes/auth.ts
+- [x] T044 [P] [US1] Implement email login endpoint in sync-server/src/routes/auth.ts
+- [x] T045 [P] [US1] Implement password validation service in sync-server/src/services/password.ts
+- [x] T046 [US1] Implement Argon2id password hashing in sync-server/src/services/password.ts
+- [x] T047 [P] [US1] Create verification email template in sync-server/src/emails/verification.tsx
+- [x] T047a [P] [US1] Implement forgot-password endpoint in sync-server/src/routes/auth.ts
+- [x] T047b [P] [US1] Implement reset-password endpoint in sync-server/src/routes/auth.ts
+- [x] T047c [US1] Implement change-password endpoint (authenticated) in sync-server/src/routes/auth.ts
+- [x] T047d [P] [US1] Implement resend-verification endpoint in sync-server/src/routes/auth.ts
+- [x] T047e [P] [US1] Create password reset email template in sync-server/src/emails/password-reset.tsx
+- [x] T048 [US1] Implement OAuth initiation endpoint for Google/Apple/GitHub in sync-server/src/routes/auth.ts
+- [x] T049 [US1] Implement OAuth callback handler in sync-server/src/routes/auth.ts
+- [x] T050 [US1] Implement device registration endpoint in sync-server/src/routes/auth.ts
+- [x] T051 [US1] Implement first device setup endpoint (stores kdf_salt, key_verifier) in sync-server/src/routes/auth.ts
+- [x] T052 [US1] Implement JWT token issuance service in sync-server/src/services/auth.ts
+- [x] T053 [US1] Implement user service (create, get, update) in sync-server/src/services/user.ts
 
 ### Client Implementation for US1
 
-- [X] T054 [US1] Implement IPC handler for email signup in src/main/ipc/sync-handlers.ts
-- [X] T055 [US1] Implement IPC handler for email verification in src/main/ipc/sync-handlers.ts
-- [X] T056 [US1] Implement IPC handler for email login in src/main/ipc/sync-handlers.ts
-- [X] T056a [US1] Implement IPC handler for forgot-password in src/main/ipc/sync-handlers.ts
-- [X] T056b [US1] Implement IPC handler for reset-password in src/main/ipc/sync-handlers.ts
-- [X] T056c [US1] Implement IPC handler for change-password in src/main/ipc/sync-handlers.ts
-- [X] T056d [US1] Implement IPC handler for resend-verification in src/main/ipc/sync-handlers.ts
-- [X] T056e [US1] Implement password validation logic (12+ chars, uppercase, lowercase, number, special) in src/main/ipc/sync-handlers.ts
-- [X] T057 [US1] Implement IPC handler for OAuth first device setup in src/main/ipc/sync-handlers.ts
-- [X] T058 [US1] Implement master key derivation from recovery phrase and key verifier generation in src/main/crypto/keys.ts
-- [X] T059 [US1] Implement vault key derivation via HKDF in src/main/crypto/keys.ts
-- [X] T060 [US1] Implement signing/verify key derivation via HKDF in src/main/crypto/keys.ts
-- [X] T061 [US1] Store master key in OS keychain in src/main/crypto/keychain.ts
-- [X] T062 [US1] Implement recovery phrase confirmation IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T054 [US1] Implement IPC handler for email signup in src/main/ipc/sync-handlers.ts
+- [x] T055 [US1] Implement IPC handler for email verification in src/main/ipc/sync-handlers.ts
+- [x] T056 [US1] Implement IPC handler for email login in src/main/ipc/sync-handlers.ts
+- [x] T056a [US1] Implement IPC handler for forgot-password in src/main/ipc/sync-handlers.ts
+- [x] T056b [US1] Implement IPC handler for reset-password in src/main/ipc/sync-handlers.ts
+- [x] T056c [US1] Implement IPC handler for change-password in src/main/ipc/sync-handlers.ts
+- [x] T056d [US1] Implement IPC handler for resend-verification in src/main/ipc/sync-handlers.ts
+- [x] T056e [US1] Implement password validation logic (12+ chars, uppercase, lowercase, number, special) in src/main/ipc/sync-handlers.ts
+- [x] T057 [US1] Implement IPC handler for OAuth first device setup in src/main/ipc/sync-handlers.ts
+- [x] T058 [US1] Implement master key derivation from recovery phrase and key verifier generation in src/main/crypto/keys.ts
+- [x] T059 [US1] Implement vault key derivation via HKDF in src/main/crypto/keys.ts
+- [x] T060 [US1] Implement signing/verify key derivation via HKDF in src/main/crypto/keys.ts
+- [x] T061 [US1] Store master key in OS keychain in src/main/crypto/keychain.ts
+- [x] T062 [US1] Implement recovery phrase confirmation IPC handler in src/main/ipc/sync-handlers.ts
 
 ### UI Components for US1
 
-- [X] T063 [P] [US1] Create AuthProvider context in src/renderer/src/contexts/auth-context.tsx
-- [X] T064 [P] [US1] Create signup form component (email/password) in src/renderer/src/components/sync/signup-form.tsx
-- [X] T065 [P] [US1] Create login form component (email/password) in src/renderer/src/components/sync/login-form.tsx
-- [X] T066 [P] [US1] Create OAuth buttons component in src/renderer/src/components/sync/oauth-buttons.tsx
-- [X] T067 [US1] Create recovery phrase display component in src/renderer/src/components/sync/recovery-phrase-display.tsx
-- [X] T068 [US1] Create recovery phrase confirmation component in src/renderer/src/components/sync/recovery-phrase-confirm.tsx
-- [X] T069 [US1] Create first device setup wizard page in src/renderer/src/pages/settings/setup-wizard.tsx
-- [X] T070 [US1] Implement password strength indicator in src/renderer/src/components/sync/password-strength.tsx
-- [X] T071 [US1] Implement email verification pending screen in src/renderer/src/components/sync/verification-pending.tsx
-- [X] T071a [P] [US1] Create forgot-password form in src/renderer/src/components/sync/forgot-password-form.tsx
-- [X] T071b [P] [US1] Create reset-password form in src/renderer/src/components/sync/reset-password-form.tsx
-- [X] T071c [US1] Create change-password dialog in src/renderer/src/components/sync/change-password-dialog.tsx
+- [x] T063 [P] [US1] Create AuthProvider context in src/renderer/src/contexts/auth-context.tsx
+- [x] T064 [P] [US1] Create signup form component (email/password) in src/renderer/src/components/sync/signup-form.tsx
+- [x] T065 [P] [US1] Create login form component (email/password) in src/renderer/src/components/sync/login-form.tsx
+- [x] T066 [P] [US1] Create OAuth buttons component in src/renderer/src/components/sync/oauth-buttons.tsx
+- [x] T067 [US1] Create recovery phrase display component in src/renderer/src/components/sync/recovery-phrase-display.tsx
+- [x] T068 [US1] Create recovery phrase confirmation component in src/renderer/src/components/sync/recovery-phrase-confirm.tsx
+- [x] T069 [US1] Create first device setup wizard page in src/renderer/src/pages/settings/setup-wizard.tsx
+- [x] T070 [US1] Implement password strength indicator in src/renderer/src/components/sync/password-strength.tsx
+- [x] T071 [US1] Implement email verification pending screen in src/renderer/src/components/sync/verification-pending.tsx
+- [x] T071a [P] [US1] Create forgot-password form in src/renderer/src/components/sync/forgot-password-form.tsx
+- [x] T071b [P] [US1] Create reset-password form in src/renderer/src/components/sync/reset-password-form.tsx
+- [x] T071c [US1] Create change-password dialog in src/renderer/src/components/sync/change-password-dialog.tsx
 
 ### Services for US1
 
-- [X] T072 [US1] Create auth service for renderer in src/renderer/src/services/auth-service.ts
-- [X] T073 [US1] Create useAuth hook in src/renderer/src/hooks/use-auth.ts
+- [x] T072 [US1] Create auth service for renderer in src/renderer/src/services/auth-service.ts
+- [x] T073 [US1] Create useAuth hook in src/renderer/src/hooks/use-auth.ts
 
 **Checkpoint**: User Story 1 complete - users can create accounts and set up encryption
 
@@ -174,61 +174,61 @@
 
 ### Sync Engine Core for US2
 
-- [X] T074 [US2] Implement sync queue manager in src/main/sync/queue.ts
-- [X] T075 [US2] Implement sync queue persistence to SQLite in src/main/sync/queue.ts
-- [X] T076 [US2] Implement sync engine class in src/main/sync/engine.ts
-- [X] T077 [US2] Implement WebSocket connection manager in src/main/sync/websocket.ts
-- [X] T078 [US2] Implement network status monitoring in src/main/sync/network.ts
-- [X] T079 [US2] Implement retry logic with exponential backoff in src/main/sync/retry.ts
-- [X] T080 [US2] Implement item encryption before sync in src/main/sync/engine.ts
-- [X] T081 [US2] Implement item decryption after sync in src/main/sync/engine.ts
+- [x] T074 [US2] Implement sync queue manager in src/main/sync/queue.ts
+- [x] T075 [US2] Implement sync queue persistence to SQLite in src/main/sync/queue.ts
+- [x] T076 [US2] Implement sync engine class in src/main/sync/engine.ts
+- [x] T077 [US2] Implement WebSocket connection manager in src/main/sync/websocket.ts
+- [x] T078 [US2] Implement network status monitoring in src/main/sync/network.ts
+- [x] T079 [US2] Implement retry logic with exponential backoff in src/main/sync/retry.ts
+- [x] T080 [US2] Implement item encryption before sync in src/main/sync/engine.ts
+- [x] T081 [US2] Implement item decryption after sync in src/main/sync/engine.ts
 
 ### Server Sync Endpoints for US2
 
-- [X] T082 [P] [US2] Implement sync status endpoint in sync-server/src/routes/sync.ts
-- [X] T083 [P] [US2] Implement sync manifest endpoint in sync-server/src/routes/sync.ts
-- [X] T084 [US2] Implement sync changes endpoint (since timestamp) in sync-server/src/routes/sync.ts
-- [X] T085 [US2] Implement sync push endpoint in sync-server/src/routes/sync.ts
-- [X] T086 [US2] Implement sync pull endpoint in sync-server/src/routes/sync.ts
-- [X] T087 [US2] Implement single item get endpoint in sync-server/src/routes/sync.ts
-- [X] T088 [US2] Implement item delete endpoint in sync-server/src/routes/sync.ts
-- [X] T089 [US2] Implement sync service with D1/R2 integration in sync-server/src/services/sync.ts
+- [x] T082 [P] [US2] Implement sync status endpoint in sync-server/src/routes/sync.ts
+- [x] T083 [P] [US2] Implement sync manifest endpoint in sync-server/src/routes/sync.ts
+- [x] T084 [US2] Implement sync changes endpoint (since timestamp) in sync-server/src/routes/sync.ts
+- [x] T085 [US2] Implement sync push endpoint in sync-server/src/routes/sync.ts
+- [x] T086 [US2] Implement sync pull endpoint in sync-server/src/routes/sync.ts
+- [x] T087 [US2] Implement single item get endpoint in sync-server/src/routes/sync.ts
+- [x] T088 [US2] Implement item delete endpoint in sync-server/src/routes/sync.ts
+- [x] T089 [US2] Implement sync service with D1/R2 integration in sync-server/src/services/sync.ts
 
 ### WebSocket/Durable Objects for US2
 
-- [X] T090 [US2] Create UserSyncState Durable Object in sync-server/src/durable-objects/user-state.ts
-- [X] T091 [US2] Implement WebSocket upgrade handling in UserSyncState
-- [X] T092 [US2] Implement broadcast to connected devices in UserSyncState
-- [X] T093 [US2] Configure Durable Object binding in sync-server/wrangler.toml
+- [x] T090 [US2] Create UserSyncState Durable Object in sync-server/src/durable-objects/user-state.ts
+- [x] T091 [US2] Implement WebSocket upgrade handling in UserSyncState
+- [x] T092 [US2] Implement broadcast to connected devices in UserSyncState
+- [x] T093 [US2] Configure Durable Object binding in sync-server/wrangler.toml
 
 ### Client Sync IPC for US2
 
-- [X] T094 [US2] Implement get sync status IPC handler in src/main/ipc/sync-handlers.ts
-- [X] T095 [US2] Implement trigger sync IPC handler in src/main/ipc/sync-handlers.ts
-- [X] T096 [US2] Implement get queue size IPC handler in src/main/ipc/sync-handlers.ts
-- [X] T097 [US2] Implement pause/resume sync IPC handlers in src/main/ipc/sync-handlers.ts
+- [x] T094 [US2] Implement get sync status IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T095 [US2] Implement trigger sync IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T096 [US2] Implement get queue size IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T097 [US2] Implement pause/resume sync IPC handlers in src/main/ipc/sync-handlers.ts
 
 ### Sync Events for US2
 
-- [X] T098 [US2] Implement sync status changed event broadcasting in src/main/sync/engine.ts
-- [X] T099 [US2] Implement item synced event broadcasting in src/main/sync/engine.ts
-- [X] T100 [US2] Set up IPC event listeners in renderer for sync events in src/renderer/src/contexts/sync-context.tsx
+- [x] T098 [US2] Implement sync status changed event broadcasting in src/main/sync/engine.ts
+- [x] T099 [US2] Implement item synced event broadcasting in src/main/sync/engine.ts
+- [x] T100 [US2] Set up IPC event listeners in renderer for sync events in src/renderer/src/contexts/sync-context.tsx
 
 ### Task Sync Integration for US2
 
-- [X] T101 [US2] Add clock JSON column to tasks table for vector clock storage in src/shared/db/schema/data-schema.ts
-- [X] T102 [US2] Implement task sync handlers (create, update, delete) in src/main/ipc/tasks-handlers.ts
-- [X] T103 [US2] Update TasksProvider to subscribe to sync events in src/renderer/src/contexts/tasks/
+- [x] T101 [US2] Add clock JSON column to tasks table for vector clock storage in src/shared/db/schema/data-schema.ts
+- [x] T102 [US2] Implement task sync handlers (create, update, delete) in src/main/ipc/tasks-handlers.ts
+- [x] T103 [US2] Update TasksProvider to subscribe to sync events in src/renderer/src/contexts/tasks/
 
 ### Additional Sync Integrations for US2
 
-- [X] T103a [US2] Add clock JSON column to inbox_items table in src/shared/db/schema/data-schema.ts
-- [X] T103b [US2] Implement inbox item sync handlers in src/main/ipc/inbox-handlers.ts
-- [X] T103c [US2] Add clock JSON column to saved_filters table in src/shared/db/schema/data-schema.ts
-- [X] T103d [US2] Implement saved filter sync handlers in src/main/ipc/saved-filters-handlers.ts
-- [X] T103e [US2] Implement synced settings structure in src/shared/contracts/sync-api.ts
-- [X] T103f [US2] Implement settings sync with field-level vector clocks in src/main/sync/engine.ts
-- [X] T103g [US2] Create settings sync IPC handlers in src/main/ipc/settings-handlers.ts
+- [x] T103a [US2] Add clock JSON column to inbox_items table in src/shared/db/schema/data-schema.ts
+- [x] T103b [US2] Implement inbox item sync handlers in src/main/ipc/inbox-handlers.ts
+- [x] T103c [US2] Add clock JSON column to saved_filters table in src/shared/db/schema/data-schema.ts
+- [x] T103d [US2] Implement saved filter sync handlers in src/main/ipc/saved-filters-handlers.ts
+- [x] T103e [US2] Implement synced settings structure in src/shared/contracts/sync-api.ts
+- [x] T103f [US2] Implement settings sync with field-level vector clocks in src/main/sync/engine.ts
+- [x] T103g [US2] Create settings sync IPC handlers in src/main/ipc/settings-handlers.ts
 
 **Checkpoint**: User Story 2 complete - notes and tasks sync automatically across devices
 
@@ -242,34 +242,34 @@
 
 ### Server Linking Endpoints for US3
 
-- [X] T104 [US3] Implement linking session initiation endpoint in sync-server/src/routes/auth.ts
-- [X] T105 [US3] Implement QR scan endpoint (accept new_device_confirm) in sync-server/src/routes/auth.ts
-- [X] T106 [US3] Implement linking approval endpoint (verify new_device_confirm, return key_confirm) in sync-server/src/routes/auth.ts
-- [X] T107 [US3] Implement linking completion endpoint (return encrypted key + key_confirm) in sync-server/src/routes/auth.ts
-- [X] T108 [US3] Create LinkingSession Durable Object in sync-server/src/durable-objects/linking-session.ts
+- [x] T104 [US3] Implement linking session initiation endpoint in sync-server/src/routes/auth.ts
+- [x] T105 [US3] Implement QR scan endpoint (accept new_device_confirm) in sync-server/src/routes/auth.ts
+- [x] T106 [US3] Implement linking approval endpoint (verify new_device_confirm, return key_confirm) in sync-server/src/routes/auth.ts
+- [x] T107 [US3] Implement linking completion endpoint (return encrypted key + key_confirm) in sync-server/src/routes/auth.ts
+- [x] T108 [US3] Create LinkingSession Durable Object in sync-server/src/durable-objects/linking-session.ts
 
 ### Client Linking for US3
 
-- [X] T109 [US3] Implement X25519 key pair generation in src/main/crypto/keys.ts
-- [X] T110 [US3] Implement ECDH shared secret computation and HKDF enc/mac keys in src/main/crypto/keys.ts
-- [X] T110a [US3] Implement linking HMAC proofs using canonical CBOR (new_device_confirm, key_confirm) in src/main/crypto/keys.ts
-- [X] T111 [US3] Implement master key encryption with enc_key in src/main/crypto/encryption.ts
-- [X] T112 [US3] Implement generate linking QR IPC handler in src/main/ipc/sync-handlers.ts
-- [X] T113 [US3] Implement link via QR IPC handler in src/main/ipc/sync-handlers.ts
-- [X] T114 [US3] Implement approve linking IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T109 [US3] Implement X25519 key pair generation in src/main/crypto/keys.ts
+- [x] T110 [US3] Implement ECDH shared secret computation and HKDF enc/mac keys in src/main/crypto/keys.ts
+- [x] T110a [US3] Implement linking HMAC proofs using canonical CBOR (new_device_confirm, key_confirm) in src/main/crypto/keys.ts
+- [x] T111 [US3] Implement master key encryption with enc_key in src/main/crypto/encryption.ts
+- [x] T112 [US3] Implement generate linking QR IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T113 [US3] Implement link via QR IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T114 [US3] Implement approve linking IPC handler in src/main/ipc/sync-handlers.ts
 
 ### UI Components for US3
 
-- [X] T115 [P] [US3] Create QR code display component in src/renderer/src/components/sync/qr-linking.tsx
-- [X] T116 [P] [US3] Create QR code scanner component in src/renderer/src/components/sync/qr-scanner.tsx
-- [X] T117 [US3] Create linking approval dialog in src/renderer/src/components/sync/linking-approval-dialog.tsx
-- [X] T118 [US3] Create waiting for approval screen in src/renderer/src/components/sync/linking-pending.tsx
-- [X] T119 [US3] Implement 5-minute expiration timer display and expired QR error dialog in src/renderer/src/components/sync/qr-linking.tsx
+- [x] T115 [P] [US3] Create QR code display component in src/renderer/src/components/sync/qr-linking.tsx
+- [x] T116 [P] [US3] Create QR code scanner component in src/renderer/src/components/sync/qr-scanner.tsx
+- [x] T117 [US3] Create linking approval dialog in src/renderer/src/components/sync/linking-approval-dialog.tsx
+- [x] T118 [US3] Create waiting for approval screen in src/renderer/src/components/sync/linking-pending.tsx
+- [x] T119 [US3] Implement 5-minute expiration timer display and expired QR error dialog in src/renderer/src/components/sync/qr-linking.tsx
 
 ### Linking Events for US3
 
-- [X] T120 [US3] Implement linking request event in src/main/sync/engine.ts
-- [X] T121 [US3] Implement linking approved event in src/main/sync/engine.ts
+- [x] T120 [US3] Implement linking request event in src/main/sync/engine.ts
+- [x] T121 [US3] Implement linking approved event in src/main/sync/engine.ts
 
 **Checkpoint**: User Story 3 complete - users can link devices via QR code
 

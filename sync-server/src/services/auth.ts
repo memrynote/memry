@@ -76,7 +76,7 @@ export async function generateTokens(
     {
       userId: user.id,
       deviceId,
-      email: user.email,
+      email: user.email
     },
     jwtSecret
   )
@@ -84,7 +84,7 @@ export async function generateTokens(
   return {
     accessToken,
     refreshToken,
-    expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
+    expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS
   }
 }
 
@@ -113,7 +113,7 @@ export async function refreshAccessToken(
     {
       userId: payload.sub,
       deviceId: payload.did,
-      email: payload.email,
+      email: payload.email
     },
     jwtSecret
   )
@@ -121,7 +121,7 @@ export async function refreshAccessToken(
   return {
     accessToken,
     expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
-    payload,
+    payload
   }
 }
 
@@ -169,9 +169,9 @@ export async function createAuthResult(
       authProvider: user.auth_provider as 'google' | undefined,
       storageUsed: user.storage_used,
       storageLimit: user.storage_limit,
-      createdAt: new Date(user.created_at).toISOString(),
+      createdAt: new Date(user.created_at).toISOString()
     },
     tokens,
-    isNewUser,
+    isNewUser
   }
 }

@@ -22,7 +22,7 @@ import {
   type EncryptItemOutput,
   type DecryptItemOutput,
   type SignDataOutput,
-  type VerifySignatureOutput,
+  type VerifySignatureOutput
 } from '@shared/contracts/ipc-sync'
 import type { RecoveryPhraseValidation, KeyRotationProgress } from '@shared/contracts/crypto'
 import { createValidatedHandler, createHandler } from './validate'
@@ -116,7 +116,7 @@ export function registerCryptoHandlers(): void {
         encryptedKey: result.encryptedKey.toString('base64'),
         keyNonce: result.keyNonce.toString('base64'),
         encryptedData: result.encryptedData.toString('base64'),
-        dataNonce: result.dataNonce.toString('base64'),
+        dataNonce: result.dataNonce.toString('base64')
       })
       const signature = crypto.signToBase64(signaturePayload, secretKey)
 
@@ -125,7 +125,7 @@ export function registerCryptoHandlers(): void {
         nonce: result.dataNonce.toString('base64'),
         encryptedKey: result.encryptedKey.toString('base64'),
         keyNonce: result.keyNonce.toString('base64'),
-        signature,
+        signature
       }
     })
   )
@@ -159,7 +159,7 @@ export function registerCryptoHandlers(): void {
         encryptedKey: input.encryptedKey,
         keyNonce: input.keyNonce,
         encryptedData: input.encryptedData,
-        dataNonce: input.nonce,
+        dataNonce: input.nonce
       })
 
       const verified = crypto.verifyFromBase64(input.signature, signaturePayload, publicKey)
@@ -175,7 +175,7 @@ export function registerCryptoHandlers(): void {
 
       return {
         data: decryptedBuffer.toString('utf-8'),
-        verified,
+        verified
       }
     })
   )
@@ -249,7 +249,7 @@ export function registerCryptoHandlers(): void {
         } catch (error) {
           return {
             valid: false,
-            error: error instanceof Error ? error.message : 'Verification failed',
+            error: error instanceof Error ? error.message : 'Verification failed'
           }
         }
       }

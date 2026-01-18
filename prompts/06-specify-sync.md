@@ -57,35 +57,35 @@ Recovery Phrase (24 words BIP39)
 
 ### Key Purposes
 
-| Key | Purpose | Storage |
-|-----|---------|---------|
-| Recovery Phrase | Regenerate master key if device lost | User writes down, never stored digitally |
-| Master Key | Derive all other keys | OS Keychain (never leaves device) |
-| Vault Key | Encrypt/decrypt file keys | Derived in memory when needed |
-| Signing Key | Sign encrypted items to prove authenticity | Derived in memory when needed |
-| File Keys | Encrypt individual items (notes, tasks) | Encrypted with Vault Key, stored on server |
-| Device Keys | Authenticate device to server | OS Keychain per device |
+| Key             | Purpose                                    | Storage                                    |
+| --------------- | ------------------------------------------ | ------------------------------------------ |
+| Recovery Phrase | Regenerate master key if device lost       | User writes down, never stored digitally   |
+| Master Key      | Derive all other keys                      | OS Keychain (never leaves device)          |
+| Vault Key       | Encrypt/decrypt file keys                  | Derived in memory when needed              |
+| Signing Key     | Sign encrypted items to prove authenticity | Derived in memory when needed              |
+| File Keys       | Encrypt individual items (notes, tasks)    | Encrypted with Vault Key, stored on server |
+| Device Keys     | Authenticate device to server              | OS Keychain per device                     |
 
 ### Encryption Scheme
 
 ```typescript
 // Per-item encryption structure
 interface EncryptedItem {
-  id: string                      // UUID (unencrypted, for addressing)
+  id: string // UUID (unencrypted, for addressing)
   type: 'note' | 'task' | 'project' | 'settings'
 
   // Encrypted content
-  encryptedKey: string            // File key encrypted with Vault Key (base64)
-  keyNonce: string                // Nonce for key encryption (base64)
-  encryptedData: string           // Content encrypted with File Key (base64)
-  dataNonce: string               // Nonce for data encryption (base64)
+  encryptedKey: string // File key encrypted with Vault Key (base64)
+  keyNonce: string // Nonce for key encryption (base64)
+  encryptedData: string // Content encrypted with File Key (base64)
+  dataNonce: string // Nonce for data encryption (base64)
 
   // Integrity
-  signature: string               // Ed25519 signature over (id + encryptedData + dataNonce)
+  signature: string // Ed25519 signature over (id + encryptedData + dataNonce)
 
   // Sync metadata
-  clock: VectorClock              // For conflict detection (tasks/settings)
-  modifiedAt: number              // Server timestamp for ordering
+  clock: VectorClock // For conflict detection (tasks/settings)
+  modifiedAt: number // Server timestamp for ordering
 }
 
 // For CRDT-based items (notes), different structure
@@ -94,9 +94,9 @@ interface EncryptedCrdtItem {
   type: 'note'
 
   // Full state snapshot (for initial sync / new devices)
-  encryptedSnapshot: string       // Yjs encoded state, encrypted
+  encryptedSnapshot: string // Yjs encoded state, encrypted
   snapshotNonce: string
-  stateVector: string             // Yjs state vector (base64, unencrypted for sync protocol)
+  stateVector: string // Yjs state vector (base64, unencrypted for sync protocol)
 
   // Encrypted file key (same as above)
   encryptedKey: string
@@ -110,15 +110,15 @@ interface EncryptedCrdtItem {
 }
 
 interface EncryptedUpdate {
-  encryptedData: string           // Yjs update binary, encrypted with same file key
+  encryptedData: string // Yjs update binary, encrypted with same file key
   nonce: string
-  timestamp: number               // For ordering and compaction
+  timestamp: number // For ordering and compaction
   signature: string
 }
 
 // Vector clock for non-CRDT items
 interface VectorClock {
-  [deviceId: string]: number      // Logical timestamp per device
+  [deviceId: string]: number // Logical timestamp per device
 }
 ```
 
@@ -252,10 +252,7 @@ function generateRecoveryPhrase(): string {
 }
 
 // Step 2: Derive master key from recovery phrase
-async function deriveMasterKey(
-  recoveryPhrase: string,
-  salt: Uint8Array
-): Promise<Uint8Array> {
+async function deriveMasterKey(recoveryPhrase: string, salt: Uint8Array): Promise<Uint8Array> {
   // Convert mnemonic to seed (BIP39 standard)
   const seed = await mnemonicToSeed(recoveryPhrase)
 
@@ -265,7 +262,7 @@ async function deriveMasterKey(
     salt: salt,
     parallelism: 4,
     iterations: 3,
-    memorySize: 65536,  // 64 MB
+    memorySize: 65536, // 64 MB
     hashLength: 32
   })
 
@@ -288,12 +285,12 @@ function deriveDeviceKey(masterKey: Uint8Array, deviceId: string): Uint8Array {
 
 ### Why XChaCha20-Poly1305 over AES-GCM
 
-| Feature | AES-GCM | XChaCha20-Poly1305 |
-|---------|---------|---------------------|
-| Nonce size | 12 bytes (96 bits) | 24 bytes (192 bits) |
-| Nonce collision risk | Dangerous after ~2^32 messages | Safe for ~2^64 messages |
-| Hardware acceleration | Requires AES-NI | Fast in software |
-| Mobile performance | Slower without AES-NI | Consistent everywhere |
+| Feature               | AES-GCM                        | XChaCha20-Poly1305      |
+| --------------------- | ------------------------------ | ----------------------- |
+| Nonce size            | 12 bytes (96 bits)             | 24 bytes (192 bits)     |
+| Nonce collision risk  | Dangerous after ~2^32 messages | Safe for ~2^64 messages |
+| Hardware acceleration | Requires AES-NI                | Fast in software        |
+| Mobile performance    | Slower without AES-NI          | Consistent everywhere   |
 
 With per-file keys and frequent updates, XChaCha20's larger nonce provides better safety margin.
 
@@ -304,6 +301,7 @@ With per-file keys and frequent updates, XChaCha20's larger nonce provides bette
 ### Why CRDTs for Notes
 
 Notes are rich text documents that may be:
+
 - Edited on multiple devices while offline
 - Eventually shared with collaborators
 
@@ -321,10 +319,10 @@ interface NoteYjsDocument {
   doc: Y.Doc
 
   // Convenience accessors
-  content: Y.XmlFragment      // BlockNote rich text
-  meta: Y.Map<any>            // title, created, modified
-  tags: Y.Array<string>       // Tags as CRDT array
-  properties: Y.Map<any>      // Custom properties
+  content: Y.XmlFragment // BlockNote rich text
+  meta: Y.Map<any> // title, created, modified
+  tags: Y.Array<string> // Tags as CRDT array
+  properties: Y.Map<any> // Custom properties
 }
 
 function createNoteDocument(noteId: string): NoteYjsDocument {
@@ -435,7 +433,7 @@ class MemrySyncProvider extends Observable<string> {
     if (!encrypted) return null
 
     // Verify signature
-    if (!await verifySignature(encrypted)) {
+    if (!(await verifySignature(encrypted))) {
       throw new Error('Invalid signature on server state')
     }
 
@@ -445,7 +443,7 @@ class MemrySyncProvider extends Observable<string> {
   private subscribeToUpdates(): void {
     syncApi.subscribeToNote(this.noteId, async (encrypted: EncryptedUpdate) => {
       // Verify signature
-      if (!await verifySignature(encrypted)) {
+      if (!(await verifySignature(encrypted))) {
         console.error('Received update with invalid signature')
         return
       }
@@ -494,9 +492,9 @@ async function compactNoteUpdates(noteId: string): Promise<void> {
 
 // Compaction triggers
 const COMPACTION_THRESHOLDS = {
-  updateCount: 100,          // Compact after 100 updates
-  updateSizeBytes: 1048576,  // Compact after 1MB of updates
-  maxAgeMs: 86400000         // Compact daily
+  updateCount: 100, // Compact after 100 updates
+  updateSizeBytes: 1048576, // Compact after 1MB of updates
+  maxAgeMs: 86400000 // Compact daily
 }
 ```
 
@@ -564,7 +562,7 @@ function compareClocks(a: VectorClock, b: VectorClock): number {
 
   if (aGreater && !bGreater) return 1
   if (bGreater && !aGreater) return -1
-  return 0  // Concurrent
+  return 0 // Concurrent
 }
 
 function mergeClocks(a: VectorClock, b: VectorClock): VectorClock {
@@ -657,7 +655,7 @@ async function setupFirstDevice(oauthToken: string): Promise<SetupResult> {
   })
 
   return {
-    recoveryPhrase,  // Show to user ONCE, never store
+    recoveryPhrase, // Show to user ONCE, never store
     deviceId
   }
 }
@@ -730,11 +728,11 @@ async function generateLinkingQRCode(): Promise<{ qrData: string; sessionId: str
   // Store private key temporarily (cleared after linking or timeout)
   await secureStorage.set(`linking-${sessionId}`, {
     privateKey: ephemeralKeypair.privateKey,
-    expires: Date.now() + 5 * 60 * 1000  // 5 minutes
+    expires: Date.now() + 5 * 60 * 1000 // 5 minutes
   })
 
   const qrPayload: LinkingQRPayload = {
-    v: 1,  // Version
+    v: 1, // Version
     pub: base64Encode(ephemeralKeypair.publicKey),
     tok: token,
     exp: Date.now() + 5 * 60 * 1000
@@ -835,10 +833,7 @@ async function approveLinkingRequest(sessionId: string): Promise<void> {
 ### Device Linking - Recovery Phrase Method
 
 ```typescript
-async function linkViaRecoveryPhrase(
-  recoveryPhrase: string,
-  oauthToken: string
-): Promise<void> {
+async function linkViaRecoveryPhrase(recoveryPhrase: string, oauthToken: string): Promise<void> {
   // Verify OAuth
   const user = await verifyOAuth(oauthToken)
 
@@ -1030,11 +1025,13 @@ class SyncEngine {
     this.ws = new WebSocket(`wss://sync.memry.app/v1/sync`)
 
     this.ws.onopen = () => {
-      this.ws!.send(JSON.stringify({
-        type: 'auth',
-        deviceId,
-        token: authToken
-      }))
+      this.ws!.send(
+        JSON.stringify({
+          type: 'auth',
+          deviceId,
+          token: authToken
+        })
+      )
     }
 
     this.ws.onmessage = async (event) => {
@@ -1069,7 +1066,7 @@ class SyncEngine {
     const { noteId, encryptedUpdate } = message
 
     // Verify signature
-    if (!await this.verifySignature(encryptedUpdate)) {
+    if (!(await this.verifySignature(encryptedUpdate))) {
       console.error('Received update with invalid signature, ignoring')
       return
     }
@@ -1096,7 +1093,7 @@ class SyncEngine {
     const response = await api.get(`/sync/${type}s/${itemId}`)
 
     // Verify signature
-    if (!await this.verifySignature(response.encrypted)) {
+    if (!(await this.verifySignature(response.encrypted))) {
       throw new Error('Invalid signature on pulled item')
     }
 
@@ -1164,7 +1161,9 @@ class SyncQueue {
     })
   }
 
-  async enqueue(item: Omit<SyncQueueItem, 'id' | 'attempts' | 'lastAttempt' | 'createdAt'>): Promise<void> {
+  async enqueue(
+    item: Omit<SyncQueueItem, 'id' | 'attempts' | 'lastAttempt' | 'createdAt'>
+  ): Promise<void> {
     const queueItem: SyncQueueItem = {
       ...item,
       id: crypto.randomUUID(),
@@ -1180,7 +1179,7 @@ class SyncQueue {
     const all = await this.db.getAll('queue')
     const now = Date.now()
 
-    return all.filter(item => {
+    return all.filter((item) => {
       if (!item.lastAttempt) return true
       // Respect backoff schedule
       const backoff = Math.min(1000 * Math.pow(2, item.attempts), 60000)
@@ -1216,7 +1215,7 @@ class NetworkMonitor {
   private setOnline(online: boolean): void {
     if (this.online === online) return
     this.online = online
-    this.listeners.forEach(fn => fn(online))
+    this.listeners.forEach((fn) => fn(online))
   }
 
   onStatusChange(fn: (online: boolean) => void): () => void {
@@ -1380,12 +1379,12 @@ Binary files (PDFs, videos, images, audio) require special handling due to size,
 ```typescript
 // Attachment reference (stored with note/task)
 interface AttachmentRef {
-  id: string                    // Unique ID for this attachment
-  manifestId: string            // Points to encrypted manifest
-  filename: string              // Original filename
-  size: number                  // For progress display
+  id: string // Unique ID for this attachment
+  manifestId: string // Points to encrypted manifest
+  filename: string // Original filename
+  size: number // For progress display
   mimeType: string
-  thumbnail?: string            // Base64 thumbnail for images/videos/PDFs
+  thumbnail?: string // Base64 thumbnail for images/videos/PDFs
   createdAt: number
 }
 
@@ -1395,23 +1394,23 @@ interface AttachmentManifest {
   filename: string
   size: number
   mimeType: string
-  checksum: string              // SHA-256 of original file
+  checksum: string // SHA-256 of original file
   chunks: ChunkRef[]
-  chunkSize: number             // e.g., 8MB (8388608 bytes)
+  chunkSize: number // e.g., 8MB (8388608 bytes)
   createdAt: number
 }
 
 interface ChunkRef {
   index: number
-  hash: string                  // Content hash (for dedup + verification)
-  encryptedHash: string         // Hash of encrypted chunk (for server lookup)
-  size: number                  // Actual chunk size
+  hash: string // Content hash (for dedup + verification)
+  encryptedHash: string // Hash of encrypted chunk (for server lookup)
+  size: number // Actual chunk size
 }
 
 // Encrypted chunk (stored on server)
 interface EncryptedChunk {
-  hash: string                  // Content-addressable ID
-  encryptedData: Uint8Array     // Encrypted chunk data
+  hash: string // Content-addressable ID
+  encryptedData: Uint8Array // Encrypted chunk data
   nonce: string
 }
 ```
@@ -1419,7 +1418,7 @@ interface EncryptedChunk {
 ### Upload Process
 
 ```typescript
-const CHUNK_SIZE = 8 * 1024 * 1024  // 8MB chunks
+const CHUNK_SIZE = 8 * 1024 * 1024 // 8MB chunks
 
 async function uploadAttachment(
   file: File,
@@ -1538,12 +1537,9 @@ async function downloadAttachment(
   onProgress: (progress: number) => void
 ): Promise<Blob> {
   // 1. Fetch manifest and file key
-  const {
-    encryptedManifest,
-    manifestNonce,
-    encryptedFileKey,
-    keyNonce
-  } = await api.getManifest(attachmentRef.manifestId)
+  const { encryptedManifest, manifestNonce, encryptedFileKey, keyNonce } = await api.getManifest(
+    attachmentRef.manifestId
+  )
 
   // 2. Decrypt file key
   const fileKey = await xchacha20poly1305Decrypt(
@@ -1558,9 +1554,7 @@ async function downloadAttachment(
     base64Decode(manifestNonce),
     base64Decode(encryptedManifest)
   )
-  const manifest: AttachmentManifest = JSON.parse(
-    new TextDecoder().decode(manifestBytes)
-  )
+  const manifest: AttachmentManifest = JSON.parse(new TextDecoder().decode(manifestBytes))
 
   // 4. Download and decrypt chunks
   const decryptedChunks: Uint8Array[] = []
@@ -1572,11 +1566,7 @@ async function downloadAttachment(
     const { encryptedData, nonce } = await api.getChunk(chunkRef.hash)
 
     // Decrypt chunk
-    const decrypted = await xchacha20poly1305Decrypt(
-      fileKey,
-      base64Decode(nonce),
-      encryptedData
-    )
+    const decrypted = await xchacha20poly1305Decrypt(fileKey, base64Decode(nonce), encryptedData)
 
     // Verify content hash
     const computedHash = await sha256(decrypted)
@@ -1636,11 +1626,7 @@ async function streamDownloadAttachment(
       const chunkRef = manifest.chunks[chunkIndex]
       const { encryptedData, nonce } = await api.getChunk(chunkRef.hash)
 
-      const decrypted = await xchacha20poly1305Decrypt(
-        fileKey,
-        base64Decode(nonce),
-        encryptedData
-      )
+      const decrypted = await xchacha20poly1305Decrypt(fileKey, base64Decode(nonce), encryptedData)
 
       // Verify chunk
       const computedHash = await sha256(decrypted)
@@ -1675,17 +1661,14 @@ interface UploadSession {
   manifestId: string
   filename: string
   totalChunks: number
-  uploadedChunks: number[]     // Indices of completed chunks
-  encryptedFileKey: string     // Encrypted with vault key for resumption
+  uploadedChunks: number[] // Indices of completed chunks
+  encryptedFileKey: string // Encrypted with vault key for resumption
   keyNonce: string
   createdAt: number
-  expiresAt: number            // Sessions expire after 7 days
+  expiresAt: number // Sessions expire after 7 days
 }
 
-async function createUploadSession(
-  file: File,
-  vaultKey: Uint8Array
-): Promise<UploadSession> {
+async function createUploadSession(file: File, vaultKey: Uint8Array): Promise<UploadSession> {
   const fileKey = crypto.getRandomValues(new Uint8Array(32))
   const keyNonce = crypto.getRandomValues(new Uint8Array(24))
   const encryptedFileKey = await xchacha20poly1305Encrypt(vaultKey, keyNonce, fileKey)
@@ -1699,7 +1682,7 @@ async function createUploadSession(
     encryptedFileKey: base64Encode(encryptedFileKey),
     keyNonce: base64Encode(keyNonce),
     createdAt: Date.now(),
-    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000  // 7 days
+    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 days
   }
 
   await saveUploadSession(session)
@@ -1728,7 +1711,7 @@ async function resumeUpload(
 
   // Find missing chunks
   const allChunks = Array.from({ length: session.totalChunks }, (_, i) => i)
-  const missingChunks = allChunks.filter(i => !session.uploadedChunks.includes(i))
+  const missingChunks = allChunks.filter((i) => !session.uploadedChunks.includes(i))
 
   const chunks: ChunkRef[] = []
 
@@ -1740,11 +1723,7 @@ async function resumeUpload(
 
     const contentHash = await sha256(new Uint8Array(chunkData))
     const nonce = crypto.getRandomValues(new Uint8Array(24))
-    const encryptedData = await xchacha20poly1305Encrypt(
-      fileKey,
-      nonce,
-      new Uint8Array(chunkData)
-    )
+    const encryptedData = await xchacha20poly1305Encrypt(fileKey, nonce, new Uint8Array(chunkData))
     const encryptedHash = await sha256(encryptedData)
 
     await api.uploadChunk({
@@ -1780,7 +1759,7 @@ async function resumeUpload(
 
 ```typescript
 async function generateThumbnail(file: File): Promise<string | undefined> {
-  const maxSize = 200  // px
+  const maxSize = 200 // px
 
   try {
     if (file.type.startsWith('image/')) {
@@ -1807,10 +1786,7 @@ async function generateImageThumbnail(file: File, maxSize: number): Promise<stri
   const img = await createImageBitmap(file)
   const scale = Math.min(maxSize / img.width, maxSize / img.height, 1)
 
-  const canvas = new OffscreenCanvas(
-    Math.round(img.width * scale),
-    Math.round(img.height * scale)
-  )
+  const canvas = new OffscreenCanvas(Math.round(img.width * scale), Math.round(img.height * scale))
   const ctx = canvas.getContext('2d')!
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
 
@@ -1915,26 +1891,26 @@ User uploads report_v2.pdf (52MB, 90% same content)
 
 ### Supported File Types
 
-| Type | Extensions | Thumbnail | Notes |
-|------|------------|-----------|-------|
-| Images | jpg, png, webp, gif, svg | Yes | Full preview support |
-| Documents | pdf | Yes (first page) | Rendered via pdf.js |
-| Video | mp4, mov, webm, mkv | Yes (frame at 1s) | Streaming playback |
-| Audio | mp3, wav, m4a, ogg, flac | No | Waveform visualization possible |
-| Archives | zip, tar, gz, 7z | No | List contents locally |
-| Other | * | No | Download only |
+| Type      | Extensions               | Thumbnail         | Notes                           |
+| --------- | ------------------------ | ----------------- | ------------------------------- |
+| Images    | jpg, png, webp, gif, svg | Yes               | Full preview support            |
+| Documents | pdf                      | Yes (first page)  | Rendered via pdf.js             |
+| Video     | mp4, mov, webm, mkv      | Yes (frame at 1s) | Streaming playback              |
+| Audio     | mp3, wav, m4a, ogg, flac | No                | Waveform visualization possible |
+| Archives  | zip, tar, gz, 7z         | No                | List contents locally           |
+| Other     | \*                       | No                | Download only                   |
 
 ### Performance Targets
 
-| Operation | File Size | Target |
-|-----------|-----------|--------|
-| Upload small file | < 8MB | < 3 seconds |
-| Upload medium file | 8-50MB | < 30 seconds |
-| Upload large file | 50-500MB | < 3 minutes |
-| Download small file | < 8MB | < 2 seconds |
-| Download medium file | 8-50MB | < 20 seconds |
-| Stream video start | Any | < 5 seconds to first frame |
-| Thumbnail generation | Any | < 1 second |
+| Operation            | File Size | Target                     |
+| -------------------- | --------- | -------------------------- |
+| Upload small file    | < 8MB     | < 3 seconds                |
+| Upload medium file   | 8-50MB    | < 30 seconds               |
+| Upload large file    | 50-500MB  | < 3 minutes                |
+| Download small file  | < 8MB     | < 2 seconds                |
+| Download medium file | 8-50MB    | < 20 seconds               |
+| Stream video start   | Any       | < 5 seconds to first frame |
+| Thumbnail generation | Any       | < 1 second                 |
 
 ### Acceptance Criteria (Attachments)
 
@@ -1980,11 +1956,7 @@ async function rotateVaultKey(): Promise<void> {
 
     // Re-encrypt file key with new vault key
     const newKeyNonce = crypto.getRandomValues(new Uint8Array(24))
-    const newEncryptedKey = await xchacha20poly1305Encrypt(
-      newVaultKey,
-      newKeyNonce,
-      fileKey
-    )
+    const newEncryptedKey = await xchacha20poly1305Encrypt(newVaultKey, newKeyNonce, fileKey)
 
     // Update item (content stays encrypted with same file key)
     await updateItemKey(item.id, {
@@ -2021,7 +1993,7 @@ interface SharePermission {
   noteId: string
   userId: string
   permission: 'read' | 'write' | 'admin'
-  encryptedFileKey: string  // File key encrypted for recipient's public key
+  encryptedFileKey: string // File key encrypted for recipient's public key
   sharedAt: number
   sharedBy: string
 }
@@ -2038,10 +2010,7 @@ async function shareNote(
   const fileKey = await getFileKey(noteId)
 
   // Encrypt file key for recipient using their public key
-  const encryptedForRecipient = await sealBox(
-    fileKey,
-    base64Decode(recipientPublicKey)
-  )
+  const encryptedForRecipient = await sealBox(fileKey, base64Decode(recipientPublicKey))
 
   // Store share on server
   await api.post(`/notes/${noteId}/shares`, {
@@ -2057,10 +2026,7 @@ async function acceptShare(noteId: string): Promise<void> {
   const share = await api.get(`/notes/${noteId}/my-share`)
 
   // Decrypt with our private key
-  const fileKey = await openBox(
-    base64Decode(share.encryptedFileKey),
-    await getPrivateKey()
-  )
+  const fileKey = await openBox(base64Decode(share.encryptedFileKey), await getPrivateKey())
 
   // Store file key locally
   await storeFileKey(noteId, fileKey)
@@ -2113,20 +2079,21 @@ function setupPresence(doc: Y.Doc, noteId: string): Awareness {
 
 ### Threat Model
 
-| Threat | Mitigation |
-|--------|------------|
-| Server compromise | Zero-knowledge: server only has encrypted blobs |
-| Network eavesdropping | TLS 1.3 for all connections |
-| Man-in-the-middle | Certificate pinning + signature verification |
-| Replay attacks | Nonces + timestamps + signatures |
-| Device theft | Master key in OS keychain (biometric/PIN protected) |
-| Lost recovery phrase | Cannot recover - this is a feature, not a bug |
-| Malicious collaborator | Permission system + audit log |
-| Server replay/drops | Merkle tree verification (future) |
+| Threat                 | Mitigation                                          |
+| ---------------------- | --------------------------------------------------- |
+| Server compromise      | Zero-knowledge: server only has encrypted blobs     |
+| Network eavesdropping  | TLS 1.3 for all connections                         |
+| Man-in-the-middle      | Certificate pinning + signature verification        |
+| Replay attacks         | Nonces + timestamps + signatures                    |
+| Device theft           | Master key in OS keychain (biometric/PIN protected) |
+| Lost recovery phrase   | Cannot recover - this is a feature, not a bug       |
+| Malicious collaborator | Permission system + audit log                       |
+| Server replay/drops    | Merkle tree verification (future)                   |
 
 ### What Server Can See (Metadata)
 
 Even with E2EE, server observes:
+
 - Item IDs (UUIDs, meaningless)
 - Number of items per type
 - Size of encrypted blobs
@@ -2147,13 +2114,13 @@ Even with E2EE, server observes:
 
 ### Performance
 
-| Operation | Target |
-|-----------|--------|
-| Single item sync | < 2 seconds |
-| Batch 100 items | < 30 seconds |
-| Initial sync (1000 items) | < 5 minutes |
-| Note update (Yjs) | < 100ms local, < 500ms synced |
-| UI responsiveness during sync | Never blocked |
+| Operation                     | Target                        |
+| ----------------------------- | ----------------------------- |
+| Single item sync              | < 2 seconds                   |
+| Batch 100 items               | < 30 seconds                  |
+| Initial sync (1000 items)     | < 5 minutes                   |
+| Note update (Yjs)             | < 100ms local, < 500ms synced |
+| UI responsiveness during sync | Never blocked                 |
 
 ### Reliability
 

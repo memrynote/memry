@@ -94,7 +94,7 @@ export class NetworkMonitor extends EventEmitter {
     this.emit('status-changed', {
       status: this._status,
       previousStatus: 'unknown',
-      timestamp: Date.now(),
+      timestamp: Date.now()
     })
 
     if (this._status === 'online') {
@@ -268,7 +268,7 @@ export class NetworkMonitor extends EventEmitter {
     this.emit('status-changed', {
       status: newStatus,
       previousStatus,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     })
 
     if (newStatus === 'online') {
@@ -309,7 +309,7 @@ export class NetworkMonitor extends EventEmitter {
       this.emit('status-changed', {
         status: newStatus,
         previousStatus,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       })
 
       if (newStatus === 'online') {
@@ -352,4 +352,3 @@ export function resetNetworkMonitor(): void {
     _networkMonitor = null
   }
 }
-

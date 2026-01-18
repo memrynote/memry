@@ -276,7 +276,9 @@ function renderPropertyValue({
 
     case 'text':
     default:
-      return <TextCell value={String(value)} highlightQuery={highlightQuery} className={className} />
+      return (
+        <TextCell value={String(value)} highlightQuery={highlightQuery} className={className} />
+      )
   }
 }
 
@@ -360,9 +362,9 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
       typeof value === 'number'
         ? value
         : (() => {
-          const parsed = parseFloat(String(value))
-          return Number.isFinite(parsed) ? parsed : null
-        })()
+            const parsed = parseFloat(String(value))
+            return Number.isFinite(parsed) ? parsed : null
+          })()
     const dateValue = (() => {
       if (!value) return null
       const parsed = new Date(String(value))
@@ -402,11 +404,7 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
               )
             case 'url':
               return (
-                <UrlEditor
-                  value={textValue}
-                  onChange={handleCommit}
-                  onBlur={handleStopEditing}
-                />
+                <UrlEditor value={textValue} onChange={handleCommit} onBlur={handleStopEditing} />
               )
             case 'multiselect':
               return (

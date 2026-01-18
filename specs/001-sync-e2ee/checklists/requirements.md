@@ -41,8 +41,8 @@
 
 ### User Story Summary
 
-| Priority | Count | Stories |
-|----------|-------|---------|
-| P1 | 4 | First Device Setup, Cross-Device Sync, QR Linking, Conflict Resolution (Notes) |
-| P2 | 9 | Recovery Phrase Linking, Task Sync, Attachments, Sync Status, Sync History, Force Sync, Local-Only, Background Sync, Device Management |
-| P3 | 5 | Key Rotation, Note Sharing, Selective Sync, Data Usage, Metered Connection |
+| Priority | Count | Stories                                                                                                                                |
+| -------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| P1       | 4     | First Device Setup, Cross-Device Sync, QR Linking, Conflict Resolution (Notes)                                                         |
+| P2       | 9     | Recovery Phrase Linking, Task Sync, Attachments, Sync Status, Sync History, Force Sync, Local-Only, Background Sync, Device Management |
+| P3       | 5     | Key Rotation, Note Sharing, Selective Sync, Data Usage, Metered Connection                                                             |

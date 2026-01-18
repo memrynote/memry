@@ -7,7 +7,15 @@
  * @module contexts/sync-context
  */
 
-import { createContext, useContext, useCallback, useMemo, useState, useEffect, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+  type ReactNode
+} from 'react'
 import type {
   SyncStatus,
   SyncStatusChangedEvent,

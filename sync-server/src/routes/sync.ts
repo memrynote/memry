@@ -23,14 +23,27 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import type { Env } from '../index'
 import { authMiddleware, type AuthContext } from '../middleware/auth'
-import { createSyncService, type SyncItemType, type SyncOperation, type VectorClock } from '../services/sync'
+import {
+  createSyncService,
+  type SyncItemType,
+  type SyncOperation,
+  type VectorClock
+} from '../services/sync'
 import { NotFoundError, ValidationError } from '../lib/errors'
 
 // =============================================================================
 // Zod Schemas
 // =============================================================================
 
-const syncItemTypeSchema = z.enum(['note', 'task', 'project', 'settings', 'attachment', 'inbox_item', 'saved_filter'])
+const syncItemTypeSchema = z.enum([
+  'note',
+  'task',
+  'project',
+  'settings',
+  'attachment',
+  'inbox_item',
+  'saved_filter'
+])
 
 const syncOperationSchema = z.enum(['create', 'update', 'delete'])
 
@@ -43,24 +56,24 @@ const syncPushItemSchema = z.object({
   encryptedData: z.string(),
   signature: z.string(),
   clock: vectorClockSchema.optional(),
-  stateVector: z.string().optional(),
+  stateVector: z.string().optional()
 })
 
 const syncPushRequestSchema = z.object({
   items: z.array(syncPushItemSchema).min(1).max(100),
-  deviceClock: vectorClockSchema,
+  deviceClock: vectorClockSchema
 })
 
 const syncPullRequestSchema = z.object({
   since: z.number().optional(),
   types: z.array(syncItemTypeSchema).optional(),
   limit: z.number().min(1).max(100).optional(),
-  deviceClock: vectorClockSchema,
+  deviceClock: vectorClockSchema
 })
 
 const changesQuerySchema = z.object({
   since: z.coerce.number().optional(),
-  limit: z.coerce.number().min(1).max(100).optional(),
+  limit: z.coerce.number().min(1).max(100).optional()
 })
 
 // =============================================================================
@@ -95,7 +108,7 @@ sync.get('/status', async (c) => {
     totalItems,
     deletedItems,
     storageUsed,
-    serverTimestamp: Date.now(),
+    serverTimestamp: Date.now()
   })
 })
 
@@ -112,7 +125,7 @@ sync.get('/manifest', async (c) => {
   return c.json({
     items,
     count: items.length,
-    serverTimestamp: Date.now(),
+    serverTimestamp: Date.now()
   })
 })
 
@@ -130,7 +143,7 @@ sync.get('/changes', zValidator('query', changesQuerySchema), async (c) => {
   return c.json({
     items,
     hasMore,
-    serverTimestamp: Date.now(),
+    serverTimestamp: Date.now()
   })
 })
 
@@ -155,7 +168,7 @@ sync.post('/push', zValidator('json', syncPushRequestSchema), async (c) => {
       ...item,
       type: item.type as SyncItemType,
       operation: item.operation as SyncOperation,
-      clock: item.clock as VectorClock | undefined,
+      clock: item.clock as VectorClock | undefined
     })),
     deviceClock as VectorClock
   )
@@ -184,10 +197,10 @@ sync.post('/push', zValidator('json', syncPushRequestSchema), async (c) => {
                   type: item.type,
                   operation: item.operation,
                   deviceId: user.deviceId,
-                  version: 1, // Simplified - would get from DB
+                  version: 1 // Simplified - would get from DB
                 },
-                excludeDevice: user.deviceId,
-              }),
+                excludeDevice: user.deviceId
+              })
             })
           )
         }
@@ -203,7 +216,7 @@ sync.post('/push', zValidator('json', syncPushRequestSchema), async (c) => {
     accepted: result.accepted,
     conflicts: result.conflicts,
     serverClock: result.serverClock,
-    serverTimestamp: Date.now(),
+    serverTimestamp: Date.now()
   })
 })
 
@@ -227,7 +240,7 @@ sync.post('/pull', zValidator('json', syncPullRequestSchema), async (c) => {
     items: result.items,
     hasMore: result.hasMore,
     serverClock: result.serverClock,
-    serverTimestamp: result.serverTimestamp,
+    serverTimestamp: result.serverTimestamp
   })
 })
 
@@ -279,10 +292,10 @@ sync.delete('/items/:id', async (c) => {
             type: 'unknown', // We don't have the type here
             operation: 'delete',
             deviceId: user.deviceId,
-            version: 0,
+            version: 0
           },
-          excludeDevice: user.deviceId,
-        }),
+          excludeDevice: user.deviceId
+        })
       })
     )
   } catch (error) {
@@ -292,7 +305,7 @@ sync.delete('/items/:id', async (c) => {
   return c.json({
     success: true,
     id: itemId,
-    serverTimestamp: Date.now(),
+    serverTimestamp: Date.now()
   })
 })
 

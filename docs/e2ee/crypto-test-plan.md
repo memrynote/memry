@@ -77,6 +77,7 @@ describe('cbor', () => {
 ```
 
 ### Key Assertions
+
 - Cross-platform determinism (same input = same output)
 - RFC 8949 Section 4.2 compliance
 - Round-trip encoding/decoding
@@ -111,7 +112,9 @@ describe('encryption', () => {
   describe('encryptItem/decryptItem', () => {
     it('should encrypt string data')
     it('should encrypt Buffer data')
-    it('should return all required fields (encryptedData, dataNonce, encryptedKey, keyNonce, cryptoVersion)')
+    it(
+      'should return all required fields (encryptedData, dataNonce, encryptedKey, keyNonce, cryptoVersion)'
+    )
     it('should decrypt back to original data')
     it('should use different file key for each encryption')
     it('should fail decryption with wrong vault key')
@@ -148,6 +151,7 @@ describe('encryption', () => {
 ```
 
 ### Key Assertions
+
 - Authenticated encryption (AEAD) - tamper detection
 - Nonce uniqueness
 - Memory safety (key zeroing)
@@ -228,6 +232,7 @@ describe('keys', () => {
 ```
 
 ### Key Assertions
+
 - Deterministic derivation
 - Correct key sizes
 - Argon2id parameters match OWASP 2024
@@ -326,6 +331,7 @@ describe('recovery', () => {
 ```
 
 ### Key Assertions
+
 - BIP39 compliance
 - Checksum validation
 - Deterministic seed derivation
@@ -390,6 +396,7 @@ describe('signatures', () => {
 ```
 
 ### Key Assertions
+
 - Ed25519 determinism
 - Signature length (64 bytes)
 - HMAC length (32 bytes)
@@ -409,7 +416,7 @@ vi.mock('keytar', () => ({
   setPassword: vi.fn(),
   getPassword: vi.fn(),
   deletePassword: vi.fn(),
-  findCredentials: vi.fn(),
+  findCredentials: vi.fn()
 }))
 
 describe('keychain', () => {
@@ -468,6 +475,7 @@ describe('keychain', () => {
 ```
 
 ### Key Assertions
+
 - Correct keytar API usage
 - Base64 encoding for binary data
 - Service name consistency
@@ -501,7 +509,7 @@ export const TEST_SIGNATURE_PAYLOAD = {
   encryptedKey: 'base64key',
   keyNonce: 'base64nonce1',
   encryptedData: 'base64data',
-  dataNonce: 'base64nonce2',
+  dataNonce: 'base64nonce2'
 }
 ```
 
@@ -526,7 +534,7 @@ export function createRandomKeys() {
   return {
     fileKey: generateFileKey(),
     nonce: generateNonce(24),
-    salt: generateKdfSalt(),
+    salt: generateKdfSalt()
   }
 }
 
@@ -561,12 +569,12 @@ pnpm vitest run src/main/crypto/encryption.test.ts
 
 ## Coverage Targets
 
-| Metric | Target |
-|--------|--------|
-| Statements | 90%+ |
-| Branches | 85%+ |
-| Functions | 95%+ |
-| Lines | 90%+ |
+| Metric     | Target |
+| ---------- | ------ |
+| Statements | 90%+   |
+| Branches   | 85%+   |
+| Functions  | 95%+   |
+| Lines      | 90%+   |
 
 ---
 
@@ -595,13 +603,13 @@ These tests MUST pass before any sync implementation:
 
 ## Summary
 
-| File | Test Cases | Priority |
-|------|------------|----------|
-| `cbor.test.ts` | ~15 | P1 |
-| `keys.test.ts` | ~25 | P1 |
-| `recovery.test.ts` | ~25 | P1 |
-| `encryption.test.ts` | ~30 | P1 |
-| `signatures.test.ts` | ~20 | P1 |
-| `keychain.test.ts` | ~20 | P2 (mocked) |
+| File                 | Test Cases | Priority    |
+| -------------------- | ---------- | ----------- |
+| `cbor.test.ts`       | ~15        | P1          |
+| `keys.test.ts`       | ~25        | P1          |
+| `recovery.test.ts`   | ~25        | P1          |
+| `encryption.test.ts` | ~30        | P1          |
+| `signatures.test.ts` | ~20        | P1          |
+| `keychain.test.ts`   | ~20        | P2 (mocked) |
 
 **Total: ~135 test cases**

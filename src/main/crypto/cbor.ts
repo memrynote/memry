@@ -14,10 +14,7 @@ import { encode, decode, Token } from 'cborg'
  * Map sorter for canonical CBOR encoding (RFC 8949, Section 4.2).
  * Sorts map keys by length first, then lexicographically.
  */
-function canonicalMapSorter(
-  e1: (Token | Token[])[],
-  e2: (Token | Token[])[]
-): number {
+function canonicalMapSorter(e1: (Token | Token[])[], e2: (Token | Token[])[]): number {
   const t1 = e1[0] as Token
   const t2 = e2[0] as Token
 
@@ -53,7 +50,7 @@ export function canonicalEncode(data: unknown): Uint8Array {
     // Use float64 for all floating point numbers (consistency)
     float64: true,
     // Sort map keys for canonical encoding
-    mapSorter: canonicalMapSorter,
+    mapSorter: canonicalMapSorter
   })
 }
 
@@ -99,7 +96,7 @@ export function createSignaturePayload(payload: {
     encryptedKey: payload.encryptedKey,
     id: payload.id,
     keyNonce: payload.keyNonce,
-    type: payload.type,
+    type: payload.type
   }
 
   // Add optional fields in alphabetical order

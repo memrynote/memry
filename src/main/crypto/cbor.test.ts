@@ -12,7 +12,7 @@ import {
   canonicalEncode,
   canonicalDecode,
   createSignaturePayload,
-  createLinkingHmacPayload,
+  createLinkingHmacPayload
 } from './cbor'
 import {
   TEST_SIMPLE_OBJECT,
@@ -21,7 +21,7 @@ import {
   TEST_VARIED_KEYS,
   TEST_SIGNATURE_PAYLOAD,
   TEST_SIGNATURE_PAYLOAD_WITH_METADATA,
-  TEST_LINKING_PAYLOAD,
+  TEST_LINKING_PAYLOAD
 } from './__fixtures__'
 import { expectBufferEqual } from './__helpers__'
 
@@ -83,7 +83,7 @@ describe('cbor', () => {
         negative: -100,
         float: 3.14159,
         zero: 0,
-        large: 9007199254740991, // MAX_SAFE_INTEGER
+        large: 9007199254740991 // MAX_SAFE_INTEGER
       }
       const bytes = canonicalEncode(obj)
       const decoded = canonicalDecode(bytes)
@@ -154,14 +154,7 @@ describe('cbor', () => {
     })
 
     it('should be inverse of canonicalEncode', () => {
-      const testCases = [
-        { a: 1, b: 2 },
-        [1, 2, 3],
-        'string',
-        42,
-        true,
-        null,
-      ]
+      const testCases = [{ a: 1, b: 2 }, [1, 2, 3], 'string', 42, true, null]
 
       for (const original of testCases) {
         const bytes = canonicalEncode(original)
@@ -177,7 +170,7 @@ describe('cbor', () => {
         bool: true,
         nil: null,
         arr: [1, 2, 3],
-        obj: { nested: true },
+        obj: { nested: true }
       }
 
       const bytes = canonicalEncode(original)
@@ -210,7 +203,7 @@ describe('cbor', () => {
     it('should include optional operation when provided', () => {
       const payloadWithOp = {
         ...TEST_SIGNATURE_PAYLOAD,
-        operation: 'create' as const,
+        operation: 'create' as const
       }
       const bytes = createSignaturePayload(payloadWithOp)
       const decoded = canonicalDecode<Record<string, unknown>>(bytes)
@@ -231,9 +224,9 @@ describe('cbor', () => {
         metadata: {
           clock: { 'device-1': 5, 'device-2': 3 },
           fieldClocks: {
-            title: { 'device-1': 5 },
-          },
-        },
+            title: { 'device-1': 5 }
+          }
+        }
       }
       const bytes = createSignaturePayload(payload)
       const decoded = canonicalDecode<Record<string, unknown>>(bytes)
@@ -265,8 +258,8 @@ describe('cbor', () => {
       const payload = {
         ...TEST_SIGNATURE_PAYLOAD,
         metadata: {
-          stateVector: 'some-state-vector-base64',
-        },
+          stateVector: 'some-state-vector-base64'
+        }
       }
       const bytes = createSignaturePayload(payload)
       const decoded = canonicalDecode<Record<string, { stateVector: string }>>(bytes)
@@ -287,7 +280,7 @@ describe('cbor', () => {
       const payloadWithAll = {
         ...TEST_LINKING_PAYLOAD,
         encryptedMasterKey: 'encrypted-master-key-base64',
-        nonce: 'nonce-base64',
+        nonce: 'nonce-base64'
       }
       const bytes = createLinkingHmacPayload(payloadWithAll)
       const decoded = canonicalDecode<Record<string, string>>(bytes)
@@ -354,7 +347,7 @@ describe('cbor', () => {
       const obj = {
         b: 2, // 1 byte key
         aa: 3, // 2 byte key
-        a: 1, // 1 byte key
+        a: 1 // 1 byte key
       }
       const bytes = canonicalEncode(obj)
       const decoded = canonicalDecode<Record<string, number>>(bytes)

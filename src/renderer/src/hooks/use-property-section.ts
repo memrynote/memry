@@ -75,7 +75,11 @@ export function usePropertySection({
       if (!canPerformAction('add')) return
       const defaultValue = getDefaultValueForType(newProp.type)
       try {
-        await addProperty(newProp.name, defaultValue, includeExplicitType ? newProp.type : undefined)
+        await addProperty(
+          newProp.name,
+          defaultValue,
+          includeExplicitType ? newProp.type : undefined
+        )
       } catch (error) {
         onError?.('add', error)
       }

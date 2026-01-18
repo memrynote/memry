@@ -127,7 +127,7 @@ export const TEST_SIGNATURE_PAYLOAD = {
   encryptedKey: 'dGVzdC1lbmNyeXB0ZWQta2V5', // "test-encrypted-key" in base64
   keyNonce: 'dGVzdC1rZXktbm9uY2U=', // "test-key-nonce" in base64
   encryptedData: 'dGVzdC1lbmNyeXB0ZWQtZGF0YQ==', // "test-encrypted-data" in base64
-  dataNonce: 'dGVzdC1kYXRhLW5vbmNl', // "test-data-nonce" in base64
+  dataNonce: 'dGVzdC1kYXRhLW5vbmNl' // "test-data-nonce" in base64
 }
 
 /**
@@ -140,9 +140,9 @@ export const TEST_SIGNATURE_PAYLOAD_WITH_METADATA = {
     clock: { 'device-a': 1, 'device-b': 2 },
     fieldClocks: {
       title: { 'device-a': 1 },
-      content: { 'device-b': 2 },
-    },
-  },
+      content: { 'device-b': 2 }
+    }
+  }
 }
 
 // =============================================================================
@@ -155,7 +155,7 @@ export const TEST_SIGNATURE_PAYLOAD_WITH_METADATA = {
 export const TEST_LINKING_PAYLOAD = {
   sessionId: 'test-session-123',
   token: 'test-token-456',
-  newDevicePublicKey: 'dGVzdC1wdWJsaWMta2V5', // base64
+  newDevicePublicKey: 'dGVzdC1wdWJsaWMta2V5' // base64
 }
 
 // =============================================================================
@@ -168,7 +168,7 @@ export const TEST_LINKING_PAYLOAD = {
 export const TEST_SIMPLE_OBJECT = {
   id: '123',
   type: 'note',
-  data: 'hello',
+  data: 'hello'
 }
 
 /**
@@ -177,7 +177,7 @@ export const TEST_SIMPLE_OBJECT = {
 export const TEST_SIMPLE_OBJECT_REORDERED = {
   data: 'hello',
   type: 'note',
-  id: '123',
+  id: '123'
 }
 
 /**
@@ -186,10 +186,10 @@ export const TEST_SIMPLE_OBJECT_REORDERED = {
 export const TEST_NESTED_OBJECT = {
   outer: {
     inner: {
-      value: 42,
+      value: 42
     },
-    array: [1, 2, 3],
-  },
+    array: [1, 2, 3]
+  }
 }
 
 /**
@@ -201,7 +201,7 @@ export const TEST_VARIED_KEYS = {
   nonce: 'y', // 5 chars
   version: 'z', // 7 chars
   a: '1', // 1 char
-  bb: '2', // 2 chars
+  bb: '2' // 2 chars
 }
 
 // =============================================================================

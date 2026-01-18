@@ -24,7 +24,10 @@ export interface RateLimitConfig {
   /** Time window in milliseconds */
   windowMs: number
   /** Key generator function */
-  keyGenerator: (c: { req: { header: (name: string) => string | undefined }; get: (key: string) => unknown }) => string
+  keyGenerator: (c: {
+    req: { header: (name: string) => string | undefined }
+    get: (key: string) => unknown
+  }) => string
   /** Skip rate limiting based on condition */
   skip?: (c: { req: { header: (name: string) => string | undefined } }) => boolean
   /** Error message */
@@ -57,7 +60,7 @@ export const RATE_LIMITS = {
       const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown'
       return `login:${ip}`
     },
-    message: 'Too many login attempts. Please try again later.',
+    message: 'Too many login attempts. Please try again later.'
   },
 
   /** Signup: 3 per hour */
@@ -68,7 +71,7 @@ export const RATE_LIMITS = {
       const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown'
       return `signup:${ip}`
     },
-    message: 'Too many signup attempts. Please try again later.',
+    message: 'Too many signup attempts. Please try again later.'
   },
 
   /** Email verification resend: 5 per hour */
@@ -79,7 +82,7 @@ export const RATE_LIMITS = {
       const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown'
       return `email_verify:${ip}`
     },
-    message: 'Too many verification email requests. Please try again later.',
+    message: 'Too many verification email requests. Please try again later.'
   },
 
   /** Password reset: 3 per hour */
@@ -90,7 +93,7 @@ export const RATE_LIMITS = {
       const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown'
       return `password_reset:${ip}`
     },
-    message: 'Too many password reset requests. Please try again later.',
+    message: 'Too many password reset requests. Please try again later.'
   },
 
   /** Sync push: 100 per minute per user */
@@ -101,7 +104,7 @@ export const RATE_LIMITS = {
       const user = c.get('user') as { userId: string } | undefined
       return `sync_push:${user?.userId || 'unknown'}`
     },
-    message: 'Too many sync requests. Please slow down.',
+    message: 'Too many sync requests. Please slow down.'
   },
 
   /** Sync pull: 60 per minute per user */
@@ -112,7 +115,7 @@ export const RATE_LIMITS = {
       const user = c.get('user') as { userId: string } | undefined
       return `sync_pull:${user?.userId || 'unknown'}`
     },
-    message: 'Too many sync requests. Please slow down.',
+    message: 'Too many sync requests. Please slow down.'
   },
 
   /** Device linking: 10 per hour */
@@ -123,7 +126,7 @@ export const RATE_LIMITS = {
       const user = c.get('user') as { userId: string } | undefined
       return `device_linking:${user?.userId || 'unknown'}`
     },
-    message: 'Too many device linking attempts. Please try again later.',
+    message: 'Too many device linking attempts. Please try again later.'
   },
 
   /** Linking status polling: 500 per 5 minutes per session (supports 2 devices at 2.5s for 10+ minutes) */
@@ -134,7 +137,7 @@ export const RATE_LIMITS = {
       const sessionId = c.req.param('session_id') || 'unknown'
       return `linking_status:${sessionId}`
     },
-    message: 'Too many status requests for this linking session.',
+    message: 'Too many status requests for this linking session.'
   },
 
   /** Global API: 1000 per minute per IP */
@@ -145,8 +148,8 @@ export const RATE_LIMITS = {
       const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown'
       return `global:${ip}`
     },
-    message: 'Too many requests. Please slow down.',
-  },
+    message: 'Too many requests. Please slow down.'
+  }
 } as const
 
 // =============================================================================
@@ -188,7 +191,7 @@ export async function checkRateLimit(
     return {
       isLimited: false,
       remaining: config.limit - 1,
-      resetAt: now + config.windowMs,
+      resetAt: now + config.windowMs
     }
   }
 
@@ -200,7 +203,7 @@ export async function checkRateLimit(
     return {
       isLimited: true,
       remaining: 0,
-      resetAt: entry.window_start + config.windowMs,
+      resetAt: entry.window_start + config.windowMs
     }
   }
 
@@ -210,7 +213,7 @@ export async function checkRateLimit(
   return {
     isLimited: false,
     remaining: config.limit - newCount,
-    resetAt: entry.window_start + config.windowMs,
+    resetAt: entry.window_start + config.windowMs
   }
 }
 
@@ -248,7 +251,7 @@ export function rateLimit(config: RateLimitConfig) {
     const key = config.keyGenerator(c)
     const { isLimited, remaining, resetAt } = await checkRateLimit(c.env.DB, key, {
       limit: config.limit,
-      windowMs: config.windowMs,
+      windowMs: config.windowMs
     })
 
     // Set rate limit headers
@@ -278,5 +281,5 @@ export const rateLimitMiddleware = {
   syncPush: rateLimit(RATE_LIMITS.SYNC_PUSH),
   syncPull: rateLimit(RATE_LIMITS.SYNC_PULL),
   deviceLinking: rateLimit(RATE_LIMITS.DEVICE_LINKING),
-  global: rateLimit(RATE_LIMITS.GLOBAL_API),
+  global: rateLimit(RATE_LIMITS.GLOBAL_API)
 }

@@ -2195,10 +2195,7 @@ export interface SyncClientAPI {
   logout(): Promise<{ success: boolean }>
 
   // Auth (OAuth)
-  oauthStart(input: {
-    provider: 'google'
-    deviceName: string
-  }): Promise<{ authUrl: string }>
+  oauthStart(input: { provider: 'google'; deviceName: string }): Promise<{ authUrl: string }>
   oauthCallback(input: {
     code: string
     state: string

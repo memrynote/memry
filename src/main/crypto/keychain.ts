@@ -162,7 +162,7 @@ export async function getUserId(): Promise<string | null> {
 export async function saveTokens(accessToken: string, refreshToken: string): Promise<void> {
   await Promise.all([
     saveToKeychain(KEYCHAIN_KEYS.ACCESS_TOKEN, accessToken),
-    saveToKeychain(KEYCHAIN_KEYS.REFRESH_TOKEN, refreshToken),
+    saveToKeychain(KEYCHAIN_KEYS.REFRESH_TOKEN, refreshToken)
   ])
 }
 
@@ -174,7 +174,7 @@ export async function saveTokens(accessToken: string, refreshToken: string): Pro
 export async function getTokens(): Promise<{ accessToken: string; refreshToken: string } | null> {
   const [accessToken, refreshToken] = await Promise.all([
     getFromKeychain(KEYCHAIN_KEYS.ACCESS_TOKEN),
-    getFromKeychain(KEYCHAIN_KEYS.REFRESH_TOKEN),
+    getFromKeychain(KEYCHAIN_KEYS.REFRESH_TOKEN)
   ])
 
   if (!accessToken || !refreshToken) {
@@ -190,7 +190,7 @@ export async function getTokens(): Promise<{ accessToken: string; refreshToken: 
 export async function deleteTokens(): Promise<void> {
   await Promise.all([
     deleteFromKeychain(KEYCHAIN_KEYS.ACCESS_TOKEN),
-    deleteFromKeychain(KEYCHAIN_KEYS.REFRESH_TOKEN),
+    deleteFromKeychain(KEYCHAIN_KEYS.REFRESH_TOKEN)
   ])
 }
 
@@ -250,7 +250,7 @@ export async function saveSyncSession(session: {
     saveUserId(session.userId),
     saveDeviceId(session.deviceId),
     saveTokens(session.accessToken, session.refreshToken),
-    saveMasterKey(session.masterKey),
+    saveMasterKey(session.masterKey)
   ])
 }
 
@@ -270,7 +270,7 @@ export async function getSyncSession(): Promise<{
     getUserId(),
     getDeviceId(),
     getTokens(),
-    getMasterKey(),
+    getMasterKey()
   ])
 
   if (!userId || !deviceId || !tokens || !masterKey) {
@@ -281,7 +281,7 @@ export async function getSyncSession(): Promise<{
     userId,
     deviceId,
     ...tokens,
-    masterKey,
+    masterKey
   }
 }
 

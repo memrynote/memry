@@ -105,9 +105,7 @@ export function RecoveryPhraseConfirm({
               ...check,
               enteredWord: value,
               isCorrect:
-                value.trim() === ''
-                  ? null
-                  : value.trim().toLowerCase() === check.expectedWord
+                value.trim() === '' ? null : value.trim().toLowerCase() === check.expectedWord
             }
           : check
       )
@@ -164,10 +162,7 @@ export function RecoveryPhraseConfirm({
       <div className={cn('space-y-6 text-center', className)}>
         <div className="flex justify-center">
           <div className="rounded-full bg-green-100 p-3 dark:bg-green-900/30">
-            <CheckCircle
-              className="size-8 text-green-600 dark:text-green-400"
-              aria-hidden="true"
-            />
+            <CheckCircle className="size-8 text-green-600 dark:text-green-400" aria-hidden="true" />
           </div>
         </div>
         <div className="space-y-2">
@@ -186,8 +181,7 @@ export function RecoveryPhraseConfirm({
       <div className="space-y-2 text-center">
         <h3 className="text-lg font-semibold">Verify your recovery phrase</h3>
         <p className="text-sm text-muted-foreground">
-          Enter the requested words from your recovery phrase to confirm you&apos;ve saved
-          it.
+          Enter the requested words from your recovery phrase to confirm you&apos;ve saved it.
         </p>
       </div>
 
@@ -196,9 +190,7 @@ export function RecoveryPhraseConfirm({
         <div className="space-y-3">
           {wordChecks.map((check, checkIndex) => (
             <div key={check.index} className="space-y-2">
-              <Label htmlFor={`word-${check.index}`}>
-                Word #{check.index + 1}
-              </Label>
+              <Label htmlFor={`word-${check.index}`}>Word #{check.index + 1}</Label>
               <div className="relative">
                 <Input
                   id={`word-${check.index}`}
@@ -267,14 +259,8 @@ export function RecoveryPhraseConfirm({
               Back
             </Button>
           )}
-          <Button
-            type="submit"
-            className="flex-1"
-            disabled={!allEntered || isLoading}
-          >
-            {isLoading && (
-              <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
-            )}
+          <Button type="submit" className="flex-1" disabled={!allEntered || isLoading}>
+            {isLoading && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />}
             Verify
           </Button>
         </div>

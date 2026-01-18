@@ -23,6 +23,7 @@ This document explains the End-to-End Encryption (E2EE) sync system implementati
 ## Overview
 
 Memry uses **End-to-End Encryption (E2EE)** to ensure that:
+
 - Your data is encrypted on your device before being sent to the server
 - The server only sees encrypted blobs - it cannot read your notes
 - Only your devices (with your keys) can decrypt your data
@@ -30,14 +31,14 @@ Memry uses **End-to-End Encryption (E2EE)** to ensure that:
 
 ### Core Technologies
 
-| Technology | Purpose |
-|------------|---------|
+| Technology         | Purpose                         |
+| ------------------ | ------------------------------- |
 | XChaCha20-Poly1305 | Authenticated encryption (AEAD) |
-| Ed25519 | Digital signatures |
-| Argon2id | Password/seed hashing |
-| HKDF | Key derivation |
-| BIP39 | Recovery phrase generation |
-| CBOR | Canonical binary encoding |
+| Ed25519            | Digital signatures              |
+| Argon2id           | Password/seed hashing           |
+| HKDF               | Key derivation                  |
+| BIP39              | Recovery phrase generation      |
+| CBOR               | Canonical binary encoding       |
 
 ---
 
@@ -60,6 +61,7 @@ If we sign the first and verify with the second, **the signature fails** even th
 **CBOR** (Concise Binary Object Representation) is a binary format like JSON.
 
 **Canonical CBOR** (RFC 8949, Section 4.2) adds strict ordering rules:
+
 1. Sort map keys by **length** (shorter first)
 2. Then sort **lexicographically** (alphabetically by bytes)
 
@@ -70,10 +72,7 @@ This ensures: **Same data → Same bytes → Same signature**
 **Location**: `src/main/crypto/cbor.ts:17-38`
 
 ```typescript
-function canonicalMapSorter(
-  e1: (Token | Token[])[],
-  e2: (Token | Token[])[]
-): number {
+function canonicalMapSorter(e1: (Token | Token[])[], e2: (Token | Token[])[]): number {
   const t1 = e1[0] as Token
   const t2 = e2[0] as Token
 
@@ -95,12 +94,14 @@ function canonicalMapSorter(
 ```
 
 **What it does:**
+
 1. Takes two map entries (key-value pairs)
 2. Extracts the keys
 3. Converts keys to byte buffers
 4. Compares by length first, then byte-by-byte
 
 **Example ordering:**
+
 ```
 "id"      (2 bytes) comes before
 "type"    (4 bytes) comes before
@@ -124,7 +125,7 @@ const payload = createSignaturePayload({
   encryptedKey: '...',
   keyNonce: '...',
   encryptedData: '...',
-  dataNonce: '...',
+  dataNonce: '...'
 })
 ```
 
@@ -169,8 +170,8 @@ export function deriveMasterKey(seed: Buffer, salt: Buffer): Buffer {
     masterKey,
     seed,
     salt,
-    3,           // iterations (OWASP 2024)
-    64 * 1024,   // 64MB memory
+    3, // iterations (OWASP 2024)
+    64 * 1024, // 64MB memory
     sodium.crypto_pwhash_ALG_ARGON2ID13
   )
   return masterKey
@@ -188,9 +189,9 @@ export function deriveAllKeys(masterKey: Buffer): DerivedKeys {
     vaultKey: new Uint8Array(vaultKey),
     signingKeyPair: {
       publicKey: new Uint8Array(signingKeyPair.publicKey),
-      secretKey: new Uint8Array(signingKeyPair.secretKey),
+      secretKey: new Uint8Array(signingKeyPair.secretKey)
     },
-    keyVerifier: new Uint8Array(keyVerifier),
+    keyVerifier: new Uint8Array(keyVerifier)
   }
 }
 ```
@@ -236,6 +237,7 @@ Your Note: "Buy milk"
 ```
 
 **Why double-wrap?**
+
 - Each item has a unique file key
 - If one file key leaks, only that item is compromised
 - Key rotation only needs to re-wrap file keys, not re-encrypt all data
@@ -274,7 +276,7 @@ export function encryptItem(
     dataNonce: Buffer.from(dataNonce),
     encryptedKey: Buffer.from(encryptedKey),
     keyNonce: Buffer.from(keyNonce),
-    cryptoVersion: CRYPTO_VERSION,
+    cryptoVersion: CRYPTO_VERSION
   }
 }
 ```
@@ -307,12 +309,12 @@ export function decryptItem(
 
 ### Cryptographic Constants
 
-| Constant | Value | Purpose |
-|----------|-------|---------|
-| Key Length | 32 bytes | XChaCha20-Poly1305 key |
-| Nonce Length | 24 bytes | XChaCha20 nonce (safe for random) |
-| Tag Length | 16 bytes | Poly1305 auth tag |
-| Signature Length | 64 bytes | Ed25519 signature |
+| Constant         | Value    | Purpose                           |
+| ---------------- | -------- | --------------------------------- |
+| Key Length       | 32 bytes | XChaCha20-Poly1305 key            |
+| Nonce Length     | 24 bytes | XChaCha20 nonce (safe for random) |
+| Tag Length       | 16 bytes | Poly1305 auth tag                 |
+| Signature Length | 64 bytes | Ed25519 signature                 |
 
 ---
 
@@ -321,6 +323,7 @@ export function decryptItem(
 ### Why Sign?
 
 Signatures prove:
+
 1. **Authenticity**: This data came from you (not an attacker)
 2. **Integrity**: Nobody modified the data in transit
 
@@ -374,7 +377,9 @@ export function signItem(
 ```typescript
 export function verifyItem(
   signature: Buffer,
-  payload: { /* same as above */ },
+  payload: {
+    /* same as above */
+  },
   publicKey: Buffer
 ): boolean {
   const message = createSignaturePayload(payload)
@@ -391,6 +396,7 @@ export function verifyItem(
 Vector clocks track **causal relationships** between events across distributed systems (multiple devices).
 
 Unlike wall-clock time (which can drift), vector clocks track **logical time**:
+
 - "Device A made change #3"
 - "Device B made change #2"
 - "Device B saw Device A's change #1"
@@ -404,8 +410,8 @@ interface VectorClock {
 
 // Example:
 const clock = {
-  'device-abc': 3,  // Device ABC made 3 changes
-  'device-xyz': 2,  // Device XYZ made 2 changes
+  'device-abc': 3, // Device ABC made 3 changes
+  'device-xyz': 2 // Device XYZ made 2 changes
 }
 ```
 
@@ -423,7 +429,7 @@ export function createClock(): VectorClock {
 export function incrementClock(clock: VectorClock, deviceId: string): VectorClock {
   return {
     ...clock,
-    [deviceId]: (clock[deviceId] ?? 0) + 1,
+    [deviceId]: (clock[deviceId] ?? 0) + 1
   }
 }
 
@@ -441,10 +447,10 @@ export function mergeClock(a: VectorClock, b: VectorClock): VectorClock {
 
 ```typescript
 export enum ClockComparison {
-  BEFORE = -1,      // A happened before B
-  AFTER = 1,        // A happened after B
-  CONCURRENT = 0,   // Conflict! Neither knows about the other
-  EQUAL = 2,        // Same state
+  BEFORE = -1, // A happened before B
+  AFTER = 1, // A happened after B
+  CONCURRENT = 0, // Conflict! Neither knows about the other
+  EQUAL = 2 // Same state
 }
 
 export function compareClock(a: VectorClock, b: VectorClock): ClockComparison {
@@ -464,7 +470,7 @@ export function compareClock(a: VectorClock, b: VectorClock): ClockComparison {
   if (aLessOrEqual && bLessOrEqual) return ClockComparison.EQUAL
   if (aLessOrEqual) return ClockComparison.BEFORE
   if (bLessOrEqual) return ClockComparison.AFTER
-  return ClockComparison.CONCURRENT  // Conflict!
+  return ClockComparison.CONCURRENT // Conflict!
 }
 ```
 
@@ -496,28 +502,28 @@ compareClock(clockA, clockB)
 
 ### Phase 2: Foundation ✅ Complete
 
-| Component | Status | Location |
-|-----------|--------|----------|
-| CBOR encoding | ✅ | `src/main/crypto/cbor.ts` |
-| Key derivation | ✅ | `src/main/crypto/keys.ts` |
-| Encryption | ✅ | `src/main/crypto/encryption.ts` |
-| Signatures | ✅ | `src/main/crypto/signatures.ts` |
-| Keychain | ✅ | `src/main/crypto/keychain.ts` |
-| Recovery phrases | ✅ | `src/main/crypto/recovery.ts` |
-| Vector clocks | ✅ | `src/main/sync/vector-clock.ts` |
-| IPC handlers | ✅ | `src/main/ipc/crypto-handlers.ts` |
-| Preload bridge | ✅ | `src/preload/index.ts` |
+| Component        | Status | Location                          |
+| ---------------- | ------ | --------------------------------- |
+| CBOR encoding    | ✅     | `src/main/crypto/cbor.ts`         |
+| Key derivation   | ✅     | `src/main/crypto/keys.ts`         |
+| Encryption       | ✅     | `src/main/crypto/encryption.ts`   |
+| Signatures       | ✅     | `src/main/crypto/signatures.ts`   |
+| Keychain         | ✅     | `src/main/crypto/keychain.ts`     |
+| Recovery phrases | ✅     | `src/main/crypto/recovery.ts`     |
+| Vector clocks    | ✅     | `src/main/sync/vector-clock.ts`   |
+| IPC handlers     | ✅     | `src/main/ipc/crypto-handlers.ts` |
+| Preload bridge   | ✅     | `src/preload/index.ts`            |
 
 ### Phase 3+: Not Yet Implemented
 
-| Phase | Description | Status |
-|-------|-------------|--------|
-| Phase 3 | User Story 1: First Device Setup | TODO |
-| Phase 4 | User Story 2: Cross-Device Sync | TODO |
-| Phase 5 | User Story 3: QR Device Linking | TODO |
-| Phase 6 | User Story 4: Recovery Phrase Linking | TODO |
-| Phase 7 | User Story 5: CRDT Note Merging | TODO |
-| Phase 8+ | Advanced features | TODO |
+| Phase    | Description                           | Status |
+| -------- | ------------------------------------- | ------ |
+| Phase 3  | User Story 1: First Device Setup      | TODO   |
+| Phase 4  | User Story 2: Cross-Device Sync       | TODO   |
+| Phase 5  | User Story 3: QR Device Linking       | TODO   |
+| Phase 6  | User Story 4: Recovery Phrase Linking | TODO   |
+| Phase 7  | User Story 5: CRDT Note Merging       | TODO   |
+| Phase 8+ | Advanced features                     | TODO   |
 
 ---
 

@@ -86,8 +86,8 @@ const HKDF_CONTEXTS = {
 // HKDF parameters
 const HKDF_PARAMS = {
   hash: 'SHA-256',
-  salt: null,           // No salt (extracted from master key)
-  keyLength: 32,        // 256 bits
+  salt: null, // No salt (extracted from master key)
+  keyLength: 32 // 256 bits
 }
 
 // Example derivation
@@ -111,14 +111,14 @@ Use canonical CBOR (RFC 8949) for deterministic encoding across platforms.
 
 ```typescript
 interface SignaturePayloadV1 {
-  id: string                // Item UUID
-  type: string              // Item type
-  operation?: string        // create | update | delete (if applicable)
-  cryptoVersion: number     // Algorithm version
-  encryptedKey: string      // Wrapped file key (Base64)
-  keyNonce: string          // Nonce for key wrapping (Base64)
-  encryptedData: string     // The encrypted content (Base64)
-  dataNonce: string         // Encryption nonce (Base64)
+  id: string // Item UUID
+  type: string // Item type
+  operation?: string // create | update | delete (if applicable)
+  cryptoVersion: number // Algorithm version
+  encryptedKey: string // Wrapped file key (Base64)
+  keyNonce: string // Nonce for key wrapping (Base64)
+  encryptedData: string // The encrypted content (Base64)
+  dataNonce: string // Encryption nonce (Base64)
   metadata?: {
     clock?: VectorClock
     fieldClocks?: { [field: string]: VectorClock }
@@ -181,12 +181,12 @@ interface User {
   email: string
   emailVerified: boolean
   authMethod: 'email' | 'oauth'
-  authProvider?: 'google' | 'apple' | 'github'  // Only for OAuth users
-  authProviderId?: string                        // Only for OAuth users
-  passwordHash?: string                          // Only for email users (never sent to client)
-  passwordSalt?: string                          // Only for email users (never sent to client)
-  kdfSalt: string                                // Base64 (plaintext KDF salt)
-  keyVerifier: string                            // Base64 (HMAC verifier)
+  authProvider?: 'google' | 'apple' | 'github' // Only for OAuth users
+  authProviderId?: string // Only for OAuth users
+  passwordHash?: string // Only for email users (never sent to client)
+  passwordSalt?: string // Only for email users (never sent to client)
+  kdfSalt: string // Base64 (plaintext KDF salt)
+  keyVerifier: string // Base64 (HMAC verifier)
   storageUsed: number
   storageLimit: number
   createdAt: Date
@@ -263,16 +263,16 @@ export const devices = sqliteTable('devices', {
 ```typescript
 interface Device {
   id: string
-  userId?: string                 // Only on server
+  userId?: string // Only on server
   name: string
   platform: 'macos' | 'windows' | 'linux' | 'ios' | 'android'
   osVersion?: string
   appVersion: string
-  authPublicKey?: string          // Only on server (optional, device auth only)
+  authPublicKey?: string // Only on server (optional, device auth only)
   linkedAt: Date
   lastSyncAt?: Date
-  isCurrentDevice?: boolean       // Only on client
-  revokedAt?: Date               // Only on server
+  isCurrentDevice?: boolean // Only on client
+  revokedAt?: Date // Only on server
 }
 ```
 
@@ -334,12 +334,12 @@ interface LinkingSession {
   id: string
   userId: string
   initiatorDeviceId: string
-  ephemeralPublicKey: string      // Base64
-  newDevicePublicKey?: string     // Base64, set after scan
-  newDeviceConfirm?: string       // Base64, proof of possession
-  encryptedMasterKey?: string     // Base64, set after approval
-  encryptedKeyNonce?: string      // Base64
-  keyConfirm?: string             // Base64, key confirmation
+  ephemeralPublicKey: string // Base64
+  newDevicePublicKey?: string // Base64, set after scan
+  newDeviceConfirm?: string // Base64, proof of possession
+  encryptedMasterKey?: string // Base64, set after approval
+  encryptedKeyNonce?: string // Base64
+  keyConfirm?: string // Base64, key confirmation
   status: 'pending' | 'scanned' | 'approved' | 'completed' | 'expired'
   createdAt: Date
   expiresAt: Date
@@ -393,12 +393,12 @@ Local queue for pending sync operations.
 
 ```typescript
 export const syncQueue = sqliteTable('sync_queue', {
-  id: text('id').primaryKey(),                                    // UUID
-  type: text('type').notNull(),                                   // 'note_update' | 'task' | 'project' | 'settings' | 'attachment'
-  itemId: text('item_id').notNull(),                             // ID of synced item
-  operation: text('operation').notNull(),                        // 'create' | 'update' | 'delete'
-  payload: text('payload').notNull(),                            // Encrypted JSON
-  priority: integer('priority').default(0),                       // Higher = more urgent
+  id: text('id').primaryKey(), // UUID
+  type: text('type').notNull(), // 'note_update' | 'task' | 'project' | 'settings' | 'attachment'
+  itemId: text('item_id').notNull(), // ID of synced item
+  operation: text('operation').notNull(), // 'create' | 'update' | 'delete'
+  payload: text('payload').notNull(), // Encrypted JSON
+  priority: integer('priority').default(0), // Higher = more urgent
   attempts: integer('attempts').default(0),
   lastAttempt: integer('last_attempt', { mode: 'timestamp' }),
   errorMessage: text('error_message'),
@@ -420,7 +420,7 @@ interface SyncQueueItem {
   type: 'note_update' | 'task' | 'project' | 'settings' | 'attachment'
   itemId: string
   operation: 'create' | 'update' | 'delete'
-  payload: string                 // Encrypted JSON (Base64)
+  payload: string // Encrypted JSON (Base64)
   priority: number
   attempts: number
   lastAttempt?: Date
@@ -467,8 +467,8 @@ interface SyncItem {
   blobKey: string
   size: number
   version: number
-  stateVector?: string            // For notes (Yjs)
-  clock?: VectorClock             // For tasks/projects
+  stateVector?: string // For notes (Yjs)
+  clock?: VectorClock // For tasks/projects
   createdAt: Date
   modifiedAt: Date
   deletedAt?: Date
@@ -486,7 +486,7 @@ Structure of encrypted content stored in R2.
 All encrypted items include a version field for algorithm agility:
 
 ```typescript
-type CryptoVersion = 1  // Current version
+type CryptoVersion = 1 // Current version
 
 // Version 1 algorithms:
 // - Encryption: XChaCha20-Poly1305 (24-byte nonce)
@@ -503,20 +503,20 @@ type CryptoVersion = 1  // Current version
 
 ```typescript
 interface EncryptedItem {
-  id: string                      // Item UUID
+  id: string // Item UUID
   type: 'note' | 'task' | 'project' | 'settings'
-  cryptoVersion: number           // Algorithm version (currently 1)
+  cryptoVersion: number // Algorithm version (currently 1)
 
   // Encrypted content
-  encryptedKey: string            // File key encrypted with Vault Key (Base64)
-  keyNonce: string                // Nonce for key encryption (Base64)
-  encryptedData: string           // Content encrypted with File Key (Base64)
-  dataNonce: string               // Nonce for data encryption (Base64)
+  encryptedKey: string // File key encrypted with Vault Key (Base64)
+  keyNonce: string // Nonce for key encryption (Base64)
+  encryptedData: string // Content encrypted with File Key (Base64)
+  dataNonce: string // Nonce for data encryption (Base64)
 
   // Integrity - signature covers: id + type + cryptoVersion + encryptedKey + keyNonce +
   // encryptedData + dataNonce + clock/fieldClocks when present
-  signature: string               // Ed25519 signature (Base64)
-  signedAt?: number               // Optional timestamp for diagnostics
+  signature: string // Ed25519 signature (Base64)
+  signedAt?: number // Optional timestamp for diagnostics
 
   // Sync metadata (for non-CRDT items)
   clock?: VectorClock
@@ -529,26 +529,26 @@ interface EncryptedCrdtItem {
   type: 'note'
 
   // Encrypted Yjs state
-  encryptedSnapshot: string       // Full Yjs state (Base64)
-  snapshotNonce: string           // Nonce (Base64)
-  stateVector: string             // Yjs state vector (unencrypted for sync protocol)
+  encryptedSnapshot: string // Full Yjs state (Base64)
+  snapshotNonce: string // Nonce (Base64)
+  stateVector: string // Yjs state vector (unencrypted for sync protocol)
 
   // File key
   encryptedKey: string
   keyNonce: string
 
   // Integrity
-  signature: string               // Signature includes encryptedSnapshot + snapshotNonce + stateVector + encryptedKey
+  signature: string // Signature includes encryptedSnapshot + snapshotNonce + stateVector + encryptedKey
 
   // Incremental updates
   updates: EncryptedUpdate[]
 }
 
 interface EncryptedUpdate {
-  encryptedData: string           // Yjs update (Base64)
+  encryptedData: string // Yjs update (Base64)
   nonce: string
   timestamp: number
-  signature: string               // Signature includes note id + encryptedData + nonce + timestamp
+  signature: string // Signature includes note id + encryptedData + nonce + timestamp
 }
 ```
 
@@ -562,29 +562,29 @@ Binary file attached to notes.
 
 ```typescript
 interface AttachmentManifest {
-  id: string                      // Attachment UUID
-  filename: string                // Original filename
+  id: string // Attachment UUID
+  filename: string // Original filename
   mimeType: string
-  size: number                    // Total bytes
-  checksum: string                // SHA-256 of original file
+  size: number // Total bytes
+  checksum: string // SHA-256 of original file
   chunks: ChunkRef[]
-  chunkSize: number               // 8MB (8388608)
+  chunkSize: number // 8MB (8388608)
   createdAt: number
 }
 
 interface EncryptedAttachmentManifest {
-  encryptedManifest: string       // Base64 encrypted AttachmentManifest
-  manifestNonce: string           // Nonce (Base64)
-  encryptedFileKey: string        // File key encrypted with Vault Key (Base64)
-  keyNonce: string                // Nonce for key encryption (Base64)
-  manifestSignature: string       // Ed25519 signature over encryptedManifest + manifestNonce + encryptedFileKey + keyNonce
+  encryptedManifest: string // Base64 encrypted AttachmentManifest
+  manifestNonce: string // Nonce (Base64)
+  encryptedFileKey: string // File key encrypted with Vault Key (Base64)
+  keyNonce: string // Nonce for key encryption (Base64)
+  manifestSignature: string // Ed25519 signature over encryptedManifest + manifestNonce + encryptedFileKey + keyNonce
 }
 
 interface ChunkRef {
-  index: number                   // Position in file (0-based)
-  hash: string                    // SHA-256 of plaintext chunk
-  encryptedHash: string           // SHA-256 of encrypted chunk (for R2 lookup)
-  size: number                    // Actual chunk size
+  index: number // Position in file (0-based)
+  hash: string // SHA-256 of plaintext chunk
+  encryptedHash: string // SHA-256 of encrypted chunk (for R2 lookup)
+  size: number // Actual chunk size
 }
 ```
 
@@ -595,12 +595,12 @@ Clients verify `encryptedHash` before decrypting and `hash` after decrypting.
 
 ```typescript
 interface AttachmentRef {
-  id: string                      // Attachment ID
-  manifestId: string              // Points to encrypted manifest
-  filename: string                // For display
-  size: number                    // For progress display
+  id: string // Attachment ID
+  manifestId: string // Points to encrypted manifest
+  filename: string // For display
+  size: number // For progress display
   mimeType: string
-  thumbnail?: string              // Base64 thumbnail for images/videos/PDFs
+  thumbnail?: string // Base64 thumbnail for images/videos/PDFs
   createdAt: number
 }
 ```
@@ -625,12 +625,12 @@ export const syncState = sqliteTable('sync_state', {
 
 ```typescript
 const SYNC_STATE_KEYS = {
-  LAST_SYNC_AT: 'last_sync_at',           // Unix timestamp
-  SYNC_STATUS: 'sync_status',             // 'idle' | 'syncing' | 'offline' | 'error'
-  PENDING_COUNT: 'pending_count',         // Number of queued items
-  LAST_ERROR: 'last_error',               // Last sync error message
-  SERVER_CLOCK: 'server_clock',           // Last known server timestamp
-  DEVICE_CLOCK: 'device_clock',           // JSON - our vector clock
+  LAST_SYNC_AT: 'last_sync_at', // Unix timestamp
+  SYNC_STATUS: 'sync_status', // 'idle' | 'syncing' | 'offline' | 'error'
+  PENDING_COUNT: 'pending_count', // Number of queued items
+  LAST_ERROR: 'last_error', // Last sync error message
+  SERVER_CLOCK: 'server_clock', // Last known server timestamp
+  DEVICE_CLOCK: 'device_clock' // JSON - our vector clock
 }
 ```
 
@@ -645,10 +645,10 @@ Audit log of sync operations.
 ```typescript
 export const syncHistory = sqliteTable('sync_history', {
   id: text('id').primaryKey(),
-  type: text('type').notNull(),           // 'push' | 'pull' | 'error'
+  type: text('type').notNull(), // 'push' | 'pull' | 'error'
   itemCount: integer('item_count').notNull(),
-  direction: text('direction'),           // 'upload' | 'download'
-  details: text('details'),               // JSON for errors or item breakdown
+  direction: text('direction'), // 'upload' | 'download'
+  details: text('details'), // JSON for errors or item breakdown
   durationMs: integer('duration_ms'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
 })
@@ -692,9 +692,9 @@ export const inboxItems = sqliteTable('inbox_items', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   processedAt: integer('processed_at', { mode: 'timestamp' }),
   // Sync fields
-  clock: text('clock'),                    // JSON vector clock
+  clock: text('clock'), // JSON vector clock
   syncedAt: integer('synced_at', { mode: 'timestamp' }),
-  localOnly: integer('local_only', { mode: 'boolean' }).default(false),
+  localOnly: integer('local_only', { mode: 'boolean' }).default(false)
 })
 ```
 
@@ -717,15 +717,15 @@ Custom task filters that roam across devices.
 export const savedFilters = sqliteTable('saved_filters', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
-  filter: text('filter').notNull(),        // JSON filter definition
+  filter: text('filter').notNull(), // JSON filter definition
   icon: text('icon'),
   color: text('color'),
   sortOrder: integer('sort_order').default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
   // Sync fields
-  clock: text('clock'),                    // JSON vector clock
-  syncedAt: integer('synced_at', { mode: 'timestamp' }),
+  clock: text('clock'), // JSON vector clock
+  syncedAt: integer('synced_at', { mode: 'timestamp' })
 })
 ```
 
@@ -748,14 +748,14 @@ interface SyncedSettings {
   // Synced across all devices
   general: {
     defaultView: 'inbox' | 'today' | 'upcoming' | 'all'
-    weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6  // Sunday = 0
+    weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 // Sunday = 0
     dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD'
     timeFormat: '12h' | '24h'
-    language: string                          // ISO 639-1 code
+    language: string // ISO 639-1 code
   }
 
   tasks: {
-    defaultProject: string | null             // Project ID
+    defaultProject: string | null // Project ID
     defaultPriority: 1 | 2 | 3 | 4
     autoArchiveCompleted: boolean
     archiveAfterDays: number
@@ -763,7 +763,7 @@ interface SyncedSettings {
 
   notes: {
     defaultFolder: string
-    autoSaveInterval: number                  // milliseconds
+    autoSaveInterval: number // milliseconds
     spellCheck: boolean
   }
 
@@ -813,7 +813,7 @@ For tracking causality in non-CRDT items.
 
 ```typescript
 interface VectorClock {
-  [deviceId: string]: number      // Logical timestamp per device
+  [deviceId: string]: number // Logical timestamp per device
 }
 
 // Example
@@ -874,16 +874,16 @@ Soft-deleted items (where `deleted_at` is set) are retained for cross-device pro
 ```typescript
 const TOMBSTONE_POLICY = {
   // How long tombstones are kept after deletion
-  retentionPeriod: 90 * 24 * 60 * 60 * 1000,  // 90 days in ms
+  retentionPeriod: 90 * 24 * 60 * 60 * 1000, // 90 days in ms
 
   // Minimum sync window - tombstones younger than this are never purged
-  minRetention: 7 * 24 * 60 * 60 * 1000,       // 7 days
+  minRetention: 7 * 24 * 60 * 60 * 1000, // 7 days
 
   // How often to run cleanup job
-  cleanupInterval: 24 * 60 * 60 * 1000,        // Daily
+  cleanupInterval: 24 * 60 * 60 * 1000, // Daily
 
   // Batch size for cleanup operations
-  cleanupBatchSize: 1000,
+  cleanupBatchSize: 1000
 }
 ```
 
@@ -932,19 +932,19 @@ interface DeletedItemRef {
 
 ## Entity Summary
 
-| Entity | Storage | Encrypted | Sync Strategy |
-|--------|---------|-----------|---------------|
-| User | Server D1 | No (metadata only) | N/A |
-| Device | Server D1 + Client SQLite | No | Server-managed |
-| Linking Session | Server D1 | Partially | Server-managed |
-| Sync Queue | Client SQLite | Yes (payload) | Local only |
-| Sync Item | Server D1 + R2 | Yes (R2 blob) | Push/Pull |
-| Note | Client files + R2 | Yes | CRDT (Yjs) |
-| Task | Client SQLite + R2 | Yes | Vector Clock LWW |
-| Project | Client SQLite + R2 | Yes | Vector Clock LWW |
-| Inbox Item | Client SQLite + R2 | Yes | Vector Clock LWW |
-| Saved Filter | Client SQLite + R2 | Yes | Vector Clock LWW |
-| Settings | Client SQLite + R2 | Yes | Field-level Vector Clock |
-| Attachment | Client files + R2 | Yes | Chunked |
-| Sync State | Client SQLite | No | Local only |
-| Sync History | Client SQLite | No | Local only |
+| Entity          | Storage                   | Encrypted          | Sync Strategy            |
+| --------------- | ------------------------- | ------------------ | ------------------------ |
+| User            | Server D1                 | No (metadata only) | N/A                      |
+| Device          | Server D1 + Client SQLite | No                 | Server-managed           |
+| Linking Session | Server D1                 | Partially          | Server-managed           |
+| Sync Queue      | Client SQLite             | Yes (payload)      | Local only               |
+| Sync Item       | Server D1 + R2            | Yes (R2 blob)      | Push/Pull                |
+| Note            | Client files + R2         | Yes                | CRDT (Yjs)               |
+| Task            | Client SQLite + R2        | Yes                | Vector Clock LWW         |
+| Project         | Client SQLite + R2        | Yes                | Vector Clock LWW         |
+| Inbox Item      | Client SQLite + R2        | Yes                | Vector Clock LWW         |
+| Saved Filter    | Client SQLite + R2        | Yes                | Vector Clock LWW         |
+| Settings        | Client SQLite + R2        | Yes                | Field-level Vector Clock |
+| Attachment      | Client files + R2         | Yes                | Chunked                  |
+| Sync State      | Client SQLite             | No                 | Local only               |
+| Sync History    | Client SQLite             | No                 | Local only               |

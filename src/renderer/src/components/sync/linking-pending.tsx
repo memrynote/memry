@@ -8,14 +8,7 @@
  */
 
 import { useState, useCallback } from 'react'
-import {
-  Loader2,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Clock,
-  X
-} from 'lucide-react'
+import { Loader2, CheckCircle, XCircle, AlertCircle, Clock, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useLinkingEvents, useCancelLinking } from '@/hooks/use-device-linking'
@@ -110,16 +103,16 @@ export function LinkingPending({
           <div className="space-y-2 text-center">
             <h2 className="text-xl font-semibold">Waiting for Approval</h2>
             <p className="text-sm text-muted-foreground">
-              A request has been sent to your other device. Please approve the
-              linking request there to continue.
+              A request has been sent to your other device. Please approve the linking request there
+              to continue.
             </p>
           </div>
 
           {/* Instructions */}
           <div className="rounded-lg border bg-muted/30 p-4">
             <p className="text-sm text-muted-foreground">
-              On your existing device, you should see a prompt asking you to approve
-              this new device. Once approved, your account will be linked automatically.
+              On your existing device, you should see a prompt asking you to approve this new
+              device. Once approved, your account will be linked automatically.
             </p>
           </div>
 
@@ -190,18 +183,12 @@ export function LinkingPending({
             </div>
           </div>
           <div className="space-y-2 text-center">
-            <h2 className="text-xl font-semibold text-destructive">
-              Request Rejected
-            </h2>
+            <h2 className="text-xl font-semibold text-destructive">Request Rejected</h2>
             <p className="text-sm text-muted-foreground">
               {rejectionReason || 'The linking request was rejected by the other device.'}
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={onCancel}
-            className="w-full"
-          >
+          <Button variant="outline" onClick={onCancel} className="w-full">
             Go Back
           </Button>
         </>
@@ -216,18 +203,12 @@ export function LinkingPending({
             </div>
           </div>
           <div className="space-y-2 text-center">
-            <h2 className="text-xl font-semibold text-destructive">
-              Something Went Wrong
-            </h2>
+            <h2 className="text-xl font-semibold text-destructive">Something Went Wrong</h2>
             <p className="text-sm text-muted-foreground">
               {_error || 'An error occurred while linking your device. Please try again.'}
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={onCancel}
-            className="w-full"
-          >
+          <Button variant="outline" onClick={onCancel} className="w-full">
             Go Back
           </Button>
         </>
@@ -243,9 +224,7 @@ export function LinkingPending({
           </div>
           <div className="space-y-2 text-center">
             <h2 className="text-xl font-semibold">Linking Cancelled</h2>
-            <p className="text-sm text-muted-foreground">
-              The linking process has been cancelled.
-            </p>
+            <p className="text-sm text-muted-foreground">The linking process has been cancelled.</p>
           </div>
         </>
       )}

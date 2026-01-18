@@ -14,13 +14,13 @@ import {
   getSyncQueue,
   resetSyncQueue,
   SyncPriority,
-  type QueueItemInput,
+  type QueueItemInput
 } from './queue'
 import { syncQueueStatus, syncItemType, syncOperation } from '@shared/db/schema/sync'
 
 // Mock getDatabase to return our test database
 vi.mock('../database/client', () => ({
-  getDatabase: vi.fn(),
+  getDatabase: vi.fn()
 }))
 
 import { getDatabase } from '../database/client'
@@ -56,7 +56,7 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-123',
         operation: syncOperation.CREATE,
-        payload: JSON.stringify({ id: 'task-123', title: 'Test Task' }),
+        payload: JSON.stringify({ id: 'task-123', title: 'Test Task' })
       }
 
       const item = await queue.addItem(input)
@@ -75,14 +75,14 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-123',
         operation: syncOperation.CREATE,
-        payload: JSON.stringify({ title: 'Original' }),
+        payload: JSON.stringify({ title: 'Original' })
       }
 
       const input2: QueueItemInput = {
         type: syncItemType.TASK,
         itemId: 'task-123',
         operation: syncOperation.UPDATE,
-        payload: JSON.stringify({ title: 'Updated' }),
+        payload: JSON.stringify({ title: 'Updated' })
       }
 
       await queue.addItem(input1)
@@ -101,14 +101,14 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'item-123',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       await queue.addItem({
         type: syncItemType.NOTE,
         itemId: 'item-123',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       const size = await queue.getQueueSize()
@@ -121,7 +121,7 @@ describe('sync queue', () => {
         itemId: 'task-123',
         operation: syncOperation.CREATE,
         payload: '{}',
-        priority: SyncPriority.CRITICAL,
+        priority: SyncPriority.CRITICAL
       })
 
       const items = await queue.getNextItems(1)
@@ -132,9 +132,24 @@ describe('sync queue', () => {
   describe('addItems', () => {
     it('should add multiple items', async () => {
       const inputs: QueueItemInput[] = [
-        { type: syncItemType.TASK, itemId: 'task-1', operation: syncOperation.CREATE, payload: '{}' },
-        { type: syncItemType.TASK, itemId: 'task-2', operation: syncOperation.CREATE, payload: '{}' },
-        { type: syncItemType.NOTE, itemId: 'note-1', operation: syncOperation.UPDATE, payload: '{}' },
+        {
+          type: syncItemType.TASK,
+          itemId: 'task-1',
+          operation: syncOperation.CREATE,
+          payload: '{}'
+        },
+        {
+          type: syncItemType.TASK,
+          itemId: 'task-2',
+          operation: syncOperation.CREATE,
+          payload: '{}'
+        },
+        {
+          type: syncItemType.NOTE,
+          itemId: 'note-1',
+          operation: syncOperation.UPDATE,
+          payload: '{}'
+        }
       ]
 
       const items = await queue.addItems(inputs)
@@ -155,7 +170,7 @@ describe('sync queue', () => {
         itemId: 'low',
         operation: syncOperation.CREATE,
         payload: '{}',
-        priority: SyncPriority.LOW,
+        priority: SyncPriority.LOW
       })
 
       await queue.addItem({
@@ -163,7 +178,7 @@ describe('sync queue', () => {
         itemId: 'critical',
         operation: syncOperation.CREATE,
         payload: '{}',
-        priority: SyncPriority.CRITICAL,
+        priority: SyncPriority.CRITICAL
       })
 
       await queue.addItem({
@@ -171,7 +186,7 @@ describe('sync queue', () => {
         itemId: 'normal',
         operation: syncOperation.CREATE,
         payload: '{}',
-        priority: SyncPriority.NORMAL,
+        priority: SyncPriority.NORMAL
       })
 
       const items = await queue.getNextItems(10)
@@ -187,7 +202,7 @@ describe('sync queue', () => {
           type: syncItemType.TASK,
           itemId: `task-${i}`,
           operation: syncOperation.CREATE,
-          payload: '{}',
+          payload: '{}'
         })
       }
 
@@ -200,7 +215,7 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-1',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       await queue.markInProgress(item.id)
@@ -216,7 +231,7 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-123',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       const item = await queue.getItem(created.id)
@@ -237,7 +252,7 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-123',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       // Simulate the first one being processed, then another update comes
@@ -256,7 +271,7 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-123',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       const updated = await queue.markInProgress(created.id)
@@ -271,7 +286,7 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-123',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       await queue.markInProgress(created.id)
@@ -289,7 +304,7 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-123',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       const removed = await queue.markProcessed(created.id)
@@ -311,7 +326,7 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-123',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       await queue.markInProgress(created.id)
@@ -326,7 +341,7 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-123',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       // Simulate 10 failed attempts (MAX_RETRY_ATTEMPTS)
@@ -336,8 +351,10 @@ describe('sync queue', () => {
         if (i < 9) {
           await testDb.db.run(
             testDb.db.update
-              ? require('drizzle-orm').sql`UPDATE sync_queue SET status = 'pending' WHERE id = ${created.id}`
-              : require('drizzle-orm').sql`UPDATE sync_queue SET status = 'pending' WHERE id = ${created.id}`
+              ? require('drizzle-orm')
+                  .sql`UPDATE sync_queue SET status = 'pending' WHERE id = ${created.id}`
+              : require('drizzle-orm')
+                  .sql`UPDATE sync_queue SET status = 'pending' WHERE id = ${created.id}`
           )
         }
       }
@@ -355,7 +372,7 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-123',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       await queue.markInProgress(created.id)
@@ -379,13 +396,13 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-1',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
       await queue.addItem({
         type: syncItemType.TASK,
         itemId: 'task-2',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       expect(await queue.getQueueSize()).toBe(2)
@@ -402,13 +419,13 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-1',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
       await queue.addItem({
         type: syncItemType.TASK,
         itemId: 'task-2',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       await queue.markInProgress(item.id)
@@ -423,19 +440,19 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-1',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
       await queue.addItem({
         type: syncItemType.TASK,
         itemId: 'task-2',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
       await queue.addItem({
         type: syncItemType.NOTE,
         itemId: 'note-1',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       expect(await queue.getPendingByType(syncItemType.TASK)).toBe(2)
@@ -450,13 +467,13 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-1',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
       await queue.addItem({
         type: syncItemType.NOTE,
         itemId: 'note-1',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       const stats = await queue.getStats()
@@ -476,13 +493,13 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-1',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
       await queue.addItem({
         type: syncItemType.TASK,
         itemId: 'task-2',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       const cleared = await queue.clearAll()
@@ -498,13 +515,13 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-1',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
       const item2 = await queue.addItem({
         type: syncItemType.TASK,
         itemId: 'task-2',
         operation: syncOperation.CREATE,
-        payload: '{}',
+        payload: '{}'
       })
 
       // Helper to simulate max retries and permanent failure
@@ -518,7 +535,8 @@ describe('sync queue', () => {
             if (item) {
               // Manually set status back to pending for next attempt
               await testDb.db.run(
-                require('drizzle-orm').sql`UPDATE sync_queue SET status = 'pending' WHERE id = ${itemId}`
+                require('drizzle-orm')
+                  .sql`UPDATE sync_queue SET status = 'pending' WHERE id = ${itemId}`
               )
             }
           }
@@ -574,7 +592,7 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-123',
         operation: syncOperation.CREATE,
-        payload: JSON.stringify({ title: 'New Task' }),
+        payload: JSON.stringify({ title: 'New Task' })
       })
 
       // Update before sync completes (coalesces)
@@ -582,7 +600,7 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-123',
         operation: syncOperation.UPDATE,
-        payload: JSON.stringify({ title: 'Updated Task' }),
+        payload: JSON.stringify({ title: 'Updated Task' })
       })
 
       // Should have only 1 item (coalesced)
@@ -602,7 +620,7 @@ describe('sync queue', () => {
         type: syncItemType.TASK,
         itemId: 'task-123',
         operation: syncOperation.DELETE,
-        payload: JSON.stringify({ id: 'task-123' }),
+        payload: JSON.stringify({ id: 'task-123' })
       })
 
       expect(await queue.getQueueSize()).toBe(1)
@@ -615,7 +633,7 @@ describe('sync queue', () => {
         itemId: 'note-bg',
         operation: syncOperation.UPDATE,
         payload: '{}',
-        priority: SyncPriority.BACKGROUND,
+        priority: SyncPriority.BACKGROUND
       })
 
       // Add normal task update
@@ -624,7 +642,7 @@ describe('sync queue', () => {
         itemId: 'task-normal',
         operation: syncOperation.UPDATE,
         payload: '{}',
-        priority: SyncPriority.NORMAL,
+        priority: SyncPriority.NORMAL
       })
 
       // Add critical settings change
@@ -633,7 +651,7 @@ describe('sync queue', () => {
         itemId: 'settings-1',
         operation: syncOperation.UPDATE,
         payload: '{}',
-        priority: SyncPriority.CRITICAL,
+        priority: SyncPriority.CRITICAL
       })
 
       const items = await queue.getNextItems(3)
@@ -647,11 +665,36 @@ describe('sync queue', () => {
     it('should handle multiple item types concurrently', async () => {
       // Simulate user making multiple changes
       await queue.addItems([
-        { type: syncItemType.TASK, itemId: 'task-1', operation: syncOperation.CREATE, payload: '{}' },
-        { type: syncItemType.TASK, itemId: 'task-2', operation: syncOperation.UPDATE, payload: '{}' },
-        { type: syncItemType.NOTE, itemId: 'note-1', operation: syncOperation.UPDATE, payload: '{}' },
-        { type: syncItemType.PROJECT, itemId: 'project-1', operation: syncOperation.UPDATE, payload: '{}' },
-        { type: syncItemType.INBOX_ITEM, itemId: 'inbox-1', operation: syncOperation.CREATE, payload: '{}' },
+        {
+          type: syncItemType.TASK,
+          itemId: 'task-1',
+          operation: syncOperation.CREATE,
+          payload: '{}'
+        },
+        {
+          type: syncItemType.TASK,
+          itemId: 'task-2',
+          operation: syncOperation.UPDATE,
+          payload: '{}'
+        },
+        {
+          type: syncItemType.NOTE,
+          itemId: 'note-1',
+          operation: syncOperation.UPDATE,
+          payload: '{}'
+        },
+        {
+          type: syncItemType.PROJECT,
+          itemId: 'project-1',
+          operation: syncOperation.UPDATE,
+          payload: '{}'
+        },
+        {
+          type: syncItemType.INBOX_ITEM,
+          itemId: 'inbox-1',
+          operation: syncOperation.CREATE,
+          payload: '{}'
+        }
       ])
 
       const stats = await queue.getStats()

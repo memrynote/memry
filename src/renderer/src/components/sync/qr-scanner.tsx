@@ -8,14 +8,7 @@
  */
 
 import { useState, useCallback } from 'react'
-import {
-  Loader2,
-  ClipboardPaste,
-  AlertCircle,
-  Smartphone,
-  QrCode,
-  X
-} from 'lucide-react'
+import { Loader2, ClipboardPaste, AlertCircle, Smartphone, QrCode, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -28,10 +21,7 @@ import { cn } from '@/lib/utils'
 
 interface QRScannerProps {
   /** Called when user submits valid QR data */
-  onSubmit: (data: {
-    qrData: string
-    deviceName: string
-  }) => Promise<void>
+  onSubmit: (data: { qrData: string; deviceName: string }) => Promise<void>
   /** Called when user cancels the flow */
   onCancel: () => void
   /** Whether submission is in progress */
@@ -78,10 +68,10 @@ function isExpired(expiresAt: number): boolean {
 
 function getDefaultDeviceName(): string {
   const platform = navigator.platform.toLowerCase()
-  if (platform.includes('mac')) return "My Mac"
-  if (platform.includes('win')) return "My Windows PC"
-  if (platform.includes('linux')) return "My Linux Computer"
-  return "My Computer"
+  if (platform.includes('mac')) return 'My Mac'
+  if (platform.includes('win')) return 'My Windows PC'
+  if (platform.includes('linux')) return 'My Linux Computer'
+  return 'My Computer'
 }
 
 // =============================================================================
@@ -115,7 +105,9 @@ export function QRScanner({
     }
 
     if (isExpired(parsed.expiresAt)) {
-      setValidationError('This linking code has expired. Please generate a new one on the other device.')
+      setValidationError(
+        'This linking code has expired. Please generate a new one on the other device.'
+      )
       return
     }
 
@@ -133,33 +125,36 @@ export function QRScanner({
   }, [handleQRInputChange])
 
   // Submit
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
 
-    if (!parsedData) {
-      setValidationError('Please enter a valid linking code')
-      return
-    }
+      if (!parsedData) {
+        setValidationError('Please enter a valid linking code')
+        return
+      }
 
-    if (!deviceName.trim()) {
-      setValidationError('Please enter a device name')
-      return
-    }
+      if (!deviceName.trim()) {
+        setValidationError('Please enter a device name')
+        return
+      }
 
-    if (deviceName.trim().length > 100) {
-      setValidationError('Device name must be 100 characters or less')
-      return
-    }
+      if (deviceName.trim().length > 100) {
+        setValidationError('Device name must be 100 characters or less')
+        return
+      }
 
-    try {
-      await onSubmit({
-        qrData: qrInput.trim(),
-        deviceName: deviceName.trim()
-      })
-    } catch (err) {
-      // Error is handled by parent via error prop
-    }
-  }, [parsedData, deviceName, qrInput, onSubmit])
+      try {
+        await onSubmit({
+          qrData: qrInput.trim(),
+          deviceName: deviceName.trim()
+        })
+      } catch (err) {
+        // Error is handled by parent via error prop
+      }
+    },
+    [parsedData, deviceName, qrInput, onSubmit]
+  )
 
   const displayError = externalError || validationError
   const isValid = parsedData !== null && deviceName.trim().length > 0
@@ -173,20 +168,15 @@ export function QRScanner({
           <Smartphone className="size-5 text-primary" aria-hidden="true" />
           <h2 className="text-lg font-semibold">Link to Existing Account</h2>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onCancel}
-          aria-label="Cancel"
-        >
+        <Button variant="ghost" size="icon" onClick={onCancel} aria-label="Cancel">
           <X className="size-4" />
         </Button>
       </div>
 
       {/* Description */}
       <p className="text-sm text-muted-foreground">
-        On your existing device, go to Settings &gt; Devices &gt; Link New Device
-        to get a linking code. Then paste it below.
+        On your existing device, go to Settings &gt; Devices &gt; Link New Device to get a linking
+        code. Then paste it below.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -258,11 +248,7 @@ export function QRScanner({
 
         {/* Actions */}
         <div className="space-y-3 pt-2">
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={!canSubmit}
-          >
+          <Button type="submit" className="w-full" disabled={!canSubmit}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
@@ -288,9 +274,8 @@ export function QRScanner({
       {/* Help Text */}
       <div className="rounded-lg border bg-muted/30 p-4">
         <p className="text-xs text-muted-foreground">
-          <strong>Note:</strong> After submitting, the other device will need
-          to approve this linking request. Keep this window open until the
-          process completes.
+          <strong>Note:</strong> After submitting, the other device will need to approve this
+          linking request. Keep this window open until the process completes.
         </p>
       </div>
     </div>

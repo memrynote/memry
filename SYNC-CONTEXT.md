@@ -8,16 +8,16 @@
 
 ## Quick Status
 
-| Phase | Name | Status | Tasks |
-|-------|------|--------|-------|
-| 1 | Setup | ✅ Complete | 13/13 |
-| 2 | Foundational | ✅ Complete | 28/28 |
-| 3 | US1 - First Device Setup | ✅ Complete | 32/32 (Server: 17/17, Client: 9/9, UI: 14/14) |
-| 4 | US2 - Cross-Device Sync | 🔲 Not Started | 0/30 |
-| 5 | US3 - QR Device Linking | 🔲 Not Started | 0/18 |
-| 6 | US4 - Recovery Phrase Linking | 🔲 Not Started | 0/7 |
-| 7 | US5 - Note CRDT Merge | 🔲 Not Started | 0/12 |
-| 8-19 | US6-18 + Polish | 🔲 Not Started | 0/132 |
+| Phase | Name                          | Status         | Tasks                                         |
+| ----- | ----------------------------- | -------------- | --------------------------------------------- |
+| 1     | Setup                         | ✅ Complete    | 13/13                                         |
+| 2     | Foundational                  | ✅ Complete    | 28/28                                         |
+| 3     | US1 - First Device Setup      | ✅ Complete    | 32/32 (Server: 17/17, Client: 9/9, UI: 14/14) |
+| 4     | US2 - Cross-Device Sync       | 🔲 Not Started | 0/30                                          |
+| 5     | US3 - QR Device Linking       | 🔲 Not Started | 0/18                                          |
+| 6     | US4 - Recovery Phrase Linking | 🔲 Not Started | 0/7                                           |
+| 7     | US5 - Note CRDT Merge         | 🔲 Not Started | 0/12                                          |
+| 8-19  | US6-18 + Polish               | 🔲 Not Started | 0/132                                         |
 
 **Total Progress**: 81/272 tasks (30%)
 
@@ -26,7 +26,9 @@
 ## Completed Components (DO NOT RE-IMPLEMENT)
 
 ### Crypto Module (`src/main/crypto/`) - 100% Complete
+
 All files fully implemented with comprehensive tests:
+
 - `keys.ts` - HKDF, Argon2id, Ed25519 key derivation
 - `encryption.ts` - XChaCha20-Poly1305 AEAD, file key wrapping
 - `signatures.ts` - Ed25519 over canonical CBOR
@@ -38,20 +40,24 @@ All files fully implemented with comprehensive tests:
 **Tests**: 6 test files in `tests/unit/crypto/`
 
 ### Vector Clock (`src/main/sync/vector-clock.ts`) - 100% Complete
+
 - create, increment, merge, compare operations
 - Serialization/deserialization
 - Causality detection (isAncestor, isConcurrent, dominates)
 
 ### Shared Contracts (`src/shared/contracts/`) - 100% Complete
+
 - `crypto.ts` - Encryption types, key hierarchy, linking types
 - `sync-api.ts` - Sync status, queue items, device types
 - `ipc-sync.ts` - All IPC channels and event types
 
 ### Database Schema (`src/shared/db/schema/`) - 100% Complete
+
 - `sync.ts` - localDevices, syncQueue, syncState, syncHistory tables
 - Migrations generated and applied
 
 ### Sync Server Auth (`sync-server/`) - US1 Server Complete
+
 - Hono.js app entry point with error handling
 - JWT auth middleware with token creation/verification
 - Rate limiting middleware structure
@@ -73,6 +79,7 @@ All files fully implemented with comprehensive tests:
 ## Architecture Reference
 
 ### Key Derivation Hierarchy
+
 ```
 BIP39 Recovery Phrase (24 words)
     ↓ Argon2id (64MB, 3 iter) + kdf_salt
@@ -83,6 +90,7 @@ Master Key (32 bytes)
 ```
 
 ### Sync Protocol
+
 ```
 Client                          Server
    │                               │
@@ -96,6 +104,7 @@ Client                          Server
 ```
 
 ### Critical Files Map
+
 ```
 Implementation:
 ├── src/main/crypto/          # ✅ Complete
@@ -129,6 +138,7 @@ Specs (read-only reference):
 **User Story 1 is 100% complete!** All 32 tasks done:
 
 #### Server Implementation (T042-T053) ✅
+
 - Email signup/verification/login endpoints
 - Forgot/reset/change password endpoints
 - OAuth initiation and callback (Google, Apple, GitHub)
@@ -136,12 +146,14 @@ Specs (read-only reference):
 - Password, User, Auth, Device services
 
 #### Client Implementation (T054-T062) ✅
+
 - API client for sync server
 - All IPC handlers for auth flows
 - Password validation, OAuth with PKCE
 - First device setup with keychain
 
 #### UI Implementation (T063-T073) ✅
+
 - `auth-service.ts` - Renderer API wrapper
 - `use-auth.ts` - TanStack Query hooks
 - `auth-context.tsx` - AuthProvider context
@@ -159,6 +171,7 @@ Specs (read-only reference):
 **Ready to start** - No blocking dependencies
 
 Key tasks:
+
 - T074-T081: Sync Engine Core (queue, WebSocket, retry logic)
 - T082-T089: Server Sync Endpoints (push/pull/manifest)
 - T090-T093: Durable Objects for WebSocket
@@ -170,6 +183,7 @@ Key tasks:
 ## Session History
 
 ### 2026-01-15 - Phase 3 UI Implementation Complete (US1 Done!)
+
 - Implemented all 14 UI tasks for US1 (T063-T073):
   - `auth-service.ts` - Service wrapper for window.api.sync/crypto
   - `use-auth.ts` - TanStack Query hooks for auth operations
@@ -191,6 +205,7 @@ Key tasks:
 - Progress: 67 → 81 tasks complete (25% → 30%)
 
 ### 2026-01-15 - Phase 3 Client Implementation Complete
+
 - Created `src/main/sync/api-client.ts` - HTTP wrapper for sync server
 - Implemented all 9 client IPC handlers in `sync-handlers.ts`:
   - Email signup/login/verify handlers
@@ -203,6 +218,7 @@ Key tasks:
 - Progress: 58 → 67 tasks complete (21% → 25%)
 
 ### 2026-01-15 - Phase 3 Server Implementation Complete
+
 - Implemented all 17 server tasks for US1 (T042-T053)
 - Created services: user.ts, password.ts, auth.ts, device.ts
 - Created auth routes with 12+ endpoints
@@ -211,6 +227,7 @@ Key tasks:
 - Progress: 41 → 58 tasks complete (15% → 21%)
 
 ### 2026-01-15 - Context Document Created
+
 - Explored full spec and implementation state
 - Created SYNC-CONTEXT.md for persistent context
 - Verified: Phase 1 & 2 complete (41 tasks)
@@ -252,6 +269,7 @@ pnpm typecheck
 ## Update Protocol
 
 After each session:
+
 1. Update the "Last Updated" date at the top
 2. Update task completion counts in Quick Status table
 3. Add a new entry to Session History with date and summary

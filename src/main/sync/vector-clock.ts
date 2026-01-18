@@ -28,7 +28,7 @@ export enum ClockComparison {
   BEFORE = -1,
   AFTER = 1,
   CONCURRENT = 0,
-  EQUAL = 2,
+  EQUAL = 2
 }
 
 // =============================================================================
@@ -65,7 +65,7 @@ export function createClock(): VectorClock {
 export function incrementClock(clock: VectorClock, deviceId: string): VectorClock {
   return {
     ...clock,
-    [deviceId]: (clock[deviceId] ?? 0) + 1,
+    [deviceId]: (clock[deviceId] ?? 0) + 1
   }
 }
 

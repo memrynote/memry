@@ -111,7 +111,11 @@ export function signRaw(message: Uint8Array | Buffer, secretKey: Buffer): Buffer
  * @param publicKey - 32-byte Ed25519 public key
  * @returns true if signature is valid
  */
-export function verifyRaw(signature: Buffer, message: Uint8Array | Buffer, publicKey: Buffer): boolean {
+export function verifyRaw(
+  signature: Buffer,
+  message: Uint8Array | Buffer,
+  publicKey: Buffer
+): boolean {
   if (signature.length !== SIGNATURE_LENGTH || publicKey.length !== PUBLIC_KEY_LENGTH) {
     return false
   }
@@ -210,7 +214,11 @@ export function signToBase64(data: unknown, secretKey: Buffer): string {
  * @param publicKey - Ed25519 public key
  * @returns true if signature is valid
  */
-export function verifyFromBase64(signatureBase64: string, data: unknown, publicKey: Buffer): boolean {
+export function verifyFromBase64(
+  signatureBase64: string,
+  data: unknown,
+  publicKey: Buffer
+): boolean {
   try {
     const signature = Buffer.from(signatureBase64, 'base64')
     return verify(signature, data, publicKey)

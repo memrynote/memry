@@ -1310,8 +1310,7 @@ const api = {
     /** Get current setup status */
     getSetupStatus: () => ipcRenderer.invoke(SyncChannels.invoke.GET_SETUP_STATUS),
     /** Setup first device (completes signup after recovery phrase confirmation) */
-    setupFirstDevice: () =>
-      ipcRenderer.invoke(SyncChannels.invoke.SETUP_FIRST_DEVICE),
+    setupFirstDevice: () => ipcRenderer.invoke(SyncChannels.invoke.SETUP_FIRST_DEVICE),
 
     // Auth (Email)
     /** Email signup (creates account + first device) */
@@ -1321,8 +1320,7 @@ const api = {
     emailLogin: (input: { email: string; password: string; deviceName: string }) =>
       ipcRenderer.invoke(SyncChannels.invoke.EMAIL_LOGIN, input),
     /** Verify email address */
-    emailVerify: (token: string) =>
-      ipcRenderer.invoke(SyncChannels.invoke.EMAIL_VERIFY, { token }),
+    emailVerify: (token: string) => ipcRenderer.invoke(SyncChannels.invoke.EMAIL_VERIFY, { token }),
     /** Resend verification email */
     resendVerification: () => ipcRenderer.invoke(SyncChannels.invoke.RESEND_VERIFICATION),
     /** Request password reset */
@@ -1420,7 +1418,8 @@ const api = {
   crypto: {
     // Recovery Phrase
     /** Generate a new recovery phrase */
-    generateRecoveryPhrase: () => ipcRenderer.invoke(CryptoChannels.invoke.GENERATE_RECOVERY_PHRASE),
+    generateRecoveryPhrase: () =>
+      ipcRenderer.invoke(CryptoChannels.invoke.GENERATE_RECOVERY_PHRASE),
     /** Validate a recovery phrase */
     validateRecoveryPhrase: (phrase: string) =>
       ipcRenderer.invoke(CryptoChannels.invoke.VALIDATE_RECOVERY_PHRASE, { phrase }),
@@ -1494,13 +1493,9 @@ const api = {
   // ==========================================================================
 
   /** Subscribe to sync status changes */
-  onSyncStatusChanged: (
-    callback: (event: { status: unknown }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { status: unknown }
-    ): void => callback(data)
+  onSyncStatusChanged: (callback: (event: { status: unknown }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { status: unknown }): void =>
+      callback(data)
     ipcRenderer.on(SyncChannels.events.STATUS_CHANGED, handler)
     return () => ipcRenderer.removeListener(SyncChannels.events.STATUS_CHANGED, handler)
   },
@@ -1574,13 +1569,9 @@ const api = {
   },
 
   /** Subscribe to device linking expired events */
-  onSyncLinkingExpired: (
-    callback: (event: { sessionId: string }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { sessionId: string }
-    ): void => callback(data)
+  onSyncLinkingExpired: (callback: (event: { sessionId: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { sessionId: string }): void =>
+      callback(data)
     ipcRenderer.on(SyncChannels.events.LINKING_EXPIRED, handler)
     return () => ipcRenderer.removeListener(SyncChannels.events.LINKING_EXPIRED, handler)
   },
@@ -1652,13 +1643,9 @@ const api = {
   },
 
   /** Subscribe to OAuth auth error events (loopback flow) */
-  onAuthError: (
-    callback: (event: { error: string }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { error: string }
-    ): void => callback(data)
+  onAuthError: (callback: (event: { error: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { error: string }): void =>
+      callback(data)
     ipcRenderer.on(SyncChannels.events.AUTH_ERROR, handler)
     return () => ipcRenderer.removeListener(SyncChannels.events.AUTH_ERROR, handler)
   },

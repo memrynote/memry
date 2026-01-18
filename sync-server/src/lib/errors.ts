@@ -21,7 +21,7 @@ export class SyncServerError extends Error {
     return {
       error: this.code,
       message: this.message,
-      statusCode: this.statusCode,
+      statusCode: this.statusCode
     }
   }
 }
@@ -71,7 +71,7 @@ export class ValidationError extends SyncServerError {
   toJSON() {
     return {
       ...super.toJSON(),
-      details: this.details,
+      details: this.details
     }
   }
 }

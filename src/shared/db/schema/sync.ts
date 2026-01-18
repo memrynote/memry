@@ -19,7 +19,7 @@ export const devicePlatform = {
   WINDOWS: 'windows',
   LINUX: 'linux',
   IOS: 'ios',
-  ANDROID: 'android',
+  ANDROID: 'android'
 } as const
 
 export type DevicePlatform = (typeof devicePlatform)[keyof typeof devicePlatform]
@@ -33,7 +33,7 @@ export const syncStatus = {
   IDLE: 'idle',
   SYNCING: 'syncing',
   OFFLINE: 'offline',
-  ERROR: 'error',
+  ERROR: 'error'
 } as const
 
 export type SyncStatus = (typeof syncStatus)[keyof typeof syncStatus]
@@ -45,7 +45,7 @@ export type SyncStatus = (typeof syncStatus)[keyof typeof syncStatus]
 export const syncQueueStatus = {
   PENDING: 'pending',
   IN_PROGRESS: 'in_progress',
-  FAILED: 'failed',
+  FAILED: 'failed'
 } as const
 
 export type SyncQueueStatus = (typeof syncQueueStatus)[keyof typeof syncQueueStatus]
@@ -61,7 +61,7 @@ export const syncItemType = {
   SETTINGS: 'settings',
   ATTACHMENT: 'attachment',
   INBOX_ITEM: 'inbox_item',
-  SAVED_FILTER: 'saved_filter',
+  SAVED_FILTER: 'saved_filter'
 } as const
 
 export type SyncItemType = (typeof syncItemType)[keyof typeof syncItemType]
@@ -73,7 +73,7 @@ export type SyncItemType = (typeof syncItemType)[keyof typeof syncItemType]
 export const syncOperation = {
   CREATE: 'create',
   UPDATE: 'update',
-  DELETE: 'delete',
+  DELETE: 'delete'
 } as const
 
 export type SyncOperation = (typeof syncOperation)[keyof typeof syncOperation]
@@ -116,11 +116,11 @@ export const localDevices = sqliteTable(
     isCurrentDevice: integer('is_current_device', { mode: 'boolean' }).default(false),
 
     /** When the device was revoked (soft delete) */
-    revokedAt: text('revoked_at'),
+    revokedAt: text('revoked_at')
   },
   (table) => [
     index('idx_local_devices_current').on(table.isCurrentDevice),
-    index('idx_local_devices_revoked').on(table.revokedAt),
+    index('idx_local_devices_revoked').on(table.revokedAt)
   ]
 )
 
@@ -171,13 +171,13 @@ export const syncQueue = sqliteTable(
     /** When the item was queued */
     createdAt: text('created_at')
       .notNull()
-      .default(sql`(datetime('now'))`),
+      .default(sql`(datetime('now'))`)
   },
   (table) => [
     index('idx_sync_queue_type').on(table.type),
     index('idx_sync_queue_status').on(table.status),
     index('idx_sync_queue_created').on(table.createdAt),
-    index('idx_sync_queue_priority').on(table.priority),
+    index('idx_sync_queue_priority').on(table.priority)
   ]
 )
 
@@ -202,7 +202,7 @@ export const syncState = sqliteTable('sync_state', {
   /** Last update timestamp */
   updatedAt: text('updated_at')
     .notNull()
-    .default(sql`(datetime('now'))`),
+    .default(sql`(datetime('now'))`)
 })
 
 export type SyncStateEntry = typeof syncState.$inferSelect
@@ -238,7 +238,7 @@ export const SYNC_STATE_KEYS = {
   DEVICE_ID: 'device_id',
 
   /** Whether initial sync has completed */
-  INITIAL_SYNC_COMPLETE: 'initial_sync_complete',
+  INITIAL_SYNC_COMPLETE: 'initial_sync_complete'
 } as const
 
 export type SyncStateKey = (typeof SYNC_STATE_KEYS)[keyof typeof SYNC_STATE_KEYS]
@@ -275,9 +275,12 @@ export const syncHistory = sqliteTable(
     /** When the operation occurred */
     createdAt: text('created_at')
       .notNull()
-      .default(sql`(datetime('now'))`),
+      .default(sql`(datetime('now'))`)
   },
-  (table) => [index('idx_sync_history_created').on(table.createdAt), index('idx_sync_history_type').on(table.type)]
+  (table) => [
+    index('idx_sync_history_created').on(table.createdAt),
+    index('idx_sync_history_type').on(table.type)
+  ]
 )
 
 export type SyncHistoryEntry = typeof syncHistory.$inferSelect
@@ -290,14 +293,14 @@ export type NewSyncHistoryEntry = typeof syncHistory.$inferInsert
 export const syncHistoryType = {
   PUSH: 'push',
   PULL: 'pull',
-  ERROR: 'error',
+  ERROR: 'error'
 } as const
 
 export type SyncHistoryType = (typeof syncHistoryType)[keyof typeof syncHistoryType]
 
 export const syncDirection = {
   UPLOAD: 'upload',
-  DOWNLOAD: 'download',
+  DOWNLOAD: 'download'
 } as const
 
 export type SyncDirection = (typeof syncDirection)[keyof typeof syncDirection]

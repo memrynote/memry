@@ -11,6 +11,7 @@ Implement a comprehensive sync engine with end-to-end encryption (E2EE) for Memr
 
 **Language/Version**: TypeScript 5.3+ (strict mode), Node.js 20+
 **Primary Dependencies**:
+
 - Electron 28+ with electron-vite (existing)
 - React 19 (existing)
 - Drizzle ORM + better-sqlite3 (existing)
@@ -22,6 +23,7 @@ Implement a comprehensive sync engine with end-to-end encryption (E2EE) for Memr
 - Hono.js (sync server on Cloudflare Workers)
 
 **Storage**:
+
 - Client: SQLite (data.db for tasks, index.db for notes cache) + IndexedDB (sync queue, Yjs persistence)
 - Server: Cloudflare D1 (metadata) + R2 (encrypted blobs)
 
@@ -30,6 +32,7 @@ Implement a comprehensive sync engine with end-to-end encryption (E2EE) for Memr
 **Project Type**: Electron desktop app + Cloudflare Workers API
 
 **Performance Goals**:
+
 - Single item sync: < 2 seconds
 - Batch sync (100 items): < 30 seconds
 - Initial sync (1000 items): < 5 minutes
@@ -37,6 +40,7 @@ Implement a comprehensive sync engine with end-to-end encryption (E2EE) for Memr
 - 10,000+ items without degradation
 
 **Constraints**:
+
 - Zero-knowledge server (only encrypted blobs)
 - Offline-first (full functionality without internet)
 - UI never blocked during sync
@@ -44,6 +48,7 @@ Implement a comprehensive sync engine with end-to-end encryption (E2EE) for Memr
 - XChaCha20-Poly1305 encryption (24-byte nonces)
 
 **Scale/Scope**:
+
 - 5GB storage per user
 - Up to 10,000 items per vault
 - Up to 10 linked devices per account
@@ -51,22 +56,22 @@ Implement a comprehensive sync engine with end-to-end encryption (E2EE) for Memr
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-| Principle | Status | Notes |
-|-----------|--------|-------|
-| **Local-First Architecture** | PASS | Data lives on device, sync is enhancement not requirement |
-| **End-to-End Encryption** | PASS | Zero-knowledge server, client-side encryption |
-| **No Vendor Lock-In** | PASS | Notes remain .md files, tasks exportable |
-| **Privacy by Design** | PASS | Minimal metadata exposure, no telemetry |
-| **Offline-First** | PASS | All features work without internet |
-| **File System as Source of Truth** | PASS | .md files authoritative, encrypted for sync |
-| **Database for Structured Data** | PASS | Tasks/projects in SQLite, synced as encrypted blob |
-| **Type Safety** | PASS | Full TypeScript strict mode, Zod validation |
-| **Performance** | PASS | Targets defined and measurable |
-| **Encryption Standards** | PASS | XChaCha20-Poly1305, Argon2id, Ed25519 |
-| **Key Management** | PASS | Keychain storage, BIP39 recovery |
-| **Secure Communication** | PASS | TLS 1.3, certificate pinning planned |
+| Principle                          | Status | Notes                                                     |
+| ---------------------------------- | ------ | --------------------------------------------------------- |
+| **Local-First Architecture**       | PASS   | Data lives on device, sync is enhancement not requirement |
+| **End-to-End Encryption**          | PASS   | Zero-knowledge server, client-side encryption             |
+| **No Vendor Lock-In**              | PASS   | Notes remain .md files, tasks exportable                  |
+| **Privacy by Design**              | PASS   | Minimal metadata exposure, no telemetry                   |
+| **Offline-First**                  | PASS   | All features work without internet                        |
+| **File System as Source of Truth** | PASS   | .md files authoritative, encrypted for sync               |
+| **Database for Structured Data**   | PASS   | Tasks/projects in SQLite, synced as encrypted blob        |
+| **Type Safety**                    | PASS   | Full TypeScript strict mode, Zod validation               |
+| **Performance**                    | PASS   | Targets defined and measurable                            |
+| **Encryption Standards**           | PASS   | XChaCha20-Poly1305, Argon2id, Ed25519                     |
+| **Key Management**                 | PASS   | Keychain storage, BIP39 recovery                          |
+| **Secure Communication**           | PASS   | TLS 1.3, certificate pinning planned                      |
 
 **Gate Status**: PASS - All principles satisfied
 
@@ -199,16 +204,17 @@ tests/
 
 ## Complexity Tracking
 
-| Component | Complexity | Justification |
-|-----------|------------|---------------|
-| Separate sync-server project | Moderate | Required for edge deployment, WebSocket support via Durable Objects |
-| Multiple crypto algorithms | Moderate | XChaCha20 (encryption), Ed25519 (signing), X25519 (key exchange), Argon2id (KDF) - all industry standard |
-| CRDT + Vector Clock hybrid | Moderate | Notes need CRDTs for rich text merge, tasks need simpler LWW - different data models |
-| IndexedDB + SQLite dual storage | Low | IndexedDB for browser-context data (sync queue), SQLite for persistent data - existing pattern |
+| Component                       | Complexity | Justification                                                                                            |
+| ------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------- |
+| Separate sync-server project    | Moderate   | Required for edge deployment, WebSocket support via Durable Objects                                      |
+| Multiple crypto algorithms      | Moderate   | XChaCha20 (encryption), Ed25519 (signing), X25519 (key exchange), Argon2id (KDF) - all industry standard |
+| CRDT + Vector Clock hybrid      | Moderate   | Notes need CRDTs for rich text merge, tasks need simpler LWW - different data models                     |
+| IndexedDB + SQLite dual storage | Low        | IndexedDB for browser-context data (sync queue), SQLite for persistent data - existing pattern           |
 
 ## Implementation Phases
 
 ### Phase 1: Cryptography Foundation
+
 - Key derivation (Argon2id + HKDF)
 - Recovery phrase generation (BIP39)
 - Keychain integration (keytar)
@@ -217,6 +223,7 @@ tests/
 - Unit tests for all crypto
 
 ### Phase 2: First Device Setup
+
 - Email/password signup with verification
 - OAuth flow integration (Google, Apple, GitHub)
 - Password validation (min 12 chars, complexity)
@@ -225,6 +232,7 @@ tests/
 - Device registration
 
 ### Phase 3: Sync Server Infrastructure
+
 - Cloudflare Workers setup
 - D1 schema
 - R2 configuration
@@ -232,6 +240,7 @@ tests/
 - Basic sync endpoints
 
 ### Phase 4: Client Sync Engine
+
 - IndexedDB sync queue
 - Sync engine class
 - WebSocket connection
@@ -239,35 +248,42 @@ tests/
 - Retry logic
 
 ### Phase 5: Note Sync (CRDT)
+
 - Yjs integration
 - Encrypted sync provider
 - Snapshot compaction
 
 ### Phase 6: Task/Settings Sync
+
 - Vector clock implementation
 - Field-level merge
 - Task sync handlers
 
 ### Phase 7: Device Linking
+
 - QR code generation
 - ECDH key exchange
 - Approval flow
 
 ### Phase 8: Binary Attachments
+
 - Chunked upload/download
 - Deduplication
 - Resumable uploads
 
 ### Phase 9: Sync Status & History
+
 - Status indicator
 - Activity history
 - Manual sync
 
 ### Phase 10: Device Management
+
 - Device list
 - Device removal
 
 ### Phase 11: Advanced Features (P3)
+
 - Local-only content
 - Selective sync
 - Data usage
@@ -279,17 +295,17 @@ Validate performance targets before release.
 
 #### Test Scenarios
 
-| Scenario | Target | Method |
-|----------|--------|--------|
-| Single item sync | < 2s | Automated benchmark |
-| Batch sync (100 items) | < 30s | Automated benchmark |
-| Initial sync (1000 items) | < 5 min | Automated benchmark |
-| Initial sync (10000 items) | < 15 min | Manual test |
-| Note edit latency | < 500ms | Real-time measurement |
-| 50MB attachment upload | < 30s | Automated benchmark |
-| Video streaming start | < 5s | Manual test |
-| Memory usage (10k items) | < 500MB | Profiling |
-| WebSocket reconnection | < 5s | Network simulation |
+| Scenario                   | Target   | Method                |
+| -------------------------- | -------- | --------------------- |
+| Single item sync           | < 2s     | Automated benchmark   |
+| Batch sync (100 items)     | < 30s    | Automated benchmark   |
+| Initial sync (1000 items)  | < 5 min  | Automated benchmark   |
+| Initial sync (10000 items) | < 15 min | Manual test           |
+| Note edit latency          | < 500ms  | Real-time measurement |
+| 50MB attachment upload     | < 30s    | Automated benchmark   |
+| Video streaming start      | < 5s     | Manual test           |
+| Memory usage (10k items)   | < 500MB  | Profiling             |
+| WebSocket reconnection     | < 5s     | Network simulation    |
 
 #### Test Infrastructure
 
@@ -298,14 +314,22 @@ Validate performance targets before release.
 import { describe, bench } from 'vitest'
 
 describe('sync performance', () => {
-  bench('single item sync', async () => {
-    await syncEngine.push([createTestItem()])
-  }, { iterations: 100 })
+  bench(
+    'single item sync',
+    async () => {
+      await syncEngine.push([createTestItem()])
+    },
+    { iterations: 100 }
+  )
 
-  bench('batch sync 100 items', async () => {
-    const items = Array.from({ length: 100 }, createTestItem)
-    await syncEngine.push(items)
-  }, { iterations: 10 })
+  bench(
+    'batch sync 100 items',
+    async () => {
+      const items = Array.from({ length: 100 }, createTestItem)
+      await syncEngine.push(items)
+    },
+    { iterations: 10 }
+  )
 })
 ```
 

@@ -90,32 +90,31 @@ function GlobalLinkingApproval(): React.JSX.Element | null {
   }, [])
 
   // Handle approve
-  const handleApprove = useCallback(async (input: {
-    sessionId: string
-    newDevicePublicKey: string
-    newDeviceConfirm: string
-  }) => {
-    setApprovalError(null)
+  const handleApprove = useCallback(
+    async (input: { sessionId: string; newDevicePublicKey: string; newDeviceConfirm: string }) => {
+      setApprovalError(null)
 
-    try {
-      const result = await approveLinking.mutateAsync({
-        sessionId: input.sessionId,
-        newDevicePublicKey: input.newDevicePublicKey,
-        newDeviceConfirm: input.newDeviceConfirm
-      })
+      try {
+        const result = await approveLinking.mutateAsync({
+          sessionId: input.sessionId,
+          newDevicePublicKey: input.newDevicePublicKey,
+          newDeviceConfirm: input.newDeviceConfirm
+        })
 
-      if (!result.success) {
-        setApprovalError(result.error || 'Failed to approve linking')
-        return
+        if (!result.success) {
+          setApprovalError(result.error || 'Failed to approve linking')
+          return
+        }
+
+        // Success - mark as approved before closing dialog
+        approvedRef.current = true
+        setLinkingRequest(null)
+      } catch (err) {
+        setApprovalError(err instanceof Error ? err.message : 'Failed to approve linking')
       }
-
-      // Success - mark as approved before closing dialog
-      approvedRef.current = true
-      setLinkingRequest(null)
-    } catch (err) {
-      setApprovalError(err instanceof Error ? err.message : 'Failed to approve linking')
-    }
-  }, [approveLinking])
+    },
+    [approveLinking]
+  )
 
   // Handle reject
   const handleReject = useCallback(async () => {

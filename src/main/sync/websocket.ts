@@ -221,6 +221,7 @@ export class WebSocketManager extends EventEmitter {
    * Send a ping to check connection.
    */
   sendPing(): void {
+    console.log('[WebSocket] Sending heartbeat ping')
     this.send({ type: 'ping' })
   }
 
@@ -315,6 +316,7 @@ export class WebSocketManager extends EventEmitter {
           break
 
         case 'item-synced':
+          console.log('[WebSocket] Received item-synced:', message.payload)
           this.emit('item-synced', message.payload as ItemSyncedPayload)
           break
 
@@ -390,6 +392,7 @@ export class WebSocketManager extends EventEmitter {
    * Handle pong response.
    */
   private handlePong(): void {
+    console.log('[WebSocket] Received heartbeat pong')
     // Clear timeout timer
     if (this._heartbeatTimeoutTimer) {
       clearTimeout(this._heartbeatTimeoutTimer)
@@ -401,6 +404,7 @@ export class WebSocketManager extends EventEmitter {
    * Handle heartbeat timeout (no pong received).
    */
   private handleHeartbeatTimeout(): void {
+    console.log('[WebSocket] Heartbeat timeout - no pong received, closing connection')
     // Force close and reconnect
     if (this._ws) {
       this._ws.close(4000, 'Heartbeat timeout')
@@ -510,4 +514,3 @@ export function resetWebSocketManager(): void {
     _wsManager = null
   }
 }
-

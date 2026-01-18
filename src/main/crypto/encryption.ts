@@ -53,7 +53,7 @@ export function encrypt(plaintext: Buffer, key: Buffer): EncryptResult {
 
   return {
     ciphertext: new Uint8Array(ciphertext),
-    nonce: new Uint8Array(nonce),
+    nonce: new Uint8Array(nonce)
   }
 }
 
@@ -175,7 +175,7 @@ export function encryptItem(
     dataNonce: Buffer.from(dataNonce),
     encryptedKey: Buffer.from(encryptedKey),
     keyNonce: Buffer.from(keyNonce),
-    cryptoVersion: CRYPTO_VERSION,
+    cryptoVersion: CRYPTO_VERSION
   }
 }
 
@@ -241,7 +241,7 @@ export function encryptItemToBase64(
     dataNonce: result.dataNonce.toString('base64'),
     encryptedKey: result.encryptedKey.toString('base64'),
     keyNonce: result.keyNonce.toString('base64'),
-    cryptoVersion: result.cryptoVersion,
+    cryptoVersion: result.cryptoVersion
   }
 }
 
@@ -299,7 +299,7 @@ export function encryptChunk(
 
   return {
     ciphertext: Buffer.from(result.ciphertext),
-    nonce: Buffer.from(result.nonce),
+    nonce: Buffer.from(result.nonce)
   }
 }
 

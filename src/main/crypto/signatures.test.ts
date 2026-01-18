@@ -19,7 +19,7 @@ import {
   computeHmac,
   verifyHmac,
   computeHmacRaw,
-  verifyHmacRaw,
+  verifyHmacRaw
 } from './signatures'
 import { canonicalEncode } from './cbor'
 import { generateSigningKeyPair } from './keys'
@@ -28,7 +28,7 @@ import {
   TEST_HMAC_KEY,
   TEST_SIGNATURE_PAYLOAD,
   TEST_SIGNATURE_PAYLOAD_WITH_METADATA,
-  TEST_SIMPLE_OBJECT,
+  TEST_SIMPLE_OBJECT
 } from './__fixtures__'
 import {
   expectBufferEqual,
@@ -36,7 +36,7 @@ import {
   generateTestKeyPair,
   randomKey,
   expectToThrow,
-  expectValidBase64,
+  expectValidBase64
 } from './__helpers__'
 
 describe('signatures', () => {
@@ -216,17 +216,17 @@ describe('signatures', () => {
       const signature = signItem(TEST_SIGNATURE_PAYLOAD_WITH_METADATA, testKeyPair.secretKey)
 
       // Signature should verify with same metadata
-      expect(verifyItem(signature, TEST_SIGNATURE_PAYLOAD_WITH_METADATA, testKeyPair.publicKey)).toBe(
-        true
-      )
+      expect(
+        verifyItem(signature, TEST_SIGNATURE_PAYLOAD_WITH_METADATA, testKeyPair.publicKey)
+      ).toBe(true)
 
       // Changing metadata should invalidate signature
       const modifiedMetadata = {
         ...TEST_SIGNATURE_PAYLOAD_WITH_METADATA,
         metadata: {
           ...TEST_SIGNATURE_PAYLOAD_WITH_METADATA.metadata,
-          clock: { 'device-a': 99 },
-        },
+          clock: { 'device-a': 99 }
+        }
       }
       expect(verifyItem(signature, modifiedMetadata, testKeyPair.publicKey)).toBe(false)
     })
@@ -279,7 +279,11 @@ describe('signatures', () => {
     })
 
     it('should return false for invalid Base64', () => {
-      const isValid = verifyFromBase64('not-valid-base64!!!', TEST_SIMPLE_OBJECT, testKeyPair.publicKey)
+      const isValid = verifyFromBase64(
+        'not-valid-base64!!!',
+        TEST_SIMPLE_OBJECT,
+        testKeyPair.publicKey
+      )
 
       expect(isValid).toBe(false)
     })

@@ -8,12 +8,7 @@
  */
 
 import { useCallback } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { QRLinking } from './qr-linking'
 
 // =============================================================================
@@ -45,14 +40,13 @@ export function LinkingModal({ isOpen, onClose }: LinkingModalProps) {
   }, [onClose])
 
   // Handle linking request callback from QRLinking (informational only)
-  const handleLinkingRequest = useCallback((_event: {
-    sessionId: string
-    deviceName: string
-    devicePlatform: string
-  }) => {
-    // GlobalLinkingApproval in App.tsx handles the actual approval dialog.
-    // This callback is just for potential local UI updates if needed.
-  }, [])
+  const handleLinkingRequest = useCallback(
+    (_event: { sessionId: string; deviceName: string; devicePlatform: string }) => {
+      // GlobalLinkingApproval in App.tsx handles the actual approval dialog.
+      // This callback is just for potential local UI updates if needed.
+    },
+    []
+  )
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -60,10 +54,7 @@ export function LinkingModal({ isOpen, onClose }: LinkingModalProps) {
         <DialogHeader className="sr-only">
           <DialogTitle>Link a New Device</DialogTitle>
         </DialogHeader>
-        <QRLinking
-          onCancel={handleClose}
-          onLinkingRequest={handleLinkingRequest}
-        />
+        <QRLinking onCancel={handleClose} onLinkingRequest={handleLinkingRequest} />
       </DialogContent>
     </Dialog>
   )

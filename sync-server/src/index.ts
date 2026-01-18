@@ -48,7 +48,7 @@ app.use(
     origin: ['http://localhost:5173', 'app://memry'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
+    credentials: true
   })
 )
 
@@ -58,7 +58,7 @@ app.get('/', (c) => {
     name: 'memry-sync',
     version: '1.0.0',
     status: 'healthy',
-    environment: c.env.ENVIRONMENT,
+    environment: c.env.ENVIRONMENT
   })
 })
 
@@ -97,7 +97,7 @@ app.onError((err, c) => {
   return c.json(
     {
       error: 'INTERNAL_ERROR',
-      message: c.env.ENVIRONMENT === 'development' ? err.message : 'Internal server error',
+      message: c.env.ENVIRONMENT === 'development' ? err.message : 'Internal server error'
     },
     500
   )
@@ -161,7 +161,7 @@ const worker = {
 
     // Pass all other requests to Hono
     return app.fetch(request, env, ctx)
-  },
+  }
 }
 
 // Export for Cloudflare Workers
@@ -182,7 +182,7 @@ export class UserSyncState implements DurableObject {
   constructor(
     private state: DurableObjectState,
     private env: Env
-  ) { }
+  ) {}
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
@@ -225,11 +225,18 @@ export class UserSyncState implements DurableObject {
     // Accept the WebSocket with deviceId as tag for hibernation-safe retrieval
     this.state.acceptWebSocket(server, [deviceId])
 
+    // Log connection details for debugging
+    const allSockets = this.state.getWebSockets()
+    const allDeviceIds = allSockets.map((ws) => this.state.getTags(ws)[0])
+    console.log(`[WebSocket] Accepted connection for device: ${deviceId}`)
+    console.log(`[WebSocket] Total connections after accept: ${allSockets.length}`)
+    console.log(`[WebSocket] All connected devices: ${JSON.stringify(allDeviceIds)}`)
+
     // Send welcome message
     server.send(
       JSON.stringify({
         type: 'connected',
-        payload: { deviceId, timestamp: Date.now() },
+        payload: { deviceId, timestamp: Date.now() }
       })
     )
 
@@ -252,11 +259,18 @@ export class UserSyncState implements DurableObject {
 
       const message = JSON.stringify({
         type: body.type,
-        payload: body.payload,
+        payload: body.payload
       })
 
       // Use hibernation-safe API instead of in-memory Map
       const webSockets = this.state.getWebSockets()
+      const allDeviceIds = webSockets.map((ws) => this.state.getTags(ws)[0])
+
+      // Detailed logging for debugging connection issues
+      console.log(`[Broadcast] Total WebSockets: ${webSockets.length}`)
+      console.log(`[Broadcast] Connected devices: ${JSON.stringify(allDeviceIds)}`)
+      console.log(`[Broadcast] Excluding device: ${body.excludeDevice}`)
+
       let sentCount = 0
 
       for (const socket of webSockets) {
@@ -267,21 +281,25 @@ export class UserSyncState implements DurableObject {
           try {
             socket.send(message)
             sentCount++
-          } catch {
+            console.log(`[Broadcast] Sent to device: ${deviceId}`)
+          } catch (sendError) {
             // Socket closed, will be cleaned up automatically by hibernation API
+            console.log(`[Broadcast] Failed to send to device ${deviceId}: socket closed`)
           }
+        } else {
+          console.log(`[Broadcast] Skipped sender device: ${deviceId}`)
         }
       }
 
       console.log(`[Broadcast] Sent to ${sentCount} devices`)
       return new Response(JSON.stringify({ sent: sentCount }), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' }
       })
     } catch (error) {
       console.error('[Broadcast] Error:', error)
       return new Response(JSON.stringify({ error: 'Failed to broadcast' }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' }
       })
     }
   }
@@ -299,7 +317,7 @@ export class UserSyncState implements DurableObject {
     return new Response(
       JSON.stringify({
         connectedDevices: deviceIds,
-        count: webSockets.length,
+        count: webSockets.length
       }),
       { headers: { 'Content-Type': 'application/json' } }
     )
@@ -335,9 +353,21 @@ export class UserSyncState implements DurableObject {
    * Handle WebSocket close event.
    * Cleanup is handled automatically by the hibernation API.
    */
-  async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean): Promise<void> {
+  async webSocketClose(
+    ws: WebSocket,
+    code: number,
+    reason: string,
+    wasClean: boolean
+  ): Promise<void> {
     const tags = this.state.getTags(ws)
-    console.log(`[WebSocket] Connection closed for device ${tags[0]}, code: ${code}`)
+    const remainingSockets = this.state.getWebSockets()
+    const remainingDevices = remainingSockets.map((s) => this.state.getTags(s)[0])
+    console.log(`[WebSocket] Connection CLOSED for device: ${tags[0]}`)
+    console.log(
+      `[WebSocket] Close code: ${code}, reason: ${reason || 'none'}, wasClean: ${wasClean}`
+    )
+    console.log(`[WebSocket] Remaining connections: ${remainingSockets.length}`)
+    console.log(`[WebSocket] Remaining devices: ${JSON.stringify(remainingDevices)}`)
   }
 
   /**

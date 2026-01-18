@@ -475,7 +475,11 @@ export function registerTasksHandlers(): void {
 
         // Queue all reordered tasks for sync (non-blocking)
         queueBulkSync(
-          input.taskIds.map((id) => ({ type: 'task' as SyncItemType, itemId: id, operation: 'update' as const }))
+          input.taskIds.map((id) => ({
+            type: 'task' as SyncItemType,
+            itemId: id,
+            operation: 'update' as const
+          }))
         ).catch((err) => console.error('[Sync] Failed to queue task reorder:', err))
 
         return { success: true }
@@ -763,7 +767,11 @@ export function registerTasksHandlers(): void {
 
         // Queue all reordered projects for sync (non-blocking)
         queueBulkSync(
-          input.projectIds.map((id) => ({ type: 'project' as SyncItemType, itemId: id, operation: 'update' as const }))
+          input.projectIds.map((id) => ({
+            type: 'project' as SyncItemType,
+            itemId: id,
+            operation: 'update' as const
+          }))
         ).catch((err) => console.error('[Sync] Failed to queue project reorder:', err))
 
         return { success: true }
@@ -902,7 +910,11 @@ export function registerTasksHandlers(): void {
 
         // Queue all tasks for sync (non-blocking)
         queueBulkSync(
-          input.ids.map((id) => ({ type: 'task' as SyncItemType, itemId: id, operation: 'update' as const }))
+          input.ids.map((id) => ({
+            type: 'task' as SyncItemType,
+            itemId: id,
+            operation: 'update' as const
+          }))
         ).catch((err) => console.error('[Sync] Failed to queue bulk complete:', err))
 
         return { success: true, count }
@@ -924,7 +936,11 @@ export function registerTasksHandlers(): void {
 
         // Queue all tasks for sync (non-blocking)
         queueBulkSync(
-          input.ids.map((id) => ({ type: 'task' as SyncItemType, itemId: id, operation: 'delete' as const }))
+          input.ids.map((id) => ({
+            type: 'task' as SyncItemType,
+            itemId: id,
+            operation: 'delete' as const
+          }))
         ).catch((err) => console.error('[Sync] Failed to queue bulk delete:', err))
 
         return { success: true, count }
@@ -961,7 +977,11 @@ export function registerTasksHandlers(): void {
 
         // Queue all tasks for sync (non-blocking)
         queueBulkSync(
-          input.ids.map((id) => ({ type: 'task' as SyncItemType, itemId: id, operation: 'update' as const }))
+          input.ids.map((id) => ({
+            type: 'task' as SyncItemType,
+            itemId: id,
+            operation: 'update' as const
+          }))
         ).catch((err) => console.error('[Sync] Failed to queue bulk move:', err))
 
         return { success: true, count }
@@ -998,7 +1018,11 @@ export function registerTasksHandlers(): void {
 
         // Queue all tasks for sync (non-blocking)
         queueBulkSync(
-          input.ids.map((id) => ({ type: 'task' as SyncItemType, itemId: id, operation: 'update' as const }))
+          input.ids.map((id) => ({
+            type: 'task' as SyncItemType,
+            itemId: id,
+            operation: 'update' as const
+          }))
         ).catch((err) => console.error('[Sync] Failed to queue bulk archive:', err))
 
         return { success: true, count }

@@ -24,7 +24,7 @@ import { encode, decode } from 'cborg'
 export function canonicalEncode(data: unknown): Uint8Array {
   return encode(data, {
     canonical: true,
-    float64: true,
+    float64: true
   })
 }
 

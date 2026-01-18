@@ -17,7 +17,7 @@ import {
   encryptItemToBase64,
   decryptItemFromBase64,
   encryptChunk,
-  decryptChunk,
+  decryptChunk
 } from './encryption'
 import { generateFileKey, generateNonce } from './keys'
 import {
@@ -26,14 +26,14 @@ import {
   TEST_PLAINTEXT,
   EMPTY_PLAINTEXT,
   TEST_BINARY_DATA,
-  createLargePlaintext,
+  createLargePlaintext
 } from './__fixtures__'
 import {
   expectBufferEqual,
   expectBufferNotEqual,
   randomKey,
   expectToThrow,
-  expectValidBase64,
+  expectValidBase64
 } from './__helpers__'
 import { CRYPTO_VERSION } from '@shared/contracts/crypto'
 
@@ -87,10 +87,7 @@ describe('encryption', () => {
       const { ciphertext, nonce } = encrypt(TEST_PLAINTEXT, key)
       const wrongNonce = generateNonce(24)
 
-      expectToThrow(
-        () => decrypt(Buffer.from(ciphertext), wrongNonce, key),
-        'Decryption failed'
-      )
+      expectToThrow(() => decrypt(Buffer.from(ciphertext), wrongNonce, key), 'Decryption failed')
     })
 
     it('should fail decryption with tampered ciphertext', () => {
@@ -102,10 +99,7 @@ describe('encryption', () => {
       const tamperedCiphertext = Buffer.from(ciphertext)
       tamperedCiphertext[0] ^= 0xff
 
-      expectToThrow(
-        () => decrypt(tamperedCiphertext, Buffer.from(nonce), key),
-        'Decryption failed'
-      )
+      expectToThrow(() => decrypt(tamperedCiphertext, Buffer.from(nonce), key), 'Decryption failed')
     })
 
     it('should reject key of wrong length', () => {
@@ -158,10 +152,7 @@ describe('encryption', () => {
       const shortCiphertext = Buffer.alloc(8) // Less than 16-byte tag
       const nonce = generateNonce(24)
 
-      expectToThrow(
-        () => decrypt(shortCiphertext, nonce, key),
-        'Ciphertext too short'
-      )
+      expectToThrow(() => decrypt(shortCiphertext, nonce, key), 'Ciphertext too short')
     })
   })
 

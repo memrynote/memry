@@ -19,7 +19,7 @@ import {
   verifyKeyVerifier,
   deriveAllKeys,
   generateFileKey,
-  generateNonce,
+  generateNonce
 } from './keys'
 import { HKDF_CONTEXTS } from '@shared/contracts/crypto'
 import { TEST_MASTER_KEY, TEST_MASTER_KEY_ALT, TEST_SALT, TEST_SIGNING_SEED } from './__fixtures__'
@@ -28,7 +28,7 @@ import {
   expectBufferNotEqual,
   randomKey,
   randomSalt,
-  expectToThrow,
+  expectToThrow
 } from './__helpers__'
 
 describe('keys', () => {

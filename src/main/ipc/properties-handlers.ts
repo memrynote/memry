@@ -87,57 +87,54 @@ export function registerPropertiesHandlers(): void {
   // -------------------------------------------------------------------------
   ipcMain.handle(
     PropertiesChannels.invoke.RENAME,
-    createValidatedHandler(
-      RenamePropertySchema,
-      async (input): Promise<RenamePropertyResponse> => {
-        const db = getIndexDatabase()
-        const entity = getNoteCacheById(db, input.entityId)
+    createValidatedHandler(RenamePropertySchema, async (input): Promise<RenamePropertyResponse> => {
+      const db = getIndexDatabase()
+      const entity = getNoteCacheById(db, input.entityId)
 
-        if (!entity) {
-          return { success: false, error: 'Entity not found' }
-        }
-
-        try {
-          // Get existing properties
-          const existingProps = getNoteProperties(db, input.entityId)
-          const propToRename = existingProps.find((p) => p.name === input.oldName)
-
-          if (!propToRename) {
-            return { success: false, error: `Property "${input.oldName}" not found` }
-          }
-
-          // Check if new name already exists
-          if (existingProps.some((p) => p.name === input.newName)) {
-            return { success: false, error: `Property "${input.newName}" already exists` }
-          }
-
-          // Build new properties object with renamed property
-          const newProperties: Record<string, unknown> = {}
-          for (const prop of existingProps) {
-            if (prop.name === input.oldName) {
-              newProperties[input.newName] = prop.value
-            } else {
-              newProperties[prop.name] = prop.value
-            }
-          }
-
-          // Update based on entity type
-          if (entity.date) {
-            // Journal entry
-            await updateJournalProperties(entity.date, newProperties)
-          } else {
-            // Regular note
-            await updateNote({ id: input.entityId, properties: newProperties })
-          }
-
-          return { success: true }
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to rename property'
-          console.error('[properties:rename] Error:', error)
-          return { success: false, error: message }
-        }
+      if (!entity) {
+        return { success: false, error: 'Entity not found' }
       }
-    )
+
+      try {
+        // Get existing properties
+        const existingProps = getNoteProperties(db, input.entityId)
+        const propToRename = existingProps.find((p) => p.name === input.oldName)
+
+        if (!propToRename) {
+          return { success: false, error: `Property "${input.oldName}" not found` }
+        }
+
+        // Check if new name already exists
+        if (existingProps.some((p) => p.name === input.newName)) {
+          return { success: false, error: `Property "${input.newName}" already exists` }
+        }
+
+        // Build new properties object with renamed property
+        const newProperties: Record<string, unknown> = {}
+        for (const prop of existingProps) {
+          if (prop.name === input.oldName) {
+            newProperties[input.newName] = prop.value
+          } else {
+            newProperties[prop.name] = prop.value
+          }
+        }
+
+        // Update based on entity type
+        if (entity.date) {
+          // Journal entry
+          await updateJournalProperties(entity.date, newProperties)
+        } else {
+          // Regular note
+          await updateNote({ id: input.entityId, properties: newProperties })
+        }
+
+        return { success: true }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to rename property'
+        console.error('[properties:rename] Error:', error)
+        return { success: false, error: message }
+      }
+    })
   )
 }
 

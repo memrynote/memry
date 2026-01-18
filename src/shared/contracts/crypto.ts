@@ -47,7 +47,7 @@ export const DEFAULT_ARGON2_PARAMS: Argon2Params = {
   memoryCost: 65536, // 64 MB
   timeCost: 3, // 3 iterations
   parallelism: 4, // 4 lanes
-  hashLength: 32, // 256-bit output
+  hashLength: 32 // 256-bit output
 }
 
 /**
@@ -63,7 +63,7 @@ export const HKDF_CONTEXTS = {
   /** Encryption key for device linking */
   LINKING_ENC: 'memry-linking-enc-v1',
   /** MAC key for device linking */
-  LINKING_MAC: 'memry-linking-mac-v1',
+  LINKING_MAC: 'memry-linking-mac-v1'
 } as const
 
 export type HKDFContext = (typeof HKDF_CONTEXTS)[keyof typeof HKDF_CONTEXTS]
@@ -132,7 +132,7 @@ export const EncryptedItemSchema = z.object({
   signature: z.string(),
   signedAt: z.number().optional(),
   clock: z.record(z.string(), z.number()).optional(),
-  fieldClocks: z.record(z.string(), z.record(z.string(), z.number())).optional(),
+  fieldClocks: z.record(z.string(), z.record(z.string(), z.number())).optional()
 })
 
 /**
@@ -176,7 +176,7 @@ export const EncryptedUpdateSchema = z.object({
   encryptedData: z.string(),
   nonce: z.string(),
   timestamp: z.number(),
-  signature: z.string(),
+  signature: z.string()
 })
 
 /**
@@ -192,7 +192,7 @@ export const EncryptedCrdtItemSchema = z.object({
   encryptedKey: z.string(),
   keyNonce: z.string(),
   signature: z.string(),
-  updates: z.array(EncryptedUpdateSchema),
+  updates: z.array(EncryptedUpdateSchema)
 })
 
 // =============================================================================
@@ -235,9 +235,9 @@ export const SignaturePayloadV1Schema = z.object({
     .object({
       clock: z.record(z.string(), z.number()).optional(),
       fieldClocks: z.record(z.string(), z.record(z.string(), z.number())).optional(),
-      stateVector: z.string().optional(),
+      stateVector: z.string().optional()
     })
-    .optional(),
+    .optional()
 })
 
 /**
@@ -270,7 +270,7 @@ export interface RecoveryPhraseConfig {
  */
 export const DEFAULT_RECOVERY_PHRASE_CONFIG: RecoveryPhraseConfig = {
   wordCount: 24,
-  language: 'english',
+  language: 'english'
 }
 
 /**
@@ -296,7 +296,7 @@ export const KEYCHAIN_KEYS = {
   USER_ID: 'user-id',
   ACCESS_TOKEN: 'access-token',
   REFRESH_TOKEN: 'refresh-token',
-  PENDING_SIGNUP: 'pending-signup',
+  PENDING_SIGNUP: 'pending-signup'
 } as const
 
 export type KeychainKey = (typeof KEYCHAIN_KEYS)[keyof typeof KEYCHAIN_KEYS]
@@ -322,7 +322,7 @@ export const ChunkRefSchema = z.object({
   index: z.number(),
   hash: z.string(),
   encryptedHash: z.string(),
-  size: z.number(),
+  size: z.number()
 })
 
 /**
@@ -350,7 +350,7 @@ export const AttachmentManifestSchema = z.object({
   checksum: z.string(),
   chunks: z.array(ChunkRefSchema),
   chunkSize: z.number(),
-  createdAt: z.number(),
+  createdAt: z.number()
 })
 
 /**
@@ -372,7 +372,7 @@ export const EncryptedAttachmentManifestSchema = z.object({
   manifestNonce: z.string(),
   encryptedFileKey: z.string(),
   keyNonce: z.string(),
-  manifestSignature: z.string(),
+  manifestSignature: z.string()
 })
 
 /**
@@ -398,7 +398,7 @@ export const AttachmentRefSchema = z.object({
   size: z.number(),
   mimeType: z.string(),
   thumbnail: z.string().optional(),
-  createdAt: z.number(),
+  createdAt: z.number()
 })
 
 // =============================================================================
@@ -442,7 +442,7 @@ export const LinkingRequestSchema = z.object({
   newDevicePublicKey: z.string(),
   newDeviceConfirm: z.string(),
   deviceName: z.string(),
-  devicePlatform: z.enum(['macos', 'windows', 'linux', 'ios', 'android']),
+  devicePlatform: z.enum(['macos', 'windows', 'linux', 'ios', 'android'])
 })
 
 /**
@@ -462,7 +462,7 @@ export const LinkingApprovalSchema = z.object({
   sessionId: z.string(),
   encryptedMasterKey: z.string(),
   nonce: z.string(),
-  keyConfirm: z.string(),
+  keyConfirm: z.string()
 })
 
 // =============================================================================
@@ -492,5 +492,5 @@ export const KeyRotationProgressSchema = z.object({
   currentItem: z.string().optional(),
   error: z.string().optional(),
   startedAt: z.number().optional(),
-  completedAt: z.number().optional(),
+  completedAt: z.number().optional()
 })

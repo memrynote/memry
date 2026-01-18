@@ -15,7 +15,7 @@ import type {
   SyncPullResponse,
   VectorClock,
   SyncItemType,
-  SyncOperation,
+  SyncOperation
 } from '@shared/contracts/sync-api'
 
 // ===========================================================================
@@ -36,7 +36,12 @@ class MockSyncServer {
    */
   push(items: SyncPushItem[], deviceClock: VectorClock): SyncPushResponse {
     const accepted: string[] = []
-    const conflicts: Array<{ id: string; type: SyncItemType; serverVersion: number; serverClock: VectorClock }> = []
+    const conflicts: Array<{
+      id: string
+      type: SyncItemType
+      serverVersion: number
+      serverClock: VectorClock
+    }> = []
 
     for (const item of items) {
       const existing = this.items.get(item.id)
@@ -49,7 +54,7 @@ class MockSyncServer {
           id: item.id,
           type: item.type,
           serverVersion: existing.version,
-          serverClock: existing.clock || {},
+          serverClock: existing.clock || {}
         })
         continue
       }
@@ -65,7 +70,7 @@ class MockSyncServer {
         clock: item.clock,
         stateVector: item.stateVector,
         modifiedAt: Date.now(),
-        deletedAt: item.operation === 'delete' ? Date.now() : undefined,
+        deletedAt: item.operation === 'delete' ? Date.now() : undefined
       }
 
       this.items.set(item.id, pullItem)
@@ -90,7 +95,7 @@ class MockSyncServer {
       success: true,
       accepted,
       conflicts,
-      serverClock: { ...this.serverClock },
+      serverClock: { ...this.serverClock }
     }
   }
 
@@ -116,7 +121,7 @@ class MockSyncServer {
       items,
       hasMore,
       serverClock: { ...this.serverClock },
-      serverTimestamp: this.serverTimestamp,
+      serverTimestamp: this.serverTimestamp
     }
   }
 
@@ -155,7 +160,7 @@ const mockEncrypt = (data: string): string => {
     encryptedKey: Buffer.from('mock-key').toString('base64'),
     keyNonce: Buffer.from('mock-key-nonce').toString('base64'),
     encryptedData: Buffer.from(data).toString('base64'),
-    dataNonce: Buffer.from('mock-data-nonce').toString('base64'),
+    dataNonce: Buffer.from('mock-data-nonce').toString('base64')
   })
 }
 
@@ -207,7 +212,7 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
         operation: 'create',
         encryptedData,
         signature: mockSign({ id: 'task-123', type: 'task', operation: 'create' }),
-        clock: { [deviceAId]: 1 },
+        clock: { [deviceAId]: 1 }
       }
 
       // Device A pushes to server
@@ -249,7 +254,7 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
           operation: 'create',
           encryptedData: mockEncrypt(JSON.stringify({ id: 'task-1', title: 'Task 1' })),
           signature: mockSign({}),
-          clock: { [deviceAId]: 1 },
+          clock: { [deviceAId]: 1 }
         },
         {
           id: 'task-2',
@@ -257,7 +262,7 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
           operation: 'create',
           encryptedData: mockEncrypt(JSON.stringify({ id: 'task-2', title: 'Task 2' })),
           signature: mockSign({}),
-          clock: { [deviceAId]: 2 },
+          clock: { [deviceAId]: 2 }
         },
         {
           id: 'note-1',
@@ -265,8 +270,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
           operation: 'create',
           encryptedData: mockEncrypt(JSON.stringify({ id: 'note-1', content: 'Note content' })),
           signature: mockSign({}),
-          clock: { [deviceAId]: 3 },
-        },
+          clock: { [deviceAId]: 3 }
+        }
       ]
 
       // Device A pushes all items
@@ -298,8 +303,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt(JSON.stringify({ id: 'task-1' })),
             signature: mockSign({}),
-            clock: { [deviceAId]: 1 },
-          },
+            clock: { [deviceAId]: 1 }
+          }
         ],
         { [deviceAId]: 1 }
       )
@@ -320,10 +325,13 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
         encryptedData: mockEncrypt(JSON.stringify({ id: 'task-2' })),
         signature: mockSign({}),
         clock: { [deviceAId]: 2 },
-        modifiedAt: laterTimestamp,
+        modifiedAt: laterTimestamp
       }
-        // Manually add to simulate time passing
-        ; (mockServer as unknown as { items: Map<string, SyncPullItem> }).items.set('task-2', laterItem)
+      // Manually add to simulate time passing
+      ;(mockServer as unknown as { items: Map<string, SyncPullItem> }).items.set(
+        'task-2',
+        laterItem
+      )
 
       // Device B does incremental pull (only new items since first sync)
       const incrementalPull = mockServer.pull(sinceTimestamp)
@@ -350,8 +358,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt(JSON.stringify({ id: 'task-123', title: 'Original' })),
             signature: mockSign({}),
-            clock: { [deviceAId]: 1 },
-          },
+            clock: { [deviceAId]: 1 }
+          }
         ],
         { [deviceAId]: 1 }
       )
@@ -365,8 +373,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'update',
             encryptedData: mockEncrypt(JSON.stringify({ id: 'task-123', title: 'Updated' })),
             signature: mockSign({}),
-            clock: { [deviceAId]: 2 },
-          },
+            clock: { [deviceAId]: 2 }
+          }
         ],
         { [deviceAId]: 2 }
       )
@@ -400,8 +408,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt(JSON.stringify({ id: 'task-123', title: 'To Delete' })),
             signature: mockSign({}),
-            clock: { [deviceAId]: 1 },
-          },
+            clock: { [deviceAId]: 1 }
+          }
         ],
         { [deviceAId]: 1 }
       )
@@ -415,8 +423,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'delete',
             encryptedData: mockEncrypt(JSON.stringify({ id: 'task-123', deleted: true })),
             signature: mockSign({}),
-            clock: { [deviceAId]: 2 },
-          },
+            clock: { [deviceAId]: 2 }
+          }
         ],
         { [deviceAId]: 2 }
       )
@@ -448,8 +456,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt('{}'),
             signature: mockSign({}),
-            clock: { [deviceAId]: 3 },
-          },
+            clock: { [deviceAId]: 3 }
+          }
         ],
         { [deviceAId]: 3 }
       )
@@ -465,8 +473,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt('{}'),
             signature: mockSign({}),
-            clock: { [deviceBId]: 5 },
-          },
+            clock: { [deviceBId]: 5 }
+          }
         ],
         { [deviceBId]: 5 }
       )
@@ -489,8 +497,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt(JSON.stringify({ from: 'A' })),
             signature: mockSign({}),
-            clock: { [deviceAId]: 1 },
-          },
+            clock: { [deviceAId]: 1 }
+          }
         ],
         { [deviceAId]: 1 }
       )
@@ -503,8 +511,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt(JSON.stringify({ from: 'B' })),
             signature: mockSign({}),
-            clock: { [deviceBId]: 1 },
-          },
+            clock: { [deviceBId]: 1 }
+          }
         ],
         { [deviceBId]: 1 }
       )
@@ -537,8 +545,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt(JSON.stringify({ id: 'task-from-A', author: 'A' })),
             signature: mockSign({}),
-            clock: { [deviceAId]: 1 },
-          },
+            clock: { [deviceAId]: 1 }
+          }
         ],
         { [deviceAId]: 1 }
       )
@@ -552,8 +560,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt(JSON.stringify({ id: 'task-from-B', author: 'B' })),
             signature: mockSign({}),
-            clock: { [deviceBId]: 1 },
-          },
+            clock: { [deviceBId]: 1 }
+          }
         ],
         { [deviceBId]: 1 }
       )
@@ -589,7 +597,7 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt(JSON.stringify({ type: 'task' })),
             signature: mockSign({}),
-            clock: { [deviceAId]: 1 },
+            clock: { [deviceAId]: 1 }
           },
           {
             id: 'note-1',
@@ -597,7 +605,7 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt(JSON.stringify({ type: 'note' })),
             signature: mockSign({}),
-            clock: { [deviceAId]: 2 },
+            clock: { [deviceAId]: 2 }
           },
           {
             id: 'project-1',
@@ -605,7 +613,7 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt(JSON.stringify({ type: 'project' })),
             signature: mockSign({}),
-            clock: { [deviceAId]: 3 },
+            clock: { [deviceAId]: 3 }
           },
           {
             id: 'inbox-1',
@@ -613,7 +621,7 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt(JSON.stringify({ type: 'inbox_item' })),
             signature: mockSign({}),
-            clock: { [deviceAId]: 4 },
+            clock: { [deviceAId]: 4 }
           },
           {
             id: 'settings-1',
@@ -621,8 +629,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'update',
             encryptedData: mockEncrypt(JSON.stringify({ type: 'settings' })),
             signature: mockSign({}),
-            clock: { [deviceAId]: 5 },
-          },
+            clock: { [deviceAId]: 5 }
+          }
         ],
         { [deviceAId]: 5 }
       )
@@ -657,8 +665,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt('{}'),
             signature: mockSign({}),
-            clock: { [deviceAId]: 1 },
-          },
+            clock: { [deviceAId]: 1 }
+          }
         ],
         { [deviceAId]: 1 }
       )
@@ -680,8 +688,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt('{}'),
             signature: mockSign({}),
-            clock: { [deviceAId]: 1 },
-          },
+            clock: { [deviceAId]: 1 }
+          }
         ],
         { [deviceAId]: 1 }
       )
@@ -694,8 +702,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'update',
             encryptedData: mockEncrypt('{}'),
             signature: mockSign({}),
-            clock: { [deviceAId]: 2 },
-          },
+            clock: { [deviceAId]: 2 }
+          }
         ],
         { [deviceAId]: 2 }
       )
@@ -716,8 +724,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'delete',
             encryptedData: mockEncrypt('{}'),
             signature: mockSign({}),
-            clock: { [deviceAId]: 1 },
-          },
+            clock: { [deviceAId]: 1 }
+          }
         ],
         { [deviceAId]: 1 }
       )
@@ -749,12 +757,12 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
               JSON.stringify({
                 id: 'task-lifecycle',
                 title: 'Sync Test',
-                completed: false,
+                completed: false
               })
             ),
             signature: mockSign({}),
-            clock: { [deviceAId]: 1 },
-          },
+            clock: { [deviceAId]: 1 }
+          }
         ],
         { [deviceAId]: 1 }
       )
@@ -776,12 +784,12 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
               JSON.stringify({
                 id: 'task-lifecycle',
                 title: 'Sync Test',
-                completed: true,
+                completed: true
               })
             ),
             signature: mockSign({}),
-            clock: { [deviceBId]: 1 },
-          },
+            clock: { [deviceBId]: 1 }
+          }
         ],
         { [deviceBId]: 1 }
       )
@@ -800,8 +808,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'delete',
             encryptedData: mockEncrypt(JSON.stringify({ id: 'task-lifecycle', deleted: true })),
             signature: mockSign({}),
-            clock: { [deviceAId]: 2 },
-          },
+            clock: { [deviceAId]: 2 }
+          }
         ],
         { [deviceAId]: 2 }
       )
@@ -826,8 +834,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
               operation: 'create',
               encryptedData: mockEncrypt(JSON.stringify({ id: `task-${i}`, index: i })),
               signature: mockSign({}),
-              clock: { [deviceAId]: i },
-            },
+              clock: { [deviceAId]: i }
+            }
           ],
           { [deviceAId]: i }
         )
@@ -840,7 +848,9 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
       expect(pullResponse.items).toHaveLength(5)
 
       // Verify correct order
-      const indices = pullResponse.items.map((item) => JSON.parse(mockDecrypt(item.encryptedData)).index)
+      const indices = pullResponse.items.map(
+        (item) => JSON.parse(mockDecrypt(item.encryptedData)).index
+      )
       expect(indices).toEqual([1, 2, 3, 4, 5])
     })
 
@@ -858,8 +868,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt(JSON.stringify({ from: 'A', seq: 1 })),
             signature: mockSign({}),
-            clock: { [deviceAId]: 1 },
-          },
+            clock: { [deviceAId]: 1 }
+          }
         ],
         { [deviceAId]: 1 }
       )
@@ -872,8 +882,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt(JSON.stringify({ from: 'B', seq: 1 })),
             signature: mockSign({}),
-            clock: { [deviceBId]: 1 },
-          },
+            clock: { [deviceBId]: 1 }
+          }
         ],
         { [deviceBId]: 1 }
       )
@@ -886,8 +896,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt(JSON.stringify({ from: 'C', seq: 1 })),
             signature: mockSign({}),
-            clock: { [deviceCId]: 1 },
-          },
+            clock: { [deviceCId]: 1 }
+          }
         ],
         { [deviceCId]: 1 }
       )
@@ -900,8 +910,8 @@ describe('sync engine - Device A ↔ Server ↔ Device B', () => {
             operation: 'create',
             encryptedData: mockEncrypt(JSON.stringify({ from: 'A', seq: 2 })),
             signature: mockSign({}),
-            clock: { [deviceAId]: 2 },
-          },
+            clock: { [deviceAId]: 2 }
+          }
         ],
         { [deviceAId]: 2 }
       )

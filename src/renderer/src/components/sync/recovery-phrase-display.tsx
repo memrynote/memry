@@ -87,8 +87,8 @@ Store it in a safe place and delete this file after writing it down.
               Write down your recovery phrase
             </p>
             <p className="text-sm text-muted-foreground">
-              This is the only way to recover your account if you lose access to all devices.
-              Store it in a safe place and never share it with anyone.
+              This is the only way to recover your account if you lose access to all devices. Store
+              it in a safe place and never share it with anyone.
             </p>
           </div>
         </div>
@@ -124,13 +124,8 @@ Store it in a safe place and delete this file after writing it down.
 
         <div className="grid grid-cols-3 gap-2 rounded-lg border bg-muted/30 p-4 sm:grid-cols-4">
           {words.map((word, index) => (
-            <div
-              key={index}
-              className="flex items-center gap-2 rounded bg-background px-3 py-2"
-            >
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {index + 1}.
-              </span>
+            <div key={index} className="flex items-center gap-2 rounded bg-background px-3 py-2">
+              <span className="text-xs text-muted-foreground tabular-nums">{index + 1}.</span>
               <span className="font-mono text-sm">{word}</span>
             </div>
           ))}
@@ -163,8 +158,8 @@ Store it in a safe place and delete this file after writing it down.
             className="mt-1 rounded border-gray-300"
           />
           <span className="text-sm text-muted-foreground">
-            I have written down my recovery phrase and stored it in a safe place.
-            I understand that Memry cannot recover my data without this phrase.
+            I have written down my recovery phrase and stored it in a safe place. I understand that
+            Memry cannot recover my data without this phrase.
           </span>
         </label>
 

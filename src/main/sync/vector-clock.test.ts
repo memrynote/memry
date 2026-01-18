@@ -25,7 +25,7 @@ import {
   clockMax,
   isEmptyClock,
   copyClock,
-  removeDevice,
+  removeDevice
 } from './vector-clock'
 
 describe('vector-clock', () => {

@@ -18,14 +18,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import {
-  Loader2,
-  Monitor,
-  Terminal,
-  Smartphone,
-  ShieldAlert,
-  AlertTriangle
-} from 'lucide-react'
+import { Loader2, Monitor, Terminal, Smartphone, ShieldAlert, AlertTriangle } from 'lucide-react'
 
 // =============================================================================
 // Types
@@ -164,25 +157,31 @@ export function LinkingApprovalDialog({
 
               {/* Description */}
               <p>
-                A new device is requesting to link to your account. If you approve,
-                it will have access to your synced data.
+                A new device is requesting to link to your account. If you approve, it will have
+                access to your synced data.
               </p>
 
               {/* Security Warning */}
               <div className="flex items-start gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3">
-                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-yellow-600 dark:text-yellow-400" aria-hidden="true" />
+                <AlertTriangle
+                  className="mt-0.5 size-4 shrink-0 text-yellow-600 dark:text-yellow-400"
+                  aria-hidden="true"
+                />
                 <div className="text-sm text-yellow-700 dark:text-yellow-300">
                   <p className="font-medium">Security Notice</p>
                   <p className="mt-1 text-xs">
-                    Only approve if you initiated this request. Never approve linking
-                    requests you didn&apos;t expect.
+                    Only approve if you initiated this request. Never approve linking requests you
+                    didn&apos;t expect.
                   </p>
                 </div>
               </div>
 
               {/* Error Message */}
               {displayError && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3" role="alert">
+                <div
+                  className="rounded-lg border border-destructive/30 bg-destructive/5 p-3"
+                  role="alert"
+                >
                   <p className="text-sm text-destructive">{displayError}</p>
                 </div>
               )}

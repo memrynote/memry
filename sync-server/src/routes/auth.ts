@@ -536,14 +536,17 @@ auth.post(
       c.env.JWT_SECRET
     )
 
-    return c.json({
-      ...toPublicDevice(device),
-      tokens: {
-        access_token: tokens.accessToken,
-        refresh_token: tokens.refreshToken,
-        expires_in: tokens.expiresIn
-      }
-    }, 201)
+    return c.json(
+      {
+        ...toPublicDevice(device),
+        tokens: {
+          access_token: tokens.accessToken,
+          refresh_token: tokens.refreshToken,
+          expires_in: tokens.expiresIn
+        }
+      },
+      201
+    )
   }
 )
 
@@ -621,10 +624,7 @@ auth.post(
     const expiresAt = now + 5 * 60 * 1000 // 5 minutes
 
     // Calculate token hash for D1 polling validation (bypasses DO status checks)
-    const tokenHashBuffer = await crypto.subtle.digest(
-      'SHA-256',
-      new TextEncoder().encode(token)
-    )
+    const tokenHashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))
     const tokenHash = Array.from(new Uint8Array(tokenHashBuffer))
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('')
@@ -694,8 +694,7 @@ auth.post(
   rateLimit({
     ...RATE_LIMITS.DEVICE_LINKING,
     keyGenerator: (c) => {
-      const ip =
-        c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown'
+      const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown'
       return `linking_scan:${ip}`
     }
   }),
@@ -833,7 +832,10 @@ auth.post(
     // Check device limit before allowing approval
     const deviceCount = await countActiveDevices(c.env.DB, authUser.userId)
     if (deviceCount >= 10) {
-      throw new LinkingSessionError('Device limit reached (maximum 10 devices)', 'DEVICE_LIMIT_REACHED')
+      throw new LinkingSessionError(
+        'Device limit reached (maximum 10 devices)',
+        'DEVICE_LIMIT_REACHED'
+      )
     }
 
     // Store encrypted master key
@@ -865,8 +867,7 @@ auth.post(
   rateLimit({
     ...RATE_LIMITS.DEVICE_LINKING,
     keyGenerator: (c) => {
-      const ip =
-        c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown'
+      const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown'
       return `linking_complete:${ip}`
     }
   }),
@@ -931,7 +932,8 @@ auth.post(
     const newDevice = await registerDevice(c.env.DB, {
       userId: session.user_id,
       name: session.device_name || 'Unknown Device',
-      platform: (session.device_platform as 'macos' | 'windows' | 'linux' | 'ios' | 'android') || 'linux',
+      platform:
+        (session.device_platform as 'macos' | 'windows' | 'linux' | 'ios' | 'android') || 'linux',
       osVersion: undefined,
       appVersion: '1.0.0' // Default version, could be passed during scan if needed
     })
@@ -1125,10 +1127,7 @@ auth.post(
 
     // Can only reject pending or scanned sessions
     if (!['pending', 'scanned'].includes(session.status)) {
-      throw new LinkingSessionError(
-        'Cannot reject session in current state',
-        'SESSION_INVALID'
-      )
+      throw new LinkingSessionError('Cannot reject session in current state', 'SESSION_INVALID')
     }
 
     // Update status to rejected
@@ -1162,7 +1161,12 @@ function generateLinkingToken(): string {
 // OAuth Helper Functions
 // =============================================================================
 
-function buildGoogleAuthUrl(redirectUri: string, state: string, codeChallenge: string, env: Env): string {
+function buildGoogleAuthUrl(
+  redirectUri: string,
+  state: string,
+  codeChallenge: string,
+  env: Env
+): string {
   const params = new URLSearchParams({
     client_id: env.OAUTH_GOOGLE_CLIENT_ID || '',
     redirect_uri: redirectUri,

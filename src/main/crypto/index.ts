@@ -36,7 +36,7 @@ export {
   deriveAllKeys,
   // Random generation
   generateFileKey,
-  generateNonce,
+  generateNonce
 } from './keys'
 
 // =============================================================================
@@ -60,7 +60,7 @@ export {
   // Wordlist
   getWordlist,
   isValidWord,
-  getWordSuggestions,
+  getWordSuggestions
 } from './recovery'
 
 // =============================================================================
@@ -81,7 +81,7 @@ export {
   decryptItemFromBase64,
   // Chunk encryption (for attachments)
   encryptChunk,
-  decryptChunk,
+  decryptChunk
 } from './encryption'
 
 // =============================================================================
@@ -104,7 +104,7 @@ export {
   computeHmac,
   verifyHmac,
   computeHmacRaw,
-  verifyHmacRaw,
+  verifyHmacRaw
 } from './signatures'
 
 // =============================================================================
@@ -137,7 +137,7 @@ export {
   saveSyncSession,
   getSyncSession,
   hasSyncSession,
-  clearSyncSession,
+  clearSyncSession
 } from './keychain'
 
 // =============================================================================
@@ -148,7 +148,7 @@ export {
   canonicalEncode,
   canonicalDecode,
   createSignaturePayload,
-  createLinkingHmacPayload,
+  createLinkingHmacPayload
 } from './cbor'
 
 // =============================================================================
@@ -159,7 +159,12 @@ export type {
   DerivedKeys,
   EncryptResult,
   RecoveryPhraseValidation,
-  Argon2Params,
+  Argon2Params
 } from '@shared/contracts/crypto'
 
-export { CRYPTO_VERSION, DEFAULT_ARGON2_PARAMS, HKDF_CONTEXTS, KEYCHAIN_KEYS } from '@shared/contracts/crypto'
+export {
+  CRYPTO_VERSION,
+  DEFAULT_ARGON2_PARAMS,
+  HKDF_CONTEXTS,
+  KEYCHAIN_KEYS
+} from '@shared/contracts/crypto'

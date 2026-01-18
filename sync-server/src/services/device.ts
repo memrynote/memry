@@ -89,7 +89,7 @@ export function toPublicDevice(device: Device): DevicePublic {
     osVersion: device.os_version || undefined,
     appVersion: device.app_version,
     createdAt: new Date(device.created_at).toISOString(),
-    lastSyncAt: device.last_sync_at ? new Date(device.last_sync_at).toISOString() : undefined,
+    lastSyncAt: device.last_sync_at ? new Date(device.last_sync_at).toISOString() : undefined
   }
 }
 
@@ -167,7 +167,9 @@ export async function getDeviceById(db: D1Database, id: string): Promise<Device 
  */
 export async function getDevicesByUserId(db: D1Database, userId: string): Promise<Device[]> {
   const result = await db
-    .prepare('SELECT * FROM devices WHERE user_id = ? AND revoked_at IS NULL ORDER BY created_at DESC')
+    .prepare(
+      'SELECT * FROM devices WHERE user_id = ? AND revoked_at IS NULL ORDER BY created_at DESC'
+    )
     .bind(userId)
     .all<Device>()
 

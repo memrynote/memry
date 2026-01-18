@@ -27,6 +27,7 @@ This document captures research findings and decisions for implementing the sync
 ### Rationale
 
 libsodium is the most widely recommended cryptography library for JavaScript applications:
+
 - **Audited**: Professional security audit by independent researchers
 - **Misuse-resistant**: Designed to make secure usage easy and insecure usage difficult
 - **Cross-platform**: Works in Node.js (sodium-native) and browser (libsodium-wrappers)
@@ -34,12 +35,12 @@ libsodium is the most widely recommended cryptography library for JavaScript app
 
 ### Alternatives Considered
 
-| Library | Pros | Cons | Decision |
-|---------|------|------|----------|
+| Library            | Pros                          | Cons                                     | Decision                               |
+| ------------------ | ----------------------------- | ---------------------------------------- | -------------------------------------- |
 | **Web Crypto API** | Native, fast, no dependencies | Missing Argon2id, XChaCha20; limited API | Rejected - missing critical primitives |
-| **tweetnacl** | Small, pure JS | No Argon2id, no XChaCha20 | Rejected - missing primitives |
-| **noble/crypto** | Modern, TypeScript | Newer, less battle-tested | Considered but libsodium preferred |
-| **crypto-js** | Popular | Not suitable for security-critical code | Rejected - known vulnerabilities |
+| **tweetnacl**      | Small, pure JS                | No Argon2id, no XChaCha20                | Rejected - missing primitives          |
+| **noble/crypto**   | Modern, TypeScript            | Newer, less battle-tested                | Considered but libsodium preferred     |
+| **crypto-js**      | Popular                       | Not suitable for security-critical code  | Rejected - known vulnerabilities       |
 
 ### Implementation Notes
 
@@ -54,7 +55,10 @@ const sodium = _sodium
 
 // Shared interface for both environments
 interface CryptoService {
-  encrypt(plaintext: Uint8Array, key: Uint8Array): Promise<{ ciphertext: Uint8Array, nonce: Uint8Array }>
+  encrypt(
+    plaintext: Uint8Array,
+    key: Uint8Array
+  ): Promise<{ ciphertext: Uint8Array; nonce: Uint8Array }>
   decrypt(ciphertext: Uint8Array, nonce: Uint8Array, key: Uint8Array): Promise<Uint8Array>
   sign(message: Uint8Array, secretKey: Uint8Array): Promise<Uint8Array>
   verify(signature: Uint8Array, message: Uint8Array, publicKey: Uint8Array): Promise<boolean>
@@ -70,6 +74,7 @@ interface CryptoService {
 ### Rationale
 
 OWASP recommends these parameters for Argon2id:
+
 - **Memory**: 64 MB (65536 KB)
 - **Iterations**: 3
 - **Parallelism**: 4
@@ -79,21 +84,21 @@ These parameters provide strong protection against GPU/ASIC attacks while remain
 
 ### Alternatives Considered
 
-| Parameters | Memory | Time | Security | Decision |
-|------------|--------|------|----------|----------|
-| OWASP minimum (19 MB, 2 iter) | Low | ~100ms | Good | Rejected - prefer higher security |
-| OWASP recommended (64 MB, 3 iter) | Medium | ~500ms | Excellent | **Selected** |
-| High security (1 GB, 10 iter) | High | ~5s | Maximum | Rejected - too slow for UX |
+| Parameters                        | Memory | Time   | Security  | Decision                          |
+| --------------------------------- | ------ | ------ | --------- | --------------------------------- |
+| OWASP minimum (19 MB, 2 iter)     | Low    | ~100ms | Good      | Rejected - prefer higher security |
+| OWASP recommended (64 MB, 3 iter) | Medium | ~500ms | Excellent | **Selected**                      |
+| High security (1 GB, 10 iter)     | High   | ~5s    | Maximum   | Rejected - too slow for UX        |
 
 ### Implementation Notes
 
 ```typescript
 const ARGON2_PARAMS = {
-  memoryCost: 65536,      // 64 MB
-  timeCost: 3,            // 3 iterations
-  parallelism: 4,         // 4 lanes
-  hashLength: 32,         // 256-bit output
-  type: argon2id          // Hybrid mode (best for password hashing)
+  memoryCost: 65536, // 64 MB
+  timeCost: 3, // 3 iterations
+  parallelism: 4, // 4 lanes
+  hashLength: 32, // 256-bit output
+  type: argon2id // Hybrid mode (best for password hashing)
 }
 
 // Salt must be random, stored encrypted on server
@@ -109,6 +114,7 @@ const salt = sodium.randombytes_buf(32)
 ### Rationale
 
 Yjs is the industry standard for collaborative text editing:
+
 - **BlockNote integration**: Official collaboration support via `@blocknote/core`
 - **Mature**: 5+ years of production use, well-documented
 - **Efficient**: Binary encoding minimizes sync payload size
@@ -117,12 +123,12 @@ Yjs is the industry standard for collaborative text editing:
 
 ### Alternatives Considered
 
-| Library | Pros | Cons | Decision |
-|---------|------|------|----------|
-| **Yjs** | Mature, BlockNote native, awareness | Larger bundle | **Selected** |
-| **Automerge** | Good for JSON, Rust core | No BlockNote integration | Rejected |
-| **Fluid Framework** | Microsoft backed | Complex, server-dependent | Rejected |
-| **ShareDB (OT)** | Simple | Not conflict-free, requires server | Rejected |
+| Library             | Pros                                | Cons                               | Decision     |
+| ------------------- | ----------------------------------- | ---------------------------------- | ------------ |
+| **Yjs**             | Mature, BlockNote native, awareness | Larger bundle                      | **Selected** |
+| **Automerge**       | Good for JSON, Rust core            | No BlockNote integration           | Rejected     |
+| **Fluid Framework** | Microsoft backed                    | Complex, server-dependent          | Rejected     |
+| **ShareDB (OT)**    | Simple                              | Not conflict-free, requires server | Rejected     |
 
 ### Implementation Notes
 
@@ -141,10 +147,10 @@ function createNoteDocument(noteId: string): Y.Doc {
 }
 
 // Structure within each note document
-const content = doc.getXmlFragment('content')     // BlockNote rich text
-const meta = doc.getMap('meta')                   // { title, created, modified }
-const tags = doc.getArray('tags')                 // ['tag1', 'tag2']
-const properties = doc.getMap('properties')       // Custom properties
+const content = doc.getXmlFragment('content') // BlockNote rich text
+const meta = doc.getMap('meta') // { title, created, modified }
+const tags = doc.getArray('tags') // ['tag1', 'tag2']
+const properties = doc.getMap('properties') // Custom properties
 ```
 
 ---
@@ -156,6 +162,7 @@ const properties = doc.getMap('properties')       // Custom properties
 ### Rationale
 
 Cloudflare Workers provides the best combination of:
+
 - **Edge latency**: Code runs close to users globally (~50ms vs ~200ms for centralized)
 - **WebSocket support**: Durable Objects maintain persistent connections
 - **Cost efficiency**: Pay per request, generous free tier (100k req/day)
@@ -163,12 +170,12 @@ Cloudflare Workers provides the best combination of:
 
 ### Alternatives Considered
 
-| Stack | Pros | Cons | Decision |
-|-------|------|------|----------|
-| **Cloudflare Workers** | Edge, WebSocket via DO, cheap | Learning curve | **Selected** |
-| **Supabase** | Fast setup, realtime built-in | Less E2EE control | Rejected |
-| **Fastify + Railway** | Familiar Node.js | No edge, higher cost | Backup option |
-| **AWS Lambda + API Gateway** | Scalable | Cold starts, complex WebSocket | Rejected |
+| Stack                        | Pros                          | Cons                           | Decision      |
+| ---------------------------- | ----------------------------- | ------------------------------ | ------------- |
+| **Cloudflare Workers**       | Edge, WebSocket via DO, cheap | Learning curve                 | **Selected**  |
+| **Supabase**                 | Fast setup, realtime built-in | Less E2EE control              | Rejected      |
+| **Fastify + Railway**        | Familiar Node.js              | No edge, higher cost           | Backup option |
+| **AWS Lambda + API Gateway** | Scalable                      | Cold starts, complex WebSocket | Rejected      |
 
 ### Architecture Details
 
@@ -203,6 +210,7 @@ Cloudflare Workers provides the best combination of:
 ### Rationale
 
 For users who prefer not to use OAuth, email/password authentication provides a familiar, privacy-respecting alternative. Security requirements:
+
 - **Password hashing**: Argon2id (same as key derivation, consistent with crypto choices)
 - **Email verification**: Required before account is fully activated
 - **Password requirements**: Min 12 chars, complexity enforced
@@ -216,7 +224,7 @@ const PASSWORD_REQUIREMENTS = {
   requireUppercase: true,
   requireLowercase: true,
   requireNumber: true,
-  requireSpecialChar: true,
+  requireSpecialChar: true
   // Matches: ^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{12,128}$
 }
 
@@ -249,8 +257,8 @@ Use same Argon2id parameters as key derivation for consistency:
 
 ```typescript
 const PASSWORD_HASH_PARAMS = {
-  memoryCost: 65536,      // 64 MB
-  timeCost: 3,            // 3 iterations
+  memoryCost: 65536, // 64 MB
+  timeCost: 3, // 3 iterations
   parallelism: 4,
   hashLength: 32,
   saltLength: 32
@@ -320,6 +328,7 @@ User                        Server                      Email Service
 ### Rationale
 
 These three providers cover the vast majority of users:
+
 - **Google**: Most common, well-documented OAuth 2.0
 - **Apple**: Required for iOS App Store, Sign in with Apple
 - **GitHub**: Popular among developers (target audience)
@@ -359,6 +368,7 @@ app.get('/auth/github/callback', handleGitHubCallback)
 ### Rationale
 
 QR code linking provides secure key transfer without typing recovery phrase:
+
 - **X25519**: Fast, secure elliptic curve Diffie-Hellman
 - **Ephemeral keys**: New keypair per linking session
 - **Server-mediated**: Server facilitates but cannot decrypt
@@ -416,27 +426,28 @@ EXISTING DEVICE                     SERVER                      NEW DEVICE
 
 ```typescript
 interface AttachmentManifest {
-  id: string                    // Unique attachment ID
-  filename: string              // Original filename (encrypted in manifest)
-  mimeType: string              // File type
-  size: number                  // Total size in bytes
-  checksum: string              // SHA-256 of original file
-  chunks: ChunkRef[]            // Ordered list of chunks
-  chunkSize: number             // Chunk size used (8MB)
+  id: string // Unique attachment ID
+  filename: string // Original filename (encrypted in manifest)
+  mimeType: string // File type
+  size: number // Total size in bytes
+  checksum: string // SHA-256 of original file
+  chunks: ChunkRef[] // Ordered list of chunks
+  chunkSize: number // Chunk size used (8MB)
   createdAt: number
 }
 
 interface ChunkRef {
-  index: number                 // Position in file
-  hash: string                  // SHA-256 of chunk content (for dedup)
-  encryptedHash: string         // SHA-256 of encrypted chunk (for lookup)
-  size: number                  // Actual chunk size
+  index: number // Position in file
+  hash: string // SHA-256 of chunk content (for dedup)
+  encryptedHash: string // SHA-256 of encrypted chunk (for lookup)
+  size: number // Actual chunk size
 }
 ```
 
 ### Deduplication Benefits
 
 Same file attached to multiple notes → store chunks once:
+
 - 50MB PDF attached twice = 50MB storage (not 100MB)
 - Similar files share common chunks
 
@@ -449,6 +460,7 @@ Same file attached to multiple notes → store chunks once:
 ### Rationale
 
 WebSocket provides the best real-time experience:
+
 - **Low latency**: < 100ms for note updates
 - **Efficient**: No polling overhead
 - **Durable Objects**: Handle WebSocket upgrades in Workers
@@ -493,6 +505,7 @@ export class UserSyncState {
 ### Rationale
 
 Tasks and settings are structured data with independent fields:
+
 - Title, status, priority, due date can change independently
 - Field-level LWW prevents unnecessary conflicts
 - Vector clocks detect concurrent edits
@@ -501,13 +514,13 @@ Tasks and settings are structured data with independent fields:
 
 ```typescript
 interface VectorClock {
-  [deviceId: string]: number    // Logical timestamp per device
+  [deviceId: string]: number // Logical timestamp per device
 }
 
 interface TaskWithSync extends Task {
-  clock: VectorClock            // Overall item clock
+  clock: VectorClock // Overall item clock
   fieldClocks: {
-    [field: string]: VectorClock  // Per-field clocks
+    [field: string]: VectorClock // Per-field clocks
   }
 }
 
@@ -536,6 +549,7 @@ function mergeTask(local: TaskWithSync, remote: TaskWithSync): TaskWithSync {
 ### Rationale
 
 IndexedDB is the right choice for sync queue:
+
 - **Persistent**: Survives app crashes and restarts
 - **Large capacity**: No 5MB localStorage limit
 - **Async**: Non-blocking operations
@@ -545,14 +559,14 @@ IndexedDB is the right choice for sync queue:
 
 ```typescript
 interface SyncQueueItem {
-  id: string                    // Queue item ID
+  id: string // Queue item ID
   type: 'note_update' | 'task' | 'project' | 'attachment' | 'settings'
-  itemId: string                // ID of the synced item
-  payload: string               // Encrypted JSON
-  priority: number              // Higher = more urgent
-  attempts: number              // Retry count
-  lastAttempt: number | null    // Timestamp
-  createdAt: number             // Timestamp
+  itemId: string // ID of the synced item
+  payload: string // Encrypted JSON
+  priority: number // Higher = more urgent
+  attempts: number // Retry count
+  lastAttempt: number | null // Timestamp
+  createdAt: number // Timestamp
   status: 'pending' | 'in_progress' | 'failed'
 }
 
@@ -604,6 +618,7 @@ async function processQueue() {
 ### Rationale
 
 Resend offers the best developer experience for a small team:
+
 - **Simple API**: Clean REST/SDK, no complex configuration
 - **Deliverability**: Good inbox placement, DKIM/SPF built-in
 - **Pricing**: Free tier (100 emails/day), affordable scaling
@@ -612,13 +627,13 @@ Resend offers the best developer experience for a small team:
 
 ### Alternatives Considered
 
-| Provider | Pros | Cons | Decision |
-|----------|------|------|----------|
-| **Resend** | Simple, modern DX, React Email | Newer service | **Selected** |
-| **SendGrid** | Mature, high volume | Complex setup, overkill | Rejected |
-| **Postmark** | Great deliverability | More expensive | Backup option |
-| **Cloudflare Email** | Native integration | Limited features, no templates | Rejected |
-| **AWS SES** | Cheap at scale | Complex setup, cold start | Rejected |
+| Provider             | Pros                           | Cons                           | Decision      |
+| -------------------- | ------------------------------ | ------------------------------ | ------------- |
+| **Resend**           | Simple, modern DX, React Email | Newer service                  | **Selected**  |
+| **SendGrid**         | Mature, high volume            | Complex setup, overkill        | Rejected      |
+| **Postmark**         | Great deliverability           | More expensive                 | Backup option |
+| **Cloudflare Email** | Native integration             | Limited features, no templates | Rejected      |
+| **AWS SES**          | Cheap at scale                 | Complex setup, cold start      | Rejected      |
 
 ### Implementation Notes
 
@@ -633,19 +648,19 @@ export async function sendVerificationEmail(email: string, token: string) {
     from: 'Memry <noreply@memry.app>',
     to: email,
     subject: 'Verify your email',
-    react: VerificationEmail({ token }),
+    react: VerificationEmail({ token })
   })
 }
 ```
 
 ### Email Types
 
-| Email | Trigger | Expiry |
-|-------|---------|--------|
-| Email verification | Signup | 24 hours |
-| Password reset | Forgot password | 1 hour |
-| Device linked | New device approved | N/A |
-| Device removed | Device revoked | N/A |
+| Email              | Trigger             | Expiry   |
+| ------------------ | ------------------- | -------- |
+| Email verification | Signup              | 24 hours |
+| Password reset     | Forgot password     | 1 hour   |
+| Device linked      | New device approved | N/A      |
+| Device removed     | Device revoked      | N/A      |
 
 ---
 
@@ -707,7 +722,7 @@ const transitions: Record<SyncState, SyncState[]> = {
   idle: ['syncing', 'offline'],
   syncing: ['idle', 'error', 'offline'],
   offline: ['syncing', 'idle'],
-  error: ['syncing', 'offline'],
+  error: ['syncing', 'offline']
 }
 ```
 
@@ -735,11 +750,11 @@ const transitions: Record<SyncState, SyncState[]> = {
 
 ```typescript
 const RECONNECT_CONFIG = {
-  initialDelay: 1000,       // 1 second
-  maxDelay: 60000,          // 60 seconds
-  multiplier: 2,            // Double each attempt
-  jitter: 0.3,              // ±30% randomization
-  maxAttempts: 10,          // Before falling back to polling
+  initialDelay: 1000, // 1 second
+  maxDelay: 60000, // 60 seconds
+  multiplier: 2, // Double each attempt
+  jitter: 0.3, // ±30% randomization
+  maxAttempts: 10 // Before falling back to polling
 }
 
 function getReconnectDelay(attempt: number): number {
@@ -764,6 +779,7 @@ function getReconnectDelay(attempt: number): number {
 ### Challenge
 
 Electron apps can have multiple windows. Each window shares:
+
 - The same IndexedDB database
 - The same SQLite databases (via main process)
 - The same sync queue
@@ -831,22 +847,23 @@ persistence.on('synced', () => {
 
 ## Open Questions Resolved
 
-| Question | Resolution |
-|----------|------------|
-| Attachment storage limit per user | 5GB default (configurable in server config) |
-| Sync conflict notification | Silent merge for CRDTs, log for vector clock merges |
-| Real-time WebSocket | Always connected when app is foreground |
-| Selective sync on desktop | Full sync only (P3 feature for mobile) |
-| Key rotation frequency | Manual only, prompted after device removal |
-| Email service provider | Resend for transactional emails |
-| Multi-window sync | Single writer pattern, broadcast updates |
-| WebSocket reconnection | Exponential backoff with jitter, max 60s |
+| Question                          | Resolution                                          |
+| --------------------------------- | --------------------------------------------------- |
+| Attachment storage limit per user | 5GB default (configurable in server config)         |
+| Sync conflict notification        | Silent merge for CRDTs, log for vector clock merges |
+| Real-time WebSocket               | Always connected when app is foreground             |
+| Selective sync on desktop         | Full sync only (P3 feature for mobile)              |
+| Key rotation frequency            | Manual only, prompted after device removal          |
+| Email service provider            | Resend for transactional emails                     |
+| Multi-window sync                 | Single writer pattern, broadcast updates            |
+| WebSocket reconnection            | Exponential backoff with jitter, max 60s            |
 
 ---
 
 ## Next Steps
 
 All research items resolved. Proceed to:
+
 1. **Phase 1**: Generate data-model.md
 2. **Phase 1**: Generate API contracts
 3. **Phase 1**: Generate quickstart.md

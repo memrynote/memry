@@ -189,6 +189,7 @@ export class SyncEngine extends EventEmitter {
     const wsManager = getWebSocketManager()
     wsManager.on('item-synced', (wsPayload: { itemId: string; type: string }) => {
       // Another device pushed an item, pull it
+      console.log('[Sync Engine] item-synced event received:', wsPayload)
       this.pullSingleItem(wsPayload.itemId, wsPayload.type as SyncItemType).catch((err) =>
         this.emitError(err)
       )
@@ -513,7 +514,9 @@ export class SyncEngine extends EventEmitter {
         { maxAttempts: 3 }
       )
 
-      console.log(`[Sync] Pull response: ${response.items.length} items, hasMore: ${response.hasMore}`)
+      console.log(
+        `[Sync] Pull response: ${response.items.length} items, hasMore: ${response.hasMore}`
+      )
 
       // Process pulled items
       for (const item of response.items) {
@@ -562,7 +565,9 @@ export class SyncEngine extends EventEmitter {
       throw error
     }
 
-    console.log(`[Sync] Pull complete: ${result.pulled} items pulled, ${result.errors.length} errors`)
+    console.log(
+      `[Sync] Pull complete: ${result.pulled} items pulled, ${result.errors.length} errors`
+    )
     return result
   }
 
@@ -721,7 +726,9 @@ export class SyncEngine extends EventEmitter {
         encryptedDataPreview: item.encryptedData?.substring(0, 200),
         error: parseError instanceof Error ? parseError.message : String(parseError)
       })
-      throw new Error(`Failed to parse encryptedData: ${parseError instanceof Error ? parseError.message : String(parseError)}`)
+      throw new Error(
+        `Failed to parse encryptedData: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+      )
     }
 
     // Step 3: Derive signing key and verify signature
@@ -777,7 +784,9 @@ export class SyncEngine extends EventEmitter {
       console.error(`[Sync] Step 4 FAILED: Decryption error`, {
         error: decryptError instanceof Error ? decryptError.message : String(decryptError)
       })
-      throw new Error(`Decryption failed: ${decryptError instanceof Error ? decryptError.message : String(decryptError)}`)
+      throw new Error(
+        `Decryption failed: ${decryptError instanceof Error ? decryptError.message : String(decryptError)}`
+      )
     }
 
     // Step 5: Parse decrypted payload
@@ -788,9 +797,12 @@ export class SyncEngine extends EventEmitter {
     } catch (payloadParseError) {
       console.error(`[Sync] Step 5 FAILED: Could not parse decrypted payload`, {
         decryptedPreview: decrypted.substring(0, 200),
-        error: payloadParseError instanceof Error ? payloadParseError.message : String(payloadParseError)
+        error:
+          payloadParseError instanceof Error ? payloadParseError.message : String(payloadParseError)
       })
-      throw new Error(`Failed to parse decrypted payload: ${payloadParseError instanceof Error ? payloadParseError.message : String(payloadParseError)}`)
+      throw new Error(
+        `Failed to parse decrypted payload: ${payloadParseError instanceof Error ? payloadParseError.message : String(payloadParseError)}`
+      )
     }
 
     // Step 6: Check for conflicts using vector clock
@@ -919,7 +931,11 @@ export class SyncEngine extends EventEmitter {
     switch (type) {
       case 'task': {
         // Check if task exists to determine create vs update
-        const existingTask = db.select().from(tasks).where(eq(tasks.id, data.id as string)).get()
+        const existingTask = db
+          .select()
+          .from(tasks)
+          .where(eq(tasks.id, data.id as string))
+          .get()
 
         await db
           .insert(tasks)
@@ -968,7 +984,11 @@ export class SyncEngine extends EventEmitter {
           })
 
         // Emit event for UI update
-        const task = db.select().from(tasks).where(eq(tasks.id, data.id as string)).get()
+        const task = db
+          .select()
+          .from(tasks)
+          .where(eq(tasks.id, data.id as string))
+          .get()
         if (task) {
           emitSyncEvent(
             existingTask ? TasksChannels.events.UPDATED : TasksChannels.events.CREATED,
@@ -979,7 +999,11 @@ export class SyncEngine extends EventEmitter {
       }
       case 'project': {
         // Check if project exists to determine create vs update
-        const existingProject = db.select().from(projects).where(eq(projects.id, data.id as string)).get()
+        const existingProject = db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, data.id as string))
+          .get()
 
         await db
           .insert(projects)
@@ -1010,10 +1034,16 @@ export class SyncEngine extends EventEmitter {
           })
 
         // Emit event for UI update
-        const project = db.select().from(projects).where(eq(projects.id, data.id as string)).get()
+        const project = db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, data.id as string))
+          .get()
         if (project) {
           emitSyncEvent(
-            existingProject ? TasksChannels.events.PROJECT_UPDATED : TasksChannels.events.PROJECT_CREATED,
+            existingProject
+              ? TasksChannels.events.PROJECT_UPDATED
+              : TasksChannels.events.PROJECT_CREATED,
             { id: project.id, project }
           )
         }
@@ -1021,7 +1051,11 @@ export class SyncEngine extends EventEmitter {
       }
       case 'inbox_item': {
         // Check if inbox item exists to determine create vs update
-        const existingInboxItem = db.select().from(inboxItems).where(eq(inboxItems.id, data.id as string)).get()
+        const existingInboxItem = db
+          .select()
+          .from(inboxItems)
+          .where(eq(inboxItems.id, data.id as string))
+          .get()
 
         await db
           .insert(inboxItems)
@@ -1078,12 +1112,21 @@ export class SyncEngine extends EventEmitter {
           })
 
         // Emit event for UI update
-        const inboxItem = db.select().from(inboxItems).where(eq(inboxItems.id, data.id as string)).get()
+        // CAPTURED expects { item }, UPDATED expects { id, changes }
+        const inboxItem = db
+          .select()
+          .from(inboxItems)
+          .where(eq(inboxItems.id, data.id as string))
+          .get()
         if (inboxItem) {
-          emitSyncEvent(
-            existingInboxItem ? InboxChannels.events.UPDATED : InboxChannels.events.CAPTURED,
-            existingInboxItem ? { id: inboxItem.id, inboxItem } : { inboxItem }
-          )
+          const eventType = existingInboxItem
+            ? InboxChannels.events.UPDATED
+            : InboxChannels.events.CAPTURED
+          const payload = existingInboxItem
+            ? { id: inboxItem.id, changes: inboxItem }
+            : { item: inboxItem }
+          console.log(`[Sync] Emitting ${eventType} with payload keys:`, Object.keys(payload))
+          emitSyncEvent(eventType, payload)
         }
         break
       }

@@ -19,13 +19,13 @@ import {
   getWordAtIndex,
   getWordlist,
   isValidWord,
-  getWordSuggestions,
+  getWordSuggestions
 } from './recovery'
 import {
   TEST_RECOVERY_PHRASE_12,
   TEST_RECOVERY_PHRASE_24,
   INVALID_CHECKSUM_PHRASE,
-  INVALID_WORD_PHRASE,
+  INVALID_WORD_PHRASE
 } from './__fixtures__'
 import { expectBufferEqual, expectToThrowAsync, expectToThrow } from './__helpers__'
 
@@ -280,7 +280,10 @@ describe('recovery', () => {
     })
 
     it('should throw for invalid phrase', async () => {
-      await expectToThrowAsync(() => mnemonicToSeed(INVALID_CHECKSUM_PHRASE), 'Invalid recovery phrase')
+      await expectToThrowAsync(
+        () => mnemonicToSeed(INVALID_CHECKSUM_PHRASE),
+        'Invalid recovery phrase'
+      )
     })
 
     it('should normalize phrase before deriving seed', async () => {
@@ -395,7 +398,7 @@ describe('recovery', () => {
       const confirmations = [
         { index: 0, word: words[0] },
         { index: 5, word: words[5] },
-        { index: 23, word: words[23] },
+        { index: 23, word: words[23] }
       ]
 
       const result = verifyConfirmationWords(phrase, confirmations)
@@ -408,7 +411,7 @@ describe('recovery', () => {
 
       const confirmations = [
         { index: 0, word: 'wrong' },
-        { index: 5, word: 'words' },
+        { index: 5, word: 'words' }
       ]
 
       const result = verifyConfirmationWords(phrase, confirmations)

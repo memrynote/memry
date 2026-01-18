@@ -62,10 +62,7 @@ export function ChangePasswordDialog({
   const passwordsMatch = newPassword === confirmPassword
   const passwordsDifferent = currentPassword !== newPassword
   const isValid =
-    currentPasswordValid &&
-    newPasswordValidation.isValid &&
-    passwordsMatch &&
-    passwordsDifferent
+    currentPasswordValid && newPasswordValidation.isValid && passwordsMatch && passwordsDifferent
 
   // Reset form when dialog closes
   const handleOpenChange = useCallback(
@@ -224,9 +221,7 @@ export function ChangePasswordDialog({
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className={cn(
                   'pl-10 pr-10',
-                  confirmPassword &&
-                    !passwordsMatch &&
-                    'border-red-500 focus-visible:ring-red-500'
+                  confirmPassword && !passwordsMatch && 'border-red-500 focus-visible:ring-red-500'
                 )}
                 disabled={isLoading}
                 autoComplete="new-password"
@@ -274,9 +269,7 @@ export function ChangePasswordDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={!isValid || isLoading}>
-              {isLoading && (
-                <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
-              )}
+              {isLoading && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />}
               Change Password
             </Button>
           </DialogFooter>

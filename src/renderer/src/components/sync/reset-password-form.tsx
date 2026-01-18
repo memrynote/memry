@@ -106,9 +106,7 @@ export function ResetPasswordForm({
       {/* Header */}
       <div className="space-y-2 text-center">
         <h3 className="text-lg font-semibold">Reset your password</h3>
-        <p className="text-sm text-muted-foreground">
-          Enter a new password for your account.
-        </p>
+        <p className="text-sm text-muted-foreground">Enter a new password for your account.</p>
       </div>
 
       {/* Form */}

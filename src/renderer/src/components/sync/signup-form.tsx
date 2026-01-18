@@ -54,11 +54,7 @@ export function SignupForm({
   const passwordsMatch = password === confirmPassword
   const deviceNameValid = deviceName.trim().length > 0
 
-  const isValid =
-    emailValid &&
-    passwordValidation.isValid &&
-    passwordsMatch &&
-    deviceNameValid
+  const isValid = emailValid && passwordValidation.isValid && passwordsMatch && deviceNameValid
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -95,7 +91,16 @@ export function SignupForm({
         setLocalError(err instanceof Error ? err.message : 'An error occurred')
       }
     },
-    [email, password, deviceName, emailValid, passwordValidation.isValid, passwordsMatch, deviceNameValid, onSubmit]
+    [
+      email,
+      password,
+      deviceName,
+      emailValid,
+      passwordValidation.isValid,
+      passwordsMatch,
+      deviceNameValid,
+      onSubmit
+    ]
   )
 
   const displayError = error || localError

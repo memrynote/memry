@@ -31,11 +31,7 @@ interface OAuthButtonsProps {
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
       <path
         fill="#4285F4"
         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -101,9 +97,7 @@ export function OAuthButtons({
         ) : (
           <GoogleIcon className="size-5" />
         )}
-        {variant === 'stacked' && (
-          <span className="ml-2">Continue with Google</span>
-        )}
+        {variant === 'stacked' && <span className="ml-2">Continue with Google</span>}
       </Button>
     </div>
   )
@@ -127,9 +121,7 @@ export function OAuthDivider({ className }: OAuthDividerProps) {
         <span className="w-full border-t" />
       </div>
       <div className="relative flex justify-center text-xs uppercase">
-        <span className="bg-background px-2 text-muted-foreground">
-          Or continue with
-        </span>
+        <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
       </div>
     </div>
   )

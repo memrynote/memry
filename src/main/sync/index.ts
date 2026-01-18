@@ -34,7 +34,7 @@ export {
   clockMax,
   isEmptyClock,
   copyClock,
-  removeDevice,
+  removeDevice
 } from './vector-clock'
 
 // =============================================================================
@@ -49,7 +49,7 @@ export type {
   RecoveryData,
   SignupResponse,
   MessageResponse,
-  RefreshResponse,
+  RefreshResponse
 } from './api-client'
 
 // =============================================================================
@@ -75,7 +75,7 @@ export {
   MAX_RETRY_ATTEMPTS,
   BASE_DELAY_MS,
   MAX_DELAY_MS,
-  JITTER_FACTOR,
+  JITTER_FACTOR
 } from './retry'
 export type { RetryOptions } from './retry'
 
@@ -100,7 +100,7 @@ export type {
   ItemSyncedPayload,
   LinkingRequestPayload,
   DeviceRemovedPayload,
-  WebSocketEvents,
+  WebSocketEvents
 } from './websocket'
 
 // =============================================================================
@@ -123,7 +123,7 @@ export {
   queueSettingsSync,
   queueNoteSync,
   queueAttachmentSync,
-  queueBulkSync,
+  queueBulkSync
 } from './triggers'
 export type { SyncTriggerOptions } from './triggers'
 

@@ -108,17 +108,15 @@ export function VerificationPending({
       {/* Title & Description */}
       <div className="space-y-2 text-center">
         <h2 className="text-xl font-semibold">Check your email</h2>
-        <p className="text-sm text-muted-foreground">
-          We sent a verification link to
-        </p>
+        <p className="text-sm text-muted-foreground">We sent a verification link to</p>
         <p className="font-medium">{email}</p>
       </div>
 
       {/* Instructions */}
       <div className="rounded-lg border bg-muted/30 p-4">
         <p className="text-sm text-muted-foreground">
-          Click the link in the email to verify your account. If you don&apos;t see
-          the email, check your spam folder.
+          Click the link in the email to verify your account. If you don&apos;t see the email, check
+          your spam folder.
         </p>
       </div>
 
@@ -171,10 +169,7 @@ export function VerificationPending({
 
       {/* Error Message */}
       {displayError && (
-        <div
-          className="rounded-lg border border-destructive/30 bg-destructive/5 p-3"
-          role="alert"
-        >
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3" role="alert">
           <p className="text-sm text-destructive">{displayError}</p>
         </div>
       )}
@@ -182,12 +177,7 @@ export function VerificationPending({
       {/* Actions */}
       <div className="space-y-3">
         {/* Resend Button */}
-        <Button
-          variant="outline"
-          onClick={handleResend}
-          disabled={!canResend}
-          className="w-full"
-        >
+        <Button variant="outline" onClick={handleResend} disabled={!canResend} className="w-full">
           {isResending ? (
             <>
               <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
@@ -216,8 +206,7 @@ export function VerificationPending({
 
       {/* Help Text */}
       <p className="text-center text-xs text-muted-foreground">
-        Didn&apos;t receive the email? Make sure {email} is correct and check your
-        spam folder.
+        Didn&apos;t receive the email? Make sure {email} is correct and check your spam folder.
       </p>
     </div>
   )
@@ -261,9 +250,7 @@ export function VerificationPendingCompact({
   return (
     <div className={cn('flex items-center gap-2 text-sm', className)}>
       <Mail className="size-4 text-muted-foreground" aria-hidden="true" />
-      <span className="text-muted-foreground">
-        Verification sent to {email}
-      </span>
+      <span className="text-muted-foreground">Verification sent to {email}</span>
       <button
         onClick={handleResend}
         disabled={cooldown > 0 || isResending}

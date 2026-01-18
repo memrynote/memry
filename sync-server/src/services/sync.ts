@@ -16,7 +16,14 @@ import { NotFoundError, ConflictError, ValidationError } from '../lib/errors'
 // =============================================================================
 
 /** Sync item types */
-export type SyncItemType = 'note' | 'task' | 'project' | 'settings' | 'attachment' | 'inbox_item' | 'saved_filter'
+export type SyncItemType =
+  | 'note'
+  | 'task'
+  | 'project'
+  | 'settings'
+  | 'attachment'
+  | 'inbox_item'
+  | 'saved_filter'
 
 /** Sync operations */
 export type SyncOperation = 'create' | 'update' | 'delete'
@@ -136,7 +143,7 @@ export class SyncService {
       version: item.version,
       size: item.size,
       modifiedAt: item.modified_at,
-      deletedAt: item.deleted_at ?? undefined,
+      deletedAt: item.deleted_at ?? undefined
     }))
   }
 
@@ -181,9 +188,9 @@ export class SyncService {
         version: item.version,
         size: item.size,
         modifiedAt: item.modified_at,
-        deletedAt: item.deleted_at ?? undefined,
+        deletedAt: item.deleted_at ?? undefined
       })),
-      hasMore,
+      hasMore
     }
   }
 
@@ -245,7 +252,9 @@ export class SyncService {
 
     // Check for existing item
     const existing = await this.db
-      .prepare('SELECT id, version, clock, modified_at FROM sync_items WHERE id = ? AND user_id = ?')
+      .prepare(
+        'SELECT id, version, clock, modified_at FROM sync_items WHERE id = ? AND user_id = ?'
+      )
       .bind(item.id, userId)
       .first<{ id: string; version: number; clock: string | null; modified_at: number }>()
 
@@ -254,7 +263,9 @@ export class SyncService {
       if (existing) {
         // Soft delete
         await this.db
-          .prepare('UPDATE sync_items SET deleted_at = ?, modified_at = ?, version = version + 1 WHERE id = ?')
+          .prepare(
+            'UPDATE sync_items SET deleted_at = ?, modified_at = ?, version = version + 1 WHERE id = ?'
+          )
           .bind(now, now, item.id)
           .run()
 
@@ -276,9 +287,9 @@ export class SyncService {
             id: item.id,
             type: item.type,
             serverVersion: existing.version,
-            serverClock,
+            serverClock
           },
-          clock: serverClock,
+          clock: serverClock
         }
       }
     }
@@ -288,8 +299,8 @@ export class SyncService {
     await this.bucket.put(blobKey, item.encryptedData, {
       customMetadata: {
         signature: item.signature,
-        stateVector: item.stateVector ?? '',
-      },
+        stateVector: item.stateVector ?? ''
+      }
     })
 
     const size = new Blob([item.encryptedData]).size
@@ -302,7 +313,15 @@ export class SyncService {
            SET blob_key = ?, size = ?, version = version + 1, operation = ?, clock = ?, state_vector = ?, modified_at = ?, deleted_at = NULL
            WHERE id = ?`
         )
-        .bind(blobKey, size, item.operation, JSON.stringify(item.clock ?? {}), item.stateVector ?? null, now, item.id)
+        .bind(
+          blobKey,
+          size,
+          item.operation,
+          JSON.stringify(item.clock ?? {}),
+          item.stateVector ?? null,
+          now,
+          item.id
+        )
         .run()
     } else {
       await this.db
@@ -310,7 +329,18 @@ export class SyncService {
           `INSERT INTO sync_items (id, user_id, type, operation, blob_key, size, version, clock, state_vector, created_at, modified_at)
            VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`
         )
-        .bind(item.id, userId, item.type, item.operation, blobKey, size, JSON.stringify(item.clock ?? {}), item.stateVector ?? null, now, now)
+        .bind(
+          item.id,
+          userId,
+          item.type,
+          item.operation,
+          blobKey,
+          size,
+          JSON.stringify(item.clock ?? {}),
+          item.stateVector ?? null,
+          now,
+          now
+        )
         .run()
     }
 
@@ -388,7 +418,7 @@ export class SyncService {
           clock: item.clock ? JSON.parse(item.clock) : undefined,
           stateVector: item.state_vector ?? undefined,
           modifiedAt: item.modified_at,
-          deletedAt: item.deleted_at ?? undefined,
+          deletedAt: item.deleted_at ?? undefined
         })
 
         // Merge clock
@@ -402,7 +432,7 @@ export class SyncService {
       items: pullItems,
       hasMore,
       serverClock,
-      serverTimestamp: Date.now(),
+      serverTimestamp: Date.now()
     }
   }
 
@@ -441,7 +471,7 @@ export class SyncService {
       clock: item.clock ? JSON.parse(item.clock) : undefined,
       stateVector: item.state_vector ?? undefined,
       modifiedAt: item.modified_at,
-      deletedAt: item.deleted_at ?? undefined,
+      deletedAt: item.deleted_at ?? undefined
     }
   }
 
@@ -460,7 +490,9 @@ export class SyncService {
     const now = Date.now()
 
     const result = await this.db
-      .prepare('UPDATE sync_items SET deleted_at = ?, modified_at = ?, version = version + 1 WHERE id = ? AND user_id = ?')
+      .prepare(
+        'UPDATE sync_items SET deleted_at = ?, modified_at = ?, version = version + 1 WHERE id = ? AND user_id = ?'
+      )
       .bind(now, now, itemId, userId)
       .run()
 
@@ -484,7 +516,10 @@ export class SyncService {
       await this.bucket.delete(item.blob_key)
 
       // Delete metadata from D1
-      await this.db.prepare('DELETE FROM sync_items WHERE id = ? AND user_id = ?').bind(itemId, userId).run()
+      await this.db
+        .prepare('DELETE FROM sync_items WHERE id = ? AND user_id = ?')
+        .bind(itemId, userId)
+        .run()
     }
   }
 
@@ -510,7 +545,10 @@ export class SyncService {
    *
    * @returns 'before' if a < b, 'after' if a > b, 'equal' if a == b, 'concurrent' if neither
    */
-  private compareClock(a: VectorClock, b: VectorClock): 'before' | 'after' | 'equal' | 'concurrent' {
+  private compareClock(
+    a: VectorClock,
+    b: VectorClock
+  ): 'before' | 'after' | 'equal' | 'concurrent' {
     const allDevices = new Set([...Object.keys(a), ...Object.keys(b)])
 
     let aLessOrEqual = true
@@ -567,7 +605,10 @@ export class SyncService {
    * @param usage - New storage usage in bytes
    */
   async updateStorageUsage(userId: string, usage: number): Promise<void> {
-    await this.db.prepare('UPDATE users SET storage_used = ?, updated_at = ? WHERE id = ?').bind(usage, Date.now(), userId).run()
+    await this.db
+      .prepare('UPDATE users SET storage_used = ?, updated_at = ? WHERE id = ?')
+      .bind(usage, Date.now(), userId)
+      .run()
   }
 
   // ---------------------------------------------------------------------------
@@ -584,7 +625,9 @@ export class SyncService {
   async cleanupTombstones(userId: string, olderThan: number): Promise<number> {
     // Get items to delete
     const items = await this.db
-      .prepare('SELECT id, blob_key FROM sync_items WHERE user_id = ? AND deleted_at IS NOT NULL AND deleted_at < ?')
+      .prepare(
+        'SELECT id, blob_key FROM sync_items WHERE user_id = ? AND deleted_at IS NOT NULL AND deleted_at < ?'
+      )
       .bind(userId, olderThan)
       .all<{ id: string; blob_key: string }>()
 
@@ -595,7 +638,9 @@ export class SyncService {
 
     // Delete metadata from D1
     const result = await this.db
-      .prepare('DELETE FROM sync_items WHERE user_id = ? AND deleted_at IS NOT NULL AND deleted_at < ?')
+      .prepare(
+        'DELETE FROM sync_items WHERE user_id = ? AND deleted_at IS NOT NULL AND deleted_at < ?'
+      )
       .bind(userId, olderThan)
       .run()
 

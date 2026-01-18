@@ -47,7 +47,7 @@ export enum ErrorCategory {
   /** Permanent: Auth errors, validation errors, not found */
   PERMANENT = 'permanent',
   /** Unknown: Cannot determine, treat as retryable */
-  UNKNOWN = 'unknown',
+  UNKNOWN = 'unknown'
 }
 
 /**
@@ -73,7 +73,7 @@ const PERMANENT_ERROR_CODES = new Set([
   'ENCRYPTION_ERROR',
   'DECRYPTION_ERROR',
   'SIGNATURE_ERROR',
-  'INVALID_PAYLOAD',
+  'INVALID_PAYLOAD'
 ])
 
 /**
@@ -93,7 +93,7 @@ const RETRYABLE_ERROR_CODES = new Set([
   'TIMEOUT',
   'RATE_LIMITED',
   'SERVER_ERROR',
-  'UNAVAILABLE',
+  'UNAVAILABLE'
 ])
 
 // =============================================================================
@@ -258,7 +258,10 @@ export interface RetryOptions {
  * )
  * ```
  */
-export async function withRetry<T>(operation: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
+export async function withRetry<T>(
+  operation: () => Promise<T>,
+  options: RetryOptions = {}
+): Promise<T> {
   const maxAttempts = options.maxAttempts ?? MAX_RETRY_ATTEMPTS
   let lastError: unknown
 

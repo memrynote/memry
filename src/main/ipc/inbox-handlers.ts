@@ -1569,7 +1569,11 @@ async function handleBulkSnooze(input: unknown): Promise<{
       const successIds = itemIds.filter((id) => !errorIds.has(id))
       if (successIds.length > 0) {
         queueBulkSync(
-          successIds.map((id) => ({ type: 'inbox_item' as SyncItemType, itemId: id, operation: 'update' as const }))
+          successIds.map((id) => ({
+            type: 'inbox_item' as SyncItemType,
+            itemId: id,
+            operation: 'update' as const
+          }))
         ).catch((err) => console.error('[Sync] Failed to queue bulk snooze:', err))
       }
     }
@@ -1670,7 +1674,11 @@ async function handleBulkTag(input: unknown): Promise<BulkResponse> {
       const successIds = itemIds.filter((id) => !errorIds.has(id))
       if (successIds.length > 0) {
         queueBulkSync(
-          successIds.map((id) => ({ type: 'inbox_item' as SyncItemType, itemId: id, operation: 'update' as const }))
+          successIds.map((id) => ({
+            type: 'inbox_item' as SyncItemType,
+            itemId: id,
+            operation: 'update' as const
+          }))
         ).catch((err) => console.error('[Sync] Failed to queue bulk tag:', err))
       }
     }

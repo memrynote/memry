@@ -49,7 +49,7 @@ const BOOTSTRAP_PRIORITY = {
   TASKS: 75,
   INBOX_ITEMS: 50,
   SAVED_FILTERS: 30,
-  SETTINGS: 20,
+  SETTINGS: 20
 } as const
 
 // =============================================================================
@@ -65,7 +65,7 @@ export async function hasBootstrapped(): Promise<boolean> {
   try {
     const db = getDatabase()
     const result = await db.query.syncState.findFirst({
-      where: eq(syncState.key, SYNC_STATE_KEYS.INITIAL_SYNC_COMPLETE),
+      where: eq(syncState.key, SYNC_STATE_KEYS.INITIAL_SYNC_COMPLETE)
     })
     return result?.value === 'true'
   } catch (error) {
@@ -84,14 +84,14 @@ export async function markBootstrapped(): Promise<void> {
     .values({
       key: SYNC_STATE_KEYS.INITIAL_SYNC_COMPLETE,
       value: 'true',
-      updatedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     })
     .onConflictDoUpdate({
       target: syncState.key,
       set: {
         value: 'true',
-        updatedAt: new Date().toISOString(),
-      },
+        updatedAt: new Date().toISOString()
+      }
     })
   console.log('[Bootstrap] Marked as complete')
 }
@@ -140,7 +140,7 @@ export async function performBootstrap(): Promise<BootstrapResult> {
       success: true,
       skipped: true,
       reason: 'Already bootstrapped',
-      counts: { projects: 0, tasks: 0, inboxItems: 0, savedFilters: 0, settings: 0, total: 0 },
+      counts: { projects: 0, tasks: 0, inboxItems: 0, savedFilters: 0, settings: 0, total: 0 }
     }
   }
 
@@ -151,7 +151,7 @@ export async function performBootstrap(): Promise<BootstrapResult> {
       success: true,
       skipped: true,
       reason: 'Sync not enabled',
-      counts: { projects: 0, tasks: 0, inboxItems: 0, savedFilters: 0, settings: 0, total: 0 },
+      counts: { projects: 0, tasks: 0, inboxItems: 0, savedFilters: 0, settings: 0, total: 0 }
     }
   }
 
@@ -162,7 +162,7 @@ export async function performBootstrap(): Promise<BootstrapResult> {
     inboxItems: 0,
     savedFilters: 0,
     settings: 0,
-    total: 0,
+    total: 0
   }
 
   try {
@@ -178,7 +178,7 @@ export async function performBootstrap(): Promise<BootstrapResult> {
           type: 'project' as SyncItemType,
           itemId: p.id,
           operation: 'create' as SyncOperation,
-          priority: BOOTSTRAP_PRIORITY.PROJECTS,
+          priority: BOOTSTRAP_PRIORITY.PROJECTS
         }))
       )
     }
@@ -196,7 +196,7 @@ export async function performBootstrap(): Promise<BootstrapResult> {
           type: 'task' as SyncItemType,
           itemId: t.id,
           operation: 'create' as SyncOperation,
-          priority: BOOTSTRAP_PRIORITY.TASKS,
+          priority: BOOTSTRAP_PRIORITY.TASKS
         }))
       )
     }
@@ -214,7 +214,7 @@ export async function performBootstrap(): Promise<BootstrapResult> {
           type: 'inbox_item' as SyncItemType,
           itemId: item.id,
           operation: 'create' as SyncOperation,
-          priority: BOOTSTRAP_PRIORITY.INBOX_ITEMS,
+          priority: BOOTSTRAP_PRIORITY.INBOX_ITEMS
         }))
       )
     }
@@ -232,7 +232,7 @@ export async function performBootstrap(): Promise<BootstrapResult> {
           type: 'saved_filter' as SyncItemType,
           itemId: f.id,
           operation: 'create' as SyncOperation,
-          priority: BOOTSTRAP_PRIORITY.SAVED_FILTERS,
+          priority: BOOTSTRAP_PRIORITY.SAVED_FILTERS
         }))
       )
     }
@@ -250,14 +250,15 @@ export async function performBootstrap(): Promise<BootstrapResult> {
           type: 'settings' as SyncItemType,
           itemId: s.key,
           operation: 'create' as SyncOperation,
-          priority: BOOTSTRAP_PRIORITY.SETTINGS,
+          priority: BOOTSTRAP_PRIORITY.SETTINGS
         }))
       )
     }
     console.log(`[Bootstrap] Queued ${counts.settings} settings`)
 
     // Calculate total
-    counts.total = counts.projects + counts.tasks + counts.inboxItems + counts.savedFilters + counts.settings
+    counts.total =
+      counts.projects + counts.tasks + counts.inboxItems + counts.savedFilters + counts.settings
 
     // Mark bootstrap as complete
     await markBootstrapped()
@@ -266,7 +267,7 @@ export async function performBootstrap(): Promise<BootstrapResult> {
     return {
       success: true,
       skipped: false,
-      counts,
+      counts
     }
   } catch (error) {
     console.error('[Bootstrap] Failed:', error)
@@ -274,7 +275,7 @@ export async function performBootstrap(): Promise<BootstrapResult> {
       success: false,
       skipped: false,
       reason: error instanceof Error ? error.message : String(error),
-      counts,
+      counts
     }
   }
 }

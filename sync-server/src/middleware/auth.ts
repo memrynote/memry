@@ -74,7 +74,7 @@ export async function createAccessToken(
     sub: payload.userId,
     did: payload.deviceId,
     email: payload.email,
-    type: 'access',
+    type: 'access'
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -99,7 +99,7 @@ export async function createRefreshToken(
     sub: payload.userId,
     did: payload.deviceId,
     email: payload.email,
-    type: 'refresh',
+    type: 'refresh'
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -120,7 +120,7 @@ export async function createTokenPair(
 ): Promise<{ accessToken: string; refreshToken: string }> {
   const [accessToken, refreshToken] = await Promise.all([
     createAccessToken(payload, secret),
-    createRefreshToken(payload, secret),
+    createRefreshToken(payload, secret)
   ])
 
   return { accessToken, refreshToken }
@@ -150,7 +150,7 @@ export async function verifyToken(token: string, secret: string): Promise<JwtPay
       email: payload.email as string,
       type: payload.type as 'access' | 'refresh',
       iat: payload.iat as number,
-      exp: payload.exp as number,
+      exp: payload.exp as number
     }
   } catch (error) {
     if (error instanceof jose.errors.JWTExpired) {
@@ -217,7 +217,7 @@ export const authMiddleware = createMiddleware<{ Bindings: Env; Variables: { use
     c.set('user', {
       userId: payload.sub,
       deviceId: payload.did,
-      email: payload.email,
+      email: payload.email
     })
 
     await next()
@@ -230,40 +230,41 @@ export const authMiddleware = createMiddleware<{ Bindings: Env; Variables: { use
  * Sets user context if valid token is provided, but doesn't fail
  * if no token is present.
  */
-export const optionalAuthMiddleware = createMiddleware<{ Bindings: Env; Variables: { user?: AuthContext } }>(
-  async (c, next) => {
-    const authHeader = c.req.header('Authorization')
+export const optionalAuthMiddleware = createMiddleware<{
+  Bindings: Env
+  Variables: { user?: AuthContext }
+}>(async (c, next) => {
+  const authHeader = c.req.header('Authorization')
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      await next()
-      return
-    }
-
-    const token = authHeader.slice(7)
-    const secret = c.env.JWT_SECRET
-
-    if (!token || !secret) {
-      await next()
-      return
-    }
-
-    try {
-      const payload = await verifyToken(token, secret)
-
-      if (payload.type === 'access') {
-        c.set('user', {
-          userId: payload.sub,
-          deviceId: payload.did,
-          email: payload.email,
-        })
-      }
-    } catch {
-      // Ignore auth errors for optional auth
-    }
-
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     await next()
+    return
   }
-)
+
+  const token = authHeader.slice(7)
+  const secret = c.env.JWT_SECRET
+
+  if (!token || !secret) {
+    await next()
+    return
+  }
+
+  try {
+    const payload = await verifyToken(token, secret)
+
+    if (payload.type === 'access') {
+      c.set('user', {
+        userId: payload.sub,
+        deviceId: payload.did,
+        email: payload.email
+      })
+    }
+  } catch {
+    // Ignore auth errors for optional auth
+  }
+
+  await next()
+})
 
 /**
  * Device authorization middleware.

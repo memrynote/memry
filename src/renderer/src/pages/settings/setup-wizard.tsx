@@ -272,7 +272,12 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
 
   // Recovery phrase is generated during signup in the main process
   useEffect(() => {
-    if (step === 'recovery-phrase' && !recoveryPhrase && !oauthResult?.recoveryPhrase && authMode === 'signup') {
+    if (
+      step === 'recovery-phrase' &&
+      !recoveryPhrase &&
+      !oauthResult?.recoveryPhrase &&
+      authMode === 'signup'
+    ) {
       setError('Missing recovery phrase. Please restart signup.')
     }
   }, [step, recoveryPhrase, oauthResult, authMode])
@@ -466,7 +471,13 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
         setError(err instanceof Error ? err.message : 'Setup failed')
       }
     },
-    [oauthResult?.recoveryPhrase, recoveryPhrase, confirmRecoveryPhrase, setupFirstDevice, onComplete]
+    [
+      oauthResult?.recoveryPhrase,
+      recoveryPhrase,
+      confirmRecoveryPhrase,
+      setupFirstDevice,
+      onComplete
+    ]
   )
 
   // Handle entering existing recovery phrase (login on new device)
@@ -617,7 +628,9 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
   const renderStep = () => {
     switch (step) {
       case 'welcome':
-        return <WelcomeStep onSignup={goToSignup} onLogin={goToLogin} onLinkDevice={goToLinkDevice} />
+        return (
+          <WelcomeStep onSignup={goToSignup} onLogin={goToLogin} onLinkDevice={goToLinkDevice} />
+        )
 
       case 'signup':
         return (
