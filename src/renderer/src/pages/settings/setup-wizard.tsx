@@ -204,6 +204,7 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
     confirmRecoveryPhrase,
     setupFirstDevice,
     linkViaRecovery,
+    refreshStatus,
     isSigningUp,
     isLoggingIn,
     isVerifying,
@@ -522,11 +523,12 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps) {
           return
         }
 
-        // Main process already completed linking, just update UI
+        // Main process already completed linking; refresh setup status before updating UI
+        refreshStatus()
         setStep('complete')
         onComplete?.()
       },
-      [linkingSessionId, onComplete]
+      [linkingSessionId, onComplete, refreshStatus]
     ),
     onLinkingRejected: useCallback(
       (event) => {
