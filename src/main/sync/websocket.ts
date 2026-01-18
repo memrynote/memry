@@ -233,6 +233,7 @@ export class WebSocketManager extends EventEmitter {
    */
   private doConnect(): void {
     this._state = 'connecting'
+    console.log('[WebSocket] Connecting to', this._serverUrl)
 
     try {
       // Build WebSocket URL with auth params
@@ -259,6 +260,7 @@ export class WebSocketManager extends EventEmitter {
    * Handle WebSocket open event.
    */
   private handleOpen(): void {
+    console.log('[WebSocket] Connected successfully')
     this._state = 'connected'
     this._reconnectAttempts = 0
 
@@ -278,6 +280,7 @@ export class WebSocketManager extends EventEmitter {
     this.cleanup()
 
     const reason = event.reason || `Code ${event.code}`
+    console.log('[WebSocket] Disconnected:', reason)
     this._state = 'disconnected'
     this.emit('disconnected', reason)
 
@@ -290,8 +293,12 @@ export class WebSocketManager extends EventEmitter {
   /**
    * Handle WebSocket error event.
    */
-  private handleError(_event: Event): void {
-    const error = new Error('WebSocket error')
+  private handleError(event: Event): void {
+    // Extract error details from the event if available
+    const errorEvent = event as ErrorEvent
+    const message = errorEvent.message || 'WebSocket connection failed'
+    const error = new Error(`WebSocket error: ${message}`)
+    console.error('[WebSocket] Error:', message)
     this.emit('error', error)
   }
 
@@ -410,6 +417,7 @@ export class WebSocketManager extends EventEmitter {
   private scheduleReconnect(): void {
     if (this._isIntentionalClose) return
     if (this._reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      console.error('[WebSocket] Max reconnect attempts exceeded:', MAX_RECONNECT_ATTEMPTS)
       this.emit('error', new Error(`Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) exceeded`))
       return
     }
@@ -418,6 +426,7 @@ export class WebSocketManager extends EventEmitter {
     this._state = 'reconnecting'
 
     const delay = calculateNextRetry(this._reconnectAttempts)
+    console.log(`[WebSocket] Scheduling reconnect attempt ${this._reconnectAttempts} in ${delay}ms`)
     this.emit('reconnecting', this._reconnectAttempts)
 
     this._reconnectTimer = setTimeout(() => {

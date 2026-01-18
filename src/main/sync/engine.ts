@@ -161,7 +161,7 @@ export class SyncEngine extends EventEmitter {
       if (this._state === 'offline') {
         this.setState('idle')
         // Trigger sync when coming back online
-        this.sync().catch((err) => this.emit('error', err))
+        this.sync().catch((err) => this.emitError(err))
       }
     })
     networkMonitor.on('offline', () => {
@@ -173,7 +173,7 @@ export class SyncEngine extends EventEmitter {
     wsManager.on('item-synced', (wsPayload: { itemId: string; type: string }) => {
       // Another device pushed an item, pull it
       this.pullSingleItem(wsPayload.itemId, wsPayload.type as SyncItemType).catch((err) =>
-        this.emit('error', err)
+        this.emitError(err)
       )
     })
 
@@ -200,6 +200,18 @@ export class SyncEngine extends EventEmitter {
           deviceId: '' // Will be populated by complete linking
         })
       })
+    })
+
+    // Handle WebSocket errors to prevent uncaught exception crashes
+    // Node.js EventEmitter throws if 'error' event has no listener
+    wsManager.on('error', (error: Error) => {
+      console.error('[Sync Engine] WebSocket error:', error.message)
+      this.emitError(error)
+      // Don't set error state for transient WebSocket issues - let reconnect handle it
+      // Only set error state if we were previously syncing
+      if (this._state === 'syncing') {
+        this.setState('error')
+      }
     })
 
     // Set initial state based on network
@@ -239,7 +251,7 @@ export class SyncEngine extends EventEmitter {
     if (this._config.autoSyncInterval > 0) {
       this._autoSyncTimer = setInterval(() => {
         if (!this._isPaused) {
-          this.sync().catch((err) => this.emit('error', err))
+          this.sync().catch((err) => this.emitError(err))
         }
       }, this._config.autoSyncInterval)
     }
@@ -285,7 +297,7 @@ export class SyncEngine extends EventEmitter {
   resume(): void {
     this._isPaused = false
     // Trigger sync
-    this.sync().catch((err) => this.emit('error', err))
+    this.sync().catch((err) => this.emitError(err))
   }
 
   // ---------------------------------------------------------------------------
@@ -335,7 +347,7 @@ export class SyncEngine extends EventEmitter {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       result.errors.push(errorMessage)
-      this.emit('error', error instanceof Error ? error : new Error(errorMessage))
+      this.emitError(error)
       this.setState('error')
     } finally {
       this._syncInProgress = false
@@ -521,7 +533,7 @@ export class SyncEngine extends EventEmitter {
       // For now, just trigger a full pull
       await this.pull()
     } catch (error) {
-      this.emit('error', error instanceof Error ? error : new Error(String(error)))
+      this.emitError(error)
     }
   }
 
@@ -1136,6 +1148,16 @@ export class SyncEngine extends EventEmitter {
     BrowserWindow.getAllWindows().forEach((win) => {
       win.webContents.send(SYNC_EVENTS.STATUS_CHANGED, status)
     })
+  }
+
+  private emitError(error: unknown): void {
+    const normalized = error instanceof Error ? error : new Error(String(error))
+    if (this.listenerCount('error') > 0) {
+      this.emit('error', normalized)
+      return
+    }
+
+    console.error('[Sync Engine] Unhandled error:', normalized.message)
   }
 
   /**
