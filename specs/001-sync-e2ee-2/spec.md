@@ -17,7 +17,7 @@ As a new user, I want to set up my account on my first device so that I can star
 
 **Acceptance Scenarios**:
 
-1. **Given** I am a new user, **When** I sign up with OAuth (Google/Apple/GitHub), **Then** I am prompted with a 24-word recovery phrase that I must confirm
+1. **Given** I am a new user, **When** I sign up with OAuth (Google), **Then** I am prompted with a 24-word recovery phrase that I must confirm
 2. **Given** I am a new user, **When** I sign up with email, **Then** I receive a 6-digit OTP code via email that I must enter to verify
 3. **Given** I enter an invalid or expired OTP code, **When** I submit, **Then** I see a clear error message and can request a new code
 4. **Given** I have confirmed my recovery phrase, **When** setup completes, **Then** my master key is securely stored in the OS keychain and never exposed
@@ -328,7 +328,7 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 ### Functional Requirements
 
 **First Device Setup**
-- **FR-001**: System MUST support OAuth signup via Google, Apple, and GitHub
+- **FR-001**: System MUST support OAuth signup via Google
 - **FR-001a**: System MUST support passwordless email authentication via 6-digit OTP codes
 - **FR-001b**: System MUST enforce OTP security (10-minute expiry, max 5 attempts per code, rate limit 3 requests per 10 min per email)
 - **FR-002**: System MUST generate a 24-word BIP39 recovery phrase during first device setup
@@ -480,7 +480,7 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 
 - Users have consistent internet access (mobile data or WiFi) for initial sync
 - Users can securely store their 24-word recovery phrase offline
-- OAuth providers (Google, Apple, GitHub) remain available and stable
+- OAuth provider (Google) remains available and stable
 - Modern devices have secure keychain/keystore capabilities
 - Users understand the importance of the recovery phrase and consequences of losing it
 - Average user has fewer than 5 linked devices

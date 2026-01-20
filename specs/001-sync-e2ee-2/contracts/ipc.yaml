@@ -92,7 +92,7 @@ channels:
           type: string
         provider:
           type: string
-          enum: [google, apple, github]
+          enum: [google]
     response:
       type: object
       properties:
@@ -773,7 +773,7 @@ typescript:
       // Setup
       export interface SetupFirstDeviceRequest {
         oauthToken: string
-        provider: 'google' | 'apple' | 'github'
+        provider: 'google'
       }
 
       export interface SetupFirstDeviceResponse {

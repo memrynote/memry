@@ -22,7 +22,7 @@ pnpm add -g wrangler
 ### Required Accounts
 
 - **Cloudflare Account**: For Workers, D1, R2
-- **OAuth App Credentials**: Google, Apple, GitHub (optional if only using email auth)
+- **OAuth App Credentials**: Google (optional if only using email auth)
 - **Email Service**: For verification emails (Resend, SendGrid, or Cloudflare Email)
 
 ## Project Setup
@@ -382,8 +382,6 @@ describe('SyncQueue', () => {
 # .env.development
 SYNC_SERVER_URL=http://localhost:8787
 OAUTH_GOOGLE_CLIENT_ID=xxx
-OAUTH_APPLE_CLIENT_ID=xxx
-OAUTH_GITHUB_CLIENT_ID=xxx
 ```
 
 ### Server (Cloudflare Workers)
@@ -398,8 +396,6 @@ ENVIRONMENT = "production"
 
 # Secrets (set via wrangler secret put)
 # OAUTH_GOOGLE_CLIENT_SECRET
-# OAUTH_APPLE_CLIENT_SECRET
-# OAUTH_GITHUB_CLIENT_SECRET
 # JWT_SECRET
 ```
 

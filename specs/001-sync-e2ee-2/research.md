@@ -206,7 +206,7 @@ Passwordless authentication simplifies the user experience and reduces security 
 - **No passwords to remember**: Users already have a 24-word recovery phrase for E2EE - adding another password doubles cognitive load
 - **Server auth ≠ data security**: With E2EE, server authentication just gates sync access. All data remains encrypted.
 - **Simpler implementation**: Eliminates password hashing, reset flows, and complexity rules
-- **OAuth fallback**: Users who want "no email every time" can use Google/Apple/GitHub
+- **OAuth fallback**: Users who want "no email every time" can use Google
 
 ### OTP Configuration
 
@@ -285,22 +285,18 @@ User                        Server                      Email Service
 
 ## 6. OAuth Provider Integration
 
-### Decision: Google, Apple, GitHub via Cloudflare Workers
+### Decision: Google OAuth via Cloudflare Workers
 
 ### Rationale
 
-These three providers cover the vast majority of users:
+Google OAuth covers the vast majority of users:
 - **Google**: Most common, well-documented OAuth 2.0
-- **Apple**: Required for iOS App Store, Sign in with Apple
-- **GitHub**: Popular among developers (target audience)
 
 ### Implementation Approach
 
 ```typescript
 // Hono.js OAuth routes
 app.get('/auth/google/callback', handleGoogleCallback)
-app.get('/auth/apple/callback', handleAppleCallback)
-app.get('/auth/github/callback', handleGitHubCallback)
 
 // Common flow:
 // 1. Client opens OAuth provider URL with state parameter
