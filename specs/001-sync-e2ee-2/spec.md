@@ -350,7 +350,7 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 **Data Encryption**
 - **FR-012**: System MUST encrypt all user content before transmission or storage
 - **FR-013**: System MUST use per-item file keys encrypted with the vault key
-- **FR-014**: System MUST sign all encrypted items with a user-level signing key for authenticity verification
+- **FR-014**: System MUST sign all encrypted items with a device-level signing key for authenticity verification (each item includes `signer_device_id`)
 - **FR-014a**: Signatures MUST cover encrypted keys, nonces, and merge metadata (clocks/state vectors)
 - **FR-014b**: Signature payloads MUST use canonical CBOR encoding (RFC 8949)
 - **FR-015**: System MUST reject items with invalid signatures or mismatched signed metadata
@@ -439,9 +439,9 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 ### Key Entities
 
 - **User Account**: Represents a user identity linked to OAuth provider, owns a vault and recovery capability
-- **Device**: A client device linked to a user account with a unique device ID (device auth keys optional; content signing is user-level)
+- **Device**: A client device linked to a user account with a unique device ID and required `auth_public_key` (Ed25519) for signing sync items
 - **Vault**: Container for all user's encrypted content, protected by vault key derived from master key
-- **User Signing Key**: Ed25519 keypair derived from the master key, shared across devices for content signatures
+- **Device Signing Key**: Ed25519 keypair generated per-device, stored in OS keychain, public key registered with server for sync item verification
 - **Note**: Rich text document with metadata, tags, and properties - synced as CRDT
 - **Task**: Structured item with title, status, priority, dates, and project association - synced with vector clocks
 - **Project**: Organizational container for tasks with its own properties

@@ -60,7 +60,13 @@ Recovery Phrase (24 words)
         │
         ├──► HKDF("memry-signing-key-v1") ──► Ed25519 Seed (32 bytes)
         │                                        │
-        │                                        └──► Ed25519 Keypair (user-level signing)
+        │                                        └──► Ed25519 Keypair (user-level, for future use)
+        │
+        [Device-Level Signing Keys]
+        Device generates Ed25519 keypair locally (not derived from master key)
+        Public key registered with server in devices.auth_public_key
+        Private key stored in OS keychain
+        Used for signing all sync items (signer_device_id metadata)
         │
         └──► HKDF("memry-verify-key-v1") ──► Verify Key (32 bytes)
                                                  │
@@ -258,7 +264,7 @@ CREATE TABLE devices (
   platform TEXT NOT NULL,                       -- 'macos' | 'windows' | 'linux' | 'ios' | 'android'
   os_version TEXT,                              -- e.g., '14.0', '11'
   app_version TEXT NOT NULL,                    -- e.g., '1.0.0'
-  auth_public_key TEXT,                         -- Optional device auth public key (Base64, not used for content signing)
+  auth_public_key TEXT NOT NULL,                 -- Device signing public key (Base64, Ed25519) - REQUIRED for sync item verification
   push_token TEXT,                              -- For push notifications (optional)
   created_at INTEGER NOT NULL,
   last_sync_at INTEGER,
@@ -294,7 +300,7 @@ interface Device {
   platform: 'macos' | 'windows' | 'linux' | 'ios' | 'android'
   osVersion?: string
   appVersion: string
-  authPublicKey?: string          // Only on server (optional, device auth only)
+  authPublicKey: string           // Device signing public key (Base64, Ed25519) - required for sync item verification
   linkedAt: Date
   lastSyncAt?: Date
   isCurrentDevice?: boolean       // Only on client
@@ -471,6 +477,9 @@ CREATE TABLE sync_items (
   blob_key TEXT NOT NULL,                       -- R2 object key
   size INTEGER NOT NULL,                        -- Blob size in bytes
   version INTEGER NOT NULL DEFAULT 1,           -- Incremented on each update
+  server_cursor INTEGER NOT NULL,               -- Monotonic, auto-incrementing cursor for change feed ordering
+  signer_device_id TEXT NOT NULL,               -- Device that signed this item (FK to devices.id)
+  signature TEXT NOT NULL,                      -- Ed25519 signature (Base64)
   state_vector TEXT,                            -- For CRDT items (Yjs state vector, Base64)
   clock TEXT,                                   -- For non-CRDT items (JSON vector clock)
   created_at INTEGER NOT NULL,
@@ -481,6 +490,16 @@ CREATE TABLE sync_items (
 CREATE INDEX idx_sync_items_user ON sync_items(user_id);
 CREATE INDEX idx_sync_items_user_type ON sync_items(user_id, type);
 CREATE INDEX idx_sync_items_modified ON sync_items(user_id, modified_at);
+CREATE INDEX idx_sync_items_cursor ON sync_items(user_id, server_cursor);
+
+-- Tracks each device's sync progress via server_cursor
+CREATE TABLE device_sync_state (
+  device_id TEXT PRIMARY KEY REFERENCES devices(id) ON DELETE CASCADE,
+  last_cursor_seen INTEGER NOT NULL DEFAULT 0,   -- Last server_cursor this device has processed
+  updated_at INTEGER NOT NULL
+);
+
+CREATE INDEX idx_device_sync_state_device ON device_sync_state(device_id);
 ```
 
 ### TypeScript Type
@@ -493,11 +512,20 @@ interface SyncItem {
   blobKey: string
   size: number
   version: number
+  serverCursor: number            // Monotonic cursor for change feed ordering
+  signerDeviceId: string          // Device that signed this item
+  signature: string               // Ed25519 signature (Base64)
   stateVector?: string            // For notes (Yjs)
   clock?: VectorClock             // For tasks/projects
   createdAt: Date
   modifiedAt: Date
   deletedAt?: Date
+}
+
+interface DeviceSyncState {
+  deviceId: string
+  lastCursorSeen: number          // Last server_cursor this device has processed
+  updatedAt: Date
 }
 ```
 
@@ -542,6 +570,7 @@ interface EncryptedItem {
   // Integrity - signature covers: id + type + cryptoVersion + encryptedKey + keyNonce +
   // encryptedData + dataNonce + clock/fieldClocks when present
   signature: string               // Ed25519 signature (Base64)
+  signerDeviceId: string          // Device ID that signed this item (for public key lookup)
   signedAt?: number               // Optional timestamp for diagnostics
 
   // Sync metadata (for non-CRDT items)
@@ -655,7 +684,7 @@ const SYNC_STATE_KEYS = {
   SYNC_STATUS: 'sync_status',             // 'idle' | 'syncing' | 'offline' | 'error'
   PENDING_COUNT: 'pending_count',         // Number of queued items
   LAST_ERROR: 'last_error',               // Last sync error message
-  SERVER_CLOCK: 'server_clock',           // Last known server timestamp
+  SERVER_CURSOR: 'server_cursor',         // Last server_cursor received from server (monotonic integer)
   DEVICE_CLOCK: 'device_clock',           // JSON - our vector clock
 }
 ```

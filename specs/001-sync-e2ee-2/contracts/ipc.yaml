@@ -820,5 +820,6 @@ typescript:
         encryptedData: string
         dataNonce: string
         signature: string
+        signerDeviceId: string    // Device ID that signed this item
       }
     }

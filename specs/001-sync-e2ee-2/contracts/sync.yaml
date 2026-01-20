@@ -464,7 +464,7 @@ components:
 
     EncryptedBlob:
       type: object
-      required: [encrypted_key, key_nonce, encrypted_data, data_nonce, signature]
+      required: [encrypted_key, key_nonce, encrypted_data, data_nonce, signature, signer_device_id]
       properties:
         encrypted_key:
           type: string
@@ -481,6 +481,10 @@ components:
         signature:
           type: string
           description: Ed25519 signature over canonical CBOR of id, type, operation, encrypted_key, key_nonce, encrypted_data, data_nonce, and clock/fieldClocks metadata (Base64)
+        signer_device_id:
+          type: string
+          format: uuid
+          description: Device ID that signed this item (for server-side signature verification)
 
     PushResponse:
       type: object

@@ -55,7 +55,7 @@
 ### Database Schema
 
 - [ ] T014 Create D1 users table schema (kdf_salt, key_verifier) in sync-server/schema/d1.sql
-- [ ] T014a Create D1 otp_codes table schema (email_hash, code_hash, expires_at, attempts, used, created_at) in sync-server/schema/d1.sql
+- [ ] T014a Create D1 otp_codes table schema (email, code_hash, expires_at, attempts, used, created_at) in sync-server/schema/d1.sql
 - [ ] T015 Create D1 devices table schema (name, platform, os_version, app_version, last_sync_at, auth_public_key required) in sync-server/schema/d1.sql
 - [ ] T016 Create D1 linking_sessions table schema (new_device_confirm, key_confirm) in sync-server/schema/d1.sql
 - [ ] T017 Create D1 sync_items table schema in sync-server/schema/d1.sql
@@ -72,6 +72,8 @@
 - [ ] T022 [P] Implement BIP39 recovery phrase validation in src/main/crypto/recovery.ts
 - [ ] T023 Implement Argon2id master key derivation in src/main/crypto/keys.ts
 - [ ] T024 [P] Implement XChaCha20-Poly1305 encryption in src/main/crypto/encryption.ts
+- [ ] T024c [P] Implement per-item file key generation (32-byte random) in src/main/crypto/keys.ts
+- [ ] T024d [P] Implement file key wrapping (encrypt file key with vault key) and unwrapping in src/main/crypto/encryption.ts
 - [ ] T025 [P] Implement XChaCha20-Poly1305 decryption in src/main/crypto/encryption.ts
 - [ ] T026 [P] Implement Ed25519 signing over canonical CBOR in src/main/crypto/signatures.ts
 - [ ] T027 [P] Implement Ed25519 signature verification over canonical CBOR in src/main/crypto/signatures.ts
@@ -200,7 +202,7 @@
 - [ ] T077 [US2] Implement WebSocket connection manager in src/main/sync/websocket.ts
 - [ ] T078 [US2] Implement network status monitoring in src/main/sync/network.ts
 - [ ] T079 [US2] Implement retry logic with exponential backoff in src/main/sync/retry.ts
-- [ ] T080 [US2] Implement item encryption before sync in src/main/sync/engine.ts
+- [ ] T080 [US2] Implement item encryption before sync (generate file key, wrap with vault key, encrypt data, create EncryptedItem with encryptedKey/keyNonce/encryptedData/dataNonce) in src/main/sync/engine.ts
 - [ ] T080a [US2] Sign items with device Ed25519 key over canonical CBOR and attach signer_device_id metadata before sync push in src/main/sync/engine.ts
 - [ ] T081 [US2] Implement item decryption after sync in src/main/sync/engine.ts
 
@@ -434,7 +436,15 @@
 - [ ] T146 [US6] Store task vector clocks in sync_items.clock column in sync-server/src/services/sync.ts
 - [ ] T147 [US6] Implement server-side conflict response in sync-server/src/routes/sync.ts
 
-**Checkpoint**: User Story 6 complete - task changes merge at field level
+### Project Sync for US6
+
+- [ ] T147a [US6] Implement ProjectVectorClock interface (same as TaskVectorClock) in src/shared/sync/project-clock.ts
+- [ ] T147b [US6] Implement project field-level merge logic in src/main/sync/project-merge.ts
+- [ ] T147c [US6] Add clock JSON column to projects table in src/shared/db/schema/data-schema.ts
+- [ ] T147d [US6] Implement project sync handlers (create, update, delete) in src/main/ipc/tasks-handlers.ts
+- [ ] T147e [US6] Server-side project sync handlers (store/retrieve encrypted projects) in sync-server/src/services/sync.ts
+
+**Checkpoint**: User Story 6 complete - task and project changes merge at field level
 
 ---
 
@@ -733,6 +743,7 @@
 - [ ] T238 Implement corrupt data detection and recovery (re-fetch from server) in src/main/sync/engine.ts
 - [ ] T239 Handle device removal with unsynced local changes (warn user, offer export) in src/main/sync/engine.ts
 - [ ] T240 Implement storage quota exceeded error handling with user notification in src/main/sync/engine.ts
+- [ ] T240a Implement server-side storage quota validation before accepting uploads (return 413 when quota exceeded) in sync-server/src/routes/sync.ts and sync-server/src/routes/blob.ts
 - [ ] T241 Handle concurrent device linking attempts (reject second, show error) in sync-server/src/routes/auth.ts
 - [ ] T242 Implement extended offline mode with sync resumption on reconnect in src/main/sync/engine.ts
 - [ ] T243 Handle network disconnect during attachment upload (auto-resume) in src/main/sync/attachments.ts
@@ -917,4 +928,4 @@ Sync item signatures use **device-level** Ed25519 keys, and each item includes `
 
 ### OTP Codes Table
 
-The `otp_codes` table schema is defined in data-model.md but was missing from the task list. Added as T014a with fields: `email_hash`, `code_hash`, `expires_at`, `attempts`, `used`, `created_at`.
+The `otp_codes` table schema is defined in data-model.md but was missing from the task list. Added as T014a with fields: `email`, `code_hash`, `expires_at`, `attempts`, `used`, `created_at`.

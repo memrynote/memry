@@ -22,7 +22,7 @@ Implement a comprehensive sync engine with end-to-end encryption (E2EE) for Memr
 - Hono.js (sync server on Cloudflare Workers)
 
 **Storage**:
-- Client: SQLite (data.db for tasks, index.db for notes cache) + IndexedDB (sync queue, Yjs persistence)
+- Client: SQLite (data.db for tasks/sync queue, index.db for notes cache) + IndexedDB (Yjs persistence via y-indexeddb)
 - Server: Cloudflare D1 (metadata) + R2 (encrypted blobs)
 
 **Testing**: Vitest (unit), Playwright (E2E)
@@ -204,7 +204,7 @@ tests/
 | Separate sync-server project | Moderate | Required for edge deployment, WebSocket support via Durable Objects |
 | Multiple crypto algorithms | Moderate | XChaCha20 (encryption), Ed25519 (signing), X25519 (key exchange), Argon2id (KDF) - all industry standard |
 | CRDT + Vector Clock hybrid | Moderate | Notes need CRDTs for rich text merge, tasks need simpler LWW - different data models |
-| IndexedDB + SQLite dual storage | Low | IndexedDB for browser-context data (sync queue), SQLite for persistent data - existing pattern |
+| IndexedDB + SQLite dual storage | Low | SQLite for structured data (tasks, sync queue), IndexedDB for Yjs documents (y-indexeddb) - existing pattern |
 
 ## Implementation Phases
 
@@ -232,7 +232,7 @@ tests/
 - Basic sync endpoints
 
 ### Phase 4: Client Sync Engine
-- IndexedDB sync queue
+- SQLite sync queue (in data.db)
 - Sync engine class
 - WebSocket connection
 - Network monitoring
