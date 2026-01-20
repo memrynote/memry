@@ -178,6 +178,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - [ ] T028a Implement device signing keypair generation + storage in src/main/crypto/keys.ts and src/main/crypto/keychain.ts
 - [ ] T028b Implement device signing public key retrieval for registration in src/main/crypto/keys.ts
 - [ ] T029 Create crypto module index exports in src/main/crypto/index.ts
+- [ ] T029a [P] Implement secure memory cleanup (sodium.memzero) for sensitive key material in src/main/crypto/index.ts
 
 ### Server Foundation
 
@@ -253,6 +254,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - [ ] T051 [US1] Implement first device setup endpoint POST /auth/setup (stores kdf_salt, key_verifier) in sync-server/src/routes/auth.ts
 - [ ] T052 [US1] Implement JWT access token issuance service (15min expiry) in sync-server/src/services/auth.ts
 - [ ] T052a [US1] Implement refresh token issuance alongside access token (7-day expiry) in sync-server/src/services/auth.ts
+- [ ] T052b [US1] Implement refresh token endpoint POST /auth/refresh in sync-server/src/routes/auth.ts
 - [ ] T053 [US1] Implement user service (create, get, update) in sync-server/src/services/user.ts
 - [ ] T053a [US1] Implement user identity linking service (merge OTP + OAuth accounts by email) in sync-server/src/services/user.ts - if email exists with different provider, link identities to same user
 
@@ -1023,7 +1025,7 @@ With multiple developers:
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
 - Server and client tasks for same feature can often run in parallel
-- Total tasks: ~350 (updated with schema, auth, and infrastructure fixes)
+- Total tasks: ~352 (updated with schema, auth, infrastructure fixes, and crypto cleanup)
 
 ---
 
