@@ -501,15 +501,15 @@ function mergeTask(local: TaskWithSync, remote: TaskWithSync): TaskWithSync {
 
 ## 11. Offline Queue Persistence
 
-### Decision: IndexedDB via `idb` library
+### Decision: SQLite (data.db) via Drizzle
 
 ### Rationale
 
-IndexedDB is the right choice for sync queue:
+SQLite is the right choice for the sync queue in Electron:
 - **Persistent**: Survives app crashes and restarts
-- **Large capacity**: No 5MB localStorage limit
-- **Async**: Non-blocking operations
-- **Structured**: Can query by type, status, timestamp
+- **Structured**: Indexed queries for type/status/timestamps
+- **Shared**: Accessible from main process only (single writer)
+- **Operational simplicity**: Reuses existing data.db + migrations
 
 ### Schema
 
@@ -524,13 +524,6 @@ interface SyncQueueItem {
   lastAttempt: number | null    // Timestamp
   createdAt: number             // Timestamp
   status: 'pending' | 'in_progress' | 'failed'
-}
-
-// IndexedDB indexes for efficient queries
-const indexes = {
-  'by-status': 'status',
-  'by-type': 'type',
-  'by-created': 'createdAt'
 }
 ```
 
@@ -733,8 +726,8 @@ function getReconnectDelay(attempt: number): number {
 ### Challenge
 
 Electron apps can have multiple windows. Each window shares:
-- The same IndexedDB database
 - The same SQLite databases (via main process)
+- The same LevelDB-backed Yjs persistence (via main process)
 - The same sync queue
 
 ### Strategy: Single Writer
@@ -790,7 +783,7 @@ Yjs documents are shared via main-process persistence (LevelDB) and IPC broadcas
 const doc = new Y.Doc()
 const persistence = new LeveldbPersistence(`note-${noteId}`, doc)
 
-// Changes in one window propagate to others via IndexedDB
+// Changes in one window propagate to others via IPC broadcast from main
 persistence.on('synced', () => {
   // Document is now in sync with other windows
 })

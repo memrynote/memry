@@ -26,7 +26,7 @@
 **Purpose**: Project initialization, dependencies, and basic structure
 
 - [ ] T001 Install crypto dependencies (libsodium-wrappers, sodium-native, keytar, bip39) via pnpm
-- [ ] T002 Install CRDT dependencies (yjs, y-leveldb, level) via pnpm
+- [ ] T002 Install CRDT dependencies (yjs, y-protocols, y-leveldb, level) via pnpm
 - [ ] T003 [P] Create sync-server Cloudflare Workers project in sync-server/
 - [ ] T004 [P] Create directory structure src/main/crypto/ for crypto module
 - [ ] T005 [P] Create directory structure src/main/sync/ for sync engine module
@@ -348,7 +348,12 @@
 
 ### CRDT Implementation for US5
 
-- [ ] T129 [US5] Create encrypted Yjs sync provider in src/main/sync/crdt-provider.ts
+- [ ] T129 [US5] Create main-process Yjs host in src/main/sync/crdt-provider.ts (authoritative doc, encryption before network)
+- [ ] T129a [US5] Define Yjs IPC channel types (sync/update/awareness) in src/shared/contracts/ipc-sync.ts and specs/001-sync-e2ee-2/contracts/ipc.yaml
+- [ ] T129b [US5] Implement main IPC bridge to apply Yjs updates from renderer and broadcast to all windows in src/main/sync/crdt-provider.ts and src/main/ipc/sync-handlers.ts
+- [ ] T129c [US5] Implement renderer Yjs IPC provider for BlockNote collaboration in src/renderer/src/sync/yjs-ipc-provider.ts
+- [ ] T129d [US5] Implement initial sync handshake (state vector exchange) between renderer and main in src/renderer/src/sync/yjs-ipc-provider.ts
+- [ ] T129e [US5] Keep awareness local-only (do not send to server) in src/renderer/src/sync/yjs-ipc-provider.ts
 - [ ] T130 [US5] Implement Yjs document creation per note in src/main/sync/crdt-provider.ts
 - [ ] T131 [US5] Implement Yjs state vector tracking in src/main/sync/crdt-provider.ts
 - [ ] T132 [US5] Implement incremental update encryption in src/main/sync/crdt-provider.ts
@@ -365,7 +370,7 @@
 ### Notes Integration for US5
 
 - [ ] T139 [US5] Update notes file operations to trigger CRDT sync in src/main/vault/notes.ts
-- [ ] T140 [US5] Integrate Yjs with BlockNote editor in src/renderer/src/components/note/content-area/
+- [ ] T140 [US5] Integrate Yjs with BlockNote collaboration extension using IPC provider in src/renderer/src/components/note/content-area/
 
 **Checkpoint**: User Story 5 complete - note edits merge automatically via CRDT
 
