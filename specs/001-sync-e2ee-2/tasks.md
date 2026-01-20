@@ -332,6 +332,49 @@
 
 ---
 
+## Phase 7.5: File System Sync Integration (Priority: P1)
+
+**Goal**: Ensure markdown files for notes and journals are bidirectionally synchronized with CRDT state
+
+**Prerequisites**: Phase 7 (User Story 5 CRDT Implementation) must be complete
+
+**Independent Test**: Edit note on Device A, verify .md file appears on Device B. Edit .md file externally, verify change syncs. Create journal entry, verify it syncs.
+
+### CRDT → File Write-Back for US5
+
+- [ ] T140a [US5] Implement Yjs-to-markdown conversion (BlockNote JSON → MD) in src/main/sync/crdt-provider.ts
+- [ ] T140b [US5] Write markdown file when receiving CRDT updates from other devices in src/main/vault/notes.ts
+- [ ] T140c [US5] Handle new note creation on sync (create .md file with frontmatter if doesn't exist)
+- [ ] T140d [US5] Handle note deletion on sync (remove .md file or move to trash folder)
+- [ ] T140e [US5] Preserve frontmatter (id, tags, properties) during CRDT → file write-back
+
+### Journal Sync for US5
+
+- [ ] T140f [US5] Register journal entries for Yjs sync (same pattern as notes) in src/main/sync/crdt-provider.ts
+- [ ] T140g [US5] Implement journal folder structure sync (journal/YYYY/MM/DD.md) in src/main/vault/journal.ts
+- [ ] T140h [US5] Add journal entry to sync manifest in sync-server/src/services/sync.ts
+- [ ] T140i [US5] Handle journal date-based file naming during sync creation
+
+### External File Edit Integration for US5
+
+- [ ] T140j [US5] Integrate file watcher with sync engine in src/main/vault/watcher.ts
+- [ ] T140k [US5] Detect external file changes during active sync session
+- [ ] T140l [US5] Convert external markdown edits to Yjs operations (MD → BlockNote JSON → Yjs)
+- [ ] T140m [US5] Implement merge strategy: CRDT merge for content, file wins for frontmatter metadata
+- [ ] T140n [US5] Add conflict detection for simultaneous external edit + incoming sync
+- [ ] T140o [US5] Implement debounce for rapid external file changes (500ms)
+
+### Incremental Index Rebuild for US2
+
+- [ ] T140p [US2] Trigger incremental index update as each note syncs in src/main/sync/engine.ts
+- [ ] T140q [US2] Update FTS index for synced note in src/main/database/fts.ts
+- [ ] T140r [US2] Update note_cache, note_tags, note_links tables during sync in src/main/vault/indexer.ts
+- [ ] T140s [US2] Show "Indexing notes..." progress during initial sync in src/renderer/src/components/sync/initial-sync-progress.tsx
+
+**Checkpoint**: File sync integration complete - notes and journals sync bidirectionally with file system
+
+---
+
 ## Phase 8: User Story 6 - Task Sync with Field-Level Merge (Priority: P2)
 
 **Goal**: Task changes sync with intelligent field-level merging
@@ -753,4 +796,4 @@ With multiple developers:
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
 - Server and client tasks for same feature can often run in parallel
-- Total tasks: 272
+- Total tasks: 291 (includes 19 tasks from Phase 7.5: T140a-T140s)
