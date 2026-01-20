@@ -167,6 +167,9 @@
 - [ ] T067 [US1] Create recovery phrase display component in src/renderer/src/components/sync/recovery-phrase-display.tsx
 - [ ] T068 [US1] Create recovery phrase confirmation component in src/renderer/src/components/sync/recovery-phrase-confirm.tsx
 - [ ] T069 [US1] Create first device setup wizard page in src/renderer/src/pages/settings/setup-wizard.tsx
+- [ ] T069a [US1] Wire AuthProvider into renderer root in src/renderer/src/main.tsx
+- [ ] T069b [US1] Wire setup wizard entry point into Settings UI in src/renderer/src/pages/settings.tsx
+- [ ] T069c [US1] Bind email/OTP/OAuth/recovery components to auth service + IPC in src/renderer/src/pages/settings/setup-wizard.tsx
 
 ### Services for US1
 
@@ -235,6 +238,7 @@
 - [ ] T098a [US2] Update device last_sync_at timestamp on successful sync in src/main/sync/engine.ts
 - [ ] T099 [US2] Implement item synced event broadcasting in src/main/sync/engine.ts
 - [ ] T100 [US2] Set up IPC event listeners in renderer for sync events in src/renderer/src/contexts/sync-context.tsx
+- [ ] T100a [US2] Wire SyncContext provider into renderer root in src/renderer/src/main.tsx
 
 ### Task Sync Integration for US2
 
@@ -294,6 +298,7 @@
 - [ ] T117 [US3] Create linking approval dialog in src/renderer/src/components/sync/linking-approval-dialog.tsx
 - [ ] T118 [US3] Create waiting for approval screen in src/renderer/src/components/sync/linking-pending.tsx
 - [ ] T119 [US3] Implement 5-minute expiration timer display and expired QR error dialog in src/renderer/src/components/sync/qr-linking.tsx
+- [ ] T119a [US3] Wire QR linking flow into Settings/Setup UI and bind IPC calls in src/renderer/src/pages/settings.tsx and src/renderer/src/pages/settings/setup-wizard.tsx
 
 ### Linking Events for US3
 
@@ -327,6 +332,7 @@
 - [ ] T126 [P] [US4] Create recovery phrase input component in src/renderer/src/components/sync/recovery-input.tsx
 - [ ] T127 [US4] Create recovery in progress screen in src/renderer/src/components/sync/recovery-progress.tsx
 - [ ] T128 [US4] Add recovery phrase option to login flow in src/renderer/src/pages/settings/setup-wizard.tsx
+- [ ] T128a [US4] Wire recovery flow UI to recovery IPC handler in src/renderer/src/pages/settings/setup-wizard.tsx
 
 **Checkpoint**: User Story 4 complete - users can recover accounts with recovery phrase
 
@@ -478,6 +484,7 @@
 - [ ] T164a [P] [US7] Create video player component with streaming support in src/renderer/src/components/sync/video-player.tsx
 - [ ] T164b [US7] Implement chunk-based video streaming in src/main/sync/attachments.ts
 - [ ] T164c [US7] Add Range header support for partial content delivery in src/main/sync/attachments.ts
+- [ ] T164d [US7] Wire upload/download progress UI into attachment flow in src/renderer/src/components/note/content-area/file-block.tsx
 
 **Checkpoint**: User Story 7 complete - attachments sync with progress and deduplication
 
@@ -493,11 +500,12 @@
 
 - [ ] T165 [US8] Create SyncContext provider in src/renderer/src/contexts/sync-context.tsx
 - [ ] T166 [US8] Create sync status indicator component in src/renderer/src/components/sync/sync-status.tsx
+- [ ] T166a [US8] Bind SyncStatus to useSync data and IPC-triggered actions in src/renderer/src/components/sync/sync-status.tsx
 - [ ] T167 [US8] Implement "Synced" state with last sync time display
 - [ ] T168 [US8] Implement "Syncing..." state with item count
 - [ ] T169 [US8] Implement "Offline" state with pending changes count
 - [ ] T170 [US8] Implement error state with retry button
-- [ ] T171 [US8] Add sync status to app header/status bar
+- [ ] T171 [US8] Add sync status to app header/status bar in src/renderer/src/App.tsx
 
 ### Sync Hook for US8
 
@@ -525,6 +533,7 @@
 - [ ] T177 [US9] Display error details for failed syncs
 - [ ] T178 [US9] Add date/type filtering to history view
 - [ ] T179 [US9] Add sync history to Settings > Sync page in src/renderer/src/pages/settings/sync-settings.tsx
+- [ ] T179a [US9] Bind sync history panel to IPC data source in src/renderer/src/components/sync/sync-history.tsx
 
 **Checkpoint**: User Story 9 complete - sync history visible
 
@@ -541,6 +550,7 @@
 - [ ] T180 [US10] Add "Sync Now" button to sync status menu in src/renderer/src/components/sync/sync-status.tsx
 - [ ] T181 [US10] Queue manual sync request when sync already in progress (merge with current operation)
 - [ ] T182 [US10] Handle manual sync when offline (show message)
+- [ ] T182a [US10] Wire "Sync Now" button to trigger-sync IPC in src/renderer/src/components/sync/sync-status.tsx
 
 **Checkpoint**: User Story 10 complete - users can force manual sync
 
@@ -564,6 +574,7 @@
 - [ ] T187 [US11] Add "Local Only" toggle to note settings in src/renderer/src/components/note/info-section/
 - [ ] T188 [US11] Show local-only indicator on note in notes tree
 - [ ] T189 [US11] Show local-only count in sync status
+- [ ] T189a [US11] Wire local-only toggle to IPC + update note state in src/renderer/src/components/note/info-section/
 
 **Checkpoint**: User Story 11 complete - notes can be marked local-only
 
@@ -618,6 +629,7 @@
 - [ ] T206 [US13] Add rename device dialog
 - [ ] T207 [US13] Highlight current device in list
 - [ ] T208 [US13] Add devices section to Settings > Sync page
+- [ ] T208a [US13] Bind device list/rename/remove UI to IPC handlers in src/renderer/src/components/sync/device-list.tsx
 
 **Checkpoint**: User Story 13 complete - users can manage devices
 
