@@ -104,7 +104,7 @@ const salt = sodium.randombytes_buf(32)
 
 ## 3. CRDT Library for Notes
 
-### Decision: Yjs with y-indexeddb
+### Decision: Yjs with y-leveldb
 
 ### Rationale
 
@@ -113,7 +113,7 @@ Yjs is the industry standard for collaborative text editing:
 - **Mature**: 5+ years of production use, well-documented
 - **Efficient**: Binary encoding minimizes sync payload size
 - **Awareness protocol**: Built-in support for cursors/presence (future collaboration)
-- **Persistence**: y-indexeddb for offline support
+- **Persistence**: y-leveldb for main-process local persistence
 
 ### Alternatives Considered
 
@@ -128,14 +128,14 @@ Yjs is the industry standard for collaborative text editing:
 
 ```typescript
 import * as Y from 'yjs'
-import { IndexeddbPersistence } from 'y-indexeddb'
+import { LeveldbPersistence } from 'y-leveldb'
 
 // Each note is a separate Yjs document
 function createNoteDocument(noteId: string): Y.Doc {
   const doc = new Y.Doc({ guid: noteId })
 
   // Persist locally
-  const persistence = new IndexeddbPersistence(`memry-note-${noteId}`, doc)
+  const persistence = new LeveldbPersistence(`memry-note-${noteId}`, doc)
 
   return doc
 }
@@ -782,13 +782,13 @@ function broadcastItemSynced(item: SyncedItem) {
 
 ### CRDT Sync Across Windows
 
-Yjs documents are shared via IndexedDB persistence:
+Yjs documents are shared via main-process persistence (LevelDB) and IPC broadcast:
 
 ```typescript
 // Each window creates its own Y.Doc instance
-// y-indexeddb syncs them automatically
+// y-leveldb persists updates and the main process broadcasts changes via IPC
 const doc = new Y.Doc()
-const persistence = new IndexeddbPersistence(`note-${noteId}`, doc)
+const persistence = new LeveldbPersistence(`note-${noteId}`, doc)
 
 // Changes in one window propagate to others via IndexedDB
 persistence.on('synced', () => {

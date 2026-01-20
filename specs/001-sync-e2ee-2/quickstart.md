@@ -39,11 +39,8 @@ pnpm add cborg
 # For main process (faster native bindings)
 pnpm add sodium-native
 
-# CRDTs
-pnpm add yjs y-indexeddb
-
-# IndexedDB wrapper
-pnpm add idb
+# CRDTs (main process persistence)
+pnpm add yjs y-leveldb level
 
 # QR code generation/scanning
 pnpm add qrcode @capacitor/barcode-scanner  # or react-qr-reader for web

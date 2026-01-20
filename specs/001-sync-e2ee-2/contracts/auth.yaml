@@ -605,7 +605,7 @@ components:
 
     DeviceRegistration:
       type: object
-      required: [name, platform, app_version]
+      required: [name, platform, app_version, auth_public_key]
       properties:
         name:
           type: string
@@ -619,7 +619,7 @@ components:
           type: string
         auth_public_key:
           type: string
-          description: Optional device auth public key (Base64)
+          description: Device signing public key (Base64, Ed25519) - required for sync item verification
 
     LinkingSession:
       type: object

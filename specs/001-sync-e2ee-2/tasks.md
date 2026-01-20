@@ -26,7 +26,7 @@
 **Purpose**: Project initialization, dependencies, and basic structure
 
 - [ ] T001 Install crypto dependencies (libsodium-wrappers, sodium-native, keytar, bip39) via pnpm
-- [ ] T002 Install CRDT dependencies (yjs, y-indexeddb, idb) via pnpm
+- [ ] T002 Install CRDT dependencies (yjs, y-leveldb, level) via pnpm
 - [ ] T003 [P] Create sync-server Cloudflare Workers project in sync-server/
 - [ ] T004 [P] Create directory structure src/main/crypto/ for crypto module
 - [ ] T005 [P] Create directory structure src/main/sync/ for sync engine module
@@ -60,7 +60,7 @@
 - [ ] T016 Create D1 linking_sessions table schema (new_device_confirm, key_confirm) in sync-server/schema/d1.sql
 - [ ] T017 Create D1 sync_items table schema in sync-server/schema/d1.sql
 - [ ] T017a Add server_cursor (monotonic integer) and signer_device_id/signature fields to D1 sync_items table in sync-server/schema/d1.sql
-- [ ] T017b Create D1 sync_state table (device_id, last_cursor_seen) in sync-server/schema/d1.sql
+- [ ] T017b Create D1 device_sync_state table (device_id, last_cursor_seen) in sync-server/schema/d1.sql
 - [ ] T018 Add sync-related tables (devices, sync_queue, sync_state, sync_history) to src/shared/db/schema/data-schema.ts
 - [ ] T019 Run drizzle migrations for local sync tables
 
@@ -353,7 +353,7 @@
 - [ ] T131 [US5] Implement Yjs state vector tracking in src/main/sync/crdt-provider.ts
 - [ ] T132 [US5] Implement incremental update encryption in src/main/sync/crdt-provider.ts
 - [ ] T133 [US5] Implement snapshot compaction in src/main/sync/crdt-provider.ts
-- [ ] T134 [US5] Integrate y-indexeddb for local Yjs persistence in src/main/sync/crdt-provider.ts
+- [ ] T134 [US5] Integrate y-leveldb for local Yjs persistence in src/main/sync/crdt-provider.ts
 
 ### Server CRDT Endpoints for US5
 
