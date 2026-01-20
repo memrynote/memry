@@ -143,7 +143,7 @@ fed directly into HMAC-SHA-256 or Ed25519; do not sign JSON strings.
 
 ## 1. User Account
 
-Represents a user identity created via email/password or OAuth provider.
+Represents a user identity created via passwordless email OTP or OAuth provider.
 
 ### Schema (Server - D1)
 
@@ -151,18 +151,12 @@ Represents a user identity created via email/password or OAuth provider.
 CREATE TABLE users (
   id TEXT PRIMARY KEY,                          -- UUID
   email TEXT UNIQUE NOT NULL,                   -- User's email
-  email_verified INTEGER NOT NULL DEFAULT 0,    -- Boolean
+  email_verified INTEGER NOT NULL DEFAULT 0,    -- Boolean (set to 1 after first successful OTP verification)
   auth_method TEXT NOT NULL,                    -- 'email' | 'oauth'
   auth_provider TEXT,                           -- 'google' | 'apple' | 'github' | NULL for email
   auth_provider_id TEXT,                        -- Provider's user ID (NULL for email auth)
-  password_hash TEXT,                           -- Argon2id hash (only for email auth)
-  password_salt TEXT,                           -- Salt for password hash (only for email auth)
-  kdf_salt TEXT NOT NULL,                       -- KDF salt for master key (Base64, plaintext)
-  key_verifier TEXT NOT NULL,                   -- HMAC-SHA-256 verifier of master key (Base64)
-  email_verification_token TEXT,                -- Token for email verification
-  email_verification_expires INTEGER,           -- Token expiry timestamp
-  password_reset_token TEXT,                    -- Token for password reset
-  password_reset_expires INTEGER,               -- Token expiry timestamp
+  kdf_salt TEXT,                                -- KDF salt for master key (Base64, plaintext) - set after recovery phrase setup
+  key_verifier TEXT,                            -- HMAC-SHA-256 verifier of master key (Base64) - set after recovery phrase setup
   storage_used INTEGER NOT NULL DEFAULT 0,      -- Bytes used
   storage_limit INTEGER NOT NULL DEFAULT 5368709120, -- 5GB default
   created_at INTEGER NOT NULL,                  -- Unix timestamp
@@ -171,6 +165,23 @@ CREATE TABLE users (
 
 CREATE UNIQUE INDEX idx_users_provider ON users(auth_provider, auth_provider_id)
   WHERE auth_provider IS NOT NULL;
+```
+
+### OTP Codes Table (Server - D1)
+
+```sql
+CREATE TABLE otp_codes (
+  id TEXT PRIMARY KEY,                          -- UUID
+  email TEXT NOT NULL,                          -- Email address (may not have user yet)
+  code_hash TEXT NOT NULL,                      -- SHA-256 hash of 6-digit code
+  created_at INTEGER NOT NULL,                  -- Unix timestamp
+  expires_at INTEGER NOT NULL,                  -- Unix timestamp (created_at + 600 = 10 min)
+  attempts INTEGER NOT NULL DEFAULT 0,          -- Failed verification attempts (max 5)
+  used INTEGER NOT NULL DEFAULT 0               -- 1 if code was successfully verified
+);
+
+CREATE INDEX idx_otp_email ON otp_codes(email);
+CREATE INDEX idx_otp_expires ON otp_codes(expires_at);
 ```
 
 ### TypeScript Type
@@ -183,10 +194,8 @@ interface User {
   authMethod: 'email' | 'oauth'
   authProvider?: 'google' | 'apple' | 'github'  // Only for OAuth users
   authProviderId?: string                        // Only for OAuth users
-  passwordHash?: string                          // Only for email users (never sent to client)
-  passwordSalt?: string                          // Only for email users (never sent to client)
-  kdfSalt: string                                // Base64 (plaintext KDF salt)
-  keyVerifier: string                            // Base64 (HMAC verifier)
+  kdfSalt?: string                               // Base64 (plaintext KDF salt) - set after recovery phrase setup
+  keyVerifier?: string                           // Base64 (HMAC verifier) - set after recovery phrase setup
   storageUsed: number
   storageLimit: number
   createdAt: Date
@@ -204,6 +213,16 @@ interface UserPublic {
   storageLimit: number
   createdAt: Date
 }
+
+interface OtpCode {
+  id: string
+  email: string
+  codeHash: string                               // SHA-256 hash of 6-digit code
+  createdAt: Date
+  expiresAt: Date
+  attempts: number                               // Failed verification attempts
+  used: boolean                                  // True if code was verified
+}
 ```
 
 ### Validation Rules
@@ -211,10 +230,17 @@ interface UserPublic {
 - `email`: Valid email format, max 255 chars
 - `authMethod`: Must be 'email' or 'oauth'
 - `authProvider`: Required if authMethod is 'oauth', must be one of allowed providers
-- `password` (for email auth): Min 12 chars, must contain uppercase, lowercase, number, special char
-- `kdfSalt`: Base64-encoded, 16+ bytes when decoded (non-secret)
-- `keyVerifier`: Base64-encoded, 32 bytes when decoded
+- `kdfSalt`: Base64-encoded, 16+ bytes when decoded (non-secret), nullable until recovery setup
+- `keyVerifier`: Base64-encoded, 32 bytes when decoded, nullable until recovery setup
 - `storageUsed`: >= 0, <= storageLimit
+
+### OTP Security Rules
+
+- **Code format**: 6 digits (000000-999999)
+- **Code expiry**: 10 minutes from creation
+- **Max attempts**: 5 failed attempts per code (then code is invalidated)
+- **Rate limit**: Max 3 OTP requests per 10 minutes per email
+- **Hash storage**: SHA-256 of code (not plaintext)
 
 ---
 
