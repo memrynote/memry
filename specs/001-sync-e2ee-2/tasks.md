@@ -36,6 +36,7 @@
 - [ ] T009 Configure Cloudflare R2 bucket binding in sync-server/wrangler.toml
 - [ ] T010 Add sync-related environment variables to .env.development
 - [ ] T011 [P] Create shared TypeScript types in src/shared/contracts/sync-api.ts
+- [ ] T011a [P] Add signature field to SyncItem type for Ed25519 signatures in src/shared/contracts/sync-api.ts
 - [ ] T012 [P] Create shared crypto types in src/shared/contracts/crypto.ts
 - [ ] T013 [P] Create IPC channel types in src/shared/contracts/ipc-sync.ts
 - [ ] T013a Install cborg dependency for canonical CBOR encoding via pnpm
@@ -54,7 +55,8 @@
 ### Database Schema
 
 - [ ] T014 Create D1 users table schema (kdf_salt, key_verifier) in sync-server/schema/d1.sql
-- [ ] T015 Create D1 devices table schema (auth_public_key optional) in sync-server/schema/d1.sql
+- [ ] T014a Create D1 otp_codes table schema (code_hash, expires_at, attempts, used) in sync-server/schema/d1.sql
+- [ ] T015 Create D1 devices table schema (name, platform, os_version, app_version, last_sync_at, auth_public_key optional) in sync-server/schema/d1.sql
 - [ ] T016 Create D1 linking_sessions table schema (new_device_confirm, key_confirm) in sync-server/schema/d1.sql
 - [ ] T017 Create D1 sync_items table schema in sync-server/schema/d1.sql
 - [ ] T018 Add sync-related tables (devices, sync_queue, sync_state, sync_history) to src/shared/db/schema/data-schema.ts
@@ -142,6 +144,7 @@
 - [ ] T058 [US1] Implement master key derivation from recovery phrase and key verifier generation in src/main/crypto/keys.ts
 - [ ] T059 [US1] Implement vault key derivation via HKDF in src/main/crypto/keys.ts
 - [ ] T060 [US1] Implement signing/verify key derivation via HKDF in src/main/crypto/keys.ts
+- [ ] T060a [US1] Store derived Ed25519 signing keypair in OS keychain in src/main/crypto/keychain.ts
 - [ ] T061 [US1] Store master key in OS keychain in src/main/crypto/keychain.ts
 - [ ] T062 [US1] Implement recovery phrase confirmation IPC handler in src/main/ipc/sync-handlers.ts
 
@@ -185,6 +188,7 @@
 - [ ] T078 [US2] Implement network status monitoring in src/main/sync/network.ts
 - [ ] T079 [US2] Implement retry logic with exponential backoff in src/main/sync/retry.ts
 - [ ] T080 [US2] Implement item encryption before sync in src/main/sync/engine.ts
+- [ ] T080a [US2] Sign items with Ed25519 over canonical CBOR before sync push in src/main/sync/engine.ts
 - [ ] T081 [US2] Implement item decryption after sync in src/main/sync/engine.ts
 
 ### Server Sync Endpoints for US2
@@ -215,6 +219,7 @@
 ### Sync Events for US2
 
 - [ ] T098 [US2] Implement sync status changed event broadcasting in src/main/sync/engine.ts
+- [ ] T098a [US2] Update device last_sync_at timestamp on successful sync in src/main/sync/engine.ts
 - [ ] T099 [US2] Implement item synced event broadcasting in src/main/sync/engine.ts
 - [ ] T100 [US2] Set up IPC event listeners in renderer for sync events in src/renderer/src/contexts/sync-context.tsx
 
@@ -614,6 +619,8 @@
 
 - [ ] T209 [US14] Implement key rotation initiation IPC handler in src/main/ipc/crypto-handlers.ts
 - [ ] T210 [US14] Implement file key re-encryption (not content) in src/main/crypto/rotation.ts
+- [ ] T210a [US14] Track crypto_version in sync_items during key rotation in src/main/crypto/rotation.ts
+- [ ] T210b [US14] Implement sync pause during key rotation window in src/main/sync/engine.ts
 - [ ] T211 [US14] Implement rotation progress tracking in src/main/crypto/rotation.ts
 - [ ] T212 [US14] Implement get rotation progress IPC handler in src/main/ipc/crypto-handlers.ts
 
@@ -842,4 +849,37 @@ With multiple developers:
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
 - Server and client tasks for same feature can often run in parallel
-- Total tasks: ~318 (reduced from 331 after switching from password auth to passwordless OTP)
+- Total tasks: ~326 (updated after validation review)
+
+---
+
+## Architecture Decisions & Clarifications
+
+### Sync Protocol: Timestamp-Based with Vector Clock Authority
+
+The sync protocol uses timestamp-based change feeds (`GET /sync/changes?since=<unix_timestamp_ms>`) for efficiency, but **vector clocks are authoritative for conflict resolution**. Timestamps serve as "sync hints" to fetch changes, while vector clocks determine actual causality and merge behavior.
+
+**Rationale**: This approach balances simplicity (timestamps for fetching) with correctness (vector clocks for merging). Clock skew is detected (T103i warns at >5 min difference) but does not affect data integrity since vector clocks handle all conflict resolution.
+
+### Signing Keys: User-Level, Not Device-Level
+
+Ed25519 signing keys are derived from the master key via HKDF("memry-signing-key-v1") and are **user-level** (same across all devices), not device-level. The `auth_public_key` field in the devices table is optional and intended for device authentication only (not content signing).
+
+**Key storage**:
+- Master key → OS keychain (T061)
+- Derived signing keypair → OS keychain (T060a)
+- Device auth key (optional) → devices table
+
+### Token Refresh Ownership (Decision Needed)
+
+**Current design**: Token refresh logic is split between renderer (T073) and main process (T073a, T073b). This creates a coordination risk with potential race conditions in multi-window scenarios.
+
+**Options**:
+1. **Move refresh to main process** (recommended): Single-threaded token management, renderer calls IPC to request refresh
+2. **Add IPC coordination mutex**: Renderer keeps refresh logic but coordinates via IPC lock
+
+**Action**: Clarify this decision before implementing US1 auth tasks.
+
+### OTP Codes Table
+
+The `otp_codes` table schema is defined in data-model.md but was missing from the task list. Added as T014a with fields: `code_hash`, `expires_at`, `attempts`, `used`.
