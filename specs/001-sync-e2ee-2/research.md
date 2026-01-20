@@ -10,7 +10,7 @@ This document captures research findings and decisions for implementing the sync
 2. [Key Derivation Parameters](#2-key-derivation-parameters)
 3. [CRDT Library for Notes](#3-crdt-library-for-notes)
 4. [Sync Server Architecture](#4-sync-server-architecture)
-5. [Email/Password Authentication](#5-emailpassword-authentication)
+5. [Passwordless Email Authentication (OTP)](#5-passwordless-email-authentication-otp)
 6. [OAuth Provider Integration](#6-oauth-provider-integration)
 7. [QR Code Device Linking Protocol](#7-qr-code-device-linking-protocol)
 8. [Chunked Attachment Storage](#8-chunked-attachment-storage)
@@ -196,120 +196,90 @@ Cloudflare Workers provides the best combination of:
 
 ---
 
-## 5. Email/Password Authentication
+## 5. Passwordless Email Authentication (OTP)
 
-### Decision: Argon2id password hashing with email verification
+### Decision: 6-digit OTP codes via email
 
 ### Rationale
 
-For users who prefer not to use OAuth, email/password authentication provides a familiar, privacy-respecting alternative. Security requirements:
-- **Password hashing**: Argon2id (same as key derivation, consistent with crypto choices)
-- **Email verification**: Required before account is fully activated
-- **Password requirements**: Min 12 chars, complexity enforced
+Passwordless authentication simplifies the user experience and reduces security risks:
+- **No passwords to remember**: Users already have a 24-word recovery phrase for E2EE - adding another password doubles cognitive load
+- **Server auth ≠ data security**: With E2EE, server authentication just gates sync access. All data remains encrypted.
+- **Simpler implementation**: Eliminates password hashing, reset flows, and complexity rules
+- **OAuth fallback**: Users who want "no email every time" can use Google/Apple/GitHub
 
-### Password Requirements
+### OTP Configuration
 
 ```typescript
-const PASSWORD_REQUIREMENTS = {
-  minLength: 12,
-  maxLength: 128,
-  requireUppercase: true,
-  requireLowercase: true,
-  requireNumber: true,
-  requireSpecialChar: true,
-  // Matches: ^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{12,128}$
+const OTP_CONFIG = {
+  codeLength: 6,              // 6 digits (000000-999999)
+  expirySeconds: 600,         // 10 minutes
+  maxAttempts: 5,             // Max failed attempts per code
+  rateLimitRequests: 3,       // Max OTP requests per window
+  rateLimitWindowSeconds: 600, // 10 minute window
+  resendCooldownSeconds: 60,  // Min wait before resend
 }
 
-function validatePassword(password: string): { valid: boolean; errors: string[] } {
-  const errors: string[] = []
+function generateOtpCode(): string {
+  // Cryptographically random 6-digit code
+  const randomBytes = sodium.randombytes_buf(4)
+  const randomInt = (randomBytes[0] << 24) | (randomBytes[1] << 16) |
+                    (randomBytes[2] << 8) | randomBytes[3]
+  const code = Math.abs(randomInt) % 1000000
+  return code.toString().padStart(6, '0')
+}
 
-  if (password.length < PASSWORD_REQUIREMENTS.minLength) {
-    errors.push('Password must be at least 12 characters')
-  }
-  if (!/[a-z]/.test(password)) {
-    errors.push('Password must contain a lowercase letter')
-  }
-  if (!/[A-Z]/.test(password)) {
-    errors.push('Password must contain an uppercase letter')
-  }
-  if (!/\d/.test(password)) {
-    errors.push('Password must contain a number')
-  }
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    errors.push('Password must contain a special character')
-  }
-
-  return { valid: errors.length === 0, errors }
+function hashOtpCode(code: string): string {
+  // SHA-256 hash for storage (not plaintext)
+  return sodium.crypto_hash_sha256(Buffer.from(code)).toString('base64')
 }
 ```
 
-### Password Hashing Parameters
-
-Use same Argon2id parameters as key derivation for consistency:
-
-```typescript
-const PASSWORD_HASH_PARAMS = {
-  memoryCost: 65536,      // 64 MB
-  timeCost: 3,            // 3 iterations
-  parallelism: 4,
-  hashLength: 32,
-  saltLength: 32
-}
-
-async function hashPassword(password: string): Promise<{ hash: string; salt: string }> {
-  const salt = sodium.randombytes_buf(PASSWORD_HASH_PARAMS.saltLength)
-  const hash = Buffer.alloc(PASSWORD_HASH_PARAMS.hashLength)
-
-  sodium.crypto_pwhash(
-    hash,
-    Buffer.from(password),
-    salt,
-    PASSWORD_HASH_PARAMS.timeCost,
-    PASSWORD_HASH_PARAMS.memoryCost * 1024,
-    sodium.crypto_pwhash_ALG_ARGON2ID13
-  )
-
-  return {
-    hash: hash.toString('base64'),
-    salt: salt.toString('base64')
-  }
-}
-```
-
-### Email Verification Flow
+### OTP Authentication Flow
 
 ```
 User                        Server                      Email Service
 ─────                       ──────                      ─────────────
-1. POST /auth/email/signup
-   { email, password }
+1. POST /auth/email/request-otp
+   { email }
                     ──────────────────────────>
-                    2. Validate email/password
-                    3. Hash password with Argon2id
-                    4. Generate verification token
-                    5. Store user (email_verified=false)
-                    6. Send verification email
+                    2. Check rate limit (3/10min)
+                    3. Generate 6-digit OTP
+                    4. Hash and store OTP
+                    5. Create user if new (email_verified=false)
+                    6. Send OTP email
                     ───────────────────────────────────>
                     <───────────────────────────────────
-                    7. Return { message: "Check email" }
+                    7. Return { success, expires_in: 600 }
 <──────────────────────────────
-8. User clicks email link
-9. POST /auth/email/verify
-   { token }
+8. User receives email with code
+9. POST /auth/email/verify-otp
+   { email, code: "123456" }
                     ──────────────────────────>
-                    10. Validate token
-                    11. Set email_verified=true
-                    12. Return AuthResult with tokens
+                    10. Validate OTP hash
+                    11. Check attempts < 5
+                    12. Check not expired
+                    13. Mark OTP as used
+                    14. Set email_verified=true
+                    15. Issue JWT tokens
 <──────────────────────────────
 ```
 
 ### Security Measures
 
-- **Rate limiting**: Max 5 signup/login attempts per email per hour
-- **Token expiry**: Verification tokens expire in 24 hours
-- **Password reset tokens**: Expire in 1 hour
-- **Constant-time comparison**: For password verification to prevent timing attacks
-- **No user enumeration**: Same response whether email exists or not
+- **Rate limiting**: Max 3 OTP requests per 10 minutes per email
+- **Attempt limiting**: Max 5 failed attempts per code, then invalidate
+- **Code expiry**: 10 minutes from generation
+- **Hash storage**: SHA-256 of code (never plaintext)
+- **No user enumeration**: Always return 200 on request-otp to prevent email discovery
+- **Brute force protection**: 6 digits = 1 million combinations, 5 attempts = 0.0005% chance
+
+### UX Considerations
+
+- **Auto-paste detection**: Client listens for OTP in clipboard
+- **Resend cooldown**: 60 seconds before allowing resend
+- **Countdown timer**: Show expiry countdown in UI
+- **6-digit input**: Individual boxes for each digit with auto-advance
 
 ---
 
@@ -642,8 +612,7 @@ export async function sendVerificationEmail(email: string, token: string) {
 
 | Email | Trigger | Expiry |
 |-------|---------|--------|
-| Email verification | Signup | 24 hours |
-| Password reset | Forgot password | 1 hour |
+| OTP code | Login/signup request | 10 minutes |
 | Device linked | New device approved | N/A |
 | Device removed | Device revoked | N/A |
 
@@ -833,6 +802,7 @@ persistence.on('synced', () => {
 
 | Question | Resolution |
 |----------|------------|
+| Email authentication method | Passwordless OTP (6-digit codes) - simpler than passwords since recovery phrase is primary secret |
 | Attachment storage limit per user | 5GB default (configurable in server config) |
 | Sync conflict notification | Silent merge for CRDTs, log for vector clock merges |
 | Real-time WebSocket | Always connected when app is foreground |

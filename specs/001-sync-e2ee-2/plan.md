@@ -217,9 +217,9 @@ tests/
 - Unit tests for all crypto
 
 ### Phase 2: First Device Setup
-- Email/password signup with verification
+- Passwordless email OTP authentication (6-digit codes)
 - OAuth flow integration (Google, Apple, GitHub)
-- Password validation (min 12 chars, complexity)
+- OTP input UI with countdown timer
 - Recovery phrase UI
 - Master key generation and storage
 - Device registration

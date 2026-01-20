@@ -38,6 +38,10 @@
 - [ ] T011 [P] Create shared TypeScript types in src/shared/contracts/sync-api.ts
 - [ ] T012 [P] Create shared crypto types in src/shared/contracts/crypto.ts
 - [ ] T013 [P] Create IPC channel types in src/shared/contracts/ipc-sync.ts
+- [ ] T013a Install cborg dependency for canonical CBOR encoding via pnpm
+- [ ] T013b [P] Create .env.staging template with sync server URLs
+- [ ] T013c [P] Create .env.production template with sync server URLs
+- [ ] T013d [P] Add OAuth client ID/secret placeholders to environment templates
 
 ---
 
@@ -94,6 +98,12 @@
 
 - [ ] T040 Implement vector clock data structure in src/main/sync/vector-clock.ts
 - [ ] T041 Implement vector clock operations (increment, merge, compare) in src/main/sync/vector-clock.ts
+- [ ] T041a Define HKDF context string constants ("memry-vault-key-v1", "memry-signing-key-v1", "memry-verify-key-v1") in src/main/crypto/keys.ts
+- [ ] T041b Define Argon2id parameter constants (memory: 65536KB, iterations: 3, parallelism: 4) in src/main/crypto/keys.ts
+- [ ] T041c Implement rate limit state persistence in D1 table in sync-server/schema/d1.sql
+- [ ] T041d Create typed error codes enum (AUTH_*, SYNC_*, CRYPTO_*) in sync-server/src/lib/errors.ts
+- [ ] T041e Implement memry:// deep link protocol handler for OAuth callbacks in src/main/index.ts
+- [ ] T041f Create canonical CBOR field ordering documentation in src/main/crypto/cbor.ts
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -101,23 +111,20 @@
 
 ## Phase 3: User Story 1 - First Device Setup (Priority: P1) 🎯 MVP
 
-**Goal**: New users can create accounts via OAuth or email/password, receive a recovery phrase, and have encryption keys securely stored
+**Goal**: New users can create accounts via OAuth or passwordless email OTP, receive a recovery phrase, and have encryption keys securely stored
 
-**Independent Test**: Create a new account, confirm recovery phrase, verify master key is stored in OS keychain and local data is encrypted
+**Independent Test**: Create a new account via email OTP, confirm recovery phrase, verify master key is stored in OS keychain and local data is encrypted
 
 ### Server Implementation for US1
 
-- [ ] T042 [P] [US1] Implement email signup endpoint in sync-server/src/routes/auth.ts
-- [ ] T043 [P] [US1] Implement email verification endpoint in sync-server/src/routes/auth.ts
-- [ ] T044 [P] [US1] Implement email login endpoint in sync-server/src/routes/auth.ts
-- [ ] T045 [P] [US1] Implement password validation service in sync-server/src/services/password.ts
-- [ ] T046 [US1] Implement Argon2id password hashing in sync-server/src/services/password.ts
-- [ ] T047 [P] [US1] Create verification email template in sync-server/src/emails/verification.tsx
-- [ ] T047a [P] [US1] Implement forgot-password endpoint in sync-server/src/routes/auth.ts
-- [ ] T047b [P] [US1] Implement reset-password endpoint in sync-server/src/routes/auth.ts
-- [ ] T047c [US1] Implement change-password endpoint (authenticated) in sync-server/src/routes/auth.ts
-- [ ] T047d [P] [US1] Implement resend-verification endpoint in sync-server/src/routes/auth.ts
-- [ ] T047e [P] [US1] Create password reset email template in sync-server/src/emails/password-reset.tsx
+- [ ] T042 [P] [US1] Implement request-otp endpoint (sends 6-digit code via email) in sync-server/src/routes/auth.ts
+- [ ] T043 [P] [US1] Implement verify-otp endpoint (validates code, returns JWT) in sync-server/src/routes/auth.ts
+- [ ] T044 [P] [US1] Implement OTP generation service (6 digits, cryptographically random) in sync-server/src/services/otp.ts
+- [ ] T044a [P] [US1] Implement OTP storage with SHA-256 hashing in sync-server/src/services/otp.ts
+- [ ] T044b [P] [US1] Implement OTP rate limiting (max 3 requests per 10 min per email) in sync-server/src/middleware/rate-limit.ts
+- [ ] T044c [P] [US1] Implement OTP attempt tracking (max 5 failed attempts per code) in sync-server/src/services/otp.ts
+- [ ] T047 [P] [US1] Create OTP email template in sync-server/src/emails/otp-code.tsx
+- [ ] T047a [P] [US1] Implement resend-otp endpoint (reuses rate limiting) in sync-server/src/routes/auth.ts
 - [ ] T048 [US1] Implement OAuth initiation endpoint for Google/Apple/GitHub in sync-server/src/routes/auth.ts
 - [ ] T049 [US1] Implement OAuth callback handler in sync-server/src/routes/auth.ts
 - [ ] T050 [US1] Implement device registration endpoint in sync-server/src/routes/auth.ts
@@ -127,14 +134,10 @@
 
 ### Client Implementation for US1
 
-- [ ] T054 [US1] Implement IPC handler for email signup in src/main/ipc/sync-handlers.ts
-- [ ] T055 [US1] Implement IPC handler for email verification in src/main/ipc/sync-handlers.ts
-- [ ] T056 [US1] Implement IPC handler for email login in src/main/ipc/sync-handlers.ts
-- [ ] T056a [US1] Implement IPC handler for forgot-password in src/main/ipc/sync-handlers.ts
-- [ ] T056b [US1] Implement IPC handler for reset-password in src/main/ipc/sync-handlers.ts
-- [ ] T056c [US1] Implement IPC handler for change-password in src/main/ipc/sync-handlers.ts
-- [ ] T056d [US1] Implement IPC handler for resend-verification in src/main/ipc/sync-handlers.ts
-- [ ] T056e [US1] Implement password validation logic (12+ chars, uppercase, lowercase, number, special) in src/main/ipc/sync-handlers.ts
+- [ ] T054 [US1] Implement IPC handler for request-otp in src/main/ipc/sync-handlers.ts
+- [ ] T055 [US1] Implement IPC handler for verify-otp in src/main/ipc/sync-handlers.ts
+- [ ] T056 [US1] Implement IPC handler for resend-otp in src/main/ipc/sync-handlers.ts
+- [ ] T056a [P] [US1] Implement OTP code auto-paste from clipboard detection in src/main/ipc/sync-handlers.ts
 - [ ] T057 [US1] Implement IPC handler for OAuth first device setup in src/main/ipc/sync-handlers.ts
 - [ ] T058 [US1] Implement master key derivation from recovery phrase and key verifier generation in src/main/crypto/keys.ts
 - [ ] T059 [US1] Implement vault key derivation via HKDF in src/main/crypto/keys.ts
@@ -145,22 +148,23 @@
 ### UI Components for US1
 
 - [ ] T063 [P] [US1] Create AuthProvider context in src/renderer/src/contexts/auth-context.tsx
-- [ ] T064 [P] [US1] Create signup form component (email/password) in src/renderer/src/components/sync/signup-form.tsx
-- [ ] T065 [P] [US1] Create login form component (email/password) in src/renderer/src/components/sync/login-form.tsx
+- [ ] T064 [P] [US1] Create email entry form component in src/renderer/src/components/sync/email-entry-form.tsx
+- [ ] T065 [P] [US1] Create OTP code input component (6-digit boxes) in src/renderer/src/components/sync/otp-input.tsx
+- [ ] T065a [P] [US1] Implement OTP countdown timer (resend available after 60s) in src/renderer/src/components/sync/otp-input.tsx
+- [ ] T065b [US1] Implement OTP verification screen in src/renderer/src/components/sync/otp-verification.tsx
 - [ ] T066 [P] [US1] Create OAuth buttons component in src/renderer/src/components/sync/oauth-buttons.tsx
 - [ ] T067 [US1] Create recovery phrase display component in src/renderer/src/components/sync/recovery-phrase-display.tsx
 - [ ] T068 [US1] Create recovery phrase confirmation component in src/renderer/src/components/sync/recovery-phrase-confirm.tsx
 - [ ] T069 [US1] Create first device setup wizard page in src/renderer/src/pages/settings/setup-wizard.tsx
-- [ ] T070 [US1] Implement password strength indicator in src/renderer/src/components/sync/password-strength.tsx
-- [ ] T071 [US1] Implement email verification pending screen in src/renderer/src/components/sync/verification-pending.tsx
-- [ ] T071a [P] [US1] Create forgot-password form in src/renderer/src/components/sync/forgot-password-form.tsx
-- [ ] T071b [P] [US1] Create reset-password form in src/renderer/src/components/sync/reset-password-form.tsx
-- [ ] T071c [US1] Create change-password dialog in src/renderer/src/components/sync/change-password-dialog.tsx
 
 ### Services for US1
 
-- [ ] T072 [US1] Create auth service for renderer in src/renderer/src/services/auth-service.ts
-- [ ] T073 [US1] Create useAuth hook in src/renderer/src/hooks/use-auth.ts
+- [ ] T070 [US1] Create auth service for renderer in src/renderer/src/services/auth-service.ts
+- [ ] T071 [US1] Create useAuth hook in src/renderer/src/hooks/use-auth.ts
+- [ ] T072 [US1] Implement PKCE code_verifier and code_challenge generation in src/main/ipc/sync-handlers.ts
+- [ ] T073 [US1] Implement automatic access token refresh with retry logic in src/renderer/src/services/auth-service.ts
+- [ ] T073a [US1] Emit auth:session-expired event when token refresh fails in src/main/ipc/sync-handlers.ts
+- [ ] T073b [US1] Store OAuth tokens separately from master key in keychain in src/main/crypto/keychain.ts
 
 **Checkpoint**: User Story 1 complete - users can create accounts and set up encryption
 
@@ -229,6 +233,12 @@
 - [ ] T103e [US2] Implement synced settings structure in src/shared/contracts/sync-api.ts
 - [ ] T103f [US2] Implement settings sync with field-level vector clocks in src/main/sync/engine.ts
 - [ ] T103g [US2] Create settings sync IPC handlers in src/main/ipc/sync-handlers.ts
+- [ ] T103h [US2] Verify Ed25519 signature before decryption on every sync pull in src/main/sync/engine.ts
+- [ ] T103i [US2] Implement server clock skew detection (warn if >5 min difference) in src/main/sync/engine.ts
+- [ ] T103j [US2] Emit sync:conflict-detected event when vector clocks diverge in src/main/sync/engine.ts
+- [ ] T103k [US2] Emit sync:queue-cleared event when pending queue becomes empty in src/main/sync/queue.ts
+- [ ] T103l [US2] Handle partial batch sync failure (some items succeed, some fail) in src/main/sync/engine.ts
+- [ ] T103m [US2] Implement sync item batching (max 100 items per request) in src/main/sync/engine.ts
 
 **Checkpoint**: User Story 2 complete - notes and tasks sync automatically across devices
 
@@ -270,6 +280,8 @@
 
 - [ ] T120 [US3] Implement linking request event in src/main/sync/websocket.ts
 - [ ] T121 [US3] Implement linking approved event in src/main/sync/websocket.ts
+- [ ] T121a [US3] Implement HMAC key derivation from ECDH shared secret via HKDF in src/main/crypto/keys.ts
+- [ ] T121b [US3] Document HMAC proof CBOR field ordering for new_device_confirm in src/main/crypto/keys.ts
 
 **Checkpoint**: User Story 3 complete - users can link devices via QR code
 
@@ -370,6 +382,9 @@
 - [ ] T140q [US2] Update FTS index for synced note in src/main/database/fts.ts
 - [ ] T140r [US2] Update note_cache, note_tags, note_links tables during sync in src/main/vault/indexer.ts
 - [ ] T140s [US2] Show "Indexing notes..." progress during initial sync in src/renderer/src/components/sync/initial-sync-progress.tsx
+- [ ] T140t [US5] Configure Yjs collaboration extension for BlockNote/TipTap integration in src/renderer/src/components/note/content-area/
+- [ ] T140u [US5] Implement Yjs garbage collection for documents exceeding 1MB in src/main/sync/crdt-provider.ts
+- [ ] T140v [US5] Compress Yjs snapshots before encryption using pako/fflate in src/main/sync/crdt-provider.ts
 
 **Checkpoint**: File sync integration complete - notes and journals sync bidirectionally with file system
 
@@ -691,6 +706,37 @@
 ### Crypto Version Handling
 
 - [ ] T245 Implement multi-version crypto decryption for forward compatibility in src/main/crypto/encryption.ts
+- [ ] T245a Implement TLS certificate pinning for sync-server domain in src/main/sync/websocket.ts
+- [ ] T245b Configure Content-Security-Policy headers for renderer in src/main/index.ts
+- [ ] T245c Add ARIA labels and keyboard navigation to all sync UI components
+- [ ] T245d Create user-friendly error message strings for all error codes in src/renderer/src/lib/error-messages.ts
+
+---
+
+## Phase 20: Deployment & Operations
+
+**Purpose**: Production deployment and operational readiness
+
+### Infrastructure Setup
+
+- [ ] T246 Create wrangler.toml production configuration with environment bindings
+- [ ] T247 Create GitHub Actions workflow for sync-server CI/CD deployment
+- [ ] T248 Configure Cloudflare secrets for OAuth credentials and JWT signing key
+- [ ] T249 Create D1 production database and run initial schema migrations
+- [ ] T250 Create R2 production bucket with 90-day lifecycle rules for tombstones
+
+### Production Configuration
+
+- [ ] T251 Configure custom domain and SSL for sync-server API
+- [ ] T252 Set up Cloudflare Analytics and Workers logging
+- [ ] T253 Create operational runbook for common issues (auth failures, sync stuck, etc.)
+
+### Monitoring & Health
+
+- [ ] T254 [P] Implement health check endpoint GET /health in sync-server/src/routes/health.ts
+- [ ] T255 [P] Add Sentry or similar error tracking integration to sync-server
+
+**Checkpoint**: Production deployment ready
 
 ---
 
@@ -737,14 +783,14 @@
 
 ```bash
 # Launch server endpoints in parallel:
-Task: "Implement email signup endpoint in sync-server/src/routes/auth.ts"
-Task: "Implement email verification endpoint in sync-server/src/routes/auth.ts"
-Task: "Implement email login endpoint in sync-server/src/routes/auth.ts"
-Task: "Implement password validation service in sync-server/src/services/password.ts"
+Task: "Implement request-otp endpoint in sync-server/src/routes/auth.ts"
+Task: "Implement verify-otp endpoint in sync-server/src/routes/auth.ts"
+Task: "Implement OTP generation service in sync-server/src/services/otp.ts"
+Task: "Implement OTP rate limiting in sync-server/src/middleware/rate-limit.ts"
 
 # Launch UI components in parallel:
-Task: "Create signup form component in src/renderer/src/components/sync/signup-form.tsx"
-Task: "Create login form component in src/renderer/src/components/sync/login-form.tsx"
+Task: "Create email entry form component in src/renderer/src/components/sync/email-entry-form.tsx"
+Task: "Create OTP input component in src/renderer/src/components/sync/otp-input.tsx"
 Task: "Create OAuth buttons component in src/renderer/src/components/sync/oauth-buttons.tsx"
 ```
 
@@ -796,4 +842,4 @@ With multiple developers:
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
 - Server and client tasks for same feature can often run in parallel
-- Total tasks: 291 (includes 19 tasks from Phase 7.5: T140a-T140s)
+- Total tasks: ~318 (reduced from 331 after switching from password auth to passwordless OTP)

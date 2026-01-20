@@ -10,13 +10,14 @@ servers:
 
 paths:
   # ============================================
-  # EMAIL/PASSWORD AUTHENTICATION
+  # PASSWORDLESS EMAIL AUTHENTICATION (OTP)
   # ============================================
 
-  /auth/email/signup:
+  /auth/email/request-otp:
     post:
-      operationId: emailSignup
-      summary: Sign up with email and password
+      operationId: requestOtp
+      summary: Request OTP code via email
+      description: Sends a 6-digit OTP code to the provided email. Creates account if new user.
       tags: [Auth, Email]
       requestBody:
         required: true
@@ -24,18 +25,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, password]
+              required: [email]
               properties:
                 email:
                   type: string
                   format: email
-                password:
-                  type: string
-                  minLength: 12
-                  description: Min 12 chars, must include uppercase, lowercase, number, special char
       responses:
-        '201':
-          description: Account created, verification email sent
+        '200':
+          description: OTP sent (always returns success to prevent email enumeration)
           content:
             application/json:
               schema:
@@ -43,17 +40,58 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: Verification email sent
-                  user_id:
-                    type: string
-        '400':
-          description: Invalid email or password
+                    example: OTP code sent to your email
+                  expires_in:
+                    type: integer
+                    description: Seconds until OTP expires
+                    example: 600
+        '429':
+          description: Rate limit exceeded (max 3 requests per 10 minutes per email)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '409':
-          description: Email already registered
+
+  /auth/email/verify-otp:
+    post:
+      operationId: verifyOtp
+      summary: Verify OTP code and authenticate
+      description: Validates the 6-digit OTP code and returns auth tokens
+      tags: [Auth, Email]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email:
+                  type: string
+                  format: email
+                code:
+                  type: string
+                  pattern: '^[0-9]{6}$'
+                  description: 6-digit OTP code
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '401':
+          description: Invalid or expired OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many failed attempts (max 5 per code)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /auth/email/verify:
     post:
@@ -102,108 +140,6 @@ paths:
           description: Verification email sent (if account exists)
         '429':
           description: Too many requests
-
-  /auth/email/login:
-    post:
-      operationId: emailLogin
-      summary: Log in with email and password
-      tags: [Auth, Email]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [email, password]
-              properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-      responses:
-        '200':
-          description: Login successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResult'
-        '401':
-          description: Invalid email or password
-        '403':
-          description: Email not verified
-
-  /auth/email/forgot-password:
-    post:
-      operationId: forgotPassword
-      summary: Request password reset email
-      tags: [Auth, Email]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [email]
-              properties:
-                email:
-                  type: string
-                  format: email
-      responses:
-        '200':
-          description: Reset email sent (if account exists)
-        '429':
-          description: Too many requests
-
-  /auth/email/reset-password:
-    post:
-      operationId: resetPassword
-      summary: Reset password with token
-      tags: [Auth, Email]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [token, new_password]
-              properties:
-                token:
-                  type: string
-                new_password:
-                  type: string
-                  minLength: 12
-      responses:
-        '200':
-          description: Password reset successful
-        '400':
-          description: Invalid or expired token
-
-  /auth/email/change-password:
-    post:
-      operationId: changePassword
-      summary: Change password (authenticated)
-      tags: [Auth, Email]
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [current_password, new_password]
-              properties:
-                current_password:
-                  type: string
-                new_password:
-                  type: string
-                  minLength: 12
-      responses:
-        '200':
-          description: Password changed
-        '401':
-          description: Current password incorrect
 
   # ============================================
   # OAUTH AUTHENTICATION
@@ -558,13 +494,13 @@ components:
 
   # Rate Limiting Configuration
   x-rate-limits:
-    auth-endpoints:
-      description: Authentication endpoints (login, signup, password reset)
-      requests: 10
-      window: 60
+    otp-request:
+      description: OTP code request endpoint
+      requests: 3
+      window: 600
       unit: seconds
-      burst: 5
-      per: ip
+      per: email
+      notes: Prevents OTP flooding (max 3 requests per 10 min per email)
       response:
         status: 429
         headers:
@@ -572,6 +508,14 @@ components:
           X-RateLimit-Limit: max requests
           X-RateLimit-Remaining: requests left
           X-RateLimit-Reset: reset timestamp
+
+    otp-verify:
+      description: OTP verification endpoint
+      requests: 5
+      window: 600
+      unit: seconds
+      per: email
+      notes: Max 5 attempts per OTP code before invalidation
 
     device-linking:
       description: Device linking operations
@@ -587,14 +531,6 @@ components:
       window: 60
       unit: seconds
       per: user
-
-    verification-emails:
-      description: Email verification and password reset emails
-      requests: 3
-      window: 3600
-      unit: seconds
-      per: email
-      notes: Prevents email flooding
 
   schemas:
     AuthResult:
