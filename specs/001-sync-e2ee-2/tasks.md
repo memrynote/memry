@@ -89,7 +89,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - [ ] T014c Create D1 user_identities table for OAuth/OTP linking in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
-  - provider (TEXT, NOT NULL) -- 'email', 'google', 'apple', 'github'
+  - provider (TEXT, NOT NULL) -- 'email', 'google'
   - provider_id (TEXT, NOT NULL) -- email address or OAuth provider user ID
   - created_at (INTEGER, NOT NULL)
   - UNIQUE: (provider, provider_id)
@@ -265,7 +265,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - [ ] T044c [P] [US1] Implement OTP attempt tracking (max 5 failed attempts per code) in sync-server/src/services/otp.ts
 - [ ] T047 [P] [US1] Create OTP email template in sync-server/src/emails/otp-code.tsx
 - [ ] T047a [P] [US1] Implement resend-otp endpoint POST /auth/otp/resend (reuses rate limiting) in sync-server/src/routes/auth.ts
-- [ ] T048 [US1] Implement OAuth initiation endpoint GET /auth/oauth/:provider for Google/Apple/GitHub in sync-server/src/routes/auth.ts
+- [ ] T048 [US1] Implement OAuth initiation endpoint GET /auth/oauth/:provider for Google in sync-server/src/routes/auth.ts
 - [ ] T049 [US1] Implement OAuth callback handler GET /auth/oauth/:provider/callback in sync-server/src/routes/auth.ts
 - [ ] T049a [US1] Implement OAuth state parameter validation (CSRF protection) in sync-server/src/routes/auth.ts - generate state on initiation, validate on callback
 - [ ] T050 [US1] Implement device registration endpoint POST /auth/devices in sync-server/src/routes/auth.ts

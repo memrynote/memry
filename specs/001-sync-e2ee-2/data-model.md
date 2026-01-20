@@ -159,7 +159,7 @@ CREATE TABLE users (
   email TEXT UNIQUE NOT NULL,                   -- User's email
   email_verified INTEGER NOT NULL DEFAULT 0,    -- Boolean (set to 1 after first successful OTP verification)
   auth_method TEXT NOT NULL,                    -- 'email' | 'oauth'
-  auth_provider TEXT,                           -- 'google' | 'apple' | 'github' | NULL for email
+  auth_provider TEXT,                           -- 'google' | NULL for email
   auth_provider_id TEXT,                        -- Provider's user ID (NULL for email auth)
   kdf_salt TEXT,                                -- KDF salt for master key (Base64, plaintext) - set after recovery phrase setup
   key_verifier TEXT,                            -- HMAC-SHA-256 verifier of master key (Base64) - set after recovery phrase setup
@@ -198,7 +198,7 @@ interface User {
   email: string
   emailVerified: boolean
   authMethod: 'email' | 'oauth'
-  authProvider?: 'google' | 'apple' | 'github'  // Only for OAuth users
+  authProvider?: 'google'                        // Only for OAuth users
   authProviderId?: string                        // Only for OAuth users
   kdfSalt?: string                               // Base64 (plaintext KDF salt) - set after recovery phrase setup
   keyVerifier?: string                           // Base64 (HMAC verifier) - set after recovery phrase setup
@@ -214,7 +214,7 @@ interface UserPublic {
   email: string
   emailVerified: boolean
   authMethod: 'email' | 'oauth'
-  authProvider?: 'google' | 'apple' | 'github'
+  authProvider?: 'google'
   storageUsed: number
   storageLimit: number
   createdAt: Date

@@ -157,7 +157,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [google, apple, github]
+            enum: [google]
         - name: redirect_uri
           in: query
           required: true
@@ -198,7 +198,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [google, apple, github]
+            enum: [google]
       requestBody:
         required: true
         content:
@@ -560,7 +560,7 @@ components:
           description: Authentication method used
         auth_provider:
           type: string
-          enum: [google, apple, github]
+          enum: [google]
           description: OAuth provider (only if auth_method is oauth)
         storage_used:
           type: integer

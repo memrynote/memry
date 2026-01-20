@@ -220,7 +220,7 @@ tests/
 
 ### Phase 2: First Device Setup
 - Passwordless email OTP authentication (6-digit codes)
-- OAuth flow integration (Google, Apple, GitHub)
+- OAuth flow integration (Google)
 - OTP input UI with countdown timer
 - Recovery phrase UI
 - Master key generation and storage
