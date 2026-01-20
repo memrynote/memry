@@ -157,6 +157,26 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - window_start (INTEGER, NOT NULL)
   - INDEX: idx_rate_key ON rate_limits(key)
 - [ ] T017d Run D1 dev schema migration via wrangler d1 execute sync-db --local --file=sync-server/schema/d1.sql
+- [ ] T017e Create D1 crdt_updates table schema in sync-server/schema/d1.sql:
+  - PK: id (TEXT, UUID)
+  - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
+  - note_id (TEXT, NOT NULL)
+  - update_data (BLOB, NOT NULL) -- encrypted Yjs update
+  - sequence_num (INTEGER, NOT NULL) -- ordering within note
+  - created_at (INTEGER, NOT NULL)
+  - UNIQUE: (user_id, note_id, sequence_num)
+  - INDEX: idx_crdt_updates_note ON crdt_updates(user_id, note_id, sequence_num)
+- [ ] T017f Create D1 crdt_snapshots table schema in sync-server/schema/d1.sql:
+  - PK: id (TEXT, UUID)
+  - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
+  - note_id (TEXT, NOT NULL)
+  - snapshot_data (BLOB, NOT NULL) -- encrypted Yjs snapshot
+  - sequence_num (INTEGER, NOT NULL) -- updates included up to this sequence
+  - size_bytes (INTEGER, NOT NULL)
+  - created_at (INTEGER, NOT NULL)
+  - UNIQUE: (user_id, note_id)
+  - INDEX: idx_crdt_snapshots_note ON crdt_snapshots(user_id, note_id)
+- [ ] T017g Define R2 object layout for large CRDT snapshots in sync-server/src/services/crdt.ts: {user_id}/crdt/{note_id}/snapshot for snapshots exceeding D1 blob limits (>1MB)
 - [ ] T018 Add sync-related tables (devices, sync_queue, sync_state, sync_history) to src/shared/db/schema/data-schema.ts with Drizzle ORM definitions
 - [ ] T019 Run drizzle migrations for local sync tables via pnpm db:generate:data && pnpm db:push:data
 
@@ -251,6 +271,10 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - [ ] T050 [US1] Implement device registration endpoint POST /auth/devices in sync-server/src/routes/auth.ts
 - [ ] T050a [US1] Require device signing public key + metadata on registration and persist in devices table in sync-server/src/routes/auth.ts
 - [ ] T050b [US1] Implement device registration challenge/response: server sends random nonce, client signs with device private key, server verifies before accepting registration in sync-server/src/routes/auth.ts
+- [ ] T050c [US1] Implement device registration IPC handler in src/main/ipc/sync-handlers.ts (calls POST /auth/devices with device metadata and signing public key)
+- [ ] T050d [US1] Persist device_id returned from registration in local SQLite devices table in src/main/ipc/sync-handlers.ts
+- [ ] T050e [US1] Create device registration service for renderer in src/renderer/src/services/device-service.ts
+- [ ] T050f [US1] Wire device registration into first device setup flow after successful auth in src/main/ipc/sync-handlers.ts (auto-register device after OTP/OAuth verification)
 - [ ] T051 [US1] Implement first device setup endpoint POST /auth/setup (stores kdf_salt, key_verifier) in sync-server/src/routes/auth.ts
 - [ ] T052 [US1] Implement JWT access token issuance service (15min expiry) in sync-server/src/services/auth.ts
 - [ ] T052a [US1] Implement refresh token issuance alongside access token (7-day expiry) in sync-server/src/services/auth.ts
@@ -318,6 +342,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - [ ] T078 [US2] Implement network status monitoring in src/main/sync/network.ts
 - [ ] T079 [US2] Implement retry logic with exponential backoff in src/main/sync/retry.ts
 - [ ] T080 [US2] Implement item encryption before sync (generate file key, wrap with vault key, encrypt data, create EncryptedItem with encryptedKey/keyNonce/encryptedData/dataNonce) in src/main/sync/engine.ts
+- [ ] T080b [US2] Compute content_hash (SHA-256 of encrypted_data) and size_bytes before sync push in src/main/sync/engine.ts
 - [ ] T080a [US2] Sign items with device Ed25519 key over canonical CBOR and attach signer_device_id metadata before sync push in src/main/sync/engine.ts
 - [ ] T081 [US2] Implement item decryption after sync in src/main/sync/engine.ts
 
@@ -328,6 +353,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - `GET /sync/manifest` (T083): Returns metadata manifest (item_id, item_type, updated_at, content_hash) for client to compare - NO encrypted data
 - `GET /sync/changes?cursor=N` (T084): Returns items with server_cursor > N (the delta feed)
 - `POST /sync/push` (T085): Client uploads changed items (upsert)
+- `POST /sync/pull` (T086): Client requests specific items by ID (batch fetch, max 100)
 - `GET /sync/items/:id` (T087): Get single item by ID
 - `DELETE /sync/items/:id` (T088): Soft-delete (set tombstone)
 
@@ -335,6 +361,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - [ ] T083 [P] [US2] Implement sync manifest endpoint GET /sync/manifest (returns item metadata for diffing, no encrypted content) in sync-server/src/routes/sync.ts
 - [ ] T084 [US2] Implement sync changes endpoint GET /sync/changes?cursor=N&limit=100 using server_cursor (monotonic) in sync-server/src/routes/sync.ts - returns items where server_cursor > N
 - [ ] T085 [US2] Implement sync push endpoint POST /sync/push (batch upsert, returns new server_cursors) in sync-server/src/routes/sync.ts
+- [ ] T086 [US2] Implement sync pull endpoint POST /sync/pull (batch fetch by item IDs, max 100) in sync-server/src/routes/sync.ts
 - [ ] T087 [US2] Implement single item get endpoint GET /sync/items/:id in sync-server/src/routes/sync.ts
 - [ ] T088 [US2] Implement item delete endpoint DELETE /sync/items/:id (sets deleted=1 tombstone) in sync-server/src/routes/sync.ts
 - [ ] T089 [US2] Implement sync service with D1/R2 integration in sync-server/src/services/sync.ts
@@ -347,6 +374,8 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - [ ] T091 [US2] Implement WebSocket upgrade handling in sync-server/src/durable-objects/user-state.ts
 - [ ] T092 [US2] Implement broadcast to connected devices in sync-server/src/durable-objects/user-state.ts
 - [ ] T093 [US2] Configure Durable Object binding in sync-server/wrangler.toml
+- [ ] T093a [US2] Wire WebSocket upgrade route GET /sync/ws in sync-server/src/index.ts to forward requests to UserSyncState Durable Object
+- [ ] T093b [US2] Trigger DO broadcast after successful POST /sync/push in sync-server/src/routes/sync.ts (notify connected devices of new changes)
 
 ### Client Sync IPC for US2
 
@@ -488,12 +517,13 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - [ ] T135 [P] [US5] Implement note update push endpoint POST /sync/crdt/updates in sync-server/src/routes/sync.ts
 - [ ] T136 [P] [US5] Implement note updates get endpoint GET /sync/crdt/updates?note_id=X&since=Y in sync-server/src/routes/sync.ts
 - [ ] T137 [US5] Implement note snapshot push endpoint POST /sync/crdt/snapshot in sync-server/src/routes/sync.ts
+- [ ] T137a [US5] Implement CRDT update pruning: delete incremental updates older than latest snapshot in sync-server/src/services/cleanup.ts
 - [ ] T138 [US5] Implement note snapshot get endpoint GET /sync/crdt/snapshot/:note_id in sync-server/src/routes/sync.ts
 
 ### Notes Integration for US5
 
 - [ ] T139 [US5] Update notes file operations to trigger CRDT sync in src/main/vault/notes.ts
-- [ ] T140 [US5] Integrate Yjs with BlockNote collaboration extension using IPC provider in src/renderer/src/components/note/content-area/ContentArea.tsx
+- [ ] T140 [US5] Integrate Yjs with BlockNote collaboration extension using IPC provider in src/renderer/src/components/note/content-area/ContentArea.tsx (includes configuring collaboration extension for TipTap - consolidates T140t)
 
 **Checkpoint**: User Story 5 complete - note edits merge automatically via CRDT
 
@@ -537,7 +567,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - [ ] T140q [US2] Update FTS index for synced note in src/main/database/fts.ts
 - [ ] T140r [US2] Update note_cache, note_tags, note_links tables during sync in src/main/vault/indexer.ts
 - [ ] T140s [US2] Show "Indexing notes..." progress during initial sync in src/renderer/src/components/sync/initial-sync-progress.tsx
-- [ ] T140t [US5] Configure Yjs collaboration extension for BlockNote/TipTap integration in src/renderer/src/components/note/content-area/ContentArea.tsx
+- [x] T140t [US5] CONSOLIDATED INTO T140 - Configure Yjs collaboration extension for BlockNote/TipTap integration in src/renderer/src/components/note/content-area/ContentArea.tsx
 - [ ] T140u [US5] Implement Yjs garbage collection for documents exceeding 1MB in src/main/sync/crdt-provider.ts
 - [ ] T140v [US5] Compress Yjs snapshots before encryption using pako/fflate in src/main/sync/crdt-provider.ts
 
@@ -1025,7 +1055,7 @@ With multiple developers:
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
 - Server and client tasks for same feature can often run in parallel
-- Total tasks: ~352 (updated with schema, auth, infrastructure fixes, and crypto cleanup)
+- Total tasks: ~362 (updated with CRDT storage, WebSocket routing, device registration client, content_hash computation)
 
 ---
 
