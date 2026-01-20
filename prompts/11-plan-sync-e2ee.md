@@ -3,13 +3,13 @@
 Technical architecture, technology decisions, and implementation strategy for cross-device sync with end-to-end encryption.
 
 ```
-/speckit.plan @specs/001-sync-e2ee/spec.md
+/speckit.plan @specs/001-sync-e2ee-2/spec.md
 
 Plan the implementation of Memry's Sync Engine and End-to-End Encryption system with these technology decisions and constraints:
 
 ## REFERENCE DOCUMENTS
 
-- **Specification**: specs/001-sync-e2ee/spec.md (18 user stories, 70 functional requirements)
+- **Specification**: specs/001-sync-e2ee-2/spec.md (18 user stories, 70 functional requirements)
 - **Technical Design**: prompts/06-specify-sync.md (detailed cryptographic design, code patterns)
 - **Constitution**: prompts/00-constitution.md (governing principles)
 - **Existing Architecture**: CLAUDE.md (current codebase patterns)

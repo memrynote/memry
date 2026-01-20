@@ -1,6 +1,6 @@
 # Feature Specification: Sync Engine & End-to-End Encryption
 
-**Feature Branch**: `001-sync-e2ee`
+**Feature Branch**: `001-sync-e2ee-2`
 **Created**: 2026-01-14
 **Status**: Draft
 **Input**: User description: "Sync Engine and E2E Encryption for cross-device synchronization with CRDT-based conflict-free merging and collaboration support"

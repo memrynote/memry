@@ -1,6 +1,6 @@
 # Research: Sync Engine & E2EE
 
-**Feature**: 001-sync-e2ee | **Date**: 2026-01-14
+**Feature**: 001-sync-e2ee-2 | **Date**: 2026-01-14
 
 This document captures research findings and decisions for implementing the sync engine and end-to-end encryption system.
 

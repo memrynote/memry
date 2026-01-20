@@ -1,6 +1,6 @@
 # Tasks: Sync Engine & End-to-End Encryption
 
-**Input**: Design documents from `/specs/001-sync-e2ee/`
+**Input**: Design documents from `/specs/001-sync-e2ee-2/`
 **Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, contracts/
 
 **Tests**: Tests are NOT included by default. Add them if explicitly requested.
