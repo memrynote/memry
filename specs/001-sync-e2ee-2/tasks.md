@@ -165,9 +165,10 @@
 - [ ] T070 [US1] Create auth service for renderer in src/renderer/src/services/auth-service.ts
 - [ ] T071 [US1] Create useAuth hook in src/renderer/src/hooks/use-auth.ts
 - [ ] T072 [US1] Implement PKCE code_verifier and code_challenge generation in src/main/ipc/sync-handlers.ts
-- [ ] T073 [US1] Implement automatic access token refresh with retry logic in src/renderer/src/services/auth-service.ts
+- [ ] T073 [US1] Implement automatic access token refresh with retry logic in src/main/ipc/sync-handlers.ts
 - [ ] T073a [US1] Emit auth:session-expired event when token refresh fails in src/main/ipc/sync-handlers.ts
 - [ ] T073b [US1] Store OAuth tokens separately from master key in keychain in src/main/crypto/keychain.ts
+- [ ] T073c [US1] Implement refresh-token IPC call from renderer in src/renderer/src/services/auth-service.ts
 
 **Checkpoint**: User Story 1 complete - users can create accounts and set up encryption
 
@@ -849,7 +850,7 @@ With multiple developers:
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
 - Server and client tasks for same feature can often run in parallel
-- Total tasks: ~326 (updated after validation review)
+- Total tasks: ~327 (updated after token refresh architecture decision)
 
 ---
 
@@ -870,15 +871,21 @@ Ed25519 signing keys are derived from the master key via HKDF("memry-signing-key
 - Derived signing keypair → OS keychain (T060a)
 - Device auth key (optional) → devices table
 
-### Token Refresh Ownership (Decision Needed)
+### Token Refresh Ownership
 
-**Current design**: Token refresh logic is split between renderer (T073) and main process (T073a, T073b). This creates a coordination risk with potential race conditions in multi-window scenarios.
+**Decision**: Token refresh is owned by the **main process** (Option 1).
 
-**Options**:
-1. **Move refresh to main process** (recommended): Single-threaded token management, renderer calls IPC to request refresh
-2. **Add IPC coordination mutex**: Renderer keeps refresh logic but coordinates via IPC lock
+**Rationale**:
+- Single-threaded token management eliminates race conditions in multi-window scenarios
+- Atomic refresh operations ensure consistent token state
+- Consistent token state across all renderer windows
+- Renderer simply calls IPC to request refresh, main process handles it atomically
 
-**Action**: Clarify this decision before implementing US1 auth tasks.
+**Implementation**:
+- T073: Refresh logic implemented in `src/main/ipc/sync-handlers.ts` (main process)
+- T073c: Renderer calls IPC to request refresh via `src/renderer/src/services/auth-service.ts`
+- T073a: Main process emits `auth:session-expired` event when refresh fails
+- T073b: OAuth tokens stored in keychain by main process
 
 ### OTP Codes Table
 
