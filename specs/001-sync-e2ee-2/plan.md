@@ -18,7 +18,7 @@ Implement a comprehensive sync engine with end-to-end encryption (E2EE) for Memr
 - keytar (OS keychain)
 - bip39 (recovery phrases)
 - cborg (canonical CBOR encoding for signatures/HMAC)
-- Yjs + y-leveldb (CRDTs)
+- Yjs + y-protocols + y-leveldb (CRDTs)
 - Hono.js (sync server on Cloudflare Workers)
 
 **Storage**:
@@ -143,6 +143,8 @@ src/renderer/src/
 │       ├── sync-history.tsx  # Activity history
 │       ├── device-list.tsx   # Device management
 │       └── qr-linking.tsx    # QR code device linking
+├── + sync/
+│   └── + yjs-ipc-provider.ts # NEW: IPC-backed Yjs provider for BlockNote collaboration
 └── pages/
     └── + settings/           # Sync settings pages
         └── sync-settings.tsx
@@ -240,8 +242,10 @@ tests/
 
 ### Phase 5: Note Sync (CRDT)
 - Yjs integration
+- BlockNote collaboration via IPC-backed provider (renderer ↔ main Yjs host)
 - Encrypted sync provider
 - Snapshot compaction
+ - Awareness/presence stays local-only (no server transmission)
 
 ### Phase 6: Task/Settings Sync
 - Vector clock implementation

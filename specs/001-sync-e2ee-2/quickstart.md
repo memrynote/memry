@@ -40,7 +40,7 @@ pnpm add cborg
 pnpm add sodium-native
 
 # CRDTs (main process persistence)
-pnpm add yjs y-leveldb level
+pnpm add yjs y-protocols y-leveldb level
 
 # QR code generation/scanning
 pnpm add qrcode @capacitor/barcode-scanner  # or react-qr-reader for web
