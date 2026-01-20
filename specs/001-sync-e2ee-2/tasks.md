@@ -55,10 +55,12 @@
 ### Database Schema
 
 - [ ] T014 Create D1 users table schema (kdf_salt, key_verifier) in sync-server/schema/d1.sql
-- [ ] T014a Create D1 otp_codes table schema (code_hash, expires_at, attempts, used) in sync-server/schema/d1.sql
-- [ ] T015 Create D1 devices table schema (name, platform, os_version, app_version, last_sync_at, auth_public_key optional) in sync-server/schema/d1.sql
+- [ ] T014a Create D1 otp_codes table schema (email_hash, code_hash, expires_at, attempts, used, created_at) in sync-server/schema/d1.sql
+- [ ] T015 Create D1 devices table schema (name, platform, os_version, app_version, last_sync_at, auth_public_key required) in sync-server/schema/d1.sql
 - [ ] T016 Create D1 linking_sessions table schema (new_device_confirm, key_confirm) in sync-server/schema/d1.sql
 - [ ] T017 Create D1 sync_items table schema in sync-server/schema/d1.sql
+- [ ] T017a Add server_cursor (monotonic integer) and signer_device_id/signature fields to D1 sync_items table in sync-server/schema/d1.sql
+- [ ] T017b Create D1 sync_state table (device_id, last_cursor_seen) in sync-server/schema/d1.sql
 - [ ] T018 Add sync-related tables (devices, sync_queue, sync_state, sync_history) to src/shared/db/schema/data-schema.ts
 - [ ] T019 Run drizzle migrations for local sync tables
 
@@ -74,6 +76,8 @@
 - [ ] T026 [P] Implement Ed25519 signing over canonical CBOR in src/main/crypto/signatures.ts
 - [ ] T027 [P] Implement Ed25519 signature verification over canonical CBOR in src/main/crypto/signatures.ts
 - [ ] T028 Implement keychain storage with keytar in src/main/crypto/keychain.ts
+- [ ] T028a Implement device signing keypair generation + storage in src/main/crypto/keys.ts and src/main/crypto/keychain.ts
+- [ ] T028b Implement device signing public key retrieval for registration in src/main/crypto/keys.ts
 - [ ] T029 Create crypto module index exports in src/main/crypto/index.ts
 
 ### Server Foundation
@@ -84,6 +88,7 @@
 - [ ] T033 Create base error handling in sync-server/src/lib/errors.ts
 - [ ] T033a [P] Implement canonical CBOR encoder helper in sync-server/src/lib/cbor.ts (cborg)
 - [ ] T034 [P] Set up Resend email service in sync-server/src/services/email.ts
+- [ ] T034a Implement OTP cleanup job (delete expired codes) in sync-server/src/services/otp.ts or sync-server/src/services/cleanup.ts
 
 ### IPC Foundation
 
@@ -106,6 +111,7 @@
 - [ ] T041d Create typed error codes enum (AUTH_*, SYNC_*, CRYPTO_*) in sync-server/src/lib/errors.ts
 - [ ] T041e Implement memry:// deep link protocol handler for OAuth callbacks in src/main/index.ts
 - [ ] T041f Create canonical CBOR field ordering documentation in src/main/crypto/cbor.ts
+- [ ] T041g Define sync cursor types and signature metadata in src/shared/contracts/sync-api.ts
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -130,6 +136,7 @@
 - [ ] T048 [US1] Implement OAuth initiation endpoint for Google/Apple/GitHub in sync-server/src/routes/auth.ts
 - [ ] T049 [US1] Implement OAuth callback handler in sync-server/src/routes/auth.ts
 - [ ] T050 [US1] Implement device registration endpoint in sync-server/src/routes/auth.ts
+- [ ] T050a [US1] Require device signing public key + metadata on registration and persist in devices table in sync-server/src/routes/auth.ts
 - [ ] T051 [US1] Implement first device setup endpoint (stores kdf_salt, key_verifier) in sync-server/src/routes/auth.ts
 - [ ] T052 [US1] Implement JWT token issuance service in sync-server/src/services/auth.ts
 - [ ] T053 [US1] Implement user service (create, get, update) in sync-server/src/services/user.ts
@@ -146,6 +153,7 @@
 - [ ] T060 [US1] Implement signing/verify key derivation via HKDF in src/main/crypto/keys.ts
 - [ ] T060a [US1] Store derived Ed25519 signing keypair in OS keychain in src/main/crypto/keychain.ts
 - [ ] T061 [US1] Store master key in OS keychain in src/main/crypto/keychain.ts
+- [ ] T061a [US1] Generate and store device signing keypair during first device setup in src/main/crypto/keys.ts
 - [ ] T062 [US1] Implement recovery phrase confirmation IPC handler in src/main/ipc/sync-handlers.ts
 
 ### UI Components for US1
@@ -169,6 +177,7 @@
 - [ ] T073a [US1] Emit auth:session-expired event when token refresh fails in src/main/ipc/sync-handlers.ts
 - [ ] T073b [US1] Store OAuth tokens separately from master key in keychain in src/main/crypto/keychain.ts
 - [ ] T073c [US1] Implement refresh-token IPC call from renderer in src/renderer/src/services/auth-service.ts
+- [ ] T073d [US1] Ensure renderer does not refresh tokens directly (delegate to main IPC only) in src/renderer/src/services/auth-service.ts
 
 **Checkpoint**: User Story 1 complete - users can create accounts and set up encryption
 
@@ -189,19 +198,21 @@
 - [ ] T078 [US2] Implement network status monitoring in src/main/sync/network.ts
 - [ ] T079 [US2] Implement retry logic with exponential backoff in src/main/sync/retry.ts
 - [ ] T080 [US2] Implement item encryption before sync in src/main/sync/engine.ts
-- [ ] T080a [US2] Sign items with Ed25519 over canonical CBOR before sync push in src/main/sync/engine.ts
+- [ ] T080a [US2] Sign items with device Ed25519 key over canonical CBOR and attach signer_device_id metadata before sync push in src/main/sync/engine.ts
 - [ ] T081 [US2] Implement item decryption after sync in src/main/sync/engine.ts
 
 ### Server Sync Endpoints for US2
 
 - [ ] T082 [P] [US2] Implement sync status endpoint in sync-server/src/routes/sync.ts
 - [ ] T083 [P] [US2] Implement sync manifest endpoint in sync-server/src/routes/sync.ts
-- [ ] T084 [US2] Implement sync changes endpoint (since timestamp) in sync-server/src/routes/sync.ts
+- [ ] T084 [US2] Implement sync changes endpoint using server_cursor (monotonic) in sync-server/src/routes/sync.ts
 - [ ] T085 [US2] Implement sync push endpoint in sync-server/src/routes/sync.ts
 - [ ] T086 [US2] Implement sync pull endpoint in sync-server/src/routes/sync.ts
 - [ ] T087 [US2] Implement single item get endpoint in sync-server/src/routes/sync.ts
 - [ ] T088 [US2] Implement item delete endpoint in sync-server/src/routes/sync.ts
 - [ ] T089 [US2] Implement sync service with D1/R2 integration in sync-server/src/services/sync.ts
+- [ ] T089a [US2] Persist server_cursor and device last_cursor_seen in sync-server/src/services/sync.ts
+- [ ] T089b [US2] Validate signer_device_id + signature metadata on sync push in sync-server/src/services/sync.ts
 
 ### WebSocket/Durable Objects for US2
 
@@ -216,6 +227,7 @@
 - [ ] T095 [US2] Implement trigger sync IPC handler in src/main/ipc/sync-handlers.ts
 - [ ] T096 [US2] Implement get queue size IPC handler in src/main/ipc/sync-handlers.ts
 - [ ] T097 [US2] Implement pause/resume sync IPC handlers in src/main/ipc/sync-handlers.ts
+- [ ] T097a [US2] Include server_cursor in client sync state and persist last_cursor_seen in src/main/sync/engine.ts
 
 ### Sync Events for US2
 
@@ -245,6 +257,7 @@
 - [ ] T103k [US2] Emit sync:queue-cleared event when pending queue becomes empty in src/main/sync/queue.ts
 - [ ] T103l [US2] Handle partial batch sync failure (some items succeed, some fail) in src/main/sync/engine.ts
 - [ ] T103m [US2] Implement sync item batching (max 100 items per request) in src/main/sync/engine.ts
+- [ ] T103n [US2] Update device last_sync_at on successful sync in sync-server/src/services/device.ts
 
 **Checkpoint**: User Story 2 complete - notes and tasks sync automatically across devices
 
@@ -624,6 +637,8 @@
 - [ ] T210b [US14] Implement sync pause during key rotation window in src/main/sync/engine.ts
 - [ ] T211 [US14] Implement rotation progress tracking in src/main/crypto/rotation.ts
 - [ ] T212 [US14] Implement get rotation progress IPC handler in src/main/ipc/crypto-handlers.ts
+- [ ] T212a [US14] Rewrap attachment keys and CRDT snapshot keys during rotation in src/main/crypto/rotation.ts
+- [ ] T212b [US14] Add crypto key version metadata to encrypted payloads in src/main/crypto/encryption.ts
 
 ### UI Components for US14
 
@@ -856,20 +871,21 @@ With multiple developers:
 
 ## Architecture Decisions & Clarifications
 
-### Sync Protocol: Timestamp-Based with Vector Clock Authority
+### Sync Protocol: Server Cursor with Vector Clock Authority
 
-The sync protocol uses timestamp-based change feeds (`GET /sync/changes?since=<unix_timestamp_ms>`) for efficiency, but **vector clocks are authoritative for conflict resolution**. Timestamps serve as "sync hints" to fetch changes, while vector clocks determine actual causality and merge behavior.
+The sync protocol uses a server-assigned, monotonic `server_cursor` for change feeds, while **vector clocks remain authoritative for conflict resolution**. Clients request changes using the last seen cursor and advance it as batches are applied.
 
-**Rationale**: This approach balances simplicity (timestamps for fetching) with correctness (vector clocks for merging). Clock skew is detected (T103i warns at >5 min difference) but does not affect data integrity since vector clocks handle all conflict resolution.
+**Rationale**: A server cursor avoids clock skew and missed updates, while vector clocks still determine causality and merge behavior.
 
-### Signing Keys: User-Level, Not Device-Level
+### Signing Keys: Device-Level for Sync Items
 
-Ed25519 signing keys are derived from the master key via HKDF("memry-signing-key-v1") and are **user-level** (same across all devices), not device-level. The `auth_public_key` field in the devices table is optional and intended for device authentication only (not content signing).
+Sync item signatures use **device-level** Ed25519 keys, and each item includes `signer_device_id` + signature metadata. The devices table stores the required device public key for verification. User-level derived keys can still exist for other cryptographic needs, but **sync item signing is device-scoped**.
 
 **Key storage**:
 - Master key → OS keychain (T061)
-- Derived signing keypair → OS keychain (T060a)
-- Device auth key (optional) → devices table
+- Derived user signing keypair → OS keychain (T060a)
+- Device signing keypair → OS keychain (T028a/T061a)
+- Device public key → devices table (T015/T050a)
 
 ### Token Refresh Ownership
 
@@ -889,4 +905,4 @@ Ed25519 signing keys are derived from the master key via HKDF("memry-signing-key
 
 ### OTP Codes Table
 
-The `otp_codes` table schema is defined in data-model.md but was missing from the task list. Added as T014a with fields: `code_hash`, `expires_at`, `attempts`, `used`.
+The `otp_codes` table schema is defined in data-model.md but was missing from the task list. Added as T014a with fields: `email_hash`, `code_hash`, `expires_at`, `attempts`, `used`, `created_at`.
