@@ -270,30 +270,30 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Server Implementation for US1
 
-- [ ] T042 [P] [US1] Implement request-otp endpoint POST /auth/otp/request (sends 6-digit code via email) in sync-server/src/routes/auth.ts
-- [ ] T043 [P] [US1] Implement verify-otp endpoint POST /auth/otp/verify (validates code, returns JWT + refresh token) in sync-server/src/routes/auth.ts
-- [ ] T044 [P] [US1] Implement OTP generation service (6 digits, cryptographically random) in sync-server/src/services/otp.ts
-- [ ] T044a [P] [US1] Implement OTP storage with SHA-256 hashing in sync-server/src/services/otp.ts
-- [ ] T044b [P] [US1] Implement OTP rate limiting (max 3 requests per 10 min per email) in sync-server/src/middleware/rate-limit.ts
-- [ ] T044c [P] [US1] Implement OTP attempt tracking (max 5 failed attempts per code) in sync-server/src/services/otp.ts
-- [ ] T047 [P] [US1] Create OTP email template in sync-server/src/emails/otp-code.tsx
-- [ ] T047a [P] [US1] Implement resend-otp endpoint POST /auth/otp/resend (reuses rate limiting) in sync-server/src/routes/auth.ts
-- [ ] T048 [US1] Implement OAuth initiation endpoint GET /auth/oauth/:provider for Google in sync-server/src/routes/auth.ts
-- [ ] T049 [US1] Implement OAuth callback handler GET /auth/oauth/:provider/callback in sync-server/src/routes/auth.ts
-- [ ] T049a [US1] Implement OAuth state parameter validation (CSRF protection) in sync-server/src/routes/auth.ts - generate state on initiation, validate on callback
-- [ ] T050 [US1] Implement device registration endpoint POST /auth/devices in sync-server/src/routes/auth.ts
-- [ ] T050a [US1] Require device signing public key + metadata on registration and persist in devices table in sync-server/src/routes/auth.ts
-- [ ] T050b [US1] Implement device registration challenge/response: server sends random nonce, client signs with device private key, server verifies before accepting registration in sync-server/src/routes/auth.ts
-- [ ] T050c [US1] Implement device registration IPC handler in src/main/ipc/sync-handlers.ts (calls POST /auth/devices with device metadata and signing public key)
-- [ ] T050d [US1] Persist device_id returned from registration in local SQLite devices table in src/main/ipc/sync-handlers.ts
-- [ ] T050e [US1] Create device registration service for renderer in src/renderer/src/services/device-service.ts
-- [ ] T050f [US1] Wire device registration into first device setup flow after successful auth in src/main/ipc/sync-handlers.ts (auto-register device after OTP/OAuth verification)
-- [ ] T051 [US1] Implement first device setup endpoint POST /auth/setup (stores kdf_salt, key_verifier) in sync-server/src/routes/auth.ts
-- [ ] T052 [US1] Implement JWT access token issuance service (15min expiry) in sync-server/src/services/auth.ts
-- [ ] T052a [US1] Implement refresh token issuance alongside access token (7-day expiry) in sync-server/src/services/auth.ts
-- [ ] T052b [US1] Implement refresh token endpoint POST /auth/refresh in sync-server/src/routes/auth.ts
-- [ ] T053 [US1] Implement user service (create, get, update) in sync-server/src/services/user.ts
-- [ ] T053a [US1] Implement user identity linking service (merge OTP + OAuth accounts by email) in sync-server/src/services/user.ts - if email exists with different provider, link identities to same user
+- [x] T042 [P] [US1] Implement request-otp endpoint POST /auth/otp/request (sends 6-digit code via email) in sync-server/src/routes/auth.ts
+- [x] T043 [P] [US1] Implement verify-otp endpoint POST /auth/otp/verify (validates code, returns JWT + refresh token) in sync-server/src/routes/auth.ts
+- [x] T044 [P] [US1] Implement OTP generation service (6 digits, cryptographically random) in sync-server/src/services/otp.ts
+- [x] T044a [P] [US1] Implement OTP storage with SHA-256 hashing in sync-server/src/services/otp.ts
+- [x] T044b [P] [US1] Implement OTP rate limiting (max 3 requests per 10 min per email) in sync-server/src/middleware/rate-limit.ts
+- [x] T044c [P] [US1] Implement OTP attempt tracking (max 5 failed attempts per code) in sync-server/src/services/otp.ts
+- [x] T047 [P] [US1] Create OTP email template in sync-server/src/emails/otp-code.tsx
+- [x] T047a [P] [US1] Implement resend-otp endpoint POST /auth/otp/resend (reuses rate limiting) in sync-server/src/routes/auth.ts
+- [x] T048 [US1] Implement OAuth initiation endpoint GET /auth/oauth/:provider for Google in sync-server/src/routes/auth.ts
+- [x] T049 [US1] Implement OAuth callback handler GET /auth/oauth/:provider/callback in sync-server/src/routes/auth.ts
+- [x] T049a [US1] Implement OAuth state parameter validation (CSRF protection) in sync-server/src/routes/auth.ts - generate state on initiation, validate on callback
+- [x] T050 [US1] Implement device registration endpoint POST /auth/devices in sync-server/src/routes/auth.ts
+- [x] T050a [US1] Require device signing public key + metadata on registration and persist in devices table in sync-server/src/routes/auth.ts
+- [x] T050b [US1] Implement device registration challenge/response: server sends random nonce, client signs with device private key, server verifies before accepting registration in sync-server/src/routes/auth.ts
+- [x] T050c [US1] Implement device registration IPC handler in src/main/ipc/sync-handlers.ts (calls POST /auth/devices with device metadata and signing public key)
+- [x] T050d [US1] Persist device_id returned from registration in local SQLite devices table in src/main/ipc/sync-handlers.ts
+- [x] T050e [US1] Create device registration service for renderer in src/renderer/src/services/device-service.ts
+- [x] T050f [US1] Wire device registration into first device setup flow after successful auth in src/main/ipc/sync-handlers.ts (auto-register device after OTP/OAuth verification)
+- [x] T051 [US1] Implement first device setup endpoint POST /auth/setup (stores kdf_salt, key_verifier) in sync-server/src/routes/auth.ts
+- [x] T052 [US1] Implement JWT access token issuance service (15min expiry) in sync-server/src/services/auth.ts
+- [x] T052a [US1] Implement refresh token issuance alongside access token (7-day expiry) in sync-server/src/services/auth.ts
+- [x] T052b [US1] Implement refresh token endpoint POST /auth/refresh in sync-server/src/routes/auth.ts
+- [x] T053 [US1] Implement user service (create, get, update) in sync-server/src/services/user.ts
+- [x] T053a [US1] Implement user identity linking service (merge OTP + OAuth accounts by email) in sync-server/src/services/user.ts - if email exists with different provider, link identities to same user
 
 ### Client Implementation for US1
 
