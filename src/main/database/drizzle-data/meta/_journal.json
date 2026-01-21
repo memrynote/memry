@@ -57,6 +57,13 @@
       "when": 1768333793280,
       "tag": "0007_safe_sunspot",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1768957014379,
+      "tag": "0008_last_screwball",
+      "breakpoints": true
     }
   ]
 }

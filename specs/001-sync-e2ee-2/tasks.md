@@ -57,15 +57,22 @@
 
 All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
-- [ ] T014 Create D1 users table schema in sync-server/schema/d1.sql:
+- [x] T014 Create D1 users table schema in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - email (TEXT, UNIQUE, NOT NULL)
+  - email_verified (INTEGER, NOT NULL, DEFAULT 0) -- for OAuth/OTP verification
+  - auth_method (TEXT, NOT NULL) -- 'otp', 'oauth'
+  - auth_provider (TEXT) -- 'google' or NULL for OTP
+  - auth_provider_id (TEXT) -- OAuth provider user ID
   - kdf_salt (TEXT)
   - key_verifier (TEXT)
+  - storage_used (INTEGER, NOT NULL, DEFAULT 0) -- bytes used
+  - storage_limit (INTEGER, NOT NULL, DEFAULT 5368709120) -- 5GB default
   - created_at (INTEGER, NOT NULL)
   - updated_at (INTEGER, NOT NULL)
   - INDEX: idx_users_email ON users(email)
-- [ ] T014a Create D1 otp_codes table schema in sync-server/schema/d1.sql:
+  - UNIQUE INDEX: idx_users_provider ON users(auth_provider, auth_provider_id) WHERE auth_provider IS NOT NULL
+- [x] T014a Create D1 otp_codes table schema in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - email (TEXT, NOT NULL)
   - code_hash (TEXT, NOT NULL)
@@ -75,7 +82,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - created_at (INTEGER, NOT NULL)
   - INDEX: idx_otp_email ON otp_codes(email)
   - INDEX: idx_otp_expires ON otp_codes(expires_at)
-- [ ] T014b Create D1 refresh_tokens table schema in sync-server/schema/d1.sql:
+- [x] T014b Create D1 refresh_tokens table schema in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - device_id (TEXT, NOT NULL, FK → devices.id ON DELETE CASCADE)
@@ -86,7 +93,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - created_at (INTEGER, NOT NULL)
   - INDEX: idx_refresh_user ON refresh_tokens(user_id)
   - INDEX: idx_refresh_device ON refresh_tokens(device_id)
-- [ ] T014c Create D1 user_identities table for OAuth/OTP linking in sync-server/schema/d1.sql:
+- [x] T014c Create D1 user_identities table for OAuth/OTP linking in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - provider (TEXT, NOT NULL) -- 'email', 'google'
@@ -94,7 +101,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - created_at (INTEGER, NOT NULL)
   - UNIQUE: (provider, provider_id)
   - INDEX: idx_identity_user ON user_identities(user_id)
-- [ ] T015 Create D1 devices table schema in sync-server/schema/d1.sql:
+- [x] T015 Create D1 devices table schema in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - name (TEXT, NOT NULL)
@@ -107,18 +114,24 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - updated_at (INTEGER, NOT NULL)
   - INDEX: idx_devices_user ON devices(user_id)
   - UNIQUE: (user_id, auth_public_key)
-- [ ] T016 Create D1 linking_sessions table schema in sync-server/schema/d1.sql:
+- [x] T016 Create D1 linking_sessions table schema in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
-  - existing_device_id (TEXT, NOT NULL, FK → devices.id)
-  - new_device_confirm (TEXT)
-  - key_confirm (TEXT)
-  - status (TEXT, NOT NULL) -- 'pending', 'scanned', 'approved', 'completed', 'expired'
-  - expires_at (INTEGER, NOT NULL) -- 5 minutes from creation
+  - initiator_device_id (TEXT, NOT NULL, FK → devices.id) -- renamed from existing_device_id
+  - ephemeral_public_key (TEXT, NOT NULL) -- for ECDH key exchange
+  - new_device_public_key (TEXT) -- new device's X25519 public key
+  - new_device_confirm (TEXT) -- HMAC proof from new device
+  - encrypted_master_key (TEXT) -- master key encrypted for new device
+  - encrypted_key_nonce (TEXT) -- nonce for encrypted_master_key
+  - key_confirm (TEXT) -- HMAC proof for key verification
+  - status (TEXT, NOT NULL, DEFAULT 'pending') -- 'pending', 'scanned', 'approved', 'completed', 'expired'
   - created_at (INTEGER, NOT NULL)
+  - expires_at (INTEGER, NOT NULL) -- 5 minutes from creation
+  - completed_at (INTEGER) -- timestamp when linking completed
   - INDEX: idx_linking_user ON linking_sessions(user_id)
+  - INDEX: idx_linking_status ON linking_sessions(status) WHERE status IN ('pending', 'scanned')
   - INDEX: idx_linking_expires ON linking_sessions(expires_at)
-- [ ] T017 Create D1 sync_items table schema in sync-server/schema/d1.sql:
+- [x] T017 Create D1 sync_items table schema in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - item_type (TEXT, NOT NULL) -- 'task', 'note', 'inbox', 'filter', 'project', 'settings', 'journal'
@@ -141,23 +154,23 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - INDEX: idx_sync_user_cursor ON sync_items(user_id, server_cursor)
   - INDEX: idx_sync_type ON sync_items(user_id, item_type)
   - INDEX: idx_sync_deleted ON sync_items(user_id, deleted)
-- [ ] T017a Create D1 server_cursor_sequence table for atomic cursor generation in sync-server/schema/d1.sql:
+- [x] T017a Create D1 server_cursor_sequence table for atomic cursor generation in sync-server/schema/d1.sql:
   - PK: user_id (TEXT, FK → users.id)
   - current_cursor (INTEGER, NOT NULL, DEFAULT 0)
-- [ ] T017b Create D1 device_sync_state table in sync-server/schema/d1.sql:
+- [x] T017b Create D1 device_sync_state table in sync-server/schema/d1.sql:
   - PK: (device_id, user_id)
   - device_id (TEXT, NOT NULL, FK → devices.id ON DELETE CASCADE)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - last_cursor_seen (INTEGER, NOT NULL, DEFAULT 0)
   - updated_at (INTEGER, NOT NULL)
-- [ ] T017c Create D1 rate_limits table in sync-server/schema/d1.sql:
+- [x] T017c Create D1 rate_limits table in sync-server/schema/d1.sql:
   - PK: id (TEXT)
   - key (TEXT, NOT NULL, UNIQUE) -- e.g., 'otp:email@example.com'
   - count (INTEGER, NOT NULL, DEFAULT 0)
   - window_start (INTEGER, NOT NULL)
   - INDEX: idx_rate_key ON rate_limits(key)
-- [ ] T017d Run D1 dev schema migration via wrangler d1 execute sync-db --local --file=sync-server/schema/d1.sql
-- [ ] T017e Create D1 crdt_updates table schema in sync-server/schema/d1.sql:
+- [x] T017d Run D1 dev schema migration via wrangler d1 execute sync-db --local --file=sync-server/schema/d1.sql
+- [x] T017e Create D1 crdt_updates table schema in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - note_id (TEXT, NOT NULL)
@@ -166,7 +179,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - created_at (INTEGER, NOT NULL)
   - UNIQUE: (user_id, note_id, sequence_num)
   - INDEX: idx_crdt_updates_note ON crdt_updates(user_id, note_id, sequence_num)
-- [ ] T017f Create D1 crdt_snapshots table schema in sync-server/schema/d1.sql:
+- [x] T017f Create D1 crdt_snapshots table schema in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - note_id (TEXT, NOT NULL)
@@ -176,9 +189,9 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - created_at (INTEGER, NOT NULL)
   - UNIQUE: (user_id, note_id)
   - INDEX: idx_crdt_snapshots_note ON crdt_snapshots(user_id, note_id)
-- [ ] T017g Define R2 object layout for large CRDT snapshots in sync-server/src/services/crdt.ts: {user_id}/crdt/{note_id}/snapshot for snapshots exceeding D1 blob limits (>1MB)
-- [ ] T018 Add sync-related tables (devices, sync_queue, sync_state, sync_history) to src/shared/db/schema/data-schema.ts with Drizzle ORM definitions
-- [ ] T019 Run drizzle migrations for local sync tables via pnpm db:generate:data && pnpm db:push:data
+- [x] T017g Define R2 object layout for large CRDT snapshots in sync-server/src/services/crdt.ts: {user_id}/crdt/{note_id}/snapshot for snapshots exceeding D1 blob limits (>1MB)
+- [x] T018 Add sync-related tables (devices, sync_queue, sync_state, sync_history) to src/shared/db/schema/data-schema.ts with Drizzle ORM definitions
+- [x] T019 Run drizzle migrations for local sync tables via pnpm db:generate:data && pnpm db:push:data
 
 ### Crypto Module Foundation
 
