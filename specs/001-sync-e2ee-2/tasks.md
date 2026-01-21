@@ -246,7 +246,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - [ ] T041b Define Argon2id parameter constants (memory: 65536KB, iterations: 3, parallelism: 4) in src/main/crypto/keys.ts
 - [ ] T041c Implement rate limit state persistence using D1 rate_limits table in sync-server/src/middleware/rate-limit.ts
 - [ ] T041d Create typed error codes enum (AUTH*\*, SYNC*_, CRYPTO\__) in sync-server/src/lib/errors.ts
-- [ ] T041e Implement memry:// deep link protocol handler for OAuth callbacks in src/main/index.ts
+- [ ] T041e Implement localhost HTTP server for OAuth callbacks in src/main/auth/oauth-server.ts (binds to random port, receives OAuth redirect, extracts auth code, auto-closes after 5 min timeout)
 - [ ] T041f Create canonical CBOR field ordering documentation (reference src/shared/contracts/cbor-ordering.ts) in src/main/crypto/cbor.ts
 - [ ] T041g Define sync cursor types and signature metadata in src/shared/contracts/sync-api.ts
 
