@@ -25,25 +25,25 @@
 
 **Purpose**: Project initialization, dependencies, and basic structure
 
-- [ ] T001 Install crypto dependencies (libsodium-wrappers, sodium-native, keytar, bip39) via pnpm
-- [ ] T001a Install attachment processing dependencies (sharp for images, pako/fflate for compression) via pnpm
-- [ ] T002 Install CRDT dependencies (yjs, y-protocols, y-leveldb, level) via pnpm
-- [ ] T003 [P] Create sync-server Cloudflare Workers project in sync-server/
-- [ ] T004 [P] Create directory structure src/main/crypto/ for crypto module
-- [ ] T005 [P] Create directory structure src/main/sync/ for sync engine module
-- [ ] T006 [P] Create directory structure src/renderer/src/components/sync/ for sync UI
-- [ ] T007 [P] Create directory structure src/shared/contracts/ for shared type contracts
-- [ ] T008 Configure Cloudflare D1 database binding in sync-server/wrangler.toml
-- [ ] T009 Configure Cloudflare R2 bucket binding in sync-server/wrangler.toml
-- [ ] T010 Add sync-related environment variables to .env.development
-- [ ] T011 [P] Create shared TypeScript types in src/shared/contracts/sync-api.ts including SyncItem with canonical fields: item_type, item_id, user_id, encrypted_data, encrypted_key, key_nonce, data_nonce, clock, deleted (tombstone boolean), crypto_version, size_bytes, content_hash, signer_device_id, signature, server_cursor, created_at, updated_at
-- [ ] T011a [P] Add Zod schemas for SyncItem request/response validation in src/shared/contracts/sync-api.ts
-- [ ] T012 [P] Create shared crypto types in src/shared/contracts/crypto.ts
-- [ ] T013 [P] Create IPC channel types in src/shared/contracts/ipc-sync.ts
-- [ ] T013a Install cborg dependency for canonical CBOR encoding via pnpm
-- [ ] T013b [P] Create .env.staging template with sync server URLs
-- [ ] T013c [P] Create .env.production template with sync server URLs
-- [ ] T013d [P] Add OAuth client ID/secret placeholders to environment templates
+- [x] T001 Install crypto dependencies (libsodium-wrappers, sodium-native, keytar, bip39) via pnpm
+- [x] T001a Install attachment processing dependencies (sharp for images, pako/fflate for compression) via pnpm
+- [x] T002 Install CRDT dependencies (yjs, y-protocols, y-leveldb, level) via pnpm
+- [x] T003 [P] Create sync-server Cloudflare Workers project in sync-server/
+- [x] T004 [P] Create directory structure src/main/crypto/ for crypto module
+- [x] T005 [P] Create directory structure src/main/sync/ for sync engine module
+- [x] T006 [P] Create directory structure src/renderer/src/components/sync/ for sync UI
+- [x] T007 [P] Create directory structure src/shared/contracts/ for shared type contracts
+- [x] T008 Configure Cloudflare D1 database binding in sync-server/wrangler.toml
+- [x] T009 Configure Cloudflare R2 bucket binding in sync-server/wrangler.toml
+- [x] T010 Add sync-related environment variables to .env.development
+- [x] T011 [P] Create shared TypeScript types in src/shared/contracts/sync-api.ts including SyncItem with canonical fields: item_type, item_id, user_id, encrypted_data, encrypted_key, key_nonce, data_nonce, clock, deleted (tombstone boolean), crypto_version, size_bytes, content_hash, signer_device_id, signature, server_cursor, created_at, updated_at
+- [x] T011a [P] Add Zod schemas for SyncItem request/response validation in src/shared/contracts/sync-api.ts
+- [x] T012 [P] Create shared crypto types in src/shared/contracts/crypto.ts
+- [x] T013 [P] Create IPC channel types in src/shared/contracts/ipc-sync.ts
+- [x] T013a Install cborg dependency for canonical CBOR encoding via pnpm
+- [x] T013b [P] Create .env.staging template with sync server URLs
+- [x] T013c [P] Create .env.production template with sync server URLs
+- [x] T013d [P] Add OAuth client ID/secret placeholders to environment templates
 
 ---
 
