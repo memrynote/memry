@@ -45,7 +45,10 @@ import {
   CheckCircle,
   XCircle,
   RefreshCw,
-  PenLine
+  PenLine,
+  Cloud,
+  LogOut,
+  User
 } from 'lucide-react'
 import {
   Select,
@@ -61,8 +64,10 @@ import { useJournalSettings } from '@/hooks/use-journal-settings'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
 import { useTabPreferences } from '@/hooks/use-tab-preferences'
 import { useTabs } from '@/contexts/tabs'
+import { useAuth } from '@/contexts/auth-context'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { SetupWizard } from './settings/setup-wizard'
 
 // ============================================================================
 // Types
@@ -76,6 +81,7 @@ type SettingsSection =
   | 'vault'
   | 'appearance'
   | 'ai'
+  | 'account'
 
 // ============================================================================
 // Main Component
@@ -144,6 +150,12 @@ export function SettingsPage() {
             isActive={activeSection === 'ai'}
             onClick={() => setActiveSection('ai')}
           />
+          <SettingsNavItem
+            icon={<Cloud className="w-4 h-4" />}
+            label="Account & Sync"
+            isActive={activeSection === 'account'}
+            onClick={() => setActiveSection('account')}
+          />
         </nav>
       </div>
 
@@ -158,6 +170,7 @@ export function SettingsPage() {
             {activeSection === 'vault' && <VaultSettings />}
             {activeSection === 'appearance' && <AppearanceSettings />}
             {activeSection === 'ai' && <AISettings />}
+            {activeSection === 'account' && <AccountSettings />}
           </div>
         </ScrollArea>
       </div>
@@ -1287,6 +1300,132 @@ function AppearanceSettings() {
       </div>
       <Separator />
       <div className="text-muted-foreground text-sm">Appearance settings coming soon...</div>
+    </div>
+  )
+}
+
+// ============================================================================
+// Account & Sync Settings (T069b)
+// ============================================================================
+
+function AccountSettings() {
+  const { user, isAuthenticated, isLoading, logout, refreshSession } = useAuth()
+  const [showSetupWizard, setShowSetupWizard] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  const handleLogout = useCallback(async () => {
+    setIsLoggingOut(true)
+    try {
+      await logout()
+      toast.success('Signed out successfully')
+    } catch (error) {
+      console.error('[AccountSettings] Logout error:', error)
+      toast.error('Failed to sign out')
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }, [logout])
+
+  const handleSetupComplete = useCallback(() => {
+    setShowSetupWizard(false)
+    refreshSession()
+  }, [refreshSession])
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold">Account & Sync</h3>
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (showSetupWizard || !isAuthenticated) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold">Account & Sync</h3>
+          <p className="text-sm text-muted-foreground">
+            Set up secure, end-to-end encrypted sync across your devices
+          </p>
+        </div>
+        <Separator />
+        <SetupWizard onComplete={handleSetupComplete} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold">Account & Sync</h3>
+        <p className="text-sm text-muted-foreground">
+          Manage your account and sync settings
+        </p>
+      </div>
+
+      <Separator />
+
+      {/* Account Info */}
+      <div className="space-y-4">
+        <div>
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Account
+          </h4>
+        </div>
+
+        <div className="rounded-lg border p-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <User className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-medium">{user?.email}</p>
+              <p className="text-sm text-muted-foreground">Signed in</p>
+            </div>
+          </div>
+        </div>
+
+        <Button variant="outline" onClick={handleLogout} disabled={isLoggingOut}>
+          {isLoggingOut ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Signing out...
+            </>
+          ) : (
+            <>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign out
+            </>
+          )}
+        </Button>
+      </div>
+
+      <Separator />
+
+      {/* Sync Status */}
+      <div className="space-y-4">
+        <div>
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Sync
+          </h4>
+        </div>
+
+        <div className="flex items-center gap-2 text-sm">
+          <CheckCircle className="w-4 h-4 text-green-500" />
+          <span>End-to-end encryption enabled</span>
+        </div>
+
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+          <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+          <p className="text-muted-foreground">
+            Your data is encrypted on your device before being synced. Only you can access it with
+            your recovery phrase.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

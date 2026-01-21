@@ -241,6 +241,8 @@ export function registerAuthHandlers(): void {
 
           emitSessionChanged(true, { id: tokenResponse.user.id, email: tokenResponse.user.email })
 
+          activeOAuthServer = null
+
           return { success: true, isNewUser: tokenResponse.isNewUser }
         } catch (error) {
           console.error('[Auth] START_OAUTH error:', error)
