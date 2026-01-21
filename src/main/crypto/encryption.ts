@@ -56,7 +56,7 @@ export async function encrypt(
       nonce: actualNonce
     }
   } catch (error) {
-    throw new CryptoError('Encryption failed', CryptoErrorCode.DECRYPTION_FAILED, error)
+    throw new CryptoError('Encryption failed', CryptoErrorCode.ENCRYPTION_FAILED, error)
   }
 }
 

@@ -16,6 +16,27 @@ import {
 import type { SignaturePayloadV1 } from '@shared/contracts/crypto'
 
 /**
+ * Recursively sort object keys for canonical encoding.
+ * Required for VectorClock maps which are Record<string, number>.
+ * Ensures deterministic CBOR encoding regardless of key insertion order.
+ */
+function sortObjectKeys(obj: unknown): unknown {
+  if (obj === null || typeof obj !== 'object') {
+    return obj
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(sortObjectKeys)
+  }
+  // Sort keys alphabetically and recurse
+  const sorted: Record<string, unknown> = {}
+  const keys = Object.keys(obj).sort()
+  for (const key of keys) {
+    sorted[key] = sortObjectKeys((obj as Record<string, unknown>)[key])
+  }
+  return sorted
+}
+
+/**
  * Order object fields according to a predefined order.
  * Fields not in the order array are omitted.
  */
@@ -46,7 +67,9 @@ function prepareSignaturePayloadV1(payload: SignaturePayloadV1): Record<string, 
 
   // Order metadata fields if present
   if (payload.metadata) {
-    prepared.metadata = orderFields(payload.metadata, SIGNATURE_PAYLOAD_V1_METADATA_FIELD_ORDER)
+    const orderedMetadata = orderFields(payload.metadata, SIGNATURE_PAYLOAD_V1_METADATA_FIELD_ORDER)
+    // Sort keys in nested clock objects for deterministic encoding
+    prepared.metadata = sortObjectKeys(orderedMetadata)
   }
 
   return prepared

@@ -288,6 +288,44 @@ describe('Crypto Module', () => {
 
       expect(encoded1).toEqual(encoded2)
     })
+
+    it('produces same signature regardless of clock key order', async () => {
+      const deviceKeyPair = await generateDeviceSigningKeyPair('device-123')
+
+      // Two payloads with same semantic clock but different key insertion order
+      const payload1: SignaturePayloadV1 = {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        type: 'note',
+        cryptoVersion: CRYPTO_VERSION,
+        encryptedKey: 'key',
+        keyNonce: 'nonce',
+        encryptedData: 'data',
+        dataNonce: 'datanonce',
+        metadata: {
+          clock: { 'device-a': 1, 'device-b': 2 } // a before b
+        }
+      }
+
+      const payload2: SignaturePayloadV1 = {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        type: 'note',
+        cryptoVersion: CRYPTO_VERSION,
+        encryptedKey: 'key',
+        keyNonce: 'nonce',
+        encryptedData: 'data',
+        dataNonce: 'datanonce',
+        metadata: {
+          clock: { 'device-b': 2, 'device-a': 1 } // b before a (different order)
+        }
+      }
+
+      // Sign with payload1
+      const { signature } = await signPayload(payload1, deviceKeyPair.privateKey, 'device-123')
+
+      // Verify with payload2 (different key order but same data)
+      const verification = await verifyPayload(payload2, signature, deviceKeyPair.publicKey)
+      expect(verification.valid).toBe(true)
+    })
   })
 
   describe('Memory Security (T029a)', () => {

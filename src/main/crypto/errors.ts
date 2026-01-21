@@ -20,6 +20,9 @@ export const CryptoErrorCode = {
   /** Decryption failed (wrong key or tampered data) */
   DECRYPTION_FAILED: 'CRYPTO_DECRYPTION_FAILED',
 
+  /** Encryption failed */
+  ENCRYPTION_FAILED: 'CRYPTO_ENCRYPTION_FAILED',
+
   /** Signature verification failed */
   SIGNATURE_INVALID: 'CRYPTO_SIGNATURE_INVALID',
 
