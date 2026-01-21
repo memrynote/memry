@@ -7,7 +7,7 @@
  * @module components/social-card
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ExternalLink, AlertCircle, Loader2 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -222,11 +222,8 @@ const AuthorAvatar = ({
   platform: SocialPlatform
   size?: 'sm' | 'md' | 'lg'
 }): React.JSX.Element => {
-  const [imageError, setImageError] = useState(false)
-
-  useEffect(() => {
-    setImageError(false)
-  }, [avatarUrl])
+  const [erroredUrl, setErroredUrl] = useState<string | null>(null)
+  const hasError = Boolean(avatarUrl && erroredUrl === avatarUrl)
 
   const sizeClasses = {
     sm: 'size-6',
@@ -241,13 +238,13 @@ const AuthorAvatar = ({
   }
 
   // Show avatar image if available
-  if (avatarUrl && !imageError) {
+  if (avatarUrl && !hasError) {
     return (
       <img
         src={avatarUrl}
         alt={authorName}
         className={cn(sizeClasses[size], 'rounded-full object-cover ring-2 ring-[var(--border)]')}
-        onError={() => setImageError(true)}
+        onError={() => setErroredUrl(avatarUrl)}
         loading="lazy"
       />
     )

@@ -6,7 +6,7 @@
  * Matches the design pattern from template-selector.
  */
 
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, createContext, useContext } from 'react'
 import {
   ChevronRight,
   Link,
@@ -170,13 +170,10 @@ const TranscriptionStatus = ({
 // ============================================================================
 
 const ItemThumbnail = ({ item }: { item: InboxItem }): React.JSX.Element | null => {
-  const [imageError, setImageError] = useState(false)
+  const [erroredUrl, setErroredUrl] = useState<string | null>(null)
+  const hasError = Boolean(item.thumbnailUrl && erroredUrl === item.thumbnailUrl)
 
-  useEffect(() => {
-    setImageError(false)
-  }, [item.thumbnailUrl])
-
-  if (item.type !== 'image' || !item.thumbnailUrl || imageError) {
+  if (item.type !== 'image' || !item.thumbnailUrl || hasError) {
     return null
   }
 
@@ -186,7 +183,7 @@ const ItemThumbnail = ({ item }: { item: InboxItem }): React.JSX.Element | null 
         src={item.thumbnailUrl}
         alt=""
         className="w-full h-full object-cover"
-        onError={() => setImageError(true)}
+        onError={() => setErroredUrl(item.thumbnailUrl ?? null)}
         loading="lazy"
       />
     </div>

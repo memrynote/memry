@@ -4,7 +4,7 @@
  * Uses TagAutocomplete for enhanced tag input with autocomplete.
  */
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { Loader2 } from 'lucide-react'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -19,32 +19,14 @@ interface BulkTagPopoverProps {
   onApplyTags: (tags: string[]) => void
 }
 
-const BulkTagPopover = ({
+const BulkTagPopoverContent = ({
   isOpen,
   itemCount,
-  trigger,
   onOpenChange,
   onApplyTags
-}: BulkTagPopoverProps): React.JSX.Element => {
-  // Reset tags when popover opens using key pattern instead of useEffect
-  const [openCount, setOpenCount] = useState(0)
-  const [prevIsOpen, setPrevIsOpen] = useState(false)
-
-  // Track open state changes to reset tags
-  if (isOpen && !prevIsOpen) {
-    setOpenCount((c) => c + 1)
-  }
-  if (isOpen !== prevIsOpen) {
-    setPrevIsOpen(isOpen)
-  }
-
+}: Pick<BulkTagPopoverProps, 'isOpen' | 'itemCount' | 'onOpenChange' | 'onApplyTags'>): React.JSX.Element => {
   const [tags, setTags] = useState<string[]>([])
   const [isApplying, setIsApplying] = useState(false)
-
-  // Reset tags when openCount changes (popover opened)
-  useEffect(() => {
-    setTags([])
-  }, [openCount])
 
   const handleTagsChange = useCallback((newTags: string[]): void => {
     setTags(newTags)
@@ -66,47 +48,67 @@ const BulkTagPopover = ({
   const canApply = tags.length > 0 && !isApplying
 
   return (
+    <>
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-border">
+        <h3 className="font-semibold text-sm">
+          Tag {itemCount} Item{itemCount !== 1 ? 's' : ''}
+        </h3>
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
+        <TagAutocomplete
+          tags={tags}
+          onTagsChange={handleTagsChange}
+          placeholder="Type to search tags..."
+          showSections={true}
+          autoFocus={isOpen}
+        />
+      </div>
+
+      {/* Footer */}
+      <div className="px-4 py-3 border-t border-border">
+        <Button
+          onClick={() => void handleApplyTags()}
+          disabled={!canApply}
+          className="w-full"
+          size="sm"
+        >
+          {isApplying ? (
+            <>
+              <Loader2 className="size-4 animate-spin mr-2" aria-hidden="true" />
+              Applying...
+            </>
+          ) : (
+            <>
+              Apply to {itemCount} item{itemCount !== 1 ? 's' : ''}
+            </>
+          )}
+        </Button>
+      </div>
+    </>
+  )
+}
+
+const BulkTagPopover = ({
+  isOpen,
+  itemCount,
+  trigger,
+  onOpenChange,
+  onApplyTags
+}: BulkTagPopoverProps): React.JSX.Element => {
+  return (
     <Popover open={isOpen} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent className="w-[340px] p-0" align="center" side="top" sideOffset={8}>
-        {/* Header */}
-        <div className="px-4 py-3 border-b border-border">
-          <h3 className="font-semibold text-sm">
-            Tag {itemCount} Item{itemCount !== 1 ? 's' : ''}
-          </h3>
-        </div>
-
-        {/* Content */}
-        <div className="p-4">
-          <TagAutocomplete
-            tags={tags}
-            onTagsChange={handleTagsChange}
-            placeholder="Type to search tags..."
-            showSections={true}
-            autoFocus={isOpen}
-          />
-        </div>
-
-        {/* Footer */}
-        <div className="px-4 py-3 border-t border-border">
-          <Button
-            onClick={() => void handleApplyTags()}
-            disabled={!canApply}
-            className="w-full"
-            size="sm"
-          >
-            {isApplying ? (
-              <>
-                <Loader2 className="size-4 animate-spin mr-2" aria-hidden="true" />
-                Applying...
-              </>
-            ) : (
-              <>
-                Apply to {itemCount} item{itemCount !== 1 ? 's' : ''}
-              </>
-            )}
-          </Button>
-        </div>
+        <BulkTagPopoverContent
+          key={isOpen ? 'open' : 'closed'}
+          isOpen={isOpen}
+          itemCount={itemCount}
+          onOpenChange={onOpenChange}
+          onApplyTags={onApplyTags}
+        />
       </PopoverContent>
     </Popover>
   )
