@@ -18,6 +18,7 @@ import {
   FolderViewChannels,
   PropertiesChannels
 } from '@shared/ipc-channels'
+import { SyncChannels, CryptoChannels } from '@shared/contracts/ipc-sync'
 
 // Custom APIs for renderer
 const api = {
@@ -1310,6 +1311,182 @@ const api = {
     ): void => callback(data)
     ipcRenderer.on(FolderViewChannels.events.CONFIG_UPDATED, handler)
     return () => ipcRenderer.removeListener(FolderViewChannels.events.CONFIG_UPDATED, handler)
+  },
+
+  // Sync API
+  sync: {
+    getStatus: () => ipcRenderer.invoke(SyncChannels.invoke.GET_SYNC_STATUS),
+    trigger: (options?: { force?: boolean; types?: string[] }) =>
+      ipcRenderer.invoke(SyncChannels.invoke.TRIGGER_SYNC, options),
+    pause: () => ipcRenderer.invoke(SyncChannels.invoke.PAUSE_SYNC),
+    resume: () => ipcRenderer.invoke(SyncChannels.invoke.RESUME_SYNC),
+    getHistory: () => ipcRenderer.invoke(SyncChannels.invoke.GET_SYNC_HISTORY),
+    clearQueue: () => ipcRenderer.invoke(SyncChannels.invoke.CLEAR_SYNC_QUEUE),
+    setupFirstDevice: (request: {
+      deviceName: string
+      platform: 'macos' | 'windows' | 'linux'
+      osVersion: string
+      appVersion: string
+    }) => ipcRenderer.invoke(SyncChannels.invoke.SETUP_FIRST_DEVICE, request),
+    verifyRecoveryPhrase: (request: { phrase: string[] }) =>
+      ipcRenderer.invoke(SyncChannels.invoke.VERIFY_RECOVERY_PHRASE, request),
+    getRecoveryPhrase: () => ipcRenderer.invoke(SyncChannels.invoke.GET_RECOVERY_PHRASE),
+    getDevices: () => ipcRenderer.invoke(SyncChannels.invoke.GET_DEVICES),
+    getCurrentDevice: () => ipcRenderer.invoke(SyncChannels.invoke.GET_CURRENT_DEVICE),
+    createLinkingSession: () => ipcRenderer.invoke(SyncChannels.invoke.CREATE_LINKING_SESSION),
+    scanLinkingQR: (request: {
+      qrContent: string
+      deviceName: string
+      platform: 'macos' | 'windows' | 'linux'
+      osVersion: string
+      appVersion: string
+    }) => ipcRenderer.invoke(SyncChannels.invoke.SCAN_LINKING_QR, request),
+    approveLinking: (request: { sessionId: string }) =>
+      ipcRenderer.invoke(SyncChannels.invoke.APPROVE_LINKING, request),
+    completeLinking: (request: { sessionId: string }) =>
+      ipcRenderer.invoke(SyncChannels.invoke.COMPLETE_LINKING, request),
+    cancelLinking: (sessionId: string) =>
+      ipcRenderer.invoke(SyncChannels.invoke.CANCEL_LINKING, sessionId),
+    getLinkingStatus: (request: { sessionId: string }) =>
+      ipcRenderer.invoke(SyncChannels.invoke.GET_LINKING_STATUS, request),
+    renameDevice: (request: { deviceId: string; newName: string }) =>
+      ipcRenderer.invoke(SyncChannels.invoke.RENAME_DEVICE, request),
+    revokeDevice: (request: { deviceId: string }) =>
+      ipcRenderer.invoke(SyncChannels.invoke.REVOKE_DEVICE, request),
+    getUser: () => ipcRenderer.invoke(SyncChannels.invoke.GET_USER),
+    deleteAccount: () => ipcRenderer.invoke(SyncChannels.invoke.DELETE_ACCOUNT),
+    getConflicts: () => ipcRenderer.invoke(SyncChannels.invoke.GET_CONFLICTS),
+    resolveConflict: (request: {
+      itemId: string
+      resolution: 'local' | 'remote' | 'merge'
+    }) => ipcRenderer.invoke(SyncChannels.invoke.RESOLVE_CONFLICT, request)
+  },
+
+  // Crypto API
+  crypto: {
+    hasKeys: () => ipcRenderer.invoke(CryptoChannels.invoke.HAS_KEYS),
+    generateRecoveryPhrase: () => ipcRenderer.invoke(CryptoChannels.invoke.GENERATE_RECOVERY_PHRASE),
+    deriveKeys: (request: { phrase: string[]; kdfSalt: string }) =>
+      ipcRenderer.invoke(CryptoChannels.invoke.DERIVE_KEYS, request),
+    verifyMasterKey: (request: { keyVerifier: string }) =>
+      ipcRenderer.invoke(CryptoChannels.invoke.VERIFY_MASTER_KEY, request),
+    encryptItem: (request: {
+      id: string
+      type: string
+      data: string
+      operation?: 'create' | 'update' | 'delete'
+    }) => ipcRenderer.invoke(CryptoChannels.invoke.ENCRYPT_ITEM, request),
+    decryptItem: (request: { item: unknown }) =>
+      ipcRenderer.invoke(CryptoChannels.invoke.DECRYPT_ITEM, request),
+    signItem: (request: { item: unknown }) =>
+      ipcRenderer.invoke(CryptoChannels.invoke.SIGN_ITEM, request),
+    verifySignature: (request: { item: unknown; signerPublicKey: string }) =>
+      ipcRenderer.invoke(CryptoChannels.invoke.VERIFY_SIGNATURE, request),
+    storeKeys: () => ipcRenderer.invoke(CryptoChannels.invoke.STORE_KEYS),
+    retrieveKeys: () => ipcRenderer.invoke(CryptoChannels.invoke.RETRIEVE_KEYS),
+    deleteKeys: () => ipcRenderer.invoke(CryptoChannels.invoke.DELETE_KEYS),
+    encryptAttachment: (request: unknown) =>
+      ipcRenderer.invoke(CryptoChannels.invoke.ENCRYPT_ATTACHMENT, request),
+    decryptAttachment: (request: unknown) =>
+      ipcRenderer.invoke(CryptoChannels.invoke.DECRYPT_ATTACHMENT, request),
+    generateLinkingKeypair: () =>
+      ipcRenderer.invoke(CryptoChannels.invoke.GENERATE_LINKING_KEYPAIR),
+    deriveLinkingKeys: (request: unknown) =>
+      ipcRenderer.invoke(CryptoChannels.invoke.DERIVE_LINKING_KEYS, request),
+    encryptMasterKey: (request: unknown) =>
+      ipcRenderer.invoke(CryptoChannels.invoke.ENCRYPT_MASTER_KEY, request),
+    decryptMasterKey: (request: unknown) =>
+      ipcRenderer.invoke(CryptoChannels.invoke.DECRYPT_MASTER_KEY, request),
+    computeLinkingProof: (request: unknown) =>
+      ipcRenderer.invoke(CryptoChannels.invoke.COMPUTE_LINKING_PROOF, request),
+    verifyLinkingProof: (request: unknown) =>
+      ipcRenderer.invoke(CryptoChannels.invoke.VERIFY_LINKING_PROOF, request)
+  },
+
+  // Sync event subscription helpers
+  onSyncStatusChanged: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SyncChannels.events.STATUS_CHANGED, handler)
+    return () => ipcRenderer.removeListener(SyncChannels.events.STATUS_CHANGED, handler)
+  },
+
+  onSyncProgressUpdate: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SyncChannels.events.PROGRESS_UPDATE, handler)
+    return () => ipcRenderer.removeListener(SyncChannels.events.PROGRESS_UPDATE, handler)
+  },
+
+  onSyncError: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SyncChannels.events.ERROR_OCCURRED, handler)
+    return () => ipcRenderer.removeListener(SyncChannels.events.ERROR_OCCURRED, handler)
+  },
+
+  onItemSynced: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SyncChannels.events.ITEM_SYNCED, handler)
+    return () => ipcRenderer.removeListener(SyncChannels.events.ITEM_SYNCED, handler)
+  },
+
+  onItemConflict: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SyncChannels.events.ITEM_CONFLICT, handler)
+    return () => ipcRenderer.removeListener(SyncChannels.events.ITEM_CONFLICT, handler)
+  },
+
+  onDeviceLinked: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SyncChannels.events.DEVICE_LINKED, handler)
+    return () => ipcRenderer.removeListener(SyncChannels.events.DEVICE_LINKED, handler)
+  },
+
+  onDeviceRevoked: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SyncChannels.events.DEVICE_REVOKED, handler)
+    return () => ipcRenderer.removeListener(SyncChannels.events.DEVICE_REVOKED, handler)
+  },
+
+  onLinkingScanned: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SyncChannels.events.LINKING_SCANNED, handler)
+    return () => ipcRenderer.removeListener(SyncChannels.events.LINKING_SCANNED, handler)
+  },
+
+  onLinkingApproved: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SyncChannels.events.LINKING_APPROVED, handler)
+    return () => ipcRenderer.removeListener(SyncChannels.events.LINKING_APPROVED, handler)
+  },
+
+  onLinkingCompleted: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SyncChannels.events.LINKING_COMPLETED, handler)
+    return () => ipcRenderer.removeListener(SyncChannels.events.LINKING_COMPLETED, handler)
+  },
+
+  onLinkingExpired: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SyncChannels.events.LINKING_EXPIRED, handler)
+    return () => ipcRenderer.removeListener(SyncChannels.events.LINKING_EXPIRED, handler)
+  },
+
+  // Crypto event subscription helpers
+  onKeysStored: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(CryptoChannels.events.KEYS_STORED, handler)
+    return () => ipcRenderer.removeListener(CryptoChannels.events.KEYS_STORED, handler)
+  },
+
+  onKeysDerived: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(CryptoChannels.events.KEYS_DERIVED, handler)
+    return () => ipcRenderer.removeListener(CryptoChannels.events.KEYS_DERIVED, handler)
+  },
+
+  onKeysDeleted: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(CryptoChannels.events.KEYS_DELETED, handler)
+    return () => ipcRenderer.removeListener(CryptoChannels.events.KEYS_DELETED, handler)
   }
 }
 

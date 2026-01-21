@@ -2024,6 +2024,331 @@ export interface SettingsClientAPI {
   ): Promise<{ success: boolean; error?: string }>
 }
 
+// =============================================================================
+// Sync Types
+// =============================================================================
+
+export type SyncStatus = 'idle' | 'syncing' | 'offline' | 'error' | 'paused'
+
+export interface SyncState {
+  lastSyncAt?: number
+  syncStatus: SyncStatus
+  pendingCount: number
+  lastError?: string
+  serverCursor: number
+  deviceClock: Record<string, number>
+}
+
+export interface Device {
+  id: string
+  userId?: string
+  name: string
+  platform: 'macos' | 'windows' | 'linux' | 'ios' | 'android'
+  osVersion?: string
+  appVersion: string
+  authPublicKey: string
+  linkedAt: number
+  lastSyncAt?: number
+  isCurrentDevice?: boolean
+  revokedAt?: number
+}
+
+export interface UserPublic {
+  id: string
+  email: string
+  emailVerified: boolean
+  authMethod: 'email' | 'oauth'
+  authProvider?: 'google'
+  storageUsed: number
+  storageLimit: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface LinkingSession {
+  id: string
+  userId: string
+  initiatorDeviceId: string
+  ephemeralPublicKey: string
+  newDevicePublicKey?: string
+  newDeviceConfirm?: string
+  encryptedMasterKey?: string
+  encryptedKeyNonce?: string
+  keyConfirm?: string
+  status: 'pending' | 'scanned' | 'approved' | 'completed' | 'expired'
+  createdAt: number
+  expiresAt: number
+  completedAt?: number
+}
+
+export interface SyncConflict {
+  itemId: string
+  itemType: string
+  localItem: unknown
+  remoteItem: unknown
+  detectedAt: number
+}
+
+export interface GetSyncStatusResponse {
+  state: SyncState
+  isOnline: boolean
+}
+
+export interface TriggerSyncResponse {
+  success: boolean
+  itemsSynced: number
+  errors?: string[]
+}
+
+export interface SetupFirstDeviceResponse {
+  recoveryPhrase: string[]
+  device: Device
+  user: UserPublic
+}
+
+export interface VerifyRecoveryPhraseResponse {
+  valid: boolean
+  error?: string
+}
+
+export interface CreateLinkingSessionResponse {
+  sessionId: string
+  qrCodeDataUrl: string
+  expiresAt: number
+}
+
+export interface ScanLinkingQRResponse {
+  success: boolean
+  sessionId?: string
+  error?: string
+}
+
+export interface ApproveLinkingResponse {
+  success: boolean
+  error?: string
+}
+
+export interface CompleteLinkingResponse {
+  success: boolean
+  device?: Device
+  error?: string
+}
+
+export interface GetLinkingStatusResponse {
+  session: LinkingSession | null
+}
+
+export interface GetDevicesResponse {
+  devices: Device[]
+  currentDeviceId: string
+}
+
+export interface RenameDeviceResponse {
+  success: boolean
+  device?: Device
+  error?: string
+}
+
+export interface RevokeDeviceResponse {
+  success: boolean
+  error?: string
+}
+
+export interface GetConflictsResponse {
+  conflicts: SyncConflict[]
+}
+
+export interface ResolveConflictResponse {
+  success: boolean
+  resolvedItem?: unknown
+  error?: string
+}
+
+// Sync Event Types
+export interface SyncStatusChangedEvent {
+  previousStatus: SyncStatus
+  currentStatus: SyncStatus
+  timestamp: number
+}
+
+export interface SyncProgressUpdateEvent {
+  phase: 'pulling' | 'pushing' | 'resolving'
+  current: number
+  total: number
+  itemType?: string
+}
+
+export interface SyncErrorEvent {
+  error: string
+  itemId?: string
+  recoverable: boolean
+  timestamp: number
+}
+
+export interface ItemSyncedEvent {
+  itemId: string
+  itemType: string
+  operation: 'created' | 'updated' | 'deleted'
+  timestamp: number
+}
+
+export interface ItemConflictEvent {
+  itemId: string
+  itemType: string
+  conflict: SyncConflict
+}
+
+export interface DeviceLinkedEvent {
+  device: Device
+  isCurrentDevice: boolean
+}
+
+export interface DeviceRevokedEvent {
+  deviceId: string
+  deviceName: string
+}
+
+// =============================================================================
+// Crypto Types
+// =============================================================================
+
+export interface EncryptedItem {
+  id: string
+  type: 'note' | 'task' | 'project' | 'settings' | 'inbox' | 'filter' | 'journal'
+  cryptoVersion: number
+  encryptedKey: string
+  keyNonce: string
+  encryptedData: string
+  dataNonce: string
+  signature: string
+  signerDeviceId: string
+  signedAt?: number
+  clock?: Record<string, number>
+  fieldClocks?: Record<string, Record<string, number>>
+}
+
+export interface HasKeysResponse {
+  hasKeys: boolean
+  deviceId?: string
+  userId?: string
+}
+
+export interface DeriveKeysResponse {
+  success: boolean
+  keyVerifier?: string
+  error?: string
+}
+
+export interface EncryptItemRequest {
+  id: string
+  type: string
+  data: string
+  operation?: 'create' | 'update' | 'delete'
+}
+
+export interface EncryptItemResponse {
+  success: boolean
+  item?: EncryptedItem
+  error?: string
+}
+
+export interface DecryptItemRequest {
+  item: EncryptedItem
+}
+
+export interface DecryptItemResponse {
+  success: boolean
+  data?: string
+  error?: string
+}
+
+export interface SignItemResponse {
+  success: boolean
+  signature?: string
+  signerDeviceId?: string
+  error?: string
+}
+
+export interface VerifySignatureRequest {
+  item: EncryptedItem
+  signerPublicKey: string
+}
+
+export interface VerifySignatureResponse {
+  valid: boolean
+  error?: string
+}
+
+// =============================================================================
+// Sync Client API
+// =============================================================================
+
+export interface SyncClientAPI {
+  getStatus(): Promise<GetSyncStatusResponse>
+  trigger(options?: { force?: boolean; types?: string[] }): Promise<TriggerSyncResponse>
+  pause(): Promise<{ success: boolean; error?: string }>
+  resume(): Promise<{ success: boolean; error?: string }>
+  getHistory(): Promise<{ history: unknown[] }>
+  clearQueue(): Promise<{ success: boolean; error?: string }>
+  setupFirstDevice(request: {
+    deviceName: string
+    platform: 'macos' | 'windows' | 'linux'
+    osVersion: string
+    appVersion: string
+  }): Promise<SetupFirstDeviceResponse>
+  verifyRecoveryPhrase(request: { phrase: string[] }): Promise<VerifyRecoveryPhraseResponse>
+  getRecoveryPhrase(): Promise<{ phrase: string[] }>
+  getDevices(): Promise<GetDevicesResponse>
+  getCurrentDevice(): Promise<Device | null>
+  createLinkingSession(): Promise<CreateLinkingSessionResponse>
+  scanLinkingQR(request: {
+    qrContent: string
+    deviceName: string
+    platform: 'macos' | 'windows' | 'linux'
+    osVersion: string
+    appVersion: string
+  }): Promise<ScanLinkingQRResponse>
+  approveLinking(request: { sessionId: string }): Promise<ApproveLinkingResponse>
+  completeLinking(request: { sessionId: string }): Promise<CompleteLinkingResponse>
+  cancelLinking(sessionId: string): Promise<{ success: boolean; error?: string }>
+  getLinkingStatus(request: { sessionId: string }): Promise<GetLinkingStatusResponse>
+  renameDevice(request: { deviceId: string; newName: string }): Promise<RenameDeviceResponse>
+  revokeDevice(request: { deviceId: string }): Promise<RevokeDeviceResponse>
+  getUser(): Promise<UserPublic | null>
+  deleteAccount(): Promise<{ success: boolean; error?: string }>
+  getConflicts(): Promise<GetConflictsResponse>
+  resolveConflict(request: {
+    itemId: string
+    resolution: 'local' | 'remote' | 'merge'
+  }): Promise<ResolveConflictResponse>
+}
+
+// =============================================================================
+// Crypto Client API
+// =============================================================================
+
+export interface CryptoClientAPI {
+  hasKeys(): Promise<HasKeysResponse>
+  generateRecoveryPhrase(): Promise<{ phrase: string[] }>
+  deriveKeys(request: { phrase: string[]; kdfSalt: string }): Promise<DeriveKeysResponse>
+  verifyMasterKey(request: { keyVerifier: string }): Promise<{ valid: boolean }>
+  encryptItem(request: EncryptItemRequest): Promise<EncryptItemResponse>
+  decryptItem(request: { item: unknown }): Promise<DecryptItemResponse>
+  signItem(request: { item: unknown }): Promise<SignItemResponse>
+  verifySignature(request: VerifySignatureRequest): Promise<VerifySignatureResponse>
+  storeKeys(): Promise<{ success: boolean }>
+  retrieveKeys(): Promise<{ success: boolean; hasKeys: boolean }>
+  deleteKeys(): Promise<{ success: boolean }>
+  encryptAttachment(request: unknown): Promise<{ success: boolean; error?: string }>
+  decryptAttachment(request: unknown): Promise<{ success: boolean; error?: string }>
+  generateLinkingKeypair(): Promise<{ success: boolean; error?: string }>
+  deriveLinkingKeys(request: unknown): Promise<{ success: boolean; error?: string }>
+  encryptMasterKey(request: unknown): Promise<{ success: boolean; error?: string }>
+  decryptMasterKey(request: unknown): Promise<{ success: boolean; error?: string }>
+  computeLinkingProof(request: unknown): Promise<{ success: boolean; error?: string }>
+  verifyLinkingProof(request: unknown): Promise<{ success: boolean; error?: string }>
+}
+
 // Window controls API
 interface WindowAPI {
   windowMinimize: () => void
@@ -2048,6 +2373,8 @@ interface API extends WindowAPI {
   reminders: RemindersClientAPI
   quickCapture: QuickCaptureClientAPI
   folderView: FolderViewClientAPI
+  sync: SyncClientAPI
+  crypto: CryptoClientAPI
   /** Show a native OS context menu and return the selected item id, or null if dismissed */
   showContextMenu: (items: ContextMenuItem[]) => Promise<string | null>
   // Vault event subscriptions
@@ -2134,6 +2461,22 @@ interface API extends WindowAPI {
   onReminderClicked: (callback: (event: ReminderClickedEvent) => void) => () => void
   // Folder View event subscriptions
   onFolderViewConfigUpdated: (callback: (event: FolderViewConfigUpdatedEvent) => void) => () => void
+  // Sync event subscriptions
+  onSyncStatusChanged: (callback: (event: SyncStatusChangedEvent) => void) => () => void
+  onSyncProgressUpdate: (callback: (event: SyncProgressUpdateEvent) => void) => () => void
+  onSyncError: (callback: (event: SyncErrorEvent) => void) => () => void
+  onItemSynced: (callback: (event: ItemSyncedEvent) => void) => () => void
+  onItemConflict: (callback: (event: ItemConflictEvent) => void) => () => void
+  onDeviceLinked: (callback: (event: DeviceLinkedEvent) => void) => () => void
+  onDeviceRevoked: (callback: (event: DeviceRevokedEvent) => void) => () => void
+  onLinkingScanned: (callback: (event: unknown) => void) => () => void
+  onLinkingApproved: (callback: (event: unknown) => void) => () => void
+  onLinkingCompleted: (callback: (event: unknown) => void) => () => void
+  onLinkingExpired: (callback: (event: unknown) => void) => () => void
+  // Crypto event subscriptions
+  onKeysStored: (callback: (event: unknown) => void) => () => void
+  onKeysDerived: (callback: (event: unknown) => void) => () => void
+  onKeysDeleted: (callback: (event: unknown) => void) => () => void
 }
 
 declare global {

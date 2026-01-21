@@ -215,28 +215,28 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Server Foundation
 
-- [ ] T030 Set up Hono.js app entry point in sync-server/src/index.ts
-- [ ] T031 [P] Implement JWT validation middleware in sync-server/src/middleware/auth.ts
-- [ ] T031a [P] Implement refresh token rotation on use (issue new refresh token, invalidate old) in sync-server/src/services/auth.ts
-- [ ] T031b [P] Implement token revocation on device removal (invalidate all refresh tokens for device) in sync-server/src/services/auth.ts
-- [ ] T032 [P] Implement rate limiting middleware in sync-server/src/middleware/rate-limit.ts
-- [ ] T033 Create base error handling in sync-server/src/lib/errors.ts
-- [ ] T033a [P] Implement canonical CBOR encoder helper in sync-server/src/lib/cbor.ts - import field ordering from shared contract (src/shared/contracts/cbor-ordering.ts copied to sync-server/src/contracts/)
-- [ ] T033b [P] Implement atomic server_cursor increment in sync-server/src/services/cursor.ts using D1 transaction: UPDATE server_cursor_sequence SET current_cursor = current_cursor + 1 WHERE user_id = ? RETURNING current_cursor
-- [ ] T034 [P] Set up Resend email service in sync-server/src/services/email.ts
-- [ ] T034a Implement OTP cleanup job (delete expired codes) in sync-server/src/services/cleanup.ts
-- [ ] T034b Implement linking session cleanup job (delete sessions with expires_at < now) in sync-server/src/services/cleanup.ts
+- [x] T030 Set up Hono.js app entry point in sync-server/src/index.ts
+- [x] T031 [P] Implement JWT validation middleware in sync-server/src/middleware/auth.ts
+- [x] T031a [P] Implement refresh token rotation on use (issue new refresh token, invalidate old) in sync-server/src/services/auth.ts
+- [x] T031b [P] Implement token revocation on device removal (invalidate all refresh tokens for device) in sync-server/src/services/auth.ts
+- [x] T032 [P] Implement rate limiting middleware in sync-server/src/middleware/rate-limit.ts
+- [x] T033 Create base error handling in sync-server/src/lib/errors.ts
+- [x] T033a [P] Implement canonical CBOR encoder helper in sync-server/src/lib/cbor.ts - import field ordering from shared contract (src/shared/contracts/cbor-ordering.ts copied to sync-server/src/contracts/)
+- [x] T033b [P] Implement atomic server_cursor increment in sync-server/src/services/cursor.ts using D1 transaction: UPDATE server_cursor_sequence SET current_cursor = current_cursor + 1 WHERE user_id = ? RETURNING curxent_cursor
+- [x] T034 [P] Set up Resend email service in sync-server/src/services/email.ts
+- [x] T034a Implement OTP cleanup job (delete expired codes) in sync-server/src/services/cleanup.ts
+- [x] T034b Implement linking session cleanup job (delete sessions with expires_at < now) in sync-server/src/services/cleanup.ts
 
 ### IPC Foundation
 
-- [ ] T035 Register sync IPC handlers entry point in src/main/ipc/sync-handlers.ts
-- [ ] T036 [P] Register crypto IPC handlers entry point in src/main/ipc/crypto-handlers.ts
-- [ ] T036a [P] Implement encrypt-item IPC handler in src/main/ipc/crypto-handlers.ts
-- [ ] T036b [P] Implement decrypt-item IPC handler in src/main/ipc/crypto-handlers.ts
-- [ ] T036c [P] Implement verify-signature IPC handler in src/main/ipc/crypto-handlers.ts
-- [ ] T037 Update src/main/ipc/index.ts to register sync and crypto handlers
-- [ ] T038 Expose sync API methods in src/preload/index.ts
-- [ ] T039 Update preload types in src/preload/index.d.ts for sync/crypto APIs
+- [x] T035 Register sync IPC handlers entry point in src/main/ipc/sync-handlers.ts
+- [x] T036 [P] Register crypto IPC handlers entry point in src/main/ipc/crypto-handlers.ts
+- [x] T036a [P] Implement encrypt-item IPC handler in src/main/ipc/crypto-handlers.ts
+- [x] T036b [P] Implement decrypt-item IPC handler in src/main/ipc/crypto-handlers.ts
+- [x] T036c [P] Implement verify-signature IPC handler in src/main/ipc/crypto-handlers.ts
+- [x] T037 Update src/main/ipc/index.ts to register sync and crypto handlers
+- [x] T038 Expose sync API methods in src/preload/index.ts
+- [x] T039 Update preload types in src/preload/index.d.ts for sync/crypto APIs
 
 ### Vector Clock Foundation
 
