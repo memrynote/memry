@@ -7,6 +7,7 @@
  * @module sync/api-client
  */
 
+import { z } from 'zod'
 import type {
   OtpRequest,
   OtpRequestResponse,
@@ -20,7 +21,10 @@ import type {
   DeviceRegisterResponse,
   RefreshTokenRequest,
   RefreshTokenResponse,
-  RecoveryInfoResponse
+  RecoveryInfoResponse,
+  OAuthCallbackResponse,
+  LogoutRequest,
+  LogoutResponse
 } from '@shared/contracts/auth-api'
 
 export class SyncApiError extends Error {
@@ -35,17 +39,24 @@ export class SyncApiError extends Error {
 }
 
 function getSyncServerUrl(): string {
-  return process.env.SYNC_SERVER_URL || 'http://localhost:8787'
+  const url = process.env.SYNC_SERVER_URL
+  if (!url && process.env.NODE_ENV === 'production') {
+    throw new Error('SYNC_SERVER_URL environment variable is required in production')
+  }
+  return url || 'http://localhost:8787'
 }
 
-interface ErrorBody {
-  error?: string
-  message?: string
-  code?: string
-}
+const ErrorBodySchema = z.object({
+  error: z.string().optional(),
+  message: z.string().optional(),
+  code: z.string().optional()
+})
 
-function isErrorBody(value: unknown): value is ErrorBody {
-  return typeof value === 'object' && value !== null
+function parseErrorBody(
+  value: unknown
+): { error?: string; message?: string; code?: string } | null {
+  const result = ErrorBodySchema.safeParse(value)
+  return result.success ? result.data : null
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
@@ -54,9 +65,10 @@ async function handleResponse<T>(response: Response): Promise<T> {
     let errorCode: string | undefined
     try {
       const errorBody: unknown = await response.json()
-      if (isErrorBody(errorBody)) {
-        errorMessage = errorBody.error ?? errorBody.message ?? errorMessage
-        errorCode = errorBody.code
+      const parsed = parseErrorBody(errorBody)
+      if (parsed) {
+        errorMessage = parsed.error ?? parsed.message ?? errorMessage
+        errorCode = parsed.code
       }
     } catch {
       errorMessage = response.statusText || errorMessage
@@ -64,6 +76,22 @@ async function handleResponse<T>(response: Response): Promise<T> {
     throw new SyncApiError(errorMessage, response.status, errorCode)
   }
   return response.json() as Promise<T>
+}
+
+export interface OAuthInitiateParams {
+  redirectUri: string
+  codeChallenge: string
+  state: string
+}
+
+export interface OAuthInitiateResponse {
+  authUrl: string
+}
+
+export interface OAuthExchangeParams {
+  code: string
+  codeVerifier: string
+  redirectUri: string
 }
 
 export interface SyncApiClient {
@@ -77,6 +105,9 @@ export interface SyncApiClient {
   registerDevice(token: string, request: DeviceRegisterRequest): Promise<DeviceRegisterResponse>
   refreshToken(refreshToken: string): Promise<RefreshTokenResponse>
   getRecoveryInfo(token: string): Promise<RecoveryInfoResponse>
+  initiateOAuth(provider: string, params: OAuthInitiateParams): Promise<OAuthInitiateResponse>
+  exchangeOAuthCode(provider: string, params: OAuthExchangeParams): Promise<OAuthCallbackResponse>
+  logout(token: string, request?: LogoutRequest): Promise<LogoutResponse>
 }
 
 let clientInstance: SyncApiClient | null = null
@@ -163,6 +194,50 @@ function createApiClient(): SyncApiClient {
         }
       })
       return handleResponse<RecoveryInfoResponse>(response)
+    },
+
+    async initiateOAuth(
+      provider: string,
+      params: OAuthInitiateParams
+    ): Promise<OAuthInitiateResponse> {
+      const searchParams = new URLSearchParams({
+        redirect_uri: params.redirectUri,
+        code_challenge: params.codeChallenge,
+        code_challenge_method: 'S256',
+        state: params.state
+      })
+      const response = await fetch(`${baseUrl}/auth/oauth/${provider}?${searchParams}`, {
+        method: 'GET'
+      })
+      return handleResponse<OAuthInitiateResponse>(response)
+    },
+
+    async exchangeOAuthCode(
+      provider: string,
+      params: OAuthExchangeParams
+    ): Promise<OAuthCallbackResponse> {
+      const response = await fetch(`${baseUrl}/auth/oauth/${provider}/callback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: params.code,
+          code_verifier: params.codeVerifier,
+          redirect_uri: params.redirectUri
+        })
+      })
+      return handleResponse<OAuthCallbackResponse>(response)
+    },
+
+    async logout(token: string, request?: LogoutRequest): Promise<LogoutResponse> {
+      const response = await fetch(`${baseUrl}/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(request ?? {})
+      })
+      return handleResponse<LogoutResponse>(response)
     }
   }
 }

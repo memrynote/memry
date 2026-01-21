@@ -442,6 +442,7 @@ export interface StartOAuthRequest {
 export interface StartOAuthResponse {
   success: boolean
   authUrl?: string
+  isNewUser?: boolean
   error?: string
 }
 

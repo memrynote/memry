@@ -47,6 +47,7 @@ import {
   retrieveDeviceKeyPair,
   hasDeviceKeyPair,
   uint8ArrayToBase64,
+  base64ToUint8Array,
   generateRecoveryPhrase,
   validateRecoveryPhrase,
   phraseToEntropy,
@@ -59,7 +60,8 @@ import {
   storeSigningKeyPair,
   retrieveAuthTokens,
   secureZero,
-  isCryptoError
+  isCryptoError,
+  constantTimeEqual
 } from '../crypto'
 import { getSyncApiClient, isSyncApiError } from '../sync/api-client'
 
@@ -177,7 +179,6 @@ export function registerSyncHandlers(): void {
           const storedTokens = await retrieveAuthTokens()
           let userId = ''
           let email = ''
-          let user: UserPublic
 
           if (storedTokens?.accessToken) {
             try {
@@ -189,13 +190,17 @@ export function registerSyncHandlers(): void {
               userId = storedTokens.userId
               email = storedTokens.email
             } catch (serverError) {
-              console.warn('[Sync] Server setup failed, continuing with local-only setup:', serverError)
+              console.warn(
+                '[Sync] Server setup failed, continuing with local-only setup:',
+                serverError
+              )
             }
           }
 
           // Step 9: Store master key material in keychain (T061)
           await storeKeyMaterial({
             masterKey: uint8ArrayToBase64(masterKey),
+            kdfSalt: kdfSaltB64,
             deviceSigningKey: uint8ArrayToBase64(deviceKeyPair.privateKey),
             devicePublicKey: uint8ArrayToBase64(deviceKeyPair.publicKey),
             deviceId,
@@ -216,7 +221,7 @@ export function registerSyncHandlers(): void {
             isCurrentDevice: true
           }
 
-          user = {
+          const user: UserPublic = {
             id: userId,
             email,
             emailVerified: !!email,
@@ -260,6 +265,8 @@ export function registerSyncHandlers(): void {
     createValidatedHandler(
       VerifyRecoveryPhraseRequestSchema,
       async ({ phrase }): Promise<VerifyRecoveryPhraseResponse> => {
+        let derivedMasterKey: Uint8Array | null = null
+
         try {
           // Step 1: Validate BIP39 phrase format
           if (!validateRecoveryPhrase(phrase)) {
@@ -272,19 +279,32 @@ export function registerSyncHandlers(): void {
             return { valid: false, error: 'No keys stored - setup not complete' }
           }
 
-          // Step 3: We need the kdfSalt to re-derive the master key
-          // For now, we cannot verify without the salt (it should be stored with keys)
-          // This handler will be completed when we have full key material storage
+          // Step 3: Check if kdfSalt is available
+          if (!storedMaterial.kdfSalt) {
+            return { valid: false, error: 'KDF salt not stored - cannot verify phrase' }
+          }
 
-          // Step 4: Derive master key from entered phrase
-          // NOTE: In full implementation, we need to store kdfSalt with key material
-          // For now, this is a placeholder that returns valid if phrase format is correct
+          // Step 4: Derive master key from entered phrase using stored salt
+          const entropy = phraseToEntropy(phrase)
+          const salt = base64ToUint8Array(storedMaterial.kdfSalt)
+          derivedMasterKey = deriveMasterKey(entropy, salt)
 
-          return { valid: true }
+          // Step 5: Compare with stored master key using constant-time comparison
+          const storedMasterKey = base64ToUint8Array(storedMaterial.masterKey)
+          const matches = constantTimeEqual(derivedMasterKey, storedMasterKey)
+
+          return {
+            valid: matches,
+            error: matches ? undefined : 'Recovery phrase does not match'
+          }
         } catch (error) {
           console.error('[Sync] VERIFY_RECOVERY_PHRASE error:', error)
-          const message = isCryptoError(error) ? error.message : 'Recovery phrase verification failed'
+          const message = isCryptoError(error)
+            ? error.message
+            : 'Recovery phrase verification failed'
           return { valid: false, error: message }
+        } finally {
+          if (derivedMasterKey) await secureZero(derivedMasterKey)
         }
       }
     )

@@ -6,26 +6,50 @@
  * T055: Verify OTP handler
  * T056: Resend OTP handler
  * T056a: OTP clipboard detection
+ * T057: OAuth handlers
  *
  * @module ipc/auth-handlers
  */
 
-import { ipcMain, clipboard } from 'electron'
+import { ipcMain, clipboard, shell, BrowserWindow } from 'electron'
+import crypto from 'node:crypto'
 import { AuthChannels } from '@shared/contracts/ipc-sync'
 import type {
   RequestOtpResponse,
   VerifyOtpResponse,
   ResendOtpResponse,
-  DetectOtpClipboardResponse
+  DetectOtpClipboardResponse,
+  StartOAuthResponse,
+  LogoutResponse
 } from '@shared/contracts/ipc-sync'
 import {
   RequestOtpRequestSchema,
   VerifyOtpRequestSchema,
-  ResendOtpRequestSchema
+  ResendOtpRequestSchema,
+  StartOAuthRequestSchema
 } from '@shared/contracts/ipc-sync'
 import { createValidatedHandler, createHandler } from './validate'
 import { getSyncApiClient, isSyncApiError } from '../sync/api-client'
-import { storeAuthTokens, retrieveAuthTokens } from '../crypto/keychain'
+import {
+  storeAuthTokens,
+  retrieveAuthTokens,
+  deleteAuthTokens,
+  deleteKeyMaterial,
+  deleteDeviceKeyPair,
+  deleteSigningKeyPair
+} from '../crypto/keychain'
+import { createOAuthServer, type OAuthServer } from '../auth/oauth-server'
+
+let activeOAuthServer: OAuthServer | null = null
+
+function emitSessionChanged(isAuthenticated: boolean, user?: { id: string; email: string }): void {
+  BrowserWindow.getAllWindows().forEach((win) => {
+    win.webContents.send(AuthChannels.events.SESSION_CHANGED, {
+      isAuthenticated,
+      user
+    })
+  })
+}
 
 export function registerAuthHandlers(): void {
   // ==========================================================================
@@ -76,6 +100,8 @@ export function registerAuthHandlers(): void {
           })
 
           const needsSetup = !response.user.emailVerified || response.device === undefined
+
+          emitSessionChanged(true, { id: response.user.id, email: response.user.email })
 
           return {
             success: true,
@@ -170,6 +196,121 @@ export function registerAuthHandlers(): void {
     createHandler(async () => {
       const tokens = await retrieveAuthTokens()
       return tokens?.refreshToken ?? null
+    })
+  )
+
+  // ==========================================================================
+  // T057: OAuth Handlers
+  // ==========================================================================
+  ipcMain.handle(
+    AuthChannels.invoke.START_OAUTH,
+    createValidatedHandler(
+      StartOAuthRequestSchema,
+      async ({ provider }): Promise<StartOAuthResponse> => {
+        try {
+          const codeVerifier = crypto.randomBytes(32).toString('base64url')
+          const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url')
+
+          const state = crypto.randomBytes(16).toString('hex')
+
+          activeOAuthServer = await createOAuthServer({ expectedState: state })
+
+          const client = getSyncApiClient()
+          const response = await client.initiateOAuth(provider, {
+            redirectUri: activeOAuthServer.callbackUrl,
+            codeChallenge,
+            state
+          })
+
+          await shell.openExternal(response.authUrl)
+
+          const result = await activeOAuthServer.waitForCode()
+
+          const tokenResponse = await client.exchangeOAuthCode(provider, {
+            code: result.code,
+            codeVerifier,
+            redirectUri: activeOAuthServer.callbackUrl
+          })
+
+          await storeAuthTokens({
+            accessToken: tokenResponse.accessToken,
+            refreshToken: tokenResponse.refreshToken,
+            userId: tokenResponse.user.id,
+            email: tokenResponse.user.email
+          })
+
+          emitSessionChanged(true, { id: tokenResponse.user.id, email: tokenResponse.user.email })
+
+          return { success: true, isNewUser: tokenResponse.isNewUser }
+        } catch (error) {
+          console.error('[Auth] START_OAUTH error:', error)
+          activeOAuthServer?.close()
+          activeOAuthServer = null
+          const message = isSyncApiError(error)
+            ? error.message
+            : error instanceof Error
+              ? error.message
+              : 'OAuth failed'
+          return { success: false, error: message }
+        }
+      }
+    )
+  )
+
+  ipcMain.handle(
+    AuthChannels.invoke.REFRESH_SESSION,
+    createHandler(async () => {
+      const tokens = await retrieveAuthTokens()
+      if (!tokens?.refreshToken) {
+        return { success: false, error: 'No refresh token' }
+      }
+      try {
+        const client = getSyncApiClient()
+        const response = await client.refreshToken(tokens.refreshToken)
+        await storeAuthTokens({
+          ...tokens,
+          accessToken: response.accessToken,
+          refreshToken: response.refreshToken
+        })
+        return { success: true }
+      } catch (error) {
+        console.error('[Auth] REFRESH_SESSION error:', error)
+        const message = isSyncApiError(error)
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Session refresh failed'
+        return { success: false, error: message }
+      }
+    })
+  )
+
+  ipcMain.handle(
+    AuthChannels.invoke.LOGOUT,
+    createHandler(async (): Promise<LogoutResponse> => {
+      try {
+        const tokens = await retrieveAuthTokens()
+        if (tokens?.accessToken) {
+          try {
+            const client = getSyncApiClient()
+            await client.logout(tokens.accessToken, { refreshToken: tokens.refreshToken })
+          } catch (error) {
+            console.warn('[Auth] Server logout failed, continuing with local cleanup:', error)
+          }
+        }
+
+        await deleteAuthTokens()
+        await deleteKeyMaterial()
+        await deleteDeviceKeyPair()
+        await deleteSigningKeyPair()
+
+        emitSessionChanged(false)
+
+        return { success: true }
+      } catch (error) {
+        console.error('[Auth] LOGOUT error:', error)
+        return { success: false }
+      }
     })
   )
 

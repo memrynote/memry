@@ -430,6 +430,9 @@ export interface StoredKeyMaterial {
   /** Master key (32 bytes, Base64) */
   masterKey: string
 
+  /** KDF salt used to derive master key (Base64) */
+  kdfSalt: string
+
   /** Device signing private key (64 bytes, Base64) */
   deviceSigningKey: string
 

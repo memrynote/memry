@@ -52,7 +52,7 @@ export const OtpVerifyResponseSchema = z.object({
   accessToken: z.string(),
   refreshToken: z.string(),
   user: UserPublicSchema,
-  device: DeviceSchema
+  device: DeviceSchema.optional()
 })
 export type OtpVerifyResponse = z.infer<typeof OtpVerifyResponseSchema>
 
