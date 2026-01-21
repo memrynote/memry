@@ -47,6 +47,9 @@ importers:
       '@headless-tree/react':
         specifier: ^1.6.1
         version: 1.6.1(@headless-tree/core@1.6.1)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@hono/zod-validator':
+        specifier: ^0.7.6
+        version: 0.7.6(hono@4.11.4)(zod@4.3.4)
       '@huggingface/transformers':
         specifier: ^3.8.1
         version: 3.8.1
@@ -218,6 +221,9 @@ importers:
       idb:
         specifier: ^8.0.3
         version: 8.0.3
+      jose:
+        specifier: ^6.1.3
+        version: 6.1.3
       keytar:
         specifier: ^7.9.0
         version: 7.9.0
@@ -299,6 +305,9 @@ importers:
       react-player:
         specifier: ^3.4.0
         version: 3.4.0(@svta/cml-cta@1.0.1(@svta/cml-structured-field-values@1.0.1(@svta/cml-utils@1.0.1))(@svta/cml-utils@1.0.1))(@svta/cml-structured-field-values@1.0.1(@svta/cml-utils@1.0.1))(@svta/cml-utils@1.0.1)(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      resend:
+        specifier: ^6.8.0
+        version: 6.8.0
       sharp:
         specifier: 0.34.5
         version: 0.34.5
@@ -462,6 +471,9 @@ importers:
 
   sync-server:
     dependencies:
+      '@hono/zod-validator':
+        specifier: ^0.7.6
+        version: 0.7.6(hono@4.11.4)(zod@4.3.4)
       cborg:
         specifier: ^4.5.5
         version: 4.5.5
@@ -1614,6 +1626,12 @@ packages:
       '@headless-tree/core': '*'
       react: '*'
       react-dom: '*'
+
+  '@hono/zod-validator@0.7.6':
+    resolution: {integrity: sha512-Io1B6d011Gj1KknV4rXYz4le5+5EubcWEU/speUjuw9XMMIaP3n78yXLhjd2A3PXaXaUwEAluOiAyLqhBEJgsw==}
+    peerDependencies:
+      hono: '>=3.9.0'
+      zod: ^3.25.0 || ^4.0.0
 
   '@huggingface/jinja@0.5.3':
     resolution: {integrity: sha512-asqfZ4GQS0hD876Uw4qiUb7Tr/V5Q+JZuo2L+BtdrD4U40QU58nIRq3ZSgAzJgT874VLjhGVacaYfrdpXtEvtA==}
@@ -7997,10 +8015,12 @@ packages:
   tar@6.2.1:
     resolution: {integrity: sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==}
     engines: {node: '>=10'}
+    deprecated: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exhorbitant rates) by contacting i@izs.me
 
   tar@7.5.2:
     resolution: {integrity: sha512-7NyxrTE4Anh8km8iEy7o0QYPs+0JKBTj5ZaqHg6B39erLg0qYXN3BijtShwbsNSvQ+LN75+KV+C4QR/f6Gwnpg==}
     engines: {node: '>=18'}
+    deprecated: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exhorbitant rates) by contacting i@izs.me
 
   temp-file@3.4.0:
     resolution: {integrity: sha512-C5tjlC/HCtVUOi3KWVokd4vHVViOmGjtLwIh4MuzPo/nMYTV/p1urt3RnMz2IWXDdKEGJH3k5+KPxtqRsUYGtg==}
@@ -9725,6 +9745,11 @@ snapshots:
       '@headless-tree/core': 1.6.1
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
+
+  '@hono/zod-validator@0.7.6(hono@4.11.4)(zod@4.3.4)':
+    dependencies:
+      hono: 4.11.4
+      zod: 4.3.4
 
   '@huggingface/jinja@0.5.3': {}
 

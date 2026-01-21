@@ -1,0 +1,195 @@
+/**
+ * T033a: Canonical CBOR Encoder
+ *
+ * Implements deterministic CBOR encoding for signature payloads.
+ * Uses RFC 8949 Section 4.2.1 deterministic encoding rules.
+ */
+
+import * as cborg from 'cborg'
+import { SyncError, ErrorCode } from './errors'
+import {
+  SIGNATURE_PAYLOAD_V1_FIELD_ORDER,
+  SIGNATURE_PAYLOAD_V1_METADATA_FIELD_ORDER,
+  CRDT_ITEM_PAYLOAD_FIELD_ORDER,
+  ENCRYPTED_UPDATE_PAYLOAD_FIELD_ORDER,
+} from '../contracts/cbor-ordering'
+
+/**
+ * Interface for SignaturePayloadV1 metadata.
+ */
+interface SignatureMetadata {
+  clock?: Record<string, number>
+  fieldClocks?: Record<string, Record<string, number>>
+  stateVector?: Record<string, number>
+}
+
+/**
+ * Interface for SignaturePayloadV1.
+ */
+interface SignaturePayloadV1 {
+  id: string
+  type: string
+  operation?: string
+  cryptoVersion?: number
+  encryptedKey?: string
+  keyNonce?: string
+  encryptedData?: string
+  dataNonce?: string
+  metadata?: SignatureMetadata
+}
+
+/**
+ * Recursively sort object keys for canonical encoding.
+ * Required for VectorClock maps which are Record<string, number>.
+ * Ensures deterministic CBOR encoding regardless of key insertion order.
+ */
+function sortObjectKeys(obj: unknown): unknown {
+  if (obj === null || typeof obj !== 'object') {
+    return obj
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(sortObjectKeys)
+  }
+  // Sort keys alphabetically and recurse
+  const sorted: Record<string, unknown> = {}
+  const keys = Object.keys(obj).sort()
+  for (const key of keys) {
+    sorted[key] = sortObjectKeys((obj as Record<string, unknown>)[key])
+  }
+  return sorted
+}
+
+/**
+ * Order object fields according to a predefined order.
+ * Fields not in the order array are omitted.
+ */
+function orderFields<T extends Record<string, unknown>>(
+  obj: T,
+  fieldOrder: readonly string[]
+): Record<string, unknown> {
+  const ordered: Record<string, unknown> = {}
+
+  for (const key of fieldOrder) {
+    if (key in obj && obj[key] !== undefined) {
+      ordered[key] = obj[key]
+    }
+  }
+
+  return ordered
+}
+
+/**
+ * Prepare a SignaturePayloadV1 for canonical encoding.
+ * Ensures fields are in the correct order and metadata is properly ordered.
+ */
+function prepareSignaturePayloadV1(payload: SignaturePayloadV1): Record<string, unknown> {
+  const prepared = orderFields(
+    payload as unknown as Record<string, unknown>,
+    SIGNATURE_PAYLOAD_V1_FIELD_ORDER
+  )
+
+  // Order metadata fields if present
+  if (payload.metadata) {
+    const orderedMetadata = orderFields(payload.metadata, SIGNATURE_PAYLOAD_V1_METADATA_FIELD_ORDER)
+    // Sort keys in nested clock objects for deterministic encoding
+    prepared.metadata = sortObjectKeys(orderedMetadata)
+  }
+
+  return prepared
+}
+
+/**
+ * Encode a SignaturePayloadV1 to canonical CBOR bytes.
+ *
+ * @param payload - The signature payload to encode
+ * @returns Canonical CBOR bytes
+ * @throws SyncError if encoding fails
+ */
+export function encodeSignaturePayloadV1(payload: SignaturePayloadV1): Uint8Array {
+  try {
+    const prepared = prepareSignaturePayloadV1(payload)
+    return cborg.encode(prepared, {
+      // Use canonical/deterministic encoding
+      float64: true, // Consistent float representation
+    })
+  } catch (error) {
+    throw new SyncError(
+      'Failed to encode signature payload',
+      ErrorCode.CRYPTO_ENCODING_FAILED,
+      500,
+      { originalError: error instanceof Error ? error.message : String(error) }
+    )
+  }
+}
+
+/**
+ * Encode data to canonical CBOR bytes.
+ * Uses predefined field ordering for known types.
+ *
+ * @param data - The data to encode
+ * @param type - Optional type hint for field ordering
+ * @returns Canonical CBOR bytes
+ * @throws SyncError if encoding fails
+ */
+export function encodeCanonicalCbor(
+  data: unknown,
+  type?: 'signature-payload-v1' | 'crdt-item' | 'encrypted-update'
+): Uint8Array {
+  try {
+    let prepared: unknown = data
+
+    // Apply field ordering based on type
+    if (type === 'signature-payload-v1' && typeof data === 'object' && data !== null) {
+      prepared = prepareSignaturePayloadV1(data as SignaturePayloadV1)
+    } else if (type === 'crdt-item' && typeof data === 'object' && data !== null) {
+      prepared = orderFields(data as Record<string, unknown>, CRDT_ITEM_PAYLOAD_FIELD_ORDER)
+    } else if (type === 'encrypted-update' && typeof data === 'object' && data !== null) {
+      prepared = orderFields(data as Record<string, unknown>, ENCRYPTED_UPDATE_PAYLOAD_FIELD_ORDER)
+    }
+
+    return cborg.encode(prepared, {
+      float64: true,
+    })
+  } catch (error) {
+    throw new SyncError(
+      'Failed to encode CBOR',
+      ErrorCode.CRYPTO_ENCODING_FAILED,
+      500,
+      { originalError: error instanceof Error ? error.message : String(error) }
+    )
+  }
+}
+
+/**
+ * Decode CBOR bytes to data.
+ *
+ * @param data - The CBOR bytes to decode
+ * @returns Decoded data
+ * @throws SyncError if decoding fails
+ */
+export function decodeCbor<T = unknown>(data: Uint8Array): T {
+  try {
+    return cborg.decode(data) as T
+  } catch (error) {
+    throw new SyncError(
+      'Failed to decode CBOR',
+      ErrorCode.CRYPTO_ENCODING_FAILED,
+      500,
+      { originalError: error instanceof Error ? error.message : String(error) }
+    )
+  }
+}
+
+/**
+ * Encode data to deterministic CBOR bytes (generic).
+ * Recursively sorts all object keys for consistency.
+ *
+ * @param data - The data to encode
+ * @returns Canonical CBOR bytes
+ */
+export function encodeDeterministic(data: unknown): Uint8Array {
+  const sorted = sortObjectKeys(data)
+  return cborg.encode(sorted, {
+    float64: true,
+  })
+}

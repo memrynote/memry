@@ -7,6 +7,19 @@ compatibility_flags = ["nodejs_compat"]
 [dev]
 port = 8787
 
+# Scheduled triggers for cleanup jobs
+[triggers]
+crons = ["*/5 * * * *"]  # Run every 5 minutes
+
+# Environment variables (non-secret)
+[vars]
+EMAIL_FROM = "noreply@memry.app"
+EMAIL_FROM_NAME = "Memry"
+
+# Secrets (set via `wrangler secret put <NAME>`):
+# - JWT_SECRET
+# - RESEND_API_KEY
+
 # D1 Database binding (T008)
 [[d1_databases]]
 binding = "DB"
