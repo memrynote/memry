@@ -67,15 +67,16 @@ export const checkRateLimit = async (
 
     if (!existing || existing.window_start < windowStart) {
       // No entry or window expired - create new entry
+      const id = crypto.randomUUID()
       await db
         .prepare(
           `
-          INSERT INTO rate_limits (key, count, window_start)
-          VALUES (?, 1, ?)
+          INSERT INTO rate_limits (id, key, count, window_start)
+          VALUES (?, ?, 1, ?)
           ON CONFLICT (key) DO UPDATE SET count = 1, window_start = ?
         `
         )
-        .bind(key, now, now)
+        .bind(id, key, now, now)
         .run()
 
       return {
@@ -186,15 +187,16 @@ export const incrementOtpAttempts = async (
     }
 
     // Increment attempts
+    const id = crypto.randomUUID()
     await db
       .prepare(
         `
-        INSERT INTO rate_limits (key, count, window_start)
-        VALUES (?, 1, ?)
+        INSERT INTO rate_limits (id, key, count, window_start)
+        VALUES (?, ?, 1, ?)
         ON CONFLICT (key) DO UPDATE SET count = count + 1
       `
       )
-      .bind(key, Date.now())
+      .bind(id, key, Date.now())
       .run()
 
     return { attempts: currentAttempts + 1, maxExceeded: currentAttempts + 1 >= maxAttempts }

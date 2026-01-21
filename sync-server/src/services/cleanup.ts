@@ -44,6 +44,7 @@ export const cleanupExpiredOtpCodes = async (db: D1Database): Promise<number> =>
 /**
  * T034b: Delete expired linking sessions.
  * Linking sessions expire after 5 minutes unless completed.
+ * Valid statuses: 'pending', 'scanned', 'approved', 'completed', 'expired'
  *
  * @param db - D1 database instance
  * @returns Number of deleted linking sessions
@@ -51,11 +52,13 @@ export const cleanupExpiredOtpCodes = async (db: D1Database): Promise<number> =>
 export const cleanupExpiredLinkingSessions = async (db: D1Database): Promise<number> => {
   const now = Date.now()
 
+  // Delete expired sessions that haven't completed
+  // Completed sessions are cleaned up separately after audit retention period
   const result = await db
     .prepare(
       `
       DELETE FROM linking_sessions
-      WHERE expires_at < ? AND status NOT IN ('completed', 'verified')
+      WHERE expires_at < ? AND status != 'completed'
     `
     )
     .bind(now)
@@ -78,7 +81,7 @@ export const cleanupCompletedLinkingSessions = async (db: D1Database): Promise<n
     .prepare(
       `
       DELETE FROM linking_sessions
-      WHERE status IN ('completed', 'verified') AND created_at < ?
+      WHERE status = 'completed' AND created_at < ?
     `
     )
     .bind(cutoff)
@@ -97,11 +100,13 @@ export const cleanupCompletedLinkingSessions = async (db: D1Database): Promise<n
 export const cleanupUsedOtpCodes = async (db: D1Database): Promise<number> => {
   const cutoff = Date.now() - 60 * 60 * 1000 // 1 hour ago
 
+  // Schema uses 'used' INTEGER flag, not 'used_at' timestamp
+  // We use created_at as proxy for when it was used (within OTP lifetime)
   const result = await db
     .prepare(
       `
       DELETE FROM otp_codes
-      WHERE used_at IS NOT NULL AND used_at < ?
+      WHERE used = 1 AND created_at < ?
     `
     )
     .bind(cutoff)

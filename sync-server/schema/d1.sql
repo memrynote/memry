@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
   token_hash TEXT NOT NULL UNIQUE,
   expires_at INTEGER NOT NULL,
   rotated_at INTEGER,
-  revoked INTEGER DEFAULT 0,
+  revoked_at INTEGER,  -- timestamp when revoked (NULL = not revoked)
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_refresh_user ON refresh_tokens(user_id);
