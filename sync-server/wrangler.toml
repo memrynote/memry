@@ -1,0 +1,63 @@
+name = "memry-sync-server"
+main = "src/index.ts"
+compatibility_date = "2025-01-20"
+compatibility_flags = ["nodejs_compat"]
+
+# Local development settings
+[dev]
+port = 8787
+
+# D1 Database binding (T008)
+[[d1_databases]]
+binding = "DB"
+database_name = "sync-db"
+database_id = "local"  # Replace with actual D1 database ID after creation
+
+# R2 Bucket binding (T009)
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "sync-blobs"
+
+# Durable Objects for sync state management
+[[durable_objects.bindings]]
+name = "USER_SYNC_STATE"
+class_name = "UserSyncState"
+
+[[durable_objects.bindings]]
+name = "LINKING_SESSION"
+class_name = "LinkingSession"
+
+# Migrations for Durable Objects
+[[migrations]]
+tag = "v1"
+new_classes = ["UserSyncState", "LinkingSession"]
+
+# Environment-specific configurations
+[env.staging]
+name = "memry-sync-server-staging"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "sync-db-staging"
+database_id = "staging"  # Replace with actual staging D1 database ID
+
+[[env.staging.r2_buckets]]
+binding = "BUCKET"
+bucket_name = "sync-blobs-staging"
+
+[env.production]
+name = "memry-sync-server-production"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "sync-db-production"
+database_id = "production"  # Replace with actual production D1 database ID
+
+[[env.production.r2_buckets]]
+binding = "BUCKET"
+bucket_name = "sync-blobs-production"
+
+# Rate limiting via Cloudflare (configured in dashboard)
+# [vars]
+# RATE_LIMIT_REQUESTS = "100"
+# RATE_LIMIT_WINDOW = "60"

@@ -1,0 +1,24 @@
+{
+  "name": "memry-sync-server",
+  "version": "1.0.0",
+  "description": "Memry sync server - Cloudflare Workers",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:production": "wrangler deploy --env production",
+    "typecheck": "tsc --noEmit",
+    "build": "wrangler deploy --dry-run --outdir=dist"
+  },
+  "dependencies": {
+    "hono": "^4.7.0",
+    "drizzle-orm": "^0.45.1",
+    "zod": "^4.3.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250224.0",
+    "wrangler": "^4.19.2",
+    "typescript": "^5.9.3"
+  }
+}
