@@ -33,7 +33,7 @@ import {
   type OAuthCallbackResponse,
 } from '../contracts/auth-api'
 import type { Device, DevicePlatform } from '../contracts/sync-api'
-import { createOtp, verifyOtp, getLatestOtp } from '../services/otp'
+import { createOtp, verifyOtp } from '../services/otp'
 import {
   findOrCreateUserByEmail,
   getUserById,
@@ -42,7 +42,7 @@ import {
 } from '../services/user'
 import { issueTokenPair, rotateRefreshToken, hashToken } from '../services/auth'
 import { createEmailService } from '../services/email'
-import { rateLimitMiddleware, checkRateLimit, RATE_LIMITS } from '../middleware/rate-limit'
+import { checkRateLimit, RATE_LIMITS } from '../middleware/rate-limit'
 import { authMiddleware, getAuth } from '../middleware/auth'
 import {
   validationError,
@@ -80,18 +80,9 @@ const authRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>()
 /**
  * T042: POST /auth/otp/request
  * Request a one-time password for email login.
+ * Rate limiting is done at the handler level with the actual email address.
  */
-authRoutes.post(
-  '/otp/request',
-  rateLimitMiddleware('otp_request', (c) => {
-    try {
-      const body = c.req.raw.clone()
-      return 'pending-email'
-    } catch {
-      return 'unknown'
-    }
-  }),
-  async (c) => {
+authRoutes.post('/otp/request', async (c) => {
     const body = await c.req.json()
     const parsed = OtpRequestSchema.safeParse(body)
 
@@ -128,6 +119,11 @@ authRoutes.post(
 
     if (!emailResult.success) {
       console.error('Failed to send OTP email:', emailResult.error)
+      throw new SyncError(
+        'Failed to send verification email. Please try again.',
+        ErrorCode.SERVER_INTERNAL_ERROR,
+        500
+      )
     }
 
     const response: OtpRequestResponse = {
@@ -192,11 +188,9 @@ authRoutes.post('/otp/verify', async (c) => {
 /**
  * T047a: POST /auth/otp/resend
  * Resend OTP code.
+ * Rate limiting is done at the handler level with the actual email address.
  */
-authRoutes.post(
-  '/otp/resend',
-  rateLimitMiddleware('otp_request', (c) => 'resend-pending'),
-  async (c) => {
+authRoutes.post('/otp/resend', async (c) => {
     const body = await c.req.json()
     const parsed = OtpResendRequestSchema.safeParse(body)
 
@@ -229,7 +223,16 @@ authRoutes.post(
       fromName: c.env.EMAIL_FROM_NAME,
     })
 
-    await emailService.sendOtpCode(normalizedEmail, code)
+    const emailResult = await emailService.sendOtpCode(normalizedEmail, code)
+
+    if (!emailResult.success) {
+      console.error('Failed to send OTP email:', emailResult.error)
+      throw new SyncError(
+        'Failed to send verification email. Please try again.',
+        ErrorCode.SERVER_INTERNAL_ERROR,
+        500
+      )
+    }
 
     const response: OtpResendResponse = {
       success: true,
@@ -416,10 +419,10 @@ authRoutes.post('/devices', authMiddleware(), async (c) => {
   const now = Date.now()
 
   await c.env.DB.prepare(
-    `INSERT INTO devices (id, user_id, name, platform, os_version, app_version, auth_public_key, linked_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO devices (id, user_id, name, platform, os_version, app_version, auth_public_key, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
-    .bind(deviceId, auth.userId, name, platform, osVersion ?? null, appVersion, authPublicKey, now)
+    .bind(deviceId, auth.userId, name, platform, osVersion ?? null, appVersion, authPublicKey, now, now)
     .run()
 
   const newChallenge = crypto.randomUUID()
@@ -491,13 +494,9 @@ authRoutes.post('/setup', authMiddleware(), async (c) => {
 /**
  * T052b: POST /auth/refresh
  * Refresh access token.
+ * Token rotation has built-in replay protection via the rotateRefreshToken function.
  */
-authRoutes.post(
-  '/refresh',
-  rateLimitMiddleware('token_refresh', (c) => {
-    return 'token-refresh'
-  }),
-  async (c) => {
+authRoutes.post('/refresh', async (c) => {
     const body = await c.req.json()
     const parsed = RefreshTokenRequestSchema.safeParse(body)
 

@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS user_identities (
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   provider TEXT NOT NULL,
   provider_id TEXT NOT NULL,
+  email TEXT NOT NULL,
   created_at INTEGER NOT NULL,
   UNIQUE(provider, provider_id)
 );
@@ -145,6 +146,18 @@ CREATE TABLE IF NOT EXISTS rate_limits (
   window_start INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_rate_key ON rate_limits(key);
+
+-- T048: oauth_states table for PKCE flow
+CREATE TABLE IF NOT EXISTS oauth_states (
+  id TEXT PRIMARY KEY,
+  state_hash TEXT NOT NULL UNIQUE,
+  code_verifier TEXT NOT NULL,
+  redirect_uri TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_oauth_state_hash ON oauth_states(state_hash);
+CREATE INDEX IF NOT EXISTS idx_oauth_expires ON oauth_states(expires_at);
 
 -- T017e: crdt_updates table
 CREATE TABLE IF NOT EXISTS crdt_updates (
