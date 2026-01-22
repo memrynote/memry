@@ -23,6 +23,7 @@ import {
   RefreshTokenRequestSchema,
   FirstDeviceSetupRequestSchema,
   OAuthCallbackQuerySchema,
+  OAuthInitiateQuerySchema,
   LogoutRequestSchema,
   type OtpRequestResponse,
   type OtpVerifyResponse,
@@ -269,18 +270,13 @@ authRoutes.get('/oauth/:provider', async (c) => {
     throw badRequest(`Unsupported OAuth provider: ${provider}`)
   }
 
-  const state = crypto.randomUUID()
-  const codeVerifier = generateCodeVerifier()
-  const codeChallenge = await generateCodeChallenge(codeVerifier)
-
-  const redirectUri = `${c.req.url.split('/auth/')[0]}/auth/oauth/google/callback`
-
-  const oauthState: OAuthState = {
-    state,
-    codeVerifier,
-    redirectUri,
-    createdAt: Date.now(),
+  const parsed = OAuthInitiateQuerySchema.safeParse(c.req.query())
+  if (!parsed.success) {
+    throw validationError('Invalid OAuth initiation parameters', { issues: parsed.error.issues })
   }
+
+  const { redirect_uri: redirectUri, code_challenge: codeChallenge, state } = parsed.data
+  const createdAt = Date.now()
 
   const stateHash = await hashToken(state)
   await c.env.DB.prepare(
@@ -290,10 +286,10 @@ authRoutes.get('/oauth/:provider', async (c) => {
     .bind(
       crypto.randomUUID(),
       stateHash,
-      codeVerifier,
+      codeChallenge,
       redirectUri,
-      oauthState.createdAt,
-      oauthState.createdAt + AUTH_STATE_EXPIRY_MS
+      createdAt,
+      createdAt + AUTH_STATE_EXPIRY_MS
     )
     .run()
 
@@ -330,7 +326,7 @@ authRoutes.post('/oauth/:provider/callback', async (c) => {
     throw validationError('Invalid callback parameters', { issues: parsed.error.issues })
   }
 
-  const { code, state, error, error_description } = parsed.data
+  const { code, state, error, error_description, code_verifier, redirect_uri } = parsed.data
 
   if (error) {
     throw new SyncError(
@@ -358,11 +354,24 @@ authRoutes.post('/oauth/:provider/callback', async (c) => {
     throw new SyncError('OAuth state expired', ErrorCode.AUTH_UNAUTHORIZED, 401)
   }
 
+  if (storedState.redirect_uri !== redirect_uri) {
+    await c.env.DB.prepare(`DELETE FROM oauth_states WHERE id = ?`).bind(storedState.id).run()
+    throw new SyncError('OAuth redirect URI mismatch', ErrorCode.AUTH_UNAUTHORIZED, 401)
+  }
+
+  if (storedState.code_verifier) {
+    const expectedChallenge = await generateCodeChallenge(code_verifier)
+    if (expectedChallenge !== storedState.code_verifier) {
+      await c.env.DB.prepare(`DELETE FROM oauth_states WHERE id = ?`).bind(storedState.id).run()
+      throw new SyncError('OAuth PKCE verification failed', ErrorCode.AUTH_UNAUTHORIZED, 401)
+    }
+  }
+
   await c.env.DB.prepare(`DELETE FROM oauth_states WHERE id = ?`).bind(storedState.id).run()
 
   const tokenResponse = await exchangeGoogleCode({
     code,
-    codeVerifier: storedState.code_verifier,
+    codeVerifier: code_verifier,
     redirectUri: storedState.redirect_uri,
     clientId: c.env.GOOGLE_CLIENT_ID,
     clientSecret: c.env.GOOGLE_CLIENT_SECRET,
@@ -379,6 +388,24 @@ authRoutes.post('/oauth/:provider/callback', async (c) => {
   )
 
   const tempDeviceId = crypto.randomUUID()
+  const now = Date.now()
+
+  await c.env.DB.prepare(
+    `INSERT INTO devices (id, user_id, name, platform, os_version, app_version, auth_public_key, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  )
+    .bind(
+      tempDeviceId,
+      user.id,
+      'Pending Registration',
+      'unknown',
+      null,
+      '0.0.0',
+      '',
+      now,
+      now
+    )
+    .run()
 
   const tokens = await issueTokenPair(c.env.DB, user.id, tempDeviceId, c.env.JWT_SECRET)
 
@@ -392,7 +419,7 @@ authRoutes.post('/oauth/:provider/callback', async (c) => {
       platform: 'macos',
       appVersion: '1.0.0',
       authPublicKey: '',
-      linkedAt: Date.now(),
+      linkedAt: now,
     },
     isNewUser: isNew,
   }

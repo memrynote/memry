@@ -92,6 +92,7 @@ export interface OAuthExchangeParams {
   code: string
   codeVerifier: string
   redirectUri: string
+  state: string
 }
 
 export interface SyncApiClient {
@@ -221,6 +222,7 @@ function createApiClient(): SyncApiClient {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: params.code,
+          state: params.state,
           code_verifier: params.codeVerifier,
           redirect_uri: params.redirectUri
         })

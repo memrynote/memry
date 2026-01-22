@@ -277,7 +277,8 @@ export function registerAuthHandlers(): void {
           const tokenResponse = await client.exchangeOAuthCode(provider, {
             code: result.code,
             codeVerifier,
-            redirectUri: activeOAuthServer.callbackUrl
+            redirectUri: activeOAuthServer.callbackUrl,
+            state: result.state
           })
 
           const deviceId =

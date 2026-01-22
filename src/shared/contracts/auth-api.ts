@@ -115,6 +115,14 @@ export const OAuthInitiateResponseSchema = z.object({
 })
 export type OAuthInitiateResponse = z.infer<typeof OAuthInitiateResponseSchema>
 
+export const OAuthInitiateQuerySchema = z.object({
+  redirect_uri: z.string().url(),
+  code_challenge: z.string().min(43),
+  code_challenge_method: z.literal('S256').optional(),
+  state: z.string().min(8)
+})
+export type OAuthInitiateQuery = z.infer<typeof OAuthInitiateQuerySchema>
+
 /**
  * GET /auth/oauth/:provider/callback
  * OAuth callback from provider
@@ -122,6 +130,8 @@ export type OAuthInitiateResponse = z.infer<typeof OAuthInitiateResponseSchema>
 export const OAuthCallbackQuerySchema = z.object({
   code: z.string(),
   state: z.string(),
+  code_verifier: z.string().min(43),
+  redirect_uri: z.string().url(),
   error: z.string().optional(),
   error_description: z.string().optional()
 })
