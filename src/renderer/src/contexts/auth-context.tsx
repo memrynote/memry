@@ -37,6 +37,7 @@ export interface AuthContextValue {
   verifyOtp: (email: string, code: string) => Promise<VerifyOtpResponse>
   resendOtp: (email: string) => Promise<RequestOtpResponse>
   startOAuth: (provider: 'google') => Promise<StartOAuthResponse>
+  markSetupComplete: () => void
   logout: () => Promise<void>
   refreshSession: () => Promise<void>
 }
@@ -108,13 +109,21 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
   }, [])
 
   const verifyOtp = useCallback(async (email: string, code: string): Promise<VerifyOtpResponse> => {
-    const response = await window.api.auth.verifyOtp(email, code)
-    if (response.success) {
-      if (response.needsSetup) {
-        setNeedsSetup(true)
+    setNeedsSetup(true)
+    try {
+      const response = await window.api.auth.verifyOtp(email, code)
+      if (!response.success) {
+        setNeedsSetup(false)
+        return response
       }
+
+      const shouldSetup = response.needsSetup ?? response.isNewUser ?? false
+      setNeedsSetup(shouldSetup)
+      return response
+    } catch (error) {
+      setNeedsSetup(false)
+      throw error
     }
-    return response
   }, [])
 
   const resendOtp = useCallback(async (email: string): Promise<RequestOtpResponse> => {
@@ -122,11 +131,24 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
   }, [])
 
   const startOAuth = useCallback(async (provider: 'google'): Promise<StartOAuthResponse> => {
-    const response = (await window.api.auth.startOAuth(provider)) as StartOAuthResponse
-    if (response.success && response.isNewUser) {
-      setNeedsSetup(true)
+    setNeedsSetup(true)
+    try {
+      const response = (await window.api.auth.startOAuth(provider)) as StartOAuthResponse
+      if (!response.success) {
+        setNeedsSetup(false)
+        return response
+      }
+      const shouldSetup = response.needsSetup ?? response.isNewUser ?? false
+      setNeedsSetup(shouldSetup)
+      return response
+    } catch (error) {
+      setNeedsSetup(false)
+      throw error
     }
-    return response
+  }, [])
+
+  const markSetupComplete = useCallback(() => {
+    setNeedsSetup(false)
   }, [])
 
   const logout = useCallback(async (): Promise<void> => {
@@ -161,6 +183,7 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
       verifyOtp,
       resendOtp,
       startOAuth,
+      markSetupComplete,
       logout,
       refreshSession
     }),
@@ -173,6 +196,7 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
       verifyOtp,
       resendOtp,
       startOAuth,
+      markSetupComplete,
       logout,
       refreshSession
     ]

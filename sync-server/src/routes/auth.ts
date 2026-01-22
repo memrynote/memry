@@ -426,15 +426,47 @@ authRoutes.post('/devices', authMiddleware(), async (c) => {
     throw new SyncError('Invalid device challenge signature', ErrorCode.CRYPTO_INVALID_SIGNATURE, 400)
   }
 
-  const deviceId = crypto.randomUUID()
+  const deviceId = auth.deviceId
   const now = Date.now()
 
-  await c.env.DB.prepare(
-    `INSERT INTO devices (id, user_id, name, platform, os_version, app_version, auth_public_key, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  const existingDevice = await c.env.DB.prepare(
+    `SELECT id, auth_public_key
+     FROM devices
+     WHERE id = ?`
   )
-    .bind(deviceId, auth.userId, name, platform, osVersion ?? null, appVersion, authPublicKey, now, now)
-    .run()
+    .bind(deviceId)
+    .first<{ id: string; auth_public_key: string | null }>()
+
+  if (existingDevice) {
+    if (existingDevice.auth_public_key && existingDevice.auth_public_key !== authPublicKey) {
+      throw badRequest('Device already registered')
+    }
+
+    await c.env.DB.prepare(
+      `UPDATE devices
+       SET name = ?, platform = ?, os_version = ?, app_version = ?, auth_public_key = ?, updated_at = ?
+       WHERE id = ?`
+    )
+      .bind(name, platform, osVersion ?? null, appVersion, authPublicKey, now, deviceId)
+      .run()
+  } else {
+    await c.env.DB.prepare(
+      `INSERT INTO devices (id, user_id, name, platform, os_version, app_version, auth_public_key, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        deviceId,
+        auth.userId,
+        name,
+        platform,
+        osVersion ?? null,
+        appVersion,
+        authPublicKey,
+        now,
+        now
+      )
+      .run()
+  }
 
   const newChallenge = crypto.randomUUID()
 

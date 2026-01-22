@@ -443,6 +443,7 @@ export interface StartOAuthResponse {
   success: boolean
   authUrl?: string
   isNewUser?: boolean
+  needsSetup?: boolean
   error?: string
 }
 

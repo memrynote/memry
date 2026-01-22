@@ -23,8 +23,8 @@ EMAIL_FROM_NAME = "Memry"
 # D1 Database binding (T008)
 [[d1_databases]]
 binding = "DB"
-database_name = "sync-db"
-database_id = "local"     # Replace with actual D1 database ID after creation
+database_name = "memry-sync"
+database_id = "local"        # Replace with actual D1 database ID after creation
 
 # R2 Bucket binding (T009)
 [[r2_buckets]]

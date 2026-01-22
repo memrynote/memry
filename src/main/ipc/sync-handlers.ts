@@ -54,11 +54,13 @@ import {
   deriveMasterKey,
   deriveAllKeys,
   generateSalt,
+  generateNonce,
   generateKeyVerifier,
   storeKeyMaterial,
   retrieveKeyMaterial,
   storeSigningKeyPair,
   retrieveAuthTokens,
+  sign,
   secureZero,
   isCryptoError,
   constantTimeEqual
@@ -81,6 +83,24 @@ function getDefaultSyncState(): SyncState {
     pendingCount: 0,
     serverCursor: 0,
     deviceClock: {}
+  }
+}
+
+function decodeDeviceIdFromAccessToken(token?: string): string | null {
+  if (!token) {
+    return null
+  }
+  try {
+    const payload = token.split('.')[1]
+    if (!payload) {
+      return null
+    }
+    const decoded = Buffer.from(payload, 'base64url').toString('utf8')
+    const parsed = JSON.parse(decoded) as { deviceId?: string }
+    return typeof parsed.deviceId === 'string' ? parsed.deviceId : null
+  } catch (error) {
+    console.warn('[Sync] Failed to decode device ID from access token:', error)
+    return null
   }
 }
 
@@ -162,21 +182,28 @@ export function registerSyncHandlers(): void {
           // Step 4: Derive all sub-keys
           derivedKeys = await deriveAllKeys(masterKey)
 
-          // Step 5: Generate device signing keypair (T061a)
-          const deviceId = crypto.randomUUID()
+          // Step 5: Resolve device ID from auth context (fallback for offline setups)
+          const storedTokens = await retrieveAuthTokens()
+          const deviceIdFromToken =
+            storedTokens?.deviceId ?? decodeDeviceIdFromAccessToken(storedTokens?.accessToken)
+          if (storedTokens?.accessToken && !deviceIdFromToken) {
+            throw new Error('Missing device identifier for authenticated setup')
+          }
+          const deviceId = deviceIdFromToken ?? crypto.randomUUID()
+
+          // Step 6: Generate device signing keypair (T061a)
           const deviceKeyPair = await generateDeviceSigningKeyPair(deviceId)
 
-          // Step 6: Store device keypair in keychain
+          // Step 7: Store device keypair in keychain
           await storeDeviceKeyPair(deviceKeyPair)
 
-          // Step 7: Store derived signing keypair in keychain (T060a)
+          // Step 8: Store derived signing keypair in keychain (T060a)
           await storeSigningKeyPair({
             publicKey: uint8ArrayToBase64(derivedKeys.signingKeyPair.publicKey),
             privateKey: uint8ArrayToBase64(derivedKeys.signingKeyPair.privateKey)
           })
 
-          // Step 8: Try to call server with kdfSalt + keyVerifier (if authenticated)
-          const storedTokens = await retrieveAuthTokens()
+          // Step 9: Try to call server with kdfSalt + keyVerifier (if authenticated)
           let userId = ''
           let email = ''
 
@@ -197,7 +224,32 @@ export function registerSyncHandlers(): void {
             }
           }
 
-          // Step 9: Store master key material in keychain (T061)
+          const authPublicKey = uint8ArrayToBase64(deviceKeyPair.publicKey)
+
+          // Step 10: Register device with server (best-effort, requires auth)
+          if (storedTokens?.accessToken) {
+            try {
+              const challengeNonce = await generateNonce()
+              const signature = await sign(challengeNonce, deviceKeyPair.privateKey)
+              const client = getSyncApiClient()
+              await client.registerDevice(storedTokens.accessToken, {
+                name: input.deviceName,
+                platform: input.platform,
+                osVersion: input.osVersion,
+                appVersion: input.appVersion,
+                authPublicKey,
+                challengeNonce: uint8ArrayToBase64(challengeNonce),
+                challengeSignature: uint8ArrayToBase64(signature)
+              })
+            } catch (deviceError) {
+              console.warn(
+                '[Sync] Device registration failed, continuing with local-only setup:',
+                deviceError
+              )
+            }
+          }
+
+          // Step 11: Store master key material in keychain (T061)
           await storeKeyMaterial({
             masterKey: uint8ArrayToBase64(masterKey),
             kdfSalt: kdfSaltB64,
@@ -207,7 +259,6 @@ export function registerSyncHandlers(): void {
             userId
           })
 
-          const authPublicKey = uint8ArrayToBase64(deviceKeyPair.publicKey)
           const now = Date.now()
 
           const device: Device = {

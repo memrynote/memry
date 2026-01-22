@@ -26,6 +26,7 @@ export interface StoredAuthTokens {
   refreshToken: string
   userId: string
   email: string
+  deviceId?: string
 }
 
 /** User-level signing keypair (derived from master key) */

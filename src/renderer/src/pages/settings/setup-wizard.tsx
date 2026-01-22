@@ -48,7 +48,7 @@ function getDeviceInfo(): {
 }
 
 export function SetupWizard({ onComplete, className }: SetupWizardProps): React.JSX.Element {
-  const { verifyOtp, requestOtp, resendOtp, startOAuth } = useAuth()
+  const { verifyOtp, requestOtp, resendOtp, startOAuth, markSetupComplete } = useAuth()
   const [step, setStep] = useState<WizardStep>('auth')
   const [email, setEmail] = useState('')
   const [recoveryPhrase, setRecoveryPhrase] = useState<string[]>([])
@@ -89,7 +89,8 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps): React.
       try {
         const response = await verifyOtp(email, code)
         if (response.success) {
-          if (response.needsSetup) {
+          const shouldSetup = response.needsSetup ?? response.isNewUser ?? false
+          if (shouldSetup) {
             try {
               const deviceInfo = getDeviceInfo()
               const setupResult: SetupFirstDeviceResponse =
@@ -138,7 +139,8 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps): React.
     try {
       const response = await startOAuth('google')
       if (response.success) {
-        if (response.isNewUser) {
+        const shouldSetup = response.needsSetup ?? response.isNewUser ?? false
+        if (shouldSetup) {
           try {
             const deviceInfo = getDeviceInfo()
             const setupResult: SetupFirstDeviceResponse =
@@ -199,8 +201,9 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps): React.
   }, [])
 
   const handleComplete = useCallback(() => {
+    markSetupComplete()
     onComplete?.()
-  }, [onComplete])
+  }, [markSetupComplete, onComplete])
 
   const renderStepIndicator = (): React.JSX.Element => {
     const steps = [

@@ -1309,7 +1309,7 @@ function AppearanceSettings() {
 // ============================================================================
 
 function AccountSettings() {
-  const { user, isAuthenticated, isLoading, logout, refreshSession } = useAuth()
+  const { user, isAuthenticated, isLoading, logout, refreshSession, needsSetup } = useAuth()
   const [showSetupWizard, setShowSetupWizard] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
@@ -1342,7 +1342,7 @@ function AccountSettings() {
     )
   }
 
-  if (showSetupWizard || !isAuthenticated) {
+  if (showSetupWizard || !isAuthenticated || needsSetup) {
     return (
       <div className="space-y-6">
         <div>

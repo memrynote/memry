@@ -51,6 +51,36 @@ function emitSessionChanged(isAuthenticated: boolean, user?: { id: string; email
   })
 }
 
+function decodeDeviceIdFromAccessToken(token: string): string | null {
+  try {
+    const payload = token.split('.')[1]
+    if (!payload) {
+      return null
+    }
+    const decoded = Buffer.from(payload, 'base64url').toString('utf8')
+    const parsed = JSON.parse(decoded) as { deviceId?: string }
+    return typeof parsed.deviceId === 'string' ? parsed.deviceId : null
+  } catch (error) {
+    console.warn('[Auth] Failed to decode device ID from access token:', error)
+    return null
+  }
+}
+
+async function determineNeedsSetup(
+  client: ReturnType<typeof getSyncApiClient>,
+  accessToken: string
+): Promise<boolean> {
+  try {
+    await client.getRecoveryInfo(accessToken)
+    return false
+  } catch (error) {
+    if (isSyncApiError(error) && error.status === 404) {
+      return true
+    }
+    throw error
+  }
+}
+
 export function registerAuthHandlers(): void {
   // ==========================================================================
   // T054: Request OTP Handler
@@ -92,14 +122,32 @@ export function registerAuthHandlers(): void {
           const client = getSyncApiClient()
           const response = await client.verifyOtp(email, code)
 
+          const deviceId =
+            response.device?.id ?? decodeDeviceIdFromAccessToken(response.accessToken)
+
+          if (!deviceId) {
+            return { success: false, error: 'Missing device identifier from auth response' }
+          }
+
+          let needsSetup = false
+          try {
+            needsSetup = await determineNeedsSetup(client, response.accessToken)
+          } catch (setupError) {
+            const message = isSyncApiError(setupError)
+              ? setupError.message
+              : setupError instanceof Error
+                ? setupError.message
+                : 'Failed to verify account setup status'
+            return { success: false, error: message }
+          }
+
           await storeAuthTokens({
             accessToken: response.accessToken,
             refreshToken: response.refreshToken,
             userId: response.user.id,
-            email: response.user.email
+            email: response.user.email,
+            deviceId
           })
-
-          const needsSetup = !response.user.emailVerified || response.device === undefined
 
           emitSessionChanged(true, { id: response.user.id, email: response.user.email })
 
@@ -232,18 +280,43 @@ export function registerAuthHandlers(): void {
             redirectUri: activeOAuthServer.callbackUrl
           })
 
+          const deviceId =
+            tokenResponse.device?.id ??
+            decodeDeviceIdFromAccessToken(tokenResponse.accessToken)
+
+          if (!deviceId) {
+            activeOAuthServer?.close()
+            activeOAuthServer = null
+            return { success: false, error: 'Missing device identifier from auth response' }
+          }
+
+          let needsSetup = false
+          try {
+            needsSetup = await determineNeedsSetup(client, tokenResponse.accessToken)
+          } catch (setupError) {
+            const message = isSyncApiError(setupError)
+              ? setupError.message
+              : setupError instanceof Error
+                ? setupError.message
+                : 'Failed to verify account setup status'
+            activeOAuthServer?.close()
+            activeOAuthServer = null
+            return { success: false, error: message }
+          }
+
           await storeAuthTokens({
             accessToken: tokenResponse.accessToken,
             refreshToken: tokenResponse.refreshToken,
             userId: tokenResponse.user.id,
-            email: tokenResponse.user.email
+            email: tokenResponse.user.email,
+            deviceId
           })
 
           emitSessionChanged(true, { id: tokenResponse.user.id, email: tokenResponse.user.email })
 
           activeOAuthServer = null
 
-          return { success: true, isNewUser: tokenResponse.isNewUser }
+          return { success: true, isNewUser: tokenResponse.isNewUser, needsSetup }
         } catch (error) {
           console.error('[Auth] START_OAUTH error:', error)
           activeOAuthServer?.close()

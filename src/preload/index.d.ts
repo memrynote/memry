@@ -2311,7 +2311,13 @@ export interface AuthClientAPI {
   verifyOtp(email: string, code: string): Promise<VerifyOtpResponse>
   resendOtp(email: string): Promise<ResendOtpResponse>
   detectOtpClipboard(): Promise<DetectOtpClipboardResponse>
-  startOAuth(provider: 'google'): Promise<{ success: boolean; authUrl?: string; error?: string }>
+  startOAuth(provider: 'google'): Promise<{
+    success: boolean
+    authUrl?: string
+    isNewUser?: boolean
+    needsSetup?: boolean
+    error?: string
+  }>
   getSession(): Promise<{ isAuthenticated: boolean; user?: { id: string; email: string } }>
   refreshSession(): Promise<{ success: boolean; error?: string }>
   logout(): Promise<{ success: boolean }>
