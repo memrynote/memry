@@ -13,6 +13,7 @@
 import { BrowserWindow } from 'electron'
 import { eq, and, isNotNull, lte, isNull } from 'drizzle-orm'
 import { getDatabase, type DrizzleDb } from '../database'
+import { getStatus } from '../vault'
 import { inboxItems, inboxItemTags } from '@shared/db/schema/inbox'
 import { InboxChannels } from '@shared/ipc-channels'
 import type { InboxItem, InboxItemListItem } from '@shared/contracts/inbox-api'
@@ -299,6 +300,8 @@ export function unsnoozeItem(itemId: string): SnoozeResult {
  * @returns Array of snoozed items ordered by snooze due time
  */
 export function getSnoozedItems(): SnoozedItem[] {
+  if (!getStatus().isOpen) return []
+
   try {
     const db = requireDatabase()
 
@@ -344,6 +347,8 @@ export function getSnoozedItems(): SnoozedItem[] {
  * @returns Array of items that need to be surfaced
  */
 export function getDueSnoozeItems(): InboxItemListItem[] {
+  if (!getStatus().isOpen) return []
+
   try {
     const db = requireDatabase()
     const nowStr = new Date().toISOString()

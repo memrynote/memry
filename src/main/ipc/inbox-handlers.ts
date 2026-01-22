@@ -12,6 +12,7 @@
 // Electron IPC passes untyped arguments that are validated by Zod schemas in each handler
 
 import { ipcMain, BrowserWindow } from 'electron'
+import { getStatus } from '../vault'
 import { InboxChannels } from '@shared/ipc-channels'
 import {
   CaptureTextSchema,
@@ -668,6 +669,10 @@ async function handleGet(id: string): Promise<InboxItem | null> {
  * List inbox items with filtering
  */
 async function handleList(input: unknown): Promise<InboxListResponse> {
+  if (!getStatus().isOpen) {
+    return { items: [], total: 0, hasMore: false }
+  }
+
   const options = InboxListSchema.parse(input || {})
   const db = requireDatabase()
 
@@ -1459,6 +1464,8 @@ async function handleMarkViewed(itemId: string): Promise<{ success: boolean; err
  * Get all snoozed items
  */
 async function handleGetSnoozed(): Promise<SnoozedItem[]> {
+  if (!getStatus().isOpen) return []
+
   try {
     return getSnoozedItems()
   } catch (error) {
