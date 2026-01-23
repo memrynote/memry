@@ -171,8 +171,8 @@ export class WebSocketManager extends TypedEmitter<WebSocketEvents> {
 
       this.emit('sync:ws-message', message)
       this.broadcastToWindows('sync:ws-message', message)
-    } catch {
-      // Ignore malformed messages
+    } catch (error) {
+      this.emit('sync:ws-error', error instanceof Error ? error : new Error('Malformed WebSocket message'))
     }
   }
 
@@ -209,7 +209,8 @@ export class WebSocketManager extends TypedEmitter<WebSocketEvents> {
           }
         }
       )
-    } catch {
+    } catch (error) {
+      this.emit('sync:ws-error', error instanceof Error ? error : new Error('WebSocket reconnection failed'))
       this.setState('disconnected')
     } finally {
       this.reconnecting = false
@@ -259,7 +260,8 @@ export class WebSocketManager extends TypedEmitter<WebSocketEvents> {
     try {
       this.ws.send(JSON.stringify(message))
       return true
-    } catch {
+    } catch (error) {
+      this.emit('sync:ws-error', error instanceof Error ? error : new Error('WebSocket send failed'))
       return false
     }
   }

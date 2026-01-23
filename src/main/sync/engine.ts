@@ -97,25 +97,39 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   private _status: SyncStatus = 'idle'
   private initialized = false
   private syncLock = false
+  private onlineHandler = (): void => this.handleOnline()
+  private offlineHandler = (): void => this.handleOffline()
+  private messageHandler = (message: WebSocketMessage): void => {
+    if (message.type === 'sync') this.handleSyncNotification()
+  }
 
   async initialize(): Promise<void> {
     if (this.initialized) return
 
     const networkMonitor = getNetworkMonitor()
-    networkMonitor.on('sync:online', () => this.handleOnline())
-    networkMonitor.on('sync:offline', () => this.handleOffline())
+    networkMonitor.on('sync:online', this.onlineHandler)
+    networkMonitor.on('sync:offline', this.offlineHandler)
 
     const wsManager = getWebSocketManager()
     if (wsManager) {
-      wsManager.on('sync:ws-message', (message: WebSocketMessage) => {
-        if (message.type === 'sync') {
-          this.handleSyncNotification()
-        }
-      })
+      wsManager.on('sync:ws-message', this.messageHandler)
     }
 
     await this.loadStatus()
     this.initialized = true
+  }
+
+  shutdown(): void {
+    const networkMonitor = getNetworkMonitor()
+    networkMonitor.off('sync:online', this.onlineHandler)
+    networkMonitor.off('sync:offline', this.offlineHandler)
+
+    const wsManager = getWebSocketManager()
+    if (wsManager) {
+      wsManager.off('sync:ws-message', this.messageHandler)
+    }
+
+    this.initialized = false
   }
 
   get status(): SyncStatus {
@@ -663,7 +677,7 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   private handleOnline(): void {
     if (this._status === 'offline') {
       this.setStatus('idle')
-      this.sync()
+      this.sync().catch((err) => this.emit('sync:error', err instanceof Error ? err : new Error(String(err)), 'handleOnline'))
     }
   }
 
@@ -673,7 +687,7 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
 
   private handleSyncNotification(): void {
     if (this._status === 'idle') {
-      this.pull()
+      this.pull().catch((err) => this.emit('sync:error', err instanceof Error ? err : new Error(String(err)), 'handleSyncNotification'))
     }
   }
 
