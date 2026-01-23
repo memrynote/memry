@@ -44,6 +44,7 @@ import type {
   PullSyncResponse,
   VectorClock
 } from '@shared/contracts/sync-api'
+import type { SyncStatusChangedEvent } from '@shared/contracts/ipc-sync'
 
 export interface SyncEngineEvents extends Record<string, unknown[]> {
   'sync:status-changed': [status: SyncStatus]
@@ -138,9 +139,15 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
 
   private setStatus(status: SyncStatus): void {
     if (this._status !== status) {
+      const previousStatus = this._status
       this._status = status
       this.emit('sync:status-changed', status)
-      this.broadcastToWindows('sync:status-changed', status)
+      const event: SyncStatusChangedEvent = {
+        previousStatus,
+        currentStatus: status,
+        timestamp: Date.now()
+      }
+      this.broadcastToWindows('sync:status-changed', event)
       this.persistStatus(status)
     }
   }
@@ -711,7 +718,14 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
             updatedAt: now
           }
         })
+      await this.updateDeviceLastSyncAt()
     }
+  }
+
+  private async updateDeviceLastSyncAt(): Promise<void> {
+    const db = getDatabase()
+    const now = new Date().toISOString()
+    await db.update(devices).set({ lastSyncAt: now }).where(eq(devices.isCurrentDevice, true))
   }
 
   private handleOnline(): void {

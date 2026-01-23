@@ -7,6 +7,7 @@ import { ThemeProvider } from 'next-themes'
 import App from './App'
 import QuickCapture from './components/quick-capture'
 import { AuthProvider } from './contexts/auth-context'
+import { SyncProvider } from './contexts/sync-context'
 
 // Create a client with default options for the entire app
 const queryClient = new QueryClient({
@@ -42,7 +43,9 @@ const RootComponent = isQuickCaptureWindow ? (
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <App />
+        <SyncProvider>
+          <App />
+        </SyncProvider>
       </AuthProvider>
     </QueryClientProvider>
   </StrictMode>

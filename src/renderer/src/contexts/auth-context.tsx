@@ -56,7 +56,7 @@ export function useAuth(): AuthContextValue {
   return context
 }
 
-export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element {
+export function whatAuthProvider({ children }: AuthProviderProps): React.JSX.Element {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [needsSetup, setNeedsSetup] = useState(false)
