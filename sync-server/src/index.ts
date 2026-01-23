@@ -19,8 +19,14 @@ import { runCleanupJobs, logCleanupResult } from './services/cleanup'
 import { authRoutes } from './routes/auth'
 import { syncRoutes } from './routes/sync'
 
+// Durable Objects
+import { UserSyncState } from './durable-objects/user-state'
+
 // Error handling
 import { SyncError, isSyncError, ErrorCode } from './lib/errors'
+
+// Auth for WebSocket
+import { verifyAccessToken } from './services/auth'
 
 /**
  * Cloudflare Workers environment bindings.
@@ -118,6 +124,40 @@ app.get('/health', async (c) => {
 
 // Mount auth routes at /api/v1/auth
 app.route('/api/v1/auth', authRoutes)
+
+// =============================================================================
+// WebSocket Route (requires auth but bypasses standard middleware)
+// =============================================================================
+
+app.get('/api/v1/sync/ws', async (c) => {
+  if (c.req.header('Upgrade') !== 'websocket') {
+    return c.json({ error: 'Expected WebSocket upgrade' }, 426)
+  }
+
+  const token =
+    c.req.query('token') ??
+    c.req.header('Authorization')?.replace(/^Bearer\s+/i, '')
+
+  if (!token) {
+    return c.json({ error: 'Missing authentication token' }, 401)
+  }
+
+  let payload
+  try {
+    payload = await verifyAccessToken(token, c.env.JWT_SECRET)
+  } catch {
+    return c.json({ error: 'Invalid token' }, 401)
+  }
+
+  const doId = c.env.USER_SYNC_STATE.idFromName(payload.sub)
+  const stub = c.env.USER_SYNC_STATE.get(doId)
+
+  const url = new URL(c.req.url)
+  url.searchParams.set('token', token)
+  const wsRequest = new Request(url.toString(), c.req.raw)
+
+  return stub.fetch(wsRequest)
+})
 
 // =============================================================================
 // Protected Routes (Require Auth)
@@ -239,25 +279,7 @@ export default {
 // Durable Object Exports
 // =============================================================================
 
-/**
- * User sync state Durable Object.
- * Manages real-time sync state for a user.
- */
-export class UserSyncState {
-  private state: DurableObjectState
-
-  constructor(state: DurableObjectState) {
-    this.state = state
-  }
-
-  async fetch(request: Request): Promise<Response> {
-    void request
-    // Placeholder - to be implemented in Phase 3
-    return new Response(JSON.stringify({ status: 'not_implemented' }), {
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-}
+export { UserSyncState } from './durable-objects/user-state'
 
 /**
  * Linking session Durable Object.

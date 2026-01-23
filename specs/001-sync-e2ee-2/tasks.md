@@ -367,25 +367,25 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - `GET /sync/items/:id` (T087): Get single item by ID
 - `DELETE /sync/items/:id` (T088): Soft-delete (set tombstone)
 
-- [ ] T082 [P] [US2] Implement sync status endpoint GET /sync/status in sync-server/src/routes/sync.ts
-- [ ] T083 [P] [US2] Implement sync manifest endpoint GET /sync/manifest (returns item metadata for diffing, no encrypted content) in sync-server/src/routes/sync.ts
-- [ ] T084 [US2] Implement sync changes endpoint GET /sync/changes?cursor=N&limit=100 using server_cursor (monotonic) in sync-server/src/routes/sync.ts - returns items where server_cursor > N
-- [ ] T085 [US2] Implement sync push endpoint POST /sync/push (batch upsert, returns new server_cursors) in sync-server/src/routes/sync.ts
-- [ ] T086 [US2] Implement sync pull endpoint POST /sync/pull (batch fetch by item IDs, max 100) in sync-server/src/routes/sync.ts
-- [ ] T087 [US2] Implement single item get endpoint GET /sync/items/:id in sync-server/src/routes/sync.ts
-- [ ] T088 [US2] Implement item delete endpoint DELETE /sync/items/:id (sets deleted=1 tombstone) in sync-server/src/routes/sync.ts
-- [ ] T089 [US2] Implement sync service with D1/R2 integration in sync-server/src/services/sync.ts
-- [ ] T089a [US2] Persist server_cursor (via T033b atomic increment) and device last_cursor_seen in sync-server/src/services/sync.ts
-- [ ] T089b [US2] Validate signer_device_id + signature metadata on sync push (verify device belongs to user, verify signature) in sync-server/src/services/sync.ts
+- [x] T082 [P] [US2] Implement sync status endpoint GET /sync/status in sync-server/src/routes/sync.ts
+- [x] T083 [P] [US2] Implement sync manifest endpoint GET /sync/manifest (returns item metadata for diffing, no encrypted content) in sync-server/src/routes/sync.ts
+- [x] T084 [US2] Implement sync changes endpoint GET /sync/changes?cursor=N&limit=100 using server_cursor (monotonic) in sync-server/src/routes/sync.ts - returns items where server_cursor > N
+- [x] T085 [US2] Implement sync push endpoint POST /sync/push (batch upsert, returns new server_cursors) in sync-server/src/routes/sync.ts
+- [x] T086 [US2] Implement sync pull endpoint POST /sync/pull (batch fetch by item IDs, max 100) in sync-server/src/routes/sync.ts
+- [x] T087 [US2] Implement single item get endpoint GET /sync/items/:id in sync-server/src/routes/sync.ts
+- [x] T088 [US2] Implement item delete endpoint DELETE /sync/items/:id (sets deleted=1 tombstone) in sync-server/src/routes/sync.ts
+- [x] T089 [US2] Implement sync service with D1/R2 integration in sync-server/src/services/sync.ts
+- [x] T089a [US2] Persist server_cursor (via T033b atomic increment) and device last_cursor_seen in sync-server/src/services/sync.ts
+- [x] T089b [US2] Validate signer_device_id + signature metadata on sync push (verify device belongs to user, verify signature) in sync-server/src/services/sync.ts
 
 ### WebSocket/Durable Objects for US2
 
-- [ ] T090 [US2] Create UserSyncState Durable Object in sync-server/src/durable-objects/user-state.ts
-- [ ] T091 [US2] Implement WebSocket upgrade handling in sync-server/src/durable-objects/user-state.ts
-- [ ] T092 [US2] Implement broadcast to connected devices in sync-server/src/durable-objects/user-state.ts
-- [ ] T093 [US2] Configure Durable Object binding in sync-server/wrangler.toml
-- [ ] T093a [US2] Wire WebSocket upgrade route GET /sync/ws in sync-server/src/index.ts to forward requests to UserSyncState Durable Object
-- [ ] T093b [US2] Trigger DO broadcast after successful POST /sync/push in sync-server/src/routes/sync.ts (notify connected devices of new changes)
+- [x] T090 [US2] Create UserSyncState Durable Object in sync-server/src/durable-objects/user-state.ts
+- [x] T091 [US2] Implement WebSocket upgrade handling in sync-server/src/durable-objects/user-state.ts
+- [x] T092 [US2] Implement broadcast to connected devices in sync-server/src/durable-objects/user-state.ts
+- [x] T093 [US2] Configure Durable Object binding in sync-server/wrangler.toml
+- [x] T093a [US2] Wire WebSocket upgrade route GET /sync/ws in sync-server/src/index.ts to forward requests to UserSyncState Durable Object
+- [x] T093b [US2] Trigger DO broadcast after successful POST /sync/push in sync-server/src/routes/sync.ts (notify connected devices of new changes)
 
 ### Client Sync IPC for US2
 

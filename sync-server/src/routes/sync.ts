@@ -172,6 +172,24 @@ syncRoutes.post('/push', async (c) => {
 
   const result = await pushSyncItems(c.env.DB, auth.userId, items)
 
+  if (result.accepted.length > 0) {
+    const doId = c.env.USER_SYNC_STATE.idFromName(auth.userId)
+    const stub = c.env.USER_SYNC_STATE.get(doId)
+
+    c.executionCtx.waitUntil(
+      stub.fetch(new Request('http://internal/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'changes',
+          cursor: result.serverCursor,
+          count: result.accepted.length,
+          excludeDeviceId: auth.deviceId,
+        }),
+      }))
+    )
+  }
+
   const response: PushSyncResponse = {
     accepted: result.accepted,
     rejected: result.rejected,
