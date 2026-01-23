@@ -47,7 +47,7 @@ import type {
 import type { SyncStatusChangedEvent } from '@shared/contracts/ipc-sync'
 
 export interface SyncEngineEvents extends Record<string, unknown[]> {
-  'sync:status-changed': [status: SyncStatus]
+  'sync:status-changed': [event: SyncStatusChangedEvent]
   'sync:item-synced': [itemId: string, direction: 'push' | 'pull']
   'sync:error': [error: Error, context: string]
   'sync:push-complete': [accepted: string[], rejected: string[]]
@@ -141,12 +141,12 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
     if (this._status !== status) {
       const previousStatus = this._status
       this._status = status
-      this.emit('sync:status-changed', status)
       const event: SyncStatusChangedEvent = {
         previousStatus,
         currentStatus: status,
         timestamp: Date.now()
       }
+      this.emit('sync:status-changed', event)
       this.broadcastToWindows('sync:status-changed', event)
       this.persistStatus(status)
     }
@@ -718,7 +718,11 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
             updatedAt: now
           }
         })
-      await this.updateDeviceLastSyncAt()
+      try {
+        await this.updateDeviceLastSyncAt()
+      } catch (error) {
+        console.error('[SyncEngine] Failed to update device last sync timestamp:', error)
+      }
     }
   }
 

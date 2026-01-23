@@ -16,6 +16,22 @@ import type { SyncStatus } from '@shared/contracts/sync-api'
 import type { SyncStatusChangedEvent, SyncErrorEvent } from '@shared/contracts/ipc-sync'
 import { useAuth } from './auth-context'
 
+function isSyncStatusChangedEvent(event: unknown): event is SyncStatusChangedEvent {
+  if (typeof event !== 'object' || event === null) return false
+  const e = event as Record<string, unknown>
+  return (
+    typeof e.previousStatus === 'string' &&
+    typeof e.currentStatus === 'string' &&
+    typeof e.timestamp === 'number'
+  )
+}
+
+function isSyncErrorEvent(event: unknown): event is SyncErrorEvent {
+  if (typeof event !== 'object' || event === null) return false
+  const e = event as Record<string, unknown>
+  return typeof e.error === 'string' && typeof e.recoverable === 'boolean'
+}
+
 export interface SyncContextValue {
   status: SyncStatus
   lastSyncAt: number | undefined
@@ -58,9 +74,12 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       return
     }
 
+    let cancelled = false
+
     const loadInitialState = async (): Promise<void> => {
       try {
         const response = await window.api.sync.getStatus()
+        if (cancelled) return
         if (response?.state) {
           setStatus(response.state.syncStatus)
           setLastSyncAt(response.state.lastSyncAt)
@@ -71,37 +90,54 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
           setIsOnline(response.isOnline)
         }
       } catch (error) {
-        console.error('[SyncContext] Failed to load initial state:', error)
+        if (!cancelled) {
+          console.error('[SyncContext] Failed to load initial state:', error)
+        }
       }
     }
     loadInitialState()
+
+    return () => {
+      cancelled = true
+    }
   }, [isAuthenticated])
 
   useEffect(() => {
     if (!isAuthenticated) return
 
     const unsubscribeStatus = window.api.onSyncStatusChanged((event: unknown) => {
-      const statusEvent = event as SyncStatusChangedEvent
-      setStatus(statusEvent.currentStatus)
-      if (statusEvent.currentStatus === 'idle') {
-        setLastSyncAt(statusEvent.timestamp)
+      if (!isSyncStatusChangedEvent(event)) {
+        console.warn('[SyncContext] Invalid status event received:', event)
+        return
+      }
+      setStatus(event.currentStatus)
+      if (event.currentStatus === 'idle') {
+        setLastSyncAt(event.timestamp)
         setLastError(undefined)
       }
-      setIsOnline(statusEvent.currentStatus !== 'offline')
+      setIsOnline(event.currentStatus !== 'offline')
     })
 
     const unsubscribeError = window.api.onSyncError((event: unknown) => {
-      const errorEvent = event as SyncErrorEvent
-      setLastError(errorEvent.error)
+      if (!isSyncErrorEvent(event)) {
+        console.warn('[SyncContext] Invalid error event received:', event)
+        return
+      }
+      setLastError(event.error)
       setStatus('error')
     })
 
     const unsubscribeItemSynced = window.api.onItemSynced(() => {
-      window.api.sync.getQueueSize().then((response) => {
-        if (response) {
-          setPendingCount(response.size)
-        }
-      })
+      window.api.sync
+        .getQueueSize()
+        .then((response) => {
+          if (response) {
+            setPendingCount(response.size)
+          }
+        })
+        .catch((error) => {
+          console.error('[SyncContext] Failed to get queue size:', error)
+        })
     })
 
     return () => {
