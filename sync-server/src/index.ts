@@ -17,6 +17,7 @@ import { runCleanupJobs, logCleanupResult } from './services/cleanup'
 
 // Routes
 import { authRoutes } from './routes/auth'
+import { syncRoutes } from './routes/sync'
 
 // Error handling
 import { SyncError, isSyncError, ErrorCode } from './lib/errors'
@@ -131,31 +132,8 @@ const protectedApi = new Hono<{ Bindings: Env; Variables: Variables }>()
 // Apply auth middleware to all protected routes
 protectedApi.use('*', authMiddleware())
 
-/**
- * Sync status endpoint.
- */
-protectedApi.get('/sync/status', async (c) => {
-  const auth = c.get('auth')
-  return c.json({
-    message: 'Sync status endpoint',
-    userId: auth.userId,
-    deviceId: auth.deviceId,
-  })
-})
-
-/**
- * Sync push endpoint (placeholder).
- */
-protectedApi.post('/sync/push', async (c) => {
-  return c.json({ message: 'Sync push endpoint - to be implemented' }, 501)
-})
-
-/**
- * Sync pull endpoint (placeholder).
- */
-protectedApi.get('/sync/pull', async (c) => {
-  return c.json({ message: 'Sync pull endpoint - to be implemented' }, 501)
-})
+// Mount sync routes under /sync
+protectedApi.route('/sync', syncRoutes)
 
 /**
  * Blob upload endpoint (placeholder).
