@@ -89,6 +89,17 @@ export default defineConfig({
             }
           }
         }
+      },
+      // Sync server tests - Node environment
+      {
+        ...baseConfig,
+        test: {
+          ...baseConfig.test,
+          name: 'sync-server',
+          environment: 'node',
+          include: ['sync-server/tests/**/*.test.{ts,tsx}'],
+          setupFiles: ['./sync-server/tests/setup.ts']
+        }
       }
     ],
     coverage: {
@@ -100,11 +111,12 @@ export default defineConfig({
         'dist/**',
         'out/**',
         'tests/**',
+        'sync-server/tests/**',
         '**/*.d.ts',
         '**/*.config.*',
         '**/types/**'
       ],
-      include: ['src/**/*.ts', 'src/**/*.tsx'],
+      include: ['src/**/*.ts', 'src/**/*.tsx', 'sync-server/src/**/*.ts'],
       thresholds: {
         statements: 50,
         branches: 50,
