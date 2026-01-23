@@ -30,6 +30,28 @@ if (typeof globalThis.crypto === 'undefined') {
   })
 }
 
+// Mock keytar for keychain functionality in tests
+const mockKeychain = new Map<string, string>()
+vi.mock('keytar', () => ({
+  default: {
+    setPassword: vi.fn(async (service: string, account: string, password: string) => {
+      mockKeychain.set(`${service}:${account}`, password)
+      return Promise.resolve()
+    }),
+    getPassword: vi.fn(async (service: string, account: string) => {
+      return Promise.resolve(mockKeychain.get(`${service}:${account}`) || null)
+    }),
+    deletePassword: vi.fn(async (service: string, account: string) => {
+      return Promise.resolve(mockKeychain.delete(`${service}:${account}`))
+    })
+  }
+}))
+
+// Clear mock keychain before each test
+beforeEach(() => {
+  mockKeychain.clear()
+})
+
 // ============================================================================
 // Lifecycle Hooks
 // ============================================================================

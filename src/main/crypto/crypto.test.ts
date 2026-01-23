@@ -32,7 +32,22 @@ import {
   encodeSignaturePayloadV1,
   secureZero,
   uint8ArrayToBase64,
-  base64ToUint8Array
+  base64ToUint8Array,
+  storeKeyMaterial,
+  retrieveKeyMaterial,
+  deleteKeyMaterial,
+  hasKeyMaterial,
+  storeDeviceKeyPair,
+  retrieveDeviceKeyPair,
+  deleteDeviceKeyPair,
+  hasDeviceKeyPair,
+  storeAuthTokens,
+  retrieveAuthTokens,
+  deleteAuthTokens,
+  storeSigningKeyPair,
+  retrieveSigningKeyPair,
+  deleteSigningKeyPair,
+  deleteAllKeys
 } from './index'
 import { HKDF_CONTEXTS, CRYPTO_VERSION } from '@shared/contracts/crypto'
 import type { SignaturePayloadV1 } from '@shared/contracts/crypto'
@@ -345,6 +360,161 @@ describe('Crypto Module', () => {
       const decoded = base64ToUint8Array(base64)
 
       expect(decoded).toEqual(original)
+    })
+  })
+
+  describe('Keychain Storage (T028)', () => {
+    it('stores and retrieves key material', async () => {
+      const keyMaterial = {
+        masterKey: 'base64masterkey',
+        kdfSalt: 'base64salt',
+        deviceSigningKey: 'base64deviceprivkey',
+        devicePublicKey: 'base64devicepubkey',
+        deviceId: 'test-device-id',
+        userId: 'test-user-id',
+        keyVerifier: 'base64verifier'
+      }
+
+      // Store key material
+      await storeKeyMaterial(keyMaterial)
+
+      // Retrieve key material
+      const retrieved = await retrieveKeyMaterial()
+      expect(retrieved).toEqual(keyMaterial)
+
+      // Clean up
+      await deleteKeyMaterial()
+    })
+
+    it('returns null when no key material exists', async () => {
+      // Ensure no key material exists
+      await deleteKeyMaterial()
+
+      const retrieved = await retrieveKeyMaterial()
+      expect(retrieved).toBeNull()
+    })
+
+    it('checks if key material exists', async () => {
+      // Initially no key material
+      expect(await hasKeyMaterial()).toBe(false)
+
+      const keyMaterial = {
+        masterKey: 'base64masterkey',
+        kdfSalt: 'base64salt',
+        deviceSigningKey: 'base64deviceprivkey',
+        devicePublicKey: 'base64devicepubkey',
+        deviceId: 'test-device-id',
+        userId: 'test-user-id',
+        keyVerifier: 'base64verifier'
+      }
+
+      await storeKeyMaterial(keyMaterial)
+      expect(await hasKeyMaterial()).toBe(true)
+
+      await deleteKeyMaterial()
+      expect(await hasKeyMaterial()).toBe(false)
+    })
+
+    it('stores and retrieves device keypair', async () => {
+      const deviceKeyPair = await generateDeviceSigningKeyPair('test-device-123')
+
+      // Store device keypair
+      await storeDeviceKeyPair(deviceKeyPair)
+
+      // Retrieve device keypair
+      const retrieved = await retrieveDeviceKeyPair()
+      expect(retrieved).toBeDefined()
+      expect(retrieved?.deviceId).toBe('test-device-123')
+      expect(retrieved?.publicKey).toEqual(deviceKeyPair.publicKey)
+      expect(retrieved?.privateKey).toEqual(deviceKeyPair.privateKey)
+
+      // Clean up
+      await deleteDeviceKeyPair()
+    })
+
+    it('returns null when no device keypair exists', async () => {
+      // Ensure no device keypair exists
+      await deleteDeviceKeyPair()
+
+      const retrieved = await retrieveDeviceKeyPair()
+      expect(retrieved).toBeNull()
+    })
+
+    it('checks if device keypair exists', async () => {
+      // Initially no device keypair
+      expect(await hasDeviceKeyPair()).toBe(false)
+
+      const deviceKeyPair = await generateDeviceSigningKeyPair('test-device-456')
+      await storeDeviceKeyPair(deviceKeyPair)
+      expect(await hasDeviceKeyPair()).toBe(true)
+
+      await deleteDeviceKeyPair()
+      expect(await hasDeviceKeyPair()).toBe(false)
+    })
+
+    it('stores and retrieves auth tokens', async () => {
+      const authTokens = {
+        accessToken: 'access-token-123',
+        refreshToken: 'refresh-token-456',
+        userId: 'user-789',
+        email: 'test@example.com',
+        deviceId: 'device-101'
+      }
+
+      // Store auth tokens
+      await storeAuthTokens(authTokens)
+
+      // Retrieve auth tokens
+      const retrieved = await retrieveAuthTokens()
+      expect(retrieved).toEqual(authTokens)
+
+      // Clean up
+      await deleteAuthTokens()
+    })
+
+    it('stores and retrieves signing keypair', async () => {
+      const signingKeyPair = {
+        publicKey: 'base64-public-key',
+        privateKey: 'base64-private-key'
+      }
+
+      // Store signing keypair
+      await storeSigningKeyPair(signingKeyPair)
+
+      // Retrieve signing keypair
+      const retrieved = await retrieveSigningKeyPair()
+      expect(retrieved).toEqual(signingKeyPair)
+
+      // Clean up
+      await deleteSigningKeyPair()
+    })
+
+    it('deletes all keys from keychain', async () => {
+      // Store some keys
+      const keyMaterial = {
+        masterKey: 'base64masterkey',
+        kdfSalt: 'base64salt',
+        deviceSigningKey: 'base64deviceprivkey',
+        devicePublicKey: 'base64devicepubkey',
+        deviceId: 'test-device-id',
+        userId: 'test-user-id',
+        keyVerifier: 'base64verifier'
+      }
+      await storeKeyMaterial(keyMaterial)
+
+      const deviceKeyPair = await generateDeviceSigningKeyPair('test-device-cleanup')
+      await storeDeviceKeyPair(deviceKeyPair)
+
+      // Verify keys exist
+      expect(await hasKeyMaterial()).toBe(true)
+      expect(await hasDeviceKeyPair()).toBe(true)
+
+      // Delete all keys
+      await deleteAllKeys()
+
+      // Verify all keys are gone
+      expect(await hasKeyMaterial()).toBe(false)
+      expect(await hasDeviceKeyPair()).toBe(false)
     })
   })
 
