@@ -14,6 +14,7 @@ import {
 } from 'react'
 import type { SyncStatus } from '@shared/contracts/sync-api'
 import type { SyncStatusChangedEvent, SyncErrorEvent } from '@shared/contracts/ipc-sync'
+import { useAuth } from './auth-context'
 
 export interface SyncContextValue {
   status: SyncStatus
@@ -41,6 +42,7 @@ export function useSyncContext(): SyncContextValue {
 }
 
 export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element {
+  const { isAuthenticated } = useAuth()
   const [status, setStatus] = useState<SyncStatus>('idle')
   const [lastSyncAt, setLastSyncAt] = useState<number | undefined>(undefined)
   const [pendingCount, setPendingCount] = useState(0)
@@ -48,6 +50,14 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const [lastError, setLastError] = useState<string | undefined>(undefined)
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setStatus('idle')
+      setLastSyncAt(undefined)
+      setPendingCount(0)
+      setLastError(undefined)
+      return
+    }
+
     const loadInitialState = async (): Promise<void> => {
       try {
         const response = await window.api.sync.getStatus()
@@ -65,9 +75,11 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       }
     }
     loadInitialState()
-  }, [])
+  }, [isAuthenticated])
 
   useEffect(() => {
+    if (!isAuthenticated) return
+
     const unsubscribeStatus = window.api.onSyncStatusChanged((event: unknown) => {
       const statusEvent = event as SyncStatusChangedEvent
       setStatus(statusEvent.currentStatus)
@@ -97,7 +109,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       unsubscribeError()
       unsubscribeItemSynced()
     }
-  }, [])
+  }, [isAuthenticated])
 
   const triggerSync = useCallback(async (): Promise<void> => {
     try {
