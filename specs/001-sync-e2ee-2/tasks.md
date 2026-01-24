@@ -389,42 +389,42 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Client Sync IPC for US2
 
-- [ ] T094 [US2] Implement get sync status IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T095 [US2] Implement trigger sync IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T096 [US2] Implement get queue size IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T097 [US2] Implement pause/resume sync IPC handlers in src/main/ipc/sync-handlers.ts
-- [ ] T097a [US2] Include server_cursor in client sync state and persist last_cursor_seen in src/main/sync/engine.ts
+- [x] T094 [US2] Implement get sync status IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T095 [US2] Implement trigger sync IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T096 [US2] Implement get queue size IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T097 [US2] Implement pause/resume sync IPC handlers in src/main/ipc/sync-handlers.ts
+- [x] T097a [US2] Include server_cursor in client sync state and persist last_cursor_seen in src/main/sync/engine.ts
 
 ### Sync Events for US2
 
-- [ ] T098 [US2] Implement sync status changed event broadcasting in src/main/sync/engine.ts
-- [ ] T098a [US2] Update device last_sync_at timestamp on successful sync in src/main/sync/engine.ts
-- [ ] T099 [US2] Implement item synced event broadcasting in src/main/sync/engine.ts
-- [ ] T100 [US2] Create SyncContext provider and set up IPC event listeners for sync events in src/renderer/src/contexts/sync-context.tsx
-- [ ] T100a [US2] Wire SyncContext provider into renderer root in src/renderer/src/main.tsx
+- [x] T098 [US2] Implement sync status changed event broadcasting in src/main/sync/engine.ts
+- [x] T098a [US2] Update device last_sync_at timestamp on successful sync in src/main/sync/engine.ts
+- [x] T099 [US2] Implement item synced event broadcasting in src/main/sync/engine.ts
+- [x] T100 [US2] Create SyncContext provider and set up IPC event listeners for sync events in src/renderer/src/contexts/sync-context.tsx
+- [x] T100a [US2] Wire SyncContext provider into renderer root in src/renderer/src/main.tsx
 
 ### Task Sync Integration for US2
 
-- [ ] T101 [US2] Add clock JSON column to tasks table for vector clock storage in src/shared/db/schema/data-schema.ts
-- [ ] T102 [US2] Implement task sync handlers (create, update, delete) in src/main/ipc/tasks-handlers.ts
-- [ ] T103 [US2] Update TasksProvider to subscribe to sync events in src/renderer/src/contexts/tasks/tasks-provider.tsx
+- [x] T101 [US2] Add clock JSON column to tasks table for vector clock storage in src/shared/db/schema/data-schema.ts
+- [x] T102 [US2] Implement task sync handlers (create, update, delete) in src/main/ipc/tasks-handlers.ts
+- [x] T103 [US2] Update TasksProvider to subscribe to sync events in src/renderer/src/contexts/tasks/tasks-provider.tsx
 
 ### Additional Sync Integrations for US2
 
-- [ ] T103a [US2] Add clock JSON column to inbox_items table in src/shared/db/schema/data-schema.ts
-- [ ] T103b [US2] Implement inbox item sync handlers in src/main/ipc/sync-handlers.ts
-- [ ] T103c [US2] Add clock JSON column to saved_filters table in src/shared/db/schema/data-schema.ts
-- [ ] T103d [US2] Implement saved filter sync handlers in src/main/ipc/sync-handlers.ts
-- [ ] T103e [US2] Implement synced settings structure in src/shared/contracts/sync-api.ts
-- [ ] T103f [US2] Implement settings sync with field-level vector clocks in src/main/sync/engine.ts
-- [ ] T103g [US2] Create settings sync IPC handlers in src/main/ipc/sync-handlers.ts
-- [ ] T103h [US2] Verify Ed25519 signature before decryption on every sync pull in src/main/sync/engine.ts
-- [ ] T103i [US2] Implement server clock skew detection (warn if >5 min difference) in src/main/sync/engine.ts
-- [ ] T103j [US2] Emit sync:conflict-detected event when vector clocks diverge in src/main/sync/engine.ts
-- [ ] T103k [US2] Emit sync:queue-cleared event when pending queue becomes empty in src/main/sync/queue.ts
-- [ ] T103l [US2] Handle partial batch sync failure (some items succeed, some fail) in src/main/sync/engine.ts
-- [ ] T103m [US2] Implement sync item batching (max 100 items per request) in src/main/sync/engine.ts
-- [ ] T103n [US2] Update device last_sync_at on successful sync in sync-server/src/services/device.ts
+- [x] T103a [US2] Add clock JSON column to inbox_items table in src/shared/db/schema/data-schema.ts
+- [x] T103b [US2] Implement inbox item sync handlers in src/main/ipc/sync-handlers.ts
+- [x] T103c [US2] Add clock JSON column to saved_filters table in src/shared/db/schema/data-schema.ts
+- [x] T103d [US2] Implement saved filter sync handlers in src/main/ipc/sync-handlers.ts
+- [x] T103e [US2] Implement synced settings structure in src/shared/contracts/sync-api.ts
+- [x] T103f [US2] Implement settings sync with field-level vector clocks in src/main/sync/engine.ts
+- [x] T103g [US2] Create settings sync IPC handlers in src/main/ipc/siync-handlers.ts
+- [x] T103h [US2] Verify Ed25519 signature before decryption on every sync pull in src/main/sync/engine.ts
+- [x] T103i [US2] Implement server clock skew detection (warn if >5 min difference) in src/main/sync/engine.ts
+- [x] T103j [US2] Emit sync:conflict-detected event when vector clocks diverge in src/main/sync/engine.ts
+- [x] T103k [US2] Emit sync:queue-cleared event when pending queue becomes empty in src/main/sync/queue.ts
+- [x] T103l [US2] Handle partial batch sync failure (some items succeed, some fail) in src/main/sync/engine.ts
+- [x] T103m [US2] Implement sync item batching (max 100 items per request) in src/main/sync/engine.ts
+- [x] T103n [US2] Update device last_sync_at on successful sync in sync-server/src/services/device.ts
 
 **Checkpoint**: User Story 2 complete - notes and tasks sync automatically across devices
 

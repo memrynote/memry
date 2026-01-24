@@ -16,7 +16,8 @@ export const savedFilters = sqliteTable('saved_filters', {
   position: integer('position').notNull().default(0),
   createdAt: text('created_at')
     .notNull()
-    .default(sql`(datetime('now'))`)
+    .default(sql`(datetime('now'))`),
+  clock: text('clock', { mode: 'json' })
 })
 
 export type Setting = typeof settings.$inferSelect

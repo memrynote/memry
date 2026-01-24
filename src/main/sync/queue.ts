@@ -33,11 +33,14 @@ export interface QueueEvents extends Record<string, unknown[]> {
   'sync:item-added': [item: QueueItem]
   'sync:item-removed': [id: string]
   'sync:item-updated': [item: QueueItem]
+  'sync:queue-cleared': [payload: { itemCount: number; duration: number }]
 }
 
 export class SyncQueue extends TypedEmitter<QueueEvents> {
   private items: Map<string, QueueItem> = new Map()
   private initialized = false
+  private lastCount = 0
+  private queueStartAt: number | null = null
 
   async initialize(): Promise<void> {
     if (this.initialized) return
@@ -65,6 +68,13 @@ export class SyncQueue extends TypedEmitter<QueueEvents> {
         createdAt: row.createdAt
       }
       this.items.set(row.id, item)
+    }
+
+    if (this.items.size > 0) {
+      const oldest = this.getSorted()[0]
+      this.queueStartAt = oldest ? new Date(oldest.createdAt).getTime() : Date.now()
+    } else {
+      this.queueStartAt = null
     }
   }
 
@@ -145,6 +155,9 @@ export class SyncQueue extends TypedEmitter<QueueEvents> {
     await db.insert(syncQueue).values(dbItem)
 
     this.items.set(id, item)
+    if (this.items.size === 1) {
+      this.queueStartAt = Date.now()
+    }
     this.emitQueueChanged()
     this.emit('sync:item-added', item)
     this.broadcastToWindows('sync:item-added', item)
@@ -259,6 +272,7 @@ export class SyncQueue extends TypedEmitter<QueueEvents> {
     await db.delete(syncQueue)
 
     this.items.clear()
+    this.queueStartAt = null
     this.emitQueueChanged()
   }
 
@@ -275,6 +289,17 @@ export class SyncQueue extends TypedEmitter<QueueEvents> {
     const count = this.items.size
     this.emit('sync:queue-changed', count)
     this.broadcastToWindows('sync:queue-changed', count)
+
+    if (count === 0 && this.lastCount > 0) {
+      const duration =
+        this.queueStartAt !== null ? Math.max(0, Date.now() - this.queueStartAt) : 0
+      const payload = { itemCount: this.lastCount, duration }
+      this.emit('sync:queue-cleared', payload)
+      this.broadcastToWindows('sync:queue-cleared', payload)
+      this.queueStartAt = null
+    }
+
+    this.lastCount = count
   }
 
   private broadcastToWindows(channel: string, data: unknown): void {

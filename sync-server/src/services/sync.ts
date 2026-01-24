@@ -156,6 +156,9 @@ function buildSignaturePayload(item: SyncItemPush): Record<string, unknown> {
   if (item.clock) {
     metadata.clock = item.clock
   }
+  if (item.fieldClocks) {
+    metadata.fieldClocks = item.fieldClocks
+  }
   if (item.stateVector) {
     metadata.stateVector = item.stateVector
   }

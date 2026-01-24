@@ -13,12 +13,14 @@ import { TypedEmitter } from './typed-emitter'
 import { eq } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
 import { getDatabase } from '../database/client'
+import { getSetting, setSetting } from '@shared/db/queries/settings'
 import { syncState, syncHistory, devices } from '@shared/db/schema/sync-schema'
 import { getSyncQueue, type QueueItem } from './queue'
 import { getNetworkMonitor } from './network'
 import { getWebSocketManager, type WebSocketMessage } from './websocket'
 import { withRetry, isRetryableError } from './retry'
 import { getSyncApiClient, SyncApiError } from './api-client'
+import { compareClock, mergeClock } from './vector-clock'
 import {
   generateFileKey,
   wrapFileKey,
@@ -42,13 +44,18 @@ import type {
   SyncItemResponse,
   PushSyncResponse,
   PullSyncResponse,
-  VectorClock
+  VectorClock,
+  FieldClocks,
+  SyncedSettingsPayload,
+  SyncedSettingsPayloadSchema
 } from '@shared/contracts/sync-api'
 import type { SyncStatusChangedEvent } from '@shared/contracts/ipc-sync'
 
 export interface SyncEngineEvents extends Record<string, unknown[]> {
   'sync:status-changed': [event: SyncStatusChangedEvent]
   'sync:item-synced': [itemId: string, direction: 'push' | 'pull']
+  'sync:item-decrypted': [item: DecryptedSyncItem]
+  'sync:conflict-detected': [event: SyncConflictEvent]
   'sync:error': [error: Error, context: string]
   'sync:push-complete': [accepted: string[], rejected: string[]]
   'sync:pull-complete': [items: SyncItemResponse[]]
@@ -65,6 +72,7 @@ export interface EncryptedSyncItem {
   keyNonce: string
   dataNonce: string
   clock?: VectorClock
+  fieldClocks?: FieldClocks
   stateVector?: string
   deleted: boolean
   cryptoVersion: CryptoVersion
@@ -79,6 +87,7 @@ export interface DecryptedSyncItem {
   itemId: string
   data: unknown
   clock?: VectorClock
+  fieldClocks?: FieldClocks
   stateVector?: string
   deleted: boolean
   signerDeviceId: string
@@ -87,12 +96,25 @@ export interface DecryptedSyncItem {
   updatedAt: number
 }
 
+export interface SyncConflictEvent {
+  itemId: string
+  itemType: SyncItemType
+  field: string
+  localClock: VectorClock
+  remoteClock: VectorClock
+  localValue: unknown
+  remoteValue: unknown
+}
+
 const SYNC_STATE_KEYS = {
   CURSOR: 'server_cursor',
   STATUS: 'sync_status',
   LAST_SYNC: 'last_sync_at',
-  DEVICE_CLOCK: 'device_clock'
+  DEVICE_CLOCK: 'device_clock',
+  SETTINGS_FIELD_CLOCKS: 'settings_field_clocks'
 } as const
+
+const SYNC_SETTINGS_KEY = 'sync.settings'
 
 export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   private _status: SyncStatus = 'idle'
@@ -175,6 +197,9 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
       const allItems = queue.getAll()
       const itemBatches = this.chunkArray(allItems, MAX_BATCH_SIZE)
       let lastResponse: PushSyncResponse | null = null
+      const accepted: string[] = []
+      const rejected: Array<{ itemId: string; reason: string }> = []
+      const batchErrors: Error[] = []
 
       for (const items of itemBatches) {
         const encryptedItems: SyncItemPush[] = []
@@ -203,6 +228,9 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
             }
           })
 
+          accepted.push(...response.accepted)
+          rejected.push(...response.rejected)
+
           for (const itemId of response.accepted) {
             const queueItem = items.find((i) => i.itemId === itemId)
             if (queueItem) {
@@ -226,7 +254,10 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
             this.broadcastToWindows('sync:session-expired', undefined)
             throw error
           }
-          throw error
+          const err = error instanceof Error ? error : new Error(String(error))
+          batchErrors.push(err)
+          this.emit('sync:error', err, 'push batch failed')
+          continue
         }
       }
 
@@ -234,9 +265,13 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
         await this.logSyncHistory('push', allItems.length, 'upload')
         this.emit(
           'sync:push-complete',
-          lastResponse.accepted,
-          lastResponse.rejected.map((r) => r.itemId)
+          accepted,
+          rejected.map((r) => r.itemId)
         )
+      } else if (batchErrors.length > 0) {
+        await this.logSyncHistory('error', 0, null, batchErrors[0]?.message)
+        this.setStatus('error')
+        return null
       }
       this.setStatus('idle')
 
@@ -269,46 +304,63 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
     this.setStatus('syncing')
 
     try {
-      const cursor = await this.getCursor()
       const apiClient = getSyncApiClient()
+      let cursor = await this.getCursor()
+      let hasMore = true
+      let lastResponse: PullSyncResponse | null = null
+      let totalItems = 0
 
-      let response: PullSyncResponse
-      try {
-        response = await withRetry(() => apiClient.pullItems(cursor), {
-          shouldRetry: (error) => this.shouldRetryWithAuthCheck(error),
-          onRetry: (error, attempt) => {
-            this.emit('sync:error', error, `pull retry ${attempt}`)
+      while (hasMore) {
+        let response: PullSyncResponse
+        try {
+          response = await withRetry(() => apiClient.pullItems(cursor, MAX_BATCH_SIZE), {
+            shouldRetry: (error) => this.shouldRetryWithAuthCheck(error),
+            onRetry: (error, attempt) => {
+              this.emit('sync:error', error, `pull retry ${attempt}`)
+            }
+          })
+        } catch (error) {
+          if (this.isAuthError(error)) {
+            this.emit('sync:session-expired')
+            this.broadcastToWindows('sync:session-expired', undefined)
+            throw error
           }
-        })
-      } catch (error) {
-        if (this.isAuthError(error)) {
-          this.emit('sync:session-expired')
-          this.broadcastToWindows('sync:session-expired', undefined)
           throw error
         }
-        throw error
-      }
 
-      const decryptedItems: DecryptedSyncItem[] = []
+        this.checkServerClockSkew(response.serverTime)
 
-      for (const item of response.items) {
-        try {
-          const decrypted = await this.verifyAndDecryptItem(item)
-          decryptedItems.push(decrypted)
-          this.emit('sync:item-synced', item.itemId, 'pull')
-        } catch (error) {
-          const err = error instanceof Error ? error : new Error(String(error))
-          this.emit('sync:error', err, `decrypt item ${item.itemId}`)
+        for (const item of response.items) {
+          try {
+            const decrypted = await this.verifyAndDecryptItem(item)
+            this.emit('sync:item-decrypted', decrypted)
+            await this.applySettingsSync(decrypted)
+            this.emit('sync:item-synced', item.itemId, 'pull')
+          } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error))
+            this.emit('sync:error', err, `decrypt item ${item.itemId}`)
+          }
+        }
+
+        totalItems += response.items.length
+        cursor = response.nextCursor
+        hasMore = response.hasMore
+        lastResponse = response
+
+        if (response.items.length === 0 && !response.hasMore) {
+          break
         }
       }
 
-      await this.updateCursor(response.nextCursor)
-      await this.logSyncHistory('pull', response.items.length, 'download')
+      if (lastResponse) {
+        await this.updateCursor(lastResponse.nextCursor)
+        await this.logSyncHistory('pull', totalItems, 'download')
+        this.emit('sync:pull-complete', lastResponse.items)
+      }
 
-      this.emit('sync:pull-complete', response.items)
       this.setStatus('idle')
 
-      return response
+      return lastResponse
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error))
       this.emit('sync:error', err, 'pull')
@@ -395,6 +447,7 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
     options: {
       operation?: 'create' | 'update' | 'delete'
       clock?: VectorClock
+      fieldClocks?: FieldClocks
       stateVector?: string
       deleted?: boolean
     } = {}
@@ -431,6 +484,7 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
         dataNonce,
         metadata: {
           clock: options.clock,
+          fieldClocks: options.fieldClocks,
           stateVector: options.stateVector
         }
       }
@@ -449,6 +503,7 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
         keyNonce,
         dataNonce,
         clock: options.clock,
+        fieldClocks: options.fieldClocks,
         stateVector: options.stateVector,
         deleted: options.deleted ?? false,
         cryptoVersion: CRYPTO_VERSION,
@@ -485,6 +540,7 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
       dataNonce: encryptedItem.dataNonce,
       metadata: {
         clock: encryptedItem.clock,
+        fieldClocks: encryptedItem.fieldClocks,
         stateVector: encryptedItem.stateVector
       }
     }
@@ -521,6 +577,7 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
       dataNonce: item.dataNonce,
       metadata: {
         clock: item.clock,
+        fieldClocks: item.fieldClocks,
         stateVector: item.stateVector
       }
     }
@@ -550,6 +607,7 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
         itemId: item.itemId,
         data,
         clock: item.clock,
+        fieldClocks: item.fieldClocks,
         stateVector: item.stateVector,
         deleted: item.deleted,
         signerDeviceId: item.signerDeviceId,
@@ -563,10 +621,35 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   }
 
   private async encryptAndSignItem(queueItem: QueueItem): Promise<SyncItemPush> {
-    const data = JSON.parse(queueItem.payload)
+    const rawData = JSON.parse(queueItem.payload)
+    let data = rawData as unknown
+    let clock: VectorClock | undefined
+    let fieldClocks: FieldClocks | undefined
+
+    if (rawData && typeof rawData === 'object') {
+      const maybeClock = (rawData as { clock?: VectorClock }).clock
+      if (maybeClock) {
+        clock = maybeClock
+      }
+
+      const maybeFieldClocks = (rawData as { fieldClocks?: FieldClocks }).fieldClocks
+      if (maybeFieldClocks) {
+        fieldClocks = maybeFieldClocks
+      }
+    }
+
+    if (queueItem.type === 'settings') {
+      const parsed = SyncedSettingsPayloadSchema.safeParse(rawData)
+      if (parsed.success) {
+        data = parsed.data
+        fieldClocks = undefined
+      }
+    }
 
     const encrypted = await this.encryptItem(queueItem.type, queueItem.itemId, data, {
-      operation: queueItem.operation as 'create' | 'update' | 'delete'
+      operation: queueItem.operation as 'create' | 'update' | 'delete',
+      clock,
+      fieldClocks
     })
 
     return encrypted
@@ -580,6 +663,120 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
     }
 
     return this.decryptItem(item, signerPublicKey)
+  }
+
+  private async applySettingsSync(item: DecryptedSyncItem): Promise<void> {
+    if (item.itemType !== 'settings') {
+      return
+    }
+
+    const parsed = SyncedSettingsPayloadSchema.safeParse(item.data)
+    if (!parsed.success) {
+      console.warn('[SyncEngine] Ignoring invalid settings payload:', parsed.error)
+      return
+    }
+
+    const { settings: remoteSettings, fieldClocks: remoteFieldClocks } = parsed.data
+    const db = getDatabase()
+    const localSettingsRaw = getSetting(db, SYNC_SETTINGS_KEY)
+    let localSettings: SyncedSettingsPayload['settings'] | null = null
+    if (localSettingsRaw) {
+      try {
+        localSettings = JSON.parse(localSettingsRaw) as SyncedSettingsPayload['settings']
+      } catch (error) {
+        console.warn('[SyncEngine] Failed to parse local synced settings:', error)
+      }
+    }
+    const localFieldClocks = await this.getSettingsFieldClocks()
+
+    if (!localSettings) {
+      setSetting(db, SYNC_SETTINGS_KEY, JSON.stringify(remoteSettings))
+      await this.setSettingsFieldClocks(remoteFieldClocks)
+      return
+    }
+
+    const fields = [
+      'general.defaultView',
+      'general.weekStartsOn',
+      'general.dateFormat',
+      'general.timeFormat',
+      'general.language',
+      'tasks.defaultProject',
+      'tasks.defaultPriority',
+      'tasks.autoArchiveCompleted',
+      'tasks.archiveAfterDays',
+      'notes.defaultFolder',
+      'notes.autoSaveInterval',
+      'notes.spellCheck',
+      'sync.autoSync',
+      'sync.syncOnStartup',
+      'sync.conflictResolution'
+    ]
+
+    let changed = false
+    for (const field of fields) {
+      const remoteClock = remoteFieldClocks[field] ?? {}
+      const localClock = localFieldClocks[field] ?? {}
+      const comparison = compareClock(remoteClock, localClock)
+
+      if (comparison === 1) {
+        const remoteValue = this.getNestedValue(remoteSettings, field)
+        this.setNestedValue(localSettings, field, remoteValue)
+        localFieldClocks[field] = remoteClock
+        changed = true
+      } else if (comparison === 0) {
+        const localValue = this.getNestedValue(localSettings, field)
+        const remoteValue = this.getNestedValue(remoteSettings, field)
+
+        const conflictEvent: SyncConflictEvent = {
+          itemId: item.itemId,
+          itemType: item.itemType,
+          field,
+          localClock,
+          remoteClock,
+          localValue,
+          remoteValue
+        }
+
+        this.emit('sync:conflict-detected', conflictEvent)
+        this.broadcastToWindows('sync:conflict-detected', conflictEvent)
+
+        localFieldClocks[field] = mergeClock(localClock, remoteClock)
+      }
+    }
+
+    if (changed) {
+      setSetting(db, SYNC_SETTINGS_KEY, JSON.stringify(localSettings))
+    }
+
+    await this.setSettingsFieldClocks(localFieldClocks)
+  }
+
+  private getNestedValue(settings: Record<string, unknown>, path: string): unknown {
+    const parts = path.split('.')
+    let current: Record<string, unknown> | undefined = settings
+    for (const part of parts) {
+      if (!current || typeof current !== 'object') {
+        return undefined
+      }
+      current = current[part] as Record<string, unknown> | undefined
+    }
+    return current
+  }
+
+  private setNestedValue(settings: Record<string, unknown>, path: string, value: unknown): void {
+    const parts = path.split('.')
+    let current: Record<string, unknown> = settings
+
+    for (let i = 0; i < parts.length - 1; i += 1) {
+      const part = parts[i]
+      if (!current[part] || typeof current[part] !== 'object') {
+        current[part] = {}
+      }
+      current = current[part] as Record<string, unknown>
+    }
+
+    current[parts[parts.length - 1] ?? ''] = value
   }
 
   private async getVaultKey(): Promise<Uint8Array> {
@@ -635,6 +832,50 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
         set: {
           value: cursor.toString(),
           updatedAt: new Date().toISOString()
+        }
+      })
+  }
+
+  private checkServerClockSkew(serverTime?: number): void {
+    if (!serverTime) return
+    const skewMs = Math.abs(Date.now() - serverTime)
+    if (skewMs > 5 * 60 * 1000) {
+      console.warn(
+        `[SyncEngine] Server clock skew detected: ${Math.round(skewMs / 1000)}s difference`
+      )
+    }
+  }
+
+  private async getSettingsFieldClocks(): Promise<FieldClocks> {
+    const db = getDatabase()
+    const row = await db
+      .select()
+      .from(syncState)
+      .where(eq(syncState.key, SYNC_STATE_KEYS.SETTINGS_FIELD_CLOCKS))
+      .limit(1)
+
+    if (row[0]) {
+      return JSON.parse(row[0].value) as FieldClocks
+    }
+
+    return {}
+  }
+
+  private async setSettingsFieldClocks(fieldClocks: FieldClocks): Promise<void> {
+    const db = getDatabase()
+    const now = new Date().toISOString()
+    await db
+      .insert(syncState)
+      .values({
+        key: SYNC_STATE_KEYS.SETTINGS_FIELD_CLOCKS,
+        value: JSON.stringify(fieldClocks),
+        updatedAt: now
+      })
+      .onConflictDoUpdate({
+        target: syncState.key,
+        set: {
+          value: JSON.stringify(fieldClocks),
+          updatedAt: now
         }
       })
   }

@@ -186,6 +186,7 @@
     "@vitest/ui": "^4.0.16",
     "autoprefixer": "^10.4.23",
     "better-sqlite3": "^12.5.0",
+    "bufferutil": "^4.1.0",
     "drizzle-kit": "^0.31.8",
     "electron": "^39.2.7",
     "electron-builder": "^26.0.12",
@@ -205,6 +206,7 @@
     "shadcn": "^3.6.2",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
+    "utf-8-validate": "^6.0.6",
     "vite": "^7.3.0",
     "vite-plugin-static-copy": "^3.1.4",
     "vitest": "^4.0.16"

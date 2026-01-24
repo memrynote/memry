@@ -54,6 +54,10 @@ export type LinkingSessionStatus = (typeof LINKING_SESSION_STATUS)[number]
 export const VectorClockSchema = z.record(z.string(), z.number().int().nonnegative())
 export type VectorClock = z.infer<typeof VectorClockSchema>
 
+// Field-level vector clocks (used for settings merge)
+export const FieldClocksSchema = z.record(z.string(), VectorClockSchema)
+export type FieldClocks = z.infer<typeof FieldClocksSchema>
+
 // Base64 string validation (simple check for valid base64 chars)
 const Base64Schema = z.string().regex(/^[A-Za-z0-9+/]*={0,2}$/, 'Invalid Base64 string')
 
@@ -97,6 +101,8 @@ export const SyncItemPushSchema = z.object({
   dataNonce: Base64Schema,
   // Vector clock for non-CRDT items (tasks, projects, settings, etc.)
   clock: VectorClockSchema.optional(),
+  // Field-level clocks for settings
+  fieldClocks: FieldClocksSchema.optional(),
   // State vector for CRDT items (notes) - Yjs state vector
   stateVector: Base64Schema.optional(),
   deleted: z.boolean(),
@@ -121,6 +127,8 @@ export const SyncItemResponseSchema = z.object({
   dataNonce: Base64Schema,
   // Vector clock for non-CRDT items (tasks, projects, settings, etc.)
   clock: VectorClockSchema.optional(),
+  // Field-level clocks for settings
+  fieldClocks: FieldClocksSchema.optional(),
   // State vector for CRDT items (notes) - Yjs state vector
   stateVector: Base64Schema.optional(),
   deleted: z.boolean(),
@@ -419,6 +427,13 @@ export const SyncedSettingsSchema = z.object({
 })
 
 export type SyncedSettings = z.infer<typeof SyncedSettingsSchema>
+
+export const SyncedSettingsPayloadSchema = z.object({
+  settings: SyncedSettingsSchema,
+  fieldClocks: FieldClocksSchema
+})
+
+export type SyncedSettingsPayload = z.infer<typeof SyncedSettingsPayloadSchema>
 
 // =============================================================================
 // OTP Types

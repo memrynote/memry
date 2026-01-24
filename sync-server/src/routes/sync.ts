@@ -27,6 +27,7 @@ import {
   getSyncStatus,
   updateDeviceCursorState
 } from '../services/sync'
+import { updateDeviceLastSyncAt } from '../services/device'
 import {
   SYNC_ITEM_TYPES,
   type SyncItemType,
@@ -134,9 +135,8 @@ syncRoutes.get('/changes', async (c) => {
   const { cursor, limit, types } = parsed.data
   const result = await getSyncChanges(c.env.DB, auth.userId, cursor, limit, types)
 
-  if (result.items.length > 0) {
-    await updateDeviceCursorState(c.env.DB, auth.userId, auth.deviceId, result.nextCursor)
-  }
+  await updateDeviceCursorState(c.env.DB, auth.userId, auth.deviceId, result.nextCursor)
+  await updateDeviceLastSyncAt(c.env.DB, auth.deviceId)
 
   const response: PullSyncResponse = {
     items: result.items,
@@ -179,6 +179,7 @@ syncRoutes.post('/push', async (c) => {
   }
 
   const result = await pushSyncItems(c.env.DB, auth.userId, items)
+  await updateDeviceLastSyncAt(c.env.DB, auth.deviceId)
 
   if (result.accepted.length > 0) {
     const doId = c.env.USER_SYNC_STATE.idFromName(auth.userId)

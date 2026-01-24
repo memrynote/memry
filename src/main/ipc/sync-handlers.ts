@@ -12,6 +12,7 @@
 import { ipcMain, BrowserWindow, app } from 'electron'
 import os from 'node:os'
 import { SyncChannels } from '@shared/contracts/ipc-sync'
+import { InboxChannels, SavedFiltersChannels, SettingsChannels } from '@shared/ipc-channels'
 import type {
   GetSyncStatusResponse,
   TriggerSyncResponse,
@@ -43,6 +44,7 @@ import {
   RevokeDeviceRequestSchema,
   ResolveConflictRequestSchema
 } from '@shared/contracts/ipc-sync'
+import { eq } from 'drizzle-orm'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
 import { z } from 'zod'
 import {
@@ -71,8 +73,12 @@ import {
 } from '../crypto'
 import { getSyncApiClient, isSyncApiError } from '../sync/api-client'
 import { getSyncEngine } from '../sync/engine'
+import type { DecryptedSyncItem } from '../sync/engine'
 import { getSyncQueue } from '../sync/queue'
 import { getNetworkMonitor } from '../sync/network'
+import { getDatabase } from '../database/client'
+import { inboxItems } from '@shared/db/schema/inbox'
+import { savedFilters } from '@shared/db/schema/settings'
 
 function emitSyncEvent(channel: string, data: unknown): void {
   BrowserWindow.getAllWindows().forEach((win) => {
@@ -111,7 +117,80 @@ function decodeDeviceIdFromAccessToken(token?: string): string | null {
   }
 }
 
+async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
+  try {
+    if (item.itemType === 'inbox') {
+      const db = getDatabase()
+      if (item.deleted) {
+        db.delete(inboxItems).where(eq(inboxItems.id, item.itemId)).run()
+        emitSyncEvent(InboxChannels.events.ARCHIVED, { id: item.itemId })
+        return
+      }
+
+      const payload = {
+        ...(item.data as Record<string, unknown>),
+        id: item.itemId
+      } as typeof inboxItems.$inferInsert
+
+      db.insert(inboxItems)
+        .values(payload)
+        .onConflictDoUpdate({
+          target: inboxItems.id,
+          set: payload
+        })
+        .run()
+
+      emitSyncEvent(InboxChannels.events.UPDATED, { id: item.itemId, inboxItem: payload })
+      return
+    }
+
+    if (item.itemType === 'filter') {
+      const db = getDatabase()
+      if (item.deleted) {
+        db.delete(savedFilters).where(eq(savedFilters.id, item.itemId)).run()
+        emitSyncEvent(SavedFiltersChannels.events.DELETED, { id: item.itemId })
+        return
+      }
+
+      const payload = {
+        ...(item.data as Record<string, unknown>),
+        id: item.itemId
+      } as typeof savedFilters.$inferInsert
+
+      db.insert(savedFilters)
+        .values(payload)
+        .onConflictDoUpdate({
+          target: savedFilters.id,
+          set: payload
+        })
+        .run()
+
+      emitSyncEvent(SavedFiltersChannels.events.UPDATED, { id: item.itemId, savedFilter: payload })
+      return
+    }
+
+    if (item.itemType === 'settings') {
+      emitSyncEvent(SettingsChannels.events.CHANGED, {
+        key: 'sync.settings',
+        value: item.data
+      })
+    }
+  } catch (error) {
+    console.warn('[Sync] Failed to apply synced item:', error)
+  }
+}
+
+let decryptedItemListener: ((item: DecryptedSyncItem) => void) | null = null
+
 export function registerSyncHandlers(): void {
+  const engine = getSyncEngine()
+  if (engine && !decryptedItemListener) {
+    decryptedItemListener = (item) => {
+      void handleDecryptedSyncItem(item)
+    }
+    engine.on('sync:item-decrypted', decryptedItemListener)
+  }
+
   // ============================================================================
   // Status & Control
   // ============================================================================
@@ -751,6 +830,12 @@ export function unregisterSyncHandlers(): void {
   Object.values(SyncChannels.invoke).forEach((channel) => {
     ipcMain.removeHandler(channel)
   })
+
+  const engine = getSyncEngine()
+  if (engine && decryptedItemListener) {
+    engine.off('sync:item-decrypted', decryptedItemListener)
+    decryptedItemListener = null
+  }
   console.log('[IPC] Sync handlers unregistered')
 }
 
