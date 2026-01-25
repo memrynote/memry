@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS linking_sessions (
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   initiator_device_id TEXT NOT NULL REFERENCES devices(id),
   ephemeral_public_key TEXT NOT NULL,
+  linking_token_hash TEXT NOT NULL,
   new_device_public_key TEXT,
   new_device_confirm TEXT,
   encrypted_master_key TEXT,

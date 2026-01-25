@@ -79,6 +79,7 @@ export type LinkingInitiateResponse = z.infer<typeof LinkingInitiateResponseSche
  */
 export const LinkingScanRequestSchema = z.object({
   sessionId: UuidSchema,
+  token: z.string().min(32),
   newDevicePublicKey: Base64Schema,
   newDeviceConfirm: Base64Schema
 })
@@ -131,6 +132,8 @@ export const LinkingCompleteRequestSchema = z.object({
 export type LinkingCompleteRequest = z.infer<typeof LinkingCompleteRequestSchema>
 
 export const LinkingCompleteResponseSchema = z.object({
+  accessToken: z.string(),
+  refreshToken: z.string(),
   encryptedMasterKey: Base64Schema,
   encryptedKeyNonce: Base64Schema,
   keyConfirm: Base64Schema,

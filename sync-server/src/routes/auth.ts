@@ -81,7 +81,9 @@ import {
   updateSessionToScanned,
   updateSessionToApproved,
   updateSessionToCompleted,
-  verifyDeviceOwnership
+  verifyDeviceOwnership,
+  hashLinkingToken,
+  verifyLinkingToken
 } from '../services/linking'
 
 interface AuthVariables {
@@ -707,6 +709,7 @@ authRoutes.post('/linking/initiate', authMiddleware(), async (c) => {
 
   const { publicKey: ephemeralPublicKey } = await generateEphemeralKeypair()
   const linkingToken = generateLinkingToken()
+  const linkingTokenHash = await hashLinkingToken(linkingToken)
   const sessionId = crypto.randomUUID()
   const expiresAt = calculateSessionExpiry()
 
@@ -715,6 +718,7 @@ authRoutes.post('/linking/initiate', authMiddleware(), async (c) => {
     userId: auth.userId,
     initiatorDeviceId: deviceId,
     ephemeralPublicKey,
+    linkingTokenHash,
     expiresAt
   })
 
@@ -761,7 +765,7 @@ authRoutes.post('/linking/scan', async (c) => {
     throw validationError('Invalid request', { issues: parsed.error.issues })
   }
 
-  const { sessionId, newDevicePublicKey, newDeviceConfirm } = parsed.data
+  const { sessionId, token, newDevicePublicKey, newDeviceConfirm } = parsed.data
 
   const rateKey = `linking_scan:${sessionId}`
   const rateCheck = await checkRateLimit(
@@ -788,6 +792,11 @@ authRoutes.post('/linking/scan', async (c) => {
 
   if (!validateStateTransition(session.status, 'pending')) {
     throw linkingInvalidState('pending', session.status)
+  }
+
+  const tokenValid = await verifyLinkingToken(token, session.linking_token_hash)
+  if (!tokenValid) {
+    throw badRequest('Invalid linking token')
   }
 
   await updateSessionToScanned(c.env.DB, sessionId, newDevicePublicKey, newDeviceConfirm)
@@ -902,15 +911,14 @@ authRoutes.post('/linking/complete', async (c) => {
     throw linkingConfirmMismatch()
   }
 
-  const now = Date.now()
-  const deviceId = crypto.randomUUID()
+  if (!session.encrypted_master_key || !session.encrypted_key_nonce || !session.key_confirm) {
+    throw linkingInvalidState('approved', session.status)
+  }
 
-  await c.env.DB.prepare(
-    `INSERT INTO devices (id, user_id, name, platform, os_version, app_version, auth_public_key, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  )
-    .bind(deviceId, session.user_id, 'Linked Device', 'macos', null, '0.0.0', '', now, now)
-    .run()
+  const now = Date.now()
+  const deviceId = await ensurePendingDevice(c.env.DB, session.user_id, now)
+
+  const tokens = await issueTokenPair(c.env.DB, session.user_id, deviceId, c.env.JWT_SECRET)
 
   await updateSessionToCompleted(c.env.DB, sessionId)
 
@@ -923,14 +931,16 @@ authRoutes.post('/linking/complete', async (c) => {
   }))
 
   const response: LinkingCompleteResponse = {
-    encryptedMasterKey: session.encrypted_master_key!,
-    encryptedKeyNonce: session.encrypted_key_nonce!,
-    keyConfirm: session.key_confirm!,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    encryptedMasterKey: session.encrypted_master_key,
+    encryptedKeyNonce: session.encrypted_key_nonce,
+    keyConfirm: session.key_confirm,
     device: {
       id: deviceId,
       userId: session.user_id,
-      name: 'Linked Device',
-      platform: 'macos',
+      name: 'Pending Registration',
+      platform: 'unknown',
       appVersion: '0.0.0',
       authPublicKey: '',
       linkedAt: now

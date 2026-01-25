@@ -15,6 +15,7 @@ interface LinkingSessionRow {
   user_id: string
   initiator_device_id: string
   ephemeral_public_key: string
+  linking_token_hash: string
   new_device_public_key: string | null
   new_device_confirm: string | null
   encrypted_master_key: string | null
@@ -140,7 +141,7 @@ export async function getLinkingSession(
 ): Promise<LinkingSessionRow | null> {
   return db
     .prepare(
-      `SELECT id, user_id, initiator_device_id, ephemeral_public_key,
+      `SELECT id, user_id, initiator_device_id, ephemeral_public_key, linking_token_hash,
               new_device_public_key, new_device_confirm, encrypted_master_key,
               encrypted_key_nonce, key_confirm, status, created_at, expires_at, completed_at
        FROM linking_sessions
@@ -164,6 +165,7 @@ export async function createLinkingSession(
     userId: string
     initiatorDeviceId: string
     ephemeralPublicKey: string
+    linkingTokenHash: string
     expiresAt: number
   }
 ): Promise<void> {
@@ -172,14 +174,15 @@ export async function createLinkingSession(
   await db
     .prepare(
       `INSERT INTO linking_sessions
-         (id, user_id, initiator_device_id, ephemeral_public_key, status, created_at, expires_at)
-       VALUES (?, ?, ?, ?, 'pending', ?, ?)`
+         (id, user_id, initiator_device_id, ephemeral_public_key, linking_token_hash, status, created_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`
     )
     .bind(
       params.id,
       params.userId,
       params.initiatorDeviceId,
       params.ephemeralPublicKey,
+      params.linkingTokenHash,
       now,
       params.expiresAt
     )
@@ -283,4 +286,16 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
     binary += String.fromCharCode(bytes[i])
   }
   return btoa(binary)
+}
+
+export async function hashLinkingToken(token: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(token)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  return arrayBufferToBase64(hashBuffer)
+}
+
+export async function verifyLinkingToken(token: string, storedHash: string): Promise<boolean> {
+  const tokenHash = await hashLinkingToken(token)
+  return tokenHash === storedHash
 }
