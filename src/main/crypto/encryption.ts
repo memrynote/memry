@@ -7,7 +7,7 @@
 import { ensureSodiumReady } from './sodium'
 import { CryptoError, CryptoErrorCode } from './errors'
 import { generateNonce, uint8ArrayToBase64, base64ToUint8Array } from './keys'
-import { XCHACHA_PARAMS } from '@shared/contracts/crypto'
+import { XCHACHA_PARAMS, ARGON2_PARAMS } from '@shared/contracts/crypto'
 import type { EncryptionResult } from '@shared/contracts/crypto'
 
 /**
@@ -209,4 +209,95 @@ export async function decryptWithWrappedKey(
   const nonce = base64ToUint8Array(dataNonce)
 
   return decrypt(ciphertext, nonce, fileKey)
+}
+
+// =============================================================================
+// T111: Master Key Encryption for Device Linking
+// =============================================================================
+
+/**
+ * Encrypt the master key for transfer during device linking.
+ *
+ * Uses XChaCha20-Poly1305 with the encryption key derived from ECDH.
+ *
+ * Security assumptions:
+ * - masterKey is a valid 32-byte master key
+ * - encKey is a 32-byte key derived from ECDH shared secret
+ * - The nonce is randomly generated and unique
+ *
+ * @param masterKey - 32-byte master key to encrypt
+ * @param encKey - 32-byte encryption key from deriveLinkingKeys()
+ * @returns Object with ciphertext and nonce (both Uint8Array)
+ * @throws CryptoError if encryption fails or key sizes are invalid
+ */
+export async function encryptMasterKeyForLinking(
+  masterKey: Uint8Array,
+  encKey: Uint8Array
+): Promise<{ ciphertext: Uint8Array; nonce: Uint8Array }> {
+  if (masterKey.length !== ARGON2_PARAMS.keyLength) {
+    throw new CryptoError(
+      `Invalid master key length: expected ${ARGON2_PARAMS.keyLength} bytes, got ${masterKey.length}`,
+      CryptoErrorCode.INVALID_KEY_LENGTH
+    )
+  }
+
+  if (encKey.length !== XCHACHA_PARAMS.keySize) {
+    throw new CryptoError(
+      `Invalid encryption key length: expected ${XCHACHA_PARAMS.keySize} bytes, got ${encKey.length}`,
+      CryptoErrorCode.INVALID_KEY_LENGTH
+    )
+  }
+
+  const result = await encrypt(masterKey, encKey)
+  return {
+    ciphertext: result.ciphertext,
+    nonce: result.nonce
+  }
+}
+
+/**
+ * Decrypt the master key received during device linking.
+ *
+ * Uses XChaCha20-Poly1305 with the encryption key derived from ECDH.
+ *
+ * Security assumptions:
+ * - ciphertext is the encrypted master key from the existing device
+ * - nonce is the nonce used during encryption
+ * - encKey is a 32-byte key derived from the same ECDH shared secret
+ *
+ * @param ciphertext - Encrypted master key
+ * @param nonce - 24-byte nonce used for encryption
+ * @param encKey - 32-byte encryption key from deriveLinkingKeys()
+ * @returns Decrypted 32-byte master key
+ * @throws CryptoError if decryption fails (wrong key or tampered data)
+ */
+export async function decryptMasterKeyFromLinking(
+  ciphertext: Uint8Array,
+  nonce: Uint8Array,
+  encKey: Uint8Array
+): Promise<Uint8Array> {
+  if (encKey.length !== XCHACHA_PARAMS.keySize) {
+    throw new CryptoError(
+      `Invalid encryption key length: expected ${XCHACHA_PARAMS.keySize} bytes, got ${encKey.length}`,
+      CryptoErrorCode.INVALID_KEY_LENGTH
+    )
+  }
+
+  if (nonce.length !== XCHACHA_PARAMS.nonceSize) {
+    throw new CryptoError(
+      `Invalid nonce length: expected ${XCHACHA_PARAMS.nonceSize} bytes, got ${nonce.length}`,
+      CryptoErrorCode.INVALID_NONCE_LENGTH
+    )
+  }
+
+  const masterKey = await decrypt(ciphertext, nonce, encKey)
+
+  if (masterKey.length !== ARGON2_PARAMS.keyLength) {
+    throw new CryptoError(
+      `Decrypted master key has invalid length: expected ${ARGON2_PARAMS.keyLength} bytes, got ${masterKey.length}`,
+      CryptoErrorCode.DECRYPTION_FAILED
+    )
+  }
+
+  return masterKey
 }

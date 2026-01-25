@@ -27,6 +27,17 @@ import type {
   LogoutResponse
 } from '@shared/contracts/auth-api'
 import type {
+  LinkingInitiateRequest,
+  LinkingInitiateResponse,
+  LinkingScanRequest,
+  LinkingScanResponse,
+  LinkingApproveRequest,
+  LinkingApproveResponse,
+  LinkingCompleteRequest,
+  LinkingCompleteResponse,
+  LinkingStatusResponse
+} from '@shared/contracts/linking-api'
+import type {
   SyncItemPush,
   PushSyncResponse,
   PullSyncResponse,
@@ -120,6 +131,11 @@ export interface SyncApiClient {
   pushItems(items: SyncItemPush[], deviceClock: VectorClock): Promise<PushSyncResponse>
   pullItems(cursor: number, limit?: number): Promise<PullSyncResponse>
   getSyncStatus(): Promise<SyncStatusResponse>
+  initiateLinking(token: string, deviceId: string): Promise<LinkingInitiateResponse>
+  scanLinking(request: LinkingScanRequest): Promise<LinkingScanResponse>
+  approveLinking(token: string, request: LinkingApproveRequest): Promise<LinkingApproveResponse>
+  completeLinking(request: LinkingCompleteRequest): Promise<LinkingCompleteResponse>
+  getLinkingStatus(token: string, sessionId: string): Promise<LinkingStatusResponse>
 }
 
 let clientInstance: SyncApiClient | null = null
@@ -307,6 +323,62 @@ function createApiClient(): SyncApiClient {
         }
       })
       return handleResponse<SyncStatusResponse>(response)
+    },
+
+    async initiateLinking(token: string, deviceId: string): Promise<LinkingInitiateResponse> {
+      const request: LinkingInitiateRequest = { deviceId }
+      const response = await fetch(`${baseUrl}/api/v1/auth/linking/initiate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(request)
+      })
+      return handleResponse<LinkingInitiateResponse>(response)
+    },
+
+    async scanLinking(request: LinkingScanRequest): Promise<LinkingScanResponse> {
+      const response = await fetch(`${baseUrl}/api/v1/auth/linking/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request)
+      })
+      return handleResponse<LinkingScanResponse>(response)
+    },
+
+    async approveLinking(
+      token: string,
+      request: LinkingApproveRequest
+    ): Promise<LinkingApproveResponse> {
+      const response = await fetch(`${baseUrl}/api/v1/auth/linking/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(request)
+      })
+      return handleResponse<LinkingApproveResponse>(response)
+    },
+
+    async completeLinking(request: LinkingCompleteRequest): Promise<LinkingCompleteResponse> {
+      const response = await fetch(`${baseUrl}/api/v1/auth/linking/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request)
+      })
+      return handleResponse<LinkingCompleteResponse>(response)
+    },
+
+    async getLinkingStatus(token: string, sessionId: string): Promise<LinkingStatusResponse> {
+      const response = await fetch(`${baseUrl}/api/v1/auth/linking/${sessionId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      return handleResponse<LinkingStatusResponse>(response)
     }
   }
 }

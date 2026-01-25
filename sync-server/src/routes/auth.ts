@@ -57,7 +57,8 @@ import {
   linkingSessionExpired,
   linkingInvalidState,
   linkingDeviceNotOwned,
-  linkingConfirmMismatch
+  linkingConfirmMismatch,
+  linkingSessionIncomplete
 } from '../lib/errors'
 import {
   LinkingInitiateRequestSchema,
@@ -75,7 +76,6 @@ import {
   encodeQRPayload,
   isSessionExpired,
   calculateSessionExpiry,
-  validateStateTransition,
   getLinkingSession,
   createLinkingSession,
   updateSessionToScanned,
@@ -790,16 +790,15 @@ authRoutes.post('/linking/scan', async (c) => {
     throw linkingSessionExpired()
   }
 
-  if (!validateStateTransition(session.status, 'pending')) {
-    throw linkingInvalidState('pending', session.status)
-  }
-
   const tokenValid = await verifyLinkingToken(token, session.linking_token_hash)
   if (!tokenValid) {
     throw badRequest('Invalid linking token')
   }
 
-  await updateSessionToScanned(c.env.DB, sessionId, newDevicePublicKey, newDeviceConfirm)
+  const updated = await updateSessionToScanned(c.env.DB, sessionId, newDevicePublicKey, newDeviceConfirm)
+  if (!updated) {
+    throw linkingInvalidState('pending', session.status)
+  }
 
   const doId = c.env.LINKING_SESSION.idFromName(sessionId)
   const stub = c.env.LINKING_SESSION.get(doId)
@@ -844,11 +843,10 @@ authRoutes.post('/linking/approve', authMiddleware(), async (c) => {
     throw linkingSessionExpired()
   }
 
-  if (!validateStateTransition(session.status, 'scanned')) {
+  const updated = await updateSessionToApproved(c.env.DB, sessionId, encryptedMasterKey, encryptedKeyNonce, keyConfirm)
+  if (!updated) {
     throw linkingInvalidState('scanned', session.status)
   }
-
-  await updateSessionToApproved(c.env.DB, sessionId, encryptedMasterKey, encryptedKeyNonce, keyConfirm)
 
   const doId = c.env.LINKING_SESSION.idFromName(sessionId)
   const stub = c.env.LINKING_SESSION.get(doId)
@@ -878,7 +876,7 @@ authRoutes.post('/linking/complete', async (c) => {
     throw validationError('Invalid request', { issues: parsed.error.issues })
   }
 
-  const { sessionId, newDeviceConfirm } = parsed.data
+  const { sessionId, token, newDeviceConfirm } = parsed.data
 
   const rateKey = `linking_complete:${sessionId}`
   const rateCheck = await checkRateLimit(
@@ -903,8 +901,9 @@ authRoutes.post('/linking/complete', async (c) => {
     throw linkingSessionExpired()
   }
 
-  if (!validateStateTransition(session.status, 'approved')) {
-    throw linkingInvalidState('approved', session.status)
+  const tokenValid = await verifyLinkingToken(token, session.linking_token_hash)
+  if (!tokenValid) {
+    throw badRequest('Invalid linking token')
   }
 
   if (session.new_device_confirm !== newDeviceConfirm) {
@@ -912,7 +911,7 @@ authRoutes.post('/linking/complete', async (c) => {
   }
 
   if (!session.encrypted_master_key || !session.encrypted_key_nonce || !session.key_confirm) {
-    throw linkingInvalidState('approved', session.status)
+    throw linkingSessionIncomplete()
   }
 
   const now = Date.now()
@@ -920,7 +919,10 @@ authRoutes.post('/linking/complete', async (c) => {
 
   const tokens = await issueTokenPair(c.env.DB, session.user_id, deviceId, c.env.JWT_SECRET)
 
-  await updateSessionToCompleted(c.env.DB, sessionId)
+  const updated = await updateSessionToCompleted(c.env.DB, sessionId)
+  if (!updated) {
+    throw linkingInvalidState('approved', session.status)
+  }
 
   const doId = c.env.LINKING_SESSION.idFromName(sessionId)
   const stub = c.env.LINKING_SESSION.get(doId)

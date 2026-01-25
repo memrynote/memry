@@ -190,37 +190,43 @@ export async function createLinkingSession(
 }
 
 /**
- * Update session to 'scanned' state.
+ * Update session to 'scanned' state atomically.
+ * Only succeeds if session is currently in 'pending' state.
  *
  * @param db - D1 database instance
  * @param sessionId - Linking session ID
  * @param newDevicePublicKey - New device's ephemeral public key
  * @param newDeviceConfirm - New device's confirmation value
+ * @returns True if update succeeded, false if state was not 'pending'
  */
 export async function updateSessionToScanned(
   db: D1Database,
   sessionId: string,
   newDevicePublicKey: string,
   newDeviceConfirm: string
-): Promise<void> {
-  await db
+): Promise<boolean> {
+  const result = await db
     .prepare(
       `UPDATE linking_sessions
        SET new_device_public_key = ?, new_device_confirm = ?, status = 'scanned'
-       WHERE id = ?`
+       WHERE id = ? AND status = 'pending'`
     )
     .bind(newDevicePublicKey, newDeviceConfirm, sessionId)
     .run()
+
+  return (result.meta.changes ?? 0) > 0
 }
 
 /**
- * Update session to 'approved' state.
+ * Update session to 'approved' state atomically.
+ * Only succeeds if session is currently in 'scanned' state.
  *
  * @param db - D1 database instance
  * @param sessionId - Linking session ID
  * @param encryptedMasterKey - Encrypted master key
  * @param encryptedKeyNonce - Nonce used for encryption
  * @param keyConfirm - Key confirmation value
+ * @returns True if update succeeded, false if state was not 'scanned'
  */
 export async function updateSessionToApproved(
   db: D1Database,
@@ -228,34 +234,40 @@ export async function updateSessionToApproved(
   encryptedMasterKey: string,
   encryptedKeyNonce: string,
   keyConfirm: string
-): Promise<void> {
-  await db
+): Promise<boolean> {
+  const result = await db
     .prepare(
       `UPDATE linking_sessions
        SET encrypted_master_key = ?, encrypted_key_nonce = ?, key_confirm = ?, status = 'approved'
-       WHERE id = ?`
+       WHERE id = ? AND status = 'scanned'`
     )
     .bind(encryptedMasterKey, encryptedKeyNonce, keyConfirm, sessionId)
     .run()
+
+  return (result.meta.changes ?? 0) > 0
 }
 
 /**
- * Update session to 'completed' state.
+ * Update session to 'completed' state atomically.
+ * Only succeeds if session is currently in 'approved' state.
  *
  * @param db - D1 database instance
  * @param sessionId - Linking session ID
+ * @returns True if update succeeded, false if state was not 'approved'
  */
-export async function updateSessionToCompleted(db: D1Database, sessionId: string): Promise<void> {
+export async function updateSessionToCompleted(db: D1Database, sessionId: string): Promise<boolean> {
   const now = Date.now()
 
-  await db
+  const result = await db
     .prepare(
       `UPDATE linking_sessions
        SET status = 'completed', completed_at = ?
-       WHERE id = ?`
+       WHERE id = ? AND status = 'approved'`
     )
     .bind(now, sessionId)
     .run()
+
+  return (result.meta.changes ?? 0) > 0
 }
 
 /**
@@ -297,5 +309,15 @@ export async function hashLinkingToken(token: string): Promise<string> {
 
 export async function verifyLinkingToken(token: string, storedHash: string): Promise<boolean> {
   const tokenHash = await hashLinkingToken(token)
-  return tokenHash === storedHash
+  return constantTimeEqual(tokenHash, storedHash)
+}
+
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+
+  let result = 0
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  }
+  return result === 0
 }

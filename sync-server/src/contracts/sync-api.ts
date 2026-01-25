@@ -37,7 +37,7 @@ export type SyncOperation = (typeof SYNC_OPERATIONS)[number]
 export const SYNC_STATUS = ['idle', 'syncing', 'offline', 'error', 'paused'] as const
 export type SyncStatus = (typeof SYNC_STATUS)[number]
 
-export const DEVICE_PLATFORMS = ['macos', 'windows', 'linux', 'ios', 'android'] as const
+export const DEVICE_PLATFORMS = ['macos', 'windows', 'linux', 'ios', 'android', 'unknown'] as const
 export type DevicePlatform = (typeof DEVICE_PLATFORMS)[number]
 
 export const AUTH_METHODS = ['email', 'oauth'] as const

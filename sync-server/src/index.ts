@@ -30,6 +30,7 @@ const HTTP_UPGRADE_REQUIRED = 426
 
 // Auth for WebSocket
 import { verifyAccessToken } from './services/auth'
+import { getLinkingSession, verifyLinkingToken } from './services/linking'
 
 /**
  * Cloudflare Workers environment bindings.
@@ -162,6 +163,70 @@ app.get('/api/v1/sync/ws', async (c) => {
   const url = new URL(c.req.url)
   url.searchParams.delete('token')
   url.searchParams.set('deviceId', payload.deviceId)
+  const wsRequest = new Request(url.toString(), c.req.raw)
+
+  return stub.fetch(wsRequest)
+})
+
+/**
+ * WebSocket for linking session real-time updates.
+ * Requires authentication:
+ * - Initiator (role=initiator): JWT token required
+ * - New device (role=new_device): Linking token required
+ */
+app.get('/api/v1/auth/linking/:sessionId/ws', async (c) => {
+  if (c.req.header('Upgrade') !== 'websocket') {
+    return c.json({ error: 'Expected WebSocket upgrade' }, HTTP_UPGRADE_REQUIRED)
+  }
+
+  const sessionId = c.req.param('sessionId')
+  const role = c.req.query('role')
+
+  if (role !== 'initiator' && role !== 'new_device') {
+    return c.json({ error: 'Invalid role parameter' }, 400)
+  }
+
+  const session = await getLinkingSession(c.env.DB, sessionId)
+  if (!session) {
+    return c.json({ error: 'Linking session not found' }, 404)
+  }
+
+  if (session.expires_at < Date.now()) {
+    return c.json({ error: 'Linking session expired' }, 410)
+  }
+
+  if (role === 'initiator') {
+    const jwtToken = c.req.query('token') ?? c.req.header('Authorization')?.replace(/^Bearer\s+/i, '')
+    if (!jwtToken) {
+      return c.json({ error: 'Missing authentication token' }, 401)
+    }
+
+    try {
+      const payload = await verifyAccessToken(jwtToken, c.env.JWT_SECRET)
+      if (payload.sub !== session.user_id) {
+        return c.json({ error: 'Session does not belong to user' }, 403)
+      }
+    } catch {
+      return c.json({ error: 'Invalid token' }, 401)
+    }
+  } else {
+    const linkingToken = c.req.query('linkingToken')
+    if (!linkingToken) {
+      return c.json({ error: 'Missing linking token' }, 401)
+    }
+
+    const tokenValid = await verifyLinkingToken(linkingToken, session.linking_token_hash)
+    if (!tokenValid) {
+      return c.json({ error: 'Invalid linking token' }, 401)
+    }
+  }
+
+  const doId = c.env.LINKING_SESSION.idFromName(sessionId)
+  const stub = c.env.LINKING_SESSION.get(doId)
+
+  const url = new URL(c.req.url)
+  url.searchParams.delete('token')
+  url.searchParams.delete('linkingToken')
   const wsRequest = new Request(url.toString(), c.req.raw)
 
   return stub.fetch(wsRequest)

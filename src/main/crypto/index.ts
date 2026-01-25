@@ -48,7 +48,11 @@ export {
   deriveVaultKey,
   deriveSigningKeyPair,
   deriveVerifyKey,
-  constantTimeEqual
+  constantTimeEqual,
+  generateLinkingKeyPair,
+  deriveLinkingKeys,
+  computeLinkingProof,
+  verifyLinkingProof
 } from './keys'
 
 // Re-export encryption functions
@@ -58,7 +62,9 @@ export {
   wrapFileKey,
   unwrapFileKey,
   encryptWithWrappedKey,
-  decryptWithWrappedKey
+  decryptWithWrappedKey,
+  encryptMasterKeyForLinking,
+  decryptMasterKeyFromLinking
 } from './encryption'
 
 // Re-export signature functions

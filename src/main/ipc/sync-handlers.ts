@@ -69,8 +69,20 @@ import {
   sign,
   secureZero,
   isCryptoError,
-  constantTimeEqual
+  constantTimeEqual,
+  generateLinkingKeyPair,
+  deriveLinkingKeys,
+  computeLinkingProof,
+  encryptMasterKeyForLinking
 } from '../crypto'
+import {
+  LINKING_NEW_DEVICE_CONFIRM_FIELD_ORDER,
+  LINKING_KEY_CONFIRM_FIELD_ORDER
+} from '@shared/contracts/cbor-ordering'
+import { validateLinkingQRPayload } from '@shared/contracts/linking-api'
+import type { LinkingQRPayload } from '@shared/contracts/linking-api'
+import type { ScanLinkingQRRequest } from '@shared/contracts/ipc-sync'
+import QRCode from 'qrcode'
 import { getSyncApiClient, isSyncApiError } from '../sync/api-client'
 import { getSyncEngine } from '../sync/engine'
 import { bootstrapSyncData } from '../sync/bootstrap'
@@ -87,6 +99,65 @@ function emitSyncEvent(channel: string, data: unknown): void {
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send(channel, data)
   })
+}
+
+// =============================================================================
+// Linking Session State Management
+// =============================================================================
+
+interface LinkingSessionState {
+  sessionId: string
+  privateKey: Uint8Array
+  publicKey: string
+  serverPublicKey?: string
+  derivedKeys?: {
+    encryptionKey: Uint8Array
+    macKey: Uint8Array
+  }
+  newDevicePublicKey?: string
+  createdAt: number
+  expiresAt: number
+}
+
+const linkingSessions = new Map<string, LinkingSessionState>()
+
+function cleanupExpiredSessions(): void {
+  const now = Date.now()
+  for (const [sessionId, session] of linkingSessions) {
+    if (session.expiresAt < now) {
+      if (session.privateKey) {
+        session.privateKey.fill(0)
+      }
+      if (session.derivedKeys) {
+        session.derivedKeys.encryptionKey.fill(0)
+        session.derivedKeys.macKey.fill(0)
+      }
+      linkingSessions.delete(sessionId)
+    }
+  }
+}
+
+function storeLinkingSession(session: LinkingSessionState): void {
+  linkingSessions.set(session.sessionId, session)
+}
+
+function getLinkingSessionState(sessionId: string): LinkingSessionState | undefined {
+  cleanupExpiredSessions()
+  return linkingSessions.get(sessionId)
+}
+
+function deleteLinkingSession(sessionId: string): void {
+  const session = linkingSessions.get(sessionId)
+  if (session) {
+    if (session.privateKey) {
+      session.privateKey.fill(0)
+    }
+    if (session.derivedKeys) {
+      session.derivedKeys.encryptionKey.fill(0)
+      session.derivedKeys.macKey.fill(0)
+    }
+    linkingSessions.delete(sessionId)
+  }
 }
 
 function createNotImplementedResponse(): { success: false; error: string } {
@@ -711,33 +782,224 @@ export function registerSyncHandlers(): void {
   )
 
   // ============================================================================
-  // Device Linking
+  // Device Linking (T112, T113, T114)
   // ============================================================================
 
+  /**
+   * T112: CREATE_LINKING_SESSION
+   * Called by existing device to initiate device linking.
+   * Generates ephemeral X25519 keypair, calls server, returns QR code.
+   */
   ipcMain.handle(
     SyncChannels.invoke.CREATE_LINKING_SESSION,
-    createHandler(
-      (): CreateLinkingSessionResponse => ({
-        sessionId: '',
-        qrCodeDataUrl: '',
-        expiresAt: 0
-      })
-    )
+    createHandler(async (): Promise<CreateLinkingSessionResponse> => {
+      try {
+        const storedTokens = await retrieveAuthTokens()
+        if (!storedTokens?.accessToken) {
+          throw new Error('Not authenticated')
+        }
+
+        const deviceKeyPair = await retrieveDeviceKeyPair()
+        if (!deviceKeyPair) {
+          throw new Error('Device not registered')
+        }
+
+        const linkingKeyPair = generateLinkingKeyPair()
+
+        const client = getSyncApiClient()
+        const response = await client.initiateLinking(
+          storedTokens.accessToken,
+          deviceKeyPair.deviceId
+        )
+
+        const qrCodeDataUrl = await QRCode.toDataURL(response.qrPayload, {
+          errorCorrectionLevel: 'M',
+          margin: 2,
+          width: 256
+        })
+
+        storeLinkingSession({
+          sessionId: response.sessionId,
+          privateKey: base64ToUint8Array(linkingKeyPair.privateKey),
+          publicKey: linkingKeyPair.publicKey,
+          serverPublicKey: response.ephemeralPublicKey,
+          createdAt: Date.now(),
+          expiresAt: response.expiresAt
+        })
+
+        return {
+          sessionId: response.sessionId,
+          qrCodeDataUrl,
+          expiresAt: response.expiresAt
+        }
+      } catch (error) {
+        console.error('[Sync] CREATE_LINKING_SESSION error:', error)
+        throw error
+      }
+    })
   )
 
+  /**
+   * T113: SCAN_LINKING_QR
+   * Called by new device after scanning QR code.
+   * Generates own keypair, performs ECDH, computes proof, calls server.
+   */
   ipcMain.handle(
     SyncChannels.invoke.SCAN_LINKING_QR,
     createValidatedHandler(
       ScanLinkingQRRequestSchema,
-      (): ScanLinkingQRResponse => createNotImplementedResponse()
+      async (input: ScanLinkingQRRequest): Promise<ScanLinkingQRResponse> => {
+        let derivedKeys: Awaited<ReturnType<typeof deriveLinkingKeys>> | null = null
+
+        try {
+          let qrPayload: LinkingQRPayload
+          try {
+            qrPayload = validateLinkingQRPayload(JSON.parse(input.qrContent))
+          } catch {
+            return { success: false, error: 'Invalid QR code format' }
+          }
+
+          const linkingKeyPair = generateLinkingKeyPair()
+          const myPrivateKey = base64ToUint8Array(linkingKeyPair.privateKey)
+          const serverPublicKey = base64ToUint8Array(qrPayload.ephemeralPublicKey)
+
+          derivedKeys = await deriveLinkingKeys(myPrivateKey, serverPublicKey)
+
+          const proofPayload = {
+            sessionId: qrPayload.sessionId,
+            token: qrPayload.token,
+            newDevicePublicKey: linkingKeyPair.publicKey
+          }
+          const newDeviceConfirm = computeLinkingProof(
+            derivedKeys.macKey,
+            proofPayload,
+            LINKING_NEW_DEVICE_CONFIRM_FIELD_ORDER
+          )
+
+          const client = getSyncApiClient()
+          await client.scanLinking({
+            sessionId: qrPayload.sessionId,
+            token: qrPayload.token,
+            newDevicePublicKey: linkingKeyPair.publicKey,
+            newDeviceConfirm: uint8ArrayToBase64(newDeviceConfirm)
+          })
+
+          storeLinkingSession({
+            sessionId: qrPayload.sessionId,
+            privateKey: myPrivateKey,
+            publicKey: linkingKeyPair.publicKey,
+            serverPublicKey: qrPayload.ephemeralPublicKey,
+            derivedKeys: {
+              encryptionKey: derivedKeys.encryptionKey,
+              macKey: derivedKeys.macKey
+            },
+            createdAt: Date.now(),
+            expiresAt: Date.now() + 10 * 60 * 1000
+          })
+
+          derivedKeys = null
+
+          return {
+            success: true,
+            sessionId: qrPayload.sessionId
+          }
+        } catch (error) {
+          console.error('[Sync] SCAN_LINKING_QR error:', error)
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'QR scan failed'
+          }
+        } finally {
+          if (derivedKeys) {
+            await secureZero(derivedKeys.encryptionKey)
+            await secureZero(derivedKeys.macKey)
+          }
+        }
+      }
     )
   )
 
+  /**
+   * T114: APPROVE_LINKING
+   * Called by existing device to approve linking and transfer master key.
+   * Performs ECDH with new device's key, encrypts master key, computes proof.
+   */
   ipcMain.handle(
     SyncChannels.invoke.APPROVE_LINKING,
     createValidatedHandler(
       z.object({ sessionId: z.string().uuid() }),
-      (): ApproveLinkingResponse => createNotImplementedResponse()
+      async ({ sessionId }): Promise<ApproveLinkingResponse> => {
+        let derivedKeys: Awaited<ReturnType<typeof deriveLinkingKeys>> | null = null
+        let masterKeyBytes: Uint8Array | null = null
+
+        try {
+          const storedTokens = await retrieveAuthTokens()
+          if (!storedTokens?.accessToken) {
+            return { success: false, error: 'Not authenticated' }
+          }
+
+          const session = getLinkingSessionState(sessionId)
+          if (!session) {
+            return { success: false, error: 'Linking session not found or expired' }
+          }
+
+          const client = getSyncApiClient()
+          const statusResponse = await client.getLinkingStatus(storedTokens.accessToken, sessionId)
+          if (!statusResponse.newDevicePublicKey) {
+            return { success: false, error: 'New device has not scanned QR code yet' }
+          }
+
+          const newDevicePublicKey = base64ToUint8Array(statusResponse.newDevicePublicKey)
+          derivedKeys = await deriveLinkingKeys(session.privateKey, newDevicePublicKey)
+
+          const keyMaterial = await retrieveKeyMaterial()
+          if (!keyMaterial) {
+            return { success: false, error: 'No master key found' }
+          }
+
+          masterKeyBytes = base64ToUint8Array(keyMaterial.masterKey)
+          const { ciphertext, nonce } = await encryptMasterKeyForLinking(
+            masterKeyBytes,
+            derivedKeys.encryptionKey
+          )
+
+          const proofPayload = {
+            sessionId,
+            encryptedMasterKey: uint8ArrayToBase64(ciphertext),
+            encryptedKeyNonce: uint8ArrayToBase64(nonce)
+          }
+          const keyConfirm = computeLinkingProof(
+            derivedKeys.macKey,
+            proofPayload,
+            LINKING_KEY_CONFIRM_FIELD_ORDER
+          )
+
+          await client.approveLinking(storedTokens.accessToken, {
+            sessionId,
+            encryptedMasterKey: uint8ArrayToBase64(ciphertext),
+            encryptedKeyNonce: uint8ArrayToBase64(nonce),
+            keyConfirm: uint8ArrayToBase64(keyConfirm)
+          })
+
+          deleteLinkingSession(sessionId)
+
+          return { success: true }
+        } catch (error) {
+          console.error('[Sync] APPROVE_LINKING error:', error)
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Approval failed'
+          }
+        } finally {
+          if (derivedKeys) {
+            await secureZero(derivedKeys.encryptionKey)
+            await secureZero(derivedKeys.macKey)
+          }
+          if (masterKeyBytes) {
+            await secureZero(masterKeyBytes)
+          }
+        }
+      }
     )
   )
 
@@ -751,14 +1013,43 @@ export function registerSyncHandlers(): void {
 
   ipcMain.handle(
     SyncChannels.invoke.CANCEL_LINKING,
-    createStringHandler(() => createNotImplementedResponse())
+    createStringHandler((sessionId: string) => {
+      deleteLinkingSession(sessionId)
+      return { success: true }
+    })
   )
 
   ipcMain.handle(
     SyncChannels.invoke.GET_LINKING_STATUS,
     createValidatedHandler(
       z.object({ sessionId: z.string().uuid() }),
-      (): GetLinkingStatusResponse => ({ session: null })
+      async ({ sessionId }): Promise<GetLinkingStatusResponse> => {
+        try {
+          const storedTokens = await retrieveAuthTokens()
+          if (!storedTokens?.accessToken) {
+            return { session: null }
+          }
+
+          const client = getSyncApiClient()
+          const response = await client.getLinkingStatus(storedTokens.accessToken, sessionId)
+          return {
+            session: {
+              id: response.id,
+              userId: storedTokens.userId,
+              initiatorDeviceId: response.initiatorDeviceId,
+              ephemeralPublicKey: response.ephemeralPublicKey,
+              newDevicePublicKey: response.newDevicePublicKey,
+              status: response.status,
+              createdAt: response.createdAt,
+              expiresAt: response.expiresAt,
+              completedAt: response.completedAt
+            }
+          }
+        } catch (error) {
+          console.error('[Sync] GET_LINKING_STATUS error:', error)
+          return { session: null }
+        }
+      }
     )
   )
 

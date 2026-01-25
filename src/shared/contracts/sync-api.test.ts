@@ -52,7 +52,7 @@ describe('Sync API Contracts', () => {
     })
 
     it('should have all device platforms', () => {
-      expect(DEVICE_PLATFORMS).toEqual(['macos', 'windows', 'linux', 'ios', 'android'])
+      expect(DEVICE_PLATFORMS).toEqual(['macos', 'windows', 'linux', 'ios', 'android', 'unknown'])
     })
 
     it('should have all auth methods', () => {

@@ -42,7 +42,13 @@ export const CryptoErrorCode = {
   KEY_NOT_FOUND: 'CRYPTO_KEY_NOT_FOUND',
 
   /** Invalid signature payload */
-  INVALID_PAYLOAD: 'CRYPTO_INVALID_PAYLOAD'
+  INVALID_PAYLOAD: 'CRYPTO_INVALID_PAYLOAD',
+
+  /** Key generation failed */
+  KEY_GENERATION_FAILED: 'CRYPTO_KEY_GENERATION_FAILED',
+
+  /** HMAC computation failed */
+  HMAC_FAILED: 'CRYPTO_HMAC_FAILED'
 } as const
 
 export type CryptoErrorCode = (typeof CryptoErrorCode)[keyof typeof CryptoErrorCode]

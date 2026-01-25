@@ -49,7 +49,8 @@ export const ErrorCode = {
   LINKING_SESSION_EXPIRED: 'LINKING_SESSION_EXPIRED',
   LINKING_INVALID_STATE: 'LINKING_INVALID_STATE',
   LINKING_DEVICE_NOT_OWNED: 'LINKING_DEVICE_NOT_OWNED',
-  LINKING_CONFIRM_MISMATCH: 'LINKING_CONFIRM_MISMATCH'
+  LINKING_CONFIRM_MISMATCH: 'LINKING_CONFIRM_MISMATCH',
+  LINKING_SESSION_INCOMPLETE: 'LINKING_SESSION_INCOMPLETE'
 } as const
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode]
@@ -159,6 +160,13 @@ export const linkingDeviceNotOwned = (): SyncError =>
 
 export const linkingConfirmMismatch = (): SyncError =>
   new SyncError('Device confirmation does not match', ErrorCode.LINKING_CONFIRM_MISMATCH, 400)
+
+export const linkingSessionIncomplete = (): SyncError =>
+  new SyncError(
+    'Linking session is missing required data (master key not transferred)',
+    ErrorCode.LINKING_SESSION_INCOMPLETE,
+    409
+  )
 
 /**
  * Type guard to check if an error is a SyncError.

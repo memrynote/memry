@@ -13,7 +13,13 @@ import {
   XCHACHA_PARAMS,
   ED25519_PARAMS
 } from '@shared/contracts/crypto'
-import type { DerivedKeys, DeviceSigningKeyPair } from '@shared/contracts/crypto'
+import type {
+  DerivedKeys,
+  DeviceSigningKeyPair,
+  LinkingKeyPair,
+  LinkingDerivedKeys
+} from '@shared/contracts/crypto'
+import * as cborg from 'cborg'
 
 /**
  * Derive a key using HKDF with a context string.
@@ -397,4 +403,220 @@ export function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
   }
   // Use sodium-native's constant-time comparison
   return sodium.sodium_memcmp(Buffer.from(a), Buffer.from(b))
+}
+
+// =============================================================================
+// T109: X25519 Keypair Generation for Device Linking
+// =============================================================================
+
+/**
+ * Generate an ephemeral X25519 keypair for device linking ECDH.
+ *
+ * These keys are used for the key exchange during device linking:
+ * - Public key is shared via QR code or server
+ * - Private key is held in memory only (never persisted)
+ * - Both devices generate keypairs and perform ECDH to derive shared secrets
+ *
+ * @returns LinkingKeyPair with Base64-encoded public and private keys
+ * @throws CryptoError if key generation fails
+ */
+export function generateLinkingKeyPair(): LinkingKeyPair {
+  try {
+    const publicKey = Buffer.alloc(sodium.crypto_kx_PUBLICKEYBYTES)
+    const privateKey = Buffer.alloc(sodium.crypto_kx_SECRETKEYBYTES)
+
+    sodium.crypto_kx_keypair(publicKey, privateKey)
+
+    return {
+      publicKey: uint8ArrayToBase64(new Uint8Array(publicKey)),
+      privateKey: uint8ArrayToBase64(new Uint8Array(privateKey))
+    }
+  } catch (error) {
+    throw new CryptoError(
+      'Failed to generate linking keypair',
+      CryptoErrorCode.KEY_GENERATION_FAILED,
+      error
+    )
+  }
+}
+
+// =============================================================================
+// T110: ECDH Shared Secret + HKDF Key Derivation for Device Linking
+// =============================================================================
+
+/**
+ * Derive encryption and MAC keys for device linking from ECDH shared secret.
+ *
+ * Performs X25519 ECDH between the local private key and remote public key,
+ * then derives two separate keys using HKDF:
+ * - encryptionKey: For encrypting the master key during transfer
+ * - macKey: For computing HMAC proofs to verify the handshake
+ *
+ * Security assumptions:
+ * - myPrivateKey is a valid 32-byte X25519 private key
+ * - theirPublicKey is a valid 32-byte X25519 public key from the other device
+ * - The ECDH shared secret has sufficient entropy for key derivation
+ *
+ * @param myPrivateKey - Local X25519 private key (32 bytes)
+ * @param theirPublicKey - Remote X25519 public key (32 bytes)
+ * @returns LinkingDerivedKeys with encryption and MAC keys
+ * @throws CryptoError if key sizes are invalid or derivation fails
+ */
+export async function deriveLinkingKeys(
+  myPrivateKey: Uint8Array,
+  theirPublicKey: Uint8Array
+): Promise<LinkingDerivedKeys> {
+  if (myPrivateKey.length !== 32) {
+    throw new CryptoError(
+      `Invalid private key length: expected 32 bytes, got ${myPrivateKey.length}`,
+      CryptoErrorCode.INVALID_KEY_LENGTH
+    )
+  }
+
+  if (theirPublicKey.length !== 32) {
+    throw new CryptoError(
+      `Invalid public key length: expected 32 bytes, got ${theirPublicKey.length}`,
+      CryptoErrorCode.INVALID_KEY_LENGTH
+    )
+  }
+
+  try {
+    // Step 1: Compute ECDH shared secret using X25519 scalar multiplication
+    const sharedSecret = Buffer.alloc(sodium.crypto_scalarmult_BYTES)
+    sodium.crypto_scalarmult(
+      sharedSecret,
+      Buffer.from(myPrivateKey),
+      Buffer.from(theirPublicKey)
+    )
+
+    // Step 2: Derive encryption key using HKDF (via crypto_kdf)
+    const encryptionKey = await deriveKey(
+      new Uint8Array(sharedSecret),
+      HKDF_CONTEXTS.LINKING_ENC,
+      32
+    )
+
+    // Step 3: Derive MAC key using HKDF (via crypto_kdf)
+    const macKey = await deriveKey(
+      new Uint8Array(sharedSecret),
+      HKDF_CONTEXTS.LINKING_MAC,
+      32
+    )
+
+    // Step 4: Zero the shared secret from memory
+    sodium.sodium_memzero(sharedSecret)
+
+    return {
+      encryptionKey,
+      macKey
+    }
+  } catch (error) {
+    if (error instanceof CryptoError) {
+      throw error
+    }
+    throw new CryptoError(
+      'Failed to derive linking keys',
+      CryptoErrorCode.KEY_DERIVATION_FAILED,
+      error
+    )
+  }
+}
+
+// =============================================================================
+// T110a: Linking HMAC Proofs
+// =============================================================================
+
+/**
+ * Compute an HMAC proof for device linking verification.
+ *
+ * Creates a keyed hash (BLAKE2b-256) over the canonical CBOR encoding of the payload.
+ * The field order ensures deterministic encoding across devices.
+ *
+ * Used for:
+ * - newDeviceConfirm: New device proves it derived keys from QR code
+ * - keyConfirm: Existing device proves the encrypted master key is authentic
+ *
+ * Security assumptions:
+ * - macKey is a 32-byte key derived from ECDH shared secret
+ * - fieldOrder matches the expected order on the verifying device
+ * - Payload values are the exact values being confirmed
+ *
+ * @param macKey - 32-byte MAC key from deriveLinkingKeys()
+ * @param payload - Object containing fields to include in the proof
+ * @param fieldOrder - Array specifying the canonical field order
+ * @returns 32-byte HMAC proof
+ * @throws CryptoError if MAC key is invalid or computation fails
+ */
+export function computeLinkingProof(
+  macKey: Uint8Array,
+  payload: Record<string, unknown>,
+  fieldOrder: readonly string[]
+): Uint8Array {
+  if (macKey.length !== 32) {
+    throw new CryptoError(
+      `Invalid MAC key length: expected 32 bytes, got ${macKey.length}`,
+      CryptoErrorCode.INVALID_KEY_LENGTH
+    )
+  }
+
+  try {
+    // Step 1: Order fields according to the specified order (only include present fields)
+    const orderedPayload: Record<string, unknown> = {}
+    for (const field of fieldOrder) {
+      if (field in payload && payload[field] !== undefined) {
+        orderedPayload[field] = payload[field]
+      }
+    }
+
+    // Step 2: Encode to canonical CBOR
+    const cborData = cborg.encode(orderedPayload, { float64: true })
+
+    // Step 3: Compute keyed BLAKE2b-256 hash (HMAC-like construction)
+    const proof = Buffer.alloc(32)
+    sodium.crypto_generichash(
+      proof,
+      Buffer.from(cborData),
+      Buffer.from(macKey)
+    )
+
+    return new Uint8Array(proof)
+  } catch (error) {
+    if (error instanceof CryptoError) {
+      throw error
+    }
+    throw new CryptoError(
+      'Failed to compute linking proof',
+      CryptoErrorCode.HMAC_FAILED,
+      error
+    )
+  }
+}
+
+/**
+ * Verify a linking HMAC proof.
+ *
+ * Recomputes the proof from the payload and compares in constant time.
+ *
+ * @param macKey - 32-byte MAC key
+ * @param payload - The payload that was supposedly signed
+ * @param fieldOrder - The canonical field order
+ * @param proof - The proof to verify
+ * @returns true if the proof is valid
+ */
+export function verifyLinkingProof(
+  macKey: Uint8Array,
+  payload: Record<string, unknown>,
+  fieldOrder: readonly string[],
+  proof: Uint8Array
+): boolean {
+  if (proof.length !== 32) {
+    return false
+  }
+
+  try {
+    const expectedProof = computeLinkingProof(macKey, payload, fieldOrder)
+    return constantTimeEqual(expectedProof, proof)
+  } catch {
+    return false
+  }
 }
