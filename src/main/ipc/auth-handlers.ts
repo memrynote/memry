@@ -39,6 +39,7 @@ import {
   deleteSigningKeyPair
 } from '../crypto/keychain'
 import { createOAuthServer, type OAuthServer } from '../auth/oauth-server'
+import { handleSessionChanged, handleSessionExpired } from '../sync/auth-bridge'
 
 let activeOAuthServer: OAuthServer | null = null
 
@@ -150,6 +151,7 @@ export function registerAuthHandlers(): void {
           })
 
           emitSessionChanged(true, { id: response.user.id, email: response.user.email })
+          void handleSessionChanged(true, response.user.id)
 
           return {
             success: true,
@@ -313,6 +315,7 @@ export function registerAuthHandlers(): void {
           })
 
           emitSessionChanged(true, { id: tokenResponse.user.id, email: tokenResponse.user.email })
+          void handleSessionChanged(true, tokenResponse.user.id)
 
           activeOAuthServer = null
 
@@ -380,6 +383,7 @@ export function registerAuthHandlers(): void {
         await deleteSigningKeyPair()
 
         emitSessionChanged(false)
+        handleSessionExpired()
 
         return { success: true }
       } catch (error) {

@@ -276,6 +276,30 @@ export class SyncQueue extends TypedEmitter<QueueEvents> {
     this.emitQueueChanged()
   }
 
+  /**
+   * Clear queue items when user changes.
+   * Prevents old user's queue items from syncing under new user's account.
+   *
+   * @param previousUserId - The previous user's ID
+   * @param newUserId - The new user's ID
+   */
+  async clearForUserChange(previousUserId: string, newUserId: string): Promise<void> {
+    const itemCount = this.items.size
+
+    if (itemCount === 0) {
+      console.info('[SyncQueue] No items to clear for user change')
+      return
+    }
+
+    console.info('[SyncQueue] Clearing queue for user change', {
+      previousUserId,
+      newUserId,
+      itemCount
+    })
+
+    await this.clear()
+  }
+
   private getSorted(): QueueItem[] {
     return Array.from(this.items.values()).sort((a, b) => {
       if (b.priority !== a.priority) {

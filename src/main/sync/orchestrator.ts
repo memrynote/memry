@@ -11,6 +11,7 @@ import { initSyncQueue, getSyncQueue } from './queue'
 import { getNetworkMonitor } from './network'
 import { retrieveAuthTokens, retrieveKeyMaterial } from '../crypto/keychain'
 import { bootstrapSyncData } from './bootstrap'
+import { initAuthSyncBridge, handleSessionExpired } from './auth-bridge'
 
 const AUTO_SYNC_DEBOUNCE_MS = 1500
 
@@ -136,6 +137,16 @@ export async function initSyncSubsystem(): Promise<void> {
   queue.on('sync:item-removed', (id) => {
     console.info('[Sync] Queue item removed', { id })
   })
+
+  const engine = getSyncEngine()
+  if (engine) {
+    engine.on('sync:session-expired', () => {
+      console.info('[Sync] Session expired event received')
+      handleSessionExpired()
+    })
+  }
+
+  await initAuthSyncBridge()
 
   // Pull remote changes on startup if possible
   void runSync('startup', true)

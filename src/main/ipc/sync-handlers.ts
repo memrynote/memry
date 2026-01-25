@@ -74,6 +74,7 @@ import {
 import { getSyncApiClient, isSyncApiError } from '../sync/api-client'
 import { getSyncEngine } from '../sync/engine'
 import { bootstrapSyncData } from '../sync/bootstrap'
+import { triggerPostSetupSync } from '../sync/auth-bridge'
 import type { DecryptedSyncItem } from '../sync/engine'
 import { getSyncQueue } from '../sync/queue'
 import { getNetworkMonitor } from '../sync/network'
@@ -479,6 +480,8 @@ export function registerSyncHandlers(): void {
             userId
           })
 
+          void triggerPostSetupSync()
+
           const now = Date.now()
 
           const device: Device = {
@@ -669,6 +672,8 @@ export function registerSyncHandlers(): void {
             deviceId: deviceIdFromToken,
             userId: storedTokens.userId
           })
+
+          void triggerPostSetupSync()
 
           const now = Date.now()
           const device: Device = {
