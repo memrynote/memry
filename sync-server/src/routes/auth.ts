@@ -84,6 +84,7 @@ import {
   hashLinkingToken,
   verifyLinkingToken
 } from '../services/linking'
+import { getDevicesByUserId } from '../services/device'
 
 interface AuthVariables {
   auth: {
@@ -527,6 +528,17 @@ authRoutes.post('/devices', authMiddleware(), async (c) => {
   }
 
   return c.json(response)
+})
+
+/**
+ * GET /auth/devices
+ * Get all devices for the authenticated user.
+ * Returns devices with their public keys so new devices can verify signatures.
+ */
+authRoutes.get('/devices', authMiddleware(), async (c) => {
+  const auth = getAuth(c)
+  const devices = await getDevicesByUserId(c.env.DB, auth.userId)
+  return c.json({ devices })
 })
 
 // =============================================================================

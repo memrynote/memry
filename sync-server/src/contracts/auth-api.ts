@@ -61,7 +61,7 @@ export const OtpVerifyResponseSchema = z.object({
   accessToken: z.string(),
   refreshToken: z.string(),
   user: UserPublicSchema,
-  device: DeviceSchema
+  device: DeviceSchema.optional()
 })
 export type OtpVerifyResponse = z.infer<typeof OtpVerifyResponseSchema>
 
@@ -104,6 +104,15 @@ export const DeviceRegisterResponseSchema = z.object({
   challenge: z.string()
 })
 export type DeviceRegisterResponse = z.infer<typeof DeviceRegisterResponseSchema>
+
+/**
+ * GET /auth/devices
+ * Get all devices for the authenticated user
+ */
+export const GetDevicesResponseSchema = z.object({
+  devices: z.array(DeviceSchema)
+})
+export type GetDevicesResponse = z.infer<typeof GetDevicesResponseSchema>
 
 // =============================================================================
 // OAuth Endpoints

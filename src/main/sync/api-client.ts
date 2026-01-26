@@ -24,7 +24,8 @@ import type {
   RecoveryInfoResponse,
   OAuthCallbackResponse,
   LogoutRequest,
-  LogoutResponse
+  LogoutResponse,
+  GetDevicesResponse
 } from '@shared/contracts/auth-api'
 import type {
   LinkingInitiateRequest,
@@ -125,6 +126,7 @@ export interface SyncApiClient {
   registerDevice(token: string, request: DeviceRegisterRequest): Promise<DeviceRegisterResponse>
   refreshToken(refreshToken: string): Promise<RefreshTokenResponse>
   getRecoveryInfo(token: string): Promise<RecoveryInfoResponse>
+  getAccountDevices(token: string): Promise<GetDevicesResponse>
   initiateOAuth(provider: string, params: OAuthInitiateParams): Promise<OAuthInitiateResponse>
   exchangeOAuthCode(provider: string, params: OAuthExchangeParams): Promise<OAuthCallbackResponse>
   logout(token: string, request?: LogoutRequest): Promise<LogoutResponse>
@@ -222,6 +224,16 @@ function createApiClientInternal(baseUrl: string): SyncApiClient {
         }
       })
       return handleResponse<RecoveryInfoResponse>(response)
+    },
+
+    async getAccountDevices(token: string): Promise<GetDevicesResponse> {
+      const response = await fetch(`${baseUrl}/api/v1/auth/devices`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      return handleResponse<GetDevicesResponse>(response)
     },
 
     async initiateOAuth(

@@ -63,6 +63,7 @@ export type LinkingSessionStatus = (typeof LINKING_SESSION_STATUS)[number]
 export const VectorClockSchema = z.record(z.string(), z.number().int().nonnegative())
 export type VectorClock = z.infer<typeof VectorClockSchema>
 
+// Field-level vector clocks (used for settings merge)
 export const FieldClocksSchema = z.record(z.string(), VectorClockSchema)
 export type FieldClocks = z.infer<typeof FieldClocksSchema>
 
@@ -438,6 +439,13 @@ export const SyncedSettingsSchema = z.object({
 })
 
 export type SyncedSettings = z.infer<typeof SyncedSettingsSchema>
+
+export const SyncedSettingsPayloadSchema = z.object({
+  settings: SyncedSettingsSchema,
+  fieldClocks: FieldClocksSchema
+})
+
+export type SyncedSettingsPayload = z.infer<typeof SyncedSettingsPayloadSchema>
 
 // =============================================================================
 // OTP Types

@@ -96,6 +96,15 @@ export const DeviceRegisterResponseSchema = z.object({
 })
 export type DeviceRegisterResponse = z.infer<typeof DeviceRegisterResponseSchema>
 
+/**
+ * GET /auth/devices
+ * Get all devices for the authenticated user
+ */
+export const GetDevicesResponseSchema = z.object({
+  devices: z.array(DeviceSchema)
+})
+export type GetDevicesResponse = z.infer<typeof GetDevicesResponseSchema>
+
 // =============================================================================
 // OAuth Endpoints
 // =============================================================================

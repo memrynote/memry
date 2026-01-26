@@ -98,6 +98,7 @@ import { getDatabase } from '../database/client'
 import { inboxItems } from '@shared/db/schema/inbox'
 import { savedFilters } from '@shared/db/schema/settings'
 import { tasks } from '@shared/db/schema/tasks'
+import { devices as devicesTable } from '@shared/db/schema/sync-schema'
 
 function emitSyncEvent(channel: string, data: unknown): void {
   BrowserWindow.getAllWindows().forEach((win) => {
@@ -186,6 +187,48 @@ function getDefaultSyncState(): SyncState {
     pendingCount: 0,
     serverCursor: 0,
     deviceClock: {}
+  }
+}
+
+async function fetchAndStoreAccountDevices(): Promise<void> {
+  const storedTokens = await retrieveAuthTokens()
+  if (!storedTokens?.accessToken) return
+
+  try {
+    const client = getSyncApiClient()
+    const { devices } = await client.getAccountDevices(storedTokens.accessToken)
+
+    const db = getDatabase()
+
+    for (const device of devices) {
+      if (!device.authPublicKey) continue
+
+      db.insert(devicesTable)
+        .values({
+          id: device.id,
+          name: device.name,
+          platform: device.platform,
+          osVersion: device.osVersion ?? null,
+          appVersion: device.appVersion,
+          authPublicKey: device.authPublicKey,
+          linkedAt: new Date(device.linkedAt).toISOString(),
+          lastSyncAt: device.lastSyncAt ? new Date(device.lastSyncAt).toISOString() : null,
+          isCurrentDevice: false
+        })
+        .onConflictDoUpdate({
+          target: devicesTable.id,
+          set: {
+            name: device.name,
+            authPublicKey: device.authPublicKey,
+            lastSyncAt: device.lastSyncAt ? new Date(device.lastSyncAt).toISOString() : null
+          }
+        })
+        .run()
+    }
+
+    console.info('[Sync] Stored account devices', { count: devices.length })
+  } catch (error) {
+    console.warn('[Sync] Failed to fetch account devices:', error)
   }
 }
 
@@ -567,6 +610,7 @@ export function registerSyncHandlers(): void {
             userId
           })
 
+          await fetchAndStoreAccountDevices()
           await resetSyncStateForNewDevice()
           void triggerPostSetupSync()
 
@@ -761,6 +805,7 @@ export function registerSyncHandlers(): void {
             userId: storedTokens.userId
           })
 
+          await fetchAndStoreAccountDevices()
           await resetSyncStateForNewDevice()
           void triggerPostSetupSync()
 
@@ -1104,6 +1149,7 @@ export function registerSyncHandlers(): void {
 
           deleteLinkingSession(sessionId)
 
+          await fetchAndStoreAccountDevices()
           await resetSyncStateForNewDevice()
           void triggerPostSetupSync()
 

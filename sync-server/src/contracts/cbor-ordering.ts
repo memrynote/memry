@@ -66,3 +66,33 @@ export const ENCRYPTED_UPDATE_PAYLOAD_FIELD_ORDER = [
   'nonce',
   'timestamp'
 ] as const
+
+// =============================================================================
+// T110a: Device Linking HMAC Proof Field Orders
+// =============================================================================
+
+/**
+ * Field order for new device confirmation proof (SCAN_LINKING_QR).
+ * The new device computes HMAC over this payload to prove possession of derived keys.
+ *
+ * Field order rationale:
+ * - Order is chosen for semantic grouping (identifiers first, then data)
+ * - RFC 8949 deterministic encoding is achieved by consistent application of
+ *   this order on both client and server, not alphabetical sorting
+ * - Both devices must use identical field ordering to produce matching HMACs
+ */
+export const LINKING_NEW_DEVICE_CONFIRM_FIELD_ORDER = [
+  'sessionId',
+  'token',
+  'newDevicePublicKey'
+] as const
+
+/**
+ * Field order for key confirmation proof (APPROVE_LINKING).
+ * The existing device computes HMAC over this payload when transferring the master key.
+ */
+export const LINKING_KEY_CONFIRM_FIELD_ORDER = [
+  'sessionId',
+  'encryptedMasterKey',
+  'encryptedKeyNonce'
+] as const
