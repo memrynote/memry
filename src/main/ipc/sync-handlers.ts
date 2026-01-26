@@ -90,6 +90,7 @@ import { getSyncApiClient, createApiClientWithUrl, isSyncApiError } from '../syn
 import { getSyncEngine } from '../sync/engine'
 import { bootstrapSyncData } from '../sync/bootstrap'
 import { triggerPostSetupSync } from '../sync/auth-bridge'
+import { resetSyncStateForNewDevice } from '../sync/state-reset'
 import type { DecryptedSyncItem } from '../sync/engine'
 import { getSyncQueue } from '../sync/queue'
 import { getNetworkMonitor } from '../sync/network'
@@ -566,6 +567,7 @@ export function registerSyncHandlers(): void {
             userId
           })
 
+          await resetSyncStateForNewDevice()
           void triggerPostSetupSync()
 
           const now = Date.now()
@@ -759,6 +761,7 @@ export function registerSyncHandlers(): void {
             userId: storedTokens.userId
           })
 
+          await resetSyncStateForNewDevice()
           void triggerPostSetupSync()
 
           const now = Date.now()
@@ -1101,6 +1104,7 @@ export function registerSyncHandlers(): void {
 
           deleteLinkingSession(sessionId)
 
+          await resetSyncStateForNewDevice()
           void triggerPostSetupSync()
 
           return {
