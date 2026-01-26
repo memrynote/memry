@@ -341,14 +341,19 @@ async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
 
 let decryptedItemListener: ((item: DecryptedSyncItem) => void) | null = null
 
-export function registerSyncHandlers(): void {
+export function registerDecryptedItemListener(): void {
   const engine = getSyncEngine()
   if (engine && !decryptedItemListener) {
     decryptedItemListener = (item) => {
       void handleDecryptedSyncItem(item)
     }
     engine.on('sync:item-decrypted', decryptedItemListener)
+    console.info('[Sync] Registered decrypted item listener')
   }
+}
+
+export function registerSyncHandlers(): void {
+  registerDecryptedItemListener()
 
   // ============================================================================
   // Status & Control

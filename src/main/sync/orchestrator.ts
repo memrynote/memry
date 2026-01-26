@@ -12,6 +12,7 @@ import { getNetworkMonitor } from './network'
 import { retrieveAuthTokens, retrieveKeyMaterial } from '../crypto/keychain'
 import { bootstrapSyncData } from './bootstrap'
 import { initAuthSyncBridge, handleSessionExpired } from './auth-bridge'
+import { registerDecryptedItemListener } from '../ipc/sync-handlers'
 
 const AUTO_SYNC_DEBOUNCE_MS = 1500
 
@@ -109,6 +110,8 @@ export async function initSyncSubsystem(): Promise<void> {
   console.info('[Sync] Initializing sync subsystem')
   await initSyncQueue()
   await initSyncEngine()
+
+  registerDecryptedItemListener()
 
   const networkMonitor = getNetworkMonitor()
   networkMonitor.start()
