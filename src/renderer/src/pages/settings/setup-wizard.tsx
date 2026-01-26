@@ -1,27 +1,37 @@
 /**
- * Setup Wizard Page (T069, T069c)
+ * Setup Wizard Page (T069, T069c, T119a)
  * Multi-step wizard for first device setup: auth -> recovery display -> recovery confirm -> complete
+ * Also supports QR-based linking flow for new devices: auth -> qr-link -> qr-pending -> complete
  */
 
 import { useState, useCallback, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Shield, Check } from 'lucide-react'
+import { Shield, Check, QrCode, KeyRound } from 'lucide-react'
 import { EmailEntryForm } from '@/components/sync/email-entry-form'
 import { OtpVerification } from '@/components/sync/otp-verification'
 import { OAuthButtons } from '@/components/sync/oauth-buttons'
 import { RecoveryPhraseDisplay } from '@/components/sync/recovery-phrase-display'
 import { RecoveryPhraseConfirm } from '@/components/sync/recovery-phrase-confirm'
 import { RecoveryPhraseEntry } from '@/components/sync/recovery-phrase-entry'
-import type { RegisterExistingDeviceResponse } from '@shared/contracts/ipc-sync'
+import { QRScanner } from '@/components/sync/qr-scanner'
+import { LinkingPending } from '@/components/sync/linking-pending'
+import type {
+  RegisterExistingDeviceResponse,
+  CompleteLinkingResponse
+} from '@shared/contracts/ipc-sync'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
-import type { SetupFirstDeviceResponse } from '@shared/contracts/ipc-sync'
+import type { SetupFirstDeviceResponse, ScanLinkingQRResponse } from '@shared/contracts/ipc-sync'
+import type { Device } from '@shared/contracts/sync-api'
 
 type WizardStep =
   | 'auth'
   | 'otp'
+  | 'link-choice'
+  | 'qr-link'
+  | 'qr-pending'
   | 'recovery-display'
   | 'recovery-confirm'
   | 'recovery-entry'
@@ -63,6 +73,9 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps): React.
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | undefined>()
   const [setupResponse, setSetupResponse] = useState<SetupFirstDeviceResponse | null>(null)
+  const [linkingSessionId, setLinkingSessionId] = useState<string | null>(null)
+  const [linkingExpiresAt, setLinkingExpiresAt] = useState<number | null>(null)
+  const [linkedDevice, setLinkedDevice] = useState<Device | null>(null)
 
   useEffect(() => {
     setError(undefined)
@@ -111,7 +124,7 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps): React.
               setError(setupErr instanceof Error ? setupErr.message : 'Device setup failed')
             }
           } else {
-            setStep('recovery-entry')
+            setStep('link-choice')
           }
         } else {
           setError(response.error || 'Invalid verification code')
@@ -161,7 +174,7 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps): React.
             setError(setupErr instanceof Error ? setupErr.message : 'Device setup failed')
           }
         } else {
-          setStep('recovery-entry')
+          setStep('link-choice')
         }
       } else {
         setError(response.error || 'Google sign-in failed')
@@ -233,22 +246,109 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps): React.
     setError(undefined)
   }, [])
 
+  const handleBackToLinkChoice = useCallback(() => {
+    setStep('link-choice')
+    setError(undefined)
+    setLinkingSessionId(null)
+    setLinkingExpiresAt(null)
+  }, [])
+
+  const handleChooseQRLink = useCallback(() => {
+    setStep('qr-link')
+    setError(undefined)
+  }, [])
+
+  const handleChooseRecoveryPhrase = useCallback(() => {
+    setStep('recovery-entry')
+    setError(undefined)
+  }, [])
+
+  const handleQRScanSuccess = useCallback(async (qrContent: string) => {
+    setIsLoading(true)
+    setError(undefined)
+
+    try {
+      const deviceInfo = getDeviceInfo()
+      const response: ScanLinkingQRResponse = await window.api.sync.scanLinkingQR({
+        qrContent,
+        ...deviceInfo
+      })
+
+      if (!response.success) {
+        setError(response.error ?? 'Failed to scan QR code')
+        setIsLoading(false)
+        return
+      }
+
+      if (!response.sessionId) {
+        setError('Invalid QR code')
+        setIsLoading(false)
+        return
+      }
+
+      setLinkingSessionId(response.sessionId)
+
+      let expiresAt: number
+      try {
+        const parsedQR = JSON.parse(qrContent) as { expiresAt?: number }
+        expiresAt = parsedQR.expiresAt ?? Date.now() + 5 * 60 * 1000
+      } catch {
+        expiresAt = Date.now() + 5 * 60 * 1000
+      }
+      setLinkingExpiresAt(expiresAt)
+
+      setStep('qr-pending')
+    } catch (err) {
+      console.error('[SetupWizard] QR scan error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to process QR code')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  const handleLinkingApproved = useCallback((response: CompleteLinkingResponse) => {
+    if (response.device) {
+      setLinkedDevice(response.device)
+    }
+    setStep('complete')
+    toast.success('Device linked successfully!')
+  }, [])
+
+  const handleLinkingExpired = useCallback(() => {
+    setError('The linking session has expired. Please scan a new QR code.')
+    setStep('qr-link')
+  }, [])
+
   const handleComplete = useCallback(() => {
     markSetupComplete()
     onComplete?.()
   }, [markSetupComplete, onComplete])
 
   const renderStepIndicator = (): React.JSX.Element => {
-    const steps = [
-      { key: 'auth', label: 'Sign in' },
-      { key: 'recovery', label: 'Recovery' },
-      { key: 'complete', label: 'Done' }
-    ]
+    const isQRFlow =
+      step === 'qr-link' || step === 'qr-pending' || (step === 'link-choice' && linkedDevice)
+
+    const steps = isQRFlow
+      ? [
+          { key: 'auth', label: 'Sign in' },
+          { key: 'link', label: 'Link' },
+          { key: 'complete', label: 'Done' }
+        ]
+      : [
+          { key: 'auth', label: 'Sign in' },
+          { key: 'recovery', label: 'Recovery' },
+          { key: 'complete', label: 'Done' }
+        ]
 
     const currentStepIndex =
       step === 'auth' || step === 'otp'
         ? 0
-        : step === 'recovery-display' || step === 'recovery-confirm' || step === 'recovery-entry'
+        : step === 'link-choice' ||
+            step === 'qr-link' ||
+            step === 'qr-pending' ||
+            step === 'recovery-display' ||
+            step === 'recovery-confirm' ||
+            step === 'recovery-entry'
           ? 1
           : 2
 
@@ -339,10 +439,74 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps): React.
           />
         )}
 
+        {step === 'link-choice' && (
+          <div className="space-y-4">
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-semibold">Link this device</h3>
+              <p className="text-sm text-muted-foreground">
+                Choose how you'd like to link this device to your existing account.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Button
+                variant="outline"
+                className="w-full justify-start h-auto py-4"
+                onClick={handleChooseQRLink}
+              >
+                <QrCode className="w-5 h-5 mr-3 flex-shrink-0" />
+                <div className="text-left">
+                  <div className="font-medium">Scan QR code</div>
+                  <div className="text-sm text-muted-foreground">
+                    Scan a QR code from your existing device
+                  </div>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="w-full justify-start h-auto py-4"
+                onClick={handleChooseRecoveryPhrase}
+              >
+                <KeyRound className="w-5 h-5 mr-3 flex-shrink-0" />
+                <div className="text-left">
+                  <div className="font-medium">Enter recovery phrase</div>
+                  <div className="text-sm text-muted-foreground">
+                    Use your 24-word recovery phrase
+                  </div>
+                </div>
+              </Button>
+            </div>
+
+            <Button variant="ghost" onClick={handleBackToAuth} className="w-full">
+              Back
+            </Button>
+          </div>
+        )}
+
+        {step === 'qr-link' && (
+          <QRScanner
+            onScanSuccess={handleQRScanSuccess}
+            onCancel={handleBackToLinkChoice}
+            isLoading={isLoading}
+            error={error}
+          />
+        )}
+
+        {step === 'qr-pending' && linkingSessionId && linkingExpiresAt && (
+          <LinkingPending
+            sessionId={linkingSessionId}
+            expiresAt={linkingExpiresAt}
+            onApproved={handleLinkingApproved}
+            onExpired={handleLinkingExpired}
+            onCancel={handleBackToLinkChoice}
+          />
+        )}
+
         {step === 'recovery-entry' && (
           <RecoveryPhraseEntry
             onSubmit={handleRecoveryPhraseEntry}
-            onBack={handleBackToAuth}
+            onBack={handleBackToLinkChoice}
             isLoading={isLoading}
             error={error}
           />
@@ -371,6 +535,15 @@ export function SetupWizard({ onComplete, className }: SetupWizardProps): React.
                 <p>
                   <span className="text-muted-foreground">Account:</span>{' '}
                   <span className="font-medium">{setupResponse.user.email}</span>
+                </p>
+              </div>
+            )}
+
+            {linkedDevice && (
+              <div className="p-4 bg-muted rounded-lg text-sm text-left space-y-2">
+                <p>
+                  <span className="text-muted-foreground">Device:</span>{' '}
+                  <span className="font-medium">{linkedDevice.name}</span>
                 </p>
               </div>
             )}

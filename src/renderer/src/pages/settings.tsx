@@ -48,7 +48,8 @@ import {
   PenLine,
   Cloud,
   LogOut,
-  User
+  User,
+  QrCode
 } from 'lucide-react'
 import {
   Select,
@@ -68,6 +69,9 @@ import { useAuth } from '@/contexts/auth-context'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { SetupWizard } from './settings/setup-wizard'
+import { QRLinking } from '@/components/sync/qr-linking'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import type { Device } from '@shared/contracts/sync-api'
 
 // ============================================================================
 // Types
@@ -1312,6 +1316,7 @@ function AccountSettings() {
   const { user, isAuthenticated, isLoading, logout, refreshSession, needsSetup } = useAuth()
   const [showSetupWizard, setShowSetupWizard] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [showLinkingFlow, setShowLinkingFlow] = useState(false)
 
   const handleLogout = useCallback(async () => {
     setIsLoggingOut(true)
@@ -1330,6 +1335,11 @@ function AccountSettings() {
     setShowSetupWizard(false)
     refreshSession()
   }, [refreshSession])
+
+  const handleLinkingComplete = useCallback((device: Device) => {
+    setShowLinkingFlow(false)
+    toast.success(`Device "${device.name}" linked successfully`)
+  }, [])
 
   if (isLoading) {
     return (
@@ -1403,6 +1413,30 @@ function AccountSettings() {
 
       <Separator />
 
+      {/* Devices Section */}
+      <div className="space-y-4">
+        <div>
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Devices
+          </h4>
+        </div>
+
+        <Button variant="outline" onClick={() => setShowLinkingFlow(true)}>
+          <QrCode className="w-4 h-4 mr-2" />
+          Link new device
+        </Button>
+
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+          <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+          <p className="text-muted-foreground">
+            Link a new device by scanning a QR code. Your encryption keys will be securely
+            transferred to the new device.
+          </p>
+        </div>
+      </div>
+
+      <Separator />
+
       {/* Sync Status */}
       <div className="space-y-4">
         <div>
@@ -1424,6 +1458,19 @@ function AccountSettings() {
           </p>
         </div>
       </div>
+
+      {/* QR Linking Dialog */}
+      <Dialog open={showLinkingFlow} onOpenChange={setShowLinkingFlow}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Link new device</DialogTitle>
+          </DialogHeader>
+          <QRLinking
+            onLinkingComplete={handleLinkingComplete}
+            onCancel={() => setShowLinkingFlow(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
