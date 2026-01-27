@@ -252,6 +252,8 @@ export interface CreateLinkingSessionResponse {
   sessionId: string
   /** QR code data URL */
   qrCodeDataUrl: string
+  /** Raw linking code for manual copy/paste (JSON string) */
+  linkingCode: string
   /** Expiration timestamp */
   expiresAt: number
   /** Error message if session creation failed */

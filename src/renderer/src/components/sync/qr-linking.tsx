@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, RefreshCw, AlertCircle, QrCode } from 'lucide-react'
+import { Loader2, RefreshCw, AlertCircle, QrCode, Copy, Check } from 'lucide-react'
 import { cn, formatCountdown } from '@/lib/utils'
 import { LinkingApprovalDialog } from './linking-approval-dialog'
 import type {
@@ -56,6 +56,8 @@ export function QRLinking({
 }: QRLinkingProps): React.JSX.Element {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null)
+  const [linkingCode, setLinkingCode] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
   const [expiresAt, setExpiresAt] = useState<number | null>(null)
   const [countdown, setCountdown] = useState(0)
   const [status, setStatus] = useState<LinkingStatus>('generating')
@@ -77,6 +79,8 @@ export function QRLinking({
     setStatus('generating')
     setError(null)
     setQrCodeDataUrl(null)
+    setLinkingCode(null)
+    setCopied(false)
     setSessionId(null)
     setScannedDevice(null)
 
@@ -93,6 +97,7 @@ export function QRLinking({
 
       setSessionId(response.sessionId)
       setQrCodeDataUrl(response.qrCodeDataUrl)
+      setLinkingCode(response.linkingCode)
       setExpiresAt(response.expiresAt)
       setStatus('waiting')
     } catch (err) {
@@ -276,6 +281,17 @@ export function QRLinking({
     onCancel()
   }, [sessionId, onCancel])
 
+  const handleCopyCode = useCallback(async () => {
+    if (!linkingCode) return
+    try {
+      await navigator.clipboard.writeText(linkingCode)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('[QRLinking] Copy error:', err)
+    }
+  }, [linkingCode])
+
   if (status === 'expired') {
     return (
       <div className={cn('flex flex-col items-center space-y-4 p-6', className)}>
@@ -378,6 +394,16 @@ export function QRLinking({
           <p className="text-sm text-muted-foreground">Completing device linking...</p>
         )}
       </div>
+
+      {status === 'waiting' && linkingCode && (
+        <div className="flex flex-col items-center space-y-2 pt-2 border-t w-full">
+          <p className="text-xs text-muted-foreground">Or copy code to paste on new device</p>
+          <Button variant="outline" size="sm" onClick={handleCopyCode}>
+            {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+            {copied ? 'Copied!' : 'Copy Linking Code'}
+          </Button>
+        </div>
+      )}
 
       <Button variant="outline" onClick={handleCancel}>
         Cancel

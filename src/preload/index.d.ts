@@ -2119,6 +2119,7 @@ export interface VerifyRecoveryPhraseResponse {
 export interface CreateLinkingSessionResponse {
   sessionId: string
   qrCodeDataUrl: string
+  linkingCode: string
   expiresAt: number
 }
 

@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { AlertCircle, Camera, Loader2, VideoOff } from 'lucide-react'
+import { AlertCircle, Loader2, VideoOff, Keyboard } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode'
 
@@ -42,6 +42,8 @@ export function QRScanner({
 }: QRScannerProps): React.JSX.Element {
   const [status, setStatus] = useState<ScannerStatus>('initializing')
   const [internalError, setInternalError] = useState<string | null>(null)
+  const [showManualEntry, setShowManualEntry] = useState(false)
+  const [manualCode, setManualCode] = useState('')
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const hasScannedRef = useRef(false)
@@ -150,6 +152,26 @@ export function QRScanner({
     onCancel()
   }, [stopScanner, onCancel])
 
+  const handleManualSubmit = useCallback(() => {
+    const trimmed = manualCode.trim()
+    if (!trimmed) return
+    hasScannedRef.current = true
+    setStatus('scanning')
+    onScanSuccess(trimmed)
+  }, [manualCode, onScanSuccess])
+
+  const handleSwitchToManual = useCallback(async () => {
+    await stopScanner()
+    setShowManualEntry(true)
+  }, [stopScanner])
+
+  const handleSwitchToCamera = useCallback(() => {
+    setShowManualEntry(false)
+    setManualCode('')
+    hasScannedRef.current = false
+    startScanner()
+  }, [startScanner])
+
   if (status === 'permission-denied') {
     return (
       <div className={cn('flex flex-col items-center space-y-4 p-6', className)}>
@@ -176,23 +198,53 @@ export function QRScanner({
     )
   }
 
-  if (status === 'no-camera') {
+  if (status === 'no-camera' || showManualEntry) {
     return (
       <div className={cn('flex flex-col items-center space-y-4 p-6', className)}>
         <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-          <Camera className="w-8 h-8 text-muted-foreground" />
+          <Keyboard className="w-8 h-8 text-muted-foreground" />
         </div>
 
         <div className="text-center space-y-2">
-          <h3 className="text-lg font-semibold">No Camera Found</h3>
+          <h3 className="text-lg font-semibold">Enter Linking Code</h3>
           <p className="text-sm text-muted-foreground">
-            This device doesn't have a camera. Try using a different device to link.
+            Paste the code copied from your other device
           </p>
         </div>
 
-        <Button variant="outline" onClick={handleCancel}>
-          Cancel
-        </Button>
+        <textarea
+          value={manualCode}
+          onChange={(e) => setManualCode(e.target.value)}
+          placeholder="Paste linking code here..."
+          className="w-full h-24 p-3 text-xs font-mono border rounded-lg bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+          disabled={isLoading}
+        />
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        <div className="flex gap-2 w-full">
+          <Button variant="outline" onClick={handleCancel} className="flex-1" disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleManualSubmit}
+            className="flex-1"
+            disabled={!manualCode.trim() || isLoading}
+          >
+            {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+            Link Device
+          </Button>
+        </div>
+
+        {status !== 'no-camera' && (
+          <button
+            onClick={handleSwitchToCamera}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+            disabled={isLoading}
+          >
+            Use camera instead
+          </button>
+        )}
       </div>
     )
   }
@@ -263,6 +315,14 @@ export function QRScanner({
       <Button variant="outline" onClick={handleCancel} disabled={isLoading}>
         Cancel
       </Button>
+
+      <button
+        onClick={handleSwitchToManual}
+        className="text-xs text-muted-foreground hover:text-foreground underline"
+        disabled={isLoading}
+      >
+        Enter code manually
+      </button>
     </div>
   )
 }

@@ -257,6 +257,12 @@ async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
       if (item.deleted) {
         db.delete(inboxItems).where(eq(inboxItems.id, item.itemId)).run()
         emitSyncEvent(InboxChannels.events.ARCHIVED, { id: item.itemId })
+        emitSyncEvent(SyncChannels.events.ITEM_SYNCED, {
+          itemId: item.itemId,
+          itemType: 'inbox',
+          operation: 'deleted',
+          timestamp: Date.now()
+        })
         return
       }
 
@@ -274,6 +280,12 @@ async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
         .run()
 
       emitSyncEvent(InboxChannels.events.UPDATED, { id: item.itemId, inboxItem: payload })
+      emitSyncEvent(SyncChannels.events.ITEM_SYNCED, {
+        itemId: item.itemId,
+        itemType: 'inbox',
+        operation: 'updated',
+        timestamp: Date.now()
+      })
       return
     }
 
@@ -282,6 +294,12 @@ async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
       if (item.deleted) {
         db.delete(savedFilters).where(eq(savedFilters.id, item.itemId)).run()
         emitSyncEvent(SavedFiltersChannels.events.DELETED, { id: item.itemId })
+        emitSyncEvent(SyncChannels.events.ITEM_SYNCED, {
+          itemId: item.itemId,
+          itemType: 'filter',
+          operation: 'deleted',
+          timestamp: Date.now()
+        })
         return
       }
 
@@ -299,6 +317,12 @@ async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
         .run()
 
       emitSyncEvent(SavedFiltersChannels.events.UPDATED, { id: item.itemId, savedFilter: payload })
+      emitSyncEvent(SyncChannels.events.ITEM_SYNCED, {
+        itemId: item.itemId,
+        itemType: 'filter',
+        operation: 'updated',
+        timestamp: Date.now()
+      })
       return
     }
 
@@ -307,6 +331,12 @@ async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
       if (item.deleted) {
         db.delete(tasks).where(eq(tasks.id, item.itemId)).run()
         emitSyncEvent(TasksChannels.events.DELETED, { id: item.itemId })
+        emitSyncEvent(SyncChannels.events.ITEM_SYNCED, {
+          itemId: item.itemId,
+          itemType: 'task',
+          operation: 'deleted',
+          timestamp: Date.now()
+        })
         return
       }
 
@@ -325,6 +355,12 @@ async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
         .run()
 
       emitSyncEvent(TasksChannels.events.UPDATED, { id: item.itemId, task: payload })
+      emitSyncEvent(SyncChannels.events.ITEM_SYNCED, {
+        itemId: item.itemId,
+        itemType: 'task',
+        operation: 'updated',
+        timestamp: Date.now()
+      })
       return
     }
 
@@ -332,6 +368,12 @@ async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
       emitSyncEvent(SettingsChannels.events.CHANGED, {
         key: 'sync.settings',
         value: item.data
+      })
+      emitSyncEvent(SyncChannels.events.ITEM_SYNCED, {
+        itemId: item.itemId,
+        itemType: 'settings',
+        operation: 'updated',
+        timestamp: Date.now()
       })
     }
   } catch (error) {
@@ -887,10 +929,13 @@ export function registerSyncHandlers(): void {
           width: 256
         })
 
+        const qrPayloadParsed = JSON.parse(response.qrPayload) as LinkingQRPayload
         storeLinkingSession({
           sessionId: response.sessionId,
           privateKey: base64ToUint8Array(linkingKeyPair.privateKey),
           publicKey: linkingKeyPair.publicKey,
+          serverUrl: qrPayloadParsed.serverUrl,
+          linkingToken: qrPayloadParsed.token,
           createdAt: Date.now(),
           expiresAt: response.expiresAt
         })
@@ -898,6 +943,7 @@ export function registerSyncHandlers(): void {
         return {
           sessionId: response.sessionId,
           qrCodeDataUrl,
+          linkingCode: response.qrPayload,
           expiresAt: response.expiresAt
         }
       } catch (error) {
@@ -905,6 +951,7 @@ export function registerSyncHandlers(): void {
         return {
           sessionId: '',
           qrCodeDataUrl: '',
+          linkingCode: '',
           expiresAt: 0,
           error: error instanceof Error ? error.message : 'Failed to create linking session'
         }
