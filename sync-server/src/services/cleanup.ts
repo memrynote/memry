@@ -7,6 +7,7 @@
 
 import { cleanupRefreshTokens } from './auth'
 import { cleanupRateLimits } from '../middleware/rate-limit'
+import { cleanupOrphanedCrdtUpdates } from './crdt'
 
 /**
  * OTP code expiry time (10 minutes).
@@ -125,6 +126,7 @@ export interface CleanupResult {
   completedLinkingSessions: number
   refreshTokens: number
   rateLimits: number
+  crdtUpdates: number
   totalCleaned: number
   durationMs: number
 }
@@ -146,14 +148,16 @@ export const runCleanupJobs = async (db: D1Database): Promise<CleanupResult> => 
     linkingSessions,
     completedLinkingSessions,
     refreshTokens,
-    rateLimits
+    rateLimits,
+    crdtUpdates
   ] = await Promise.all([
     cleanupExpiredOtpCodes(db),
     cleanupUsedOtpCodes(db),
     cleanupExpiredLinkingSessions(db),
     cleanupCompletedLinkingSessions(db),
     cleanupRefreshTokens(db),
-    cleanupRateLimits(db)
+    cleanupRateLimits(db),
+    cleanupOrphanedCrdtUpdates(db)
   ])
 
   const durationMs = Date.now() - startTime
@@ -163,7 +167,8 @@ export const runCleanupJobs = async (db: D1Database): Promise<CleanupResult> => 
     linkingSessions +
     completedLinkingSessions +
     refreshTokens +
-    rateLimits
+    rateLimits +
+    crdtUpdates
 
   return {
     otpCodes,
@@ -172,6 +177,7 @@ export const runCleanupJobs = async (db: D1Database): Promise<CleanupResult> => 
     completedLinkingSessions,
     refreshTokens,
     rateLimits,
+    crdtUpdates,
     totalCleaned,
     durationMs
   }
@@ -189,6 +195,7 @@ export const logCleanupResult = (result: CleanupResult): void => {
       `(OTP: ${result.otpCodes + result.usedOtpCodes}, ` +
       `Sessions: ${result.linkingSessions + result.completedLinkingSessions}, ` +
       `Tokens: ${result.refreshTokens}, ` +
-      `RateLimits: ${result.rateLimits})`
+      `RateLimits: ${result.rateLimits}, ` +
+      `CRDT: ${result.crdtUpdates})`
   )
 }

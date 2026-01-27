@@ -36,6 +36,7 @@ import {
   type PushSyncResponse,
   PushSyncRequestSchema
 } from '../contracts/sync-api'
+import { crdtRoutes } from './crdt'
 
 interface SyncVariables {
   auth: AuthContext
@@ -47,6 +48,9 @@ const DO_BROADCAST_URL = 'http://internal/broadcast'
 const LOG_PREFIX = '[SyncServer]'
 
 const syncRoutes = new Hono<{ Bindings: Env; Variables: SyncVariables }>()
+
+// Mount CRDT routes at /crdt
+syncRoutes.route('/crdt', crdtRoutes)
 
 // =============================================================================
 // Request Schemas
