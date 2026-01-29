@@ -16,10 +16,9 @@ import { getSyncEngine } from './engine'
 import { uint8ArrayToBase64, base64ToUint8Array } from '@shared/utils/encoding'
 import type { CrdtUpdatePush } from '@shared/contracts/crdt-api'
 import { getNoteById } from '../vault/notes'
-import { retrieveDeviceKeyPair, retrieveAuthTokens, storeAuthTokens } from '../crypto/keychain'
+import { retrieveDeviceKeyPair } from '../crypto/keychain'
+import { refreshAccessToken } from './token-refresh'
 import { emptyClock, incrementClock } from './vector-clock'
-
-const TOKEN_REFRESH_COOLDOWN_MS = 5000
 
 const LOG_PREFIX = '[CrdtSyncBridge]'
 const DEBOUNCE_MS = 1500
@@ -49,8 +48,6 @@ export class CrdtSyncBridge {
   private recentUpdateHashes: Set<string> = new Set()
   private syncedNotes: Set<string> = new Set()
   private pendingNoteSyncs: Map<string, Promise<boolean>> = new Map()
-  private lastRefreshAttempt = 0
-  private refreshPromise: Promise<boolean> | null = null
 
   initialize(crdtProvider: CrdtProvider): void {
     if (this.initialized) {
@@ -458,46 +455,7 @@ export class CrdtSyncBridge {
   }
 
   private async tryRefreshSession(): Promise<boolean> {
-    if (this.refreshPromise) {
-      return this.refreshPromise
-    }
-
-    const now = Date.now()
-    if (now - this.lastRefreshAttempt < TOKEN_REFRESH_COOLDOWN_MS) {
-      console.info(`${LOG_PREFIX} Token refresh skipped: within cooldown period`)
-      return false
-    }
-
-    this.lastRefreshAttempt = now
-
-    const refreshOperation = (async () => {
-      const tokens = await retrieveAuthTokens()
-      if (!tokens?.refreshToken) {
-        return false
-      }
-
-      try {
-        const client = getSyncApiClient()
-        const response = await client.refreshToken(tokens.refreshToken)
-        await storeAuthTokens({
-          ...tokens,
-          accessToken: response.accessToken,
-          refreshToken: response.refreshToken
-        })
-        console.info(`${LOG_PREFIX} Token refreshed successfully`)
-        return true
-      } catch (error) {
-        console.warn(`${LOG_PREFIX} Token refresh failed`, error)
-        return false
-      }
-    })()
-
-    this.refreshPromise = refreshOperation
-    try {
-      return await refreshOperation
-    } finally {
-      this.refreshPromise = null
-    }
+    return refreshAccessToken()
   }
 
   private async withAuthRefresh<T>(operation: () => Promise<T>): Promise<T> {

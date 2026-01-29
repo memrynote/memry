@@ -30,6 +30,7 @@ import {
 } from '@shared/contracts/ipc-sync'
 import { createValidatedHandler, createHandler } from './validate'
 import { getSyncApiClient, isSyncApiError } from '../sync/api-client'
+import { refreshAccessToken } from '../sync/token-refresh'
 import {
   storeAuthTokens,
   retrieveAuthTokens,
@@ -338,28 +339,8 @@ export function registerAuthHandlers(): void {
   ipcMain.handle(
     AuthChannels.invoke.REFRESH_SESSION,
     createHandler(async () => {
-      const tokens = await retrieveAuthTokens()
-      if (!tokens?.refreshToken) {
-        return { success: false, error: 'No refresh token' }
-      }
-      try {
-        const client = getSyncApiClient()
-        const response = await client.refreshToken(tokens.refreshToken)
-        await storeAuthTokens({
-          ...tokens,
-          accessToken: response.accessToken,
-          refreshToken: response.refreshToken
-        })
-        return { success: true }
-      } catch (error) {
-        console.error('[Auth] REFRESH_SESSION error:', error)
-        const message = isSyncApiError(error)
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : 'Session refresh failed'
-        return { success: false, error: message }
-      }
+      const success = await refreshAccessToken()
+      return { success }
     })
   )
 

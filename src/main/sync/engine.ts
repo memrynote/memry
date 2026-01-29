@@ -20,6 +20,7 @@ import { getNetworkMonitor } from './network'
 import { getWebSocketManager, type WebSocketMessage } from './websocket'
 import { withRetry, isRetryableError } from './retry'
 import { getSyncApiClient, SyncApiError } from './api-client'
+import { refreshAccessToken } from './token-refresh'
 import { compareClock, mergeClock, emptyClock } from './vector-clock'
 import {
   generateFileKey,
@@ -29,8 +30,6 @@ import {
   decrypt,
   uint8ArrayToBase64,
   base64ToUint8Array,
-  storeAuthTokens,
-  retrieveAuthTokens,
   retrieveKeyMaterial,
   retrieveDeviceKeyPair,
   deriveVaultKey,
@@ -66,7 +65,6 @@ export interface SyncEngineEvents extends Record<string, unknown[]> {
 
 const MAX_BATCH_SIZE = 100
 const LOG_PREFIX = '[SyncEngine]'
-const TOKEN_REFRESH_COOLDOWN_MS = 5000
 
 export interface EncryptedSyncItem {
   itemType: SyncItemType
@@ -124,8 +122,6 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   private _status: SyncStatus = 'idle'
   private initialized = false
   private syncLock = false
-  private refreshPromise: Promise<boolean> | null = null
-  private lastRefreshAttempt = 0
   private onlineHandler = (): void => this.handleOnline()
   private offlineHandler = (): void => this.handleOffline()
   private messageHandler = (message: WebSocketMessage): void => {
@@ -1140,45 +1136,7 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   }
 
   private async tryRefreshSession(): Promise<boolean> {
-    if (this.refreshPromise) {
-      return this.refreshPromise
-    }
-
-    const now = Date.now()
-    if (now - this.lastRefreshAttempt < TOKEN_REFRESH_COOLDOWN_MS) {
-      console.info(`${LOG_PREFIX} Token refresh skipped: within cooldown period`)
-      return false
-    }
-
-    this.lastRefreshAttempt = now
-
-    const refreshOperation = (async () => {
-      const tokens = await retrieveAuthTokens()
-      if (!tokens?.refreshToken) {
-        return false
-      }
-
-      try {
-        const client = getSyncApiClient()
-        const response = await client.refreshToken(tokens.refreshToken)
-        await storeAuthTokens({
-          ...tokens,
-          accessToken: response.accessToken,
-          refreshToken: response.refreshToken
-        })
-        return true
-      } catch (error) {
-        console.warn(`${LOG_PREFIX} Token refresh failed`, error)
-        return false
-      }
-    })()
-
-    this.refreshPromise = refreshOperation
-    try {
-      return await refreshOperation
-    } finally {
-      this.refreshPromise = null
-    }
+    return refreshAccessToken()
   }
 }
 
