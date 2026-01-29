@@ -249,6 +249,16 @@ export async function readJournalEntry(date: string): Promise<JournalEntry | nul
   }
 }
 
+
+export async function getJournalEntryById(id: string): Promise<JournalEntry | null> {
+  if (!id.startsWith('j')) return null
+  const date = id.slice(1)
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null
+
+  return readJournalEntry(date)
+}
+
 /**
  * Write a journal entry to the file system.
  * Creates the file if it doesn't exist, updates it if it does.

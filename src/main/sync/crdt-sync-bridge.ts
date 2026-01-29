@@ -16,6 +16,7 @@ import { getSyncEngine } from './engine'
 import { uint8ArrayToBase64, base64ToUint8Array } from '@shared/utils/encoding'
 import type { CrdtUpdatePush } from '@shared/contracts/crdt-api'
 import { getNoteById } from '../vault/notes'
+import { getJournalEntryById } from '../vault/journal'
 import { retrieveDeviceKeyPair } from '../crypto/keychain'
 import { refreshAccessToken } from './token-refresh'
 import { emptyClock, incrementClock } from './vector-clock'
@@ -81,27 +82,29 @@ export class CrdtSyncBridge {
     return `${noteId}:${update.length}:${prefix}:${suffix}`
   }
 
-  private async ensureNoteSynced(noteId: string): Promise<boolean> {
-    if (this.syncedNotes.has(noteId)) {
+  private async ensureNoteSynced(docId: string): Promise<boolean> {
+    if (this.syncedNotes.has(docId)) {
       return true
     }
 
-    const existing = this.pendingNoteSyncs.get(noteId)
+    const existing = this.pendingNoteSyncs.get(docId)
     if (existing) {
       return existing
     }
 
-    const syncPromise = this.syncNoteToServer(noteId)
-    this.pendingNoteSyncs.set(noteId, syncPromise)
+    const syncPromise = this.isJournalId(docId)
+      ? this.syncJournalToServer(docId)
+      : this.syncNoteToServer(docId)
+    this.pendingNoteSyncs.set(docId, syncPromise)
 
     try {
       const result = await syncPromise
       if (result) {
-        this.syncedNotes.add(noteId)
+        this.syncedNotes.add(docId)
       }
       return result
     } finally {
-      this.pendingNoteSyncs.delete(noteId)
+      this.pendingNoteSyncs.delete(docId)
     }
   }
 
@@ -141,6 +144,51 @@ export class CrdtSyncBridge {
       return true
     } catch (error) {
       console.error(`${LOG_PREFIX} Failed to sync note ${noteId}:`, error)
+      return false
+    }
+  }
+
+  private isJournalId(docId: string): boolean {
+    return /^j\d{4}-\d{2}-\d{2}$/.test(docId)
+  }
+
+  private async syncJournalToServer(journalId: string): Promise<boolean> {
+    try {
+      const entry = await getJournalEntryById(journalId)
+      if (!entry) {
+        console.warn(`${LOG_PREFIX} Journal ${journalId} not found locally, cannot sync`)
+        return false
+      }
+
+      const keyPair = await retrieveDeviceKeyPair().catch(() => null)
+      if (!keyPair?.deviceId) {
+        console.warn(`${LOG_PREFIX} No device keypair, cannot sync journal ${journalId}`)
+        return false
+      }
+
+      const clock = incrementClock(emptyClock(), keyPair.deviceId)
+      const payload = {
+        id: entry.id,
+        date: entry.date,
+        created: entry.createdAt,
+        modified: entry.modifiedAt,
+        tags: entry.tags,
+        properties: entry.properties ?? {},
+        clock
+      }
+
+      const queue = getSyncQueue()
+      await queue.add('journal', journalId, 'create', JSON.stringify(payload), 10)
+
+      const engine = getSyncEngine()
+      if (engine && this.isOnline()) {
+        console.info(`${LOG_PREFIX} Syncing journal ${journalId} before CRDT updates`)
+        await engine.push()
+      }
+
+      return true
+    } catch (error) {
+      console.error(`${LOG_PREFIX} Failed to sync journal ${journalId}:`, error)
       return false
     }
   }
@@ -194,15 +242,10 @@ export class CrdtSyncBridge {
         }))
       )
 
-      const failedNotes = new Set(
-        syncResults.filter((r) => !r.synced).map((r) => r.noteId)
-      )
+      const failedNotes = new Set(syncResults.filter((r) => !r.synced).map((r) => r.noteId))
 
       if (failedNotes.size > 0) {
-        console.warn(
-          `${LOG_PREFIX} Skipping CRDT updates for unsynced notes:`,
-          [...failedNotes]
-        )
+        console.warn(`${LOG_PREFIX} Skipping CRDT updates for unsynced notes:`, [...failedNotes])
       }
 
       const allUpdates: CrdtUpdatePush[] = []
@@ -384,9 +427,7 @@ export class CrdtSyncBridge {
     const client = getSyncApiClient()
 
     try {
-      const result = await this.withAuthRefresh(() =>
-        client.pullCrdtSnapshot(noteId)
-      )
+      const result = await this.withAuthRefresh(() => client.pullCrdtSnapshot(noteId))
 
       if (!result.exists || !result.snapshotData) {
         return false

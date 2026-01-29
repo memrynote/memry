@@ -12,6 +12,7 @@ import {
   serializeJournalEntry,
   createJournalFrontmatter,
   readJournalEntry,
+  getJournalEntryById,
   writeJournalEntry,
   deleteJournalEntryFile,
   journalEntryExists,
@@ -389,6 +390,66 @@ Today I worked on tests.`
     it('T381: returns null for non-existent entry', async () => {
       const entry = await readJournalEntry('2026-12-31')
 
+      expect(entry).toBeNull()
+    })
+  })
+
+  describe('getJournalEntryById', () => {
+    it('T140g: returns entry for valid journal ID', async () => {
+      // #given
+      const journalPath = path.join(tempVault.path, 'journal', '2026-01-15.md')
+      fs.writeFileSync(
+        journalPath,
+        `---
+id: j2026-01-15
+date: 2026-01-15
+created: 2026-01-15T08:00:00.000Z
+modified: 2026-01-15T10:00:00.000Z
+tags:
+  - daily
+---
+
+Today I worked on tests.`
+      )
+
+      // #when
+      const entry = await getJournalEntryById('j2026-01-15')
+
+      // #then
+      expect(entry).not.toBeNull()
+      expect(entry!.id).toBe('j2026-01-15')
+      expect(entry!.date).toBe('2026-01-15')
+    })
+
+    it('T140g: returns null for ID without j prefix', async () => {
+      // #when
+      const entry = await getJournalEntryById('2026-01-15')
+
+      // #then
+      expect(entry).toBeNull()
+    })
+
+    it('T140g: returns null for invalid date format in ID', async () => {
+      // #when
+      const entry = await getJournalEntryById('jinvalid-date')
+
+      // #then
+      expect(entry).toBeNull()
+    })
+
+    it('T140g: returns null for note-like ID', async () => {
+      // #when
+      const entry = await getJournalEntryById('abc123')
+
+      // #then
+      expect(entry).toBeNull()
+    })
+
+    it('T140g: returns null for non-existent journal entry', async () => {
+      // #when
+      const entry = await getJournalEntryById('j2099-12-31')
+
+      // #then
       expect(entry).toBeNull()
     })
   })
