@@ -113,6 +113,12 @@ export interface NoteSyncOptions {
    * @default false
    */
   skipLinks?: boolean
+
+  /**
+   * Callback invoked after indexing is complete.
+   * Used for progress tracking during sync.
+   */
+  onIndexed?: () => void
 }
 
 // ============================================================================
@@ -182,7 +188,7 @@ export function syncNoteToCache(
   input: NoteSyncInput,
   options: NoteSyncOptions
 ): NoteSyncResult {
-  const { isNew, skipFts = false, skipLinks = false } = options
+  const { isNew, skipFts = false, skipLinks = false, onIndexed } = options
   const { id, path, frontmatter, parsedContent } = input
 
   // Extract all metadata
@@ -250,6 +256,8 @@ export function syncNoteToCache(
   if (!skipLinks && wikiLinks.length > 0) {
     links = resolveAndSetLinks(db, id, wikiLinks)
   }
+
+  onIndexed?.()
 
   return {
     ...metadata,

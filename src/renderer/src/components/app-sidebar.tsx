@@ -11,6 +11,7 @@ import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarHeader,
   SidebarMenu,
@@ -26,6 +27,7 @@ import { NotesTree } from '@/components/notes-tree'
 import { SidebarTagList } from '@/components/sidebar/sidebar-tag-list'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
+import { SyncProgressIndicator } from '@/components/sync/sync-progress-indicator'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { useTabActions } from '@/contexts/tabs'
 import { notesService } from '@/services/notes-service'
@@ -340,6 +342,9 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
       <SidebarContent className="flex flex-col overflow-hidden">
         <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
       </SidebarContent>
+      <SidebarFooter>
+        <SyncProgressIndicator />
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )

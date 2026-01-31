@@ -121,7 +121,8 @@ import type {
   YjsApplyUpdateResponse,
   YjsGetDocResponse,
   YjsGetStateVectorResponse,
-  YjsSyncResponse
+  YjsSyncResponse,
+  SyncProgressUpdateEvent
 } from '@shared/contracts/ipc-sync'
 import { getDatabase } from '../database/client'
 import { inboxItems } from '@shared/db/schema/inbox'
@@ -136,6 +137,7 @@ import type { NoteSyncPayload, JournalSyncPayload } from '@shared/contracts/note
 import { getIndexDatabase } from '../database/client'
 import { getNoteCacheById, getJournalEntryByDate } from '@shared/db/queries/notes'
 import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
+import { flushFtsUpdates } from '../database/fts-queue'
 import { parseNote, serializeNote } from '../vault/frontmatter'
 import type { NoteFrontmatter } from '../vault/frontmatter'
 import { atomicWrite, ensureDirectory, deleteFile } from '../vault/file-ops'
@@ -151,6 +153,62 @@ function emitSyncEvent(channel: string, data: unknown): void {
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send(channel, data)
   })
+}
+
+// =============================================================================
+// Sync Progress Tracking
+// =============================================================================
+
+interface SyncProgressState {
+  totalItems: number
+  processedItems: number
+  indexedItems: number
+}
+
+let syncProgressState: SyncProgressState | null = null
+
+export function initSyncProgress(totalItems: number): void {
+  syncProgressState = { totalItems, processedItems: 0, indexedItems: 0 }
+}
+
+function emitProgress(phase: SyncProgressUpdateEvent['phase']): void {
+  if (!syncProgressState) return
+  emitSyncEvent(SyncChannels.events.PROGRESS_UPDATE, {
+    phase,
+    current: phase === 'indexing' ? syncProgressState.indexedItems : syncProgressState.processedItems,
+    total: syncProgressState.totalItems,
+    itemType: 'note'
+  } satisfies SyncProgressUpdateEvent)
+}
+
+export function incrementProcessedItems(): void {
+  if (syncProgressState) {
+    syncProgressState.processedItems++
+    emitProgress('pulling')
+  }
+}
+
+export function incrementIndexedItems(): void {
+  if (syncProgressState) {
+    syncProgressState.indexedItems++
+    emitProgress('indexing')
+  }
+}
+
+export function completeSyncProgress(): void {
+  if (!syncProgressState) return
+  const db = getIndexDatabase()
+  const flushed = flushFtsUpdates(db)
+  console.info(`[Sync] Flushed ${flushed} FTS updates after pull`)
+
+  emitSyncEvent(SyncChannels.events.PROGRESS_UPDATE, {
+    phase: 'complete',
+    current: syncProgressState.totalItems,
+    total: syncProgressState.totalItems,
+    message: `Synced ${syncProgressState.totalItems} items`
+  } satisfies SyncProgressUpdateEvent)
+
+  syncProgressState = null
 }
 
 // =============================================================================
@@ -448,7 +506,12 @@ async function resyncNoteContentFromCrdt(noteId: string): Promise<void> {
       frontmatter: parsed.frontmatter,
       parsedContent: content
     },
-    { isNew: false, skipFts: false, skipLinks: false }
+    {
+      isNew: false,
+      skipFts: false,
+      skipLinks: false,
+      onIndexed: incrementIndexedItems
+    }
   )
 }
 
@@ -604,6 +667,7 @@ async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
           operation: 'deleted',
           timestamp: Date.now()
         })
+        incrementProcessedItems()
         return
       }
 
@@ -627,6 +691,7 @@ async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
         operation: result.isNew ? 'created' : 'updated',
         timestamp: Date.now()
       })
+      incrementProcessedItems()
       return
     }
 
@@ -650,6 +715,7 @@ async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
           operation: 'deleted',
           timestamp: Date.now()
         })
+        incrementProcessedItems()
         return
       }
 
@@ -673,6 +739,7 @@ async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
         operation: result.isNew ? 'created' : 'updated',
         timestamp: Date.now()
       })
+      incrementProcessedItems()
       return
     }
 
@@ -702,6 +769,15 @@ export function registerDecryptedItemListener(): void {
       void handleDecryptedSyncItem(item)
     }
     engine.on('sync:item-decrypted', decryptedItemListener)
+
+    engine.on('sync:pull-start', ({ totalItems }: { totalItems: number }) => {
+      initSyncProgress(totalItems)
+    })
+
+    engine.on('sync:pull-complete', () => {
+      completeSyncProgress()
+    })
+
     console.info('[Sync] Registered decrypted item listener')
   }
 }

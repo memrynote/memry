@@ -59,7 +59,8 @@ export interface SyncEngineEvents extends Record<string, unknown[]> {
   'sync:conflict-detected': [event: SyncConflictEvent]
   'sync:error': [error: Error, context: string]
   'sync:push-complete': [accepted: string[], rejected: string[]]
-  'sync:pull-complete': [items: SyncItemResponse[]]
+  'sync:pull-start': [{ totalItems: number }]
+  'sync:pull-complete': [{ totalItems: number }]
   'sync:session-expired': []
 }
 
@@ -391,6 +392,10 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
           nextCursor: response.nextCursor
         })
 
+        if (response.items.length > 0) {
+          this.emit('sync:pull-start', { totalItems: response.items.length })
+        }
+
         for (const item of response.items) {
           try {
             const decrypted = await this.verifyAndDecryptItem(item)
@@ -421,7 +426,7 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
       if (lastResponse) {
         await this.updateCursor(lastResponse.nextCursor)
         await this.logSyncHistory('pull', totalItems, 'download')
-        this.emit('sync:pull-complete', lastResponse.items)
+        this.emit('sync:pull-complete', { totalItems })
         console.info(`${LOG_PREFIX} Pull complete`, { itemCount: totalItems })
       }
 

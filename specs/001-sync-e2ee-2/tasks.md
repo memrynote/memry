@@ -573,10 +573,10 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Incremental Index Rebuild for US2
 
-- [ ] T140p [US2] Trigger incremental index update as each note syncs in src/main/sync/engine.ts
-- [ ] T140q [US2] Update FTS index for synced note in src/main/database/fts.ts
-- [ ] T140r [US2] Update note_cache, note_tags, note_links tables during sync in src/main/vault/indexer.ts
-- [ ] T140s [US2] Show "Indexing notes..." progress during initial sync in src/renderer/src/components/sync/initial-sync-progress.tsx
+- [x] T140p [US2] Trigger incremental index update as each note syncs in src/main/ipc/sync-handlers.ts (via onIndexed callback in syncNoteToCache)
+- [x] T140q [US2] Update FTS index for synced note in src/main/database/fts-queue.ts (flushFtsUpdates after pull complete)
+- [x] T140r [US2] Update note_cache, note_tags, note_links tables during sync in src/main/vault/note-sync.ts (syncNoteToCache)
+- [x] T140s [US2] Show "Indexing notes..." progress during initial sync in src/renderer/src/components/sync/sync-progress-indicator.tsx
 - [x] T140t [US5] CONSOLIDATED INTO T140 - Configure Yjs collaboration extension for BlockNote/TipTap integration in src/renderer/src/components/note/content-area/ContentArea.tsx
 - [ ] T140u [US5] Implement Yjs garbage collection for documents exceeding 1MB in src/main/sync/crdt-provider.ts
 - [ ] T140v [US5] Compress Yjs snapshots before encryption using pako/fflate in src/main/sync/crdt-provider.ts

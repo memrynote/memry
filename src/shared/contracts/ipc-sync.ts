@@ -509,10 +509,11 @@ export interface SyncStatusChangedEvent {
 }
 
 export interface SyncProgressUpdateEvent {
-  phase: 'pulling' | 'pushing' | 'resolving'
+  phase: 'pulling' | 'pushing' | 'resolving' | 'indexing' | 'complete'
   current: number
   total: number
   itemType?: string
+  message?: string
 }
 
 export interface SyncErrorEvent {
