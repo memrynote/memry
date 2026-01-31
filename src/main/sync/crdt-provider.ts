@@ -202,7 +202,10 @@ export class CrdtProvider extends TypedEmitter<CrdtProviderEvents> {
     entry.lastActivity = Date.now()
     entry.lastSize += update.length
 
-    if (origin !== 'remote' && origin !== 'persistence') {
+    const shouldPersist = origin !== 'remote' && origin !== 'persistence'
+    const shouldEmit = shouldPersist && origin !== 'bootstrap'
+
+    if (shouldPersist) {
       void this.waitForDb().then((persistence) => {
         if (persistence) {
           persistence.storeUpdate(noteId, update).catch((error) => {
@@ -213,13 +216,17 @@ export class CrdtProvider extends TypedEmitter<CrdtProviderEvents> {
           })
         }
       })
+    }
 
+    if (shouldEmit) {
       this.emit('crdt:doc-updated', {
         noteId,
         update,
         origin: typeof origin === 'string' ? origin : 'local'
       })
+    }
 
+    if (shouldPersist) {
       if (this.shouldGarbageCollect(noteId)) {
         void this.garbageCollectDoc(noteId)
       } else if (this.shouldCompact(noteId)) {
@@ -612,6 +619,36 @@ export class CrdtProvider extends TypedEmitter<CrdtProviderEvents> {
       }, 'external')
     } catch (error) {
       console.error(`[CrdtProvider] Failed to apply external change for ${noteId}:`, error)
+      throw error
+    }
+  }
+
+  async seedDocFromMarkdown(
+    noteId: string,
+    markdownContent: string,
+    frontmatter: Record<string, unknown>
+  ): Promise<void> {
+    this.ensureInitialized()
+
+    try {
+      const doc = await this.getOrCreateDoc(noteId)
+      const contentText = doc.getText('content')
+      const metaMap = doc.getMap('meta')
+
+      doc.transact(() => {
+        contentText.delete(0, contentText.length)
+        if (markdownContent) {
+          contentText.insert(0, markdownContent)
+        }
+
+        for (const [key, value] of Object.entries(frontmatter)) {
+          if (value !== undefined) {
+            metaMap.set(key, value)
+          }
+        }
+      }, 'bootstrap')
+    } catch (error) {
+      console.error(`[CrdtProvider] Failed to seed doc for ${noteId}:`, error)
       throw error
     }
   }

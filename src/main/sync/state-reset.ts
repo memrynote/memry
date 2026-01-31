@@ -15,6 +15,8 @@ import { deleteSetting } from '@shared/db/queries/settings'
 const CURSOR_KEY = 'server_cursor'
 const SETTINGS_FIELD_CLOCKS_KEY = 'settings_field_clocks'
 const BOOTSTRAP_KEY = 'sync.bootstrap.v1'
+const CRDT_SEED_KEY = 'sync.crdt.seed.v1'
+const CRDT_BOOTSTRAP_KEY = 'sync.crdt.bootstrap.v1'
 
 /**
  * Resets sync state for a new device joining an existing account.
@@ -46,6 +48,8 @@ export async function resetSyncStateForNewDevice(): Promise<void> {
   db.delete(syncState).where(eq(syncState.key, SETTINGS_FIELD_CLOCKS_KEY)).run()
 
   deleteSetting(db, BOOTSTRAP_KEY)
+  deleteSetting(db, CRDT_SEED_KEY)
+  deleteSetting(db, CRDT_BOOTSTRAP_KEY)
 
   console.info('[SyncStateReset] Sync state reset complete')
 }

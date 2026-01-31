@@ -12,6 +12,7 @@ import { getSyncQueue } from './queue'
 import { getNetworkMonitor } from './network'
 import { retrieveAuthTokens, retrieveKeyMaterial } from '../crypto/keychain'
 import { queueLocalChangesSinceLastSync } from './local-changes'
+import { bootstrapSyncData } from './bootstrap'
 
 const LOG_PREFIX = '[AuthSyncBridge]'
 
@@ -107,6 +108,7 @@ export async function handleSessionChanged(
   lastKnownUserId = userId
   console.info(`${LOG_PREFIX} Session changed, user:`, userId)
 
+  await bootstrapSyncData()
   await queueLocalChangesSinceLastSync()
   await triggerSync()
 }
@@ -152,6 +154,7 @@ export async function triggerPostSetupSync(): Promise<void> {
     console.warn(`${LOG_PREFIX} Failed to update user ID after setup:`, error)
   }
 
+  await bootstrapSyncData()
   await queueLocalChangesSinceLastSync()
   await triggerSync()
 }
