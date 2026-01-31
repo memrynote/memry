@@ -95,7 +95,6 @@ interface CrdtSyncPayload {
   noteId: string
   content: string
   frontmatter: Record<string, unknown>
-  syncWasActive: boolean
 }
 
 /**
@@ -105,24 +104,32 @@ interface CrdtSyncPayload {
 function createCrdtDebouncer(
   handler: (payload: CrdtSyncPayload) => Promise<void>,
   delayMs: number = 500
-): (payload: CrdtSyncPayload) => void {
+): { queue: (payload: CrdtSyncPayload) => void; clear: () => void } {
   const pending = new Map<string, { timeout: NodeJS.Timeout; payload: CrdtSyncPayload }>()
 
-  return (payload: CrdtSyncPayload) => {
-    const { noteId } = payload
-    const existing = pending.get(noteId)
-    if (existing) {
-      clearTimeout(existing.timeout)
+  return {
+    queue: (payload: CrdtSyncPayload) => {
+      const { noteId } = payload
+      const existing = pending.get(noteId)
+      if (existing) {
+        clearTimeout(existing.timeout)
+      }
+
+      const timeout = setTimeout(() => {
+        pending.delete(noteId)
+        handler(payload).catch((error: unknown) => {
+          console.error(`[Watcher] Error processing CRDT sync for ${noteId}:`, error)
+        })
+      }, delayMs)
+
+      pending.set(noteId, { timeout, payload })
+    },
+    clear: () => {
+      for (const { timeout } of pending.values()) {
+        clearTimeout(timeout)
+      }
+      pending.clear()
     }
-
-    const timeout = setTimeout(() => {
-      pending.delete(noteId)
-      handler(payload).catch((error: unknown) => {
-        console.error(`[Watcher] Error processing CRDT sync for ${noteId}:`, error)
-      })
-    }, delayMs)
-
-    pending.set(noteId, { timeout, payload })
   }
 }
 
@@ -179,7 +186,10 @@ export class VaultWatcher {
 
   // Debounced handlers
   private debouncedChange: ((path: string) => void) | null = null
-  private debouncedCrdtSync: ((payload: CrdtSyncPayload) => void) | null = null
+  private debouncedCrdtSync: {
+    queue: (payload: CrdtSyncPayload) => void
+    clear: () => void
+  } | null = null
 
   /**
    * Start watching the vault for file changes.
@@ -292,12 +302,16 @@ export class VaultWatcher {
     // Clear any pending rename detections
     clearAllPendingDeletes()
 
+    // Clear pending debounced CRDT updates
+    this.debouncedCrdtSync?.clear()
+
     if (this.watcher) {
       await this.watcher.close()
       this.watcher = null
     }
     this.vaultPath = null
     this.debouncedChange = null
+    this.debouncedCrdtSync = null
     this.isReady = false
   }
 
@@ -638,13 +652,10 @@ export class VaultWatcher {
     }
 
     // Queue CRDT update with 500ms debounce (separate from cache update)
-    // Captures sync status at time of external change detection
-    const syncWasActive = this.isSyncActive()
-    this.debouncedCrdtSync?.({
+    this.debouncedCrdtSync?.queue({
       noteId: cached.id,
       content: parsed.content,
-      frontmatter: parsed.frontmatter,
-      syncWasActive
+      frontmatter: parsed.frontmatter
     })
   }
 
@@ -689,9 +700,10 @@ export class VaultWatcher {
   /**
    * Apply external file change to CRDT.
    * Called after 500ms debounce to batch rapid edits.
+   * Sync status is checked at execution time to avoid race conditions.
    */
   private async applyCrdtUpdate(payload: CrdtSyncPayload): Promise<void> {
-    const { noteId, content, frontmatter, syncWasActive } = payload
+    const { noteId, content, frontmatter } = payload
 
     const crdtProvider = getCrdtProvider()
     if (!crdtProvider) {
@@ -699,9 +711,12 @@ export class VaultWatcher {
     }
 
     // Check if this change was triggered by a CRDT write-back (loop prevention)
-    if (crdtProvider.wasRecentCrdtWrite?.(noteId)) {
+    if (crdtProvider.wasRecentCrdtWrite(noteId)) {
       return
     }
+
+    // Check sync status at execution time (not at queue time) to avoid race condition
+    const syncWasActive = this.isSyncActive()
 
     try {
       await crdtProvider.applyExternalFileChange(noteId, content, frontmatter, { syncWasActive })

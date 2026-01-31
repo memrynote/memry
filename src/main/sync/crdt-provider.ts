@@ -44,6 +44,8 @@ interface NoteSyncTiming {
 }
 
 export class CrdtProvider extends TypedEmitter<CrdtProviderEvents> {
+  private static readonly CONFLICT_WINDOW_MS = 5000
+
   private docs: Map<string, DocEntry> = new Map()
   private docCreationLocks: Map<string, Promise<Y.Doc>> = new Map()
   private persistence: LeveldbPersistence | null = null
@@ -291,6 +293,11 @@ export class CrdtProvider extends TypedEmitter<CrdtProviderEvents> {
 
     entry.doc.destroy()
     this.docs.delete(noteId)
+
+    // Cleanup timing maps to prevent memory leaks
+    this.externalChangeTimes.delete(noteId)
+    this.syncTimings.delete(noteId)
+    this.recentCrdtWrites.delete(noteId)
   }
 
   async clearDoc(noteId: string): Promise<void> {
@@ -348,10 +355,9 @@ export class CrdtProvider extends TypedEmitter<CrdtProviderEvents> {
     const timing = this.syncTimings.get(noteId)
     if (!timing) return false
 
-    const CONFLICT_WINDOW_MS = 5000
     const other = source === 'external' ? timing.lastRemoteUpdate : timing.lastExternalUpdate
 
-    return Date.now() - other < CONFLICT_WINDOW_MS
+    return Date.now() - other < CrdtProvider.CONFLICT_WINDOW_MS
   }
 
   private emitExternalConflictEvent(noteId: string): void {
@@ -399,28 +405,33 @@ export class CrdtProvider extends TypedEmitter<CrdtProviderEvents> {
       this.emitExternalConflictEvent(noteId)
     }
 
-    // Get or create the Y.Doc for this note
-    const doc = await this.getOrCreateDoc(noteId)
+    try {
+      // Get or create the Y.Doc for this note
+      const doc = await this.getOrCreateDoc(noteId)
 
-    // Apply the markdown content as a Yjs text update
-    // Since BlockNote conversion requires renderer, we store raw markdown in a text field
-    // and let the renderer convert it to blocks when the note is opened
-    const contentText = doc.getText('content')
+      // Apply the markdown content as a Yjs text update
+      // Since BlockNote conversion requires renderer, we store raw markdown in a text field
+      // and let the renderer convert it to blocks when the note is opened
+      const contentText = doc.getText('content')
 
-    doc.transact(() => {
-      contentText.delete(0, contentText.length)
-      contentText.insert(0, markdownContent)
-    }, 'external')
+      doc.transact(() => {
+        contentText.delete(0, contentText.length)
+        contentText.insert(0, markdownContent)
+      }, 'external')
 
-    // Store frontmatter in the doc's meta map (external file wins for frontmatter)
-    const metaMap = doc.getMap('meta')
-    doc.transact(() => {
-      for (const [key, value] of Object.entries(frontmatter)) {
-        if (value !== undefined) {
-          metaMap.set(key, value)
+      // Store frontmatter in the doc's meta map (external file wins for frontmatter)
+      const metaMap = doc.getMap('meta')
+      doc.transact(() => {
+        for (const [key, value] of Object.entries(frontmatter)) {
+          if (value !== undefined) {
+            metaMap.set(key, value)
+          }
         }
-      }
-    }, 'external')
+      }, 'external')
+    } catch (error) {
+      console.error(`[CrdtProvider] Failed to apply external change for ${noteId}:`, error)
+      throw error
+    }
   }
 
   async shutdown(): Promise<void> {

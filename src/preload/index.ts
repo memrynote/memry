@@ -18,7 +18,12 @@ import {
   FolderViewChannels,
   PropertiesChannels
 } from '@shared/ipc-channels'
-import { SyncChannels, CryptoChannels, AuthChannels } from '@shared/contracts/ipc-sync'
+import {
+  SyncChannels,
+  CryptoChannels,
+  AuthChannels,
+  ExternalSyncConflictEvent
+} from '@shared/contracts/ipc-sync'
 
 // Custom APIs for renderer
 const api = {
@@ -1565,17 +1570,9 @@ const api = {
     return () => ipcRenderer.removeListener(SyncChannels.events.YJS_DOC_SYNCED, handler)
   },
 
-  onExternalSyncConflict: (
-    callback: (event: {
-      noteId: string
-      resolution: 'crdt-wins'
-      frontmatterSource: 'external'
-    }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { noteId: string; resolution: 'crdt-wins'; frontmatterSource: 'external' }
-    ): void => callback(data)
+  onExternalSyncConflict: (callback: (event: ExternalSyncConflictEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: ExternalSyncConflictEvent): void =>
+      callback(data)
     ipcRenderer.on(SyncChannels.events.EXTERNAL_SYNC_CONFLICT, handler)
     return () => ipcRenderer.removeListener(SyncChannels.events.EXTERNAL_SYNC_CONFLICT, handler)
   }
