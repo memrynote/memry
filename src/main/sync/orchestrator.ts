@@ -159,26 +159,28 @@ export async function initSyncSubsystem(): Promise<void> {
     console.info('[Sync] CRDT sync bridge initialized')
   }
 
-  // Pull remote changes on startup only if session is valid
+  // Sync on startup only if session is valid
   if (getStoredUserId()) {
-    void runSync('startup', true)
-    void bootstrapSyncData()
-      .then((result) => {
-        console.info('[Sync] Bootstrap complete', result)
-      })
-      .catch((error) => {
-        console.warn('[Sync] Bootstrap failed:', error)
-      })
+    // Bootstrap local data first (pushes existing content), then sync
+    void (async () => {
+      try {
+        const bootstrapResult = await bootstrapSyncData()
+        console.info('[Sync] Bootstrap complete', bootstrapResult)
+
+        // After bootstrap, run regular sync (push remaining queue + pull remote changes)
+        await runSync('startup', true)
+
+        // Pull CRDT updates for any remote notes we don't have locally
+        const crdtBridge = getCrdtSyncBridge()
+        if (crdtBridge) {
+          await crdtBridge.syncAllDocs()
+        }
+      } catch (error) {
+        console.warn('[Sync] Startup sync failed:', error)
+      }
+    })()
   } else {
     console.info('[Sync] Startup sync skipped: no valid session')
-  }
-
-  // Sync CRDT documents on startup
-  const crdtBridge = getCrdtSyncBridge()
-  if (crdtBridge) {
-    void crdtBridge.syncAllDocs().catch((error) => {
-      console.warn('[Sync] CRDT startup sync failed:', error)
-    })
   }
 
   initialized = true

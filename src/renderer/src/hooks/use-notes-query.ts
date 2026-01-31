@@ -25,7 +25,6 @@ import {
   onNoteExternalChange,
   onTagsChanged
 } from '@/services/notes-service'
-import { onVaultStatusChanged } from '@/services/vault-service'
 
 // =============================================================================
 // Query Keys

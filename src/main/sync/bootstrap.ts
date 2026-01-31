@@ -14,6 +14,7 @@ import { getSyncQueue } from './queue'
 import { getSetting, setSetting } from '@shared/db/queries/settings'
 import { retrieveDeviceKeyPair } from '../crypto/keychain'
 import { emptyClock, incrementClock, type VectorClock } from './vector-clock'
+import { getCrdtSyncBridge } from './crdt-sync-bridge'
 
 const BOOTSTRAP_KEY = 'sync.bootstrap.v1'
 
@@ -32,26 +33,33 @@ function parseClock(value: unknown): VectorClock | null {
   return null
 }
 
-export async function bootstrapSyncData(): Promise<{ tasks: number; inbox: number }> {
+export interface BootstrapResult {
+  tasks: number
+  inbox: number
+  notes: number
+  journals: number
+}
+
+export async function bootstrapSyncData(): Promise<BootstrapResult> {
   console.info('[SyncBootstrap] Starting bootstrap')
   let db: ReturnType<typeof getDatabase>
   try {
     db = getDatabase()
   } catch {
     console.info('[SyncBootstrap] Skipped: no open vault')
-    return { tasks: 0, inbox: 0 }
+    return { tasks: 0, inbox: 0, notes: 0, journals: 0 }
   }
 
   const alreadyBootstrapped = getSetting(db, BOOTSTRAP_KEY)
   if (alreadyBootstrapped) {
     console.info('[SyncBootstrap] Skipped: already bootstrapped')
-    return { tasks: 0, inbox: 0 }
+    return { tasks: 0, inbox: 0, notes: 0, journals: 0 }
   }
 
   const keyPair = await retrieveDeviceKeyPair().catch(() => null)
   if (!keyPair?.deviceId) {
     console.info('[SyncBootstrap] Skipped: no device keypair')
-    return { tasks: 0, inbox: 0 }
+    return { tasks: 0, inbox: 0, notes: 0, journals: 0 }
   }
 
   const deviceId = keyPair.deviceId
@@ -88,12 +96,28 @@ export async function bootstrapSyncData(): Promise<{ tasks: number; inbox: numbe
     inboxQueued++
   }
 
+  let notesBootstrapped = 0
+  let journalsBootstrapped = 0
+  const crdtBridge = getCrdtSyncBridge()
+  if (crdtBridge) {
+    const crdtResult = await crdtBridge.bootstrapLocalDocs()
+    notesBootstrapped = crdtResult.notes
+    journalsBootstrapped = crdtResult.journals
+  }
+
   setSetting(db, BOOTSTRAP_KEY, new Date().toISOString())
 
   console.info('[SyncBootstrap] Queued existing data', {
     tasks: tasksQueued,
-    inbox: inboxQueued
+    inbox: inboxQueued,
+    notes: notesBootstrapped,
+    journals: journalsBootstrapped
   })
 
-  return { tasks: tasksQueued, inbox: inboxQueued }
+  return {
+    tasks: tasksQueued,
+    inbox: inboxQueued,
+    notes: notesBootstrapped,
+    journals: journalsBootstrapped
+  }
 }

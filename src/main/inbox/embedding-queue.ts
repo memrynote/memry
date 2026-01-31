@@ -122,13 +122,6 @@ export async function processEmbeddingQueue(): Promise<{
         }
       }
 
-      // Log batch progress
-      if (batch.length > 0) {
-        console.log(
-          `[EmbeddingQueue] Processed batch of ${batch.length}: ${totalSucceeded} succeeded, ${totalFailed} failed`
-        )
-      }
-
       // Delay before next batch if there are more items
       if (pendingNoteIds.size > 0) {
         await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS))

@@ -493,6 +493,67 @@ export class CrdtSyncBridge {
     }
   }
 
+  async bootstrapLocalDocs(): Promise<{ notes: number; journals: number }> {
+    if (!this.crdtProvider || !this.isOnline()) {
+      console.info(`${LOG_PREFIX} Bootstrap skipped: not ready or offline`)
+      return { notes: 0, journals: 0 }
+    }
+
+    const docNames = await this.crdtProvider.getAllDocNames()
+    if (docNames.length === 0) {
+      console.info(`${LOG_PREFIX} No local documents to bootstrap`)
+      return { notes: 0, journals: 0 }
+    }
+
+    console.info(`${LOG_PREFIX} Bootstrapping ${docNames.length} local documents`)
+
+    let notes = 0
+    let journals = 0
+
+    for (const noteId of docNames) {
+      try {
+        const doc = this.crdtProvider.getDoc(noteId)
+        if (!doc) {
+          console.warn(`${LOG_PREFIX} Doc not loaded for bootstrap: ${noteId}`)
+          continue
+        }
+
+        const isJournal = this.isJournalId(noteId)
+
+        const noteData = isJournal
+          ? await getJournalEntriesByIds([noteId]).then((entries) => entries[0])
+          : await getNotesByIds([noteId]).then((notes) => notes[0])
+
+        if (!noteData) {
+          console.warn(`${LOG_PREFIX} No note/journal data found for: ${noteId}`)
+          continue
+        }
+
+        const synced = await this.syncItemToServer(noteId, noteData)
+        if (!synced) {
+          console.warn(`${LOG_PREFIX} Failed to sync metadata for: ${noteId}`)
+          continue
+        }
+
+        const snapshot = this.crdtProvider.encodeSnapshot(noteId, true)
+        await this.pushSnapshot(noteId, snapshot)
+
+        if (isJournal) {
+          journals++
+        } else {
+          notes++
+        }
+
+        console.debug(`${LOG_PREFIX} Bootstrapped ${isJournal ? 'journal' : 'note'}: ${noteId}`)
+      } catch (error) {
+        console.error(`${LOG_PREFIX} Bootstrap failed for ${noteId}:`, error)
+      }
+    }
+
+    console.info(`${LOG_PREFIX} Bootstrap complete:`, { notes, journals })
+    return { notes, journals }
+  }
+
   private getSequenceState(noteId: string): NoteSequenceState {
     const existing = this.sequenceState.get(noteId)
     if (existing) {

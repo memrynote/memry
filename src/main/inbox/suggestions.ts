@@ -208,7 +208,6 @@ export async function updateNoteEmbedding(noteId: string): Promise<boolean> {
 
     // Skip if content is too short
     if (!note.content || note.content.length < MIN_CONTENT_LENGTH) {
-      console.log(`[Suggestions] Content too short for: ${noteId}`)
       return false
     }
 

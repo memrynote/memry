@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type {
   VaultStatus,
   VaultConfig,
@@ -13,6 +14,7 @@ import {
   onVaultError,
   onVaultIndexRecovered
 } from '../services/vault-service'
+import { notesKeys } from './use-notes-query'
 
 /**
  * Hook for vault state management.
@@ -40,6 +42,7 @@ export function useVault() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [recoveryInfo, setRecoveryInfo] = useState<IndexRecoveredEvent | null>(null)
+  const queryClient = useQueryClient()
 
   // Load initial status and config
   useEffect(() => {
@@ -70,6 +73,12 @@ export function useVault() {
       if (newStatus.error) {
         setError(newStatus.error)
       }
+
+      // Invalidate notes cache when vault opens
+      // This ensures fresh data is fetched when NotesTree mounts
+      if (newStatus.isOpen && newStatus.path) {
+        void queryClient.invalidateQueries({ queryKey: notesKeys.all })
+      }
     })
 
     const unsubProgress = onVaultIndexProgress((_progress) => {
@@ -93,7 +102,7 @@ export function useVault() {
       unsubError()
       unsubRecovered()
     }
-  }, [])
+  }, [queryClient])
 
   /**
    * Select a vault folder. Shows folder picker if no path provided.
