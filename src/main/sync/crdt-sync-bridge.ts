@@ -25,6 +25,7 @@ import { devices } from '@shared/db/schema/sync-schema'
 import { eq } from 'drizzle-orm'
 import { refreshAccessToken } from './token-refresh'
 import { emptyClock, incrementClock } from './vector-clock'
+import { isSyncAuthReady } from './auth-state'
 
 const LOG_PREFIX = '[CrdtSyncBridge]'
 const DEBOUNCE_MS = 1500
@@ -184,6 +185,10 @@ export class CrdtSyncBridge {
 
   private async flushUpdates(): Promise<void> {
     if (this.flushInProgress || this.pendingUpdates.size === 0) {
+      return
+    }
+    if (!this.isAuthReady()) {
+      console.debug(`${LOG_PREFIX} Flush skipped: not authenticated`)
       return
     }
 
@@ -361,6 +366,10 @@ export class CrdtSyncBridge {
     if (this.offlineQueue.length === 0 || !this.isOnline()) {
       return
     }
+    if (!this.isAuthReady()) {
+      console.debug(`${LOG_PREFIX} Offline queue flush skipped: not authenticated`)
+      return
+    }
 
     const updates = [...this.offlineQueue]
     this.offlineQueue = []
@@ -370,6 +379,10 @@ export class CrdtSyncBridge {
 
   async pushSnapshot(noteId: string, snapshot: Uint8Array): Promise<void> {
     if (!this.isReady() || !this.isOnline()) {
+      return
+    }
+    if (!this.isAuthReady()) {
+      console.debug(`${LOG_PREFIX} Snapshot push skipped: not authenticated`)
       return
     }
 
@@ -400,6 +413,10 @@ export class CrdtSyncBridge {
 
   async pullUpdatesForNote(noteId: string): Promise<void> {
     if (!this.crdtProvider || !this.isOnline()) {
+      return
+    }
+    if (!this.isAuthReady()) {
+      console.debug(`${LOG_PREFIX} Pull updates skipped: not authenticated`)
       return
     }
 
@@ -451,6 +468,10 @@ export class CrdtSyncBridge {
     if (!this.crdtProvider || !this.isOnline()) {
       return false
     }
+    if (!this.isAuthReady()) {
+      console.debug(`${LOG_PREFIX} Pull snapshot skipped: not authenticated`)
+      return false
+    }
 
     const client = getSyncApiClient()
 
@@ -484,6 +505,10 @@ export class CrdtSyncBridge {
     if (!this.crdtProvider || !this.isOnline()) {
       return
     }
+    if (!this.isAuthReady()) {
+      console.debug(`${LOG_PREFIX} Sync all docs skipped: not authenticated`)
+      return
+    }
 
     const docNames = await this.crdtProvider.getAllDocNames()
     console.info(`${LOG_PREFIX} Syncing ${docNames.length} documents`)
@@ -496,6 +521,11 @@ export class CrdtSyncBridge {
   async bootstrapLocalDocs(): Promise<{ notes: number; journals: number }> {
     if (!this.crdtProvider || !this.isOnline()) {
       console.info(`${LOG_PREFIX} Bootstrap skipped: not ready or offline`)
+      return { notes: 0, journals: 0 }
+    }
+
+    if (!this.isAuthReady()) {
+      console.info(`${LOG_PREFIX} Bootstrap skipped: not authenticated`)
       return { notes: 0, journals: 0 }
     }
 
@@ -591,6 +621,10 @@ export class CrdtSyncBridge {
 
   private isReady(): boolean {
     return this.initialized && this.crdtProvider !== null
+  }
+
+  private isAuthReady(): boolean {
+    return isSyncAuthReady()
   }
 
   private isOnline(): boolean {

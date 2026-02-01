@@ -22,6 +22,7 @@ import { withRetry, isRetryableError } from './retry'
 import { getSyncApiClient, SyncApiError } from './api-client'
 import { refreshAccessToken } from './token-refresh'
 import { compareClock, mergeClock, emptyClock } from './vector-clock'
+import { isSyncAuthReady } from './auth-state'
 import {
   generateFileKey,
   wrapFileKey,
@@ -184,6 +185,10 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
    * @returns Push response from server or null if skipped
    */
   async push(): Promise<PushSyncResponse | null> {
+    if (!isSyncAuthReady()) {
+      console.debug(`${LOG_PREFIX} Push skipped: not authenticated`)
+      return null
+    }
     if (this.syncLock) {
       console.info(`${LOG_PREFIX} Push skipped: sync already in progress`)
       return null
@@ -343,6 +348,10 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
    * @returns Pull response from server or null if skipped
    */
   async pull(): Promise<PullSyncResponse | null> {
+    if (!isSyncAuthReady()) {
+      console.debug(`${LOG_PREFIX} Pull skipped: not authenticated`)
+      return null
+    }
     if (this.syncLock) {
       console.info(`${LOG_PREFIX} Pull skipped: sync already in progress`)
       return null

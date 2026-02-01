@@ -11,7 +11,8 @@ import { initSyncQueue, getSyncQueue } from './queue'
 import { getNetworkMonitor } from './network'
 import { retrieveAuthTokens, retrieveKeyMaterial } from '../crypto/keychain'
 import { bootstrapSyncData } from './bootstrap'
-import { initAuthSyncBridge, handleSessionExpired, getStoredUserId } from './auth-bridge'
+import { initAuthSyncBridge, handleSessionExpired } from './auth-bridge'
+import { getSyncUserId } from './auth-state'
 import { registerDecryptedItemListener } from '../ipc/sync-handlers'
 import { getCrdtProvider } from './crdt-provider'
 import { initializeCrdtSyncBridge, getCrdtSyncBridge } from './crdt-sync-bridge'
@@ -160,7 +161,7 @@ export async function initSyncSubsystem(): Promise<void> {
   }
 
   // Sync on startup only if session is valid
-  if (getStoredUserId()) {
+  if (getSyncUserId()) {
     // Bootstrap local data first (pushes existing content), then sync
     void (async () => {
       try {

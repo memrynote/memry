@@ -13,10 +13,10 @@ import { getNetworkMonitor } from './network'
 import { retrieveAuthTokens, retrieveKeyMaterial } from '../crypto/keychain'
 import { queueLocalChangesSinceLastSync } from './local-changes'
 import { bootstrapSyncData } from './bootstrap'
+import { getSyncUserId, setSyncAuthState } from './auth-state'
 
 const LOG_PREFIX = '[AuthSyncBridge]'
 
-let lastKnownUserId: string | null = null
 let initialized = false
 let pendingSync = false
 
@@ -97,7 +97,7 @@ export async function handleSessionChanged(
     return
   }
 
-  const previousUserId = lastKnownUserId
+  const previousUserId = getSyncUserId()
 
   if (previousUserId && previousUserId !== userId) {
     console.info(`${LOG_PREFIX} User changed from ${previousUserId} to ${userId}, clearing queue`)
@@ -105,8 +105,16 @@ export async function handleSessionChanged(
     await queue.clearForUserChange(previousUserId, userId)
   }
 
-  lastKnownUserId = userId
   console.info(`${LOG_PREFIX} Session changed, user:`, userId)
+
+  const [tokens, keyMaterial] = await Promise.all([
+    retrieveAuthTokens().catch(() => null),
+    retrieveKeyMaterial().catch(() => null)
+  ])
+  setSyncAuthState({
+    userId,
+    authReady: !!tokens?.accessToken && !!keyMaterial?.masterKey
+  })
 
   await bootstrapSyncData()
   await queueLocalChangesSinceLastSync()
@@ -125,18 +133,14 @@ export function handleSessionExpired(): void {
     engine.pause()
   }
 
-  lastKnownUserId = null
   pendingSync = false
+  setSyncAuthState({ userId: null, authReady: false })
 }
 
 /**
  * Get the stored user ID from the last successful authentication.
  * Used for user change detection.
  */
-export function getStoredUserId(): string | null {
-  return lastKnownUserId
-}
-
 /**
  * Trigger sync after crypto setup completes.
  * Called after storeKeyMaterial() in sync-handlers.ts.
@@ -145,14 +149,15 @@ export function getStoredUserId(): string | null {
 export async function triggerPostSetupSync(): Promise<void> {
   console.info(`${LOG_PREFIX} Crypto setup complete, triggering sync`)
 
-  try {
-    const tokens = await retrieveAuthTokens()
-    if (tokens?.userId) {
-      lastKnownUserId = tokens.userId
-    }
-  } catch (error) {
-    console.warn(`${LOG_PREFIX} Failed to update user ID after setup:`, error)
-  }
+  const [tokens, keyMaterial] = await Promise.all([
+    retrieveAuthTokens().catch(() => null),
+    retrieveKeyMaterial().catch(() => null)
+  ])
+
+  setSyncAuthState({
+    userId: tokens?.userId ?? getSyncUserId(),
+    authReady: !!tokens?.accessToken && !!keyMaterial?.masterKey
+  })
 
   await bootstrapSyncData()
   await queueLocalChangesSinceLastSync()
@@ -168,13 +173,18 @@ export async function initAuthSyncBridge(): Promise<void> {
   if (initialized) return
 
   const tokens = await retrieveAuthTokens()
+  const keyMaterial = await retrieveKeyMaterial().catch(() => null)
+
   if (tokens?.userId) {
-    lastKnownUserId = tokens.userId
-    console.info(`${LOG_PREFIX} Found stored session for user:`, lastKnownUserId)
+    console.info(`${LOG_PREFIX} Found stored session for user:`, tokens.userId)
   } else {
-    lastKnownUserId = null
     console.info(`${LOG_PREFIX} No stored session`)
   }
+
+  setSyncAuthState({
+    userId: tokens?.userId ?? null,
+    authReady: !!tokens?.accessToken && !!keyMaterial?.masterKey
+  })
 
   const engine = getSyncEngine()
   if (engine) {
