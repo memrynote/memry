@@ -95,13 +95,15 @@ import {
   LINKING_KEY_CONFIRM_FIELD_ORDER
 } from '@shared/contracts/cbor-ordering'
 import { validateLinkingQRPayload, LINKING_CONSTANTS } from '@shared/contracts/linking-api'
-import type { LinkingQRPayload } from '@shared/contracts/linking-api'
+import type { LinkingQRPayload, LinkingStatusResponse } from '@shared/contracts/linking-api'
 import type { ScanLinkingQRRequest } from '@shared/contracts/ipc-sync'
 import QRCode from 'qrcode'
 import { getSyncApiClient, createApiClientWithUrl, isSyncApiError } from '../sync/api-client'
 import { getSyncEngine } from '../sync/engine'
 import { bootstrapSyncData } from '../sync/bootstrap'
 import { triggerPostSetupSync } from '../sync/auth-bridge'
+import { refreshAccessToken } from '../sync/token-refresh'
+import { isAccessTokenExpired } from '../sync/token-utils'
 import {
   setSyncEnabled,
   SYNC_SETUP_COMPLETE_KEY,
@@ -336,6 +338,30 @@ function deleteLinkingSession(sessionId: string): void {
     }
     linkingSessions.delete(sessionId)
   }
+}
+
+async function getFreshAccessToken(): Promise<string | null> {
+  let tokens = await retrieveAuthTokens().catch(() => null)
+  if (!tokens?.accessToken) return null
+
+  if (!isAccessTokenExpired(tokens.accessToken)) {
+    return tokens.accessToken
+  }
+
+  if (!getNetworkMonitor().isOnline()) {
+    console.info('[Sync] Access token expired while offline')
+    return null
+  }
+
+  const refreshed = await refreshAccessToken().catch(() => false)
+  if (!refreshed) return null
+
+  tokens = await retrieveAuthTokens().catch(() => null)
+  if (!tokens?.accessToken || isAccessTokenExpired(tokens.accessToken)) {
+    return null
+  }
+
+  return tokens.accessToken
 }
 
 function createNotImplementedResponse(): { success: false; error: string } {
@@ -1722,48 +1748,65 @@ export function registerSyncHandlers(): void {
       z.object({ sessionId: z.string().uuid() }),
       async ({ sessionId }): Promise<GetLinkingStatusResponse> => {
         try {
-          const storedTokens = await retrieveAuthTokens()
+          const mapSession = (
+            response: LinkingStatusResponse,
+            userId: string
+          ): GetLinkingStatusResponse['session'] => ({
+            id: response.id,
+            userId,
+            initiatorDeviceId: response.initiatorDeviceId,
+            ephemeralPublicKey: response.ephemeralPublicKey,
+            newDevicePublicKey: response.newDevicePublicKey,
+            status: response.status,
+            createdAt: response.createdAt,
+            expiresAt: response.expiresAt,
+            completedAt: response.completedAt
+          })
+
           const linkingSession = getLinkingSessionState(sessionId)
 
-          if (linkingSession?.serverUrl && linkingSession?.linkingToken) {
-            const client = createApiClientWithUrl(linkingSession.serverUrl)
-            const response = await client.getLinkingStatusWithToken(
-              sessionId,
-              linkingSession.linkingToken
-            )
-            return {
-              session: {
-                id: response.id,
-                userId: '',
-                initiatorDeviceId: response.initiatorDeviceId,
-                ephemeralPublicKey: response.ephemeralPublicKey,
-                newDevicePublicKey: response.newDevicePublicKey,
-                status: response.status,
-                createdAt: response.createdAt,
-                expiresAt: response.expiresAt,
-                completedAt: response.completedAt
+          if (linkingSession?.linkingToken) {
+            const client = linkingSession.serverUrl
+              ? createApiClientWithUrl(linkingSession.serverUrl)
+              : getSyncApiClient()
+            try {
+              const response = await client.getLinkingStatusWithToken(
+                sessionId,
+                linkingSession.linkingToken
+              )
+              return { session: mapSession(response, '') }
+            } catch (error) {
+              if (!isSyncApiError(error) || error.status !== 401) {
+                throw error
               }
             }
           }
 
-          if (!storedTokens?.accessToken) {
+          const accessToken = await getFreshAccessToken()
+          if (!accessToken) {
             return { session: null }
           }
 
           const client = getSyncApiClient()
-          const response = await client.getLinkingStatus(storedTokens.accessToken, sessionId)
-          return {
-            session: {
-              id: response.id,
-              userId: storedTokens.userId,
-              initiatorDeviceId: response.initiatorDeviceId,
-              ephemeralPublicKey: response.ephemeralPublicKey,
-              newDevicePublicKey: response.newDevicePublicKey,
-              status: response.status,
-              createdAt: response.createdAt,
-              expiresAt: response.expiresAt,
-              completedAt: response.completedAt
+          try {
+            const response = await client.getLinkingStatus(accessToken, sessionId)
+            const storedTokens = await retrieveAuthTokens().catch(() => null)
+            return { session: mapSession(response, storedTokens?.userId ?? '') }
+          } catch (error) {
+            if (isSyncApiError(error) && error.status === 401) {
+              const refreshed = await refreshAccessToken().catch(() => false)
+              if (refreshed) {
+                const storedTokens = await retrieveAuthTokens().catch(() => null)
+                if (storedTokens?.accessToken && !isAccessTokenExpired(storedTokens.accessToken)) {
+                  const response = await client.getLinkingStatus(
+                    storedTokens.accessToken,
+                    sessionId
+                  )
+                  return { session: mapSession(response, storedTokens.userId ?? '') }
+                }
+              }
             }
+            throw error
           }
         } catch (error) {
           console.error('[Sync] GET_LINKING_STATUS error:', error)
