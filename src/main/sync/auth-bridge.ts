@@ -11,14 +11,29 @@ import { getSyncEngine } from './engine'
 import { getSyncQueue } from './queue'
 import { getNetworkMonitor } from './network'
 import { retrieveAuthTokens, retrieveKeyMaterial } from '../crypto/keychain'
+import { getDatabase } from '../database'
+import { getSetting } from '@shared/db/queries/settings'
 import { queueLocalChangesSinceLastSync } from './local-changes'
 import { bootstrapSyncData } from './bootstrap'
-import { getSyncUserId, setSyncAuthState } from './auth-state'
+import { getSyncUserId, setSyncAuthState, SYNC_SETUP_PENDING_KEY } from './auth-state'
 
 const LOG_PREFIX = '[AuthSyncBridge]'
 
 let initialized = false
 let pendingSync = false
+
+function readSyncSetupComplete(): boolean {
+  try {
+    const db = getDatabase()
+    const pending = getSetting(db, SYNC_SETUP_PENDING_KEY)
+    if (pending) {
+      return false
+    }
+    return true
+  } catch {
+    return false
+  }
+}
 
 async function canTriggerSync(): Promise<{ ok: boolean; reason?: string }> {
   const engine = getSyncEngine()
@@ -111,10 +126,17 @@ export async function handleSessionChanged(
     retrieveAuthTokens().catch(() => null),
     retrieveKeyMaterial().catch(() => null)
   ])
+  const setupComplete = readSyncSetupComplete()
   setSyncAuthState({
     userId,
-    authReady: !!tokens?.accessToken && !!keyMaterial?.masterKey
+    authReady: !!tokens?.accessToken && !!keyMaterial?.masterKey,
+    syncEnabled: setupComplete
   })
+
+  if (!setupComplete) {
+    console.info(`${LOG_PREFIX} Sync deferred: setup not confirmed yet`)
+    return
+  }
 
   await bootstrapSyncData()
   await queueLocalChangesSinceLastSync()
@@ -134,7 +156,7 @@ export function handleSessionExpired(): void {
   }
 
   pendingSync = false
-  setSyncAuthState({ userId: null, authReady: false })
+  setSyncAuthState({ userId: null, authReady: false, syncEnabled: false })
 }
 
 /**
@@ -183,7 +205,8 @@ export async function initAuthSyncBridge(): Promise<void> {
 
   setSyncAuthState({
     userId: tokens?.userId ?? null,
-    authReady: !!tokens?.accessToken && !!keyMaterial?.masterKey
+    authReady: !!tokens?.accessToken && !!keyMaterial?.masterKey,
+    syncEnabled: readSyncSetupComplete()
   })
 
   const engine = getSyncEngine()

@@ -102,6 +102,11 @@ import { getSyncApiClient, createApiClientWithUrl, isSyncApiError } from '../syn
 import { getSyncEngine } from '../sync/engine'
 import { bootstrapSyncData } from '../sync/bootstrap'
 import { triggerPostSetupSync } from '../sync/auth-bridge'
+import {
+  setSyncEnabled,
+  SYNC_SETUP_COMPLETE_KEY,
+  SYNC_SETUP_PENDING_KEY
+} from '../sync/auth-state'
 import { resetSyncStateForNewDevice } from '../sync/state-reset'
 import type { DecryptedSyncItem } from '../sync/engine'
 import { getSyncQueue } from '../sync/queue'
@@ -125,6 +130,7 @@ import type {
   SyncProgressUpdateEvent
 } from '@shared/contracts/ipc-sync'
 import { getDatabase } from '../database/client'
+import { setSetting, deleteSetting } from '@shared/db/queries/settings'
 import { inboxItems } from '@shared/db/schema/inbox'
 import { savedFilters } from '@shared/db/schema/settings'
 import { tasks } from '@shared/db/schema/tasks'
@@ -237,6 +243,28 @@ export function completeSyncProgress(): void {
   } satisfies SyncProgressUpdateEvent)
 
   syncProgressState = null
+}
+
+async function markSyncSetupComplete(): Promise<void> {
+  try {
+    const db = getDatabase()
+    setSetting(db, SYNC_SETUP_COMPLETE_KEY, new Date().toISOString())
+    deleteSetting(db, SYNC_SETUP_PENDING_KEY)
+  } catch (error) {
+    console.warn('[Sync] Failed to persist setup completion flag:', error)
+  }
+  setSyncEnabled(true)
+}
+
+async function markSyncSetupPending(): Promise<void> {
+  try {
+    const db = getDatabase()
+    setSetting(db, SYNC_SETUP_PENDING_KEY, new Date().toISOString())
+    deleteSetting(db, SYNC_SETUP_COMPLETE_KEY)
+  } catch (error) {
+    console.warn('[Sync] Failed to persist setup pending flag:', error)
+  }
+  setSyncEnabled(false)
 }
 
 // =============================================================================
@@ -1075,9 +1103,10 @@ export function registerSyncHandlers(): void {
             userId
           })
 
+          await markSyncSetupPending()
+
           await fetchAndStoreAccountDevices()
           await resetSyncStateForNewDevice()
-          void triggerPostSetupSync()
 
           const now = Date.now()
 
@@ -1165,6 +1194,11 @@ export function registerSyncHandlers(): void {
           // Step 5: Compare with stored master key using constant-time comparison
           const storedMasterKey = base64ToUint8Array(storedMaterial.masterKey)
           const matches = constantTimeEqual(derivedMasterKey, storedMasterKey)
+
+          if (matches) {
+            await markSyncSetupComplete()
+            void triggerPostSetupSync()
+          }
 
           return {
             valid: matches,
@@ -1272,6 +1306,7 @@ export function registerSyncHandlers(): void {
 
           await fetchAndStoreAccountDevices()
           await resetSyncStateForNewDevice()
+          await markSyncSetupComplete()
           void triggerPostSetupSync()
 
           const now = Date.now()
@@ -1621,6 +1656,7 @@ export function registerSyncHandlers(): void {
 
           await fetchAndStoreAccountDevices()
           await resetSyncStateForNewDevice()
+          await markSyncSetupComplete()
           void triggerPostSetupSync()
 
           return {
