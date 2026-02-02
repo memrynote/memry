@@ -466,6 +466,12 @@ export class CrdtSyncBridge {
 
       this.sequenceState.set(noteId, state)
     } catch (error) {
+      if (this.isForbiddenError(error)) {
+        console.info(
+          `${LOG_PREFIX} Pull updates skipped for ${noteId}: note not on server yet`
+        )
+        return
+      }
       console.error(`${LOG_PREFIX} Pull updates failed for ${noteId}:`, error)
     }
   }
@@ -504,6 +510,12 @@ export class CrdtSyncBridge {
 
       return true
     } catch (error) {
+      if (this.isForbiddenError(error)) {
+        console.info(
+          `${LOG_PREFIX} Pull snapshot skipped for ${noteId}: note not on server yet`
+        )
+        return false
+      }
       console.error(`${LOG_PREFIX} Pull snapshot failed for ${noteId}:`, error)
       return false
     }
@@ -645,6 +657,10 @@ export class CrdtSyncBridge {
 
   private isAuthError(error: unknown): boolean {
     return isSyncApiError(error) && error.status === 401
+  }
+
+  private isForbiddenError(error: unknown): boolean {
+    return isSyncApiError(error) && error.status === 403
   }
 
   private async tryRefreshSession(): Promise<boolean> {
