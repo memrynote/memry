@@ -15,6 +15,7 @@ type ServerMessage =
   | { type: 'pong' }
   | { type: 'connected'; deviceId: string }
   | { type: 'changes'; cursor: number; count: number }
+  | { type: 'crdt'; noteIds: string[] }
   | { type: 'error'; code: string; message: string }
 
 interface ConnectionMeta {
@@ -24,9 +25,10 @@ interface ConnectionMeta {
 }
 
 interface BroadcastRequest {
-  type: 'changes'
-  cursor: number
-  count: number
+  type: 'changes' | 'crdt'
+  cursor?: number
+  count?: number
+  noteIds?: string[]
   excludeDeviceId?: string
 }
 
@@ -104,7 +106,8 @@ export class UserSyncState implements DurableObject {
     if (!this.isValidBroadcastRequest(body)) {
       return new Response(
         JSON.stringify({
-          error: 'Invalid broadcast payload: requires cursor (number) and count (number)'
+          error:
+            'Invalid broadcast payload: requires type ("changes" or "crdt") with appropriate fields'
         }),
         {
           status: 400,
@@ -113,12 +116,20 @@ export class UserSyncState implements DurableObject {
       )
     }
 
-    const { cursor, count, excludeDeviceId } = body
+    const { type, excludeDeviceId } = body
 
-    const message: ServerMessage = {
-      type: 'changes',
-      cursor,
-      count
+    let message: ServerMessage
+    if (type === 'changes') {
+      message = {
+        type: 'changes',
+        cursor: body.cursor!,
+        count: body.count!
+      }
+    } else {
+      message = {
+        type: 'crdt',
+        noteIds: body.noteIds!
+      }
     }
 
     const sockets = this.state.getWebSockets()
@@ -218,6 +229,15 @@ export class UserSyncState implements DurableObject {
   private isValidBroadcastRequest(body: unknown): body is BroadcastRequest {
     if (typeof body !== 'object' || body === null) return false
     const obj = body as Record<string, unknown>
-    return typeof obj.cursor === 'number' && typeof obj.count === 'number'
+
+    if (obj.type === 'changes') {
+      return typeof obj.cursor === 'number' && typeof obj.count === 'number'
+    }
+
+    if (obj.type === 'crdt') {
+      return Array.isArray(obj.noteIds) && obj.noteIds.every((id) => typeof id === 'string')
+    }
+
+    return false
   }
 }

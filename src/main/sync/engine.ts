@@ -23,6 +23,7 @@ import { getSyncApiClient, SyncApiError } from './api-client'
 import { refreshAccessToken } from './token-refresh'
 import { compareClock, mergeClock, emptyClock } from './vector-clock'
 import { isSyncAuthReady } from './auth-state'
+import { getCrdtSyncBridge } from './crdt-sync-bridge'
 import {
   generateFileKey,
   wrapFileKey,
@@ -127,7 +128,11 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   private onlineHandler = (): void => this.handleOnline()
   private offlineHandler = (): void => this.handleOffline()
   private messageHandler = (message: WebSocketMessage): void => {
-    if (message.type === 'sync') this.handleSyncNotification()
+    if (message.type === 'sync') {
+      this.handleSyncNotification()
+    } else if (message.type === 'crdt' && message.noteIds) {
+      this.handleCrdtNotification(message.noteIds)
+    }
   }
 
   async initialize(): Promise<void> {
@@ -1087,6 +1092,23 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
           'handleSyncNotification'
         )
       )
+    }
+  }
+
+  private handleCrdtNotification(noteIds: string[]): void {
+    const crdtBridge = getCrdtSyncBridge()
+    if (!crdtBridge) return
+
+    for (const noteId of noteIds) {
+      crdtBridge
+        .pullUpdatesForNote(noteId)
+        .catch((err) =>
+          this.emit(
+            'sync:error',
+            err instanceof Error ? err : new Error(String(err)),
+            'handleCrdtNotification'
+          )
+        )
     }
   }
 

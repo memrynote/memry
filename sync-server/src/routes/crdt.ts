@@ -64,6 +64,31 @@ crdtRoutes.post('/updates', async (c) => {
 
   const result = await storeCrdtUpdates(c.env.DB, auth.userId, updates)
 
+  if (result.accepted.length > 0) {
+    const doId = c.env.USER_SYNC_STATE.idFromName(auth.userId)
+    const stub = c.env.USER_SYNC_STATE.get(doId)
+    const noteIds = [...new Set(result.accepted.map((u) => u.noteId))]
+
+    c.executionCtx.waitUntil(
+      stub.fetch(
+        new Request('http://internal/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'crdt',
+            noteIds,
+            excludeDeviceId: auth.deviceId
+          })
+        })
+      )
+    )
+
+    console.log(`${LOG_PREFIX} Broadcasting CRDT updates`, {
+      noteIds,
+      excludeDeviceId: auth.deviceId
+    })
+  }
+
   const response: PushCrdtUpdatesResponse = {
     accepted: result.accepted,
     rejected: result.rejected,
