@@ -14,6 +14,7 @@ import { ensureSyncAuthReady, initAuthSyncBridge, handleSessionExpired } from '.
 import { registerDecryptedItemListener } from '../ipc/sync-handlers'
 import { getCrdtProvider } from './crdt-provider'
 import { initializeCrdtSyncBridge, getCrdtSyncBridge } from './crdt-sync-bridge'
+import { initWebSocketManager, getWebSocketManager } from './websocket'
 
 const AUTO_SYNC_DEBOUNCE_MS = 1500
 
@@ -98,6 +99,11 @@ export async function initSyncSubsystem(): Promise<void> {
 
   console.info('[Sync] Initializing sync subsystem')
   await initSyncQueue()
+
+  const serverUrl = process.env.SYNC_SERVER_URL || 'http://localhost:8787'
+  initWebSocketManager({ serverUrl })
+  console.info('[Sync] WebSocket manager initialized')
+
   await initSyncEngine()
 
   registerDecryptedItemListener()
@@ -135,6 +141,19 @@ export async function initSyncSubsystem(): Promise<void> {
     engine.on('sync:session-expired', () => {
       console.info('[Sync] Session expired event received')
       handleSessionExpired()
+    })
+  }
+
+  const wsManager = getWebSocketManager()
+  if (wsManager) {
+    wsManager.on('sync:ws-connected', () => {
+      console.info('[Sync] WebSocket connected')
+    })
+    wsManager.on('sync:ws-disconnected', (code, reason) => {
+      console.info('[Sync] WebSocket disconnected:', { code, reason })
+    })
+    wsManager.on('sync:ws-error', (error) => {
+      console.error('[Sync] WebSocket error:', error.message)
     })
   }
 

@@ -19,6 +19,7 @@ import { getSyncUserId, setSyncAuthState, SYNC_SETUP_PENDING_KEY } from './auth-
 import { refreshAccessToken } from './token-refresh'
 import { isAccessTokenExpired } from './token-utils'
 import { getCrdtSyncBridge } from './crdt-sync-bridge'
+import { getWebSocketManager } from './websocket'
 
 const LOG_PREFIX = '[AuthSyncBridge]'
 
@@ -276,11 +277,28 @@ export async function initAuthSyncBridge(): Promise<void> {
     console.info(`${LOG_PREFIX} No stored session`)
   }
 
+  console.info(`${LOG_PREFIX} Token state:`, {
+    hasStoredTokens: !!storedTokens,
+    hasFreshTokens: !!tokens,
+    hasAccessToken: !!tokens?.accessToken,
+    wsManagerState: getWebSocketManager()?.state ?? 'not-initialized'
+  })
+
   setSyncAuthState({
     userId: tokens?.userId ?? storedTokens?.userId ?? null,
     authReady: !!tokens?.accessToken && !!keyMaterial?.masterKey,
     syncEnabled: readSyncSetupComplete()
   })
+
+  if (tokens?.accessToken) {
+    const wsManager = getWebSocketManager()
+    if (wsManager && wsManager.state === 'disconnected') {
+      console.info(`${LOG_PREFIX} Connecting WebSocket`)
+      wsManager.connect(tokens.accessToken).catch((error) => {
+        console.warn(`${LOG_PREFIX} WebSocket connection failed:`, error)
+      })
+    }
+  }
 
   const engine = getSyncEngine()
   if (engine) {

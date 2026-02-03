@@ -232,6 +232,10 @@ export class WebSocketManager extends TypedEmitter<WebSocketEvents> {
         return
       }
 
+      if (message.type === 'crdt') {
+        console.info('[WS] Received CRDT notification:', { noteIds: message.noteIds })
+      }
+
       this.emit('sync:ws-message', message)
       this.broadcastToWindows('sync:ws-message', message)
     } catch (error) {

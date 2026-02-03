@@ -113,6 +113,7 @@ import { resetSyncStateForNewDevice } from '../sync/state-reset'
 import type { DecryptedSyncItem } from '../sync/engine'
 import { getSyncQueue } from '../sync/queue'
 import { getNetworkMonitor } from '../sync/network'
+import { getWebSocketManager } from '../sync/websocket'
 import {
   getCrdtProvider,
   base64ToUint8Array as crdtBase64ToUint8Array
@@ -256,6 +257,17 @@ async function markSyncSetupComplete(): Promise<void> {
     console.warn('[Sync] Failed to persist setup completion flag:', error)
   }
   setSyncEnabled(true)
+
+  const tokens = await retrieveAuthTokens().catch(() => null)
+  if (tokens?.accessToken) {
+    const wsManager = getWebSocketManager()
+    if (wsManager && wsManager.state === 'disconnected') {
+      console.info('[Sync] Connecting WebSocket after setup complete')
+      wsManager.connect(tokens.accessToken).catch((error) => {
+        console.warn('[Sync] WebSocket connection failed:', error)
+      })
+    }
+  }
 }
 
 async function markSyncSetupPending(): Promise<void> {
