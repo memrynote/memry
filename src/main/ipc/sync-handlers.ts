@@ -150,6 +150,7 @@ import { safeWriteInVault, ensureDirectory, deleteFile } from '../vault/file-ops
 import { getJournalPath, serializeJournalEntry, deleteJournalEntryFile } from '../vault/journal'
 import type { JournalFrontmatter } from '../vault/journal'
 import { getCrdtSyncBridge } from '../sync/crdt-sync-bridge'
+import { mergeFrontmatterFromCrdt } from '../sync/crdt-sync-utils'
 import { getConfig as getVaultConfig } from '../vault'
 import { getVaultPath, toAbsolutePath } from '../vault/notes'
 import * as fs from 'node:fs/promises'
@@ -592,8 +593,11 @@ async function resyncNoteContentFromCrdt(noteId: string): Promise<void> {
   const currentFile = await fs.readFile(absolutePath, 'utf-8')
   const parsed = parseNote(currentFile, cached.path)
 
+  const metaMap = doc.getMap('meta')
+  const mergedFrontmatter = mergeFrontmatterFromCrdt(metaMap, parsed.frontmatter)
+
   if (content) {
-    const newFileContent = serializeNote(parsed.frontmatter, content, { updateModified: false })
+    const newFileContent = serializeNote(mergedFrontmatter, content, { updateModified: false })
     crdtProvider.markCrdtWrite(noteId)
     await safeWriteInVault(absolutePath, newFileContent, getVaultPath())
 
@@ -603,7 +607,7 @@ async function resyncNoteContentFromCrdt(noteId: string): Promise<void> {
         id: noteId,
         path: cached.path,
         fileContent: newFileContent,
-        frontmatter: parsed.frontmatter,
+        frontmatter: mergedFrontmatter,
         parsedContent: content
       },
       {
