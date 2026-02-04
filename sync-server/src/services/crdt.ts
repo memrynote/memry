@@ -250,7 +250,7 @@ export const verifyBulkNoteOwnership = async (
 
 export interface StoreCrdtUpdatesResult {
   accepted: Array<{ noteId: string; sequenceNum: number }>
-  rejected: Array<{ noteId: string; sequenceNum: number; reason: string }>
+  rejected: Array<{ noteId: string; reason: string }>
 }
 
 export const storeCrdtUpdates = async (
@@ -259,7 +259,7 @@ export const storeCrdtUpdates = async (
   updates: CrdtUpdate[]
 ): Promise<StoreCrdtUpdatesResult> => {
   const accepted: Array<{ noteId: string; sequenceNum: number }> = []
-  const rejected: Array<{ noteId: string; sequenceNum: number; reason: string }> = []
+  const rejected: Array<{ noteId: string; reason: string }> = []
   const now = Date.now()
 
   const uniqueNoteIds = [...new Set(updates.map((u) => u.noteId))]
@@ -269,7 +269,6 @@ export const storeCrdtUpdates = async (
     if (!ownedNotes.has(update.noteId)) {
       rejected.push({
         noteId: update.noteId,
-        sequenceNum: update.sequenceNum,
         reason: 'Note not found or not owned by user'
       })
       continue
@@ -279,29 +278,36 @@ export const storeCrdtUpdates = async (
     const id = generateId()
 
     try {
+      const maxResult = await db
+        .prepare(
+          'SELECT COALESCE(MAX(sequence_num), 0) as max_seq FROM crdt_updates WHERE user_id = ? AND note_id = ?'
+        )
+        .bind(userId, update.noteId)
+        .first<{ max_seq: number }>()
+
+      const nextSequence = (maxResult?.max_seq ?? 0) + 1
+
       await db
         .prepare(
           `INSERT INTO crdt_updates (id, user_id, note_id, update_data, sequence_num, signer_device_id, signature, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-           ON CONFLICT (user_id, note_id, sequence_num) DO NOTHING`
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .bind(
           id,
           userId,
           update.noteId,
           updateData,
-          update.sequenceNum,
+          nextSequence,
           update.signerDeviceId,
           base64ToUint8Array(update.signature),
           now
         )
         .run()
 
-      accepted.push({ noteId: update.noteId, sequenceNum: update.sequenceNum })
+      accepted.push({ noteId: update.noteId, sequenceNum: nextSequence })
     } catch (error) {
       rejected.push({
         noteId: update.noteId,
-        sequenceNum: update.sequenceNum,
         reason: error instanceof Error ? error.message : 'Database error'
       })
     }

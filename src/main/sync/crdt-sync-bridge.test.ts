@@ -73,7 +73,16 @@ vi.mock('../database', () => ({
     select: vi.fn(() => ({
       from: vi.fn(() => ({
         where: vi.fn(() => ({
-          limit: vi.fn(() => [])
+          limit: vi.fn(() => []),
+          get: vi.fn(() => null)
+        })),
+        get: vi.fn(() => null)
+      }))
+    })),
+    insert: vi.fn(() => ({
+      values: vi.fn(() => ({
+        onConflictDoUpdate: vi.fn(() => ({
+          run: vi.fn()
         }))
       }))
     }))
@@ -82,6 +91,10 @@ vi.mock('../database', () => ({
 
 vi.mock('./token-refresh', () => ({
   refreshAccessToken: vi.fn().mockResolvedValue(true)
+}))
+
+vi.mock('./auth-state', () => ({
+  isSyncAuthReady: vi.fn(() => true)
 }))
 
 import { CrdtSyncBridge } from './crdt-sync-bridge'
@@ -345,6 +358,124 @@ describe('CrdtSyncBridge', () => {
 
       // #then
       expect(mockCrdtProvider.off).toHaveBeenCalledWith('crdt:doc-updated', expect.any(Function))
+    })
+  })
+
+  describe('Server-assigned sequences', () => {
+    it('should not send sequenceNum in push updates', async () => {
+      // #given
+      const note = {
+        id: 'test-note',
+        title: 'Test',
+        path: 'test.md',
+        content: '',
+        frontmatter: {},
+        created: new Date(),
+        modified: new Date(),
+        tags: [],
+        aliases: [],
+        wordCount: 0,
+        properties: {}
+      }
+      vi.mocked(getNotesByIds).mockResolvedValueOnce([note])
+
+      const mockPushCrdtUpdates = vi.fn().mockResolvedValue({
+        accepted: [{ noteId: 'test-note', sequenceNum: 1 }],
+        rejected: [],
+        serverTime: Date.now()
+      })
+
+      vi.mocked(getSyncApiClient).mockReturnValue({
+        pushCrdtUpdates: mockPushCrdtUpdates,
+        pullCrdtUpdates: vi.fn(),
+        pullCrdtSnapshot: vi.fn(),
+        pushCrdtSnapshot: vi.fn()
+      } as unknown as ReturnType<typeof getSyncApiClient>)
+
+      const flushUpdates = bridge as unknown as {
+        flushUpdates: () => Promise<void>
+        pendingUpdates: Map<
+          string,
+          Array<{ noteId: string; update: Uint8Array; timestamp: number }>
+        >
+        syncedNotes: Set<string>
+      }
+
+      flushUpdates.pendingUpdates.set('test-note', [
+        { noteId: 'test-note', update: new Uint8Array([1, 2, 3]), timestamp: Date.now() }
+      ])
+      flushUpdates.syncedNotes.add('test-note')
+
+      // #when
+      await flushUpdates.flushUpdates.call(bridge)
+
+      // #then
+      expect(mockPushCrdtUpdates).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            noteId: 'test-note',
+            updateData: expect.any(String),
+            signature: expect.any(String),
+            signerDeviceId: 'test-device-123'
+          })
+        ])
+      )
+
+      const pushedUpdates = mockPushCrdtUpdates.mock.calls[0][0]
+      expect(pushedUpdates[0]).not.toHaveProperty('sequenceNum')
+    })
+
+    it('should update lastKnownSequence from server response', async () => {
+      // #given
+      const note = {
+        id: 'test-note',
+        title: 'Test',
+        path: 'test.md',
+        content: '',
+        frontmatter: {},
+        created: new Date(),
+        modified: new Date(),
+        tags: [],
+        aliases: [],
+        wordCount: 0,
+        properties: {}
+      }
+      vi.mocked(getNotesByIds).mockResolvedValueOnce([note])
+
+      const mockPushCrdtUpdates = vi.fn().mockResolvedValue({
+        accepted: [{ noteId: 'test-note', sequenceNum: 42 }],
+        rejected: [],
+        serverTime: Date.now()
+      })
+
+      vi.mocked(getSyncApiClient).mockReturnValue({
+        pushCrdtUpdates: mockPushCrdtUpdates,
+        pullCrdtUpdates: vi.fn(),
+        pullCrdtSnapshot: vi.fn(),
+        pushCrdtSnapshot: vi.fn()
+      } as unknown as ReturnType<typeof getSyncApiClient>)
+
+      const bridgeInternal = bridge as unknown as {
+        flushUpdates: () => Promise<void>
+        pendingUpdates: Map<
+          string,
+          Array<{ noteId: string; update: Uint8Array; timestamp: number }>
+        >
+        syncedNotes: Set<string>
+        sequenceState: Map<string, { lastKnownSequence: number }>
+      }
+
+      bridgeInternal.pendingUpdates.set('test-note', [
+        { noteId: 'test-note', update: new Uint8Array([1, 2, 3]), timestamp: Date.now() }
+      ])
+      bridgeInternal.syncedNotes.add('test-note')
+
+      // #when
+      await bridgeInternal.flushUpdates.call(bridge)
+
+      // #then
+      const state = bridgeInternal.sequenceState.get('test-note')
+      expect(state?.lastKnownSequence).toBe(42)
     })
   })
 })

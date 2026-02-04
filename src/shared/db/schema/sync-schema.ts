@@ -84,7 +84,21 @@ export const syncHistory = sqliteTable(
   (table) => [index('idx_sync_history_created').on(table.createdAt)]
 )
 
+/**
+ * CRDT sequence state table
+ * Tracks last known sequence number per note for sync continuation after restart
+ */
+export const crdtSequenceState = sqliteTable('crdt_sequence_state', {
+  noteId: text('note_id').primaryKey(),
+  lastKnownSequence: integer('last_known_sequence').notNull().default(0),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`)
+})
+
 // Type exports
+export type CrdtSequenceState = typeof crdtSequenceState.$inferSelect
+export type NewCrdtSequenceState = typeof crdtSequenceState.$inferInsert
 export type Device = typeof devices.$inferSelect
 export type NewDevice = typeof devices.$inferInsert
 export type SyncQueueItem = typeof syncQueue.$inferSelect

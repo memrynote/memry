@@ -22,7 +22,6 @@ const MAX_SNAPSHOT_BASE64_SIZE = 10 * 1024 * 1024
 export const CrdtUpdateSchema = z.object({
   noteId: NoteIdSchema,
   updateData: Base64Schema,
-  sequenceNum: z.number().int().positive(),
   signature: Base64Schema,
   signerDeviceId: DeviceIdSchema
 })
@@ -45,7 +44,6 @@ export const PushCrdtUpdatesResponseSchema = z.object({
   rejected: z.array(
     z.object({
       noteId: NoteIdSchema,
-      sequenceNum: z.number().int().positive(),
       reason: z.string()
     })
   ),

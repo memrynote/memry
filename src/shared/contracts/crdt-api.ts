@@ -17,7 +17,6 @@ const DeviceIdSchema = z.string().min(1).max(64)
 export const CrdtUpdatePushSchema = z.object({
   noteId: NoteIdSchema,
   updateData: Base64Schema,
-  sequenceNum: z.number().int().positive(),
   signature: Base64Schema,
   signerDeviceId: DeviceIdSchema
 })
@@ -34,7 +33,6 @@ export const PushCrdtUpdatesResponseSchema = z.object({
   rejected: z.array(
     z.object({
       noteId: NoteIdSchema,
-      sequenceNum: z.number().int().positive(),
       reason: z.string()
     })
   ),

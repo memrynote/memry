@@ -21,7 +21,7 @@ import type { JournalEntry } from '@shared/contracts/journal-api'
 import { retrieveDeviceKeyPair } from '../crypto/keychain'
 import { sign, verify } from '../crypto/signatures'
 import { getDatabase } from '../database'
-import { devices } from '@shared/db/schema/sync-schema'
+import { devices, crdtSequenceState } from '@shared/db/schema/sync-schema'
 import { eq } from 'drizzle-orm'
 import { refreshAccessToken } from './token-refresh'
 import { emptyClock, incrementClock } from './vector-clock'
@@ -40,8 +40,7 @@ interface PendingUpdate {
 }
 
 interface NoteSequenceState {
-  localSequence: number
-  serverSequence: number
+  lastKnownSequence: number
 }
 
 export class CrdtSyncBridge {
@@ -250,23 +249,16 @@ export class CrdtSyncBridge {
           continue
         }
 
-        const state = this.getSequenceState(noteId)
-
         for (const pending of updates) {
-          state.localSequence++
-
           const signature = await sign(pending.update, keyPair.privateKey)
 
           allUpdates.push({
             noteId,
             updateData: uint8ArrayToBase64(pending.update),
-            sequenceNum: state.localSequence,
             signature: uint8ArrayToBase64(signature),
             signerDeviceId: keyPair.deviceId
           })
         }
-
-        this.sequenceState.set(noteId, state)
       }
 
       this.pendingUpdates.clear()
@@ -325,8 +317,9 @@ export class CrdtSyncBridge {
 
         for (const accepted of result.accepted) {
           const state = this.getSequenceState(accepted.noteId)
-          state.serverSequence = Math.max(state.serverSequence, accepted.sequenceNum)
+          state.lastKnownSequence = Math.max(state.lastKnownSequence, accepted.sequenceNum)
           this.sequenceState.set(accepted.noteId, state)
+          this.persistSequenceState(accepted.noteId, state)
         }
 
         console.info(`${LOG_PREFIX} Batch ${batchIndex}: Pushed ${result.accepted.length} updates`)
@@ -391,11 +384,7 @@ export class CrdtSyncBridge {
     }
 
     const state = this.getSequenceState(noteId)
-    const sequenceNum = Math.max(state.localSequence, state.serverSequence, 1)
-    if (sequenceNum !== state.localSequence) {
-      state.localSequence = sequenceNum
-      this.sequenceState.set(noteId, state)
-    }
+    const sequenceNum = Math.max(state.lastKnownSequence, 1)
     const client = getSyncApiClient()
 
     try {
@@ -403,8 +392,9 @@ export class CrdtSyncBridge {
         client.pushCrdtSnapshot(noteId, uint8ArrayToBase64(snapshot), sequenceNum, snapshot.length)
       )
 
-      state.serverSequence = result.sequenceNum
+      state.lastKnownSequence = result.sequenceNum
       this.sequenceState.set(noteId, state)
+      this.persistSequenceState(noteId, state)
 
       console.info(`${LOG_PREFIX} Pushed snapshot for ${noteId}:`, {
         sequenceNum: result.sequenceNum,
@@ -431,7 +421,7 @@ export class CrdtSyncBridge {
       await this.crdtProvider.getOrCreateDoc(noteId)
 
       const result = await this.withAuthRefresh(() =>
-        client.pullCrdtUpdates(noteId, state.serverSequence)
+        client.pullCrdtUpdates(noteId, state.lastKnownSequence)
       )
 
       if (result.updates.length === 0) {
@@ -461,10 +451,11 @@ export class CrdtSyncBridge {
         }
 
         this.crdtProvider.applyUpdate(noteId, bytes, 'remote')
-        state.serverSequence = Math.max(state.serverSequence, update.sequenceNum)
+        state.lastKnownSequence = Math.max(state.lastKnownSequence, update.sequenceNum)
       }
 
       this.sequenceState.set(noteId, state)
+      this.persistSequenceState(noteId, state)
     } catch (error) {
       if (this.isForbiddenError(error)) {
         console.info(
@@ -505,8 +496,9 @@ export class CrdtSyncBridge {
       this.crdtProvider.applySnapshot(noteId, bytes)
 
       const state = this.getSequenceState(noteId)
-      state.serverSequence = result.sequenceNum
+      state.lastKnownSequence = result.sequenceNum
       this.sequenceState.set(noteId, state)
+      this.persistSequenceState(noteId, state)
 
       return true
     } catch (error) {
@@ -605,17 +597,42 @@ export class CrdtSyncBridge {
   }
 
   private getSequenceState(noteId: string): NoteSequenceState {
-    const existing = this.sequenceState.get(noteId)
-    if (existing) {
-      return existing
+    const cached = this.sequenceState.get(noteId)
+    if (cached) {
+      return cached
     }
 
+    const db = getDatabase()
+    const row = db
+      .select({ lastKnownSequence: crdtSequenceState.lastKnownSequence })
+      .from(crdtSequenceState)
+      .where(eq(crdtSequenceState.noteId, noteId))
+      .get()
+
     const state: NoteSequenceState = {
-      localSequence: 0,
-      serverSequence: 0
+      lastKnownSequence: row?.lastKnownSequence ?? 0
     }
     this.sequenceState.set(noteId, state)
     return state
+  }
+
+  private persistSequenceState(noteId: string, state: NoteSequenceState): void {
+    const db = getDatabase()
+    const now = new Date().toISOString()
+    db.insert(crdtSequenceState)
+      .values({
+        noteId,
+        lastKnownSequence: state.lastKnownSequence,
+        updatedAt: now
+      })
+      .onConflictDoUpdate({
+        target: crdtSequenceState.noteId,
+        set: {
+          lastKnownSequence: state.lastKnownSequence,
+          updatedAt: now
+        }
+      })
+      .run()
   }
 
   private async getDevicePublicKey(deviceId: string): Promise<Uint8Array | null> {
