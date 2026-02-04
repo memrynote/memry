@@ -15,6 +15,7 @@
     "dev": "electron-vite dev",
     "dev:deviceA": "MEMRY_USER_DATA_DIR=/tmp/memry-device-A MEMRY_KEYCHAIN_SERVICE=com.memry.app.deviceA electron-vite dev",
     "dev:deviceB": "MEMRY_USER_DATA_DIR=/tmp/memry-device-B MEMRY_KEYCHAIN_SERVICE=com.memry.app.deviceB ELECTRON_RENDERER_URL=${ELECTRON_RENDERER_URL:-http://localhost:5173} electron .",
+    "dev:deviceC": "MEMRY_USER_DATA_DIR=/tmp/memry-device-C MEMRY_KEYCHAIN_SERVICE=com.memry.app.deviceC ELECTRON_RENDERER_URL=${ELECTRON_RENDERER_URL:-http://localhost:5173} electron .",
     "clean:keychain:deviceA": "npx tsx scripts/clear-keychain-devices.ts com.memry.app.deviceA",
     "clean:keychain:deviceB": "npx tsx scripts/clear-keychain-devices.ts com.memry.app.deviceB",
     "clean:keychain:devices": "npx tsx scripts/clear-keychain-devices.ts",

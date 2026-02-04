@@ -389,7 +389,7 @@ function getDefaultSyncState(): SyncState {
   }
 }
 
-async function fetchAndStoreAccountDevices(): Promise<void> {
+export async function fetchAndStoreAccountDevices(): Promise<void> {
   const storedTokens = await retrieveAuthTokens()
   if (!storedTokens?.accessToken) return
 

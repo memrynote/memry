@@ -26,8 +26,10 @@ import { eq } from 'drizzle-orm'
 import { refreshAccessToken } from './token-refresh'
 import { emptyClock, incrementClock } from './vector-clock'
 import { isSyncAuthReady } from './auth-state'
+import { fetchAndStoreAccountDevices } from '../ipc/sync-handlers'
 
 const LOG_PREFIX = '[CrdtSyncBridge]'
+const DEVICE_REFRESH_COOLDOWN_MS = 30000
 const DEBOUNCE_MS = 1500
 const MAX_BATCH_SIZE = 50
 const RETRY_DELAY_MS = 5000
@@ -58,6 +60,8 @@ export class CrdtSyncBridge {
     | ((payload: { noteId: string; update: Uint8Array; origin: string }) => void)
     | null = null
   private connectivityListener: ((isOnline: boolean) => void) | null = null
+  private deviceRefreshInProgress = false
+  private lastDeviceRefresh = 0
 
   initialize(crdtProvider: CrdtProvider): void {
     if (this.initialized) {
@@ -433,7 +437,13 @@ export class CrdtSyncBridge {
       for (const update of result.updates) {
         const bytes = base64ToUint8Array(update.updateData)
 
-        const publicKey = await this.getDevicePublicKey(update.signerDeviceId)
+        let publicKey = await this.getDevicePublicKey(update.signerDeviceId)
+
+        if (!publicKey) {
+          await this.refreshDeviceList()
+          publicKey = await this.getDevicePublicKey(update.signerDeviceId)
+        }
+
         if (!publicKey) {
           console.error(
             `${LOG_PREFIX} Unknown signer device ${update.signerDeviceId}, rejecting update`
@@ -633,6 +643,24 @@ export class CrdtSyncBridge {
         }
       })
       .run()
+  }
+
+  private async refreshDeviceList(): Promise<void> {
+    const now = Date.now()
+    if (this.deviceRefreshInProgress || now - this.lastDeviceRefresh < DEVICE_REFRESH_COOLDOWN_MS) {
+      return
+    }
+
+    this.deviceRefreshInProgress = true
+    try {
+      console.info(`${LOG_PREFIX} Refreshing device list from server`)
+      await fetchAndStoreAccountDevices()
+      this.lastDeviceRefresh = now
+    } catch (error) {
+      console.warn(`${LOG_PREFIX} Failed to refresh device list:`, error)
+    } finally {
+      this.deviceRefreshInProgress = false
+    }
   }
 
   private async getDevicePublicKey(deviceId: string): Promise<Uint8Array | null> {
