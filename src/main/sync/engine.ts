@@ -124,6 +124,7 @@ const SYNC_SETTINGS_KEY = 'sync.settings'
 
 export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   private _status: SyncStatus = 'idle'
+  private pendingSyncNotification = false
   private initialized = false
   private syncLock = false
   private onlineHandler = (): void => this.handleOnline()
@@ -133,7 +134,7 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
       type: message.type,
       noteIds: (message as { noteIds?: string[] }).noteIds
     })
-    if (message.type === 'sync') {
+    if (message.type === 'sync' || message.type === 'changes') {
       this.handleSyncNotification()
     } else if (message.type === 'crdt' && message.noteIds) {
       this.handleCrdtNotification(message.noteIds)
@@ -188,6 +189,10 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
       this.emit('sync:status-changed', event)
       this.broadcastToWindows('sync:status-changed', event)
       this.persistStatus(status)
+    }
+    if (status === 'idle' && this.pendingSyncNotification) {
+      this.pendingSyncNotification = false
+      this.handleSyncNotification()
     }
   }
 
@@ -306,7 +311,6 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
             }
           }
 
-          await this.updateCursor(response.serverCursor)
           lastResponse = response
         } catch (error) {
           if (this.isAuthError(error)) {
@@ -1088,13 +1092,17 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   }
 
   private handleWsConnected(): void {
-    console.info('[SyncEngine] WebSocket connected, pulling CRDT updates for loaded docs')
-    const crdtBridge = getCrdtSyncBridge()
-    if (crdtBridge) {
-      crdtBridge.pullUpdatesForAllLoadedDocs().catch((err) => {
-        console.error('[SyncEngine] Failed to pull updates after WS connect:', err)
+    console.info('[SyncEngine] WebSocket connected, pulling metadata then CRDT updates')
+    this.pull()
+      .then(async () => {
+        const crdtBridge = getCrdtSyncBridge()
+        if (crdtBridge) {
+          await crdtBridge.syncAllDocs()
+        }
       })
-    }
+      .catch((err) => {
+        console.error('[SyncEngine] Failed to sync after WS reconnect:', err)
+      })
   }
 
   private handleOffline(): void {
@@ -1103,6 +1111,7 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
 
   private handleSyncNotification(): void {
     if (this._status === 'idle') {
+      this.pendingSyncNotification = false
       this.pull().catch((err) =>
         this.emit(
           'sync:error',
@@ -1110,6 +1119,8 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
           'handleSyncNotification'
         )
       )
+    } else {
+      this.pendingSyncNotification = true
     }
   }
 

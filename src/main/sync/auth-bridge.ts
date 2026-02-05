@@ -200,6 +200,7 @@ export async function handleSessionChanged(
 
   const crdtBridge = getCrdtSyncBridge()
   if (crdtBridge) {
+    await crdtBridge.syncUnsyncedLocalDocs()
     await crdtBridge.syncAllDocs()
   }
 }
@@ -248,6 +249,7 @@ export async function triggerPostSetupSync(): Promise<void> {
 
   const crdtBridge = getCrdtSyncBridge()
   if (crdtBridge) {
+    await crdtBridge.syncUnsyncedLocalDocs()
     await crdtBridge.syncAllDocs()
   }
 }
@@ -284,10 +286,13 @@ export async function initAuthSyncBridge(): Promise<void> {
     wsManagerState: getWebSocketManager()?.state ?? 'not-initialized'
   })
 
+  const setupComplete = readSyncSetupComplete()
+  const authReady = !!tokens?.accessToken && !!keyMaterial?.masterKey && setupComplete
+
   setSyncAuthState({
     userId: tokens?.userId ?? storedTokens?.userId ?? null,
     authReady: !!tokens?.accessToken && !!keyMaterial?.masterKey,
-    syncEnabled: readSyncSetupComplete()
+    syncEnabled: setupComplete
   })
 
   if (tokens?.accessToken) {
@@ -297,6 +302,14 @@ export async function initAuthSyncBridge(): Promise<void> {
       wsManager.connect(tokens.accessToken).catch((error) => {
         console.warn(`${LOG_PREFIX} WebSocket connection failed:`, error)
       })
+    }
+  }
+
+  if (authReady) {
+    const crdtBridge = getCrdtSyncBridge()
+    if (crdtBridge) {
+      console.info(`${LOG_PREFIX} Auth ready on init, syncing unsynced local docs`)
+      void crdtBridge.syncUnsyncedLocalDocs()
     }
   }
 

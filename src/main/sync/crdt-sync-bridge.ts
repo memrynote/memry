@@ -22,7 +22,7 @@ import { retrieveDeviceKeyPair } from '../crypto/keychain'
 import { sign, verify } from '../crypto/signatures'
 import { getDatabase } from '../database'
 import { devices, crdtSequenceState } from '@shared/db/schema/sync-schema'
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { refreshAccessToken } from './token-refresh'
 import { emptyClock, incrementClock } from './vector-clock'
 import { isSyncAuthReady } from './auth-state'
@@ -643,6 +643,88 @@ export class CrdtSyncBridge {
     }
 
     console.info(`${LOG_PREFIX} Bootstrap complete:`, { notes, journals })
+    return { notes, journals }
+  }
+
+  /**
+   * Sync local docs that have never pushed CRDT updates (no sequence state).
+   * Useful after offline creation or startup when auth wasn't ready.
+   */
+  async syncUnsyncedLocalDocs(): Promise<{ notes: number; journals: number }> {
+    console.info(`${LOG_PREFIX} Checking for unsynced local docs`)
+    if (!this.crdtProvider) {
+      console.info(`${LOG_PREFIX} Unsynced sync skipped: CRDT provider not initialized`)
+      return { notes: 0, journals: 0 }
+    }
+    if (!this.isAuthReady()) {
+      console.info(`${LOG_PREFIX} Unsynced sync skipped: not authenticated`)
+      return { notes: 0, journals: 0 }
+    }
+    if (!this.isOnline()) {
+      console.info(`${LOG_PREFIX} Unsynced sync skipped: offline`)
+      return { notes: 0, journals: 0 }
+    }
+
+    const docNames = await this.crdtProvider.getAllDocNames()
+    if (docNames.length === 0) {
+      console.info(`${LOG_PREFIX} Unsynced sync skipped: no local docs`)
+      return { notes: 0, journals: 0 }
+    }
+
+    const db = getDatabase()
+    const existingRows = db
+      .select({ noteId: crdtSequenceState.noteId })
+      .from(crdtSequenceState)
+      .where(inArray(crdtSequenceState.noteId, docNames))
+      .all()
+
+    const syncedIds = new Set(existingRows.map((row) => row.noteId))
+    const unsyncedDocIds = docNames.filter((id) => !syncedIds.has(id))
+
+    if (unsyncedDocIds.length === 0) {
+      console.info(`${LOG_PREFIX} No unsynced docs found`, { totalDocs: docNames.length })
+      return { notes: 0, journals: 0 }
+    }
+
+    console.info(`${LOG_PREFIX} Syncing ${unsyncedDocIds.length} unsynced docs`)
+
+    let notes = 0
+    let journals = 0
+
+    for (const noteId of unsyncedDocIds) {
+      try {
+        await this.crdtProvider.getOrCreateDoc(noteId)
+
+        const isJournal = this.isJournalId(noteId)
+        const noteData = isJournal
+          ? await getJournalEntriesByIds([noteId]).then((entries) => entries[0])
+          : await getNotesByIds([noteId]).then((notes) => notes[0])
+
+        if (!noteData) {
+          console.warn(`${LOG_PREFIX} No note/journal data found for unsynced doc: ${noteId}`)
+          continue
+        }
+
+        const synced = await this.syncItemToServer(noteId, noteData)
+        if (!synced) {
+          console.warn(`${LOG_PREFIX} Failed to sync metadata for unsynced doc: ${noteId}`)
+          continue
+        }
+
+        const snapshot = this.crdtProvider.encodeSnapshot(noteId, true)
+        await this.pushSnapshot(noteId, snapshot)
+
+        if (isJournal) {
+          journals++
+        } else {
+          notes++
+        }
+      } catch (error) {
+        console.error(`${LOG_PREFIX} Unsynced doc sync failed for ${noteId}:`, error)
+      }
+    }
+
+    console.info(`${LOG_PREFIX} Unsynced doc sync complete:`, { notes, journals })
     return { notes, journals }
   }
 

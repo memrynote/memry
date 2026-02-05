@@ -26,7 +26,7 @@ export interface WebSocketEvents extends Record<string, unknown[]> {
 }
 
 export interface WebSocketMessage {
-  type: 'sync' | 'crdt' | 'ping' | 'pong' | 'notification' | 'error' | 'linking'
+  type: 'sync' | 'crdt' | 'ping' | 'pong' | 'notification' | 'error' | 'linking' | 'changes'
   payload?: unknown
   noteIds?: string[]
   timestamp: number

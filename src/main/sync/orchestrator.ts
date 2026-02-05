@@ -110,6 +110,23 @@ export async function initSyncSubsystem(): Promise<void> {
 
   const networkMonitor = getNetworkMonitor()
   networkMonitor.start()
+  networkMonitor.on('sync:online', () => {
+    console.info('[Sync] Network online, triggering catch-up sync')
+    void (async () => {
+      try {
+        const crdtBridge = getCrdtSyncBridge()
+        if (crdtBridge) {
+          await crdtBridge.syncUnsyncedLocalDocs()
+        }
+        await runSync('network-online', true)
+        if (crdtBridge) {
+          await crdtBridge.syncAllDocs()
+        }
+      } catch (error) {
+        console.warn('[Sync] Network online sync failed:', error)
+      }
+    })()
+  })
 
   const queue = getSyncQueue()
   console.info('[Sync] Queue loaded', { count: queue.size() })
@@ -177,11 +194,11 @@ export async function initSyncSubsystem(): Promise<void> {
         const bootstrapResult = await bootstrapSyncData()
         console.info('[Sync] Bootstrap complete', bootstrapResult)
 
-        // After bootstrap, run regular sync (push remaining queue + pull remote changes)
-        await runSync('startup', true)
-
-        // Pull CRDT updates for any remote notes we don't have locally
         const crdtBridge = getCrdtSyncBridge()
+        if (crdtBridge) {
+          await crdtBridge.syncUnsyncedLocalDocs()
+        }
+        await runSync('startup', true)
         if (crdtBridge) {
           await crdtBridge.syncAllDocs()
         }
