@@ -239,12 +239,10 @@ export function syncNoteToCache(
   // Set tags (replaces existing)
   setNoteTags(db, id, tags)
 
-  // Set properties with type inference
-  if (Object.keys(properties).length > 0) {
-    setNoteProperties(db, id, properties, (name, value) =>
-      getPropertyType(db, name, value, inferPropertyType)
-    )
-  }
+  // Set properties with type inference (always call to handle deletions)
+  setNoteProperties(db, id, properties, (name, value) =>
+    getPropertyType(db, name, value, inferPropertyType)
+  )
 
   // Queue FTS index update (batched for performance)
   if (!skipFts) {

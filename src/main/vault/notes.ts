@@ -355,7 +355,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   // T139: Initialize Y.Doc for new note with frontmatter
   const crdtProvider = getCrdtProvider()
   if (crdtProvider) {
-    void crdtProvider
+    await crdtProvider
       .seedDocFromMarkdown(frontmatter.id, content, {
         title: input.title,
         tags: mergedTags,
@@ -366,6 +366,15 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
       .catch((err) => {
         console.error('[Notes] Failed to seed Y.Doc for new note:', err)
       })
+
+    // Push initial note to sync server
+    const { getCrdtSyncBridge } = await import('../sync/crdt-sync-bridge')
+    const bridge = getCrdtSyncBridge()
+    if (bridge) {
+      void bridge.pushInitialNote(frontmatter.id, note).catch((err) => {
+        console.error('[Notes] Failed to push initial note to sync:', err)
+      })
+    }
   }
 
   return note

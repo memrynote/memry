@@ -143,6 +143,32 @@ export function registerJournalHandlers(): void {
         entry
       })
 
+      // Seed CRDT for new journal entry
+      const { getCrdtProvider } = await import('../sync/crdt-provider')
+      const crdtProvider = getCrdtProvider()
+      if (crdtProvider) {
+        await crdtProvider
+          .seedDocFromMarkdown(entry.id, entry.content, {
+            id: entry.id,
+            date: entry.date,
+            created: entry.createdAt,
+            modified: entry.modifiedAt,
+            tags: entry.tags,
+            properties: entry.properties ?? {}
+          })
+          .catch((err) => {
+            console.error('[Journal] Failed to seed Y.Doc for new journal entry:', err)
+          })
+
+        const { getCrdtSyncBridge } = await import('../sync/crdt-sync-bridge')
+        const bridge = getCrdtSyncBridge()
+        if (bridge) {
+          void bridge.pushInitialNote(entry.id, entry).catch((err) => {
+            console.error('[Journal] Failed to push initial journal to sync:', err)
+          })
+        }
+      }
+
       return entry
     })
   )

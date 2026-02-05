@@ -197,13 +197,13 @@ export interface NotesHandlers {
 
 export interface NoteCreatedEvent {
   note: NoteListItem
-  source: 'internal' | 'external'
+  source: 'internal' | 'external' | 'sync'
 }
 
 export interface NoteUpdatedEvent {
   id: string
   changes: Partial<Note>
-  source: 'internal' | 'external'
+  source: 'internal' | 'external' | 'sync'
 }
 
 export interface NoteDeletedEvent {

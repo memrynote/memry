@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { propertiesService, type PropertyValue } from '@/services/properties-service'
+import { onNoteUpdated } from '@/services/notes-service'
 import { inferType } from '@/lib/property-utils'
 import { toast } from 'sonner'
 
@@ -111,6 +112,19 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
   useEffect(() => {
     fetchProperties()
   }, [fetchProperties])
+
+  // Refetch on sync/external updates from other devices
+  useEffect(() => {
+    if (!entityId) return
+
+    const unsub = onNoteUpdated((event) => {
+      if (event.id !== entityId) return
+      if (event.source === 'internal') return
+      fetchProperties()
+    })
+
+    return unsub
+  }, [entityId, fetchProperties])
 
   // Update a single property
   const updateProperty = useCallback(

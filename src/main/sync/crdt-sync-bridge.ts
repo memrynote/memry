@@ -527,6 +527,26 @@ export class CrdtSyncBridge {
     }
   }
 
+  async pushInitialNote(noteId: string, note: Note | JournalEntry): Promise<void> {
+    if (!this.crdtProvider || !this.isAuthReady()) {
+      console.debug(`${LOG_PREFIX} Initial sync skipped: not ready`)
+      return
+    }
+
+    const synced = await this.syncItemToServer(noteId, note)
+    if (!synced) {
+      console.warn(`${LOG_PREFIX} Failed to sync initial note metadata: ${noteId}`)
+      return
+    }
+    this.syncedNotes.add(noteId)
+
+    const update = this.crdtProvider.encodeSnapshot(noteId, false)
+    if (update.length === 0) return
+
+    this.onDocUpdated(noteId, update)
+    this.scheduleFlush()
+  }
+
   async pullUpdatesForAllLoadedDocs(): Promise<void> {
     if (!this.crdtProvider || !this.isOnline() || !this.isAuthReady()) {
       return
