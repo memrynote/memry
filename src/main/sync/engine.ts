@@ -12,8 +12,9 @@ import { BrowserWindow } from 'electron'
 import { TypedEmitter } from './typed-emitter'
 import { eq } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
-import { getDatabase } from '../database/client'
+import { getDatabase, getIndexDatabase } from '../database/client'
 import { getSetting, setSetting } from '@shared/db/queries/settings'
+import { getNoteCacheById } from '@shared/db/queries/notes'
 import { syncState, syncHistory, devices } from '@shared/db/schema/sync-schema'
 import { getSyncQueue, type QueueItem } from './queue'
 import { getNetworkMonitor } from './network'
@@ -1112,12 +1113,39 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
     }
   }
 
-  private handleCrdtNotification(noteIds: string[]): void {
+  private async handleCrdtNotification(noteIds: string[]): Promise<void> {
     console.info('[SyncEngine] handleCrdtNotification called:', { noteIds })
     const crdtBridge = getCrdtSyncBridge()
     if (!crdtBridge) {
       console.warn('[SyncEngine] CRDT bridge not available')
       return
+    }
+
+    const db = getIndexDatabase()
+
+    const missingNoteIds = noteIds.filter((noteId) => !getNoteCacheById(db, noteId))
+
+    if (missingNoteIds.length > 0) {
+      console.info('[SyncEngine] Missing notes detected, pulling metadata first:', missingNoteIds)
+
+      try {
+        await this.pull()
+      } catch (err) {
+        console.error('[SyncEngine] Metadata pull failed:', err)
+      }
+
+      const stillMissing = missingNoteIds.filter((noteId) => !getNoteCacheById(db, noteId))
+
+      if (stillMissing.length > 0) {
+        console.info('[SyncEngine] Notes still missing after pull, retrying in 500ms:', stillMissing)
+        await new Promise((resolve) => setTimeout(resolve, 500))
+
+        try {
+          await this.pull()
+        } catch (err) {
+          console.error('[SyncEngine] Retry metadata pull failed:', err)
+        }
+      }
     }
 
     for (const noteId of noteIds) {
