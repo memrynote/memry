@@ -104,6 +104,7 @@ import { getNotesByIds } from '../vault/notes'
 import { getJournalEntriesByIds } from '../vault/journal'
 import { getSyncApiClient } from './api-client'
 import { sign, verify } from '../crypto/signatures'
+import { getDatabase } from '../database'
 
 describe('CrdtSyncBridge', () => {
   let bridge: CrdtSyncBridge
@@ -268,6 +269,67 @@ describe('CrdtSyncBridge', () => {
       await flushUpdates.flushUpdates.call(bridge)
 
       // #then
+      expect(sign).toHaveBeenCalled()
+    })
+
+    it('does not enqueue metadata when note already has persisted sync clock', async () => {
+      // #given
+      const note = {
+        id: 'test-note',
+        title: 'Test',
+        path: 'test.md',
+        content: '',
+        frontmatter: {},
+        created: new Date(),
+        modified: new Date(),
+        tags: [],
+        aliases: [],
+        wordCount: 0,
+        properties: {}
+      }
+      vi.mocked(getNotesByIds).mockResolvedValueOnce([note])
+
+      vi.mocked(getDatabase).mockReturnValue({
+        select: vi.fn(() => ({
+          from: vi.fn(() => ({
+            where: vi.fn(() => ({
+              limit: vi.fn(() => []),
+              get: vi.fn(() => ({
+                value: JSON.stringify({ 'test-device-123': 1 })
+              }))
+            })),
+            get: vi.fn(() => ({
+              value: JSON.stringify({ 'test-device-123': 1 })
+            }))
+          }))
+        })),
+        insert: vi.fn(() => ({
+          values: vi.fn(() => ({
+            onConflictDoUpdate: vi.fn(() => ({
+              run: vi.fn()
+            }))
+          }))
+        }))
+      } as unknown as ReturnType<typeof getDatabase>)
+
+      const flushUpdates = bridge as unknown as {
+        flushUpdates: () => Promise<void>
+        pendingUpdates: Map<
+          string,
+          Array<{ noteId: string; update: Uint8Array; timestamp: number }>
+        >
+      }
+
+      flushUpdates.pendingUpdates.set('test-note', [
+        { noteId: 'test-note', update: new Uint8Array([1, 2, 3]), timestamp: Date.now() }
+      ])
+
+      // #when
+      await flushUpdates.flushUpdates.call(bridge)
+
+      // #then
+      const queue = getSyncQueue()
+      expect(queue.add).not.toHaveBeenCalled()
       expect(sign).toHaveBeenCalled()
     })
 

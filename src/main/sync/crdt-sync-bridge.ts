@@ -149,6 +149,28 @@ export class CrdtSyncBridge {
         }
       })
       .run()
+
+    this.syncedNotes.add(noteId)
+  }
+
+  private async hasSyncedMetadata(noteId: string): Promise<boolean> {
+    if (this.syncedNotes.has(noteId)) {
+      return true
+    }
+
+    const existingClock = await this.getNoteMetadataClock(noteId)
+    if (existingClock) {
+      this.syncedNotes.add(noteId)
+      return true
+    }
+
+    const state = this.getSequenceState(noteId)
+    if (state.lastKnownSequence > 0) {
+      this.syncedNotes.add(noteId)
+      return true
+    }
+
+    return false
   }
 
   private async syncItemToServer(
@@ -283,7 +305,7 @@ export class CrdtSyncBridge {
       const failedNotes = new Set<string>()
 
       for (const noteId of noteIds) {
-        const alreadySynced = this.syncedNotes.has(noteId)
+        const alreadySynced = await this.hasSyncedMetadata(noteId)
         if (alreadySynced) continue
 
         const data = this.isJournalId(noteId) ? journalsMap.get(noteId) : notesMap.get(noteId)

@@ -253,6 +253,33 @@ export interface StoreCrdtUpdatesResult {
   rejected: Array<{ noteId: string; reason: string }>
 }
 
+const getCurrentCrdtSequence = async (
+  db: D1Database,
+  userId: string,
+  noteId: string
+): Promise<number> => {
+  const [maxUpdateResult, snapshotResult] = await Promise.all([
+    db
+      .prepare(
+        `SELECT COALESCE(MAX(sequence_num), 0) as max_seq
+         FROM crdt_updates
+         WHERE user_id = ? AND note_id = ?`
+      )
+      .bind(userId, noteId)
+      .first<{ max_seq: number | null }>(),
+    db
+      .prepare(
+        `SELECT sequence_num
+         FROM crdt_snapshots
+         WHERE user_id = ? AND note_id = ?`
+      )
+      .bind(userId, noteId)
+      .first<{ sequence_num: number | null }>()
+  ])
+
+  return Math.max(maxUpdateResult?.max_seq ?? 0, snapshotResult?.sequence_num ?? 0)
+}
+
 export const storeCrdtUpdates = async (
   db: D1Database,
   userId: string,
@@ -261,6 +288,7 @@ export const storeCrdtUpdates = async (
   const accepted: Array<{ noteId: string; sequenceNum: number }> = []
   const rejected: Array<{ noteId: string; reason: string }> = []
   const now = Date.now()
+  const nextSequenceByNote = new Map<string, number>()
 
   const uniqueNoteIds = [...new Set(updates.map((u) => u.noteId))]
   const ownedNotes = await verifyBulkNoteOwnership(db, userId, uniqueNoteIds)
@@ -278,14 +306,11 @@ export const storeCrdtUpdates = async (
     const id = generateId()
 
     try {
-      const maxResult = await db
-        .prepare(
-          'SELECT COALESCE(MAX(sequence_num), 0) as max_seq FROM crdt_updates WHERE user_id = ? AND note_id = ?'
-        )
-        .bind(userId, update.noteId)
-        .first<{ max_seq: number }>()
-
-      const nextSequence = (maxResult?.max_seq ?? 0) + 1
+      let nextSequence = nextSequenceByNote.get(update.noteId)
+      if (nextSequence === undefined) {
+        const currentSequence = await getCurrentCrdtSequence(db, userId, update.noteId)
+        nextSequence = currentSequence + 1
+      }
 
       await db
         .prepare(
@@ -305,6 +330,7 @@ export const storeCrdtUpdates = async (
         .run()
 
       accepted.push({ noteId: update.noteId, sequenceNum: nextSequence })
+      nextSequenceByNote.set(update.noteId, nextSequence + 1)
     } catch (error) {
       rejected.push({
         noteId: update.noteId,
@@ -323,6 +349,52 @@ export const getCrdtUpdates = async (
   sinceSequence: number,
   limit: number
 ): Promise<GetCrdtUpdatesResponse> => {
+  const snapshotInfo = await db
+    .prepare(
+      `SELECT sequence_num, created_at
+       FROM crdt_snapshots
+       WHERE user_id = ? AND note_id = ?`
+    )
+    .bind(userId, noteId)
+    .first<{ sequence_num: number; created_at: number }>()
+
+  // Legacy repair: older builds could store the first post-snapshot update at the same
+  // sequence number as the snapshot. Renumber it once so incremental pulls can recover.
+  if (snapshotInfo && snapshotInfo.sequence_num > 0) {
+    const legacyRow = await db
+      .prepare(
+        `SELECT id
+         FROM crdt_updates
+         WHERE user_id = ? AND note_id = ? AND sequence_num = ? AND created_at > ?
+         LIMIT 1`
+      )
+      .bind(userId, noteId, snapshotInfo.sequence_num, snapshotInfo.created_at)
+      .first<{ id: string }>()
+
+    if (legacyRow) {
+      const maxResult = await db
+        .prepare(
+          `SELECT COALESCE(MAX(sequence_num), 0) as max_seq
+           FROM crdt_updates
+           WHERE user_id = ? AND note_id = ?`
+        )
+        .bind(userId, noteId)
+        .first<{ max_seq: number | null }>()
+
+      const repairedSequence = Math.max(maxResult?.max_seq ?? 0, snapshotInfo.sequence_num) + 1
+      await db
+        .prepare('UPDATE crdt_updates SET sequence_num = ? WHERE id = ?')
+        .bind(repairedSequence, legacyRow.id)
+        .run()
+
+      console.log('[CrdtService] Repaired legacy CRDT sequence collision', {
+        noteId,
+        previousSequence: snapshotInfo.sequence_num,
+        repairedSequence
+      })
+    }
+  }
+
   const rows = await db
     .prepare(
       `SELECT update_data, sequence_num, signer_device_id, signature, created_at
@@ -333,10 +405,7 @@ export const getCrdtUpdates = async (
     )
     .bind(userId, noteId, sinceSequence, limit + 1)
     .all<
-      Pick<
-        CrdtUpdateRow,
-        'update_data' | 'sequence_num' | 'signer_device_id' | 'signature' | 'created_at'
-      >
+      Pick<CrdtUpdateRow, 'update_data' | 'sequence_num' | 'signer_device_id' | 'signature' | 'created_at'>
     >()
 
   const hasMore = rows.results.length > limit
@@ -364,16 +433,7 @@ export const getLatestUpdateSequence = async (
   userId: string,
   noteId: string
 ): Promise<number> => {
-  const result = await db
-    .prepare(
-      `SELECT MAX(sequence_num) as max_seq
-       FROM crdt_updates
-       WHERE user_id = ? AND note_id = ?`
-    )
-    .bind(userId, noteId)
-    .first<{ max_seq: number | null }>()
-
-  return result?.max_seq ?? 0
+  return getCurrentCrdtSequence(db, userId, noteId)
 }
 
 // =============================================================================
