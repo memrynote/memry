@@ -424,13 +424,16 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   // Note positions for custom ordering
   const [notePositions, setNotePositions] = useState<Record<string, number>>({})
 
-  // Focus input when note renaming starts
-  useEffect(() => {
-    if (renamingNoteId && renameInputRef.current) {
-      renameInputRef.current.focus()
-      renameInputRef.current.select()
-    }
-  }, [renamingNoteId])
+  const renameInputCallbackRef = useCallback(
+    (node: HTMLInputElement | null) => {
+      renameInputRef.current = node
+      if (node) {
+        node.focus()
+        node.select()
+      }
+    },
+    []
+  )
 
   // Focus input when folder renaming starts
   useEffect(() => {
@@ -773,6 +776,9 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
             isPreview: false,
             isDeleted: false
           })
+
+          setRenamingNoteId(newNote.id)
+          setRenameValue('Untitled')
         }
       } catch (err) {
         console.error('Failed to create note:', err)
@@ -1594,7 +1600,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           <TreeIcon icon={getFileIcon(note)} />
           {isBeingRenamed ? (
             <input
-              ref={renameInputRef}
+              ref={renameInputCallbackRef}
               type="text"
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
@@ -1669,7 +1675,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
             </>
           }
         >
-          <TreeExpander hasChildren={hasChildren} />
+          <TreeExpander hasChildren={hasChildren} isFolder />
           <TreeIcon hasChildren={hasChildren} icon={<Folder className="h-4 w-4" />} />
           {isBeingRenamed ? (
             <input

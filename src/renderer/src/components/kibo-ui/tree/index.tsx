@@ -105,6 +105,8 @@ type TreeNodeContextType = {
   parentPath: boolean[]
   hasChildren: boolean
   setHasChildren: (value: boolean) => void
+  isFolder: boolean
+  setIsFolder: (value: boolean) => void
   customIcon?: string
   inheritedIcon?: string
   setCustomIcon: (iconName: string | undefined) => void
@@ -458,10 +460,10 @@ export const TreeNode = ({
   const parentContext = useContext(TreeNodeContext)
   const parentId = parentContext?.nodeId ?? null
   const [hasChildren, setHasChildren] = useState(false)
+  const [isFolder, setIsFolder] = useState(false)
   const [customIcon, setCustomIcon] = useState<string | undefined>(initialCustomIcon)
   const [inheritedIcon, setInheritedIcon] = useState<string | undefined>(initialInheritedIcon)
 
-  // Parent'tan inherited icon'u al
   useEffect(() => {
     if (parentContext?.customIcon) {
       setInheritedIcon(parentContext.customIcon)
@@ -470,16 +472,13 @@ export const TreeNode = ({
     }
   }, [parentContext?.customIcon, parentContext?.inheritedIcon])
 
-  // Register this node with the tree
   useEffect(() => {
     registerNode(nodeId, parentId, hasChildren, customIcon, inheritedIcon)
     return () => unregisterNode(nodeId)
   }, [nodeId, parentId, hasChildren, customIcon, inheritedIcon, registerNode, unregisterNode])
 
-  // Build the parent path - mark positions where the parent was the last child
   const currentPath = level === 0 ? [] : [...parentPath]
   if (level > 0 && parentPath.length < level - 1) {
-    // Fill in missing levels with false (not last)
     while (currentPath.length < level - 1) {
       currentPath.push(false)
     }
@@ -498,6 +497,8 @@ export const TreeNode = ({
         parentPath: currentPath,
         hasChildren,
         setHasChildren,
+        isFolder,
+        setIsFolder,
         customIcon,
         inheritedIcon,
         setCustomIcon,
@@ -547,7 +548,7 @@ export const TreeNodeTrigger = ({
     setNodeIcon,
     getEffectiveIcon
   } = useTree()
-  const { nodeId, level, hasChildren, parentId, customIcon } = useTreeNode()
+  const { nodeId, level, hasChildren, isFolder, parentId, customIcon } = useTreeNode()
   const isSelected = selectedIds.includes(nodeId)
   const triggerRef = useRef<HTMLDivElement>(null)
 
@@ -680,12 +681,12 @@ export const TreeNodeTrigger = ({
       } else if (y > height - threshold) {
         position = 'after'
       } else {
-        position = hasChildren ? 'inside' : 'after'
+        position = hasChildren || isFolder ? 'inside' : 'after'
       }
 
       setDragState({ dropTargetId: nodeId, dropPosition: position })
     },
-    [draggable, dragState.draggedId, nodeId, hasChildren, setDragState]
+    [draggable, dragState.draggedId, nodeId, hasChildren, isFolder, setDragState]
   )
 
   const handleDragLeave = useCallback(
@@ -947,24 +948,31 @@ export const TreeNodeContent = ({
 
 export type TreeExpanderProps = ComponentProps<typeof motion.div> & {
   hasChildren?: boolean
+  isFolder?: boolean
 }
 
 export const TreeExpander = ({
   hasChildren: hasChildrenProp = false,
+  isFolder: isFolderProp = false,
   className,
   onClick,
   ...props
 }: TreeExpanderProps) => {
   const { expandedIds, toggleExpanded } = useTree()
-  const { nodeId, setHasChildren } = useTreeNode()
+  const { nodeId, setHasChildren, setIsFolder } = useTreeNode()
   const isExpanded = expandedIds.has(nodeId)
 
-  // Update parent node's hasChildren state
   useEffect(() => {
     if (hasChildrenProp) {
       setHasChildren(true)
     }
   }, [hasChildrenProp, setHasChildren])
+
+  useEffect(() => {
+    if (isFolderProp) {
+      setIsFolder(true)
+    }
+  }, [isFolderProp, setIsFolder])
 
   if (!hasChildrenProp) {
     return <div className="mr-1 h-4 w-4" />

@@ -130,6 +130,7 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   private syncLock = false
   private deviceRefreshInProgress = false
   private lastDeviceRefresh = 0
+  private itemProcessor: ((item: DecryptedSyncItem) => Promise<void>) | null = null
   private onlineHandler = (): void => this.handleOnline()
   private offlineHandler = (): void => this.handleOffline()
   private messageHandler = (message: WebSocketMessage): void => {
@@ -173,7 +174,12 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
       wsManager.off('sync:ws-connected', this.wsConnectedHandler)
     }
 
+    this.itemProcessor = null
     this.initialized = false
+  }
+
+  registerItemProcessor(processor: (item: DecryptedSyncItem) => Promise<void>): void {
+    this.itemProcessor = processor
   }
 
   get status(): SyncStatus {
@@ -428,13 +434,16 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
         for (const item of response.items) {
           try {
             const decrypted = await this.verifyAndDecryptItem(item)
+            if (this.itemProcessor) {
+              await this.itemProcessor(decrypted)
+            }
             this.emit('sync:item-decrypted', decrypted)
             await this.applySettingsSync(decrypted)
             this.emit('sync:item-synced', item.itemId, 'pull')
           } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error))
-            this.emit('sync:error', err, `decrypt item ${item.itemId}`)
-            console.warn(`${LOG_PREFIX} Failed to decrypt item`, {
+            this.emit('sync:error', err, `process item ${item.itemId}`)
+            console.warn(`${LOG_PREFIX} Failed to process item`, {
               itemId: item.itemId,
               itemType: item.itemType,
               error: err.message

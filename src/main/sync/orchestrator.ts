@@ -6,7 +6,8 @@
  * @module sync/orchestrator
  */
 
-import { initSyncEngine, getSyncEngine } from './engine'
+import { initSyncEngine, getSyncEngine, type SyncEngine } from './engine'
+import type { SyncStatusChangedEvent } from '@shared/contracts/ipc-sync'
 import { initSyncQueue, getSyncQueue } from './queue'
 import { getNetworkMonitor } from './network'
 import { bootstrapSyncData } from './bootstrap'
@@ -21,6 +22,25 @@ const AUTO_SYNC_DEBOUNCE_MS = 1500
 let initialized = false
 let autoSyncTimer: ReturnType<typeof setTimeout> | null = null
 let autoSyncRunning = false
+
+const ENGINE_IDLE_TIMEOUT_MS = 30_000
+
+function waitForEngineIdle(engine: SyncEngine): Promise<void> {
+  if (!engine.isSyncing) return Promise.resolve()
+  return new Promise((resolve) => {
+    const handler = (event: SyncStatusChangedEvent): void => {
+      if (event.currentStatus === 'idle' || event.currentStatus === 'error') {
+        engine.off('sync:status-changed', handler)
+        resolve()
+      }
+    }
+    engine.on('sync:status-changed', handler)
+    setTimeout(() => {
+      engine.off('sync:status-changed', handler)
+      resolve()
+    }, ENGINE_IDLE_TIMEOUT_MS)
+  })
+}
 
 async function canSync(): Promise<{ ok: boolean; reason?: string }> {
   const engine = getSyncEngine()
@@ -114,6 +134,11 @@ export async function initSyncSubsystem(): Promise<void> {
     console.info('[Sync] Network online, triggering catch-up sync')
     void (async () => {
       try {
+        const engine = getSyncEngine()
+        if (engine?.isSyncing) {
+          console.info('[Sync] Waiting for engine handleOnline sync to complete')
+          await waitForEngineIdle(engine)
+        }
         const crdtBridge = getCrdtSyncBridge()
         if (crdtBridge) {
           await crdtBridge.syncUnsyncedLocalDocs()

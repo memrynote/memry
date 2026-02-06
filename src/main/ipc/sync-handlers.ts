@@ -966,15 +966,12 @@ async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
   }
 }
 
-let decryptedItemListener: ((item: DecryptedSyncItem) => void) | null = null
+let decryptedItemListenerRegistered = false
 
 export function registerDecryptedItemListener(): void {
   const engine = getSyncEngine()
-  if (engine && !decryptedItemListener) {
-    decryptedItemListener = (item) => {
-      void handleDecryptedSyncItem(item)
-    }
-    engine.on('sync:item-decrypted', decryptedItemListener)
+  if (engine && !decryptedItemListenerRegistered) {
+    engine.registerItemProcessor(handleDecryptedSyncItem)
 
     engine.on('sync:pull-start', ({ totalItems }: { totalItems: number }) => {
       initSyncProgress(totalItems)
@@ -984,7 +981,8 @@ export function registerDecryptedItemListener(): void {
       completeSyncProgress()
     })
 
-    console.info('[Sync] Registered decrypted item listener')
+    decryptedItemListenerRegistered = true
+    console.info('[Sync] Registered decrypted item processor')
   }
 }
 
@@ -2141,11 +2139,7 @@ export function unregisterSyncHandlers(): void {
     ipcMain.removeHandler(channel)
   })
 
-  const engine = getSyncEngine()
-  if (engine && decryptedItemListener) {
-    engine.off('sync:item-decrypted', decryptedItemListener)
-    decryptedItemListener = null
-  }
+  decryptedItemListenerRegistered = false
   console.log('[IPC] Sync handlers unregistered')
 }
 

@@ -300,9 +300,9 @@ function FolderRow({
 
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
-      onDragOver(e, item.id, item.hasChildren)
+      onDragOver(e, item.id, true)
     },
-    [item.id, item.hasChildren, onDragOver]
+    [item.id, onDragOver]
   )
 
   return (
