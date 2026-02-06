@@ -52,6 +52,8 @@ export type IconChangeOperation = {
   hasChildren: boolean
 }
 
+const TREE_NODE_DND_MIME_TYPE = 'application/x-memry-tree-node-id'
+
 type TreeContextType = {
   expandedIds: Set<string>
   selectedIds: string[]
@@ -651,7 +653,9 @@ export const TreeNodeTrigger = ({
       if (!draggable) return
 
       e.dataTransfer.effectAllowed = 'move'
-      e.dataTransfer.setData('text/plain', nodeId)
+      // Use a custom MIME type so drops don't get interpreted as plain text
+      // by contenteditable editors (which can insert the dragged note ID).
+      e.dataTransfer.setData(TREE_NODE_DND_MIME_TYPE, nodeId)
       setDragState({ draggedId: nodeId })
     },
     [draggable, nodeId, setDragState]
