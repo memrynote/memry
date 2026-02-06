@@ -25,6 +25,7 @@ import { refreshAccessToken } from './token-refresh'
 import { compareClock, mergeClock, emptyClock } from './vector-clock'
 import { isSyncAuthReady } from './auth-state'
 import { getCrdtSyncBridge } from './crdt-sync-bridge'
+import { fetchAndStoreAccountDevices } from '../ipc/sync-handlers'
 import {
   generateFileKey,
   wrapFileKey,
@@ -127,6 +128,8 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   private pendingSyncNotification = false
   private initialized = false
   private syncLock = false
+  private deviceRefreshInProgress = false
+  private lastDeviceRefresh = 0
   private onlineHandler = (): void => this.handleOnline()
   private offlineHandler = (): void => this.handleOffline()
   private messageHandler = (message: WebSocketMessage): void => {
@@ -764,8 +767,32 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
     return encrypted
   }
 
+
+  private async refreshDeviceList(): Promise<void> {
+    const now = Date.now()
+    if (this.deviceRefreshInProgress || now - this.lastDeviceRefresh < 30_000) {
+      return
+    }
+
+    this.deviceRefreshInProgress = true
+    try {
+      console.info(`${LOG_PREFIX} Refreshing device list from server`)
+      await fetchAndStoreAccountDevices()
+      this.lastDeviceRefresh = now
+    } catch (error) {
+      console.warn(`${LOG_PREFIX} Failed to refresh device list:`, error)
+    } finally {
+      this.deviceRefreshInProgress = false
+    }
+  }
+
   private async verifyAndDecryptItem(item: SyncItemResponse): Promise<DecryptedSyncItem> {
-    const signerPublicKey = await this.getDevicePublicKey(item.signerDeviceId)
+    let signerPublicKey = await this.getDevicePublicKey(item.signerDeviceId)
+
+    if (!signerPublicKey) {
+      await this.refreshDeviceList()
+      signerPublicKey = await this.getDevicePublicKey(item.signerDeviceId)
+    }
 
     if (!signerPublicKey) {
       throw new Error(`Unknown signer device: ${item.signerDeviceId}`)
