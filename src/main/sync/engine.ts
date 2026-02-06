@@ -130,6 +130,8 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   private syncLock = false
   private deviceRefreshInProgress = false
   private lastDeviceRefresh = 0
+  private recentlyPushedNoteIds: Set<string> = new Set()
+  private lastPushTimestamp = 0
   private itemProcessor: ((item: DecryptedSyncItem) => Promise<void>) | null = null
   private onlineHandler = (): void => this.handleOnline()
   private offlineHandler = (): void => this.handleOffline()
@@ -347,6 +349,11 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
           rejected: rejected.length,
           total: allItems.length
         })
+        this.lastPushTimestamp = Date.now()
+        for (const itemId of accepted) {
+          this.recentlyPushedNoteIds.add(itemId)
+          setTimeout(() => this.recentlyPushedNoteIds.delete(itemId), 5000)
+        }
       } else if (batchErrors.length > 0) {
         await this.logSyncHistory('error', 0, null, batchErrors[0]?.message)
         this.setStatus('error')
@@ -486,9 +493,11 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   /**
    * Perform a full sync cycle: push then pull.
    */
-  async sync(): Promise<void> {
+  async sync(options?: { skipPull?: boolean }): Promise<void> {
     await this.push()
-    await this.pull()
+    if (!options?.skipPull) {
+      await this.pull()
+    }
   }
 
   /**
@@ -1146,6 +1155,10 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   }
 
   private handleSyncNotification(): void {
+    const timeSincePush = Date.now() - this.lastPushTimestamp
+    if (timeSincePush < 2000) {
+      return
+    }
     if (this._status === 'idle') {
       this.pendingSyncNotification = false
       this.pull().catch((err) =>
@@ -1162,6 +1175,10 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
 
   private async handleCrdtNotification(noteIds: string[]): Promise<void> {
     console.info('[SyncEngine] handleCrdtNotification called:', { noteIds })
+    const noteIdsToProcess = noteIds.filter((id) => !this.recentlyPushedNoteIds.has(id))
+    if (noteIdsToProcess.length === 0) {
+      return
+    }
     const crdtBridge = getCrdtSyncBridge()
     if (!crdtBridge) {
       console.warn('[SyncEngine] CRDT bridge not available')
@@ -1170,7 +1187,7 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
 
     const db = getIndexDatabase()
 
-    const missingNoteIds = noteIds.filter((noteId) => !getNoteCacheById(db, noteId))
+    const missingNoteIds = noteIdsToProcess.filter((noteId) => !getNoteCacheById(db, noteId))
 
     if (missingNoteIds.length > 0) {
       console.info('[SyncEngine] Missing notes detected, pulling metadata first:', missingNoteIds)
@@ -1195,7 +1212,7 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
       }
     }
 
-    for (const noteId of noteIds) {
+    for (const noteId of noteIdsToProcess) {
       console.info('[SyncEngine] Pulling updates for note:', noteId)
       crdtBridge
         .pullUpdatesForNote(noteId)

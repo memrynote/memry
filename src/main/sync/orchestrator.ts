@@ -92,7 +92,11 @@ async function runSync(reason: string, forcePull: boolean): Promise<void> {
       forcePull,
       queueSize: queue.size()
     })
-    await engine.sync()
+    if (forcePull) {
+      await engine.sync()
+    } else {
+      await engine.sync({ skipPull: true })
+    }
     console.info('[Sync] Auto sync finished', { reason })
   } catch (error) {
     console.warn(`[Sync] Auto sync failed (${reason}):`, error)

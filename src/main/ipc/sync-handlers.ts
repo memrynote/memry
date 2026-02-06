@@ -679,9 +679,17 @@ async function syncNoteContentFromCrdt(noteId: string, attempt = 0): Promise<voi
   const crdtProvider = getCrdtProvider()
   if (!crdtBridge || !crdtProvider) return
 
-  await crdtBridge.pullSnapshotForNote(noteId)
-  await crdtBridge.pullUpdatesForNote(noteId)
   const doc = await crdtProvider.getOrCreateDoc(noteId)
+  const hasExistingContent =
+    doc.getText('content').toString().length > 0 ||
+    doc.getXmlFragment('document-store').length > 0
+
+  if (!hasExistingContent) {
+    await crdtBridge.pullSnapshotForNote(noteId)
+  }
+
+  await crdtBridge.pullUpdatesForNote(noteId)
+
   const hasContent =
     doc.getText('content').toString().length > 0 ||
     doc.getXmlFragment('document-store').length > 0

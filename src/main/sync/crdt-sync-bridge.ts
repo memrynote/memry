@@ -60,7 +60,9 @@ export class CrdtSyncBridge {
   private docUpdatedListener:
     | ((payload: { noteId: string; update: Uint8Array; origin: string }) => void)
     | null = null
+  private applyingRemoteNotes: Set<string> = new Set()
   private connectivityListener: ((isOnline: boolean) => void) | null = null
+  private activePulls: Map<string, Promise<void>> = new Map()
   private deviceRefreshInProgress = false
   private lastDeviceRefresh = 0
 
@@ -74,8 +76,11 @@ export class CrdtSyncBridge {
     this.initialized = true
 
     this.docUpdatedListener = (payload) => {
-      // Skip 'remote' (received from server) and 'external' (file watcher after resync write)
-      if (payload.origin !== 'remote' && payload.origin !== 'external') {
+      if (
+        payload.origin !== 'remote' &&
+        payload.origin !== 'external' &&
+        !this.applyingRemoteNotes.has(payload.noteId)
+      ) {
         this.onDocUpdated(payload.noteId, payload.update)
       }
     }
@@ -454,6 +459,19 @@ export class CrdtSyncBridge {
   }
 
   async pullUpdatesForNote(noteId: string): Promise<void> {
+    const existing = this.activePulls.get(noteId)
+    if (existing) {
+      return existing
+    }
+
+    const promise = this._pullUpdatesForNote(noteId).finally(() => {
+      this.activePulls.delete(noteId)
+    })
+    this.activePulls.set(noteId, promise)
+    return promise
+  }
+
+  private async _pullUpdatesForNote(noteId: string): Promise<void> {
     if (!this.crdtProvider || !this.isOnline()) {
       return
     }
@@ -476,46 +494,51 @@ export class CrdtSyncBridge {
         return
       }
 
-      console.info(`${LOG_PREFIX} Pulled ${result.updates.length} updates for ${noteId}`)
+      this.applyingRemoteNotes.add(noteId)
+      try {
+        console.info(`${LOG_PREFIX} Pulled ${result.updates.length} updates for ${noteId}`)
 
-      let appliedCount = 0
-      for (const update of result.updates) {
-        const bytes = base64ToUint8Array(update.updateData)
+        let appliedCount = 0
+        for (const update of result.updates) {
+          const bytes = base64ToUint8Array(update.updateData)
 
-        let publicKey = await this.getDevicePublicKey(update.signerDeviceId)
+          let publicKey = await this.getDevicePublicKey(update.signerDeviceId)
 
-        if (!publicKey) {
-          await this.refreshDeviceList()
-          publicKey = await this.getDevicePublicKey(update.signerDeviceId)
+          if (!publicKey) {
+            await this.refreshDeviceList()
+            publicKey = await this.getDevicePublicKey(update.signerDeviceId)
+          }
+
+          if (!publicKey) {
+            console.error(
+              `${LOG_PREFIX} Unknown signer device ${update.signerDeviceId}, rejecting update`
+            )
+            continue
+          }
+
+          const signatureBytes = base64ToUint8Array(update.signature)
+          const isValid = await verify(bytes, signatureBytes, publicKey)
+          if (!isValid) {
+            console.error(
+              `${LOG_PREFIX} Invalid signature on CRDT update from ${update.signerDeviceId}, rejecting`
+            )
+            continue
+          }
+
+          this.crdtProvider.applyUpdate(noteId, bytes, 'remote')
+          state.lastKnownSequence = Math.max(state.lastKnownSequence, update.sequenceNum)
+          appliedCount++
         }
 
-        if (!publicKey) {
-          console.error(
-            `${LOG_PREFIX} Unknown signer device ${update.signerDeviceId}, rejecting update`
-          )
-          continue
+        this.sequenceState.set(noteId, state)
+        this.persistSequenceState(noteId, state)
+
+        if (appliedCount > 0) {
+          const { resyncNoteContentFromCrdt } = await import('../ipc/sync-handlers')
+          await resyncNoteContentFromCrdt(noteId)
         }
-
-        const signatureBytes = base64ToUint8Array(update.signature)
-        const isValid = await verify(bytes, signatureBytes, publicKey)
-        if (!isValid) {
-          console.error(
-            `${LOG_PREFIX} Invalid signature on CRDT update from ${update.signerDeviceId}, rejecting`
-          )
-          continue
-        }
-
-        this.crdtProvider.applyUpdate(noteId, bytes, 'remote')
-        state.lastKnownSequence = Math.max(state.lastKnownSequence, update.sequenceNum)
-        appliedCount++
-      }
-
-      this.sequenceState.set(noteId, state)
-      this.persistSequenceState(noteId, state)
-
-      if (appliedCount > 0) {
-        const { resyncNoteContentFromCrdt } = await import('../ipc/sync-handlers')
-        await resyncNoteContentFromCrdt(noteId)
+      } finally {
+        this.applyingRemoteNotes.delete(noteId)
       }
     } catch (error) {
       if (this.isForbiddenError(error)) {
