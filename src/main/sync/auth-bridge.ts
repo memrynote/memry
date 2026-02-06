@@ -18,13 +18,18 @@ import { bootstrapSyncData } from './bootstrap'
 import { getSyncUserId, setSyncAuthState, SYNC_SETUP_PENDING_KEY } from './auth-state'
 import { refreshAccessToken } from './token-refresh'
 import { isAccessTokenExpired } from './token-utils'
-import { getCrdtSyncBridge } from './crdt-sync-bridge'
+import { getCrdtSyncBridge, initializeCrdtSyncBridge, type CrdtSyncBridge } from './crdt-sync-bridge'
+import { getCrdtProvider } from './crdt-provider'
 import { getWebSocketManager } from './websocket'
 
 const LOG_PREFIX = '[AuthSyncBridge]'
 
 let initialized = false
 let pendingSync = false
+let deferredSyncInFlight: Promise<void> | null = null
+
+const ENGINE_UNLOCK_TIMEOUT_MS = 1500
+const ENGINE_UNLOCK_POLL_MS = 25
 
 type StoredAuthTokens = Awaited<ReturnType<typeof retrieveAuthTokens>>
 
@@ -147,6 +152,61 @@ async function triggerSync(): Promise<boolean> {
   }
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function waitForEngineUnlock(timeoutMs = ENGINE_UNLOCK_TIMEOUT_MS): Promise<void> {
+  const startedAt = Date.now()
+  while (true) {
+    const engine = getSyncEngine()
+    if (!engine || !engine.isSyncing) {
+      return
+    }
+    if (Date.now() - startedAt >= timeoutMs) {
+      return
+    }
+    await delay(ENGINE_UNLOCK_POLL_MS)
+  }
+}
+
+async function syncUnsyncedDocsIfEngineIdle(): Promise<void> {
+  const crdtBridge = ensureCrdtSyncBridge()
+  if (!crdtBridge) {
+    console.info(`${LOG_PREFIX} CRDT unsynced sync skipped: bridge unavailable`)
+    return
+  }
+
+  const engine = getSyncEngine()
+  if (engine?.isSyncing) {
+    if (!pendingSync) {
+      console.info(`${LOG_PREFIX} CRDT unsynced sync deferred: engine busy`)
+    }
+    pendingSync = true
+    return
+  }
+
+  await crdtBridge.syncUnsyncedLocalDocs()
+}
+
+function ensureCrdtSyncBridge(): CrdtSyncBridge | null {
+  const existing = getCrdtSyncBridge()
+  if (existing) {
+    return existing
+  }
+
+  const crdtProvider = getCrdtProvider()
+  if (!crdtProvider) {
+    return null
+  }
+
+  const bridge = initializeCrdtSyncBridge()
+  bridge.initialize(crdtProvider)
+  crdtProvider.setSyncBridge(bridge)
+  console.info(`${LOG_PREFIX} CRDT sync bridge initialized on demand`)
+  return bridge
+}
+
 /**
  * Handle authentication session change.
  * Called after successful login (OTP or OAuth).
@@ -198,12 +258,8 @@ export async function handleSessionChanged(
 
   await bootstrapSyncData()
   await queueLocalChangesSinceLastSync()
-  const synced = await triggerSync()
-
-  const crdtBridge = getCrdtSyncBridge()
-  if (crdtBridge && synced) {
-    await crdtBridge.syncUnsyncedLocalDocs()
-  }
+  await triggerSync()
+  await syncUnsyncedDocsIfEngineIdle()
 }
 
 /**
@@ -246,12 +302,8 @@ export async function triggerPostSetupSync(): Promise<void> {
 
   await bootstrapSyncData()
   await queueLocalChangesSinceLastSync()
-  const synced = await triggerSync()
-
-  const crdtBridge = getCrdtSyncBridge()
-  if (crdtBridge && synced) {
-    await crdtBridge.syncUnsyncedLocalDocs()
-  }
+  await triggerSync()
+  await syncUnsyncedDocsIfEngineIdle()
 }
 
 /**
@@ -306,28 +358,47 @@ export async function initAuthSyncBridge(): Promise<void> {
   }
 
   if (authReady) {
-    const crdtBridge = getCrdtSyncBridge()
+    const crdtBridge = ensureCrdtSyncBridge()
     if (crdtBridge) {
       console.info(`${LOG_PREFIX} Auth ready on init, syncing unsynced local docs`)
-      void crdtBridge.syncUnsyncedLocalDocs()
+      void syncUnsyncedDocsIfEngineIdle()
     }
   }
 
   const engine = getSyncEngine()
   if (engine) {
     engine.on('sync:status-changed', (event) => {
-      if (event.previousStatus === 'syncing' && event.currentStatus === 'idle' && pendingSync) {
-        pendingSync = false
-        console.info(`${LOG_PREFIX} Previous sync completed, triggering deferred sync`)
-        void (async () => {
-          const synced = await triggerSync()
-          if (synced) {
-            const crdtBridge = getCrdtSyncBridge()
-            if (crdtBridge) {
-              await crdtBridge.syncUnsyncedLocalDocs()
-            }
+      if (event.previousStatus === 'syncing' && event.currentStatus === 'idle') {
+        if (deferredSyncInFlight) {
+          return
+        }
+
+        deferredSyncInFlight = (async () => {
+          await waitForEngineUnlock()
+
+          const crdtBridge = ensureCrdtSyncBridge()
+          if (crdtBridge) {
+            await crdtBridge.retryPendingSnapshots()
           }
+
+          if (!pendingSync) return
+
+          pendingSync = false
+          console.info(`${LOG_PREFIX} Previous sync completed, triggering deferred sync`)
+          const queue = getSyncQueue()
+          if (queue.isEmpty()) {
+            console.info(`${LOG_PREFIX} Deferred metadata sync skipped: queue empty`)
+          } else {
+            await triggerSync()
+          }
+          await syncUnsyncedDocsIfEngineIdle()
         })()
+          .catch((error) => {
+            console.warn(`${LOG_PREFIX} Deferred sync processing failed:`, error)
+          })
+          .finally(() => {
+            deferredSyncInFlight = null
+          })
       }
     })
   }

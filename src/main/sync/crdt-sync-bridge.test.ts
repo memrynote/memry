@@ -552,4 +552,66 @@ describe('CrdtSyncBridge', () => {
       expect(mockPullCrdtUpdates).not.toHaveBeenCalled()
     })
   })
+
+  describe('unsynced sync coordination', () => {
+    it('coalesces concurrent unsynced sync calls into a single run', async () => {
+      // #given
+      const bridgeInternal = bridge as unknown as {
+        runUnsyncedLocalDocsSync: () => Promise<{ notes: number; journals: number }>
+      }
+
+      const runSpy = vi
+        .spyOn(bridgeInternal, 'runUnsyncedLocalDocsSync')
+        .mockImplementation(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 25))
+          return { notes: 2, journals: 1 }
+        })
+
+      // #when
+      const [first, second] = await Promise.all([
+        bridge.syncUnsyncedLocalDocs(),
+        bridge.syncUnsyncedLocalDocs()
+      ])
+
+      // #then
+      expect(runSpy).toHaveBeenCalledTimes(1)
+      expect(first).toEqual({ notes: 2, journals: 1 })
+      expect(second).toEqual({ notes: 2, journals: 1 })
+    })
+
+    it('clears pending snapshot IDs after successful snapshot push', async () => {
+      // #given
+      const { getNetworkMonitor } = await import('./network')
+      vi.mocked(getNetworkMonitor).mockReturnValue({
+        isOnline: () => true,
+        on: vi.fn(),
+        off: vi.fn()
+      })
+
+      const pushCrdtSnapshot = vi.fn().mockResolvedValue({
+        noteId: 'note-1',
+        sequenceNum: 3,
+        storageType: 'd1',
+        updatesPruned: 0
+      })
+      vi.mocked(getSyncApiClient).mockReturnValue({
+        pushCrdtUpdates: vi.fn(),
+        pullCrdtUpdates: vi.fn(),
+        pullCrdtSnapshot: vi.fn(),
+        pushCrdtSnapshot
+      } as unknown as ReturnType<typeof getSyncApiClient>)
+
+      const bridgeInternal = bridge as unknown as {
+        pendingSnapshotIds: Set<string>
+      }
+      bridgeInternal.pendingSnapshotIds.add('note-1')
+
+      // #when
+      const pushed = await bridge.pushSnapshot('note-1', new Uint8Array([1, 2, 3]))
+
+      // #then
+      expect(pushed).toBe(true)
+      expect(bridgeInternal.pendingSnapshotIds.has('note-1')).toBe(false)
+    })
+  })
 })

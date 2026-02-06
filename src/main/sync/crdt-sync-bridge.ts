@@ -68,6 +68,7 @@ export class CrdtSyncBridge {
   private deviceRefreshInProgress = false
   private lastDeviceRefresh = 0
   private pendingSnapshotIds = new Set<string>()
+  private unsyncedDocsSyncInFlight: Promise<{ notes: number; journals: number }> | null = null
 
   initialize(crdtProvider: CrdtProvider): void {
     if (this.initialized) {
@@ -436,13 +437,13 @@ export class CrdtSyncBridge {
     await this.pushUpdatesToServer(updates)
   }
 
-  async pushSnapshot(noteId: string, snapshot: Uint8Array): Promise<void> {
+  async pushSnapshot(noteId: string, snapshot: Uint8Array): Promise<boolean> {
     if (!this.isReady() || !this.isOnline()) {
-      return
+      return false
     }
     if (!this.isAuthReady()) {
       console.debug(`${LOG_PREFIX} Snapshot push skipped: not authenticated`)
-      return
+      return false
     }
 
     const state = this.getSequenceState(noteId)
@@ -457,13 +458,17 @@ export class CrdtSyncBridge {
       state.lastKnownSequence = result.sequenceNum
       this.sequenceState.set(noteId, state)
       this.persistSequenceState(noteId, state)
+      this.pendingSnapshotIds.delete(noteId)
 
       console.info(`${LOG_PREFIX} Pushed snapshot for ${noteId}:`, {
         sequenceNum: result.sequenceNum,
         updatesPruned: result.updatesPruned
       })
+      return true
     } catch (error) {
       console.error(`${LOG_PREFIX} Snapshot push failed for ${noteId}:`, error)
+      this.pendingSnapshotIds.add(noteId)
+      return false
     }
   }
 
@@ -722,6 +727,24 @@ export class CrdtSyncBridge {
    * Useful after offline creation or startup when auth wasn't ready.
    */
   async syncUnsyncedLocalDocs(): Promise<{ notes: number; journals: number }> {
+    if (this.unsyncedDocsSyncInFlight) {
+      console.info(`${LOG_PREFIX} Unsynced sync already in progress; joining current run`)
+      return this.unsyncedDocsSyncInFlight
+    }
+
+    const run = this.runUnsyncedLocalDocsSync()
+    this.unsyncedDocsSyncInFlight = run
+
+    try {
+      return await run
+    } finally {
+      if (this.unsyncedDocsSyncInFlight === run) {
+        this.unsyncedDocsSyncInFlight = null
+      }
+    }
+  }
+
+  private async runUnsyncedLocalDocsSync(): Promise<{ notes: number; journals: number }> {
     console.info(`${LOG_PREFIX} Checking for unsynced local docs`)
     if (!this.crdtProvider) {
       console.info(`${LOG_PREFIX} Unsynced sync skipped: CRDT provider not initialized`)
@@ -840,7 +863,10 @@ export class CrdtSyncBridge {
       try {
         const snapshot = this.crdtProvider?.encodeSnapshot(noteId, true)
         if (snapshot) {
-          await this.pushSnapshot(noteId, snapshot)
+          const pushed = await this.pushSnapshot(noteId, snapshot)
+          if (!pushed) {
+            this.pendingSnapshotIds.add(noteId)
+          }
         }
       } catch (error) {
         console.error(`${LOG_PREFIX} Retry snapshot push failed for ${noteId}:`, error)
@@ -992,6 +1018,8 @@ export class CrdtSyncBridge {
     this.recentUpdateHashes.clear()
     this.syncedNotes.clear()
     this.pendingNoteSyncs.clear()
+    this.pendingSnapshotIds.clear()
+    this.unsyncedDocsSyncInFlight = null
     this.sequenceState.clear()
     this.recentPulls.clear()
     this.initialized = false
