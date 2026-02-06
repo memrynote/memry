@@ -143,13 +143,10 @@ export async function initSyncSubsystem(): Promise<void> {
           console.info('[Sync] Waiting for engine handleOnline sync to complete')
           await waitForEngineIdle(engine)
         }
+        await runSync('network-online', true)
         const crdtBridge = getCrdtSyncBridge()
         if (crdtBridge) {
           await crdtBridge.syncUnsyncedLocalDocs()
-        }
-        await runSync('network-online', true)
-        if (crdtBridge) {
-          await crdtBridge.syncAllDocs()
         }
       } catch (error) {
         console.warn('[Sync] Network online sync failed:', error)
@@ -223,13 +220,10 @@ export async function initSyncSubsystem(): Promise<void> {
         const bootstrapResult = await bootstrapSyncData()
         console.info('[Sync] Bootstrap complete', bootstrapResult)
 
+        await runSync('startup', true)
         const crdtBridge = getCrdtSyncBridge()
         if (crdtBridge) {
           await crdtBridge.syncUnsyncedLocalDocs()
-        }
-        await runSync('startup', true)
-        if (crdtBridge) {
-          await crdtBridge.syncAllDocs()
         }
       } catch (error) {
         console.warn('[Sync] Startup sync failed:', error)

@@ -63,8 +63,11 @@ export class CrdtSyncBridge {
   private applyingRemoteNotes: Set<string> = new Set()
   private connectivityListener: ((isOnline: boolean) => void) | null = null
   private activePulls: Map<string, Promise<void>> = new Map()
+  private recentPulls: Map<string, number> = new Map()
+  private static readonly PULL_COOLDOWN_MS = 10_000
   private deviceRefreshInProgress = false
   private lastDeviceRefresh = 0
+  private pendingSnapshotIds = new Set<string>()
 
   initialize(crdtProvider: CrdtProvider): void {
     if (this.initialized) {
@@ -147,7 +150,11 @@ export class CrdtSyncBridge {
       .run()
   }
 
-  private async syncItemToServer(itemId: string, data: Note | JournalEntry): Promise<boolean> {
+  private async syncItemToServer(
+    itemId: string,
+    data: Note | JournalEntry,
+    options?: { skipPush?: boolean }
+  ): Promise<boolean> {
     try {
       const keyPair = await retrieveDeviceKeyPair().catch((err) => {
         console.warn(`${LOG_PREFIX} Failed to retrieve device keypair:`, err)
@@ -193,10 +200,12 @@ export class CrdtSyncBridge {
 
       await this.setNoteMetadataClock(itemId, clock)
 
-      const engine = getSyncEngine()
-      if (engine && this.isOnline()) {
-        console.info(`${LOG_PREFIX} Syncing item ${itemId} before CRDT updates`)
-        await engine.push()
+      if (!options?.skipPush) {
+        const engine = getSyncEngine()
+        if (engine && this.isOnline()) {
+          console.info(`${LOG_PREFIX} Syncing item ${itemId} before CRDT updates`)
+          await engine.push()
+        }
       }
 
       return true
@@ -480,6 +489,11 @@ export class CrdtSyncBridge {
       return
     }
 
+    const lastPull = this.recentPulls.get(`updates:${noteId}`)
+    if (lastPull && Date.now() - lastPull < CrdtSyncBridge.PULL_COOLDOWN_MS) {
+      return
+    }
+
     const state = this.getSequenceState(noteId)
     const client = getSyncApiClient()
 
@@ -489,6 +503,8 @@ export class CrdtSyncBridge {
       const result = await this.withAuthRefresh(() =>
         client.pullCrdtUpdates(noteId, state.lastKnownSequence)
       )
+
+      this.recentPulls.set(`updates:${noteId}`, Date.now())
 
       if (result.updates.length === 0) {
         return
@@ -558,12 +574,19 @@ export class CrdtSyncBridge {
       return false
     }
 
+    const lastPull = this.recentPulls.get(`snapshot:${noteId}`)
+    if (lastPull && Date.now() - lastPull < CrdtSyncBridge.PULL_COOLDOWN_MS) {
+      return false
+    }
+
     const client = getSyncApiClient()
 
     try {
       await this.crdtProvider.getOrCreateDoc(noteId)
 
       const result = await this.withAuthRefresh(() => client.pullCrdtSnapshot(noteId))
+
+      this.recentPulls.set(`snapshot:${noteId}`, Date.now())
 
       if (!result.exists || !result.snapshotData) {
         return false
@@ -694,72 +717,6 @@ export class CrdtSyncBridge {
     }
   }
 
-  async bootstrapLocalDocs(): Promise<{ notes: number; journals: number }> {
-    if (!this.crdtProvider || !this.isOnline()) {
-      console.info(`${LOG_PREFIX} Bootstrap skipped: not ready or offline`)
-      return { notes: 0, journals: 0 }
-    }
-
-    if (!this.isAuthReady()) {
-      console.info(`${LOG_PREFIX} Bootstrap skipped: not authenticated`)
-      return { notes: 0, journals: 0 }
-    }
-
-    const docNames = await this.crdtProvider.getAllDocNames()
-    if (docNames.length === 0) {
-      console.info(`${LOG_PREFIX} No local documents to bootstrap`)
-      return { notes: 0, journals: 0 }
-    }
-
-    console.info(`${LOG_PREFIX} Bootstrapping ${docNames.length} local documents`)
-
-    let notes = 0
-    let journals = 0
-
-    for (const noteId of docNames) {
-      try {
-        const doc = this.crdtProvider.getDoc(noteId)
-        if (!doc) {
-          console.warn(`${LOG_PREFIX} Doc not loaded for bootstrap: ${noteId}`)
-          continue
-        }
-
-        const isJournal = this.isJournalId(noteId)
-
-        const noteData = isJournal
-          ? await getJournalEntriesByIds([noteId]).then((entries) => entries[0])
-          : await getNotesByIds([noteId]).then((notes) => notes[0])
-
-        if (!noteData) {
-          console.warn(`${LOG_PREFIX} No note/journal data found for: ${noteId}`)
-          continue
-        }
-
-        const synced = await this.syncItemToServer(noteId, noteData)
-        if (!synced) {
-          console.warn(`${LOG_PREFIX} Failed to sync metadata for: ${noteId}`)
-          continue
-        }
-
-        const snapshot = this.crdtProvider.encodeSnapshot(noteId, true)
-        await this.pushSnapshot(noteId, snapshot)
-
-        if (isJournal) {
-          journals++
-        } else {
-          notes++
-        }
-
-        console.debug(`${LOG_PREFIX} Bootstrapped ${isJournal ? 'journal' : 'note'}: ${noteId}`)
-      } catch (error) {
-        console.error(`${LOG_PREFIX} Bootstrap failed for ${noteId}:`, error)
-      }
-    }
-
-    console.info(`${LOG_PREFIX} Bootstrap complete:`, { notes, journals })
-    return { notes, journals }
-  }
-
   /**
    * Sync local docs that have never pushed CRDT updates (no sequence state).
    * Useful after offline creation or startup when auth wasn't ready.
@@ -804,6 +761,7 @@ export class CrdtSyncBridge {
 
     let notes = 0
     let journals = 0
+    const queuedDocIds: string[] = []
 
     for (const noteId of unsyncedDocIds) {
       try {
@@ -819,15 +777,13 @@ export class CrdtSyncBridge {
           continue
         }
 
-        const synced = await this.syncItemToServer(noteId, noteData)
+        const synced = await this.syncItemToServer(noteId, noteData, { skipPush: true })
         if (!synced) {
           console.warn(`${LOG_PREFIX} Failed to sync metadata for unsynced doc: ${noteId}`)
           continue
         }
 
-        const snapshot = this.crdtProvider.encodeSnapshot(noteId, true)
-        await this.pushSnapshot(noteId, snapshot)
-
+        queuedDocIds.push(noteId)
         if (isJournal) {
           journals++
         } else {
@@ -838,8 +794,59 @@ export class CrdtSyncBridge {
       }
     }
 
+    if (queuedDocIds.length > 0) {
+      const engine = getSyncEngine()
+      let metadataPushed = false
+
+      if (engine && this.isOnline()) {
+        const pushResult = await engine.push()
+        metadataPushed = pushResult !== null
+      }
+
+      if (metadataPushed) {
+        for (const noteId of queuedDocIds) {
+          const snapshot = this.crdtProvider.encodeSnapshot(noteId, true)
+          await this.pushSnapshot(noteId, snapshot)
+        }
+      } else {
+        console.info(`${LOG_PREFIX} Metadata push skipped/failed, deferring snapshot pushes`)
+        for (const id of queuedDocIds) {
+          this.pendingSnapshotIds.add(id)
+        }
+      }
+    }
+
     console.info(`${LOG_PREFIX} Unsynced doc sync complete:`, { notes, journals })
     return { notes, journals }
+  }
+
+  async retryPendingSnapshots(): Promise<void> {
+    if (this.pendingSnapshotIds.size === 0) return
+    if (!this.isReady() || !this.isOnline() || !this.isAuthReady()) return
+
+    const engine = getSyncEngine()
+    if (!engine || engine.isSyncing) return
+
+    const queue = getSyncQueue()
+    if (!queue.isEmpty()) {
+      const pushResult = await engine.push()
+      if (!pushResult) return
+    }
+
+    const ids = [...this.pendingSnapshotIds]
+    this.pendingSnapshotIds.clear()
+
+    for (const noteId of ids) {
+      try {
+        const snapshot = this.crdtProvider?.encodeSnapshot(noteId, true)
+        if (snapshot) {
+          await this.pushSnapshot(noteId, snapshot)
+        }
+      } catch (error) {
+        console.error(`${LOG_PREFIX} Retry snapshot push failed for ${noteId}:`, error)
+        this.pendingSnapshotIds.add(noteId)
+      }
+    }
   }
 
   private getSequenceState(noteId: string): NoteSequenceState {
@@ -986,6 +993,7 @@ export class CrdtSyncBridge {
     this.syncedNotes.clear()
     this.pendingNoteSyncs.clear()
     this.sequenceState.clear()
+    this.recentPulls.clear()
     this.initialized = false
     this.crdtProvider = null
 

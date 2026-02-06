@@ -350,6 +350,12 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
           total: allItems.length
         })
         this.lastPushTimestamp = Date.now()
+
+        const currentCursor = await this.getCursor()
+        if (lastResponse.serverCursor > currentCursor) {
+          await this.updateCursor(lastResponse.serverCursor)
+        }
+
         for (const itemId of accepted) {
           this.recentlyPushedNoteIds.add(itemId)
           setTimeout(() => this.recentlyPushedNoteIds.delete(itemId), 5000)
@@ -493,11 +499,17 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   /**
    * Perform a full sync cycle: push then pull.
    */
-  async sync(options?: { skipPull?: boolean }): Promise<void> {
-    await this.push()
+  async sync(options?: { skipPull?: boolean }): Promise<{ pushed: boolean; pulled: boolean }> {
+    const pushResult = await this.push()
+    const pushed = pushResult !== null
+
+    let pulled = false
     if (!options?.skipPull) {
-      await this.pull()
+      const pullResult = await this.pull()
+      pulled = pullResult !== null
     }
+
+    return { pushed, pulled }
   }
 
   /**
@@ -1137,17 +1149,10 @@ export class SyncEngine extends TypedEmitter<SyncEngineEvents> {
   }
 
   private handleWsConnected(): void {
-    console.info('[SyncEngine] WebSocket connected, pulling metadata then CRDT updates')
-    this.pull()
-      .then(async () => {
-        const crdtBridge = getCrdtSyncBridge()
-        if (crdtBridge) {
-          await crdtBridge.syncAllDocs()
-        }
-      })
-      .catch((err) => {
-        console.error('[SyncEngine] Failed to sync after WS reconnect:', err)
-      })
+    console.info('[SyncEngine] WebSocket connected, pulling metadata')
+    this.pull().catch((err) => {
+      console.error('[SyncEngine] Failed to pull after WS connect:', err)
+    })
   }
 
   private handleOffline(): void {

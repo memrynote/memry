@@ -729,6 +729,11 @@ async function deleteNoteFromSync(noteId: string): Promise<void> {
   }
 }
 
+async function isFromCurrentDevice(signerDeviceId: string): Promise<boolean> {
+  const keyPair = await retrieveDeviceKeyPair().catch(() => null)
+  return keyPair?.deviceId === signerDeviceId
+}
+
 async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
   try {
     if (item.itemType === 'inbox') {
@@ -873,7 +878,9 @@ async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
         }
       }
 
-      await syncNoteContentFromCrdt(payload.id)
+      if (!(await isFromCurrentDevice(item.signerDeviceId))) {
+        await syncNoteContentFromCrdt(payload.id)
+      }
 
       // Read actual state after CRDT merge to avoid emitting stale metadata
       const noteDb = getIndexDatabase()
@@ -941,7 +948,9 @@ async function handleDecryptedSyncItem(item: DecryptedSyncItem): Promise<void> {
         }
       }
 
-      await syncNoteContentFromCrdt(payload.id)
+      if (!(await isFromCurrentDevice(item.signerDeviceId))) {
+        await syncNoteContentFromCrdt(payload.id)
+      }
 
       emitSyncEvent(
         result.isNew ? JournalChannels.events.ENTRY_CREATED : JournalChannels.events.ENTRY_UPDATED,

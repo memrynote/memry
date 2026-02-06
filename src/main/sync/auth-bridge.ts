@@ -118,7 +118,7 @@ async function canTriggerSync(): Promise<{ ok: boolean; reason?: string }> {
   return { ok: true }
 }
 
-async function triggerSync(): Promise<void> {
+async function triggerSync(): Promise<boolean> {
   const eligibility = await canTriggerSync()
 
   if (!eligibility.ok) {
@@ -130,18 +130,20 @@ async function triggerSync(): Promise<void> {
     } else {
       console.info(`${LOG_PREFIX} Sync skipped:`, eligibility.reason)
     }
-    return
+    return false
   }
 
   const engine = getSyncEngine()
-  if (!engine) return
+  if (!engine) return false
 
   console.info(`${LOG_PREFIX} Triggering sync after authentication`)
   try {
-    await engine.sync()
-    console.info(`${LOG_PREFIX} Post-auth sync completed`)
+    const result = await engine.sync()
+    console.info(`${LOG_PREFIX} Post-auth sync completed`, { pushed: result.pushed, pulled: result.pulled })
+    return result.pushed
   } catch (error) {
     console.warn(`${LOG_PREFIX} Post-auth sync failed:`, error)
+    return false
   }
 }
 
@@ -196,12 +198,11 @@ export async function handleSessionChanged(
 
   await bootstrapSyncData()
   await queueLocalChangesSinceLastSync()
-  await triggerSync()
+  const synced = await triggerSync()
 
   const crdtBridge = getCrdtSyncBridge()
-  if (crdtBridge) {
+  if (crdtBridge && synced) {
     await crdtBridge.syncUnsyncedLocalDocs()
-    await crdtBridge.syncAllDocs()
   }
 }
 
@@ -245,12 +246,11 @@ export async function triggerPostSetupSync(): Promise<void> {
 
   await bootstrapSyncData()
   await queueLocalChangesSinceLastSync()
-  await triggerSync()
+  const synced = await triggerSync()
 
   const crdtBridge = getCrdtSyncBridge()
-  if (crdtBridge) {
+  if (crdtBridge && synced) {
     await crdtBridge.syncUnsyncedLocalDocs()
-    await crdtBridge.syncAllDocs()
   }
 }
 
@@ -319,7 +319,15 @@ export async function initAuthSyncBridge(): Promise<void> {
       if (event.previousStatus === 'syncing' && event.currentStatus === 'idle' && pendingSync) {
         pendingSync = false
         console.info(`${LOG_PREFIX} Previous sync completed, triggering deferred sync`)
-        void triggerSync()
+        void (async () => {
+          const synced = await triggerSync()
+          if (synced) {
+            const crdtBridge = getCrdtSyncBridge()
+            if (crdtBridge) {
+              await crdtBridge.syncUnsyncedLocalDocs()
+            }
+          }
+        })()
       }
     })
   }
