@@ -48,7 +48,9 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:component": "vitest run tests/component",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "sync:contracts": "bash scripts/sync-contracts.sh",
+    "check:contracts": "bash scripts/check-contracts.sh"
   },
   "dependencies": {
     "@blocknote/core": "^0.45.0",
