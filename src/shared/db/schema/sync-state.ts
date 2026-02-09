@@ -3,7 +3,7 @@ import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 export const syncState = sqliteTable('sync_state', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
-  updatedAt: integer('updated_at').notNull(),
+  updatedAt: integer('updated_at').notNull()
 })
 
 export type SyncStateEntry = typeof syncState.$inferSelect

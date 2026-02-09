@@ -12,10 +12,7 @@ export function registerSyncHandlers(): void {
   ipcMain.handle(SYNC_CHANNELS.AUTH_RESEND_OTP, notImplemented('AUTH_RESEND_OTP'))
 
   ipcMain.handle(SYNC_CHANNELS.SETUP_FIRST_DEVICE, notImplemented('SETUP_FIRST_DEVICE'))
-  ipcMain.handle(
-    SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE,
-    notImplemented('CONFIRM_RECOVERY_PHRASE')
-  )
+  ipcMain.handle(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, notImplemented('CONFIRM_RECOVERY_PHRASE'))
 
   ipcMain.handle(SYNC_CHANNELS.GENERATE_LINKING_QR, notImplemented('GENERATE_LINKING_QR'))
   ipcMain.handle(SYNC_CHANNELS.LINK_VIA_QR, notImplemented('LINK_VIA_QR'))
@@ -36,10 +33,7 @@ export function registerSyncHandlers(): void {
   ipcMain.handle(SYNC_CHANNELS.UPLOAD_ATTACHMENT, notImplemented('UPLOAD_ATTACHMENT'))
   ipcMain.handle(SYNC_CHANNELS.GET_UPLOAD_PROGRESS, notImplemented('GET_UPLOAD_PROGRESS'))
   ipcMain.handle(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT, notImplemented('DOWNLOAD_ATTACHMENT'))
-  ipcMain.handle(
-    SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS,
-    notImplemented('GET_DOWNLOAD_PROGRESS')
-  )
+  ipcMain.handle(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS, notImplemented('GET_DOWNLOAD_PROGRESS'))
 
   console.log('[IPC] Sync handlers registered')
 }

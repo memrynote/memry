@@ -8,7 +8,7 @@ export const syncDevices = sqliteTable('sync_devices', {
   appVersion: text('app_version').notNull(),
   linkedAt: integer('linked_at').notNull(),
   lastSyncAt: integer('last_sync_at'),
-  isCurrentDevice: integer('is_current_device').notNull().default(0),
+  isCurrentDevice: integer('is_current_device').notNull().default(0)
 })
 
 export type SyncDevice = typeof syncDevices.$inferSelect

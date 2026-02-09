@@ -16,13 +16,14 @@ export const generateNonce = (): Uint8Array => {
 
 export const encrypt = (
   plaintext: Uint8Array,
-  key: Uint8Array
+  key: Uint8Array,
+  associatedData?: Uint8Array
 ): { ciphertext: Uint8Array; nonce: Uint8Array } => {
   const nonce = generateNonce()
 
   const ciphertext = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
     plaintext,
-    null,
+    associatedData ?? null,
     null,
     nonce,
     key
@@ -34,9 +35,16 @@ export const encrypt = (
 export const decrypt = (
   ciphertext: Uint8Array,
   nonce: Uint8Array,
-  key: Uint8Array
+  key: Uint8Array,
+  associatedData?: Uint8Array
 ): Uint8Array => {
-  return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, ciphertext, null, nonce, key)
+  return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
+    null,
+    ciphertext,
+    associatedData ?? null,
+    nonce,
+    key
+  )
 }
 
 export const wrapFileKey = (

@@ -40,11 +40,9 @@ export const compare = (a: VectorClock, b: VectorClock): ClockComparison => {
   return 'after'
 }
 
-export const happensBefore = (a: VectorClock, b: VectorClock): boolean =>
-  compare(a, b) === 'before'
+export const happensBefore = (a: VectorClock, b: VectorClock): boolean => compare(a, b) === 'before'
 
 export const isConcurrent = (a: VectorClock, b: VectorClock): boolean =>
   compare(a, b) === 'concurrent'
 
-export const getTick = (clock: VectorClock, deviceId: string): number =>
-  clock[deviceId] ?? 0
+export const getTick = (clock: VectorClock, deviceId: string): number => clock[deviceId] ?? 0

@@ -118,37 +118,27 @@
       "indexes": {
         "note_cache_path_unique": {
           "name": "note_cache_path_unique",
-          "columns": [
-            "path"
-          ],
+          "columns": ["path"],
           "isUnique": true
         },
         "idx_note_cache_path": {
           "name": "idx_note_cache_path",
-          "columns": [
-            "path"
-          ],
+          "columns": ["path"],
           "isUnique": false
         },
         "idx_note_cache_modified": {
           "name": "idx_note_cache_modified",
-          "columns": [
-            "modified_at"
-          ],
+          "columns": ["modified_at"],
           "isUnique": false
         },
         "idx_note_cache_date": {
           "name": "idx_note_cache_date",
-          "columns": [
-            "date"
-          ],
+          "columns": ["date"],
           "isUnique": false
         },
         "idx_note_cache_file_type": {
           "name": "idx_note_cache_file_type",
-          "columns": [
-            "file_type"
-          ],
+          "columns": ["file_type"],
           "isUnique": false
         }
       },
@@ -185,9 +175,7 @@
       "indexes": {
         "idx_note_links_target": {
           "name": "idx_note_links_target",
-          "columns": [
-            "target_id"
-          ],
+          "columns": ["target_id"],
           "isUnique": false
         }
       },
@@ -196,22 +184,15 @@
           "name": "note_links_source_id_note_cache_id_fk",
           "tableFrom": "note_links",
           "tableTo": "note_cache",
-          "columnsFrom": [
-            "source_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "note_links_source_id_target_title_pk": {
-          "columns": [
-            "source_id",
-            "target_title"
-          ],
+          "columns": ["source_id", "target_title"],
           "name": "note_links_source_id_target_title_pk"
         }
       },
@@ -253,16 +234,12 @@
       "indexes": {
         "idx_note_properties_name": {
           "name": "idx_note_properties_name",
-          "columns": [
-            "name"
-          ],
+          "columns": ["name"],
           "isUnique": false
         },
         "idx_note_properties_value": {
           "name": "idx_note_properties_value",
-          "columns": [
-            "value"
-          ],
+          "columns": ["value"],
           "isUnique": false
         }
       },
@@ -271,22 +248,15 @@
           "name": "note_properties_note_id_note_cache_id_fk",
           "tableFrom": "note_properties",
           "tableTo": "note_cache",
-          "columnsFrom": [
-            "note_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["note_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "note_properties_note_id_name_pk": {
-          "columns": [
-            "note_id",
-            "name"
-          ],
+          "columns": ["note_id", "name"],
           "name": "note_properties_note_id_name_pk"
         }
       },
@@ -358,16 +328,12 @@
       "indexes": {
         "idx_note_snapshots_note_id": {
           "name": "idx_note_snapshots_note_id",
-          "columns": [
-            "note_id"
-          ],
+          "columns": ["note_id"],
           "isUnique": false
         },
         "idx_note_snapshots_created": {
           "name": "idx_note_snapshots_created",
-          "columns": [
-            "created_at"
-          ],
+          "columns": ["created_at"],
           "isUnique": false
         }
       },
@@ -376,12 +342,8 @@
           "name": "note_snapshots_note_id_note_cache_id_fk",
           "tableFrom": "note_snapshots",
           "tableTo": "note_cache",
-          "columnsFrom": [
-            "note_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["note_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -418,16 +380,12 @@
       "indexes": {
         "idx_note_tags_tag": {
           "name": "idx_note_tags_tag",
-          "columns": [
-            "tag"
-          ],
+          "columns": ["tag"],
           "isUnique": false
         },
         "idx_note_tags_pinned": {
           "name": "idx_note_tags_pinned",
-          "columns": [
-            "pinned_at"
-          ],
+          "columns": ["pinned_at"],
           "isUnique": false
         }
       },
@@ -436,22 +394,15 @@
           "name": "note_tags_note_id_note_cache_id_fk",
           "tableFrom": "note_tags",
           "tableTo": "note_cache",
-          "columnsFrom": [
-            "note_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["note_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "note_tags_note_id_tag_pk": {
-          "columns": [
-            "note_id",
-            "tag"
-          ],
+          "columns": ["note_id", "tag"],
           "name": "note_tags_note_id_tag_pk"
         }
       },

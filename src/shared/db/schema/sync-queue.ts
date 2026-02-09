@@ -10,7 +10,7 @@ export const syncQueue = sqliteTable('sync_queue', {
   attempts: integer('attempts').notNull().default(0),
   lastAttempt: integer('last_attempt'),
   errorMessage: text('error_message'),
-  createdAt: integer('created_at').notNull(),
+  createdAt: integer('created_at').notNull()
 })
 
 export type SyncQueueItem = typeof syncQueue.$inferSelect
