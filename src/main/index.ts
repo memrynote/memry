@@ -144,7 +144,13 @@ function createWindow(): void {
   }
 }
 
-// Deep link handler for memry:// protocol (T041e)
+const pendingOAuthStates = new Map<string, number>()
+
+export const registerOAuthState = (state: string): void => {
+  pendingOAuthStates.set(state, Date.now())
+  setTimeout(() => pendingOAuthStates.delete(state), 10 * 60 * 1000)
+}
+
 function handleDeepLink(url: string): void {
   try {
     const parsed = new URL(url)
@@ -156,7 +162,8 @@ function handleDeepLink(url: string): void {
     if (parsed.hostname === 'oauth' || parsed.pathname.startsWith('/oauth')) {
       const code = parsed.searchParams.get('code')
       const state = parsed.searchParams.get('state')
-      if (code && state) {
+      if (code && state && pendingOAuthStates.has(state)) {
+        pendingOAuthStates.delete(state)
         mainWindow.webContents.send('auth:oauth-callback', { code, state })
       }
     }
