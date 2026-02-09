@@ -106,6 +106,7 @@
     "@tiptap/starter-kit": "^3.14.0",
     "@tiptap/suggestion": "^3.14.0",
     "bip39": "^3.1.0",
+    "cborg": "^4.5.8",
     "chokidar": "^5.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -121,6 +122,7 @@
     "gray-matter": "^4.0.3",
     "idb": "^8.0.3",
     "keytar": "^7.9.0",
+    "level": "^10.0.0",
     "libsodium-wrappers": "^0.8.0",
     "lucide-react": "^0.562.0",
     "marked": "^17.0.1",
@@ -138,6 +140,7 @@
     "nanoid": "^5.1.6",
     "next-themes": "^0.4.6",
     "openai": "^6.15.0",
+    "pako": "^2.1.0",
     "pdf-parse": "^2.4.5",
     "pdfjs-dist": "^5.4.296",
     "radix-ui": "^1.4.3",
@@ -153,6 +156,8 @@
     "tailwindcss-animate": "^1.0.7",
     "tippy.js": "^6.3.7",
     "y-indexeddb": "^9.0.12",
+    "y-leveldb": "^0.2.0",
+    "y-protocols": "^1.0.7",
     "yjs": "^13.6.29",
     "zod": "^4.3.4"
   },
@@ -168,6 +173,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/mime-types": "^3.0.1",
     "@types/node": "^25.0.3",
+    "@types/pako": "^2.0.4",
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
@@ -203,7 +209,10 @@
     "onlyBuiltDependencies": [
       "electron",
       "esbuild",
-      "better-sqlite3"
+      "better-sqlite3",
+      "sharp",
+      "re2",
+      "classic-level"
     ]
   }
 }
