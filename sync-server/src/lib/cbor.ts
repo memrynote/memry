@@ -1,30 +1,31 @@
 import { encode, decode } from 'cborg'
 
-const SIGNATURE_PAYLOAD_FIELD_ORDER = [
-  'id',
-  'type',
-  'operation',
-  'cryptoVersion',
-  'encryptedKey',
-  'keyNonce',
-  'encryptedData',
-  'dataNonce',
-  'deletedAt',
-  'metadata',
-] as const
+import { CBOR_FIELD_ORDER } from '../contracts/cbor-ordering'
 
-const orderFields = (obj: Record<string, unknown>, fieldOrder: readonly string[]): Record<string, unknown> => {
-  const ordered: Record<string, unknown> = {}
-  for (const key of fieldOrder) {
-    if (key in obj && obj[key] !== undefined) {
-      ordered[key] = obj[key]
+export const encodeCbor = (
+  data: Record<string, unknown>,
+  fieldOrder: readonly string[]
+): Uint8Array => {
+  const definedKeys = Object.keys(data).filter((k) => data[k] !== undefined)
+  const extraKeys = definedKeys.filter((k) => !fieldOrder.includes(k))
+  if (extraKeys.length > 0) {
+    console.warn(
+      `[CBOR] Fields not in ordering will be excluded from encoding: ${extraKeys.join(', ')}. Update CBOR_FIELD_ORDER if these should be signed.`
+    )
+  }
+
+  const ordered: [string, unknown][] = []
+
+  for (const field of fieldOrder) {
+    if (field in data && data[field] !== undefined) {
+      ordered.push([field, data[field]])
     }
   }
-  return ordered
+
+  return encode(new Map(ordered))
 }
 
 export const encodeSignaturePayload = (payload: Record<string, unknown>): Uint8Array =>
-  encode(orderFields(payload, SIGNATURE_PAYLOAD_FIELD_ORDER))
+  encodeCbor(payload, CBOR_FIELD_ORDER.SYNC_ITEM)
 
-export const decodePayload = <T = unknown>(data: Uint8Array): T =>
-  decode(data) as T
+export const decodePayload = <T = unknown>(data: Uint8Array): T => decode(data) as T
