@@ -571,12 +571,12 @@ export class CrdtProvider extends TypedEmitter<CrdtProviderEvents> {
 
   markCrdtWrite(noteId: string): void {
     this.recentCrdtWrites.set(noteId, Date.now())
-    setTimeout(() => this.recentCrdtWrites.delete(noteId), 1000)
+    setTimeout(() => this.recentCrdtWrites.delete(noteId), 2000)
   }
 
   wasRecentCrdtWrite(noteId: string): boolean {
     const writeTime = this.recentCrdtWrites.get(noteId)
-    return writeTime !== undefined && Date.now() - writeTime < 500
+    return writeTime !== undefined && Date.now() - writeTime < 1500
   }
 
   // =========================================================================

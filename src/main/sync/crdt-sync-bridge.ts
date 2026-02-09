@@ -61,6 +61,7 @@ export class CrdtSyncBridge {
     | ((payload: { noteId: string; update: Uint8Array; origin: string }) => void)
     | null = null
   private applyingRemoteNotes: Set<string> = new Set()
+  private recentlyAppliedRemoteNotes: Set<string> = new Set()
   private connectivityListener: ((isOnline: boolean) => void) | null = null
   private activePulls: Map<string, Promise<void>> = new Map()
   private recentPulls: Map<string, number> = new Map()
@@ -83,7 +84,8 @@ export class CrdtSyncBridge {
       if (
         payload.origin !== 'remote' &&
         payload.origin !== 'external' &&
-        !this.applyingRemoteNotes.has(payload.noteId)
+        !this.applyingRemoteNotes.has(payload.noteId) &&
+        !this.recentlyAppliedRemoteNotes.has(payload.noteId)
       ) {
         this.onDocUpdated(payload.noteId, payload.update)
       }
@@ -577,6 +579,9 @@ export class CrdtSyncBridge {
         this.persistSequenceState(noteId, state)
 
         if (appliedCount > 0) {
+          this.recentlyAppliedRemoteNotes.add(noteId)
+          setTimeout(() => this.recentlyAppliedRemoteNotes.delete(noteId), 3000)
+
           const { resyncNoteContentFromCrdt } = await import('../ipc/sync-handlers')
           await resyncNoteContentFromCrdt(noteId)
         }
@@ -625,6 +630,9 @@ export class CrdtSyncBridge {
       })
 
       const bytes = base64ToUint8Array(result.snapshotData)
+      this.recentlyAppliedRemoteNotes.add(noteId)
+      setTimeout(() => this.recentlyAppliedRemoteNotes.delete(noteId), 3000)
+
       this.crdtProvider.applySnapshot(noteId, bytes)
 
       const state = this.getSequenceState(noteId)
@@ -1044,6 +1052,7 @@ export class CrdtSyncBridge {
     this.unsyncedDocsSyncInFlight = null
     this.sequenceState.clear()
     this.recentPulls.clear()
+    this.recentlyAppliedRemoteNotes.clear()
     this.initialized = false
     this.crdtProvider = null
 

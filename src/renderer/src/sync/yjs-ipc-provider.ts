@@ -29,6 +29,7 @@ export class YjsIPCProvider extends Observable<keyof YjsIPCProviderEvents> {
   private _synced = false
   private _connected = false
   private _destroyed = false
+  private applyingRemote = false
   private unsubscribeRemoteUpdate: (() => void) | null = null
 
   public readonly awareness: Awareness
@@ -95,7 +96,7 @@ export class YjsIPCProvider extends Observable<keyof YjsIPCProviderEvents> {
   }
 
   private handleDocUpdate = (update: Uint8Array, origin: unknown): void => {
-    if (origin === 'remote') {
+    if (origin === 'remote' || this.applyingRemote) {
       return
     }
 
@@ -115,10 +116,13 @@ export class YjsIPCProvider extends Observable<keyof YjsIPCProviderEvents> {
     }
 
     try {
+      this.applyingRemote = true
       const updateBytes = base64ToUint8Array(data.update)
       Y.applyUpdate(this.doc, updateBytes, 'remote')
     } catch (error) {
       console.error('[YjsIPCProvider] Failed to apply remote update:', error)
+    } finally {
+      this.applyingRemote = false
     }
   }
 
