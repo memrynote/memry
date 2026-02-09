@@ -1,6 +1,6 @@
 # Quickstart: Sync Engine & E2EE
 
-**Feature**: 001-sync-e2ee-2 | **Date**: 2026-01-14
+**Feature**: 001-sync-e2ee-3 | **Date**: 2026-01-14
 
 This guide helps developers get started with implementing the sync and E2EE system.
 
