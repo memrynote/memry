@@ -1,7 +1,7 @@
 # Implementation Plan: Sync Engine & End-to-End Encryption
 
-**Branch**: `001-sync-e2ee-2` | **Date**: 2026-01-14 | **Spec**: [spec.md](./spec.md)
-**Input**: Feature specification from `/specs/001-sync-e2ee-2/spec.md`
+**Branch**: `001-sync-e2ee-3` | **Date**: 2026-01-14 | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from `/specs/001-sync-e2ee-3/spec.md`
 
 ## Summary
 
@@ -75,7 +75,7 @@ Implement a comprehensive sync engine with end-to-end encryption (E2EE) for Memr
 ### Documentation (this feature)
 
 ```text
-specs/001-sync-e2ee-2/
+specs/001-sync-e2ee-3/
 ├── plan.md              # This file
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output

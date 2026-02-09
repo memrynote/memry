@@ -1,6 +1,6 @@
 # Tasks: Sync Engine & End-to-End Encryption
 
-**Input**: Design documents from `/specs/001-sync-e2ee-2/`
+**Input**: Design documents from `/specs/001-sync-e2ee-3/`
 **Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, contracts/
 
 **Tests**: Tests are NOT included by default. Add test tasks explicitly when needed (see T193a for example).
@@ -501,7 +501,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 ### CRDT Implementation for US5
 
 - [ ] T129 [US5] Create main-process Yjs host in src/main/sync/crdt-provider.ts (authoritative doc, encryption before network)
-- [ ] T129a [US5] Define Yjs IPC channel types (sync/update/awareness) in src/shared/contracts/ipc-sync.ts and specs/001-sync-e2ee-2/contracts/ipc.yaml
+- [ ] T129a [US5] Define Yjs IPC channel types (sync/update/awareness) in src/shared/contracts/ipc-sync.ts and specs/001-sync-e2ee-3/contracts/ipc.yaml
 - [ ] T129b [US5] Implement main IPC bridge to apply Yjs updates from renderer and broadcast to all windows in src/main/sync/crdt-provider.ts and src/main/ipc/sync-handlers.ts
 - [ ] T129c [US5] Implement renderer Yjs IPC provider for BlockNote collaboration in src/renderer/src/sync/yjs-ipc-provider.ts
 - [ ] T129d [US5] Implement initial sync handshake (state vector exchange) between renderer and main in src/renderer/src/sync/yjs-ipc-provider.ts
