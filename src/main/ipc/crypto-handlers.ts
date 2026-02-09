@@ -66,7 +66,23 @@ function buildSignaturePayload(fields: SignatureFields): Record<string, unknown>
   return payload
 }
 
+const BASE64_VARIANT = sodium.base64_variants.ORIGINAL
+
+async function ensureSodiumReady(): Promise<void> {
+  await sodium.ready
+}
+
+function decodeBase64(value: string): Uint8Array | null {
+  try {
+    return sodium.from_base64(value, BASE64_VARIANT)
+  } catch {
+    return null
+  }
+}
+
 async function handleEncryptItem(input: EncryptItemInput): Promise<EncryptItemResult> {
+  await ensureSodiumReady()
+
   const vaultKey = await retrieveKey(KEYCHAIN_ENTRIES.VAULT_KEY)
   if (!vaultKey) {
     throw new Error('Vault key not found in keychain')
@@ -85,10 +101,10 @@ async function handleEncryptItem(input: EncryptItemInput): Promise<EncryptItemRe
     const wrapped = wrapFileKey(fileKey, vaultKey)
     const { ciphertext, nonce: dataNonce } = encrypt(plaintext, fileKey)
 
-    const encData = sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL)
-    const dNonce = sodium.to_base64(dataNonce, sodium.base64_variants.ORIGINAL)
-    const encKey = sodium.to_base64(wrapped.wrappedKey, sodium.base64_variants.ORIGINAL)
-    const kNonce = sodium.to_base64(wrapped.nonce, sodium.base64_variants.ORIGINAL)
+    const encData = sodium.to_base64(ciphertext, BASE64_VARIANT)
+    const dNonce = sodium.to_base64(dataNonce, BASE64_VARIANT)
+    const encKey = sodium.to_base64(wrapped.wrappedKey, BASE64_VARIANT)
+    const kNonce = sodium.to_base64(wrapped.nonce, BASE64_VARIANT)
 
     const signaturePayload = buildSignaturePayload({
       id: input.itemId,
@@ -109,7 +125,7 @@ async function handleEncryptItem(input: EncryptItemInput): Promise<EncryptItemRe
       dataNonce: dNonce,
       encryptedKey: encKey,
       keyNonce: kNonce,
-      signature: sodium.to_base64(signature, sodium.base64_variants.ORIGINAL)
+      signature: sodium.to_base64(signature, BASE64_VARIANT)
     }
   } finally {
     if (fileKey) secureCleanup(fileKey)
@@ -118,6 +134,8 @@ async function handleEncryptItem(input: EncryptItemInput): Promise<EncryptItemRe
 }
 
 async function handleDecryptItem(input: DecryptItemInput): Promise<DecryptItemResult> {
+  await ensureSodiumReady()
+
   const rawDecryptValue = input.metadata?.signerPublicKey
   if (!rawDecryptValue || typeof rawDecryptValue !== 'string') {
     return { success: false, error: 'Signer public key required for verification' }
@@ -136,13 +154,13 @@ async function handleDecryptItem(input: DecryptItemInput): Promise<DecryptItemRe
     metadata: input.metadata
   })
 
-  const publicKey = sodium.from_base64(signerPublicKeyBase64, sodium.base64_variants.ORIGINAL)
-  if (publicKey.length !== ED25519_PARAMS.PUBLIC_KEY_LENGTH) {
+  const publicKey = decodeBase64(signerPublicKeyBase64)
+  if (!publicKey || publicKey.length !== ED25519_PARAMS.PUBLIC_KEY_LENGTH) {
     return { success: false, error: 'Invalid public key length' }
   }
 
-  const signature = sodium.from_base64(input.signature, sodium.base64_variants.ORIGINAL)
-  if (signature.length !== ED25519_PARAMS.SIGNATURE_LENGTH) {
+  const signature = decodeBase64(input.signature)
+  if (!signature || signature.length !== ED25519_PARAMS.SIGNATURE_LENGTH) {
     return { success: false, error: 'Invalid signature length' }
   }
 
@@ -157,18 +175,18 @@ async function handleDecryptItem(input: DecryptItemInput): Promise<DecryptItemRe
   }
 
   try {
-    const encryptedKey = sodium.from_base64(input.encryptedKey, sodium.base64_variants.ORIGINAL)
+    const encryptedKey = sodium.from_base64(input.encryptedKey, BASE64_VARIANT)
     if (encryptedKey.length === 0) {
       return { success: false, error: 'Invalid encrypted key length' }
     }
 
-    const keyNonce = sodium.from_base64(input.keyNonce, sodium.base64_variants.ORIGINAL)
+    const keyNonce = sodium.from_base64(input.keyNonce, BASE64_VARIANT)
     if (keyNonce.length !== XCHACHA20_PARAMS.NONCE_LENGTH) {
       return { success: false, error: 'Invalid key nonce length' }
     }
 
-    const encryptedData = sodium.from_base64(input.encryptedData, sodium.base64_variants.ORIGINAL)
-    const dataNonce = sodium.from_base64(input.dataNonce, sodium.base64_variants.ORIGINAL)
+    const encryptedData = sodium.from_base64(input.encryptedData, BASE64_VARIANT)
+    const dataNonce = sodium.from_base64(input.dataNonce, BASE64_VARIANT)
     if (dataNonce.length !== XCHACHA20_PARAMS.NONCE_LENGTH) {
       return { success: false, error: 'Invalid data nonce length' }
     }
@@ -196,6 +214,8 @@ async function handleDecryptItem(input: DecryptItemInput): Promise<DecryptItemRe
 }
 
 async function handleVerifySignature(input: VerifySignatureInput): Promise<VerifySignatureResult> {
+  await ensureSodiumReady()
+
   const signaturePayload = buildSignaturePayload({
     id: input.itemId,
     type: input.type,
@@ -214,13 +234,13 @@ async function handleVerifySignature(input: VerifySignatureInput): Promise<Verif
   }
   const signerPublicKeyBase64 = rawValue
 
-  const publicKey = sodium.from_base64(signerPublicKeyBase64, sodium.base64_variants.ORIGINAL)
-  if (publicKey.length !== ED25519_PARAMS.PUBLIC_KEY_LENGTH) {
+  const publicKey = decodeBase64(signerPublicKeyBase64)
+  if (!publicKey || publicKey.length !== ED25519_PARAMS.PUBLIC_KEY_LENGTH) {
     return { valid: false }
   }
 
-  const signature = sodium.from_base64(input.signature, sodium.base64_variants.ORIGINAL)
-  if (signature.length !== ED25519_PARAMS.SIGNATURE_LENGTH) {
+  const signature = decodeBase64(input.signature)
+  if (!signature || signature.length !== ED25519_PARAMS.SIGNATURE_LENGTH) {
     return { valid: false }
   }
 
