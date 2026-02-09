@@ -36,18 +36,20 @@ Plan the implementation of Memry's Sync Engine and End-to-End Encryption system 
 
 ### File Structure Conventions
 ```
+
 src/main/
-├── ipc/           # IPC handlers (sync-handlers.ts, etc.)
-├── database/      # Drizzle client, migrations
-├── vault/         # File operations, watcher
-└── lib/           # Utilities (errors.ts, paths.ts, id.ts)
+├── ipc/ # IPC handlers (sync-handlers.ts, etc.)
+├── database/ # Drizzle client, migrations
+├── vault/ # File operations, watcher
+└── lib/ # Utilities (errors.ts, paths.ts, id.ts)
 
 src/renderer/src/
-├── contexts/      # React contexts (sync-context.tsx)
-├── hooks/         # Custom hooks (use-sync.ts)
-├── services/      # API services (sync-service.ts)
-└── components/    # UI components
-```
+├── contexts/ # React contexts (sync-context.tsx)
+├── hooks/ # Custom hooks (use-sync.ts)
+├── services/ # API services (sync-service.ts)
+└── components/ # UI components
+
+````
 
 ## TECHNOLOGY STACK DECISIONS
 
@@ -90,11 +92,12 @@ interface NoteYjsDocument {
   tags: Y.Array<string>       // Tags as CRDT array
   properties: Y.Map<any>      // Custom properties
 }
-```
+````
 
 ### Sync Server Stack
 
 **Choice: Hono.js on Cloudflare Workers**
+
 - Edge deployment (low latency globally)
 - Durable Objects for user sync state and real-time connections
 - R2 for encrypted blob storage (S3-compatible, cost-effective)
@@ -102,6 +105,7 @@ interface NoteYjsDocument {
 - WebSocket support via Durable Objects
 
 **Why Not Alternatives:**
+
 - Supabase: Less control over E2EE implementation
 - Fastify/Railway: Higher cost, no edge benefits
 - AWS Lambda: Cold start latency, complex WebSocket handling
@@ -109,15 +113,18 @@ interface NoteYjsDocument {
 ### Client-Side Storage
 
 **Sync Queue: IndexedDB (via idb)**
+
 - Persist sync queue across app restarts
 - Store encrypted items pending upload
 - Track sync state and vector clocks
 
 **Yjs Persistence: y-indexeddb**
+
 - Local persistence for Yjs documents
 - Works offline, syncs when connected
 
 **Attachment Cache: File System**
+
 - Store downloaded attachments in `vault/.memry/attachments/`
 - Chunk-based storage matching server structure
 
@@ -131,6 +138,7 @@ interface NoteYjsDocument {
    - Server sees only: user ID, blob sizes, timestamps, item IDs
 
 2. **Key Hierarchy**
+
    ```
    Recovery Phrase (24 words)
        → [Argon2id + Salt]
@@ -152,14 +160,14 @@ interface NoteYjsDocument {
 
 ### Performance Targets (from spec)
 
-| Operation | Target | Notes |
-|-----------|--------|-------|
-| Single item sync | < 2 seconds | On standard broadband |
-| Batch sync (100 items) | < 30 seconds | Parallel where possible |
-| Initial sync (1000 items) | < 5 minutes | New device setup |
-| Note edit to synced | < 500ms | Via WebSocket push |
-| UI during sync | Never blocked | Background workers |
-| 10,000+ items | No degradation | Pagination, virtualization |
+| Operation                 | Target         | Notes                      |
+| ------------------------- | -------------- | -------------------------- |
+| Single item sync          | < 2 seconds    | On standard broadband      |
+| Batch sync (100 items)    | < 30 seconds   | Parallel where possible    |
+| Initial sync (1000 items) | < 5 minutes    | New device setup           |
+| Note edit to synced       | < 500ms        | Via WebSocket push         |
+| UI during sync            | Never blocked  | Background workers         |
+| 10,000+ items             | No degradation | Pagination, virtualization |
 
 ### Reliability Requirements
 
@@ -217,6 +225,7 @@ Vault manager handles file operations. Integration points:
 ## PHASED IMPLEMENTATION APPROACH
 
 ### Phase 1: Cryptography Foundation
+
 - [ ] Implement key derivation (Argon2id + HKDF)
 - [ ] Recovery phrase generation and validation
 - [ ] Keychain integration (keytar)
@@ -225,6 +234,7 @@ Vault manager handles file operations. Integration points:
 - [ ] Unit tests for all crypto operations
 
 ### Phase 2: First Device Setup
+
 - [ ] OAuth flow (Google, Apple, GitHub)
 - [ ] Recovery phrase display and confirmation UI
 - [ ] Master key generation and storage
@@ -232,6 +242,7 @@ Vault manager handles file operations. Integration points:
 - [ ] Setup flow integration
 
 ### Phase 3: Sync Server Infrastructure
+
 - [ ] Cloudflare Workers project setup
 - [ ] D1 schema (users, devices, sync_items)
 - [ ] R2 bucket configuration
@@ -240,6 +251,7 @@ Vault manager handles file operations. Integration points:
 - [ ] Durable Objects for user state
 
 ### Phase 4: Client Sync Engine
+
 - [ ] IndexedDB sync queue
 - [ ] Sync engine class (push, pull, connect)
 - [ ] WebSocket connection management
@@ -247,6 +259,7 @@ Vault manager handles file operations. Integration points:
 - [ ] Retry logic with exponential backoff
 
 ### Phase 5: Note Sync (CRDT)
+
 - [ ] Yjs integration with BlockNote
 - [ ] MemrySyncProvider implementation
 - [ ] Encrypted snapshot storage
@@ -254,12 +267,14 @@ Vault manager handles file operations. Integration points:
 - [ ] Snapshot compaction
 
 ### Phase 6: Task/Settings Sync (Vector Clocks)
+
 - [ ] Vector clock implementation
 - [ ] Field-level merge logic
 - [ ] Task sync handlers
 - [ ] Settings sync handlers
 
 ### Phase 7: Device Linking
+
 - [ ] QR code generation (ephemeral ECDH keys)
 - [ ] QR code scanning and parsing
 - [ ] Key exchange protocol
@@ -267,6 +282,7 @@ Vault manager handles file operations. Integration points:
 - [ ] Recovery phrase restoration flow
 
 ### Phase 8: Binary Attachments
+
 - [ ] Chunked upload implementation
 - [ ] Content-addressable storage
 - [ ] Deduplication checks
@@ -275,17 +291,20 @@ Vault manager handles file operations. Integration points:
 - [ ] Thumbnail generation
 
 ### Phase 9: Sync Status & History
+
 - [ ] Sync status indicator component
 - [ ] Activity history storage and UI
 - [ ] Manual sync trigger
 - [ ] Error display and retry UI
 
 ### Phase 10: Device Management
+
 - [ ] Device list UI
 - [ ] Device removal with access revocation
 - [ ] Device info display (platform, last sync)
 
 ### Phase 11: Advanced Features (P3)
+
 - [ ] Local-only content flag
 - [ ] Selective sync (mobile)
 - [ ] Data usage tracking
@@ -421,6 +440,7 @@ export function registerSyncHandlers() {
 ## TESTING STRATEGY
 
 ### Unit Tests (Vitest)
+
 - [ ] Key derivation produces consistent results
 - [ ] Encryption roundtrip (encrypt → decrypt = original)
 - [ ] Signature verification (valid sig passes, invalid fails)
@@ -428,6 +448,7 @@ export function registerSyncHandlers() {
 - [ ] Chunk splitting and reassembly
 
 ### Integration Tests
+
 - [ ] Sync queue persistence across restart
 - [ ] Note sync with Yjs merge
 - [ ] Task sync with vector clock merge
@@ -435,6 +456,7 @@ export function registerSyncHandlers() {
 - [ ] Attachment chunked upload/download
 
 ### E2E Tests (Playwright)
+
 - [ ] First device setup flow
 - [ ] Create note → sync → verify on second instance
 - [ ] Offline edit → come online → sync
@@ -442,6 +464,7 @@ export function registerSyncHandlers() {
 - [ ] Conflict scenario (edit same note on two devices)
 
 ### Security Tests
+
 - [ ] Verify server receives only encrypted blobs
 - [ ] Verify no plaintext in logs or network traffic
 - [ ] Verify nonce uniqueness across encryptions
@@ -464,4 +487,7 @@ export function registerSyncHandlers() {
 - [ ] Zero plaintext visible in server storage
 - [ ] < 2 second single item sync latency
 - [ ] Works fully offline after initial sync
+
+```
+
 ```

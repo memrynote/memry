@@ -561,7 +561,8 @@ components:
 
     NoteSnapshot:
       type: object
-      required: [encrypted_snapshot, snapshot_nonce, state_vector, encrypted_key, key_nonce, signature]
+      required:
+        [encrypted_snapshot, snapshot_nonce, state_vector, encrypted_key, key_nonce, signature]
       properties:
         encrypted_snapshot:
           type: string
