@@ -15,6 +15,8 @@ import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers
 import { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
 import { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
+import { registerSyncHandlers, unregisterSyncHandlers } from './sync-handlers'
+import { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
 
 /**
  * Flag to prevent duplicate handler registration
@@ -81,6 +83,12 @@ export function registerAllHandlers(): void {
   // Register properties handlers (unified for notes + journal)
   registerPropertiesHandlers()
 
+  // Register sync handlers
+  registerSyncHandlers()
+
+  // Register crypto handlers
+  registerCryptoHandlers()
+
   handlersRegistered = true
   console.log('[IPC] All handlers registered')
 }
@@ -107,6 +115,8 @@ export function unregisterAllHandlers(): void {
   unregisterReminderHandlers()
   unregisterFolderViewHandlers()
   unregisterPropertiesHandlers()
+  unregisterSyncHandlers()
+  unregisterCryptoHandlers()
 
   handlersRegistered = false
   console.log('All IPC handlers unregistered')
@@ -137,3 +147,5 @@ export { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers
 export { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 export { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
 export { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
+export { registerSyncHandlers, unregisterSyncHandlers } from './sync-handlers'
+export { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'

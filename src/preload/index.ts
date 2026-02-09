@@ -18,6 +18,7 @@ import {
   FolderViewChannels,
   PropertiesChannels
 } from '@shared/ipc-channels'
+import { SYNC_CHANNELS, SYNC_EVENTS } from '@shared/contracts/ipc-sync'
 
 // Custom APIs for renderer
 const api = {
@@ -1310,6 +1311,178 @@ const api = {
     ): void => callback(data)
     ipcRenderer.on(FolderViewChannels.events.CONFIG_UPDATED, handler)
     return () => ipcRenderer.removeListener(FolderViewChannels.events.CONFIG_UPDATED, handler)
+  },
+
+  // Sync Auth API
+  syncAuth: {
+    requestOtp: (input: { email: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.AUTH_REQUEST_OTP, input),
+    verifyOtp: (input: { email: string; code: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.AUTH_VERIFY_OTP, input),
+    resendOtp: (input: { email: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.AUTH_RESEND_OTP, input)
+  },
+
+  // Sync Setup API
+  syncSetup: {
+    setupFirstDevice: (input: { provider: string; oauthToken?: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.SETUP_FIRST_DEVICE, input),
+    confirmRecoveryPhrase: (input: { confirmed: boolean }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, input)
+  },
+
+  // Device Linking API
+  syncLinking: {
+    generateLinkingQr: () =>
+      ipcRenderer.invoke(SYNC_CHANNELS.GENERATE_LINKING_QR),
+    linkViaQr: (input: { qrData: string; provider: string; oauthToken?: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.LINK_VIA_QR, input),
+    linkViaRecovery: (input: { recoveryPhrase: string; provider: string; oauthToken?: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.LINK_VIA_RECOVERY, input),
+    approveLinking: (input: { sessionId: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.APPROVE_LINKING, input)
+  },
+
+  // Device Management API
+  syncDevices: {
+    getDevices: () =>
+      ipcRenderer.invoke(SYNC_CHANNELS.GET_DEVICES),
+    removeDevice: (input: { deviceId: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.REMOVE_DEVICE, input),
+    renameDevice: (input: { deviceId: string; newName: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.RENAME_DEVICE, input)
+  },
+
+  // Sync Operations API
+  syncOps: {
+    getStatus: () =>
+      ipcRenderer.invoke(SYNC_CHANNELS.GET_STATUS),
+    triggerSync: () =>
+      ipcRenderer.invoke(SYNC_CHANNELS.TRIGGER_SYNC),
+    getHistory: (input: { limit?: number; offset?: number }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.GET_HISTORY, input),
+    getQueueSize: () =>
+      ipcRenderer.invoke(SYNC_CHANNELS.GET_QUEUE_SIZE),
+    pause: () =>
+      ipcRenderer.invoke(SYNC_CHANNELS.PAUSE),
+    resume: () =>
+      ipcRenderer.invoke(SYNC_CHANNELS.RESUME)
+  },
+
+  // Crypto API
+  crypto: {
+    encryptItem: (input: {
+      itemId: string
+      type: string
+      operation: string
+      content: unknown
+      metadata?: Record<string, unknown>
+    }) => ipcRenderer.invoke(SYNC_CHANNELS.ENCRYPT_ITEM, input),
+    decryptItem: (input: {
+      itemId: string
+      type: string
+      operation: string
+      encryptedData: string
+      dataNonce: string
+      encryptedKey: string
+      keyNonce: string
+      signature: string
+      metadata?: Record<string, unknown>
+    }) => ipcRenderer.invoke(SYNC_CHANNELS.DECRYPT_ITEM, input),
+    verifySignature: (input: {
+      itemId: string
+      type: string
+      operation: string
+      encryptedData: string
+      dataNonce: string
+      encryptedKey: string
+      keyNonce: string
+      signature: string
+      metadata?: Record<string, unknown>
+    }) => ipcRenderer.invoke(SYNC_CHANNELS.VERIFY_SIGNATURE, input),
+    rotateKeys: (input: { confirm: boolean }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.ROTATE_KEYS, input),
+    getRotationProgress: () =>
+      ipcRenderer.invoke(SYNC_CHANNELS.GET_ROTATION_PROGRESS)
+  },
+
+  // Attachment Sync API
+  syncAttachments: {
+    upload: (input: { noteId: string; filePath: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.UPLOAD_ATTACHMENT, input),
+    getUploadProgress: (input: { sessionId: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.GET_UPLOAD_PROGRESS, input),
+    download: (input: { attachmentId: string; targetPath: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT, input),
+    getDownloadProgress: (input: { attachmentId: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS, input)
+  },
+
+  // Sync event subscriptions
+  onSyncStatusChanged: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SYNC_EVENTS.STATUS_CHANGED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.STATUS_CHANGED, handler)
+  },
+  onItemSynced: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SYNC_EVENTS.ITEM_SYNCED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.ITEM_SYNCED, handler)
+  },
+  onConflictDetected: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SYNC_EVENTS.CONFLICT_DETECTED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.CONFLICT_DETECTED, handler)
+  },
+  onLinkingRequest: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SYNC_EVENTS.LINKING_REQUEST, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.LINKING_REQUEST, handler)
+  },
+  onLinkingApproved: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SYNC_EVENTS.LINKING_APPROVED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.LINKING_APPROVED, handler)
+  },
+  onUploadProgress: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SYNC_EVENTS.UPLOAD_PROGRESS, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.UPLOAD_PROGRESS, handler)
+  },
+  onDownloadProgress: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SYNC_EVENTS.DOWNLOAD_PROGRESS, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.DOWNLOAD_PROGRESS, handler)
+  },
+  onInitialSyncProgress: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SYNC_EVENTS.INITIAL_SYNC_PROGRESS, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.INITIAL_SYNC_PROGRESS, handler)
+  },
+  onQueueCleared: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SYNC_EVENTS.QUEUE_CLEARED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.QUEUE_CLEARED, handler)
+  },
+  onSyncPaused: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SYNC_EVENTS.PAUSED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.PAUSED, handler)
+  },
+  onSyncResumed: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SYNC_EVENTS.RESUMED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.RESUMED, handler)
+  },
+  onKeyRotationProgress: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SYNC_EVENTS.KEY_ROTATION_PROGRESS, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.KEY_ROTATION_PROGRESS, handler)
+  },
+  onSessionExpired: (callback: (event: unknown) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+    ipcRenderer.on(SYNC_EVENTS.SESSION_EXPIRED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.SESSION_EXPIRED, handler)
   }
 }
 
