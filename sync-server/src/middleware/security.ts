@@ -9,4 +9,6 @@ export const securityHeaders: MiddlewareHandler<AppContext> = async (c, next) =>
   c.header('X-Frame-Options', 'DENY')
   c.header('Cache-Control', 'no-store')
   c.header('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'")
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin')
+  c.header('X-Permitted-Cross-Domain-Policies', 'none')
 }
