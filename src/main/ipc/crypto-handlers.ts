@@ -2,9 +2,22 @@ import { ipcMain } from 'electron'
 import sodium from 'libsodium-wrappers-sumo'
 
 import { createValidatedHandler } from './validate'
-import { SYNC_CHANNELS, EncryptItemSchema, DecryptItemSchema, VerifySignatureSchema } from '@shared/contracts/ipc-sync'
+import {
+  SYNC_CHANNELS,
+  EncryptItemSchema,
+  DecryptItemSchema,
+  VerifySignatureSchema
+} from '@shared/contracts/ipc-sync'
 import { CBOR_FIELD_ORDER } from '@shared/contracts/cbor-ordering'
-import type { EncryptItemInput, EncryptItemResult, DecryptItemInput, DecryptItemResult, VerifySignatureInput, VerifySignatureResult } from '@shared/contracts/ipc-sync'
+import { CRYPTO_VERSION, XCHACHA20_PARAMS, ED25519_PARAMS } from '@shared/contracts/crypto'
+import type {
+  EncryptItemInput,
+  EncryptItemResult,
+  DecryptItemInput,
+  DecryptItemResult,
+  VerifySignatureInput,
+  VerifySignatureResult
+} from '@shared/contracts/ipc-sync'
 import {
   encrypt,
   decrypt,
@@ -18,6 +31,41 @@ import {
 } from '../crypto'
 import { KEYCHAIN_ENTRIES } from '@shared/contracts/crypto'
 
+interface SignatureFields {
+  id: string
+  type: string
+  operation?: string
+  encryptedData: string
+  dataNonce: string
+  encryptedKey: string
+  keyNonce: string
+  deletedAt?: number
+  metadata?: Record<string, unknown>
+}
+
+function buildSignaturePayload(fields: SignatureFields): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    id: fields.id,
+    type: fields.type,
+    operation: fields.operation,
+    cryptoVersion: CRYPTO_VERSION,
+    encryptedKey: fields.encryptedKey,
+    keyNonce: fields.keyNonce,
+    encryptedData: fields.encryptedData,
+    dataNonce: fields.dataNonce
+  }
+
+  if (fields.deletedAt !== undefined) {
+    payload.deletedAt = fields.deletedAt
+  }
+
+  if (fields.metadata !== undefined) {
+    payload.metadata = fields.metadata
+  }
+
+  return payload
+}
+
 async function handleEncryptItem(input: EncryptItemInput): Promise<EncryptItemResult> {
   const vaultKey = await retrieveKey(KEYCHAIN_ENTRIES.VAULT_KEY)
   if (!vaultKey) {
@@ -30,9 +78,10 @@ async function handleEncryptItem(input: EncryptItemInput): Promise<EncryptItemRe
   }
 
   const plaintext = new TextEncoder().encode(JSON.stringify(input.content))
+  let fileKey: Uint8Array | undefined
 
   try {
-    const fileKey = generateFileKey()
+    fileKey = generateFileKey()
     const wrapped = wrapFileKey(fileKey, vaultKey)
     const { ciphertext, nonce: dataNonce } = encrypt(plaintext, fileKey)
 
@@ -41,19 +90,19 @@ async function handleEncryptItem(input: EncryptItemInput): Promise<EncryptItemRe
     const encKey = sodium.to_base64(wrapped.wrappedKey, sodium.base64_variants.ORIGINAL)
     const kNonce = sodium.to_base64(wrapped.nonce, sodium.base64_variants.ORIGINAL)
 
-    const signaturePayload: Record<string, unknown> = {
+    const signaturePayload = buildSignaturePayload({
       id: input.itemId,
       type: input.type,
       operation: input.operation,
       encryptedData: encData,
       dataNonce: dNonce,
       encryptedKey: encKey,
-      keyNonce: kNonce
-    }
+      keyNonce: kNonce,
+      deletedAt: input.deletedAt,
+      metadata: input.metadata
+    })
 
     const signature = signPayload(signaturePayload, CBOR_FIELD_ORDER.SYNC_ITEM, signingKey)
-
-    secureCleanup(fileKey)
 
     return {
       encryptedData: encData,
@@ -63,11 +112,45 @@ async function handleEncryptItem(input: EncryptItemInput): Promise<EncryptItemRe
       signature: sodium.to_base64(signature, sodium.base64_variants.ORIGINAL)
     }
   } finally {
-    secureCleanup(vaultKey, signingKey)
+    if (fileKey) secureCleanup(fileKey)
+    secureCleanup(vaultKey, signingKey, plaintext)
   }
 }
 
 async function handleDecryptItem(input: DecryptItemInput): Promise<DecryptItemResult> {
+  const rawDecryptValue = input.metadata?.signerPublicKey
+  if (!rawDecryptValue || typeof rawDecryptValue !== 'string') {
+    return { success: false, error: 'Signer public key required for verification' }
+  }
+  const signerPublicKeyBase64 = rawDecryptValue
+
+  const signaturePayload = buildSignaturePayload({
+    id: input.itemId,
+    type: input.type,
+    operation: input.operation,
+    encryptedData: input.encryptedData,
+    dataNonce: input.dataNonce,
+    encryptedKey: input.encryptedKey,
+    keyNonce: input.keyNonce,
+    deletedAt: input.deletedAt,
+    metadata: input.metadata
+  })
+
+  const publicKey = sodium.from_base64(signerPublicKeyBase64, sodium.base64_variants.ORIGINAL)
+  if (publicKey.length !== ED25519_PARAMS.PUBLIC_KEY_LENGTH) {
+    return { success: false, error: 'Invalid public key length' }
+  }
+
+  const signature = sodium.from_base64(input.signature, sodium.base64_variants.ORIGINAL)
+  if (signature.length !== ED25519_PARAMS.SIGNATURE_LENGTH) {
+    return { success: false, error: 'Invalid signature length' }
+  }
+
+  const valid = verifySignature(signaturePayload, CBOR_FIELD_ORDER.SYNC_ITEM, signature, publicKey)
+  if (!valid) {
+    return { success: false, error: 'Signature verification failed' }
+  }
+
   const vaultKey = await retrieveKey(KEYCHAIN_ENTRIES.VAULT_KEY)
   if (!vaultKey) {
     return { success: false, error: 'Vault key not found in keychain' }
@@ -75,17 +158,35 @@ async function handleDecryptItem(input: DecryptItemInput): Promise<DecryptItemRe
 
   try {
     const encryptedKey = sodium.from_base64(input.encryptedKey, sodium.base64_variants.ORIGINAL)
+    if (encryptedKey.length === 0) {
+      return { success: false, error: 'Invalid encrypted key length' }
+    }
+
     const keyNonce = sodium.from_base64(input.keyNonce, sodium.base64_variants.ORIGINAL)
+    if (keyNonce.length !== XCHACHA20_PARAMS.NONCE_LENGTH) {
+      return { success: false, error: 'Invalid key nonce length' }
+    }
+
     const encryptedData = sodium.from_base64(input.encryptedData, sodium.base64_variants.ORIGINAL)
     const dataNonce = sodium.from_base64(input.dataNonce, sodium.base64_variants.ORIGINAL)
+    if (dataNonce.length !== XCHACHA20_PARAMS.NONCE_LENGTH) {
+      return { success: false, error: 'Invalid data nonce length' }
+    }
 
     const fileKey = unwrapFileKey(encryptedKey, keyNonce, vaultKey)
-    const plaintext = decrypt(encryptedData, dataNonce, fileKey)
 
-    secureCleanup(fileKey)
+    try {
+      const plaintext = decrypt(encryptedData, dataNonce, fileKey)
 
-    const content = JSON.parse(new TextDecoder().decode(plaintext))
-    return { success: true, content }
+      try {
+        const content = JSON.parse(new TextDecoder().decode(plaintext))
+        return { success: true, content }
+      } finally {
+        secureCleanup(plaintext)
+      }
+    } finally {
+      secureCleanup(fileKey)
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Decryption failed'
     return { success: false, error: message }
@@ -95,23 +196,33 @@ async function handleDecryptItem(input: DecryptItemInput): Promise<DecryptItemRe
 }
 
 async function handleVerifySignature(input: VerifySignatureInput): Promise<VerifySignatureResult> {
-  const signaturePayload: Record<string, unknown> = {
+  const signaturePayload = buildSignaturePayload({
     id: input.itemId,
     type: input.type,
     operation: input.operation,
     encryptedData: input.encryptedData,
     dataNonce: input.dataNonce,
     encryptedKey: input.encryptedKey,
-    keyNonce: input.keyNonce
-  }
+    keyNonce: input.keyNonce,
+    deletedAt: input.deletedAt,
+    metadata: input.metadata
+  })
 
-  const signerPublicKeyBase64 = input.metadata?.signerPublicKey as string | undefined
-  if (!signerPublicKeyBase64) {
+  const rawValue = input.metadata?.signerPublicKey
+  if (!rawValue || typeof rawValue !== 'string') {
+    return { valid: false }
+  }
+  const signerPublicKeyBase64 = rawValue
+
+  const publicKey = sodium.from_base64(signerPublicKeyBase64, sodium.base64_variants.ORIGINAL)
+  if (publicKey.length !== ED25519_PARAMS.PUBLIC_KEY_LENGTH) {
     return { valid: false }
   }
 
-  const publicKey = sodium.from_base64(signerPublicKeyBase64, sodium.base64_variants.ORIGINAL)
   const signature = sodium.from_base64(input.signature, sodium.base64_variants.ORIGINAL)
+  if (signature.length !== ED25519_PARAMS.SIGNATURE_LENGTH) {
+    return { valid: false }
+  }
 
   const valid = verifySignature(signaturePayload, CBOR_FIELD_ORDER.SYNC_ITEM, signature, publicKey)
   return { valid }

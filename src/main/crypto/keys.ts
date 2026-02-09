@@ -6,13 +6,30 @@ import {
   type MasterKeyMaterial
 } from '@shared/contracts/crypto'
 
+const KDF_CONTEXT_MAP: Record<string, { ctx: string; id: number }> = {
+  'memry-vault-key-v1': { ctx: 'memryvlt', id: 1 },
+  'memry-signing-key-v1': { ctx: 'memrysgn', id: 2 },
+  'memry-verify-key-v1': { ctx: 'memryvrf', id: 3 },
+  'memry-key-verifier-v1': { ctx: 'memrykve', id: 4 }
+}
+
 export const deriveKey = async (
   masterKey: Uint8Array,
   context: string,
   length: number
 ): Promise<Uint8Array> => {
   await sodium.ready
-  return sodium.crypto_generichash(length, sodium.from_string(context), masterKey)
+
+  const mapping = KDF_CONTEXT_MAP[context]
+  if (mapping) {
+    return sodium.crypto_kdf_derive_from_key(length, mapping.id, mapping.ctx, masterKey)
+  }
+
+  if (process.env.NODE_ENV === 'development') {
+    console.warn(`[crypto] deriveKey: unknown context "${context}", falling back to BLAKE2b`)
+  }
+  const domainSeparatedContext = `${context}:len=${length}`
+  return sodium.crypto_generichash(length, sodium.from_string(domainSeparatedContext), masterKey)
 }
 
 export const deriveMasterKey = async (
@@ -30,7 +47,7 @@ export const deriveMasterKey = async (
     sodium.crypto_pwhash_ALG_ARGON2ID13
   )
 
-  const keyVerifier = generateKeyVerifier(masterKey)
+  const keyVerifier = await generateKeyVerifier(masterKey)
 
   return {
     masterKey,
@@ -60,9 +77,13 @@ export const getDevicePublicKey = (secretKey: Uint8Array): Uint8Array => {
   return sodium.crypto_sign_ed25519_sk_to_pk(secretKey)
 }
 
-export const generateKeyVerifier = (masterKey: Uint8Array): string => {
-  const hash = sodium.crypto_generichash(32, masterKey, null)
-  return sodium.to_base64(hash, sodium.base64_variants.ORIGINAL)
+export const generateKeyVerifier = async (masterKey: Uint8Array): Promise<string> => {
+  const verifierKey = await deriveKey(masterKey, 'memry-key-verifier-v1', 32)
+  try {
+    return sodium.to_base64(verifierKey, sodium.base64_variants.ORIGINAL)
+  } finally {
+    sodium.memzero(verifierKey)
+  }
 }
 
 export const generateSalt = (): Uint8Array => {

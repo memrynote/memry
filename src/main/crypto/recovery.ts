@@ -16,5 +16,9 @@ export const validateRecoveryPhrase = (phrase: string): boolean => {
 
 export const phraseToSeed = async (phrase: string): Promise<Uint8Array> => {
   const seedBuffer = await bip39.mnemonicToSeed(phrase)
-  return new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength)
+  const seed = new Uint8Array(seedBuffer.length)
+  seed.set(new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength))
+  const original = new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength)
+  original.fill(0)
+  return seed
 }

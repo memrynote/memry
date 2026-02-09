@@ -29,6 +29,9 @@ export const secureCleanup = (...buffers: Uint8Array[]): void => {
 
 export const constantTimeEqual = (a: Uint8Array, b: Uint8Array): boolean => {
   if (a.length !== b.length) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[crypto] constantTimeEqual called with different-length inputs')
+    }
     return false
   }
   return sodium.memcmp(a, b)
