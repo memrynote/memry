@@ -144,6 +144,43 @@ function createWindow(): void {
   }
 }
 
+// Deep link handler for memry:// protocol (T041e)
+function handleDeepLink(url: string): void {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'memry:') return
+
+    const mainWindow = BrowserWindow.getAllWindows()[0]
+    if (!mainWindow) return
+
+    if (parsed.hostname === 'oauth' || parsed.pathname.startsWith('/oauth')) {
+      const code = parsed.searchParams.get('code')
+      const state = parsed.searchParams.get('state')
+      if (code && state) {
+        mainWindow.webContents.send('auth:oauth-callback', { code, state })
+      }
+    }
+
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+  } catch {
+    console.error('[DeepLink] Failed to parse URL:', url)
+  }
+}
+
+// Windows/Linux: deep links arrive via second-instance event
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (_event, commandLine) => {
+    const deepLinkUrl = commandLine.find((arg) => arg.startsWith('memry://'))
+    if (deepLinkUrl) {
+      handleDeepLink(deepLinkUrl)
+    }
+  })
+}
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
@@ -190,6 +227,11 @@ void app.whenReady().then(async () => {
 
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
+
+  // Register memry:// deep link protocol for OAuth callbacks (T041e)
+  if (!app.isDefaultProtocolClient('memry')) {
+    app.setAsDefaultProtocolClient('memry')
+  }
 
   // Register custom protocol for serving local attachment files
   // This allows secure access to vault files from the renderer process
@@ -324,6 +366,13 @@ void app.whenReady().then(async () => {
 
   ipcMain.handle('quick-capture:get-clipboard', () => {
     return clipboard.readText()
+  })
+
+  // Deep link handler for memry:// protocol (T041e)
+  // macOS: deep links arrive via open-url event
+  app.on('open-url', (event, url) => {
+    event.preventDefault()
+    handleDeepLink(url)
   })
 
   // Native context menu handler

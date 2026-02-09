@@ -2024,6 +2024,286 @@ export interface SettingsClientAPI {
   ): Promise<{ success: boolean; error?: string }>
 }
 
+// Sync Auth API
+interface SyncAuthClientAPI {
+  requestOtp: (input: { email: string }) => Promise<{
+    success: boolean
+    expiresIn?: number
+    message?: string
+    error?: string
+  }>
+  verifyOtp: (input: { email: string; code: string }) => Promise<{
+    success: boolean
+    isNewUser?: boolean
+    needsRecoverySetup?: boolean
+    recoveryPhrase?: string
+    deviceId?: string
+    error?: string
+  }>
+  resendOtp: (input: { email: string }) => Promise<{
+    success: boolean
+    expiresIn?: number
+    message?: string
+    error?: string
+  }>
+}
+
+// Sync Setup API
+interface SyncSetupClientAPI {
+  setupFirstDevice: (input: { provider: string; oauthToken?: string }) => Promise<{
+    success: boolean
+    recoveryPhrase?: string
+    deviceId?: string
+    error?: string
+  }>
+  confirmRecoveryPhrase: (input: { confirmed: boolean }) => Promise<{
+    success: boolean
+  }>
+}
+
+// Device Linking API
+interface SyncLinkingClientAPI {
+  generateLinkingQr: () => Promise<{
+    sessionId: string
+    qrData: string
+    expiresAt: number
+  }>
+  linkViaQr: (input: { qrData: string; provider: string; oauthToken?: string }) => Promise<{
+    success: boolean
+    status?: string
+    error?: string
+  }>
+  linkViaRecovery: (input: {
+    recoveryPhrase: string
+    provider: string
+    oauthToken?: string
+  }) => Promise<{
+    success: boolean
+    error?: string
+  }>
+  approveLinking: (input: { sessionId: string }) => Promise<{
+    success: boolean
+    error?: string
+  }>
+}
+
+// Device Management API
+interface SyncDevicesClientAPI {
+  getDevices: () => Promise<{
+    devices: Array<{
+      id: string
+      name: string
+      platform: string
+      isCurrentDevice: boolean
+      lastSyncAt?: number
+      linkedAt: number
+    }>
+  }>
+  removeDevice: (input: { deviceId: string }) => Promise<{
+    success: boolean
+    error?: string
+  }>
+  renameDevice: (input: { deviceId: string; newName: string }) => Promise<{
+    success: boolean
+    error?: string
+  }>
+}
+
+// Sync Operations API
+interface SyncOpsClientAPI {
+  getStatus: () => Promise<{
+    status: string
+    lastSyncAt?: number
+    pendingCount: number
+    error?: string
+  }>
+  triggerSync: () => Promise<{
+    success: boolean
+    error?: string
+  }>
+  getHistory: (input: { limit?: number; offset?: number }) => Promise<{
+    entries: Array<{
+      id: string
+      type: string
+      direction: string
+      itemCount: number
+      details: string
+      createdAt: number
+    }>
+    total: number
+  }>
+  getQueueSize: () => Promise<{
+    pending: number
+    failed: number
+  }>
+  pause: () => Promise<{
+    success: boolean
+    wasPaused: boolean
+  }>
+  resume: () => Promise<{
+    success: boolean
+    pendingCount: number
+  }>
+}
+
+// Crypto API
+interface CryptoClientAPI {
+  encryptItem: (input: {
+    itemId: string
+    type: string
+    operation: string
+    content: unknown
+    metadata?: Record<string, unknown>
+  }) => Promise<{
+    encryptedData: string
+    dataNonce: string
+    encryptedKey: string
+    keyNonce: string
+    signature: string
+  }>
+  decryptItem: (input: {
+    itemId: string
+    type: string
+    operation: string
+    encryptedData: string
+    dataNonce: string
+    encryptedKey: string
+    keyNonce: string
+    signature: string
+    metadata?: Record<string, unknown>
+  }) => Promise<{
+    success: boolean
+    content?: unknown
+    error?: string
+  }>
+  verifySignature: (input: {
+    itemId: string
+    type: string
+    operation: string
+    encryptedData: string
+    dataNonce: string
+    encryptedKey: string
+    keyNonce: string
+    signature: string
+    metadata?: Record<string, unknown>
+  }) => Promise<{
+    valid: boolean
+  }>
+  rotateKeys: (input: { confirm: boolean }) => Promise<{
+    success: boolean
+    newRecoveryPhrase?: string
+    error?: string
+  }>
+  getRotationProgress: () => Promise<{
+    inProgress: boolean
+    phase?: string
+    processedItems?: number
+    totalItems?: number
+  }>
+}
+
+// Attachment Sync API
+interface SyncAttachmentsClientAPI {
+  upload: (input: { noteId: string; filePath: string }) => Promise<{
+    success: boolean
+    sessionId?: string
+    attachmentId?: string
+    error?: string
+  }>
+  getUploadProgress: (input: { sessionId: string }) => Promise<{
+    status: string
+    uploadedChunks: number
+    totalChunks: number
+    progress: number
+  }>
+  download: (input: { attachmentId: string; targetPath: string }) => Promise<{
+    success: boolean
+    filePath?: string
+    error?: string
+  }>
+  getDownloadProgress: (input: { attachmentId: string }) => Promise<{
+    status: string
+    downloadedChunks: number
+    totalChunks: number
+    progress: number
+  }>
+}
+
+// Sync event payload types
+interface SyncStatusChangedEvent {
+  status: string
+  lastSyncAt?: number
+  pendingCount: number
+  error?: string
+}
+
+interface ItemSyncedEvent {
+  itemId: string
+  type: string
+  operation: 'push' | 'pull'
+}
+
+interface ConflictDetectedEvent {
+  itemId: string
+  type: string
+  localVersion: Record<string, unknown>
+  remoteVersion: Record<string, unknown>
+}
+
+interface LinkingRequestEvent {
+  sessionId: string
+  newDeviceName: string
+  newDevicePlatform: string
+}
+
+interface LinkingApprovedEvent {
+  sessionId: string
+}
+
+interface UploadProgressEvent {
+  sessionId: string
+  attachmentId: string
+  status: string
+  progress: number
+}
+
+interface DownloadProgressEvent {
+  attachmentId: string
+  status: string
+  progress: number
+}
+
+interface InitialSyncProgressEvent {
+  phase: string
+  processedItems: number
+  totalItems: number
+  currentItemType?: string
+}
+
+interface QueueClearedEvent {
+  itemCount: number
+  duration: number
+}
+
+interface SyncPausedEvent {
+  pendingCount: number
+}
+
+interface SyncResumedEvent {
+  pendingCount: number
+}
+
+interface KeyRotationProgressEvent {
+  phase: string
+  processedItems: number
+  totalItems: number
+  error?: string
+}
+
+interface SessionExpiredEvent {
+  reason: string
+}
+
 // Window controls API
 interface WindowAPI {
   windowMinimize: () => void
@@ -2048,6 +2328,13 @@ interface API extends WindowAPI {
   reminders: RemindersClientAPI
   quickCapture: QuickCaptureClientAPI
   folderView: FolderViewClientAPI
+  syncAuth: SyncAuthClientAPI
+  syncSetup: SyncSetupClientAPI
+  syncLinking: SyncLinkingClientAPI
+  syncDevices: SyncDevicesClientAPI
+  syncOps: SyncOpsClientAPI
+  crypto: CryptoClientAPI
+  syncAttachments: SyncAttachmentsClientAPI
   /** Show a native OS context menu and return the selected item id, or null if dismissed */
   showContextMenu: (items: ContextMenuItem[]) => Promise<string | null>
   // Vault event subscriptions
@@ -2134,6 +2421,20 @@ interface API extends WindowAPI {
   onReminderClicked: (callback: (event: ReminderClickedEvent) => void) => () => void
   // Folder View event subscriptions
   onFolderViewConfigUpdated: (callback: (event: FolderViewConfigUpdatedEvent) => void) => () => void
+  // Sync event subscriptions
+  onSyncStatusChanged: (callback: (event: SyncStatusChangedEvent) => void) => () => void
+  onItemSynced: (callback: (event: ItemSyncedEvent) => void) => () => void
+  onConflictDetected: (callback: (event: ConflictDetectedEvent) => void) => () => void
+  onLinkingRequest: (callback: (event: LinkingRequestEvent) => void) => () => void
+  onLinkingApproved: (callback: (event: LinkingApprovedEvent) => void) => () => void
+  onUploadProgress: (callback: (event: UploadProgressEvent) => void) => () => void
+  onDownloadProgress: (callback: (event: DownloadProgressEvent) => void) => () => void
+  onInitialSyncProgress: (callback: (event: InitialSyncProgressEvent) => void) => () => void
+  onQueueCleared: (callback: (event: QueueClearedEvent) => void) => () => void
+  onSyncPaused: (callback: (event: SyncPausedEvent) => void) => () => void
+  onSyncResumed: (callback: (event: SyncResumedEvent) => void) => () => void
+  onKeyRotationProgress: (callback: (event: KeyRotationProgressEvent) => void) => () => void
+  onSessionExpired: (callback: (event: SessionExpiredEvent) => void) => () => void
 }
 
 declare global {
