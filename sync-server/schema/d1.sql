@@ -35,8 +35,8 @@ CREATE TABLE otp_codes (
   email TEXT NOT NULL,
   code_hash TEXT NOT NULL,
   expires_at INTEGER NOT NULL,
-  attempts INTEGER DEFAULT 0,
-  used INTEGER DEFAULT 0,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  used INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
 
@@ -144,7 +144,7 @@ CREATE TABLE sync_items (
   size_bytes INTEGER NOT NULL,
   content_hash TEXT NOT NULL,
   version INTEGER NOT NULL DEFAULT 1,
-  crypto_version INTEGER DEFAULT 1,
+  crypto_version INTEGER NOT NULL DEFAULT 1,
   clock TEXT,
   state_vector TEXT,
   deleted_at INTEGER,
@@ -165,7 +165,7 @@ CREATE INDEX idx_sync_deleted ON sync_items(user_id, deleted_at);
 -- ============================================================================
 
 CREATE TABLE server_cursor_sequence (
-  user_id TEXT PRIMARY KEY REFERENCES users(id),
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   current_cursor INTEGER NOT NULL DEFAULT 0
 );
 
@@ -186,13 +186,10 @@ CREATE TABLE device_sync_state (
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS rate_limits (
-  id TEXT PRIMARY KEY,
-  key TEXT NOT NULL UNIQUE,
+  key TEXT PRIMARY KEY,
   count INTEGER NOT NULL DEFAULT 0,
   window_start INTEGER NOT NULL
 );
-
-CREATE INDEX IF NOT EXISTS idx_rate_key ON rate_limits(key);
 
 -- ============================================================================
 -- T017e: CRDT updates
