@@ -1,0 +1,45 @@
+name = "memry-sync-server"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+ENVIRONMENT = "development"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "memry-sync"
+database_id = "TODO-create-d1-database"
+
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "memry-encrypted-blobs"
+
+[env.staging]
+name = "memry-sync-server-staging"
+[env.staging.vars]
+ENVIRONMENT = "staging"
+ALLOWED_ORIGIN = "TODO-staging-origin"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "memry-sync-staging"
+database_id = "TODO-create-d1-database-staging"
+
+[[env.staging.r2_buckets]]
+binding = "STORAGE"
+bucket_name = "memry-encrypted-blobs-staging"
+
+[env.production]
+name = "memry-sync-server-production"
+[env.production.vars]
+ENVIRONMENT = "production"
+ALLOWED_ORIGIN = "TODO-production-origin"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "memry-sync-production"
+database_id = "TODO-create-d1-database-production"
+
+[[env.production.r2_buckets]]
+binding = "STORAGE"
+bucket_name = "memry-encrypted-blobs-production"

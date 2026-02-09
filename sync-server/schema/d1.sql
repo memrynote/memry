@@ -1,0 +1,2 @@
+-- Memry Sync Server D1 Schema
+-- Tables will be added in Phase 2 (T014-T021)
