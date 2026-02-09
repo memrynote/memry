@@ -504,7 +504,8 @@ components:
 
     EncryptedAttachmentManifest:
       type: object
-      required: [encrypted_manifest, manifest_nonce, encrypted_file_key, key_nonce, manifest_signature]
+      required:
+        [encrypted_manifest, manifest_nonce, encrypted_file_key, key_nonce, manifest_signature]
       properties:
         encrypted_manifest:
           type: string

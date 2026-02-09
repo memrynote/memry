@@ -282,7 +282,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - [x] T041a Define HKDF context string constants ("memry-vault-key-v1", "memry-signing-key-v1", "memry-verify-key-v1") in src/main/crypto/keys.ts
 - [x] T041b Define Argon2id parameter constants (memory: 65536KB, iterations: 3, parallelism: 4) in src/main/crypto/keys.ts
 - [x] T041c Implement rate limit state persistence using D1 rate_limits table in sync-server/src/middleware/rate-limit.ts
-- [x] T041d Create typed error codes enum (AUTH_*, SYNC_*, CRYPTO_*) in sync-server/src/lib/errors.ts
+- [x] T041d Create typed error codes enum (AUTH*\*, SYNC*_, CRYPTO\__) in sync-server/src/lib/errors.ts
 - [x] T041e Implement memry:// deep link protocol handler for OAuth callbacks in src/main/index.ts
 - [x] T041f Create canonical CBOR field ordering documentation (reference src/shared/contracts/cbor-ordering.ts) in src/main/crypto/cbor.ts
 - [x] T041g Define sync cursor types and signature metadata in src/shared/contracts/sync-api.ts
@@ -405,6 +405,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 ### Server Sync Endpoints for US2
 
 **Endpoint Clarification**:
+
 - `GET /sync/status` (T082): Returns user's sync status (is_syncing, last_sync_at, pending_count)
 - `GET /sync/manifest` (T083): Returns metadata manifest (item_id, item_type, updated_at, content_hash) for client to compare - NO encrypted data
 - `GET /sync/changes?cursor=N` (T084): Returns items with server_cursor > N (the delta feed)
@@ -1178,6 +1179,7 @@ Sync item signatures use **device-level** Ed25519 keys, and each item includes `
 **Device Registration Security**: New devices must prove possession of their private key via signed nonce challenge (T050b) before the server accepts the public key.
 
 **Key storage**:
+
 - Master key → OS keychain (T061)
 - Derived user signing keypair → OS keychain (T060a)
 - Device signing keypair → OS keychain (T028a/T061a)
@@ -1188,12 +1190,14 @@ Sync item signatures use **device-level** Ed25519 keys, and each item includes `
 **Decision**: Token refresh is owned by the **main process** (Option 1).
 
 **Rationale**:
+
 - Single-threaded token management eliminates race conditions in multi-window scenarios
 - Atomic refresh operations ensure consistent token state
 - Consistent token state across all renderer windows
 - Renderer simply calls IPC to request refresh, main process handles it atomically
 
 **Implementation**:
+
 - T073: Refresh logic implemented in `src/main/ipc/sync-handlers.ts` (main process)
 - T073c: Renderer calls IPC to request refresh via `src/renderer/src/services/auth-service.ts`
 - T073a: Main process emits `auth:session-expired` event when refresh fails

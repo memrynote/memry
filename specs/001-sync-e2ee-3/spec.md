@@ -5,7 +5,7 @@
 **Status**: Draft
 **Input**: User description: "Sync Engine and E2E Encryption for cross-device synchronization with CRDT-based conflict-free merging and collaboration support"
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - First Device Setup (Priority: P1)
 
@@ -323,11 +323,12 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 - What happens when network disconnects mid-upload of a large attachment?
 - How does the system handle time zone differences across devices?
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
 **First Device Setup**
+
 - **FR-001**: System MUST support OAuth signup via Google
 - **FR-001a**: System MUST support passwordless email authentication via 6-digit OTP codes
 - **FR-001b**: System MUST enforce OTP security (10-minute expiry, max 5 attempts per code, rate limit 3 requests per 10 min per email)
@@ -340,6 +341,7 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 - **FR-006**: System MUST never store the recovery phrase after initial setup confirmation
 
 **Device Linking**
+
 - **FR-007**: System MUST support device linking via QR code with ephemeral ECDH and key confirmation
 - **FR-008**: System MUST expire QR codes after 5 minutes
 - **FR-009**: System MUST require approval from existing device and verify new-device proof before completing QR-based linking
@@ -348,6 +350,7 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 - **FR-011**: System MUST display linked devices in settings with option to remove
 
 **Data Encryption**
+
 - **FR-012**: System MUST encrypt all user content before transmission or storage
 - **FR-013**: System MUST use per-item file keys encrypted with the vault key
 - **FR-014**: System MUST sign all encrypted items with a device-level signing key for authenticity verification (each item includes `signer_device_id`)
@@ -357,6 +360,7 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 - **FR-016**: Server MUST only store encrypted blobs with no ability to decrypt
 
 **Sync Protocol**
+
 - **FR-017**: System MUST sync changes automatically when online
 - **FR-018**: System MUST queue changes when offline and sync when connection restored
 - **FR-019**: System MUST persist sync queue across app restarts
@@ -364,11 +368,13 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 - **FR-021**: System MUST support real-time sync via persistent connection
 
 **Conflict Resolution**
+
 - **FR-022**: System MUST use CRDT-based merging for notes (no manual conflict resolution)
 - **FR-023**: System MUST use vector clocks with field-level last-writer-wins for tasks and projects
 - **FR-024**: System MUST preserve all edits during concurrent offline editing
 
 **Binary Attachments**
+
 - **FR-025**: System MUST support attachments up to 500MB
 - **FR-026**: System MUST split large files into chunks for upload/download
 - **FR-027**: System MUST support resumable uploads for interrupted transfers
@@ -377,6 +383,7 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 - **FR-030**: System MUST support streaming playback for video attachments
 
 **Sync Status & History**
+
 - **FR-031**: System MUST display current sync status (idle, syncing, offline, error)
 - **FR-032**: System MUST show item count during active sync
 - **FR-033**: System MUST show pending change count when offline
@@ -387,50 +394,59 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 - **FR-038**: System MUST support filtering sync history by date and type
 
 **Manual Sync Control**
+
 - **FR-039**: System MUST provide a "Sync Now" button to trigger immediate sync
 - **FR-040**: System MUST allow manual sync even when automatic sync is running
 
 **Local-Only Content**
+
 - **FR-041**: System MUST support marking notes as "local-only"
 - **FR-042**: System MUST exclude local-only items from sync operations
 - **FR-043**: System MUST persist local-only flag across app restarts
 - **FR-044**: System MUST allow users to convert local-only items to synced items
 
 **Background Sync**
+
 - **FR-045**: System MUST perform sync operations without blocking the UI
 - **FR-046**: System MUST allow editing during active sync operations
 - **FR-047**: System MUST handle concurrent local edits and incoming sync updates
 - **FR-048**: System MUST continue background uploads when navigating away
 
 **Device Management**
+
 - **FR-049**: System MUST display all linked devices with name, type, and last sync time
 - **FR-050**: System MUST allow users to remove linked devices
 - **FR-051**: System MUST revoke sync access when a device is removed
 - **FR-052**: System MUST show device linking timestamp and platform information
 
 **Key Management**
+
 - **FR-053**: System MUST support key rotation with new recovery phrase generation
 - **FR-054**: System MUST re-encrypt file keys (not content) during key rotation
 
 **Selective Sync (Mobile)**
+
 - **FR-055**: System MUST support sync mode options: "All content", "Recent only", "On-demand"
 - **FR-056**: System MUST download content on-demand when accessed in on-demand mode
 - **FR-057**: System MUST show loading indicators for on-demand content
 - **FR-058**: System MUST cache recently accessed content locally
 
 **Data Usage**
+
 - **FR-059**: System MUST track and display total synced data size
 - **FR-060**: System MUST show data usage breakdown by content type
 - **FR-061**: System MUST display sync data trends over time
 - **FR-062**: System MUST identify large items for storage management
 
 **Metered Connection**
+
 - **FR-063**: System MUST detect metered/cellular connections
 - **FR-064**: System MUST support "WiFi-only sync" mode
 - **FR-065**: System MUST queue changes when WiFi-only is enabled on cellular
 - **FR-066**: System MUST warn users before syncing on metered connections
 
 **Collaboration (Future)**
+
 - **FR-067**: System MUST support sharing individual notes with other users
 - **FR-068**: System MUST support read and write permission levels for shared notes
 - **FR-069**: System MUST encrypt shared file keys for recipient's public key
@@ -449,7 +465,7 @@ As a mobile user, I want to pause or limit sync when on cellular data so that I 
 - **Recovery Phrase**: 24-word BIP39 mnemonic that can regenerate the master key
 - **File Key**: Per-item encryption key, encrypted with vault key for storage
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
