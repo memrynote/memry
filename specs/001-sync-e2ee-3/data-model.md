@@ -125,6 +125,7 @@ interface SignaturePayloadV1 {
   keyNonce: string          // Nonce for key wrapping (Base64)
   encryptedData: string     // The encrypted content (Base64)
   dataNonce: string         // Encryption nonce (Base64)
+  deletedAt?: number        // Tombstone timestamp (included in signature to prevent server-forged deletions)
   metadata?: {
     clock?: VectorClock
     fieldClocks?: { [field: string]: VectorClock }
@@ -267,6 +268,7 @@ CREATE TABLE devices (
   auth_public_key TEXT NOT NULL,                 -- Device signing public key (Base64, Ed25519) - REQUIRED for sync item verification
   push_token TEXT,                              -- For push notifications (optional)
   created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
   last_sync_at INTEGER,
   revoked_at INTEGER                            -- Soft delete
 );
@@ -473,24 +475,28 @@ Server-side metadata for synced items.
 CREATE TABLE sync_items (
   id TEXT PRIMARY KEY,                          -- UUID (same as client item ID)
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  type TEXT NOT NULL,                           -- 'note' | 'task' | 'project' | 'settings' | 'attachment'
-  blob_key TEXT NOT NULL,                       -- R2 object key
-  size INTEGER NOT NULL,                        -- Blob size in bytes
+  item_type TEXT NOT NULL,                      -- 'note' | 'task' | 'project' | 'settings' | 'attachment' | 'inbox' | 'filter' | 'journal'
+  item_id TEXT NOT NULL,                        -- The actual entity ID (for UNIQUE constraint with type)
+  blob_key TEXT NOT NULL,                       -- R2 object key ({user_id}/items/{item_id})
+  size_bytes INTEGER NOT NULL,                  -- Blob size in bytes
+  content_hash TEXT NOT NULL,                   -- SHA-256 of encrypted blob for integrity and manifest diffing
   version INTEGER NOT NULL DEFAULT 1,           -- Incremented on each update
+  crypto_version INTEGER NOT NULL DEFAULT 1,    -- Algorithm version for forward compatibility
   server_cursor INTEGER NOT NULL,               -- Monotonic, auto-incrementing cursor for change feed ordering
   signer_device_id TEXT NOT NULL,               -- Device that signed this item (FK to devices.id)
   signature TEXT NOT NULL,                      -- Ed25519 signature (Base64)
   state_vector TEXT,                            -- For CRDT items (Yjs state vector, Base64)
   clock TEXT,                                   -- For non-CRDT items (JSON vector clock)
   created_at INTEGER NOT NULL,
-  modified_at INTEGER NOT NULL,
-  deleted_at INTEGER                            -- Soft delete
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER                            -- Soft delete timestamp (tombstone)
 );
 
+CREATE UNIQUE INDEX idx_sync_items_user_type_item ON sync_items(user_id, item_type, item_id);
 CREATE INDEX idx_sync_items_user ON sync_items(user_id);
-CREATE INDEX idx_sync_items_user_type ON sync_items(user_id, type);
-CREATE INDEX idx_sync_items_modified ON sync_items(user_id, modified_at);
+CREATE INDEX idx_sync_items_user_type ON sync_items(user_id, item_type);
 CREATE INDEX idx_sync_items_cursor ON sync_items(user_id, server_cursor);
+CREATE INDEX idx_sync_items_deleted ON sync_items(user_id, deleted_at);
 
 -- Tracks each device's sync progress via server_cursor
 CREATE TABLE device_sync_state (
@@ -500,6 +506,52 @@ CREATE TABLE device_sync_state (
 );
 
 CREATE INDEX idx_device_sync_state_device ON device_sync_state(device_id);
+
+-- Server cursor sequence for atomic cursor generation
+CREATE TABLE server_cursor_sequence (
+  user_id TEXT PRIMARY KEY REFERENCES users(id),
+  current_cursor INTEGER NOT NULL DEFAULT 0
+);
+
+-- Upload sessions for resumable chunked uploads
+CREATE TABLE upload_sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  attachment_id TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  total_size INTEGER NOT NULL,
+  chunk_count INTEGER NOT NULL,
+  uploaded_chunks TEXT NOT NULL DEFAULT '[]',  -- JSON array of completed chunk indices
+  expires_at INTEGER NOT NULL,                -- auto-expire after 24h
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX idx_upload_user ON upload_sessions(user_id);
+CREATE INDEX idx_upload_expires ON upload_sessions(expires_at);
+
+-- Blob chunks dedup index for attachment deduplication
+CREATE TABLE blob_chunks (
+  id TEXT PRIMARY KEY,
+  hash TEXT NOT NULL,                         -- SHA-256 of encrypted chunk
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  r2_key TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  ref_count INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL
+);
+
+CREATE UNIQUE INDEX idx_blob_chunks_user_hash ON blob_chunks(user_id, hash);
+CREATE INDEX idx_blob_chunks_hash ON blob_chunks(hash);
+
+-- Rate limits for auth endpoints
+CREATE TABLE rate_limits (
+  id TEXT PRIMARY KEY,
+  key TEXT NOT NULL UNIQUE,                   -- e.g., 'otp:email@example.com', 'ip:1.2.3.4'
+  count INTEGER NOT NULL DEFAULT 0,
+  window_start INTEGER NOT NULL
+);
+
+CREATE INDEX idx_rate_key ON rate_limits(key);
 ```
 
 ### TypeScript Type
@@ -508,18 +560,21 @@ CREATE INDEX idx_device_sync_state_device ON device_sync_state(device_id);
 interface SyncItem {
   id: string
   userId: string
-  type: 'note' | 'task' | 'project' | 'settings' | 'attachment'
-  blobKey: string
-  size: number
+  itemType: 'note' | 'task' | 'project' | 'settings' | 'attachment' | 'inbox' | 'filter' | 'journal'
+  itemId: string                    // The actual entity ID
+  blobKey: string                   // R2 object key
+  sizeBytes: number
+  contentHash: string               // SHA-256 of encrypted blob
   version: number
-  serverCursor: number            // Monotonic cursor for change feed ordering
-  signerDeviceId: string          // Device that signed this item
-  signature: string               // Ed25519 signature (Base64)
-  stateVector?: string            // For notes (Yjs)
-  clock?: VectorClock             // For tasks/projects
+  cryptoVersion: number             // Algorithm version (currently 1)
+  serverCursor: number              // Monotonic cursor for change feed ordering
+  signerDeviceId: string            // Device that signed this item
+  signature: string                 // Ed25519 signature (Base64)
+  stateVector?: string              // For notes (Yjs)
+  clock?: VectorClock               // For tasks/projects
   createdAt: Date
-  modifiedAt: Date
-  deletedAt?: Date
+  updatedAt: Date
+  deletedAt?: Date                  // Tombstone timestamp
 }
 
 interface DeviceSyncState {
@@ -956,9 +1011,13 @@ LIMIT 1000;
 -- 3. Hard delete from sync_items
 DELETE FROM sync_items WHERE id IN (...);
 
--- 4. For attachments, also delete orphaned chunks
-DELETE FROM attachment_chunks
-WHERE attachment_id NOT IN (SELECT id FROM sync_items WHERE type = 'attachment');
+-- 4. For attachments, also delete orphaned R2 blobs and dedup chunk refs
+DELETE FROM blob_chunks
+WHERE user_id IN (SELECT user_id FROM sync_items WHERE deleted_at IS NOT NULL)
+  AND ref_count <= 0;
+
+-- 5. Clean up expired upload sessions
+DELETE FROM upload_sessions WHERE expires_at < strftime('%s', 'now');
 ```
 
 ### Client-Side Handling
