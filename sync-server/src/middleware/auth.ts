@@ -11,25 +11,29 @@ const ALLOWED_ALGORITHM = 'EdDSA'
 export const authMiddleware: MiddlewareHandler<AppContext> = async (c, next) => {
   const authHeader = c.req.header('Authorization')
   if (!authHeader?.startsWith('Bearer ')) {
-    throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Missing or malformed Authorization header', 401)
+    throw new AppError(
+      ErrorCodes.AUTH_INVALID_TOKEN,
+      'Missing or malformed Authorization header',
+      401
+    )
   }
 
   const token = authHeader.slice(7)
-  const signingKeyPem = c.env.JWT_SIGNING_KEY
+  const verifyKeyPem = c.env.JWT_PUBLIC_KEY
 
   let publicKey: CryptoKey
   try {
-    publicKey = await importSPKI(signingKeyPem, ALLOWED_ALGORITHM)
+    publicKey = await importSPKI(verifyKeyPem, ALLOWED_ALGORITHM)
   } catch {
-    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Invalid JWT signing key configuration', 500)
+    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Invalid JWT verify key configuration', 500)
   }
 
-  let payload: { sub?: string; device_id?: string }
+  let payload: { sub?: string; device_id?: string; type?: string }
   try {
     const result = await jwtVerify(token, publicKey, {
       algorithms: [ALLOWED_ALGORITHM],
       issuer: REQUIRED_ISSUER,
-      audience: REQUIRED_AUDIENCE,
+      audience: REQUIRED_AUDIENCE
     })
     payload = result.payload as typeof payload
   } catch (err) {
@@ -40,6 +44,10 @@ export const authMiddleware: MiddlewareHandler<AppContext> = async (c, next) => 
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid token', 401)
   }
 
+  if (payload.type !== 'access') {
+    throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid token type', 401)
+  }
+
   const userId = payload.sub
   const deviceId = payload.device_id
 
@@ -47,8 +55,9 @@ export const authMiddleware: MiddlewareHandler<AppContext> = async (c, next) => 
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Token missing required claims', 401)
   }
 
-  const device = await c.env.DB
-    .prepare('SELECT id, revoked_at FROM devices WHERE id = ? AND user_id = ?')
+  const device = await c.env.DB.prepare(
+    'SELECT id, revoked_at FROM devices WHERE id = ? AND user_id = ?'
+  )
     .bind(deviceId, userId)
     .first<{ id: string; revoked_at: string | null }>()
 

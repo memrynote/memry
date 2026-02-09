@@ -100,7 +100,7 @@ CREATE TABLE refresh_tokens (
   token_hash TEXT NOT NULL UNIQUE,
   expires_at INTEGER NOT NULL,
   rotated_at INTEGER,
-  revoked INTEGER DEFAULT 0,
+  revoked INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
 
@@ -185,14 +185,14 @@ CREATE TABLE device_sync_state (
 -- T017c: Rate limits
 -- ============================================================================
 
-CREATE TABLE rate_limits (
+CREATE TABLE IF NOT EXISTS rate_limits (
   id TEXT PRIMARY KEY,
   key TEXT NOT NULL UNIQUE,
   count INTEGER NOT NULL DEFAULT 0,
   window_start INTEGER NOT NULL
 );
 
-CREATE INDEX idx_rate_key ON rate_limits(key);
+CREATE INDEX IF NOT EXISTS idx_rate_key ON rate_limits(key);
 
 -- ============================================================================
 -- T017e: CRDT updates
