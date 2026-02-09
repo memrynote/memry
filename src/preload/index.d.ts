@@ -1,4 +1,19 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
+import type {
+  SyncStatusChangedEvent,
+  ItemSyncedEvent,
+  ConflictDetectedEvent,
+  LinkingRequestEvent,
+  LinkingApprovedEvent,
+  UploadProgressEvent,
+  DownloadProgressEvent,
+  InitialSyncProgressEvent,
+  QueueClearedEvent,
+  SyncPausedEvent,
+  SyncResumedEvent,
+  KeyRotationProgressEvent,
+  SessionExpiredEvent
+} from '../shared/contracts/ipc-sync'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -2227,81 +2242,6 @@ interface SyncAttachmentsClientAPI {
     totalChunks: number
     progress: number
   }>
-}
-
-// Sync event payload types
-interface SyncStatusChangedEvent {
-  status: string
-  lastSyncAt?: number
-  pendingCount: number
-  error?: string
-}
-
-interface ItemSyncedEvent {
-  itemId: string
-  type: string
-  operation: 'push' | 'pull'
-}
-
-interface ConflictDetectedEvent {
-  itemId: string
-  type: string
-  localVersion: Record<string, unknown>
-  remoteVersion: Record<string, unknown>
-}
-
-interface LinkingRequestEvent {
-  sessionId: string
-  newDeviceName: string
-  newDevicePlatform: string
-}
-
-interface LinkingApprovedEvent {
-  sessionId: string
-}
-
-interface UploadProgressEvent {
-  sessionId: string
-  attachmentId: string
-  status: string
-  progress: number
-}
-
-interface DownloadProgressEvent {
-  attachmentId: string
-  status: string
-  progress: number
-}
-
-interface InitialSyncProgressEvent {
-  phase: string
-  processedItems: number
-  totalItems: number
-  currentItemType?: string
-}
-
-interface QueueClearedEvent {
-  itemCount: number
-  duration: number
-}
-
-interface SyncPausedEvent {
-  pendingCount: number
-}
-
-interface SyncResumedEvent {
-  pendingCount: number
-}
-
-interface KeyRotationProgressEvent {
-  phase: string
-  processedItems: number
-  totalItems: number
-  error?: string
-}
-
-interface SessionExpiredEvent {
-  reason: string
 }
 
 // Window controls API
