@@ -5,7 +5,8 @@ export type Bindings = {
   LINKING_SESSION: DurableObjectNamespace
   ENVIRONMENT: string
   ALLOWED_ORIGIN?: string
-  JWT_SIGNING_KEY: string
+  JWT_PUBLIC_KEY: string
+  JWT_PRIVATE_KEY: string
   RESEND_API_KEY: string
 }
 

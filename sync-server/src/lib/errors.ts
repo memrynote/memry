@@ -29,7 +29,7 @@ export const ErrorCodes = {
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
   NOT_FOUND: 'NOT_FOUND',
-  RATE_LIMITED: 'RATE_LIMITED',
+  RATE_LIMITED: 'RATE_LIMITED'
 } as const
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes]
@@ -46,16 +46,18 @@ export class AppError extends Error {
   }
 }
 
-export const formatErrorResponse = (error: AppError): { error: { code: ErrorCode; message: string } } => ({
+export const formatErrorResponse = (
+  error: AppError
+): { error: { code: ErrorCode; message: string } } => ({
   error: {
     code: error.code,
-    message: error.message,
-  },
+    message: error.message
+  }
 })
 
 export const errorHandler = (err: Error, c: Context): Response => {
   if (err instanceof AppError) {
-    return c.json(formatErrorResponse(err), err.statusCode as 400)
+    return c.json(formatErrorResponse(err), { status: err.statusCode })
   }
 
   console.error('Unhandled error:', err.message)

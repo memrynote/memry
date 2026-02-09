@@ -156,10 +156,7 @@ export const InfoSection = memo(function InfoSection({
   }, [properties])
 
   // Get list of existing property names for uniqueness check
-  const existingPropertyNames = useMemo(
-    () => properties.map((p) => p.name),
-    [properties]
-  )
+  const existingPropertyNames = useMemo(() => properties.map((p) => p.name), [properties])
 
   // Handle adding new property with auto-increment for duplicate names
   const handleAddProperty = useCallback(

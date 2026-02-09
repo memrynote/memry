@@ -101,10 +101,10 @@ export function NotePage({ noteId }: NotePageProps) {
   const initialHighlight = useMemo(() => {
     const viewState = activeTab?.viewState as
       | {
-        highlightStart?: number
-        highlightEnd?: number
-        highlightText?: string
-      }
+          highlightStart?: number
+          highlightEnd?: number
+          highlightText?: string
+        }
       | undefined
 
     if (viewState?.highlightText) {
@@ -300,13 +300,13 @@ export function NotePage({ noteId }: NotePageProps) {
         date: new Date(),
         mentions: bl.context
           ? [
-            {
-              id: `mention-${bl.sourceId}`,
-              snippet: bl.context,
-              linkStart: 0,
-              linkEnd: 0
-            }
-          ]
+              {
+                id: `mention-${bl.sourceId}`,
+                snippet: bl.context,
+                linkStart: 0,
+                linkEnd: 0
+              }
+            ]
           : []
       }
     })

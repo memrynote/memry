@@ -55,11 +55,7 @@ export const propertiesService = {
    * @param newName - New property name
    * @returns Response with success status
    */
-  rename: (
-    entityId: string,
-    oldName: string,
-    newName: string
-  ): Promise<RenamePropertyResponse> => {
+  rename: (entityId: string, oldName: string, newName: string): Promise<RenamePropertyResponse> => {
     return window.api.properties.rename(entityId, oldName, newName)
   }
 }

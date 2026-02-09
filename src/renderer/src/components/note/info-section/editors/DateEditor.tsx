@@ -44,12 +44,15 @@ export function DateEditor({ value, onChange, onBlur, autoFocus = true }: DateEd
     setIsValidFormat(true)
   }, [value])
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value
-    setLocalValue(newValue)
-    const valid = !newValue || validateAndParse(newValue) !== null
-    setIsValidFormat(valid)
-  }, [validateAndParse])
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = e.target.value
+      setLocalValue(newValue)
+      const valid = !newValue || validateAndParse(newValue) !== null
+      setIsValidFormat(valid)
+    },
+    [validateAndParse]
+  )
 
   const handleBlur = useCallback(() => {
     const parsed = validateAndParse(localValue)

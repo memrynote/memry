@@ -786,9 +786,7 @@ export function useFolderView({
             ...old,
             pages: old.pages.map((page) => ({
               ...page,
-              notes: page.notes.map((note) =>
-                note.id === noteId ? { ...note, tags } : note
-              )
+              notes: page.notes.map((note) => (note.id === noteId ? { ...note, tags } : note))
             }))
           }
         }

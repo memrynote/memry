@@ -1,5 +1,7 @@
 import { importPKCS8, SignJWT } from 'jose'
 
+import { AppError, ErrorCodes } from '../lib/errors'
+
 const ISSUER = 'memry-sync'
 const AUDIENCE = 'memry-client'
 const ACCESS_TOKEN_EXPIRY = '15m'
@@ -30,9 +32,9 @@ const signToken = async (
 export const issueTokens = async (
   userId: string,
   deviceId: string,
-  signingKeyPem: string
+  privateKeyPem: string
 ): Promise<{ accessToken: string; refreshToken: string }> => {
-  const privateKey = await importPKCS8(signingKeyPem, ALGORITHM)
+  const privateKey = await importPKCS8(privateKeyPem, ALGORITHM)
 
   const accessToken = await signToken(
     { sub: userId, device_id: deviceId, type: 'access' },
@@ -54,40 +56,38 @@ export const rotateRefreshToken = async (
   oldToken: string,
   userId: string,
   deviceId: string,
-  signingKeyPem: string
+  privateKeyPem: string
 ): Promise<{ accessToken: string; refreshToken: string }> => {
   const oldTokenHash = await hashToken(oldToken)
+  const nowEpoch = Math.floor(Date.now() / 1000)
 
   const existing = await db
     .prepare(
-      'SELECT id FROM refresh_tokens WHERE token_hash = ? AND user_id = ? AND device_id = ? AND revoked_at IS NULL AND expires_at > ?'
+      'SELECT id FROM refresh_tokens WHERE token_hash = ? AND user_id = ? AND device_id = ? AND revoked = 0 AND expires_at > ?'
     )
-    .bind(oldTokenHash, userId, deviceId, new Date().toISOString())
+    .bind(oldTokenHash, userId, deviceId, nowEpoch)
     .first<{ id: string }>()
 
   if (!existing) {
     await db
-      .prepare('UPDATE refresh_tokens SET revoked_at = ? WHERE user_id = ? AND device_id = ?')
-      .bind(new Date().toISOString(), userId, deviceId)
+      .prepare('UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ? AND device_id = ?')
+      .bind(userId, deviceId)
       .run()
 
-    throw new Error('Invalid refresh token — all device tokens revoked')
+    throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid refresh token', 401)
   }
 
-  await db
-    .prepare('UPDATE refresh_tokens SET revoked_at = ? WHERE id = ?')
-    .bind(new Date().toISOString(), existing.id)
-    .run()
+  await db.prepare('UPDATE refresh_tokens SET revoked = 1 WHERE id = ?').bind(existing.id).run()
 
-  const tokens = await issueTokens(userId, deviceId, signingKeyPem)
+  const tokens = await issueTokens(userId, deviceId, privateKeyPem)
   const newHash = await hashToken(tokens.refreshToken)
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+  const expiresAt = nowEpoch + 7 * 24 * 60 * 60
 
   await db
     .prepare(
       'INSERT INTO refresh_tokens (id, user_id, device_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)'
     )
-    .bind(crypto.randomUUID(), userId, deviceId, newHash, expiresAt, new Date().toISOString())
+    .bind(crypto.randomUUID(), userId, deviceId, newHash, expiresAt, nowEpoch)
     .run()
 
   return tokens
@@ -95,7 +95,7 @@ export const rotateRefreshToken = async (
 
 export const revokeDeviceTokens = async (db: D1Database, deviceId: string): Promise<void> => {
   await db
-    .prepare('UPDATE refresh_tokens SET revoked_at = ? WHERE device_id = ? AND revoked_at IS NULL')
-    .bind(new Date().toISOString(), deviceId)
+    .prepare('UPDATE refresh_tokens SET revoked = 1 WHERE device_id = ? AND revoked = 0')
+    .bind(deviceId)
     .run()
 }

@@ -12,9 +12,9 @@ export const sendEmail = async (
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ from: FROM_ADDRESS, to, subject, html }),
+      body: JSON.stringify({ from: FROM_ADDRESS, to, subject, html })
     })
 
     if (!response.ok) {

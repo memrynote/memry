@@ -17,40 +17,40 @@ export const CRYPTO_VERSION: CryptoVersion = 1
 // Algorithm Constants
 // ============================================================================
 
-export const HKDF_CONTEXTS = {
+export const KEY_DERIVATION_CONTEXTS = {
   VAULT_KEY: 'memry-vault-key-v1',
   SIGNING_KEY: 'memry-signing-key-v1',
-  VERIFY_KEY: 'memry-verify-key-v1',
+  VERIFY_KEY: 'memry-verify-key-v1'
 } as const
 
 export const ARGON2_PARAMS = {
   MEMORY_LIMIT: 67108864,
   OPS_LIMIT: 3,
-  SALT_LENGTH: 16,
+  SALT_LENGTH: 16
 } as const
 
 export const XCHACHA20_PARAMS = {
   NONCE_LENGTH: 24,
   KEY_LENGTH: 32,
-  TAG_LENGTH: 16,
+  TAG_LENGTH: 16
 } as const
 
 export const ED25519_PARAMS = {
   SEED_LENGTH: 32,
   PUBLIC_KEY_LENGTH: 32,
   SECRET_KEY_LENGTH: 64,
-  SIGNATURE_LENGTH: 64,
+  SIGNATURE_LENGTH: 64
 } as const
 
 export const X25519_PARAMS = {
   PUBLIC_KEY_LENGTH: 32,
   SECRET_KEY_LENGTH: 32,
-  SHARED_SECRET_LENGTH: 32,
+  SHARED_SECRET_LENGTH: 32
 } as const
 
 export const LINKING_HKDF_CONTEXTS = {
   ENCRYPTION: 'memry-linking-enc-v1',
-  MAC: 'memry-linking-mac-v1',
+  MAC: 'memry-linking-mac-v1'
 } as const
 
 // ============================================================================
@@ -65,7 +65,7 @@ export interface KeychainEntry {
 export const KEYCHAIN_ENTRIES = {
   MASTER_KEY: { service: 'com.memry.sync', account: 'master-key' },
   VAULT_KEY: { service: 'com.memry.sync', account: 'vault-key' },
-  DEVICE_SIGNING_KEY: { service: 'com.memry.sync', account: 'device-signing-key' },
+  DEVICE_SIGNING_KEY: { service: 'com.memry.sync', account: 'device-signing-key' }
 } as const satisfies Record<string, KeychainEntry>
 
 // ============================================================================
@@ -179,7 +179,7 @@ export const EncryptedItemSchema = z.object({
   signerDeviceId: z.string().min(1),
   signedAt: z.number().optional(),
   clock: CryptoVectorClockSchema.optional(),
-  fieldClocks: FieldClocksSchema.optional(),
+  fieldClocks: FieldClocksSchema.optional()
 })
 
 export const EncryptedCrdtItemSchema = z.object({
@@ -192,7 +192,7 @@ export const EncryptedCrdtItemSchema = z.object({
   encryptedKey: z.string().min(1),
   keyNonce: z.string().min(1),
   signature: z.string().min(1),
-  signerDeviceId: z.string().min(1),
+  signerDeviceId: z.string().min(1)
 })
 
 export const SignaturePayloadV1Schema = z.object({
@@ -209,9 +209,9 @@ export const SignaturePayloadV1Schema = z.object({
     .object({
       clock: CryptoVectorClockSchema.optional(),
       fieldClocks: FieldClocksSchema.optional(),
-      stateVector: z.string().min(1).optional(),
+      stateVector: z.string().min(1).optional()
     })
-    .optional(),
+    .optional()
 })
 
 // ============================================================================
