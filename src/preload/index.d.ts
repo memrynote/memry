@@ -2065,7 +2065,7 @@ interface SyncAuthClientAPI {
 
 // Sync Setup API
 interface SyncSetupClientAPI {
-  setupFirstDevice: (input: { provider: string; oauthToken?: string }) => Promise<{
+  setupFirstDevice: (input: { provider: 'google'; oauthToken: string }) => Promise<{
     success: boolean
     recoveryPhrase?: string
     deviceId?: string
@@ -2079,19 +2079,19 @@ interface SyncSetupClientAPI {
 // Device Linking API
 interface SyncLinkingClientAPI {
   generateLinkingQr: () => Promise<{
-    sessionId: string
-    qrData: string
-    expiresAt: number
+    sessionId?: string
+    qrData?: string
+    expiresAt?: number
   }>
-  linkViaQr: (input: { qrData: string; provider: string; oauthToken?: string }) => Promise<{
+  linkViaQr: (input: { qrData: string; provider: string; oauthToken: string }) => Promise<{
     success: boolean
-    status?: string
+    status?: 'waiting_approval' | 'approved' | 'error'
     error?: string
   }>
   linkViaRecovery: (input: {
     recoveryPhrase: string
     provider: string
-    oauthToken?: string
+    oauthToken: string
   }) => Promise<{
     success: boolean
     error?: string
@@ -2165,41 +2165,44 @@ interface SyncOpsClientAPI {
 interface CryptoClientAPI {
   encryptItem: (input: {
     itemId: string
-    type: string
-    operation: string
-    content: unknown
+    type: 'note' | 'task' | 'project' | 'settings'
+    content: Record<string, unknown>
+    operation?: 'create' | 'update' | 'delete'
+    deletedAt?: number
     metadata?: Record<string, unknown>
   }) => Promise<{
-    encryptedData: string
-    dataNonce: string
     encryptedKey: string
     keyNonce: string
+    encryptedData: string
+    dataNonce: string
     signature: string
   }>
   decryptItem: (input: {
     itemId: string
-    type: string
-    operation: string
-    encryptedData: string
-    dataNonce: string
+    type: 'note' | 'task' | 'project' | 'settings'
     encryptedKey: string
     keyNonce: string
+    encryptedData: string
+    dataNonce: string
     signature: string
+    operation?: 'create' | 'update' | 'delete'
+    deletedAt?: number
     metadata?: Record<string, unknown>
   }) => Promise<{
     success: boolean
-    content?: unknown
+    content?: Record<string, unknown>
     error?: string
   }>
   verifySignature: (input: {
     itemId: string
-    type: string
-    operation: string
-    encryptedData: string
-    dataNonce: string
+    type: 'note' | 'task' | 'project' | 'settings'
     encryptedKey: string
     keyNonce: string
+    encryptedData: string
+    dataNonce: string
     signature: string
+    operation?: 'create' | 'update' | 'delete'
+    deletedAt?: number
     metadata?: Record<string, unknown>
   }) => Promise<{
     valid: boolean

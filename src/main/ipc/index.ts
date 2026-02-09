@@ -10,7 +10,7 @@ import { registerTemplatesHandlers, unregisterTemplatesHandlers } from './templa
 import { registerJournalHandlers, unregisterJournalHandlers } from './journal-handlers'
 import { registerSettingsHandlers, unregisterSettingsHandlers } from './settings-handlers'
 import { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
-import { registerTagsHandlers } from './tags-handlers'
+import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 import { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
@@ -111,6 +111,7 @@ export function unregisterAllHandlers(): void {
   unregisterJournalHandlers()
   unregisterSettingsHandlers()
   unregisterBookmarksHandlers()
+  unregisterTagsHandlers()
   unregisterInboxHandlers()
   unregisterReminderHandlers()
   unregisterFolderViewHandlers()
@@ -142,7 +143,7 @@ export { registerTemplatesHandlers, unregisterTemplatesHandlers } from './templa
 export { registerJournalHandlers, unregisterJournalHandlers } from './journal-handlers'
 export { registerSettingsHandlers, unregisterSettingsHandlers } from './settings-handlers'
 export { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
-export { registerTagsHandlers } from './tags-handlers'
+export { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 export { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 export { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 export { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
