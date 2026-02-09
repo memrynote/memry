@@ -1,12 +1,9 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 
-type Bindings = {
-  DB: D1Database
-  STORAGE: R2Bucket
-  ENVIRONMENT: string
-  ALLOWED_ORIGIN?: string
-}
+import { errorHandler } from './lib/errors'
+import { securityHeaders } from './middleware/security'
+import type { AppContext } from './types'
 
 const ORIGIN_BY_ENV: Record<string, string[]> = {
   development: ['http://localhost:5173', 'http://localhost:3000'],
@@ -14,7 +11,9 @@ const ORIGIN_BY_ENV: Record<string, string[]> = {
   production: [],
 }
 
-const app = new Hono<{ Bindings: Bindings }>()
+const app = new Hono<AppContext>()
+
+app.use('*', securityHeaders)
 
 app.use('*', async (c, next) => {
   const env = c.env.ENVIRONMENT || 'development'
@@ -26,12 +25,14 @@ app.use('*', async (c, next) => {
   return middleware(c, next)
 })
 
-app.get('/health', (c) => {
-  return c.json({
+app.onError(errorHandler)
+
+app.get('/health', (c) =>
+  c.json({
     status: 'ok',
     environment: c.env.ENVIRONMENT,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   })
-})
+)
 
 export default app
