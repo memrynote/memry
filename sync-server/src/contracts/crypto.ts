@@ -20,9 +20,13 @@ export const CRYPTO_VERSION: CryptoVersion = 1
 export const KEY_DERIVATION_CONTEXTS = {
   VAULT_KEY: 'memry-vault-key-v1',
   SIGNING_KEY: 'memry-signing-key-v1',
-  VERIFY_KEY: 'memry-verify-key-v1'
+  VERIFY_KEY: 'memry-verify-key-v1',
+  KEY_VERIFIER: 'memry-key-verifier-v1'
 } as const
 
+// libsodium's crypto_pwhash uses Argon2id with parallelism=1 internally.
+// The spec references parallelism=4 but libsodium does not expose this parameter;
+// parallelism=1 is the canonical value for this implementation.
 export const ARGON2_PARAMS = {
   MEMORY_LIMIT: 67108864,
   OPS_LIMIT: 3,
@@ -48,6 +52,8 @@ export const X25519_PARAMS = {
   SHARED_SECRET_LENGTH: 32
 } as const
 
+// "HKDF" in the spec refers to BLAKE2b-based KDF as implemented by
+// libsodium's crypto_kdf_derive_from_key, not traditional HKDF-SHA256.
 export const LINKING_HKDF_CONTEXTS = {
   ENCRYPTION: 'memry-linking-enc-v1',
   MAC: 'memry-linking-mac-v1'

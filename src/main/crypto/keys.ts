@@ -2,6 +2,7 @@ import sodium from 'libsodium-wrappers-sumo'
 
 import {
   ARGON2_PARAMS,
+  LINKING_HKDF_CONTEXTS,
   type DeviceSigningKeyPair,
   type MasterKeyMaterial
 } from '@shared/contracts/crypto'
@@ -10,7 +11,9 @@ const KDF_CONTEXT_MAP: Record<string, { ctx: string; id: number }> = {
   'memry-vault-key-v1': { ctx: 'memryvlt', id: 1 },
   'memry-signing-key-v1': { ctx: 'memrysgn', id: 2 },
   'memry-verify-key-v1': { ctx: 'memryvrf', id: 3 },
-  'memry-key-verifier-v1': { ctx: 'memrykve', id: 4 }
+  'memry-key-verifier-v1': { ctx: 'memrykve', id: 4 },
+  [LINKING_HKDF_CONTEXTS.ENCRYPTION]: { ctx: 'memrylnk', id: 5 },
+  [LINKING_HKDF_CONTEXTS.MAC]: { ctx: 'memrymac', id: 6 }
 }
 
 export const deriveKey = async (
@@ -21,15 +24,10 @@ export const deriveKey = async (
   await sodium.ready
 
   const mapping = KDF_CONTEXT_MAP[context]
-  if (mapping) {
-    return sodium.crypto_kdf_derive_from_key(length, mapping.id, mapping.ctx, masterKey)
+  if (!mapping) {
+    throw new Error(`Unknown key derivation context: ${context}`)
   }
-
-  if (process.env.NODE_ENV === 'development') {
-    console.warn(`[crypto] deriveKey: unknown context "${context}", falling back to BLAKE2b`)
-  }
-  const domainSeparatedContext = `${context}:len=${length}`
-  return sodium.crypto_generichash(length, sodium.from_string(domainSeparatedContext), masterKey)
+  return sodium.crypto_kdf_derive_from_key(length, mapping.id, mapping.ctx, masterKey)
 }
 
 export const deriveMasterKey = async (
@@ -47,12 +45,17 @@ export const deriveMasterKey = async (
     sodium.crypto_pwhash_ALG_ARGON2ID13
   )
 
-  const keyVerifier = await generateKeyVerifier(masterKey)
+  try {
+    const keyVerifier = await generateKeyVerifier(masterKey)
 
-  return {
-    masterKey,
-    kdfSalt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
-    keyVerifier
+    return {
+      masterKey,
+      kdfSalt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
+      keyVerifier
+    }
+  } catch (error) {
+    sodium.memzero(masterKey)
+    throw error
   }
 }
 

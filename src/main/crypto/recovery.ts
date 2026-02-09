@@ -2,10 +2,15 @@ import * as bip39 from 'bip39'
 
 import type { RecoveryPhraseResult } from '@shared/contracts/crypto'
 
+// Callers MUST call secureCleanup(result.seed) after using the seed for key derivation.
+// The seed contains sensitive key material that should not persist in memory.
 export const generateRecoveryPhrase = async (): Promise<RecoveryPhraseResult> => {
   const phrase = bip39.generateMnemonic(256)
   const seedBuffer = await bip39.mnemonicToSeed(phrase)
-  const seed = new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength)
+  const seed = new Uint8Array(seedBuffer.length)
+  seed.set(new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength))
+  const original = new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength)
+  original.fill(0)
 
   return { phrase, seed }
 }

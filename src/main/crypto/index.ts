@@ -28,13 +28,15 @@ export const secureCleanup = (...buffers: Uint8Array[]): void => {
 }
 
 export const constantTimeEqual = (a: Uint8Array, b: Uint8Array): boolean => {
-  if (a.length !== b.length) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('[crypto] constantTimeEqual called with different-length inputs')
-    }
-    return false
-  }
-  return sodium.memcmp(a, b)
+  const lengthsMatch = a.length === b.length
+  const maxLen = Math.max(a.length, b.length)
+  const paddedA = new Uint8Array(maxLen)
+  const paddedB = new Uint8Array(maxLen)
+  paddedA.set(a)
+  paddedB.set(b)
+
+  const contentsMatch = sodium.memcmp(paddedA, paddedB)
+  return lengthsMatch && contentsMatch
 }
 
 export const initCrypto = async (): Promise<void> => {
