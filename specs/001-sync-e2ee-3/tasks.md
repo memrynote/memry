@@ -57,7 +57,7 @@
 
 All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
-- [ ] T014 Create D1 users table schema in sync-server/schema/d1.sql:
+- [x] T014 Create D1 users table schema in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - email (TEXT, UNIQUE, NOT NULL)
   - email_verified (INTEGER, NOT NULL, DEFAULT 0)
@@ -72,7 +72,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - updated_at (INTEGER, NOT NULL)
   - INDEX: idx_users_email ON users(email)
   - UNIQUE INDEX: idx_users_provider ON users(auth_provider, auth_provider_id) WHERE auth_provider IS NOT NULL
-- [ ] T014a Create D1 otp_codes table schema in sync-server/schema/d1.sql:
+- [x] T014a Create D1 otp_codes table schema in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - email (TEXT, NOT NULL)
   - code_hash (TEXT, NOT NULL)
@@ -82,7 +82,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - created_at (INTEGER, NOT NULL)
   - INDEX: idx_otp_email ON otp_codes(email)
   - INDEX: idx_otp_expires ON otp_codes(expires_at)
-- [ ] T014b Create D1 refresh_tokens table schema in sync-server/schema/d1.sql:
+- [x] T014b Create D1 refresh_tokens table schema in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - device_id (TEXT, NOT NULL, FK → devices.id ON DELETE CASCADE)
@@ -93,7 +93,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - created_at (INTEGER, NOT NULL)
   - INDEX: idx_refresh_user ON refresh_tokens(user_id)
   - INDEX: idx_refresh_device ON refresh_tokens(device_id)
-- [ ] T014c Create D1 user_identities table for OAuth/OTP linking in sync-server/schema/d1.sql:
+- [x] T014c Create D1 user_identities table for OAuth/OTP linking in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - provider (TEXT, NOT NULL) -- 'email', 'google'
@@ -101,7 +101,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - created_at (INTEGER, NOT NULL)
   - UNIQUE: (provider, provider_id)
   - INDEX: idx_identity_user ON user_identities(user_id)
-- [ ] T015 Create D1 devices table schema in sync-server/schema/d1.sql:
+- [x] T015 Create D1 devices table schema in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - name (TEXT, NOT NULL)
@@ -117,7 +117,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - INDEX: idx_devices_user ON devices(user_id)
   - INDEX: idx_devices_user_active ON devices(user_id) WHERE revoked_at IS NULL
   - UNIQUE: (user_id, auth_public_key)
-- [ ] T016 Create D1 linking_sessions table schema in sync-server/schema/d1.sql:
+- [x] T016 Create D1 linking_sessions table schema in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - initiator_device_id (TEXT, NOT NULL, FK → devices.id)
@@ -134,7 +134,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - INDEX: idx_linking_user ON linking_sessions(user_id)
   - INDEX: idx_linking_expires ON linking_sessions(expires_at)
   - INDEX: idx_linking_status ON linking_sessions(status) WHERE status IN ('pending', 'scanned')
-- [ ] T017 Create D1 sync_items table schema in sync-server/schema/d1.sql (⚠️ R2-backed: encrypted payloads stored in R2 via blob_key, NOT inline in D1, to avoid 1MB row limit):
+- [x] T017 Create D1 sync_items table schema in sync-server/schema/d1.sql (⚠️ R2-backed: encrypted payloads stored in R2 via blob_key, NOT inline in D1, to avoid 1MB row limit):
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - item_type (TEXT, NOT NULL) -- 'task', 'note', 'inbox', 'filter', 'project', 'settings', 'journal'
@@ -156,23 +156,23 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - INDEX: idx_sync_user_cursor ON sync_items(user_id, server_cursor)
   - INDEX: idx_sync_type ON sync_items(user_id, item_type)
   - INDEX: idx_sync_deleted ON sync_items(user_id, deleted_at)
-- [ ] T017a Create D1 server_cursor_sequence table for atomic cursor generation in sync-server/schema/d1.sql:
+- [x] T017a Create D1 server_cursor_sequence table for atomic cursor generation in sync-server/schema/d1.sql:
   - PK: user_id (TEXT, FK → users.id)
   - current_cursor (INTEGER, NOT NULL, DEFAULT 0)
-- [ ] T017b Create D1 device_sync_state table in sync-server/schema/d1.sql:
+- [x] T017b Create D1 device_sync_state table in sync-server/schema/d1.sql:
   - PK: (device_id, user_id)
   - device_id (TEXT, NOT NULL, FK → devices.id ON DELETE CASCADE)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - last_cursor_seen (INTEGER, NOT NULL, DEFAULT 0)
   - updated_at (INTEGER, NOT NULL)
-- [ ] T017c Create D1 rate_limits table in sync-server/schema/d1.sql:
+- [x] T017c Create D1 rate_limits table in sync-server/schema/d1.sql:
   - PK: id (TEXT)
   - key (TEXT, NOT NULL, UNIQUE) -- e.g., 'otp:email@example.com'
   - count (INTEGER, NOT NULL, DEFAULT 0)
   - window_start (INTEGER, NOT NULL)
   - INDEX: idx_rate_key ON rate_limits(key)
 - [ ] T017d Run D1 dev schema migration via wrangler d1 execute sync-db --local --file=sync-server/schema/d1.sql
-- [ ] T017e Create D1 crdt_updates table schema in sync-server/schema/d1.sql:
+- [x] T017e Create D1 crdt_updates table schema in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - note_id (TEXT, NOT NULL)
@@ -181,7 +181,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - created_at (INTEGER, NOT NULL)
   - UNIQUE: (user_id, note_id, sequence_num)
   - INDEX: idx_crdt_updates_note ON crdt_updates(user_id, note_id, sequence_num)
-- [ ] T017f Create D1 crdt_snapshots table schema in sync-server/schema/d1.sql:
+- [x] T017f Create D1 crdt_snapshots table schema in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - note_id (TEXT, NOT NULL)
@@ -191,8 +191,8 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - created_at (INTEGER, NOT NULL)
   - UNIQUE: (user_id, note_id)
   - INDEX: idx_crdt_snapshots_note ON crdt_snapshots(user_id, note_id)
-- [ ] T017g Define R2 object layout in sync-server/src/services/blob.ts: {user_id}/items/{item_id} for sync item blobs, {user_id}/crdt/{note_id}/snapshot for CRDT snapshots, {user_id}/attachments/{attachment_id}/chunks/{index} for attachment chunks
-- [ ] T017h Create D1 upload_sessions table schema in sync-server/schema/d1.sql (required for resumable chunked uploads):
+- [x] T017g Define R2 object layout in sync-server/src/services/blob.ts: {user_id}/items/{item_id} for sync item blobs, {user_id}/crdt/{note_id}/snapshot for CRDT snapshots, {user_id}/attachments/{attachment_id}/chunks/{index} for attachment chunks
+- [x] T017h Create D1 upload_sessions table schema in sync-server/schema/d1.sql (required for resumable chunked uploads):
   - PK: id (TEXT, UUID)
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
   - attachment_id (TEXT, NOT NULL)
@@ -204,7 +204,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - created_at (INTEGER, NOT NULL)
   - INDEX: idx_upload_user ON upload_sessions(user_id)
   - INDEX: idx_upload_expires ON upload_sessions(expires_at)
-- [ ] T017i Create D1 blob_chunks dedup index table in sync-server/schema/d1.sql:
+- [x] T017i Create D1 blob_chunks dedup index table in sync-server/schema/d1.sql:
   - PK: id (TEXT, UUID)
   - hash (TEXT, NOT NULL) -- SHA-256 of encrypted chunk
   - user_id (TEXT, NOT NULL, FK → users.id ON DELETE CASCADE)
@@ -214,7 +214,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
   - created_at (INTEGER, NOT NULL)
   - UNIQUE: (user_id, hash)
   - INDEX: idx_blob_chunks_hash ON blob_chunks(hash)
-- [ ] T018 Add local sync tables to src/shared/db/schema/data-schema.ts with Drizzle ORM definitions:
+- [x] T018 Add local sync tables to src/shared/db/schema/data-schema.ts with Drizzle ORM definitions:
   - T018a [P] Add devices table (id, name, platform, osVersion, appVersion, linkedAt, lastSyncAt, isCurrentDevice)
   - T018b [P] Add sync_queue table (id, type, itemId, operation, payload, priority, attempts, lastAttempt, errorMessage, createdAt)
   - T018c [P] Add sync_state key-value table (key, value, updatedAt) for tracking cursor, status, device clock
@@ -223,79 +223,79 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Crypto Module Foundation
 
-- [ ] T020 [P] Implement HKDF key derivation with context strings in src/main/crypto/keys.ts
-- [ ] T020a [P] Implement canonical CBOR encoder helper in src/main/crypto/cbor.ts (cborg) - import field ordering from T020b
-- [ ] T020b [P] Create shared CBOR field ordering contract in src/shared/contracts/cbor-ordering.ts defining exact field order for all signed payloads (SyncItem, LinkingProof, etc.) - this is the SINGLE SOURCE OF TRUTH for both client and server
-- [ ] T021 [P] Implement BIP39 recovery phrase generation in src/main/crypto/recovery.ts
-- [ ] T022 [P] Implement BIP39 recovery phrase validation in src/main/crypto/recovery.ts
-- [ ] T023 Implement Argon2id master key derivation in src/main/crypto/keys.ts
-- [ ] T024 [P] Implement XChaCha20-Poly1305 encryption in src/main/crypto/encryption.ts
-- [ ] T024c [P] Implement per-item file key generation (32-byte random) in src/main/crypto/keys.ts
-- [ ] T024d [P] Implement file key wrapping (encrypt file key with vault key) and unwrapping in src/main/crypto/encryption.ts
-- [ ] T025 [P] Implement XChaCha20-Poly1305 decryption in src/main/crypto/encryption.ts
-- [ ] T026 [P] Implement Ed25519 signing over canonical CBOR in src/main/crypto/signatures.ts
-- [ ] T027 [P] Implement Ed25519 signature verification over canonical CBOR in src/main/crypto/signatures.ts
-- [ ] T028 Implement keychain storage with keytar in src/main/crypto/keychain.ts
-- [ ] T028a Implement device signing keypair generation + storage in src/main/crypto/keys.ts and src/main/crypto/keychain.ts
-- [ ] T028b Implement device signing public key retrieval for registration in src/main/crypto/keys.ts
-- [ ] T029 Create crypto module index exports in src/main/crypto/index.ts
-- [ ] T029a [P] Implement secure memory cleanup (sodium.memzero) for sensitive key material in src/main/crypto/index.ts
-- [ ] T029b [P] Implement nonce generation utility (24-byte random via sodium.randombytes_buf) with length assertion in src/main/crypto/encryption.ts; document nonce reuse prohibition as code-level invariant. All XChaCha20-Poly1305 operations MUST use this utility
-- [ ] T029c [P] Implement constant-time comparison utility using sodium.memcmp in src/main/crypto/index.ts; export for use in all hash/HMAC/signature comparisons. Blocking prerequisite for T043, T044c, T110a, T124, T089b
-- [ ] T029d Implement try/finally key material cleanup pattern for all crypto operations in src/main/crypto/encryption.ts and src/main/crypto/keys.ts - ensures sodium.memzero is called on key buffers even when exceptions occur
+- [x] T020 [P] Implement HKDF key derivation with context strings in src/main/crypto/keys.ts
+- [x] T020a [P] Implement canonical CBOR encoder helper in src/main/crypto/cbor.ts (cborg) - import field ordering from T020b
+- [x] T020b [P] Create shared CBOR field ordering contract in src/shared/contracts/cbor-ordering.ts defining exact field order for all signed payloads (SyncItem, LinkingProof, etc.) - this is the SINGLE SOURCE OF TRUTH for both client and server
+- [x] T021 [P] Implement BIP39 recovery phrase generation in src/main/crypto/recovery.ts
+- [x] T022 [P] Implement BIP39 recovery phrase validation in src/main/crypto/recovery.ts
+- [x] T023 Implement Argon2id master key derivation in src/main/crypto/keys.ts
+- [x] T024 [P] Implement XChaCha20-Poly1305 encryption in src/main/crypto/encryption.ts
+- [x] T024c [P] Implement per-item file key generation (32-byte random) in src/main/crypto/keys.ts
+- [x] T024d [P] Implement file key wrapping (encrypt file key with vault key) and unwrapping in src/main/crypto/encryption.ts
+- [x] T025 [P] Implement XChaCha20-Poly1305 decryption in src/main/crypto/encryption.ts
+- [x] T026 [P] Implement Ed25519 signing over canonical CBOR in src/main/crypto/signatures.ts
+- [x] T027 [P] Implement Ed25519 signature verification over canonical CBOR in src/main/crypto/signatures.ts
+- [x] T028 Implement keychain storage with keytar in src/main/crypto/keychain.ts
+- [x] T028a Implement device signing keypair generation + storage in src/main/crypto/keys.ts and src/main/crypto/keychain.ts
+- [x] T028b Implement device signing public key retrieval for registration in src/main/crypto/keys.ts
+- [x] T029 Create crypto module index exports in src/main/crypto/index.ts
+- [x] T029a [P] Implement secure memory cleanup (sodium.memzero) for sensitive key material in src/main/crypto/index.ts
+- [x] T029b [P] Implement nonce generation utility (24-byte random via sodium.randombytes_buf) with length assertion in src/main/crypto/encryption.ts; document nonce reuse prohibition as code-level invariant. All XChaCha20-Poly1305 operations MUST use this utility
+- [x] T029c [P] Implement constant-time comparison utility using sodium.memcmp in src/main/crypto/index.ts; export for use in all hash/HMAC/signature comparisons. Blocking prerequisite for T043, T044c, T110a, T124, T089b
+- [x] T029d Implement try/finally key material cleanup pattern for all crypto operations in src/main/crypto/encryption.ts and src/main/crypto/keys.ts - ensures sodium.memzero is called on key buffers even when exceptions occur
 
 ### Server Foundation
 
-- [ ] T030 Set up Hono.js app entry point in sync-server/src/index.ts
-- [ ] T031 [P] Implement JWT validation middleware in sync-server/src/middleware/auth.ts
-- [ ] T031a [P] Implement refresh token rotation on use (issue new refresh token, invalidate old) in sync-server/src/services/auth.ts
-- [ ] T031b [P] Implement token revocation on device removal (invalidate all refresh tokens for device) in sync-server/src/services/auth.ts
-- [ ] T032 [P] Implement rate limiting middleware in sync-server/src/middleware/rate-limit.ts
-- [ ] T033 Create base error handling in sync-server/src/lib/errors.ts
-- [ ] T033a [P] Implement canonical CBOR encoder helper in sync-server/src/lib/cbor.ts - import field ordering from shared contract (src/shared/contracts/cbor-ordering.ts copied to sync-server/src/contracts/)
-- [ ] T033b [P] Implement atomic server_cursor increment in sync-server/src/services/cursor.ts using D1 transaction: UPDATE server_cursor_sequence SET current_cursor = current_cursor + 1 WHERE user_id = ? RETURNING current_cursor
-- [ ] T034 [P] Set up Resend email service in sync-server/src/services/email.ts
-- [ ] T034a Implement OTP cleanup job (delete expired codes) in sync-server/src/services/cleanup.ts
-- [ ] T034b Implement linking session cleanup job (delete sessions with expires_at < now) in sync-server/src/services/cleanup.ts
-- [ ] T034c [P] Expand JWT validation middleware to pin algorithm (EdDSA), verify iss/aud/exp/sub claims, validate device_id claim against registered non-revoked devices, and reject alg:none in sync-server/src/middleware/auth.ts
-- [ ] T034d [P] Define JWT signing algorithm (EdDSA recommended) and key generation procedure in sync-server/src/services/auth.ts; document key rotation strategy for JWT signing keys
-- [ ] T034e [P] Add security response headers middleware (Strict-Transport-Security, X-Content-Type-Options: nosniff, X-Frame-Options: DENY, Cache-Control: no-store for token/encrypted responses) in sync-server/src/middleware/security.ts
-- [ ] T034f [P] Configure CORS middleware with explicit allow-origin list (no wildcards) in sync-server/src/index.ts, restrict allowed methods and headers
-- [ ] T034g [P] Create blob storage service with R2 integration (put, get, delete, generateKey) in sync-server/src/services/blob.ts - required by R2-backed sync_items
-- [ ] T034h [P] Create device service (list, get, update, revoke) in sync-server/src/services/device.ts
+- [x] T030 Set up Hono.js app entry point in sync-server/src/index.ts
+- [x] T031 [P] Implement JWT validation middleware in sync-server/src/middleware/auth.ts
+- [x] T031a [P] Implement refresh token rotation on use (issue new refresh token, invalidate old) in sync-server/src/services/auth.ts
+- [x] T031b [P] Implement token revocation on device removal (invalidate all refresh tokens for device) in sync-server/src/services/auth.ts
+- [x] T032 [P] Implement rate limiting middleware in sync-server/src/middleware/rate-limit.ts
+- [x] T033 Create base error handling in sync-server/src/lib/errors.ts
+- [x] T033a [P] Implement canonical CBOR encoder helper in sync-server/src/lib/cbor.ts - import field ordering from shared contract (src/shared/contracts/cbor-ordering.ts copied to sync-server/src/contracts/)
+- [x] T033b [P] Implement atomic server_cursor increment in sync-server/src/services/cursor.ts using D1 transaction: UPDATE server_cursor_sequence SET current_cursor = current_cursor + 1 WHERE user_id = ? RETURNING current_cursor
+- [x] T034 [P] Set up Resend email service in sync-server/src/services/email.ts
+- [x] T034a Implement OTP cleanup job (delete expired codes) in sync-server/src/services/cleanup.ts
+- [x] T034b Implement linking session cleanup job (delete sessions with expires_at < now) in sync-server/src/services/cleanup.ts
+- [x] T034c [P] Expand JWT validation middleware to pin algorithm (EdDSA), verify iss/aud/exp/sub claims, validate device_id claim against registered non-revoked devices, and reject alg:none in sync-server/src/middleware/auth.ts
+- [x] T034d [P] Define JWT signing algorithm (EdDSA recommended) and key generation procedure in sync-server/src/services/auth.ts; document key rotation strategy for JWT signing keys
+- [x] T034e [P] Add security response headers middleware (Strict-Transport-Security, X-Content-Type-Options: nosniff, X-Frame-Options: DENY, Cache-Control: no-store for token/encrypted responses) in sync-server/src/middleware/security.ts
+- [x] T034f [P] Configure CORS middleware with explicit allow-origin list (no wildcards) in sync-server/src/index.ts, restrict allowed methods and headers
+- [x] T034g [P] Create blob storage service with R2 integration (put, get, delete, generateKey) in sync-server/src/services/blob.ts - required by R2-backed sync_items
+- [x] T034h [P] Create device service (list, get, update, revoke) in sync-server/src/services/device.ts
 
 ### IPC Foundation
 
-- [ ] T035 Register sync IPC handlers entry point in src/main/ipc/sync-handlers.ts
-- [ ] T036 [P] Register crypto IPC handlers entry point in src/main/ipc/crypto-handlers.ts
-- [ ] T036a [P] Implement encrypt-item IPC handler in src/main/ipc/crypto-handlers.ts
-- [ ] T036b [P] Implement decrypt-item IPC handler in src/main/ipc/crypto-handlers.ts
-- [ ] T036c [P] Implement verify-signature IPC handler in src/main/ipc/crypto-handlers.ts
-- [ ] T037 Update src/main/ipc/index.ts to register sync and crypto handlers
-- [ ] T038 Expose sync API methods in src/preload/index.ts
-- [ ] T039 Update preload types in src/preload/index.d.ts for sync/crypto APIs
+- [x] T035 Register sync IPC handlers entry point in src/main/ipc/sync-handlers.ts
+- [x] T036 [P] Register crypto IPC handlers entry point in src/main/ipc/crypto-handlers.ts
+- [x] T036a [P] Implement encrypt-item IPC handler in src/main/ipc/crypto-handlers.ts
+- [x] T036b [P] Implement decrypt-item IPC handler in src/main/ipc/crypto-handlers.ts
+- [x] T036c [P] Implement verify-signature IPC handler in src/main/ipc/crypto-handlers.ts
+- [x] T037 Update src/main/ipc/index.ts to register sync and crypto handlers
+- [x] T038 Expose sync API methods in src/preload/index.ts
+- [x] T039 Update preload types in src/preload/index.d.ts for sync/crypto APIs
 
 ### Vector Clock Foundation
 
-- [ ] T040 Implement vector clock data structure in src/main/sync/vector-clock.ts
-- [ ] T041 Implement vector clock operations (increment, merge, compare) in src/main/sync/vector-clock.ts
-- [ ] T041a Define HKDF context string constants ("memry-vault-key-v1", "memry-signing-key-v1", "memry-verify-key-v1") in src/main/crypto/keys.ts
-- [ ] T041b Define Argon2id parameter constants (memory: 65536KB, iterations: 3, parallelism: 4) in src/main/crypto/keys.ts
-- [ ] T041c Implement rate limit state persistence using D1 rate_limits table in sync-server/src/middleware/rate-limit.ts
-- [ ] T041d Create typed error codes enum (AUTH_*, SYNC_*, CRYPTO_*) in sync-server/src/lib/errors.ts
-- [ ] T041e Implement memry:// deep link protocol handler for OAuth callbacks in src/main/index.ts
-- [ ] T041f Create canonical CBOR field ordering documentation (reference src/shared/contracts/cbor-ordering.ts) in src/main/crypto/cbor.ts
-- [ ] T041g Define sync cursor types and signature metadata in src/shared/contracts/sync-api.ts
+- [x] T040 Implement vector clock data structure in src/main/sync/vector-clock.ts
+- [x] T041 Implement vector clock operations (increment, merge, compare) in src/main/sync/vector-clock.ts
+- [x] T041a Define HKDF context string constants ("memry-vault-key-v1", "memry-signing-key-v1", "memry-verify-key-v1") in src/main/crypto/keys.ts
+- [x] T041b Define Argon2id parameter constants (memory: 65536KB, iterations: 3, parallelism: 4) in src/main/crypto/keys.ts
+- [x] T041c Implement rate limit state persistence using D1 rate_limits table in sync-server/src/middleware/rate-limit.ts
+- [x] T041d Create typed error codes enum (AUTH_*, SYNC_*, CRYPTO_*) in sync-server/src/lib/errors.ts
+- [x] T041e Implement memry:// deep link protocol handler for OAuth callbacks in src/main/index.ts
+- [x] T041f Create canonical CBOR field ordering documentation (reference src/shared/contracts/cbor-ordering.ts) in src/main/crypto/cbor.ts
+- [x] T041g Define sync cursor types and signature metadata in src/shared/contracts/sync-api.ts
 
 ### Shared Contracts
 
-- [ ] T041h [P] Create Zod schemas for auth endpoints (request-otp, verify-otp, device-register) in src/shared/contracts/auth-api.ts
-- [ ] T041i [P] Create Zod schemas for sync endpoints (push, pull, changes, status) in src/shared/contracts/sync-api.ts
-- [ ] T041j [P] Create Zod schemas for blob endpoints (upload-init, chunk-upload, complete) in src/shared/contracts/blob-api.ts
-- [ ] T041k [P] Create Zod schemas for linking endpoints (initiate, scan, approve, complete) in src/shared/contracts/linking-api.ts
-- [ ] T041l Copy shared contracts to sync-server/src/contracts/ for server-side validation (build step or symlink)
-- [ ] T041m [P] Configure LinkingSession Durable Object binding in sync-server/wrangler.toml (alongside UserSyncState DO from T093)
-- [ ] T041n [P] Implement upload session cleanup job (delete sessions with expires_at < now) in sync-server/src/services/cleanup.ts
+- [x] T041h [P] Create Zod schemas for auth endpoints (request-otp, verify-otp, device-register) in src/shared/contracts/auth-api.ts
+- [x] T041i [P] Create Zod schemas for sync endpoints (push, pull, changes, status) in src/shared/contracts/sync-api.ts
+- [x] T041j [P] Create Zod schemas for blob endpoints (upload-init, chunk-upload, complete) in src/shared/contracts/blob-api.ts
+- [x] T041k [P] Create Zod schemas for linking endpoints (initiate, scan, approve, complete) in src/shared/contracts/linking-api.ts
+- [x] T041l Copy shared contracts to sync-server/src/contracts/ for server-side validation (build step or symlink)
+- [x] T041m [P] Configure LinkingSession Durable Object binding in sync-server/wrangler.toml (alongside UserSyncState DO from T093)
+- [x] T041n [P] Implement upload session cleanup job (delete sessions with expires_at < now) in sync-server/src/services/cleanup.ts
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
