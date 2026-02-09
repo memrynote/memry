@@ -29,7 +29,7 @@ const signToken = async (
     .setExpirationTime(expiry)
     .sign(privateKey)
 
-export const issueTokens = async (
+const generateTokens = async (
   userId: string,
   deviceId: string,
   privateKeyPem: string
@@ -49,6 +49,28 @@ export const issueTokens = async (
   )
 
   return { accessToken, refreshToken }
+}
+
+export const issueTokens = async (
+  db: D1Database,
+  userId: string,
+  deviceId: string,
+  privateKeyPem: string
+): Promise<{ accessToken: string; refreshToken: string }> => {
+  const tokens = await generateTokens(userId, deviceId, privateKeyPem)
+
+  const tokenHash = await hashToken(tokens.refreshToken)
+  const nowEpoch = Math.floor(Date.now() / 1000)
+  const expiresAt = nowEpoch + 7 * 24 * 60 * 60
+
+  await db
+    .prepare(
+      'INSERT INTO refresh_tokens (id, user_id, device_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+    )
+    .bind(crypto.randomUUID(), userId, deviceId, tokenHash, expiresAt, nowEpoch)
+    .run()
+
+  return tokens
 }
 
 export const rotateRefreshToken = async (
@@ -77,18 +99,20 @@ export const rotateRefreshToken = async (
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid refresh token', 401)
   }
 
-  await db.prepare('UPDATE refresh_tokens SET revoked = 1 WHERE id = ?').bind(existing.id).run()
-
-  const tokens = await issueTokens(userId, deviceId, privateKeyPem)
+  const tokens = await generateTokens(userId, deviceId, privateKeyPem)
   const newHash = await hashToken(tokens.refreshToken)
   const expiresAt = nowEpoch + 7 * 24 * 60 * 60
 
-  await db
-    .prepare(
-      'INSERT INTO refresh_tokens (id, user_id, device_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)'
-    )
-    .bind(crypto.randomUUID(), userId, deviceId, newHash, expiresAt, nowEpoch)
-    .run()
+  await db.batch([
+    db
+      .prepare('UPDATE refresh_tokens SET revoked = 1, rotated_at = ? WHERE id = ?')
+      .bind(nowEpoch, existing.id),
+    db
+      .prepare(
+        'INSERT INTO refresh_tokens (id, user_id, device_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+      )
+      .bind(crypto.randomUUID(), userId, deviceId, newHash, expiresAt, nowEpoch)
+  ])
 
   return tokens
 }

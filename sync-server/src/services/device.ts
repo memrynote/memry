@@ -1,3 +1,6 @@
+import { AppError, ErrorCodes } from '../lib/errors'
+import { revokeDeviceTokens } from './auth'
+
 export interface Device {
   id: string
   user_id: string
@@ -64,9 +67,24 @@ export const updateDevice = async (
     .run()
 }
 
-export const revokeDevice = async (db: D1Database, deviceId: string): Promise<void> => {
+export const revokeDevice = async (
+  db: D1Database,
+  deviceId: string,
+  userId: string
+): Promise<void> => {
+  const device = await db
+    .prepare('SELECT id FROM devices WHERE id = ? AND user_id = ?')
+    .bind(deviceId, userId)
+    .first<{ id: string }>()
+
+  if (!device) {
+    throw new AppError(ErrorCodes.AUTH_DEVICE_NOT_FOUND, 'Device not found', 404)
+  }
+
   await db
     .prepare('UPDATE devices SET revoked_at = ? WHERE id = ?')
     .bind(Math.floor(Date.now() / 1000), deviceId)
     .run()
+
+  await revokeDeviceTokens(db, deviceId)
 }
