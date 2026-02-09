@@ -14,6 +14,16 @@ database_id = "TODO-create-d1-database"
 binding = "STORAGE"
 bucket_name = "memry-encrypted-blobs"
 
+[durable_objects]
+bindings = [
+  { name = "USER_SYNC_STATE", class_name = "UserSyncState" },
+  { name = "LINKING_SESSION", class_name = "LinkingSession" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["UserSyncState", "LinkingSession"]
+
 [env.staging]
 name = "memry-sync-server-staging"
 [env.staging.vars]
@@ -29,6 +39,12 @@ database_id = "TODO-create-d1-database-staging"
 binding = "STORAGE"
 bucket_name = "memry-encrypted-blobs-staging"
 
+[env.staging.durable_objects]
+bindings = [
+  { name = "USER_SYNC_STATE", class_name = "UserSyncState" },
+  { name = "LINKING_SESSION", class_name = "LinkingSession" }
+]
+
 [env.production]
 name = "memry-sync-server-production"
 [env.production.vars]
@@ -43,3 +59,9 @@ database_id = "TODO-create-d1-database-production"
 [[env.production.r2_buckets]]
 binding = "STORAGE"
 bucket_name = "memry-encrypted-blobs-production"
+
+[env.production.durable_objects]
+bindings = [
+  { name = "USER_SYNC_STATE", class_name = "UserSyncState" },
+  { name = "LINKING_SESSION", class_name = "LinkingSession" }
+]
