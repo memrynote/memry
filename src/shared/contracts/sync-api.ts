@@ -257,6 +257,36 @@ export const DeviceSyncStateSchema = z.object({
 })
 
 // ============================================================================
+// Cursor & Signature Metadata (T041g)
+// ============================================================================
+
+export interface CursorPosition {
+  cursor: number
+  deviceId: string
+  updatedAt: number
+}
+
+export interface SignatureMetadata {
+  signerDeviceId: string
+  signerPublicKey: string
+  signedAt: number
+  algorithm: 'ed25519'
+}
+
+export const CursorPositionSchema = z.object({
+  cursor: z.number().int().min(0),
+  deviceId: z.string().min(1),
+  updatedAt: z.number().int().min(0)
+})
+
+export const SignatureMetadataSchema = z.object({
+  signerDeviceId: z.string().min(1),
+  signerPublicKey: z.string().min(1),
+  signedAt: z.number().int().min(0),
+  algorithm: z.literal('ed25519')
+})
+
+// ============================================================================
 // Type Inference
 // ============================================================================
 
@@ -272,3 +302,5 @@ export type ChangesResponseInput = z.infer<typeof ChangesResponseSchema>
 export type SyncStatusInput = z.infer<typeof SyncStatusSchema>
 export type ConflictResponseInput = z.infer<typeof ConflictResponseSchema>
 export type DeviceSyncStateInput = z.infer<typeof DeviceSyncStateSchema>
+export type CursorPositionInput = z.infer<typeof CursorPositionSchema>
+export type SignatureMetadataInput = z.infer<typeof SignatureMetadataSchema>
