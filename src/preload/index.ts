@@ -1340,7 +1340,7 @@ const api = {
 
   // Sync Setup API
   syncSetup: {
-    setupFirstDevice: (input: { provider: string; oauthToken?: string }) =>
+    setupFirstDevice: (input: { provider: 'google'; oauthToken: string }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.SETUP_FIRST_DEVICE, input),
     confirmRecoveryPhrase: (input: { confirmed: boolean }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, input)
@@ -1349,9 +1349,9 @@ const api = {
   // Device Linking API
   syncLinking: {
     generateLinkingQr: () => ipcRenderer.invoke(SYNC_CHANNELS.GENERATE_LINKING_QR),
-    linkViaQr: (input: { qrData: string; provider: string; oauthToken?: string }) =>
+    linkViaQr: (input: { qrData: string; provider: string; oauthToken: string }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.LINK_VIA_QR, input),
-    linkViaRecovery: (input: { recoveryPhrase: string; provider: string; oauthToken?: string }) =>
+    linkViaRecovery: (input: { recoveryPhrase: string; provider: string; oauthToken: string }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.LINK_VIA_RECOVERY, input),
     approveLinking: (input: { sessionId: string }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.APPROVE_LINKING, input)
@@ -1381,31 +1381,34 @@ const api = {
   crypto: {
     encryptItem: (input: {
       itemId: string
-      type: string
-      operation: string
-      content: unknown
+      type: 'note' | 'task' | 'project' | 'settings'
+      content: Record<string, unknown>
+      operation?: 'create' | 'update' | 'delete'
+      deletedAt?: number
       metadata?: Record<string, unknown>
     }) => ipcRenderer.invoke(SYNC_CHANNELS.ENCRYPT_ITEM, input),
     decryptItem: (input: {
       itemId: string
-      type: string
-      operation: string
-      encryptedData: string
-      dataNonce: string
+      type: 'note' | 'task' | 'project' | 'settings'
       encryptedKey: string
       keyNonce: string
+      encryptedData: string
+      dataNonce: string
       signature: string
+      operation?: 'create' | 'update' | 'delete'
+      deletedAt?: number
       metadata?: Record<string, unknown>
     }) => ipcRenderer.invoke(SYNC_CHANNELS.DECRYPT_ITEM, input),
     verifySignature: (input: {
       itemId: string
-      type: string
-      operation: string
-      encryptedData: string
-      dataNonce: string
+      type: 'note' | 'task' | 'project' | 'settings'
       encryptedKey: string
       keyNonce: string
+      encryptedData: string
+      dataNonce: string
       signature: string
+      operation?: 'create' | 'update' | 'delete'
+      deletedAt?: number
       metadata?: Record<string, unknown>
     }) => ipcRenderer.invoke(SYNC_CHANNELS.VERIFY_SIGNATURE, input),
     rotateKeys: (input: { confirm: boolean }) =>

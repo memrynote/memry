@@ -304,3 +304,16 @@ export function registerTagsHandlers(): void {
     })
   )
 }
+
+/**
+ * Unregister all tags IPC handlers.
+ */
+export function unregisterTagsHandlers(): void {
+  ipcMain.removeHandler(TagsChannels.invoke.GET_NOTES_BY_TAG)
+  ipcMain.removeHandler(TagsChannels.invoke.PIN_NOTE_TO_TAG)
+  ipcMain.removeHandler(TagsChannels.invoke.UNPIN_NOTE_FROM_TAG)
+  ipcMain.removeHandler(TagsChannels.invoke.RENAME_TAG)
+  ipcMain.removeHandler(TagsChannels.invoke.UPDATE_TAG_COLOR)
+  ipcMain.removeHandler(TagsChannels.invoke.DELETE_TAG)
+  ipcMain.removeHandler(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE)
+}
