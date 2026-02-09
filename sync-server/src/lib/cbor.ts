@@ -1,6 +1,6 @@
 import { encode, decode } from 'cborg'
 
-import { CBOR_FIELD_ORDER } from '../contracts/cbor-ordering'
+import { CBOR_FIELD_ORDER, type CborPayloadType } from '../contracts/cbor-ordering'
 
 export const encodeCbor = (
   data: Record<string, unknown>,
@@ -25,7 +25,9 @@ export const encodeCbor = (
   return encode(new Map(ordered))
 }
 
-export const encodeSignaturePayload = (payload: Record<string, unknown>): Uint8Array =>
-  encodeCbor(payload, CBOR_FIELD_ORDER.SYNC_ITEM)
+export const encodeSignaturePayload = (
+  payload: Record<string, unknown>,
+  payloadType: CborPayloadType = 'SYNC_ITEM'
+): Uint8Array => encodeCbor(payload, CBOR_FIELD_ORDER[payloadType])
 
 export const decodePayload = <T = unknown>(data: Uint8Array): T => decode(data) as T

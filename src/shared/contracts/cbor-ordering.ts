@@ -11,8 +11,10 @@ export const CBOR_FIELD_ORDER = {
     'deletedAt',
     'metadata'
   ] as const,
+  TOMBSTONE: ['id', 'type', 'deletedAt', 'deviceId'] as const,
   LINKING_PROOF: ['sessionId', 'devicePublicKey', 'timestamp'] as const,
   KEY_CONFIRM: ['sessionId', 'encryptedMasterKey', 'timestamp'] as const
 } as const
 
+export type CborPayloadType = keyof typeof CBOR_FIELD_ORDER
 export type CborFieldOrder = typeof CBOR_FIELD_ORDER
