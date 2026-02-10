@@ -27,6 +27,12 @@ interface AuthState {
   recoveryPhrase: string | null
 }
 
+export interface VerifyOtpResult {
+  deviceId: string
+  needsRecoverySetup: boolean
+  recoveryPhrase: string | null
+}
+
 type AuthAction =
   | { type: 'CHECK_START' }
   | { type: 'CHECK_AUTHENTICATED'; deviceId: string }
@@ -41,7 +47,7 @@ type AuthAction =
   | { type: 'RECOVERY_CONFIRMED' }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
-  | { type: 'LOGOUT' }
+  | { type: 'RESET_AUTH' }
   | { type: 'SET_AUTHENTICATING' }
 
 const initialState: AuthState = {
@@ -89,7 +95,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         error: null,
         status: state.status === 'error' ? 'unauthenticated' : state.status
       }
-    case 'LOGOUT':
+    case 'RESET_AUTH':
       return { ...initialState, status: 'unauthenticated' }
     default:
       return state
@@ -99,11 +105,11 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 interface AuthContextValue {
   state: AuthState
   requestOtp: (email: string) => Promise<{ expiresIn?: number }>
-  verifyOtp: (code: string) => Promise<void>
+  verifyOtp: (code: string) => Promise<VerifyOtpResult>
   resendOtp: () => Promise<{ expiresIn?: number }>
   confirmRecoveryPhrase: () => Promise<void>
   clearError: () => void
-  logout: () => void
+  resetAuthState: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -143,7 +149,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
 
   useEffect(() => {
     const unsubscribe = window.api.onSessionExpired(() => {
-      dispatch({ type: 'LOGOUT' })
+      dispatch({ type: 'RESET_AUTH' })
     })
     return unsubscribe
   }, [])
@@ -160,19 +166,25 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   }, [])
 
   const verifyOtp = useCallback(
-    async (code: string): Promise<void> => {
+    async (code: string): Promise<VerifyOtpResult> => {
       if (!state.email) throw new Error('No email set')
       const result = await authService.verifyOtp({ email: state.email, code })
       if (!result.success) {
         dispatch({ type: 'SET_ERROR', error: result.error ?? 'Invalid verification code' })
         throw new Error(result.error ?? 'Invalid verification code')
       }
-      dispatch({
-        type: 'OTP_VERIFIED',
+      const otpResult: VerifyOtpResult = {
         deviceId: result.deviceId ?? '',
         needsRecoverySetup: result.needsRecoverySetup ?? false,
         recoveryPhrase: result.recoveryPhrase ?? null
+      }
+      dispatch({
+        type: 'OTP_VERIFIED',
+        deviceId: otpResult.deviceId,
+        needsRecoverySetup: otpResult.needsRecoverySetup,
+        recoveryPhrase: otpResult.recoveryPhrase
       })
+      return otpResult
     },
     [state.email]
   )
@@ -198,8 +210,8 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     dispatch({ type: 'CLEAR_ERROR' })
   }, [])
 
-  const logout = useCallback(() => {
-    dispatch({ type: 'LOGOUT' })
+  const resetAuthState = useCallback(() => {
+    dispatch({ type: 'RESET_AUTH' })
   }, [])
 
   const value = useMemo<AuthContextValue>(
@@ -210,9 +222,9 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       resendOtp,
       confirmRecoveryPhrase,
       clearError,
-      logout
+      resetAuthState
     }),
-    [state, requestOtp, verifyOtp, resendOtp, confirmRecoveryPhrase, clearError, logout]
+    [state, requestOtp, verifyOtp, resendOtp, confirmRecoveryPhrase, clearError, resetAuthState]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
