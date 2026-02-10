@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, Copy, Check } from 'lucide-react'
 
@@ -7,18 +7,42 @@ interface RecoveryPhraseDisplayProps {
   onContinue: () => void
 }
 
+const CLIPBOARD_CLEAR_DELAY_MS = 30_000
+const COPIED_FEEDBACK_MS = 2000
+
 export function RecoveryPhraseDisplay({
   phrase,
   onContinue
 }: RecoveryPhraseDisplayProps): React.JSX.Element {
   const [copied, setCopied] = useState(false)
   const words = phrase.split(' ')
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clipboardClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const handleCopy = (): void => {
-    void navigator.clipboard.writeText(phrase)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current)
+      if (clipboardClearTimerRef.current) clearTimeout(clipboardClearTimerRef.current)
+      void navigator.clipboard.writeText('')
+    }
+  }, [])
+
+  const handleCopy = useCallback(async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(phrase)
+      setCopied(true)
+
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current)
+      copiedTimerRef.current = setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS)
+
+      if (clipboardClearTimerRef.current) clearTimeout(clipboardClearTimerRef.current)
+      clipboardClearTimerRef.current = setTimeout(() => {
+        void navigator.clipboard.writeText('')
+      }, CLIPBOARD_CLEAR_DELAY_MS)
+    } catch {
+      setCopied(false)
+    }
+  }, [phrase])
 
   return (
     <div className="space-y-6">
