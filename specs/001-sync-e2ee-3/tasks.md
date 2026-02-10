@@ -282,7 +282,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - [x] T041a Define HKDF context string constants ("memry-vault-key-v1", "memry-signing-key-v1", "memry-verify-key-v1") in src/main/crypto/keys.ts
 - [x] T041b Define Argon2id parameter constants (memory: 65536KB, iterations: 3, parallelism: 4) in src/main/crypto/keys.ts
 - [x] T041c Implement rate limit state persistence using D1 rate_limits table in sync-server/src/middleware/rate-limit.ts
-- [x] T041d Create typed error codes enum (AUTH*\*, SYNC*_, CRYPTO\__) in sync-server/src/lib/errors.ts
+- [x] T041d Create typed error codes enum (AUTH*\*, SYNC*\_, CRYPTO\_\_) in sync-server/src/lib/errors.ts
 - [x] T041e Implement memry:// deep link protocol handler for OAuth callbacks in src/main/index.ts
 - [x] T041f Create canonical CBOR field ordering documentation (reference src/shared/contracts/cbor-ordering.ts) in src/main/crypto/cbor.ts
 - [x] T041g Define sync cursor types and signature metadata in src/shared/contracts/sync-api.ts
@@ -309,48 +309,48 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Server Implementation for US1
 
-- [ ] T042 [P] [US1] Implement request-otp endpoint POST /auth/otp/request (sends 6-digit code via email) in sync-server/src/routes/auth.ts
-- [ ] T043 [P] [US1] Implement verify-otp endpoint POST /auth/otp/verify (validates code, returns JWT + refresh token) in sync-server/src/routes/auth.ts
-- [ ] T044 [P] [US1] Implement OTP generation service (6 digits, cryptographically random) in sync-server/src/services/otp.ts
-- [ ] T044a [P] [US1] Implement OTP storage with SHA-256 hashing in sync-server/src/services/otp.ts
-- [ ] T044b [P] [US1] Implement OTP rate limiting (max 3 requests per 10 min per email) in sync-server/src/middleware/rate-limit.ts
-- [ ] T044c [P] [US1] Implement OTP attempt tracking (max 5 failed attempts per code) in sync-server/src/services/otp.ts
-- [ ] T047 [P] [US1] Create OTP email template in sync-server/src/emails/otp-code.tsx
-- [ ] T044d [P] [US1] Implement IP-based OTP rate limiting (10 requests per hour per IP) in sync-server/src/middleware/rate-limit.ts - prevents distributed email flooding across multiple addresses from same IP
-- [ ] T044e [P] [US1] Use constant-time comparison (from T029c) for OTP hash verification in sync-server/src/services/otp.ts
-- [ ] T047a [P] [US1] Implement resend-otp endpoint POST /auth/otp/resend (reuses rate limiting) in sync-server/src/routes/auth.ts
-- [ ] T048 [US1] Implement OAuth initiation endpoint GET /auth/oauth/:provider for Google in sync-server/src/routes/auth.ts
-- [ ] T049 [US1] Implement OAuth callback handler GET /auth/oauth/:provider/callback in sync-server/src/routes/auth.ts
-- [ ] T049a [US1] Implement OAuth state parameter validation (CSRF protection) in sync-server/src/routes/auth.ts - generate state on initiation, validate on callback
-- [ ] T049b [US1] Validate Google ID token claims (iss must be accounts.google.com, aud must match configured client ID, exp must not be past, email_verified must be true) in sync-server/src/routes/auth.ts before accepting user identity
-- [ ] T050 [US1] Implement device registration endpoint POST /auth/devices in sync-server/src/routes/auth.ts
-- [ ] T050a [US1] Require device signing public key + metadata on registration and persist in devices table in sync-server/src/routes/auth.ts
-- [ ] T050b [US1] Implement device registration challenge/response: server sends random nonce, client signs with device private key, server verifies before accepting registration in sync-server/src/routes/auth.ts
-- [ ] T050c [US1] Implement device registration IPC handler in src/main/ipc/sync-handlers.ts (calls POST /auth/devices with device metadata and signing public key)
-- [ ] T050d [US1] Persist device_id returned from registration in local SQLite devices table in src/main/ipc/sync-handlers.ts
-- [ ] T050e [US1] Create device registration service for renderer in src/renderer/src/services/device-service.ts
-- [ ] T050f [US1] Wire device registration into first device setup flow after successful auth in src/main/ipc/sync-handlers.ts (auto-register device after OTP/OAuth verification)
-- [ ] T051 [US1] Implement first device setup endpoint POST /auth/setup (stores kdf_salt, key_verifier) in sync-server/src/routes/auth.ts
-- [ ] T052 [US1] Implement JWT access token issuance service (15min expiry) in sync-server/src/services/auth.ts
-- [ ] T052a [US1] Implement refresh token issuance alongside access token (7-day expiry) in sync-server/src/services/auth.ts
-- [ ] T052b [US1] Implement refresh token endpoint POST /auth/refresh in sync-server/src/routes/auth.ts
-- [ ] T053 [US1] Implement user service (create, get, update) in sync-server/src/services/user.ts
-- [ ] T053a [US1] Implement user identity linking service (merge OTP + OAuth accounts by email) in sync-server/src/services/user.ts - if email exists with different provider, link identities to same user
+- [x] T042 [P] [US1] Implement request-otp endpoint POST /auth/otp/request (sends 6-digit code via email) in sync-server/src/routes/auth.ts
+- [x] T043 [P] [US1] Implement verify-otp endpoint POST /auth/otp/verify (validates code, returns JWT + refresh token) in sync-server/src/routes/auth.ts
+- [x] T044 [P] [US1] Implement OTP generation service (6 digits, cryptographically random) in sync-server/src/services/otp.ts
+- [x] T044a [P] [US1] Implement OTP storage with SHA-256 hashing in sync-server/src/services/otp.ts
+- [x] T044b [P] [US1] Implement OTP rate limiting (max 3 requests per 10 min per email) in sync-server/src/middleware/rate-limit.ts
+- [x] T044c [P] [US1] Implement OTP attempt tracking (max 5 failed attempts per code) in sync-server/src/services/otp.ts
+- [x] T047 [P] [US1] Create OTP email template in sync-server/src/emails/otp-code.tsx
+- [x] T044d [P] [US1] Implement IP-based OTP rate limiting (10 requests per hour per IP) in sync-server/src/middleware/rate-limit.ts - prevents distributed email flooding across multiple addresses from same IP
+- [x] T044e [P] [US1] Use constant-time comparison (from T029c) for OTP hash verification in sync-server/src/services/otp.ts
+- [x] T047a [P] [US1] Implement resend-otp endpoint POST /auth/otp/resend (reuses rate limiting) in sync-server/src/routes/auth.ts
+- [x] T048 [US1] Implement OAuth initiation endpoint GET /auth/oauth/:provider for Google in sync-server/src/routes/auth.ts
+- [x] T049 [US1] Implement OAuth callback handler GET /auth/oauth/:provider/callback in sync-server/src/routes/auth.ts
+- [x] T049a [US1] Implement OAuth state parameter validation (CSRF protection) in sync-server/src/routes/auth.ts - generate state on initiation, validate on callback
+- [x] T049b [US1] Validate Google ID token claims (iss must be accounts.google.com, aud must match configured client ID, exp must not be past, email_verified must be true) in sync-server/src/routes/auth.ts before accepting user identity
+- [x] T050 [US1] Implement device registration endpoint POST /auth/devices in sync-server/src/routes/auth.ts
+- [x] T050a [US1] Require device signing public key + metadata on registration and persist in devices table in sync-server/src/routes/auth.ts
+- [x] T050b [US1] Implement device registration challenge/response: server sends random nonce, client signs with device private key, server verifies before accepting registration in sync-server/src/routes/auth.ts
+- [x] T050c [US1] Implement device registration IPC handler in src/main/ipc/sync-handlers.ts (calls POST /auth/devices with device metadata and signing public key)
+- [x] T050d [US1] Persist device_id returned from registration in local SQLite devices table in src/main/ipc/sync-handlers.ts
+- [x] T050e [US1] Create device registration service for renderer in src/renderer/src/services/device-service.ts
+- [x] T050f [US1] Wire device registration into first device setup flow after successful auth in src/main/ipc/sync-handlers.ts (auto-register device after OTP/OAuth verification)
+- [x] T051 [US1] Implement first device setup endpoint POST /auth/setup (stores kdf_salt, key_verifier) in sync-server/src/routes/auth.ts
+- [x] T052 [US1] Implement JWT access token issuance service (15min expiry) in sync-server/src/services/auth.ts
+- [x] T052a [US1] Implement refresh token issuance alongside access token (7-day expiry) in sync-server/src/services/auth.ts
+- [x] T052b [US1] Implement refresh token endpoint POST /auth/refresh in sync-server/src/routes/auth.ts
+- [x] T053 [US1] Implement user service (create, get, update) in sync-server/src/services/user.ts
+- [x] T053a [US1] Implement user identity linking service (merge OTP + OAuth accounts by email) in sync-server/src/services/user.ts - if email exists with different provider, link identities to same user
 
 ### Client Implementation for US1
 
-- [ ] T054 [US1] Implement IPC handler for request-otp in src/main/ipc/sync-handlers.ts
-- [ ] T055 [US1] Implement IPC handler for verify-otp in src/main/ipc/sync-handlers.ts
-- [ ] T056 [US1] Implement IPC handler for resend-otp in src/main/ipc/sync-handlers.ts
-- [ ] T056a [P] [US1] Implement OTP code auto-paste from clipboard detection in src/main/ipc/sync-handlers.ts
-- [ ] T057 [US1] Implement IPC handler for OAuth first device setup in src/main/ipc/sync-handlers.ts
-- [ ] T058 [US1] Implement master key derivation from recovery phrase and key verifier generation in src/main/crypto/keys.ts
-- [ ] T059 [US1] Implement vault key derivation via HKDF in src/main/crypto/keys.ts
-- [ ] T060 [US1] Implement signing/verify key derivation via HKDF in src/main/crypto/keys.ts
-- [ ] T060a [US1] Store derived Ed25519 signing keypair in OS keychain in src/main/crypto/keychain.ts
-- [ ] T061 [US1] Store master key in OS keychain in src/main/crypto/keychain.ts
-- [ ] T061a [US1] Generate and store device signing keypair during first device setup in src/main/crypto/keys.ts
-- [ ] T062 [US1] Implement recovery phrase confirmation IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T054 [US1] Implement IPC handler for request-otp in src/main/ipc/sync-handlers.ts
+- [x] T055 [US1] Implement IPC handler for verify-otp in src/main/ipc/sync-handlers.ts
+- [x] T056 [US1] Implement IPC handler for resend-otp in src/main/ipc/sync-handlers.ts
+- [x] T056a [P] [US1] Implement OTP code auto-paste from clipboard detection in src/main/ipc/sync-handlers.ts
+- [x] T057 [US1] Implement IPC handler for OAuth first device setup in src/main/ipc/sync-handlers.ts
+- [x] T058 [US1] Implement master key derivation from recovery phrase and key verifier generation in src/main/crypto/keys.ts
+- [x] T059 [US1] Implement vault key derivation via HKDF in src/main/crypto/keys.ts
+- [x] T060 [US1] Implement signing/verify key derivation via HKDF in src/main/crypto/keys.ts
+- [x] T060a [US1] Store derived Ed25519 signing keypair in OS keychain in src/main/crypto/keychain.ts
+- [x] T061 [US1] Store master key in OS keychain in src/main/crypto/keychain.ts
+- [x] T061a [US1] Generate and store device signing keypair during first device setup in src/main/crypto/keys.ts
+- [x] T062 [US1] Implement recovery phrase confirmation IPC handler in src/main/ipc/sync-handlers.ts
 
 ### UI Components for US1
 
@@ -369,13 +369,13 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Services for US1
 
-- [ ] T070 [US1] Create auth service for renderer in src/renderer/src/services/auth-service.ts
+- [x] T070 [US1] Create auth service for renderer in src/renderer/src/services/auth-service.ts
 - [ ] T071 [US1] Create useAuth hook in src/renderer/src/hooks/use-auth.ts
 - [ ] T072 [US1] Implement PKCE code_verifier and code_challenge generation in src/main/ipc/sync-handlers.ts
 - [ ] T072a [US1] Implement PKCE state and verifier persistence between OAuth initiation and callback (store in memory with session timeout) in src/main/ipc/sync-handlers.ts - prevents session fixation attacks
 - [ ] T073 [US1] Implement automatic access token refresh with retry logic in src/main/ipc/sync-handlers.ts
 - [ ] T073a [US1] Emit auth:session-expired event when token refresh fails in src/main/ipc/sync-handlers.ts
-- [ ] T073b [US1] Store OAuth tokens separately from master key in keychain in src/main/crypto/keychain.ts
+- [x] T073b [US1] Store OAuth tokens separately from master key in keychain in src/main/crypto/keychain.ts
 - [ ] T073c [US1] Implement refresh-token IPC call from renderer in src/renderer/src/services/auth-service.ts
 - [ ] T073d [US1] Ensure renderer does not refresh tokens directly (delegate to main IPC only) in src/renderer/src/services/auth-service.ts
 
