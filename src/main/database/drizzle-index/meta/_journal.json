@@ -85,6 +85,13 @@
       "when": 1768336044711,
       "tag": "0011_purple_madame_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1769997600000,
+      "tag": "0012_snapshot_title_column",
+      "breakpoints": true
     }
   ]
 }
