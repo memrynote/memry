@@ -14,7 +14,11 @@ export const createRateLimiter = (options: RateLimitOptions): MiddlewareHandler<
 
   return async (c, next) => {
     const db = c.env.DB
-    const identifier = c.get('userId') ?? c.req.header('CF-Connecting-IP') ?? 'unknown'
+    const identifier =
+      c.get('userId') ??
+      c.req.header('CF-Connecting-IP') ??
+      c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ??
+      'unknown'
     const key = `${keyPrefix}:${identifier}`
     const now = Math.floor(Date.now() / 1000)
     const windowStart = now - windowSeconds
