@@ -12,6 +12,7 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'path'
 import { SettingsChannels } from '@shared/ipc-channels'
+import { EMBEDDING_DIMENSION } from './embeddings-constants'
 
 // ============================================================================
 // Types
@@ -41,8 +42,7 @@ export interface ModelInfo {
 /** Model to use for embeddings */
 const MODEL_NAME = 'Xenova/all-MiniLM-L6-v2'
 
-/** Embedding vector dimension */
-export const EMBEDDING_DIMENSION = 384
+export { EMBEDDING_DIMENSION } from './embeddings-constants'
 
 /** Minimum content length to generate embedding */
 const MIN_CONTENT_LENGTH = 10

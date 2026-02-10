@@ -3,7 +3,7 @@ import Database from 'better-sqlite3'
 import { existsSync } from 'fs'
 import * as schema from '@shared/db/schema'
 import * as sqliteVec from 'sqlite-vec'
-import { EMBEDDING_DIMENSION } from '../lib/embeddings'
+import { EMBEDDING_DIMENSION } from '../lib/embeddings-constants'
 
 export type DrizzleDb = BetterSQLite3Database<typeof schema>
 
