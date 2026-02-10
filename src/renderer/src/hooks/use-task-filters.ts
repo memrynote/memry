@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { TaskFilters, TaskSort, SavedFilter, Project, DueDateFilter } from '@/data/tasks-data'
@@ -135,6 +135,8 @@ export const useFilterState = ({
   persistFilters: shouldPersist = true
 }: UseFilterStateOptions): UseFilterStateReturn => {
   const viewKey = getViewKey(selectedType, selectedId, activeView)
+  const isSwitchingViewRef = useRef(false)
+  const previousViewKeyRef = useRef(viewKey)
 
   // Initialize filters from persisted state or defaults
   const [filters, setFilters] = useState<TaskFilters>(() => {
@@ -150,21 +152,30 @@ export const useFilterState = ({
     return persisted?.sort || defaultSort
   })
 
-  // Persist filters when they change
+  // Reload filters when the view key changes.
   useEffect(() => {
-    if (shouldPersist) {
-      persistFilters(viewKey, filters, sort)
-    }
-  }, [viewKey, filters, sort, shouldPersist])
+    if (!shouldPersist) return
+    if (previousViewKeyRef.current === viewKey) return
 
-  // Reset filters when view changes
-  useEffect(() => {
-    if (shouldPersist) {
-      const persisted = loadPersistedFilters(viewKey)
-      setFilters(persisted?.filters || defaultFilters)
-      setSort(persisted?.sort || defaultSort)
-    }
+    const persisted = loadPersistedFilters(viewKey)
+    isSwitchingViewRef.current = true
+    previousViewKeyRef.current = viewKey
+    setFilters(persisted?.filters || defaultFilters)
+    setSort(persisted?.sort || defaultSort)
   }, [viewKey, shouldPersist])
+
+  // Persist filters when they change.
+  useEffect(() => {
+    if (!shouldPersist) return
+
+    // Skip one cycle right after a view-key change to avoid writing stale state.
+    if (isSwitchingViewRef.current) {
+      isSwitchingViewRef.current = false
+      return
+    }
+
+    persistFilters(viewKey, filters, sort)
+  }, [viewKey, filters, sort, shouldPersist])
 
   const updateFilters = useCallback((updates: Partial<TaskFilters>) => {
     setFilters((prev) => ({ ...prev, ...updates }))
