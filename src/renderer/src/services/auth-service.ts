@@ -9,5 +9,21 @@ export const authService = {
 
   resendOtp: (input: { email: string }) => {
     return window.api.syncAuth.resendOtp(input)
+  },
+
+  initOAuth: (input: { provider: 'google' }) => {
+    return window.api.syncAuth.initOAuth(input)
+  },
+
+  refreshToken: () => {
+    return window.api.syncAuth.refreshToken()
+  },
+
+  setupFirstDevice: (input: { provider: 'google'; oauthToken: string; state: string }) => {
+    return window.api.syncSetup.setupFirstDevice(input)
+  },
+
+  confirmRecoveryPhrase: (input: { confirmed: boolean }) => {
+    return window.api.syncSetup.confirmRecoveryPhrase(input)
   }
 }
