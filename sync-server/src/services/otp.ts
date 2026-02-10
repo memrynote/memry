@@ -86,9 +86,7 @@ export const verifyOtp = async (db: D1Database, email: string, code: string): Pr
 export const hasPendingOtp = async (db: D1Database, email: string): Promise<boolean> => {
   const now = Math.floor(Date.now() / 1000)
   const record = await db
-    .prepare(
-      'SELECT id FROM otp_codes WHERE email = ? AND used = 0 AND expires_at > ? LIMIT 1'
-    )
+    .prepare('SELECT id FROM otp_codes WHERE email = ? AND used = 0 AND expires_at > ? LIMIT 1')
     .bind(email, now)
     .first<{ id: string }>()
   return !!record
