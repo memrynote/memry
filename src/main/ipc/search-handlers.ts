@@ -70,6 +70,8 @@ export function registerSearchHandlers(): void {
       const db = getIndexDatabase()
 
       try {
+        addRecentSearch(input.query)
+
         const results = searchNotes(db, input.query, {
           limit: input.limit,
           offset: input.offset,
