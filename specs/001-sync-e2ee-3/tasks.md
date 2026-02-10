@@ -354,18 +354,18 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### UI Components for US1
 
-- [ ] T063 [P] [US1] Create AuthProvider context in src/renderer/src/contexts/auth-context.tsx
-- [ ] T064 [P] [US1] Create email entry form component in src/renderer/src/components/sync/email-entry-form.tsx
-- [ ] T065 [P] [US1] Create OTP code input component (6-digit boxes) in src/renderer/src/components/sync/otp-input.tsx
-- [ ] T065a [P] [US1] Implement OTP countdown timer (resend available after 60s) in src/renderer/src/components/sync/otp-input.tsx
-- [ ] T065b [US1] Implement OTP verification screen in src/renderer/src/components/sync/otp-verification.tsx
-- [ ] T066 [P] [US1] Create OAuth buttons component in src/renderer/src/components/sync/oauth-buttons.tsx
-- [ ] T067 [US1] Create recovery phrase display component in src/renderer/src/components/sync/recovery-phrase-display.tsx
-- [ ] T068 [US1] Create recovery phrase confirmation component in src/renderer/src/components/sync/recovery-phrase-confirm.tsx
-- [ ] T069 [US1] Create first device setup wizard page in src/renderer/src/pages/settings/setup-wizard.tsx
-- [ ] T069a [US1] Wire AuthProvider into renderer root in src/renderer/src/main.tsx
-- [ ] T069b [US1] Wire setup wizard entry point into Settings UI in src/renderer/src/pages/settings.tsx
-- [ ] T069c [US1] Bind email/OTP/OAuth/recovery components to auth service + IPC in src/renderer/src/pages/settings/setup-wizard.tsx
+- [x] T063 [P] [US1] Create AuthProvider context in src/renderer/src/contexts/auth-context.tsx
+- [x] T064 [P] [US1] Create email entry form component in src/renderer/src/components/sync/email-entry-form.tsx
+- [x] T065 [P] [US1] Create OTP code input component (6-digit boxes) in src/renderer/src/components/sync/otp-input.tsx
+- [x] T065a [P] [US1] Implement OTP countdown timer (resend available after 60s) in src/renderer/src/components/sync/otp-input.tsx
+- [x] T065b [US1] Implement OTP verification screen in src/renderer/src/components/sync/otp-verification.tsx
+- [x] T066 [P] [US1] Create OAuth buttons component in src/renderer/src/components/sync/oauth-buttons.tsx
+- [x] T067 [US1] Create recovery phrase display component in src/renderer/src/components/sync/recovery-phrase-display.tsx
+- [x] T068 [US1] Create recovery phrase confirmation component in src/renderer/src/components/sync/recovery-phrase-confirm.tsx
+- [x] T069 [US1] Create first device setup wizard page in src/renderer/src/pages/settings/setup-wizard.tsx
+- [x] T069a [US1] Wire AuthProvider into renderer root in src/renderer/src/main.tsx
+- [x] T069b [US1] Wire setup wizard entry point into Settings UI in src/renderer/src/pages/settings.tsx
+- [x] T069c [US1] Bind email/OTP/OAuth/recovery components to auth service + IPC in src/renderer/src/pages/settings/setup-wizard.tsx
 
 ### Services for US1
 
