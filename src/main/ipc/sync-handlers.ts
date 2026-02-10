@@ -8,9 +8,11 @@ import {
   RequestOtpSchema,
   VerifyOtpSchema,
   ResendOtpSchema,
+  InitOAuthSchema,
   SetupFirstDeviceSchema,
   ConfirmRecoveryPhraseSchema
 } from '@shared/contracts/ipc-auth'
+import { RefreshTokenResponseSchema } from '@shared/contracts/auth-api'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@shared/contracts/ipc-sync'
 
 import {
@@ -26,7 +28,7 @@ import {
 } from '../crypto'
 import { getDatabase } from '../database/client'
 import { store } from '../store'
-import { postToServer } from '../sync/http-client'
+import { postToServer, SyncServerError } from '../sync/http-client'
 
 import { createValidatedHandler } from './validate'
 
@@ -109,6 +111,137 @@ const stopOtpClipboardDetection = (): void => {
 }
 
 // ============================================================================
+// PKCE State (T072, T072a)
+// ============================================================================
+
+interface PkceSession {
+  codeVerifier: string
+  state: string
+  createdAt: number
+}
+
+const pkceSessions = new Map<string, PkceSession>()
+const PKCE_SESSION_TIMEOUT_MS = 10 * 60 * 1000
+const PKCE_MAX_SESSIONS = 50
+
+const generateCodeVerifier = (): string => {
+  const buffer = new Uint8Array(32)
+  crypto.getRandomValues(buffer)
+  return Buffer.from(buffer).toString('base64url')
+}
+
+const generateCodeChallenge = async (verifier: string): Promise<string> => {
+  const data = new TextEncoder().encode(verifier)
+  const hash = await crypto.subtle.digest('SHA-256', data)
+  return Buffer.from(hash).toString('base64url')
+}
+
+const cleanExpiredPkceSessions = (): void => {
+  const now = Date.now()
+  for (const [state, session] of pkceSessions) {
+    if (now - session.createdAt > PKCE_SESSION_TIMEOUT_MS) {
+      pkceSessions.delete(state)
+    }
+  }
+}
+
+const consumePkceSession = (state: string): string => {
+  const session = pkceSessions.get(state)
+  if (!session) {
+    throw new Error('Invalid or expired OAuth state parameter')
+  }
+
+  if (Date.now() - session.createdAt > PKCE_SESSION_TIMEOUT_MS) {
+    pkceSessions.delete(state)
+    throw new Error('OAuth session expired. Please try again.')
+  }
+
+  const { codeVerifier } = session
+  pkceSessions.delete(state)
+  return codeVerifier
+}
+
+// ============================================================================
+// Token Refresh (T073, T073a)
+// ============================================================================
+
+const ACCESS_TOKEN_EXPIRY_SECONDS = 900
+const REFRESH_MAX_RETRIES = 3
+const REFRESH_BACKOFF_BASE_MS = 1000
+
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
+let activeRefreshPromise: Promise<boolean> | null = null
+
+const scheduleTokenRefresh = (expiresInSeconds: number): void => {
+  cancelTokenRefresh()
+  const jitter = 0.75 + Math.random() * 0.1
+  const refreshAtMs = Math.floor(expiresInSeconds * jitter) * 1000
+  refreshTimer = setTimeout(() => {
+    refreshAccessToken()
+  }, refreshAtMs)
+}
+
+const cancelTokenRefresh = (): void => {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer)
+    refreshTimer = null
+  }
+}
+
+const emitSessionExpired = (): void => {
+  cancelTokenRefresh()
+  const windows = BrowserWindow.getAllWindows()
+  for (const win of windows) {
+    win.webContents.send(SYNC_EVENTS.SESSION_EXPIRED, {
+      reason: 'token_expired'
+    })
+  }
+}
+
+const doRefreshAccessToken = async (): Promise<boolean> => {
+  const currentRefreshToken = await retrieveToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN)
+  if (!currentRefreshToken) {
+    emitSessionExpired()
+    return false
+  }
+
+  for (let attempt = 0; attempt < REFRESH_MAX_RETRIES; attempt++) {
+    try {
+      const raw = await postToServer<unknown>('/auth/refresh', {
+        refreshToken: currentRefreshToken
+      })
+      const response = RefreshTokenResponseSchema.parse(raw)
+
+      await storeToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN, response.accessToken)
+      await storeToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN, response.refreshToken)
+      scheduleTokenRefresh(response.expiresIn)
+      return true
+    } catch (error: unknown) {
+      if (error instanceof SyncServerError && error.statusCode === 401) break
+
+      if (attempt < REFRESH_MAX_RETRIES - 1) {
+        const backoff = REFRESH_BACKOFF_BASE_MS * Math.pow(2, attempt)
+        await new Promise((resolve) => setTimeout(resolve, backoff))
+      }
+    }
+  }
+
+  emitSessionExpired()
+  return false
+}
+
+const refreshAccessToken = async (): Promise<boolean> => {
+  if (activeRefreshPromise) return activeRefreshPromise
+
+  activeRefreshPromise = doRefreshAccessToken()
+  try {
+    return await activeRefreshPromise
+  } finally {
+    activeRefreshPromise = null
+  }
+}
+
+// ============================================================================
 // Token Keychain Helpers
 // ============================================================================
 
@@ -173,6 +306,7 @@ const registerDevice = async (setupToken: string): Promise<DeviceRegisterServerR
 
     await storeToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN, response.accessToken)
     await storeToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN, response.refreshToken)
+    scheduleTokenRefresh(ACCESS_TOKEN_EXPIRY_SECONDS)
 
     return response
   } finally {
@@ -300,14 +434,44 @@ export function registerSyncHandlers(): void {
     })
   )
 
-  // --- First Device Setup via OAuth (T057) ---
+  // --- OAuth Initiation with PKCE (T072, T072a) ---
+
+  ipcMain.handle(
+    SYNC_CHANNELS.AUTH_INIT_OAUTH,
+    createValidatedHandler(InitOAuthSchema, async () => {
+      cleanExpiredPkceSessions()
+
+      if (pkceSessions.size >= PKCE_MAX_SESSIONS) {
+        throw new Error('Too many pending OAuth sessions. Please try again later.')
+      }
+
+      const codeVerifier = generateCodeVerifier()
+      const codeChallenge = await generateCodeChallenge(codeVerifier)
+      const state = crypto.randomUUID()
+
+      pkceSessions.set(state, { codeVerifier, state, createdAt: Date.now() })
+
+      return { codeChallenge, codeChallengeMethod: 'S256' as const, state }
+    })
+  )
+
+  // --- Token Refresh (T073, T073a, T073c) ---
+
+  ipcMain.handle(SYNC_CHANNELS.AUTH_REFRESH_TOKEN, async () => {
+    const success = await refreshAccessToken()
+    return { success, error: success ? undefined : 'Token refresh failed' }
+  })
+
+  // --- First Device Setup via OAuth (T057, T072a PKCE validation) ---
 
   ipcMain.handle(
     SYNC_CHANNELS.SETUP_FIRST_DEVICE,
     createValidatedHandler(SetupFirstDeviceSchema, async (input) => {
+      const codeVerifier = consumePkceSession(input.state)
+
       const serverResponse = await postToServer<OAuthCallbackServerResponse>(
         `/auth/oauth/${input.provider}/callback`,
-        { code: input.oauthToken, state: '' }
+        { code: input.oauthToken, state: input.state, codeVerifier }
       )
 
       await storeToken(KEYCHAIN_ENTRIES.SETUP_TOKEN, serverResponse.setupToken)
@@ -368,10 +532,14 @@ export function registerSyncHandlers(): void {
 
 export function unregisterSyncHandlers(): void {
   stopOtpClipboardDetection()
+  cancelTokenRefresh()
+  pkceSessions.clear()
 
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_REQUEST_OTP)
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_VERIFY_OTP)
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_RESEND_OTP)
+  ipcMain.removeHandler(SYNC_CHANNELS.AUTH_INIT_OAUTH)
+  ipcMain.removeHandler(SYNC_CHANNELS.AUTH_REFRESH_TOKEN)
 
   ipcMain.removeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE)
   ipcMain.removeHandler(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE)

@@ -2062,11 +2062,24 @@ interface SyncAuthClientAPI {
     message?: string
     error?: string
   }>
+  initOAuth: (input: { provider: 'google' }) => Promise<{
+    codeChallenge: string
+    codeChallengeMethod: 'S256'
+    state: string
+  }>
+  refreshToken: () => Promise<{
+    success: boolean
+    error?: string
+  }>
 }
 
 // Sync Setup API
 interface SyncSetupClientAPI {
-  setupFirstDevice: (input: { provider: 'google'; oauthToken: string }) => Promise<{
+  setupFirstDevice: (input: {
+    provider: 'google'
+    oauthToken: string
+    state: string
+  }) => Promise<{
     success: boolean
     recoveryPhrase?: string
     deviceId?: string

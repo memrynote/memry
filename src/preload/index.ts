@@ -1336,12 +1336,15 @@ const api = {
     verifyOtp: (input: { email: string; code: string }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.AUTH_VERIFY_OTP, input),
     resendOtp: (input: { email: string }) =>
-      ipcRenderer.invoke(SYNC_CHANNELS.AUTH_RESEND_OTP, input)
+      ipcRenderer.invoke(SYNC_CHANNELS.AUTH_RESEND_OTP, input),
+    initOAuth: (input: { provider: 'google' }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.AUTH_INIT_OAUTH, input),
+    refreshToken: () => ipcRenderer.invoke(SYNC_CHANNELS.AUTH_REFRESH_TOKEN)
   },
 
   // Sync Setup API
   syncSetup: {
-    setupFirstDevice: (input: { provider: 'google'; oauthToken: string }) =>
+    setupFirstDevice: (input: { provider: 'google'; oauthToken: string; state: string }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.SETUP_FIRST_DEVICE, input),
     confirmRecoveryPhrase: (input: { confirmed: boolean }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, input)
