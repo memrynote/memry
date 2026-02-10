@@ -17,7 +17,13 @@ import { createRateLimiter } from '../middleware/rate-limit'
 import { setupAuthMiddleware } from '../middleware/setup-auth'
 import { issueTokens, rotateRefreshToken, signSetupToken } from '../services/auth'
 import { sendEmail } from '../services/email'
-import { generateOtp, storeOtp, verifyOtp, checkEmailRateLimit } from '../services/otp'
+import {
+  generateOtp,
+  storeOtp,
+  verifyOtp,
+  checkEmailRateLimit,
+  hasPendingOtp
+} from '../services/otp'
 import { getOrCreateUserByEmail, getUserById, updateUser } from '../services/user'
 import type { AppContext } from '../types'
 
@@ -77,6 +83,12 @@ const validateGoogleIdToken = async (
   }
 }
 
+// NOTE: The challenge nonce is client-generated rather than server-issued. The setup token
+// (short-lived JWT from OTP/OAuth verification) already binds registration to an authenticated
+// session. The challenge proves the client holds the private key for the submitted public key.
+// Replay is mitigated by: (1) setup token 5-min expiry, (2) UNIQUE(user_id, auth_public_key)
+// preventing duplicate registrations, (3) an attacker would need both a valid setup token AND
+// a captured challenge triplet within the same expiry window.
 const verifyDeviceChallenge = async (
   publicKeyBase64: string,
   nonce: string,
@@ -131,7 +143,28 @@ auth.post('/otp/request', otpIpRateLimit, async (c) => {
 
 // POST /otp/resend
 auth.post('/otp/resend', otpIpRateLimit, async (c) => {
-  return handleOtpRequest(c)
+  const body = await c.req.json()
+  const parsed = RequestOtpRequestSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid request body', 400)
+  }
+
+  const { email } = parsed.data
+
+  const pending = await hasPendingOtp(c.env.DB, email)
+  if (!pending) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'No pending OTP for this email', 400)
+  }
+
+  await checkEmailRateLimit(c.env.DB, email)
+
+  const code = generateOtp()
+  await storeOtp(c.env.DB, email, code)
+
+  const html = buildOtpEmailHtml(code, OTP_EXPIRY_MINUTES)
+  await sendEmail(email, 'Your Memry verification code', html, c.env.RESEND_API_KEY)
+
+  return c.json({ success: true, expiresIn: OTP_EXPIRY_MINUTES * 60 })
 })
 
 // POST /otp/verify
