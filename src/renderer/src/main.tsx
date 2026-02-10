@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import App from './App'
 import QuickCapture from './components/quick-capture'
+import { AuthProvider } from './contexts/auth-context'
 
 // Create a client with default options for the entire app
 const queryClient = new QueryClient({
@@ -40,7 +41,9 @@ const RootComponent = isQuickCaptureWindow ? (
 ) : (
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </QueryClientProvider>
   </StrictMode>
 )
