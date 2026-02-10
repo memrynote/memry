@@ -25,7 +25,8 @@ const createMockStatement = (): MockStatement => {
 }
 
 const createMockDb = () => ({
-  prepare: vi.fn().mockReturnValue(createMockStatement())
+  prepare: vi.fn().mockReturnValue(createMockStatement()),
+  batch: vi.fn().mockResolvedValue([])
 })
 
 // ============================================================================
@@ -34,17 +35,14 @@ const createMockDb = () => ({
 
 vi.mock('jose', () => ({
   importPKCS8: vi.fn().mockResolvedValue({ type: 'private' }),
-  SignJWT: vi.fn().mockImplementation(() => {
-    const builder = {
-      setProtectedHeader: vi.fn().mockReturnThis(),
-      setIssuedAt: vi.fn().mockReturnThis(),
-      setIssuer: vi.fn().mockReturnThis(),
-      setAudience: vi.fn().mockReturnThis(),
-      setExpirationTime: vi.fn().mockReturnThis(),
-      sign: vi.fn().mockResolvedValue('mock-jwt-token')
-    }
-    return builder
-  })
+  SignJWT: class {
+    setProtectedHeader() { return this }
+    setIssuedAt() { return this }
+    setIssuer() { return this }
+    setAudience() { return this }
+    setExpirationTime() { return this }
+    async sign() { return 'mock-jwt-token' }
+  }
 }))
 
 import { issueTokens, rotateRefreshToken, revokeDeviceTokens } from './auth'

@@ -102,4 +102,5 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env,
   }
 }
 
+export { app }
 export default { fetch: app.fetch, scheduled }

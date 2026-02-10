@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+import { AppError, ErrorCodes } from '../lib/errors'
+
+vi.mock('./auth', () => ({
+  revokeDeviceTokens: vi.fn().mockResolvedValue(undefined)
+}))
+
 // ============================================================================
 // D1 mock helpers
 // ============================================================================
@@ -174,20 +180,56 @@ describe('updateDevice', () => {
 // ============================================================================
 
 describe('revokeDevice', () => {
-  it('should set revoked_at timestamp on the device', async () => {
+  it('should set revoked_at and revoke device tokens', async () => {
     // #given
-    const stmt = createMockStatement()
+    const { revokeDeviceTokens } = await import('./auth')
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue({ id: 'dev-1' })
+
+    const updateStmt = createMockStatement()
+
     const db = createMockDb()
-    db.prepare.mockReturnValue(stmt)
+    db.prepare
+      .mockReturnValueOnce(selectStmt)
+      .mockReturnValueOnce(updateStmt)
 
     // #when
-    await revokeDevice(db as unknown as D1Database, 'dev-1')
+    await revokeDevice(db as unknown as D1Database, 'dev-1', 'user-1')
 
     // #then
     expect(db.prepare).toHaveBeenCalledWith(
+      expect.stringContaining('SELECT id FROM devices')
+    )
+    expect(selectStmt.bind).toHaveBeenCalledWith('dev-1', 'user-1')
+    expect(db.prepare).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE devices SET revoked_at')
     )
-    expect(stmt.bind).toHaveBeenCalledWith(expect.any(Number), 'dev-1')
-    expect(stmt.run).toHaveBeenCalled()
+    expect(updateStmt.bind).toHaveBeenCalledWith(expect.any(Number), 'dev-1')
+    expect(updateStmt.run).toHaveBeenCalled()
+    expect(revokeDeviceTokens).toHaveBeenCalledWith(
+      expect.anything(),
+      'dev-1'
+    )
+  })
+
+  it('should throw AUTH_DEVICE_NOT_FOUND when device does not exist', async () => {
+    // #given
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue(null)
+
+    const db = createMockDb()
+    db.prepare.mockReturnValueOnce(selectStmt)
+
+    // #when / #then
+    await expect(
+      revokeDevice(db as unknown as D1Database, 'nonexistent', 'user-1')
+    ).rejects.toThrow(AppError)
+
+    try {
+      await revokeDevice(db as unknown as D1Database, 'nonexistent', 'user-1')
+    } catch (e) {
+      expect((e as AppError).code).toBe(ErrorCodes.AUTH_DEVICE_NOT_FOUND)
+      expect((e as AppError).statusCode).toBe(404)
+    }
   })
 })

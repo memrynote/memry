@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   cleanupExpiredLinkingSessions,
   cleanupExpiredOtpCodes,
-  cleanupExpiredUploadSessions
+  cleanupExpiredUploadSessions,
+  cleanupStaleRateLimits
 } from './cleanup'
 
 function createDbWithChanges(changes: number) {
@@ -41,11 +42,55 @@ describe('cleanup services', () => {
     expect(bind).toHaveBeenCalledWith(1_700_000_000)
   })
 
-  it('cleans up expired upload sessions', async () => {
-    const { db, prepare, bind } = createDbWithChanges(2)
+  it('cleans up expired upload sessions and aborts multipart uploads', async () => {
+    // #given
+    const abortFn = vi.fn().mockResolvedValue(undefined)
+    const storage = {
+      resumeMultipartUpload: vi.fn().mockReturnValue({ abort: abortFn })
+    } as unknown as R2Bucket
 
-    await expect(cleanupExpiredUploadSessions(db)).resolves.toBe(2)
-    expect(prepare).toHaveBeenCalledWith('DELETE FROM upload_sessions WHERE expires_at < ?')
-    expect(bind).toHaveBeenCalledWith(1_700_000_000)
+    const selectAll = vi.fn().mockResolvedValue({
+      results: [
+        { id: 's1', upload_id: 'up1', key: 'k1' },
+        { id: 's2', upload_id: '', key: '' }
+      ]
+    })
+    const selectBind = vi.fn().mockReturnValue({ all: selectAll })
+
+    const deleteRun = vi.fn().mockResolvedValue({ meta: { changes: 2 } })
+    const deleteBind = vi.fn().mockReturnValue({ run: deleteRun })
+
+    const db = {
+      prepare: vi.fn()
+        .mockReturnValueOnce({ bind: selectBind })
+        .mockReturnValueOnce({ bind: deleteBind })
+    } as unknown as D1Database
+
+    // #when
+    const result = await cleanupExpiredUploadSessions(db, storage)
+
+    // #then
+    expect(result).toBe(2)
+    expect(db.prepare).toHaveBeenCalledWith(
+      'SELECT id, upload_id, key FROM upload_sessions WHERE expires_at < ?'
+    )
+    expect(db.prepare).toHaveBeenCalledWith(
+      'DELETE FROM upload_sessions WHERE expires_at < ?'
+    )
+    expect(storage.resumeMultipartUpload).toHaveBeenCalledWith('k1', 'up1')
+    expect(abortFn).toHaveBeenCalledOnce()
+  })
+
+  it('cleans up stale rate limits older than 1 hour', async () => {
+    // #given
+    const { db, prepare, bind } = createDbWithChanges(7)
+
+    // #when
+    const result = await cleanupStaleRateLimits(db)
+
+    // #then
+    expect(result).toBe(7)
+    expect(prepare).toHaveBeenCalledWith('DELETE FROM rate_limits WHERE window_start < ?')
+    expect(bind).toHaveBeenCalledWith(1_700_000_000 - 3600)
   })
 })

@@ -87,14 +87,14 @@ vi.mock('jose', () => ({
     }
   }),
   createRemoteJWKSet: vi.fn().mockReturnValue('mock-jwks'),
-  SignJWT: vi.fn().mockImplementation(() => ({
-    setProtectedHeader: vi.fn().mockReturnThis(),
-    setIssuedAt: vi.fn().mockReturnThis(),
-    setIssuer: vi.fn().mockReturnThis(),
-    setAudience: vi.fn().mockReturnThis(),
-    setExpirationTime: vi.fn().mockReturnThis(),
-    sign: vi.fn().mockResolvedValue('mock-oauth-state')
-  }))
+  SignJWT: class {
+    setProtectedHeader() { return this }
+    setIssuedAt() { return this }
+    setIssuer() { return this }
+    setAudience() { return this }
+    setExpirationTime() { return this }
+    async sign() { return 'mock-oauth-state' }
+  }
 }))
 
 import { auth } from './auth'
