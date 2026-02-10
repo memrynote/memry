@@ -69,13 +69,21 @@ describe('D1 schema', () => {
     const db = new Database(':memory:')
     db.exec(loadSchemaSql())
 
-    const refreshFks = db
-      .prepare('PRAGMA foreign_key_list(refresh_tokens)')
-      .all() as Array<{ table: string; from: string; to: string; on_delete: string }>
+    const refreshFks = db.prepare('PRAGMA foreign_key_list(refresh_tokens)').all() as Array<{
+      table: string
+      from: string
+      to: string
+      on_delete: string
+    }>
 
     expect(refreshFks).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ table: 'users', from: 'user_id', to: 'id', on_delete: 'CASCADE' }),
+        expect.objectContaining({
+          table: 'users',
+          from: 'user_id',
+          to: 'id',
+          on_delete: 'CASCADE'
+        }),
         expect.objectContaining({
           table: 'devices',
           from: 'device_id',
@@ -85,13 +93,21 @@ describe('D1 schema', () => {
       ])
     )
 
-    const syncItemFks = db
-      .prepare('PRAGMA foreign_key_list(sync_items)')
-      .all() as Array<{ table: string; from: string; to: string; on_delete: string }>
+    const syncItemFks = db.prepare('PRAGMA foreign_key_list(sync_items)').all() as Array<{
+      table: string
+      from: string
+      to: string
+      on_delete: string
+    }>
 
     expect(syncItemFks).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ table: 'users', from: 'user_id', to: 'id', on_delete: 'CASCADE' }),
+        expect.objectContaining({
+          table: 'users',
+          from: 'user_id',
+          to: 'id',
+          on_delete: 'CASCADE'
+        }),
         expect.objectContaining({ table: 'devices', from: 'signer_device_id', to: 'id' })
       ])
     )

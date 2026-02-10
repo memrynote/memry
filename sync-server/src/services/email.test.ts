@@ -29,11 +29,17 @@ describe('email service', () => {
   })
 
   it('returns false and logs for non-OK API response', async () => {
-    const fetchMock = vi.fn(async () => ({ ok: false, status: 500, text: async () => 'server error' }))
+    const fetchMock = vi.fn(async () => ({
+      ok: false,
+      status: 500,
+      text: async () => 'server error'
+    }))
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(sendEmail('user@example.com', 'Hello', '<p>Hi</p>', 'api-key')).resolves.toBe(false)
+    await expect(sendEmail('user@example.com', 'Hello', '<p>Hi</p>', 'api-key')).resolves.toBe(
+      false
+    )
     expect(errorSpy).toHaveBeenCalledWith('Resend API error: 500 server error')
   })
 
@@ -44,7 +50,9 @@ describe('email service', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(sendEmail('user@example.com', 'Hello', '<p>Hi</p>', 'api-key')).resolves.toBe(false)
+    await expect(sendEmail('user@example.com', 'Hello', '<p>Hi</p>', 'api-key')).resolves.toBe(
+      false
+    )
     expect(errorSpy).toHaveBeenCalledWith('Failed to send email:', 'network down')
   })
 })

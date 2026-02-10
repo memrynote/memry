@@ -35,10 +35,7 @@ export const storeOtp = async (
 ): Promise<{ id: string; expiresAt: number }> => {
   const now = Math.floor(Date.now() / 1000)
 
-  await db
-    .prepare('UPDATE otp_codes SET used = 1 WHERE email = ? AND used = 0')
-    .bind(email)
-    .run()
+  await db.prepare('UPDATE otp_codes SET used = 1 WHERE email = ? AND used = 0').bind(email).run()
 
   const id = crypto.randomUUID()
   const codeHash = await hashOtp(code)

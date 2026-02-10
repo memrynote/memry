@@ -61,7 +61,8 @@ describe('cleanup services', () => {
     const deleteBind = vi.fn().mockReturnValue({ run: deleteRun })
 
     const db = {
-      prepare: vi.fn()
+      prepare: vi
+        .fn()
         .mockReturnValueOnce({ bind: selectBind })
         .mockReturnValueOnce({ bind: deleteBind })
     } as unknown as D1Database
@@ -74,9 +75,7 @@ describe('cleanup services', () => {
     expect(db.prepare).toHaveBeenCalledWith(
       'SELECT id, upload_id, key FROM upload_sessions WHERE expires_at < ?'
     )
-    expect(db.prepare).toHaveBeenCalledWith(
-      'DELETE FROM upload_sessions WHERE expires_at < ?'
-    )
+    expect(db.prepare).toHaveBeenCalledWith('DELETE FROM upload_sessions WHERE expires_at < ?')
     expect(storage.resumeMultipartUpload).toHaveBeenCalledWith('k1', 'up1')
     expect(abortFn).toHaveBeenCalledOnce()
   })

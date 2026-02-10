@@ -189,27 +189,20 @@ describe('revokeDevice', () => {
     const updateStmt = createMockStatement()
 
     const db = createMockDb()
-    db.prepare
-      .mockReturnValueOnce(selectStmt)
-      .mockReturnValueOnce(updateStmt)
+    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(updateStmt)
 
     // #when
     await revokeDevice(db as unknown as D1Database, 'dev-1', 'user-1')
 
     // #then
-    expect(db.prepare).toHaveBeenCalledWith(
-      expect.stringContaining('SELECT id FROM devices')
-    )
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('SELECT id FROM devices'))
     expect(selectStmt.bind).toHaveBeenCalledWith('dev-1', 'user-1')
     expect(db.prepare).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE devices SET revoked_at')
     )
     expect(updateStmt.bind).toHaveBeenCalledWith(expect.any(Number), 'dev-1')
     expect(updateStmt.run).toHaveBeenCalled()
-    expect(revokeDeviceTokens).toHaveBeenCalledWith(
-      expect.anything(),
-      'dev-1'
-    )
+    expect(revokeDeviceTokens).toHaveBeenCalledWith(expect.anything(), 'dev-1')
   })
 
   it('should throw AUTH_DEVICE_NOT_FOUND when device does not exist', async () => {

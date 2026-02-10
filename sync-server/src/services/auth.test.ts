@@ -36,12 +36,24 @@ const createMockDb = () => ({
 vi.mock('jose', () => ({
   importPKCS8: vi.fn().mockResolvedValue({ type: 'private' }),
   SignJWT: class {
-    setProtectedHeader() { return this }
-    setIssuedAt() { return this }
-    setIssuer() { return this }
-    setAudience() { return this }
-    setExpirationTime() { return this }
-    async sign() { return 'mock-jwt-token' }
+    setProtectedHeader() {
+      return this
+    }
+    setIssuedAt() {
+      return this
+    }
+    setIssuer() {
+      return this
+    }
+    setAudience() {
+      return this
+    }
+    setExpirationTime() {
+      return this
+    }
+    async sign() {
+      return 'mock-jwt-token'
+    }
   }
 }))
 
@@ -74,12 +86,8 @@ describe('issueTokens', () => {
     await issueTokens(db as unknown as D1Database, 'user-1', 'device-1', 'pem-key')
 
     // #then
-    expect(db.prepare).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO refresh_tokens')
-    )
-    const insertStmt = db.prepare.mock.results.find((r) =>
-      r.value?.bind?.mock?.calls?.length
-    )
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO refresh_tokens'))
+    const insertStmt = db.prepare.mock.results.find((r) => r.value?.bind?.mock?.calls?.length)
     expect(insertStmt).toBeDefined()
   })
 
@@ -148,19 +156,11 @@ describe('rotateRefreshToken', () => {
     selectStmt.first.mockResolvedValue(null)
     const revokeStmt = createMockStatement()
 
-    db.prepare
-      .mockReturnValueOnce(selectStmt)
-      .mockReturnValueOnce(revokeStmt)
+    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(revokeStmt)
 
     // #when / #then
     await expect(
-      rotateRefreshToken(
-        db as unknown as D1Database,
-        'bad-token',
-        'user-1',
-        'device-1',
-        'pem-key'
-      )
+      rotateRefreshToken(db as unknown as D1Database, 'bad-token', 'user-1', 'device-1', 'pem-key')
     ).rejects.toThrow(AppError)
 
     expect(revokeStmt.bind).toHaveBeenCalledWith('user-1', 'device-1')
@@ -173,9 +173,7 @@ describe('rotateRefreshToken', () => {
     selectStmt.first.mockResolvedValue(null)
     const revokeStmt = createMockStatement()
 
-    db.prepare
-      .mockReturnValueOnce(selectStmt)
-      .mockReturnValueOnce(revokeStmt)
+    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(revokeStmt)
 
     // #when / #then
     try {

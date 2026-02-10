@@ -110,10 +110,7 @@ export const generateOAuthState = async (privateKeyPem: string): Promise<string>
     .sign(privateKey)
 }
 
-export const verifyOAuthState = async (
-  state: string,
-  publicKeyPem: string
-): Promise<void> => {
+export const verifyOAuthState = async (state: string, publicKeyPem: string): Promise<void> => {
   const publicKey = await getPublicKey(publicKeyPem)
   const { payload } = await jwtVerify(state, publicKey, {
     algorithms: ['EdDSA'],
@@ -253,7 +250,15 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
   }
 
   const userId = c.get('userId')!
-  const { name, platform, osVersion, appVersion, authPublicKey, challengeSignature, challengeNonce } = parsed.data
+  const {
+    name,
+    platform,
+    osVersion,
+    appVersion,
+    authPublicKey,
+    challengeSignature,
+    challengeNonce
+  } = parsed.data
 
   const isValid = await verifyDeviceChallenge(authPublicKey, challengeNonce, challengeSignature)
   if (!isValid) {

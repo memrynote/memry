@@ -5,7 +5,10 @@ import { AppError, ErrorCodes } from '../lib/errors'
 // crypto.subtle.timingSafeEqual is a Workers API not available in Node
 beforeAll(() => {
   if (!crypto.subtle.timingSafeEqual) {
-    ;(crypto.subtle as Record<string, unknown>).timingSafeEqual = (a: ArrayBuffer, b: ArrayBuffer): boolean => {
+    ;(crypto.subtle as Record<string, unknown>).timingSafeEqual = (
+      a: ArrayBuffer,
+      b: ArrayBuffer
+    ): boolean => {
       const viewA = new Uint8Array(a)
       const viewB = new Uint8Array(b)
       if (viewA.length !== viewB.length) return false
@@ -229,9 +232,7 @@ describe('storeOtp', () => {
     await storeOtp(db as unknown as D1Database, 'user@example.com', '123456')
 
     // #then
-    expect(db.prepare).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO otp_codes')
-    )
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO otp_codes'))
     const insertStmt = stmts[1]
     expect(insertStmt.bind).toHaveBeenCalled()
     expect(insertStmt.run).toHaveBeenCalled()
@@ -491,10 +492,7 @@ describe('checkEmailRateLimit', () => {
 
   it('should default count to 0 when no row is returned', async () => {
     // #given
-    db.batch.mockResolvedValue([
-      { success: true },
-      { results: [] }
-    ])
+    db.batch.mockResolvedValue([{ success: true }, { results: [] }])
 
     // #when / #then
     await expect(

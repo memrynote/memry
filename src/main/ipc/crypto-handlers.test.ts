@@ -90,15 +90,11 @@ const baseInput = {
   metadata: { signerPublicKey: VALID_PUBLIC_KEY }
 }
 
-function createVerifyInput(
-  overrides: Partial<VerifySignatureInput> = {}
-): VerifySignatureInput {
+function createVerifyInput(overrides: Partial<VerifySignatureInput> = {}): VerifySignatureInput {
   return { ...baseInput, ...overrides }
 }
 
-function createDecryptInput(
-  overrides: Partial<DecryptItemInput> = {}
-): DecryptItemInput {
+function createDecryptInput(overrides: Partial<DecryptItemInput> = {}): DecryptItemInput {
   return { ...baseInput, ...overrides }
 }
 

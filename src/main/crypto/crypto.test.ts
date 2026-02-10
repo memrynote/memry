@@ -203,12 +203,7 @@ describe('deriveKey', () => {
     const result = await deriveKey(masterKey, 'memry-vault-key-v1', 32)
 
     // #then
-    expect(mockSodium.crypto_kdf_derive_from_key).toHaveBeenCalledWith(
-      32,
-      1,
-      'memryvlt',
-      masterKey
-    )
+    expect(mockSodium.crypto_kdf_derive_from_key).toHaveBeenCalledWith(32, 1, 'memryvlt', masterKey)
     expect(result).toBeInstanceOf(Uint8Array)
     expect(result.length).toBe(32)
   })
@@ -221,12 +216,7 @@ describe('deriveKey', () => {
     await deriveKey(masterKey, 'memry-signing-key-v1', 32)
 
     // #then
-    expect(mockSodium.crypto_kdf_derive_from_key).toHaveBeenCalledWith(
-      32,
-      2,
-      'memrysgn',
-      masterKey
-    )
+    expect(mockSodium.crypto_kdf_derive_from_key).toHaveBeenCalledWith(32, 2, 'memrysgn', masterKey)
   })
 
   it('should throw for unknown context', async () => {
@@ -364,12 +354,7 @@ describe('generateKeyVerifier', () => {
 
     // #then
     expect(typeof verifier).toBe('string')
-    expect(mockSodium.crypto_kdf_derive_from_key).toHaveBeenCalledWith(
-      32,
-      4,
-      'memrykve',
-      masterKey
-    )
+    expect(mockSodium.crypto_kdf_derive_from_key).toHaveBeenCalledWith(32, 4, 'memrykve', masterKey)
   })
 
   it('should clean up the verifier key buffer after use', async () => {

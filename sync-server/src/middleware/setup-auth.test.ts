@@ -20,8 +20,7 @@ vi.mock('jose', () => ({
 import { setupAuthMiddleware } from './setup-auth'
 
 function createContext(options?: { authHeader?: string | null; jwtPublicKey?: string }) {
-  const authHeader =
-    options && 'authHeader' in options ? options.authHeader : 'Bearer setup-token'
+  const authHeader = options && 'authHeader' in options ? options.authHeader : 'Bearer setup-token'
   const jwtPublicKey = options?.jwtPublicKey ?? 'pem-key'
 
   const setMap = new Map<string, string>()
@@ -61,7 +60,10 @@ describe('setup-auth middleware', () => {
 
     // #when / #then
     await expect(
-      setupAuthMiddleware(context as never, vi.fn(async () => undefined))
+      setupAuthMiddleware(
+        context as never,
+        vi.fn(async () => undefined)
+      )
     ).rejects.toMatchObject({
       code: ErrorCodes.AUTH_INVALID_TOKEN,
       statusCode: 401
@@ -74,7 +76,10 @@ describe('setup-auth middleware', () => {
 
     // #when / #then
     await expect(
-      setupAuthMiddleware(context as never, vi.fn(async () => undefined))
+      setupAuthMiddleware(
+        context as never,
+        vi.fn(async () => undefined)
+      )
     ).rejects.toMatchObject({
       code: ErrorCodes.AUTH_INVALID_TOKEN,
       statusCode: 401
@@ -88,7 +93,10 @@ describe('setup-auth middleware', () => {
 
     // #when / #then
     await expect(
-      setupAuthMiddleware(context as never, vi.fn(async () => undefined))
+      setupAuthMiddleware(
+        context as never,
+        vi.fn(async () => undefined)
+      )
     ).rejects.toMatchObject({
       code: ErrorCodes.AUTH_INVALID_TOKEN,
       statusCode: 401
@@ -102,7 +110,10 @@ describe('setup-auth middleware', () => {
 
     // #when / #then
     await expect(
-      setupAuthMiddleware(context as never, vi.fn(async () => undefined))
+      setupAuthMiddleware(
+        context as never,
+        vi.fn(async () => undefined)
+      )
     ).rejects.toMatchObject({
       code: ErrorCodes.INTERNAL_ERROR,
       statusCode: 500
@@ -116,7 +127,10 @@ describe('setup-auth middleware', () => {
 
     // #when / #then
     await expect(
-      setupAuthMiddleware(context as never, vi.fn(async () => undefined))
+      setupAuthMiddleware(
+        context as never,
+        vi.fn(async () => undefined)
+      )
     ).rejects.toMatchObject({
       code: ErrorCodes.AUTH_TOKEN_EXPIRED,
       statusCode: 401
@@ -130,7 +144,10 @@ describe('setup-auth middleware', () => {
 
     // #when / #then
     await expect(
-      setupAuthMiddleware(context as never, vi.fn(async () => undefined))
+      setupAuthMiddleware(
+        context as never,
+        vi.fn(async () => undefined)
+      )
     ).rejects.toMatchObject({
       code: ErrorCodes.AUTH_INVALID_TOKEN,
       statusCode: 401
@@ -146,7 +163,10 @@ describe('setup-auth middleware', () => {
 
     // #when / #then
     await expect(
-      setupAuthMiddleware(context as never, vi.fn(async () => undefined))
+      setupAuthMiddleware(
+        context as never,
+        vi.fn(async () => undefined)
+      )
     ).rejects.toMatchObject({
       code: ErrorCodes.AUTH_INVALID_TOKEN,
       statusCode: 401
@@ -162,7 +182,10 @@ describe('setup-auth middleware', () => {
 
     // #when / #then
     await expect(
-      setupAuthMiddleware(context as never, vi.fn(async () => undefined))
+      setupAuthMiddleware(
+        context as never,
+        vi.fn(async () => undefined)
+      )
     ).rejects.toMatchObject({
       code: ErrorCodes.AUTH_INVALID_TOKEN,
       statusCode: 401

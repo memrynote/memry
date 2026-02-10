@@ -10,12 +10,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
-      exclude: [
-        '**/*.test.ts',
-        '**/__mocks__/**',
-        '**/contracts/**',
-        '**/durable-objects/**'
-      ],
+      exclude: ['**/*.test.ts', '**/__mocks__/**', '**/contracts/**', '**/durable-objects/**'],
       reporter: ['text', 'text-summary'],
       thresholds: {
         statements: 0,
