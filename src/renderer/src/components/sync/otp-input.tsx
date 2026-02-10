@@ -32,23 +32,25 @@ function useCountdown(onResend: () => void): {
     (s: number) => {
       clearTimer()
       setSeconds(s)
+      intervalRef.current = setInterval(() => {
+        setSeconds((prev) => {
+          if (prev <= 1) {
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current)
+              intervalRef.current = null
+            }
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
     },
     [clearTimer]
   )
 
   useEffect(() => {
-    if (seconds <= 0) return
-    intervalRef.current = setInterval(() => {
-      setSeconds((prev) => {
-        if (prev <= 1) {
-          clearTimer()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
     return clearTimer
-  }, [seconds, clearTimer])
+  }, [clearTimer])
 
   const reset = useCallback(() => {
     onResend()
@@ -76,6 +78,10 @@ export function OtpInput({
       startedRef.current = true
     }
   }, [expiresIn, start])
+
+  useEffect(() => {
+    if (error) setValue('')
+  }, [error])
 
   useEffect(() => {
     const unsubscribe = window.api.onOtpDetected((event) => {
