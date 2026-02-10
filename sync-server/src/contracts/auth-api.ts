@@ -47,6 +47,7 @@ export const VerifyOtpResponseSchema = z.object({
   success: z.boolean(),
   accessToken: z.string().optional(),
   refreshToken: z.string().optional(),
+  setupToken: z.string().optional(),
   userId: z.string().optional(),
   isNewUser: z.boolean().optional(),
   needsSetup: z.boolean().optional()
@@ -55,6 +56,8 @@ export const VerifyOtpResponseSchema = z.object({
 export const DeviceRegisterResponseSchema = z.object({
   success: z.boolean(),
   deviceId: z.string().optional(),
+  accessToken: z.string().optional(),
+  refreshToken: z.string().optional(),
   error: z.string().optional()
 })
 
