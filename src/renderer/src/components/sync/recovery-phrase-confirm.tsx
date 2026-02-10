@@ -11,9 +11,19 @@ interface RecoveryPhraseConfirmProps {
   onBack: () => void
 }
 
-function pickVerificationIndices(wordCount: number): [number, number, number] {
-  const third = Math.floor(wordCount / 3)
-  return [Math.floor(third * 0.5), Math.floor(third * 1.5), Math.floor(third * 2.5)]
+const MIN_GAP = 2
+
+function pickRandomIndices(wordCount: number): [number, number, number] {
+  const arr = new Uint32Array(3)
+  for (;;) {
+    crypto.getRandomValues(arr)
+    const indices = Array.from(arr).map((v) => v % wordCount)
+    indices.sort((a, b) => a - b)
+    const [a, b, c] = indices
+    if (a !== b && b !== c && b - a >= MIN_GAP && c - b >= MIN_GAP) {
+      return [a, b, c] as [number, number, number]
+    }
+  }
 }
 
 export function RecoveryPhraseConfirm({
@@ -22,7 +32,7 @@ export function RecoveryPhraseConfirm({
   onBack
 }: RecoveryPhraseConfirmProps): React.JSX.Element {
   const words = useMemo(() => phrase.split(' '), [phrase])
-  const indices = useMemo(() => pickVerificationIndices(words.length), [words.length])
+  const indices = useMemo(() => pickRandomIndices(words.length), [words.length])
 
   const [inputs, setInputs] = useState<[string, string, string]>(['', '', ''])
   const [touched, setTouched] = useState<[boolean, boolean, boolean]>([false, false, false])
