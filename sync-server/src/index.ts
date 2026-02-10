@@ -5,6 +5,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 
 import { AppError, ErrorCodes, errorHandler } from './lib/errors'
+import { auth } from './routes/auth'
 import { securityHeaders } from './middleware/security'
 import {
   cleanupExpiredLinkingSessions,
@@ -83,6 +84,8 @@ app.get('/health', (c) =>
     timestamp: Date.now()
   })
 )
+
+app.route('/auth', auth)
 
 const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env, _ctx) => {
   const results = await Promise.allSettled([
