@@ -71,7 +71,10 @@ export interface KeychainEntry {
 export const KEYCHAIN_ENTRIES = {
   MASTER_KEY: { service: 'com.memry.sync', account: 'master-key' },
   VAULT_KEY: { service: 'com.memry.sync', account: 'vault-key' },
-  DEVICE_SIGNING_KEY: { service: 'com.memry.sync', account: 'device-signing-key' }
+  DEVICE_SIGNING_KEY: { service: 'com.memry.sync', account: 'device-signing-key' },
+  ACCESS_TOKEN: { service: 'com.memry.sync', account: 'access-token' },
+  REFRESH_TOKEN: { service: 'com.memry.sync', account: 'refresh-token' },
+  SETUP_TOKEN: { service: 'com.memry.sync', account: 'setup-token' }
 } as const satisfies Record<string, KeychainEntry>
 
 // ============================================================================

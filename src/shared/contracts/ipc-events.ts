@@ -18,7 +18,8 @@ export const EVENT_CHANNELS = {
   PAUSED: 'sync:paused',
   RESUMED: 'sync:resumed',
   KEY_ROTATION_PROGRESS: 'crypto:key-rotation-progress',
-  SESSION_EXPIRED: 'auth:session-expired'
+  SESSION_EXPIRED: 'auth:session-expired',
+  OTP_DETECTED: 'auth:otp-detected'
 } as const
 
 // ============================================================================
@@ -101,4 +102,8 @@ export type SessionExpiredReason = 'token_expired' | 'device_revoked' | 'server_
 
 export interface SessionExpiredEvent {
   reason: SessionExpiredReason
+}
+
+export interface OtpDetectedEvent {
+  code: string
 }

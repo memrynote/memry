@@ -15,6 +15,13 @@ export interface StoredVaultInfo {
 }
 
 /**
+ * Sync-related persistent state
+ */
+export interface SyncStoreData {
+  recoveryPhraseConfirmed?: boolean
+}
+
+/**
  * Application store schema
  */
 interface StoreSchema {
@@ -22,13 +29,16 @@ interface StoreSchema {
   currentVault: string | null
   /** List of known vaults */
   vaults: StoredVaultInfo[]
+  /** Sync configuration */
+  sync: SyncStoreData
 }
 
 const CONFIG_FILE = 'memry-config.json'
 
 const defaultData: StoreSchema = {
   currentVault: null,
-  vaults: []
+  vaults: [],
+  sync: {}
 }
 
 /**
