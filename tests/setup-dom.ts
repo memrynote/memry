@@ -230,6 +230,26 @@ const createMockApi = () => ({
     rename: vi.fn().mockResolvedValue({ success: true })
   },
 
+  // Sync Auth API
+  syncAuth: {
+    requestOtp: vi.fn().mockResolvedValue({ success: true }),
+    verifyOtp: vi.fn().mockResolvedValue({ success: true }),
+    resendOtp: vi.fn().mockResolvedValue({ success: true })
+  },
+
+  // Sync Setup API
+  syncSetup: {
+    setupFirstDevice: vi.fn().mockResolvedValue({ success: true }),
+    confirmRecoveryPhrase: vi.fn().mockResolvedValue({ success: true })
+  },
+
+  // Sync Devices API
+  syncDevices: {
+    getDevices: vi.fn().mockResolvedValue({ devices: [] }),
+    removeDevice: vi.fn().mockResolvedValue({ success: true }),
+    renameDevice: vi.fn().mockResolvedValue({ success: true })
+  },
+
   // Saved Filters API
   savedFilters: {
     list: vi.fn().mockResolvedValue([]),
