@@ -38,10 +38,12 @@ const createMockContext = (overrides?: {
       const idx = db.prepare.mock.calls.length - 1
       return stmts[idx] ?? createMockStatement()
     }),
-    batch: vi.fn().mockResolvedValue([
-      { success: true },
-      { results: [{ count, window_start: windowStart }] } as D1Result
-    ])
+    batch: vi
+      .fn()
+      .mockResolvedValue([
+        { success: true },
+        { results: [{ count, window_start: windowStart }] } as D1Result
+      ])
   }
 
   const headers: Record<string, string> = {}

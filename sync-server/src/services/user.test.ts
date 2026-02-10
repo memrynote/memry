@@ -57,9 +57,7 @@ describe('createUser', () => {
     })
 
     // #then
-    expect(db.prepare).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO users')
-    )
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO users'))
   })
 
   it('should return a User with the provided email and auth method', async () => {
@@ -82,9 +80,7 @@ describe('createUser', () => {
     })
 
     // #then
-    expect(user.id).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
-    )
+    expect(user.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
   })
 
   it('should default email_verified to 0 when not provided', async () => {
@@ -162,9 +158,7 @@ describe('createUser', () => {
 
   it('should set created_at and updated_at to current unix timestamp', async () => {
     // #given
-    const expectedTimestamp = Math.floor(
-      new Date('2026-01-15T00:00:00Z').getTime() / 1000
-    )
+    const expectedTimestamp = Math.floor(new Date('2026-01-15T00:00:00Z').getTime() / 1000)
 
     // #when
     const user = await createUser(db as unknown as D1Database, {
@@ -217,9 +211,7 @@ describe('getUserByEmail', () => {
     await getUserByEmail(db as unknown as D1Database, 'alice@example.com')
 
     // #then
-    expect(db.prepare).toHaveBeenCalledWith(
-      'SELECT * FROM users WHERE email = ?'
-    )
+    expect(db.prepare).toHaveBeenCalledWith('SELECT * FROM users WHERE email = ?')
   })
 
   it('should bind the email parameter', async () => {
@@ -242,10 +234,7 @@ describe('getUserByEmail', () => {
     db.prepare.mockReturnValue(stmt)
 
     // #when
-    const result = await getUserByEmail(
-      db as unknown as D1Database,
-      'alice@example.com'
-    )
+    const result = await getUserByEmail(db as unknown as D1Database, 'alice@example.com')
 
     // #then
     expect(result).toEqual(mockUser)
@@ -253,10 +242,7 @@ describe('getUserByEmail', () => {
 
   it('should return null when user not found', async () => {
     // #when
-    const result = await getUserByEmail(
-      db as unknown as D1Database,
-      'nobody@example.com'
-    )
+    const result = await getUserByEmail(db as unknown as D1Database, 'nobody@example.com')
 
     // #then
     expect(result).toBeNull()
@@ -279,9 +265,7 @@ describe('getUserById', () => {
     await getUserById(db as unknown as D1Database, 'user-1')
 
     // #then
-    expect(db.prepare).toHaveBeenCalledWith(
-      'SELECT * FROM users WHERE id = ?'
-    )
+    expect(db.prepare).toHaveBeenCalledWith('SELECT * FROM users WHERE id = ?')
   })
 
   it('should bind the userId parameter', async () => {
@@ -312,10 +296,7 @@ describe('getUserById', () => {
 
   it('should return null when user not found', async () => {
     // #when
-    const result = await getUserById(
-      db as unknown as D1Database,
-      'nonexistent-id'
-    )
+    const result = await getUserById(db as unknown as D1Database, 'nonexistent-id')
 
     // #then
     expect(result).toBeNull()
@@ -354,9 +335,7 @@ describe('updateUser', () => {
     })
 
     // #then
-    expect(db.prepare).toHaveBeenCalledWith(
-      expect.stringContaining('email_verified = ?')
-    )
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('email_verified = ?'))
   })
 
   it('should update kdf_salt field', async () => {
@@ -370,9 +349,7 @@ describe('updateUser', () => {
     })
 
     // #then
-    expect(db.prepare).toHaveBeenCalledWith(
-      expect.stringContaining('kdf_salt = ?')
-    )
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('kdf_salt = ?'))
   })
 
   it('should update key_verifier field', async () => {
@@ -386,9 +363,7 @@ describe('updateUser', () => {
     })
 
     // #then
-    expect(db.prepare).toHaveBeenCalledWith(
-      expect.stringContaining('key_verifier = ?')
-    )
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('key_verifier = ?'))
   })
 
   it('should update multiple fields at once', async () => {
@@ -421,18 +396,14 @@ describe('updateUser', () => {
     })
 
     // #then
-    expect(db.prepare).toHaveBeenCalledWith(
-      expect.stringContaining('updated_at = ?')
-    )
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('updated_at = ?'))
   })
 
   it('should bind field values followed by timestamp and userId', async () => {
     // #given
     const stmt = createMockStatement()
     db.prepare.mockReturnValue(stmt)
-    const expectedTimestamp = Math.floor(
-      new Date('2026-01-15T00:00:00Z').getTime() / 1000
-    )
+    const expectedTimestamp = Math.floor(new Date('2026-01-15T00:00:00Z').getTime() / 1000)
 
     // #when
     await updateUser(db as unknown as D1Database, 'user-1', {
@@ -447,9 +418,7 @@ describe('updateUser', () => {
     // #given
     const stmt = createMockStatement()
     db.prepare.mockReturnValue(stmt)
-    const expectedTimestamp = Math.floor(
-      new Date('2026-01-15T00:00:00Z').getTime() / 1000
-    )
+    const expectedTimestamp = Math.floor(new Date('2026-01-15T00:00:00Z').getTime() / 1000)
 
     // #when
     await updateUser(db as unknown as D1Database, 'user-1', {
@@ -459,13 +428,7 @@ describe('updateUser', () => {
     })
 
     // #then
-    expect(stmt.bind).toHaveBeenCalledWith(
-      1,
-      'salt',
-      'verifier',
-      expectedTimestamp,
-      'user-1'
-    )
+    expect(stmt.bind).toHaveBeenCalledWith(1, 'salt', 'verifier', expectedTimestamp, 'user-1')
   })
 
   it('should use WHERE id = ? clause', async () => {
@@ -479,9 +442,7 @@ describe('updateUser', () => {
     })
 
     // #then
-    expect(db.prepare).toHaveBeenCalledWith(
-      expect.stringContaining('WHERE id = ?')
-    )
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('WHERE id = ?'))
   })
 })
 
@@ -498,27 +459,15 @@ describe('linkIdentity', () => {
 
   it('should insert into user_identities table', async () => {
     // #when
-    await linkIdentity(
-      db as unknown as D1Database,
-      'user-1',
-      'google',
-      'google-id-123'
-    )
+    await linkIdentity(db as unknown as D1Database, 'user-1', 'google', 'google-id-123')
 
     // #then
-    expect(db.prepare).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO user_identities')
-    )
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO user_identities'))
   })
 
   it('should use ON CONFLICT DO NOTHING for idempotency', async () => {
     // #when
-    await linkIdentity(
-      db as unknown as D1Database,
-      'user-1',
-      'google',
-      'google-id-123'
-    )
+    await linkIdentity(db as unknown as D1Database, 'user-1', 'google', 'google-id-123')
 
     // #then
     expect(db.prepare).toHaveBeenCalledWith(
@@ -532,12 +481,7 @@ describe('linkIdentity', () => {
     db.prepare.mockReturnValue(stmt)
 
     // #when
-    await linkIdentity(
-      db as unknown as D1Database,
-      'user-1',
-      'github',
-      'gh-456'
-    )
+    await linkIdentity(db as unknown as D1Database, 'user-1', 'github', 'gh-456')
 
     // #then
     const bindArgs = stmt.bind.mock.calls[0]
@@ -560,16 +504,10 @@ describe('findUserByIdentity', () => {
 
   it('should join users with user_identities', async () => {
     // #when
-    await findUserByIdentity(
-      db as unknown as D1Database,
-      'google',
-      'google-id-123'
-    )
+    await findUserByIdentity(db as unknown as D1Database, 'google', 'google-id-123')
 
     // #then
-    expect(db.prepare).toHaveBeenCalledWith(
-      expect.stringContaining('JOIN user_identities')
-    )
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('JOIN user_identities'))
   })
 
   it('should filter by provider and provider_id', async () => {
@@ -578,11 +516,7 @@ describe('findUserByIdentity', () => {
     db.prepare.mockReturnValue(stmt)
 
     // #when
-    await findUserByIdentity(
-      db as unknown as D1Database,
-      'google',
-      'google-id-123'
-    )
+    await findUserByIdentity(db as unknown as D1Database, 'google', 'google-id-123')
 
     // #then
     expect(stmt.bind).toHaveBeenCalledWith('google', 'google-id-123')
@@ -596,11 +530,7 @@ describe('findUserByIdentity', () => {
     db.prepare.mockReturnValue(stmt)
 
     // #when
-    const result = await findUserByIdentity(
-      db as unknown as D1Database,
-      'google',
-      'google-id-123'
-    )
+    const result = await findUserByIdentity(db as unknown as D1Database, 'google', 'google-id-123')
 
     // #then
     expect(result).toEqual(mockUser)
@@ -608,11 +538,7 @@ describe('findUserByIdentity', () => {
 
   it('should return null when identity not found', async () => {
     // #when
-    const result = await findUserByIdentity(
-      db as unknown as D1Database,
-      'google',
-      'nonexistent'
-    )
+    const result = await findUserByIdentity(db as unknown as D1Database, 'google', 'nonexistent')
 
     // #then
     expect(result).toBeNull()
@@ -653,11 +579,9 @@ describe('getOrCreateUserByEmail', () => {
     db.prepare.mockReturnValueOnce(selectStmt)
 
     // #when
-    const result = await getOrCreateUserByEmail(
-      db as unknown as D1Database,
-      'alice@example.com',
-      { authMethod: 'email' }
-    )
+    const result = await getOrCreateUserByEmail(db as unknown as D1Database, 'alice@example.com', {
+      authMethod: 'email'
+    })
 
     // #then
     expect(result.isNewUser).toBe(false)
@@ -691,16 +615,14 @@ describe('getOrCreateUserByEmail', () => {
     db.prepare.mockReturnValueOnce(selectStmt)
 
     // #when
-    await getOrCreateUserByEmail(
-      db as unknown as D1Database,
-      'alice@example.com',
-      { authMethod: 'google', authProvider: 'google', authProviderId: 'g-123' }
-    )
+    await getOrCreateUserByEmail(db as unknown as D1Database, 'alice@example.com', {
+      authMethod: 'google',
+      authProvider: 'google',
+      authProviderId: 'g-123'
+    })
 
     // #then - second prepare call is linkIdentity INSERT
-    expect(db.prepare).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO user_identities')
-    )
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO user_identities'))
   })
 
   it('should not link identity when existing user has no provider info', async () => {
@@ -724,11 +646,9 @@ describe('getOrCreateUserByEmail', () => {
     db.prepare.mockReturnValueOnce(selectStmt)
 
     // #when
-    await getOrCreateUserByEmail(
-      db as unknown as D1Database,
-      'alice@example.com',
-      { authMethod: 'email' }
-    )
+    await getOrCreateUserByEmail(db as unknown as D1Database, 'alice@example.com', {
+      authMethod: 'email'
+    })
 
     // #then - only the SELECT was called, no INSERT for identity
     expect(db.prepare).toHaveBeenCalledTimes(1)
@@ -742,11 +662,9 @@ describe('getOrCreateUserByEmail', () => {
     db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(insertStmt)
 
     // #when
-    const result = await getOrCreateUserByEmail(
-      db as unknown as D1Database,
-      'new@example.com',
-      { authMethod: 'email' }
-    )
+    const result = await getOrCreateUserByEmail(db as unknown as D1Database, 'new@example.com', {
+      authMethod: 'email'
+    })
 
     // #then
     expect(result.isNewUser).toBe(true)
@@ -765,11 +683,11 @@ describe('getOrCreateUserByEmail', () => {
       .mockReturnValueOnce(linkStmt)
 
     // #when
-    const result = await getOrCreateUserByEmail(
-      db as unknown as D1Database,
-      'new@example.com',
-      { authMethod: 'google', authProvider: 'google', authProviderId: 'g-789' }
-    )
+    const result = await getOrCreateUserByEmail(db as unknown as D1Database, 'new@example.com', {
+      authMethod: 'google',
+      authProvider: 'google',
+      authProviderId: 'g-789'
+    })
 
     // #then
     expect(result.user.email_verified).toBe(1)
@@ -783,11 +701,9 @@ describe('getOrCreateUserByEmail', () => {
     db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(insertStmt)
 
     // #when
-    const result = await getOrCreateUserByEmail(
-      db as unknown as D1Database,
-      'new@example.com',
-      { authMethod: 'email' }
-    )
+    const result = await getOrCreateUserByEmail(db as unknown as D1Database, 'new@example.com', {
+      authMethod: 'email'
+    })
 
     // #then
     expect(result.user.email_verified).toBe(0)
@@ -805,11 +721,11 @@ describe('getOrCreateUserByEmail', () => {
       .mockReturnValueOnce(linkStmt)
 
     // #when
-    await getOrCreateUserByEmail(
-      db as unknown as D1Database,
-      'new@example.com',
-      { authMethod: 'google', authProvider: 'google', authProviderId: 'g-789' }
-    )
+    await getOrCreateUserByEmail(db as unknown as D1Database, 'new@example.com', {
+      authMethod: 'google',
+      authProvider: 'google',
+      authProviderId: 'g-789'
+    })
 
     // #then - third prepare call is linkIdentity
     expect(db.prepare).toHaveBeenCalledTimes(3)
@@ -827,11 +743,9 @@ describe('getOrCreateUserByEmail', () => {
     db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(insertStmt)
 
     // #when
-    await getOrCreateUserByEmail(
-      db as unknown as D1Database,
-      'new@example.com',
-      { authMethod: 'email' }
-    )
+    await getOrCreateUserByEmail(db as unknown as D1Database, 'new@example.com', {
+      authMethod: 'email'
+    })
 
     // #then - only SELECT + INSERT, no linkIdentity
     expect(db.prepare).toHaveBeenCalledTimes(2)
@@ -845,11 +759,10 @@ describe('getOrCreateUserByEmail', () => {
     db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(insertStmt)
 
     // #when
-    await getOrCreateUserByEmail(
-      db as unknown as D1Database,
-      'new@example.com',
-      { authMethod: 'google', authProvider: 'google' }
-    )
+    await getOrCreateUserByEmail(db as unknown as D1Database, 'new@example.com', {
+      authMethod: 'google',
+      authProvider: 'google'
+    })
 
     // #then - no linkIdentity because authProviderId is missing
     expect(db.prepare).toHaveBeenCalledTimes(2)

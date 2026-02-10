@@ -1,6 +1,5 @@
 # AGENTS.md
 
-
 Guidelines for AI coding agents working in the Memry codebase.
 
 ## Quick Reference

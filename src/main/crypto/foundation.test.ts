@@ -178,7 +178,9 @@ describe('crypto foundation', () => {
   })
 
   it('derives master key material and verifier', async () => {
-    const seed = await phraseToSeed('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about')
+    const seed = await phraseToSeed(
+      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
+    )
     const salt = generateSalt()
 
     const material = await deriveMasterKey(seed, salt)
@@ -208,7 +210,8 @@ describe('crypto foundation', () => {
     const generated = await generateRecoveryPhrase()
     expect(validateRecoveryPhrase(generated.phrase)).toBe(true)
 
-    const samplePhrase = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
+    const samplePhrase =
+      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
     const seedA = await phraseToSeed(samplePhrase)
     const seedB = await phraseToSeed(samplePhrase)
     expect(seedA).toEqual(seedB)

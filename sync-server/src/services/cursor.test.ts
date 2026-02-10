@@ -14,10 +14,7 @@ describe('cursor service', () => {
       bind: vi.fn(() => ({ first: incrementFirst }))
     }
 
-    const prepare = vi
-      .fn()
-      .mockReturnValueOnce(firstStatement)
-      .mockReturnValueOnce(secondStatement)
+    const prepare = vi.fn().mockReturnValueOnce(firstStatement).mockReturnValueOnce(secondStatement)
 
     const db = { prepare } as unknown as D1Database
 

@@ -88,12 +88,24 @@ vi.mock('jose', () => ({
   }),
   createRemoteJWKSet: vi.fn().mockReturnValue('mock-jwks'),
   SignJWT: class {
-    setProtectedHeader() { return this }
-    setIssuedAt() { return this }
-    setIssuer() { return this }
-    setAudience() { return this }
-    setExpirationTime() { return this }
-    async sign() { return 'mock-oauth-state' }
+    setProtectedHeader() {
+      return this
+    }
+    setIssuedAt() {
+      return this
+    }
+    setIssuer() {
+      return this
+    }
+    setAudience() {
+      return this
+    }
+    setExpirationTime() {
+      return this
+    }
+    async sign() {
+      return 'mock-oauth-state'
+    }
   }
 }))
 
@@ -474,11 +486,7 @@ describe('auth routes', () => {
 
     it('should return 400 for invalid body', async () => {
       // #when
-      const res = await app.request(
-        '/auth/devices',
-        jsonPost('/auth/devices', { name: '' }),
-        env
-      )
+      const res = await app.request('/auth/devices', jsonPost('/auth/devices', { name: '' }), env)
 
       // #then
       expect(res.status).toBe(400)
@@ -525,9 +533,9 @@ describe('auth routes', () => {
 
     it('should return 404 when user is not found', async () => {
       // #given
-      vi.mocked(getUserById).mockResolvedValueOnce(null as unknown as Awaited<
-        ReturnType<typeof getUserById>
-      >)
+      vi.mocked(getUserById).mockResolvedValueOnce(
+        null as unknown as Awaited<ReturnType<typeof getUserById>>
+      )
 
       // #when
       const res = await app.request(

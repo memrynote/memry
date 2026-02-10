@@ -68,7 +68,12 @@ describe('auth middleware', () => {
   it('rejects missing or malformed Authorization header', async () => {
     const { context } = createContext({ authHeader: 'invalid-header' })
 
-    await expect(authMiddleware(context as never, vi.fn(async () => undefined))).rejects.toMatchObject({
+    await expect(
+      authMiddleware(
+        context as never,
+        vi.fn(async () => undefined)
+      )
+    ).rejects.toMatchObject({
       code: ErrorCodes.AUTH_INVALID_TOKEN,
       statusCode: 401
     } satisfies Partial<AppError>)
@@ -78,7 +83,12 @@ describe('auth middleware', () => {
     hoisted.importSpkiMock.mockRejectedValue(new Error('bad pem'))
     const { context } = createContext()
 
-    await expect(authMiddleware(context as never, vi.fn(async () => undefined))).rejects.toMatchObject({
+    await expect(
+      authMiddleware(
+        context as never,
+        vi.fn(async () => undefined)
+      )
+    ).rejects.toMatchObject({
       code: ErrorCodes.INTERNAL_ERROR,
       statusCode: 500
     } satisfies Partial<AppError>)
@@ -88,7 +98,12 @@ describe('auth middleware', () => {
     hoisted.jwtVerifyMock.mockRejectedValue(new Error('token expired'))
     const { context } = createContext()
 
-    await expect(authMiddleware(context as never, vi.fn(async () => undefined))).rejects.toMatchObject({
+    await expect(
+      authMiddleware(
+        context as never,
+        vi.fn(async () => undefined)
+      )
+    ).rejects.toMatchObject({
       code: ErrorCodes.AUTH_TOKEN_EXPIRED,
       statusCode: 401
     } satisfies Partial<AppError>)
@@ -98,7 +113,12 @@ describe('auth middleware', () => {
     hoisted.jwtVerifyMock.mockResolvedValue({ payload: { sub: 'user-1', type: 'access' } })
     const { context } = createContext()
 
-    await expect(authMiddleware(context as never, vi.fn(async () => undefined))).rejects.toMatchObject({
+    await expect(
+      authMiddleware(
+        context as never,
+        vi.fn(async () => undefined)
+      )
+    ).rejects.toMatchObject({
       code: ErrorCodes.AUTH_INVALID_TOKEN,
       statusCode: 401
     } satisfies Partial<AppError>)
@@ -108,7 +128,10 @@ describe('auth middleware', () => {
     const missingContext = createContext({ device: null }).context
 
     await expect(
-      authMiddleware(missingContext as never, vi.fn(async () => undefined))
+      authMiddleware(
+        missingContext as never,
+        vi.fn(async () => undefined)
+      )
     ).rejects.toMatchObject({
       code: ErrorCodes.AUTH_DEVICE_NOT_FOUND,
       statusCode: 401
@@ -119,7 +142,10 @@ describe('auth middleware', () => {
     }).context
 
     await expect(
-      authMiddleware(revokedContext as never, vi.fn(async () => undefined))
+      authMiddleware(
+        revokedContext as never,
+        vi.fn(async () => undefined)
+      )
     ).rejects.toMatchObject({
       code: ErrorCodes.AUTH_DEVICE_REVOKED,
       statusCode: 403

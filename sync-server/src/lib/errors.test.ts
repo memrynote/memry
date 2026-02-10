@@ -14,8 +14,8 @@ describe('sync-server error utilities', () => {
   })
 
   it('errorHandler returns app error payload with status code', async () => {
-    const json = vi.fn((payload: unknown, init: { status: number }) =>
-      new Response(JSON.stringify(payload), init)
+    const json = vi.fn(
+      (payload: unknown, init: { status: number }) => new Response(JSON.stringify(payload), init)
     )
     const context = { json } as unknown as Parameters<typeof errorHandler>[1]
 
@@ -36,8 +36,8 @@ describe('sync-server error utilities', () => {
 
   it('errorHandler converts unexpected errors to INTERNAL_ERROR', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    const json = vi.fn((payload: unknown, init: number) =>
-      new Response(JSON.stringify(payload), { status: init })
+    const json = vi.fn(
+      (payload: unknown, init: number) => new Response(JSON.stringify(payload), { status: init })
     )
     const context = { json } as unknown as Parameters<typeof errorHandler>[1]
 

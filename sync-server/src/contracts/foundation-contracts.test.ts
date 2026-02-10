@@ -43,9 +43,9 @@ import { PushRequestSchema, SYNC_ITEM_TYPES, VectorClockSchema } from './sync-ap
 describe('sync-server contracts', () => {
   it('validates API contract schemas', () => {
     expect(RequestOtpRequestSchema.safeParse({ email: 'user@example.com' }).success).toBe(true)
-    expect(VerifyOtpRequestSchema.safeParse({ email: 'user@example.com', code: '654321' }).success).toBe(
-      true
-    )
+    expect(
+      VerifyOtpRequestSchema.safeParse({ email: 'user@example.com', code: '654321' }).success
+    ).toBe(true)
     expect(
       DeviceRegisterRequestSchema.safeParse({
         name: 'Laptop',
@@ -65,7 +65,9 @@ describe('sync-server contracts', () => {
         chunkCount: 4
       }).success
     ).toBe(true)
-    expect(ChunkUploadParamsSchema.safeParse({ sessionId: 's1', chunkIndex: -1 }).success).toBe(false)
+    expect(ChunkUploadParamsSchema.safeParse({ sessionId: 's1', chunkIndex: -1 }).success).toBe(
+      false
+    )
   })
 
   it('validates crypto and sync payload schemas', () => {
@@ -149,14 +151,14 @@ describe('sync-server contracts', () => {
     ).toBe(true)
     expect(RotateKeysSchema.safeParse({ confirm: true }).success).toBe(true)
 
-    expect(LinkViaQrSchema.safeParse({ qrData: 'qr', oauthToken: 'oauth', provider: 'google' }).success).toBe(
-      true
-    )
+    expect(
+      LinkViaQrSchema.safeParse({ qrData: 'qr', oauthToken: 'oauth', provider: 'google' }).success
+    ).toBe(true)
     expect(ApproveLinkingSchema.safeParse({ sessionId: 'session' }).success).toBe(true)
     expect(RemoveDeviceSchema.safeParse({ deviceId: 'device-1' }).success).toBe(true)
-    expect(RenameDeviceSchema.safeParse({ deviceId: 'device-1', newName: 'New Name' }).success).toBe(
-      true
-    )
+    expect(
+      RenameDeviceSchema.safeParse({ deviceId: 'device-1', newName: 'New Name' }).success
+    ).toBe(true)
 
     expect(UploadAttachmentSchema.safeParse({ noteId: 'n1', filePath: '/tmp/file' }).success).toBe(
       true

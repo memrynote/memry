@@ -51,9 +51,7 @@ describe('securityHeaders', () => {
     await securityHeaders(c as never, next)
 
     // #then
-    expect(c._headers['Strict-Transport-Security']).toBe(
-      'max-age=31536000; includeSubDomains'
-    )
+    expect(c._headers['Strict-Transport-Security']).toBe('max-age=31536000; includeSubDomains')
   })
 
   it('should set X-Content-Type-Options to nosniff', async () => {
@@ -97,8 +95,6 @@ describe('securityHeaders', () => {
     await securityHeaders(c as never, next)
 
     // #then
-    expect(c._headers['Content-Security-Policy']).toBe(
-      "default-src 'none'; frame-ancestors 'none'"
-    )
+    expect(c._headers['Content-Security-Policy']).toBe("default-src 'none'; frame-ancestors 'none'")
   })
 })

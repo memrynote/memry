@@ -64,11 +64,7 @@ export const getBlob = async (
   return storage.get(key)
 }
 
-export const deleteBlob = async (
-  storage: R2Bucket,
-  key: string,
-  userId: string
-): Promise<void> => {
+export const deleteBlob = async (storage: R2Bucket, key: string, userId: string): Promise<void> => {
   assertKeyBelongsToUser(key, userId)
   await storage.delete(key)
 }
