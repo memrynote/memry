@@ -83,6 +83,17 @@ export const verifyOtp = async (db: D1Database, email: string, code: string): Pr
   await db.prepare('UPDATE otp_codes SET used = 1 WHERE id = ?').bind(record.id).run()
 }
 
+export const hasPendingOtp = async (db: D1Database, email: string): Promise<boolean> => {
+  const now = Math.floor(Date.now() / 1000)
+  const record = await db
+    .prepare(
+      'SELECT id FROM otp_codes WHERE email = ? AND used = 0 AND expires_at > ? LIMIT 1'
+    )
+    .bind(email, now)
+    .first<{ id: string }>()
+  return !!record
+}
+
 export const checkEmailRateLimit = async (db: D1Database, email: string): Promise<void> => {
   const key = `otp-email:${email}`
   const now = Math.floor(Date.now() / 1000)
