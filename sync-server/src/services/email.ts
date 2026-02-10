@@ -10,7 +10,7 @@ export const sendEmail = async (
   subject: string,
   html: string,
   apiKey: string
-): Promise<boolean> => {
+): Promise<void> => {
   if (!EMAIL_RE.test(to)) {
     throw new AppError(ErrorCodes.VALIDATION_INVALID_EMAIL, `Invalid email address: ${to}`, 400)
   }
@@ -28,12 +28,11 @@ export const sendEmail = async (
     if (!response.ok) {
       const body = await response.text()
       console.error(`Resend API error: ${response.status} ${body}`)
-      return false
+      throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Failed to send verification email', 500)
     }
-
-    return true
   } catch (err) {
+    if (err instanceof AppError) throw err
     console.error('Failed to send email:', err instanceof Error ? err.message : err)
-    return false
+    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Failed to send verification email', 500)
   }
 }
