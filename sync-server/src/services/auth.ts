@@ -1,6 +1,7 @@
 import { importPKCS8, SignJWT } from 'jose'
 
 import { AppError, ErrorCodes } from '../lib/errors'
+import { getPrivateKey } from '../lib/jwt-keys'
 
 const ISSUER = 'memry-sync'
 const AUDIENCE = 'memry-client'
@@ -122,4 +123,14 @@ export const revokeDeviceTokens = async (db: D1Database, deviceId: string): Prom
     .prepare('UPDATE refresh_tokens SET revoked = 1 WHERE device_id = ? AND revoked = 0')
     .bind(deviceId)
     .run()
+}
+
+const SETUP_TOKEN_EXPIRY = '15m'
+
+export const signSetupToken = async (
+  userId: string,
+  privateKeyPem: string
+): Promise<string> => {
+  const privateKey = await getPrivateKey(privateKeyPem)
+  return signToken({ sub: userId, type: 'setup' }, privateKey, SETUP_TOKEN_EXPIRY)
 }
