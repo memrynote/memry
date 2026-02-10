@@ -1,25 +1,13 @@
-import { importSPKI, jwtVerify } from 'jose'
+import { jwtVerify } from 'jose'
 import type { MiddlewareHandler } from 'hono'
 
 import { AppError, ErrorCodes } from '../lib/errors'
+import { getPublicKey } from '../lib/jwt-keys'
 import type { AppContext } from '../types'
 
 const REQUIRED_ISSUER = 'memry-sync'
 const REQUIRED_AUDIENCE = 'memry-client'
 const ALLOWED_ALGORITHM = 'EdDSA'
-
-let cachedPem: string | null = null
-let cachedKey: CryptoKey | null = null
-
-const getPublicKey = async (pem: string): Promise<CryptoKey> => {
-  if (cachedKey && cachedPem === pem) {
-    return cachedKey
-  }
-  const key = await importSPKI(pem, ALLOWED_ALGORITHM)
-  cachedPem = pem
-  cachedKey = key
-  return key
-}
 
 export const authMiddleware: MiddlewareHandler<AppContext> = async (c, next) => {
   const authHeader = c.req.header('Authorization')
