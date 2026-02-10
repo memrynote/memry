@@ -20,6 +20,7 @@ const hoisted = vi.hoisted(() => ({
   registerBookmarksHandlers: vi.fn(),
   unregisterBookmarksHandlers: vi.fn(),
   registerTagsHandlers: vi.fn(),
+  unregisterTagsHandlers: vi.fn(),
   registerInboxHandlers: vi.fn(),
   unregisterInboxHandlers: vi.fn(),
   registerReminderHandlers: vi.fn(),
@@ -71,7 +72,8 @@ vi.mock('./bookmarks-handlers', () => ({
   unregisterBookmarksHandlers: hoisted.unregisterBookmarksHandlers
 }))
 vi.mock('./tags-handlers', () => ({
-  registerTagsHandlers: hoisted.registerTagsHandlers
+  registerTagsHandlers: hoisted.registerTagsHandlers,
+  unregisterTagsHandlers: hoisted.unregisterTagsHandlers
 }))
 vi.mock('./inbox-handlers', () => ({
   registerInboxHandlers: hoisted.registerInboxHandlers,

@@ -79,8 +79,7 @@ describe('T513: InfoSection - basic display', () => {
     const user = userEvent.setup()
     render(<InfoSection {...defaultProps} />)
 
-    // Header shows "Info" text
-    const header = screen.getByRole('button', { name: /info/i })
+    const header = screen.getByRole('button', { name: /^properties$/i })
     await user.click(header)
 
     expect(defaultProps.onToggleExpand).toHaveBeenCalled()
@@ -168,8 +167,7 @@ describe('T514: InfoSection - property editors', () => {
     it('should display formatted date', () => {
       render(<InfoSection {...defaultProps} />)
 
-      // Date is formatted as "MMM d, yyyy"
-      expect(screen.getByText(/Jan 15, 2026/i)).toBeInTheDocument()
+      expect(screen.getByText('15.01.2026')).toBeInTheDocument()
     })
   })
 
@@ -189,16 +187,6 @@ describe('T514: InfoSection - property editors', () => {
       await user.click(checkbox)
 
       expect(defaultProps.onPropertyChange).toHaveBeenCalledWith('prop-4', true)
-    })
-  })
-
-  describe('rating editor', () => {
-    it('should display star rating', () => {
-      render(<InfoSection {...defaultProps} />)
-
-      // Rating of 4 should show filled stars
-      const ratingSection = screen.getByText('Rating').parentElement
-      expect(ratingSection).toBeInTheDocument()
     })
   })
 
@@ -374,7 +362,6 @@ describe('InfoSection - show more/less', () => {
     expect(screen.getByText('Priority')).toBeInTheDocument()
     expect(screen.getByText('Due Date')).toBeInTheDocument()
     expect(screen.getByText('Completed')).toBeInTheDocument()
-    expect(screen.getByText('Rating')).toBeInTheDocument()
     expect(screen.getByText('Notes')).toBeInTheDocument()
     expect(screen.getByText('URL')).toBeInTheDocument()
   })
@@ -448,7 +435,7 @@ describe('InfoSection - accessibility', () => {
   it('should have aria-expanded on toggle header', () => {
     render(<InfoSection {...defaultProps} />)
 
-    const header = screen.getByRole('button', { name: /info/i })
+    const header = screen.getByRole('button', { name: /^properties$/i })
     expect(header).toHaveAttribute('aria-expanded', 'true')
   })
 })

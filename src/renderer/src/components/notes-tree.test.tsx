@@ -28,6 +28,10 @@ vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({
     openTab: vi.fn(),
     closeTab: vi.fn()
+  }),
+  useTabActions: () => ({
+    openTab: vi.fn(),
+    closeTab: vi.fn()
   })
 }))
 
