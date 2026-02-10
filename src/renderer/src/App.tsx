@@ -546,8 +546,11 @@ function App(): React.JSX.Element {
     </TabErrorBoundary>
   )
 
-  // Show onboarding if no vault is open (and not still loading)
-  if (!vaultLoading && !isVaultOpen) {
+  if (vaultLoading) {
+    return null
+  }
+
+  if (!isVaultOpen) {
     return (
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
         <VaultOnboarding />
