@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { decodeJwt, jwtVerify, createRemoteJWKSet } from 'jose'
+import { decodeJwt, jwtVerify, createRemoteJWKSet, SignJWT } from 'jose'
 
 import {
   RequestOtpRequestSchema,
@@ -11,6 +11,7 @@ import {
 } from '../contracts/auth-api'
 import { buildOtpEmailHtml } from '../emails/otp-template'
 import { AppError, ErrorCodes } from '../lib/errors'
+import { getPrivateKey, getPublicKey } from '../lib/jwt-keys'
 import { authMiddleware } from '../middleware/auth'
 import { createRateLimiter } from '../middleware/rate-limit'
 import { setupAuthMiddleware } from '../middleware/setup-auth'
@@ -96,6 +97,34 @@ const verifyDeviceChallenge = async (
   return crypto.subtle.verify('Ed25519', cryptoKey, sigBytes, nonceBytes)
 }
 
+const OAUTH_STATE_EXPIRY = '5m'
+
+export const generateOAuthState = async (privateKeyPem: string): Promise<string> => {
+  const privateKey = await getPrivateKey(privateKeyPem)
+  return new SignJWT({ type: 'oauth_state', nonce: crypto.randomUUID() })
+    .setProtectedHeader({ alg: 'EdDSA' })
+    .setIssuedAt()
+    .setIssuer('memry-sync')
+    .setAudience('memry-client')
+    .setExpirationTime(OAUTH_STATE_EXPIRY)
+    .sign(privateKey)
+}
+
+export const verifyOAuthState = async (
+  state: string,
+  publicKeyPem: string
+): Promise<void> => {
+  const publicKey = await getPublicKey(publicKeyPem)
+  const { payload } = await jwtVerify(state, publicKey, {
+    algorithms: ['EdDSA'],
+    issuer: 'memry-sync',
+    audience: 'memry-client'
+  })
+  if (payload.type !== 'oauth_state') {
+    throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid OAuth state token type', 401)
+  }
+}
+
 export const auth = new Hono<AppContext>()
 
 // POST /otp/request
@@ -138,13 +167,13 @@ auth.post('/otp/verify', otpIpRateLimit, async (c) => {
 })
 
 // GET /oauth/:provider
-auth.get('/oauth/:provider', (c) => {
+auth.get('/oauth/:provider', async (c) => {
   const provider = c.req.param('provider')
   if (provider !== 'google') {
     throw new AppError(ErrorCodes.AUTH_INVALID_PROVIDER, 'Unsupported OAuth provider', 400)
   }
 
-  const state = c.req.query('state') ?? ''
+  const state = await generateOAuthState(c.env.JWT_PRIVATE_KEY)
 
   const params = new URLSearchParams({
     client_id: c.env.GOOGLE_CLIENT_ID,
@@ -171,7 +200,9 @@ auth.post('/oauth/:provider/callback', async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid callback body', 400)
   }
 
-  const { code } = parsed.data
+  const { code, state } = parsed.data
+
+  await verifyOAuthState(state, c.env.JWT_PUBLIC_KEY)
 
   const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
