@@ -110,8 +110,10 @@ const STEP_MAP: Record<WizardStep, number> = {
   complete: 3
 }
 
+const OAUTH_NOOP = (): void => {}
+
 export function SetupWizard(): React.JSX.Element {
-  const auth = useAuth()
+  const { requestOtp, verifyOtp, resendOtp, confirmRecoveryPhrase } = useAuth()
   const [state, dispatch] = useReducer(wizardReducer, initialState)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -127,8 +129,7 @@ export function SetupWizard(): React.JSX.Element {
   const handleEmailSubmit = useCallback(
     (email: string) => {
       dispatch({ type: 'SET_LOADING', isLoading: true })
-      auth
-        .requestOtp(email)
+      requestOtp(email)
         .then((result) => {
           dispatch({ type: 'OTP_SENT', email, expiresIn: result.expiresIn ?? 60 })
         })
@@ -139,20 +140,19 @@ export function SetupWizard(): React.JSX.Element {
           })
         })
     },
-    [auth]
+    [requestOtp]
   )
 
   const handleOtpVerify = useCallback(
     (code: string) => {
       dispatch({ type: 'SET_LOADING', isLoading: true })
-      auth
-        .verifyOtp(code)
-        .then(() => {
+      verifyOtp(code)
+        .then((result) => {
           dispatch({
             type: 'OTP_VERIFIED',
-            deviceId: auth.state.deviceId ?? '',
-            recoveryPhrase: auth.state.recoveryPhrase,
-            needsRecovery: auth.state.needsRecoverySetup
+            deviceId: result.deviceId,
+            recoveryPhrase: result.recoveryPhrase,
+            needsRecovery: result.needsRecoverySetup
           })
         })
         .catch((err: unknown) => {
@@ -162,13 +162,12 @@ export function SetupWizard(): React.JSX.Element {
           })
         })
     },
-    [auth]
+    [verifyOtp]
   )
 
   const handleResendOtp = useCallback(() => {
     dispatch({ type: 'SET_RESENDING', isResending: true })
-    auth
-      .resendOtp()
+    resendOtp()
       .then((result) => {
         dispatch({ type: 'OTP_RESENT', expiresIn: result.expiresIn ?? 60 })
       })
@@ -178,13 +177,13 @@ export function SetupWizard(): React.JSX.Element {
           error: err instanceof Error ? err.message : 'Failed to resend'
         })
       })
-  }, [auth])
+  }, [resendOtp])
 
   const handleConfirmRecovery = useCallback(() => {
     dispatch({ type: 'SET_LOADING', isLoading: true })
-    auth
-      .confirmRecoveryPhrase()
+    confirmRecoveryPhrase()
       .then(() => {
+        void navigator.clipboard.writeText('')
         dispatch({ type: 'RECOVERY_CONFIRMED' })
       })
       .catch((err: unknown) => {
@@ -193,7 +192,7 @@ export function SetupWizard(): React.JSX.Element {
           error: err instanceof Error ? err.message : 'Confirmation failed'
         })
       })
-  }, [auth])
+  }, [confirmRecoveryPhrase])
 
   const currentStepIndex = STEP_MAP[state.step]
 
@@ -234,7 +233,7 @@ export function SetupWizard(): React.JSX.Element {
               </div>
             </div>
 
-            <OAuthButtons onGoogleClick={() => {}} isLoading={false} error={null} />
+            <OAuthButtons onGoogleClick={OAUTH_NOOP} isLoading={false} error={null} />
           </div>
         </div>
       )}
@@ -311,7 +310,11 @@ export function SetupWizard(): React.JSX.Element {
 
 function StepIndicator({ currentStep }: { currentStep: number }): React.JSX.Element {
   return (
-    <div className="flex items-center gap-2">
+    <div
+      role="group"
+      aria-label={`Step ${currentStep + 1} of ${STEPS.length}: ${STEPS[currentStep]}`}
+      className="flex items-center gap-2"
+    >
       {STEPS.map((label, i) => (
         <div key={label} className="flex items-center gap-2">
           {i > 0 && (
@@ -326,9 +329,7 @@ function StepIndicator({ currentStep }: { currentStep: number }): React.JSX.Elem
             <div
               className={cn(
                 'w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-colors',
-                i < currentStep && 'bg-primary text-primary-foreground',
-                i === currentStep && 'bg-primary text-primary-foreground',
-                i > currentStep && 'bg-muted text-muted-foreground'
+                i <= currentStep ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
               )}
             >
               {i < currentStep ? <CheckCircle className="w-4 h-4" /> : i + 1}
