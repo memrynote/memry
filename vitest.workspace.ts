@@ -1,13 +1,14 @@
-import { defineProject, defineWorkspace } from 'vitest/config'
+import { defineWorkspace } from 'vitest/config'
 import { resolve } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
-export default [
-  // ============================================================================
+export default defineWorkspace([
+  // Sync Server - references its own vitest.config.ts with its own root
+  'sync-server',
+
   // Shared Workspace - Pure TypeScript (Zod schemas, Drizzle queries)
-  // ============================================================================
   {
     extends: './vitest.config.ts',
     test: {
@@ -25,9 +26,7 @@ export default [
     }
   },
 
-  // ============================================================================
   // Main Process Workspace - Node.js (IPC handlers, database, vault)
-  // ============================================================================
   {
     extends: './vitest.config.ts',
     test: {
@@ -36,10 +35,8 @@ export default [
       include: ['src/main/**/*.{test,spec}.{ts,tsx}'],
       setupFiles: ['./tests/setup.ts'],
       globals: true,
-      // Longer timeout for database operations
       testTimeout: 15000,
       hookTimeout: 15000,
-      // Thread isolation for database tests
       pool: 'forks',
       isolate: true
     },
@@ -51,9 +48,7 @@ export default [
     }
   },
 
-  // ============================================================================
   // Renderer Workspace - JSDOM (React components, hooks)
-  // ============================================================================
   {
     extends: './vitest.config.ts',
     test: {
@@ -62,9 +57,7 @@ export default [
       include: ['src/renderer/**/*.{test,spec}.{ts,tsx}'],
       setupFiles: ['./tests/setup.ts', './tests/setup-dom.ts'],
       globals: true,
-      // CSS handling for component tests
       css: true,
-      // Environment options
       environmentOptions: {
         jsdom: {
           resources: 'usable'
@@ -80,4 +73,4 @@ export default [
       }
     }
   }
-]
+])
