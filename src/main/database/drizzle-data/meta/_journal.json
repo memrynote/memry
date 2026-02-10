@@ -64,6 +64,13 @@
       "when": 1770679343266,
       "tag": "0008_blushing_magma",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1770757803264,
+      "tag": "0009_lumpy_gladiator",
+      "breakpoints": true
     }
   ]
 }
