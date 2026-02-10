@@ -166,16 +166,15 @@ describe('crypto foundation', () => {
     )
   })
 
-  it('derives keys for known and unknown contexts', async () => {
+  it('derives keys for known contexts and rejects unknown contexts', async () => {
     const masterKey = generateFileKey()
 
     const known = await deriveKey(masterKey, 'memry-vault-key-v1', 32)
-    const unknownA = await deriveKey(masterKey, 'custom-context', 16)
-    const unknownB = await deriveKey(masterKey, 'custom-context', 16)
 
     expect(known).toHaveLength(32)
-    expect(unknownA).toHaveLength(16)
-    expect(unknownA).toEqual(unknownB)
+    await expect(deriveKey(masterKey, 'custom-context', 16)).rejects.toThrow(
+      'Unknown key derivation context: custom-context'
+    )
   })
 
   it('derives master key material and verifier', async () => {
