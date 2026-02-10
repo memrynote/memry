@@ -370,14 +370,14 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 ### Services for US1
 
 - [x] T070 [US1] Create auth service for renderer in src/renderer/src/services/auth-service.ts
-- [ ] T071 [US1] Create useAuth hook in src/renderer/src/hooks/use-auth.ts
-- [ ] T072 [US1] Implement PKCE code_verifier and code_challenge generation in src/main/ipc/sync-handlers.ts
-- [ ] T072a [US1] Implement PKCE state and verifier persistence between OAuth initiation and callback (store in memory with session timeout) in src/main/ipc/sync-handlers.ts - prevents session fixation attacks
-- [ ] T073 [US1] Implement automatic access token refresh with retry logic in src/main/ipc/sync-handlers.ts
-- [ ] T073a [US1] Emit auth:session-expired event when token refresh fails in src/main/ipc/sync-handlers.ts
+- [x] T071 [US1] Create useAuth hook in src/renderer/src/hooks/use-auth.ts
+- [x] T072 [US1] Implement PKCE code_verifier and code_challenge generation in src/main/ipc/sync-handlers.ts
+- [x] T072a [US1] Implement PKCE state and verifier persistence between OAuth initiation and callback (store in memory with session timeout) in src/main/ipc/sync-handlers.ts - prevents session fixation attacks
+- [x] T073 [US1] Implement automatic access token refresh with retry logic in src/main/ipc/sync-handlers.ts
+- [x] T073a [US1] Emit auth:session-expired event when token refresh fails in src/main/ipc/sync-handlers.ts
 - [x] T073b [US1] Store OAuth tokens separately from master key in keychain in src/main/crypto/keychain.ts
-- [ ] T073c [US1] Implement refresh-token IPC call from renderer in src/renderer/src/services/auth-service.ts
-- [ ] T073d [US1] Ensure renderer does not refresh tokens directly (delegate to main IPC only) in src/renderer/src/services/auth-service.ts
+- [x] T073c [US1] Implement refresh-token IPC call from renderer in src/renderer/src/services/auth-service.ts
+- [x] T073d [US1] Ensure renderer does not refresh tokens directly (delegate to main IPC only) in src/renderer/src/services/auth-service.ts
 
 **Checkpoint**: User Story 1 complete - users can create accounts and set up encryption
 
