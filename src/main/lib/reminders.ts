@@ -9,6 +9,7 @@
 
 import { BrowserWindow, Notification } from 'electron'
 import { getDatabase, getIndexDatabase } from '../database'
+import { getStatus } from '../vault'
 import { reminders, reminderStatus } from '@shared/db/schema/reminders'
 import { inboxItems, inboxItemType } from '@shared/db/schema/inbox'
 import { noteCache } from '@shared/db/schema/notes-cache'
@@ -622,6 +623,8 @@ export function bulkDismissReminders(reminderIds: string[]): number {
  * Process due reminders and emit notifications
  */
 function processDueReminders(): void {
+  if (!getStatus().isOpen) return
+
   try {
     const dueReminders = getDueReminders()
 
