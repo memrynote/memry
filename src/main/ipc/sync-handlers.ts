@@ -2,6 +2,7 @@ import { app, BrowserWindow, clipboard, ipcMain } from 'electron'
 import os from 'os'
 import sodium from 'libsodium-wrappers-sumo'
 
+import { syncDevices } from '@shared/db/schema/sync-devices'
 import { KEYCHAIN_ENTRIES, KEY_DERIVATION_CONTEXTS } from '@shared/contracts/crypto'
 import {
   RequestOtpSchema,
@@ -23,6 +24,7 @@ import {
   storeKey,
   retrieveKey
 } from '../crypto'
+import { getDatabase } from '../database/client'
 import { store } from '../store'
 import { postToServer } from '../sync/http-client'
 
@@ -130,6 +132,12 @@ const retrieveToken = async (
 // Device Registration (T050c)
 // ============================================================================
 
+const PLATFORM_MAP: Record<string, string> = {
+  darwin: 'macos',
+  win32: 'windows',
+  linux: 'linux'
+}
+
 const registerDevice = async (setupToken: string): Promise<DeviceRegisterServerResponse> => {
   await sodium.ready
 
@@ -142,22 +150,18 @@ const registerDevice = async (setupToken: string): Promise<DeviceRegisterServerR
     const publicKey = getDevicePublicKey(signingKey)
     const publicKeyBase64 = sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL)
 
+    // Client-generated nonce: proves possession of private key for the submitted public key.
+    // See server-side verifyDeviceChallenge comment for replay mitigation rationale.
     const nonce = crypto.randomUUID()
     const nonceBytes = new TextEncoder().encode(nonce)
     const signature = sodium.crypto_sign_detached(nonceBytes, signingKey)
     const signatureBase64 = sodium.to_base64(signature, sodium.base64_variants.ORIGINAL)
 
-    const platformMap: Record<string, string> = {
-      darwin: 'macos',
-      win32: 'windows',
-      linux: 'linux'
-    }
-
     const response = await postToServer<DeviceRegisterServerResponse>(
       '/auth/devices',
       {
         name: os.hostname(),
-        platform: platformMap[process.platform] || 'linux',
+        platform: PLATFORM_MAP[process.platform] || 'linux',
         osVersion: os.release(),
         appVersion: app.getVersion(),
         authPublicKey: publicKeyBase64,
@@ -203,8 +207,22 @@ const performFirstDeviceSetup = async (setupToken: string): Promise<FirstDeviceS
 
     const deviceResponse = await registerDevice(setupToken)
 
+    const db = getDatabase()
+    await db.insert(syncDevices).values({
+      id: deviceResponse.deviceId,
+      name: os.hostname(),
+      platform: PLATFORM_MAP[process.platform] || 'linux',
+      osVersion: os.release(),
+      appVersion: app.getVersion(),
+      linkedAt: new Date(),
+      isCurrentDevice: true
+    })
+
     const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
-    await postToServer('/auth/setup', { kdfSalt, keyVerifier }, accessToken!)
+    if (!accessToken) {
+      throw new Error('Access token not found after device registration')
+    }
+    await postToServer('/auth/setup', { kdfSalt, keyVerifier }, accessToken)
 
     return {
       recoveryPhrase: phrase,
