@@ -41,6 +41,7 @@ import {
   BookOpen,
   Info,
   Brain,
+  Cloud,
   Loader2,
   CheckCircle,
   XCircle,
@@ -63,6 +64,8 @@ import { useTabPreferences } from '@/hooks/use-tab-preferences'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/auth-context'
+import { SetupWizard } from './settings/setup-wizard'
 
 // ============================================================================
 // Types
@@ -76,6 +79,7 @@ type SettingsSection =
   | 'vault'
   | 'appearance'
   | 'ai'
+  | 'sync'
 
 // ============================================================================
 // Main Component
@@ -144,6 +148,12 @@ export function SettingsPage() {
             isActive={activeSection === 'ai'}
             onClick={() => setActiveSection('ai')}
           />
+          <SettingsNavItem
+            icon={<Cloud className="w-4 h-4" />}
+            label="Sync"
+            isActive={activeSection === 'sync'}
+            onClick={() => setActiveSection('sync')}
+          />
         </nav>
       </div>
 
@@ -158,6 +168,7 @@ export function SettingsPage() {
             {activeSection === 'vault' && <VaultSettings />}
             {activeSection === 'appearance' && <AppearanceSettings />}
             {activeSection === 'ai' && <AISettings />}
+            {activeSection === 'sync' && <SyncSettings />}
           </div>
         </ScrollArea>
       </div>
@@ -1253,6 +1264,54 @@ function AISettings() {
           </p>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// Sync Settings
+// ============================================================================
+
+function SyncSettings() {
+  const { state } = useAuth()
+
+  if (state.status === 'checking') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold">Sync</h3>
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (state.status === 'authenticated') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold">Sync</h3>
+          <p className="text-sm text-muted-foreground">End-to-end encrypted sync is active.</p>
+        </div>
+        <Separator />
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+          <p className="text-muted-foreground">Sync enabled. Device management coming soon.</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold">Sync</h3>
+        <p className="text-sm text-muted-foreground">
+          Sync your data across devices with end-to-end encryption
+        </p>
+      </div>
+      <Separator />
+      <SetupWizard />
     </div>
   )
 }
