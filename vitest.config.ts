@@ -47,6 +47,8 @@ export default defineConfig({
     globals: true,
     passWithNoTests: true,
     projects: [
+      // Sync Server - references its own vitest.config.ts
+      'sync-server',
       // Shared tests - Node environment
       {
         ...baseConfig,
