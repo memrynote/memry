@@ -221,7 +221,6 @@ export async function updateNoteEmbedding(noteId: string): Promise<boolean> {
 
     // Store in vec_notes
     storeNoteEmbedding(noteId, embedding)
-    console.log(`[Suggestions] Updated embedding for: ${note.title}`)
     return true
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
