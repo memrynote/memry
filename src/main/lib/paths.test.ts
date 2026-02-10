@@ -71,9 +71,9 @@ describe('paths utils', () => {
 
   it('toMemryFileUrl builds a memry-file URL for the platform', () => {
     if (process.platform === 'win32') {
-      expect(toMemryFileUrl('C:\\vault\\note.md')).toBe('memry-file:///C:/vault/note.md')
+      expect(toMemryFileUrl('C:\\vault\\note.md')).toBe('memry-file://local/C:/vault/note.md')
     } else {
-      expect(toMemryFileUrl('/vault/note.md')).toBe('memry-file:///vault/note.md')
+      expect(toMemryFileUrl('/vault/note.md')).toBe('memry-file://local/vault/note.md')
     }
   })
 })

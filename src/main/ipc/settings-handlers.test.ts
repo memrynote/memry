@@ -105,7 +105,13 @@ describe('settings-handlers', () => {
     registerSettingsHandlers()
     ;(settingsQueries.getSetting as Mock).mockReturnValue('template-1')
     const journalSettings = await invokeHandler(SettingsChannels.invoke.GET_JOURNAL_SETTINGS)
-    expect(journalSettings).toEqual({ defaultTemplate: 'template-1' })
+    expect(journalSettings).toEqual({
+      defaultTemplate: 'template-1',
+      showSchedule: true,
+      showTasks: true,
+      showAIConnections: true,
+      showStatsFooter: false
+    })
 
     const setResult = await invokeHandler(SettingsChannels.invoke.SET_JOURNAL_SETTINGS, {
       defaultTemplate: 'template-2'
