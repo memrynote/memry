@@ -511,7 +511,7 @@ export function registerSyncHandlers(): void {
   ipcMain.handle(SYNC_CHANNELS.LINK_VIA_RECOVERY, notImplemented('LINK_VIA_RECOVERY'))
   ipcMain.handle(SYNC_CHANNELS.APPROVE_LINKING, notImplemented('APPROVE_LINKING'))
 
-  ipcMain.handle(SYNC_CHANNELS.GET_DEVICES, notImplemented('GET_DEVICES'))
+  ipcMain.handle(SYNC_CHANNELS.GET_DEVICES, () => ({ devices: [] }))
   ipcMain.handle(SYNC_CHANNELS.REMOVE_DEVICE, notImplemented('REMOVE_DEVICE'))
   ipcMain.handle(SYNC_CHANNELS.RENAME_DEVICE, notImplemented('RENAME_DEVICE'))
 
