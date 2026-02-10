@@ -4,39 +4,51 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // libsodium mock
 // ============================================================================
 
-const mockSodium = {
-  ready: Promise.resolve(),
-  memzero: vi.fn((buf: Uint8Array) => buf.fill(0)),
-  memcmp: vi.fn((a: Uint8Array, b: Uint8Array) => {
-    if (a.length !== b.length) return false
-    for (let i = 0; i < a.length; i++) {
-      if (a[i] !== b[i]) return false
-    }
-    return true
-  }),
-  crypto_pwhash: vi.fn((_len: number, _seed: Uint8Array, _salt: Uint8Array) => {
-    return new Uint8Array(32).fill(0xab)
-  }),
-  crypto_pwhash_ALG_ARGON2ID13: 2,
-  crypto_kdf_derive_from_key: vi.fn(
-    (length: number, _id: number, _ctx: string, _key: Uint8Array) => {
-      return new Uint8Array(length).fill(0xcd)
-    }
-  ),
-  crypto_generichash: vi.fn((length: number, _message: Uint8Array, _key: Uint8Array) => {
-    return new Uint8Array(length).fill(0xef)
-  }),
-  crypto_sign_keypair: vi.fn(() => ({
-    publicKey: new Uint8Array(32).fill(0x01),
-    privateKey: new Uint8Array(64).fill(0x02)
-  })),
-  crypto_sign_ed25519_sk_to_pk: vi.fn(() => new Uint8Array(32).fill(0x01)),
-  randombytes_buf: vi.fn((len: number) => new Uint8Array(len).fill(0x99)),
-  to_base64: vi.fn((_buf: Uint8Array, _variant: number) => 'base64-encoded-value'),
-  to_hex: vi.fn(() => 'aabbccdd00112233aabbccdd00112233'),
-  from_string: vi.fn((s: string) => new TextEncoder().encode(s)),
-  base64_variants: { ORIGINAL: 0 }
-}
+const { mockSodium, MOCK_PHRASE, MOCK_SEED_BUFFER } = vi.hoisted(() => {
+  const sodium = {
+    ready: Promise.resolve(),
+    memzero: vi.fn((buf: Uint8Array) => buf.fill(0)),
+    memcmp: vi.fn((a: Uint8Array, b: Uint8Array) => {
+      if (a.length !== b.length) return false
+      for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false
+      }
+      return true
+    }),
+    crypto_pwhash: vi.fn((_len: number, _seed: Uint8Array, _salt: Uint8Array) => {
+      return new Uint8Array(32).fill(0xab)
+    }),
+    crypto_pwhash_ALG_ARGON2ID13: 2,
+    crypto_kdf_derive_from_key: vi.fn(
+      (length: number, _id: number, _ctx: string, _key: Uint8Array) => {
+        return new Uint8Array(length).fill(0xcd)
+      }
+    ),
+    crypto_generichash: vi.fn((length: number, _message: Uint8Array, _key: Uint8Array) => {
+      return new Uint8Array(length).fill(0xef)
+    }),
+    crypto_sign_keypair: vi.fn(() => ({
+      publicKey: new Uint8Array(32).fill(0x01),
+      privateKey: new Uint8Array(64).fill(0x02)
+    })),
+    crypto_sign_ed25519_sk_to_pk: vi.fn(() => new Uint8Array(32).fill(0x01)),
+    randombytes_buf: vi.fn((len: number) => new Uint8Array(len).fill(0x99)),
+    to_base64: vi.fn((_buf: Uint8Array, _variant: number) => 'base64-encoded-value'),
+    to_hex: vi.fn(() => 'aabbccdd00112233aabbccdd00112233'),
+    from_string: vi.fn((s: string) => new TextEncoder().encode(s)),
+    base64_variants: { ORIGINAL: 0 }
+  }
+
+  const phrase =
+    'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art'
+  const seedBuffer = Buffer.alloc(64, 0x42)
+
+  return {
+    mockSodium: sodium,
+    MOCK_PHRASE: phrase,
+    MOCK_SEED_BUFFER: seedBuffer
+  }
+})
 
 vi.mock('libsodium-wrappers-sumo', () => ({ default: mockSodium }))
 
@@ -44,17 +56,18 @@ vi.mock('libsodium-wrappers-sumo', () => ({ default: mockSodium }))
 // bip39 mock
 // ============================================================================
 
-const MOCK_PHRASE =
-  'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art'
-const MOCK_SEED_BUFFER = (() => {
-  const buf = Buffer.alloc(64, 0x42)
-  return buf
-})()
-
 vi.mock('bip39', () => ({
   generateMnemonic: vi.fn(() => MOCK_PHRASE),
   mnemonicToSeed: vi.fn(async () => MOCK_SEED_BUFFER),
   validateMnemonic: vi.fn((phrase: string) => phrase === MOCK_PHRASE)
+}))
+
+vi.mock('keytar', () => ({
+  default: {
+    setPassword: vi.fn(),
+    getPassword: vi.fn(),
+    deletePassword: vi.fn()
+  }
 }))
 
 // ============================================================================
@@ -144,7 +157,7 @@ describe('constantTimeEqual', () => {
     expect(result).toBe(false)
   })
 
-  it('should return false for different-length buffers without calling memcmp', () => {
+  it('should return false for different-length buffers while still performing memcmp on padded arrays', () => {
     // #given
     const a = new Uint8Array([1, 2, 3])
     const b = new Uint8Array([1, 2])
@@ -155,7 +168,11 @@ describe('constantTimeEqual', () => {
 
     // #then
     expect(result).toBe(false)
-    expect(mockSodium.memcmp).not.toHaveBeenCalled()
+    expect(mockSodium.memcmp).toHaveBeenCalledTimes(1)
+    expect(mockSodium.memcmp).toHaveBeenCalledWith(
+      new Uint8Array([1, 2, 3]),
+      new Uint8Array([1, 2, 0])
+    )
   })
 })
 
@@ -212,27 +229,10 @@ describe('deriveKey', () => {
     )
   })
 
-  it('should fall back to BLAKE2b for unknown context', async () => {
-    // #given
-    const masterKey = new Uint8Array(32).fill(0x33)
-
-    // #when
-    const result = await deriveKey(masterKey, 'unknown-context', 16)
-
-    // #then
-    expect(mockSodium.crypto_kdf_derive_from_key).not.toHaveBeenCalled()
-    expect(mockSodium.crypto_generichash).toHaveBeenCalled()
-    expect(result.length).toBe(16)
-  })
-
-  it('should throw for unknown context if sodium.crypto_generichash throws', async () => {
-    // #given
-    mockSodium.crypto_generichash.mockImplementationOnce(() => {
-      throw new Error('hash error')
-    })
-
-    // #when / #then
-    await expect(deriveKey(new Uint8Array(32), 'bad-context', 32)).rejects.toThrow('hash error')
+  it('should throw for unknown context', async () => {
+    await expect(deriveKey(new Uint8Array(32), 'unknown-context', 32)).rejects.toThrow(
+      'Unknown key derivation context: unknown-context'
+    )
   })
 })
 
