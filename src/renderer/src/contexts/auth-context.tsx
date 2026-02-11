@@ -29,6 +29,7 @@ interface AuthState {
 export interface VerifyOtpResult {
   deviceId: string
   needsRecoverySetup: boolean
+  needsRecoveryInput: boolean
   recoveryPhrase: string | null
 }
 
@@ -43,6 +44,7 @@ type AuthAction =
       needsRecoverySetup: boolean
     }
   | { type: 'RECOVERY_CONFIRMED' }
+  | { type: 'RECOVERY_LINKED'; deviceId: string }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
   | { type: 'RESET_AUTH' }
@@ -88,6 +90,14 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         status: 'authenticated',
         needsRecoverySetup: false
       }
+    case 'RECOVERY_LINKED':
+      return {
+        ...state,
+        status: 'authenticated',
+        deviceId: action.deviceId,
+        needsRecoverySetup: false,
+        error: null
+      }
     case 'SET_ERROR':
       return { ...state, error: action.error, status: 'error' }
     case 'CLEAR_ERROR':
@@ -122,6 +132,7 @@ interface AuthContextValue {
     state: string
   }) => Promise<SetupFirstDeviceResult | null>
   confirmRecoveryPhrase: () => Promise<void>
+  linkViaRecovery: (phrase: string) => Promise<{ deviceId?: string }>
   logout: () => Promise<void>
   clearError: () => void
   resetAuthState: () => void
@@ -195,6 +206,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       const otpResult: VerifyOtpResult = {
         deviceId: result.deviceId ?? '',
         needsRecoverySetup: result.needsRecoverySetup ?? false,
+        needsRecoveryInput: result.needsRecoveryInput ?? false,
         recoveryPhrase: result.recoveryPhrase ?? null
       }
       dispatch({
@@ -268,6 +280,15 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     dispatch({ type: 'RECOVERY_CONFIRMED' })
   }, [])
 
+  const linkViaRecovery = useCallback(async (phrase: string): Promise<{ deviceId?: string }> => {
+    const result = await window.api.syncLinking.linkViaRecovery({ recoveryPhrase: phrase })
+    if (!result.success) {
+      throw new Error(result.error ?? 'Recovery failed')
+    }
+    dispatch({ type: 'RECOVERY_LINKED', deviceId: result.deviceId ?? '' })
+    return { deviceId: result.deviceId }
+  }, [])
+
   const clearError = useCallback(() => {
     dispatch({ type: 'CLEAR_ERROR' })
   }, [])
@@ -290,6 +311,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       initOAuth,
       setupFirstDevice,
       confirmRecoveryPhrase,
+      linkViaRecovery,
       logout,
       clearError,
       resetAuthState
@@ -302,6 +324,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       initOAuth,
       setupFirstDevice,
       confirmRecoveryPhrase,
+      linkViaRecovery,
       logout,
       clearError,
       resetAuthState
