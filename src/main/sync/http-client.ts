@@ -74,7 +74,7 @@ export const syncFetch = async <T>(
     if (!response.ok) {
       throw new SyncServerError(`Server returned ${response.status}`, response.status)
     }
-    return undefined as T
+    return {} as T
   }
 
   if (!response.ok) {
