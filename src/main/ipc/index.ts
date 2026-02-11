@@ -17,6 +17,9 @@ import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './fold
 import { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
 import { registerSyncHandlers, unregisterSyncHandlers } from './sync-handlers'
 import { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
+import { createLogger } from '../lib/logger'
+
+const ipcLog = createLogger('IPC')
 
 /**
  * Flag to prevent duplicate handler registration
@@ -37,7 +40,7 @@ let handlersRegistered = false
  */
 export function registerAllHandlers(): void {
   if (handlersRegistered) {
-    console.warn('IPC handlers already registered, skipping duplicate registration')
+    ipcLog.warn('handlers already registered, skipping')
     return
   }
 
@@ -90,7 +93,7 @@ export function registerAllHandlers(): void {
   registerCryptoHandlers()
 
   handlersRegistered = true
-  console.log('[IPC] All handlers registered')
+  ipcLog.info('all handlers registered')
 }
 
 /**
@@ -120,7 +123,7 @@ export function unregisterAllHandlers(): void {
   unregisterCryptoHandlers()
 
   handlersRegistered = false
-  console.log('All IPC handlers unregistered')
+  ipcLog.info('all handlers unregistered')
 }
 
 /**
