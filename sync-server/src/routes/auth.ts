@@ -83,20 +83,22 @@ const validateGoogleIdToken = async (
   }
 }
 
-// NOTE: The challenge nonce is client-generated rather than server-issued. The setup token
-// (short-lived JWT from OTP/OAuth verification) already binds registration to an authenticated
-// session. The challenge proves the client holds the private key for the submitted public key.
-// Replay is mitigated by: (1) setup token 5-min expiry, (2) UNIQUE(user_id, auth_public_key)
-// preventing duplicate registrations, (3) an attacker would need both a valid setup token AND
-// a captured challenge triplet within the same expiry window.
+const safeBase64Decode = (input: string): Uint8Array => {
+  try {
+    return Uint8Array.from(atob(input), (ch) => ch.charCodeAt(0))
+  } catch {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Malformed base64 input', 400)
+  }
+}
+
 const verifyDeviceChallenge = async (
   publicKeyBase64: string,
-  nonce: string,
+  challengePayload: string,
   signatureBase64: string
 ): Promise<boolean> => {
-  const keyBytes = Uint8Array.from(atob(publicKeyBase64), (ch) => ch.charCodeAt(0))
-  const sigBytes = Uint8Array.from(atob(signatureBase64), (ch) => ch.charCodeAt(0))
-  const nonceBytes = new TextEncoder().encode(nonce)
+  const keyBytes = safeBase64Decode(publicKeyBase64)
+  const sigBytes = safeBase64Decode(signatureBase64)
+  const payloadBytes = new TextEncoder().encode(challengePayload)
 
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
@@ -106,7 +108,7 @@ const verifyDeviceChallenge = async (
     ['verify']
   )
 
-  return crypto.subtle.verify('Ed25519', cryptoKey, sigBytes, nonceBytes)
+  return crypto.subtle.verify('Ed25519', cryptoKey, sigBytes, payloadBytes)
 }
 
 const OAUTH_STATE_EXPIRY = '5m'
@@ -164,7 +166,7 @@ auth.post('/otp/resend', otpIpRateLimit, async (c) => {
 
   const pending = await hasPendingOtp(c.env.DB, email)
   if (!pending) {
-    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'No pending OTP for this email', 400)
+    return c.json({ success: true, expiresIn: OTP_EXPIRY_MINUTES * 60 })
   }
 
   await checkEmailRateLimit(c.env.DB, email)
@@ -200,7 +202,6 @@ auth.post('/otp/verify', otpIpRateLimit, async (c) => {
 
   return c.json({
     success: true,
-    userId: user.id,
     isNewUser,
     needsSetup: !user.kdf_salt,
     setupToken
@@ -217,8 +218,8 @@ auth.get('/oauth/:provider', async (c) => {
   const clientRedirectUri = c.req.query('redirect_uri')
   const redirectUri = clientRedirectUri ?? c.env.GOOGLE_REDIRECT_URI
 
-  if (clientRedirectUri && !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/.*)?$/.test(clientRedirectUri)) {
-    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'redirect_uri must be a loopback address', 400)
+  if (clientRedirectUri && !/^http:\/\/127\.0\.0\.1(:\d+)?(\/.*)?$/.test(clientRedirectUri)) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'redirect_uri must be a 127.0.0.1 loopback address', 400)
   }
 
   const state = await generateOAuthState(c.env.JWT_PRIVATE_KEY, redirectUri)
@@ -286,7 +287,6 @@ auth.post('/oauth/:provider/callback', async (c) => {
 
   return c.json({
     success: true,
-    userId: user.id,
     isNewUser,
     needsSetup: !user.kdf_salt,
     setupToken
@@ -305,9 +305,9 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
   const tokenJti = c.get('tokenJti')!
 
   const consumeResult = await c.env.DB.prepare(
-    'INSERT OR IGNORE INTO consumed_setup_tokens (jti, expires_at) VALUES (?, ?)'
+    'INSERT OR IGNORE INTO consumed_setup_tokens (jti, user_id, expires_at) VALUES (?, ?, ?)'
   )
-    .bind(tokenJti, Math.floor(Date.now() / 1000) + 300)
+    .bind(tokenJti, userId, Math.floor(Date.now() / 1000) + 300)
     .run()
 
   if ((consumeResult.meta.changes ?? 0) === 0) {
@@ -338,7 +338,8 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
     challengeNonce
   } = parsed.data
 
-  const isValid = await verifyDeviceChallenge(authPublicKey, challengeNonce, challengeSignature)
+  const challengePayload = `${challengeNonce}:${tokenJti}`
+  const isValid = await verifyDeviceChallenge(authPublicKey, challengePayload, challengeSignature)
   if (!isValid) {
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Device challenge verification failed', 401)
   }
@@ -387,7 +388,8 @@ auth.get('/recovery-info', setupAuthMiddleware, async (c) => {
   })
 })
 
-// POST /setup
+// POST /setup — requires authenticated device (access token). The kdf_salt null
+// check ensures this can only succeed once per account, preventing race conditions.
 auth.post('/setup', authMiddleware, async (c) => {
   const body = await c.req.json()
   const parsed = FirstDeviceSetupRequestSchema.safeParse(body)
@@ -398,16 +400,19 @@ auth.post('/setup', authMiddleware, async (c) => {
   const userId = c.get('userId')!
   const { kdfSalt, keyVerifier } = parsed.data
 
-  const user = await getUserById(c.env.DB, userId)
-  if (!user) {
-    throw new AppError(ErrorCodes.NOT_FOUND, 'User not found', 404)
-  }
+  const result = await c.env.DB.prepare(
+    'UPDATE users SET kdf_salt = ?, key_verifier = ?, updated_at = ? WHERE id = ? AND kdf_salt IS NULL'
+  )
+    .bind(kdfSalt, keyVerifier, Math.floor(Date.now() / 1000), userId)
+    .run()
 
-  if (user.kdf_salt) {
+  if ((result.meta.changes ?? 0) === 0) {
+    const user = await getUserById(c.env.DB, userId)
+    if (!user) {
+      throw new AppError(ErrorCodes.NOT_FOUND, 'User not found', 404)
+    }
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Device setup already completed', 409)
   }
-
-  await updateUser(c.env.DB, userId, { kdf_salt: kdfSalt, key_verifier: keyVerifier })
 
   return c.json({ success: true })
 })
