@@ -16,6 +16,9 @@ import {
 } from './services/cleanup'
 import type { Bindings, AppContext } from './types'
 
+// Electron routes all requests through main process (no browser CORS).
+// Only development servers need explicit origins; staging/production
+// rely on ALLOWED_ORIGIN env var for any web-based clients.
 const ORIGIN_BY_ENV: Record<string, string[]> = {
   development: ['http://localhost:5173', 'http://localhost:3000'],
   staging: [],
@@ -47,8 +50,7 @@ app.use('*', async (c, next) => {
 })
 
 app.use('*', async (c, next) => {
-  const env = c.env.ENVIRONMENT || 'development'
-  const origins = [...(ORIGIN_BY_ENV[env] ?? [])]
+  const origins = [...(ORIGIN_BY_ENV[c.env.ENVIRONMENT] ?? [])]
   if (c.env.ALLOWED_ORIGIN) {
     origins.push(c.env.ALLOWED_ORIGIN)
   }
@@ -57,7 +59,11 @@ app.use('*', async (c, next) => {
 })
 
 app.use('*', async (c, next) => {
-  const env = c.env.ENVIRONMENT || 'development'
+  const env = c.env.ENVIRONMENT
+  if (!env) {
+    throw new Error('ENVIRONMENT binding is required (development | staging | production)')
+  }
+
   const requiredSecrets = ['JWT_PUBLIC_KEY', 'JWT_PRIVATE_KEY', 'RESEND_API_KEY'] as const
 
   for (const key of requiredSecrets) {
@@ -78,13 +84,7 @@ app.use('*', async (c, next) => {
 
 app.onError(errorHandler)
 
-app.get('/health', (c) =>
-  c.json({
-    status: 'ok',
-    environment: c.env.ENVIRONMENT,
-    timestamp: Date.now()
-  })
-)
+app.get('/health', (c) => c.json({ status: 'ok' }))
 
 app.route('/auth', auth)
 
