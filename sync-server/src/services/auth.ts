@@ -1,4 +1,4 @@
-import { importPKCS8, SignJWT } from 'jose'
+import { SignJWT } from 'jose'
 
 import { AppError, ErrorCodes } from '../lib/errors'
 import { getPrivateKey } from '../lib/jwt-keys'
@@ -35,7 +35,7 @@ const generateTokens = async (
   deviceId: string,
   privateKeyPem: string
 ): Promise<{ accessToken: string; refreshToken: string }> => {
-  const privateKey = await importPKCS8(privateKeyPem, ALGORITHM)
+  const privateKey = await getPrivateKey(privateKeyPem)
 
   const accessToken = await signToken(
     { sub: userId, device_id: deviceId, type: 'access' },
