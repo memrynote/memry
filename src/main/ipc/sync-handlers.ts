@@ -1,5 +1,6 @@
-import { app, BrowserWindow, clipboard, ipcMain, net, shell } from 'electron'
+import { app, BrowserWindow, clipboard, ipcMain, shell } from 'electron'
 import http from 'node:http'
+import https from 'node:https'
 import os from 'os'
 import sodium from 'libsodium-wrappers-sumo'
 
@@ -468,14 +469,24 @@ export function registerSyncHandlers(): void {
 
       const redirectUri = `http://127.0.0.1:${port}/callback`
 
-      const serverResponse = await net.fetch(`${SYNC_SERVER_URL}/auth/oauth/google`, {
-        redirect: 'manual'
+      const oauthUrl = `${SYNC_SERVER_URL}/auth/oauth/google?redirect_uri=${encodeURIComponent(redirectUri)}`
+      const googleUrl = await new Promise<string>((resolve, reject) => {
+        const mod = oauthUrl.startsWith('https') ? https : http
+        mod
+          .get(oauthUrl, (res) => {
+            res.resume()
+            const location = res.headers.location
+            if (!location) {
+              shutdownLoopbackServer()
+              return reject(new Error('Failed to get OAuth URL from server'))
+            }
+            resolve(location)
+          })
+          .on('error', (err) => {
+            shutdownLoopbackServer()
+            reject(err)
+          })
       })
-      const googleUrl = serverResponse.headers.get('location')
-      if (!googleUrl) {
-        shutdownLoopbackServer()
-        throw new Error('Failed to get OAuth URL from server')
-      }
 
       const parsedUrl = new URL(googleUrl)
       const state = parsedUrl.searchParams.get('state')
@@ -483,8 +494,6 @@ export function registerSyncHandlers(): void {
         shutdownLoopbackServer()
         throw new Error('Missing state in OAuth URL')
       }
-
-      parsedUrl.searchParams.set('redirect_uri', redirectUri)
 
       oauthSessions.set(state, { state, redirectUri, createdAt: Date.now() })
 
