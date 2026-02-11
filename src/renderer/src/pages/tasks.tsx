@@ -20,6 +20,7 @@ import {
 } from '@/components/tasks/completed'
 import { FilterBar, FilterEmptyState, type FilterBarRef } from '@/components/tasks/filters'
 import { cn } from '@/lib/utils'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   getFilteredTasks,
   getDefaultTodoStatus,
@@ -812,12 +813,12 @@ export const TasksPage = ({
           setSelectedTaskId(result.task.id)
         } else {
           toast.error('Failed to duplicate task', {
-            description: result.error || 'Unknown error'
+            description: extractErrorMessage(result.error, 'Unknown error')
           })
         }
       } catch (error) {
         console.error('Failed to duplicate task:', error)
-        toast.error('Failed to duplicate task')
+        toast.error(extractErrorMessage(error, 'Failed to duplicate task'))
       }
     },
     [tasks]

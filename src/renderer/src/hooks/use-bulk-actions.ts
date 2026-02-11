@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { toast } from 'sonner'
+import { extractErrorMessage } from '@/lib/ipc-error'
 
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
@@ -101,13 +102,13 @@ export const useBulkActions = ({
       try {
         const result = await tasksService.bulkComplete(taskIds)
         if (!result.success) {
-          toast.error(result.error || 'Failed to complete tasks')
+          toast.error(extractErrorMessage(result.error, 'Failed to complete tasks'))
           return
         }
         // State updates happen via event subscriptions in TasksContext
       } catch (error) {
         console.error('[bulkComplete] Backend error:', error)
-        toast.error('Failed to complete tasks')
+        toast.error(extractErrorMessage(error, 'Failed to complete tasks'))
         return
       }
     } else {
@@ -233,13 +234,13 @@ export const useBulkActions = ({
         try {
           const result = await tasksService.bulkMove(selectedIds, projectId)
           if (!result.success) {
-            toast.error(result.error || 'Failed to move tasks')
+            toast.error(extractErrorMessage(result.error, 'Failed to move tasks'))
             return
           }
           // State updates happen via event subscriptions in TasksContext
         } catch (error) {
           console.error('[bulkMoveToProject] Backend error:', error)
-          toast.error('Failed to move tasks')
+          toast.error(extractErrorMessage(error, 'Failed to move tasks'))
           return
         }
       } else {
@@ -335,13 +336,13 @@ export const useBulkActions = ({
       try {
         const result = await tasksService.bulkArchive(selectedIds)
         if (!result.success) {
-          toast.error(result.error || 'Failed to archive tasks')
+          toast.error(extractErrorMessage(result.error, 'Failed to archive tasks'))
           return
         }
         // State updates happen via event subscriptions in TasksContext
       } catch (error) {
         console.error('[bulkArchive] Backend error:', error)
-        toast.error('Failed to archive tasks')
+        toast.error(extractErrorMessage(error, 'Failed to archive tasks'))
         return
       }
     } else {
@@ -377,13 +378,13 @@ export const useBulkActions = ({
       try {
         const result = await tasksService.bulkDelete(selectedIds)
         if (!result.success) {
-          toast.error(result.error || 'Failed to delete tasks')
+          toast.error(extractErrorMessage(result.error, 'Failed to delete tasks'))
           return
         }
         // State updates happen via event subscriptions in TasksContext (DELETED events)
       } catch (error) {
         console.error('[bulkDelete] Backend error:', error)
-        toast.error('Failed to delete tasks')
+        toast.error(extractErrorMessage(error, 'Failed to delete tasks'))
         return
       }
     } else {

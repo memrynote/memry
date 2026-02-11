@@ -1024,10 +1024,10 @@ function AISettings() {
         setSettings((prev) => ({ ...prev, enabled }))
         toast.success(enabled ? 'AI features enabled' : 'AI features disabled')
       } else {
-        toast.error(result.error || 'Failed to update setting')
+        toast.error(extractErrorMessage(result.error, 'Failed to update setting'))
       }
     } catch (error) {
-      toast.error('Failed to update setting')
+      toast.error(extractErrorMessage(error, 'Failed to update setting'))
     }
   }, [])
 
@@ -1041,10 +1041,10 @@ function AISettings() {
         const status = await window.api.settings.getAIModelStatus()
         setModelStatus(status)
       } else {
-        toast.error(result.error || 'Failed to load model')
+        toast.error(extractErrorMessage(result.error, 'Failed to load model'))
       }
     } catch (error) {
-      toast.error('Failed to load model')
+      toast.error(extractErrorMessage(error, 'Failed to load model'))
     } finally {
       setIsLoadingModel(false)
     }
@@ -1061,12 +1061,12 @@ function AISettings() {
         )
         setIsReindexing(false)
       } else {
-        toast.error(result.error || 'Failed to reindex embeddings')
+        toast.error(extractErrorMessage(result.error, 'Failed to reindex embeddings'))
         setIsReindexing(false)
         setReindexProgress(null)
       }
     } catch (error) {
-      toast.error('Failed to reindex embeddings')
+      toast.error(extractErrorMessage(error, 'Failed to reindex embeddings'))
       setIsReindexing(false)
       setReindexProgress(null)
     }

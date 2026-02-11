@@ -129,7 +129,7 @@ export function QuickCapture(): React.JSX.Element {
         if (result.success) {
           setCaptureState('success')
         } else {
-          setErrorMessage(result.error || 'Failed to capture link')
+          setErrorMessage(extractErrorMessage(result.error, 'Failed to capture link'))
           setCaptureState('error')
         }
       } else {
@@ -145,7 +145,7 @@ export function QuickCapture(): React.JSX.Element {
         if (result.success) {
           setCaptureState('success')
         } else {
-          setErrorMessage(result.error || 'Failed to capture note')
+          setErrorMessage(extractErrorMessage(result.error, 'Failed to capture note'))
           setCaptureState('error')
         }
       }

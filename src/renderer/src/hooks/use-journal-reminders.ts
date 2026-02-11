@@ -16,6 +16,7 @@ import {
   useSnoozeReminder
 } from './use-reminders'
 import { toast } from 'sonner'
+import { extractErrorMessage } from '@/lib/ipc-error'
 
 // ============================================================================
 // Types
@@ -101,12 +102,12 @@ export function useJournalReminders(journalDate: string | null): UseJournalRemin
           toast.success('Reminder set for this journal entry')
           return true
         } else {
-          toast.error(result.error || 'Failed to set reminder')
+          toast.error(extractErrorMessage(result.error, 'Failed to set reminder'))
           return false
         }
       } catch (err) {
         console.error('Failed to set journal reminder:', err)
-        toast.error('Failed to set reminder')
+        toast.error(extractErrorMessage(err, 'Failed to set reminder'))
         return false
       }
     },
@@ -122,12 +123,12 @@ export function useJournalReminders(journalDate: string | null): UseJournalRemin
           toast.success('Reminder deleted')
           return true
         } else {
-          toast.error(result.error || 'Failed to delete reminder')
+          toast.error(extractErrorMessage(result.error, 'Failed to delete reminder'))
           return false
         }
       } catch (err) {
         console.error('Failed to delete reminder:', err)
-        toast.error('Failed to delete reminder')
+        toast.error(extractErrorMessage(err, 'Failed to delete reminder'))
         return false
       }
     },
@@ -143,12 +144,12 @@ export function useJournalReminders(journalDate: string | null): UseJournalRemin
           toast.success('Reminder dismissed')
           return true
         } else {
-          toast.error(result.error || 'Failed to dismiss reminder')
+          toast.error(extractErrorMessage(result.error, 'Failed to dismiss reminder'))
           return false
         }
       } catch (err) {
         console.error('Failed to dismiss reminder:', err)
-        toast.error('Failed to dismiss reminder')
+        toast.error(extractErrorMessage(err, 'Failed to dismiss reminder'))
         return false
       }
     },
@@ -167,12 +168,12 @@ export function useJournalReminders(journalDate: string | null): UseJournalRemin
           toast.success('Reminder snoozed')
           return true
         } else {
-          toast.error(result.error || 'Failed to snooze reminder')
+          toast.error(extractErrorMessage(result.error, 'Failed to snooze reminder'))
           return false
         }
       } catch (err) {
         console.error('Failed to snooze reminder:', err)
-        toast.error('Failed to snooze reminder')
+        toast.error(extractErrorMessage(err, 'Failed to snooze reminder'))
         return false
       }
     },

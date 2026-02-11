@@ -222,7 +222,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
         const result = await bookmarksService.toggle({ itemType, itemId })
 
         if (!result.success) {
-          setError(result.error ?? 'Failed to toggle bookmark')
+          setError(extractErrorMessage(result.error, 'Failed to toggle bookmark'))
           return result
         }
 
@@ -255,7 +255,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
       const result = await bookmarksService.delete(id)
 
       if (!result.success) {
-        setError(result.error ?? 'Failed to remove bookmark')
+        setError(extractErrorMessage(result.error, 'Failed to remove bookmark'))
         return false
       }
 
@@ -295,7 +295,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
       const result = await bookmarksService.reorder(bookmarkIds)
 
       if (!result.success) {
-        setError(result.error ?? 'Failed to reorder bookmarks')
+        setError(extractErrorMessage(result.error, 'Failed to reorder bookmarks'))
         return false
       }
 

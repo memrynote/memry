@@ -135,7 +135,7 @@ export function CaptureInput({
           setValue('')
           onCaptureSuccess?.()
         } else {
-          onCaptureError?.(result.error || 'Failed to capture link')
+          onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture link'))
         }
       } else {
         // Capture as text note
@@ -151,7 +151,7 @@ export function CaptureInput({
           setValue('')
           onCaptureSuccess?.()
         } else {
-          onCaptureError?.(result.error || 'Failed to capture note')
+          onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture note'))
         }
       }
     } catch (err) {
@@ -193,7 +193,7 @@ export function CaptureInput({
         if (result.success) {
           onCaptureSuccess?.()
         } else {
-          onCaptureError?.(result.error || 'Failed to capture voice memo')
+          onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture voice memo'))
         }
       } catch (err) {
         const message = extractErrorMessage(err, 'Voice capture failed')
@@ -243,7 +243,7 @@ export function CaptureInput({
         if (result.success) {
           onCaptureSuccess?.()
         } else {
-          onCaptureError?.(result.error || 'Failed to capture file')
+          onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture file'))
         }
       } catch (err) {
         const message = extractErrorMessage(err, 'File capture failed')

@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { createReactBlockSpec } from '@blocknote/react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
@@ -81,7 +82,7 @@ function PdfPreview({ url, name }: PdfPreviewProps) {
   }
 
   const handleLoadError = (err: Error) => {
-    setError(err.message)
+    setError(extractErrorMessage(err, 'Failed to load file'))
     setLoading(false)
   }
 

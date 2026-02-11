@@ -97,7 +97,7 @@ export function useNoteEditorSettings(): UseNoteEditorSettingsReturn {
           setSettings((prev) => ({ ...prev, ...updates }))
           return true
         }
-        setError(result.error ?? 'Failed to update settings')
+        setError(extractErrorMessage(result.error, 'Failed to update settings'))
         return false
       } catch (err) {
         setError(extractErrorMessage(err, 'Failed to update settings'))

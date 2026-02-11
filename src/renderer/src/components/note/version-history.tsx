@@ -206,10 +206,10 @@ export function VersionHistory({
         onOpenChange(false)
         onRestore?.()
       } else {
-        toast.error(result.error || 'Failed to restore version')
+        toast.error(extractErrorMessage(result.error, 'Failed to restore version'))
       }
-    } catch {
-      toast.error('Failed to restore version')
+    } catch (err) {
+      toast.error(extractErrorMessage(err, 'Failed to restore version'))
     } finally {
       setRestoring(false)
       setRestoreDialogOpen(false)
@@ -232,10 +232,10 @@ export function VersionHistory({
           setPreviewContent(null)
         }
       } else {
-        toast.error(result.error || 'Failed to delete version')
+        toast.error(extractErrorMessage(result.error, 'Failed to delete version'))
       }
-    } catch {
-      toast.error('Failed to delete version')
+    } catch (err) {
+      toast.error(extractErrorMessage(err, 'Failed to delete version'))
     } finally {
       setDeleteDialogOpen(false)
       setVersionToDelete(null)

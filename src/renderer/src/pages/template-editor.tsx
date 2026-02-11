@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, Property, NewProperty, PropertyType } from '@/components/note/info-section'
@@ -262,7 +263,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
       }
     } catch (err) {
       console.error('Failed to save template:', err)
-      toast.error('Failed to save template')
+      toast.error(extractErrorMessage(err, 'Failed to save template'))
     } finally {
       setIsSaving(false)
     }

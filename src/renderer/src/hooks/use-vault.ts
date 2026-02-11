@@ -52,7 +52,7 @@ export function useVault() {
         ])
         setStatus(vaultStatus)
         setConfig(vaultConfig)
-        setError(vaultStatus.error)
+        setError(extractErrorMessage(vaultStatus.error, ''))
       } catch (err) {
         const message = extractErrorMessage(err, 'Failed to load vault status')
         setError(message)
@@ -69,7 +69,7 @@ export function useVault() {
     const unsubStatus = onVaultStatusChanged((newStatus) => {
       setStatus(newStatus)
       if (newStatus.error) {
-        setError(newStatus.error)
+        setError(extractErrorMessage(newStatus.error, ''))
       }
     })
 
@@ -79,7 +79,7 @@ export function useVault() {
     })
 
     const unsubError = onVaultError((errorMsg) => {
-      setError(errorMsg)
+      setError(extractErrorMessage(errorMsg, ''))
     })
 
     const unsubRecovered = onVaultIndexRecovered((event) => {
@@ -107,7 +107,7 @@ export function useVault() {
       const result = await vaultService.select(path)
 
       if (!result.success) {
-        setError(result.error ?? 'Failed to select vault')
+        setError(extractErrorMessage(result.error, 'Failed to select vault'))
       } else {
         // Refresh config after vault selection
         const newConfig = await vaultService.getConfig()
@@ -153,7 +153,7 @@ export function useVault() {
       const result = await vaultService.switch(vaultPath)
 
       if (!result.success) {
-        setError(result.error ?? 'Failed to switch vault')
+        setError(extractErrorMessage(result.error, 'Failed to switch vault'))
       } else {
         const newConfig = await vaultService.getConfig()
         setConfig(newConfig)

@@ -15,6 +15,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { Mic, Square, X, Loader2, Settings, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { extractErrorMessage } from '@/lib/ipc-error'
 
 // ============================================================================
 // Types
@@ -201,7 +202,7 @@ export function VoiceRecorder({
         } else if (err.name === 'NotFoundError') {
           setError('No microphone found')
         } else {
-          setError(err.message || 'Failed to access microphone')
+          setError(extractErrorMessage(err, 'Failed to access microphone'))
         }
       } else {
         setError('Failed to start recording')

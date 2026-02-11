@@ -131,7 +131,7 @@ export function ExportDialog({
         // User cancelled - do nothing
       } else {
         toast.error('Export failed', {
-          description: result.error || 'An unknown error occurred'
+          description: extractErrorMessage(result.error, 'An unknown error occurred')
         })
       }
     } catch (error) {
