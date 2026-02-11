@@ -49,14 +49,13 @@ describe('crypto foundation', () => {
     vi.clearAllMocks()
   })
 
-  it('encodes CBOR with canonical field order and excludes undefined/extra keys', () => {
+  it('encodes CBOR with canonical field order, skips undefined, rejects extra keys', () => {
     const encoded = encodeCbor(
       {
         encryptedData: 'cipher',
         id: 'item-1',
         dataNonce: 'nonce',
         metadata: undefined,
-        extraField: 'should-be-dropped',
         type: 'task',
         operation: 'create',
         cryptoVersion: 1,
@@ -82,7 +81,14 @@ describe('crypto foundation', () => {
         'dataNonce'
       ])
     )
-    expect(map.has('extraField')).toBe(false)
+    expect(map.has('metadata')).toBe(false)
+
+    expect(() =>
+      encodeCbor(
+        { id: 'item-1', type: 'task', extraField: 'bad' },
+        CBOR_FIELD_ORDER.SYNC_ITEM
+      )
+    ).toThrow(/fields not in ordering/)
   })
 
   it('encrypts and decrypts roundtrip with associated data', () => {
