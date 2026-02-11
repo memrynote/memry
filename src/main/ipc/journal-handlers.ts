@@ -23,6 +23,7 @@ import {
   type DayContext,
   type GetAllTagsOutput
 } from '@shared/contracts/journal-api'
+import { createLogger } from '../lib/logger'
 import { createValidatedHandler, createHandler } from './validate'
 import {
   readJournalEntry,
@@ -55,6 +56,8 @@ import {
 } from '@shared/db/queries/notes'
 import { getTasksByDueDate, countOverdueTasksBeforeDate } from '@shared/db/queries/tasks'
 import { getIndexDatabase, getDatabase } from '../database'
+
+const logger = createLogger('IPC:Journal')
 
 // ============================================================================
 // Event Emitters
@@ -228,7 +231,7 @@ export function registerJournalHandlers(): void {
             `Journal - ${input.date}`
           )
         } catch (err) {
-          console.error('[Journal Snapshot] Failed to create snapshot:', err)
+          logger.error('Failed to create snapshot:', err)
         }
       }
 

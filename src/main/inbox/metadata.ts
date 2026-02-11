@@ -7,6 +7,7 @@
  * @module main/inbox/metadata
  */
 
+import { createLogger } from '../lib/logger'
 import metascraper from 'metascraper'
 import metascraperAuthor from 'metascraper-author'
 import metascraperDate from 'metascraper-date'
@@ -20,6 +21,8 @@ import { createWriteStream } from 'fs'
 import { mkdir } from 'fs/promises'
 import { pipeline } from 'stream/promises'
 import { join, extname } from 'path'
+
+const log = createLogger('Inbox:Metadata')
 
 // ============================================================================
 // Types
@@ -172,14 +175,14 @@ export async function downloadImage(imageUrl: string, destDir: string): Promise<
     })
 
     if (!response.ok) {
-      console.warn(`[Metadata] Image download failed: HTTP ${response.status}`)
+      log.warn(`Image download failed: HTTP ${response.status}`)
       return null
     }
 
     // Check content length
     const contentLength = response.headers.get('content-length')
     if (contentLength && parseInt(contentLength, 10) > MAX_IMAGE_SIZE) {
-      console.warn(`[Metadata] Image too large: ${contentLength} bytes`)
+      log.warn(`Image too large: ${contentLength} bytes`)
       return null
     }
 
@@ -194,7 +197,7 @@ export async function downloadImage(imageUrl: string, destDir: string): Promise<
 
     // Stream response body to file
     if (!response.body) {
-      console.warn('[Metadata] No response body for image')
+      log.warn('No response body for image')
       return null
     }
 
@@ -209,9 +212,9 @@ export async function downloadImage(imageUrl: string, destDir: string): Promise<
     return filename
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      console.warn('[Metadata] Image download timed out')
+      log.warn('Image download timed out')
     } else {
-      console.warn('[Metadata] Image download error:', error)
+      log.warn('Image download error:', error)
     }
     return null
   } finally {

@@ -69,6 +69,9 @@ import {
   type ColumnConfig,
   type GroupByConfig
 } from '@shared/contracts/folder-view-api'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:FolderView')
 
 interface FolderViewPageProps {
   /** Folder path relative to notes/ */
@@ -367,11 +370,11 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
 
         if (failures.length > 0) {
-          console.error(`${failures.length} notes failed to move:`, failures)
+          log.error(`${failures.length} notes failed to move:`, failures)
           await refresh() // Restore correct state on failure
         }
       } catch (err) {
-        console.error('Failed to move notes:', err)
+        log.error('Failed to move notes:', err)
         await refresh() // Restore correct state on error
       } finally {
         setMoveDialogOpen(false)
@@ -417,11 +420,11 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
       const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
 
       if (failures.length > 0) {
-        console.error(`${failures.length} notes failed to delete:`, failures)
+        log.error(`${failures.length} notes failed to delete:`, failures)
         await refresh() // Restore correct state on failure
       }
     } catch (err) {
-      console.error('Failed to delete notes:', err)
+      log.error('Failed to delete notes:', err)
       await refresh() // Restore correct state on error
     } finally {
       setIsDeleting(false)
@@ -478,7 +481,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         })
       }
     } catch (err) {
-      console.error('[FolderViewPage] Failed to create note:', err)
+      log.error('Failed to create note:', err)
     }
   }, [createNote, folderPath, openTab])
 

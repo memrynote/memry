@@ -1,6 +1,9 @@
 import { useCallback } from 'react'
+import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
+
+const log = createLogger('Hook:BulkActions')
 
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
@@ -107,8 +110,8 @@ export const useBulkActions = ({
         }
         // State updates happen via event subscriptions in TasksContext
       } catch (error) {
-        console.error('[bulkComplete] Backend error:', error)
-        toast.error(extractErrorMessage(error, 'Failed to complete tasks'))
+        log.error('bulkComplete backend error:', error)
+        toast.error('Failed to complete tasks')
         return
       }
     } else {
@@ -239,8 +242,8 @@ export const useBulkActions = ({
           }
           // State updates happen via event subscriptions in TasksContext
         } catch (error) {
-          console.error('[bulkMoveToProject] Backend error:', error)
-          toast.error(extractErrorMessage(error, 'Failed to move tasks'))
+          log.error('bulkMoveToProject backend error:', error)
+          toast.error('Failed to move tasks')
           return
         }
       } else {
@@ -341,8 +344,8 @@ export const useBulkActions = ({
         }
         // State updates happen via event subscriptions in TasksContext
       } catch (error) {
-        console.error('[bulkArchive] Backend error:', error)
-        toast.error(extractErrorMessage(error, 'Failed to archive tasks'))
+        log.error('bulkArchive backend error:', error)
+        toast.error('Failed to archive tasks')
         return
       }
     } else {
@@ -383,8 +386,8 @@ export const useBulkActions = ({
         }
         // State updates happen via event subscriptions in TasksContext (DELETED events)
       } catch (error) {
-        console.error('[bulkDelete] Backend error:', error)
-        toast.error(extractErrorMessage(error, 'Failed to delete tasks'))
+        log.error('bulkDelete backend error:', error)
+        toast.error('Failed to delete tasks')
         return
       }
     } else {

@@ -4,7 +4,10 @@
  */
 
 import { useState, useCallback, useEffect } from 'react'
+import { createLogger } from '@/lib/logger'
 import { fuzzySearch } from '@/lib/fuzzy-search'
+
+const log = createLogger('Hook:Pages')
 
 export interface Page {
   id: string
@@ -97,7 +100,7 @@ export function usePages() {
         return JSON.parse(stored)
       }
     } catch (error) {
-      console.error('Failed to load pages from localStorage:', error)
+      log.error('Failed to load pages from localStorage:', error)
     }
     return MOCK_PAGES
   })
@@ -107,7 +110,7 @@ export function usePages() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(pages))
     } catch (error) {
-      console.error('Failed to save pages to localStorage:', error)
+      log.error('Failed to save pages to localStorage:', error)
     }
   }, [pages])
 

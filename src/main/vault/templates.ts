@@ -22,6 +22,9 @@ import type {
   TemplateUpdateInput,
   TemplateProperty
 } from '@shared/contracts/templates-api'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('Templates')
 
 // ============================================================================
 // Constants
@@ -455,7 +458,7 @@ export async function listTemplates(): Promise<TemplateListItem[]> {
         })
       } catch {
         // Skip files that can't be parsed
-        console.warn(`Failed to parse template: ${file}`)
+        logger.warn(`Failed to parse template: ${file}`)
       }
     }
 
@@ -469,7 +472,7 @@ export async function listTemplates(): Promise<TemplateListItem[]> {
 
     return templates
   } catch (error) {
-    console.error('Failed to list templates:', error)
+    logger.error('Failed to list templates:', error)
     return []
   }
 }

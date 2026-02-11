@@ -9,6 +9,7 @@
  */
 
 import { BrowserWindow } from 'electron'
+import { createLogger } from '../lib/logger'
 import { getDatabase, getIndexDatabase, getRawIndexDatabase } from '../database'
 import { inboxItems, filingHistory, suggestionFeedback } from '@shared/db/schema/inbox'
 import { noteCache } from '@shared/db/schema/notes-cache'
@@ -25,6 +26,8 @@ import {
   initEmbeddingModel
 } from '../lib/embeddings'
 import type { FilingSuggestion } from '@shared/contracts/inbox-api'
+
+const log = createLogger('Inbox:Suggestions')
 
 // ============================================================================
 // Types
@@ -202,20 +205,20 @@ export async function updateNoteEmbedding(noteId: string): Promise<boolean> {
   try {
     const note = await getNoteById(noteId)
     if (!note) {
-      console.log(`[Suggestions] Note not found: ${noteId}`)
+      log.debug(`Note not found: ${noteId}`)
       return false
     }
 
     // Skip if content is too short
     if (!note.content || note.content.length < MIN_CONTENT_LENGTH) {
-      console.log(`[Suggestions] Content too short for: ${noteId}`)
+      log.debug(`Content too short for: ${noteId}`)
       return false
     }
 
     // Generate embedding using local model
     const embedding = await generateLocalEmbedding(note.content)
     if (!embedding) {
-      console.log(`[Suggestions] Failed to generate embedding for: ${noteId}`)
+      log.debug(`Failed to generate embedding for: ${noteId}`)
       return false
     }
 
@@ -224,7 +227,7 @@ export async function updateNoteEmbedding(noteId: string): Promise<boolean> {
     return true
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error(`[Suggestions] Failed to update embedding for ${noteId}:`, message)
+    log.error(`Failed to update embedding for ${noteId}:`, message)
     return false
   }
 }
@@ -295,12 +298,12 @@ export async function reindexAllEmbeddings(): Promise<{
     }
 
     emitProgress(total, total, 'complete')
-    console.log(`[Suggestions] Reindex complete: ${computed} computed, ${skipped} skipped`)
+    log.info(`Reindex complete: ${computed} computed, ${skipped} skipped`)
 
     return { success: true, computed, skipped }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Suggestions] Reindex failed:', message)
+    log.error('Reindex failed:', message)
     return { success: false, computed: 0, skipped: 0, error: message }
   }
 }
@@ -338,7 +341,7 @@ async function findSimilarNotes(content: string, limit: number = 5): Promise<Sim
       .all(embedding, limit) as VecSearchResult[]
 
     if (results.length === 0) {
-      console.log('[Suggestions] No similar notes found')
+      log.debug('No similar notes found')
       return []
     }
 
@@ -372,7 +375,7 @@ async function findSimilarNotes(content: string, limit: number = 5): Promise<Sim
 
     return similarities
   } catch (error) {
-    console.error('[Suggestions] Similarity search failed:', error)
+    log.error('Similarity search failed:', error)
     return []
   }
 }
@@ -495,13 +498,13 @@ function getRecentFilingDestinations(limit: number = 5): { path: string; count: 
  */
 export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]> {
   if (!isAIEnabled()) {
-    console.log('[Suggestions] AI disabled, returning empty suggestions')
+    log.debug('AI disabled, returning empty suggestions')
     return []
   }
 
   // Check if model is loaded (don't block on loading)
   if (!isModelLoaded()) {
-    console.log('[Suggestions] Model not loaded, returning history-based suggestions only')
+    log.debug('Model not loaded, returning history-based suggestions only')
   }
 
   try {
@@ -509,7 +512,7 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
     const item = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
 
     if (!item) {
-      console.log(`[Suggestions] Item not found: ${itemId}`)
+      log.debug(`Item not found: ${itemId}`)
       return []
     }
 
@@ -598,11 +601,11 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
     // Sort by confidence
     suggestions.sort((a, b) => b.confidence - a.confidence)
 
-    console.log(`[Suggestions] Generated ${suggestions.length} suggestions for ${itemId}`)
+    log.debug(`Generated ${suggestions.length} suggestions for ${itemId}`)
     return suggestions.slice(0, MAX_SUGGESTIONS)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Suggestions] Failed to get suggestions:', message)
+    log.error('Failed to get suggestions:', message)
     return []
   }
 }
@@ -651,12 +654,12 @@ export function trackSuggestionFeedback(
       })
       .run()
 
-    console.log(
-      `[Suggestions] Tracked feedback: ${accepted ? 'accepted' : 'rejected'} (${itemType} -> ${actualTo})`
+    log.debug(
+      `Tracked feedback: ${accepted ? 'accepted' : 'rejected'} (${itemType} -> ${actualTo})`
     )
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Suggestions] Failed to track feedback:', message)
+    log.error('Failed to track feedback:', message)
   }
 }
 
@@ -728,7 +731,7 @@ export interface FolderSuggestion {
  */
 export async function getNoteFolderSuggestions(noteId: string): Promise<FolderSuggestion[]> {
   if (!isAIEnabled()) {
-    console.log('[Suggestions] AI disabled, returning empty folder suggestions')
+    log.debug('AI disabled, returning empty folder suggestions')
     return []
   }
 
@@ -736,7 +739,7 @@ export async function getNoteFolderSuggestions(noteId: string): Promise<FolderSu
     // Get the note content
     const note = await getNoteById(noteId)
     if (!note) {
-      console.log(`[Suggestions] Note not found: ${noteId}`)
+      log.debug(`Note not found: ${noteId}`)
       return []
     }
 
@@ -818,13 +821,13 @@ export async function getNoteFolderSuggestions(noteId: string): Promise<FolderSu
     // Sort by confidence
     suggestions.sort((a, b) => b.confidence - a.confidence)
 
-    console.log(
-      `[Suggestions] Generated ${suggestions.length} folder suggestions for note ${noteId}`
+    log.debug(
+      `Generated ${suggestions.length} folder suggestions for note ${noteId}`
     )
     return suggestions.slice(0, MAX_SUGGESTIONS)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Suggestions] Failed to get folder suggestions:', message)
+    log.error('Failed to get folder suggestions:', message)
     return []
   }
 }

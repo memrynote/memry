@@ -14,7 +14,10 @@
  */
 
 import { useCallback, useEffect } from 'react'
+import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
+
+const log = createLogger('Hook:Undo')
 
 // ============================================================================
 // GLOBAL UNDO STACK
@@ -144,7 +147,7 @@ export const useUndoTracker = (): UseUndoTrackerReturn => {
       toast.success(`Undone: ${entry.description}`)
       return true
     } catch (error) {
-      console.error('[useUndoTracker] Error executing undo:', error)
+      log.error('Error executing undo:', error)
       toast.error('Failed to undo action')
       return false
     }
@@ -195,7 +198,7 @@ export const useUndoKeyboardShortcut = (): void => {
               popped.undoFn()
               toast.success(`Undone: ${popped.description}`)
             } catch (error) {
-              console.error('[useUndoKeyboardShortcut] Error executing undo:', error)
+              log.error('Keyboard shortcut undo error:', error)
               toast.error('Failed to undo action')
             }
           }

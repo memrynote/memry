@@ -16,6 +16,9 @@ import { Send, Loader2, Link, FileText, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useCaptureText, useCaptureLink } from '@/hooks/use-inbox'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:QuickCapture')
 
 type CaptureState = 'idle' | 'capturing' | 'success' | 'error'
 
@@ -80,7 +83,7 @@ export function QuickCapture(): React.JSX.Element {
           setValue(clipboardText.trim())
         }
       } catch (err) {
-        console.warn('[QuickCapture] Failed to read clipboard:', err)
+        log.warn('Failed to read clipboard', err)
       }
 
       // Focus the textarea after clipboard is loaded

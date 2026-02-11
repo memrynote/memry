@@ -12,11 +12,14 @@
 
 import { BrowserWindow } from 'electron'
 import { eq, and, isNotNull, lte, isNull } from 'drizzle-orm'
+import { createLogger } from '../lib/logger'
 import { getDatabase, type DrizzleDb } from '../database'
 import { getStatus } from '../vault'
 import { inboxItems, inboxItemTags } from '@shared/db/schema/inbox'
 import { InboxChannels } from '@shared/ipc-channels'
 import type { InboxItem, InboxItemListItem } from '@shared/contracts/inbox-api'
+
+const log = createLogger('Inbox:Snooze')
 
 // ============================================================================
 // Types
@@ -234,12 +237,12 @@ export function snoozeItem(input: SnoozeInput): SnoozeResult {
       snoozeUntil: snoozeUntil
     })
 
-    console.log(`[Snooze] Item ${itemId} snoozed until ${snoozeUntil}`)
+    log.info(`Item ${itemId} snoozed until ${snoozeUntil}`)
 
     return { success: true, item }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Snooze] Error snoozing item:', message)
+    log.error('Error snoozing item:', message)
     return { success: false, error: message }
   }
 }
@@ -284,12 +287,12 @@ export function unsnoozeItem(itemId: string): SnoozeResult {
     const tags = getItemTags(db, itemId)
     const item = toInboxItem(updated, tags)
 
-    console.log(`[Snooze] Item ${itemId} unsnoozed`)
+    log.info(`Item ${itemId} unsnoozed`)
 
     return { success: true, item }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Snooze] Error unsnoozing item:', message)
+    log.error('Error unsnoozing item:', message)
     return { success: false, error: message }
   }
 }
@@ -334,7 +337,7 @@ export function getSnoozedItems(): SnoozedItem[] {
       }
     })
   } catch (error) {
-    console.error('[Snooze] Error getting snoozed items:', error)
+    log.error('Error getting snoozed items:', error)
     return []
   }
 }
@@ -367,7 +370,7 @@ export function getDueSnoozeItems(): InboxItemListItem[] {
       return toListItem(row, tags)
     })
   } catch (error) {
-    console.error('[Snooze] Error getting due snooze items:', error)
+    log.error('Error getting due snooze items:', error)
     return []
   }
 }
@@ -390,7 +393,7 @@ function processDueItems(): void {
       return
     }
 
-    console.log(`[Snooze] Processing ${dueItems.length} due items`)
+    log.debug(`Processing ${dueItems.length} due items`)
 
     const db = requireDatabase()
     const now = new Date().toISOString()
@@ -413,9 +416,9 @@ function processDueItems(): void {
       items: dueItems
     })
 
-    console.log(`[Snooze] Surfaced ${dueItems.length} items`)
+    log.info(`Surfaced ${dueItems.length} items`)
   } catch (error) {
-    console.error('[Snooze] Error processing due items:', error)
+    log.error('Error processing due items:', error)
   }
 }
 
@@ -433,7 +436,7 @@ export function checkDueItemsOnStartup(): void {
  */
 export function startSnoozeScheduler(): void {
   if (isSchedulerRunning) {
-    console.log('[Snooze] Scheduler already running')
+    log.debug('Scheduler already running')
     return
   }
 
@@ -456,7 +459,7 @@ export function stopSnoozeScheduler(): void {
     clearInterval(schedulerInterval)
     schedulerInterval = null
     isSchedulerRunning = false
-    console.log('[Snooze] Scheduler stopped')
+    log.info('Scheduler stopped')
   }
 }
 

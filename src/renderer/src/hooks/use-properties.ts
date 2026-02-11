@@ -8,7 +8,10 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
+
+const log = createLogger('Hook:Properties')
 import { propertiesService, type PropertyValue } from '@/services/properties-service'
 import { inferType } from '@/lib/property-utils'
 import { toast } from 'sonner'
@@ -100,7 +103,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
     } catch (err) {
       const message = extractErrorMessage(err, 'Failed to load properties')
       setError(message)
-      console.error('[useProperties] Error fetching:', err)
+      log.error('Error fetching:', err)
     } finally {
       setIsLoading(false)
     }
@@ -126,7 +129,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
           throw new Error(result.error ?? 'Failed to update property')
         }
       } catch (err) {
-        console.error('[useProperties] Error updating:', err)
+        log.error('Error updating:', err)
         toast.error('Failed to update property')
         // Revert on error
         await fetchProperties()
@@ -153,7 +156,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
         }
         // Don't refresh - trust optimistic update to preserve order and type
       } catch (err) {
-        console.error('[useProperties] Error adding:', err)
+        log.error('Error adding:', err)
         toast.error('Failed to add property')
         // Revert on error
         await fetchProperties()
@@ -179,7 +182,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
           throw new Error(result.error ?? 'Failed to remove property')
         }
       } catch (err) {
-        console.error('[useProperties] Error removing:', err)
+        log.error('Error removing:', err)
         toast.error('Failed to delete property')
         // Revert on error
         await fetchProperties()
@@ -206,7 +209,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
           throw new Error(result.error ?? 'Failed to rename property')
         }
       } catch (err) {
-        console.error('[useProperties] Error renaming:', err)
+        log.error('Error renaming:', err)
         toast.error('Failed to rename property')
         // Revert on error
         await fetchProperties()
@@ -250,7 +253,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
           throw new Error(result.error ?? 'Failed to reorder properties')
         }
       } catch (err) {
-        console.error('[useProperties] Error reordering:', err)
+        log.error('Error reordering:', err)
         toast.error('Failed to reorder properties')
         await fetchProperties()
         throw err

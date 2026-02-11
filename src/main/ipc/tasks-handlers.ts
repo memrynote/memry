@@ -29,11 +29,14 @@ import {
   BulkMoveSchema,
   GetUpcomingSchema
 } from '@shared/contracts/tasks-api'
+import { createLogger } from '../lib/logger'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
 import { getDatabase, type DrizzleDb } from '../database'
 import { generateId } from '../lib/id'
 import * as taskQueries from '@shared/db/queries/tasks'
 import * as projectQueries from '@shared/db/queries/projects'
+
+const logger = createLogger('IPC:Tasks')
 
 /**
  * Emit task event to all windows
@@ -976,7 +979,7 @@ export function registerTasksHandlers(): void {
     })
   )
 
-  console.log('[IPC] Tasks handlers registered')
+  logger.info('Tasks handlers registered')
 }
 
 /**
@@ -987,5 +990,5 @@ export function unregisterTasksHandlers(): void {
   Object.values(TasksChannels.invoke).forEach((channel) => {
     ipcMain.removeHandler(channel)
   })
-  console.log('[IPC] Tasks handlers unregistered')
+  logger.info('Tasks handlers unregistered')
 }

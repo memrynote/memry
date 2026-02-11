@@ -26,7 +26,10 @@ import {
 import { notesService, type NoteListItem } from '@/services/notes-service'
 import { useRecentSearches } from '@/hooks/use-search'
 import { cn } from '@/lib/utils'
+import { createLogger } from '@/lib/logger'
 import { subDays, startOfDay } from 'date-fns'
+
+const log = createLogger('Component:CommandPalette')
 
 const OPERATOR_SUGGESTIONS = [
   { prefix: 'path:', label: 'path:', description: 'Search in folder', icon: Folder },
@@ -123,7 +126,7 @@ export function CommandPalette({
 
   useEffect(() => {
     if (isOpen) {
-      window.api.notes.getFolders().then(setFolders).catch(console.error)
+      window.api.notes.getFolders().then(setFolders).catch((err) => log.error('Failed to load folders', err))
     }
   }, [isOpen])
 
@@ -141,7 +144,7 @@ export function CommandPalette({
         })
         setRecentNotes(response.notes)
       } catch (error) {
-        console.error('Failed to load recent notes:', error)
+        log.error('Failed to load recent notes', error)
         setRecentNotes([])
       } finally {
         setIsLoadingRecent(false)
@@ -186,7 +189,7 @@ export function CommandPalette({
         const notes = await searchService.advancedSearch(searchInput)
         setResults(notes)
       } catch (error) {
-        console.error('Search failed:', error)
+        log.error('Search failed', error)
         setResults([])
       } finally {
         setIsLoading(false)

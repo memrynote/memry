@@ -48,6 +48,9 @@ import { indexVault, rebuildIndex } from './indexer'
 import { initEmbeddingModel, isModelLoaded, isModelLoading } from '../lib/embeddings'
 import { flushFtsUpdates, hasPendingFtsUpdates } from '../database'
 import { clearEmbeddingQueue, hasPendingEmbeddings } from '../inbox/embedding-queue'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('Vault')
 
 /**
  * Current vault status
@@ -205,14 +208,14 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // Check index database health before proceeding
   const indexHealth: IndexHealth = checkIndexHealth(indexDbPath)
-  console.log(`[Vault] Index health check: ${indexHealth}`)
+  logger.info(`Index health check: ${indexHealth}`)
 
   updateStatus({ isIndexing: true, indexProgress: 0 })
 
   try {
     if (indexHealth !== 'healthy') {
       // Index is corrupt or missing - rebuild from source files
-      console.log(`[Vault] Index ${indexHealth}, triggering rebuild...`)
+      logger.warn(`Index ${indexHealth}, triggering rebuild...`)
       const rebuildResult = await rebuildIndex(vaultPath)
 
       // Notify renderer about recovery
@@ -233,7 +236,7 @@ async function openVault(vaultPath: string): Promise<void> {
         await indexVault(vaultPath)
       } catch (migrationError) {
         // Migration failed (e.g., table already exists) - rebuild index from scratch
-        console.error('[Vault] Migration failed, rebuilding index:', migrationError)
+        logger.error('Migration failed, rebuilding index:', migrationError)
         const rebuildResult = await rebuildIndex(vaultPath)
 
         // Notify renderer about recovery
@@ -245,7 +248,7 @@ async function openVault(vaultPath: string): Promise<void> {
       }
     }
   } catch (error) {
-    console.error('[Vault] Indexing failed:', error)
+    logger.error('Indexing failed:', error)
     // Continue anyway - watcher will pick up files
   }
 
@@ -264,9 +267,9 @@ async function openVault(vaultPath: string): Promise<void> {
   // Start loading embedding model in background (non-blocking)
   // This ensures the model is ready when user needs AI suggestions
   if (!isModelLoaded() && !isModelLoading()) {
-    console.log('[Vault] Starting background embedding model load...')
+    logger.info('Starting background embedding model load...')
     initEmbeddingModel().catch((err) => {
-      console.error('[Vault] Background embedding model load failed:', err)
+      logger.error('Background embedding model load failed:', err)
     })
   }
 }
@@ -356,7 +359,7 @@ export async function updateConfig(updates: Partial<VaultConfig>): Promise<Vault
     updates.excludePatterns &&
     JSON.stringify(oldConfig.excludePatterns) !== JSON.stringify(newConfig.excludePatterns)
   ) {
-    console.log('[Vault] Exclude patterns changed, restarting watcher...')
+    logger.info('Exclude patterns changed, restarting watcher...')
     await stopWatcher()
     await startWatcher(currentStatus.path, newConfig.excludePatterns)
   }
@@ -381,17 +384,17 @@ export async function closeVault(): Promise<void> {
       const indexDb = getIndexDatabase()
       const flushed = flushFtsUpdates(indexDb)
       if (flushed > 0) {
-        console.log(`[Vault] Flushed ${flushed} pending FTS updates before close`)
+        logger.debug(`Flushed ${flushed} pending FTS updates before close`)
       }
     } catch (error) {
-      console.error('[Vault] Failed to flush FTS updates:', error)
+      logger.error('Failed to flush FTS updates:', error)
     }
   }
 
   // Clear any pending embedding updates (don't wait for them on shutdown)
   if (hasPendingEmbeddings()) {
     clearEmbeddingQueue()
-    console.log(`[Vault] Cleared pending embedding updates before close`)
+    logger.debug('Cleared pending embedding updates before close')
   }
 
   // Close databases
@@ -474,7 +477,7 @@ export async function autoOpenLastVault(): Promise<void> {
       await openVault(testVaultPath)
       return
     } catch (error) {
-      console.error('[Test] Failed to open test vault:', error)
+      logger.error('Failed to open test vault:', error)
     }
   }
 

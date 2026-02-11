@@ -36,6 +36,9 @@ import type {
   ImageMetadata,
   VoiceMetadata
 } from '@/types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:ContentSection')
 
 // Content section can work with either full or list item types
 type ContentItem = InboxItem | InboxItemListItem
@@ -385,7 +388,7 @@ const VoicePreview = ({
       try {
         await audioRef.current.play()
       } catch (err) {
-        console.error('[VoicePreview] Play error:', err)
+        log.error('Play error', err)
         setAudioError(extractErrorMessage(err, 'Failed to play audio'))
       }
     }
@@ -394,7 +397,7 @@ const VoicePreview = ({
   const handleAudioError = (e: React.SyntheticEvent<HTMLAudioElement>): void => {
     const audio = e.currentTarget
     const error = audio.error
-    console.error('[VoicePreview] Audio error:', error?.code, error?.message)
+    log.error('Audio error', error?.code, error?.message)
     setAudioError(error?.message || 'Failed to load audio')
   }
 

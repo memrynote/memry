@@ -11,6 +11,7 @@ import { BrowserWindow } from 'electron'
 import path from 'path'
 import { rename, copyFile, unlink } from 'fs/promises'
 import { existsSync } from 'fs'
+import { createLogger } from '../lib/logger'
 import { getDatabase, type DrizzleDb } from '../database'
 import { createNote, getNoteById, updateNote, createFolder, getFolders } from '../vault/notes'
 import { getStatus, getConfig } from '../vault/index'
@@ -19,6 +20,8 @@ import { generateId } from '../lib/id'
 import { eq } from 'drizzle-orm'
 import { InboxChannels } from '@shared/ipc-channels'
 import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
+
+const log = createLogger('Inbox:Filing')
 
 // ============================================================================
 // Types
@@ -160,10 +163,10 @@ async function ensureFolderExists(folderPath: string): Promise<void> {
     const existingFolders = await getFolders()
     if (!existingFolders.includes(folderPath)) {
       await createFolder(folderPath)
-      console.log(`[Filing] Created folder: ${folderPath}`)
+      log.debug(`Created folder: ${folderPath}`)
     }
   } catch (error) {
-    console.error(`[Filing] Error ensuring folder exists: ${folderPath}`, error)
+    log.error(`Error ensuring folder exists: ${folderPath}`, error)
     throw error
   }
 }
@@ -429,7 +432,7 @@ async function fileBinaryToFolder(itemId: string, folderPath: string): Promise<F
     // Record filing history (no content for binary files)
     recordFilingHistory(item.type, null, relativePath, 'folder', [])
 
-    console.log(`[Filing] Filed binary item to: ${relativePath}`)
+    log.info(`Filed binary item to: ${relativePath}`)
 
     return {
       success: true,
@@ -438,7 +441,7 @@ async function fileBinaryToFolder(itemId: string, folderPath: string): Promise<F
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Filing] Error filing binary to folder:', message)
+    log.error('Error filing binary to folder:', message)
     return { success: false, filedTo: null, error: message }
   }
 }
@@ -517,7 +520,7 @@ export async function fileToFolder(
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Filing] Error filing to folder:', message)
+    log.error('Error filing to folder:', message)
     return { success: false, filedTo: null, error: message }
   }
 }
@@ -560,7 +563,7 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
       tags: mergedTags
     })
 
-    console.log(`[Filing] Converted to note: ${note.id}`)
+    log.info(`Converted to note: ${note.id}`)
 
     // Mark inbox item as filed
     markItemAsFiled(itemId, note.path, 'note')
@@ -575,7 +578,7 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Filing] Error converting to note:', message)
+    log.error('Error converting to note:', message)
     return { success: false, filedTo: null, error: message }
   }
 }
@@ -703,7 +706,7 @@ async function linkBinaryToNotes(
         content: updatedContent
       })
 
-      console.log(`[Filing] Linked binary item to note: ${targetNote.id}`)
+      log.debug(`Linked binary item to note: ${targetNote.id}`)
     }
 
     // Calculate relative path for storage
@@ -715,12 +718,12 @@ async function linkBinaryToNotes(
     // Record filing history (no content for binary files)
     recordFilingHistory(item.type, null, relativePath, 'linked', [])
 
-    console.log(`[Filing] Linked binary item to ${targetNotes.length} note(s): ${relativePath}`)
+    log.info(`Linked binary item to ${targetNotes.length} note(s): ${relativePath}`)
 
     return { success: true, linkedCount: targetNotes.length }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Filing] Error linking binary to notes:', message)
+    log.error('Error linking binary to notes:', message)
     return { success: false, error: message }
   }
 }
@@ -824,7 +827,7 @@ export async function linkToNotes(
         content: updatedContent
       })
 
-      console.log(`[Filing] Linked inbox item to note: ${targetNote.id}`)
+      log.debug(`Linked inbox item to note: ${targetNote.id}`)
     }
 
     // Mark inbox item as filed (linked to first target note for reference)
@@ -836,7 +839,7 @@ export async function linkToNotes(
     return { success: true, linkedCount: targetNotes.length }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Filing] Error linking to notes:', message)
+    log.error('Error linking to notes:', message)
     return { success: false, error: message }
   }
 }

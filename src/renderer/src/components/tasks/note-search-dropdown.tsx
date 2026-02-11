@@ -6,6 +6,9 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { notesService, type NoteListItem } from '@/services/notes-service'
 import type { SearchResultNote } from '@/services/search-service'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:NoteSearchDropdown')
 
 // ============================================================================
 // TYPES
@@ -69,7 +72,7 @@ export const NoteSearchDropdown = ({
           setNotes(response.notes.map((n: NoteListItem) => ({ id: n.id, title: n.title })))
         }
       } catch (error) {
-        console.error('Failed to load notes:', error)
+        log.error('Failed to load notes', error)
         setNotes([])
       } finally {
         setIsLoading(false)

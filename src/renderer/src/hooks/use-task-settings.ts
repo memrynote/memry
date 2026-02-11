@@ -1,4 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Hook:TaskSettings')
 
 // ============================================================================
 // TYPES
@@ -65,7 +68,7 @@ export const useTaskSettings = (): UseTaskSettingsReturn => {
         }
       }
     } catch (error) {
-      console.error('Failed to load task settings:', error)
+      log.error('Failed to load task settings:', error)
     }
     return defaultTaskSettings
   })
@@ -75,7 +78,7 @@ export const useTaskSettings = (): UseTaskSettingsReturn => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
     } catch (error) {
-      console.error('Failed to save task settings:', error)
+      log.error('Failed to save task settings:', error)
     }
   }, [settings])
 
