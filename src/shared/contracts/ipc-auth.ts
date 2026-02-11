@@ -77,6 +77,7 @@ export interface SetupFirstDeviceInput {
 
 export interface SetupFirstDeviceResult {
   success: boolean
+  needsRecoverySetup?: boolean
   needsRecoveryInput?: boolean
   recoveryPhrase?: string
   deviceId?: string
