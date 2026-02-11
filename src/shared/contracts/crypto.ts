@@ -19,8 +19,6 @@ export const CRYPTO_VERSION: CryptoVersion = 1
 
 export const KEY_DERIVATION_CONTEXTS = {
   VAULT_KEY: 'memry-vault-key-v1',
-  SIGNING_KEY: 'memry-signing-key-v1',
-  VERIFY_KEY: 'memry-verify-key-v1',
   KEY_VERIFIER: 'memry-key-verifier-v1'
 } as const
 
