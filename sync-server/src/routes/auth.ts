@@ -368,6 +368,25 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
   })
 })
 
+// GET /recovery-info
+auth.get('/recovery-info', setupAuthMiddleware, async (c) => {
+  const userId = c.get('userId')!
+
+  const user = await getUserById(c.env.DB, userId)
+  if (!user) {
+    throw new AppError(ErrorCodes.NOT_FOUND, 'User not found', 404)
+  }
+
+  if (!user.kdf_salt) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'No encryption keys configured', 400)
+  }
+
+  return c.json({
+    kdfSalt: user.kdf_salt,
+    keyVerifier: user.key_verifier
+  })
+})
+
 // POST /setup
 auth.post('/setup', authMiddleware, async (c) => {
   const body = await c.req.json()
