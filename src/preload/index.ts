@@ -1357,7 +1357,7 @@ const api = {
     generateLinkingQr: () => ipcRenderer.invoke(SYNC_CHANNELS.GENERATE_LINKING_QR),
     linkViaQr: (input: { qrData: string; provider: string; oauthToken: string }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.LINK_VIA_QR, input),
-    linkViaRecovery: (input: { recoveryPhrase: string; provider: string; oauthToken: string }) =>
+    linkViaRecovery: (input: { recoveryPhrase: string }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.LINK_VIA_RECOVERY, input),
     approveLinking: (input: { sessionId: string }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.APPROVE_LINKING, input)
