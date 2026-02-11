@@ -63,6 +63,9 @@ import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/err
 import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@shared/contracts/notes-api'
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('Notes')
 
 // ============================================================================
 // Types
@@ -555,7 +558,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
         existing.title
       )
     } catch (err) {
-      console.error('[Snapshot] Failed to read current file for snapshot:', err)
+      logger.error('Failed to read current file for snapshot:', err)
     }
   }
 
