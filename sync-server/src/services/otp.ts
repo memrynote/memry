@@ -6,9 +6,13 @@ const MAX_ATTEMPTS = 5
 const MAX_EMAIL_REQUESTS = 3
 const EMAIL_WINDOW_SECONDS = 600
 
+const MAX_UNBIASED = 4_294_000_000
+
 export const generateOtp = (): string => {
   const array = new Uint32Array(1)
-  crypto.getRandomValues(array)
+  do {
+    crypto.getRandomValues(array)
+  } while (array[0] >= MAX_UNBIASED)
   return String(array[0] % 1_000_000).padStart(OTP_LENGTH, '0')
 }
 

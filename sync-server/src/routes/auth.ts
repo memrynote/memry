@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { decodeJwt, jwtVerify, createRemoteJWKSet, SignJWT } from 'jose'
+import { jwtVerify, createRemoteJWKSet, SignJWT } from 'jose'
 
 import {
   RequestOtpRequestSchema,
@@ -111,9 +111,16 @@ const verifyDeviceChallenge = async (
 
 const OAUTH_STATE_EXPIRY = '5m'
 
-export const generateOAuthState = async (privateKeyPem: string): Promise<string> => {
+export const generateOAuthState = async (
+  privateKeyPem: string,
+  redirectUri?: string
+): Promise<string> => {
   const privateKey = await getPrivateKey(privateKeyPem)
-  return new SignJWT({ type: 'oauth_state', nonce: crypto.randomUUID() })
+  const claims: Record<string, unknown> = { type: 'oauth_state', nonce: crypto.randomUUID() }
+  if (redirectUri) {
+    claims.redirect_uri = redirectUri
+  }
+  return new SignJWT(claims)
     .setProtectedHeader({ alg: 'EdDSA' })
     .setIssuedAt()
     .setIssuer('memry-sync')
@@ -122,7 +129,10 @@ export const generateOAuthState = async (privateKeyPem: string): Promise<string>
     .sign(privateKey)
 }
 
-export const verifyOAuthState = async (state: string, publicKeyPem: string): Promise<void> => {
+export const verifyOAuthState = async (
+  state: string,
+  publicKeyPem: string
+): Promise<{ redirectUri?: string }> => {
   const publicKey = await getPublicKey(publicKeyPem)
   const { payload } = await jwtVerify(state, publicKey, {
     algorithms: ['EdDSA'],
@@ -132,6 +142,7 @@ export const verifyOAuthState = async (state: string, publicKeyPem: string): Pro
   if (payload.type !== 'oauth_state') {
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid OAuth state token type', 401)
   }
+  return { redirectUri: payload.redirect_uri as string | undefined }
 }
 
 export const auth = new Hono<AppContext>()
@@ -203,11 +214,18 @@ auth.get('/oauth/:provider', async (c) => {
     throw new AppError(ErrorCodes.AUTH_INVALID_PROVIDER, 'Unsupported OAuth provider', 400)
   }
 
-  const state = await generateOAuthState(c.env.JWT_PRIVATE_KEY)
+  const clientRedirectUri = c.req.query('redirect_uri')
+  const redirectUri = clientRedirectUri ?? c.env.GOOGLE_REDIRECT_URI
+
+  if (clientRedirectUri && !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/.*)?$/.test(clientRedirectUri)) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'redirect_uri must be a loopback address', 400)
+  }
+
+  const state = await generateOAuthState(c.env.JWT_PRIVATE_KEY, redirectUri)
 
   const params = new URLSearchParams({
     client_id: c.env.GOOGLE_CLIENT_ID,
-    redirect_uri: c.env.GOOGLE_REDIRECT_URI,
+    redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'openid email profile',
     access_type: 'offline',
@@ -230,9 +248,10 @@ auth.post('/oauth/:provider/callback', async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid callback body', 400)
   }
 
-  const { code, state, redirectUri } = parsed.data
+  const { code, state } = parsed.data
 
-  await verifyOAuthState(state, c.env.JWT_PUBLIC_KEY)
+  const statePayload = await verifyOAuthState(state, c.env.JWT_PUBLIC_KEY)
+  const redirectUri = statePayload.redirectUri ?? c.env.GOOGLE_REDIRECT_URI
 
   const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -241,7 +260,7 @@ auth.post('/oauth/:provider/callback', async (c) => {
       code,
       client_id: c.env.GOOGLE_CLIENT_ID,
       client_secret: c.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: redirectUri ?? c.env.GOOGLE_REDIRECT_URI,
+      redirect_uri: redirectUri,
       grant_type: 'authorization_code'
     })
   })
@@ -283,6 +302,32 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
   }
 
   const userId = c.get('userId')!
+  const tokenJti = c.get('tokenJti')!
+
+  const consumeResult = await c.env.DB.prepare(
+    'INSERT OR IGNORE INTO consumed_setup_tokens (jti, expires_at) VALUES (?, ?)'
+  )
+    .bind(tokenJti, Math.floor(Date.now() / 1000) + 300)
+    .run()
+
+  if ((consumeResult.meta.changes ?? 0) === 0) {
+    throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Setup token already used', 401)
+  }
+
+  const activeDeviceCount = await c.env.DB.prepare(
+    'SELECT COUNT(*) as cnt FROM devices WHERE user_id = ? AND revoked_at IS NULL'
+  )
+    .bind(userId)
+    .first<{ cnt: number }>()
+
+  if (activeDeviceCount && activeDeviceCount.cnt >= 10) {
+    throw new AppError(
+      ErrorCodes.VALIDATION_ERROR,
+      'Maximum device limit reached. Revoke an existing device first.',
+      409
+    )
+  }
+
   const {
     name,
     platform,
@@ -360,8 +405,18 @@ auth.post('/refresh', refreshRateLimit, async (c) => {
 
   let claims: { sub?: string; device_id?: string; type?: string }
   try {
-    claims = decodeJwt(refreshToken) as typeof claims
-  } catch {
+    const publicKey = await getPublicKey(c.env.JWT_PUBLIC_KEY)
+    const result = await jwtVerify(refreshToken, publicKey, {
+      algorithms: ['EdDSA'],
+      issuer: 'memry-sync',
+      audience: 'memry-client'
+    })
+    claims = result.payload as typeof claims
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Token verification failed'
+    if (message.includes('expired')) {
+      throw new AppError(ErrorCodes.AUTH_TOKEN_EXPIRED, 'Refresh token has expired', 401)
+    }
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid refresh token', 401)
   }
 

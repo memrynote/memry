@@ -18,5 +18,6 @@ export type AppContext = {
   Variables: {
     userId?: string
     deviceId?: string
+    tokenJti?: string
   }
 }

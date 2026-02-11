@@ -236,6 +236,8 @@ CREATE TABLE upload_sessions (
   total_size INTEGER NOT NULL,
   chunk_count INTEGER NOT NULL,
   uploaded_chunks TEXT NOT NULL DEFAULT '[]',
+  r2_upload_id TEXT,
+  r2_key TEXT,
   expires_at INTEGER NOT NULL,
   created_at INTEGER NOT NULL
 );
@@ -259,3 +261,14 @@ CREATE TABLE blob_chunks (
 );
 
 CREATE INDEX idx_blob_chunks_hash ON blob_chunks(hash);
+
+-- ============================================================================
+-- Consumed setup tokens (single-use enforcement)
+-- ============================================================================
+
+CREATE TABLE consumed_setup_tokens (
+  jti TEXT PRIMARY KEY,
+  expires_at INTEGER NOT NULL
+);
+
+CREATE INDEX idx_consumed_tokens_expires ON consumed_setup_tokens(expires_at);

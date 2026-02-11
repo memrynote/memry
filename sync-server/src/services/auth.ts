@@ -125,9 +125,13 @@ export const revokeDeviceTokens = async (db: D1Database, deviceId: string): Prom
     .run()
 }
 
-const SETUP_TOKEN_EXPIRY = '15m'
+const SETUP_TOKEN_EXPIRY = '5m'
 
 export const signSetupToken = async (userId: string, privateKeyPem: string): Promise<string> => {
   const privateKey = await getPrivateKey(privateKeyPem)
-  return signToken({ sub: userId, type: 'setup' }, privateKey, SETUP_TOKEN_EXPIRY)
+  return signToken(
+    { sub: userId, type: 'setup', jti: crypto.randomUUID() },
+    privateKey,
+    SETUP_TOKEN_EXPIRY
+  )
 }

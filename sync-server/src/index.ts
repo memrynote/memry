@@ -8,6 +8,7 @@ import { AppError, ErrorCodes, errorHandler } from './lib/errors'
 import { auth } from './routes/auth'
 import { securityHeaders } from './middleware/security'
 import {
+  cleanupConsumedSetupTokens,
   cleanupExpiredLinkingSessions,
   cleanupExpiredOtpCodes,
   cleanupExpiredUploadSessions,
@@ -92,7 +93,8 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env,
     cleanupExpiredOtpCodes(env.DB),
     cleanupExpiredLinkingSessions(env.DB),
     cleanupExpiredUploadSessions(env.DB, env.STORAGE),
-    cleanupStaleRateLimits(env.DB)
+    cleanupStaleRateLimits(env.DB),
+    cleanupConsumedSetupTokens(env.DB)
   ])
 
   for (const [i, result] of results.entries()) {
