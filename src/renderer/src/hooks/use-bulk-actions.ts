@@ -1,5 +1,8 @@
 import { useCallback } from 'react'
+import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
+
+const log = createLogger('Hook:BulkActions')
 
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
@@ -106,7 +109,7 @@ export const useBulkActions = ({
         }
         // State updates happen via event subscriptions in TasksContext
       } catch (error) {
-        console.error('[bulkComplete] Backend error:', error)
+        log.error('bulkComplete backend error:', error)
         toast.error('Failed to complete tasks')
         return
       }
@@ -238,7 +241,7 @@ export const useBulkActions = ({
           }
           // State updates happen via event subscriptions in TasksContext
         } catch (error) {
-          console.error('[bulkMoveToProject] Backend error:', error)
+          log.error('bulkMoveToProject backend error:', error)
           toast.error('Failed to move tasks')
           return
         }
@@ -340,7 +343,7 @@ export const useBulkActions = ({
         }
         // State updates happen via event subscriptions in TasksContext
       } catch (error) {
-        console.error('[bulkArchive] Backend error:', error)
+        log.error('bulkArchive backend error:', error)
         toast.error('Failed to archive tasks')
         return
       }
@@ -382,7 +385,7 @@ export const useBulkActions = ({
         }
         // State updates happen via event subscriptions in TasksContext (DELETED events)
       } catch (error) {
-        console.error('[bulkDelete] Backend error:', error)
+        log.error('bulkDelete backend error:', error)
         toast.error('Failed to delete tasks')
         return
       }

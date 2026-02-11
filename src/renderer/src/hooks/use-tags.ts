@@ -4,7 +4,10 @@
  */
 
 import { useState, useCallback, useEffect } from 'react'
+import { createLogger } from '@/lib/logger'
 import { fuzzySearch } from '@/lib/fuzzy-search'
+
+const log = createLogger('Hook:Tags')
 
 export interface Tag {
   name: string // tag name without # prefix
@@ -70,7 +73,7 @@ export function useTags() {
         return JSON.parse(stored)
       }
     } catch (error) {
-      console.error('Failed to load tags from localStorage:', error)
+      log.error('Failed to load tags from localStorage:', error)
     }
     return MOCK_TAGS
   })
@@ -80,7 +83,7 @@ export function useTags() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(tags))
     } catch (error) {
-      console.error('Failed to save tags to localStorage:', error)
+      log.error('Failed to save tags to localStorage:', error)
     }
   }, [tags])
 

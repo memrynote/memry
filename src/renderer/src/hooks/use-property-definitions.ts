@@ -7,7 +7,10 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
+
+const log = createLogger('Hook:PropertyDefinitions')
 import {
   notesService,
   type PropertyDefinition,
@@ -91,7 +94,7 @@ export function usePropertyDefinitions(): UsePropertyDefinitionsReturn {
     } catch (err) {
       const message = extractErrorMessage(err, 'Failed to load property definitions')
       setError(message)
-      console.error('[usePropertyDefinitions] Error fetching definitions:', err)
+      log.error('Error fetching definitions:', err)
     } finally {
       setIsLoading(false)
     }
@@ -114,7 +117,7 @@ export function usePropertyDefinitions(): UsePropertyDefinitionsReturn {
         setDefinitions((prev) => [...prev, result.definition!])
         return result.definition
       } catch (err) {
-        console.error('[usePropertyDefinitions] Error creating definition:', err)
+        log.error('Error creating definition:', err)
         throw err
       }
     },
@@ -139,7 +142,7 @@ export function usePropertyDefinitions(): UsePropertyDefinitionsReturn {
         setDefinitions((prev) => prev.map((def) => (def.name === name ? result.definition! : def)))
         return result.definition
       } catch (err) {
-        console.error('[usePropertyDefinitions] Error updating definition:', err)
+        log.error('Error updating definition:', err)
         throw err
       }
     },

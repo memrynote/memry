@@ -4,7 +4,10 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
+
+const log = createLogger('Hook:TagDetail')
 import {
   tagsService,
   onTagNotesChanged,
@@ -77,7 +80,7 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
     } catch (err) {
       const message = extractErrorMessage(err, 'Failed to load notes')
       setError(message)
-      console.error('[useTagDetail] Error fetching notes:', err)
+      log.error('Error fetching notes:', err)
     } finally {
       setIsLoading(false)
     }
@@ -120,7 +123,7 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
         }
         // The onTagNotesChanged event will trigger a refresh
       } catch (err) {
-        console.error('[useTagDetail] Error pinning note:', err)
+        log.error('Error pinning note:', err)
         throw err
       }
     },
@@ -137,7 +140,7 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
         }
         // The onTagNotesChanged event will trigger a refresh
       } catch (err) {
-        console.error('[useTagDetail] Error unpinning note:', err)
+        log.error('Error unpinning note:', err)
         throw err
       }
     },
@@ -154,7 +157,7 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
         }
         // The onTagNotesChanged event will trigger a refresh
       } catch (err) {
-        console.error('[useTagDetail] Error removing note from tag:', err)
+        log.error('Error removing note from tag:', err)
         throw err
       }
     },

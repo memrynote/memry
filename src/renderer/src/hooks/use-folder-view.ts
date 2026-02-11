@@ -14,7 +14,10 @@ import {
   useQueryClient,
   type InfiniteData
 } from '@tanstack/react-query'
+import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
+
+const log = createLogger('Hook:FolderView')
 import { DEFAULT_COLUMNS, BUILT_IN_COLUMNS } from '@shared/contracts/folder-view-api'
 import type {
   FilterExpression,
@@ -352,7 +355,7 @@ export function useFolderView({
     try {
       return notes.filter((note) => evaluateFilter(note, filters))
     } catch (err) {
-      console.error('[useFolderView] Filter evaluation error:', err)
+      log.error('Filter evaluation error:', err)
       return notes
     }
   }, [notes, activeView?.filters])
@@ -427,7 +430,7 @@ export function useFolderView({
             throw new Error(result.error || 'Failed to save view')
           }
         } catch (err) {
-          console.error('[useFolderView.updateView] Failed:', err)
+          log.error('updateView failed:', err)
           // Revert on error
           queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
         }
@@ -463,7 +466,7 @@ export function useFolderView({
           }
         }
       } catch (err) {
-        console.error('[useFolderView.addView] Failed:', err)
+        log.error('addView failed:', err)
         throw err
       }
     },
@@ -491,7 +494,7 @@ export function useFolderView({
           setActiveViewIndex(Math.max(0, newData.views.length - 1))
         }
       } catch (err) {
-        console.error('[useFolderView.deleteView] Failed:', err)
+        log.error('deleteView failed:', err)
         throw err
       }
     },
@@ -505,7 +508,7 @@ export function useFolderView({
     async (index: number) => {
       const targetView = views[index]
       if (!targetView) {
-        console.error('[useFolderView.setViewAsDefault] Invalid index:', index)
+        log.error('setViewAsDefault invalid index:', index)
         return
       }
 
@@ -531,7 +534,7 @@ export function useFolderView({
 
         setActiveViewIndex(index)
       } catch (err) {
-        console.error('[useFolderView.setViewAsDefault] Failed:', err)
+        log.error('setViewAsDefault failed:', err)
         // Revert on error
         queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
         throw err
@@ -599,7 +602,7 @@ export function useFolderView({
           return { ...old, summaries: updatedSummaries }
         })
       } catch (err) {
-        console.error('[useFolderView.updateSummaryConfig] Failed:', err)
+        log.error('updateSummaryConfig failed:', err)
       }
     },
     [folderPath, queryClient]
@@ -671,7 +674,7 @@ export function useFolderView({
 
           await window.api.folderView.setConfig(folderPath, updatedConfig)
         } catch (err) {
-          console.error('Failed to save display name:', err)
+          log.error('Failed to save display name:', err)
           queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
         }
       }, 300)
@@ -759,7 +762,7 @@ export function useFolderView({
           throw new Error(result.error ?? 'Failed to update property')
         }
       } catch (err) {
-        console.error('[useFolderView] Failed to update property:', err)
+        log.error('Failed to update property:', err)
         toast.error('Failed to update property')
         if (previousData) {
           queryClient.setQueryData(folderViewKeys.notes(folderPath), previousData)
@@ -798,7 +801,7 @@ export function useFolderView({
           throw new Error(result.error ?? 'Failed to update tags')
         }
       } catch (err) {
-        console.error('[useFolderView] Failed to update tags:', err)
+        log.error('Failed to update tags:', err)
         toast.error('Failed to update tags')
         if (previousData) {
           queryClient.setQueryData(folderViewKeys.notes(folderPath), previousData)
@@ -845,7 +848,7 @@ export function useFolderView({
         // Invalidate to refetch
         queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(folderPath) })
       } catch (err) {
-        console.error('[useFolderView.addFormula] Failed:', err)
+        log.error('addFormula failed:', err)
         throw err
       }
     },
@@ -874,7 +877,7 @@ export function useFolderView({
         // Invalidate to refetch
         queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(folderPath) })
       } catch (err) {
-        console.error('[useFolderView.updateFormula] Failed:', err)
+        log.error('updateFormula failed:', err)
         throw err
       }
     },
@@ -901,7 +904,7 @@ export function useFolderView({
         // Invalidate to refetch
         queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(folderPath) })
       } catch (err) {
-        console.error('[useFolderView.deleteFormula] Failed:', err)
+        log.error('deleteFormula failed:', err)
         throw err
       }
     },

@@ -11,10 +11,13 @@
  */
 
 import { useEffect, useCallback } from 'react'
+import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { useTabs } from '@/contexts/tabs'
 import { useDismissReminder } from '@/hooks/use-reminders'
 import type { ReminderWithTarget } from '@/services/reminder-service'
+
+const log = createLogger('Hook:ReminderNotifications')
 
 // ============================================================================
 // Types
@@ -117,7 +120,7 @@ export function useReminderNotifications(): void {
   // Handle reminder due events
   useEffect(() => {
     const unsubscribeDue = window.api.onReminderDue((event: ReminderDueEvent) => {
-      console.log(`[ReminderNotifications] ${event.count} reminder(s) due`)
+      log.info(`${event.count} reminder(s) due`)
 
       // Show toast for each due reminder (limit to avoid toast spam)
       const remindersToShow = event.reminders.slice(0, 5)
@@ -141,9 +144,7 @@ export function useReminderNotifications(): void {
   // Handle desktop notification click events (navigate to target)
   useEffect(() => {
     const unsubscribeClicked = window.api.onReminderClicked((event: ReminderClickedEvent) => {
-      console.log(
-        `[ReminderNotifications] Desktop notification clicked for reminder ${event.reminder.id}`
-      )
+      log.info(`Desktop notification clicked for reminder ${event.reminder.id}`)
       navigateToTarget(event.reminder)
     })
 

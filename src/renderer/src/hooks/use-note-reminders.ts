@@ -8,6 +8,7 @@
  */
 
 import { useMemo, useCallback } from 'react'
+import { createLogger } from '@/lib/logger'
 import {
   useRemindersForTarget,
   useCreateReminder,
@@ -16,6 +17,8 @@ import {
   useSnoozeReminder
 } from './use-reminders'
 import { toast } from 'sonner'
+
+const log = createLogger('Hook:NoteReminders')
 
 // ============================================================================
 // Types
@@ -114,7 +117,7 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
           return false
         }
       } catch (err) {
-        console.error('Failed to set reminder:', err)
+        log.error('Failed to set reminder:', err)
         toast.error('Failed to set reminder')
         return false
       }
@@ -151,7 +154,7 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
           return false
         }
       } catch (err) {
-        console.error('Failed to set highlight reminder:', err)
+        log.error('Failed to set highlight reminder:', err)
         toast.error('Failed to set reminder')
         return false
       }
@@ -172,7 +175,7 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
           return false
         }
       } catch (err) {
-        console.error('Failed to delete reminder:', err)
+        log.error('Failed to delete reminder:', err)
         toast.error('Failed to delete reminder')
         return false
       }
@@ -193,7 +196,7 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
           return false
         }
       } catch (err) {
-        console.error('Failed to dismiss reminder:', err)
+        log.error('Failed to dismiss reminder:', err)
         toast.error('Failed to dismiss reminder')
         return false
       }
@@ -217,7 +220,7 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
           return false
         }
       } catch (err) {
-        console.error('Failed to snooze reminder:', err)
+        log.error('Failed to snooze reminder:', err)
         toast.error('Failed to snooze reminder')
         return false
       }
