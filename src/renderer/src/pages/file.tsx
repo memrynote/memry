@@ -7,6 +7,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { Loader2, FileWarning, Download, ExternalLink } from 'lucide-react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { notesService } from '@/services/notes-service'
 import { PdfViewer, ImageViewer, AudioPlayer, VideoPlayer } from '@/components/viewers'
 import { Button } from '@/components/ui/button'
@@ -191,7 +192,7 @@ export function FilePage({ fileId }: FilePageProps) {
   if (error) {
     return (
       <FileErrorState
-        error={error instanceof Error ? error.message : 'Failed to load file'}
+        error={extractErrorMessage(error, 'Failed to load file')}
         onRetry={() => refetch()}
       />
     )

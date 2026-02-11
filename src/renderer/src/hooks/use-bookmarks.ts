@@ -21,6 +21,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import type {
   BookmarkWithItem,
   BookmarkListResponse,
@@ -166,7 +167,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
         setHasMore(result.hasMore)
         return result
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to load bookmarks'
+        const message = extractErrorMessage(err, 'Failed to load bookmarks')
         setError(message)
         return { bookmarks: [], total: 0, hasMore: false }
       } finally {
@@ -196,7 +197,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
       setTotal(result.total)
       setHasMore(result.hasMore)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load more bookmarks'
+      const message = extractErrorMessage(err, 'Failed to load more bookmarks')
       setError(message)
     } finally {
       setIsLoading(false)
@@ -236,7 +237,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
 
         return result
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to toggle bookmark'
+        const message = extractErrorMessage(err, 'Failed to toggle bookmark')
         setError(message)
         return { success: false, isBookmarked: false, bookmark: null, error: message }
       }
@@ -264,7 +265,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
 
       return true
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to remove bookmark'
+      const message = extractErrorMessage(err, 'Failed to remove bookmark')
       setError(message)
       return false
     }
@@ -306,7 +307,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
 
       return true
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to reorder bookmarks'
+      const message = extractErrorMessage(err, 'Failed to reorder bookmarks')
       setError(message)
       return false
     }

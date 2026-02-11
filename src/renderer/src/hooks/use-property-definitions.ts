@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   notesService,
   type PropertyDefinition,
@@ -88,7 +89,7 @@ export function usePropertyDefinitions(): UsePropertyDefinitionsReturn {
       const result = await notesService.getPropertyDefinitions()
       setDefinitions(result)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load property definitions'
+      const message = extractErrorMessage(err, 'Failed to load property definitions')
       setError(message)
       console.error('[usePropertyDefinitions] Error fetching definitions:', err)
     } finally {

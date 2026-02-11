@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import type { JournalSettings } from '../../../preload/index.d'
 
 interface UseJournalSettingsReturn {
@@ -65,7 +66,7 @@ export function useJournalSettings(): UseJournalSettingsReturn {
         }
       } catch (err) {
         if (mounted) {
-          setError(err instanceof Error ? err.message : 'Failed to load journal settings')
+          setError(extractErrorMessage(err, 'Failed to load journal settings'))
         }
       } finally {
         if (mounted) {
@@ -109,7 +110,7 @@ export function useJournalSettings(): UseJournalSettingsReturn {
         setError(result.error ?? 'Failed to update settings')
         return false
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to update settings')
+        setError(extractErrorMessage(err, 'Failed to update settings'))
         return false
       }
     },

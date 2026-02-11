@@ -14,6 +14,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Send, Loader2, Link, FileText, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { useCaptureText, useCaptureLink } from '@/hooks/use-inbox'
 
 type CaptureState = 'idle' | 'capturing' | 'success' | 'error'
@@ -149,7 +150,7 @@ export function QuickCapture(): React.JSX.Element {
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Capture failed'
+      const message = extractErrorMessage(err, 'Capture failed')
       setErrorMessage(message)
       setCaptureState('error')
     }

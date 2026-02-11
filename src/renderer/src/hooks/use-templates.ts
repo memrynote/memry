@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   templatesService,
   onTemplateCreated,
@@ -56,7 +57,7 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
       const response = await templatesService.list()
       setTemplates(response.templates)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load templates')
+      setError(extractErrorMessage(err, 'Failed to load templates'))
     } finally {
       setIsLoading(false)
     }
