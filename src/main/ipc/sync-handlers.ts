@@ -15,11 +15,13 @@ import {
   ConfirmRecoveryPhraseSchema
 } from '@shared/contracts/ipc-auth'
 import { RefreshTokenResponseSchema } from '@shared/contracts/auth-api'
+import { LinkViaRecoverySchema } from '@shared/contracts/ipc-devices'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@shared/contracts/ipc-sync'
 
 import { eq } from 'drizzle-orm'
 
 import {
+  constantTimeEqual,
   deleteKey,
   deriveKey,
   deriveMasterKey,
@@ -27,13 +29,15 @@ import {
   generateRecoveryPhrase,
   generateSalt,
   getDevicePublicKey,
+  phraseToSeed,
   secureCleanup,
   storeKey,
-  retrieveKey
+  retrieveKey,
+  validateRecoveryPhrase
 } from '../crypto'
 import { getDatabase } from '../database/client'
 import { store } from '../store'
-import { postToServer, SyncServerError } from '../sync/http-client'
+import { getFromServer, postToServer, SyncServerError } from '../sync/http-client'
 
 import { createValidatedHandler } from './validate'
 
@@ -67,6 +71,11 @@ interface DeviceRegisterServerResponse {
 interface FirstDeviceSetupResult {
   recoveryPhrase: string
   deviceId: string
+}
+
+interface RecoveryInfoResponse {
+  kdfSalt: string
+  keyVerifier: string
 }
 
 // ============================================================================
@@ -443,7 +452,8 @@ export function registerSyncHandlers(): void {
 
       return {
         success: true,
-        isNewUser: serverResponse.isNewUser
+        isNewUser: serverResponse.isNewUser,
+        needsRecoveryInput: true
       }
     })
   )
@@ -562,7 +572,7 @@ export function registerSyncHandlers(): void {
         }
       }
 
-      return { success: true }
+      return { success: true, needsRecoveryInput: true }
     })
   )
 
@@ -605,7 +615,72 @@ export function registerSyncHandlers(): void {
 
   ipcMain.handle(SYNC_CHANNELS.GENERATE_LINKING_QR, notImplemented('GENERATE_LINKING_QR'))
   ipcMain.handle(SYNC_CHANNELS.LINK_VIA_QR, notImplemented('LINK_VIA_QR'))
-  ipcMain.handle(SYNC_CHANNELS.LINK_VIA_RECOVERY, notImplemented('LINK_VIA_RECOVERY'))
+  ipcMain.handle(
+    SYNC_CHANNELS.LINK_VIA_RECOVERY,
+    createValidatedHandler(LinkViaRecoverySchema, async (input) => {
+      if (!validateRecoveryPhrase(input.recoveryPhrase)) {
+        throw new Error('Invalid recovery phrase')
+      }
+
+      const setupToken = await retrieveToken(KEYCHAIN_ENTRIES.SETUP_TOKEN)
+      if (!setupToken) {
+        throw new Error('No setup token found. Please sign in again.')
+      }
+
+      const recoveryInfo = await getFromServer<RecoveryInfoResponse>(
+        '/auth/recovery-info',
+        setupToken
+      )
+
+      const seed = await phraseToSeed(input.recoveryPhrase)
+      const saltBytes = sodium.from_base64(recoveryInfo.kdfSalt, sodium.base64_variants.ORIGINAL)
+
+      let masterKey: Uint8Array | undefined
+      let vaultKey: Uint8Array | undefined
+      let signingSecretKey: Uint8Array | undefined
+
+      try {
+        const derived = await deriveMasterKey(seed, saltBytes)
+        masterKey = derived.masterKey
+
+        const serverVerifierBytes = new TextEncoder().encode(recoveryInfo.keyVerifier)
+        const derivedVerifierBytes = new TextEncoder().encode(derived.keyVerifier)
+
+        if (!constantTimeEqual(derivedVerifierBytes, serverVerifierBytes)) {
+          throw new Error('Incorrect recovery phrase')
+        }
+
+        await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, masterKey)
+
+        vaultKey = await deriveKey(masterKey, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
+        await storeKey(KEYCHAIN_ENTRIES.VAULT_KEY, vaultKey)
+
+        const keyPair = await generateDeviceSigningKeyPair()
+        signingSecretKey = keyPair.secretKey
+        await storeKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY, signingSecretKey)
+
+        const deviceResponse = await registerDevice(setupToken)
+
+        const db = getDatabase()
+        await db.insert(syncDevices).values({
+          id: deviceResponse.deviceId,
+          name: os.hostname(),
+          platform: PLATFORM_MAP[process.platform] || 'linux',
+          osVersion: os.release(),
+          appVersion: app.getVersion(),
+          linkedAt: new Date(),
+          isCurrentDevice: true
+        })
+
+        return { success: true, deviceId: deviceResponse.deviceId }
+      } finally {
+        secureCleanup(seed, saltBytes)
+        if (masterKey) secureCleanup(masterKey)
+        if (vaultKey) secureCleanup(vaultKey)
+        if (signingSecretKey) secureCleanup(signingSecretKey)
+      }
+    })
+  )
   ipcMain.handle(SYNC_CHANNELS.APPROVE_LINKING, notImplemented('APPROVE_LINKING'))
 
   ipcMain.handle(SYNC_CHANNELS.GET_DEVICES, async () => {
