@@ -13,7 +13,8 @@ import type {
   SyncResumedEvent,
   KeyRotationProgressEvent,
   SessionExpiredEvent,
-  OtpDetectedEvent
+  OtpDetectedEvent,
+  OAuthCallbackEvent
 } from '../shared/contracts/ipc-sync'
 
 // Vault types (mirrored from contracts for preload compatibility)
@@ -2063,8 +2064,6 @@ interface SyncAuthClientAPI {
     error?: string
   }>
   initOAuth: (input: { provider: 'google' }) => Promise<{
-    codeChallenge: string
-    codeChallengeMethod: 'S256'
     state: string
   }>
   refreshToken: () => Promise<{
@@ -2075,11 +2074,7 @@ interface SyncAuthClientAPI {
 
 // Sync Setup API
 interface SyncSetupClientAPI {
-  setupFirstDevice: (input: {
-    provider: 'google'
-    oauthToken: string
-    state: string
-  }) => Promise<{
+  setupFirstDevice: (input: { provider: 'google'; oauthToken: string; state: string }) => Promise<{
     success: boolean
     recoveryPhrase?: string
     deviceId?: string
@@ -2393,6 +2388,7 @@ interface API extends WindowAPI {
   onKeyRotationProgress: (callback: (event: KeyRotationProgressEvent) => void) => () => void
   onSessionExpired: (callback: (event: SessionExpiredEvent) => void) => () => void
   onOtpDetected: (callback: (event: OtpDetectedEvent) => void) => () => void
+  onOAuthCallback: (callback: (event: OAuthCallbackEvent) => void) => () => void
 }
 
 declare global {

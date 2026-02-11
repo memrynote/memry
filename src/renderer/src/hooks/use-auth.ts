@@ -19,7 +19,13 @@ type AuthAction =
   | { type: 'LOADING' }
   | { type: 'DONE_LOADING' }
   | { type: 'OTP_REQUESTED'; email: string }
-  | { type: 'OTP_VERIFIED'; isNewUser: boolean; needsRecoverySetup: boolean; recoveryPhrase?: string; deviceId?: string }
+  | {
+      type: 'OTP_VERIFIED'
+      isNewUser: boolean
+      needsRecoverySetup: boolean
+      recoveryPhrase?: string
+      deviceId?: string
+    }
   | { type: 'RECOVERY_CONFIRMED' }
   | { type: 'SESSION_EXPIRED' }
   | { type: 'ERROR'; error: string }
@@ -113,7 +119,10 @@ export const useAuth = () => {
       dispatch({ type: 'OTP_REQUESTED', email })
     } catch (err) {
       if (!mountedRef.current) return
-      dispatch({ type: 'ERROR', error: err instanceof Error ? err.message : 'Failed to request OTP' })
+      dispatch({
+        type: 'ERROR',
+        error: err instanceof Error ? err.message : 'Failed to request OTP'
+      })
     }
   }, [])
 
@@ -135,7 +144,10 @@ export const useAuth = () => {
       })
     } catch (err) {
       if (!mountedRef.current) return
-      dispatch({ type: 'ERROR', error: err instanceof Error ? err.message : 'Failed to verify OTP' })
+      dispatch({
+        type: 'ERROR',
+        error: err instanceof Error ? err.message : 'Failed to verify OTP'
+      })
     }
   }, [])
 
@@ -151,7 +163,10 @@ export const useAuth = () => {
       dispatch({ type: 'OTP_REQUESTED', email })
     } catch (err) {
       if (!mountedRef.current) return
-      dispatch({ type: 'ERROR', error: err instanceof Error ? err.message : 'Failed to resend OTP' })
+      dispatch({
+        type: 'ERROR',
+        error: err instanceof Error ? err.message : 'Failed to resend OTP'
+      })
     }
   }, [])
 
@@ -164,7 +179,10 @@ export const useAuth = () => {
       return result
     } catch (err) {
       if (!mountedRef.current) return null
-      dispatch({ type: 'ERROR', error: err instanceof Error ? err.message : 'Failed to init OAuth' })
+      dispatch({
+        type: 'ERROR',
+        error: err instanceof Error ? err.message : 'Failed to init OAuth'
+      })
       return null
     }
   }, [])
@@ -185,6 +203,34 @@ export const useAuth = () => {
     }
   }, [])
 
+  const setupFirstDevice = useCallback(
+    async (input: { provider: 'google'; oauthToken: string; state: string }) => {
+      dispatch({ type: 'LOADING' })
+      try {
+        const result = await authService.setupFirstDevice(input)
+        if (!mountedRef.current) return
+        if (result.error) {
+          dispatch({ type: 'ERROR', error: result.error })
+          return
+        }
+        dispatch({
+          type: 'OTP_VERIFIED',
+          isNewUser: true,
+          needsRecoverySetup: !!result.recoveryPhrase,
+          recoveryPhrase: result.recoveryPhrase,
+          deviceId: result.deviceId
+        })
+      } catch (err) {
+        if (!mountedRef.current) return
+        dispatch({
+          type: 'ERROR',
+          error: err instanceof Error ? err.message : 'Failed to set up device'
+        })
+      }
+    },
+    []
+  )
+
   const confirmRecoveryPhrase = useCallback(async () => {
     dispatch({ type: 'LOADING' })
     try {
@@ -193,7 +239,10 @@ export const useAuth = () => {
       dispatch({ type: 'RECOVERY_CONFIRMED' })
     } catch (err) {
       if (!mountedRef.current) return
-      dispatch({ type: 'ERROR', error: err instanceof Error ? err.message : 'Failed to confirm recovery phrase' })
+      dispatch({
+        type: 'ERROR',
+        error: err instanceof Error ? err.message : 'Failed to confirm recovery phrase'
+      })
     }
   }, [])
 
@@ -207,6 +256,7 @@ export const useAuth = () => {
     verifyOtp,
     resendOtp,
     initOAuth,
+    setupFirstDevice,
     refreshToken,
     confirmRecoveryPhrase,
     clearError,

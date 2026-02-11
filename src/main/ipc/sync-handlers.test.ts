@@ -43,6 +43,12 @@ vi.mock('../store', () => ({
   }
 }))
 
+const mockInsertValues = vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) })
+const mockDb = { insert: vi.fn().mockReturnValue({ values: mockInsertValues }) }
+vi.mock('../database/client', () => ({
+  getDatabase: () => mockDb
+}))
+
 const mockClipboardReadText = vi.fn().mockReturnValue('')
 const mockGetAllWindows = vi.fn().mockReturnValue([])
 
@@ -82,7 +88,7 @@ vi.mock('libsodium-wrappers-sumo', () => ({
   }
 }))
 
-import { registerSyncHandlers, unregisterSyncHandlers } from './sync-handlers'
+import { registerSyncHandlers, unregisterSyncHandlers, seedOAuthSession } from './sync-handlers'
 
 // ============================================================================
 // Constants
@@ -324,6 +330,7 @@ describe('sync IPC handlers', () => {
     it('performs setup via OAuth when needsSetup is true', async () => {
       // #given
       registerSyncHandlers()
+      seedOAuthSession('test-state', 'http://127.0.0.1:9999/callback')
       const fakeKey = new Uint8Array(32).fill(1)
       const fakeSecretKey = new Uint8Array(64).fill(2)
       const fakeSalt = new Uint8Array(16).fill(3)
@@ -367,7 +374,8 @@ describe('sync IPC handlers', () => {
       // #when
       const result = await invokeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE, {
         oauthToken: 'google-code',
-        provider: 'google'
+        provider: 'google',
+        state: 'test-state'
       })
 
       // #then
@@ -381,6 +389,7 @@ describe('sync IPC handlers', () => {
     it('returns success without recovery when setup not needed', async () => {
       // #given
       registerSyncHandlers()
+      seedOAuthSession('test-state-2', 'http://127.0.0.1:9999/callback')
       mockPostToServer.mockResolvedValue({
         success: true,
         userId: 'user-1',
@@ -392,7 +401,8 @@ describe('sync IPC handlers', () => {
       // #when
       const result = await invokeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE, {
         oauthToken: 'google-code',
-        provider: 'google'
+        provider: 'google',
+        state: 'test-state-2'
       })
 
       // #then

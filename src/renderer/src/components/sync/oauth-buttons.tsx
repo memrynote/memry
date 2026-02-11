@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface OAuthButtonsProps {
   onGoogleClick: () => void
@@ -38,26 +37,15 @@ export function OAuthButtons({
 }: OAuthButtonsProps): React.JSX.Element {
   return (
     <div className="space-y-3">
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>
-              <Button
-                variant="outline"
-                className="w-full gap-2"
-                onClick={onGoogleClick}
-                disabled={true}
-              >
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
-                Continue with Google
-              </Button>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Coming soon</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Button
+        variant="outline"
+        className="w-full h-11 gap-2.5 text-[14px]"
+        onClick={onGoogleClick}
+        disabled={isLoading}
+      >
+        {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
+        Continue with Google
+      </Button>
 
       {error && <p className="text-sm text-destructive text-center">{error}</p>}
     </div>

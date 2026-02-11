@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '@/components/ui/input-otp'
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { Loader2 } from 'lucide-react'
 
 interface OtpInputProps {
@@ -104,7 +104,7 @@ export function OtpInput({
   )
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex justify-center">
         <InputOTP
           maxLength={6}
@@ -113,16 +113,30 @@ export function OtpInput({
           disabled={isVerifying}
           autoFocus
         >
-          <InputOTPGroup>
-            <InputOTPSlot index={0} />
-            <InputOTPSlot index={1} />
-            <InputOTPSlot index={2} />
+          <InputOTPGroup className="gap-1.5">
+            {[0, 1, 2].map((i) => (
+              <InputOTPSlot
+                key={i}
+                index={i}
+                className="h-12 w-11 text-lg font-semibold border rounded-lg"
+                style={{ animationDelay: `${i * 60}ms` }}
+              />
+            ))}
           </InputOTPGroup>
-          <InputOTPSeparator />
-          <InputOTPGroup>
-            <InputOTPSlot index={3} />
-            <InputOTPSlot index={4} />
-            <InputOTPSlot index={5} />
+
+          <div className="flex items-center px-2" role="separator" aria-hidden="true">
+            <div className="w-1.5 h-1.5 rounded-full bg-border" />
+          </div>
+
+          <InputOTPGroup className="gap-1.5">
+            {[3, 4, 5].map((i) => (
+              <InputOTPSlot
+                key={i}
+                index={i}
+                className="h-12 w-11 text-lg font-semibold border rounded-lg"
+                style={{ animationDelay: `${(i + 1) * 60}ms` }}
+              />
+            ))}
           </InputOTPGroup>
         </InputOTP>
       </div>
@@ -142,16 +156,17 @@ export function OtpInput({
           size="sm"
           onClick={reset}
           disabled={!canResend || isResending || isVerifying}
+          className="text-muted-foreground"
         >
           {isResending ? (
             <>
-              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+              <Loader2 className="w-3 h-3 animate-spin" />
               Resending...
             </>
           ) : canResend ? (
             'Resend code'
           ) : (
-            `Resend in ${seconds}s`
+            <span className="tabular-nums">Resend in {seconds}s</span>
           )}
         </Button>
       </div>

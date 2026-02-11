@@ -33,7 +33,8 @@ import type {
   SyncResumedEvent,
   KeyRotationProgressEvent,
   SessionExpiredEvent,
-  OtpDetectedEvent
+  OtpDetectedEvent,
+  OAuthCallbackEvent
 } from '@shared/contracts/ipc-sync'
 
 // Custom APIs for renderer
@@ -1516,6 +1517,12 @@ const api = {
       callback(data)
     ipcRenderer.on(SYNC_EVENTS.OTP_DETECTED, handler)
     return () => ipcRenderer.removeListener(SYNC_EVENTS.OTP_DETECTED, handler)
+  },
+  onOAuthCallback: (callback: (event: OAuthCallbackEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: OAuthCallbackEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.OAUTH_CALLBACK, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.OAUTH_CALLBACK, handler)
   }
 }
 

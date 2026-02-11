@@ -32,9 +32,12 @@ export const RefreshTokenRequestSchema = z.object({
   refreshToken: z.string().min(1)
 })
 
+const LOOPBACK_URI = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/.*)?$/
+
 export const OAuthCallbackSchema = z.object({
   code: z.string().min(1),
-  state: z.string().min(1)
+  state: z.string().min(1),
+  redirectUri: z.string().regex(LOOPBACK_URI, 'redirectUri must be a loopback address').optional()
 })
 
 export const RequestOtpResponseSchema = z.object({
