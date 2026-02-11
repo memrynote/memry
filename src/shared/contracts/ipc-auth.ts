@@ -11,6 +11,7 @@ export const AUTH_CHANNELS = {
   AUTH_INIT_OAUTH: 'auth:init-oauth',
   AUTH_REFRESH_TOKEN: 'auth:refresh-token',
   SETUP_FIRST_DEVICE: 'sync:setup-first-device',
+  SETUP_NEW_ACCOUNT: 'sync:setup-new-account',
   CONFIRM_RECOVERY_PHRASE: 'sync:confirm-recovery-phrase',
   AUTH_LOGOUT: 'sync:logout'
 } as const
@@ -38,8 +39,16 @@ export interface VerifyOtpInput {
 export interface VerifyOtpResult {
   success: boolean
   isNewUser?: boolean
+  needsSetup?: boolean
   needsRecoverySetup?: boolean
   needsRecoveryInput?: boolean
+  recoveryPhrase?: string
+  deviceId?: string
+  error?: string
+}
+
+export interface SetupNewAccountResult {
+  success: boolean
   recoveryPhrase?: string
   deviceId?: string
   error?: string

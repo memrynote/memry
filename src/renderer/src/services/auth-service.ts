@@ -23,6 +23,10 @@ export const authService = {
     return window.api.syncSetup.setupFirstDevice(input)
   },
 
+  setupNewAccount: () => {
+    return window.api.syncSetup.setupNewAccount()
+  },
+
   confirmRecoveryPhrase: (input: { confirmed: boolean }) => {
     return window.api.syncSetup.confirmRecoveryPhrase(input)
   },

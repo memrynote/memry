@@ -50,7 +50,6 @@ const logger = createLogger('IPC:Sync')
 
 interface VerifyOtpServerResponse {
   success: boolean
-  userId: string
   isNewUser: boolean
   needsSetup: boolean
   setupToken: string
@@ -58,7 +57,6 @@ interface VerifyOtpServerResponse {
 
 interface OAuthCallbackServerResponse {
   success: boolean
-  userId: string
   isNewUser: boolean
   needsSetup: boolean
   setupToken: string
@@ -206,7 +204,7 @@ let activeRefreshPromise: Promise<boolean> | null = null
 
 const scheduleTokenRefresh = (expiresInSeconds: number): void => {
   cancelTokenRefresh()
-  const jitter = 0.75 + Math.random() * 0.1
+  const jitter = 0.5 + Math.random() * 0.2
   const refreshAtMs = Math.floor(expiresInSeconds * jitter) * 1000
   refreshTimer = setTimeout(() => {
     void refreshAccessToken()
@@ -303,6 +301,14 @@ const PLATFORM_MAP: Record<string, string> = {
   linux: 'linux'
 }
 
+const extractJtiFromToken = (token: string): string => {
+  const parts = token.split('.')
+  if (parts.length !== 3) throw new Error('Invalid token format')
+  const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString()) as { jti?: string }
+  if (!payload.jti) throw new Error('Token missing jti claim')
+  return payload.jti
+}
+
 const registerDevice = async (setupToken: string): Promise<DeviceRegisterServerResponse> => {
   await sodium.ready
 
@@ -315,11 +321,11 @@ const registerDevice = async (setupToken: string): Promise<DeviceRegisterServerR
     const publicKey = getDevicePublicKey(signingKey)
     const publicKeyBase64 = sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL)
 
-    // Client-generated nonce: proves possession of private key for the submitted public key.
-    // See server-side verifyDeviceChallenge comment for replay mitigation rationale.
     const nonce = crypto.randomUUID()
-    const nonceBytes = new TextEncoder().encode(nonce)
-    const signature = sodium.crypto_sign_detached(nonceBytes, signingKey)
+    const jti = extractJtiFromToken(setupToken)
+    const challengePayload = `${nonce}:${jti}`
+    const payloadBytes = new TextEncoder().encode(challengePayload)
+    const signature = sodium.crypto_sign_detached(payloadBytes, signingKey)
     const signatureBase64 = sodium.to_base64(signature, sodium.base64_variants.ORIGINAL)
 
     const response = await postToServer<DeviceRegisterServerResponse>(
@@ -350,6 +356,52 @@ const registerDevice = async (setupToken: string): Promise<DeviceRegisterServerR
 // First Device Setup Orchestration (T050f)
 // ============================================================================
 
+const persistKeysAndRegisterDevice = async (
+  masterKey: Uint8Array,
+  vaultKey: Uint8Array,
+  signingSecretKey: Uint8Array,
+  setupToken: string,
+  kdfSalt: string,
+  keyVerifier: string
+): Promise<string> => {
+  await storeKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY, signingSecretKey)
+
+  let deviceResponse: DeviceRegisterServerResponse
+  try {
+    deviceResponse = await registerDevice(setupToken)
+  } catch (err) {
+    await deleteKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => {})
+    throw err
+  }
+
+  const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
+  if (!accessToken) {
+    throw new Error('Access token not found after device registration')
+  }
+
+  try {
+    await postToServer('/auth/setup', { kdfSalt, keyVerifier }, accessToken)
+  } catch (err) {
+    logger.error('Failed to POST /auth/setup after device registration — recoverable on retry', err)
+  }
+
+  await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, masterKey)
+  await storeKey(KEYCHAIN_ENTRIES.VAULT_KEY, vaultKey)
+
+  const db = getDatabase()
+  await db.insert(syncDevices).values({
+    id: deviceResponse.deviceId,
+    name: os.hostname(),
+    platform: PLATFORM_MAP[process.platform] || 'linux',
+    osVersion: os.release(),
+    appVersion: app.getVersion(),
+    linkedAt: new Date(),
+    isCurrentDevice: true
+  })
+
+  return deviceResponse.deviceId
+}
+
 const performFirstDeviceSetup = async (setupToken: string): Promise<FirstDeviceSetupResult> => {
   const { phrase, seed } = await generateRecoveryPhrase()
   const salt = generateSalt()
@@ -361,39 +413,21 @@ const performFirstDeviceSetup = async (setupToken: string): Promise<FirstDeviceS
   try {
     const { masterKey: mk, kdfSalt, keyVerifier } = await deriveMasterKey(seed, salt)
     masterKey = mk
-
-    await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, masterKey)
-
     vaultKey = await deriveKey(masterKey, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
-    await storeKey(KEYCHAIN_ENTRIES.VAULT_KEY, vaultKey)
 
     const keyPair = await generateDeviceSigningKeyPair()
     signingSecretKey = keyPair.secretKey
-    await storeKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY, signingSecretKey)
 
-    const deviceResponse = await registerDevice(setupToken)
+    const deviceId = await persistKeysAndRegisterDevice(
+      masterKey,
+      vaultKey,
+      signingSecretKey,
+      setupToken,
+      kdfSalt,
+      keyVerifier
+    )
 
-    const db = getDatabase()
-    await db.insert(syncDevices).values({
-      id: deviceResponse.deviceId,
-      name: os.hostname(),
-      platform: PLATFORM_MAP[process.platform] || 'linux',
-      osVersion: os.release(),
-      appVersion: app.getVersion(),
-      linkedAt: new Date(),
-      isCurrentDevice: true
-    })
-
-    const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
-    if (!accessToken) {
-      throw new Error('Access token not found after device registration')
-    }
-    await postToServer('/auth/setup', { kdfSalt, keyVerifier }, accessToken)
-
-    return {
-      recoveryPhrase: phrase,
-      deviceId: deviceResponse.deviceId
-    }
+    return { recoveryPhrase: phrase, deviceId }
   } finally {
     secureCleanup(seed, salt)
     if (masterKey) secureCleanup(masterKey)
@@ -439,28 +473,24 @@ export function registerSyncHandlers(): void {
 
       await storeToken(KEYCHAIN_ENTRIES.SETUP_TOKEN, serverResponse.setupToken)
 
-      if (serverResponse.needsSetup) {
-        const { recoveryPhrase, deviceId } = await performFirstDeviceSetup(
-          serverResponse.setupToken
-        )
-
-        return {
-          success: true,
-          isNewUser: serverResponse.isNewUser,
-          needsRecoverySetup: true,
-          recoveryPhrase,
-          deviceId
-        }
-      }
-
       return {
         success: true,
         isNewUser: serverResponse.isNewUser,
-        needsRecoverySetup: true,
-        needsRecoveryInput: true
+        needsSetup: serverResponse.needsSetup,
+        needsRecoveryInput: !serverResponse.needsSetup
       }
     })
   )
+
+  ipcMain.handle(SYNC_CHANNELS.SETUP_NEW_ACCOUNT, async () => {
+    const setupToken = await retrieveToken(KEYCHAIN_ENTRIES.SETUP_TOKEN)
+    if (!setupToken) {
+      return { success: false, error: 'Session expired. Please sign in again.' }
+    }
+
+    const { recoveryPhrase, deviceId } = await performFirstDeviceSetup(setupToken)
+    return { success: true, recoveryPhrase, deviceId }
+  })
 
   ipcMain.handle(
     SYNC_CHANNELS.AUTH_RESEND_OTP,
@@ -526,8 +556,7 @@ export function registerSyncHandlers(): void {
         res.end(SUCCESS_HTML)
 
         if (code && cbState) {
-          const win = BrowserWindow.getAllWindows()[0]
-          if (win) {
+          for (const win of BrowserWindow.getAllWindows()) {
             win.webContents.send(SYNC_EVENTS.OAUTH_CALLBACK, { code, state: cbState })
           }
         }
@@ -654,29 +683,21 @@ export function registerSyncHandlers(): void {
           return { success: false, error: 'Recovery phrase does not match. Please try again.' }
         }
 
-        await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, masterKey)
-
         vaultKey = await deriveKey(masterKey, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
-        await storeKey(KEYCHAIN_ENTRIES.VAULT_KEY, vaultKey)
 
         const keyPair = await generateDeviceSigningKeyPair()
         signingSecretKey = keyPair.secretKey
-        await storeKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY, signingSecretKey)
 
-        const deviceResponse = await registerDevice(setupToken)
+        const deviceId = await persistKeysAndRegisterDevice(
+          masterKey,
+          vaultKey,
+          signingSecretKey,
+          setupToken,
+          derived.kdfSalt,
+          derived.keyVerifier
+        )
 
-        const db = getDatabase()
-        await db.insert(syncDevices).values({
-          id: deviceResponse.deviceId,
-          name: os.hostname(),
-          platform: PLATFORM_MAP[process.platform] || 'linux',
-          osVersion: os.release(),
-          appVersion: app.getVersion(),
-          linkedAt: new Date(),
-          isCurrentDevice: true
-        })
-
-        return { success: true, deviceId: deviceResponse.deviceId }
+        return { success: true, deviceId }
       } finally {
         secureCleanup(seed, saltBytes)
         if (masterKey) secureCleanup(masterKey)
@@ -732,6 +753,7 @@ export function unregisterSyncHandlers(): void {
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_REFRESH_TOKEN)
 
   ipcMain.removeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE)
+  ipcMain.removeHandler(SYNC_CHANNELS.SETUP_NEW_ACCOUNT)
   ipcMain.removeHandler(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE)
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_LOGOUT)
 

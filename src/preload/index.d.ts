@@ -2082,6 +2082,12 @@ interface SyncSetupClientAPI {
     needsRecoveryInput?: boolean
     error?: string
   }>
+  setupNewAccount: () => Promise<{
+    success: boolean
+    recoveryPhrase?: string
+    deviceId?: string
+    error?: string
+  }>
   confirmRecoveryPhrase: (input: { confirmed: boolean }) => Promise<{
     success: boolean
   }>

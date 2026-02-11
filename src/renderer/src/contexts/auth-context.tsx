@@ -169,6 +169,10 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
             deviceId: current?.id ?? result.devices[0].id,
             email: result.email
           })
+          const refreshResult = await authService.refreshToken()
+          if (!refreshResult.success) {
+            dispatch({ type: 'RESET_AUTH' })
+          }
         } else {
           dispatch({ type: 'CHECK_UNAUTHENTICATED' })
         }
@@ -210,16 +214,36 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
         if (!result.success) {
           throw new Error(extractErrorMessage(result.error, 'Invalid verification code'))
         }
+
+        if (result.needsSetup) {
+          const setupResult = await authService.setupNewAccount()
+          if (!setupResult.success) {
+            throw new Error(extractErrorMessage(setupResult.error, 'Account setup failed'))
+          }
+          const otpResult: VerifyOtpResult = {
+            deviceId: setupResult.deviceId ?? '',
+            needsRecoverySetup: true,
+            needsRecoveryInput: false,
+            recoveryPhrase: setupResult.recoveryPhrase ?? null
+          }
+          dispatch({
+            type: 'OTP_VERIFIED',
+            deviceId: otpResult.deviceId,
+            needsRecoverySetup: true
+          })
+          return otpResult
+        }
+
         const otpResult: VerifyOtpResult = {
-          deviceId: result.deviceId ?? '',
-          needsRecoverySetup: result.needsRecoverySetup ?? false,
-          needsRecoveryInput: result.needsRecoveryInput ?? false,
-          recoveryPhrase: result.recoveryPhrase ?? null
+          deviceId: '',
+          needsRecoverySetup: true,
+          needsRecoveryInput: true,
+          recoveryPhrase: null
         }
         dispatch({
           type: 'OTP_VERIFIED',
-          deviceId: otpResult.deviceId,
-          needsRecoverySetup: otpResult.needsRecoverySetup
+          deviceId: '',
+          needsRecoverySetup: true
         })
         return otpResult
       } catch (err) {

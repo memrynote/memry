@@ -13,8 +13,12 @@ export const deviceService = {
 }
 
 export const setupService = {
-  setupFirstDevice: (input: { provider: 'google'; oauthToken: string }) => {
+  setupFirstDevice: (input: { provider: 'google'; oauthToken: string; state: string }) => {
     return window.api.syncSetup.setupFirstDevice(input)
+  },
+
+  setupNewAccount: () => {
+    return window.api.syncSetup.setupNewAccount()
   },
 
   confirmRecoveryPhrase: (input: { confirmed: boolean }) => {
