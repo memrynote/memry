@@ -19,6 +19,7 @@ export interface StoredVaultInfo {
  */
 export interface SyncStoreData {
   recoveryPhraseConfirmed?: boolean
+  email?: string
 }
 
 /**

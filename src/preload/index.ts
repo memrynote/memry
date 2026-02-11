@@ -1340,7 +1340,8 @@ const api = {
       ipcRenderer.invoke(SYNC_CHANNELS.AUTH_RESEND_OTP, input),
     initOAuth: (input: { provider: 'google' }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.AUTH_INIT_OAUTH, input),
-    refreshToken: () => ipcRenderer.invoke(SYNC_CHANNELS.AUTH_REFRESH_TOKEN)
+    refreshToken: () => ipcRenderer.invoke(SYNC_CHANNELS.AUTH_REFRESH_TOKEN),
+    logout: () => ipcRenderer.invoke(SYNC_CHANNELS.AUTH_LOGOUT)
   },
 
   // Sync Setup API

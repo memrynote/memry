@@ -34,7 +34,7 @@ export interface VerifyOtpResult {
 
 type AuthAction =
   | { type: 'CHECK_START' }
-  | { type: 'CHECK_AUTHENTICATED'; deviceId: string }
+  | { type: 'CHECK_AUTHENTICATED'; deviceId: string; email?: string }
   | { type: 'CHECK_UNAUTHENTICATED' }
   | { type: 'OTP_REQUESTED'; email: string }
   | {
@@ -61,7 +61,13 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
     case 'CHECK_START':
       return { ...state, status: 'checking', error: null }
     case 'CHECK_AUTHENTICATED':
-      return { ...state, status: 'authenticated', deviceId: action.deviceId, error: null }
+      return {
+        ...state,
+        status: 'authenticated',
+        deviceId: action.deviceId,
+        email: action.email ?? state.email,
+        error: null
+      }
     case 'CHECK_UNAUTHENTICATED':
       return { ...state, status: 'unauthenticated', error: null }
     case 'SET_AUTHENTICATING':
@@ -116,6 +122,7 @@ interface AuthContextValue {
     state: string
   }) => Promise<SetupFirstDeviceResult | null>
   confirmRecoveryPhrase: () => Promise<void>
+  logout: () => Promise<void>
   clearError: () => void
   resetAuthState: () => void
 }
@@ -144,7 +151,11 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
         const result = await deviceService.getDevices()
         if (result.devices.length > 0) {
           const current = result.devices.find((d) => d.isCurrentDevice)
-          dispatch({ type: 'CHECK_AUTHENTICATED', deviceId: current?.id ?? result.devices[0].id })
+          dispatch({
+            type: 'CHECK_AUTHENTICATED',
+            deviceId: current?.id ?? result.devices[0].id,
+            email: result.email
+          })
         } else {
           dispatch({ type: 'CHECK_UNAUTHENTICATED' })
         }
@@ -261,6 +272,11 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     dispatch({ type: 'CLEAR_ERROR' })
   }, [])
 
+  const logout = useCallback(async (): Promise<void> => {
+    await authService.logout()
+    dispatch({ type: 'RESET_AUTH' })
+  }, [])
+
   const resetAuthState = useCallback(() => {
     dispatch({ type: 'RESET_AUTH' })
   }, [])
@@ -274,6 +290,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       initOAuth,
       setupFirstDevice,
       confirmRecoveryPhrase,
+      logout,
       clearError,
       resetAuthState
     }),
@@ -285,6 +302,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       initOAuth,
       setupFirstDevice,
       confirmRecoveryPhrase,
+      logout,
       clearError,
       resetAuthState
     ]

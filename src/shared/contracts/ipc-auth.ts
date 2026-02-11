@@ -11,7 +11,8 @@ export const AUTH_CHANNELS = {
   AUTH_INIT_OAUTH: 'auth:init-oauth',
   AUTH_REFRESH_TOKEN: 'auth:refresh-token',
   SETUP_FIRST_DEVICE: 'sync:setup-first-device',
-  CONFIRM_RECOVERY_PHRASE: 'sync:confirm-recovery-phrase'
+  CONFIRM_RECOVERY_PHRASE: 'sync:confirm-recovery-phrase',
+  AUTH_LOGOUT: 'sync:logout'
 } as const
 
 // ============================================================================
@@ -85,6 +86,10 @@ export interface ConfirmRecoveryPhraseInput {
 }
 
 export interface ConfirmRecoveryPhraseResult {
+  success: boolean
+}
+
+export interface LogoutResult {
   success: boolean
 }
 

@@ -25,5 +25,9 @@ export const authService = {
 
   confirmRecoveryPhrase: (input: { confirmed: boolean }) => {
     return window.api.syncSetup.confirmRecoveryPhrase(input)
+  },
+
+  logout: () => {
+    return window.api.syncAuth.logout()
   }
 }
