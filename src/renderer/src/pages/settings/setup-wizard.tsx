@@ -7,12 +7,14 @@ import { OtpVerification } from '@/components/sync/otp-verification'
 import { OAuthButtons } from '@/components/sync/oauth-buttons'
 import { RecoveryPhraseDisplay } from '@/components/sync/recovery-phrase-display'
 import { RecoveryPhraseConfirm } from '@/components/sync/recovery-phrase-confirm'
+import { RecoveryPhraseInput } from '@/components/sync/recovery-phrase-input'
 
 type WizardStep =
   | 'sign-in'
   | 'otp-verification'
   | 'recovery-display'
   | 'recovery-confirm'
+  | 'recovery-input'
   | 'complete'
 
 interface WizardState {
@@ -36,9 +38,11 @@ type WizardAction =
       deviceId: string
       recoveryPhrase: string | null
       needsRecovery: boolean
+      needsRecoveryInput: boolean
     }
   | { type: 'RECOVERY_DISPLAYED' }
   | { type: 'RECOVERY_CONFIRMED' }
+  | { type: 'RECOVERY_LINKED'; deviceId: string }
   | { type: 'GO_BACK'; step: WizardStep }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
@@ -71,19 +75,31 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
       }
     case 'OTP_RESENT':
       return { ...state, expiresIn: action.expiresIn, isResending: false, error: null }
-    case 'OTP_VERIFIED':
+    case 'OTP_VERIFIED': {
+      let nextStep: WizardStep = 'complete'
+      if (action.needsRecoveryInput) nextStep = 'recovery-input'
+      else if (action.needsRecovery) nextStep = 'recovery-display'
       return {
         ...state,
-        step: action.needsRecovery ? 'recovery-display' : 'complete',
+        step: nextStep,
         deviceId: action.deviceId,
         recoveryPhrase: action.recoveryPhrase,
         isLoading: false,
         error: null
       }
+    }
     case 'RECOVERY_DISPLAYED':
       return { ...state, step: 'recovery-confirm' }
     case 'RECOVERY_CONFIRMED':
       return { ...state, step: 'complete', recoveryPhrase: null, isLoading: false }
+    case 'RECOVERY_LINKED':
+      return {
+        ...state,
+        step: 'complete',
+        deviceId: action.deviceId,
+        isLoading: false,
+        error: null
+      }
     case 'GO_BACK':
       return { ...state, step: action.step, error: null }
     case 'SET_ERROR':
@@ -101,12 +117,20 @@ const STEP_MAP: Record<WizardStep, number> = {
   'otp-verification': 1,
   'recovery-display': 2,
   'recovery-confirm': 2,
+  'recovery-input': 2,
   complete: 3
 }
 
 export function SetupWizard(): React.JSX.Element {
-  const { requestOtp, verifyOtp, resendOtp, initOAuth, setupFirstDevice, confirmRecoveryPhrase } =
-    useAuth()
+  const {
+    requestOtp,
+    verifyOtp,
+    resendOtp,
+    initOAuth,
+    setupFirstDevice,
+    confirmRecoveryPhrase,
+    linkViaRecovery
+  } = useAuth()
   const [state, dispatch] = useReducer(wizardReducer, initialState)
   const containerRef = useRef<HTMLDivElement>(null)
   const oauthStateRef = useRef<string | null>(null)
@@ -138,7 +162,8 @@ export function SetupWizard(): React.JSX.Element {
             type: 'OTP_VERIFIED',
             deviceId: result.deviceId ?? '',
             recoveryPhrase: result.recoveryPhrase ?? null,
-            needsRecovery: !!result.recoveryPhrase
+            needsRecovery: !!result.recoveryPhrase,
+            needsRecoveryInput: !!result.needsRecoveryInput
           })
         })
         .catch((err: unknown) => {
@@ -177,7 +202,8 @@ export function SetupWizard(): React.JSX.Element {
             type: 'OTP_VERIFIED',
             deviceId: result.deviceId,
             recoveryPhrase: result.recoveryPhrase,
-            needsRecovery: result.needsRecoverySetup
+            needsRecovery: result.needsRecoverySetup,
+            needsRecoveryInput: result.needsRecoveryInput ?? false
           })
         })
         .catch((err: unknown) => {
@@ -222,6 +248,24 @@ export function SetupWizard(): React.JSX.Element {
         })
       })
   }, [initOAuth])
+
+  const handleRecoverySubmit = useCallback(
+    (phrase: string) => {
+      dispatch({ type: 'SET_LOADING', isLoading: true })
+      dispatch({ type: 'CLEAR_ERROR' })
+      linkViaRecovery(phrase)
+        .then((result) => {
+          dispatch({ type: 'RECOVERY_LINKED', deviceId: result.deviceId ?? '' })
+        })
+        .catch((err: unknown) => {
+          dispatch({
+            type: 'SET_ERROR',
+            error: err instanceof Error ? err.message : 'Recovery failed'
+          })
+        })
+    },
+    [linkViaRecovery]
+  )
 
   const handleConfirmRecovery = useCallback(() => {
     dispatch({ type: 'SET_LOADING', isLoading: true })
@@ -305,6 +349,15 @@ export function SetupWizard(): React.JSX.Element {
           phrase={state.recoveryPhrase}
           onConfirmed={handleConfirmRecovery}
           onBack={() => dispatch({ type: 'GO_BACK', step: 'recovery-display' })}
+        />
+      )}
+
+      {state.step === 'recovery-input' && (
+        <RecoveryPhraseInput
+          onSubmit={handleRecoverySubmit}
+          isLoading={state.isLoading}
+          error={state.error}
+          onBack={() => dispatch({ type: 'GO_BACK', step: 'sign-in' })}
         />
       )}
 
