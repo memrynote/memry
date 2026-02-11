@@ -114,7 +114,7 @@ CREATE INDEX idx_refresh_device ON refresh_tokens(device_id);
 CREATE TABLE linking_sessions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  initiator_device_id TEXT NOT NULL REFERENCES devices(id),
+  initiator_device_id TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
   ephemeral_public_key TEXT NOT NULL,
   new_device_public_key TEXT,
   new_device_confirm TEXT,
@@ -185,7 +185,7 @@ CREATE TABLE device_sync_state (
 -- T017c: Rate limits
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS rate_limits (
+CREATE TABLE rate_limits (
   key TEXT PRIMARY KEY,
   count INTEGER NOT NULL DEFAULT 0,
   window_start INTEGER NOT NULL
@@ -268,6 +268,7 @@ CREATE INDEX idx_blob_chunks_hash ON blob_chunks(hash);
 
 CREATE TABLE consumed_setup_tokens (
   jti TEXT PRIMARY KEY,
+  user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
   expires_at INTEGER NOT NULL
 );
 
