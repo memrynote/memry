@@ -10,6 +10,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Send, Loader2, Link, FileText, Mic, Paperclip } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { useCaptureText, useCaptureLink, useCaptureVoice, useCaptureImage } from '@/hooks/use-inbox'
 import { type DisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
 import { VoiceRecorder } from './voice-recorder'
@@ -154,7 +155,7 @@ export function CaptureInput({
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Capture failed'
+      const message = extractErrorMessage(err, 'Capture failed')
       onCaptureError?.(message)
     }
   }, [value, isCapturing, captureText, captureLink, onCaptureSuccess, onCaptureError])
@@ -195,7 +196,7 @@ export function CaptureInput({
           onCaptureError?.(result.error || 'Failed to capture voice memo')
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Voice capture failed'
+        const message = extractErrorMessage(err, 'Voice capture failed')
         onCaptureError?.(message)
       }
     },
@@ -245,7 +246,7 @@ export function CaptureInput({
           onCaptureError?.(result.error || 'Failed to capture file')
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'File capture failed'
+        const message = extractErrorMessage(err, 'File capture failed')
         onCaptureError?.(message)
       }
     },

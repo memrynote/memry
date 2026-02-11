@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   Sheet,
   SheetContent,
@@ -155,7 +156,7 @@ export function VersionHistory({
       const result = await notesService.getVersions(noteId)
       setVersions(result)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load version history')
+      setError(extractErrorMessage(err, 'Failed to load version history'))
     } finally {
       setLoading(false)
     }

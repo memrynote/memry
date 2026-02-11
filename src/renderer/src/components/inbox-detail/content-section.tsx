@@ -4,6 +4,7 @@
  */
 
 import { useRef, useState } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   Globe,
   Image,
@@ -385,7 +386,7 @@ const VoicePreview = ({
         await audioRef.current.play()
       } catch (err) {
         console.error('[VoicePreview] Play error:', err)
-        setAudioError(err instanceof Error ? err.message : 'Failed to play audio')
+        setAudioError(extractErrorMessage(err, 'Failed to play audio'))
       }
     }
   }

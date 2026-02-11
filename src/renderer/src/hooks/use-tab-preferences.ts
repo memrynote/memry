@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import type { TabSettings } from '@/contexts/tabs/types'
 import { DEFAULT_TAB_SETTINGS } from '@/contexts/tabs/helpers'
 
@@ -62,7 +63,7 @@ export function useTabPreferences(): UseTabPreferencesReturn {
         }
       } catch (err) {
         if (mounted) {
-          setError(err instanceof Error ? err.message : 'Failed to load tab settings')
+          setError(extractErrorMessage(err, 'Failed to load tab settings'))
         }
       } finally {
         if (mounted) {
@@ -105,7 +106,7 @@ export function useTabPreferences(): UseTabPreferencesReturn {
       setError(result.error ?? 'Failed to update settings')
       return false
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update settings')
+      setError(extractErrorMessage(err, 'Failed to update settings'))
       return false
     }
   }, [])

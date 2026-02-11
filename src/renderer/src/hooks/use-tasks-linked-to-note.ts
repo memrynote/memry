@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 
 import {
   tasksService,
@@ -42,7 +43,7 @@ export function useTasksLinkedToNote(noteId: string | null): UseTasksLinkedToNot
       const result = await tasksService.getLinkedTasks(id)
       setTasks(result)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load linked tasks')
+      setError(extractErrorMessage(err, 'Failed to load linked tasks'))
       setTasks([])
     } finally {
       setIsLoading(false)

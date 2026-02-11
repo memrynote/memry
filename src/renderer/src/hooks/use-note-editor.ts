@@ -11,6 +11,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { notesService, onNoteDeleted, onNoteExternalChange } from '@/services/notes-service'
 import type { Note } from '../../../preload/index.d'
 import { toast } from 'sonner'
@@ -131,7 +132,7 @@ export function useNoteEditor(
         setError('Note not found')
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load note'
+      const message = extractErrorMessage(err, 'Failed to load note')
       setError(message)
       if (showToasts) {
         toast.error(message)
@@ -207,7 +208,7 @@ export function useNoteEditor(
           }, 2000)
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to save'
+        const message = extractErrorMessage(err, 'Failed to save')
         setError(message)
         setSaveStatus('error')
         if (showToasts) {
@@ -232,7 +233,7 @@ export function useNoteEditor(
           setNote(result)
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to rename'
+        const message = extractErrorMessage(err, 'Failed to rename')
         setError(message)
         if (showToasts) {
           toast.error(message)
@@ -283,7 +284,7 @@ export function useNoteEditor(
           setNote(result)
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to update emoji'
+        const message = extractErrorMessage(err, 'Failed to update emoji')
         setError(message)
         if (showToasts) {
           toast.error(message)
@@ -303,7 +304,7 @@ export function useNoteEditor(
           setNote(result)
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to update tags'
+        const message = extractErrorMessage(err, 'Failed to update tags')
         setError(message)
         if (showToasts) {
           toast.error(message)

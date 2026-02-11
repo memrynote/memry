@@ -8,6 +8,7 @@
  */
 
 import { useMemo, useCallback, useState, useRef, useEffect, type ReactNode } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   TreeExpander,
   TreeIcon,
@@ -1537,7 +1538,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
 
   // Render error state
   if (error) {
-    return <NotesTreeError error={error.message ?? 'Failed to load notes'} />
+    return <NotesTreeError error={extractErrorMessage(error, 'Failed to load notes')} />
   }
 
   // Render empty state (only if no notes AND no folders)
