@@ -2053,6 +2053,7 @@ interface SyncAuthClientAPI {
     success: boolean
     isNewUser?: boolean
     needsRecoverySetup?: boolean
+    needsRecoveryInput?: boolean
     recoveryPhrase?: string
     deviceId?: string
     error?: string
@@ -2078,6 +2079,7 @@ interface SyncSetupClientAPI {
     success: boolean
     recoveryPhrase?: string
     deviceId?: string
+    needsRecoveryInput?: boolean
     error?: string
   }>
   confirmRecoveryPhrase: (input: { confirmed: boolean }) => Promise<{
@@ -2099,10 +2101,9 @@ interface SyncLinkingClientAPI {
   }>
   linkViaRecovery: (input: {
     recoveryPhrase: string
-    provider: string
-    oauthToken: string
   }) => Promise<{
     success: boolean
+    deviceId?: string
     error?: string
   }>
   approveLinking: (input: { sessionId: string }) => Promise<{
