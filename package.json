@@ -117,6 +117,7 @@
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
+    "electron-log": "^5.4.3",
     "electron-store": "^11.0.2",
     "electron-updater": "^6.6.2",
     "emoji-mart": "^5.6.0",
