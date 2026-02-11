@@ -8,6 +8,7 @@ Thumbs.db
 .eslintcache
 *.log*
 .env*
+.dev.vars
 *.tmp
 *.swp
 .idea
@@ -16,3 +17,5 @@ Thumbs.db
 test-results
 .serena
 .wrangler
+private.pem
+public.pem
