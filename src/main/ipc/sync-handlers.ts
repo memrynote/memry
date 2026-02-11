@@ -453,6 +453,7 @@ export function registerSyncHandlers(): void {
       return {
         success: true,
         isNewUser: serverResponse.isNewUser,
+        needsRecoverySetup: true,
         needsRecoveryInput: true
       }
     })
@@ -572,7 +573,7 @@ export function registerSyncHandlers(): void {
         }
       }
 
-      return { success: true, needsRecoveryInput: true }
+      return { success: true, needsRecoverySetup: true, needsRecoveryInput: true }
     })
   )
 
@@ -619,12 +620,12 @@ export function registerSyncHandlers(): void {
     SYNC_CHANNELS.LINK_VIA_RECOVERY,
     createValidatedHandler(LinkViaRecoverySchema, async (input) => {
       if (!validateRecoveryPhrase(input.recoveryPhrase)) {
-        throw new Error('Invalid recovery phrase')
+        return { success: false, error: 'Invalid recovery phrase format' }
       }
 
       const setupToken = await retrieveToken(KEYCHAIN_ENTRIES.SETUP_TOKEN)
       if (!setupToken) {
-        throw new Error('No setup token found. Please sign in again.')
+        return { success: false, error: 'Session expired. Please sign in again.' }
       }
 
       const recoveryInfo = await getFromServer<RecoveryInfoResponse>(
@@ -647,7 +648,7 @@ export function registerSyncHandlers(): void {
         const derivedVerifierBytes = new TextEncoder().encode(derived.keyVerifier)
 
         if (!constantTimeEqual(derivedVerifierBytes, serverVerifierBytes)) {
-          throw new Error('Incorrect recovery phrase')
+          return { success: false, error: 'Recovery phrase does not match. Please try again.' }
         }
 
         await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, masterKey)

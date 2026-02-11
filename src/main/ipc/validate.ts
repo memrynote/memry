@@ -34,14 +34,14 @@ export function createValidatedHandler<TSchema extends z.ZodSchema, TResult>(
       return await handler(validated)
     } catch (error) {
       if (error instanceof ZodError) {
-        // Zod v4 uses 'issues' instead of 'errors'
         const issues = error.issues ?? (error as { errors?: unknown[] }).errors ?? []
         const messages = (issues as Array<{ path: (string | number)[]; message: string }>)
           .map((e) => `${e.path.join('.')}: ${e.message}`)
           .join(', ')
         throw new Error(`Validation failed: ${messages}`)
       }
-      throw error
+      console.error('[IPC Handler]', error)
+      throw error instanceof Error ? new Error(error.message) : new Error('Something went wrong')
     }
   }
 }
