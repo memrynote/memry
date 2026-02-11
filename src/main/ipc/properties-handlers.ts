@@ -18,6 +18,7 @@ import {
   type RenamePropertyResponse
 } from '@shared/contracts/properties-api'
 import type { PropertyValue } from '@shared/db/queries/notes'
+import { createLogger } from '../lib/logger'
 import { createValidatedHandler } from './validate'
 import { getNoteCacheById, getNoteProperties } from '@shared/db/queries/notes'
 import { getIndexDatabase } from '../database'
@@ -29,6 +30,8 @@ import {
 } from '../vault/journal'
 import { syncNoteToCache } from '../vault/note-sync'
 import { getJournalEntryByDate } from '@shared/db/queries/notes'
+
+const logger = createLogger('IPC:Properties')
 
 // ============================================================================
 // Handler Registration
@@ -76,7 +79,7 @@ export function registerPropertiesHandlers(): void {
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to set properties'
-        console.error('[properties:set] Error:', error)
+        logger.error('properties:set error:', error)
         return { success: false, error: message }
       }
     })
@@ -131,7 +134,7 @@ export function registerPropertiesHandlers(): void {
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to rename property'
-        console.error('[properties:rename] Error:', error)
+        logger.error('properties:rename error:', error)
         return { success: false, error: message }
       }
     })
