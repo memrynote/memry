@@ -1,5 +1,8 @@
 import { z, ZodError } from 'zod'
 import type { IpcMainInvokeEvent } from 'electron'
+import { createLogger } from '../lib/logger'
+
+const ipcLog = createLogger('IPC')
 
 /**
  * Creates a validated IPC handler that parses input with a Zod schema.
@@ -40,7 +43,7 @@ export function createValidatedHandler<TSchema extends z.ZodSchema, TResult>(
           .join(', ')
         throw new Error(`Validation failed: ${messages}`)
       }
-      console.error('[IPC Handler]', error)
+      ipcLog.error('handler error:', error)
       throw error instanceof Error ? new Error(error.message) : new Error('Something went wrong')
     }
   }
