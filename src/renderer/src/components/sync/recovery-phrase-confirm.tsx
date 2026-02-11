@@ -15,7 +15,8 @@ const MIN_GAP = 2
 
 function pickRandomIndices(wordCount: number): [number, number, number] {
   const arr = new Uint32Array(3)
-  for (;;) {
+  const maxAttempts = 1000
+  for (let i = 0; i < maxAttempts; i++) {
     crypto.getRandomValues(arr)
     const indices = Array.from(arr).map((v) => v % wordCount)
     indices.sort((a, b) => a - b)
@@ -24,6 +25,7 @@ function pickRandomIndices(wordCount: number): [number, number, number] {
       return [a, b, c] as [number, number, number]
     }
   }
+  return [0, Math.floor(wordCount / 2), wordCount - 1]
 }
 
 export function RecoveryPhraseConfirm({
