@@ -9,8 +9,6 @@ import {
 
 const KDF_CONTEXT_MAP: Record<string, { ctx: string; id: number }> = {
   'memry-vault-key-v1': { ctx: 'memryvlt', id: 1 },
-  'memry-signing-key-v1': { ctx: 'memrysgn', id: 2 },
-  'memry-verify-key-v1': { ctx: 'memryvrf', id: 3 },
   'memry-key-verifier-v1': { ctx: 'memrykve', id: 4 },
   [LINKING_HKDF_CONTEXTS.ENCRYPTION]: { ctx: 'memrylnk', id: 5 },
   [LINKING_HKDF_CONTEXTS.MAC]: { ctx: 'memrymac', id: 6 }
@@ -69,10 +67,13 @@ export const generateDeviceSigningKeyPair = async (): Promise<DeviceSigningKeyPa
   const keyPair = sodium.crypto_sign_keypair()
   const deviceId = sodium.to_hex(sodium.crypto_generichash(16, keyPair.publicKey, null))
 
+  const secretKey = new Uint8Array(keyPair.privateKey)
+  sodium.memzero(keyPair.privateKey)
+
   return {
     deviceId,
     publicKey: keyPair.publicKey,
-    secretKey: keyPair.privateKey
+    secretKey
   }
 }
 
