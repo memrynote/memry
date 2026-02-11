@@ -24,7 +24,6 @@ interface AuthState {
   deviceId: string | null
   error: string | null
   needsRecoverySetup: boolean
-  recoveryPhrase: string | null
 }
 
 export interface VerifyOtpResult {
@@ -42,7 +41,6 @@ type AuthAction =
       type: 'OTP_VERIFIED'
       deviceId: string
       needsRecoverySetup: boolean
-      recoveryPhrase: string | null
     }
   | { type: 'RECOVERY_CONFIRMED' }
   | { type: 'SET_ERROR'; error: string }
@@ -55,8 +53,7 @@ const initialState: AuthState = {
   email: null,
   deviceId: null,
   error: null,
-  needsRecoverySetup: false,
-  recoveryPhrase: null
+  needsRecoverySetup: false
 }
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
@@ -77,15 +74,13 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         status: action.needsRecoverySetup ? 'authenticating' : 'authenticated',
         deviceId: action.deviceId,
         needsRecoverySetup: action.needsRecoverySetup,
-        recoveryPhrase: action.recoveryPhrase,
         error: null
       }
     case 'RECOVERY_CONFIRMED':
       return {
         ...state,
         status: 'authenticated',
-        needsRecoverySetup: false,
-        recoveryPhrase: null
+        needsRecoverySetup: false
       }
     case 'SET_ERROR':
       return { ...state, error: action.error, status: 'error' }
@@ -194,8 +189,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       dispatch({
         type: 'OTP_VERIFIED',
         deviceId: otpResult.deviceId,
-        needsRecoverySetup: otpResult.needsRecoverySetup,
-        recoveryPhrase: otpResult.recoveryPhrase
+        needsRecoverySetup: otpResult.needsRecoverySetup
       })
       return otpResult
     },
@@ -241,8 +235,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
         dispatch({
           type: 'OTP_VERIFIED',
           deviceId: result.deviceId ?? '',
-          needsRecoverySetup: !!result.recoveryPhrase,
-          recoveryPhrase: result.recoveryPhrase ?? null
+          needsRecoverySetup: !!result.recoveryPhrase
         })
         return result
       } catch (err) {

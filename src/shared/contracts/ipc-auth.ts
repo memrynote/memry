@@ -59,8 +59,6 @@ export interface InitOAuthInput {
 }
 
 export interface InitOAuthResult {
-  codeChallenge: string
-  codeChallengeMethod: 'S256'
   state: string
 }
 
