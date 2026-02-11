@@ -230,7 +230,7 @@ auth.post('/oauth/:provider/callback', async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid callback body', 400)
   }
 
-  const { code, state } = parsed.data
+  const { code, state, redirectUri } = parsed.data
 
   await verifyOAuthState(state, c.env.JWT_PUBLIC_KEY)
 
@@ -241,7 +241,7 @@ auth.post('/oauth/:provider/callback', async (c) => {
       code,
       client_id: c.env.GOOGLE_CLIENT_ID,
       client_secret: c.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: c.env.GOOGLE_REDIRECT_URI,
+      redirect_uri: redirectUri ?? c.env.GOOGLE_REDIRECT_URI,
       grant_type: 'authorization_code'
     })
   })

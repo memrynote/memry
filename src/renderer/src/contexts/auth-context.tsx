@@ -102,11 +102,24 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   }
 }
 
+export interface SetupFirstDeviceResult {
+  success: boolean
+  deviceId?: string
+  recoveryPhrase?: string
+  error?: string
+}
+
 interface AuthContextValue {
   state: AuthState
   requestOtp: (email: string) => Promise<{ expiresIn?: number }>
   verifyOtp: (code: string) => Promise<VerifyOtpResult>
   resendOtp: () => Promise<{ expiresIn?: number }>
+  initOAuth: () => Promise<{ state: string } | null>
+  setupFirstDevice: (input: {
+    provider: 'google'
+    oauthToken: string
+    state: string
+  }) => Promise<SetupFirstDeviceResult | null>
   confirmRecoveryPhrase: () => Promise<void>
   clearError: () => void
   resetAuthState: () => void
@@ -198,6 +211,51 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     return { expiresIn: result.expiresIn }
   }, [state.email])
 
+  const initOAuth = useCallback(async (): Promise<{ state: string } | null> => {
+    dispatch({ type: 'SET_AUTHENTICATING' })
+    try {
+      const result = await authService.initOAuth({ provider: 'google' })
+      return result
+    } catch (err) {
+      dispatch({
+        type: 'SET_ERROR',
+        error: err instanceof Error ? err.message : 'Failed to start Google sign-in'
+      })
+      return null
+    }
+  }, [])
+
+  const setupFirstDevice = useCallback(
+    async (input: {
+      provider: 'google'
+      oauthToken: string
+      state: string
+    }): Promise<SetupFirstDeviceResult | null> => {
+      dispatch({ type: 'SET_AUTHENTICATING' })
+      try {
+        const result = await authService.setupFirstDevice(input)
+        if (result.error) {
+          dispatch({ type: 'SET_ERROR', error: result.error })
+          return result
+        }
+        dispatch({
+          type: 'OTP_VERIFIED',
+          deviceId: result.deviceId ?? '',
+          needsRecoverySetup: !!result.recoveryPhrase,
+          recoveryPhrase: result.recoveryPhrase ?? null
+        })
+        return result
+      } catch (err) {
+        dispatch({
+          type: 'SET_ERROR',
+          error: err instanceof Error ? err.message : 'Failed to set up device'
+        })
+        return null
+      }
+    },
+    []
+  )
+
   const confirmRecoveryPhrase = useCallback(async (): Promise<void> => {
     const result = await setupService.confirmRecoveryPhrase({ confirmed: true })
     if (!result.success) {
@@ -220,11 +278,23 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       requestOtp,
       verifyOtp,
       resendOtp,
+      initOAuth,
+      setupFirstDevice,
       confirmRecoveryPhrase,
       clearError,
       resetAuthState
     }),
-    [state, requestOtp, verifyOtp, resendOtp, confirmRecoveryPhrase, clearError, resetAuthState]
+    [
+      state,
+      requestOtp,
+      verifyOtp,
+      resendOtp,
+      initOAuth,
+      setupFirstDevice,
+      confirmRecoveryPhrase,
+      clearError,
+      resetAuthState
+    ]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

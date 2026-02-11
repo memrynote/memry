@@ -26,9 +26,10 @@ export function OtpVerification({
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h3 className="text-lg font-semibold">Enter verification code</h3>
-        <p className="text-sm text-muted-foreground">
-          We sent a 6-digit code to <span className="font-medium text-foreground">{email}</span>
+        <h3 className="font-display text-xl tracking-tight">Enter verification code</h3>
+        <p className="font-serif text-[15px] text-muted-foreground leading-relaxed">
+          We sent a 6-digit code to{' '}
+          <span className="font-sans font-medium text-foreground">{email}</span>
         </p>
       </div>
 
@@ -41,9 +42,9 @@ export function OtpVerification({
         expiresIn={expiresIn}
       />
 
-      <Button variant="ghost" size="sm" onClick={onBack} className="gap-1">
-        <ArrowLeft className="w-4 h-4" />
-        Use a different email
+      <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5 text-muted-foreground">
+        <ArrowLeft className="w-3.5 h-3.5" />
+        Different email
       </Button>
     </div>
   )

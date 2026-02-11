@@ -1,6 +1,5 @@
 import { useReducer, useCallback, useEffect, useRef } from 'react'
-import { CheckCircle, Mail } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { CheckCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
 import { EmailEntryForm } from '@/components/sync/email-entry-form'
@@ -10,8 +9,7 @@ import { RecoveryPhraseDisplay } from '@/components/sync/recovery-phrase-display
 import { RecoveryPhraseConfirm } from '@/components/sync/recovery-phrase-confirm'
 
 type WizardStep =
-  | 'choose-method'
-  | 'email-entry'
+  | 'sign-in'
   | 'otp-verification'
   | 'recovery-display'
   | 'recovery-confirm'
@@ -29,7 +27,6 @@ interface WizardState {
 }
 
 type WizardAction =
-  | { type: 'CHOOSE_EMAIL' }
   | { type: 'SET_LOADING'; isLoading: boolean }
   | { type: 'SET_RESENDING'; isResending: boolean }
   | { type: 'OTP_SENT'; email: string; expiresIn: number }
@@ -47,7 +44,7 @@ type WizardAction =
   | { type: 'CLEAR_ERROR' }
 
 const initialState: WizardState = {
-  step: 'choose-method',
+  step: 'sign-in',
   email: '',
   recoveryPhrase: null,
   deviceId: null,
@@ -59,8 +56,6 @@ const initialState: WizardState = {
 
 const wizardReducer = (state: WizardState, action: WizardAction): WizardState => {
   switch (action.type) {
-    case 'CHOOSE_EMAIL':
-      return { ...state, step: 'email-entry', error: null }
     case 'SET_LOADING':
       return { ...state, isLoading: action.isLoading }
     case 'SET_RESENDING':
@@ -102,20 +97,19 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
 
 const STEPS = ['Sign In', 'Verify', 'Recovery', 'Done'] as const
 const STEP_MAP: Record<WizardStep, number> = {
-  'choose-method': 0,
-  'email-entry': 0,
+  'sign-in': 0,
   'otp-verification': 1,
   'recovery-display': 2,
   'recovery-confirm': 2,
   complete: 3
 }
 
-const OAUTH_NOOP = (): void => {}
-
 export function SetupWizard(): React.JSX.Element {
-  const { requestOtp, verifyOtp, resendOtp, confirmRecoveryPhrase } = useAuth()
+  const { requestOtp, verifyOtp, resendOtp, initOAuth, setupFirstDevice, confirmRecoveryPhrase } =
+    useAuth()
   const [state, dispatch] = useReducer(wizardReducer, initialState)
   const containerRef = useRef<HTMLDivElement>(null)
+  const oauthStateRef = useRef<string | null>(null)
 
   useEffect(() => {
     const el = containerRef.current
@@ -125,6 +119,37 @@ export function SetupWizard(): React.JSX.Element {
     )
     firstFocusable?.focus()
   }, [state.step])
+
+  useEffect(() => {
+    const unsub = window.api.onOAuthCallback(({ code, state: cbState }) => {
+      if (cbState !== oauthStateRef.current) return
+      oauthStateRef.current = null
+      dispatch({ type: 'SET_LOADING', isLoading: true })
+      setupFirstDevice({ provider: 'google', oauthToken: code, state: cbState })
+        .then((result) => {
+          if (!result || result.error) {
+            dispatch({
+              type: 'SET_ERROR',
+              error: result?.error ?? 'Google sign-in failed'
+            })
+            return
+          }
+          dispatch({
+            type: 'OTP_VERIFIED',
+            deviceId: result.deviceId ?? '',
+            recoveryPhrase: result.recoveryPhrase ?? null,
+            needsRecovery: !!result.recoveryPhrase
+          })
+        })
+        .catch((err: unknown) => {
+          dispatch({
+            type: 'SET_ERROR',
+            error: err instanceof Error ? err.message : 'Google sign-in failed'
+          })
+        })
+    })
+    return unsub
+  }, [setupFirstDevice])
 
   const handleEmailSubmit = useCallback(
     (email: string) => {
@@ -179,6 +204,25 @@ export function SetupWizard(): React.JSX.Element {
       })
   }, [resendOtp])
 
+  const handleGoogleClick = useCallback(() => {
+    dispatch({ type: 'SET_LOADING', isLoading: true })
+    initOAuth()
+      .then((result) => {
+        if (!result) {
+          dispatch({ type: 'SET_ERROR', error: 'Failed to start Google sign-in' })
+          return
+        }
+        oauthStateRef.current = result.state
+        dispatch({ type: 'SET_LOADING', isLoading: false })
+      })
+      .catch((err: unknown) => {
+        dispatch({
+          type: 'SET_ERROR',
+          error: err instanceof Error ? err.message : 'Failed to start Google sign-in'
+        })
+      })
+  }, [initOAuth])
+
   const handleConfirmRecovery = useCallback(() => {
     dispatch({ type: 'SET_LOADING', isLoading: true })
     confirmRecoveryPhrase()
@@ -198,80 +242,55 @@ export function SetupWizard(): React.JSX.Element {
 
   return (
     <div className="space-y-8" ref={containerRef}>
-      <StepIndicator currentStep={currentStepIndex} />
+      <WizardProgress currentStep={currentStepIndex} />
 
-      {state.step === 'choose-method' && (
-        <div className="space-y-4">
+      {state.step === 'sign-in' && (
+        <div className="wizard-step-enter space-y-6">
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold">Set up Sync</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="font-display text-2xl tracking-tight">Set up Sync</h3>
+            <p className="font-serif text-[15px] text-muted-foreground leading-relaxed">
               Create an account to sync your data across devices with end-to-end encryption.
             </p>
           </div>
 
-          <div className="grid gap-3">
-            <button
-              type="button"
-              onClick={() => dispatch({ type: 'CHOOSE_EMAIL' })}
-              className="flex items-center gap-4 p-4 rounded-lg border bg-card hover:bg-accent/30 transition-colors text-left"
-            >
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Mail className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium">Continue with email</p>
-                <p className="text-sm text-muted-foreground">Sign in with a verification code</p>
-              </div>
-            </button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">or</span>
-              </div>
-            </div>
-
-            <OAuthButtons onGoogleClick={OAUTH_NOOP} isLoading={false} error={null} />
-          </div>
-        </div>
-      )}
-
-      {state.step === 'email-entry' && (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold">Sign in with email</h3>
-            <p className="text-sm text-muted-foreground">
-              We&apos;ll send you a verification code.
-            </p>
-          </div>
           <EmailEntryForm
             onSubmit={handleEmailSubmit}
             isLoading={state.isLoading}
             error={state.error}
           />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => dispatch({ type: 'GO_BACK', step: 'choose-method' })}
-          >
-            Back
-          </Button>
+
+          <div className="relative py-1">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-background px-3 text-[10px] font-semibold tracking-widest uppercase text-muted-foreground/60">
+                or
+              </span>
+            </div>
+          </div>
+
+          <OAuthButtons
+            onGoogleClick={handleGoogleClick}
+            isLoading={state.isLoading}
+            error={state.error}
+          />
         </div>
       )}
 
       {state.step === 'otp-verification' && (
-        <OtpVerification
-          email={state.email}
-          onVerify={handleOtpVerify}
-          onResend={handleResendOtp}
-          onBack={() => dispatch({ type: 'GO_BACK', step: 'email-entry' })}
-          isVerifying={state.isLoading}
-          isResending={state.isResending}
-          error={state.error}
-          expiresIn={state.expiresIn}
-        />
+        <div className="wizard-step-enter">
+          <OtpVerification
+            email={state.email}
+            onVerify={handleOtpVerify}
+            onResend={handleResendOtp}
+            onBack={() => dispatch({ type: 'GO_BACK', step: 'sign-in' })}
+            isVerifying={state.isLoading}
+            isResending={state.isResending}
+            error={state.error}
+            expiresIn={state.expiresIn}
+          />
+        </div>
       )}
 
       {state.step === 'recovery-display' && state.recoveryPhrase && (
@@ -290,16 +309,16 @@ export function SetupWizard(): React.JSX.Element {
       )}
 
       {state.step === 'complete' && (
-        <div className="text-center space-y-4 py-8">
+        <div className="wizard-step-enter text-center space-y-5 py-10">
           <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center">
-              <CheckCircle className="w-8 h-8 text-green-600" />
+            <div className="w-16 h-16 rounded-2xl bg-green-500/10 dark:bg-green-400/10 flex items-center justify-center wizard-check-ring">
+              <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
             </div>
           </div>
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold">Your account is set up</h3>
-            <p className="text-sm text-muted-foreground">
-              Your data will be synced securely across your devices with end-to-end encryption.
+            <h3 className="font-display text-2xl tracking-tight">You&apos;re all set</h3>
+            <p className="font-serif text-[15px] text-muted-foreground leading-relaxed max-w-xs mx-auto">
+              Your data will sync securely across devices with end-to-end encryption.
             </p>
           </div>
         </div>
@@ -308,43 +327,39 @@ export function SetupWizard(): React.JSX.Element {
   )
 }
 
-function StepIndicator({ currentStep }: { currentStep: number }): React.JSX.Element {
+function WizardProgress({ currentStep }: { currentStep: number }): React.JSX.Element {
+  const progress = (currentStep / (STEPS.length - 1)) * 100
+
   return (
     <div
       role="group"
       aria-label={`Step ${currentStep + 1} of ${STEPS.length}: ${STEPS[currentStep]}`}
-      className="flex items-center gap-2"
+      className="space-y-3"
     >
-      {STEPS.map((label, i) => (
-        <div key={label} className="flex items-center gap-2">
-          {i > 0 && (
-            <div
-              className={cn(
-                'h-px w-8 transition-colors',
-                i <= currentStep ? 'bg-primary' : 'bg-border'
-              )}
-            />
-          )}
-          <div className="flex items-center gap-1.5">
-            <div
-              className={cn(
-                'w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-colors',
-                i <= currentStep ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-              )}
-            >
-              {i < currentStep ? <CheckCircle className="w-4 h-4" /> : i + 1}
-            </div>
-            <span
-              className={cn(
-                'text-xs',
-                i <= currentStep ? 'text-foreground font-medium' : 'text-muted-foreground'
-              )}
-            >
-              {label}
-            </span>
-          </div>
-        </div>
-      ))}
+      <div className="relative h-1 bg-border/50 rounded-full overflow-hidden">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out"
+          style={{
+            width: `${progress}%`,
+            background: 'linear-gradient(90deg, rgb(180, 83, 9), rgb(245, 158, 11))'
+          }}
+        />
+      </div>
+      <div className="flex justify-between">
+        {STEPS.map((label, i) => (
+          <span
+            key={label}
+            className={cn(
+              'text-[10px] tracking-widest uppercase transition-colors duration-300',
+              i <= currentStep
+                ? 'text-amber-700 dark:text-amber-400 font-semibold'
+                : 'text-muted-foreground/50'
+            )}
+          >
+            {label}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }

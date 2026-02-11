@@ -19,7 +19,8 @@ export const EVENT_CHANNELS = {
   RESUMED: 'sync:resumed',
   KEY_ROTATION_PROGRESS: 'crypto:key-rotation-progress',
   SESSION_EXPIRED: 'auth:session-expired',
-  OTP_DETECTED: 'auth:otp-detected'
+  OTP_DETECTED: 'auth:otp-detected',
+  OAUTH_CALLBACK: 'auth:oauth-callback'
 } as const
 
 // ============================================================================
@@ -106,4 +107,9 @@ export interface SessionExpiredEvent {
 
 export interface OtpDetectedEvent {
   code: string
+}
+
+export interface OAuthCallbackEvent {
+  code: string
+  state: string
 }

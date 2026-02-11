@@ -1,4 +1,5 @@
-import { app, BrowserWindow, clipboard, ipcMain } from 'electron'
+import { app, BrowserWindow, clipboard, ipcMain, net, shell } from 'electron'
+import http from 'node:http'
 import os from 'os'
 import sodium from 'libsodium-wrappers-sumo'
 
@@ -114,51 +115,66 @@ const stopOtpClipboardDetection = (): void => {
 // PKCE State (T072, T072a)
 // ============================================================================
 
-interface PkceSession {
-  codeVerifier: string
+interface OAuthSession {
   state: string
+  redirectUri: string
   createdAt: number
 }
 
-const pkceSessions = new Map<string, PkceSession>()
-const PKCE_SESSION_TIMEOUT_MS = 10 * 60 * 1000
-const PKCE_MAX_SESSIONS = 50
+const oauthSessions = new Map<string, OAuthSession>()
+const OAUTH_SESSION_TIMEOUT_MS = 10 * 60 * 1000
+let activeLoopbackServer: http.Server | null = null
 
-const generateCodeVerifier = (): string => {
-  const buffer = new Uint8Array(32)
-  crypto.getRandomValues(buffer)
-  return Buffer.from(buffer).toString('base64url')
-}
+const SYNC_SERVER_URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'
 
-const generateCodeChallenge = async (verifier: string): Promise<string> => {
-  const data = new TextEncoder().encode(verifier)
-  const hash = await crypto.subtle.digest('SHA-256', data)
-  return Buffer.from(hash).toString('base64url')
-}
-
-const cleanExpiredPkceSessions = (): void => {
+const cleanExpiredOAuthSessions = (): void => {
   const now = Date.now()
-  for (const [state, session] of pkceSessions) {
-    if (now - session.createdAt > PKCE_SESSION_TIMEOUT_MS) {
-      pkceSessions.delete(state)
+  for (const [state, session] of oauthSessions) {
+    if (now - session.createdAt > OAUTH_SESSION_TIMEOUT_MS) {
+      oauthSessions.delete(state)
     }
   }
 }
 
-const consumePkceSession = (state: string): string => {
-  const session = pkceSessions.get(state)
+const consumeOAuthSession = (state: string): OAuthSession => {
+  const session = oauthSessions.get(state)
   if (!session) {
     throw new Error('Invalid or expired OAuth state parameter')
   }
-
-  if (Date.now() - session.createdAt > PKCE_SESSION_TIMEOUT_MS) {
-    pkceSessions.delete(state)
+  if (Date.now() - session.createdAt > OAUTH_SESSION_TIMEOUT_MS) {
+    oauthSessions.delete(state)
     throw new Error('OAuth session expired. Please try again.')
   }
+  oauthSessions.delete(state)
+  return session
+}
 
-  const { codeVerifier } = session
-  pkceSessions.delete(state)
-  return codeVerifier
+const shutdownLoopbackServer = (): void => {
+  if (activeLoopbackServer) {
+    activeLoopbackServer.close()
+    activeLoopbackServer = null
+  }
+}
+
+const SUCCESS_HTML = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Memry</title>
+<style>body{font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#111;color:#eee}
+.c{text-align:center}h1{font-size:1.5rem;margin-bottom:.5rem}p{color:#999}</style></head>
+<body><div class="c"><h1>Signed in</h1><p>You can close this tab and return to Memry.</p></div></body></html>`
+
+const startLoopbackServer = (): Promise<{ server: http.Server; port: number }> => {
+  return new Promise((resolve, reject) => {
+    const server = http.createServer()
+    server.listen(0, '127.0.0.1', () => {
+      const addr = server.address()
+      if (!addr || typeof addr === 'string') {
+        server.close()
+        return reject(new Error('Failed to bind loopback server'))
+      }
+      resolve({ server, port: addr.port })
+    })
+    server.on('error', reject)
+  })
 }
 
 // ============================================================================
@@ -177,7 +193,7 @@ const scheduleTokenRefresh = (expiresInSeconds: number): void => {
   const jitter = 0.75 + Math.random() * 0.1
   const refreshAtMs = Math.floor(expiresInSeconds * jitter) * 1000
   refreshTimer = setTimeout(() => {
-    refreshAccessToken()
+    void refreshAccessToken()
   }, refreshAtMs)
 }
 
@@ -434,24 +450,68 @@ export function registerSyncHandlers(): void {
     })
   )
 
-  // --- OAuth Initiation with PKCE (T072, T072a) ---
+  // --- OAuth Initiation with Loopback Redirect (T072, T072a) ---
 
   ipcMain.handle(
     SYNC_CHANNELS.AUTH_INIT_OAUTH,
     createValidatedHandler(InitOAuthSchema, async () => {
-      cleanExpiredPkceSessions()
+      cleanExpiredOAuthSessions()
+      shutdownLoopbackServer()
 
-      if (pkceSessions.size >= PKCE_MAX_SESSIONS) {
-        throw new Error('Too many pending OAuth sessions. Please try again later.')
+      const { server, port } = await startLoopbackServer()
+      activeLoopbackServer = server
+
+      const redirectUri = `http://127.0.0.1:${port}/callback`
+
+      const serverResponse = await net.fetch(`${SYNC_SERVER_URL}/auth/oauth/google`, {
+        redirect: 'manual'
+      })
+      const googleUrl = serverResponse.headers.get('location')
+      if (!googleUrl) {
+        shutdownLoopbackServer()
+        throw new Error('Failed to get OAuth URL from server')
       }
 
-      const codeVerifier = generateCodeVerifier()
-      const codeChallenge = await generateCodeChallenge(codeVerifier)
-      const state = crypto.randomUUID()
+      const parsedUrl = new URL(googleUrl)
+      const state = parsedUrl.searchParams.get('state')
+      if (!state) {
+        shutdownLoopbackServer()
+        throw new Error('Missing state in OAuth URL')
+      }
 
-      pkceSessions.set(state, { codeVerifier, state, createdAt: Date.now() })
+      parsedUrl.searchParams.set('redirect_uri', redirectUri)
 
-      return { codeChallenge, codeChallengeMethod: 'S256' as const, state }
+      oauthSessions.set(state, { state, redirectUri, createdAt: Date.now() })
+
+      server.on('request', (req, res) => {
+        const reqUrl = new URL(req.url ?? '/', `http://127.0.0.1:${port}`)
+        if (reqUrl.pathname !== '/callback') {
+          res.writeHead(404)
+          res.end()
+          return
+        }
+
+        const code = reqUrl.searchParams.get('code')
+        const cbState = reqUrl.searchParams.get('state')
+
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+        res.end(SUCCESS_HTML)
+
+        if (code && cbState) {
+          const win = BrowserWindow.getAllWindows()[0]
+          if (win) {
+            win.webContents.send(SYNC_EVENTS.OAUTH_CALLBACK, { code, state: cbState })
+          }
+        }
+
+        shutdownLoopbackServer()
+      })
+
+      setTimeout(shutdownLoopbackServer, OAUTH_SESSION_TIMEOUT_MS)
+
+      await shell.openExternal(parsedUrl.toString())
+
+      return { state }
     })
   )
 
@@ -462,16 +522,16 @@ export function registerSyncHandlers(): void {
     return { success, error: success ? undefined : 'Token refresh failed' }
   })
 
-  // --- First Device Setup via OAuth (T057, T072a PKCE validation) ---
+  // --- First Device Setup via OAuth (T057) ---
 
   ipcMain.handle(
     SYNC_CHANNELS.SETUP_FIRST_DEVICE,
     createValidatedHandler(SetupFirstDeviceSchema, async (input) => {
-      const codeVerifier = consumePkceSession(input.state)
+      const session = consumeOAuthSession(input.state)
 
       const serverResponse = await postToServer<OAuthCallbackServerResponse>(
         `/auth/oauth/${input.provider}/callback`,
-        { code: input.oauthToken, state: input.state, codeVerifier }
+        { code: input.oauthToken, state: input.state, redirectUri: session.redirectUri }
       )
 
       await storeToken(KEYCHAIN_ENTRIES.SETUP_TOKEN, serverResponse.setupToken)
@@ -533,7 +593,8 @@ export function registerSyncHandlers(): void {
 export function unregisterSyncHandlers(): void {
   stopOtpClipboardDetection()
   cancelTokenRefresh()
-  pkceSessions.clear()
+  oauthSessions.clear()
+  shutdownLoopbackServer()
 
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_REQUEST_OTP)
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_VERIFY_OTP)
@@ -566,4 +627,8 @@ export function unregisterSyncHandlers(): void {
   ipcMain.removeHandler(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS)
 
   console.log('[IPC] Sync handlers unregistered')
+}
+
+export function seedOAuthSession(state: string, redirectUri: string): void {
+  oauthSessions.set(state, { state, redirectUri, createdAt: Date.now() })
 }

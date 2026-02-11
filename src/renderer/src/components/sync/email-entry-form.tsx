@@ -40,9 +40,14 @@ export function EmailEntryForm({
   )
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="email">Email address</Label>
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="space-y-2.5">
+        <Label
+          htmlFor="email"
+          className="text-[11px] font-semibold tracking-widest uppercase text-muted-foreground"
+        >
+          Email address
+        </Label>
         <Input
           id="email"
           type="email"
@@ -56,6 +61,7 @@ export function EmailEntryForm({
           aria-describedby={displayError ? 'email-error' : undefined}
           aria-invalid={!!displayError}
           autoFocus
+          className="h-11 text-[15px] focus-visible:ring-amber-600/15 focus-visible:border-amber-600/50 dark:focus-visible:ring-amber-400/10 dark:focus-visible:border-amber-400/40"
         />
         {displayError && (
           <p id="email-error" className="text-sm text-destructive">
@@ -63,10 +69,10 @@ export function EmailEntryForm({
           </p>
         )}
       </div>
-      <Button type="submit" className="w-full" disabled={isLoading || !email.trim()}>
+      <Button type="submit" className="w-full h-11" disabled={isLoading || !email.trim()}>
         {isLoading ? (
           <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin" />
             Sending code...
           </>
         ) : (

@@ -160,7 +160,7 @@ export function SettingsPage() {
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
-          <div className="p-6 max-w-3xl">
+          <div className="p-6 max-w-3xl mx-auto">
             {activeSection === 'general' && <GeneralSettings />}
             {activeSection === 'editor' && <EditorSettings />}
             {activeSection === 'templates' && <TemplatesSettings />}

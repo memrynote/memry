@@ -1418,3 +1418,143 @@
 .dark .template-section-divider {
   background: linear-gradient(to right, rgba(251, 191, 36, 0.15), var(--border) 20%, transparent);
 }
+
+/* ===== SETUP WIZARD - Warm Library Vault ===== */
+
+@keyframes wizard-step-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wizard-slot-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.75);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes wizard-card-lift {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes wizard-check-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.35);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+.wizard-step-enter {
+  opacity: 0;
+  animation: wizard-step-enter 0.5s var(--ease-out) forwards;
+}
+
+.wiz-delay-1 {
+  animation-delay: 0ms;
+}
+.wiz-delay-2 {
+  animation-delay: 80ms;
+}
+.wiz-delay-3 {
+  animation-delay: 160ms;
+}
+.wiz-delay-4 {
+  animation-delay: 240ms;
+}
+
+.wizard-slot-pop {
+  opacity: 0;
+  animation: wizard-slot-pop 0.35s var(--ease-out) forwards;
+}
+
+.wizard-card-lift {
+  opacity: 0;
+  animation: wizard-card-lift 0.5s var(--ease-out) forwards;
+}
+
+.wizard-check-ring {
+  animation: wizard-check-ring 1s ease-out;
+}
+
+/* Recovery phrase card - warm paper gradient */
+.recovery-phrase-card {
+  background: linear-gradient(
+    145deg,
+    var(--card) 0%,
+    color-mix(in srgb, var(--card) 96%, #f5e6d3) 100%
+  );
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 4px 16px -4px rgba(0, 0, 0, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.dark .recovery-phrase-card {
+  background: linear-gradient(
+    145deg,
+    var(--card) 0%,
+    color-mix(in srgb, var(--card) 96%, #2a2520) 100%
+  );
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    0 4px 16px -4px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* Auth method selection card */
+.auth-method-card {
+  transition: all 0.2s var(--ease-out);
+}
+
+.auth-method-card:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 12px -4px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(217, 119, 6, 0.12);
+}
+
+.dark .auth-method-card:hover {
+  box-shadow:
+    0 4px 12px -4px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(251, 191, 36, 0.15);
+}
+
+.auth-method-card:active {
+  transform: scale(0.99);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wizard-step-enter,
+  .wizard-slot-pop,
+  .wizard-card-lift {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .wizard-check-ring {
+    animation: none;
+  }
+}
