@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type {
   JournalEntry,
@@ -280,7 +281,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       // Keep the dirty state so user knows there's unsaved content
       console.error('Failed to save journal entry:', err)
       // Set save error for UI feedback
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save journal entry'
+      const errorMessage = extractErrorMessage(err, 'Failed to save journal entry')
       // Check for disk-related errors
       const isDiskError =
         errorMessage.includes('ENOSPC') ||
@@ -486,7 +487,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     entry,
     isLoading,
     loadedForDate,
-    error: queryError instanceof Error ? queryError.message : null,
+    error: queryError ? extractErrorMessage(queryError) : null,
     isSaving,
     isDirty,
     saveError,
@@ -579,7 +580,7 @@ export function useJournalHeatmap(year: number): UseJournalHeatmapResult {
   return {
     data,
     isLoading,
-    error: queryError instanceof Error ? queryError.message : null,
+    error: queryError ? extractErrorMessage(queryError) : null,
     reload
   }
 }
@@ -670,7 +671,7 @@ export function useMonthEntries(year: number, month: number): UseMonthEntriesRes
   return {
     data,
     isLoading,
-    error: queryError instanceof Error ? queryError.message : null,
+    error: queryError ? extractErrorMessage(queryError) : null,
     reload
   }
 }
@@ -751,7 +752,7 @@ export function useYearStats(year: number): UseYearStatsResult {
   return {
     data,
     isLoading,
-    error: queryError instanceof Error ? queryError.message : null,
+    error: queryError ? extractErrorMessage(queryError) : null,
     reload
   }
 }
@@ -848,7 +849,7 @@ export function useDayContext(date: string): UseDayContextResult {
     events: data?.events ?? [],
     overdueCount: data?.overdueCount ?? 0,
     isLoading,
-    error: queryError instanceof Error ? queryError.message : null,
+    error: queryError ? extractErrorMessage(queryError) : null,
     reload
   }
 }
@@ -947,7 +948,7 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
 
       // Only update state if this request wasn't aborted
       if (!abortController.signal.aborted) {
-        setError(err instanceof Error ? err.message : 'Failed to analyze content')
+        setError(extractErrorMessage(err, 'Failed to analyze content'))
         setIsLoading(false)
       }
     }

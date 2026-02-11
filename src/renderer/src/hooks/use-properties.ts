@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { propertiesService, type PropertyValue } from '@/services/properties-service'
 import { inferType } from '@/lib/property-utils'
 import { toast } from 'sonner'
@@ -97,7 +98,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
       const result = await propertiesService.get(entityId)
       setProperties(result)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load properties'
+      const message = extractErrorMessage(err, 'Failed to load properties')
       setError(message)
       console.error('[useProperties] Error fetching:', err)
     } finally {

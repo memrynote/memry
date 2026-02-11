@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   Dialog,
   DialogContent,
@@ -135,7 +136,7 @@ export function ExportDialog({
       }
     } catch (error) {
       toast.error('Export failed', {
-        description: error instanceof Error ? error.message : 'An unknown error occurred'
+        description: extractErrorMessage(error, 'An unknown error occurred')
       })
     } finally {
       setIsExporting(false)

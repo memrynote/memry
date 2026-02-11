@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   tagsService,
   onTagNotesChanged,
@@ -74,7 +75,7 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
       })
       setData(response)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load notes'
+      const message = extractErrorMessage(err, 'Failed to load notes')
       setError(message)
       console.error('[useTagDetail] Error fetching notes:', err)
     } finally {

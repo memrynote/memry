@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { Check, Loader2, AlertCircle, Clock, Filter } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -498,7 +499,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           })
           setItemsProcessedToday((prev) => Math.max(0, prev - 1))
           addToast({
-            message: error instanceof Error ? error.message : 'Failed to file item',
+            message: extractErrorMessage(error, 'Failed to file item'),
             type: 'error'
           })
         }
@@ -573,7 +574,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           })
           setItemsProcessedToday((prev) => Math.max(0, prev - 1))
           addToast({
-            message: error instanceof Error ? error.message : 'Failed to file item',
+            message: extractErrorMessage(error, 'Failed to file item'),
             type: 'error'
           })
         }
@@ -817,7 +818,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             return next
           })
           addToast({
-            message: error instanceof Error ? error.message : 'Failed to snooze item',
+            message: extractErrorMessage(error, 'Failed to snooze item'),
             type: 'error'
           })
         }
@@ -885,7 +886,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         })
         setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
         addToast({
-          message: error instanceof Error ? error.message : 'Failed to file items',
+          message: extractErrorMessage(error, 'Failed to file items'),
           type: 'error'
         })
       }
@@ -917,7 +918,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         }
       } catch (error) {
         addToast({
-          message: error instanceof Error ? error.message : 'Failed to apply tags',
+          message: extractErrorMessage(error, 'Failed to apply tags'),
           type: 'error'
         })
       }
@@ -1097,7 +1098,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             return next
           })
           addToast({
-            message: error instanceof Error ? error.message : 'Failed to snooze items',
+            message: extractErrorMessage(error, 'Failed to snooze items'),
             type: 'error'
           })
         }
@@ -1163,7 +1164,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         })
         setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
         addToast({
-          message: error instanceof Error ? error.message : 'Failed to file stale items',
+          message: extractErrorMessage(error, 'Failed to file stale items'),
           type: 'error'
         })
       }
@@ -1239,7 +1240,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         }
       } catch (error) {
         addToast({
-          message: error instanceof Error ? error.message : 'Failed to capture image',
+          message: extractErrorMessage(error, 'Failed to capture image'),
           type: 'error'
         })
       } finally {
