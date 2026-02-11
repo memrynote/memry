@@ -15,6 +15,9 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { Mic, Square, X, Loader2, Settings, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:VoiceRecorder')
 
 // ============================================================================
 // Types
@@ -170,7 +173,7 @@ export function VoiceRecorder({
 
       // Handle errors
       mediaRecorder.onerror = (event) => {
-        console.error('[VoiceRecorder] MediaRecorder error:', event)
+        log.error('MediaRecorder error', event)
         setError('Recording error occurred')
         stopRecording(true)
       }
@@ -192,7 +195,7 @@ export function VoiceRecorder({
         }
       }, 100)
     } catch (err) {
-      console.error('[VoiceRecorder] Failed to start recording:', err)
+      log.error('Failed to start recording', err)
 
       if (err instanceof DOMException) {
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {

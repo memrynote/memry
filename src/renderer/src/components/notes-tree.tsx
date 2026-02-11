@@ -69,6 +69,9 @@ import {
 } from '@/components/ui/alert-dialog'
 import { TemplateSelector } from '@/components/note/template-selector'
 import { getTabIconForFileType, type FileType } from '@shared/file-types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:NotesTree')
 
 // ============================================================================
 // Types
@@ -471,7 +474,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
 
         setFolderTemplateNames(namesMap)
       } catch (err) {
-        console.error('Failed to load folder template names:', err)
+        log.error('Failed to load folder template names', err)
       }
     }
 
@@ -487,7 +490,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           setNotePositions(result.positions)
         }
       } catch (err) {
-        console.error('Failed to fetch positions:', err)
+        log.error('Failed to fetch positions', err)
       }
     }
     fetchPositions()
@@ -620,7 +623,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         setRenameValue('Untitled')
       }
     } catch (err) {
-      console.error('Failed to create note:', err)
+      log.error('Failed to create note', err)
     } finally {
       setIsCreating(false)
     }
@@ -652,7 +655,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           }
           toast.success('Default template set')
         } catch (err) {
-          console.error('Failed to set folder template:', err)
+          log.error('Failed to set folder template', err)
           toast.error('Failed to set default template')
         }
       }
@@ -676,7 +679,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       })
       toast.success('Default template cleared')
     } catch (err) {
-      console.error('Failed to clear folder template:', err)
+      log.error('Failed to clear folder template', err)
       toast.error('Failed to clear default template')
     }
   }, [])
@@ -710,7 +713,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         setFolderRenameValue(folderName)
       }
     } catch (err) {
-      console.error('Failed to create folder:', err)
+      log.error('Failed to create folder', err)
     } finally {
       setIsCreatingFolder(false)
     }
@@ -738,7 +741,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         })
       }
     } catch (err) {
-      console.error('Failed to import files:', err)
+      log.error('Failed to import files', err)
       toast.error('Failed to import files')
     }
   }, [targetFolder])
@@ -776,7 +779,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           })
         }
       } catch (err) {
-        console.error('Failed to create note:', err)
+        log.error('Failed to create note', err)
       } finally {
         setIsCreating(false)
       }
@@ -807,7 +810,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           await refreshFolders()
         }
       } catch (err) {
-        console.error('Failed to create folder:', err)
+        log.error('Failed to create folder', err)
       } finally {
         setIsCreatingFolder(false)
       }
@@ -838,7 +841,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       try {
         await renameNoteMutateAsync({ id: noteId, newTitle: renameValue.trim() })
       } catch (err) {
-        console.error('Failed to rename note:', err)
+        log.error('Failed to rename note', err)
       } finally {
         setIsRenaming(false)
         setRenamingNoteId(null)
@@ -885,7 +888,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         await notesService.renameFolder(oldPath, newPath)
         await refreshFolders()
       } catch (err) {
-        console.error('Failed to rename folder:', err)
+        log.error('Failed to rename folder', err)
       } finally {
         setIsFolderRenaming(false)
         setRenamingFolderPath(null)
@@ -968,7 +971,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       setFoldersToDelete([])
       setSelectedIds([]) // Clear selection after delete
     } catch (err) {
-      console.error('Failed to delete items:', err)
+      log.error('Failed to delete items', err)
     } finally {
       setIsDeleting(false)
     }
@@ -978,7 +981,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     try {
       await notesService.openExternal(note.id)
     } catch (err) {
-      console.error('Failed to open note externally:', err)
+      log.error('Failed to open note externally', err)
     }
   }, [])
 
@@ -986,7 +989,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     try {
       await notesService.revealInFinder(note.id)
     } catch (err) {
-      console.error('Failed to reveal note in Finder:', err)
+      log.error('Failed to reveal note in Finder', err)
     }
   }, [])
 
@@ -1045,7 +1048,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         await moveNoteMutateAsync({ id: noteId, newFolder: targetFolder })
         return true
       } catch (err) {
-        console.error('Failed to move note:', err)
+        log.error('Failed to move note', err)
         return false
       }
     },
@@ -1073,7 +1076,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
 
         // Prevent invalid moves (into self or descendants)
         if (isDescendantOrSelf(sourceFolderPath, targetPath)) {
-          console.warn('Cannot move folder into itself or its descendants')
+          log.warn('Cannot move folder into itself or its descendants')
           return false
         }
 
@@ -1106,7 +1109,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         await refreshFolders()
         return true
       } catch (err) {
-        console.error('Failed to move folder:', err)
+        log.error('Failed to move folder', err)
         return false
       }
     },
@@ -1161,7 +1164,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         }
         return true
       } catch (err) {
-        console.error('Failed to reorder notes:', err)
+        log.error('Failed to reorder notes', err)
         return false
       }
     },
@@ -1212,7 +1215,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         }
         return true
       } catch (err) {
-        console.error('Failed to reorder folders:', err)
+        log.error('Failed to reorder folders', err)
         return false
       }
     },

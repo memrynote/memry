@@ -8,6 +8,9 @@
 import { useState, useCallback, useEffect, forwardRef } from 'react'
 import ReactPlayer from 'react-player'
 import { cn } from '@/lib/utils'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:VideoPlayer')
 
 // ============================================================================
 // Types
@@ -179,7 +182,7 @@ export function VideoPlayer({ src, className }: VideoPlayerProps) {
 
   const handleError = useCallback(() => {
     setError(true)
-    console.error('[VideoPlayer] Error loading video:', src)
+    log.error('Error loading video', src)
   }, [src])
 
   if (error) {

@@ -4,6 +4,9 @@ import { Search, FileText, Folder, Link2, X, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { LinkedNote } from '@/types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:LinkSearch')
 
 // Debounce hook for search
 function useDebounce<T>(value: T, delay: number): T {
@@ -119,7 +122,7 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
           }))
         setSearchResults(notes)
       } catch (error) {
-        console.error('Error searching notes:', error)
+        log.error('Error searching notes', error)
         setSearchResults([])
       } finally {
         setIsSearching(false)

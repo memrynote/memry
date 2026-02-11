@@ -14,6 +14,9 @@ import '@blocknote/core/fonts/inter.css'
 import '@blocknote/shadcn/style.css'
 
 import { cn } from '@/lib/utils'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:InboxContentEditor')
 
 interface InboxContentEditorProps {
   /** Initial content (plain text or HTML) */
@@ -113,7 +116,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
       const html = await editor.blocksToHTMLLossy(editor.document)
       onContentChange(html)
     } catch (error) {
-      console.error('[InboxContentEditor] Failed to convert content:', error)
+      log.error('Failed to convert content', error)
     }
   }, [editor, onContentChange])
 

@@ -41,6 +41,9 @@ import {
   useTextSelection,
   type HighlightSelection
 } from '@/components/reminder'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:ContentArea')
 
 type NoteSuggestion = {
   id: string
@@ -527,7 +530,7 @@ export const ContentArea = memo(function ContentArea({
           fetchedAt: now
         }
       } catch (error) {
-        console.error('[ContentArea] Failed to load wiki link suggestions:', error)
+        log.error('Failed to load wiki link suggestions', error)
         notesCacheRef.current = { notes: [], fetchedAt: now }
       }
     }
@@ -632,7 +635,7 @@ export const ContentArea = memo(function ContentArea({
             const normalized = normalizeWikiLinks(blocks)
             editor.replaceBlocks(editor.document, normalized.blocks)
           } catch (error) {
-            console.error(`Failed to parse ${contentType} content:`, error)
+            log.error(`Failed to parse ${contentType} content`, error)
           }
         } else if (Array.isArray(initialContent) && initialContent.length > 0) {
           // If it's already blocks, replace the document
@@ -694,7 +697,7 @@ export const ContentArea = memo(function ContentArea({
 
           onMarkdownChange(markdown)
         } catch (error) {
-          console.error('Failed to convert blocks to markdown:', error)
+          log.error('Failed to convert blocks to markdown', error)
         }
       }, 150)
     }
@@ -832,7 +835,7 @@ export const ContentArea = memo(function ContentArea({
 
       // Skip if no noteId (can't upload attachments without a note)
       if (!noteId) {
-        console.warn('[ContentArea] Cannot upload attachment: no noteId provided')
+        log.warn('Cannot upload attachment: no noteId provided')
         return true
       }
 
@@ -858,7 +861,7 @@ export const ContentArea = memo(function ContentArea({
           const result = await notesService.uploadAttachment(noteId, file)
 
           if (!result.success) {
-            console.error('[ContentArea] Upload failed:', result.error)
+            log.error('Upload failed', result.error)
             continue
           }
 
@@ -899,7 +902,7 @@ export const ContentArea = memo(function ContentArea({
           // This keeps files in the order they were dropped
           placement = 'after'
         } catch (error) {
-          console.error('[ContentArea] Failed to upload file:', file.name, error)
+          log.error('Failed to upload file', file.name, error)
         }
       }
 
