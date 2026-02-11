@@ -1,6 +1,7 @@
 import { useReducer, useCallback, useEffect, useRef } from 'react'
 import { CheckCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAuth } from '@/contexts/auth-context'
 import { EmailEntryForm } from '@/components/sync/email-entry-form'
 import { OtpVerification } from '@/components/sync/otp-verification'
@@ -169,7 +170,7 @@ export function SetupWizard(): React.JSX.Element {
         .catch((err: unknown) => {
           dispatch({
             type: 'SET_ERROR',
-            error: err instanceof Error ? err.message : 'Google sign-in failed'
+            error: extractErrorMessage(err, 'Google sign-in failed')
           })
         })
     })
@@ -186,7 +187,7 @@ export function SetupWizard(): React.JSX.Element {
         .catch((err: unknown) => {
           dispatch({
             type: 'SET_ERROR',
-            error: err instanceof Error ? err.message : 'Failed to send code'
+            error: extractErrorMessage(err, 'Failed to send code')
           })
         })
     },
@@ -209,7 +210,7 @@ export function SetupWizard(): React.JSX.Element {
         .catch((err: unknown) => {
           dispatch({
             type: 'SET_ERROR',
-            error: err instanceof Error ? err.message : 'Verification failed'
+            error: extractErrorMessage(err, 'Verification failed')
           })
         })
     },
@@ -225,7 +226,7 @@ export function SetupWizard(): React.JSX.Element {
       .catch((err: unknown) => {
         dispatch({
           type: 'SET_ERROR',
-          error: err instanceof Error ? err.message : 'Failed to resend'
+          error: extractErrorMessage(err, 'Failed to resend')
         })
       })
   }, [resendOtp])
@@ -244,7 +245,7 @@ export function SetupWizard(): React.JSX.Element {
       .catch((err: unknown) => {
         dispatch({
           type: 'SET_ERROR',
-          error: err instanceof Error ? err.message : 'Failed to start Google sign-in'
+          error: extractErrorMessage(err, 'Failed to start Google sign-in')
         })
       })
   }, [initOAuth])
@@ -260,7 +261,7 @@ export function SetupWizard(): React.JSX.Element {
         .catch((err: unknown) => {
           dispatch({
             type: 'SET_ERROR',
-            error: err instanceof Error ? err.message : 'Recovery failed'
+            error: extractErrorMessage(err, 'Recovery failed')
           })
         })
     },
@@ -277,7 +278,7 @@ export function SetupWizard(): React.JSX.Element {
       .catch((err: unknown) => {
         dispatch({
           type: 'SET_ERROR',
-          error: err instanceof Error ? err.message : 'Confirmation failed'
+          error: extractErrorMessage(err, 'Confirmation failed')
         })
       })
   }, [confirmRecoveryPhrase])

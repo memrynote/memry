@@ -8,6 +8,7 @@ import {
   type ReactNode
 } from 'react'
 import { authService } from '@/services/auth-service'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { deviceService, setupService } from '@/services/device-service'
 
 type AuthStatus =
@@ -236,7 +237,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     } catch (err) {
       dispatch({
         type: 'SET_ERROR',
-        error: err instanceof Error ? err.message : 'Failed to start Google sign-in'
+        error: extractErrorMessage(err, 'Failed to start Google sign-in')
       })
       return null
     }
@@ -264,7 +265,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       } catch (err) {
         dispatch({
           type: 'SET_ERROR',
-          error: err instanceof Error ? err.message : 'Failed to set up device'
+          error: extractErrorMessage(err, 'Failed to set up device')
         })
         return null
       }
