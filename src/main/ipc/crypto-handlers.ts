@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import sodium from 'libsodium-wrappers-sumo'
 
+import { createLogger } from '../lib/logger'
 import { createValidatedHandler } from './validate'
 import {
   SYNC_CHANNELS,
@@ -30,6 +31,8 @@ import {
   secureCleanup
 } from '../crypto'
 import { KEYCHAIN_ENTRIES } from '@shared/contracts/crypto'
+
+const logger = createLogger('IPC:Crypto')
 
 interface SignatureFields {
   id: string
@@ -271,7 +274,7 @@ export function registerCryptoHandlers(): void {
   ipcMain.handle(SYNC_CHANNELS.ROTATE_KEYS, notImplemented('ROTATE_KEYS'))
   ipcMain.handle(SYNC_CHANNELS.GET_ROTATION_PROGRESS, notImplemented('GET_ROTATION_PROGRESS'))
 
-  console.log('[IPC] Crypto handlers registered')
+  logger.info('Crypto handlers registered')
 }
 
 export function unregisterCryptoHandlers(): void {
@@ -281,5 +284,5 @@ export function unregisterCryptoHandlers(): void {
   ipcMain.removeHandler(SYNC_CHANNELS.ROTATE_KEYS)
   ipcMain.removeHandler(SYNC_CHANNELS.GET_ROTATION_PROGRESS)
 
-  console.log('[IPC] Crypto handlers unregistered')
+  logger.info('Crypto handlers unregistered')
 }

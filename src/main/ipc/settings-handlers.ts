@@ -9,6 +9,7 @@
 
 import { ipcMain, BrowserWindow } from 'electron'
 import { SettingsChannels } from '@shared/ipc-channels'
+import { createLogger } from '../lib/logger'
 import { getDatabase } from '../database'
 import { getSetting, setSetting, deleteSetting } from '@shared/db/queries/settings'
 import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from '../lib/embeddings'
@@ -16,6 +17,8 @@ import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from 
 // ============================================================================
 // Settings Keys
 // ============================================================================
+
+const logger = createLogger('IPC:Settings')
 
 const SETTINGS_KEYS = {
   JOURNAL_DEFAULT_TEMPLATE: 'journal.defaultTemplate',
@@ -326,7 +329,7 @@ export function registerSettingsHandlers(): void {
       return result
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
-      console.error('[AI] Reindex failed:', message)
+      logger.error('Reindex failed:', message)
       return { success: false, error: message, computed: 0, skipped: 0 }
     }
   })
@@ -430,7 +433,7 @@ export function registerSettingsHandlers(): void {
     }
   )
 
-  console.log('[IPC] Settings handlers registered')
+  logger.info('Settings handlers registered')
 }
 
 /**
@@ -451,5 +454,5 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS)
 
-  console.log('Settings IPC handlers unregistered')
+  logger.info('Settings handlers unregistered')
 }
