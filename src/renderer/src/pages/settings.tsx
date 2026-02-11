@@ -46,7 +46,9 @@ import {
   CheckCircle,
   XCircle,
   RefreshCw,
-  PenLine
+  PenLine,
+  LogOut,
+  Monitor
 } from 'lucide-react'
 import {
   Select,
@@ -1273,7 +1275,22 @@ function AISettings() {
 // ============================================================================
 
 function SyncSettings() {
-  const { state } = useAuth()
+  const { state, logout } = useAuth()
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
+
+  const handleSignOut = useCallback(async () => {
+    setSigningOut(true)
+    try {
+      await logout()
+      toast.success('Signed out successfully')
+    } catch {
+      toast.error('Failed to sign out')
+    } finally {
+      setSigningOut(false)
+      setShowSignOutDialog(false)
+    }
+  }, [logout])
 
   if (state.status === 'checking') {
     return (
@@ -1294,10 +1311,64 @@ function SyncSettings() {
           <p className="text-sm text-muted-foreground">End-to-end encrypted sync is active.</p>
         </div>
         <Separator />
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
-          <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-          <p className="text-muted-foreground">Sync enabled. Device management coming soon.</p>
+
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-500/10">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">
+                {state.email ?? 'Signed in'}
+              </p>
+              <p className="text-xs text-muted-foreground">Sync active</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/30 text-sm">
+            <Monitor className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+            <p className="text-muted-foreground">Device management coming soon.</p>
+          </div>
         </div>
+
+        <Separator />
+
+        <div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSignOutDialog(true)}
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Sign out
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2">
+            Your notes stay on this device. Sync will stop until you sign in again.
+          </p>
+        </div>
+
+        <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Sign out of sync?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Sync will stop and encryption keys will be removed from this device. Your notes will
+                remain on this device. You&apos;ll need your recovery phrase to set up sync again.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={signingOut}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {signingOut ? 'Signing out...' : 'Sign out'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     )
   }
