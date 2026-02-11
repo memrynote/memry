@@ -38,12 +38,11 @@ export interface LinkViaQrResult {
 
 export interface LinkViaRecoveryInput {
   recoveryPhrase: string
-  oauthToken: string
-  provider: string
 }
 
 export interface LinkViaRecoveryResult {
   success: boolean
+  deviceId?: string
   error?: string
 }
 
@@ -100,9 +99,7 @@ export const LinkViaQrSchema = z.object({
 })
 
 export const LinkViaRecoverySchema = z.object({
-  recoveryPhrase: z.string().min(1),
-  oauthToken: z.string().min(1),
-  provider: z.string().min(1)
+  recoveryPhrase: z.string().min(1)
 })
 
 export const ApproveLinkingSchema = z.object({

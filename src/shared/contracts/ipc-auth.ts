@@ -39,6 +39,7 @@ export interface VerifyOtpResult {
   success: boolean
   isNewUser?: boolean
   needsRecoverySetup?: boolean
+  needsRecoveryInput?: boolean
   recoveryPhrase?: string
   deviceId?: string
   error?: string
@@ -76,6 +77,7 @@ export interface SetupFirstDeviceInput {
 
 export interface SetupFirstDeviceResult {
   success: boolean
+  needsRecoveryInput?: boolean
   recoveryPhrase?: string
   deviceId?: string
   error?: string
