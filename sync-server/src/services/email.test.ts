@@ -20,7 +20,7 @@ describe('email service', () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Memry <noreply@memry.app>',
+        from: 'Memry <noreply@memrynote.ai',
         to: 'user@example.com',
         subject: 'Hello',
         html: '<p>Hi</p>'
