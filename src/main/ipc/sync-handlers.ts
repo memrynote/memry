@@ -16,7 +16,10 @@ import {
 import { RefreshTokenResponseSchema } from '@shared/contracts/auth-api'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@shared/contracts/ipc-sync'
 
+import { eq } from 'drizzle-orm'
+
 import {
+  deleteKey,
   deriveKey,
   deriveMasterKey,
   generateDeviceSigningKeyPair,
@@ -419,6 +422,8 @@ export function registerSyncHandlers(): void {
 
       stopOtpClipboardDetection()
 
+      store.set('sync', { ...store.get('sync'), email: input.email })
+
       await storeToken(KEYCHAIN_ENTRIES.SETUP_TOKEN, serverResponse.setupToken)
 
       if (serverResponse.needsSetup) {
@@ -564,6 +569,29 @@ export function registerSyncHandlers(): void {
     })
   )
 
+  // --- Logout (clears all local auth state) ---
+
+  ipcMain.handle(SYNC_CHANNELS.AUTH_LOGOUT, async () => {
+    cancelTokenRefresh()
+
+    const keychainEntries = [
+      KEYCHAIN_ENTRIES.ACCESS_TOKEN,
+      KEYCHAIN_ENTRIES.REFRESH_TOKEN,
+      KEYCHAIN_ENTRIES.SETUP_TOKEN,
+      KEYCHAIN_ENTRIES.MASTER_KEY,
+      KEYCHAIN_ENTRIES.VAULT_KEY,
+      KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY
+    ]
+    await Promise.allSettled(keychainEntries.map((entry) => deleteKey(entry)))
+
+    const db = getDatabase()
+    await db.delete(syncDevices).where(eq(syncDevices.isCurrentDevice, true))
+
+    store.set('sync', {})
+
+    return { success: true }
+  })
+
   // --- Not-yet-implemented handlers ---
 
   ipcMain.handle(SYNC_CHANNELS.GENERATE_LINKING_QR, notImplemented('GENERATE_LINKING_QR'))
@@ -571,7 +599,20 @@ export function registerSyncHandlers(): void {
   ipcMain.handle(SYNC_CHANNELS.LINK_VIA_RECOVERY, notImplemented('LINK_VIA_RECOVERY'))
   ipcMain.handle(SYNC_CHANNELS.APPROVE_LINKING, notImplemented('APPROVE_LINKING'))
 
-  ipcMain.handle(SYNC_CHANNELS.GET_DEVICES, () => ({ devices: [] }))
+  ipcMain.handle(SYNC_CHANNELS.GET_DEVICES, async () => {
+    const db = getDatabase()
+    const rows = await db.select().from(syncDevices)
+    const devices = rows.map((d) => ({
+      id: d.id,
+      name: d.name,
+      platform: d.platform as 'macos' | 'windows' | 'linux' | 'ios' | 'android',
+      linkedAt: d.linkedAt.getTime(),
+      lastSyncAt: d.lastSyncAt?.getTime(),
+      isCurrentDevice: d.isCurrentDevice
+    }))
+    const syncData = store.get('sync')
+    return { devices, email: syncData.email }
+  })
   ipcMain.handle(SYNC_CHANNELS.REMOVE_DEVICE, notImplemented('REMOVE_DEVICE'))
   ipcMain.handle(SYNC_CHANNELS.RENAME_DEVICE, notImplemented('RENAME_DEVICE'))
 
@@ -604,6 +645,7 @@ export function unregisterSyncHandlers(): void {
 
   ipcMain.removeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE)
   ipcMain.removeHandler(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE)
+  ipcMain.removeHandler(SYNC_CHANNELS.AUTH_LOGOUT)
 
   ipcMain.removeHandler(SYNC_CHANNELS.GENERATE_LINKING_QR)
   ipcMain.removeHandler(SYNC_CHANNELS.LINK_VIA_QR)
