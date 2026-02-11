@@ -10,7 +10,10 @@
  * @module inbox/embedding-queue
  */
 
+import { createLogger } from '../lib/logger'
 import { updateNoteEmbedding } from './suggestions'
+
+const log = createLogger('Inbox:Embeddings')
 
 // ============================================================================
 // Configuration
@@ -58,7 +61,7 @@ export function queueEmbeddingUpdate(noteId: string): void {
     processTimer = setTimeout(() => {
       processTimer = null
       processEmbeddingQueue().catch((err) => {
-        console.error('[EmbeddingQueue] Processing error:', err)
+        log.error('Processing error:', err)
       })
     }, PROCESS_START_DELAY_MS)
   }
@@ -124,8 +127,8 @@ export async function processEmbeddingQueue(): Promise<{
 
       // Log batch progress
       if (batch.length > 0) {
-        console.log(
-          `[EmbeddingQueue] Processed batch of ${batch.length}: ${totalSucceeded} succeeded, ${totalFailed} failed`
+        log.debug(
+          `Processed batch of ${batch.length}: ${totalSucceeded} succeeded, ${totalFailed} failed`
         )
       }
 
