@@ -67,6 +67,7 @@ export interface SyncDevice {
 
 export interface GetDevicesResult {
   devices: SyncDevice[]
+  email?: string
 }
 
 export interface RemoveDeviceInput {
