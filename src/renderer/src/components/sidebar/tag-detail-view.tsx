@@ -48,6 +48,9 @@ import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors'
 import { tagsService, type TagNoteItem } from '@/services/tags-service'
 import type { SidebarItem } from '@/contexts/tabs/types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:TagDetailView')
 
 interface TagDetailViewProps {
   tag: string
@@ -291,7 +294,7 @@ function TagOverflowMenu({ tag, color }: TagOverflowMenuProps): React.JSX.Elemen
   const [isUpdatingColor, setIsUpdatingColor] = React.useState(false)
 
   const handleRename = () => {
-    console.log('Rename tag:', tag)
+    log.info('Rename tag:', tag)
     // TODO: Open rename dialog
   }
 
@@ -307,14 +310,14 @@ function TagOverflowMenu({ tag, color }: TagOverflowMenuProps): React.JSX.Elemen
         throw new Error(result.error ?? 'Failed to update tag color')
       }
     } catch (error) {
-      console.error('[TagOverflowMenu] Failed to update tag color:', error)
+      log.error('Failed to update tag color', error)
     } finally {
       setIsUpdatingColor(false)
     }
   }
 
   const handleDelete = () => {
-    console.log('Delete tag:', tag)
+    log.info('Delete tag:', tag)
     // TODO: Show confirmation and call tagsService.deleteTag
   }
 

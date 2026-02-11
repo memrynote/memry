@@ -15,6 +15,9 @@ import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { LinkInput } from './link-input'
 import { cn } from '@/lib/utils'
 import type { InboxItem, InboxItemListItem, Folder as FolderType, LinkedNote } from '@/types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:FilingSection')
 
 // Filing section can work with either full or list item types
 type FilingItem = InboxItem | InboxItemListItem
@@ -117,7 +120,7 @@ export const FilingSection = ({
         const response = await window.api.inbox.getSuggestions(item.id)
         return response.suggestions || []
       } catch (error) {
-        console.error('Failed to fetch AI suggestions:', error)
+        log.error('Failed to fetch AI suggestions', error)
         return []
       }
     },

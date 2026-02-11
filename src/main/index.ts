@@ -21,6 +21,15 @@ import { registerAllHandlers } from './ipc'
 import { autoOpenLastVault, closeVault } from './vault'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
+import { log, createLogger } from './lib/logger'
+
+log.initialize()
+
+const mainLog = createLogger('Main')
+const configLog = createLogger('Config')
+const quickCaptureLog = createLogger('QuickCapture')
+const shutdownLog = createLogger('Shutdown')
+const deepLinkLog = createLogger('DeepLink')
 
 // Load .env file from project root (must be before any env access)
 // In development, load from project root; in production, from app resources
@@ -83,11 +92,9 @@ function loadEnvironmentConfig(): void {
   envConfig.openaiApiKey = process.env.OPENAI_API_KEY
 
   if (!envConfig.openaiApiKey) {
-    console.warn(
-      '[Config] OPENAI_API_KEY not set. Voice transcription and AI suggestions will be disabled.'
-    )
+    configLog.warn('OPENAI_API_KEY not set. Voice transcription and AI suggestions will be disabled.')
   } else {
-    console.log('[Config] OpenAI API key loaded successfully')
+    configLog.info('OpenAI API key loaded successfully')
   }
 
   // Optional: Override default models
@@ -171,7 +178,7 @@ function handleDeepLink(url: string): void {
     if (mainWindow.isMinimized()) mainWindow.restore()
     mainWindow.focus()
   } catch {
-    console.error('[DeepLink] Failed to parse URL:', url)
+    deepLinkLog.error('failed to parse URL:', url)
   }
 }
 
@@ -217,18 +224,18 @@ void app.whenReady().then(async () => {
           // Check if extensions API is available (Electron 38+)
           if (session.defaultSession.extensions?.loadExtension) {
             const extension = await session.defaultSession.extensions.loadExtension(extensionPath)
-            console.log(`Added Extension: ${extension.name}`)
+            mainLog.debug(`added extension: ${extension.name}`)
           } else {
-            console.log('React DevTools: session.extensions API not available')
+            mainLog.debug('React DevTools: session.extensions API not available')
           }
         }
       } else {
-        console.log('React DevTools not found. Install it in Chrome to enable.')
+        mainLog.debug('React DevTools not found. Install it in Chrome to enable.')
       }
     } catch (err) {
       // Extension loading can fail for various reasons (version mismatch, sandbox issues)
       // This is non-critical for development
-      console.log('Failed to load React DevTools:', err instanceof Error ? err.message : err)
+      mainLog.debug('failed to load React DevTools:', err instanceof Error ? err.message : err)
     }
   }
 
@@ -344,7 +351,7 @@ void app.whenReady().then(async () => {
   })
 
   // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  ipcMain.on('ping', () => mainLog.debug('pong'))
 
   // Window control IPC handlers
   ipcMain.on('window-minimize', () => {
@@ -450,7 +457,7 @@ void app.whenReady().then(async () => {
     startSnoozeScheduler()
   } catch (error) {
     // Snooze scheduler is non-critical - log and continue
-    console.warn('[Snooze] Failed to start scheduler:', error)
+    mainLog.warn('snooze scheduler failed to start:', error)
   }
 
   // Start the reminder scheduler for notes/journal/highlights
@@ -459,7 +466,7 @@ void app.whenReady().then(async () => {
     startReminderScheduler()
   } catch (error) {
     // Reminder scheduler is non-critical - log and continue
-    console.warn('[Reminders] Failed to start scheduler:', error)
+    mainLog.warn('reminder scheduler failed to start:', error)
   }
 
   createWindow()
@@ -527,12 +534,12 @@ function showQuickCaptureWindow(): void {
     // Remove trailing slash if present to avoid double slashes
     const baseUrl = devUrl.endsWith('/') ? devUrl.slice(0, -1) : devUrl
     const url = `${baseUrl}/#/quick-capture`
-    console.log('[QuickCapture] Loading URL:', url)
+    quickCaptureLog.debug('loading URL:', url)
     void quickCaptureWindow.loadURL(url)
   } else {
     // In production, load the HTML file with hash
     const filePath = join(__dirname, '../renderer/index.html')
-    console.log('[QuickCapture] Loading file:', filePath)
+    quickCaptureLog.debug('loading file:', filePath)
     void quickCaptureWindow.loadFile(filePath, {
       hash: 'quick-capture'
     })
@@ -540,7 +547,7 @@ function showQuickCaptureWindow(): void {
 
   // Handle load failures
   quickCaptureWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
-    console.error('[QuickCapture] Failed to load:', errorCode, errorDescription)
+    quickCaptureLog.error('failed to load:', errorCode, errorDescription)
   })
 
   // Show window when ready
@@ -585,9 +592,7 @@ function registerQuickCaptureShortcut(): void {
   })
 
   if (!registered) {
-    console.warn(
-      `[QuickCapture] Failed to register global shortcut: ${shortcut}. It may be in use by another application.`
-    )
+    quickCaptureLog.warn(`failed to register global shortcut: ${shortcut}. It may be in use by another application.`)
   }
 }
 
@@ -606,31 +611,31 @@ app.on('before-quit', (event) => {
 
   event.preventDefault()
 
-  console.log('[Shutdown] Starting graceful shutdown...')
+  shutdownLog.info('starting graceful shutdown...')
 
   // Set timeout to force exit if shutdown takes too long
   const shutdownTimeout = setTimeout(() => {
-    console.error('[Shutdown] Timeout - forcing exit')
+    shutdownLog.error('timeout - forcing exit')
     app.exit(1)
   }, 5000) // 5 second timeout
 
   // Stop the snooze scheduler
-  console.log('[Shutdown] Stopping snooze scheduler...')
+  shutdownLog.info('stopping snooze scheduler...')
   stopSnoozeScheduler()
 
   // Stop the reminder scheduler
-  console.log('[Shutdown] Stopping reminder scheduler...')
+  shutdownLog.info('stopping reminder scheduler...')
   stopReminderScheduler()
 
-  console.log('[Shutdown] Closing vault and stopping watcher...')
+  shutdownLog.info('closing vault and stopping watcher...')
   closeVault()
     .then(() => {
-      console.log('[Shutdown] Cleanup complete')
+      shutdownLog.info('cleanup complete')
       clearTimeout(shutdownTimeout)
       app.exit(0)
     })
     .catch((error) => {
-      console.error('[Shutdown] Error during cleanup:', error)
+      shutdownLog.error('error during cleanup:', error)
       clearTimeout(shutdownTimeout)
       app.exit(1)
     })
@@ -648,7 +653,7 @@ app.on('window-all-closed', () => {
 // Unregister all global shortcuts when the app is about to quit
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
-  console.log('[QuickCapture] Global shortcuts unregistered')
+  quickCaptureLog.info('global shortcuts unregistered')
 })
 
 // In this file you can include the rest of your app's specific main process

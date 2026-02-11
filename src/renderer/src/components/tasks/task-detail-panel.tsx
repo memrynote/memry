@@ -18,6 +18,9 @@ import { getSubtasks, calculateProgress, canHaveSubtasks } from '@/lib/subtask-u
 import { notesService } from '@/services/notes-service'
 import type { Task, Priority, RepeatConfig } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:TaskDetailPanel')
 
 // ============================================================================
 // TYPES
@@ -282,7 +285,7 @@ export const TaskDetailPanel = ({
 
   const handleMoveToProject = useCallback((): void => {
     // Opens project selector - for now just log
-    console.log('Move to project')
+    log.info('Move to project')
   }, [])
 
   const handleCopyLink = useCallback((): void => {
@@ -290,7 +293,7 @@ export const TaskDetailPanel = ({
       // Copy task link to clipboard
       const link = `memry://task/${task.id}`
       navigator.clipboard.writeText(link)
-      console.log('Link copied:', link)
+      log.info('Link copied:', link)
     }
   }, [task])
 

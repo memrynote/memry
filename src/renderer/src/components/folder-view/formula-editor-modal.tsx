@@ -28,6 +28,9 @@ import { validateExpression } from '@/lib/expression-parser'
 import { evaluateFormula, getBuiltInFunctions } from '@/lib/expression-evaluator'
 import { useAutocomplete, type AutocompleteSuggestion } from '@/hooks/use-autocomplete'
 import type { NoteWithProperties } from '@shared/contracts/folder-view-api'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:FormulaEditorModal')
 
 // ============================================================================
 // Types
@@ -316,7 +319,7 @@ export function FormulaEditorModal({
       await onSave(name.trim(), expression.trim())
       onOpenChange(false)
     } catch (err) {
-      console.error('Failed to save formula:', err)
+      log.error('Failed to save formula', err)
     } finally {
       setIsSubmitting(false)
     }

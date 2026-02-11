@@ -5,7 +5,10 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
+
+const log = createLogger('Hook:Templates')
 import {
   templatesService,
   onTemplateCreated,
@@ -67,7 +70,7 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
     try {
       return await templatesService.get(id)
     } catch (err) {
-      console.error('Failed to get template:', err)
+      log.error('Failed to get template:', err)
       return null
     }
   }, [])
@@ -92,7 +95,7 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
         }
         return null
       } catch (err) {
-        console.error('Failed to create template:', err)
+        log.error('Failed to create template:', err)
         return null
       }
     },
@@ -121,7 +124,7 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
         }
         return null
       } catch (err) {
-        console.error('Failed to update template:', err)
+        log.error('Failed to update template:', err)
         return null
       }
     },
@@ -138,7 +141,7 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
       }
       return false
     } catch (err) {
-      console.error('Failed to delete template:', err)
+      log.error('Failed to delete template:', err)
       return false
     }
   }, [])
@@ -163,7 +166,7 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
         }
         return null
       } catch (err) {
-        console.error('Failed to duplicate template:', err)
+        log.error('Failed to duplicate template:', err)
         return null
       }
     },

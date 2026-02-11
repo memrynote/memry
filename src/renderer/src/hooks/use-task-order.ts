@@ -1,5 +1,8 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { arrayMove } from '@dnd-kit/sortable'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Hook:TaskOrder')
 
 import type { Task } from '@/data/sample-tasks'
 
@@ -74,7 +77,7 @@ export const useTaskOrder = ({
         }
       }
     } catch (err) {
-      console.warn('Failed to load task order from localStorage:', err)
+      log.warn('Failed to load task order from localStorage:', err)
     }
 
     return { orders: {}, isManuallyOrdered: false }
@@ -87,7 +90,7 @@ export const useTaskOrder = ({
     try {
       localStorage.setItem(storageKey, JSON.stringify({ orders: state.orders }))
     } catch (err) {
-      console.warn('Failed to save task order to localStorage:', err)
+      log.warn('Failed to save task order to localStorage:', err)
     }
   }, [state.orders, persist, storageKey])
 

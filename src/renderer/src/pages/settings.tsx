@@ -66,8 +66,12 @@ import { useTabPreferences } from '@/hooks/use-tab-preferences'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAuth } from '@/contexts/auth-context'
 import { SetupWizard } from './settings/setup-wizard'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:Settings')
 
 // ============================================================================
 // Types
@@ -971,7 +975,7 @@ function AISettings() {
         setSettings(aiSettings)
         setModelStatus(status)
       } catch (error) {
-        console.error('Failed to load AI settings:', error)
+        log.error('Failed to load AI settings:', error)
       } finally {
         setIsLoading(false)
       }
@@ -1284,8 +1288,8 @@ function SyncSettings() {
     try {
       await logout()
       toast.success('Signed out successfully')
-    } catch {
-      toast.error('Failed to sign out')
+    } catch (error: unknown) {
+      toast.error(extractErrorMessage(error, 'Failed to sign out'))
     } finally {
       setSigningOut(false)
       setShowSignOutDialog(false)

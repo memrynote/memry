@@ -25,7 +25,10 @@ import {
   Maximize2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { createLogger } from '@/lib/logger'
 import { Button } from '@/components/ui/button'
+
+const log = createLogger('Component:EditorToolbar')
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -119,7 +122,7 @@ export const EditorToolbar = memo(function EditorToolbar({
           label="Image"
           onClick={() => {
             // TODO: Image upload - requires @tiptap/extension-image
-            console.log('Image insert - coming soon')
+            log.info('Image insert - coming soon')
           }}
         />
       </ToolbarGroup>
@@ -137,7 +140,7 @@ export const EditorToolbar = memo(function EditorToolbar({
         label="Focus Mode"
         onClick={() => {
           // TODO: Toggle focus mode
-          console.log('Focus mode toggle')
+          log.info('Focus mode toggle')
         }}
       />
     </div>

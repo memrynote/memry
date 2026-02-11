@@ -21,6 +21,9 @@ import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
 import { toast } from 'sonner'
 import type { TemplateProperty } from '@/services/templates-service'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:TemplateEditor')
 
 // ============================================================================
 // Types
@@ -262,8 +265,8 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
         }
       }
     } catch (err) {
-      console.error('Failed to save template:', err)
-      toast.error(extractErrorMessage(err, 'Failed to save template'))
+      log.error('Failed to save template:', err)
+      toast.error('Failed to save template')
     } finally {
       setIsSaving(false)
     }

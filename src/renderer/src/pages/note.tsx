@@ -39,6 +39,9 @@ import { toast } from 'sonner'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { NoteReminderButton } from '@/components/note/note-reminder-button'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:Note')
 
 // ============================================================================
 // Types
@@ -360,7 +363,7 @@ export function NotePage({ noteId }: NotePageProps) {
           await updateNote.mutateAsync({ id: noteId, content: markdown })
           lastSavedContent.current = markdown
         } catch (err) {
-          console.error('Failed to save note:', err)
+          log.error('Failed to save note:', err)
         } finally {
           isSavingRef.current = false
         }
@@ -386,7 +389,7 @@ export function NotePage({ noteId }: NotePageProps) {
         await renameNote.mutateAsync({ id: noteId, newTitle })
         // Note will be updated via TanStack Query cache invalidation
       } catch (err) {
-        console.error('Failed to rename note:', err)
+        log.error('Failed to rename note:', err)
       }
     },
     [noteId, note, renameNote.mutateAsync, isDeleted]
@@ -406,7 +409,7 @@ export function NotePage({ noteId }: NotePageProps) {
         await updateNote.mutateAsync({ id: noteId, emoji: newEmoji })
         // Note will be updated via TanStack Query cache invalidation
       } catch (err) {
-        console.error('Failed to update emoji:', err)
+        log.error('Failed to update emoji:', err)
         toast.error('Failed to update emoji')
       }
     },
@@ -430,7 +433,7 @@ export function NotePage({ noteId }: NotePageProps) {
           await updateNote.mutateAsync({ id: noteId, tags: newTags })
           // Note will be updated via TanStack Query cache invalidation
         } catch (err) {
-          console.error('Failed to add tag:', err)
+          log.error('Failed to add tag:', err)
         }
       }
     },
@@ -452,7 +455,7 @@ export function NotePage({ noteId }: NotePageProps) {
           await updateNote.mutateAsync({ id: noteId, tags: newTags })
           // Note will be updated via TanStack Query cache invalidation
         } catch (err) {
-          console.error('Failed to create tag:', err)
+          log.error('Failed to create tag:', err)
         }
       }
     },
@@ -473,7 +476,7 @@ export function NotePage({ noteId }: NotePageProps) {
         await updateNote.mutateAsync({ id: noteId, tags: newTags })
         // Note will be updated via TanStack Query cache invalidation
       } catch (err) {
-        console.error('Failed to remove tag:', err)
+        log.error('Failed to remove tag:', err)
       }
     },
     [noteId, note, updateNote.mutateAsync, isDeleted]
@@ -550,7 +553,7 @@ export function NotePage({ noteId }: NotePageProps) {
             break
         }
       } catch (err) {
-        console.error('[NotePage] Failed to resolve wiki link:', err)
+        log.error('Failed to resolve wiki link:', err)
         toast.error('Failed to open linked item')
       }
     },
@@ -734,7 +737,7 @@ export function NotePage({ noteId }: NotePageProps) {
             <EditorErrorBoundary
               noteId={noteId}
               onRecover={refetchNote}
-              onError={(error) => console.error('[NotePage] Editor error:', error)}
+              onError={(error) => log.error('Editor error:', error)}
             >
               <ContentArea
                 key={`${noteId}-${externalUpdateCount}`}

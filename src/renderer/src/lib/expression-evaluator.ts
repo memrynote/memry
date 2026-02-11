@@ -13,6 +13,9 @@
 
 import { parseExpression, type ASTNode, ParseError } from './expression-parser'
 import type { NoteWithProperties } from '@shared/contracts/folder-view-api'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Evaluator:Expression')
 
 // ============================================================================
 // Expression AST Cache (Performance Optimization)
@@ -609,7 +612,7 @@ export function evaluateAST(node: ASTNode, context: FormulaContext): unknown {
     case 'call': {
       const fn = BUILT_IN_FUNCTIONS[node.callee]
       if (!fn) {
-        console.warn(`Unknown function: ${node.callee}`)
+        log.warn(`Unknown function: ${node.callee}`)
         return null
       }
       const args = node.arguments.map((arg) => evaluateAST(arg, context))
@@ -757,9 +760,9 @@ export function evaluateFormula(expression: string, note: NoteWithProperties): u
     return evaluateAST(ast, { note })
   } catch (err) {
     if (err instanceof ParseError) {
-      console.warn(`Formula parse error: ${err.message}`)
+      log.warn(`Formula parse error: ${err.message}`)
     } else {
-      console.warn(`Formula evaluation error:`, err)
+      log.warn(`Formula evaluation error:`, err)
     }
     return null
   }
@@ -776,9 +779,9 @@ export function evaluateFormulaWithContext(expression: string, context: FormulaC
     return evaluateAST(ast, context)
   } catch (err) {
     if (err instanceof ParseError) {
-      console.warn(`Formula parse error: ${err.message}`)
+      log.warn(`Formula parse error: ${err.message}`)
     } else {
-      console.warn(`Formula evaluation error:`, err)
+      log.warn(`Formula evaluation error:`, err)
     }
     return null
   }

@@ -67,6 +67,7 @@ import {
   createFallbackSocialMetadata
 } from '../inbox/social'
 import type { SocialMetadata } from '@shared/contracts/inbox-api'
+import { createLogger } from '../lib/logger'
 import { captureVoice } from '../inbox/capture'
 import { retryTranscription } from '../inbox/transcription'
 import { getSuggestions, trackSuggestionFeedback } from '../inbox/suggestions'
@@ -89,6 +90,8 @@ import type { SnoozeInput, SnoozedItem } from '../inbox/snooze'
 // Constants
 // ============================================================================
 
+const logger = createLogger('IPC:Inbox')
+
 /** Retry delay for metadata fetch (5 seconds) */
 const METADATA_RETRY_DELAY = 5000
 
@@ -109,7 +112,7 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
   try {
     db = requireDatabase()
   } catch {
-    console.warn('[Metadata] No database available, skipping metadata fetch')
+    logger.warn('No database available, skipping metadata fetch')
     return
   }
 
@@ -124,9 +127,9 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
       .run()
 
     // Fetch metadata
-    console.log(`[Metadata] Fetching metadata for ${url}`)
+    logger.info(`Fetching metadata for ${url}`)
     const metadata = await fetchUrlMetadata(url)
-    console.log(`[Metadata] Extracted: title="${metadata.title}", hasImage=${!!metadata.image}`)
+    logger.debug(`Extracted: title="${metadata.title}", hasImage=${!!metadata.image}`)
 
     // Download image if available
     let thumbnailPath: string | null = null
@@ -136,7 +139,7 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
       if (imageName) {
         // Store relative path from vault root: attachments/inbox/{itemId}/thumbnail.ext
         thumbnailPath = `attachments/inbox/${itemId}/${imageName}`
-        console.log(`[Metadata] Downloaded thumbnail: ${thumbnailPath}`)
+        logger.debug(`Downloaded thumbnail: ${thumbnailPath}`)
       }
     }
 
@@ -170,16 +173,16 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
       }
     })
 
-    console.log(`[Metadata] Successfully updated item ${itemId}`)
+    logger.info(`Successfully updated item ${itemId}`)
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    console.error(`[Metadata] Error fetching metadata for ${url}:`, errorMessage)
+    logger.error(`Error fetching metadata for ${url}: ${errorMessage}`)
 
     // Auto-retry once after delay
     if (retryCount < 1) {
-      console.log(`[Metadata] Scheduling retry for ${itemId} in ${METADATA_RETRY_DELAY}ms`)
+      logger.info(`Scheduling retry for ${itemId} in ${METADATA_RETRY_DELAY}ms`)
       setTimeout(() => {
-        fetchAndUpdateMetadata(itemId, url, retryCount + 1).catch(console.error)
+        fetchAndUpdateMetadata(itemId, url, retryCount + 1).catch((e) => logger.error(e))
       }, METADATA_RETRY_DELAY)
       return
     }
@@ -206,7 +209,7 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
         error: errorMessage
       })
     } catch (dbError) {
-      console.error('[Metadata] Failed to update error status:', dbError)
+      logger.error('Failed to update error status:', dbError)
     }
   }
 }
@@ -235,12 +238,12 @@ async function fetchAndUpdateSocialMetadata(
   try {
     db = requireDatabase()
   } catch {
-    console.warn('[Social] No database available, skipping social metadata fetch')
+    logger.warn('No database available, skipping social metadata fetch')
     return
   }
 
   const platform = detectSocialPlatform(url)
-  console.log(`[Social] Fetching ${platform} metadata for ${url}`)
+  logger.info(`Fetching ${platform} metadata for ${url}`)
 
   try {
     // Update status to processing
@@ -296,11 +299,11 @@ async function fetchAndUpdateSocialMetadata(
         metadata
       })
 
-      console.log(`[Social] Successfully updated social item ${itemId}: ${title}`)
+      logger.info(`Successfully updated social item ${itemId}: ${title}`)
     } else {
       // Social extraction failed, try regular metadata as fallback
-      console.log(
-        `[Social] Social extraction failed, falling back to regular metadata: ${result.error}`
+      logger.info(
+        `Social extraction failed, falling back to regular metadata: ${result.error}`
       )
 
       // Try regular metadata extraction
@@ -335,7 +338,7 @@ async function fetchAndUpdateSocialMetadata(
           metadata: mergedMetadata
         })
 
-        console.log(`[Social] Used fallback metadata for ${itemId}`)
+        logger.info(`Used fallback metadata for ${itemId}`)
       } catch (fallbackError) {
         throw new Error(
           `Social extraction failed: ${result.error}; Fallback also failed: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown'}`
@@ -344,13 +347,13 @@ async function fetchAndUpdateSocialMetadata(
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    console.error(`[Social] Error fetching social metadata for ${url}:`, errorMessage)
+    logger.error(`Error fetching social metadata for ${url}: ${errorMessage}`)
 
     // Auto-retry once after delay
     if (retryCount < 1) {
-      console.log(`[Social] Scheduling retry for ${itemId} in ${METADATA_RETRY_DELAY}ms`)
+      logger.info(`Scheduling retry for ${itemId} in ${METADATA_RETRY_DELAY}ms`)
       setTimeout(() => {
-        fetchAndUpdateSocialMetadata(itemId, url, retryCount + 1).catch(console.error)
+        fetchAndUpdateSocialMetadata(itemId, url, retryCount + 1).catch((e) => logger.error(e))
       }, METADATA_RETRY_DELAY)
       return
     }
@@ -376,7 +379,7 @@ async function fetchAndUpdateSocialMetadata(
         error: errorMessage
       })
     } catch (dbError) {
-      console.error('[Social] Failed to update error status:', dbError)
+      logger.error('Failed to update social error status:', dbError)
     }
   }
 }
@@ -572,8 +575,8 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
     const isSocial = platform !== null && isSocialPost(parsed.url)
     const itemType = isSocial ? 'social' : 'link'
 
-    console.log(
-      `[Capture] URL detected as ${itemType}${platform ? ` (${platform})` : ''}: ${parsed.url}`
+    logger.info(
+      `URL detected as ${itemType}${platform ? ` (${platform})` : ''}: ${parsed.url}`
     )
 
     // Create item with pending status
@@ -635,11 +638,11 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
     setImmediate(() => {
       if (isSocial) {
         fetchAndUpdateSocialMetadata(id, parsed.url).catch((err) => {
-          console.error('[Inbox] Background social metadata fetch error:', err)
+          logger.error('Background social metadata fetch error:', err)
         })
       } else {
         fetchAndUpdateMetadata(id, parsed.url).catch((err) => {
-          console.error('[Inbox] Background metadata fetch error:', err)
+          logger.error('Background metadata fetch error:', err)
         })
       }
     })
@@ -1131,12 +1134,12 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
             }
           } catch (err) {
             // Thumbnail generation failed - not fatal, continue without thumbnail
-            console.warn('[Attachment] Failed to generate thumbnail:', err)
+            logger.warn('Failed to generate thumbnail:', err)
           }
         }
       } catch (err) {
         // Image metadata extraction failed - not fatal for storage
-        console.warn('[Attachment] Failed to read image metadata:', err)
+        logger.warn('Failed to read image metadata:', err)
       }
     }
 
@@ -1182,14 +1185,14 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
     // Emit captured event
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
 
-    console.log(
-      `[Attachment] Captured ${inboxType}: ${parsed.filename} (${fileBuffer.length} bytes)`
+    logger.info(
+      `Captured ${inboxType}: ${parsed.filename} (${fileBuffer.length} bytes)`
     )
 
     return { success: true, item }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Attachment] Capture failed:', message)
+    logger.error('Attachment capture failed:', message)
     return { success: false, item: null, error: message }
   }
 }
@@ -1258,7 +1261,7 @@ async function handleCaptureVoice(input: unknown): Promise<CaptureResponse> {
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Voice] Capture failed:', message)
+    logger.error('Voice capture failed:', message)
     return { success: false, item: null, error: message }
   }
 }
@@ -1327,7 +1330,7 @@ async function handleGetSuggestions(itemId: string): Promise<SuggestionsResponse
     return { suggestions }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Suggestions] Failed to get suggestions:', message)
+    logger.error('Failed to get suggestions:', message)
     return { suggestions: [] } // Empty fallback on error
   }
 }
@@ -1357,7 +1360,7 @@ async function handleTrackSuggestion(
     return { success: true }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Suggestions] Failed to track feedback:', message)
+    logger.error('Failed to track feedback:', message)
     return { success: false, error: message }
   }
 }
@@ -1446,11 +1449,11 @@ async function handleMarkViewed(itemId: string): Promise<{ success: boolean; err
       changes: { viewedAt: now }
     })
 
-    console.log(`[Inbox] Marked item ${itemId} as viewed`)
+    logger.info(`Marked item ${itemId} as viewed`)
     return { success: true }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error(`[Inbox] Failed to mark item ${itemId} as viewed:`, message)
+    logger.error(`Failed to mark item ${itemId} as viewed: ${message}`)
     return { success: false, error: message }
   }
 }
@@ -1462,7 +1465,7 @@ async function handleGetSnoozed(): Promise<SnoozedItem[]> {
   try {
     return getSnoozedItems()
   } catch (error) {
-    console.error('[Snooze] Error getting snoozed items:', error)
+    logger.error('Error getting snoozed items:', error)
     return []
   }
 }
@@ -1657,7 +1660,7 @@ async function handleRetryTranscription(
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Transcription] Retry failed:', message)
+    logger.error('Transcription retry failed:', message)
     return { success: false, error: message }
   }
 }
@@ -1695,7 +1698,7 @@ async function handleRetryMetadata(itemId: string): Promise<{ success: boolean; 
     // Trigger background fetch (start fresh with retryCount = 0)
     setImmediate(() => {
       fetchAndUpdateMetadata(itemId, item.sourceUrl!, 0).catch((err) => {
-        console.error('[Inbox] Retry metadata fetch error:', err)
+        logger.error('Retry metadata fetch error:', err)
       })
     })
 
@@ -1929,7 +1932,7 @@ export function registerInboxHandlers(): void {
     handleGetFilingHistory(input)
   )
 
-  console.log('[IPC] Inbox handlers registered')
+  logger.info('Inbox handlers registered')
 }
 
 /**
@@ -1999,5 +2002,5 @@ export function unregisterInboxHandlers(): void {
   // Filing history
   ipcMain.removeHandler(InboxChannels.invoke.GET_FILING_HISTORY)
 
-  console.log('[IPC] Inbox handlers unregistered')
+  logger.info('Inbox handlers unregistered')
 }
