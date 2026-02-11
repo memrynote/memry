@@ -37,6 +37,9 @@ import type { SidebarItem, TabType } from '@/contexts/tabs/types'
 import type { AppPage } from '@/App'
 import type { BookmarkWithItem } from '@/hooks/use-bookmarks'
 import { BookmarkItemTypes } from '@shared/contracts/bookmarks-api'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:AppSidebar')
 
 // Quick actions data with soft utility colors
 const quickActions = [
@@ -178,7 +181,7 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
         })
       }
     } catch (error) {
-      console.error('Failed to create new note:', error)
+      log.error('Failed to create new note', error)
     }
   }, [openTab])
 

@@ -14,6 +14,9 @@ import {
   type InboxItemType
 } from '@shared/db/schema/inbox'
 import * as schema from '@shared/db/schema'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('Seed:Inbox')
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
 
@@ -418,7 +421,7 @@ function generateYearlyStats(): DailyStats[] {
 const SAMPLE_STATS: DailyStats[] = generateYearlyStats()
 
 export function seedSampleInboxItems(db: DrizzleDb): void {
-  console.log('Seeding sample inbox items...')
+  logger.info('Seeding sample inbox items...')
 
   let seededCount = 0
   let skippedCount = 0
@@ -465,11 +468,11 @@ export function seedSampleInboxItems(db: DrizzleDb): void {
     seededCount++
   }
 
-  console.log(`Seeded ${seededCount} inbox items (${skippedCount} already existed)`)
+  logger.info(`Seeded ${seededCount} inbox items (${skippedCount} already existed)`)
 }
 
 export function seedFilingHistory(db: DrizzleDb): void {
-  console.log('Seeding filing history...')
+  logger.info('Seeding filing history...')
 
   let seededCount = 0
 
@@ -502,11 +505,11 @@ export function seedFilingHistory(db: DrizzleDb): void {
     seededCount++
   }
 
-  console.log(`Seeded ${seededCount} filing history entries`)
+  logger.info(`Seeded ${seededCount} filing history entries`)
 }
 
 export function seedInboxStats(db: DrizzleDb): void {
-  console.log('Seeding inbox stats...')
+  logger.info('Seeding inbox stats...')
 
   let seededCount = 0
 
@@ -539,7 +542,7 @@ export function seedInboxStats(db: DrizzleDb): void {
     seededCount++
   }
 
-  console.log(`Seeded ${seededCount} days of inbox stats (12 months)`)
+  logger.info(`Seeded ${seededCount} days of inbox stats (12 months)`)
 }
 
 export function seedAllInboxData(db: DrizzleDb): void {

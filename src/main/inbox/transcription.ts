@@ -11,6 +11,7 @@ import { readFile } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
 import { BrowserWindow } from 'electron'
+import { createLogger } from '../lib/logger'
 import OpenAI from 'openai'
 import { toFile } from 'openai/uploads'
 import { eq } from 'drizzle-orm'
@@ -20,6 +21,8 @@ import { getDatabase } from '../database'
 import { getStatus } from '../vault'
 import { inboxItems } from '@shared/db/schema/inbox'
 import { InboxChannels } from '@shared/ipc-channels'
+
+const log = createLogger('Inbox:Transcription')
 
 // ============================================================================
 // Types
@@ -140,7 +143,7 @@ export async function transcribeAudio(
     const openai = getOpenAIClient()
     if (!openai) {
       const error = 'OpenAI API key not configured. Set OPENAI_API_KEY environment variable.'
-      console.warn(`[Transcription] ${error}`)
+      log.warn(error)
 
       // Update status to failed
       db.update(inboxItems)
@@ -164,7 +167,7 @@ export async function transcribeAudio(
     const absolutePath = resolveAttachmentPath(attachmentPath)
     if (!absolutePath || !existsSync(absolutePath)) {
       const error = `Audio file not found: ${attachmentPath}`
-      console.error(`[Transcription] ${error}`)
+      log.error(error)
 
       db.update(inboxItems)
         .set({
@@ -187,7 +190,7 @@ export async function transcribeAudio(
     const ext = getExtension(absolutePath)
     if (!SUPPORTED_FORMATS.includes(ext)) {
       const error = `Unsupported audio format: ${ext}. Supported: ${SUPPORTED_FORMATS.join(', ')}`
-      console.error(`[Transcription] ${error}`)
+      log.error(error)
 
       db.update(inboxItems)
         .set({
@@ -213,7 +216,7 @@ export async function transcribeAudio(
     if (audioBuffer.length > MAX_FILE_SIZE) {
       const sizeMB = Math.round(audioBuffer.length / 1024 / 1024)
       const error = `Audio file too large: ${sizeMB}MB. Maximum size is 25MB.`
-      console.error(`[Transcription] ${error}`)
+      log.error(error)
 
       db.update(inboxItems)
         .set({
@@ -232,7 +235,7 @@ export async function transcribeAudio(
       return { success: false, error }
     }
 
-    console.log(`[Transcription] Starting transcription for item ${itemId} (${ext} format)`)
+    log.info(`Starting transcription for item ${itemId} (${ext} format)`)
 
     // Call Whisper API
     const file = await toFile(audioBuffer, `audio.${ext}`, {
@@ -248,8 +251,8 @@ export async function transcribeAudio(
     // When response_format is 'text', the API returns a string directly
     const transcription = response as unknown as string
 
-    console.log(
-      `[Transcription] Success for item ${itemId}: "${transcription.substring(0, 50)}..."`
+    log.info(
+      `Success for item ${itemId}: "${transcription.substring(0, 50)}..."`
     )
 
     // Update item with transcription
@@ -272,7 +275,7 @@ export async function transcribeAudio(
     return { success: true, transcription }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown transcription error'
-    console.error(`[Transcription] Error for item ${itemId}:`, errorMessage)
+    log.error(`Error for item ${itemId}:`, errorMessage)
 
     // Check for specific OpenAI errors
     let userFriendlyError = errorMessage

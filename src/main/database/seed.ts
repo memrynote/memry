@@ -9,6 +9,9 @@ import { eq } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { projects, statuses, tasks, taskTags } from '@shared/db/schema'
 import * as schema from '@shared/db/schema'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('Seed')
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
 
@@ -62,7 +65,7 @@ function seedInboxProject(db: DrizzleDb): void {
   const existingInbox = db.select().from(projects).where(eq(projects.id, 'inbox')).get()
 
   if (existingInbox) {
-    console.log('Inbox project already exists, skipping seed')
+    logger.debug('Inbox project already exists, skipping seed')
     return
   }
 
@@ -109,7 +112,7 @@ function seedInboxProject(db: DrizzleDb): void {
     ])
     .run()
 
-  console.log('Seeded default inbox project with statuses')
+  logger.info('Seeded default inbox project with statuses')
 }
 
 // ============================================================================
@@ -147,7 +150,7 @@ function seedSampleProjects(db: DrizzleDb): void {
   for (const project of SAMPLE_PROJECTS) {
     const existing = db.select().from(projects).where(eq(projects.id, project.id)).get()
     if (existing) {
-      console.log(`Project "${project.name}" already exists, skipping`)
+      logger.debug(`Project "${project.name}" already exists, skipping`)
       continue
     }
 
@@ -197,7 +200,7 @@ function seedSampleProjects(db: DrizzleDb): void {
       ])
       .run()
 
-    console.log(`Seeded project "${project.name}" with statuses`)
+    logger.info(`Seeded project "${project.name}" with statuses`)
   }
 }
 
@@ -444,5 +447,5 @@ function seedSampleTaskData(db: DrizzleDb): void {
     }
   }
 
-  console.log(`Seeded ${sampleTasks.length} sample tasks`)
+  logger.info(`Seeded ${sampleTasks.length} sample tasks`)
 }

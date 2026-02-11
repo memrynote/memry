@@ -11,6 +11,9 @@ import { BacklinkCard } from './BacklinkCard'
 import { BacklinksEmptyState } from './BacklinksEmptyState'
 import { BacklinksLoadingState } from './BacklinksLoadingState'
 import type { BacklinksSectionProps, BacklinkSortOption, Backlink } from './types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:BacklinksSection')
 
 const SORT_LABELS: Record<BacklinkSortOption, string> = {
   recent: 'Recent',
@@ -131,7 +134,7 @@ export function BacklinksSection({
     if (propOnBacklinkClick) {
       propOnBacklinkClick(noteId)
     } else {
-      console.log('Navigate to note:', noteId)
+      log.info('Navigate to note:', noteId)
     }
   }
 

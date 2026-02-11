@@ -118,6 +118,7 @@ export interface SetupFirstDeviceResult {
   success: boolean
   deviceId?: string
   recoveryPhrase?: string
+  needsRecoveryInput?: boolean
   error?: string
 }
 
@@ -187,46 +188,62 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
 
   const requestOtp = useCallback(async (email: string): Promise<{ expiresIn?: number }> => {
     dispatch({ type: 'SET_AUTHENTICATING' })
-    const result = await authService.requestOtp({ email })
-    if (!result.success) {
-      dispatch({ type: 'SET_ERROR', error: result.error ?? 'Failed to send verification code' })
-      throw new Error(result.error ?? 'Failed to send verification code')
+    try {
+      const result = await authService.requestOtp({ email })
+      if (!result.success) {
+        throw new Error(extractErrorMessage(result.error, 'Failed to send verification code'))
+      }
+      dispatch({ type: 'OTP_REQUESTED', email })
+      return { expiresIn: result.expiresIn }
+    } catch (err) {
+      const message = extractErrorMessage(err, 'Failed to send verification code')
+      dispatch({ type: 'SET_ERROR', error: message })
+      throw new Error(message)
     }
-    dispatch({ type: 'OTP_REQUESTED', email })
-    return { expiresIn: result.expiresIn }
   }, [])
 
   const verifyOtp = useCallback(
     async (code: string): Promise<VerifyOtpResult> => {
       if (!state.email) throw new Error('No email set')
-      const result = await authService.verifyOtp({ email: state.email, code })
-      if (!result.success) {
-        dispatch({ type: 'SET_ERROR', error: result.error ?? 'Invalid verification code' })
-        throw new Error(result.error ?? 'Invalid verification code')
+      try {
+        const result = await authService.verifyOtp({ email: state.email, code })
+        if (!result.success) {
+          throw new Error(extractErrorMessage(result.error, 'Invalid verification code'))
+        }
+        const otpResult: VerifyOtpResult = {
+          deviceId: result.deviceId ?? '',
+          needsRecoverySetup: result.needsRecoverySetup ?? false,
+          needsRecoveryInput: result.needsRecoveryInput ?? false,
+          recoveryPhrase: result.recoveryPhrase ?? null
+        }
+        dispatch({
+          type: 'OTP_VERIFIED',
+          deviceId: otpResult.deviceId,
+          needsRecoverySetup: otpResult.needsRecoverySetup
+        })
+        return otpResult
+      } catch (err) {
+        const message = extractErrorMessage(err, 'Invalid verification code')
+        dispatch({ type: 'SET_ERROR', error: message })
+        throw new Error(message)
       }
-      const otpResult: VerifyOtpResult = {
-        deviceId: result.deviceId ?? '',
-        needsRecoverySetup: result.needsRecoverySetup ?? false,
-        needsRecoveryInput: result.needsRecoveryInput ?? false,
-        recoveryPhrase: result.recoveryPhrase ?? null
-      }
-      dispatch({
-        type: 'OTP_VERIFIED',
-        deviceId: otpResult.deviceId,
-        needsRecoverySetup: otpResult.needsRecoverySetup
-      })
-      return otpResult
     },
     [state.email]
   )
 
   const resendOtp = useCallback(async (): Promise<{ expiresIn?: number }> => {
     if (!state.email) throw new Error('No email set')
-    const result = await authService.resendOtp({ email: state.email })
-    if (!result.success) {
-      throw new Error(result.error ?? 'Failed to resend code')
+    try {
+      const result = await authService.resendOtp({ email: state.email })
+      if (!result.success) {
+        throw new Error(extractErrorMessage(result.error, 'Failed to resend code'))
+      }
+      return { expiresIn: result.expiresIn }
+    } catch (err) {
+      const message = extractErrorMessage(err, 'Failed to resend code')
+      dispatch({ type: 'SET_ERROR', error: message })
+      throw new Error(message)
     }
-    return { expiresIn: result.expiresIn }
   }, [state.email])
 
   const initOAuth = useCallback(async (): Promise<{ state: string } | null> => {
@@ -253,8 +270,9 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       try {
         const result = await authService.setupFirstDevice(input)
         if (result.error) {
-          dispatch({ type: 'SET_ERROR', error: result.error })
-          return result
+          const message = extractErrorMessage(result.error, 'Failed to set up device')
+          dispatch({ type: 'SET_ERROR', error: message })
+          return { ...result, error: message }
         }
         dispatch({
           type: 'OTP_VERIFIED',
@@ -274,20 +292,28 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   )
 
   const confirmRecoveryPhrase = useCallback(async (): Promise<void> => {
-    const result = await setupService.confirmRecoveryPhrase({ confirmed: true })
-    if (!result.success) {
-      throw new Error('Failed to confirm recovery phrase')
+    try {
+      const result = await setupService.confirmRecoveryPhrase({ confirmed: true })
+      if (!result.success) {
+        throw new Error('Failed to confirm recovery phrase')
+      }
+      dispatch({ type: 'RECOVERY_CONFIRMED' })
+    } catch (err) {
+      throw new Error(extractErrorMessage(err, 'Failed to confirm recovery phrase'))
     }
-    dispatch({ type: 'RECOVERY_CONFIRMED' })
   }, [])
 
   const linkViaRecovery = useCallback(async (phrase: string): Promise<{ deviceId?: string }> => {
-    const result = await window.api.syncLinking.linkViaRecovery({ recoveryPhrase: phrase })
-    if (!result.success) {
-      throw new Error(result.error ?? 'Recovery failed')
+    try {
+      const result = await window.api.syncLinking.linkViaRecovery({ recoveryPhrase: phrase })
+      if (!result.success) {
+        throw new Error(extractErrorMessage(result.error, 'Recovery failed'))
+      }
+      dispatch({ type: 'RECOVERY_LINKED', deviceId: result.deviceId ?? '' })
+      return { deviceId: result.deviceId }
+    } catch (err) {
+      throw new Error(extractErrorMessage(err, 'Recovery failed'))
     }
-    dispatch({ type: 'RECOVERY_LINKED', deviceId: result.deviceId ?? '' })
-    return { deviceId: result.deviceId }
   }, [])
 
   const clearError = useCallback(() => {

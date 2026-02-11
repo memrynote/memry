@@ -10,6 +10,9 @@
 
 import { type DrizzleDb, getIndexDatabase } from './client'
 import { updateFtsContent } from './fts'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('FTS')
 
 // ============================================================================
 // Types
@@ -56,7 +59,7 @@ export function queueFtsUpdate(noteId: string, content: string, tags: string[]):
         flushFtsUpdates(db)
       } catch (error) {
         // Database may not be open (vault closed), ignore
-        console.warn('[FTS Queue] Failed to flush updates:', error)
+        logger.warn('Failed to flush updates:', error)
       }
     }, FLUSH_DELAY_MS)
   }

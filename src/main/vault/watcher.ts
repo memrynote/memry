@@ -34,6 +34,9 @@ import { NotesChannels, JournalChannels } from '@shared/ipc-channels'
 import { trackPendingDelete, checkForRename, clearAllPendingDeletes } from './rename-tracker'
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@shared/file-types'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('Watcher')
 
 // ============================================================================
 // Types
@@ -81,7 +84,7 @@ function createPathDebouncer(
     const timeout = setTimeout(() => {
       pending.delete(filePath)
       handler(filePath).catch((error: unknown) => {
-        console.error(`[Watcher] Error processing ${filePath}:`, error)
+        logger.error(`Error processing ${filePath}:`, error)
       })
     }, delayMs)
 
@@ -230,7 +233,7 @@ export class VaultWatcher {
       })
       .on('error', (err) => {
         const error = err instanceof Error ? err : new Error(String(err))
-        console.error('[Watcher] Error:', error)
+        logger.error('Error:', error)
         this.onError?.(error)
       })
 
@@ -713,8 +716,7 @@ export async function startWatcher(vaultPath: string, excludePatterns?: string[]
     vaultPath,
     excludePatterns: patterns,
     onError: (error) => {
-      console.error('[Watcher] Error:', error)
-      // Could emit vault error here if needed
+      logger.error('Error:', error)
     }
   })
 }

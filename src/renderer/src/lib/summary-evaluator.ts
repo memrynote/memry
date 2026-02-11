@@ -9,6 +9,9 @@
 
 import type { NoteWithProperties, SummaryConfig } from '@shared/contracts/folder-view-api'
 import { evaluateFormula } from './expression-evaluator'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Evaluator:Summary')
 
 // ============================================================================
 // Types
@@ -351,7 +354,7 @@ function computeCustom(values: unknown[], expression?: string): SummaryResult {
     // Fallback: return count
     return computeCount(values)
   } catch (err) {
-    console.warn('Custom summary evaluation error:', err)
+    log.warn('Custom summary evaluation error:', err)
     return null
   }
 }

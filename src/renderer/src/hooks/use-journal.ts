@@ -7,7 +7,10 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
+
+const log = createLogger('Hook:Journal')
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type {
   JournalEntry,
@@ -158,7 +161,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
 
       // Perform save for the old date asynchronously using the service directly
       journalService.updateEntry(saveInput).catch((err) => {
-        console.error(`[useJournalEntry] Failed to save pending changes for ${oldDate}:`, err)
+        log.error(`Failed to save pending changes for ${oldDate}:`, err)
         // Note: We don't set save error here as we've already navigated away
       })
     }
@@ -279,7 +282,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       }
     } catch (err) {
       // Keep the dirty state so user knows there's unsaved content
-      console.error('Failed to save journal entry:', err)
+      log.error('Failed to save journal entry:', err)
       // Set save error for UI feedback
       const errorMessage = extractErrorMessage(err, 'Failed to save journal entry')
       // Check for disk-related errors
@@ -388,7 +391,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       }
       return result.success
     } catch (err) {
-      console.error('Failed to delete journal entry:', err)
+      log.error('Failed to delete journal entry:', err)
       return false
     }
   }, [date, deleteMutation])
