@@ -39,6 +39,9 @@ import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
 import { tasksService } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
 import { VaultOnboarding } from '@/components/vault-onboarding'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('App')
 
 // Base pages (non-task)
 export type BasePage = 'inbox' | 'home' | 'journal'
@@ -105,7 +108,7 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
         })
       }
     } catch (error) {
-      console.error('Failed to create new note:', error)
+      log.error('Failed to create new note:', error)
     }
   }, [openTab])
 
@@ -444,7 +447,7 @@ function App(): React.JSX.Element {
             dueTime: updates.dueTime ?? undefined
           })
         } catch (error) {
-          console.error('[App] Failed to persist task update:', error)
+          log.error('Failed to persist task update:', error)
           // Local state already updated, error will be visible in logs
         }
       }
@@ -463,7 +466,7 @@ function App(): React.JSX.Element {
         try {
           await tasksService.delete(taskId)
         } catch (error) {
-          console.error('[App] Failed to persist task deletion:', error)
+          log.error('Failed to persist task deletion:', error)
         }
       }
     },
@@ -516,7 +519,7 @@ function App(): React.JSX.Element {
   // Wrapped in TabErrorBoundary for graceful error handling
   const mainContent = (
     <TabErrorBoundary
-      onError={(error, errorInfo) => console.error('[App] Critical error:', error, errorInfo)}
+      onError={(error, errorInfo) => log.error('Critical error:', error, errorInfo)}
     >
       <TasksProvider
         initialTasks={tasks}

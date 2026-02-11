@@ -8,6 +8,9 @@
  */
 
 import type { NoteWithProperties, FilterExpression } from '@shared/contracts/folder-view-api'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Evaluator:Filter')
 
 // ============================================================================
 // Types
@@ -282,7 +285,7 @@ export function evaluateFilter(note: NoteWithProperties, filter: FilterExpressio
   if (typeof filter === 'string') {
     const parsed = parseExpression(filter)
     if (!parsed) {
-      console.warn('[filter-evaluator] Failed to parse expression:', filter)
+      log.warn('Failed to parse expression:', filter)
       return true // Invalid filter matches all
     }
     return evaluateCondition(note, parsed)
@@ -304,7 +307,7 @@ export function evaluateFilter(note: NoteWithProperties, filter: FilterExpressio
   }
 
   // Unknown filter type
-  console.warn('[filter-evaluator] Unknown filter type:', filter)
+  log.warn('Unknown filter type:', filter)
   return true
 }
 
@@ -400,7 +403,7 @@ function evaluateOperator(actual: unknown, operator: string, expected: unknown):
       return actual === false || actual === null || actual === undefined
 
     default:
-      console.warn('[filter-evaluator] Unknown operator:', operator)
+      log.warn('Unknown operator:', operator)
       return true
   }
 }

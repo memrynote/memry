@@ -155,7 +155,7 @@ export function SetupWizard(): React.JSX.Element {
           if (!result || result.error) {
             dispatch({
               type: 'SET_ERROR',
-              error: result?.error ?? 'Google sign-in failed'
+              error: extractErrorMessage(result?.error, 'Google sign-in failed')
             })
             return
           }

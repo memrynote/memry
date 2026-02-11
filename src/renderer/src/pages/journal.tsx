@@ -62,6 +62,9 @@ import { tasksService } from '@/services/tasks-service'
 import { parseConnectionDate } from '@/services/ai-connections-service'
 import { journalService } from '@/services/journal-service'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:Journal')
 
 // =============================================================================
 // CONSTANTS
@@ -500,7 +503,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             break
         }
       } catch (err) {
-        console.error('[JournalPage] Failed to resolve wiki link:', err)
+        log.error('Failed to resolve wiki link:', err)
         toast.error('Failed to open linked item')
       }
     },
@@ -563,7 +566,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           lastLoadedDateRef.current = null
           setEditorLoadCount((c) => c + 1)
         } catch (err) {
-          console.error('[JournalPage] Failed to create blank entry:', err)
+          log.error('Failed to create blank entry:', err)
         }
         return
       }
@@ -586,7 +589,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         lastLoadedDateRef.current = null
         setEditorLoadCount((c) => c + 1)
       } catch (err) {
-        console.error('[JournalPage] Failed to apply template:', err)
+        log.error('Failed to apply template:', err)
       }
     },
     [selectedDate, getTemplate]
@@ -619,7 +622,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       lastLoadedDateRef.current = null
       setEditorLoadCount((c) => c + 1)
     } catch (err) {
-      console.error('[JournalPage] Failed to apply default template:', err)
+      log.error('Failed to apply default template:', err)
     } finally {
       setIsApplyingDefaultTemplate(false)
     }
@@ -632,7 +635,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       lastLoadedDateRef.current = null
       setEditorLoadCount((c) => c + 1)
     } catch (err) {
-      console.error('[JournalPage] Failed to create blank entry:', err)
+      log.error('Failed to create blank entry:', err)
     }
   }, [selectedDate])
 
@@ -663,7 +666,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         if (task.completed) await tasksService.uncomplete(taskId)
         else await tasksService.complete({ id: taskId })
       } catch (error) {
-        console.error('Failed to toggle task completion:', error)
+        log.error('Failed to toggle task completion:', error)
       }
     },
     [dayTasks]
@@ -675,7 +678,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         const isoDate = parseConnectionDate(connection.date)
         if (isoDate) navigateToDay(isoDate)
       } else if (connection.type === 'note' && connection.title) {
-        console.log('Navigate to note:', connection.title)
+        log.info('Navigate to note:', connection.title)
       }
     },
     [navigateToDay]
@@ -715,7 +718,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       date={selectedDate}
       onRecover={handleErrorRecover}
       onError={(error, errorInfo) => {
-        console.error('[JournalPage] Error caught by boundary:', error, errorInfo)
+        log.error('Error caught by boundary:', error, errorInfo)
       }}
     >
       <div className={cn('flex h-full w-full overflow-hidden bg-background', className)}>
@@ -991,9 +994,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                     isPast={selectedDate < today}
                     showSchedule={journalSettings.showSchedule}
                     showTasks={journalSettings.showTasks}
-                    onTaskClick={(id) => console.log('Task clicked:', id)}
+                    onTaskClick={(id) => log.info('Task clicked:', id)}
                     onTaskToggle={handleTaskToggle}
-                    onEventClick={(id) => console.log('Event clicked:', id)}
+                    onEventClick={(id) => log.info('Event clicked:', id)}
                   />
                 </section>
               )}

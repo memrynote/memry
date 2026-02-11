@@ -68,6 +68,9 @@ import {
 import { getSubtasks } from '@/lib/subtask-utils'
 import { tasksService } from '@/services/tasks-service'
 import type { TaskSelectionType } from '@/App'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:Tasks')
 
 // ============================================================================
 // TYPES
@@ -339,7 +342,7 @@ export const TasksPage = ({
       try {
         await tasksService.reorder(taskIds, positions)
       } catch (error) {
-        console.error('[Tasks] Failed to reorder subtasks:', error)
+        log.error('Failed to reorder subtasks:', error)
       }
     }
   })
@@ -414,7 +417,7 @@ export const TasksPage = ({
         setIsProjectModalOpen(false)
         setEditingProject(null)
       } catch (error) {
-        console.error('Failed to save project:', error)
+        log.error('Failed to save project:', error)
         toast.error('Failed to save project')
       }
     },
@@ -427,7 +430,7 @@ export const TasksPage = ({
         await contextUpdateProject(project.id, { isArchived: true })
         toast.success('Project archived')
       } catch (error) {
-        console.error('Failed to archive project:', error)
+        log.error('Failed to archive project:', error)
         toast.error('Failed to archive project')
       }
     },
@@ -444,7 +447,7 @@ export const TasksPage = ({
           setSelectedProjectId(null)
         }
       } catch (error) {
-        console.error('Failed to delete project:', error)
+        log.error('Failed to delete project:', error)
         toast.error('Failed to delete project')
       }
     },
@@ -816,7 +819,7 @@ export const TasksPage = ({
           })
         }
       } catch (error) {
-        console.error('Failed to duplicate task:', error)
+        log.error('Failed to duplicate task:', error)
         toast.error('Failed to duplicate task')
       }
     },
