@@ -16,11 +16,14 @@ import {
   BulkDismissSchema,
   type ReminderWithTarget
 } from '@shared/contracts/reminders-api'
+import { createLogger } from '../lib/logger'
 import { createValidatedHandler, createStringHandler, createHandler } from './validate'
 import { getDatabase, getIndexDatabase } from '../database'
 import * as remindersService from '../lib/reminders'
 import * as notesQueries from '@shared/db/queries/notes'
 import { z } from 'zod'
+
+const logger = createLogger('IPC:Reminder')
 
 /**
  * Helper to get data database, throwing a user-friendly error if not available.
@@ -316,7 +319,7 @@ export function registerReminderHandlers(): void {
     })
   )
 
-  console.log('[IPC] Reminder handlers registered')
+  logger.info('Reminder handlers registered')
 }
 
 /**
@@ -336,5 +339,5 @@ export function unregisterReminderHandlers(): void {
   ipcMain.removeHandler(ReminderChannels.invoke.SNOOZE)
   ipcMain.removeHandler(ReminderChannels.invoke.BULK_DISMISS)
 
-  console.log('[IPC] Reminder handlers unregistered')
+  logger.info('Reminder handlers unregistered')
 }

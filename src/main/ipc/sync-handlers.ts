@@ -39,7 +39,10 @@ import { getDatabase } from '../database/client'
 import { store } from '../store'
 import { getFromServer, postToServer, SyncServerError } from '../sync/http-client'
 
+import { createLogger } from '../lib/logger'
 import { createValidatedHandler } from './validate'
+
+const logger = createLogger('IPC:Sync')
 
 // ============================================================================
 // Types
@@ -713,7 +716,7 @@ export function registerSyncHandlers(): void {
   ipcMain.handle(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT, notImplemented('DOWNLOAD_ATTACHMENT'))
   ipcMain.handle(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS, notImplemented('GET_DOWNLOAD_PROGRESS'))
 
-  console.log('[IPC] Sync handlers registered')
+  logger.info('Sync handlers registered')
 }
 
 export function unregisterSyncHandlers(): void {
@@ -753,7 +756,7 @@ export function unregisterSyncHandlers(): void {
   ipcMain.removeHandler(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT)
   ipcMain.removeHandler(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS)
 
-  console.log('[IPC] Sync handlers unregistered')
+  logger.info('Sync handlers unregistered')
 }
 
 export function seedOAuthSession(state: string, redirectUri: string): void {
