@@ -28,8 +28,13 @@ export const constantTimeCompare = async (a: string, b: string): Promise<boolean
   const encoder = new TextEncoder()
   const aBuf = encoder.encode(a)
   const bBuf = encoder.encode(b)
-  if (aBuf.byteLength !== bBuf.byteLength) return false
-  return crypto.subtle.timingSafeEqual(aBuf, bBuf)
+  const maxLen = Math.max(aBuf.byteLength, bBuf.byteLength)
+  const aPad = new Uint8Array(maxLen)
+  const bPad = new Uint8Array(maxLen)
+  aPad.set(aBuf)
+  bPad.set(bBuf)
+  const equal = crypto.subtle.timingSafeEqual(aPad, bPad)
+  return equal && aBuf.byteLength === bBuf.byteLength
 }
 
 export const storeOtp = async (

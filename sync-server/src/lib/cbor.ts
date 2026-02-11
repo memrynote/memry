@@ -9,8 +9,8 @@ export const encodeCbor = (
   const definedKeys = Object.keys(data).filter((k) => data[k] !== undefined)
   const extraKeys = definedKeys.filter((k) => !fieldOrder.includes(k))
   if (extraKeys.length > 0) {
-    console.warn(
-      `[CBOR] Fields not in ordering will be excluded from encoding: ${extraKeys.join(', ')}. Update CBOR_FIELD_ORDER if these should be signed.`
+    throw new Error(
+      `CBOR encoding rejected: fields not in ordering would be excluded: ${extraKeys.join(', ')}. Update CBOR_FIELD_ORDER.`
     )
   }
 

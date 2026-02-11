@@ -74,6 +74,8 @@ export const issueTokens = async (
   return tokens
 }
 
+const ROTATION_GRACE_SECONDS = 60
+
 export const rotateRefreshToken = async (
   db: D1Database,
   oldToken: string,
@@ -92,6 +94,26 @@ export const rotateRefreshToken = async (
     .first<{ id: string }>()
 
   if (!existing) {
+    const recentlyRotated = await db
+      .prepare(
+        'SELECT id FROM refresh_tokens WHERE token_hash = ? AND user_id = ? AND device_id = ? AND revoked = 1 AND rotated_at IS NOT NULL AND rotated_at > ?'
+      )
+      .bind(oldTokenHash, userId, deviceId, nowEpoch - ROTATION_GRACE_SECONDS)
+      .first<{ id: string }>()
+
+    if (recentlyRotated) {
+      const current = await db
+        .prepare(
+          'SELECT id FROM refresh_tokens WHERE user_id = ? AND device_id = ? AND revoked = 0 AND expires_at > ? ORDER BY created_at DESC LIMIT 1'
+        )
+        .bind(userId, deviceId, nowEpoch)
+        .first<{ id: string }>()
+
+      if (current) {
+        return generateTokens(userId, deviceId, privateKeyPem)
+      }
+    }
+
     await db
       .prepare('UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ? AND device_id = ?')
       .bind(userId, deviceId)
