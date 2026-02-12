@@ -13,6 +13,7 @@ export const AUTH_CHANNELS = {
   SETUP_FIRST_DEVICE: 'sync:setup-first-device',
   SETUP_NEW_ACCOUNT: 'sync:setup-new-account',
   CONFIRM_RECOVERY_PHRASE: 'sync:confirm-recovery-phrase',
+  GET_RECOVERY_PHRASE: 'sync:get-recovery-phrase',
   AUTH_LOGOUT: 'sync:logout'
 } as const
 
@@ -49,7 +50,6 @@ export interface VerifyOtpResult {
 
 export interface SetupNewAccountResult {
   success: boolean
-  recoveryPhrase?: string
   deviceId?: string
   error?: string
 }
@@ -88,7 +88,6 @@ export interface SetupFirstDeviceResult {
   success: boolean
   needsRecoverySetup?: boolean
   needsRecoveryInput?: boolean
-  recoveryPhrase?: string
   deviceId?: string
   error?: string
 }

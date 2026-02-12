@@ -2077,20 +2077,20 @@ interface SyncAuthClientAPI {
 interface SyncSetupClientAPI {
   setupFirstDevice: (input: { provider: 'google'; oauthToken: string; state: string }) => Promise<{
     success: boolean
-    recoveryPhrase?: string
+    needsRecoverySetup?: boolean
     deviceId?: string
     needsRecoveryInput?: boolean
     error?: string
   }>
   setupNewAccount: () => Promise<{
     success: boolean
-    recoveryPhrase?: string
     deviceId?: string
     error?: string
   }>
   confirmRecoveryPhrase: (input: { confirmed: boolean }) => Promise<{
     success: boolean
   }>
+  getRecoveryPhrase: () => Promise<string | null>
 }
 
 // Device Linking API

@@ -31,7 +31,6 @@ export interface VerifyOtpResult {
   deviceId: string
   needsRecoverySetup: boolean
   needsRecoveryInput: boolean
-  recoveryPhrase: string | null
 }
 
 type AuthAction =
@@ -117,7 +116,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 export interface SetupFirstDeviceResult {
   success: boolean
   deviceId?: string
-  recoveryPhrase?: string
+  needsRecoverySetup?: boolean
   needsRecoveryInput?: boolean
   error?: string
 }
@@ -223,8 +222,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
           const otpResult: VerifyOtpResult = {
             deviceId: setupResult.deviceId ?? '',
             needsRecoverySetup: true,
-            needsRecoveryInput: false,
-            recoveryPhrase: setupResult.recoveryPhrase ?? null
+            needsRecoveryInput: false
           }
           dispatch({
             type: 'OTP_VERIFIED',
@@ -237,8 +235,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
         const otpResult: VerifyOtpResult = {
           deviceId: '',
           needsRecoverySetup: true,
-          needsRecoveryInput: true,
-          recoveryPhrase: null
+          needsRecoveryInput: true
         }
         dispatch({
           type: 'OTP_VERIFIED',
@@ -301,7 +298,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
         dispatch({
           type: 'OTP_VERIFIED',
           deviceId: result.deviceId ?? '',
-          needsRecoverySetup: !!result.recoveryPhrase
+          needsRecoverySetup: !!result.needsRecoverySetup
         })
         return result
       } catch (err) {

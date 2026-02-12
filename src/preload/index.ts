@@ -1350,7 +1350,9 @@ const api = {
       ipcRenderer.invoke(SYNC_CHANNELS.SETUP_FIRST_DEVICE, input),
     setupNewAccount: () => ipcRenderer.invoke(SYNC_CHANNELS.SETUP_NEW_ACCOUNT),
     confirmRecoveryPhrase: (input: { confirmed: boolean }) =>
-      ipcRenderer.invoke(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, input)
+      ipcRenderer.invoke(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, input),
+    getRecoveryPhrase: (): Promise<string | null> =>
+      ipcRenderer.invoke(SYNC_CHANNELS.GET_RECOVERY_PHRASE)
   },
 
   // Device Linking API

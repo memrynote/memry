@@ -45,20 +45,28 @@ export const RequestOtpResponseSchema = z.object({
 
 export const VerifyOtpResponseSchema = z.object({
   success: z.boolean(),
-  accessToken: z.string().optional(),
-  refreshToken: z.string().optional(),
-  setupToken: z.string().optional(),
-  userId: z.string().optional(),
-  isNewUser: z.boolean().optional(),
-  needsSetup: z.boolean().optional()
+  isNewUser: z.boolean(),
+  needsSetup: z.boolean(),
+  setupToken: z.string()
 })
 
 export const DeviceRegisterResponseSchema = z.object({
   success: z.boolean(),
-  deviceId: z.string().optional(),
-  accessToken: z.string().optional(),
-  refreshToken: z.string().optional(),
-  error: z.string().optional()
+  deviceId: z.string(),
+  accessToken: z.string(),
+  refreshToken: z.string()
+})
+
+export const OAuthCallbackResponseSchema = z.object({
+  success: z.boolean(),
+  isNewUser: z.boolean(),
+  needsSetup: z.boolean(),
+  setupToken: z.string()
+})
+
+export const RecoveryDataResponseSchema = z.object({
+  kdfSalt: z.string(),
+  keyVerifier: z.string()
 })
 
 export const RefreshTokenResponseSchema = z.object({
@@ -77,4 +85,6 @@ export type OAuthCallback = z.infer<typeof OAuthCallbackSchema>
 export type RequestOtpResponse = z.infer<typeof RequestOtpResponseSchema>
 export type VerifyOtpResponse = z.infer<typeof VerifyOtpResponseSchema>
 export type DeviceRegisterResponse = z.infer<typeof DeviceRegisterResponseSchema>
+export type OAuthCallbackResponse = z.infer<typeof OAuthCallbackResponseSchema>
+export type RecoveryDataResponse = z.infer<typeof RecoveryDataResponseSchema>
 export type RefreshTokenResponse = z.infer<typeof RefreshTokenResponseSchema>
