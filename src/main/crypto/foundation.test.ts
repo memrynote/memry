@@ -146,29 +146,29 @@ describe('crypto foundation', () => {
     const mockedKeytar = vi.mocked(keytar)
     const keyBytes = new Uint8Array([11, 22, 33, 44])
 
-    await storeKey(KEYCHAIN_ENTRIES.VAULT_KEY, keyBytes)
+    await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, keyBytes)
 
     expect(mockedKeytar.setPassword).toHaveBeenCalledTimes(1)
     expect(mockedKeytar.setPassword).toHaveBeenCalledWith(
-      KEYCHAIN_ENTRIES.VAULT_KEY.service,
-      KEYCHAIN_ENTRIES.VAULT_KEY.account,
+      KEYCHAIN_ENTRIES.MASTER_KEY.service,
+      KEYCHAIN_ENTRIES.MASTER_KEY.account,
       sodium.to_base64(keyBytes, sodium.base64_variants.ORIGINAL)
     )
 
     mockedKeytar.getPassword.mockResolvedValueOnce(
       sodium.to_base64(keyBytes, sodium.base64_variants.ORIGINAL)
     )
-    const restored = await retrieveKey(KEYCHAIN_ENTRIES.VAULT_KEY)
+    const restored = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY)
     expect(restored).toEqual(keyBytes)
 
     mockedKeytar.getPassword.mockResolvedValueOnce(null)
-    const missing = await retrieveKey(KEYCHAIN_ENTRIES.VAULT_KEY)
+    const missing = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY)
     expect(missing).toBeNull()
 
-    await deleteKey(KEYCHAIN_ENTRIES.VAULT_KEY)
+    await deleteKey(KEYCHAIN_ENTRIES.MASTER_KEY)
     expect(mockedKeytar.deletePassword).toHaveBeenCalledWith(
-      KEYCHAIN_ENTRIES.VAULT_KEY.service,
-      KEYCHAIN_ENTRIES.VAULT_KEY.account
+      KEYCHAIN_ENTRIES.MASTER_KEY.service,
+      KEYCHAIN_ENTRIES.MASTER_KEY.account
     )
   })
 

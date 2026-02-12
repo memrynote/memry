@@ -23,6 +23,7 @@ import {
   encrypt,
   decrypt,
   generateFileKey,
+  getOrDeriveVaultKey,
   wrapFileKey,
   unwrapFileKey,
   signPayload,
@@ -86,10 +87,7 @@ function decodeBase64(value: string): Uint8Array | null {
 async function handleEncryptItem(input: EncryptItemInput): Promise<EncryptItemResult> {
   await ensureSodiumReady()
 
-  const vaultKey = await retrieveKey(KEYCHAIN_ENTRIES.VAULT_KEY)
-  if (!vaultKey) {
-    throw new Error('Vault key not found in keychain')
-  }
+  const vaultKey = await getOrDeriveVaultKey()
 
   const signingKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
   if (!signingKey) {
@@ -172,9 +170,11 @@ async function handleDecryptItem(input: DecryptItemInput): Promise<DecryptItemRe
     return { success: false, error: 'Signature verification failed' }
   }
 
-  const vaultKey = await retrieveKey(KEYCHAIN_ENTRIES.VAULT_KEY)
-  if (!vaultKey) {
-    return { success: false, error: 'Vault key not found in keychain' }
+  let vaultKey: Uint8Array
+  try {
+    vaultKey = await getOrDeriveVaultKey()
+  } catch {
+    return { success: false, error: 'Failed to derive vault key — master key missing' }
   }
 
   try {

@@ -157,21 +157,14 @@ describe('constantTimeEqual', () => {
     expect(result).toBe(false)
   })
 
-  it('should return false for different-length buffers while still performing memcmp on padded arrays', () => {
+  it('should throw for different-length buffers', () => {
     // #given
     const a = new Uint8Array([1, 2, 3])
     const b = new Uint8Array([1, 2])
-    mockSodium.memcmp.mockClear()
 
-    // #when
-    const result = constantTimeEqual(a, b)
-
-    // #then
-    expect(result).toBe(false)
-    expect(mockSodium.memcmp).toHaveBeenCalledTimes(1)
-    expect(mockSodium.memcmp).toHaveBeenCalledWith(
-      new Uint8Array([1, 2, 3]),
-      new Uint8Array([1, 2, 0])
+    // #when / #then
+    expect(() => constantTimeEqual(a, b)).toThrow(
+      'constantTimeEqual: inputs must have equal length'
     )
   })
 })

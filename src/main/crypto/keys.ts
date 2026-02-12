@@ -2,10 +2,14 @@ import sodium from 'libsodium-wrappers-sumo'
 
 import {
   ARGON2_PARAMS,
+  KEY_DERIVATION_CONTEXTS,
+  KEYCHAIN_ENTRIES,
   LINKING_HKDF_CONTEXTS,
   type DeviceSigningKeyPair,
   type MasterKeyMaterial
 } from '@shared/contracts/crypto'
+
+import { retrieveKey } from './keychain'
 
 const KDF_CONTEXT_MAP: Record<string, { ctx: string; id: number }> = {
   'memry-vault-key-v1': { ctx: 'memryvlt', id: 1 },
@@ -92,4 +96,17 @@ export const generateKeyVerifier = async (masterKey: Uint8Array): Promise<string
 
 export const generateSalt = (): Uint8Array => {
   return sodium.randombytes_buf(ARGON2_PARAMS.SALT_LENGTH)
+}
+
+export const getOrDeriveVaultKey = async (): Promise<Uint8Array> => {
+  const masterKey = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY)
+  if (!masterKey) {
+    throw new Error('Master key not found in keychain — cannot derive vault key')
+  }
+
+  try {
+    return await deriveKey(masterKey, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
+  } finally {
+    sodium.memzero(masterKey)
+  }
 }

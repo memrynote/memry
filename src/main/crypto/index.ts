@@ -7,7 +7,8 @@ export {
   generateFileKey,
   generateKeyVerifier,
   generateSalt,
-  getDevicePublicKey
+  getDevicePublicKey,
+  getOrDeriveVaultKey
 } from './keys'
 
 export { generateRecoveryPhrase, phraseToSeed, validateRecoveryPhrase } from './recovery'
@@ -28,15 +29,10 @@ export const secureCleanup = (...buffers: Uint8Array[]): void => {
 }
 
 export const constantTimeEqual = (a: Uint8Array, b: Uint8Array): boolean => {
-  const lengthsMatch = a.length === b.length
-  const maxLen = Math.max(a.length, b.length)
-  const paddedA = new Uint8Array(maxLen)
-  const paddedB = new Uint8Array(maxLen)
-  paddedA.set(a)
-  paddedB.set(b)
-
-  const contentsMatch = sodium.memcmp(paddedA, paddedB)
-  return lengthsMatch && contentsMatch
+  if (a.length !== b.length) {
+    throw new Error('constantTimeEqual: inputs must have equal length')
+  }
+  return sodium.memcmp(a, b)
 }
 
 export const initCrypto = async (): Promise<void> => {
