@@ -10,6 +10,7 @@ import {
   OAuthCallbackSchema
 } from '../contracts/auth-api'
 import { buildOtpEmailHtml } from '../emails/otp-template'
+import { safeBase64Decode } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { getPrivateKey, getPublicKey } from '../lib/jwt-keys'
 import { authMiddleware } from '../middleware/auth'
@@ -80,14 +81,6 @@ const validateGoogleIdToken = async (
     email: payload.email as string,
     sub: payload.sub as string,
     name: payload.name as string | undefined
-  }
-}
-
-const safeBase64Decode = (input: string): Uint8Array => {
-  try {
-    return Uint8Array.from(atob(input), (ch) => ch.charCodeAt(0))
-  } catch {
-    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Malformed base64 input', 400)
   }
 }
 
@@ -219,7 +212,11 @@ auth.get('/oauth/:provider', async (c) => {
   const redirectUri = clientRedirectUri ?? c.env.GOOGLE_REDIRECT_URI
 
   if (clientRedirectUri && !/^http:\/\/127\.0\.0\.1(:\d+)?(\/.*)?$/.test(clientRedirectUri)) {
-    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'redirect_uri must be a 127.0.0.1 loopback address', 400)
+    throw new AppError(
+      ErrorCodes.VALIDATION_ERROR,
+      'redirect_uri must be a 127.0.0.1 loopback address',
+      400
+    )
   }
 
   const state = await generateOAuthState(c.env.JWT_PRIVATE_KEY, redirectUri)
@@ -341,11 +338,7 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
 
   const tokenSessionNonce = c.get('sessionNonce')
   if (tokenSessionNonce && tokenSessionNonce !== sessionNonce) {
-    throw new AppError(
-      ErrorCodes.AUTH_INVALID_TOKEN,
-      'Session nonce mismatch',
-      401
-    )
+    throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Session nonce mismatch', 401)
   }
 
   const challengePayload = `${challengeNonce}:${tokenJti}`
