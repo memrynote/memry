@@ -1,4 +1,4 @@
-import { useReducer, useCallback, useEffect, useRef } from 'react'
+import { useReducer, useCallback, useEffect, useRef, useState } from 'react'
 import { CheckCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -21,7 +21,6 @@ type WizardStep =
 interface WizardState {
   step: WizardStep
   email: string
-  recoveryPhrase: string | null
   deviceId: string | null
   error: string | null
   isLoading: boolean
@@ -37,7 +36,6 @@ type WizardAction =
   | {
       type: 'OTP_VERIFIED'
       deviceId: string
-      recoveryPhrase: string | null
       needsRecovery: boolean
       needsRecoveryInput: boolean
     }
@@ -51,7 +49,6 @@ type WizardAction =
 const initialState: WizardState = {
   step: 'sign-in',
   email: '',
-  recoveryPhrase: null,
   deviceId: null,
   error: null,
   isLoading: false,
@@ -84,7 +81,6 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
         ...state,
         step: nextStep,
         deviceId: action.deviceId,
-        recoveryPhrase: action.recoveryPhrase,
         isLoading: false,
         error: null
       }
@@ -92,7 +88,7 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
     case 'RECOVERY_DISPLAYED':
       return { ...state, step: 'recovery-confirm' }
     case 'RECOVERY_CONFIRMED':
-      return { ...state, step: 'complete', recoveryPhrase: null, isLoading: false }
+      return { ...state, step: 'complete', isLoading: false }
     case 'RECOVERY_LINKED':
       return {
         ...state,
@@ -135,6 +131,8 @@ export function SetupWizard(): React.JSX.Element {
   const [state, dispatch] = useReducer(wizardReducer, initialState)
   const containerRef = useRef<HTMLDivElement>(null)
   const oauthStateRef = useRef<string | null>(null)
+  const recoveryPhraseRef = useRef<string | null>(null)
+  const [phraseLoaded, setPhraseLoaded] = useState(false)
 
   useEffect(() => {
     const el = containerRef.current
@@ -143,6 +141,30 @@ export function SetupWizard(): React.JSX.Element {
       'input, button:not([disabled]), [tabindex]:not([tabindex="-1"])'
     )
     firstFocusable?.focus()
+  }, [state.step])
+
+  useEffect(() => {
+    if (state.step !== 'recovery-display' && state.step !== 'recovery-confirm') return
+    if (recoveryPhraseRef.current) {
+      setPhraseLoaded(true)
+      return
+    }
+    let cancelled = false
+    window.api.syncSetup.getRecoveryPhrase().then((phrase) => {
+      if (cancelled) return
+      recoveryPhraseRef.current = phrase
+      setPhraseLoaded(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [state.step])
+
+  useEffect(() => {
+    if (state.step === 'complete' || state.step === 'sign-in') {
+      recoveryPhraseRef.current = null
+      setPhraseLoaded(false)
+    }
   }, [state.step])
 
   useEffect(() => {
@@ -162,8 +184,7 @@ export function SetupWizard(): React.JSX.Element {
           dispatch({
             type: 'OTP_VERIFIED',
             deviceId: result.deviceId ?? '',
-            recoveryPhrase: result.recoveryPhrase ?? null,
-            needsRecovery: !!result.recoveryPhrase,
+            needsRecovery: !!result.needsRecoverySetup,
             needsRecoveryInput: !!result.needsRecoveryInput
           })
         })
@@ -202,7 +223,6 @@ export function SetupWizard(): React.JSX.Element {
           dispatch({
             type: 'OTP_VERIFIED',
             deviceId: result.deviceId,
-            recoveryPhrase: result.recoveryPhrase,
             needsRecovery: result.needsRecoverySetup,
             needsRecoveryInput: result.needsRecoveryInput ?? false
           })
@@ -338,16 +358,16 @@ export function SetupWizard(): React.JSX.Element {
         </div>
       )}
 
-      {state.step === 'recovery-display' && state.recoveryPhrase && (
+      {state.step === 'recovery-display' && phraseLoaded && recoveryPhraseRef.current && (
         <RecoveryPhraseDisplay
-          phrase={state.recoveryPhrase}
+          phrase={recoveryPhraseRef.current}
           onContinue={() => dispatch({ type: 'RECOVERY_DISPLAYED' })}
         />
       )}
 
-      {state.step === 'recovery-confirm' && state.recoveryPhrase && (
+      {state.step === 'recovery-confirm' && recoveryPhraseRef.current && (
         <RecoveryPhraseConfirm
-          phrase={state.recoveryPhrase}
+          phrase={recoveryPhraseRef.current}
           onConfirmed={handleConfirmRecovery}
           onBack={() => dispatch({ type: 'GO_BACK', step: 'recovery-display' })}
         />

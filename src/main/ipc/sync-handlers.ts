@@ -1,11 +1,12 @@
 import { app, BrowserWindow, clipboard, ipcMain, shell } from 'electron'
+import { decodeJwt } from 'jose'
 import http from 'node:http'
 import https from 'node:https'
 import os from 'os'
 import sodium from 'libsodium-wrappers-sumo'
 
 import { syncDevices } from '@shared/db/schema/sync-devices'
-import { KEYCHAIN_ENTRIES, KEY_DERIVATION_CONTEXTS } from '@shared/contracts/crypto'
+import { KEYCHAIN_ENTRIES } from '@shared/contracts/crypto'
 import {
   RequestOtpSchema,
   VerifyOtpSchema,
@@ -14,7 +15,14 @@ import {
   SetupFirstDeviceSchema,
   ConfirmRecoveryPhraseSchema
 } from '@shared/contracts/ipc-auth'
-import { RefreshTokenResponseSchema } from '@shared/contracts/auth-api'
+import {
+  DeviceRegisterResponseSchema,
+  OAuthCallbackResponseSchema,
+  RecoveryDataResponseSchema,
+  RefreshTokenResponseSchema,
+  VerifyOtpResponseSchema
+} from '@shared/contracts/auth-api'
+import type { DeviceRegisterResponse } from '@shared/contracts/auth-api'
 import { LinkViaRecoverySchema } from '@shared/contracts/ipc-devices'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@shared/contracts/ipc-sync'
 
@@ -23,7 +31,6 @@ import { eq } from 'drizzle-orm'
 import {
   constantTimeEqual,
   deleteKey,
-  deriveKey,
   deriveMasterKey,
   generateDeviceSigningKeyPair,
   generateRecoveryPhrase,
@@ -48,40 +55,15 @@ const logger = createLogger('IPC:Sync')
 // Types
 // ============================================================================
 
-interface VerifyOtpServerResponse {
-  success: boolean
-  isNewUser: boolean
-  needsSetup: boolean
-  setupToken: string
-}
-
-interface OAuthCallbackServerResponse {
-  success: boolean
-  isNewUser: boolean
-  needsSetup: boolean
-  setupToken: string
-}
-
-interface DeviceRegisterServerResponse {
-  success: boolean
-  deviceId: string
-  accessToken: string
-  refreshToken: string
-}
-
 interface FirstDeviceSetupResult {
-  recoveryPhrase: string
   deviceId: string
-}
-
-interface RecoveryInfoResponse {
-  kdfSalt: string
-  keyVerifier: string
 }
 
 // ============================================================================
 // OTP Clipboard Detection State
 // ============================================================================
+
+let pendingRecoveryPhrase: string | null = null
 
 let otpClipboardInterval: ReturnType<typeof setInterval> | null = null
 let otpClipboardTimeout: ReturnType<typeof setTimeout> | null = null
@@ -176,6 +158,12 @@ const SUCCESS_HTML = `<!DOCTYPE html>
 .c{text-align:center}h1{font-size:1.5rem;margin-bottom:.5rem}p{color:#999}</style></head>
 <body><div class="c"><h1>Signed in</h1><p>You can close this tab and return to Memry.</p></div></body></html>`
 
+const ERROR_HTML = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Memry</title>
+<style>body{font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#111;color:#eee}
+.c{text-align:center}h1{font-size:1.5rem;margin-bottom:.5rem}p{color:#999}</style></head>
+<body><div class="c"><h1>Authentication failed</h1><p>Authentication was cancelled. You can close this window.</p></div></body></html>`
+
 const startLoopbackServer = (): Promise<{ server: http.Server; port: number }> => {
   return new Promise((resolve, reject) => {
     const server = http.createServer()
@@ -198,12 +186,17 @@ const startLoopbackServer = (): Promise<{ server: http.Server; port: number }> =
 const ACCESS_TOKEN_EXPIRY_SECONDS = 900
 const REFRESH_MAX_RETRIES = 3
 const REFRESH_BACKOFF_BASE_MS = 1000
+const FALLBACK_RETRY_THRESHOLD_S = 60
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null
 let activeRefreshPromise: Promise<boolean> | null = null
+let fallbackRetryScheduled = false
+let tokenIssuedAt = 0
 
 const scheduleTokenRefresh = (expiresInSeconds: number): void => {
   cancelTokenRefresh()
+  fallbackRetryScheduled = false
+  tokenIssuedAt = Date.now()
   const jitter = 0.5 + Math.random() * 0.2
   const refreshAtMs = Math.floor(expiresInSeconds * jitter) * 1000
   refreshTimer = setTimeout(() => {
@@ -256,6 +249,20 @@ const doRefreshAccessToken = async (): Promise<boolean> => {
     }
   }
 
+  if (!fallbackRetryScheduled && tokenIssuedAt > 0) {
+    const elapsedS = (Date.now() - tokenIssuedAt) / 1000
+    const remainingS = ACCESS_TOKEN_EXPIRY_SECONDS - elapsedS
+    if (remainingS > FALLBACK_RETRY_THRESHOLD_S) {
+      fallbackRetryScheduled = true
+      const retryAtMs = Math.floor(remainingS * 0.9) * 1000
+      refreshTimer = setTimeout(() => {
+        void refreshAccessToken()
+      }, retryAtMs)
+      logger.warn(`Scheduling fallback retry in ${Math.floor(retryAtMs / 1000)}s`)
+      return false
+    }
+  }
+
   emitSessionExpired()
   return false
 }
@@ -302,14 +309,12 @@ const PLATFORM_MAP: Record<string, string> = {
 }
 
 const extractJtiFromToken = (token: string): string => {
-  const parts = token.split('.')
-  if (parts.length !== 3) throw new Error('Invalid token format')
-  const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString()) as { jti?: string }
+  const payload = decodeJwt(token)
   if (!payload.jti) throw new Error('Token missing jti claim')
   return payload.jti
 }
 
-const registerDevice = async (setupToken: string): Promise<DeviceRegisterServerResponse> => {
+const registerDevice = async (setupToken: string): Promise<DeviceRegisterResponse> => {
   await sodium.ready
 
   const signingKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
@@ -328,7 +333,7 @@ const registerDevice = async (setupToken: string): Promise<DeviceRegisterServerR
     const signature = sodium.crypto_sign_detached(payloadBytes, signingKey)
     const signatureBase64 = sodium.to_base64(signature, sodium.base64_variants.ORIGINAL)
 
-    const response = await postToServer<DeviceRegisterServerResponse>(
+    const raw = await postToServer<unknown>(
       '/auth/devices',
       {
         name: os.hostname(),
@@ -341,6 +346,7 @@ const registerDevice = async (setupToken: string): Promise<DeviceRegisterServerR
       },
       setupToken
     )
+    const response = DeviceRegisterResponseSchema.parse(raw)
 
     await storeToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN, response.accessToken)
     await storeToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN, response.refreshToken)
@@ -358,15 +364,15 @@ const registerDevice = async (setupToken: string): Promise<DeviceRegisterServerR
 
 const persistKeysAndRegisterDevice = async (
   masterKey: Uint8Array,
-  vaultKey: Uint8Array,
   signingSecretKey: Uint8Array,
   setupToken: string,
   kdfSalt: string,
-  keyVerifier: string
+  keyVerifier: string,
+  skipSetup?: boolean
 ): Promise<string> => {
   await storeKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY, signingSecretKey)
 
-  let deviceResponse: DeviceRegisterServerResponse
+  let deviceResponse: DeviceRegisterResponse
   try {
     deviceResponse = await registerDevice(setupToken)
   } catch (err) {
@@ -374,19 +380,23 @@ const persistKeysAndRegisterDevice = async (
     throw err
   }
 
-  const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
-  if (!accessToken) {
-    throw new Error('Access token not found after device registration')
-  }
+  if (!skipSetup) {
+    const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
+    if (!accessToken) {
+      throw new Error('Access token not found after device registration')
+    }
 
-  try {
-    await postToServer('/auth/setup', { kdfSalt, keyVerifier }, accessToken)
-  } catch (err) {
-    logger.error('Failed to POST /auth/setup after device registration — recoverable on retry', err)
+    try {
+      await postToServer('/auth/setup', { kdfSalt, keyVerifier }, accessToken)
+    } catch (err) {
+      logger.error(
+        'Failed to POST /auth/setup after device registration — recoverable on retry',
+        err
+      )
+    }
   }
 
   await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, masterKey)
-  await storeKey(KEYCHAIN_ENTRIES.VAULT_KEY, vaultKey)
 
   const db = getDatabase()
   await db.insert(syncDevices).values({
@@ -407,31 +417,28 @@ const performFirstDeviceSetup = async (setupToken: string): Promise<FirstDeviceS
   const salt = generateSalt()
 
   let masterKey: Uint8Array | undefined
-  let vaultKey: Uint8Array | undefined
   let signingSecretKey: Uint8Array | undefined
 
   try {
     const { masterKey: mk, kdfSalt, keyVerifier } = await deriveMasterKey(seed, salt)
     masterKey = mk
-    vaultKey = await deriveKey(masterKey, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
 
     const keyPair = await generateDeviceSigningKeyPair()
     signingSecretKey = keyPair.secretKey
 
     const deviceId = await persistKeysAndRegisterDevice(
       masterKey,
-      vaultKey,
       signingSecretKey,
       setupToken,
       kdfSalt,
       keyVerifier
     )
 
-    return { recoveryPhrase: phrase, deviceId }
+    pendingRecoveryPhrase = phrase
+    return { deviceId }
   } finally {
     secureCleanup(seed, salt)
     if (masterKey) secureCleanup(masterKey)
-    if (vaultKey) secureCleanup(vaultKey)
     if (signingSecretKey) secureCleanup(signingSecretKey)
   }
 }
@@ -462,10 +469,11 @@ export function registerSyncHandlers(): void {
   ipcMain.handle(
     SYNC_CHANNELS.AUTH_VERIFY_OTP,
     createValidatedHandler(VerifyOtpSchema, async (input) => {
-      const serverResponse = await postToServer<VerifyOtpServerResponse>('/auth/otp/verify', {
+      const raw = await postToServer<unknown>('/auth/otp/verify', {
         email: input.email,
         code: input.code
       })
+      const serverResponse = VerifyOtpResponseSchema.parse(raw)
 
       stopOtpClipboardDetection()
 
@@ -488,8 +496,8 @@ export function registerSyncHandlers(): void {
       return { success: false, error: 'Session expired. Please sign in again.' }
     }
 
-    const { recoveryPhrase, deviceId } = await performFirstDeviceSetup(setupToken)
-    return { success: true, recoveryPhrase, deviceId }
+    const { deviceId } = await performFirstDeviceSetup(setupToken)
+    return { success: true, deviceId }
   })
 
   ipcMain.handle(
@@ -549,6 +557,22 @@ export function registerSyncHandlers(): void {
           return
         }
 
+        const oauthError = reqUrl.searchParams.get('error')
+        if (oauthError) {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+          res.end(ERROR_HTML)
+
+          const cbState = reqUrl.searchParams.get('state')
+          if (cbState) oauthSessions.delete(cbState)
+
+          for (const win of BrowserWindow.getAllWindows()) {
+            win.webContents.send(SYNC_EVENTS.OAUTH_ERROR, { error: oauthError })
+          }
+
+          shutdownLoopbackServer()
+          return
+        }
+
         const code = reqUrl.searchParams.get('code')
         const cbState = reqUrl.searchParams.get('state')
 
@@ -586,21 +610,20 @@ export function registerSyncHandlers(): void {
     createValidatedHandler(SetupFirstDeviceSchema, async (input) => {
       const session = consumeOAuthSession(input.state)
 
-      const serverResponse = await postToServer<OAuthCallbackServerResponse>(
+      const raw = await postToServer<unknown>(
         `/auth/oauth/${input.provider}/callback`,
         { code: input.oauthToken, state: input.state, redirectUri: session.redirectUri }
       )
+      const serverResponse = OAuthCallbackResponseSchema.parse(raw)
 
       await storeToken(KEYCHAIN_ENTRIES.SETUP_TOKEN, serverResponse.setupToken)
 
       if (serverResponse.needsSetup) {
-        const { recoveryPhrase, deviceId } = await performFirstDeviceSetup(
-          serverResponse.setupToken
-        )
+        const { deviceId } = await performFirstDeviceSetup(serverResponse.setupToken)
 
         return {
           success: true,
-          recoveryPhrase,
+          needsRecoverySetup: true,
           deviceId
         }
       }
@@ -621,17 +644,23 @@ export function registerSyncHandlers(): void {
     })
   )
 
+  ipcMain.handle(SYNC_CHANNELS.GET_RECOVERY_PHRASE, () => {
+    const phrase = pendingRecoveryPhrase
+    pendingRecoveryPhrase = null
+    return phrase
+  })
+
   // --- Logout (clears all local auth state) ---
 
   ipcMain.handle(SYNC_CHANNELS.AUTH_LOGOUT, async () => {
     cancelTokenRefresh()
+    pendingRecoveryPhrase = null
 
     const keychainEntries = [
       KEYCHAIN_ENTRIES.ACCESS_TOKEN,
       KEYCHAIN_ENTRIES.REFRESH_TOKEN,
       KEYCHAIN_ENTRIES.SETUP_TOKEN,
       KEYCHAIN_ENTRIES.MASTER_KEY,
-      KEYCHAIN_ENTRIES.VAULT_KEY,
       KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY
     ]
     await Promise.allSettled(keychainEntries.map((entry) => deleteKey(entry)))
@@ -660,16 +689,13 @@ export function registerSyncHandlers(): void {
         return { success: false, error: 'Session expired. Please sign in again.' }
       }
 
-      const recoveryInfo = await getFromServer<RecoveryInfoResponse>(
-        '/auth/recovery-info',
-        setupToken
-      )
+      const rawRecovery = await getFromServer<unknown>('/auth/recovery-info', setupToken)
+      const recoveryInfo = RecoveryDataResponseSchema.parse(rawRecovery)
 
       const seed = await phraseToSeed(input.recoveryPhrase)
       const saltBytes = sodium.from_base64(recoveryInfo.kdfSalt, sodium.base64_variants.ORIGINAL)
 
       let masterKey: Uint8Array | undefined
-      let vaultKey: Uint8Array | undefined
       let signingSecretKey: Uint8Array | undefined
 
       try {
@@ -683,25 +709,22 @@ export function registerSyncHandlers(): void {
           return { success: false, error: 'Recovery phrase does not match. Please try again.' }
         }
 
-        vaultKey = await deriveKey(masterKey, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
-
         const keyPair = await generateDeviceSigningKeyPair()
         signingSecretKey = keyPair.secretKey
 
         const deviceId = await persistKeysAndRegisterDevice(
           masterKey,
-          vaultKey,
           signingSecretKey,
           setupToken,
           derived.kdfSalt,
-          derived.keyVerifier
+          derived.keyVerifier,
+          true
         )
 
         return { success: true, deviceId }
       } finally {
         secureCleanup(seed, saltBytes)
         if (masterKey) secureCleanup(masterKey)
-        if (vaultKey) secureCleanup(vaultKey)
         if (signingSecretKey) secureCleanup(signingSecretKey)
       }
     })
@@ -743,6 +766,7 @@ export function registerSyncHandlers(): void {
 export function unregisterSyncHandlers(): void {
   stopOtpClipboardDetection()
   cancelTokenRefresh()
+  pendingRecoveryPhrase = null
   oauthSessions.clear()
   shutdownLoopbackServer()
 
@@ -755,6 +779,7 @@ export function unregisterSyncHandlers(): void {
   ipcMain.removeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE)
   ipcMain.removeHandler(SYNC_CHANNELS.SETUP_NEW_ACCOUNT)
   ipcMain.removeHandler(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE)
+  ipcMain.removeHandler(SYNC_CHANNELS.GET_RECOVERY_PHRASE)
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_LOGOUT)
 
   ipcMain.removeHandler(SYNC_CHANNELS.GENERATE_LINKING_QR)
