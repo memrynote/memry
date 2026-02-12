@@ -6,6 +6,7 @@ export default defineConfig({
     name: 'sync-server',
     environment: 'node',
     globals: true,
+    setupFiles: ['src/__mocks__/globals-setup.ts'],
     include: ['src/**/*.{test,spec}.ts', 'schema/**/*.{test,spec}.ts', 'wrangler.test.ts'],
     coverage: {
       provider: 'v8',
