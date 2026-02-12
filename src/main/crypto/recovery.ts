@@ -1,4 +1,5 @@
 import * as bip39 from 'bip39'
+import sodium from 'libsodium-wrappers-sumo'
 
 import type { RecoveryPhraseResult } from '@shared/contracts/crypto'
 
@@ -10,7 +11,7 @@ export const generateRecoveryPhrase = async (): Promise<RecoveryPhraseResult> =>
   const seed = new Uint8Array(seedBuffer.length)
   seed.set(new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength))
   const original = new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength)
-  original.fill(0)
+  sodium.memzero(original)
 
   return { phrase, seed }
 }
@@ -24,6 +25,6 @@ export const phraseToSeed = async (phrase: string): Promise<Uint8Array> => {
   const seed = new Uint8Array(seedBuffer.length)
   seed.set(new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength))
   const original = new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength)
-  original.fill(0)
+  sodium.memzero(original)
   return seed
 }
