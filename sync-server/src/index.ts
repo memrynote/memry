@@ -6,6 +6,7 @@ import { cors } from 'hono/cors'
 
 import { AppError, ErrorCodes, errorHandler } from './lib/errors'
 import { auth } from './routes/auth'
+import { sync } from './routes/sync'
 import { securityHeaders } from './middleware/security'
 import {
   cleanupConsumedSetupTokens,
@@ -87,6 +88,7 @@ app.onError(errorHandler)
 app.get('/health', (c) => c.json({ status: 'ok' }))
 
 app.route('/auth', auth)
+app.route('/sync', sync)
 
 const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env, _ctx) => {
   const results = await Promise.allSettled([

@@ -211,6 +211,10 @@ export const PushResponseSchema = z.object({
   serverTime: z.number().int().min(0)
 })
 
+export const PullRequestSchema = z.object({
+  itemIds: z.array(z.string().uuid()).min(1).max(100)
+})
+
 export const SyncItemRefSchema = z.object({
   id: z.string().uuid(),
   type: z.enum(SYNC_ITEM_TYPES),
@@ -303,4 +307,5 @@ export type SyncStatusInput = z.infer<typeof SyncStatusSchema>
 export type ConflictResponseInput = z.infer<typeof ConflictResponseSchema>
 export type DeviceSyncStateInput = z.infer<typeof DeviceSyncStateSchema>
 export type CursorPositionInput = z.infer<typeof CursorPositionSchema>
+export type PullRequestInput = z.infer<typeof PullRequestSchema>
 export type SignatureMetadataInput = z.infer<typeof SignatureMetadataSchema>
