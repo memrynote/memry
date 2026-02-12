@@ -79,7 +79,10 @@ describe('SyncEngine', () => {
   describe('#given engine #when start called while online', () => {
     it('#then connects WebSocket', async () => {
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
-        items: [], deleted: [], hasMore: false, nextCursor: 0
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
       })
       const deps = createMockDeps(testDb)
       const engine = new SyncEngine(deps)
@@ -107,7 +110,10 @@ describe('SyncEngine', () => {
   describe('#given engine #when stop called', () => {
     it('#then disconnects WebSocket and goes idle', async () => {
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
-        items: [], deleted: [], hasMore: false, nextCursor: 0
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
       })
       const deps = createMockDeps(testDb)
       const engine = new SyncEngine(deps)
@@ -238,7 +244,10 @@ describe('SyncEngine', () => {
   describe('#given paused engine #when resume called', () => {
     it('#then clears paused state and emits event', async () => {
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
-        items: [], deleted: [], hasMore: false, nextCursor: 0
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
       })
       const deps = createMockDeps(testDb)
       const engine = new SyncEngine(deps)
@@ -271,13 +280,15 @@ describe('SyncEngine', () => {
   describe('#given engine #when network goes offline', () => {
     it('#then transitions to offline state', async () => {
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
-        items: [], deleted: [], hasMore: false, nextCursor: 0
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
       })
       const network = createMockNetwork(true)
       const deps = createMockDeps(testDb, { network })
       const engine = new SyncEngine(deps)
       await engine.start()
-
       ;(network as unknown as { _online: boolean })._online = false
       network.emit('status-changed', { online: false })
 
@@ -291,7 +302,10 @@ describe('SyncEngine', () => {
   describe('#given offline engine #when network comes back', () => {
     it('#then transitions out of offline and reconnects WS', async () => {
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
-        items: [], deleted: [], hasMore: false, nextCursor: 0
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
       })
       const network = createMockNetwork(false)
       const deps = createMockDeps(testDb, { network })
@@ -299,7 +313,6 @@ describe('SyncEngine', () => {
       await engine.start()
 
       expect(engine.currentState).toBe('offline')
-
       ;(network as unknown as { _online: boolean })._online = true
       network.emit('status-changed', { online: true })
 
@@ -314,7 +327,10 @@ describe('SyncEngine', () => {
   describe('#given connected engine #when WS receives changes_available', () => {
     it('#then triggers pull', async () => {
       const getServerMock = vi.fn().mockResolvedValue({
-        items: [], deleted: [], hasMore: false, nextCursor: 0
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
       })
       vi.spyOn(await import('./http-client'), 'getFromServer').mockImplementation(getServerMock)
 
@@ -352,8 +368,8 @@ describe('SyncEngine', () => {
         resolveFirst = r
       })
 
-      const getServerMock = vi.fn().mockImplementation(
-        () => blockingPromise.then(() => ({
+      const getServerMock = vi.fn().mockImplementation(() =>
+        blockingPromise.then(() => ({
           items: [],
           deleted: [],
           hasMore: false,

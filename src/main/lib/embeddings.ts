@@ -197,9 +197,7 @@ export async function generateEmbedding(text: string): Promise<Float32Array | nu
 
     // Verify dimension
     if (embedding.length !== EMBEDDING_DIMENSION) {
-      logger.error(
-        `Unexpected dimension: ${embedding.length} (expected ${EMBEDDING_DIMENSION})`
-      )
+      logger.error(`Unexpected dimension: ${embedding.length} (expected ${EMBEDDING_DIMENSION})`)
       return null
     }
 

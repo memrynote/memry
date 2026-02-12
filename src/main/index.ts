@@ -92,7 +92,9 @@ function loadEnvironmentConfig(): void {
   envConfig.openaiApiKey = process.env.OPENAI_API_KEY
 
   if (!envConfig.openaiApiKey) {
-    configLog.warn('OPENAI_API_KEY not set. Voice transcription and AI suggestions will be disabled.')
+    configLog.warn(
+      'OPENAI_API_KEY not set. Voice transcription and AI suggestions will be disabled.'
+    )
   } else {
     configLog.info('OpenAI API key loaded successfully')
   }
@@ -592,7 +594,9 @@ function registerQuickCaptureShortcut(): void {
   })
 
   if (!registered) {
-    quickCaptureLog.warn(`failed to register global shortcut: ${shortcut}. It may be in use by another application.`)
+    quickCaptureLog.warn(
+      `failed to register global shortcut: ${shortcut}. It may be in use by another application.`
+    )
   }
 }
 

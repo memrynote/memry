@@ -318,9 +318,7 @@ export function registerSearchHandlers(): void {
         })
 
         const queryTime = Math.round(performance.now() - startTime)
-        logger.debug(
-          `Advanced search completed in ${queryTime}ms, found ${results.length} results`
-        )
+        logger.debug(`Advanced search completed in ${queryTime}ms, found ${results.length} results`)
 
         return results.map((r) => ({
           type: 'note' as const,

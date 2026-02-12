@@ -42,8 +42,8 @@ export function RecoveryPhraseInput({
           <h3 className="font-display text-xl tracking-tight">Enter recovery phrase</h3>
         </div>
         <p className="font-serif text-[15px] text-muted-foreground leading-relaxed">
-          This device was previously signed out. Enter your 24-word recovery phrase to restore access
-          to your encrypted data.
+          This device was previously signed out. Enter your 24-word recovery phrase to restore
+          access to your encrypted data.
         </p>
       </div>
 
@@ -91,11 +91,7 @@ export function RecoveryPhraseInput({
             <ArrowLeft className="w-3.5 h-3.5" />
             Back
           </Button>
-          <Button
-            type="submit"
-            className="flex-1 h-11"
-            disabled={isLoading || !isValidLength}
-          >
+          <Button type="submit" className="flex-1 h-11" disabled={isLoading || !isValidLength}>
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />

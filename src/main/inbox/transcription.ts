@@ -251,9 +251,7 @@ export async function transcribeAudio(
     // When response_format is 'text', the API returns a string directly
     const transcription = response as unknown as string
 
-    log.info(
-      `Success for item ${itemId}: "${transcription.substring(0, 50)}..."`
-    )
+    log.info(`Success for item ${itemId}: "${transcription.substring(0, 50)}..."`)
 
     // Update item with transcription
     db.update(inboxItems)

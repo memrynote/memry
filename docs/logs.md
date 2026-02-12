@@ -12,8 +12,8 @@
 
 ## Current State
 
-- **256 console.* calls** across 34 files in `src/main/`
-- **182 console.* calls** across 55 files in `src/renderer/`
+- **256 console.\* calls** across 34 files in `src/main/`
+- **182 console.\* calls** across 55 files in `src/renderer/`
 - Manual `[Prefix]` namespacing (e.g. `[Indexer]`, `[IPC]`, `[Vault]`)
 - Custom error classes: `VaultError`, `NoteError`, `DatabaseError`, `WatcherError` + sync errors
 - 3 ErrorBoundary components (tab, editor, journal)
@@ -25,6 +25,7 @@
 ## Decision: electron-log over Pino
 
 The 007 spec proposed Pino, but `electron-log` is better for this use case:
+
 - Native Electron support (main + renderer in one config)
 - Auto file rotation + OS-appropriate log paths (`~/Library/Logs/Memry/`)
 - Built-in console transport (dev) + file transport (prod)
@@ -40,6 +41,7 @@ We'll use Pino for the sync server (Cloudflare Workers) later — that's out of 
 ### Task 1: Install electron-log and create logger module
 
 **Files:**
+
 - Create: `src/main/lib/logger.ts`
 - Create: `src/main/lib/logger.test.ts`
 - Modify: `package.json` (add dependency)
@@ -151,6 +153,7 @@ git commit -m "feat: add electron-log logger module with scoped loggers"
 ### Task 2: Initialize logger in main process entry
 
 **Files:**
+
 - Modify: `src/main/index.ts` (~line 1-10 for import, ~line 105 for `createWindow`)
 
 **Step 1: Add logger initialization at top of main entry**
@@ -165,9 +168,10 @@ const mainLog = createLogger('Main')
 
 **Step 2: Replace `console.log` / `console.error` calls in `src/main/index.ts`**
 
-Replace the ~22 console.* calls with `mainLog.info()`, `mainLog.error()`, `mainLog.warn()` etc. Keep the same messages, just swap the call.
+Replace the ~22 console.\* calls with `mainLog.info()`, `mainLog.error()`, `mainLog.warn()` etc. Keep the same messages, just swap the call.
 
 For example:
+
 - `console.log('[IPC] ...', x)` → `mainLog.info('...', x)` (scope already provides namespace)
 - `console.error('...')` → `mainLog.error('...')`
 
@@ -188,9 +192,10 @@ git commit -m "refactor: replace console.* with scoped logger in main entry"
 
 ---
 
-### Task 3: Replace console.* in IPC layer
+### Task 3: Replace console.\* in IPC layer
 
 **Files:**
+
 - Modify: `src/main/ipc/validate.ts` (1 console.error)
 - Modify: `src/main/ipc/index.ts` (3 console calls)
 
@@ -202,6 +207,7 @@ Replace `console.error('[IPC Handler]', error)` on line 43 with `ipcLog.error('H
 **Step 2: Update ipc/index.ts**
 
 Add import, replace:
+
 - `console.warn('IPC handlers already registered...')` → `ipcLog.warn('handlers already registered, skipping')`
 - `console.log('[IPC] All handlers registered')` → `ipcLog.info('all handlers registered')`
 - `console.log('All IPC handlers unregistered')` → `ipcLog.info('all handlers unregistered')`
@@ -224,9 +230,10 @@ git commit -m "refactor: replace console.* with scoped logger in IPC layer"
 
 ---
 
-### Task 4: Replace console.* in vault modules
+### Task 4: Replace console.\* in vault modules
 
 **Files (11 console calls in `src/main/vault/index.ts`, plus others):**
+
 - Modify: `src/main/vault/index.ts`
 - Modify: `src/main/vault/indexer.ts` (26 calls — heaviest file)
 - Modify: `src/main/vault/watcher.ts` (3 calls)
@@ -236,7 +243,7 @@ git commit -m "refactor: replace console.* with scoped logger in IPC layer"
 
 **Approach:** Add `const vaultLog = createLogger('Vault')` (or more specific scopes like `Indexer`, `Watcher`) at top of each file. Do mechanical replacement of `console.*` → `vaultLog.*`. Remove `[Prefix]` text since scope handles it.
 
-**Step 1:** Replace all console.* in each file with scoped logger calls
+**Step 1:** Replace all console.\* in each file with scoped logger calls
 
 **Step 2:** Run vault tests
 
@@ -255,9 +262,10 @@ git commit -m "refactor: replace console.* with scoped logger in vault modules"
 
 ---
 
-### Task 5: Replace console.* in inbox modules
+### Task 5: Replace console.\* in inbox modules
 
 **Files (~112 console calls across 8 files):**
+
 - Modify: `src/main/inbox/filing.ts` (12 calls)
 - Modify: `src/main/inbox/social.ts` (12 calls)
 - Modify: `src/main/inbox/suggestions.ts` (19 calls)
@@ -273,6 +281,7 @@ git commit -m "refactor: replace console.* with scoped logger in vault modules"
 **Step 1-3:** Same pattern as Task 4
 
 **Commit:**
+
 ```bash
 git add src/main/inbox/
 git commit -m "refactor: replace console.* with scoped logger in inbox modules"
@@ -280,9 +289,10 @@ git commit -m "refactor: replace console.* with scoped logger in inbox modules"
 
 ---
 
-### Task 6: Replace console.* in remaining IPC handler files
+### Task 6: Replace console.\* in remaining IPC handler files
 
 **Files (~57 console calls across 10 handler files):**
+
 - `src/main/ipc/inbox-handlers.ts` (35 calls — heaviest)
 - `src/main/ipc/search-handlers.ts` (7)
 - `src/main/ipc/settings-handlers.ts` (3)
@@ -299,6 +309,7 @@ git commit -m "refactor: replace console.* with scoped logger in inbox modules"
 **Step 1-3:** Same pattern
 
 **Commit:**
+
 ```bash
 git add src/main/ipc/
 git commit -m "refactor: replace console.* with scoped logger in IPC handlers"
@@ -306,9 +317,10 @@ git commit -m "refactor: replace console.* with scoped logger in IPC handlers"
 
 ---
 
-### Task 7: Replace console.* in remaining main process files
+### Task 7: Replace console.\* in remaining main process files
 
 **Files:**
+
 - `src/main/lib/embeddings.ts` (9 calls)
 - `src/main/lib/reminders.ts` (19 calls)
 - `src/main/database/seed.ts` (5 calls)
@@ -318,6 +330,7 @@ git commit -m "refactor: replace console.* with scoped logger in IPC handlers"
 - `src/main/sync/http-client.ts` (check for console calls)
 
 **Commit:**
+
 ```bash
 git add src/main/lib/ src/main/database/ src/main/store.ts src/main/sync/
 git commit -m "refactor: replace console.* with scoped logger in lib/db/sync modules"
@@ -328,6 +341,7 @@ git commit -m "refactor: replace console.* with scoped logger in lib/db/sync mod
 ### Task 8: Add renderer-side logger wrapper
 
 **Files:**
+
 - Create: `src/renderer/src/lib/logger.ts`
 
 In Electron with `electron-log`, the renderer can use `electron-log/renderer` which proxies logs to main process for file writing.
@@ -344,9 +358,10 @@ function createLogger(scope: string) {
 export { log, createLogger }
 ```
 
-**Note:** Renderer console.* replacement is lower priority — the critical 256 main process calls come first. Renderer logs are mostly user-facing error catch blocks. We'll replace them incrementally alongside future feature work, NOT as a big-bang migration. The infrastructure is in place.
+**Note:** Renderer console.\* replacement is lower priority — the critical 256 main process calls come first. Renderer logs are mostly user-facing error catch blocks. We'll replace them incrementally alongside future feature work, NOT as a big-bang migration. The infrastructure is in place.
 
 **Commit:**
+
 ```bash
 git add src/renderer/src/lib/logger.ts
 git commit -m "feat: add renderer-side logger wrapper for electron-log"
@@ -359,6 +374,7 @@ git commit -m "feat: add renderer-side logger wrapper for electron-log"
 ### Task 9: Install and configure Sentry for Electron
 
 **Files:**
+
 - Modify: `package.json`
 - Create: `src/main/lib/sentry.ts`
 - Modify: `src/main/index.ts`
@@ -408,7 +424,7 @@ function initSentry(): void {
     },
 
     // Don't send events in dev
-    sampleRate: process.env.NODE_ENV === 'production' ? 1.0 : 0,
+    sampleRate: process.env.NODE_ENV === 'production' ? 1.0 : 0
   })
 }
 
@@ -442,6 +458,7 @@ git commit -m "feat: add Sentry crash reporting for main process"
 ### Task 10: Add Sentry to renderer process
 
 **Files:**
+
 - Create: `src/renderer/src/lib/sentry.ts`
 - Modify: `src/renderer/src/main.tsx`
 
@@ -474,6 +491,7 @@ Update the 3 ErrorBoundary components to report to Sentry:
 - `src/renderer/src/components/journal/journal-error-boundary.tsx`
 
 In each `componentDidCatch`:
+
 ```typescript
 componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
   const { createLogger } = await import('@/lib/logger')
@@ -494,6 +512,7 @@ git commit -m "feat: add Sentry to renderer process and wire ErrorBoundaries"
 ### Task 11: Source map upload for Sentry
 
 **Files:**
+
 - Modify: `electron-builder.yml` or build script
 - Modify: `electron.vite.config.ts` (if it exists) or `vite.config.ts`
 
@@ -523,6 +542,7 @@ git commit -m "build: add Sentry source map upload to build pipeline"
 ### Task 12: Add timing + error tracking wrapper to IPC handlers
 
 **Files:**
+
 - Modify: `src/main/ipc/validate.ts`
 - Modify: `src/main/ipc/validate.test.ts`
 
@@ -604,6 +624,7 @@ git commit -m "feat: add performance instrumentation to IPC handler wrappers"
 ### Task 13: Add Sentry breadcrumbs to IPC handlers
 
 **Files:**
+
 - Modify: `src/main/ipc/validate.ts`
 
 Add Sentry breadcrumbs in the handler wrappers so crash reports include recent IPC call history:
@@ -622,6 +643,7 @@ Sentry.addBreadcrumb({
 This gives Sentry crash reports a timeline of what IPC calls happened before the crash.
 
 **Commit:**
+
 ```bash
 git add src/main/ipc/validate.ts
 git commit -m "feat: add Sentry breadcrumbs to IPC handler wrappers"
@@ -634,6 +656,7 @@ git commit -m "feat: add Sentry breadcrumbs to IPC handler wrappers"
 ### Task 14: Add telemetry opt-in/out setting
 
 **Files:**
+
 - Modify: `src/shared/contracts/settings-api.ts` (or equivalent settings schema)
 - Modify: `src/main/lib/sentry.ts`
 - Modify: settings UI component
@@ -678,7 +701,7 @@ After all tasks, verify:
 
 These are deferred to later phases:
 
-1. **Renderer console.* migration** — Do incrementally, not big-bang. Infrastructure is in place (Task 8).
+1. **Renderer console.\* migration** — Do incrementally, not big-bang. Infrastructure is in place (Task 8).
 2. **Usage analytics (PostHog/Aptabase)** — Needs product decision on what to track. Do after launch.
 3. **Sync server observability** — Separate codebase (Cloudflare Workers). Use Workers Analytics Engine + Sentry Workers SDK.
 4. **Log aggregation / remote shipping** — Only needed at scale when you have support volume.
@@ -689,21 +712,21 @@ These are deferred to later phases:
 
 ## Task Summary
 
-| # | Task | Scope | LOE |
-|---|------|-------|-----|
-| 1 | Install electron-log + create logger module | Foundation | Small |
-| 2 | Initialize logger in main entry | Integration | Small |
-| 3 | Replace console.* in IPC core (validate.ts, index.ts) | Migration | Small |
-| 4 | Replace console.* in vault modules (~51 calls) | Migration | Medium |
-| 5 | Replace console.* in inbox modules (~79 calls) | Migration | Medium |
-| 6 | Replace console.* in IPC handler files (~57 calls) | Migration | Medium |
-| 7 | Replace console.* in remaining main files (~42 calls) | Migration | Medium |
-| 8 | Renderer logger wrapper | Foundation | Small |
-| 9 | Install + configure Sentry main process | Crash reporting | Small |
-| 10 | Sentry renderer + ErrorBoundary wiring | Crash reporting | Small |
-| 11 | Source map upload for Sentry | Build pipeline | Small |
-| 12 | IPC timing + error instrumentation | Metrics | Small |
-| 13 | Sentry breadcrumbs in IPC | Observability | Small |
-| 14 | Telemetry opt-in setting | Privacy | Medium |
+| #   | Task                                                   | Scope           | LOE    |
+| --- | ------------------------------------------------------ | --------------- | ------ |
+| 1   | Install electron-log + create logger module            | Foundation      | Small  |
+| 2   | Initialize logger in main entry                        | Integration     | Small  |
+| 3   | Replace console.\* in IPC core (validate.ts, index.ts) | Migration       | Small  |
+| 4   | Replace console.\* in vault modules (~51 calls)        | Migration       | Medium |
+| 5   | Replace console.\* in inbox modules (~79 calls)        | Migration       | Medium |
+| 6   | Replace console.\* in IPC handler files (~57 calls)    | Migration       | Medium |
+| 7   | Replace console.\* in remaining main files (~42 calls) | Migration       | Medium |
+| 8   | Renderer logger wrapper                                | Foundation      | Small  |
+| 9   | Install + configure Sentry main process                | Crash reporting | Small  |
+| 10  | Sentry renderer + ErrorBoundary wiring                 | Crash reporting | Small  |
+| 11  | Source map upload for Sentry                           | Build pipeline  | Small  |
+| 12  | IPC timing + error instrumentation                     | Metrics         | Small  |
+| 13  | Sentry breadcrumbs in IPC                              | Observability   | Small  |
+| 14  | Telemetry opt-in setting                               | Privacy         | Medium |
 
 **Critical path:** Tasks 1 → 2 → 3 (foundation) → then 4-8 can parallelize → 9-13 can parallelize → 14 last.

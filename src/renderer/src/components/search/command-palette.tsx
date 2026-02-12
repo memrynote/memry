@@ -126,7 +126,10 @@ export function CommandPalette({
 
   useEffect(() => {
     if (isOpen) {
-      window.api.notes.getFolders().then(setFolders).catch((err) => log.error('Failed to load folders', err))
+      window.api.notes
+        .getFolders()
+        .then(setFolders)
+        .catch((err) => log.error('Failed to load folders', err))
     }
   }, [isOpen])
 

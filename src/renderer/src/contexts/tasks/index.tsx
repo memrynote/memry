@@ -268,10 +268,7 @@ export const TasksProvider = ({
                 statuses: statuses.map(dbStatusToUiStatus)
               }
             } catch (error) {
-              log.warn(
-                `Failed to load statuses for project ${project.id}:`,
-                error
-              )
+              log.warn(`Failed to load statuses for project ${project.id}:`, error)
               return project // Return project without statuses on error
             }
           })

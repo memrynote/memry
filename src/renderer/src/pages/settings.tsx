@@ -1322,9 +1322,7 @@ function SyncSettings() {
               <CheckCircle className="w-4 h-4 text-green-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">
-                {state.email ?? 'Signed in'}
-              </p>
+              <p className="text-sm font-medium">{state.email ?? 'Signed in'}</p>
               <p className="text-xs text-muted-foreground">Sync active</p>
             </div>
           </div>

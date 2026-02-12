@@ -614,10 +614,11 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     createValidatedHandler(SetupFirstDeviceSchema, async (input) => {
       const session = consumeOAuthSession(input.state)
 
-      const raw = await postToServer<unknown>(
-        `/auth/oauth/${input.provider}/callback`,
-        { code: input.oauthToken, state: input.state, redirectUri: session.redirectUri }
-      )
+      const raw = await postToServer<unknown>(`/auth/oauth/${input.provider}/callback`, {
+        code: input.oauthToken,
+        state: input.state,
+        redirectUri: session.redirectUri
+      })
       const serverResponse = OAuthCallbackResponseSchema.parse(raw)
 
       await storeToken(KEYCHAIN_ENTRIES.SETUP_TOKEN, serverResponse.setupToken)
