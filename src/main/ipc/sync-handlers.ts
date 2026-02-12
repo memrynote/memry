@@ -25,8 +25,12 @@ import {
 import type { DeviceRegisterResponse } from '@shared/contracts/auth-api'
 import { LinkViaRecoverySchema } from '@shared/contracts/ipc-devices'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@shared/contracts/ipc-sync'
+import { GetHistorySchema } from '@shared/contracts/ipc-sync-ops'
+import { syncHistory } from '@shared/db/schema/sync-history'
 
-import { eq } from 'drizzle-orm'
+import { eq, desc, count, sql } from 'drizzle-orm'
+
+import type { SyncEngine } from '../sync/engine'
 
 import {
   constantTimeEqual,
@@ -455,7 +459,7 @@ const notImplemented = (channel: string) => (): never => {
 // Handler Registration
 // ============================================================================
 
-export function registerSyncHandlers(): void {
+export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   // --- OTP Auth Handlers (T054, T055, T056) ---
 
   ipcMain.handle(
@@ -748,12 +752,67 @@ export function registerSyncHandlers(): void {
   ipcMain.handle(SYNC_CHANNELS.REMOVE_DEVICE, notImplemented('REMOVE_DEVICE'))
   ipcMain.handle(SYNC_CHANNELS.RENAME_DEVICE, notImplemented('RENAME_DEVICE'))
 
-  ipcMain.handle(SYNC_CHANNELS.GET_STATUS, notImplemented('GET_STATUS'))
-  ipcMain.handle(SYNC_CHANNELS.TRIGGER_SYNC, notImplemented('TRIGGER_SYNC'))
-  ipcMain.handle(SYNC_CHANNELS.GET_HISTORY, notImplemented('GET_HISTORY'))
-  ipcMain.handle(SYNC_CHANNELS.GET_QUEUE_SIZE, notImplemented('GET_QUEUE_SIZE'))
-  ipcMain.handle(SYNC_CHANNELS.PAUSE, notImplemented('PAUSE'))
-  ipcMain.handle(SYNC_CHANNELS.RESUME, notImplemented('RESUME'))
+  ipcMain.handle(SYNC_CHANNELS.GET_STATUS, () => {
+    if (!syncEngine) return { status: 'idle', pendingCount: 0 }
+    return syncEngine.getStatus()
+  })
+
+  ipcMain.handle(SYNC_CHANNELS.TRIGGER_SYNC, async () => {
+    if (!syncEngine) return { success: false, error: 'Sync engine not initialized' }
+    try {
+      await syncEngine.fullSync()
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+
+  ipcMain.handle(
+    SYNC_CHANNELS.GET_HISTORY,
+    createValidatedHandler(GetHistorySchema, (input) => {
+      const db = getDatabase()
+      const limit = input.limit ?? 50
+      const offset = input.offset ?? 0
+
+      const rows = db
+        .select()
+        .from(syncHistory)
+        .orderBy(desc(syncHistory.createdAt))
+        .limit(limit)
+        .offset(offset)
+        .all()
+
+      const [totalRow] = db.select({ total: count() }).from(syncHistory).all()
+
+      return {
+        entries: rows.map((r) => ({
+          id: r.id,
+          type: r.type as 'push' | 'pull' | 'error',
+          itemCount: r.itemCount,
+          direction: r.direction ?? undefined,
+          details: r.details ? JSON.parse(r.details) : undefined,
+          createdAt: r.createdAt.getTime()
+        })),
+        total: totalRow?.total ?? 0
+      }
+    })
+  )
+
+  ipcMain.handle(SYNC_CHANNELS.GET_QUEUE_SIZE, () => {
+    if (!syncEngine) return { pending: 0, failed: 0 }
+    const stats = syncEngine.getStatus()
+    return { pending: stats.pendingCount, failed: 0 }
+  })
+
+  ipcMain.handle(SYNC_CHANNELS.PAUSE, () => {
+    if (!syncEngine) return { success: false, wasPaused: false }
+    return syncEngine.pause()
+  })
+
+  ipcMain.handle(SYNC_CHANNELS.RESUME, () => {
+    if (!syncEngine) return { success: false, pendingCount: 0 }
+    return syncEngine.resume()
+  })
 
   ipcMain.handle(SYNC_CHANNELS.UPLOAD_ATTACHMENT, notImplemented('UPLOAD_ATTACHMENT'))
   ipcMain.handle(SYNC_CHANNELS.GET_UPLOAD_PROGRESS, notImplemented('GET_UPLOAD_PROGRESS'))
