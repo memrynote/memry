@@ -1,36 +1,191 @@
 import { DurableObject } from 'cloudflare:workers'
 
-// TODO: Implement real-time sync state tracking per user
-// - Track connected devices and their cursor positions
-// - Coordinate push/pull operations between devices
-// - Handle conflict detection via vector clocks
-// - Manage WebSocket connections for live sync
-export class UserSyncState extends DurableObject {
-  // TODO: Implement fetch handler for sync state operations
+import { ErrorCodes } from '../lib/errors'
+import { verifyAccessToken } from '../lib/jwt-verify'
+import type { Bindings } from '../types'
+
+interface WsAttachment {
+  deviceId: string
+  tokenExp: number
+  connectedAt: number
+  rateLimitWindow: number
+  rateLimitCount: number
+}
+
+const RATE_LIMIT_MAX = 100
+const RATE_LIMIT_WINDOW_SECONDS = 10
+const ALARM_INTERVAL_MS = 60_000
+const CLOSE_CODE_REPLACED = 4001
+const CLOSE_CODE_TOKEN_EXPIRED = 4003
+const CLOSE_CODE_RATE_LIMITED = 4008
+
+export class UserSyncState extends DurableObject<Bindings> {
+  constructor(ctx: DurableObjectState, env: Bindings) {
+    super(ctx, env)
+    this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'))
+  }
+
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
 
     switch (url.pathname) {
       case '/connect':
-        // TODO: Handle WebSocket upgrade for real-time sync
-        return new Response('Not implemented', { status: 501 })
-
-      case '/cursor':
-        // TODO: Get/update device cursor position
-        return new Response('Not implemented', { status: 501 })
-
-      case '/state':
-        // TODO: Return current sync state for all devices
-        return Response.json({ devices: [], lastUpdated: null })
-
+        return this.handleConnect(request)
+      case '/broadcast':
+        return this.handleBroadcast(request)
       default:
         return new Response('Not found', { status: 404 })
     }
   }
 
-  // TODO: Implement alarm for stale connection cleanup
+  private async handleConnect(request: Request): Promise<Response> {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return Response.json(
+        { error: { code: ErrorCodes.AUTH_INVALID_TOKEN, message: 'Missing token' } },
+        { status: 401 }
+      )
+    }
+
+    const token = authHeader.slice(7)
+    let claims: { userId: string; deviceId: string; exp: number }
+    try {
+      claims = await verifyAccessToken(token, this.env.JWT_PUBLIC_KEY)
+    } catch {
+      return Response.json(
+        { error: { code: ErrorCodes.AUTH_INVALID_TOKEN, message: 'Invalid token' } },
+        { status: 401 }
+      )
+    }
+
+    const tag = `device:${claims.deviceId}`
+    const existingSockets = this.ctx.getWebSockets(tag)
+    for (const existing of existingSockets) {
+      existing.close(CLOSE_CODE_REPLACED, 'Replaced by new connection')
+    }
+
+    const pair = new WebSocketPair()
+    const client = pair[0]
+    const server = pair[1]
+
+    const attachment: WsAttachment = {
+      deviceId: claims.deviceId,
+      tokenExp: claims.exp,
+      connectedAt: Math.floor(Date.now() / 1000),
+      rateLimitWindow: 0,
+      rateLimitCount: 0
+    }
+
+    this.ctx.acceptWebSocket(server, [tag])
+    server.serializeAttachment(attachment)
+
+    await this.scheduleAlarm()
+
+    return new Response(null, { status: 101, webSocket: client })
+  }
+
+  private async handleBroadcast(request: Request): Promise<Response> {
+    const body: { excludeDeviceId: string; cursor: number } = await request.json()
+
+    const allSockets = this.ctx.getWebSockets()
+    let sent = 0
+
+    const message = JSON.stringify({
+      type: 'changes_available',
+      payload: { cursor: body.cursor }
+    })
+
+    for (const ws of allSockets) {
+      const attachment = ws.deserializeAttachment() as WsAttachment | null
+      if (attachment?.deviceId === body.excludeDeviceId) continue
+
+      try {
+        ws.send(message)
+        sent++
+      } catch {
+        // socket may have closed between getWebSockets and send
+      }
+    }
+
+    return Response.json({ sent })
+  }
+
+  webSocketMessage(ws: WebSocket): void {
+    const attachment = ws.deserializeAttachment() as WsAttachment | null
+    if (!attachment) {
+      ws.close(1011, 'Missing attachment')
+      return
+    }
+
+    const now = Math.floor(Date.now() / 1000)
+    const windowStart = now - (now % RATE_LIMIT_WINDOW_SECONDS)
+
+    if (attachment.rateLimitWindow !== windowStart) {
+      attachment.rateLimitWindow = windowStart
+      attachment.rateLimitCount = 1
+    } else {
+      attachment.rateLimitCount++
+    }
+
+    ws.serializeAttachment(attachment)
+
+    if (attachment.rateLimitCount > RATE_LIMIT_MAX) {
+      ws.send(
+        JSON.stringify({
+          type: 'error',
+          payload: { code: ErrorCodes.WS_RATE_LIMITED, message: 'Rate limit exceeded' }
+        })
+      )
+      ws.close(CLOSE_CODE_RATE_LIMITED, 'Rate limit exceeded')
+    }
+  }
+
+  webSocketClose(ws: WebSocket, code: number, reason: string): void {
+    try {
+      ws.close(code, reason)
+    } catch {
+      // already closed
+    }
+  }
+
+  webSocketError(ws: WebSocket): void {
+    try {
+      ws.close(1011, 'WebSocket error')
+    } catch {
+      // already closed
+    }
+  }
+
   async alarm(): Promise<void> {
-    // TODO: Clean up stale device connections
-    // TODO: Emit sync completion events
+    const now = Math.floor(Date.now() / 1000)
+    const allSockets = this.ctx.getWebSockets()
+    let remaining = 0
+
+    for (const ws of allSockets) {
+      const attachment = ws.deserializeAttachment() as WsAttachment | null
+      if (!attachment) continue
+
+      if (attachment.tokenExp <= now) {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            payload: { code: ErrorCodes.WS_TOKEN_EXPIRED, message: 'Token expired, reconnect' }
+          })
+        )
+        ws.close(CLOSE_CODE_TOKEN_EXPIRED, 'Token expired')
+      } else {
+        remaining++
+      }
+    }
+
+    if (remaining > 0) {
+      await this.scheduleAlarm()
+    }
+  }
+
+  private async scheduleAlarm(): Promise<void> {
+    const existing = await this.ctx.storage.getAlarm()
+    if (existing !== null) return
+    await this.ctx.storage.setAlarm(Date.now() + ALARM_INTERVAL_MS)
   }
 }

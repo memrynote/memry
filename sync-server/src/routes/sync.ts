@@ -21,6 +21,20 @@ export const sync = new Hono<AppContext>()
 
 sync.use('*', authMiddleware)
 
+sync.get('/ws', async (c) => {
+  if (c.req.header('Upgrade') !== 'websocket') {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Expected WebSocket upgrade', 426)
+  }
+  const userId = c.get('userId')!
+  const id = c.env.USER_SYNC_STATE.idFromName(userId)
+  const stub = c.env.USER_SYNC_STATE.get(id)
+  return stub.fetch(
+    new Request(new URL('/connect', c.req.url), {
+      headers: c.req.raw.headers
+    })
+  )
+})
+
 const pushRateLimit = createRateLimiter({
   keyPrefix: 'sync_push',
   maxRequests: 60,
@@ -100,6 +114,20 @@ sync.post('/push', pushRateLimit, async (c) => {
     await updateDeviceCursor(c.env.DB, deviceId, userId, maxCursor)
   }
 
+  if (accepted.length > 0) {
+    const doId = c.env.USER_SYNC_STATE.idFromName(userId)
+    const stub = c.env.USER_SYNC_STATE.get(doId)
+    c.executionCtx.waitUntil(
+      stub.fetch(
+        new Request(new URL('/broadcast', c.req.url), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ excludeDeviceId: deviceId, cursor: maxCursor })
+        })
+      )
+    )
+  }
+
   return c.json({
     accepted,
     rejected,
@@ -149,6 +177,18 @@ sync.delete('/items/:id', async (c) => {
 
   const result = await deleteItem(c.env.DB, userId, deviceId, itemId)
   await updateDeviceCursor(c.env.DB, deviceId, userId, result.serverCursor)
+
+  const doId = c.env.USER_SYNC_STATE.idFromName(userId)
+  const stub = c.env.USER_SYNC_STATE.get(doId)
+  c.executionCtx.waitUntil(
+    stub.fetch(
+      new Request(new URL('/broadcast', c.req.url), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ excludeDeviceId: deviceId, cursor: result.serverCursor })
+      })
+    )
+  )
 
   return c.json(result)
 })

@@ -77,10 +77,17 @@ const createApp = () => {
   return app
 }
 
+const mockDoStub = {
+  fetch: vi.fn().mockResolvedValue(Response.json({ sent: 0 }))
+}
+
 const createEnv = () => ({
   DB: {} as D1Database,
   STORAGE: {} as R2Bucket,
-  USER_SYNC_STATE: {} as DurableObjectNamespace,
+  USER_SYNC_STATE: {
+    idFromName: vi.fn().mockReturnValue('do-id-1'),
+    get: vi.fn().mockReturnValue(mockDoStub)
+  } as unknown as DurableObjectNamespace,
   LINKING_SESSION: {} as DurableObjectNamespace,
   ENVIRONMENT: 'development',
   JWT_PUBLIC_KEY: 'pk',
@@ -90,6 +97,11 @@ const createEnv = () => ({
   GOOGLE_CLIENT_SECRET: 'gs',
   GOOGLE_REDIRECT_URI: 'http://localhost/callback'
 })
+
+const executionCtx = {
+  waitUntil: vi.fn(),
+  passThroughOnException: vi.fn()
+}
 
 const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000'
 
@@ -122,6 +134,7 @@ describe('sync routes', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDoStub.fetch.mockResolvedValue(Response.json({ sent: 0 }))
     app = createApp()
     env = createEnv()
   })
@@ -133,7 +146,7 @@ describe('sync routes', () => {
   describe('auth enforcement', () => {
     it('should invoke authMiddleware on every request', async () => {
       // #when
-      await app.request('/sync/status', { method: 'GET' }, env)
+      await app.request('/sync/status', { method: 'GET' }, env, executionCtx)
 
       // #then
       expect(authMiddleware).toHaveBeenCalled()
@@ -147,7 +160,7 @@ describe('sync routes', () => {
   describe('GET /sync/status', () => {
     it('should return 200 with sync status', async () => {
       // #when
-      const res = await app.request('/sync/status', { method: 'GET' }, env)
+      const res = await app.request('/sync/status', { method: 'GET' }, env, executionCtx)
 
       // #then
       expect(res.status).toBe(200)
@@ -157,7 +170,7 @@ describe('sync routes', () => {
 
     it('should pass userId and deviceId to getSyncStatus', async () => {
       // #when
-      await app.request('/sync/status', { method: 'GET' }, env)
+      await app.request('/sync/status', { method: 'GET' }, env, executionCtx)
 
       // #then
       expect(getSyncStatus).toHaveBeenCalledWith(env.DB, 'user-1', 'device-1')
@@ -171,7 +184,7 @@ describe('sync routes', () => {
   describe('GET /sync/manifest', () => {
     it('should return 200 with manifest', async () => {
       // #when
-      const res = await app.request('/sync/manifest', { method: 'GET' }, env)
+      const res = await app.request('/sync/manifest', { method: 'GET' }, env, executionCtx)
 
       // #then
       expect(res.status).toBe(200)
@@ -181,7 +194,7 @@ describe('sync routes', () => {
 
     it('should pass userId to getManifest', async () => {
       // #when
-      await app.request('/sync/manifest', { method: 'GET' }, env)
+      await app.request('/sync/manifest', { method: 'GET' }, env, executionCtx)
 
       // #then
       expect(getManifest).toHaveBeenCalledWith(env.DB, 'user-1')
@@ -195,7 +208,7 @@ describe('sync routes', () => {
   describe('GET /sync/changes', () => {
     it('should return 200 with changes', async () => {
       // #when
-      const res = await app.request('/sync/changes', { method: 'GET' }, env)
+      const res = await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
 
       // #then
       expect(res.status).toBe(200)
@@ -205,7 +218,7 @@ describe('sync routes', () => {
 
     it('should forward cursor and limit query params', async () => {
       // #when
-      await app.request('/sync/changes?cursor=5&limit=10', { method: 'GET' }, env)
+      await app.request('/sync/changes?cursor=5&limit=10', { method: 'GET' }, env, executionCtx)
 
       // #then
       expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 5, 10)
@@ -213,7 +226,7 @@ describe('sync routes', () => {
 
     it('should default cursor to 0 when omitted', async () => {
       // #when
-      await app.request('/sync/changes', { method: 'GET' }, env)
+      await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
 
       // #then
       expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined)
@@ -221,7 +234,12 @@ describe('sync routes', () => {
 
     it('should return 400 for non-numeric cursor', async () => {
       // #when
-      const res = await app.request('/sync/changes?cursor=abc', { method: 'GET' }, env)
+      const res = await app.request(
+        '/sync/changes?cursor=abc',
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
 
       // #then
       expect(res.status).toBe(400)
@@ -231,7 +249,7 @@ describe('sync routes', () => {
 
     it('should return 400 for negative cursor', async () => {
       // #when
-      const res = await app.request('/sync/changes?cursor=-1', { method: 'GET' }, env)
+      const res = await app.request('/sync/changes?cursor=-1', { method: 'GET' }, env, executionCtx)
 
       // #then
       expect(res.status).toBe(400)
@@ -241,7 +259,7 @@ describe('sync routes', () => {
 
     it('should return 400 for invalid limit', async () => {
       // #when
-      const res = await app.request('/sync/changes?limit=0', { method: 'GET' }, env)
+      const res = await app.request('/sync/changes?limit=0', { method: 'GET' }, env, executionCtx)
 
       // #then
       expect(res.status).toBe(400)
@@ -259,7 +277,7 @@ describe('sync routes', () => {
       })
 
       // #when
-      await app.request('/sync/changes', { method: 'GET' }, env)
+      await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
 
       // #then
       expect(updateDeviceCursor).toHaveBeenCalledWith(env.DB, 'device-1', 'user-1', 5)
@@ -267,7 +285,7 @@ describe('sync routes', () => {
 
     it('should not update device cursor when no changes', async () => {
       // #when
-      await app.request('/sync/changes', { method: 'GET' }, env)
+      await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
 
       // #then
       expect(updateDeviceCursor).not.toHaveBeenCalled()
@@ -284,7 +302,12 @@ describe('sync routes', () => {
       const body = { items: [makePushItem()] }
 
       // #when
-      const res = await app.request('http://localhost/sync/push', jsonPost('/sync/push', body), env)
+      const res = await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', body),
+        env,
+        executionCtx
+      )
 
       // #then
       expect(res.status).toBe(200)
@@ -303,7 +326,12 @@ describe('sync routes', () => {
       const body = { items: [makePushItem()] }
 
       // #when
-      const res = await app.request('http://localhost/sync/push', jsonPost('/sync/push', body), env)
+      const res = await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', body),
+        env,
+        executionCtx
+      )
 
       // #then
       expect(res.status).toBe(200)
@@ -320,7 +348,12 @@ describe('sync routes', () => {
       const body = { items: [makePushItem()] }
 
       // #when
-      await app.request('http://localhost/sync/push', jsonPost('/sync/push', body), env)
+      await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', body),
+        env,
+        executionCtx
+      )
 
       // #then
       expect(updateDeviceCursor).toHaveBeenCalledWith(env.DB, 'device-1', 'user-1', 1)
@@ -331,7 +364,12 @@ describe('sync routes', () => {
       const body = { items: [] }
 
       // #when
-      const res = await app.request('http://localhost/sync/push', jsonPost('/sync/push', body), env)
+      const res = await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', body),
+        env,
+        executionCtx
+      )
 
       // #then
       expect(res.status).toBe(400)
@@ -360,7 +398,12 @@ describe('sync routes', () => {
       const body = { items: [makePushItem({ id: 'not-a-uuid' })] }
 
       // #when
-      const res = await app.request('http://localhost/sync/push', jsonPost('/sync/push', body), env)
+      const res = await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', body),
+        env,
+        executionCtx
+      )
 
       // #then
       expect(res.status).toBe(400)
@@ -379,7 +422,12 @@ describe('sync routes', () => {
       const body = { itemIds: [VALID_UUID] }
 
       // #when
-      const res = await app.request('http://localhost/sync/pull', jsonPost('/sync/pull', body), env)
+      const res = await app.request(
+        'http://localhost/sync/pull',
+        jsonPost('/sync/pull', body),
+        env,
+        executionCtx
+      )
 
       // #then
       expect(res.status).toBe(200)
@@ -392,7 +440,12 @@ describe('sync routes', () => {
       const body = { itemIds: [VALID_UUID] }
 
       // #when
-      await app.request('http://localhost/sync/pull', jsonPost('/sync/pull', body), env)
+      await app.request(
+        'http://localhost/sync/pull',
+        jsonPost('/sync/pull', body),
+        env,
+        executionCtx
+      )
 
       // #then
       expect(pullItems).toHaveBeenCalledWith(env.DB, env.STORAGE, 'user-1', [VALID_UUID])
@@ -403,7 +456,12 @@ describe('sync routes', () => {
       const body = { itemIds: [] }
 
       // #when
-      const res = await app.request('http://localhost/sync/pull', jsonPost('/sync/pull', body), env)
+      const res = await app.request(
+        'http://localhost/sync/pull',
+        jsonPost('/sync/pull', body),
+        env,
+        executionCtx
+      )
 
       // #then
       expect(res.status).toBe(400)
@@ -416,7 +474,12 @@ describe('sync routes', () => {
       const body = { itemIds: ['not-a-uuid'] }
 
       // #when
-      const res = await app.request('http://localhost/sync/pull', jsonPost('/sync/pull', body), env)
+      const res = await app.request(
+        'http://localhost/sync/pull',
+        jsonPost('/sync/pull', body),
+        env,
+        executionCtx
+      )
 
       // #then
       expect(res.status).toBe(400)
@@ -432,7 +495,12 @@ describe('sync routes', () => {
   describe('GET /sync/items/:id', () => {
     it('should return 200 with item data', async () => {
       // #when
-      const res = await app.request(`/sync/items/${VALID_UUID}`, { method: 'GET' }, env)
+      const res = await app.request(
+        `/sync/items/${VALID_UUID}`,
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
 
       // #then
       expect(res.status).toBe(200)
@@ -448,7 +516,7 @@ describe('sync routes', () => {
 
     it('should pass userId and itemId to getItem', async () => {
       // #when
-      await app.request(`/sync/items/${VALID_UUID}`, { method: 'GET' }, env)
+      await app.request(`/sync/items/${VALID_UUID}`, { method: 'GET' }, env, executionCtx)
 
       // #then
       expect(getItem).toHaveBeenCalledWith(env.DB, env.STORAGE, 'user-1', VALID_UUID)
@@ -456,7 +524,7 @@ describe('sync routes', () => {
 
     it('should return 400 for non-UUID id', async () => {
       // #when
-      const res = await app.request('/sync/items/not-a-uuid', { method: 'GET' }, env)
+      const res = await app.request('/sync/items/not-a-uuid', { method: 'GET' }, env, executionCtx)
 
       // #then
       expect(res.status).toBe(400)
@@ -472,7 +540,12 @@ describe('sync routes', () => {
   describe('DELETE /sync/items/:id', () => {
     it('should return 200 with serverCursor', async () => {
       // #when
-      const res = await app.request(`/sync/items/${VALID_UUID}`, { method: 'DELETE' }, env)
+      const res = await app.request(
+        `/sync/items/${VALID_UUID}`,
+        { method: 'DELETE' },
+        env,
+        executionCtx
+      )
 
       // #then
       expect(res.status).toBe(200)
@@ -482,7 +555,7 @@ describe('sync routes', () => {
 
     it('should call deleteItem and updateDeviceCursor', async () => {
       // #when
-      await app.request(`/sync/items/${VALID_UUID}`, { method: 'DELETE' }, env)
+      await app.request(`/sync/items/${VALID_UUID}`, { method: 'DELETE' }, env, executionCtx)
 
       // #then
       expect(deleteItem).toHaveBeenCalledWith(env.DB, 'user-1', 'device-1', VALID_UUID)
@@ -491,7 +564,12 @@ describe('sync routes', () => {
 
     it('should return 400 for non-UUID id', async () => {
       // #when
-      const res = await app.request('/sync/items/not-a-uuid', { method: 'DELETE' }, env)
+      const res = await app.request(
+        '/sync/items/not-a-uuid',
+        { method: 'DELETE' },
+        env,
+        executionCtx
+      )
 
       // #then
       expect(res.status).toBe(400)
