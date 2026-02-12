@@ -19,5 +19,6 @@ export type AppContext = {
     userId?: string
     deviceId?: string
     tokenJti?: string
+    sessionNonce?: string
   }
 }

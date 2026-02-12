@@ -28,7 +28,7 @@ export const setupAuthMiddleware: MiddlewareHandler<AppContext> = async (c, next
     throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Invalid JWT verify key configuration', 500)
   }
 
-  let payload: { sub?: string; type?: string; jti?: string }
+  let payload: { sub?: string; type?: string; jti?: string; session_nonce?: string }
   try {
     const result = await jwtVerify(token, publicKey, {
       algorithms: [ALLOWED_ALGORITHM],
@@ -58,6 +58,9 @@ export const setupAuthMiddleware: MiddlewareHandler<AppContext> = async (c, next
 
   c.set('userId', payload.sub)
   c.set('tokenJti', payload.jti)
+  if (payload.session_nonce) {
+    c.set('sessionNonce', payload.session_nonce)
+  }
 
   await next()
 }

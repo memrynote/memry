@@ -188,7 +188,7 @@ auth.post('/otp/verify', otpIpRateLimit, async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid request body', 400)
   }
 
-  const { email, code } = parsed.data
+  const { email, code, sessionNonce } = parsed.data
 
   await verifyOtp(c.env.DB, email, code)
 
@@ -198,7 +198,7 @@ auth.post('/otp/verify', otpIpRateLimit, async (c) => {
 
   await updateUser(c.env.DB, user.id, { email_verified: 1 })
 
-  const setupToken = await signSetupToken(user.id, c.env.JWT_PRIVATE_KEY)
+  const setupToken = await signSetupToken(user.id, c.env.JWT_PRIVATE_KEY, sessionNonce)
 
   return c.json({
     success: true,
@@ -249,7 +249,7 @@ auth.post('/oauth/:provider/callback', async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid callback body', 400)
   }
 
-  const { code, state } = parsed.data
+  const { code, state, sessionNonce } = parsed.data
 
   const statePayload = await verifyOAuthState(state, c.env.JWT_PUBLIC_KEY)
   const redirectUri = statePayload.redirectUri ?? c.env.GOOGLE_REDIRECT_URI
@@ -283,7 +283,7 @@ auth.post('/oauth/:provider/callback', async (c) => {
     authProviderId: claims.sub
   })
 
-  const setupToken = await signSetupToken(user.id, c.env.JWT_PRIVATE_KEY)
+  const setupToken = await signSetupToken(user.id, c.env.JWT_PRIVATE_KEY, sessionNonce)
 
   return c.json({
     success: true,
@@ -335,8 +335,18 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
     appVersion,
     authPublicKey,
     challengeSignature,
-    challengeNonce
+    challengeNonce,
+    sessionNonce
   } = parsed.data
+
+  const tokenSessionNonce = c.get('sessionNonce')
+  if (tokenSessionNonce && tokenSessionNonce !== sessionNonce) {
+    throw new AppError(
+      ErrorCodes.AUTH_INVALID_TOKEN,
+      'Session nonce mismatch',
+      401
+    )
+  }
 
   const challengePayload = `${challengeNonce}:${tokenJti}`
   const isValid = await verifyDeviceChallenge(authPublicKey, challengePayload, challengeSignature)

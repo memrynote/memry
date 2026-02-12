@@ -23,7 +23,7 @@ export const putBlob = async (
   key: string,
   data: ArrayBuffer | ReadableStream,
   userId: string,
-  options?: { expectedEtag?: string; contentHash?: string }
+  options?: { expectedEtag?: string }
 ): Promise<R2Object> => {
   assertKeyBelongsToUser(key, userId)
 
@@ -39,19 +39,9 @@ export const putBlob = async (
   }
 
   const result = await storage.put(key, data)
-
-  if (options?.contentHash && result.checksums.toJSON().md5) {
-    const storedHash = result.checksums.toJSON().md5
-    if (storedHash && storedHash !== options.contentHash) {
-      await storage.delete(key)
-      throw new AppError(
-        ErrorCodes.STORAGE_HASH_MISMATCH,
-        'Content hash mismatch after upload',
-        422
-      )
-    }
+  if (!result) {
+    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Failed to store blob', 500)
   }
-
   return result
 }
 
