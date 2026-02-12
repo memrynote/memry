@@ -84,10 +84,7 @@ describe('crypto foundation', () => {
     expect(map.has('metadata')).toBe(false)
 
     expect(() =>
-      encodeCbor(
-        { id: 'item-1', type: 'task', extraField: 'bad' },
-        CBOR_FIELD_ORDER.SYNC_ITEM
-      )
+      encodeCbor({ id: 'item-1', type: 'task', extraField: 'bad' }, CBOR_FIELD_ORDER.SYNC_ITEM)
     ).toThrow(/fields not in ordering/)
   })
 

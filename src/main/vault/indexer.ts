@@ -191,9 +191,7 @@ async function indexMarkdownFile(
       },
       { isNew: true }
     )
-    logger.debug(
-      `Indexed: ${relativePath}${result.date ? ` (journal: ${result.date})` : ''}`
-    )
+    logger.debug(`Indexed: ${relativePath}${result.date ? ` (journal: ${result.date})` : ''}`)
     if (result.tags.length > 0) {
       ensureTagDefinitions(getDatabase(), result.tags)
     }

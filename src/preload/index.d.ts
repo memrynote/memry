@@ -2105,9 +2105,7 @@ interface SyncLinkingClientAPI {
     status?: 'waiting_approval' | 'approved' | 'error'
     error?: string
   }>
-  linkViaRecovery: (input: {
-    recoveryPhrase: string
-  }) => Promise<{
+  linkViaRecovery: (input: { recoveryPhrase: string }) => Promise<{
     success: boolean
     deviceId?: string
     error?: string

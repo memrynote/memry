@@ -821,9 +821,7 @@ export async function getNoteFolderSuggestions(noteId: string): Promise<FolderSu
     // Sort by confidence
     suggestions.sort((a, b) => b.confidence - a.confidence)
 
-    log.debug(
-      `Generated ${suggestions.length} folder suggestions for note ${noteId}`
-    )
+    log.debug(`Generated ${suggestions.length} folder suggestions for note ${noteId}`)
     return suggestions.slice(0, MAX_SUGGESTIONS)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'

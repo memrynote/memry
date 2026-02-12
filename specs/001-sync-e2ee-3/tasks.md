@@ -391,16 +391,16 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Sync Engine Core for US2
 
-- [ ] T074 [US2] Implement sync queue manager in src/main/sync/queue.ts
-- [ ] T075 [US2] Implement sync queue persistence to SQLite in src/main/sync/queue.ts
-- [ ] T076 [US2] Implement sync engine class in src/main/sync/engine.ts
-- [ ] T077 [US2] Implement WebSocket connection manager in src/main/sync/websocket.ts
-- [ ] T078 [US2] Implement network status monitoring in src/main/sync/network.ts
-- [ ] T079 [US2] Implement retry logic with exponential backoff in src/main/sync/retry.ts
-- [ ] T080 [US2] Implement item encryption before sync (generate file key via T029b nonce utility, wrap with vault key, encrypt data with fresh nonce, create EncryptedItemPayload with encryptedKey/keyNonce/encryptedData/dataNonce for R2 storage) in src/main/sync/engine.ts
-- [ ] T080b [US2] Compute content_hash (SHA-256 of encrypted blob payload) and size_bytes before sync push in src/main/sync/engine.ts
-- [ ] T080a [US2] Sign items with device Ed25519 key over canonical CBOR and attach signer_device_id metadata before sync push in src/main/sync/engine.ts
-- [ ] T081 [US2] Implement item decryption after sync in src/main/sync/engine.ts
+- [x] T074 [US2] Implement sync queue manager in src/main/sync/queue.ts
+- [x] T075 [US2] Implement sync queue persistence to SQLite in src/main/sync/queue.ts
+- [x] T076 [US2] Implement sync engine class in src/main/sync/engine.ts
+- [x] T077 [US2] Implement WebSocket connection manager in src/main/sync/websocket.ts
+- [x] T078 [US2] Implement network status monitoring in src/main/sync/network.ts
+- [x] T079 [US2] Implement retry logic with exponential backoff in src/main/sync/retry.ts
+- [x] T080 [US2] Implement item encryption before sync (generate file key via T029b nonce utility, wrap with vault key, encrypt data with fresh nonce, create EncryptedItemPayload with encryptedKey/keyNonce/encryptedData/dataNonce for R2 storage) in src/main/sync/engine.ts
+- [x] T080b [US2] Compute content_hash (SHA-256 of encrypted blob payload) and size_bytes before sync push in src/main/sync/engine.ts
+- [x] T080a [US2] Sign items with device Ed25519 key over canonical CBOR and attach signer_device_id metadata before sync push in src/main/sync/engine.ts
+- [x] T081 [US2] Implement item decryption after sync in src/main/sync/engine.ts
 
 ### Server Sync Endpoints for US2
 

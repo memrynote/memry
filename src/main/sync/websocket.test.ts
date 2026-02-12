@@ -257,9 +257,7 @@ describe('WebSocketManager', () => {
       await manager.connect()
       lastWs().simulateError(new Error('Connection refused'))
 
-      expect(spy).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'Connection refused' })
-      )
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ message: 'Connection refused' }))
     })
   })
 

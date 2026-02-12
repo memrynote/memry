@@ -56,10 +56,7 @@ describe('withRetry', () => {
 
   describe('#given RateLimitError with retryAfter #when retried', () => {
     it('#then waits retryAfter seconds', async () => {
-      const fn = vi
-        .fn()
-        .mockRejectedValueOnce(new RateLimitError(5))
-        .mockResolvedValue('ok')
+      const fn = vi.fn().mockRejectedValueOnce(new RateLimitError(5)).mockResolvedValue('ok')
 
       const promise = withRetry(fn, { maxRetries: 3 })
 
@@ -74,10 +71,7 @@ describe('withRetry', () => {
     it('#then polls isOnline until true', async () => {
       let online = false
       const isOnline = vi.fn(() => online)
-      const fn = vi
-        .fn()
-        .mockRejectedValueOnce(new NetworkError('offline'))
-        .mockResolvedValue('ok')
+      const fn = vi.fn().mockRejectedValueOnce(new NetworkError('offline')).mockResolvedValue('ok')
 
       const promise = withRetry(fn, { maxRetries: 3, isOnline })
 
@@ -120,9 +114,9 @@ describe('withRetry', () => {
       controller.abort()
       const fn = vi.fn()
 
-      await expect(
-        withRetry(fn, { signal: controller.signal })
-      ).rejects.toThrow('The operation was aborted.')
+      await expect(withRetry(fn, { signal: controller.signal })).rejects.toThrow(
+        'The operation was aborted.'
+      )
       expect(fn).not.toHaveBeenCalled()
     })
   })

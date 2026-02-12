@@ -302,9 +302,7 @@ async function fetchAndUpdateSocialMetadata(
       logger.info(`Successfully updated social item ${itemId}: ${title}`)
     } else {
       // Social extraction failed, try regular metadata as fallback
-      logger.info(
-        `Social extraction failed, falling back to regular metadata: ${result.error}`
-      )
+      logger.info(`Social extraction failed, falling back to regular metadata: ${result.error}`)
 
       // Try regular metadata extraction
       try {
@@ -575,9 +573,7 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
     const isSocial = platform !== null && isSocialPost(parsed.url)
     const itemType = isSocial ? 'social' : 'link'
 
-    logger.info(
-      `URL detected as ${itemType}${platform ? ` (${platform})` : ''}: ${parsed.url}`
-    )
+    logger.info(`URL detected as ${itemType}${platform ? ` (${platform})` : ''}: ${parsed.url}`)
 
     // Create item with pending status
     // For social posts, we set type to 'social' for specialized UI handling
@@ -1185,9 +1181,7 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
     // Emit captured event
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
 
-    logger.info(
-      `Captured ${inboxType}: ${parsed.filename} (${fileBuffer.length} bytes)`
-    )
+    logger.info(`Captured ${inboxType}: ${parsed.filename} (${fileBuffer.length} bytes)`)
 
     return { success: true, item }
   } catch (error) {
