@@ -1,13 +1,8 @@
-import { jwtVerify } from 'jose'
 import type { MiddlewareHandler } from 'hono'
 
 import { AppError, ErrorCodes } from '../lib/errors'
-import { getPublicKey } from '../lib/jwt-keys'
+import { JwtKeyError, verifyAccessToken } from '../lib/jwt-verify'
 import type { AppContext } from '../types'
-
-const REQUIRED_ISSUER = 'memry-sync'
-const REQUIRED_AUDIENCE = 'memry-client'
-const ALLOWED_ALGORITHM = 'EdDSA'
 
 export const authMiddleware: MiddlewareHandler<AppContext> = async (c, next) => {
   const authHeader = c.req.header('Authorization')
@@ -20,40 +15,22 @@ export const authMiddleware: MiddlewareHandler<AppContext> = async (c, next) => 
   }
 
   const token = authHeader.slice(7)
-  const verifyKeyPem = c.env.JWT_PUBLIC_KEY
 
-  let publicKey: CryptoKey
+  let userId: string
+  let deviceId: string
   try {
-    publicKey = await getPublicKey(verifyKeyPem)
-  } catch {
-    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Invalid JWT verify key configuration', 500)
-  }
-
-  let payload: { sub?: string; device_id?: string; type?: string }
-  try {
-    const result = await jwtVerify(token, publicKey, {
-      algorithms: [ALLOWED_ALGORITHM],
-      issuer: REQUIRED_ISSUER,
-      audience: REQUIRED_AUDIENCE
-    })
-    payload = result.payload as typeof payload
+    const claims = await verifyAccessToken(token, c.env.JWT_PUBLIC_KEY)
+    userId = claims.userId
+    deviceId = claims.deviceId
   } catch (err) {
+    if (err instanceof JwtKeyError) {
+      throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Invalid JWT verify key configuration', 500)
+    }
     const message = err instanceof Error ? err.message : 'Token verification failed'
     if (message.includes('expired')) {
       throw new AppError(ErrorCodes.AUTH_TOKEN_EXPIRED, 'Token has expired', 401)
     }
-    throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid token', 401)
-  }
-
-  if (payload.type !== 'access') {
-    throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid token type', 401)
-  }
-
-  const userId = payload.sub
-  const deviceId = payload.device_id
-
-  if (!userId || !deviceId) {
-    throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Token missing required claims', 401)
+    throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, message, 401)
   }
 
   const device = await c.env.DB.prepare(
