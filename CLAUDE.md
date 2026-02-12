@@ -2,6 +2,8 @@
 
 Guidelines for AI coding agents working in the Memry codebase.
 
+## Memry is still in maintenance and not in production. When making code changes, avoid writing code for backward compatibility.
+
 ## Quick Reference
 
 ```bash

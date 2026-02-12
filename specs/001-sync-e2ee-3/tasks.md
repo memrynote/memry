@@ -414,18 +414,18 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - `GET /sync/items/:id` (T087): Get single item by ID
 - `DELETE /sync/items/:id` (T088): Soft-delete (set tombstone)
 
-- [ ] T082 [P] [US2] Implement sync status endpoint GET /sync/status in sync-server/src/routes/sync.ts
-- [ ] T083 [P] [US2] Implement sync manifest endpoint GET /sync/manifest (returns item metadata for diffing, no encrypted content) in sync-server/src/routes/sync.ts
-- [ ] T084 [US2] Implement sync changes endpoint GET /sync/changes?cursor=N&limit=100 using server_cursor (monotonic) in sync-server/src/routes/sync.ts - returns items where server_cursor > N
-- [ ] T085 [US2] Implement sync push endpoint POST /sync/push (batch upsert with R2 blob storage, returns new server_cursors) in sync-server/src/routes/sync.ts
-- [ ] T085a [US2] Implement replay detection on sync push by rejecting items with vector clocks that do not advance beyond the server's current version for that item in sync-server/src/services/sync.ts
-- [ ] T086 [US2] Implement sync pull endpoint POST /sync/pull (batch fetch by item IDs, max 100) in sync-server/src/routes/sync.ts
-- [ ] T087 [US2] Implement single item get endpoint GET /sync/items/:id in sync-server/src/routes/sync.ts
-- [ ] T088 [US2] Implement item delete endpoint DELETE /sync/items/:id (sets deleted=1 tombstone) in sync-server/src/routes/sync.ts
-- [ ] T089 [US2] Implement sync service with D1/R2 integration in sync-server/src/services/sync.ts
-- [ ] T089a [US2] Persist server_cursor (via T033b atomic increment) and device last_cursor_seen in sync-server/src/services/sync.ts
-- [ ] T089b [US2] Validate signer_device_id + signature metadata on sync push (verify device belongs to user, verify signature using constant-time comparison from T029c) in sync-server/src/services/sync.ts
-- [ ] T089c [US2] Validate encrypted blob field lengths before R2 storage (nonce = 24 bytes, encrypted_key = expected wrapped key length, data size < configured maximum) in sync-server/src/services/sync.ts
+- [x] T082 [P] [US2] Implement sync status endpoint GET /sync/status in sync-server/src/routes/sync.ts
+- [x] T083 [P] [US2] Implement sync manifest endpoint GET /sync/manifest (returns item metadata for diffing, no encrypted content) in sync-server/src/routes/sync.ts
+- [x] T084 [US2] Implement sync changes endpoint GET /sync/changes?cursor=N&limit=100 using server_cursor (monotonic) in sync-server/src/routes/sync.ts - returns items where server_cursor > N
+- [x] T085 [US2] Implement sync push endpoint POST /sync/push (batch upsert with R2 blob storage, returns new server_cursors) in sync-server/src/routes/sync.ts
+- [x] T085a [US2] Implement replay detection on sync push by rejecting items with vector clocks that do not advance beyond the server's current version for that item in sync-server/src/services/sync.ts
+- [x] T086 [US2] Implement sync pull endpoint POST /sync/pull (batch fetch by item IDs, max 100) in sync-server/src/routes/sync.ts
+- [x] T087 [US2] Implement single item get endpoint GET /sync/items/:id in sync-server/src/routes/sync.ts
+- [x] T088 [US2] Implement item delete endpoint DELETE /sync/items/:id (sets deleted=1 tombstone) in sync-server/src/routes/sync.ts
+- [x] T089 [US2] Implement sync service with D1/R2 integration in sync-server/src/services/sync.ts
+- [x] T089a [US2] Persist server_cursor (via T033b atomic increment) and device last_cursor_seen in sync-server/src/services/sync.ts
+- [x] T089b [US2] Validate signer_device_id + signature metadata on sync push (verify device belongs to user, verify signature using constant-time comparison from T029c) in sync-server/src/services/sync.ts
+- [x] T089c [US2] Validate encrypted blob field lengths before R2 storage (nonce = 24 bytes, encrypted_key = expected wrapped key length, data size < configured maximum) in sync-server/src/services/sync.ts
 
 ### WebSocket/Durable Objects for US2
 
