@@ -110,7 +110,32 @@ export const rotateRefreshToken = async (
         .first<{ id: string }>()
 
       if (current) {
-        return generateTokens(userId, deviceId, privateKeyPem)
+        const privateKey = await getPrivateKey(privateKeyPem)
+        const accessToken = await signToken(
+          { sub: userId, device_id: deviceId, type: 'access' },
+          privateKey,
+          ACCESS_TOKEN_EXPIRY
+        )
+        const refreshToken = await signToken(
+          { sub: userId, device_id: deviceId, type: 'refresh' },
+          privateKey,
+          REFRESH_TOKEN_EXPIRY
+        )
+        const newHash = await hashToken(refreshToken)
+        const expiresAt = nowEpoch + 7 * 24 * 60 * 60
+
+        await db.batch([
+          db
+            .prepare('UPDATE refresh_tokens SET revoked = 1, rotated_at = ? WHERE id = ?')
+            .bind(nowEpoch, current.id),
+          db
+            .prepare(
+              'INSERT INTO refresh_tokens (id, user_id, device_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+            )
+            .bind(crypto.randomUUID(), userId, deviceId, newHash, expiresAt, nowEpoch)
+        ])
+
+        return { accessToken, refreshToken }
       }
     }
 
@@ -149,11 +174,19 @@ export const revokeDeviceTokens = async (db: D1Database, deviceId: string): Prom
 
 const SETUP_TOKEN_EXPIRY = '5m'
 
-export const signSetupToken = async (userId: string, privateKeyPem: string): Promise<string> => {
+export const signSetupToken = async (
+  userId: string,
+  privateKeyPem: string,
+  sessionNonce?: string
+): Promise<string> => {
   const privateKey = await getPrivateKey(privateKeyPem)
-  return signToken(
-    { sub: userId, type: 'setup', jti: crypto.randomUUID() },
-    privateKey,
-    SETUP_TOKEN_EXPIRY
-  )
+  const claims: Record<string, unknown> = {
+    sub: userId,
+    type: 'setup',
+    jti: crypto.randomUUID()
+  }
+  if (sessionNonce) {
+    claims.session_nonce = sessionNonce
+  }
+  return signToken(claims, privateKey, SETUP_TOKEN_EXPIRY)
 }

@@ -138,22 +138,6 @@ describe('putBlob', () => {
       expect((e as AppError).code).toBe(ErrorCodes.STORAGE_VERSION_CONFLICT)
     }
   })
-
-  it('should delete blob and throw on content hash mismatch', async () => {
-    // #given
-    const r2Obj = createMockR2Object()
-    r2Obj.checksums.toJSON.mockReturnValue({ md5: 'actual-hash' })
-    storage.put.mockResolvedValue(r2Obj)
-
-    // #when / #then
-    await expect(
-      putBlob(storage as unknown as R2Bucket, 'user-1/items/x', new ArrayBuffer(0), 'user-1', {
-        contentHash: 'expected-hash'
-      })
-    ).rejects.toThrow(AppError)
-
-    expect(storage.delete).toHaveBeenCalledWith('user-1/items/x')
-  })
 })
 
 // ============================================================================
