@@ -428,4 +428,84 @@ describe('SyncEngine', () => {
       )
     })
   })
+
+  describe('#given engine #when push succeeds', () => {
+    it('#then updates lastSyncAt', async () => {
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      deps.queue.enqueue({
+        type: 'note',
+        itemId: 'note-1',
+        operation: 'create',
+        payload: JSON.stringify({ title: 'Test' })
+      })
+
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockReturnValue({
+        pushItem: {
+          id: 'note-1',
+          type: 'note',
+          operation: 'create',
+          encryptedKey: 'ek',
+          keyNonce: 'kn',
+          encryptedData: 'ed',
+          dataNonce: 'dn',
+          signature: 'sig',
+          signerDeviceId: 'device-1'
+        },
+        contentHash: 'abc',
+        sizeBytes: 100
+      })
+
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        accepted: ['note-1'],
+        rejected: [],
+        serverTime: Date.now()
+      })
+
+      expect(engine.getStatus().lastSyncAt).toBeUndefined()
+
+      await engine.push()
+
+      expect(engine.getStatus().lastSyncAt).toBeDefined()
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given engine #when push fails with error', () => {
+    it('#then does NOT update lastSyncAt', async () => {
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      deps.queue.enqueue({
+        type: 'note',
+        itemId: 'note-1',
+        operation: 'create',
+        payload: JSON.stringify({ title: 'Test' })
+      })
+
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockImplementation(() => {
+        throw new Error('Encryption failed')
+      })
+
+      await engine.push()
+
+      expect(engine.getStatus().lastSyncAt).toBeUndefined()
+      expect(engine.currentState).toBe('error')
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given engine with empty queue #when push called', () => {
+    it('#then does NOT update lastSyncAt', async () => {
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      expect(engine.getStatus().lastSyncAt).toBeUndefined()
+
+      await engine.push()
+
+      expect(engine.getStatus().lastSyncAt).toBeUndefined()
+    })
+  })
 })

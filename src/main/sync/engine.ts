@@ -176,6 +176,7 @@ export class SyncEngine extends EventEmitter {
       }
 
       this.recordHistory('push', pushedCount, Date.now() - startTime)
+      this.updateLastSyncAt()
     } catch (error) {
       this.lastError = error instanceof Error ? error.message : String(error)
       this.setState('error')
@@ -186,7 +187,6 @@ export class SyncEngine extends EventEmitter {
       if (this.state === 'syncing') {
         this.setState(this.deps.network.online ? 'idle' : 'offline')
       }
-      this.updateLastSyncAt()
     }
   }
 
@@ -277,6 +277,7 @@ export class SyncEngine extends EventEmitter {
       }
 
       this.recordHistory('pull', pulledCount, Date.now() - startTime)
+      this.updateLastSyncAt()
     } catch (error) {
       this.lastError = error instanceof Error ? error.message : String(error)
       this.setState('error')
@@ -287,7 +288,6 @@ export class SyncEngine extends EventEmitter {
       if (this.state === 'syncing') {
         this.setState(this.deps.network.online ? 'idle' : 'offline')
       }
-      this.updateLastSyncAt()
     }
   }
 
