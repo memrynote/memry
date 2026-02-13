@@ -46,6 +46,8 @@ const SYNC_STATE_KEYS = {
   SYNC_PAUSED: 'syncPaused'
 } as const
 
+let instance: SyncEngine | null = null
+
 export interface SyncEngineDeps {
   queue: SyncQueueManager
   network: NetworkMonitor
@@ -79,12 +81,16 @@ export class SyncEngine extends EventEmitter {
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
+    if (instance && instance.syncing) {
+      throw new Error('SyncEngine instance already active — call stop() before creating a new one')
+    }
     this.deps = deps
     this.options = {
       pushBatchSize: options?.pushBatchSize ?? PUSH_BATCH_SIZE,
       pullPageLimit: options?.pullPageLimit ?? PULL_PAGE_LIMIT
     }
     this.applier = new ItemApplier(deps.db, deps.emitToRenderer)
+    instance = this
   }
 
   get currentState(): SyncStatusValue {
@@ -118,6 +124,7 @@ export class SyncEngine extends EventEmitter {
     this.deps.ws.removeListener('connected', this.handleWsConnected)
     this.deps.ws.disconnect()
     this.setState('idle')
+    instance = null
   }
 
   async push(): Promise<void> {
@@ -236,6 +243,7 @@ export class SyncEngine extends EventEmitter {
     }
     const startTime = Date.now()
     let pulledCount = 0
+    const processedIds = new Set<string>()
 
     try {
       let cursor = this.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)
@@ -269,6 +277,10 @@ export class SyncEngine extends EventEmitter {
           )
 
           for (const item of pullResult.value.items) {
+            if (processedIds.has(item.id)) {
+              log.debug('Skipping duplicate item in pull', { itemId: item.id })
+              continue
+            }
             const signerPubKey = await this.deps.getDevicePublicKey(item.signerDeviceId)
             if (!signerPubKey) continue
 
@@ -303,14 +315,29 @@ export class SyncEngine extends EventEmitter {
             })
 
             if (result === 'conflict') {
+              let remoteVersion: Record<string, unknown> = {}
+              try {
+                remoteVersion = JSON.parse(new TextDecoder().decode(decrypted.content))
+                if (item.clock) remoteVersion.clock = item.clock
+              } catch {
+                log.warn('Failed to parse remote content for conflict event', {
+                  itemId: item.id
+                })
+              }
+
+              const localVersion = this.fetchLocalItem(item.id, item.type)
+
               this.deps.emitToRenderer(EVENT_CHANNELS.CONFLICT_DETECTED, {
                 itemId: item.id,
                 type: item.type,
-                localVersion: {},
-                remoteVersion: {}
+                localVersion,
+                remoteVersion,
+                localClock: (localVersion.clock as Record<string, number>) ?? undefined,
+                remoteClock: item.clock ?? undefined
               } satisfies ConflictDetectedEvent)
             }
 
+            processedIds.add(item.id)
             pulledCount++
             this.emitItemSynced(item.id, item.type, 'pull', itemOp)
           }
@@ -345,6 +372,7 @@ export class SyncEngine extends EventEmitter {
       getAccessToken: this.deps.getAccessToken,
       isOnline: () => this.deps.network.online
     })
+    this.deps.queue.purgeOldErrors(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
   }
 
   getStatus(): GetSyncStatusResult {
@@ -387,7 +415,9 @@ export class SyncEngine extends EventEmitter {
 
   private scheduleSync(fn: () => Promise<void>): void {
     this.inFlightSync = fn()
-      .catch(() => {})
+      .catch((error) => {
+        log.error('Scheduled sync failed', error)
+      })
       .finally(() => {
         this.inFlightSync = null
       })
@@ -522,12 +552,59 @@ export class SyncEngine extends EventEmitter {
     const localTimeSeconds = Math.floor(Date.now() / 1000)
     const skew = Math.abs(localTimeSeconds - serverTimeSeconds)
     if (skew > CLOCK_SKEW_THRESHOLD_SECONDS) {
-      log.warn('Clock skew detected', { localTimeSeconds, serverTimeSeconds, skewSeconds: skew })
+      log.error('Clock skew detected, pausing sync', {
+        localTimeSeconds,
+        serverTimeSeconds,
+        skewSeconds: skew
+      })
       this.deps.emitToRenderer(EVENT_CHANNELS.CLOCK_SKEW_WARNING, {
         localTime: localTimeSeconds,
         serverTime: serverTimeSeconds,
         skewSeconds: skew
       } satisfies ClockSkewWarningEvent)
+      this.pause()
+    }
+  }
+
+  private fetchLocalItem(itemId: string, type: string): Record<string, unknown> {
+    try {
+      let row: Record<string, unknown> | undefined
+      switch (type) {
+        case 'task':
+          row = this.deps.db
+            .select()
+            .from(schema.tasks)
+            .where(eq(schema.tasks.id, itemId))
+            .get() as Record<string, unknown> | undefined
+          break
+        case 'project':
+          row = this.deps.db
+            .select()
+            .from(schema.projects)
+            .where(eq(schema.projects.id, itemId))
+            .get() as Record<string, unknown> | undefined
+          break
+        case 'inbox':
+          row = this.deps.db
+            .select()
+            .from(schema.inboxItems)
+            .where(eq(schema.inboxItems.id, itemId))
+            .get() as Record<string, unknown> | undefined
+          break
+        case 'filter':
+          row = this.deps.db
+            .select()
+            .from(schema.savedFilters)
+            .where(eq(schema.savedFilters.id, itemId))
+            .get() as Record<string, unknown> | undefined
+          break
+        default:
+          return {}
+      }
+      return row ?? {}
+    } catch {
+      log.warn('Failed to fetch local item for conflict', { itemId, type })
+      return {}
     }
   }
 }

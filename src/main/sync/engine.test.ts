@@ -782,6 +782,157 @@ describe('SyncEngine', () => {
     })
   })
 
+  describe('#given clock skew detection', () => {
+    it('#then pauses sync when skew exceeds threshold', async () => {
+      // #given
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'create',
+        payload: JSON.stringify({ title: 'Test' })
+      })
+
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockReturnValue({
+        pushItem: {
+          id: 'task-1',
+          type: 'task',
+          operation: 'create',
+          encryptedKey: 'ek',
+          keyNonce: 'kn',
+          encryptedData: 'ed',
+          dataNonce: 'dn',
+          signature: 'sig',
+          signerDeviceId: 'device-1'
+        },
+        contentHash: 'abc',
+        sizeBytes: 100
+      })
+
+      const skewedServerTime = Math.floor(Date.now() / 1000) + 600
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        accepted: ['task-1'],
+        rejected: [],
+        serverTime: skewedServerTime
+      })
+
+      // #when
+      await engine.push()
+
+      // #then — emits event AND pauses
+      expect(deps.emitToRenderer).toHaveBeenCalledWith(
+        'sync:clock-skew-warning',
+        expect.objectContaining({ skewSeconds: expect.any(Number) })
+      )
+      expect(deps.emitToRenderer).toHaveBeenCalledWith(
+        'sync:paused',
+        expect.objectContaining({ pendingCount: expect.any(Number) })
+      )
+
+      vi.restoreAllMocks()
+    })
+
+    it('#then does not pause when skew is exactly at threshold', async () => {
+      // #given
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'create',
+        payload: JSON.stringify({ title: 'Test' })
+      })
+
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockReturnValue({
+        pushItem: {
+          id: 'task-1',
+          type: 'task',
+          operation: 'create',
+          encryptedKey: 'ek',
+          keyNonce: 'kn',
+          encryptedData: 'ed',
+          dataNonce: 'dn',
+          signature: 'sig',
+          signerDeviceId: 'device-1'
+        },
+        contentHash: 'abc',
+        sizeBytes: 100
+      })
+
+      const boundaryServerTime = Math.floor(Date.now() / 1000) + 300
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        accepted: ['task-1'],
+        rejected: [],
+        serverTime: boundaryServerTime
+      })
+
+      // #when
+      await engine.push()
+
+      // #then — skew == threshold, should NOT trigger (uses > not >=)
+      const clockSkewCalls = (deps.emitToRenderer as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call) => call[0] === 'sync:clock-skew-warning'
+      )
+      expect(clockSkewCalls).toHaveLength(0)
+
+      const pausedCalls = (deps.emitToRenderer as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call) => call[0] === 'sync:paused'
+      )
+      expect(pausedCalls).toHaveLength(0)
+
+      vi.restoreAllMocks()
+    })
+
+    it('#then does not emit when no skew', async () => {
+      // #given
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'create',
+        payload: JSON.stringify({ title: 'Test' })
+      })
+
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockReturnValue({
+        pushItem: {
+          id: 'task-1',
+          type: 'task',
+          operation: 'create',
+          encryptedKey: 'ek',
+          keyNonce: 'kn',
+          encryptedData: 'ed',
+          dataNonce: 'dn',
+          signature: 'sig',
+          signerDeviceId: 'device-1'
+        },
+        contentHash: 'abc',
+        sizeBytes: 100
+      })
+
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        accepted: ['task-1'],
+        rejected: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      // #when
+      await engine.push()
+
+      // #then
+      const clockSkewCalls = (deps.emitToRenderer as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call) => call[0] === 'sync:clock-skew-warning'
+      )
+      expect(clockSkewCalls).toHaveLength(0)
+
+      vi.restoreAllMocks()
+    })
+  })
+
   describe('#given applier returns conflict #when pull receives item', () => {
     it('#then emits CONFLICT_DETECTED event', async () => {
       // #given
@@ -834,6 +985,133 @@ describe('SyncEngine', () => {
         'sync:conflict-detected',
         expect.objectContaining({ itemId: 'task-1', type: 'task' })
       )
+
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given full push/pull round-trip #when item queued and synced', () => {
+    it('#then item is encrypted, pushed, pulled, decrypted, and applied', async () => {
+      // #given
+      const deps = createMockDeps(testDb)
+      const taskPayload = { id: 'task-1', title: 'Round trip test', projectId: 'proj-1' }
+      const encodedPayload = new TextEncoder().encode(JSON.stringify(taskPayload))
+
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'create',
+        payload: JSON.stringify(taskPayload)
+      })
+
+      const fakePushItem = {
+        id: 'task-1',
+        type: 'task' as const,
+        operation: 'create' as const,
+        encryptedKey: 'ek-base64',
+        keyNonce: 'kn-base64',
+        encryptedData: 'ed-base64',
+        dataNonce: 'dn-base64',
+        signature: 'sig-base64',
+        signerDeviceId: 'device-1'
+      }
+
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockReturnValue({
+        pushItem: fakePushItem,
+        contentHash: 'hash-abc',
+        sizeBytes: 128
+      })
+
+      const serverTime = Math.floor(Date.now() / 1000)
+      const postMock = vi.fn()
+      const getMock = vi.fn()
+
+      postMock
+        .mockResolvedValueOnce({
+          accepted: ['task-1'],
+          rejected: [],
+          serverTime
+        })
+        .mockResolvedValueOnce({
+          items: [
+            {
+              id: 'task-1',
+              type: 'task',
+              operation: 'create',
+              cryptoVersion: 1,
+              blob: {
+                encryptedKey: 'ek-base64',
+                keyNonce: 'kn-base64',
+                encryptedData: 'ed-base64',
+                dataNonce: 'dn-base64'
+              },
+              signature: 'sig-base64',
+              signerDeviceId: 'device-1',
+              clock: { 'device-1': 1 }
+            }
+          ]
+        })
+
+      getMock.mockResolvedValue({
+        items: [{ id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 128 }],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 1
+      })
+
+      vi.spyOn(await import('./http-client'), 'postToServer').mockImplementation(postMock)
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockImplementation(getMock)
+
+      vi.spyOn(await import('./decrypt'), 'decryptItemFromPull').mockReturnValue({
+        content: encodedPayload,
+        verified: true
+      })
+
+      const { ItemApplier } = await import('./apply-item')
+      const applySpy = vi.spyOn(ItemApplier.prototype, 'apply').mockReturnValue('applied')
+
+      // #when — push then pull
+      const engine = new SyncEngine(deps)
+      await engine.push()
+      await engine.pull()
+
+      // #then — encrypt was called for push
+      const encryptMod = await import('./encrypt')
+      expect(encryptMod.encryptItemForPush).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'task-1', type: 'task', operation: 'create' })
+      )
+
+      // push was accepted
+      expect(deps.queue.getPendingCount()).toBe(0)
+
+      // pull fetched changes and decrypted
+      const decryptMod = await import('./decrypt')
+      expect(decryptMod.decryptItemFromPull).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'task-1', type: 'task' })
+      )
+
+      // applier received the decrypted content
+      expect(applySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          itemId: 'task-1',
+          type: 'task',
+          operation: 'create',
+          content: encodedPayload
+        })
+      )
+
+      // item-synced events for both push and pull
+      const itemSyncedCalls = (deps.emitToRenderer as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call) => call[0] === 'sync:item-synced'
+      )
+      const pushEvents = itemSyncedCalls.filter(
+        (call) => call[1]?.operation === 'push'
+      )
+      const pullEvents = itemSyncedCalls.filter(
+        (call) => call[1]?.operation === 'pull'
+      )
+      expect(pushEvents).toHaveLength(1)
+      expect(pullEvents).toHaveLength(1)
 
       vi.restoreAllMocks()
     })

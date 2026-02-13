@@ -1,5 +1,6 @@
 import type { RotationPhase } from './ipc-crypto'
 import type { SyncStatusValue } from './ipc-sync-ops'
+import type { VectorClock } from './sync-api'
 
 // ============================================================================
 // Event Channel Constants
@@ -48,6 +49,8 @@ export interface ConflictDetectedEvent {
   type: string
   localVersion: Record<string, unknown>
   remoteVersion: Record<string, unknown>
+  localClock?: VectorClock
+  remoteClock?: VectorClock
 }
 
 export interface LinkingRequestEvent {
