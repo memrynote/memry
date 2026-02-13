@@ -49,7 +49,12 @@ import {
 } from '../crypto'
 import { getDatabase } from '../database/client'
 import { store } from '../store'
-import { getFromServer, postToServer, SyncServerError } from '../sync/http-client'
+import {
+  deleteFromServer,
+  getFromServer,
+  postToServer,
+  SyncServerError
+} from '../sync/http-client'
 
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler } from './validate'
@@ -401,7 +406,31 @@ const persistKeysAndRegisterDevice = async (
     }
   }
 
-  await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, masterKey)
+  try {
+    await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, masterKey)
+  } catch (keychainErr) {
+    logger.error('Failed to store master key in keychain after device registration', keychainErr)
+
+    const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN).catch(() => null)
+    if (accessToken) {
+      try {
+        await deleteFromServer(`/auth/devices/${deviceResponse.deviceId}`, accessToken)
+      } catch (deregErr) {
+        logger.error(
+          'Failed to deregister device after keychain write failure — orphaned device on server',
+          deregErr
+        )
+      }
+    }
+
+    await deleteKey(KEYCHAIN_ENTRIES.ACCESS_TOKEN).catch(() => {})
+    await deleteKey(KEYCHAIN_ENTRIES.REFRESH_TOKEN).catch(() => {})
+    await deleteKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => {})
+
+    throw new Error(
+      'Failed to save encryption key securely. Device registration has been rolled back. Please try again.'
+    )
+  }
 
   const db = getDatabase()
   await db.insert(syncDevices).values({
@@ -452,8 +481,44 @@ const performFirstDeviceSetup = async (setupToken: string): Promise<FirstDeviceS
 // Stub helper for not-yet-implemented handlers
 // ============================================================================
 
-const notImplemented = (channel: string) => (): never => {
-  throw new Error(`${channel} not yet implemented`)
+const notImplemented = (feature: string, phase: number) => (): never => {
+  throw new Error(`Not implemented — planned for Phase ${phase}: ${feature}`)
+}
+
+// ============================================================================
+// Startup Integrity Check
+// ============================================================================
+
+export async function checkSyncIntegrity(): Promise<void> {
+  try {
+    const db = getDatabase()
+    const currentDevice = db
+      .select()
+      .from(syncDevices)
+      .where(eq(syncDevices.isCurrentDevice, true))
+      .get()
+
+    if (!currentDevice) return
+
+    const masterKey = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY).catch(() => null)
+    if (masterKey) return
+
+    logger.error(
+      'Detected orphaned device registration — device registered but master key missing from keychain. ' +
+        'Cleaning up local state. User will need to re-authenticate.',
+      { deviceId: currentDevice.id }
+    )
+
+    await db.delete(syncDevices).where(eq(syncDevices.isCurrentDevice, true))
+    await Promise.allSettled([
+      deleteKey(KEYCHAIN_ENTRIES.ACCESS_TOKEN),
+      deleteKey(KEYCHAIN_ENTRIES.REFRESH_TOKEN),
+      deleteKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
+    ])
+    store.set('sync', {})
+  } catch (err) {
+    logger.error('Sync integrity check failed', err)
+  }
 }
 
 // ============================================================================
@@ -681,8 +746,8 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
 
   // --- Not-yet-implemented handlers ---
 
-  ipcMain.handle(SYNC_CHANNELS.GENERATE_LINKING_QR, notImplemented('GENERATE_LINKING_QR'))
-  ipcMain.handle(SYNC_CHANNELS.LINK_VIA_QR, notImplemented('LINK_VIA_QR'))
+  ipcMain.handle(SYNC_CHANNELS.GENERATE_LINKING_QR, notImplemented('QR device linking', 5))
+  ipcMain.handle(SYNC_CHANNELS.LINK_VIA_QR, notImplemented('QR device linking', 5))
   ipcMain.handle(
     SYNC_CHANNELS.LINK_VIA_RECOVERY,
     createValidatedHandler(LinkViaRecoverySchema, async (input) => {
@@ -735,7 +800,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
       }
     })
   )
-  ipcMain.handle(SYNC_CHANNELS.APPROVE_LINKING, notImplemented('APPROVE_LINKING'))
+  ipcMain.handle(SYNC_CHANNELS.APPROVE_LINKING, notImplemented('device linking approval', 5))
 
   ipcMain.handle(SYNC_CHANNELS.GET_DEVICES, async () => {
     const db = getDatabase()
@@ -751,8 +816,8 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     const syncData = store.get('sync')
     return { devices, email: syncData.email }
   })
-  ipcMain.handle(SYNC_CHANNELS.REMOVE_DEVICE, notImplemented('REMOVE_DEVICE'))
-  ipcMain.handle(SYNC_CHANNELS.RENAME_DEVICE, notImplemented('RENAME_DEVICE'))
+  ipcMain.handle(SYNC_CHANNELS.REMOVE_DEVICE, notImplemented('device removal', 5))
+  ipcMain.handle(SYNC_CHANNELS.RENAME_DEVICE, notImplemented('device rename', 5))
 
   ipcMain.handle(SYNC_CHANNELS.GET_STATUS, () => {
     if (!syncEngine) return { status: 'idle', pendingCount: 0 }
@@ -831,10 +896,13 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     return manager.getSettings()
   })
 
-  ipcMain.handle(SYNC_CHANNELS.UPLOAD_ATTACHMENT, notImplemented('UPLOAD_ATTACHMENT'))
-  ipcMain.handle(SYNC_CHANNELS.GET_UPLOAD_PROGRESS, notImplemented('GET_UPLOAD_PROGRESS'))
-  ipcMain.handle(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT, notImplemented('DOWNLOAD_ATTACHMENT'))
-  ipcMain.handle(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS, notImplemented('GET_DOWNLOAD_PROGRESS'))
+  ipcMain.handle(SYNC_CHANNELS.UPLOAD_ATTACHMENT, notImplemented('attachment upload', 6))
+  ipcMain.handle(SYNC_CHANNELS.GET_UPLOAD_PROGRESS, notImplemented('attachment upload progress', 6))
+  ipcMain.handle(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT, notImplemented('attachment download', 6))
+  ipcMain.handle(
+    SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS,
+    notImplemented('attachment download progress', 6)
+  )
 
   logger.info('Sync handlers registered')
 }
