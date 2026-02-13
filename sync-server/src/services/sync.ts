@@ -15,6 +15,7 @@ import { AppError, ErrorCodes } from '../lib/errors'
 import { generateBlobKey, getBlob, putBlob } from './blob'
 import { getNextCursor } from './cursor'
 import { getDevice } from './device'
+import { getUserById } from './user'
 
 const MAX_ENCRYPTED_DATA_BYTES = 5 * 1024 * 1024
 const DEFAULT_CHANGES_LIMIT = 100
@@ -179,6 +180,22 @@ export const processPushItem = async (
       keyNonce: item.keyNonce
     })
 
+    const newSize = payloadBytes.byteLength
+    const existingSize = existing
+      ? ((existing as unknown as Record<string, number>).size_bytes ?? 0)
+      : 0
+    const sizeDelta = newSize - existingSize
+
+    if (sizeDelta > 0) {
+      const user = await getUserById(db, userId)
+      if (!user) {
+        return { accepted: false, reason: ErrorCodes.AUTH_INVALID_TOKEN }
+      }
+      if (user.storage_used + sizeDelta > user.storage_limit) {
+        return { accepted: false, reason: ErrorCodes.STORAGE_QUOTA_EXCEEDED }
+      }
+    }
+
     const blobKey = generateBlobKey(userId, item.id)
     await putBlob(storage, blobKey, payloadBytes.slice().buffer, userId)
 
@@ -227,6 +244,13 @@ export const processPushItem = async (
         deletedAt
       )
       .run()
+
+    if (sizeDelta !== 0) {
+      await db
+        .prepare('UPDATE users SET storage_used = MAX(0, storage_used + ?) WHERE id = ?')
+        .bind(sizeDelta, userId)
+        .run()
+    }
 
     return { accepted: true, serverCursor }
   } catch (error) {
@@ -408,10 +432,25 @@ export const pullItems = async (
 
   for (const row of rows.results ?? []) {
     const blob = await getBlob(storage, row.blob_key, userId)
-    if (!blob) continue
+    if (!blob) {
+      throw new AppError(
+        ErrorCodes.STORAGE_BLOB_NOT_FOUND,
+        `Blob missing for item ${row.item_id}`,
+        404
+      )
+    }
 
-    const text = await new Response(blob.body).text()
-    const payload = JSON.parse(text) as EncryptedItemPayload
+    let payload: EncryptedItemPayload
+    try {
+      const text = await new Response(blob.body).text()
+      payload = JSON.parse(text) as EncryptedItemPayload
+    } catch {
+      throw new AppError(
+        ErrorCodes.INTERNAL_ERROR,
+        `Corrupt blob payload for item ${row.item_id}`,
+        500
+      )
+    }
 
     results.push({
       itemId: row.item_id,
@@ -461,8 +500,17 @@ export const getItem = async (
     throw new AppError(ErrorCodes.STORAGE_BLOB_NOT_FOUND, 'Item blob not found in storage', 404)
   }
 
-  const text = await new Response(blob.body).text()
-  const payload = JSON.parse(text) as EncryptedItemPayload
+  let payload: EncryptedItemPayload
+  try {
+    const text = await new Response(blob.body).text()
+    payload = JSON.parse(text) as EncryptedItemPayload
+  } catch {
+    throw new AppError(
+      ErrorCodes.INTERNAL_ERROR,
+      `Corrupt blob payload for item ${itemId}`,
+      500
+    )
+  }
 
   return {
     itemId: row.item_id,

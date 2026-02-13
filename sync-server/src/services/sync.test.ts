@@ -17,6 +17,10 @@ vi.mock('./device', () => ({
   getDevice: vi.fn()
 }))
 
+vi.mock('./user', () => ({
+  getUserById: vi.fn()
+}))
+
 vi.mock('../lib/encoding', () => ({
   safeBase64Decode: vi.fn().mockImplementation((input: string) => {
     return Uint8Array.from(atob(input), (ch) => ch.charCodeAt(0))
@@ -39,8 +43,11 @@ import {
   getManifest,
   getChanges,
   deleteItem,
-  updateDeviceCursor
+  updateDeviceCursor,
+  processPushItem
 } from './sync'
+import { getDevice } from './device'
+import { getUserById } from './user'
 
 const mockedSafeBase64Decode = vi.mocked(safeBase64Decode)
 
@@ -606,5 +613,105 @@ describe('updateDeviceCursor', () => {
     expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('ON CONFLICT'))
     expect(stmt.bind).toHaveBeenCalledWith('device-1', 'user-1', 42, expect.any(Number))
     expect(stmt.run).toHaveBeenCalled()
+  })
+})
+
+// ============================================================================
+// Tests: processPushItem — storage quota enforcement
+// ============================================================================
+
+describe('processPushItem', () => {
+  const mockedGetDevice = vi.mocked(getDevice)
+  const mockedGetUserById = vi.mocked(getUserById)
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockedGetDevice.mockResolvedValue({
+      id: 'device-1',
+      user_id: 'user-1',
+      device_name: 'test',
+      device_type: 'desktop',
+      public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      revoked_at: null,
+      last_sync_at: null,
+      created_at: 1000,
+      updated_at: 1000
+    })
+  })
+
+  it('should reject push when storage quota would be exceeded', async () => {
+    // #given — user at 99% of 1KB quota
+    mockedGetUserById.mockResolvedValue({
+      id: 'user-1',
+      email: 'test@test.com',
+      email_verified: 1,
+      auth_method: 'email',
+      auth_provider: null,
+      auth_provider_id: null,
+      kdf_salt: null,
+      key_verifier: null,
+      storage_used: 990,
+      storage_limit: 1000,
+      created_at: 1000,
+      updated_at: 1000
+    })
+
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue(null)
+
+    const db = createMockDb()
+    db.prepare.mockReturnValue(selectStmt)
+
+    const storage = {} as R2Bucket
+
+    // #when
+    const result = await processPushItem(
+      db as unknown as D1Database,
+      storage,
+      'user-1',
+      'device-1',
+      createValidPushItem()
+    )
+
+    // #then
+    expect(result.accepted).toBe(false)
+    expect(result.reason).toBe('STORAGE_QUOTA_EXCEEDED')
+  })
+
+  it('should skip quota check when replacing item with smaller payload', async () => {
+    // #given — existing item is 5000 bytes, new is smaller → sizeDelta ≤ 0
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue({
+      version: 1,
+      clock: '{"device-1":1}',
+      created_at: 1000,
+      size_bytes: 50000
+    })
+
+    const upsertStmt = createMockStatement()
+    const updateStmt = createMockStatement()
+
+    const db = createMockDb()
+    db.prepare
+      .mockReturnValueOnce(selectStmt)
+      .mockReturnValueOnce(upsertStmt)
+      .mockReturnValueOnce(updateStmt)
+
+    const storage = {
+      put: vi.fn().mockResolvedValue({ etag: 'etag-1' })
+    } as unknown as R2Bucket
+
+    // #when
+    const result = await processPushItem(
+      db as unknown as D1Database,
+      storage,
+      'user-1',
+      'device-1',
+      createValidPushItem({ clock: { 'device-1': 2 } })
+    )
+
+    // #then — accepted without ever checking getUserById
+    expect(result.accepted).toBe(true)
+    expect(mockedGetUserById).not.toHaveBeenCalled()
   })
 })
