@@ -9,6 +9,7 @@
 
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
+import type { VectorClock } from '@shared/contracts/sync-api'
 
 // ============================================================================
 // Type Constants
@@ -169,7 +170,11 @@ export const inboxItems = sqliteTable(
     // ========================================================================
 
     /** When the item was archived (soft delete) */
-    archivedAt: text('archived_at')
+    archivedAt: text('archived_at'),
+
+    clock: text('clock', { mode: 'json' }).$type<VectorClock>(),
+    syncedAt: text('synced_at'),
+    localOnly: integer('local_only', { mode: 'boolean' }).default(false)
   },
   (table) => [
     index('idx_inbox_items_type').on(table.type),

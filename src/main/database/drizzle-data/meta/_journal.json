@@ -78,6 +78,13 @@
       "when": 1770987330126,
       "tag": "0010_dizzy_natasha_romanoff",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1770988361099,
+      "tag": "0011_silent_shooting_star",
+      "breakpoints": true
     }
   ]
 }
