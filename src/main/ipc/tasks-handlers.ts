@@ -35,6 +35,7 @@ import { getDatabase, type DrizzleDb } from '../database'
 import { generateId } from '../lib/id'
 import * as taskQueries from '@shared/db/queries/tasks'
 import * as projectQueries from '@shared/db/queries/projects'
+import { getTaskSyncService } from '../sync/task-sync'
 
 const logger = createLogger('IPC:Tasks')
 
@@ -111,6 +112,7 @@ export function registerTasksHandlers(): void {
         }
 
         emitTaskEvent(TasksChannels.events.CREATED, { task: enrichedTask })
+        getTaskSyncService()?.enqueueCreate(id)
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -193,6 +195,7 @@ export function registerTasksHandlers(): void {
         }
 
         emitTaskEvent(TasksChannels.events.UPDATED, { id, task: enrichedTask, changes: updates })
+        getTaskSyncService()?.enqueueUpdate(id)
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -208,6 +211,11 @@ export function registerTasksHandlers(): void {
     createStringHandler(async (id) => {
       try {
         const db = requireDatabase()
+        const syncService = getTaskSyncService()
+        if (syncService) {
+          const task = taskQueries.getTaskById(db, id)
+          if (task) syncService.enqueueDelete(id, JSON.stringify(task))
+        }
         taskQueries.deleteTask(db, id)
         emitTaskEvent(TasksChannels.events.DELETED, { id })
         return { success: true }
@@ -274,6 +282,7 @@ export function registerTasksHandlers(): void {
         }
 
         emitTaskEvent(TasksChannels.events.COMPLETED, { id: input.id, task: enrichedTask })
+        getTaskSyncService()?.enqueueUpdate(input.id)
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -304,6 +313,7 @@ export function registerTasksHandlers(): void {
           task: enrichedTask,
           changes: { completedAt: null }
         })
+        getTaskSyncService()?.enqueueUpdate(id)
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -334,6 +344,7 @@ export function registerTasksHandlers(): void {
           task: enrichedTask,
           changes: { archivedAt: task.archivedAt }
         })
+        getTaskSyncService()?.enqueueUpdate(id)
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to archive task'
@@ -363,6 +374,7 @@ export function registerTasksHandlers(): void {
           task: enrichedTask,
           changes: { archivedAt: null }
         })
+        getTaskSyncService()?.enqueueUpdate(id)
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to unarchive task'
@@ -414,6 +426,7 @@ export function registerTasksHandlers(): void {
         }
 
         emitTaskEvent(TasksChannels.events.MOVED, { id: input.taskId, task: enrichedTask })
+        getTaskSyncService()?.enqueueUpdate(input.taskId)
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -470,6 +483,7 @@ export function registerTasksHandlers(): void {
 
         // IMPORTANT: Emit parent task FIRST so it exists in state when subtasks arrive
         emitTaskEvent(TasksChannels.events.CREATED, { task: enrichedTask })
+        getTaskSyncService()?.enqueueCreate(newId)
 
         // Duplicate subtasks (if any)
         const subtasks = taskQueries.getSubtasks(db, id)
@@ -500,6 +514,7 @@ export function registerTasksHandlers(): void {
             emitTaskEvent(TasksChannels.events.CREATED, {
               task: { ...duplicatedSubtask, linkedNoteIds: subtaskNoteIds }
             })
+            getTaskSyncService()?.enqueueCreate(newSubtaskId)
           }
         }
 
@@ -806,7 +821,7 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         const count = taskQueries.bulkCompleteTasks(db, input.ids)
 
-        // Emit COMPLETED event for each task to update UI state
+        const syncService = getTaskSyncService()
         for (const id of input.ids) {
           const task = taskQueries.getTaskById(db, id)
           if (task) {
@@ -815,6 +830,7 @@ export function registerTasksHandlers(): void {
               linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
             }
             emitTaskEvent(TasksChannels.events.COMPLETED, { id, task: enrichedTask })
+            syncService?.enqueueUpdate(id)
           }
         }
 
@@ -832,6 +848,13 @@ export function registerTasksHandlers(): void {
     createValidatedHandler(BulkIdsSchema, async (input) => {
       try {
         const db = requireDatabase()
+        const syncService = getTaskSyncService()
+        if (syncService) {
+          for (const id of input.ids) {
+            const task = taskQueries.getTaskById(db, id)
+            if (task) syncService.enqueueDelete(id, JSON.stringify(task))
+          }
+        }
         const count = taskQueries.bulkDeleteTasks(db, input.ids)
         input.ids.forEach((id) => emitTaskEvent(TasksChannels.events.DELETED, { id }))
         return { success: true, count }
@@ -850,7 +873,7 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         const count = taskQueries.bulkMoveTasks(db, input.ids, input.projectId)
 
-        // Emit UPDATED event for each task to update UI state with new projectId
+        const syncService = getTaskSyncService()
         for (const id of input.ids) {
           const task = taskQueries.getTaskById(db, id)
           if (task) {
@@ -863,6 +886,7 @@ export function registerTasksHandlers(): void {
               task: enrichedTask,
               changes: { projectId: input.projectId }
             })
+            syncService?.enqueueUpdate(id)
           }
         }
 
@@ -882,7 +906,7 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         const count = taskQueries.bulkArchiveTasks(db, input.ids)
 
-        // Emit UPDATED event for each task to update UI state with archivedAt
+        const syncService = getTaskSyncService()
         for (const id of input.ids) {
           const task = taskQueries.getTaskById(db, id)
           if (task) {
@@ -895,6 +919,7 @@ export function registerTasksHandlers(): void {
               task: enrichedTask,
               changes: { archivedAt: task.archivedAt }
             })
+            syncService?.enqueueUpdate(id)
           }
         }
 
