@@ -801,8 +801,8 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
 
   ipcMain.handle(SYNC_CHANNELS.GET_QUEUE_SIZE, () => {
     if (!syncEngine) return { pending: 0, failed: 0 }
-    const stats = syncEngine.getStatus()
-    return { pending: stats.pendingCount, failed: 0 }
+    const stats = syncEngine.getQueueStats()
+    return { pending: stats.pending, failed: stats.failed }
   })
 
   ipcMain.handle(SYNC_CHANNELS.PAUSE, () => {
