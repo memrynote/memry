@@ -234,6 +234,49 @@ describe('UserSyncState', () => {
     })
   })
 
+  describe('/revoke-device', () => {
+    function revokeDeviceRequest(deviceId: string): Request {
+      return new Request('https://do.internal/revoke-device', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId })
+      })
+    }
+
+    it('immediately closes WebSocket for revoked device', async () => {
+      // #given
+      const doObj = createDO()
+      await doObj.fetch(connectRequest())
+
+      const ctx = getCtx(doObj)
+      const sockets = ctx.getWebSockets('device:device-1')
+      const ws = sockets[0] as unknown as MockWebSocket
+
+      // #when
+      const res = await doObj.fetch(revokeDeviceRequest('device-1'))
+      const body = (await res.json()) as { closed: number }
+
+      // #then
+      expect(body.closed).toBe(1)
+      expect(ws.closeCalled).toBe(true)
+      expect(ws.closeCode).toBe(4004)
+      const revokedMsg = ws.sentMessages.find((m) => m.includes(ErrorCodes.AUTH_DEVICE_REVOKED))
+      expect(revokedMsg).toBeDefined()
+    })
+
+    it('returns closed: 0 when device has no active connection', async () => {
+      // #given
+      const doObj = createDO()
+
+      // #when
+      const res = await doObj.fetch(revokeDeviceRequest('nonexistent-device'))
+      const body = (await res.json()) as { closed: number }
+
+      // #then
+      expect(body.closed).toBe(0)
+    })
+  })
+
   it('returns 404 for unknown paths', async () => {
     // #given
     const doObj = createDO()

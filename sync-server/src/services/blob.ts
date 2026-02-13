@@ -38,9 +38,23 @@ export const putBlob = async (
     }
   }
 
-  const result = await storage.put(key, data)
-  if (!result) {
-    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Failed to store blob', 500)
+  let result: R2Object
+  try {
+    const r2Result = await storage.put(key, data)
+    if (!r2Result) {
+      throw new AppError(ErrorCodes.STORAGE_UPLOAD_FAILED, 'R2 put returned null', 500)
+    }
+    result = r2Result
+  } catch (err) {
+    if (err instanceof AppError) throw err
+    const msg = err instanceof Error ? err.message : String(err)
+    if (/quota|limit|exceeded/i.test(msg)) {
+      throw new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, `Storage quota exceeded: ${msg}`, 413)
+    }
+    if (/forbidden|permission|unauthorized|access denied/i.test(msg)) {
+      throw new AppError(ErrorCodes.STORAGE_UNAUTHORIZED, `Storage permission error: ${msg}`, 403)
+    }
+    throw new AppError(ErrorCodes.STORAGE_UPLOAD_FAILED, `Blob upload failed: ${msg}`, 500)
   }
   return result
 }
