@@ -432,6 +432,28 @@ export const TasksProvider = ({
       setProjects((prev) => prev.filter((p) => p.id !== event.id))
     })
 
+    const unsubItemSynced = window.api.onItemSynced((event) => {
+      if (event.type !== 'task' || event.operation !== 'pull') return
+
+      if (event.itemOperation === 'delete') {
+        setTasks((prev) => prev.filter((t) => t.id !== event.itemId))
+        return
+      }
+
+      tasksService
+        .get(event.itemId)
+        .then((dbTask) => {
+          if (!dbTask) return
+          const uiTask = dbTaskToUiTask(dbTask)
+          setTasks((prev) => {
+            const exists = prev.some((t) => t.id === event.itemId)
+            if (exists) return prev.map((t) => (t.id === event.itemId ? uiTask : t))
+            return [uiTask, ...prev]
+          })
+        })
+        .catch((err) => log.error('Failed to fetch synced task', err))
+    })
+
     return () => {
       unsubTaskCreated()
       unsubTaskUpdated()
@@ -440,6 +462,7 @@ export const TasksProvider = ({
       unsubProjectCreated()
       unsubProjectUpdated()
       unsubProjectDeleted()
+      unsubItemSynced()
     }
   }, [isVaultOpen, setTasks, setProjects])
 
