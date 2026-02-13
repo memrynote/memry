@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { tasks } from '@shared/db/schema/tasks'
 import { projects } from '@shared/db/schema/projects'
