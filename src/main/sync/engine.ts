@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events'
+import { createLogger } from '../lib/logger'
 import { eq } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import * as schema from '@shared/db/schema/data-schema'
@@ -9,7 +10,10 @@ import type {
   SyncStatusChangedEvent,
   ItemSyncedEvent,
   SyncPausedEvent,
-  SyncResumedEvent
+  SyncResumedEvent,
+  ConflictDetectedEvent,
+  QueueClearedEvent,
+  ClockSkewWarningEvent
 } from '@shared/contracts/ipc-events'
 import type {
   GetSyncStatusResult,
@@ -26,10 +30,15 @@ import { decryptItemFromPull } from './decrypt'
 import { ItemApplier } from './apply-item'
 import { withRetry } from './retry'
 import { postToServer, getFromServer } from './http-client'
+import { checkManifestIntegrity } from './manifest-check'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
 
-const PUSH_BATCH_SIZE = 20
+const log = createLogger('SyncEngine')
+
+const PUSH_BATCH_SIZE = 100
+const MAX_PUSH_ITERATIONS = 50
+const CLOCK_SKEW_THRESHOLD_SECONDS = 300
 const PULL_PAGE_LIMIT = 100
 const SYNC_STATE_KEYS = {
   LAST_CURSOR: 'lastCursor',
@@ -136,50 +145,65 @@ export class SyncEngine extends EventEmitter {
     }
     const startTime = Date.now()
     let pushedCount = 0
+    let lastServerTime = 0
 
     try {
-      const items = this.deps.queue.dequeue(this.options.pushBatchSize)
-      if (items.length === 0) {
-        return
+      for (let iteration = 0; iteration < MAX_PUSH_ITERATIONS; iteration++) {
+        if (this.abortController.signal.aborted) break
+
+        const items = this.deps.queue.dequeue(this.options.pushBatchSize)
+        if (items.length === 0) break
+
+        const pushItems = items.map((item) => {
+          const result = encryptItemForPush({
+            id: item.itemId,
+            type: item.type as Parameters<typeof encryptItemForPush>[0]['type'],
+            operation: item.operation as Parameters<typeof encryptItemForPush>[0]['operation'],
+            content: new TextEncoder().encode(item.payload),
+            vaultKey,
+            signingSecretKey: signingKeys.secretKey,
+            signerDeviceId: signingKeys.deviceId
+          })
+          return { queueId: item.id, pushItem: result.pushItem }
+        })
+
+        const response = await withRetry(
+          () =>
+            postToServer<PushResponse>(
+              '/sync/push',
+              { items: pushItems.map((p) => p.pushItem) },
+              token
+            ),
+          { signal: this.abortController.signal, isOnline: () => this.deps.network.online }
+        )
+
+        const acceptedSet = new Set(response.value.accepted)
+        for (const { queueId, pushItem } of pushItems) {
+          if (acceptedSet.has(pushItem.id)) {
+            this.deps.queue.markSuccess(queueId)
+            pushedCount++
+            this.emitItemSynced(pushItem.id, pushItem.type, 'push')
+          } else {
+            const rejection = response.value.rejected.find((r) => r.id === pushItem.id)
+            this.deps.queue.markFailed(queueId, rejection?.reason ?? 'Unknown rejection')
+          }
+        }
+
+        lastServerTime = response.value.serverTime
       }
 
-      const pushItems = items.map((item) => {
-        const result = encryptItemForPush({
-          id: item.itemId,
-          type: item.type as Parameters<typeof encryptItemForPush>[0]['type'],
-          operation: item.operation as Parameters<typeof encryptItemForPush>[0]['operation'],
-          content: new TextEncoder().encode(item.payload),
-          vaultKey,
-          signingSecretKey: signingKeys.secretKey,
-          signerDeviceId: signingKeys.deviceId
-        })
-        return { queueId: item.id, pushItem: result.pushItem }
-      })
+      if (pushedCount > 0) {
+        this.recordHistory('push', pushedCount, Date.now() - startTime)
+        this.updateLastSyncAt()
+        if (lastServerTime > 0) this.checkClockSkew(lastServerTime)
 
-      const response = await withRetry(
-        () =>
-          postToServer<PushResponse>(
-            '/sync/push',
-            { items: pushItems.map((p) => p.pushItem) },
-            token
-          ),
-        { signal: this.abortController.signal, isOnline: () => this.deps.network.online }
-      )
-
-      const acceptedSet = new Set(response.value.accepted)
-      for (const { queueId, pushItem } of pushItems) {
-        if (acceptedSet.has(pushItem.id)) {
-          this.deps.queue.markSuccess(queueId)
-          pushedCount++
-          this.emitItemSynced(pushItem.id, pushItem.type, 'push')
-        } else {
-          const rejection = response.value.rejected.find((r) => r.id === pushItem.id)
-          this.deps.queue.markFailed(queueId, rejection?.reason ?? 'Unknown rejection')
+        if (this.deps.queue.getPendingCount() === 0) {
+          this.deps.emitToRenderer(EVENT_CHANNELS.QUEUE_CLEARED, {
+            itemCount: pushedCount,
+            duration: Date.now() - startTime
+          } satisfies QueueClearedEvent)
         }
       }
-
-      this.recordHistory('push', pushedCount, Date.now() - startTime)
-      this.updateLastSyncAt()
     } catch (error) {
       this.lastError = error instanceof Error ? error.message : String(error)
       this.setState('error')
@@ -269,7 +293,7 @@ export class SyncEngine extends EventEmitter {
             })
 
             const itemOp = item.deletedAt ? 'delete' : (item.operation as 'create' | 'update')
-            this.applier.apply({
+            const result = this.applier.apply({
               itemId: item.id,
               type: item.type as Parameters<ItemApplier['apply']>[0]['type'],
               operation: itemOp,
@@ -277,6 +301,16 @@ export class SyncEngine extends EventEmitter {
               clock: item.clock,
               deletedAt: item.deletedAt
             })
+
+            if (result === 'conflict') {
+              this.deps.emitToRenderer(EVENT_CHANNELS.CONFLICT_DETECTED, {
+                itemId: item.id,
+                type: item.type,
+                localVersion: {},
+                remoteVersion: {}
+              } satisfies ConflictDetectedEvent)
+            }
+
             pulledCount++
             this.emitItemSynced(item.id, item.type, 'pull', itemOp)
           }
@@ -305,6 +339,12 @@ export class SyncEngine extends EventEmitter {
   async fullSync(): Promise<void> {
     await this.pull()
     await this.push()
+    await checkManifestIntegrity({
+      db: this.deps.db,
+      queue: this.deps.queue,
+      getAccessToken: this.deps.getAccessToken,
+      isOnline: () => this.deps.network.online
+    })
   }
 
   getStatus(): GetSyncStatusResult {
@@ -476,6 +516,19 @@ export class SyncEngine extends EventEmitter {
     const event: SyncResumedEvent = { pendingCount }
     this.deps.emitToRenderer(EVENT_CHANNELS.RESUMED, event)
     this.emit('resumed', event)
+  }
+
+  private checkClockSkew(serverTimeSeconds: number): void {
+    const localTimeSeconds = Math.floor(Date.now() / 1000)
+    const skew = Math.abs(localTimeSeconds - serverTimeSeconds)
+    if (skew > CLOCK_SKEW_THRESHOLD_SECONDS) {
+      log.warn('Clock skew detected', { localTimeSeconds, serverTimeSeconds, skewSeconds: skew })
+      this.deps.emitToRenderer(EVENT_CHANNELS.CLOCK_SKEW_WARNING, {
+        localTime: localTimeSeconds,
+        serverTime: serverTimeSeconds,
+        skewSeconds: skew
+      } satisfies ClockSkewWarningEvent)
+    }
   }
 }
 
