@@ -88,11 +88,7 @@ export class TaskSyncService {
       const existingClock = (task.clock as VectorClock) ?? {}
       const newClock = increment(existingClock, deviceId)
 
-      this.db
-        .update(tasks)
-        .set({ clock: newClock })
-        .where(eq(tasks.id, taskId))
-        .run()
+      this.db.update(tasks).set({ clock: newClock }).where(eq(tasks.id, taskId)).run()
 
       const payload = JSON.stringify({ ...task, clock: newClock })
 
