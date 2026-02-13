@@ -20,6 +20,7 @@ export const EVENT_CHANNELS = {
   KEY_ROTATION_PROGRESS: 'crypto:key-rotation-progress',
   SESSION_EXPIRED: 'auth:session-expired',
   OTP_DETECTED: 'auth:otp-detected',
+  CLOCK_SKEW_WARNING: 'sync:clock-skew-warning',
   OAUTH_CALLBACK: 'auth:oauth-callback',
   OAUTH_ERROR: 'auth:oauth-error'
 } as const
@@ -114,6 +115,12 @@ export interface OtpDetectedEvent {
 export interface OAuthCallbackEvent {
   code: string
   state: string
+}
+
+export interface ClockSkewWarningEvent {
+  localTime: number
+  serverTime: number
+  skewSeconds: number
 }
 
 export interface OAuthErrorEvent {

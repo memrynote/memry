@@ -10,7 +10,9 @@ export const SYNC_OP_CHANNELS = {
   GET_HISTORY: 'sync:get-history',
   GET_QUEUE_SIZE: 'sync:get-queue-size',
   PAUSE: 'sync:pause',
-  RESUME: 'sync:resume'
+  RESUME: 'sync:resume',
+  UPDATE_SYNCED_SETTING: 'sync:update-synced-setting',
+  GET_SYNCED_SETTINGS: 'sync:get-synced-settings'
 } as const
 
 // ============================================================================
@@ -65,6 +67,16 @@ export interface ResumeSyncResult {
   pendingCount: number
 }
 
+export interface UpdateSyncedSettingInput {
+  fieldPath: string
+  value: unknown
+}
+
+export interface UpdateSyncedSettingResult {
+  success: boolean
+  error?: string
+}
+
 // ============================================================================
 // Zod Schemas
 // ============================================================================
@@ -72,6 +84,11 @@ export interface ResumeSyncResult {
 export const GetHistorySchema = z.object({
   limit: z.number().int().min(1).max(1000).optional(),
   offset: z.number().int().min(0).optional()
+})
+
+export const UpdateSyncedSettingSchema = z.object({
+  fieldPath: z.string().min(1),
+  value: z.unknown()
 })
 
 // ============================================================================
