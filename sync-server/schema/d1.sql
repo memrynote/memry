@@ -148,7 +148,7 @@ CREATE TABLE sync_items (
   clock TEXT,
   state_vector TEXT,
   deleted_at INTEGER,
-  signer_device_id TEXT NOT NULL REFERENCES devices(id),
+  signer_device_id TEXT REFERENCES devices(id) ON DELETE SET NULL,
   signature TEXT NOT NULL,
   server_cursor INTEGER NOT NULL,
   created_at INTEGER NOT NULL,
