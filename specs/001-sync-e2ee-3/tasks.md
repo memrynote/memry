@@ -429,23 +429,23 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### WebSocket/Durable Objects for US2
 
-- [ ] T090 [US2] Create UserSyncState Durable Object in sync-server/src/durable-objects/user-state.ts
-- [ ] T091 [US2] Implement WebSocket upgrade handling in sync-server/src/durable-objects/user-state.ts
-- [ ] T092 [US2] Implement broadcast to connected devices in sync-server/src/durable-objects/user-state.ts
-- [ ] T093 [US2] Configure Durable Object binding in sync-server/wrangler.toml
-- [ ] T093a [US2] Wire WebSocket upgrade route GET /sync/ws in sync-server/src/index.ts to forward requests to UserSyncState Durable Object
-- [ ] T093b [US2] Trigger DO broadcast after successful POST /sync/push in sync-server/src/routes/sync.ts (notify connected devices of new changes)
-- [ ] T093c [US2] Authenticate WebSocket upgrade requests by validating JWT from Authorization header before accepting connection in sync-server/src/durable-objects/user-state.ts - reject unauthenticated upgrades
-- [ ] T093d [US2] Implement periodic JWT re-validation on active WebSocket connections; terminate connection on token expiry with reconnect instruction in sync-server/src/durable-objects/user-state.ts
-- [ ] T093e [US2] Implement WebSocket message rate limiting (100 messages per 10 seconds per connection) in sync-server/src/durable-objects/user-state.ts; disconnect abusive connections
+- [x] T090 [US2] Create UserSyncState Durable Object in sync-server/src/durable-objects/user-state.ts
+- [x] T091 [US2] Implement WebSocket upgrade handling in sync-server/src/durable-objects/user-state.ts
+- [x] T092 [US2] Implement broadcast to connected devices in sync-server/src/durable-objects/user-state.ts
+- [x] T093 [US2] Configure Durable Object binding in sync-server/wrangler.toml
+- [x] T093a [US2] Wire WebSocket upgrade route GET /sync/ws in sync-server/src/index.ts to forward requests to UserSyncState Durable Object
+- [x] T093b [US2] Trigger DO broadcast after successful POST /sync/push in sync-server/src/routes/sync.ts (notify connected devices of new changes)
+- [x] T093c [US2] Authenticate WebSocket upgrade requests by validating JWT from Authorization header before accepting connection in sync-server/src/durable-objects/user-state.ts - reject unauthenticated upgrades
+- [x] T093d [US2] Implement periodic JWT re-validation on active WebSocket connections; terminate connection on token expiry with reconnect instruction in sync-server/src/durable-objects/user-state.ts
+- [x] T093e [US2] Implement WebSocket message rate limiting (100 messages per 10 seconds per connection) in sync-server/src/durable-objects/user-state.ts; disconnect abusive connections
 
 ### Client Sync IPC for US2
 
-- [ ] T094 [US2] Implement get sync status IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T095 [US2] Implement trigger sync IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T096 [US2] Implement get queue size IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T097 [US2] Implement pause/resume sync IPC handlers in src/main/ipc/sync-handlers.ts
-- [ ] T097a [US2] Include server_cursor in client sync state and persist last_cursor_seen in src/main/sync/engine.ts
+- [x] T094 [US2] Implement get sync status IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T095 [US2] Implement trigger sync IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T096 [US2] Implement get queue size IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T097 [US2] Implement pause/resume sync IPC handlers in src/main/ipc/sync-handlers.ts
+- [x] T097a [US2] Include server_cursor in client sync state and persist last_cursor_seen in src/main/sync/engine.ts
 
 ### Sync Events for US2
 

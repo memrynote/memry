@@ -18,7 +18,7 @@ import type {
   SyncStatusValue
 } from '@shared/contracts/ipc-sync-ops'
 import type { ChangesResponse, PushResponse } from '@shared/contracts/sync-api'
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager, type QueueStats } from './queue'
 import { NetworkMonitor } from './network'
 import { WebSocketManager, type WebSocketMessage } from './websocket'
 import { encryptItemForPush } from './encrypt'
@@ -303,6 +303,10 @@ export class SyncEngine extends EventEmitter {
       pendingCount: this.deps.queue.getPendingCount(),
       error: this.lastError
     }
+  }
+
+  getQueueStats(): QueueStats {
+    return this.deps.queue.getQueueStats()
   }
 
   pause(): PauseSyncResult {
