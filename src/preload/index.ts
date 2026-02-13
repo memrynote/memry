@@ -34,7 +34,8 @@ import type {
   KeyRotationProgressEvent,
   SessionExpiredEvent,
   OtpDetectedEvent,
-  OAuthCallbackEvent
+  OAuthCallbackEvent,
+  ClockSkewWarningEvent
 } from '@shared/contracts/ipc-sync'
 
 // Custom APIs for renderer
@@ -1383,7 +1384,10 @@ const api = {
       ipcRenderer.invoke(SYNC_CHANNELS.GET_HISTORY, input),
     getQueueSize: () => ipcRenderer.invoke(SYNC_CHANNELS.GET_QUEUE_SIZE),
     pause: () => ipcRenderer.invoke(SYNC_CHANNELS.PAUSE),
-    resume: () => ipcRenderer.invoke(SYNC_CHANNELS.RESUME)
+    resume: () => ipcRenderer.invoke(SYNC_CHANNELS.RESUME),
+    updateSyncedSetting: (fieldPath: string, value: unknown) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.UPDATE_SYNCED_SETTING, { fieldPath, value }),
+    getSyncedSettings: () => ipcRenderer.invoke(SYNC_CHANNELS.GET_SYNCED_SETTINGS)
   },
 
   // Crypto API
@@ -1527,6 +1531,12 @@ const api = {
       callback(data)
     ipcRenderer.on(SYNC_EVENTS.OAUTH_CALLBACK, handler)
     return () => ipcRenderer.removeListener(SYNC_EVENTS.OAUTH_CALLBACK, handler)
+  },
+  onClockSkewWarning: (callback: (event: ClockSkewWarningEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: ClockSkewWarningEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.CLOCK_SKEW_WARNING, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.CLOCK_SKEW_WARNING, handler)
   }
 }
 
