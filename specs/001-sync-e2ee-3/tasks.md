@@ -449,11 +449,11 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Sync Events for US2
 
-- [ ] T098 [US2] Implement sync status changed event broadcasting in src/main/sync/engine.ts
-- [ ] T098a [US2] Update device last_sync_at timestamp on successful sync in src/main/sync/engine.ts
-- [ ] T099 [US2] Implement item synced event broadcasting in src/main/sync/engine.ts
-- [ ] T100 [US2] Create SyncContext provider and set up IPC event listeners for sync events in src/renderer/src/contexts/sync-context.tsx
-- [ ] T100a [US2] Wire SyncContext provider into renderer root in src/renderer/src/main.tsx
+- [x] T098 [US2] Implement sync status changed event broadcasting in src/main/sync/engine.ts
+- [x] T098a [US2] Update device last_sync_at timestamp on successful sync in src/main/sync/engine.ts
+- [x] T099 [US2] Implement item synced event broadcasting in src/main/sync/engine.ts
+- [x] T100 [US2] Create SyncContext provider and set up IPC event listeners for sync events in src/renderer/src/contexts/sync-context.tsx
+- [x] T100a [US2] Wire SyncContext provider into renderer root in src/renderer/src/main.tsx
 
 ### Task Sync Integration for US2
 
