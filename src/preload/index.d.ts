@@ -14,7 +14,8 @@ import type {
   KeyRotationProgressEvent,
   SessionExpiredEvent,
   OtpDetectedEvent,
-  OAuthCallbackEvent
+  OAuthCallbackEvent,
+  ClockSkewWarningEvent
 } from '../shared/contracts/ipc-sync'
 
 // Vault types (mirrored from contracts for preload compatibility)
@@ -2173,6 +2174,11 @@ interface SyncOpsClientAPI {
     success: boolean
     pendingCount: number
   }>
+  updateSyncedSetting: (
+    fieldPath: string,
+    value: unknown
+  ) => Promise<{ success: boolean; error?: string }>
+  getSyncedSettings: () => Promise<import('../shared/contracts/settings-sync').SyncedSettings | null>
 }
 
 // Crypto API
@@ -2394,6 +2400,7 @@ interface API extends WindowAPI {
   onSessionExpired: (callback: (event: SessionExpiredEvent) => void) => () => void
   onOtpDetected: (callback: (event: OtpDetectedEvent) => void) => () => void
   onOAuthCallback: (callback: (event: OAuthCallbackEvent) => void) => () => void
+  onClockSkewWarning: (callback: (event: ClockSkewWarningEvent) => void) => () => void
 }
 
 declare global {
