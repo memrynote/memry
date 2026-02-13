@@ -1,8 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest'
+import sodium from 'libsodium-wrappers-sumo'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { SettingsSyncPayload } from '@shared/contracts/settings-sync'
+import { initCrypto } from '../crypto/index'
+import { encryptItemForPush } from './encrypt'
+import { decryptItemFromPull } from './decrypt'
+import type { DecryptItemInput } from './decrypt'
 import { SyncQueueManager } from './queue'
 import { SettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
+
+beforeAll(async () => {
+  await initCrypto()
+})
 
 describe('SettingsSyncManager', () => {
   let testDb: TestDatabaseResult
@@ -177,6 +186,59 @@ describe('SettingsSyncManager', () => {
         settings: { sync: { autoSync: true } },
         fieldClocks: { 'sync.autoSync': { 'device-A': 1 } }
       })
+    })
+  })
+
+  describe('#given settings payload #when encrypted then decrypted', () => {
+    it('#then round-trips with full data fidelity', () => {
+      // #given
+      manager.updateField('general.theme', 'dark', 'device-A')
+      manager.updateField('tasks.defaultPriority', 2, 'device-A')
+      manager.updateField('sync.autoSync', true, 'device-A')
+
+      const original = manager.getPayload()
+      const contentBytes = new TextEncoder().encode(JSON.stringify(original))
+
+      const vaultKey = sodium.randombytes_buf(32)
+      const keyPair = sodium.crypto_sign_keypair()
+
+      // #when — encrypt
+      const { pushItem } = encryptItemForPush({
+        id: 'synced_settings',
+        type: 'settings',
+        operation: 'update',
+        content: contentBytes,
+        vaultKey,
+        signingSecretKey: keyPair.privateKey,
+        signerDeviceId: 'device-A'
+      })
+
+      // #when — decrypt
+      const decryptInput: DecryptItemInput = {
+        id: pushItem.id,
+        type: pushItem.type,
+        operation: pushItem.operation,
+        encryptedKey: pushItem.encryptedKey,
+        keyNonce: pushItem.keyNonce,
+        encryptedData: pushItem.encryptedData,
+        dataNonce: pushItem.dataNonce,
+        signature: pushItem.signature,
+        signerDeviceId: pushItem.signerDeviceId,
+        vaultKey,
+        signerPublicKey: keyPair.publicKey
+      }
+      const result = decryptItemFromPull(decryptInput)
+
+      // #then
+      const decrypted: SettingsSyncPayload = JSON.parse(new TextDecoder().decode(result.content))
+      expect(result.verified).toBe(true)
+      expect(decrypted).toEqual(original)
+      expect(decrypted.settings).toEqual({
+        general: { theme: 'dark' },
+        tasks: { defaultPriority: 2 },
+        sync: { autoSync: true }
+      })
+      expect(decrypted.fieldClocks).toEqual(original.fieldClocks)
     })
   })
 })

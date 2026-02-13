@@ -27,6 +27,14 @@ export interface EncryptItemResult {
 }
 
 export function encryptItemForPush(input: EncryptItemInput): EncryptItemResult {
+  const MAX_SYNC_SIZE = 5 * 1024 * 1024
+  const BASE64_CRYPTO_OVERHEAD = 1.37
+  const estimatedSize = input.content.byteLength * BASE64_CRYPTO_OVERHEAD
+  if (estimatedSize > MAX_SYNC_SIZE) {
+    const estimatedMB = (estimatedSize / (1024 * 1024)).toFixed(1)
+    throw new Error(`Item too large for sync (estimated ${estimatedMB}MB, max 5MB)`)
+  }
+
   const fileKey = generateFileKey()
 
   try {

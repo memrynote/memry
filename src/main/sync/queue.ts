@@ -7,6 +7,8 @@ type DrizzleDb = BetterSQLite3Database
 
 export const DEFAULT_MAX_ATTEMPTS = 5
 
+const DEAD_LETTER_PURGE_THRESHOLD = 50
+
 export interface EnqueueInput {
   type: SyncItemType
   itemId: string
@@ -27,6 +29,8 @@ export class SyncQueueManager {
 
   enqueue(input: EnqueueInput): string {
     const { type, itemId, operation, payload, priority = 0 } = input
+
+    this.maybeAutoPurge()
 
     return this.db.transaction((tx) => {
       const existing = tx
@@ -150,6 +154,14 @@ export class SyncQueueManager {
       )
       .run()
     return result.changes
+  }
+
+  private maybeAutoPurge(): void {
+    const stats = this.getQueueStats()
+    if (stats.deadLetter >= DEAD_LETTER_PURGE_THRESHOLD) {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      this.purgeOldErrors(sevenDaysAgo)
+    }
   }
 
   getQueueStats(): QueueStats {
