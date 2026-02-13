@@ -17,6 +17,12 @@ interface ProgressEntry {
   status: string
 }
 
+interface ConflictEntry {
+  itemId: string
+  itemType: string
+  detectedAt: number
+}
+
 interface SyncState {
   status: SyncStatus
   lastSyncAt: number | null
@@ -24,6 +30,10 @@ interface SyncState {
   error: string | null
   uploadProgress: Record<string, ProgressEntry> | null
   downloadProgress: Record<string, ProgressEntry> | null
+  sessionExpired: boolean
+  conflicts: ConflictEntry[]
+  clockSkewDetected: boolean
+  initialSyncProgress: { current: number; total: number } | null
 }
 
 type SyncAction =
@@ -40,6 +50,12 @@ type SyncAction =
   | { type: 'CLEAR_ERROR' }
   | { type: 'UPLOAD_PROGRESS'; attachmentId: string; progress: number; status: string }
   | { type: 'DOWNLOAD_PROGRESS'; attachmentId: string; progress: number; status: string }
+  | { type: 'SESSION_EXPIRED' }
+  | { type: 'CONFLICT_DETECTED'; itemId: string; itemType: string }
+  | { type: 'QUEUE_CLEARED' }
+  | { type: 'CLOCK_SKEW_WARNING' }
+  | { type: 'ITEM_SYNCED'; lastSyncAt: number }
+  | { type: 'INITIAL_SYNC_PROGRESS'; current: number; total: number }
   | { type: 'RESET' }
 
 const initialState: SyncState = {
@@ -48,13 +64,18 @@ const initialState: SyncState = {
   pendingCount: 0,
   error: null,
   uploadProgress: null,
-  downloadProgress: null
+  downloadProgress: null,
+  sessionExpired: false,
+  conflicts: [],
+  clockSkewDetected: false,
+  initialSyncProgress: null
 }
 
 function syncReducer(state: SyncState, action: SyncAction): SyncState {
   switch (action.type) {
     case 'STATUS_CHANGED':
       return {
+        ...state,
         status: action.status,
         lastSyncAt: action.lastSyncAt ?? state.lastSyncAt,
         pendingCount: action.pendingCount,
@@ -88,6 +109,24 @@ function syncReducer(state: SyncState, action: SyncAction): SyncState {
           [action.attachmentId]: { progress: action.progress, status: action.status }
         }
       }
+    case 'SESSION_EXPIRED':
+      return { ...state, sessionExpired: true, status: 'error', error: 'Session expired' }
+    case 'CONFLICT_DETECTED':
+      return {
+        ...state,
+        conflicts: [
+          ...state.conflicts,
+          { itemId: action.itemId, itemType: action.itemType, detectedAt: Date.now() }
+        ]
+      }
+    case 'QUEUE_CLEARED':
+      return { ...state, pendingCount: 0 }
+    case 'CLOCK_SKEW_WARNING':
+      return { ...state, clockSkewDetected: true }
+    case 'ITEM_SYNCED':
+      return { ...state, lastSyncAt: action.lastSyncAt }
+    case 'INITIAL_SYNC_PROGRESS':
+      return { ...state, initialSyncProgress: { current: action.current, total: action.total } }
     case 'RESET':
       return initialState
     default:
@@ -200,6 +239,58 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
         })
       })
     )
+
+    cleanups.push(
+      window.api.onSessionExpired(() => {
+        if (cancelled) return
+        dispatch({ type: 'SESSION_EXPIRED' })
+      })
+    )
+
+    cleanups.push(
+      window.api.onConflictDetected((event) => {
+        if (cancelled) return
+        dispatch({ type: 'CONFLICT_DETECTED', itemId: event.itemId, itemType: event.type })
+      })
+    )
+
+    cleanups.push(
+      window.api.onQueueCleared(() => {
+        if (cancelled) return
+        dispatch({ type: 'QUEUE_CLEARED' })
+      })
+    )
+
+    cleanups.push(
+      window.api.onClockSkewWarning(() => {
+        if (cancelled) return
+        dispatch({ type: 'CLOCK_SKEW_WARNING' })
+      })
+    )
+
+    cleanups.push(
+      window.api.onItemSynced(() => {
+        if (cancelled) return
+        dispatch({ type: 'ITEM_SYNCED', lastSyncAt: Date.now() })
+      })
+    )
+
+    cleanups.push(
+      window.api.onInitialSyncProgress((event) => {
+        if (cancelled) return
+        dispatch({
+          type: 'INITIAL_SYNC_PROGRESS',
+          current: event.processedItems,
+          total: event.totalItems
+        })
+      })
+    )
+
+    // TODO: onKeyRotationProgress — connect in key rotation phase
+    // TODO: onOtpDetected — connect in OTP auto-fill phase
+    // TODO: onLinkingRequest — connect in device linking phase (Phase 5)
+    // TODO: onLinkingApproved — connect in device linking phase (Phase 5)
+    // TODO: onOAuthCallback — connect in OAuth flow component, not context
 
     return () => {
       cancelled = true

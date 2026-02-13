@@ -35,6 +35,7 @@ import type {
   SessionExpiredEvent,
   OtpDetectedEvent,
   OAuthCallbackEvent,
+  OAuthErrorEvent,
   ClockSkewWarningEvent
 } from '@shared/contracts/ipc-sync'
 
@@ -1531,6 +1532,12 @@ const api = {
       callback(data)
     ipcRenderer.on(SYNC_EVENTS.OAUTH_CALLBACK, handler)
     return () => ipcRenderer.removeListener(SYNC_EVENTS.OAUTH_CALLBACK, handler)
+  },
+  onOAuthError: (callback: (event: OAuthErrorEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: OAuthErrorEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.OAUTH_ERROR, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.OAUTH_ERROR, handler)
   },
   onClockSkewWarning: (callback: (event: ClockSkewWarningEvent) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, data: ClockSkewWarningEvent): void =>
