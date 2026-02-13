@@ -15,7 +15,11 @@ import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers
 import { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
 import { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
-import { registerSyncHandlers, unregisterSyncHandlers } from './sync-handlers'
+import {
+  registerSyncHandlers,
+  unregisterSyncHandlers,
+  checkSyncIntegrity
+} from './sync-handlers'
 import { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
 import { createLogger } from '../lib/logger'
 
@@ -88,6 +92,7 @@ export function registerAllHandlers(): void {
 
   // Register sync handlers
   registerSyncHandlers()
+  checkSyncIntegrity().catch((err) => ipcLog.error('Sync integrity check failed', err))
 
   // Register crypto handlers
   registerCryptoHandlers()
