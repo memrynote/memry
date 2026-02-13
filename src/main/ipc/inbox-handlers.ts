@@ -85,6 +85,7 @@ import {
 } from '../inbox/stats'
 import { snoozeItem, unsnoozeItem, getSnoozedItems, bulkSnoozeItems } from '../inbox/snooze'
 import type { SnoozeInput, SnoozedItem } from '../inbox/snooze'
+import { getInboxSyncService } from '../sync/inbox-sync'
 
 // ============================================================================
 // Constants
@@ -544,8 +545,8 @@ async function handleCaptureText(input: unknown): Promise<CaptureResponse> {
     const tags = getItemTags(db, id)
     const item = toInboxItem(created, tags)
 
-    // Emit event
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
+    getInboxSyncService()?.enqueueCreate(id)
 
     return { success: true, item }
   } catch (error) {
@@ -626,8 +627,8 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
     const tags = getItemTags(db, id)
     const item = toInboxItem(created, tags)
 
-    // Emit captured event immediately (UI shows pending state)
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
+    getInboxSyncService()?.enqueueCreate(id)
 
     // Trigger background metadata fetch (don't await - non-blocking)
     // Use specialized social extraction for social posts
@@ -765,6 +766,7 @@ async function handleUpdate(input: unknown): Promise<CaptureResponse> {
     const item = toInboxItem(updated, tags)
 
     emitInboxEvent(InboxChannels.events.UPDATED, { id: parsed.id, changes: updates })
+    getInboxSyncService()?.enqueueUpdate(parsed.id)
 
     return { success: true, item }
   } catch (error) {
@@ -795,6 +797,7 @@ async function handleArchive(id: string): Promise<{ success: boolean; error?: st
     incrementArchivedCount()
 
     emitInboxEvent(InboxChannels.events.ARCHIVED, { id })
+    getInboxSyncService()?.enqueueUpdate(id)
 
     return { success: true }
   } catch (error) {
@@ -1178,8 +1181,8 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
     const tags = getItemTags(db, id)
     const item = toInboxItem(created, tags)
 
-    // Emit captured event
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
+    getInboxSyncService()?.enqueueCreate(id)
 
     logger.info(`Captured ${inboxType}: ${parsed.filename} (${fileBuffer.length} bytes)`)
 
@@ -1437,11 +1440,11 @@ async function handleMarkViewed(itemId: string): Promise<{ success: boolean; err
       .where(eq(inboxItems.id, itemId))
       .run()
 
-    // Emit updated event
     emitInboxEvent(InboxChannels.events.UPDATED, {
       id: itemId,
       changes: { viewedAt: now }
     })
+    getInboxSyncService()?.enqueueUpdate(itemId)
 
     logger.info(`Marked item ${itemId} as viewed`)
     return { success: true }
@@ -1767,6 +1770,7 @@ async function handleUnarchive(id: string): Promise<{ success: boolean; error?: 
       .run()
 
     emitInboxEvent(InboxChannels.events.UPDATED, { id, changes: { archivedAt: null } })
+    getInboxSyncService()?.enqueueUpdate(id)
 
     return { success: true }
   } catch (error) {
@@ -1788,7 +1792,9 @@ async function handleDeletePermanent(id: string): Promise<{ success: boolean; er
 
     db.delete(inboxItemTags).where(eq(inboxItemTags.itemId, id)).run()
 
+    const snapshot = JSON.stringify(existing)
     db.delete(inboxItems).where(eq(inboxItems.id, id)).run()
+    getInboxSyncService()?.enqueueDelete(id, snapshot)
 
     return { success: true }
   } catch (error) {
