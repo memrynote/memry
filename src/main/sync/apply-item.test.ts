@@ -535,6 +535,154 @@ describe('ItemApplier', () => {
       expect(result).toBe('skipped')
     })
   })
+
+  // ─── Multi-Device Conflict Resolution Scenarios ─────────────────
+
+  describe('#given device-A at tick 3, device-B at tick 5 #when device-B update applied', () => {
+    it('#then device-B wins (strictly ahead)', () => {
+      // #given — local has device-A:3
+      testDb.db.insert(tasks).values({
+        id: 'task-1',
+        projectId: 'proj-1',
+        title: 'Device A Edit',
+        priority: 0,
+        position: 0,
+        clock: { 'device-A': 3 } satisfies VectorClock
+      }).run()
+
+      // #when — remote has device-B:5 (different device, concurrent)
+      const result = applier.apply({
+        itemId: 'task-1',
+        type: 'task',
+        operation: 'update',
+        content: makeTaskPayload({ title: 'Device B Edit' }),
+        clock: { 'device-B': 5 }
+      })
+
+      // #then — concurrent: remote applied, merged clock
+      expect(result).toBe('conflict')
+      const task = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()
+      expect(task!.title).toBe('Device B Edit')
+      expect(task!.clock).toEqual({ 'device-A': 3, 'device-B': 5 })
+    })
+  })
+
+  describe('#given both devices at identical tick #when remote update applied', () => {
+    it('#then concurrent: remote applied with merged clock', () => {
+      // #given — local: device-A:2, remote: device-B:2 (same tick value, different devices)
+      testDb.db.insert(tasks).values({
+        id: 'task-1',
+        projectId: 'proj-1',
+        title: 'Local Tied',
+        priority: 0,
+        position: 0,
+        clock: { 'device-A': 2 } satisfies VectorClock
+      }).run()
+
+      // #when
+      const result = applier.apply({
+        itemId: 'task-1',
+        type: 'task',
+        operation: 'update',
+        content: makeTaskPayload({ title: 'Remote Tied' }),
+        clock: { 'device-B': 2 }
+      })
+
+      // #then — concurrent clocks, remote wins (last-write-wins), clocks merged
+      expect(result).toBe('conflict')
+      const task = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()
+      expect(task!.title).toBe('Remote Tied')
+      expect(task!.clock).toEqual({ 'device-A': 2, 'device-B': 2 })
+    })
+  })
+
+  describe('#given local edit at device-A:3 #when remote delete at device-B:1', () => {
+    it('#then skips delete (local has unseen changes)', () => {
+      // #given — local has higher tick
+      testDb.db.insert(tasks).values({
+        id: 'task-1',
+        projectId: 'proj-1',
+        title: 'Local Survives',
+        priority: 0,
+        position: 0,
+        clock: { 'device-A': 3 } satisfies VectorClock
+      }).run()
+
+      // #when — remote tries to delete with lower clock
+      const result = applier.apply({
+        itemId: 'task-1',
+        type: 'task',
+        operation: 'delete',
+        content: new Uint8Array(),
+        clock: { 'device-B': 1 },
+        deletedAt: Date.now()
+      })
+
+      // #then — edit wins over delete when local is concurrent
+      expect(result).toBe('skipped')
+      const task = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()
+      expect(task).toBeDefined()
+      expect(task!.title).toBe('Local Survives')
+    })
+  })
+
+  describe('#given local edit at device-A:1 #when remote delete at device-B:3 (ahead)', () => {
+    it('#then applies the delete', () => {
+      // #given — local has device-A:1
+      testDb.db.insert(tasks).values({
+        id: 'task-1',
+        projectId: 'proj-1',
+        title: 'Will Be Deleted',
+        priority: 0,
+        position: 0,
+        clock: { 'device-A': 1 } satisfies VectorClock
+      }).run()
+
+      // #when — remote delete with device-B:3, device-A:1 (remote knows about local)
+      const result = applier.apply({
+        itemId: 'task-1',
+        type: 'task',
+        operation: 'delete',
+        content: new Uint8Array(),
+        clock: { 'device-A': 1, 'device-B': 3 },
+        deletedAt: Date.now()
+      })
+
+      // #then — remote clock is strictly ahead, delete applied
+      expect(result).toBe('applied')
+      const task = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()
+      expect(task).toBeUndefined()
+    })
+  })
+
+  describe('#given concurrent delete and edit (same tick) #when remote delete applied', () => {
+    it('#then skips delete (edit-wins-over-delete for concurrent)', () => {
+      // #given — local: device-A:2, remote delete: device-B:2
+      testDb.db.insert(tasks).values({
+        id: 'task-1',
+        projectId: 'proj-1',
+        title: 'Concurrent Edit',
+        priority: 0,
+        position: 0,
+        clock: { 'device-A': 2 } satisfies VectorClock
+      }).run()
+
+      // #when — remote delete with concurrent clock
+      const result = applier.apply({
+        itemId: 'task-1',
+        type: 'task',
+        operation: 'delete',
+        content: new Uint8Array(),
+        clock: { 'device-B': 2 },
+        deletedAt: Date.now()
+      })
+
+      // #then — concurrent clocks on a delete -> skip (edit preserves data)
+      expect(result).toBe('skipped')
+      const task = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()
+      expect(task).toBeDefined()
+    })
+  })
 })
 
 function makeInboxPayload(overrides: Record<string, unknown> = {}): Uint8Array {
