@@ -12,11 +12,18 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 
 type SyncStatus = 'idle' | 'syncing' | 'paused' | 'error' | 'offline' | 'unknown'
 
+interface ProgressEntry {
+  progress: number
+  status: string
+}
+
 interface SyncState {
   status: SyncStatus
   lastSyncAt: number | null
   pendingCount: number
   error: string | null
+  uploadProgress: Record<string, ProgressEntry> | null
+  downloadProgress: Record<string, ProgressEntry> | null
 }
 
 type SyncAction =
@@ -31,13 +38,17 @@ type SyncAction =
   | { type: 'RESUMED'; pendingCount: number }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
+  | { type: 'UPLOAD_PROGRESS'; attachmentId: string; progress: number; status: string }
+  | { type: 'DOWNLOAD_PROGRESS'; attachmentId: string; progress: number; status: string }
   | { type: 'RESET' }
 
 const initialState: SyncState = {
   status: 'unknown',
   lastSyncAt: null,
   pendingCount: 0,
-  error: null
+  error: null,
+  uploadProgress: null,
+  downloadProgress: null
 }
 
 function syncReducer(state: SyncState, action: SyncAction): SyncState {
@@ -60,6 +71,22 @@ function syncReducer(state: SyncState, action: SyncAction): SyncState {
         ...state,
         error: null,
         status: state.status === 'error' ? 'idle' : state.status
+      }
+    case 'UPLOAD_PROGRESS':
+      return {
+        ...state,
+        uploadProgress: {
+          ...state.uploadProgress,
+          [action.attachmentId]: { progress: action.progress, status: action.status }
+        }
+      }
+    case 'DOWNLOAD_PROGRESS':
+      return {
+        ...state,
+        downloadProgress: {
+          ...state.downloadProgress,
+          [action.attachmentId]: { progress: action.progress, status: action.status }
+        }
       }
     case 'RESET':
       return initialState
@@ -147,6 +174,30 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       window.api.onSyncResumed((event) => {
         if (cancelled) return
         dispatch({ type: 'RESUMED', pendingCount: event.pendingCount })
+      })
+    )
+
+    cleanups.push(
+      window.api.onUploadProgress((event) => {
+        if (cancelled) return
+        dispatch({
+          type: 'UPLOAD_PROGRESS',
+          attachmentId: event.attachmentId,
+          progress: event.progress,
+          status: event.status
+        })
+      })
+    )
+
+    cleanups.push(
+      window.api.onDownloadProgress((event) => {
+        if (cancelled) return
+        dispatch({
+          type: 'DOWNLOAD_PROGRESS',
+          attachmentId: event.attachmentId,
+          progress: event.progress,
+          status: event.status
+        })
       })
     )
 
