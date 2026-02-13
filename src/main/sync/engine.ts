@@ -23,6 +23,7 @@ import { NetworkMonitor } from './network'
 import { WebSocketManager, type WebSocketMessage } from './websocket'
 import { encryptItemForPush } from './encrypt'
 import { decryptItemFromPull } from './decrypt'
+import { ItemApplier } from './apply-item'
 import { withRetry } from './retry'
 import { postToServer, getFromServer } from './http-client'
 
@@ -65,6 +66,7 @@ export class SyncEngine extends EventEmitter {
   private options: SyncEngineOptions
   private abortController: AbortController | null = null
   private inFlightSync: Promise<void> | null = null
+  private applier: ItemApplier
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
@@ -73,6 +75,7 @@ export class SyncEngine extends EventEmitter {
       pushBatchSize: options?.pushBatchSize ?? PUSH_BATCH_SIZE,
       pullPageLimit: options?.pullPageLimit ?? PULL_PAGE_LIMIT
     }
+    this.applier = new ItemApplier(deps.db, deps.emitToRenderer)
   }
 
   get currentState(): SyncStatusValue {
@@ -265,9 +268,17 @@ export class SyncEngine extends EventEmitter {
               signerPublicKey: signerPubKey
             })
 
-            void decrypted
+            const itemOp = item.deletedAt ? 'delete' : (item.operation as 'create' | 'update')
+            this.applier.apply({
+              itemId: item.id,
+              type: item.type as Parameters<ItemApplier['apply']>[0]['type'],
+              operation: itemOp,
+              content: decrypted.content,
+              clock: item.clock,
+              deletedAt: item.deletedAt
+            })
             pulledCount++
-            this.emitItemSynced(item.id, item.type, 'pull')
+            this.emitItemSynced(item.id, item.type, 'pull', itemOp)
           }
         }
 
@@ -444,8 +455,13 @@ export class SyncEngine extends EventEmitter {
     this.emit('status-changed', event)
   }
 
-  private emitItemSynced(itemId: string, type: string, operation: 'push' | 'pull'): void {
-    const event: ItemSyncedEvent = { itemId, type, operation }
+  private emitItemSynced(
+    itemId: string,
+    type: string,
+    operation: 'push' | 'pull',
+    itemOperation?: 'create' | 'update' | 'delete'
+  ): void {
+    const event: ItemSyncedEvent = { itemId, type, operation, itemOperation }
     this.deps.emitToRenderer(EVENT_CHANNELS.ITEM_SYNCED, event)
     this.emit('item-synced', event)
   }

@@ -39,6 +39,7 @@ export interface ItemSyncedEvent {
   itemId: string
   type: string
   operation: 'push' | 'pull'
+  itemOperation?: 'create' | 'update' | 'delete'
 }
 
 export interface ConflictDetectedEvent {
