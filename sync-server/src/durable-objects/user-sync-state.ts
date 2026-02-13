@@ -17,6 +17,7 @@ const RATE_LIMIT_WINDOW_SECONDS = 10
 const ALARM_INTERVAL_MS = 60_000
 const CLOSE_CODE_REPLACED = 4001
 const CLOSE_CODE_TOKEN_EXPIRED = 4003
+const CLOSE_CODE_DEVICE_REVOKED = 4004
 const CLOSE_CODE_RATE_LIMITED = 4008
 
 export class UserSyncState extends DurableObject<Bindings> {
@@ -33,6 +34,8 @@ export class UserSyncState extends DurableObject<Bindings> {
         return this.handleConnect(request)
       case '/broadcast':
         return this.handleBroadcast(request)
+      case '/revoke-device':
+        return this.handleRevokeDevice(request)
       default:
         return new Response('Not found', { status: 404 })
     }
@@ -108,6 +111,31 @@ export class UserSyncState extends DurableObject<Bindings> {
     }
 
     return Response.json({ sent })
+  }
+
+  private async handleRevokeDevice(request: Request): Promise<Response> {
+    const body: { deviceId: string } = await request.json()
+
+    const tag = `device:${body.deviceId}`
+    const sockets = this.ctx.getWebSockets(tag)
+    let closed = 0
+
+    for (const ws of sockets) {
+      try {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            payload: { code: ErrorCodes.AUTH_DEVICE_REVOKED, message: 'Device has been revoked' }
+          })
+        )
+        ws.close(CLOSE_CODE_DEVICE_REVOKED, 'Device revoked')
+        closed++
+      } catch {
+        // socket may already be closed
+      }
+    }
+
+    return Response.json({ closed })
   }
 
   webSocketMessage(ws: WebSocket): void {

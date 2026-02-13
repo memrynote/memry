@@ -32,10 +32,11 @@ vi.mock('../lib/cbor', () => ({
   encodeSignaturePayload: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3]))
 }))
 
-import { safeBase64Decode } from '../lib/encoding'
+import { safeBase64Decode, verifyEd25519 } from '../lib/encoding'
 
 import {
   validateEncryptedFields,
+  verifyItemSignature,
   detectReplay,
   computeContentHash,
   serializePayload,
@@ -50,6 +51,8 @@ import { getDevice } from './device'
 import { getUserById } from './user'
 
 const mockedSafeBase64Decode = vi.mocked(safeBase64Decode)
+const mockedVerifyEd25519 = vi.mocked(verifyEd25519)
+const mockedGetDevice = vi.mocked(getDevice)
 
 // ============================================================================
 // D1 mock helpers
@@ -184,6 +187,105 @@ describe('validateEncryptedFields', () => {
       validateEncryptedFields(item)
     } catch (e) {
       expect((e as AppError).code).toBe(ErrorCodes.VALIDATION_ERROR)
+    }
+  })
+})
+
+// ============================================================================
+// Tests: verifyItemSignature
+// ============================================================================
+
+describe('verifyItemSignature', () => {
+  let db: ReturnType<typeof createMockDb>
+
+  const activeDevice = {
+    id: 'device-1',
+    user_id: 'user-1',
+    name: 'test-device',
+    platform: 'darwin',
+    os_version: null,
+    app_version: '1.0.0',
+    auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+    push_token: null,
+    last_sync_at: null,
+    revoked_at: null,
+    created_at: 1000,
+    updated_at: 1000
+  }
+
+  beforeEach(() => {
+    db = createMockDb()
+    vi.clearAllMocks()
+    mockedGetDevice.mockResolvedValue(activeDevice)
+    mockedVerifyEd25519.mockResolvedValue(true)
+  })
+
+  it('should pass when signature is valid', async () => {
+    // #given
+    const item = createValidPushItem()
+
+    // #when / #then
+    await expect(
+      verifyItemSignature(db as unknown as D1Database, item, 'user-1')
+    ).resolves.toBeUndefined()
+    expect(mockedVerifyEd25519).toHaveBeenCalledWith(
+      activeDevice.auth_public_key,
+      item.signature,
+      expect.any(Uint8Array)
+    )
+  })
+
+  it('should throw AUTH_DEVICE_NOT_FOUND when signer device missing', async () => {
+    // #given
+    mockedGetDevice.mockResolvedValue(null)
+    const item = createValidPushItem()
+
+    // #when / #then
+    await expect(
+      verifyItemSignature(db as unknown as D1Database, item, 'user-1')
+    ).rejects.toThrow(AppError)
+
+    try {
+      mockedGetDevice.mockResolvedValue(null)
+      await verifyItemSignature(db as unknown as D1Database, item, 'user-1')
+    } catch (e) {
+      expect((e as AppError).code).toBe(ErrorCodes.AUTH_DEVICE_NOT_FOUND)
+    }
+  })
+
+  it('should throw AUTH_DEVICE_REVOKED when signer device is revoked', async () => {
+    // #given
+    mockedGetDevice.mockResolvedValue({ ...activeDevice, revoked_at: 9999 })
+    const item = createValidPushItem()
+
+    // #when / #then
+    await expect(
+      verifyItemSignature(db as unknown as D1Database, item, 'user-1')
+    ).rejects.toThrow(AppError)
+
+    try {
+      mockedGetDevice.mockResolvedValue({ ...activeDevice, revoked_at: 9999 })
+      await verifyItemSignature(db as unknown as D1Database, item, 'user-1')
+    } catch (e) {
+      expect((e as AppError).code).toBe(ErrorCodes.AUTH_DEVICE_REVOKED)
+    }
+  })
+
+  it('should throw SYNC_INVALID_SIGNATURE when verification fails', async () => {
+    // #given
+    mockedVerifyEd25519.mockResolvedValueOnce(false)
+    const item = createValidPushItem()
+
+    // #when / #then
+    await expect(
+      verifyItemSignature(db as unknown as D1Database, item, 'user-1')
+    ).rejects.toThrow(AppError)
+
+    try {
+      mockedVerifyEd25519.mockResolvedValueOnce(false)
+      await verifyItemSignature(db as unknown as D1Database, item, 'user-1')
+    } catch (e) {
+      expect((e as AppError).code).toBe(ErrorCodes.SYNC_INVALID_SIGNATURE)
     }
   })
 })

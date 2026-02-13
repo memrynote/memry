@@ -69,7 +69,7 @@ export const errorHandler = (err: Error, c: Context): Response => {
     return c.json(formatErrorResponse(err), { status: err.statusCode })
   }
 
-  console.error('Unhandled error:', err.message)
+  console.error(JSON.stringify({ level: 'error', code: 'UNHANDLED_ERROR', message: err.message, stack: err.stack }))
   const fallback = new AppError(ErrorCodes.INTERNAL_ERROR, 'Internal server error', 500)
   return c.json(formatErrorResponse(fallback), 500)
 }
