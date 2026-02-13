@@ -71,6 +71,13 @@
       "when": 1770757803264,
       "tag": "0009_lumpy_gladiator",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1770987330126,
+      "tag": "0010_dizzy_natasha_romanoff",
+      "breakpoints": true
     }
   ]
 }
