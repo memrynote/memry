@@ -38,15 +38,17 @@ export async function checkManifestIntegrity(deps: ManifestCheckDeps): Promise<v
       isOnline: deps.isOnline
     })
 
-    const serverItemIds = new Set(result.value.items.map((item) => item.id))
+    const serverItemMap = new Map(result.value.items.map((item) => [item.id, item]))
 
     const localItems = getLocalSyncableItems(deps.db)
     if (localItems.length === 0) return
 
     let reEnqueuedCount = 0
     for (const local of localItems) {
-      if (!serverItemIds.has(local.id)) {
-        log.warn('Local item missing from server manifest, re-enqueuing', {
+      const serverRef = serverItemMap.get(local.id)
+
+      if (!serverRef) {
+        log.warn('Local item missing from server manifest, enqueuing as create', {
           id: local.id,
           type: local.type
         })
@@ -54,7 +56,7 @@ export async function checkManifestIntegrity(deps: ManifestCheckDeps): Promise<v
         deps.queue.enqueue({
           type: local.type,
           itemId: local.id,
-          operation: 'update',
+          operation: 'create',
           payload: local.payload,
           priority: 0
         })
