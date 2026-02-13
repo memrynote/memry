@@ -37,6 +37,10 @@ vi.mock('../services/sync', () => ({
   updateDeviceCursor: vi.fn().mockResolvedValue(undefined)
 }))
 
+vi.mock('../services/device', () => ({
+  updateDevice: vi.fn().mockResolvedValue(undefined)
+}))
+
 vi.mock('../middleware/auth', () => ({
   authMiddleware: vi.fn().mockImplementation(async (c: any, next: any) => {
     c.set('userId', 'user-1')
@@ -65,6 +69,7 @@ import {
   updateDeviceCursor
 } from '../services/sync'
 import { authMiddleware } from '../middleware/auth'
+import { updateDevice } from '../services/device'
 
 // ============================================================================
 // Helpers
@@ -290,6 +295,32 @@ describe('sync routes', () => {
       // #then
       expect(updateDeviceCursor).not.toHaveBeenCalled()
     })
+
+    it('should update device last_sync_at when changes contain items', async () => {
+      // #given
+      vi.mocked(getChanges).mockResolvedValueOnce({
+        items: [{ id: VALID_UUID, type: 'note', version: 1, modifiedAt: 1000, size: 100 }],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 5
+      })
+
+      // #when
+      await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
+
+      // #then
+      expect(updateDevice).toHaveBeenCalledWith(env.DB, 'device-1', {
+        last_sync_at: expect.any(Number)
+      })
+    })
+
+    it('should not update device last_sync_at when no changes', async () => {
+      // #when
+      await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
+
+      // #then
+      expect(updateDevice).not.toHaveBeenCalled()
+    })
   })
 
   // ==========================================================================
@@ -391,6 +422,44 @@ describe('sync routes', () => {
 
       // #then - SyntaxError from c.req.json() is not an AppError, falls through to 500
       expect(res.status).toBe(500)
+    })
+
+    it('should update device last_sync_at when items accepted', async () => {
+      // #given
+      const body = { items: [makePushItem()] }
+
+      // #when
+      await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', body),
+        env,
+        executionCtx
+      )
+
+      // #then
+      expect(updateDevice).toHaveBeenCalledWith(env.DB, 'device-1', {
+        last_sync_at: expect.any(Number)
+      })
+    })
+
+    it('should not update device last_sync_at when all items rejected', async () => {
+      // #given
+      vi.mocked(processPushItem).mockResolvedValueOnce({
+        accepted: false,
+        reason: 'VERSION_CONFLICT'
+      })
+      const body = { items: [makePushItem()] }
+
+      // #when
+      await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', body),
+        env,
+        executionCtx
+      )
+
+      // #then
+      expect(updateDevice).not.toHaveBeenCalled()
     })
 
     it('should return 400 when push item has invalid UUID', async () => {

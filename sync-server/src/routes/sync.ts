@@ -15,6 +15,7 @@ import {
   pullItems,
   updateDeviceCursor
 } from '../services/sync'
+import { updateDevice } from '../services/device'
 import type { AppContext } from '../types'
 
 export const sync = new Hono<AppContext>()
@@ -75,6 +76,9 @@ sync.get('/changes', async (c) => {
 
   if (changes.items.length > 0 || changes.deleted.length > 0) {
     await updateDeviceCursor(c.env.DB, deviceId, userId, changes.nextCursor)
+    await updateDevice(c.env.DB, deviceId, {
+      last_sync_at: Math.floor(Date.now() / 1000)
+    })
   }
 
   return c.json(changes)
@@ -115,6 +119,9 @@ sync.post('/push', pushRateLimit, async (c) => {
   }
 
   if (accepted.length > 0) {
+    await updateDevice(c.env.DB, deviceId, {
+      last_sync_at: Math.floor(Date.now() / 1000)
+    })
     const doId = c.env.USER_SYNC_STATE.idFromName(userId)
     const stub = c.env.USER_SYNC_STATE.get(doId)
     c.executionCtx.waitUntil(
