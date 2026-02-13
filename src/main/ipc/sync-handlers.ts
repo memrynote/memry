@@ -25,10 +25,11 @@ import {
 import type { DeviceRegisterResponse } from '@shared/contracts/auth-api'
 import { LinkViaRecoverySchema } from '@shared/contracts/ipc-devices'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@shared/contracts/ipc-sync'
-import { GetHistorySchema } from '@shared/contracts/ipc-sync-ops'
+import { GetHistorySchema, UpdateSyncedSettingSchema } from '@shared/contracts/ipc-sync-ops'
+import { getSettingsSyncManager } from '../sync/settings-sync'
 import { syncHistory } from '@shared/db/schema/sync-history'
 
-import { eq, desc, count, sql } from 'drizzle-orm'
+import { eq, desc, count } from 'drizzle-orm'
 
 import type { SyncEngine } from '../sync/engine'
 
@@ -815,6 +816,21 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     return syncEngine.resume()
   })
 
+  ipcMain.handle(SYNC_CHANNELS.UPDATE_SYNCED_SETTING, (_event, input: unknown) => {
+    const parsed = UpdateSyncedSettingSchema.parse(input)
+    const manager = getSettingsSyncManager()
+    if (!manager) return { success: false, error: 'Settings sync not initialized' }
+
+    manager.updateField(parsed.fieldPath, parsed.value, 'local')
+    return { success: true }
+  })
+
+  ipcMain.handle(SYNC_CHANNELS.GET_SYNCED_SETTINGS, () => {
+    const manager = getSettingsSyncManager()
+    if (!manager) return null
+    return manager.getSettings()
+  })
+
   ipcMain.handle(SYNC_CHANNELS.UPLOAD_ATTACHMENT, notImplemented('UPLOAD_ATTACHMENT'))
   ipcMain.handle(SYNC_CHANNELS.GET_UPLOAD_PROGRESS, notImplemented('GET_UPLOAD_PROGRESS'))
   ipcMain.handle(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT, notImplemented('DOWNLOAD_ATTACHMENT'))
@@ -857,6 +873,9 @@ export function unregisterSyncHandlers(): void {
   ipcMain.removeHandler(SYNC_CHANNELS.GET_QUEUE_SIZE)
   ipcMain.removeHandler(SYNC_CHANNELS.PAUSE)
   ipcMain.removeHandler(SYNC_CHANNELS.RESUME)
+
+  ipcMain.removeHandler(SYNC_CHANNELS.UPDATE_SYNCED_SETTING)
+  ipcMain.removeHandler(SYNC_CHANNELS.GET_SYNCED_SETTINGS)
 
   ipcMain.removeHandler(SYNC_CHANNELS.UPLOAD_ATTACHMENT)
   ipcMain.removeHandler(SYNC_CHANNELS.GET_UPLOAD_PROGRESS)
