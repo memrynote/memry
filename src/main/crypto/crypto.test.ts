@@ -157,15 +157,16 @@ describe('constantTimeEqual', () => {
     expect(result).toBe(false)
   })
 
-  it('should throw for different-length buffers', () => {
+  it('should return false for different-length buffers', () => {
     // #given
     const a = new Uint8Array([1, 2, 3])
     const b = new Uint8Array([1, 2])
 
-    // #when / #then
-    expect(() => constantTimeEqual(a, b)).toThrow(
-      'constantTimeEqual: inputs must have equal length'
-    )
+    // #when
+    const result = constantTimeEqual(a, b)
+
+    // #then
+    expect(result).toBe(false)
   })
 })
 
