@@ -1,4 +1,4 @@
-import { NetworkError, RateLimitError } from './http-client'
+import { NetworkError, RateLimitError, SyncServerError } from './http-client'
 
 export interface RetryOptions {
   maxRetries: number
@@ -79,6 +79,10 @@ export async function withRetry<T>(
       return { value, attempts: attempt + 1 }
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
+
+      if (error instanceof SyncServerError && error.statusCode === 401) {
+        throw error
+      }
 
       if (attempt === opts.maxRetries) break
 
