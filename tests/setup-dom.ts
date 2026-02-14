@@ -8,6 +8,25 @@ import { vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
 
+vi.mock('electron-log/renderer', () => {
+  const createScopedLogger = () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn()
+  })
+
+  return {
+    default: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      scope: vi.fn(() => createScopedLogger())
+    }
+  }
+})
+
 // ============================================================================
 // Cleanup after each test
 // ============================================================================
