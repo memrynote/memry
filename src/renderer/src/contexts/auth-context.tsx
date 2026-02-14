@@ -189,6 +189,13 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     return unsubscribe
   }, [])
 
+  useEffect(() => {
+    const unsubscribe = window.api.onOAuthError(({ error }) => {
+      dispatch({ type: 'SET_ERROR', error: error || 'OAuth sign-in failed' })
+    })
+    return unsubscribe
+  }, [])
+
   const requestOtp = useCallback(async (email: string): Promise<{ expiresIn?: number }> => {
     dispatch({ type: 'SET_AUTHENTICATING' })
     try {

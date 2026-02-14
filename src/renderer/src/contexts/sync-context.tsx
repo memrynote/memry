@@ -286,11 +286,8 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       })
     )
 
-    // TODO: onKeyRotationProgress — connect in key rotation phase
-    // TODO: onOtpDetected — connect in OTP auto-fill phase
-    // TODO: onLinkingRequest — connect in device linking phase (Phase 5)
-    // TODO: onLinkingApproved — connect in device linking phase (Phase 5)
-    // TODO: onOAuthCallback — connect in OAuth flow component, not context
+    // TODO: onKeyRotationProgress — connect in key rotation phase (Phase 5)
+    // TODO: onLinkingRequest / onLinkingApproved — device linking phase (Phase 5)
 
     return () => {
       cancelled = true

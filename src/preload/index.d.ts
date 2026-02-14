@@ -15,6 +15,7 @@ import type {
   SessionExpiredEvent,
   OtpDetectedEvent,
   OAuthCallbackEvent,
+  OAuthErrorEvent,
   ClockSkewWarningEvent
 } from '../shared/contracts/ipc-sync'
 
@@ -2400,6 +2401,7 @@ interface API extends WindowAPI {
   onSessionExpired: (callback: (event: SessionExpiredEvent) => void) => () => void
   onOtpDetected: (callback: (event: OtpDetectedEvent) => void) => () => void
   onOAuthCallback: (callback: (event: OAuthCallbackEvent) => void) => () => void
+  onOAuthError: (callback: (event: OAuthErrorEvent) => void) => () => void
   onClockSkewWarning: (callback: (event: ClockSkewWarningEvent) => void) => () => void
 }
 

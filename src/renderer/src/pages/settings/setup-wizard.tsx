@@ -168,7 +168,7 @@ export function SetupWizard(): React.JSX.Element {
   }, [state.step])
 
   useEffect(() => {
-    const unsub = window.api.onOAuthCallback(({ code, state: cbState }) => {
+    const unsubCallback = window.api.onOAuthCallback(({ code, state: cbState }) => {
       if (cbState !== oauthStateRef.current) return
       oauthStateRef.current = null
       dispatch({ type: 'SET_LOADING', isLoading: true })
@@ -195,7 +195,16 @@ export function SetupWizard(): React.JSX.Element {
           })
         })
     })
-    return unsub
+
+    const unsubError = window.api.onOAuthError(({ error }) => {
+      oauthStateRef.current = null
+      dispatch({ type: 'SET_ERROR', error: error || 'Google sign-in failed' })
+    })
+
+    return () => {
+      unsubCallback()
+      unsubError()
+    }
   }, [setupFirstDevice])
 
   const handleEmailSubmit = useCallback(
