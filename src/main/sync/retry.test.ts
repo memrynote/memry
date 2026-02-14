@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NetworkError, RateLimitError } from './http-client'
+import { NetworkError, RateLimitError, SyncServerError } from './http-client'
 import { DeadLetterError, withRetry } from './retry'
 
 beforeEach(() => {
@@ -164,6 +164,37 @@ describe('withRetry', () => {
 
       const delays = onRetry.mock.calls.map((call) => call[2])
       expect(delays).toEqual([100, 200, 400, 500])
+    })
+  })
+
+  describe('#given fn throws SyncServerError 401 #when called', () => {
+    it('#then throws immediately without retrying', async () => {
+      const fn = vi.fn().mockRejectedValue(new SyncServerError('Unauthorized', 401))
+      const onRetry = vi.fn()
+
+      await expect(withRetry(fn, { onRetry })).rejects.toThrow(SyncServerError)
+
+      expect(fn).toHaveBeenCalledTimes(1)
+      expect(onRetry).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('#given fn throws SyncServerError 500 #when called', () => {
+    it('#then retries normally', async () => {
+      const fn = vi
+        .fn()
+        .mockRejectedValueOnce(new SyncServerError('Server Error', 500))
+        .mockResolvedValue('ok')
+
+      const promise = withRetry(fn, { maxRetries: 3 })
+
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(500)
+      }
+
+      const result = await promise
+      expect(result.value).toBe('ok')
+      expect(fn).toHaveBeenCalledTimes(2)
     })
   })
 })
