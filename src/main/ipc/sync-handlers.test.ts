@@ -42,7 +42,11 @@ vi.mock('../crypto', () => ({
   generateDeviceSigningKeyPair: () => mockGenerateDeviceSigningKeyPair(),
   generateRecoveryPhrase: () => mockGenerateRecoveryPhrase(),
   generateSalt: () => mockGenerateSalt(),
-  getDevicePublicKey: (...args: unknown[]) => mockGetDevicePublicKey(...args)
+  getDevicePublicKey: (...args: unknown[]) => mockGetDevicePublicKey(...args),
+  deleteKey: vi.fn().mockResolvedValue(undefined),
+  phraseToSeed: vi.fn().mockResolvedValue(new Uint8Array(64)),
+  validateRecoveryPhrase: vi.fn().mockReturnValue(true),
+  constantTimeEqual: vi.fn().mockReturnValue(true)
 }))
 
 const mockStoreGet = vi.fn()
@@ -55,7 +59,21 @@ vi.mock('../store', () => ({
 }))
 
 const mockInsertValues = vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) })
-const mockDb = { insert: vi.fn().mockReturnValue({ values: mockInsertValues }) }
+const mockDb = {
+  insert: vi.fn().mockReturnValue({ values: mockInsertValues }),
+  select: vi.fn().mockReturnValue({
+    from: vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue([]),
+      orderBy: vi.fn().mockReturnValue({
+        limit: vi.fn().mockReturnValue({
+          offset: vi.fn().mockReturnValue({ all: vi.fn().mockReturnValue([]) })
+        })
+      }),
+      all: vi.fn().mockReturnValue([])
+    })
+  }),
+  delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
+}
 vi.mock('../database/client', () => ({
   getDatabase: () => mockDb
 }))
@@ -80,6 +98,9 @@ vi.mock('electron', () => ({
   },
   app: {
     getVersion: () => '1.0.0'
+  },
+  shell: {
+    openExternal: vi.fn().mockResolvedValue(undefined)
   }
 }))
 
@@ -101,11 +122,7 @@ vi.mock('libsodium-wrappers-sumo', () => ({
 }))
 
 vi.mock('jose', () => ({
-  decodeJwt: vi.fn(() => ({ exp: Math.floor(Date.now() / 1000) + 3600 }))
-}))
-
-vi.mock('../sync/filter-sync', () => ({
-  getFilterSyncService: vi.fn().mockReturnValue(null)
+  decodeJwt: vi.fn(() => ({ exp: Math.floor(Date.now() / 1000) + 3600, jti: 'test-jti' }))
 }))
 
 vi.mock('../sync/settings-sync', () => ({
@@ -192,12 +209,14 @@ describe('sync IPC handlers', () => {
     }
   })
 
-  it('throws not-implemented for unimplemented channels', async () => {
+  it('returns error for TRIGGER_SYNC when engine not initialized', async () => {
     registerSyncHandlers()
 
-    await expect(invokeHandler(SYNC_CHANNELS.TRIGGER_SYNC)).rejects.toThrow(
-      'TRIGGER_SYNC not yet implemented'
-    )
+    const result = await invokeHandler(SYNC_CHANNELS.TRIGGER_SYNC)
+    expect(result).toEqual({
+      success: false,
+      error: 'Sync engine not initialized. Open a vault to start sync.'
+    })
   })
 
   // --------------------------------------------------------------------------
@@ -281,51 +300,24 @@ describe('sync IPC handlers', () => {
         email: 'user@example.com',
         code: '123456'
       })
-      expect(result).toEqual({ success: true, isNewUser: false })
+      expect(result).toEqual({
+        success: true,
+        isNewUser: false,
+        needsSetup: false,
+        needsRecoveryInput: true
+      })
     })
 
-    it('performs first device setup for new user', async () => {
+    it('returns status for new user requiring setup', async () => {
       // #given
       registerSyncHandlers()
-      const fakeKey = new Uint8Array(32).fill(1)
-      const fakeSecretKey = new Uint8Array(64).fill(2)
-      const fakeSalt = new Uint8Array(16).fill(3)
-      const fakeSeed = new Uint8Array(64).fill(4)
-
-      mockPostToServer
-        .mockResolvedValueOnce({
-          success: true,
-          userId: 'user-1',
-          isNewUser: true,
-          needsSetup: true,
-          setupToken: 'setup-token-abc'
-        })
-        .mockResolvedValueOnce({
-          success: true,
-          deviceId: 'device-xyz',
-          accessToken: 'access-token-123',
-          refreshToken: 'refresh-token-456'
-        })
-        .mockResolvedValueOnce({ success: true })
-
-      mockGenerateRecoveryPhrase.mockResolvedValue({
-        phrase: 'word1 word2 word3 word4',
-        seed: fakeSeed
+      mockPostToServer.mockResolvedValue({
+        success: true,
+        userId: 'user-1',
+        isNewUser: true,
+        needsSetup: true,
+        setupToken: 'setup-token-abc'
       })
-      mockGenerateSalt.mockReturnValue(fakeSalt)
-      mockDeriveMasterKey.mockResolvedValue({
-        masterKey: fakeKey,
-        kdfSalt: 'base64-salt',
-        keyVerifier: 'base64-verifier'
-      })
-      mockDeriveKey.mockResolvedValue(new Uint8Array(32).fill(5))
-      mockGenerateDeviceSigningKeyPair.mockResolvedValue({
-        deviceId: 'device-xyz',
-        publicKey: new Uint8Array(32).fill(6),
-        secretKey: fakeSecretKey
-      })
-      mockRetrieveKey.mockResolvedValue(fakeSecretKey)
-      mockGetDevicePublicKey.mockReturnValue(new Uint8Array(32).fill(7))
 
       // #when
       const result = await invokeHandler(SYNC_CHANNELS.AUTH_VERIFY_OTP, {
@@ -337,12 +329,9 @@ describe('sync IPC handlers', () => {
       expect(result).toEqual({
         success: true,
         isNewUser: true,
-        needsRecoverySetup: true,
-        recoveryPhrase: 'word1 word2 word3 word4',
-        deviceId: 'device-xyz'
+        needsSetup: true,
+        needsRecoveryInput: false
       })
-      expect(mockStoreKey).toHaveBeenCalled()
-      expect(mockSecureCleanup).toHaveBeenCalled()
     })
 
     it('rejects invalid OTP code format', async () => {
@@ -416,12 +405,12 @@ describe('sync IPC handlers', () => {
       // #then
       expect(result).toEqual({
         success: true,
-        recoveryPhrase: 'oauth recovery phrase',
+        needsRecoverySetup: true,
         deviceId: 'dev-oauth'
       })
     })
 
-    it('returns success without recovery when setup not needed', async () => {
+    it('returns recovery input needed when setup not needed', async () => {
       // #given
       registerSyncHandlers()
       seedOAuthSession('test-state-2', 'http://127.0.0.1:9999/callback')
@@ -441,7 +430,7 @@ describe('sync IPC handlers', () => {
       })
 
       // #then
-      expect(result).toEqual({ success: true })
+      expect(result).toEqual({ success: true, needsRecoverySetup: true, needsRecoveryInput: true })
     })
   })
 

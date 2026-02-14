@@ -439,6 +439,11 @@ const persistKeysAndRegisterDevice = async (
     isCurrentDevice: true
   })
 
+  const engine = getSyncEngine()
+  if (engine) {
+    void engine.activate()
+  }
+
   return deviceResponse.deviceId
 }
 
