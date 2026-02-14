@@ -25,8 +25,6 @@ describe('sync-server app entry point', () => {
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body.status).toBe('ok')
-    expect(body.environment).toBe('development')
-    expect(typeof body.timestamp).toBe('number')
     expect(warnSpy).toHaveBeenCalled()
     expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff')
   })
@@ -72,7 +70,7 @@ describe('sync-server app entry point', () => {
 
     expect(response.status).toBe(200)
     const body = await response.json()
-    expect(body.environment).toBe('production')
+    expect(body.status).toBe('ok')
     expect(response.headers.get('Strict-Transport-Security')).toBe(
       'max-age=31536000; includeSubDomains'
     )

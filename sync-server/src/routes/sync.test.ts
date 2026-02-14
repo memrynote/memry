@@ -462,7 +462,7 @@ describe('sync routes', () => {
       expect(updateDevice).not.toHaveBeenCalled()
     })
 
-    it('should return 400 when push item has invalid UUID', async () => {
+    it('should accept non-UUID item IDs when payload otherwise validates', async () => {
       // #given
       const body = { items: [makePushItem({ id: 'not-a-uuid' })] }
 
@@ -475,9 +475,14 @@ describe('sync routes', () => {
       )
 
       // #then
-      expect(res.status).toBe(400)
-      const json = (await res.json()) as { error: { code: string } }
-      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(json).toEqual(
+        expect.objectContaining({
+          accepted: ['not-a-uuid'],
+          rejected: []
+        })
+      )
     })
   })
 

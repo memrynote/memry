@@ -7,7 +7,8 @@ const hoisted = vi.hoisted(() => ({
   jwtVerifyMock: vi.fn(async () => ({
     payload: {
       sub: 'user-1',
-      type: 'setup'
+      type: 'setup',
+      jti: 'setup-jti-1'
     }
   }))
 }))
@@ -49,7 +50,8 @@ describe('setup-auth middleware', () => {
     hoisted.jwtVerifyMock.mockResolvedValue({
       payload: {
         sub: 'user-1',
-        type: 'setup'
+        type: 'setup',
+        jti: 'setup-jti-1'
       }
     })
   })
@@ -203,6 +205,7 @@ describe('setup-auth middleware', () => {
     // #then
     expect(next).toHaveBeenCalledTimes(1)
     expect(setMap.get('userId')).toBe('user-1')
+    expect(setMap.get('tokenJti')).toBe('setup-jti-1')
   })
 
   it('does not query the database for device lookup', async () => {

@@ -51,8 +51,8 @@ describe('cleanup services', () => {
 
     const selectAll = vi.fn().mockResolvedValue({
       results: [
-        { id: 's1', upload_id: 'up1', key: 'k1' },
-        { id: 's2', upload_id: '', key: '' }
+        { id: 's1', r2_upload_id: 'up1', r2_key: 'k1' },
+        { id: 's2', r2_upload_id: '', r2_key: '' }
       ]
     })
     const selectBind = vi.fn().mockReturnValue({ all: selectAll })
@@ -73,7 +73,7 @@ describe('cleanup services', () => {
     // #then
     expect(result).toBe(2)
     expect(db.prepare).toHaveBeenCalledWith(
-      'SELECT id, upload_id, key FROM upload_sessions WHERE expires_at < ?'
+      'SELECT id, r2_upload_id, r2_key FROM upload_sessions WHERE expires_at < ?'
     )
     expect(db.prepare).toHaveBeenCalledWith('DELETE FROM upload_sessions WHERE expires_at < ?')
     expect(storage.resumeMultipartUpload).toHaveBeenCalledWith('k1', 'up1')
