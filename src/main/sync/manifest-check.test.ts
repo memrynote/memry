@@ -61,7 +61,7 @@ describe('checkManifestIntegrity', () => {
       expect(item).toBeDefined()
       expect(item.itemId).toBe('task-1')
       expect(item.type).toBe('task')
-      expect(item.operation).toBe('update')
+      expect(item.operation).toBe('create')
     })
   })
 

@@ -115,6 +115,15 @@ describe('reminders service', () => {
       getDatabase: vi.fn(),
       getIndexDatabase: vi.fn()
     }))
+    vi.doMock('../vault', () => ({
+      getStatus: vi.fn(() => ({
+        isOpen: true,
+        path: '/test-vault',
+        isIndexing: false,
+        indexProgress: 0,
+        error: null
+      }))
+    }))
 
     const databaseModule = await import('../database')
     getDatabase = databaseModule.getDatabase

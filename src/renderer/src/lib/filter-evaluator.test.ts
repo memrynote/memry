@@ -4,7 +4,7 @@
 // Tests for src/renderer/src/lib/filter-evaluator.ts
 // Tasks: T042-T056
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   evaluateFilter,
   parseExpression,
@@ -20,6 +20,15 @@ import {
   type ParsedCondition
 } from './filter-evaluator'
 import type { NoteWithProperties, FilterExpression } from '@shared/contracts/folder-view-api'
+
+vi.mock('@/lib/logger', () => ({
+  createLogger: vi.fn(() => ({
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+    error: vi.fn()
+  }))
+}))
 
 // ============================================================================
 // TEST UTILITIES
