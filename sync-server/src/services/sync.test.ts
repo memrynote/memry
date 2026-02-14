@@ -43,12 +43,14 @@ import {
   getSyncStatus,
   getManifest,
   getChanges,
+  pullItems,
   deleteItem,
   updateDeviceCursor,
   processPushItem
 } from './sync'
 import { getDevice } from './device'
 import { getUserById } from './user'
+import { getBlob } from './blob'
 
 const mockedSafeBase64Decode = vi.mocked(safeBase64Decode)
 const mockedVerifyEd25519 = vi.mocked(verifyEd25519)
@@ -241,9 +243,9 @@ describe('verifyItemSignature', () => {
     const item = createValidPushItem()
 
     // #when / #then
-    await expect(
-      verifyItemSignature(db as unknown as D1Database, item, 'user-1')
-    ).rejects.toThrow(AppError)
+    await expect(verifyItemSignature(db as unknown as D1Database, item, 'user-1')).rejects.toThrow(
+      AppError
+    )
 
     try {
       mockedGetDevice.mockResolvedValue(null)
@@ -259,9 +261,9 @@ describe('verifyItemSignature', () => {
     const item = createValidPushItem()
 
     // #when / #then
-    await expect(
-      verifyItemSignature(db as unknown as D1Database, item, 'user-1')
-    ).rejects.toThrow(AppError)
+    await expect(verifyItemSignature(db as unknown as D1Database, item, 'user-1')).rejects.toThrow(
+      AppError
+    )
 
     try {
       mockedGetDevice.mockResolvedValue({ ...activeDevice, revoked_at: 9999 })
@@ -277,9 +279,9 @@ describe('verifyItemSignature', () => {
     const item = createValidPushItem()
 
     // #when / #then
-    await expect(
-      verifyItemSignature(db as unknown as D1Database, item, 'user-1')
-    ).rejects.toThrow(AppError)
+    await expect(verifyItemSignature(db as unknown as D1Database, item, 'user-1')).rejects.toThrow(
+      AppError
+    )
 
     try {
       mockedVerifyEd25519.mockResolvedValueOnce(false)
@@ -626,6 +628,67 @@ describe('getChanges', () => {
 })
 
 // ============================================================================
+// Tests: pullItems
+// ============================================================================
+
+describe('pullItems', () => {
+  let db: ReturnType<typeof createMockDb>
+
+  beforeEach(() => {
+    db = createMockDb()
+    vi.clearAllMocks()
+  })
+
+  it('should return signer metadata, blob fields, and tombstone info', async () => {
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({
+      results: [
+        {
+          item_id: 'item-1',
+          item_type: 'task',
+          blob_key: 'user-1/items/item-1',
+          crypto_version: 1,
+          signer_device_id: 'device-1',
+          signature: 'sig-1',
+          state_vector: 'sv-1',
+          clock: '{"device-1":2}',
+          deleted_at: 1700000000,
+          server_cursor: 10
+        }
+      ]
+    })
+    db.prepare.mockReturnValue(stmt)
+    vi.mocked(getBlob).mockResolvedValue({
+      body: JSON.stringify({
+        encryptedKey: 'ek',
+        keyNonce: 'kn',
+        encryptedData: 'ed',
+        dataNonce: 'dn'
+      })
+    } as unknown as R2ObjectBody)
+
+    const result = await pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', [
+      'item-1'
+    ])
+
+    expect(result).toEqual([
+      {
+        id: 'item-1',
+        type: 'task',
+        operation: 'delete',
+        cryptoVersion: 1,
+        signature: 'sig-1',
+        signerDeviceId: 'device-1',
+        deletedAt: 1700000000,
+        clock: { 'device-1': 2 },
+        stateVector: 'sv-1',
+        blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' }
+      }
+    ])
+  })
+})
+
+// ============================================================================
 // Tests: deleteItem
 // ============================================================================
 
@@ -815,5 +878,40 @@ describe('processPushItem', () => {
     // #then — accepted without ever checking getUserById
     expect(result.accepted).toBe(true)
     expect(mockedGetUserById).not.toHaveBeenCalled()
+  })
+
+  it('should preserve existing created_at when upserting an existing row', async () => {
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue({
+      version: 3,
+      clock: '{"device-1":3}',
+      created_at: 123456,
+      size_bytes: 50000
+    })
+
+    const upsertStmt = createMockStatement()
+    const updateStmt = createMockStatement()
+    const db = createMockDb()
+    db.prepare
+      .mockReturnValueOnce(selectStmt)
+      .mockReturnValueOnce(upsertStmt)
+      .mockReturnValueOnce(updateStmt)
+
+    const storage = {
+      put: vi.fn().mockResolvedValue({ etag: 'etag-1' })
+    } as unknown as R2Bucket
+
+    const result = await processPushItem(
+      db as unknown as D1Database,
+      storage,
+      'user-1',
+      'device-1',
+      createValidPushItem({ clock: { 'device-1': 4 } })
+    )
+
+    expect(result.accepted).toBe(true)
+    expect(upsertStmt.bind).toHaveBeenCalled()
+    const bindArgs = upsertStmt.bind.mock.calls[0]
+    expect(bindArgs[13]).toBe(123456)
   })
 })

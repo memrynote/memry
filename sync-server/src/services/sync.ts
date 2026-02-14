@@ -3,7 +3,6 @@ import type {
   ChangesResponse,
   EncryptedItemPayload,
   PushItemInput,
-  SyncItem,
   SyncItemRef,
   SyncManifest,
   SyncStatus,
@@ -20,6 +19,14 @@ import { getUserById } from './user'
 const MAX_ENCRYPTED_DATA_BYTES = 5 * 1024 * 1024
 const DEFAULT_CHANGES_LIMIT = 100
 const MAX_CHANGES_LIMIT = 500
+
+interface ExistingSyncItemRow {
+  version: number
+  clock: string | VectorClock | null
+  size_bytes?: number | null
+  created_at?: number | null
+  createdAt?: number | null
+}
 
 export const validateEncryptedFields = (item: PushItemInput): void => {
   const dataNonce = safeBase64Decode(item.dataNonce)
@@ -158,13 +165,13 @@ export const processPushItem = async (
     const existing = await db
       .prepare('SELECT * FROM sync_items WHERE user_id = ? AND item_type = ? AND item_id = ?')
       .bind(userId, item.type, item.id)
-      .first<SyncItem>()
+      .first<ExistingSyncItemRow>()
 
     if (existing) {
       const existingClock =
         typeof existing.clock === 'string'
           ? (JSON.parse(existing.clock) as VectorClock)
-          : existing.clock
+          : (existing.clock ?? undefined)
       if (detectReplay(item.clock, existingClock)) {
         return { accepted: false, reason: 'SYNC_REPLAY_DETECTED' }
       }
@@ -181,9 +188,7 @@ export const processPushItem = async (
     })
 
     const newSize = payloadBytes.byteLength
-    const existingSize = existing
-      ? ((existing as unknown as Record<string, number>).size_bytes ?? 0)
-      : 0
+    const existingSize = existing ? (existing.size_bytes ?? 0) : 0
     const sizeDelta = newSize - existingSize
 
     if (sizeDelta > 0) {
@@ -203,6 +208,8 @@ export const processPushItem = async (
     const now = Math.floor(Date.now() / 1000)
     const deletedAt = item.operation === 'delete' ? now : null
     const clockJson = item.clock ? JSON.stringify(item.clock) : null
+
+    const existingCreatedAt = existing?.created_at ?? existing?.createdAt ?? now
 
     await db
       .prepare(
@@ -239,7 +246,7 @@ export const processPushItem = async (
         item.signature,
         item.stateVector ?? null,
         clockJson,
-        existing ? existing.createdAt : now,
+        existingCreatedAt,
         now,
         deletedAt
       )
@@ -399,35 +406,56 @@ export const pullItems = async (
   itemIds: string[]
 ): Promise<
   Array<{
-    itemId: string
+    id: string
     type: string
-    version: number
-    payload: EncryptedItemPayload
-    serverCursor: number
+    operation: 'update' | 'delete'
+    cryptoVersion: number
+    signature: string
+    signerDeviceId: string
+    deletedAt?: number
+    clock?: VectorClock
+    stateVector?: string
+    blob: EncryptedItemPayload
   }>
 > => {
+  if (itemIds.length === 0) {
+    return []
+  }
+
   const placeholders = itemIds.map(() => '?').join(', ')
   const rows = await db
     .prepare(
-      `SELECT item_id, item_type, version, blob_key, server_cursor
+      `SELECT item_id, item_type, blob_key, crypto_version, signer_device_id, signature,
+              state_vector, clock, deleted_at, server_cursor
        FROM sync_items
-       WHERE user_id = ? AND item_id IN (${placeholders}) AND deleted_at IS NULL`
+       WHERE user_id = ? AND item_id IN (${placeholders})
+       ORDER BY server_cursor ASC`
     )
     .bind(userId, ...itemIds)
     .all<{
       item_id: string
       item_type: string
-      version: number
       blob_key: string
+      crypto_version: number
+      signer_device_id: string | null
+      signature: string | null
+      state_vector: string | null
+      clock: string | null
+      deleted_at: number | null
       server_cursor: number
     }>()
 
   const results: Array<{
-    itemId: string
+    id: string
     type: string
-    version: number
-    payload: EncryptedItemPayload
-    serverCursor: number
+    operation: 'update' | 'delete'
+    cryptoVersion: number
+    signature: string
+    signerDeviceId: string
+    deletedAt?: number
+    clock?: VectorClock
+    stateVector?: string
+    blob: EncryptedItemPayload
   }> = []
 
   for (const row of rows.results ?? []) {
@@ -452,12 +480,38 @@ export const pullItems = async (
       )
     }
 
+    if (!row.signer_device_id || !row.signature) {
+      throw new AppError(
+        ErrorCodes.INTERNAL_ERROR,
+        `Sync item ${row.item_id} missing signer metadata`,
+        500
+      )
+    }
+
+    let parsedClock: VectorClock | undefined
+    if (row.clock) {
+      try {
+        parsedClock = JSON.parse(row.clock) as VectorClock
+      } catch {
+        throw new AppError(
+          ErrorCodes.INTERNAL_ERROR,
+          `Corrupt clock payload for item ${row.item_id}`,
+          500
+        )
+      }
+    }
+
     results.push({
-      itemId: row.item_id,
+      id: row.item_id,
       type: row.item_type,
-      version: row.version,
-      payload,
-      serverCursor: row.server_cursor
+      operation: row.deleted_at ? 'delete' : 'update',
+      cryptoVersion: row.crypto_version,
+      signature: row.signature,
+      signerDeviceId: row.signer_device_id,
+      ...(row.deleted_at ? { deletedAt: row.deleted_at } : {}),
+      ...(parsedClock ? { clock: parsedClock } : {}),
+      ...(row.state_vector ? { stateVector: row.state_vector } : {}),
+      blob: payload
     })
   }
 
@@ -505,11 +559,7 @@ export const getItem = async (
     const text = await new Response(blob.body).text()
     payload = JSON.parse(text) as EncryptedItemPayload
   } catch {
-    throw new AppError(
-      ErrorCodes.INTERNAL_ERROR,
-      `Corrupt blob payload for item ${itemId}`,
-      500
-    )
+    throw new AppError(ErrorCodes.INTERNAL_ERROR, `Corrupt blob payload for item ${itemId}`, 500)
   }
 
   return {
