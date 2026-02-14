@@ -162,6 +162,7 @@ export class SyncEngine extends EventEmitter {
         if (items.length === 0) break
 
         const pushItems = items.map((item) => {
+          const payloadMeta = this.extractPayloadMetadata(item.payload)
           const result = encryptItemForPush({
             id: item.itemId,
             type: item.type as Parameters<typeof encryptItemForPush>[0]['type'],
@@ -169,7 +170,9 @@ export class SyncEngine extends EventEmitter {
             content: new TextEncoder().encode(item.payload),
             vaultKey,
             signingSecretKey: signingKeys.secretKey,
-            signerDeviceId: signingKeys.deviceId
+            signerDeviceId: signingKeys.deviceId,
+            clock: payloadMeta.clock,
+            stateVector: payloadMeta.stateVector
           })
           return { queueId: item.id, pushItem: result.pushItem }
         })
@@ -264,15 +267,13 @@ export class SyncEngine extends EventEmitter {
 
         const changes = changesResult.value
 
-        if (changes.items.length > 0) {
-          const itemIds = changes.items.map((item) => item.id)
+        const itemIds = Array.from(
+          new Set([...changes.items.map((item) => item.id), ...changes.deleted])
+        )
+        if (itemIds.length > 0) {
           const pullResult = await withRetry(
             () =>
-              postToServer<{ items: Array<PullItemResponse> }>(
-                '/sync/pull',
-                { item_ids: itemIds },
-                token
-              ),
+              postToServer<{ items: Array<PullItemResponse> }>('/sync/pull', { itemIds }, token),
             { signal: this.abortController.signal, isOnline: () => this.deps.network.online }
           )
 
@@ -563,6 +564,26 @@ export class SyncEngine extends EventEmitter {
         skewSeconds: skew
       } satisfies ClockSkewWarningEvent)
       this.pause()
+    }
+  }
+
+  private extractPayloadMetadata(payload: string): {
+    clock?: Record<string, number>
+    stateVector?: string
+  } {
+    try {
+      const parsed = JSON.parse(payload) as Record<string, unknown>
+      const clockValue = parsed.clock
+      const stateVectorValue = parsed.stateVector
+      return {
+        clock:
+          clockValue && typeof clockValue === 'object' && !Array.isArray(clockValue)
+            ? (clockValue as Record<string, number>)
+            : undefined,
+        stateVector: typeof stateVectorValue === 'string' ? stateVectorValue : undefined
+      }
+    } catch {
+      return {}
     }
   }
 
