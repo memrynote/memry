@@ -374,7 +374,8 @@ const persistKeysAndRegisterDevice = async (
   setupToken: string,
   kdfSalt: string,
   keyVerifier: string,
-  skipSetup?: boolean
+  skipSetup?: boolean,
+  skipActivation?: boolean
 ): Promise<string> => {
   await storeKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY, signingSecretKey)
 
@@ -439,9 +440,11 @@ const persistKeysAndRegisterDevice = async (
     isCurrentDevice: true
   })
 
-  const engine = getSyncEngine()
-  if (engine) {
-    void engine.activate()
+  if (!skipActivation) {
+    const engine = getSyncEngine()
+    if (engine) {
+      void engine.activate()
+    }
   }
 
   return deviceResponse.deviceId
@@ -466,7 +469,9 @@ const performFirstDeviceSetup = async (setupToken: string): Promise<FirstDeviceS
       signingSecretKey,
       setupToken,
       kdfSalt,
-      keyVerifier
+      keyVerifier,
+      false,
+      true
     )
 
     pendingRecoveryPhrase = phrase
@@ -723,6 +728,8 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     createValidatedHandler(ConfirmRecoveryPhraseSchema, (input) => {
       if (input.confirmed) {
         store.set('sync', { ...store.get('sync'), recoveryPhraseConfirmed: true })
+        const engine = getSyncEngine()
+        if (engine) void engine.activate()
       }
       return { success: true }
     })

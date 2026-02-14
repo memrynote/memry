@@ -134,6 +134,9 @@ vi.mock('../sync/runtime', () => ({
 }))
 
 import { registerSyncHandlers, unregisterSyncHandlers, seedOAuthSession } from './sync-handlers'
+import { getSyncEngine } from '../sync/runtime'
+
+const mockGetSyncEngine = vi.mocked(getSyncEngine)
 
 // ============================================================================
 // Constants
@@ -432,6 +435,60 @@ describe('sync IPC handlers', () => {
       // #then
       expect(result).toEqual({ success: true, needsRecoverySetup: true, needsRecoveryInput: true })
     })
+
+    it('does not activate sync engine during first device setup', async () => {
+      // #given
+      const mockActivate = vi.fn().mockResolvedValue(undefined)
+      mockGetSyncEngine.mockReturnValue({ activate: mockActivate } as never)
+      registerSyncHandlers()
+      seedOAuthSession('test-state-3', 'http://127.0.0.1:9999/callback')
+      const fakeKey = new Uint8Array(32).fill(1)
+      const fakeSecretKey = new Uint8Array(64).fill(2)
+      const fakeSalt = new Uint8Array(16).fill(3)
+      const fakeSeed = new Uint8Array(64).fill(4)
+
+      mockPostToServer
+        .mockResolvedValueOnce({
+          success: true,
+          userId: 'user-1',
+          isNewUser: true,
+          needsSetup: true,
+          setupToken: 'setup-token'
+        })
+        .mockResolvedValueOnce({
+          success: true,
+          deviceId: 'dev-1',
+          accessToken: 'at',
+          refreshToken: 'rt'
+        })
+        .mockResolvedValueOnce({ success: true })
+
+      mockGenerateRecoveryPhrase.mockResolvedValue({ phrase: 'test phrase', seed: fakeSeed })
+      mockGenerateSalt.mockReturnValue(fakeSalt)
+      mockDeriveMasterKey.mockResolvedValue({
+        masterKey: fakeKey,
+        kdfSalt: 'salt',
+        keyVerifier: 'verifier'
+      })
+      mockDeriveKey.mockResolvedValue(new Uint8Array(32))
+      mockGenerateDeviceSigningKeyPair.mockResolvedValue({
+        deviceId: 'dev-1',
+        publicKey: new Uint8Array(32),
+        secretKey: fakeSecretKey
+      })
+      mockRetrieveKey.mockResolvedValue(fakeSecretKey)
+      mockGetDevicePublicKey.mockReturnValue(new Uint8Array(32))
+
+      // #when
+      await invokeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE, {
+        oauthToken: 'google-code',
+        provider: 'google',
+        state: 'test-state-3'
+      })
+
+      // #then
+      expect(mockActivate).not.toHaveBeenCalled()
+    })
   })
 
   // --------------------------------------------------------------------------
@@ -468,6 +525,32 @@ describe('sync IPC handlers', () => {
       // #then
       expect(result).toEqual({ success: true })
       expect(mockStoreSet).not.toHaveBeenCalled()
+    })
+
+    it('activates sync engine when confirmed is true', async () => {
+      // #given
+      const mockActivate = vi.fn().mockResolvedValue(undefined)
+      mockGetSyncEngine.mockReturnValue({ activate: mockActivate } as never)
+      registerSyncHandlers()
+
+      // #when
+      await invokeHandler(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, { confirmed: true })
+
+      // #then
+      expect(mockActivate).toHaveBeenCalledOnce()
+    })
+
+    it('does not activate sync engine when confirmed is false', async () => {
+      // #given
+      const mockActivate = vi.fn().mockResolvedValue(undefined)
+      mockGetSyncEngine.mockReturnValue({ activate: mockActivate } as never)
+      registerSyncHandlers()
+
+      // #when
+      await invokeHandler(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, { confirmed: false })
+
+      // #then
+      expect(mockActivate).not.toHaveBeenCalled()
     })
   })
 
