@@ -23,7 +23,9 @@ import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } fro
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { log, createLogger } from './lib/logger'
 
-log.initialize()
+if (process.type === 'browser') {
+  log.initialize()
+}
 
 const mainLog = createLogger('Main')
 const configLog = createLogger('Config')
