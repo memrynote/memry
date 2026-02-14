@@ -67,6 +67,12 @@ beforeEach(() => {
       downloadProgressListeners = downloadProgressListeners.filter((l) => l !== cb)
     }
   })
+  api.onSessionExpired = vi.fn(() => () => {})
+  api.onConflictDetected = vi.fn(() => () => {})
+  api.onQueueCleared = vi.fn(() => () => {})
+  api.onClockSkewWarning = vi.fn(() => () => {})
+  api.onItemSynced = vi.fn(() => () => {})
+  api.onInitialSyncProgress = vi.fn(() => () => {})
 })
 
 import { SyncProvider, useSync } from './sync-context'
