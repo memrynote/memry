@@ -65,7 +65,10 @@ describe('FilterSyncService', () => {
   describe('#given filter with existing clock #when enqueueUpdate called', () => {
     it('#then increments the existing clock', () => {
       const existingClock: VectorClock = { 'device-A': 2, 'device-B': 1 }
-      testDb.db.insert(savedFilters).values({ ...TEST_FILTER, clock: existingClock }).run()
+      testDb.db
+        .insert(savedFilters)
+        .values({ ...TEST_FILTER, clock: existingClock })
+        .run()
 
       service.enqueueUpdate('filter-1')
 
@@ -78,7 +81,11 @@ describe('FilterSyncService', () => {
   describe('#given no device ID #when enqueue called', () => {
     it('#then skips silently', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const noDeviceService = new FilterSyncService({ queue, db: testDb.db as any, getDeviceId: () => null })
+      const noDeviceService = new FilterSyncService({
+        queue,
+        db: testDb.db as any,
+        getDeviceId: () => null
+      })
       testDb.db.insert(savedFilters).values(TEST_FILTER).run()
 
       noDeviceService.enqueueCreate('filter-1')
@@ -95,14 +102,16 @@ describe('FilterSyncService', () => {
   })
 
   describe('#when enqueueDelete called', () => {
-    it('#then enqueues with the provided snapshot payload', () => {
+    it('#then enqueues a delete payload with incremented clock', () => {
       const snapshot = JSON.stringify(TEST_FILTER)
       service.enqueueDelete('filter-1', snapshot)
 
       const [item] = queue.dequeue(1)
       expect(item.itemId).toBe('filter-1')
       expect(item.operation).toBe('delete')
-      expect(item.payload).toBe(snapshot)
+      const payload = JSON.parse(item.payload)
+      expect(payload).toMatchObject(TEST_FILTER)
+      expect(payload.clock).toEqual({ 'device-A': 1 })
     })
   })
 

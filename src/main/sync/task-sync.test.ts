@@ -3,7 +3,12 @@ import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { tasks } from '@shared/db/schema/tasks'
 import { projects } from '@shared/db/schema/projects'
 import { SyncQueueManager } from './queue'
-import { TaskSyncService, initTaskSyncService, getTaskSyncService, resetTaskSyncService } from './task-sync'
+import {
+  TaskSyncService,
+  initTaskSyncService,
+  getTaskSyncService,
+  resetTaskSyncService
+} from './task-sync'
 import type { VectorClock } from '@shared/contracts/sync-api'
 
 const TEST_PROJECT = {
@@ -78,7 +83,10 @@ describe('TaskSyncService', () => {
   describe('#given a task with existing clock #when enqueueUpdate called', () => {
     it('#then increments the existing clock', () => {
       const existingClock: VectorClock = { 'device-A': 2, 'device-B': 1 }
-      testDb.db.insert(tasks).values({ ...TEST_TASK, clock: existingClock }).run()
+      testDb.db
+        .insert(tasks)
+        .values({ ...TEST_TASK, clock: existingClock })
+        .run()
 
       service.enqueueUpdate('task-1')
 
@@ -91,7 +99,11 @@ describe('TaskSyncService', () => {
   describe('#given no device ID #when enqueue called', () => {
     it('#then skips silently without enqueueing', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const noDeviceService = new TaskSyncService({ queue, db: testDb.db as any, getDeviceId: () => null })
+      const noDeviceService = new TaskSyncService({
+        queue,
+        db: testDb.db as any,
+        getDeviceId: () => null
+      })
       testDb.db.insert(tasks).values(TEST_TASK).run()
 
       noDeviceService.enqueueCreate('task-1')
@@ -108,14 +120,16 @@ describe('TaskSyncService', () => {
   })
 
   describe('#when enqueueDelete called', () => {
-    it('#then enqueues with the provided snapshot payload', () => {
+    it('#then enqueues a delete payload with incremented clock', () => {
       const snapshot = JSON.stringify(TEST_TASK)
       service.enqueueDelete('task-1', snapshot)
 
       const [item] = queue.dequeue(1)
       expect(item.itemId).toBe('task-1')
       expect(item.operation).toBe('delete')
-      expect(item.payload).toBe(snapshot)
+      const payload = JSON.parse(item.payload)
+      expect(payload).toMatchObject(TEST_TASK)
+      expect(payload.clock).toEqual({ 'device-A': 1 })
     })
   })
 
