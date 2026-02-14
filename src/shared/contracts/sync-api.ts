@@ -183,7 +183,7 @@ export const SyncQueueItemSchema = z.object({
 })
 
 export const PushItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().min(1),
   type: z.enum(SYNC_ITEM_TYPES),
   operation: z.enum(SYNC_OPERATIONS),
   encryptedKey: z.string().min(1),
@@ -201,10 +201,10 @@ export const PushRequestSchema = z.object({
 })
 
 export const PushResponseSchema = z.object({
-  accepted: z.array(z.string().uuid()),
+  accepted: z.array(z.string().min(1)),
   rejected: z.array(
     z.object({
-      id: z.string().uuid(),
+      id: z.string().min(1),
       reason: z.string()
     })
   ),
@@ -212,7 +212,7 @@ export const PushResponseSchema = z.object({
 })
 
 export const SyncItemRefSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().min(1),
   type: z.enum(SYNC_ITEM_TYPES),
   version: z.number().int().min(1),
   modifiedAt: z.number().int().min(0),
@@ -227,7 +227,7 @@ export const SyncManifestSchema = z.object({
 
 export const ChangesResponseSchema = z.object({
   items: z.array(SyncItemRefSchema),
-  deleted: z.array(z.string().uuid()),
+  deleted: z.array(z.string().min(1)),
   hasMore: z.boolean(),
   nextCursor: z.number().int().min(0)
 })
@@ -242,7 +242,7 @@ export const SyncStatusSchema = z.object({
 export const ConflictResponseSchema = z.object({
   conflicts: z.array(
     z.object({
-      id: z.string().uuid(),
+      id: z.string().min(1),
       localClock: VectorClockSchema,
       serverClock: VectorClockSchema,
       serverVersion: EncryptedItemPayloadSchema
