@@ -49,6 +49,7 @@ import { initEmbeddingModel, isModelLoaded, isModelLoading } from '../lib/embedd
 import { flushFtsUpdates, hasPendingFtsUpdates } from '../database'
 import { clearEmbeddingQueue, hasPendingEmbeddings } from '../inbox/embedding-queue'
 import { createLogger } from '../lib/logger'
+import { startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
 
 const logger = createLogger('Vault')
 
@@ -257,6 +258,8 @@ async function openVault(vaultPath: string): Promise<void> {
   // Start file watcher for external changes
   await startWatcher(vaultPath)
 
+  await startSyncRuntime()
+
   // Update status
   updateStatus({
     isOpen: true,
@@ -396,6 +399,8 @@ export async function closeVault(): Promise<void> {
     clearEmbeddingQueue()
     logger.debug('Cleared pending embedding updates before close')
   }
+
+  await stopSyncRuntime()
 
   // Close databases
   closeAllDatabases()
