@@ -67,7 +67,10 @@ describe('InboxSyncService', () => {
   describe('#given inbox item with existing clock #when enqueueUpdate called', () => {
     it('#then increments the existing clock', () => {
       const existingClock: VectorClock = { 'device-A': 2, 'device-B': 1 }
-      testDb.db.insert(inboxItems).values({ ...TEST_INBOX_ITEM, clock: existingClock }).run()
+      testDb.db
+        .insert(inboxItems)
+        .values({ ...TEST_INBOX_ITEM, clock: existingClock })
+        .run()
 
       service.enqueueUpdate('inbox-1')
 
@@ -93,7 +96,11 @@ describe('InboxSyncService', () => {
   describe('#given no device ID #when enqueue called', () => {
     it('#then skips silently', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const noDeviceService = new InboxSyncService({ queue, db: testDb.db as any, getDeviceId: () => null })
+      const noDeviceService = new InboxSyncService({
+        queue,
+        db: testDb.db as any,
+        getDeviceId: () => null
+      })
       testDb.db.insert(inboxItems).values(TEST_INBOX_ITEM).run()
 
       noDeviceService.enqueueCreate('inbox-1')
@@ -110,14 +117,16 @@ describe('InboxSyncService', () => {
   })
 
   describe('#when enqueueDelete called', () => {
-    it('#then enqueues with the provided snapshot payload', () => {
+    it('#then enqueues a delete payload with incremented clock', () => {
       const snapshot = JSON.stringify(TEST_INBOX_ITEM)
       service.enqueueDelete('inbox-1', snapshot)
 
       const [item] = queue.dequeue(1)
       expect(item.itemId).toBe('inbox-1')
       expect(item.operation).toBe('delete')
-      expect(item.payload).toBe(snapshot)
+      const payload = JSON.parse(item.payload)
+      expect(payload).toMatchObject(TEST_INBOX_ITEM)
+      expect(payload.clock).toEqual({ 'device-A': 1 })
     })
   })
 
