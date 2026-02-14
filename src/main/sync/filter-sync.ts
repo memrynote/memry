@@ -59,11 +59,12 @@ export class FilterSyncService {
     }
 
     try {
+      const payload = this.withIncrementedClock(snapshotPayload, deviceId)
       this.queue.enqueue({
         type: 'filter',
         itemId: filterId,
         operation: 'delete',
-        payload: snapshotPayload,
+        payload,
         priority: 0
       })
     } catch (err) {
@@ -79,11 +80,7 @@ export class FilterSyncService {
     }
 
     try {
-      const filter = this.db
-        .select()
-        .from(savedFilters)
-        .where(eq(savedFilters.id, filterId))
-        .get()
+      const filter = this.db.select().from(savedFilters).where(eq(savedFilters.id, filterId)).get()
       if (!filter) {
         log.warn('Filter not found for sync enqueue', { filterId })
         return
@@ -109,6 +106,20 @@ export class FilterSyncService {
       })
     } catch (err) {
       log.error(`Failed to enqueue filter ${operation}`, err)
+    }
+  }
+
+  private withIncrementedClock(payload: string, deviceId: string): string {
+    try {
+      const parsed = JSON.parse(payload) as Record<string, unknown>
+      const existingClock =
+        parsed.clock && typeof parsed.clock === 'object' && !Array.isArray(parsed.clock)
+          ? (parsed.clock as VectorClock)
+          : {}
+      const newClock = increment(existingClock, deviceId)
+      return JSON.stringify({ ...parsed, clock: newClock })
+    } catch {
+      return payload
     }
   }
 }

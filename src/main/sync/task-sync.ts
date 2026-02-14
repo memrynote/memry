@@ -59,11 +59,12 @@ export class TaskSyncService {
     }
 
     try {
+      const payload = this.withIncrementedClock(snapshotPayload, deviceId)
       this.queue.enqueue({
         type: 'task',
         itemId: taskId,
         operation: 'delete',
-        payload: snapshotPayload,
+        payload,
         priority: 0
       })
     } catch (err) {
@@ -101,6 +102,20 @@ export class TaskSyncService {
       })
     } catch (err) {
       log.error(`Failed to enqueue task ${operation}`, err)
+    }
+  }
+
+  private withIncrementedClock(payload: string, deviceId: string): string {
+    try {
+      const parsed = JSON.parse(payload) as Record<string, unknown>
+      const existingClock =
+        parsed.clock && typeof parsed.clock === 'object' && !Array.isArray(parsed.clock)
+          ? (parsed.clock as VectorClock)
+          : {}
+      const newClock = increment(existingClock, deviceId)
+      return JSON.stringify({ ...parsed, clock: newClock })
+    } catch {
+      return payload
     }
   }
 }
