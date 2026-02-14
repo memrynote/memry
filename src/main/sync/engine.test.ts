@@ -189,6 +189,33 @@ describe('SyncEngine', () => {
     })
   })
 
+  describe('#given engine pull #when posting to /sync/pull', () => {
+    it('#then sends camelCase itemIds and includes deleted refs', async () => {
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 10 }],
+        deleted: ['task-2'],
+        hasMore: false,
+        nextCursor: 1
+      })
+
+      const postSpy = vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        items: []
+      })
+
+      await engine.pull()
+
+      expect(postSpy).toHaveBeenCalledWith(
+        '/sync/pull',
+        { itemIds: ['task-1', 'task-2'] },
+        'test-token'
+      )
+      vi.restoreAllMocks()
+    })
+  })
+
   describe('#given engine #when getStatus called', () => {
     it('#then returns current state with pending count', () => {
       const deps = createMockDeps(testDb)
@@ -764,11 +791,13 @@ describe('SyncEngine', () => {
         }
       })
 
-      const postMock = vi.fn().mockImplementation(async (_url: string, body: { items: Array<{ id: string }> }) => ({
-        accepted: body.items.map((i: { id: string }) => i.id),
-        rejected: [],
-        serverTime: Math.floor(Date.now() / 1000)
-      }))
+      const postMock = vi
+        .fn()
+        .mockImplementation(async (_url: string, body: { items: Array<{ id: string }> }) => ({
+          accepted: body.items.map((i: { id: string }) => i.id),
+          rejected: [],
+          serverTime: Math.floor(Date.now() / 1000)
+        }))
       vi.spyOn(await import('./http-client'), 'postToServer').mockImplementation(postMock)
 
       // #when
@@ -990,6 +1019,60 @@ describe('SyncEngine', () => {
     })
   })
 
+  describe('#given pull response contains tombstone #when item applied', () => {
+    it('#then applies delete operation', async () => {
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: ['task-1'],
+        hasMore: false,
+        nextCursor: 1
+      })
+
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        items: [
+          {
+            id: 'task-1',
+            type: 'task',
+            operation: 'delete',
+            cryptoVersion: 1,
+            blob: {
+              encryptedKey: 'ek',
+              keyNonce: 'kn',
+              encryptedData: 'ed',
+              dataNonce: 'dn'
+            },
+            signature: 'sig',
+            signerDeviceId: 'device-1',
+            deletedAt: 1700000000,
+            clock: { 'device-1': 2 }
+          }
+        ]
+      })
+
+      vi.spyOn(await import('./decrypt'), 'decryptItemFromPull').mockReturnValue({
+        content: new TextEncoder().encode(JSON.stringify({ id: 'task-1' })),
+        verified: true
+      })
+
+      const { ItemApplier } = await import('./apply-item')
+      const applySpy = vi.spyOn(ItemApplier.prototype, 'apply').mockReturnValue('applied')
+
+      await engine.pull()
+
+      expect(applySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          itemId: 'task-1',
+          type: 'task',
+          operation: 'delete'
+        })
+      )
+      vi.restoreAllMocks()
+    })
+  })
+
   describe('#given full push/pull round-trip #when item queued and synced', () => {
     it('#then item is encrypted, pushed, pulled, decrypted, and applied', async () => {
       // #given
@@ -1104,12 +1187,8 @@ describe('SyncEngine', () => {
       const itemSyncedCalls = (deps.emitToRenderer as ReturnType<typeof vi.fn>).mock.calls.filter(
         (call) => call[0] === 'sync:item-synced'
       )
-      const pushEvents = itemSyncedCalls.filter(
-        (call) => call[1]?.operation === 'push'
-      )
-      const pullEvents = itemSyncedCalls.filter(
-        (call) => call[1]?.operation === 'pull'
-      )
+      const pushEvents = itemSyncedCalls.filter((call) => call[1]?.operation === 'push')
+      const pullEvents = itemSyncedCalls.filter((call) => call[1]?.operation === 'pull')
       expect(pushEvents).toHaveLength(1)
       expect(pullEvents).toHaveLength(1)
 
