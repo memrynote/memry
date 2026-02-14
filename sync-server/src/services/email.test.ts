@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { ErrorCodes } from '../lib/errors'
 import { sendEmail } from './email'
 
 describe('email service', () => {
@@ -7,11 +8,13 @@ describe('email service', () => {
     vi.clearAllMocks()
   })
 
-  it('returns true when Resend API call succeeds', async () => {
+  it('resolves when Resend API call succeeds', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true }))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(sendEmail('user@example.com', 'Hello', '<p>Hi</p>', 'api-key')).resolves.toBe(true)
+    await expect(sendEmail('user@example.com', 'Hello', '<p>Hi</p>', 'api-key')).resolves.toBe(
+      undefined
+    )
 
     expect(fetchMock).toHaveBeenCalledWith('https://api.resend.com/emails', {
       method: 'POST',
@@ -20,7 +23,7 @@ describe('email service', () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Memry <noreply@memrynote.ai',
+        from: 'Memry <noreply@memrynote.ai>',
         to: 'user@example.com',
         subject: 'Hello',
         html: '<p>Hi</p>'
@@ -28,7 +31,7 @@ describe('email service', () => {
     })
   })
 
-  it('returns false and logs for non-OK API response', async () => {
+  it('throws for non-OK API response', async () => {
     const fetchMock = vi.fn(async () => ({
       ok: false,
       status: 500,
@@ -37,21 +40,27 @@ describe('email service', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(sendEmail('user@example.com', 'Hello', '<p>Hi</p>', 'api-key')).resolves.toBe(
-      false
+    await expect(sendEmail('user@example.com', 'Hello', '<p>Hi</p>', 'api-key')).rejects.toMatchObject(
+      {
+        code: ErrorCodes.INTERNAL_ERROR,
+        statusCode: 500
+      }
     )
     expect(errorSpy).toHaveBeenCalledWith('Resend API error: 500 server error')
   })
 
-  it('returns false on network failures', async () => {
+  it('throws on network failures', async () => {
     const fetchMock = vi.fn(async () => {
       throw new Error('network down')
     })
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(sendEmail('user@example.com', 'Hello', '<p>Hi</p>', 'api-key')).resolves.toBe(
-      false
+    await expect(sendEmail('user@example.com', 'Hello', '<p>Hi</p>', 'api-key')).rejects.toMatchObject(
+      {
+        code: ErrorCodes.INTERNAL_ERROR,
+        statusCode: 500
+      }
     )
     expect(errorSpy).toHaveBeenCalledWith('Failed to send email:', 'network down')
   })

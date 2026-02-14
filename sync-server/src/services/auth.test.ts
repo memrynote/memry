@@ -151,12 +151,24 @@ describe('rotateRefreshToken', () => {
   })
 
   it('should throw and revoke all device tokens when old token is invalid', async () => {
-    // #given - SELECT returns null (no matching token)
-    const selectStmt = createMockStatement()
-    selectStmt.first.mockResolvedValue(null)
+    // #given - no valid token, no grace-period token
+    const selectActiveStmt = createMockStatement()
+    selectActiveStmt.first.mockResolvedValue(null)
+    const selectRecentlyRotatedStmt = createMockStatement()
+    selectRecentlyRotatedStmt.first.mockResolvedValue(null)
     const revokeStmt = createMockStatement()
-
-    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(revokeStmt)
+    db.prepare.mockImplementation((query: string) => {
+      if (query.includes('revoked = 0 AND expires_at > ?')) {
+        return selectActiveStmt
+      }
+      if (query.includes('revoked = 1 AND rotated_at IS NOT NULL')) {
+        return selectRecentlyRotatedStmt
+      }
+      if (query.includes('UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ? AND device_id = ?')) {
+        return revokeStmt
+      }
+      return createMockStatement()
+    })
 
     // #when / #then
     await expect(
@@ -169,11 +181,19 @@ describe('rotateRefreshToken', () => {
 
   it('should throw with 401 status on invalid token', async () => {
     // #given
-    const selectStmt = createMockStatement()
-    selectStmt.first.mockResolvedValue(null)
-    const revokeStmt = createMockStatement()
-
-    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(revokeStmt)
+    const selectActiveStmt = createMockStatement()
+    selectActiveStmt.first.mockResolvedValue(null)
+    const selectRecentlyRotatedStmt = createMockStatement()
+    selectRecentlyRotatedStmt.first.mockResolvedValue(null)
+    db.prepare.mockImplementation((query: string) => {
+      if (query.includes('revoked = 0 AND expires_at > ?')) {
+        return selectActiveStmt
+      }
+      if (query.includes('revoked = 1 AND rotated_at IS NOT NULL')) {
+        return selectRecentlyRotatedStmt
+      }
+      return createMockStatement()
+    })
 
     // #when / #then
     try {

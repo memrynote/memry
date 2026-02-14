@@ -12,7 +12,8 @@ vi.mock('../services/otp', () => ({
   generateOtp: vi.fn().mockReturnValue('123456'),
   storeOtp: vi.fn().mockResolvedValue(undefined),
   verifyOtp: vi.fn().mockResolvedValue(undefined),
-  checkEmailRateLimit: vi.fn().mockResolvedValue(undefined)
+  checkEmailRateLimit: vi.fn().mockResolvedValue(undefined),
+  hasPendingOtp: vi.fn().mockResolvedValue(true)
 }))
 
 vi.mock('../services/user', () => ({
@@ -62,6 +63,7 @@ vi.mock('../middleware/setup-auth', () => ({
     next: () => Promise<void>
   ) => {
     c.set('userId', 'user-1')
+    c.set('tokenJti', 'setup-jti-1')
     await next()
   }
 }))
@@ -72,11 +74,6 @@ vi.mock('../lib/jwt-keys', () => ({
 }))
 
 vi.mock('jose', () => ({
-  decodeJwt: vi.fn().mockReturnValue({
-    type: 'refresh',
-    sub: 'user-1',
-    device_id: 'device-1'
-  }),
   jwtVerify: vi.fn().mockResolvedValue({
     payload: {
       type: 'oauth_state',
@@ -113,7 +110,7 @@ import { auth } from './auth'
 import { checkEmailRateLimit } from '../services/otp'
 import { getOrCreateUserByEmail, getUserById, updateUser } from '../services/user'
 import { rotateRefreshToken } from '../services/auth'
-import { decodeJwt, jwtVerify } from 'jose'
+import { jwtVerify } from 'jose'
 
 // ============================================================================
 // Test app with error handler
@@ -126,14 +123,20 @@ const createApp = () => {
   return app
 }
 
+const createD1Statement = () => {
+  const statement = {
+    bind: vi.fn(),
+    first: vi.fn().mockResolvedValue(null),
+    run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1 } }),
+    all: vi.fn().mockResolvedValue({ results: [] })
+  }
+  statement.bind.mockReturnValue(statement)
+  return statement
+}
+
 const createEnv = () => ({
   DB: {
-    prepare: vi.fn().mockReturnValue({
-      bind: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-      run: vi.fn().mockResolvedValue({ success: true }),
-      all: vi.fn().mockResolvedValue({ results: [] })
-    })
+    prepare: vi.fn().mockReturnValue(createD1Statement())
   } as unknown as D1Database,
   STORAGE: {} as R2Bucket,
   USER_SYNC_STATE: {} as DurableObjectNamespace,
@@ -243,7 +246,7 @@ describe('auth routes', () => {
   // ==========================================================================
 
   describe('POST /auth/otp/verify', () => {
-    it('should return 200 with userId, isNewUser, needsSetup, and setupToken', async () => {
+    it('should return 200 with isNewUser, needsSetup, and setupToken', async () => {
       // #given
       const body = { email: 'test@example.com', code: '123456' }
 
@@ -255,7 +258,6 @@ describe('auth routes', () => {
       const json = await res.json()
       expect(json).toEqual({
         success: true,
-        userId: 'user-1',
         isNewUser: true,
         needsSetup: true,
         setupToken: 'mock-setup-token'
@@ -339,7 +341,7 @@ describe('auth routes', () => {
       )
     })
 
-    it('should return 200 with userId, setupToken, and isNewUser on valid callback', async () => {
+    it('should return 200 with setupToken and isNewUser on valid callback', async () => {
       // #given
       const body = { code: 'auth-code', state: 'valid-state' }
 
@@ -355,7 +357,6 @@ describe('auth routes', () => {
       const json = await res.json()
       expect(json).toEqual({
         success: true,
-        userId: 'user-1',
         isNewUser: true,
         needsSetup: true,
         setupToken: 'mock-setup-token'
@@ -515,6 +516,10 @@ describe('auth routes', () => {
 
     it('should return 409 when setup is already completed', async () => {
       // #given
+      const updateStmt = createD1Statement()
+      updateStmt.run.mockResolvedValue({ success: true, meta: { changes: 0 } })
+      ;(env.DB.prepare as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(updateStmt)
+
       vi.mocked(getUserById).mockResolvedValueOnce({
         id: 'user-1',
         kdf_salt: 'existing-salt'
@@ -533,6 +538,10 @@ describe('auth routes', () => {
 
     it('should return 404 when user is not found', async () => {
       // #given
+      const updateStmt = createD1Statement()
+      updateStmt.run.mockResolvedValue({ success: true, meta: { changes: 0 } })
+      ;(env.DB.prepare as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(updateStmt)
+
       vi.mocked(getUserById).mockResolvedValueOnce(
         null as unknown as Awaited<ReturnType<typeof getUserById>>
       )
@@ -557,6 +566,14 @@ describe('auth routes', () => {
 
   describe('POST /auth/refresh', () => {
     it('should return 200 with new tokens on valid refresh token', async () => {
+      vi.mocked(jwtVerify).mockResolvedValueOnce({
+        payload: {
+          type: 'refresh',
+          sub: 'user-1',
+          device_id: 'device-1'
+        }
+      } as Awaited<ReturnType<typeof jwtVerify>>)
+
       // #when
       const res = await app.request(
         '/auth/refresh',
@@ -574,11 +591,9 @@ describe('auth routes', () => {
       })
     })
 
-    it('should return 401 when token decoding fails', async () => {
+    it('should return 401 when token verification fails', async () => {
       // #given
-      vi.mocked(decodeJwt).mockImplementationOnce(() => {
-        throw new Error('Invalid token')
-      })
+      vi.mocked(jwtVerify).mockRejectedValueOnce(new Error('Invalid token'))
 
       // #when
       const res = await app.request(
@@ -595,10 +610,12 @@ describe('auth routes', () => {
 
     it('should return 401 when token claims are invalid', async () => {
       // #given - missing type field
-      vi.mocked(decodeJwt).mockReturnValueOnce({
-        sub: 'user-1',
-        device_id: 'device-1'
-      } as ReturnType<typeof decodeJwt>)
+      vi.mocked(jwtVerify).mockResolvedValueOnce({
+        payload: {
+          sub: 'user-1',
+          device_id: 'device-1'
+        }
+      } as Awaited<ReturnType<typeof jwtVerify>>)
 
       // #when
       const res = await app.request(
