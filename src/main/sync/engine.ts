@@ -31,6 +31,7 @@ import { ItemApplier } from './apply-item'
 import { withRetry } from './retry'
 import { postToServer, getFromServer } from './http-client'
 import { checkManifestIntegrity } from './manifest-check'
+import { runInitialSeed } from './initial-seed'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
 
@@ -43,7 +44,8 @@ const PULL_PAGE_LIMIT = 100
 const SYNC_STATE_KEYS = {
   LAST_CURSOR: 'lastCursor',
   LAST_SYNC_AT: 'lastSyncAt',
-  SYNC_PAUSED: 'syncPaused'
+  SYNC_PAUSED: 'syncPaused',
+  INITIAL_SEED_DONE: 'initialSeedDone'
 } as const
 
 let instance: SyncEngine | null = null
@@ -93,6 +95,14 @@ export class SyncEngine extends EventEmitter {
     instance = this
   }
 
+  private async isAuthReady(): Promise<boolean> {
+    const [token, signingKeys] = await Promise.all([
+      this.deps.getAccessToken(),
+      this.deps.getSigningKeys()
+    ])
+    return token !== null && signingKeys !== null
+  }
+
   get currentState(): SyncStatusValue {
     return this.state
   }
@@ -102,6 +112,11 @@ export class SyncEngine extends EventEmitter {
     this.deps.ws.on('message', this.handleWsMessage)
     this.deps.ws.on('connected', this.handleWsConnected)
 
+    if (!(await this.isAuthReady())) {
+      this.setState('idle')
+      return
+    }
+
     if (this.deps.network.online) {
       await this.deps.ws.connect()
       if (!this.isPaused()) {
@@ -109,6 +124,19 @@ export class SyncEngine extends EventEmitter {
       }
     } else {
       this.setState('offline')
+    }
+  }
+
+  async activate(): Promise<void> {
+    if (this.syncing) return
+    if (!(await this.isAuthReady())) return
+
+    if (this.deps.network.online) {
+      this.setState('idle')
+      await this.deps.ws.connect()
+      if (!this.isPaused()) {
+        await this.fullSync()
+      }
     }
   }
 
@@ -366,6 +394,10 @@ export class SyncEngine extends EventEmitter {
 
   async fullSync(): Promise<void> {
     await this.pull()
+    const signingKeys = await this.deps.getSigningKeys()
+    if (signingKeys) {
+      runInitialSeed({ db: this.deps.db, queue: this.deps.queue, deviceId: signingKeys.deviceId })
+    }
     await this.push()
     await checkManifestIntegrity({
       db: this.deps.db,
@@ -426,11 +458,14 @@ export class SyncEngine extends EventEmitter {
 
   private handleNetworkChange = ({ online }: { online: boolean }): void => {
     if (online) {
-      this.setState('idle')
-      void this.deps.ws.connect()
-      if (!this.isPaused()) {
-        this.scheduleSync(() => this.fullSync())
-      }
+      void (async () => {
+        if (!(await this.isAuthReady())) return
+        this.setState('idle')
+        void this.deps.ws.connect()
+        if (!this.isPaused()) {
+          this.scheduleSync(() => this.fullSync())
+        }
+      })()
     } else {
       this.setState('offline')
       this.deps.ws.disconnect()
