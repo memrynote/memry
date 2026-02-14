@@ -49,10 +49,14 @@ function startCleanupInterval() {
     const now = Date.now()
     const hadEntries = globalUndoStack.length > 0
     globalUndoStack = globalUndoStack.filter((entry) => now - entry.timestamp < UNDO_EXPIRY_MS)
+    if (globalUndoStack.length === 0) {
+      stopCleanupInterval()
+    }
     if (hadEntries && globalUndoStack.length === 0) {
       notifyListeners()
     }
   }, 1000)
+  cleanupInterval.unref?.()
 }
 
 function stopCleanupInterval() {
@@ -98,6 +102,9 @@ function getLastUndoEntry(): UndoEntry | undefined {
   // Filter out expired entries
   const now = Date.now()
   globalUndoStack = globalUndoStack.filter((entry) => now - entry.timestamp < UNDO_EXPIRY_MS)
+  if (globalUndoStack.length === 0) {
+    stopCleanupInterval()
+  }
   return globalUndoStack[globalUndoStack.length - 1]
 }
 
@@ -128,6 +135,10 @@ export const useUndoTracker = (): UseUndoTrackerReturn => {
     globalUndoListeners.add(forceUpdate)
     return () => {
       globalUndoListeners.delete(forceUpdate)
+      if (globalUndoListeners.size === 0) {
+        globalUndoStack = []
+        stopCleanupInterval()
+      }
     }
   }, [forceUpdate])
 
