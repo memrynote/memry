@@ -49,12 +49,7 @@ import {
 } from '../crypto'
 import { getDatabase } from '../database/client'
 import { store } from '../store'
-import {
-  deleteFromServer,
-  getFromServer,
-  postToServer,
-  SyncServerError
-} from '../sync/http-client'
+import { deleteFromServer, getFromServer, postToServer, SyncServerError } from '../sync/http-client'
 
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler } from './validate'
@@ -481,9 +476,15 @@ const performFirstDeviceSetup = async (setupToken: string): Promise<FirstDeviceS
 // Stub helper for not-yet-implemented handlers
 // ============================================================================
 
-const notImplemented = (feature: string, phase: number) => (): never => {
-  throw new Error(`Not implemented — planned for Phase ${phase}: ${feature}`)
-}
+const notImplemented =
+  (feature: string, phase: number) =>
+  (): {
+    success: false
+    error: string
+  } => {
+    logger.warn(`Attempted to use unimplemented feature: ${feature} (Phase ${phase})`)
+    return { success: false, error: `${feature} is not yet available` }
+  }
 
 // ============================================================================
 // Startup Integrity Check
