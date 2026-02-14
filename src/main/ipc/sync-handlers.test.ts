@@ -8,8 +8,19 @@ import { SYNC_CHANNELS } from '@shared/contracts/ipc-sync'
 // ============================================================================
 
 const mockPostToServer = vi.fn()
+const mockGetFromServer = vi.fn()
+const mockDeleteFromServer = vi.fn()
 vi.mock('../sync/http-client', () => ({
-  postToServer: (...args: unknown[]) => mockPostToServer(...args)
+  postToServer: (...args: unknown[]) => mockPostToServer(...args),
+  getFromServer: (...args: unknown[]) => mockGetFromServer(...args),
+  deleteFromServer: (...args: unknown[]) => mockDeleteFromServer(...args),
+  SyncServerError: class SyncServerError extends Error {
+    status: number
+    constructor(msg: string, status: number) {
+      super(msg)
+      this.status = status
+    }
+  }
 }))
 
 const mockStoreKey = vi.fn()
@@ -83,9 +94,26 @@ vi.mock('libsodium-wrappers-sumo', () => ({
   default: {
     ready: Promise.resolve(),
     to_base64: vi.fn(() => 'base64-encoded'),
+    from_base64: vi.fn(() => new Uint8Array(16)),
     crypto_sign_detached: vi.fn(() => new Uint8Array(64)),
     base64_variants: { ORIGINAL: 0 }
   }
+}))
+
+vi.mock('jose', () => ({
+  decodeJwt: vi.fn(() => ({ exp: Math.floor(Date.now() / 1000) + 3600 }))
+}))
+
+vi.mock('../sync/filter-sync', () => ({
+  getFilterSyncService: vi.fn().mockReturnValue(null)
+}))
+
+vi.mock('../sync/settings-sync', () => ({
+  getSettingsSyncManager: vi.fn().mockReturnValue(null)
+}))
+
+vi.mock('../sync/runtime', () => ({
+  getSyncEngine: vi.fn().mockReturnValue(null)
 }))
 
 import { registerSyncHandlers, unregisterSyncHandlers, seedOAuthSession } from './sync-handlers'
@@ -98,8 +126,13 @@ const ALL_SYNC_HANDLER_CHANNELS = [
   SYNC_CHANNELS.AUTH_REQUEST_OTP,
   SYNC_CHANNELS.AUTH_VERIFY_OTP,
   SYNC_CHANNELS.AUTH_RESEND_OTP,
+  SYNC_CHANNELS.AUTH_INIT_OAUTH,
+  SYNC_CHANNELS.AUTH_REFRESH_TOKEN,
   SYNC_CHANNELS.SETUP_FIRST_DEVICE,
+  SYNC_CHANNELS.SETUP_NEW_ACCOUNT,
   SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE,
+  SYNC_CHANNELS.GET_RECOVERY_PHRASE,
+  SYNC_CHANNELS.AUTH_LOGOUT,
   SYNC_CHANNELS.GENERATE_LINKING_QR,
   SYNC_CHANNELS.LINK_VIA_QR,
   SYNC_CHANNELS.LINK_VIA_RECOVERY,
@@ -113,6 +146,8 @@ const ALL_SYNC_HANDLER_CHANNELS = [
   SYNC_CHANNELS.GET_QUEUE_SIZE,
   SYNC_CHANNELS.PAUSE,
   SYNC_CHANNELS.RESUME,
+  SYNC_CHANNELS.UPDATE_SYNCED_SETTING,
+  SYNC_CHANNELS.GET_SYNCED_SETTINGS,
   SYNC_CHANNELS.UPLOAD_ATTACHMENT,
   SYNC_CHANNELS.GET_UPLOAD_PROGRESS,
   SYNC_CHANNELS.DOWNLOAD_ATTACHMENT,
