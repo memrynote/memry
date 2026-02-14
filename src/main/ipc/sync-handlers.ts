@@ -53,6 +53,7 @@ import { deleteFromServer, getFromServer, postToServer, SyncServerError } from '
 
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler } from './validate'
+import { getSyncEngine } from '../sync/runtime'
 
 const logger = createLogger('IPC:Sync')
 
@@ -527,6 +528,8 @@ export async function checkSyncIntegrity(): Promise<void> {
 // ============================================================================
 
 export function registerSyncHandlers(syncEngine?: SyncEngine): void {
+  const resolveSyncEngine = (): SyncEngine | null => syncEngine ?? getSyncEngine()
+
   // --- OTP Auth Handlers (T054, T055, T056) ---
 
   ipcMain.handle(
@@ -821,14 +824,18 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   ipcMain.handle(SYNC_CHANNELS.RENAME_DEVICE, notImplemented('device rename', 5))
 
   ipcMain.handle(SYNC_CHANNELS.GET_STATUS, () => {
-    if (!syncEngine) return { status: 'idle', pendingCount: 0 }
-    return syncEngine.getStatus()
+    const engine = resolveSyncEngine()
+    if (!engine) return { status: 'idle', pendingCount: 0 }
+    return engine.getStatus()
   })
 
   ipcMain.handle(SYNC_CHANNELS.TRIGGER_SYNC, async () => {
-    if (!syncEngine) return { success: false, error: 'Sync engine not initialized' }
+    const engine = resolveSyncEngine()
+    if (!engine) {
+      return { success: false, error: 'Sync engine not initialized. Open a vault to start sync.' }
+    }
     try {
-      await syncEngine.fullSync()
+      await engine.fullSync()
       return { success: true }
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : String(error) }
@@ -867,19 +874,22 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   )
 
   ipcMain.handle(SYNC_CHANNELS.GET_QUEUE_SIZE, () => {
-    if (!syncEngine) return { pending: 0, failed: 0 }
-    const stats = syncEngine.getQueueStats()
+    const engine = resolveSyncEngine()
+    if (!engine) return { pending: 0, failed: 0 }
+    const stats = engine.getQueueStats()
     return { pending: stats.pending, failed: stats.failed }
   })
 
   ipcMain.handle(SYNC_CHANNELS.PAUSE, () => {
-    if (!syncEngine) return { success: false, wasPaused: false }
-    return syncEngine.pause()
+    const engine = resolveSyncEngine()
+    if (!engine) return { success: false, wasPaused: false }
+    return engine.pause()
   })
 
   ipcMain.handle(SYNC_CHANNELS.RESUME, () => {
-    if (!syncEngine) return { success: false, pendingCount: 0 }
-    return syncEngine.resume()
+    const engine = resolveSyncEngine()
+    if (!engine) return { success: false, pendingCount: 0 }
+    return engine.resume()
   })
 
   ipcMain.handle(SYNC_CHANNELS.UPDATE_SYNCED_SETTING, (_event, input: unknown) => {
