@@ -24,6 +24,7 @@ export class WebSocketManager extends EventEmitter {
   private reconnectAttempt = 0
   private shouldBeConnected = false
   private _connected = false
+  private authFailed = false
   private deps: WebSocketManagerDeps
 
   constructor(deps: WebSocketManagerDeps) {
@@ -37,6 +38,7 @@ export class WebSocketManager extends EventEmitter {
 
   async connect(): Promise<void> {
     this.shouldBeConnected = true
+    this.authFailed = false
 
     if (this._connected || this.ws) {
       return
@@ -50,7 +52,6 @@ export class WebSocketManager extends EventEmitter {
     const token = await this.deps.getAccessToken()
     if (!token) {
       this.emit('error', new Error('No access token available'))
-      this.scheduleReconnect()
       return
     }
 
@@ -102,6 +103,9 @@ export class WebSocketManager extends EventEmitter {
     })
 
     ws.on('error', (err: Error) => {
+      if (err.message?.includes('401')) {
+        this.authFailed = true
+      }
       this.emit('error', err)
     })
   }
@@ -142,7 +146,7 @@ export class WebSocketManager extends EventEmitter {
   }
 
   private scheduleReconnect(): void {
-    if (!this.shouldBeConnected) return
+    if (!this.shouldBeConnected || this.authFailed) return
     this.clearReconnectTimer()
 
     const delay = Math.min(
