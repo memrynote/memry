@@ -47,7 +47,7 @@ import {
   retrieveKey,
   validateRecoveryPhrase
 } from '../crypto'
-import { getDatabase } from '../database/client'
+import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { store } from '../store'
 import { deleteFromServer, getFromServer, postToServer, SyncServerError } from '../sync/http-client'
 
@@ -492,6 +492,10 @@ const notImplemented =
 // ============================================================================
 
 export async function checkSyncIntegrity(): Promise<void> {
+  if (!isDatabaseInitialized()) {
+    logger.debug('Skipping sync integrity check — no vault open')
+    return
+  }
   try {
     const db = getDatabase()
     const currentDevice = db
@@ -807,6 +811,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   ipcMain.handle(SYNC_CHANNELS.APPROVE_LINKING, notImplemented('device linking approval', 5))
 
   ipcMain.handle(SYNC_CHANNELS.GET_DEVICES, async () => {
+    if (!isDatabaseInitialized()) return { devices: [], email: undefined }
     const db = getDatabase()
     const rows = await db.select().from(syncDevices)
     const devices = rows.map((d) => ({
@@ -845,6 +850,9 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   ipcMain.handle(
     SYNC_CHANNELS.GET_HISTORY,
     createValidatedHandler(GetHistorySchema, (input) => {
+      if (!isDatabaseInitialized()) {
+        return { entries: [], total: 0 }
+      }
       const db = getDatabase()
       const limit = input.limit ?? 50
       const offset = input.offset ?? 0

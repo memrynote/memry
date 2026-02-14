@@ -78,6 +78,10 @@ export function getDatabase(): DrizzleDb {
   return dataDb
 }
 
+export function isDatabaseInitialized(): boolean {
+  return dataDb !== null
+}
+
 export function getIndexDatabase(): DrizzleDb {
   if (!indexDb) throw new Error('Index database not initialized')
   return indexDb
