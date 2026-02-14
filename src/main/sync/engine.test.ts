@@ -343,7 +343,9 @@ describe('SyncEngine', () => {
       ;(network as unknown as { _online: boolean })._online = true
       network.emit('status-changed', { online: true })
 
-      expect(engine.currentState).not.toBe('offline')
+      await vi.waitFor(() => {
+        expect(engine.currentState).not.toBe('offline')
+      })
       expect(deps.ws.connect).toHaveBeenCalled()
 
       await engine.stop()
@@ -1191,6 +1193,158 @@ describe('SyncEngine', () => {
       const pullEvents = itemSyncedCalls.filter((call) => call[1]?.operation === 'pull')
       expect(pushEvents).toHaveLength(1)
       expect(pullEvents).toHaveLength(1)
+
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given unregistered device on startup #when start() called', () => {
+    it('#then sets idle state without connecting WS or syncing', async () => {
+      const deps = createMockDeps(testDb, {
+        getSigningKeys: vi.fn().mockResolvedValue(null)
+      })
+      const engine = new SyncEngine(deps)
+      await engine.start()
+
+      expect(engine.currentState).toBe('idle')
+      expect(deps.ws.connect).not.toHaveBeenCalled()
+      await engine.stop()
+    })
+  })
+
+  describe('#given stale token but no device #when start() called', () => {
+    it('#then does not connect despite token in keychain', async () => {
+      const deps = createMockDeps(testDb, {
+        getAccessToken: vi.fn().mockResolvedValue('stale-expired-token'),
+        getSigningKeys: vi.fn().mockResolvedValue(null)
+      })
+      const engine = new SyncEngine(deps)
+      await engine.start()
+
+      expect(engine.currentState).toBe('idle')
+      expect(deps.ws.connect).not.toHaveBeenCalled()
+      await engine.stop()
+    })
+  })
+
+  describe('#given unregistered device #when network comes back online', () => {
+    it('#then does not reconnect WS or schedule sync', async () => {
+      const network = createMockNetwork(false)
+      const deps = createMockDeps(testDb, {
+        network,
+        getSigningKeys: vi.fn().mockResolvedValue(null)
+      })
+      const engine = new SyncEngine(deps)
+      await engine.start()
+
+      ;(network as unknown as { _online: boolean })._online = true
+      network.emit('status-changed', { online: true })
+
+      await new Promise((r) => setTimeout(r, 50))
+
+      expect(deps.ws.connect).not.toHaveBeenCalled()
+      await engine.stop()
+    })
+  })
+
+  describe('#given device registered after start #when activate() called', () => {
+    it('#then connects WS and starts sync', async () => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+
+      const getSigningKeys = vi.fn().mockResolvedValue(null)
+      const deps = createMockDeps(testDb, { getSigningKeys })
+      const engine = new SyncEngine(deps)
+      await engine.start()
+
+      expect(deps.ws.connect).not.toHaveBeenCalled()
+
+      getSigningKeys.mockResolvedValue({
+        secretKey: new Uint8Array(64),
+        publicKey: new Uint8Array(32),
+        deviceId: 'device-1'
+      })
+      await engine.activate()
+
+      expect(deps.ws.connect).toHaveBeenCalled()
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given activate() with no device #when called', () => {
+    it('#then returns early without connecting', async () => {
+      const deps = createMockDeps(testDb, {
+        getSigningKeys: vi.fn().mockResolvedValue(null)
+      })
+      const engine = new SyncEngine(deps)
+      await engine.start()
+      await engine.activate()
+
+      expect(deps.ws.connect).not.toHaveBeenCalled()
+      await engine.stop()
+    })
+  })
+
+  describe('#given fullSync #when signing keys available', () => {
+    it('#then calls runInitialSeed between pull and push', async () => {
+      // #given
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+
+      const initialSeedModule = await import('./initial-seed')
+      const seedSpy = vi.spyOn(initialSeedModule, 'runInitialSeed').mockImplementation(() => {})
+
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      // #when
+      await engine.fullSync()
+
+      // #then
+      expect(seedSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          db: deps.db,
+          queue: deps.queue,
+          deviceId: 'device-1'
+        })
+      )
+
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given fullSync #when no signing keys', () => {
+    it('#then skips runInitialSeed', async () => {
+      // #given
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+
+      const initialSeedModule = await import('./initial-seed')
+      const seedSpy = vi.spyOn(initialSeedModule, 'runInitialSeed').mockImplementation(() => {})
+
+      const deps = createMockDeps(testDb, {
+        getSigningKeys: vi.fn().mockResolvedValue(null)
+      })
+      const engine = new SyncEngine(deps)
+
+      // #when
+      await engine.fullSync()
+
+      // #then
+      expect(seedSpy).not.toHaveBeenCalled()
 
       vi.restoreAllMocks()
     })
