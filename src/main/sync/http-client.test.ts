@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockFetch = vi.fn()
 
+vi.stubEnv('SYNC_SERVER_URL', 'http://localhost:8787')
+
 vi.mock('electron', () => ({
   net: {
     fetch: (...args: unknown[]) => mockFetch(...args)

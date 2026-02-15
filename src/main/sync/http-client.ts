@@ -1,6 +1,13 @@
 import { net } from 'electron'
 
-const SYNC_SERVER_URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'
+function getSyncServerUrl(): string {
+  const url = process.env.SYNC_SERVER_URL
+  if (url) return url
+  if (process.env.NODE_ENV === 'development') return 'http://localhost:8787'
+  throw new Error('SYNC_SERVER_URL environment variable is not configured')
+}
+
+export type FetchFn = typeof globalThis.fetch
 
 export class SyncServerError extends Error {
   constructor(
@@ -36,9 +43,11 @@ export const syncFetch = async <T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
   path: string,
   body?: unknown,
-  token?: string
+  token?: string,
+  fetchFn?: FetchFn
 ): Promise<T> => {
-  const url = `${SYNC_SERVER_URL}${path}`
+  const url = `${getSyncServerUrl()}${path}`
+  const fetchImpl = fetchFn ?? net.fetch
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -51,7 +60,7 @@ export const syncFetch = async <T>(
 
   let response: Response
   try {
-    response = await net.fetch(url, {
+    response = await fetchImpl(url, {
       method,
       headers,
       body: body != null ? JSON.stringify(body) : undefined
@@ -74,7 +83,7 @@ export const syncFetch = async <T>(
     if (!response.ok) {
       throw new SyncServerError(`Server returned ${response.status}`, response.status)
     }
-    return {} as T
+    throw new SyncServerError('Invalid response body', response.status)
   }
 
   if (!response.ok) {
@@ -86,26 +95,28 @@ export const syncFetch = async <T>(
   return responseBody as T
 }
 
-export const postToServer = async <T>(path: string, body?: unknown, token?: string): Promise<T> => {
-  return syncFetch<T>('POST', path, body, token)
-}
-
-export const getFromServer = async <T>(path: string, token?: string): Promise<T> => {
-  return syncFetch<T>('GET', path, undefined, token)
-}
-
-export const deleteFromServer = async <T>(path: string, token?: string): Promise<T> => {
-  return syncFetch<T>('DELETE', path, undefined, token)
-}
-
-export const putToServer = async <T>(path: string, body?: unknown, token?: string): Promise<T> => {
-  return syncFetch<T>('PUT', path, body, token)
-}
-
-export const patchToServer = async <T>(
+export const postToServer = async <T>(
   path: string,
   body?: unknown,
-  token?: string
+  token?: string,
+  fetchFn?: FetchFn
 ): Promise<T> => {
-  return syncFetch<T>('PATCH', path, body, token)
+  return syncFetch<T>('POST', path, body, token, fetchFn)
 }
+
+export const getFromServer = async <T>(
+  path: string,
+  token?: string,
+  fetchFn?: FetchFn
+): Promise<T> => {
+  return syncFetch<T>('GET', path, undefined, token, fetchFn)
+}
+
+export const deleteFromServer = async <T>(
+  path: string,
+  token?: string,
+  fetchFn?: FetchFn
+): Promise<T> => {
+  return syncFetch<T>('DELETE', path, undefined, token, fetchFn)
+}
+

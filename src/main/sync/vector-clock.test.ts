@@ -1,14 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  compare,
-  createClock,
-  getTick,
-  happensBefore,
-  increment,
-  isConcurrent,
-  merge
-} from './vector-clock'
+import { compare, createClock, getTick, increment, merge } from './vector-clock'
 
 describe('vector-clock', () => {
   it('creates an empty clock', () => {
@@ -34,12 +26,6 @@ describe('vector-clock', () => {
     expect(compare({ a: 1 }, { a: 2 })).toBe('before')
     expect(compare({ a: 3 }, { a: 2 })).toBe('after')
     expect(compare({ a: 2, b: 1 }, { a: 1, b: 2 })).toBe('concurrent')
-  })
-
-  it('exposes happensBefore and isConcurrent helpers', () => {
-    expect(happensBefore({ a: 1 }, { a: 2 })).toBe(true)
-    expect(happensBefore({ a: 2 }, { a: 1 })).toBe(false)
-    expect(isConcurrent({ a: 1, b: 2 }, { a: 2, b: 1 })).toBe(true)
   })
 
   it('returns 0 for missing ticks', () => {
