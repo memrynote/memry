@@ -33,9 +33,14 @@ const createMockDb = () => ({
 // jose mock
 // ============================================================================
 
+let signTokenClaims: Record<string, unknown>[] = []
+
 vi.mock('jose', () => ({
   importPKCS8: vi.fn().mockResolvedValue({ type: 'private' }),
   SignJWT: class {
+    constructor(claims: Record<string, unknown>) {
+      signTokenClaims.push(claims)
+    }
     setProtectedHeader() {
       return this
     }
@@ -68,6 +73,19 @@ describe('issueTokens', () => {
 
   beforeEach(() => {
     db = createMockDb()
+    signTokenClaims = []
+  })
+
+  it('should include jti claim in signed tokens', async () => {
+    // #when
+    await issueTokens(db as unknown as D1Database, 'user-1', 'device-1', 'pem-key')
+
+    // #then
+    expect(signTokenClaims).toHaveLength(2)
+    for (const claims of signTokenClaims) {
+      expect(claims).toHaveProperty('jti')
+      expect(typeof claims.jti).toBe('string')
+    }
   })
 
   it('should return accessToken and refreshToken', async () => {
@@ -120,6 +138,7 @@ describe('rotateRefreshToken', () => {
 
   beforeEach(() => {
     db = createMockDb()
+    signTokenClaims = []
   })
 
   it('should revoke old token and issue new tokens when valid', async () => {
@@ -210,6 +229,31 @@ describe('rotateRefreshToken', () => {
       expect((e as AppError).statusCode).toBe(401)
       expect((e as AppError).code).toBe(ErrorCodes.AUTH_INVALID_TOKEN)
     }
+  })
+
+  it('should recover when UNIQUE constraint fails during rotation', async () => {
+    // #given - valid existing token
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue({ id: 'token-id-1' })
+    db.prepare.mockReturnValueOnce(selectStmt)
+
+    db.batch.mockRejectedValueOnce(
+      new Error('UNIQUE constraint failed: refresh_tokens.token_hash')
+    )
+
+    // #when
+    const result = await rotateRefreshToken(
+      db as unknown as D1Database,
+      'old-refresh-token',
+      'user-1',
+      'device-1',
+      'pem-key'
+    )
+
+    // #then - fallback generateTokens still returns valid tokens
+    expect(result).toHaveProperty('accessToken')
+    expect(result).toHaveProperty('refreshToken')
+    expect(db.batch).toHaveBeenCalledTimes(1)
   })
 })
 

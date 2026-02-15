@@ -17,8 +17,18 @@ vi.mock('../lib/jwt-verify', () => ({
 
 import { UserSyncState } from './user-sync-state'
 
-function createDO() {
-  const env = { JWT_PUBLIC_KEY: 'test-pem' }
+function createMockDB(revoked_at: number | null = null) {
+  return {
+    prepare: () => ({
+      bind: () => ({
+        first: async () => ({ revoked_at })
+      })
+    })
+  }
+}
+
+function createDO(dbOverride?: ReturnType<typeof createMockDB>) {
+  const env = { JWT_PUBLIC_KEY: 'test-pem', DB: dbOverride ?? createMockDB() }
   return new UserSyncState({} as DurableObjectState, env as never)
 }
 
@@ -87,6 +97,31 @@ describe('UserSyncState', () => {
 
       // #then
       expect(res.status).toBe(401)
+    })
+
+    it('returns 403 when device is revoked', async () => {
+      // #given
+      const doObj = createDO(createMockDB(1700000000))
+
+      // #when
+      const res = await doObj.fetch(connectRequest())
+
+      // #then
+      expect(res.status).toBe(403)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe(ErrorCodes.AUTH_DEVICE_REVOKED)
+    })
+
+    it('returns 403 when device not found in DB', async () => {
+      // #given
+      const db = { prepare: () => ({ bind: () => ({ first: async () => null }) }) }
+      const doObj = createDO(db as ReturnType<typeof createMockDB>)
+
+      // #when
+      const res = await doObj.fetch(connectRequest())
+
+      // #then
+      expect(res.status).toBe(403)
     })
 
     it('closes existing connection for same device on reconnect', async () => {
