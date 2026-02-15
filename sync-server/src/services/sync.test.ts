@@ -44,7 +44,6 @@ import {
   getManifest,
   getChanges,
   pullItems,
-  deleteItem,
   updateDeviceCursor,
   processPushItem
 } from './sync'
@@ -688,74 +687,6 @@ describe('pullItems', () => {
   })
 })
 
-// ============================================================================
-// Tests: deleteItem
-// ============================================================================
-
-describe('deleteItem', () => {
-  let db: ReturnType<typeof createMockDb>
-
-  beforeEach(() => {
-    db = createMockDb()
-    vi.clearAllMocks()
-  })
-
-  it('should set deleted_at and return new cursor', async () => {
-    // #given
-    const selectStmt = createMockStatement()
-    selectStmt.first.mockResolvedValue({ server_cursor: 10, deleted_at: null })
-
-    const updateStmt = createMockStatement()
-
-    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(updateStmt)
-
-    // #when
-    const result = await deleteItem(db as unknown as D1Database, 'user-1', 'device-1', 'item-1')
-
-    // #then
-    expect(result.serverCursor).toBe(42)
-    expect(updateStmt.bind).toHaveBeenCalledWith(
-      expect.any(Number),
-      42,
-      expect.any(Number),
-      'user-1',
-      'item-1'
-    )
-    expect(updateStmt.run).toHaveBeenCalled()
-  })
-
-  it('should throw SYNC_ITEM_NOT_FOUND when item missing', async () => {
-    // #given
-    const selectStmt = createMockStatement()
-    selectStmt.first.mockResolvedValue(null)
-    db.prepare.mockReturnValueOnce(selectStmt)
-
-    // #when / #then
-    await expect(
-      deleteItem(db as unknown as D1Database, 'user-1', 'device-1', 'nonexistent')
-    ).rejects.toThrow(AppError)
-
-    try {
-      db.prepare.mockReturnValueOnce(selectStmt)
-      await deleteItem(db as unknown as D1Database, 'user-1', 'device-1', 'nonexistent')
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.SYNC_ITEM_NOT_FOUND)
-    }
-  })
-
-  it('should be idempotent: returns existing cursor for already-deleted item', async () => {
-    // #given
-    const selectStmt = createMockStatement()
-    selectStmt.first.mockResolvedValue({ server_cursor: 10, deleted_at: 5000 })
-    db.prepare.mockReturnValueOnce(selectStmt)
-
-    // #when
-    const result = await deleteItem(db as unknown as D1Database, 'user-1', 'device-1', 'item-1')
-
-    // #then
-    expect(result.serverCursor).toBe(10)
-  })
-})
 
 // ============================================================================
 // Tests: updateDeviceCursor
