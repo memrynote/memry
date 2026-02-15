@@ -16,22 +16,20 @@ const log = createLogger('ManifestCheck')
 
 const MIN_INTERVAL_MS = 30 * 60 * 1000
 
-let lastCheckAt = 0
-
 interface ManifestCheckDeps {
   db: DrizzleDb
   queue: SyncQueueManager
   getAccessToken: () => Promise<string | null>
   isOnline: () => boolean
+  lastCheckAt?: number
 }
 
-export async function checkManifestIntegrity(deps: ManifestCheckDeps): Promise<void> {
+export async function checkManifestIntegrity(deps: ManifestCheckDeps): Promise<number> {
   const now = Date.now()
-  if (now - lastCheckAt < MIN_INTERVAL_MS) return
-  lastCheckAt = now
+  if (now - (deps.lastCheckAt ?? 0) < MIN_INTERVAL_MS) return deps.lastCheckAt ?? 0
 
   const token = await deps.getAccessToken()
-  if (!token) return
+  if (!token) return now
 
   try {
     const result = await withRetry(() => getFromServer<SyncManifest>('/sync/manifest', token), {
@@ -79,6 +77,8 @@ export async function checkManifestIntegrity(deps: ManifestCheckDeps): Promise<v
   } catch (err) {
     log.error('Manifest integrity check failed', err)
   }
+
+  return now
 }
 
 interface LocalSyncableItem {

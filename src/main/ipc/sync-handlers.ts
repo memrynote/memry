@@ -237,13 +237,13 @@ const emitSessionExpired = (): void => {
 }
 
 const doRefreshAccessToken = async (): Promise<boolean> => {
-  const currentRefreshToken = await retrieveToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN)
-  if (!currentRefreshToken) {
-    emitSessionExpired()
-    return false
-  }
-
   for (let attempt = 0; attempt < REFRESH_MAX_RETRIES; attempt++) {
+    const currentRefreshToken = await retrieveToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN)
+    if (!currentRefreshToken) {
+      emitSessionExpired()
+      return false
+    }
+
     try {
       const raw = await postToServer<unknown>('/auth/refresh', {
         refreshToken: currentRefreshToken

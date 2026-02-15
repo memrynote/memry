@@ -34,6 +34,7 @@ const DEFAULTS: RetryOptions = {
 }
 
 const ONLINE_POLL_MS = 2000
+const MAX_OFFLINE_WAIT_MS = 5 * 60 * 1000
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise<void>((resolve, reject) => {
@@ -97,7 +98,11 @@ export async function withRetry<T>(
         delayMs = error.retryAfter * 1000
       } else if (error instanceof NetworkError) {
         opts.onRetry?.(attempt + 1, lastError, ONLINE_POLL_MS)
+        const offlineStart = Date.now()
         while (!opts.isOnline!()) {
+          if (Date.now() - offlineStart > MAX_OFFLINE_WAIT_MS) {
+            throw new NetworkError('Offline wait timeout exceeded')
+          }
           await sleep(ONLINE_POLL_MS, opts.signal)
         }
         continue

@@ -1,8 +1,6 @@
 import { EventEmitter } from 'events'
 import { createLogger } from '../lib/logger'
 import { eq } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import * as schema from '@shared/db/schema/data-schema'
 import { syncState } from '@shared/db/schema/sync-state'
 import { syncHistory } from '@shared/db/schema/sync-history'
 import { EVENT_CHANNELS } from '@shared/contracts/ipc-events'
@@ -21,19 +19,20 @@ import type {
   ResumeSyncResult,
   SyncStatusValue
 } from '@shared/contracts/ipc-sync-ops'
-import type { ChangesResponse, PushResponse } from '@shared/contracts/sync-api'
-import { SyncQueueManager, type QueueStats } from './queue'
+import type { ChangesResponse, PushResponse, PullItemResponse, SyncItemType } from '@shared/contracts/sync-api'
+import { PullResponseSchema } from '@shared/contracts/sync-api'
+import { SyncQueueManager, ERROR_RETENTION_DAYS, type QueueStats } from './queue'
 import { NetworkMonitor } from './network'
 import { WebSocketManager, type WebSocketMessage } from './websocket'
+import { secureCleanup } from '../crypto/index'
 import { encryptItemForPush } from './encrypt'
 import { decryptItemFromPull } from './decrypt'
 import { ItemApplier } from './apply-item'
+import { getHandler, type DrizzleDb } from './item-handlers'
 import { withRetry } from './retry'
 import { postToServer, getFromServer } from './http-client'
 import { checkManifestIntegrity } from './manifest-check'
 import { runInitialSeed } from './initial-seed'
-
-type DrizzleDb = BetterSQLite3Database<typeof schema>
 
 const log = createLogger('SyncEngine')
 
@@ -73,8 +72,10 @@ export class SyncEngine extends EventEmitter {
   private static activeInstance: SyncEngine | null = null
 
   private state: SyncStatusValue = 'idle'
+  private syncLock: Promise<void> = Promise.resolve()
   private syncing = false
   private fullSyncActive = false
+  private lastManifestCheckAt = 0
   private lastError: string | undefined
   private deps: SyncEngineDeps
   private options: SyncEngineOptions
@@ -165,11 +166,11 @@ export class SyncEngine extends EventEmitter {
   }
 
   async push(): Promise<void> {
-    if (this.syncing || this.isPaused()) {
+    const release = await this.acquireSyncLock()
+    if (!release) {
       log.debug('Push skipped', { syncing: this.syncing, paused: this.isPaused() })
       return
     }
-    this.syncing = true
     this.setState('syncing')
     this.abortController = new AbortController()
 
@@ -177,6 +178,7 @@ export class SyncEngine extends EventEmitter {
     if (!token) {
       log.debug('Push aborted: no access token')
       this.releaseLock()
+      release()
       return
     }
 
@@ -184,6 +186,7 @@ export class SyncEngine extends EventEmitter {
     if (!signingKeys) {
       log.debug('Push aborted: no signing keys')
       this.releaseLock()
+      release()
       return
     }
 
@@ -191,6 +194,7 @@ export class SyncEngine extends EventEmitter {
     if (!vaultKey) {
       log.debug('Push aborted: no vault key')
       this.releaseLock()
+      release()
       return
     }
     const startTime = Date.now()
@@ -218,7 +222,10 @@ export class SyncEngine extends EventEmitter {
             signingSecretKey: signingKeys.secretKey,
             signerDeviceId: signingKeys.deviceId,
             clock: payloadMeta.clock,
-            stateVector: payloadMeta.stateVector
+            stateVector: payloadMeta.stateVector,
+            ...(item.operation === 'delete' && {
+              deletedAt: Math.floor(Date.now() / 1000)
+            })
           })
           return { queueId: item.id, pushItem: result.pushItem }
         })
@@ -265,11 +272,9 @@ export class SyncEngine extends EventEmitter {
       this.setState('error')
       this.recordHistory('error', 0, Date.now() - startTime, this.lastError)
     } finally {
-      this.syncing = false
-      this.abortController = null
-      if (this.state === 'syncing') {
-        this.setState(this.deps.network.online ? 'idle' : 'offline')
-      }
+      secureCleanup(vaultKey, signingKeys.secretKey)
+      this.releaseLock()
+      release()
     }
   }
 
@@ -296,20 +301,22 @@ export class SyncEngine extends EventEmitter {
   }
 
   async pull(): Promise<void> {
-    if (this.syncing || this.isPaused()) return
-    this.syncing = true
+    const release = await this.acquireSyncLock()
+    if (!release) return
     this.setState('syncing')
     this.abortController = new AbortController()
 
     const token = await this.deps.getAccessToken()
     if (!token) {
       this.releaseLock()
+      release()
       return
     }
 
     const vaultKey = await this.deps.getVaultKey()
     if (!vaultKey) {
       this.releaseLock()
+      release()
       return
     }
     const startTime = Date.now()
@@ -341,17 +348,31 @@ export class SyncEngine extends EventEmitter {
         if (itemIds.length > 0) {
           const pullResult = await withRetry(
             () =>
-              postToServer<{ items: Array<PullItemResponse> }>('/sync/pull', { itemIds }, token),
+              postToServer<{ items: PullItemResponse[] }>('/sync/pull', { itemIds }, token),
             { signal: this.abortController.signal, isOnline: () => this.deps.network.online }
           )
 
-          for (const item of pullResult.value.items) {
+          const parsed = PullResponseSchema.safeParse(pullResult.value)
+          if (!parsed.success) {
+            log.error('Invalid pull response from server', { error: parsed.error.message })
+            break
+          }
+
+          let hasSkippedSigners = false
+          for (const item of parsed.data.items) {
             if (processedIds.has(item.id)) {
               log.debug('Skipping duplicate item in pull', { itemId: item.id })
               continue
             }
             const signerPubKey = await this.deps.getDevicePublicKey(item.signerDeviceId)
-            if (!signerPubKey) continue
+            if (!signerPubKey) {
+              log.warn('Unknown signer device, deferring item', {
+                itemId: item.id,
+                signerDeviceId: item.signerDeviceId
+              })
+              hasSkippedSigners = true
+              continue
+            }
 
             const decrypted = decryptItemFromPull({
               id: item.id,
@@ -421,6 +442,10 @@ export class SyncEngine extends EventEmitter {
           }
         }
 
+        if (hasSkippedSigners) {
+          log.warn('Stopping pull pagination: items with unknown signers need retry')
+          break
+        }
         this.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(changes.nextCursor))
         cursor = String(changes.nextCursor)
         hasMore = changes.hasMore
@@ -433,11 +458,9 @@ export class SyncEngine extends EventEmitter {
       this.setState('error')
       this.recordHistory('error', 0, Date.now() - startTime, this.lastError)
     } finally {
-      this.syncing = false
-      this.abortController = null
-      if (this.state === 'syncing') {
-        this.setState(this.deps.network.online ? 'idle' : 'offline')
-      }
+      secureCleanup(vaultKey)
+      this.releaseLock()
+      release()
     }
   }
 
@@ -464,11 +487,12 @@ export class SyncEngine extends EventEmitter {
       await this.push()
       log.debug('fullSync: push complete')
 
-      await checkManifestIntegrity({
+      this.lastManifestCheckAt = await checkManifestIntegrity({
         db: this.deps.db,
         queue: this.deps.queue,
         getAccessToken: this.deps.getAccessToken,
-        isOnline: () => this.deps.network.online
+        isOnline: () => this.deps.network.online,
+        lastCheckAt: this.lastManifestCheckAt
       })
       log.debug('fullSync: manifest check complete')
 
@@ -481,7 +505,7 @@ export class SyncEngine extends EventEmitter {
         log.debug('fullSync: follow-up push complete')
       }
 
-      this.deps.queue.purgeOldErrors(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+      this.deps.queue.purgeOldErrors(new Date(Date.now() - ERROR_RETENTION_DAYS * 24 * 60 * 60 * 1000))
     } finally {
       this.fullSyncActive = false
     }
@@ -553,8 +577,19 @@ export class SyncEngine extends EventEmitter {
   }
 
   private handleWsMessage = (message: WebSocketMessage): void => {
-    if (message.type === 'changes_available' && !this.isPaused()) {
-      this.scheduleSync(() => this.pull())
+    switch (message.type) {
+      case 'changes_available':
+        if (!this.isPaused()) {
+          this.scheduleSync(() => this.pull())
+        }
+        break
+      case 'heartbeat':
+        break
+      case 'error':
+        this.log.warn('Server-sent WS error', { payload: message.payload })
+        break
+      default:
+        this.log.debug('Unknown WS message type', { type: (message as { type: string }).type })
     }
   }
 
@@ -562,6 +597,19 @@ export class SyncEngine extends EventEmitter {
     if (!this.isPaused()) {
       this.scheduleSync(() => this.pull())
     }
+  }
+
+  private async acquireSyncLock(): Promise<(() => void) | null> {
+    if (this.syncing || this.isPaused()) return null
+    this.syncing = true
+
+    let release!: () => void
+    const prev = this.syncLock
+    this.syncLock = new Promise((r) => {
+      release = r
+    })
+    await prev
+    return release
   }
 
   private releaseLock(): void {
@@ -664,6 +712,8 @@ export class SyncEngine extends EventEmitter {
     this.emit('resumed', event)
   }
 
+  // Timestamp convention: server uses Unix seconds, client uses Date.now() ms internally,
+  // and ISO 8601 strings for DB columns (syncedAt, createdAt, modifiedAt).
   private checkClockSkew(serverTimeSeconds: number): void {
     const localTimeSeconds = Math.floor(Date.now() / 1000)
     const skew = Math.abs(localTimeSeconds - serverTimeSeconds)
@@ -697,47 +747,17 @@ export class SyncEngine extends EventEmitter {
             : undefined,
         stateVector: typeof stateVectorValue === 'string' ? stateVectorValue : undefined
       }
-    } catch {
+    } catch (err) {
+      log.warn('Failed to parse payload metadata', { error: err })
       return {}
     }
   }
 
   private fetchLocalItem(itemId: string, type: string): Record<string, unknown> {
     try {
-      let row: Record<string, unknown> | undefined
-      switch (type) {
-        case 'task':
-          row = this.deps.db
-            .select()
-            .from(schema.tasks)
-            .where(eq(schema.tasks.id, itemId))
-            .get() as Record<string, unknown> | undefined
-          break
-        case 'project':
-          row = this.deps.db
-            .select()
-            .from(schema.projects)
-            .where(eq(schema.projects.id, itemId))
-            .get() as Record<string, unknown> | undefined
-          break
-        case 'inbox':
-          row = this.deps.db
-            .select()
-            .from(schema.inboxItems)
-            .where(eq(schema.inboxItems.id, itemId))
-            .get() as Record<string, unknown> | undefined
-          break
-        case 'filter':
-          row = this.deps.db
-            .select()
-            .from(schema.savedFilters)
-            .where(eq(schema.savedFilters.id, itemId))
-            .get() as Record<string, unknown> | undefined
-          break
-        default:
-          return {}
-      }
-      return row ?? {}
+      const handler = getHandler(type as SyncItemType)
+      if (!handler) return {}
+      return handler.fetchLocal(this.deps.db, itemId) ?? {}
     } catch {
       log.warn('Failed to fetch local item for conflict', { itemId, type })
       return {}
@@ -745,20 +765,3 @@ export class SyncEngine extends EventEmitter {
   }
 }
 
-interface PullItemResponse {
-  id: string
-  type: string
-  operation: string
-  cryptoVersion?: number
-  signature: string
-  signerDeviceId: string
-  deletedAt?: number
-  clock?: Record<string, number>
-  stateVector?: string
-  blob: {
-    encryptedKey: string
-    keyNonce: string
-    encryptedData: string
-    dataNonce: string
-  }
-}

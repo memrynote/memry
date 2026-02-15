@@ -1,5 +1,6 @@
 import WebSocket from 'ws'
 import { EventEmitter } from 'events'
+import { z } from 'zod'
 
 const HEARTBEAT_TIMEOUT_MS = 31_000
 const MAX_RECONNECT_DELAY_MS = 30_000
@@ -7,10 +8,12 @@ const BASE_RECONNECT_DELAY_MS = 1_000
 const RECONNECT_JITTER_MS = 500
 const PING_INTERVAL_MS = 25_000
 
-export interface WebSocketMessage {
-  type: 'changes_available' | 'heartbeat' | 'error'
-  payload?: Record<string, unknown>
-}
+const WebSocketMessageSchema = z.object({
+  type: z.enum(['changes_available', 'heartbeat', 'error']),
+  payload: z.record(z.string(), z.unknown()).optional()
+})
+
+export type WebSocketMessage = z.infer<typeof WebSocketMessageSchema>
 
 export interface WebSocketManagerDeps {
   getAccessToken: () => Promise<string | null>
@@ -87,8 +90,12 @@ export class WebSocketManager extends EventEmitter {
           text = Buffer.concat(raw).toString('utf-8')
         }
         if (text === 'pong') return
-        const parsed = JSON.parse(text) as WebSocketMessage
-        this.emit('message', parsed)
+        const result = WebSocketMessageSchema.safeParse(JSON.parse(text))
+        if (!result.success) {
+          this.emit('error', new Error('Invalid WebSocket message format'))
+          return
+        }
+        this.emit('message', result.data)
       } catch {
         this.emit('error', new Error('Failed to parse WebSocket message'))
       }
