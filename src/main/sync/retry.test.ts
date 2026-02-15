@@ -179,6 +179,30 @@ describe('withRetry', () => {
     })
   })
 
+  describe('#given fn throws SyncServerError 400 #when called', () => {
+    it('#then throws immediately without retrying', async () => {
+      const fn = vi.fn().mockRejectedValue(new SyncServerError('Bad Request', 400))
+      const onRetry = vi.fn()
+
+      await expect(withRetry(fn, { onRetry })).rejects.toThrow(SyncServerError)
+
+      expect(fn).toHaveBeenCalledTimes(1)
+      expect(onRetry).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('#given fn throws SyncServerError 403 #when called', () => {
+    it('#then throws immediately without retrying', async () => {
+      const fn = vi.fn().mockRejectedValue(new SyncServerError('Forbidden', 403))
+      const onRetry = vi.fn()
+
+      await expect(withRetry(fn, { onRetry })).rejects.toThrow(SyncServerError)
+
+      expect(fn).toHaveBeenCalledTimes(1)
+      expect(onRetry).not.toHaveBeenCalled()
+    })
+  })
+
   describe('#given fn throws SyncServerError 500 #when called', () => {
     it('#then retries normally', async () => {
       const fn = vi

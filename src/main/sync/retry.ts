@@ -80,7 +80,12 @@ export async function withRetry<T>(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
 
-      if (error instanceof SyncServerError && error.statusCode === 401) {
+      if (
+        error instanceof SyncServerError &&
+        error.statusCode >= 400 &&
+        error.statusCode < 500 &&
+        error.statusCode !== 429
+      ) {
         throw error
       }
 
