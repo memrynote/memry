@@ -17,7 +17,15 @@ export const SYNC_ITEM_TYPES = [
 
 export const SYNC_OPERATIONS = ['create', 'update', 'delete'] as const
 
-export const ENCRYPTABLE_ITEM_TYPES = ['note', 'task', 'project', 'settings'] as const
+export const ENCRYPTABLE_ITEM_TYPES = [
+  'note',
+  'task',
+  'project',
+  'settings',
+  'inbox',
+  'filter',
+  'journal'
+] as const
 export type EncryptableItemType = (typeof ENCRYPTABLE_ITEM_TYPES)[number]
 
 // ============================================================================
@@ -193,7 +201,8 @@ export const PushItemSchema = z.object({
   signature: z.string().min(1),
   signerDeviceId: z.string().min(1),
   clock: VectorClockSchema.optional(),
-  stateVector: z.string().optional()
+  stateVector: z.string().optional(),
+  deletedAt: z.number().int().min(0).optional()
 })
 
 export const PushRequestSchema = z.object({
