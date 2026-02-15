@@ -151,7 +151,6 @@ describe('SyncEngine', () => {
           signature: 'sig',
           signerDeviceId: 'device-1'
         },
-        contentHash: 'abc',
         sizeBytes: 100
       })
 
@@ -481,7 +480,6 @@ describe('SyncEngine', () => {
           signature: 'sig',
           signerDeviceId: 'device-1'
         },
-        contentHash: 'abc',
         sizeBytes: 100
       })
 
@@ -571,7 +569,6 @@ describe('SyncEngine', () => {
           signature: 'sig',
           signerDeviceId: 'device-1'
         },
-        contentHash: 'abc',
         sizeBytes: 100
       }))
 
@@ -622,7 +619,6 @@ describe('SyncEngine', () => {
           signature: 'sig',
           signerDeviceId: 'device-1'
         },
-        contentHash: 'abc',
         sizeBytes: 100
       })
 
@@ -670,7 +666,6 @@ describe('SyncEngine', () => {
           signature: 'sig',
           signerDeviceId: 'device-1'
         },
-        contentHash: 'abc',
         sizeBytes: 100
       })
 
@@ -722,7 +717,6 @@ describe('SyncEngine', () => {
           signature: 'sig',
           signerDeviceId: 'device-1'
         },
-        contentHash: 'abc',
         sizeBytes: 100
       })
 
@@ -787,7 +781,6 @@ describe('SyncEngine', () => {
             signature: 'sig',
             signerDeviceId: 'device-1'
           },
-          contentHash: 'abc',
           sizeBytes: 100
         }
       })
@@ -837,7 +830,6 @@ describe('SyncEngine', () => {
           signature: 'sig',
           signerDeviceId: 'device-1'
         },
-        contentHash: 'abc',
         sizeBytes: 100
       })
 
@@ -888,7 +880,6 @@ describe('SyncEngine', () => {
           signature: 'sig',
           signerDeviceId: 'device-1'
         },
-        contentHash: 'abc',
         sizeBytes: 100
       })
 
@@ -940,7 +931,6 @@ describe('SyncEngine', () => {
           signature: 'sig',
           signerDeviceId: 'device-1'
         },
-        contentHash: 'abc',
         sizeBytes: 100
       })
 
@@ -1102,7 +1092,6 @@ describe('SyncEngine', () => {
 
       vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockReturnValue({
         pushItem: fakePushItem,
-        contentHash: 'hash-abc',
         sizeBytes: 128
       })
 

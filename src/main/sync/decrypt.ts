@@ -37,7 +37,14 @@ export interface DecryptItemResult {
   verified: true
 }
 
+const SUPPORTED_CRYPTO_VERSIONS = [1]
+
 export function decryptItemFromPull(input: DecryptItemInput): DecryptItemResult {
+  const version = input.cryptoVersion ?? 1
+  if (!SUPPORTED_CRYPTO_VERSIONS.includes(version)) {
+    throw new Error(`Unsupported crypto version: ${version}`)
+  }
+
   const signaturePayload: Record<string, unknown> = {
     id: input.id,
     type: input.type,

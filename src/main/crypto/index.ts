@@ -28,6 +28,12 @@ export const secureCleanup = (...buffers: Uint8Array[]): void => {
   }
 }
 
+/**
+ * Constant-time comparison via libsodium memcmp.
+ * Callers MUST ensure a.length === b.length for timing-safety;
+ * the early-return on mismatched lengths leaks only the fact that
+ * lengths differ, which is acceptable for fixed-size keys/MACs.
+ */
 export const constantTimeEqual = (a: Uint8Array, b: Uint8Array): boolean => {
   if (a.length !== b.length) {
     return false
