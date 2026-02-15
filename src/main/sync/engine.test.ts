@@ -155,7 +155,6 @@ describe('SyncEngine', () => {
         sizeBytes: 100
       })
 
-      const { encryptItemForPush: origEncrypt } = await import('./encrypt')
       vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockImplementation(mockEncrypt)
 
       const mockPost = vi.fn().mockResolvedValue({
@@ -1236,7 +1235,6 @@ describe('SyncEngine', () => {
       })
       const engine = new SyncEngine(deps)
       await engine.start()
-
       ;(network as unknown as { _online: boolean })._online = true
       network.emit('status-changed', { online: true })
 
@@ -1346,6 +1344,296 @@ describe('SyncEngine', () => {
       // #then
       expect(seedSpy).not.toHaveBeenCalled()
 
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given fullSync #when manifest check re-enqueues items', () => {
+    it('#then runs a follow-up push in the same cycle', async () => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+
+      const manifestModule = await import('./manifest-check')
+      vi.spyOn(manifestModule, 'checkManifestIntegrity').mockImplementation(async ({ queue }) => {
+        queue.enqueue({
+          type: 'task',
+          itemId: 'task-missing',
+          operation: 'create',
+          payload: JSON.stringify({
+            id: 'task-missing',
+            title: 'Recovered task',
+            projectId: 'proj-1',
+            priority: 0,
+            position: 0,
+            clock: { 'device-1': 1 }
+          })
+        })
+      })
+
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        accepted: ['task-missing'],
+        rejected: [],
+        serverTime: Date.now()
+      })
+
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+      const origPush = engine.push.bind(engine)
+      let pushCallCount = 0
+      engine.push = async () => {
+        pushCallCount++
+        return origPush()
+      }
+
+      await engine.fullSync()
+
+      expect(pushCallCount).toBe(2)
+      expect(deps.queue.getPendingCount()).toBe(0)
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given fullSync race condition #when WS connected fires mid-sync', () => {
+    it('#then push still executes (not blocked by WS-triggered pull)', async () => {
+      // #given
+      const getFromServerSpy = vi
+        .spyOn(await import('./http-client'), 'getFromServer')
+        .mockResolvedValue({
+          items: [],
+          deleted: [],
+          hasMore: false,
+          nextCursor: 0
+        })
+
+      const initialSeedModule = await import('./initial-seed')
+      vi.spyOn(initialSeedModule, 'runInitialSeed').mockImplementation(() => {})
+
+      const manifestModule = await import('./manifest-check')
+      vi.spyOn(manifestModule, 'checkManifestIntegrity').mockResolvedValue()
+
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+      await engine.start()
+
+      // After start(), fullSync completed. Clear call counts.
+      getFromServerSpy.mockClear()
+
+      // Monkey-patch push to track whether it actually executes its body
+      let pushBodyExecuted = false
+      const origPush = engine.push.bind(engine)
+      engine.push = async () => {
+        pushBodyExecuted = true
+        return origPush()
+      }
+
+      // #when — call fullSync again (simulates activate/reconnect)
+      await engine.fullSync()
+
+      // #then — push body was reached (not short-circuited by syncing lock)
+      expect(pushBodyExecuted).toBe(true)
+
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given fullSync active #when scheduleSync called', () => {
+    it('#then WS connected event does not trigger additional pull', async () => {
+      // #given
+      const getFromServerSpy = vi
+        .spyOn(await import('./http-client'), 'getFromServer')
+        .mockResolvedValue({
+          items: [],
+          deleted: [],
+          hasMore: false,
+          nextCursor: 0
+        })
+
+      const initialSeedModule = await import('./initial-seed')
+      vi.spyOn(initialSeedModule, 'runInitialSeed').mockImplementation(() => {})
+
+      const manifestModule = await import('./manifest-check')
+      vi.spyOn(manifestModule, 'checkManifestIntegrity').mockResolvedValue()
+
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+      await engine.start()
+
+      // After start(), initial fullSync completed. Clear counts.
+      getFromServerSpy.mockClear()
+
+      // Monkey-patch fullSync to emit 'connected' during its execution
+      const origFullSync = engine.fullSync.bind(engine)
+      engine.fullSync = async () => {
+        const promise = origFullSync()
+        // Emit connected during fullSync — should be no-op due to fullSyncActive guard
+        deps.ws.emit('connected')
+        return promise
+      }
+
+      // #when — trigger fullSync via explicit call
+      await engine.fullSync()
+
+      // #then — getFromServer called once (fullSync's pull), not twice
+      expect(getFromServerSpy).toHaveBeenCalledTimes(1)
+
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given engine #when requestPush called multiple times rapidly', () => {
+    it('#then debounces into single push', async () => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      let pushCallCount = 0
+      const origPush = engine.push.bind(engine)
+      engine.push = async () => {
+        pushCallCount++
+        return origPush()
+      }
+
+      engine.requestPush()
+      engine.requestPush()
+      engine.requestPush()
+      engine.requestPush()
+      engine.requestPush()
+
+      await vi.waitFor(
+        () => {
+          expect(pushCallCount).toBe(1)
+        },
+        { timeout: 5000 }
+      )
+
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given paused engine #when requestPush called', () => {
+    it('#then does not schedule push', async () => {
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+      engine.pause()
+
+      let pushCallCount = 0
+      const origPush = engine.push.bind(engine)
+      engine.push = async () => {
+        pushCallCount++
+        return origPush()
+      }
+
+      engine.requestPush()
+
+      await new Promise((r) => setTimeout(r, 3000))
+
+      expect(pushCallCount).toBe(0)
+      await engine.stop()
+    })
+  })
+
+  describe('#given fullSync active #when requestPush called', () => {
+    it('#then does not schedule push', async () => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+
+      const initialSeedModule = await import('./initial-seed')
+      vi.spyOn(initialSeedModule, 'runInitialSeed').mockImplementation(() => {})
+
+      const manifestModule = await import('./manifest-check')
+      vi.spyOn(manifestModule, 'checkManifestIntegrity').mockResolvedValue()
+
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      let pushCallCount = 0
+      const origPush = engine.push.bind(engine)
+      const origFullSync = engine.fullSync.bind(engine)
+
+      engine.push = async () => {
+        pushCallCount++
+        return origPush()
+      }
+
+      engine.fullSync = async () => {
+        engine.requestPush()
+        return origFullSync()
+      }
+
+      pushCallCount = 0
+      await engine.fullSync()
+
+      expect(pushCallCount).toBe(1)
+
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given queue #when item enqueued with callback set', () => {
+    it('#then fires onItemEnqueued callback', () => {
+      const deps = createMockDeps(testDb)
+      const callback = vi.fn()
+      deps.queue.setOnItemEnqueued(callback)
+
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'create',
+        payload: '{}'
+      })
+
+      expect(callback).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('#given WS reconnect #when handleWsConnected fires', () => {
+    it('#then schedules pull', async () => {
+      const getServerMock = vi.fn().mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockImplementation(getServerMock)
+
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+      await engine.start()
+
+      getServerMock.mockClear()
+
+      const pullDone = new Promise<void>((resolve) => {
+        const origPull = engine.pull.bind(engine)
+        engine.pull = async () => {
+          await origPull()
+          resolve()
+        }
+      })
+
+      deps.ws.emit('connected')
+
+      await pullDone
+      expect(getServerMock).toHaveBeenCalled()
+
+      await engine.stop()
       vi.restoreAllMocks()
     })
   })

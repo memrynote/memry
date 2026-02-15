@@ -27,11 +27,15 @@ describe('runInitialSeed', () => {
 
   beforeEach(() => {
     testDb = createTestDataDb()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    queue = new SyncQueueManager(testDb.db as any)
+    queue = new SyncQueueManager(
+      testDb.db as unknown as ConstructorParameters<typeof SyncQueueManager>[0]
+    )
     testDb.db.insert(projects).values(TEST_PROJECT).run()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    deps = { db: testDb.db as any, queue, deviceId: DEVICE_ID }
+    deps = {
+      db: testDb.db as unknown as InitialSeedDeps['db'],
+      queue,
+      deviceId: DEVICE_ID
+    }
   })
 
   afterEach(() => {
@@ -43,7 +47,13 @@ describe('runInitialSeed', () => {
       // #given
       testDb.db
         .insert(tasks)
-        .values({ id: 'task-1', projectId: 'proj-1', title: 'Local Task', priority: 0, position: 0 })
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'Local Task',
+          priority: 0,
+          position: 0
+        })
         .run()
 
       // #when
@@ -58,7 +68,9 @@ describe('runInitialSeed', () => {
       expect(item?.type).toBe('task')
       expect(item?.itemId).toBe('task-1')
       expect(item?.operation).toBe('create')
-      const payload = JSON.parse(item!.payload)
+      expect(item).toBeDefined()
+      if (!item) throw new Error('Expected queued item to be present')
+      const payload = JSON.parse(item.payload) as { clock?: VectorClock }
       expect(payload.clock).toEqual({ [DEVICE_ID]: 1 })
     })
   })
@@ -130,11 +142,17 @@ describe('runInitialSeed', () => {
   })
 
   describe('#given seed already done #when seed runs again', () => {
-    it('#then returns immediately without enqueuing', () => {
+    it('#then re-seeds if unclocked items still exist', () => {
       // #given
       testDb.db
         .insert(tasks)
-        .values({ id: 'task-2', projectId: 'proj-1', title: 'Another Task', priority: 0, position: 0 })
+        .values({
+          id: 'task-2',
+          projectId: 'proj-1',
+          title: 'Another Task',
+          priority: 0,
+          position: 0
+        })
         .run()
       testDb.db
         .insert(syncState)
@@ -146,14 +164,36 @@ describe('runInitialSeed', () => {
 
       // #then
       const task = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-2')).get()
-      expect(task?.clock).toBeNull()
-      expect(queue.getSize()).toBe(0)
+      expect(task?.clock).toEqual({ [DEVICE_ID]: 1 })
+      expect(queue.getSize()).toBe(1)
     })
   })
 
   describe('#given no NULL-clock items #when seed runs', () => {
     it('#then sets flag and enqueues nothing', () => {
       // #given — empty vault
+
+      // #when
+      runInitialSeed(deps)
+
+      // #then
+      expect(queue.getSize()).toBe(0)
+      const flag = testDb.db
+        .select()
+        .from(syncState)
+        .where(eq(syncState.key, 'initialSeedDone'))
+        .get()
+      expect(flag?.value).toBe('true')
+    })
+  })
+
+  describe('#given seed already done and no NULL-clock items #when seed runs', () => {
+    it('#then no-ops without enqueuing', () => {
+      // #given
+      testDb.db
+        .insert(syncState)
+        .values({ key: 'initialSeedDone', value: 'true', updatedAt: new Date() })
+        .run()
 
       // #when
       runInitialSeed(deps)

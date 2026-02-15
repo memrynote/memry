@@ -6,6 +6,7 @@ import os from 'os'
 import sodium from 'libsodium-wrappers-sumo'
 
 import { syncDevices } from '@shared/db/schema/sync-devices'
+import { syncState } from '@shared/db/schema/sync-state'
 import { KEYCHAIN_ENTRIES } from '@shared/contracts/crypto'
 import {
   RequestOtpSchema,
@@ -29,7 +30,7 @@ import { GetHistorySchema, UpdateSyncedSettingSchema } from '@shared/contracts/i
 import { getSettingsSyncManager } from '../sync/settings-sync'
 import { syncHistory } from '@shared/db/schema/sync-history'
 
-import { eq, desc, count } from 'drizzle-orm'
+import { eq, desc, count, inArray } from 'drizzle-orm'
 
 import type { SyncEngine } from '../sync/engine'
 
@@ -135,6 +136,14 @@ const cleanExpiredOAuthSessions = (): void => {
     if (now - session.createdAt > OAUTH_SESSION_TIMEOUT_MS) {
       oauthSessions.delete(state)
     }
+  }
+}
+
+const parseSyncHistoryDetails = (details: string): unknown => {
+  try {
+    return JSON.parse(details) as unknown
+  } catch {
+    return details
   }
 }
 
@@ -430,6 +439,9 @@ const persistKeysAndRegisterDevice = async (
   }
 
   const db = getDatabase()
+  await db
+    .delete(syncState)
+    .where(inArray(syncState.key, ['lastCursor', 'lastSyncAt', 'initialSeedDone', 'syncPaused']))
   await db.insert(syncDevices).values({
     id: deviceResponse.deviceId,
     name: os.hostname(),
@@ -885,7 +897,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
           type: r.type as 'push' | 'pull' | 'error',
           itemCount: r.itemCount,
           direction: r.direction ?? undefined,
-          details: r.details ? JSON.parse(r.details) : undefined,
+          details: r.details ? parseSyncHistoryDetails(r.details) : undefined,
           createdAt: r.createdAt.getTime()
         })),
         total: totalRow?.total ?? 0
