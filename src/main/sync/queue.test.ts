@@ -10,6 +10,11 @@ const makeInput = (overrides: Partial<EnqueueInput> = {}): EnqueueInput => ({
   ...overrides
 })
 
+function simulateFailedAttempt(q: SyncQueueManager, id: string, error: string): void {
+  q.dequeue(1)
+  q.markFailed(id, error)
+}
+
 describe('SyncQueueManager', () => {
   let testDb: TestDatabaseResult
   let queue: SyncQueueManager
@@ -49,9 +54,9 @@ describe('SyncQueueManager', () => {
     })
 
     it('creates new entry when existing item has attempts > 0', () => {
-      // #given existing item with attempts > 0
+      // #given existing item with attempts > 0 (dequeue increments)
       const id1 = queue.enqueue(makeInput())
-      queue.markFailed(id1, 'network error')
+      simulateFailedAttempt(queue, id1, 'network error')
 
       // #when enqueue same itemId+type+operation
       const id2 = queue.enqueue(makeInput())
@@ -113,7 +118,7 @@ describe('SyncQueueManager', () => {
       // #given item with max attempts (dead letter)
       const id = queue.enqueue(makeInput())
       for (let i = 0; i < DEFAULT_MAX_ATTEMPTS; i++) {
-        queue.markFailed(id, `fail-${i}`)
+        simulateFailedAttempt(queue, id, `fail-${i}`)
       }
 
       // #when dequeue
@@ -122,6 +127,18 @@ describe('SyncQueueManager', () => {
       // #then item is skipped
       expect(items).toHaveLength(0)
       expect(queue.getSize()).toBe(1)
+    })
+
+    it('increments attempts atomically on dequeue', () => {
+      // #given item in queue
+      queue.enqueue(makeInput())
+
+      // #when dequeue
+      queue.dequeue(1)
+
+      // #then attempts incremented in DB
+      const items = queue.peek(1)
+      expect(items[0].attempts).toBe(1)
     })
 
     it('orders same-priority items by createdAt ascending', () => {
@@ -158,7 +175,7 @@ describe('SyncQueueManager', () => {
       // #given dead-letter item
       const id = queue.enqueue(makeInput())
       for (let i = 0; i < DEFAULT_MAX_ATTEMPTS; i++) {
-        queue.markFailed(id, 'fail')
+        simulateFailedAttempt(queue, id, 'fail')
       }
 
       // #when peek
@@ -185,28 +202,29 @@ describe('SyncQueueManager', () => {
   })
 
   describe('markFailed', () => {
-    it('increments attempts and sets error', () => {
-      // #given item in queue
+    it('records error after dequeue increments attempts', () => {
+      // #given item dequeued (attempts incremented to 1)
       const id = queue.enqueue(makeInput())
+      queue.dequeue(1)
 
       // #when markFailed
       queue.markFailed(id, 'connection timeout')
 
-      // #then
+      // #then attempts=1 (from dequeue), error recorded
       const items = queue.peek(1)
       expect(items[0].attempts).toBe(1)
       expect(items[0].errorMessage).toBe('connection timeout')
       expect(items[0].lastAttempt).toBeInstanceOf(Date)
     })
 
-    it('accumulates attempts on repeated failures', () => {
+    it('accumulates attempts via dequeue+markFailed cycles', () => {
       // #given item
       const id = queue.enqueue(makeInput())
 
-      // #when fail 3 times
-      queue.markFailed(id, 'err-1')
-      queue.markFailed(id, 'err-2')
-      queue.markFailed(id, 'err-3')
+      // #when fail 3 times (dequeue increments, markFailed records error)
+      simulateFailedAttempt(queue, id, 'err-1')
+      simulateFailedAttempt(queue, id, 'err-2')
+      simulateFailedAttempt(queue, id, 'err-3')
 
       // #then
       const items = queue.peek(1)
@@ -217,17 +235,18 @@ describe('SyncQueueManager', () => {
 
   describe('getQueueStats', () => {
     it('returns correct counts for mixed queue', () => {
-      // #given pending, failed, and dead-letter items
+      // #given dead-letter and failed items dequeued first (via higher priority)
+      const deadId = queue.enqueue(makeInput({ itemId: 'dead-1', priority: 10 }))
+      for (let i = 0; i < DEFAULT_MAX_ATTEMPTS; i++) {
+        simulateFailedAttempt(queue, deadId, `fail-${i}`)
+      }
+
+      const failedId = queue.enqueue(makeInput({ itemId: 'failed-1', priority: 5 }))
+      simulateFailedAttempt(queue, failedId, 'err')
+
+      // #given pending items (never dequeued)
       queue.enqueue(makeInput({ itemId: 'pending-1' }))
       queue.enqueue(makeInput({ itemId: 'pending-2' }))
-
-      const failedId = queue.enqueue(makeInput({ itemId: 'failed-1' }))
-      queue.markFailed(failedId, 'err')
-
-      const deadId = queue.enqueue(makeInput({ itemId: 'dead-1' }))
-      for (let i = 0; i < DEFAULT_MAX_ATTEMPTS; i++) {
-        queue.markFailed(deadId, `fail-${i}`)
-      }
 
       // #when
       const stats = queue.getQueueStats()
@@ -253,7 +272,7 @@ describe('SyncQueueManager', () => {
       // #given dead-letter item
       const id = queue.enqueue(makeInput())
       for (let i = 0; i < DEFAULT_MAX_ATTEMPTS; i++) {
-        queue.markFailed(id, 'fail')
+        simulateFailedAttempt(queue, id, 'fail')
       }
 
       // #when purge with future cutoff
@@ -268,7 +287,7 @@ describe('SyncQueueManager', () => {
     it('does not purge items below max attempts', () => {
       // #given item with 1 attempt
       const id = queue.enqueue(makeInput())
-      queue.markFailed(id, 'err')
+      simulateFailedAttempt(queue, id, 'err')
 
       // #when purge
       const cutoff = new Date(Date.now() + 60_000)
@@ -283,7 +302,7 @@ describe('SyncQueueManager', () => {
       // #given dead-letter item
       const id = queue.enqueue(makeInput())
       for (let i = 0; i < DEFAULT_MAX_ATTEMPTS; i++) {
-        queue.markFailed(id, 'fail')
+        simulateFailedAttempt(queue, id, 'fail')
       }
 
       // #when purge with past cutoff
@@ -330,16 +349,18 @@ describe('SyncQueueManager', () => {
 
   describe('getRetryableItems', () => {
     it('returns items with attempts > 0 but below max', () => {
-      // #given mixed items
-      queue.enqueue(makeInput({ itemId: 'fresh' }))
-
-      const retryId = queue.enqueue(makeInput({ itemId: 'retry' }))
-      queue.markFailed(retryId, 'err')
-
-      const deadId = queue.enqueue(makeInput({ itemId: 'dead' }))
+      // #given dead-letter item (highest priority, dequeued first)
+      const deadId = queue.enqueue(makeInput({ itemId: 'dead', priority: 10 }))
       for (let i = 0; i < DEFAULT_MAX_ATTEMPTS; i++) {
-        queue.markFailed(deadId, 'fail')
+        simulateFailedAttempt(queue, deadId, 'fail')
       }
+
+      // #given retryable item (medium priority, dequeued next)
+      const retryId = queue.enqueue(makeInput({ itemId: 'retry', priority: 5 }))
+      simulateFailedAttempt(queue, retryId, 'err')
+
+      // #given fresh item (never dequeued)
+      queue.enqueue(makeInput({ itemId: 'fresh' }))
 
       // #when
       const retryable = queue.getRetryableItems()
@@ -352,8 +373,8 @@ describe('SyncQueueManager', () => {
     it('accepts custom maxAttempts', () => {
       // #given item with 2 attempts
       const id = queue.enqueue(makeInput())
-      queue.markFailed(id, 'err-1')
-      queue.markFailed(id, 'err-2')
+      simulateFailedAttempt(queue, id, 'err-1')
+      simulateFailedAttempt(queue, id, 'err-2')
 
       // #when getRetryableItems with maxAttempts=2
       const retryable = queue.getRetryableItems(2)
