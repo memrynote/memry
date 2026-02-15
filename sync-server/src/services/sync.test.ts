@@ -912,6 +912,6 @@ describe('processPushItem', () => {
     expect(result.accepted).toBe(true)
     expect(upsertStmt.bind).toHaveBeenCalled()
     const bindArgs = upsertStmt.bind.mock.calls[0]
-    expect(bindArgs[13]).toBe(123456)
+    expect(bindArgs[14]).toBe(123456)
   })
 })

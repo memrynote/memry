@@ -214,10 +214,10 @@ export const processPushItem = async (
     await db
       .prepare(
         `INSERT INTO sync_items (
-          user_id, item_type, item_id, blob_key, size_bytes, content_hash,
+          id, user_id, item_type, item_id, blob_key, size_bytes, content_hash,
           version, crypto_version, server_cursor, signer_device_id, signature,
           state_vector, clock, created_at, updated_at, deleted_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (user_id, item_type, item_id) DO UPDATE SET
           blob_key = excluded.blob_key,
           size_bytes = excluded.size_bytes,
@@ -233,6 +233,7 @@ export const processPushItem = async (
           deleted_at = excluded.deleted_at`
       )
       .bind(
+        crypto.randomUUID(),
         userId,
         item.type,
         item.id,
