@@ -17,7 +17,15 @@ export const SYNC_ITEM_TYPES = [
 
 export const SYNC_OPERATIONS = ['create', 'update', 'delete'] as const
 
-export const ENCRYPTABLE_ITEM_TYPES = ['note', 'task', 'project', 'settings'] as const
+export const ENCRYPTABLE_ITEM_TYPES = [
+  'note',
+  'task',
+  'project',
+  'settings',
+  'inbox',
+  'filter',
+  'journal'
+] as const
 export type EncryptableItemType = (typeof ENCRYPTABLE_ITEM_TYPES)[number]
 
 // ============================================================================
@@ -81,6 +89,7 @@ export interface PushItem {
   signerDeviceId: string
   clock?: VectorClock
   stateVector?: string
+  deletedAt?: number
 }
 
 export interface PushRequest {
@@ -193,7 +202,8 @@ export const PushItemSchema = z.object({
   signature: z.string().min(1),
   signerDeviceId: z.string().min(1),
   clock: VectorClockSchema.optional(),
-  stateVector: z.string().optional()
+  stateVector: z.string().optional(),
+  deletedAt: z.number().int().min(0).optional()
 })
 
 export const PushRequestSchema = z.object({
@@ -209,6 +219,10 @@ export const PushResponseSchema = z.object({
     })
   ),
   serverTime: z.number().int().min(0)
+})
+
+export const PullRequestSchema = z.object({
+  itemIds: z.array(z.string().min(1)).min(1).max(100)
 })
 
 export const SyncItemRefSchema = z.object({
@@ -257,6 +271,29 @@ export const DeviceSyncStateSchema = z.object({
 })
 
 // ============================================================================
+// Pull Response (validated client-side)
+// ============================================================================
+
+export const PullItemResponseSchema = z.object({
+  id: z.string().min(1),
+  type: z.enum(SYNC_ITEM_TYPES),
+  operation: z.enum(SYNC_OPERATIONS),
+  cryptoVersion: z.number().int().min(1).optional(),
+  signature: z.string().min(1),
+  signerDeviceId: z.string().min(1),
+  deletedAt: z.number().int().min(0).optional(),
+  clock: VectorClockSchema.optional(),
+  stateVector: z.string().optional(),
+  blob: EncryptedItemPayloadSchema
+})
+
+export const PullResponseSchema = z.object({
+  items: z.array(PullItemResponseSchema)
+})
+
+export type PullItemResponse = z.infer<typeof PullItemResponseSchema>
+
+// ============================================================================
 // Cursor & Signature Metadata (T041g)
 // ============================================================================
 
@@ -302,5 +339,6 @@ export type ChangesResponseInput = z.infer<typeof ChangesResponseSchema>
 export type SyncStatusInput = z.infer<typeof SyncStatusSchema>
 export type ConflictResponseInput = z.infer<typeof ConflictResponseSchema>
 export type DeviceSyncStateInput = z.infer<typeof DeviceSyncStateSchema>
+export type PullRequestInput = z.infer<typeof PullRequestSchema>
 export type CursorPositionInput = z.infer<typeof CursorPositionSchema>
 export type SignatureMetadataInput = z.infer<typeof SignatureMetadataSchema>
