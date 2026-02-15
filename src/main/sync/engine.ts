@@ -48,8 +48,6 @@ const SYNC_STATE_KEYS = {
   INITIAL_SEED_DONE: 'initialSeedDone'
 } as const
 
-let instance: SyncEngine | null = null
-
 export interface SyncEngineDeps {
   queue: SyncQueueManager
   network: NetworkMonitor
@@ -72,18 +70,24 @@ export interface SyncEngineOptions {
 }
 
 export class SyncEngine extends EventEmitter {
+  private static activeInstance: SyncEngine | null = null
+
   private state: SyncStatusValue = 'idle'
   private syncing = false
+  private fullSyncActive = false
   private lastError: string | undefined
   private deps: SyncEngineDeps
   private options: SyncEngineOptions
   private abortController: AbortController | null = null
   private inFlightSync: Promise<void> | null = null
+  private pushDebounceTimer: ReturnType<typeof setTimeout> | null = null
+  private pendingPushRequested = false
+  private readonly PUSH_DEBOUNCE_MS = 2000
   private applier: ItemApplier
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
-    if (instance && instance.syncing) {
+    if (SyncEngine.activeInstance && SyncEngine.activeInstance.syncing) {
       throw new Error('SyncEngine instance already active — call stop() before creating a new one')
     }
     this.deps = deps
@@ -92,7 +96,7 @@ export class SyncEngine extends EventEmitter {
       pullPageLimit: options?.pullPageLimit ?? PULL_PAGE_LIMIT
     }
     this.applier = new ItemApplier(deps.db, deps.emitToRenderer)
-    instance = this
+    SyncEngine.activeInstance = this
   }
 
   private async isAuthReady(): Promise<boolean> {
@@ -141,6 +145,11 @@ export class SyncEngine extends EventEmitter {
   }
 
   async stop(): Promise<void> {
+    if (this.pushDebounceTimer) {
+      clearTimeout(this.pushDebounceTimer)
+      this.pushDebounceTimer = null
+    }
+    this.pendingPushRequested = false
     this.abortController?.abort()
     if (this.inFlightSync) {
       await this.inFlightSync.catch(() => {})
@@ -152,29 +161,35 @@ export class SyncEngine extends EventEmitter {
     this.deps.ws.removeListener('connected', this.handleWsConnected)
     this.deps.ws.disconnect()
     this.setState('idle')
-    instance = null
+    SyncEngine.activeInstance = null
   }
 
   async push(): Promise<void> {
-    if (this.syncing || this.isPaused()) return
+    if (this.syncing || this.isPaused()) {
+      log.debug('Push skipped', { syncing: this.syncing, paused: this.isPaused() })
+      return
+    }
     this.syncing = true
     this.setState('syncing')
     this.abortController = new AbortController()
 
     const token = await this.deps.getAccessToken()
     if (!token) {
+      log.debug('Push aborted: no access token')
       this.releaseLock()
       return
     }
 
     const signingKeys = await this.deps.getSigningKeys()
     if (!signingKeys) {
+      log.debug('Push aborted: no signing keys')
       this.releaseLock()
       return
     }
 
     const vaultKey = await this.deps.getVaultKey()
     if (!vaultKey) {
+      log.debug('Push aborted: no vault key')
       this.releaseLock()
       return
     }
@@ -187,7 +202,10 @@ export class SyncEngine extends EventEmitter {
         if (this.abortController.signal.aborted) break
 
         const items = this.deps.queue.dequeue(this.options.pushBatchSize)
-        if (items.length === 0) break
+        if (items.length === 0) {
+          log.debug('Push complete: queue empty')
+          break
+        }
 
         const pushItems = items.map((item) => {
           const payloadMeta = this.extractPayloadMetadata(item.payload)
@@ -253,6 +271,28 @@ export class SyncEngine extends EventEmitter {
         this.setState(this.deps.network.online ? 'idle' : 'offline')
       }
     }
+  }
+
+  requestPush(): void {
+    if (this.isPaused()) return
+    this.pendingPushRequested = true
+    if (this.pushDebounceTimer) return
+
+    this.pushDebounceTimer = setTimeout(() => {
+      this.pushDebounceTimer = null
+      if (this.isPaused()) {
+        this.pendingPushRequested = false
+        return
+      }
+      if (this.syncing || this.fullSyncActive) {
+        this.requestPush()
+        return
+      }
+      if (this.pendingPushRequested) {
+        this.pendingPushRequested = false
+        this.scheduleSync(() => this.push())
+      }
+    }, this.PUSH_DEBOUNCE_MS)
   }
 
   async pull(): Promise<void> {
@@ -346,7 +386,16 @@ export class SyncEngine extends EventEmitter {
             if (result === 'conflict') {
               let remoteVersion: Record<string, unknown> = {}
               try {
-                remoteVersion = JSON.parse(new TextDecoder().decode(decrypted.content))
+                const parsedRemote = JSON.parse(
+                  new TextDecoder().decode(decrypted.content)
+                ) as unknown
+                if (
+                  parsedRemote &&
+                  typeof parsedRemote === 'object' &&
+                  !Array.isArray(parsedRemote)
+                ) {
+                  remoteVersion = parsedRemote as Record<string, unknown>
+                }
                 if (item.clock) remoteVersion.clock = item.clock
               } catch {
                 log.warn('Failed to parse remote content for conflict event', {
@@ -393,19 +442,49 @@ export class SyncEngine extends EventEmitter {
   }
 
   async fullSync(): Promise<void> {
-    await this.pull()
-    const signingKeys = await this.deps.getSigningKeys()
-    if (signingKeys) {
-      runInitialSeed({ db: this.deps.db, queue: this.deps.queue, deviceId: signingKeys.deviceId })
+    log.debug('fullSync started')
+    this.fullSyncActive = true
+    try {
+      await this.pull()
+      log.debug('fullSync: pull complete')
+
+      const queueBeforeSeed = this.deps.queue.getPendingCount()
+      const signingKeys = await this.deps.getSigningKeys()
+      if (signingKeys) {
+        runInitialSeed({ db: this.deps.db, queue: this.deps.queue, deviceId: signingKeys.deviceId })
+      }
+      const queueAfterSeed = this.deps.queue.getPendingCount()
+      const seededCount = Math.max(0, queueAfterSeed - queueBeforeSeed)
+
+      log.debug('fullSync: seed complete', {
+        attempted: signingKeys ? 'yes' : 'skipped',
+        seededCount
+      })
+
+      await this.push()
+      log.debug('fullSync: push complete')
+
+      await checkManifestIntegrity({
+        db: this.deps.db,
+        queue: this.deps.queue,
+        getAccessToken: this.deps.getAccessToken,
+        isOnline: () => this.deps.network.online
+      })
+      log.debug('fullSync: manifest check complete')
+
+      const pendingAfterManifest = this.deps.queue.getPendingCount()
+      if (pendingAfterManifest > 0 && !this.isPaused()) {
+        log.debug('fullSync: pending items after manifest check, running follow-up push', {
+          pendingAfterManifest
+        })
+        await this.push()
+        log.debug('fullSync: follow-up push complete')
+      }
+
+      this.deps.queue.purgeOldErrors(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+    } finally {
+      this.fullSyncActive = false
     }
-    await this.push()
-    await checkManifestIntegrity({
-      db: this.deps.db,
-      queue: this.deps.queue,
-      getAccessToken: this.deps.getAccessToken,
-      isOnline: () => this.deps.network.online
-    })
-    this.deps.queue.purgeOldErrors(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
   }
 
   getStatus(): GetSyncStatusResult {
@@ -447,6 +526,7 @@ export class SyncEngine extends EventEmitter {
   }
 
   private scheduleSync(fn: () => Promise<void>): void {
+    if (this.fullSyncActive) return
     this.inFlightSync = fn()
       .catch((error) => {
         log.error('Scheduled sync failed', error)

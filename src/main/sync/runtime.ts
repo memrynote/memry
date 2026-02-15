@@ -124,6 +124,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         }
       })
 
+      queue.setOnItemEnqueued(() => engine.requestPush())
+
       pendingRuntime = { queue, network, ws, engine }
       runtime = pendingRuntime
       await engine.start()

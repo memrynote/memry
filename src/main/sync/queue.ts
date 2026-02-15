@@ -27,12 +27,18 @@ export interface QueueStats {
 export class SyncQueueManager {
   constructor(private readonly db: DrizzleDb) {}
 
+  private onItemEnqueued: (() => void) | null = null
+
+  setOnItemEnqueued(callback: () => void): void {
+    this.onItemEnqueued = callback
+  }
+
   enqueue(input: EnqueueInput): string {
     const { type, itemId, operation, payload, priority = 0 } = input
 
     this.maybeAutoPurge()
 
-    return this.db.transaction((tx) => {
+    const id = this.db.transaction((tx) => {
       const existing = tx
         .select({ id: syncQueue.id })
         .from(syncQueue)
@@ -51,10 +57,10 @@ export class SyncQueueManager {
         return existing.id
       }
 
-      const id = crypto.randomUUID()
+      const newId = crypto.randomUUID()
       tx.insert(syncQueue)
         .values({
-          id,
+          id: newId,
           type,
           itemId,
           operation,
@@ -64,8 +70,11 @@ export class SyncQueueManager {
           createdAt: new Date()
         })
         .run()
-      return id
+      return newId
     })
+
+    this.onItemEnqueued?.()
+    return id
   }
 
   dequeue(batchSize: number): Array<typeof syncQueue.$inferSelect> {
