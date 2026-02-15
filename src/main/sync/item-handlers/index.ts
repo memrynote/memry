@@ -1,0 +1,24 @@
+import type { SyncItemType } from '@shared/contracts/sync-api'
+import type { SyncItemHandler } from './types'
+import { taskHandler } from './task-handler'
+import { inboxHandler } from './inbox-handler'
+import { filterHandler } from './filter-handler'
+import { settingsHandler } from './settings-handler'
+
+export type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb, EmitToWindows } from './types'
+export { resolveClockConflict } from './types'
+
+const handlers = new Map<SyncItemType, SyncItemHandler>([
+  ['task', taskHandler],
+  ['inbox', inboxHandler],
+  ['filter', filterHandler],
+  ['settings', settingsHandler]
+])
+
+export function getHandler(type: SyncItemType): SyncItemHandler | undefined {
+  return handlers.get(type)
+}
+
+export function getAllHandlers(): SyncItemHandler[] {
+  return Array.from(handlers.values())
+}

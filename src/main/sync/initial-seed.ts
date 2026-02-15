@@ -1,11 +1,8 @@
-import { eq, isNull, and, not } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type * as schema from '@shared/db/schema/data-schema'
-import { tasks } from '@shared/db/schema/tasks'
-import { inboxItems } from '@shared/db/schema/inbox'
-import { savedFilters } from '@shared/db/schema/settings'
 import { syncState } from '@shared/db/schema/sync-state'
-import { increment } from './vector-clock'
+import { getAllHandlers } from './item-handlers'
 import type { SyncQueueManager } from './queue'
 import { createLogger } from '../lib/logger'
 
@@ -24,74 +21,17 @@ export interface InitialSeedDeps {
 export function runInitialSeed(deps: InitialSeedDeps): void {
   const { db, queue, deviceId } = deps
 
-  let seeded = 0
-
   const existing = db.select().from(syncState).where(eq(syncState.key, SEED_DONE_KEY)).get()
-  const unclockedTasks = db.select().from(tasks).where(isNull(tasks.clock)).all()
-  const unclockedInbox = db
-    .select()
-    .from(inboxItems)
-    .where(and(isNull(inboxItems.clock), not(eq(inboxItems.localOnly, true))))
-    .all()
-  const unclockedFilters = db.select().from(savedFilters).where(isNull(savedFilters.clock)).all()
 
-  if (
-    existing &&
-    unclockedTasks.length === 0 &&
-    unclockedInbox.length === 0 &&
-    unclockedFilters.length === 0
-  ) {
-    return
+  let seeded = 0
+  for (const handler of getAllHandlers()) {
+    seeded += handler.seedUnclocked(db, deviceId, queue)
   }
 
-  if (existing) {
-    log.warn(
-      'initialSeedDone flag exists but unclocked items were found; re-running initial seed',
-      {
-        tasks: unclockedTasks.length,
-        inbox: unclockedInbox.length,
-        filters: unclockedFilters.length
-      }
-    )
-  }
+  if (existing && seeded === 0) return
 
-  for (const t of unclockedTasks) {
-    const clock = increment({}, deviceId)
-    db.update(tasks).set({ clock }).where(eq(tasks.id, t.id)).run()
-    queue.enqueue({
-      type: 'task',
-      itemId: t.id,
-      operation: 'create',
-      payload: JSON.stringify({ ...t, clock }),
-      priority: 0
-    })
-    seeded++
-  }
-
-  for (const i of unclockedInbox) {
-    const clock = increment({}, deviceId)
-    db.update(inboxItems).set({ clock }).where(eq(inboxItems.id, i.id)).run()
-    queue.enqueue({
-      type: 'inbox',
-      itemId: i.id,
-      operation: 'create',
-      payload: JSON.stringify({ ...i, clock }),
-      priority: 0
-    })
-    seeded++
-  }
-
-  for (const f of unclockedFilters) {
-    const clock = increment({}, deviceId)
-    db.update(savedFilters).set({ clock }).where(eq(savedFilters.id, f.id)).run()
-    queue.enqueue({
-      type: 'filter',
-      itemId: f.id,
-      operation: 'create',
-      payload: JSON.stringify({ ...f, clock }),
-      priority: 0
-    })
-    seeded++
+  if (existing && seeded > 0) {
+    log.warn('initialSeedDone flag exists but unclocked items found; re-seeded', { seeded })
   }
 
   db.insert(syncState)
