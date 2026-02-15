@@ -1,4 +1,3 @@
-import { createHash } from 'crypto'
 import { describe, it, expect, beforeAll, vi } from 'vitest'
 import sodium from 'libsodium-wrappers-sumo'
 import { initCrypto } from '../crypto/index'
@@ -53,19 +52,6 @@ describe('encryptItemForPush', () => {
       expect(result.pushItem.signature).toBeTruthy()
     })
 
-    it('#then contentHash is valid hex SHA-256', () => {
-      const result = encryptItemForPush(makeInput())
-
-      expect(result.contentHash).toMatch(/^[0-9a-f]{64}$/)
-
-      const ciphertextBytes = sodium.from_base64(
-        result.pushItem.encryptedData,
-        sodium.base64_variants.ORIGINAL
-      )
-      const expectedHash = createHash('sha256').update(ciphertextBytes).digest('hex')
-      expect(result.contentHash).toBe(expectedHash)
-    })
-
     it('#then sizeBytes matches ciphertext length', () => {
       const result = encryptItemForPush(makeInput())
 
@@ -89,6 +75,19 @@ describe('encryptItemForPush', () => {
   })
 
   describe('#given input with deletedAt (tombstone) #when encryptItemForPush', () => {
+    it('#then pushItem includes deletedAt in wire format', () => {
+      const deletedAt = Math.floor(Date.now() / 1000)
+      const result = encryptItemForPush(makeInput({ deletedAt }))
+
+      expect(result.pushItem.deletedAt).toBe(deletedAt)
+    })
+
+    it('#then pushItem omits deletedAt when not provided', () => {
+      const result = encryptItemForPush(makeInput())
+
+      expect(result.pushItem.deletedAt).toBeUndefined()
+    })
+
     it('#then signature includes deletedAt', () => {
       const keys = generateTestKeys()
       const deletedAt = Date.now()

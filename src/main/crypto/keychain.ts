@@ -3,6 +3,9 @@ import sodium from 'libsodium-wrappers-sumo'
 
 import type { KeychainEntry } from '@shared/contracts/crypto'
 
+// Accepted risk: keytar stores strings, so keys are base64-encoded in OS keychain memory.
+// The base64 copy is an inherent JS/keytar limitation — no way to securely zero a JS string.
+// Mitigated by: OS keychain encryption at rest, short-lived Uint8Array on retrieval.
 export const storeKey = async (entry: KeychainEntry, key: Uint8Array): Promise<void> => {
   await sodium.ready
   const encoded = sodium.to_base64(key, sodium.base64_variants.ORIGINAL)

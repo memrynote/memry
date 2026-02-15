@@ -1,4 +1,3 @@
-import { createHash } from 'crypto'
 import sodium from 'libsodium-wrappers-sumo'
 import { generateFileKey } from '../crypto/keys'
 import { encrypt, wrapFileKey } from '../crypto/encryption'
@@ -22,7 +21,6 @@ export interface EncryptItemInput {
 
 export interface EncryptItemResult {
   pushItem: PushItem
-  contentHash: string
   sizeBytes: number
 }
 
@@ -77,7 +75,6 @@ export function encryptItemForPush(input: EncryptItemInput): EncryptItemResult {
       input.signingSecretKey
     )
 
-    const contentHash = createHash('sha256').update(ciphertext).digest('hex')
     const sizeBytes = ciphertext.length
 
     return {
@@ -92,9 +89,9 @@ export function encryptItemForPush(input: EncryptItemInput): EncryptItemResult {
         signature: toB64(signature),
         signerDeviceId: input.signerDeviceId,
         ...(input.clock && { clock: input.clock }),
-        ...(input.stateVector && { stateVector: input.stateVector })
+        ...(input.stateVector && { stateVector: input.stateVector }),
+        ...(input.deletedAt !== undefined && { deletedAt: input.deletedAt })
       },
-      contentHash,
       sizeBytes
     }
   } finally {
