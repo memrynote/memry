@@ -5,6 +5,7 @@ const HEARTBEAT_TIMEOUT_MS = 31_000
 const MAX_RECONNECT_DELAY_MS = 30_000
 const BASE_RECONNECT_DELAY_MS = 1_000
 const RECONNECT_JITTER_MS = 500
+const PING_INTERVAL_MS = 25_000
 
 export interface WebSocketMessage {
   type: 'changes_available' | 'heartbeat' | 'error'
@@ -20,6 +21,7 @@ export interface WebSocketManagerDeps {
 export class WebSocketManager extends EventEmitter {
   private ws: WebSocket | null = null
   private heartbeatTimer: ReturnType<typeof setTimeout> | null = null
+  private pingTimer: ReturnType<typeof setInterval> | null = null
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private reconnectAttempt = 0
   private shouldBeConnected = false
@@ -67,6 +69,7 @@ export class WebSocketManager extends EventEmitter {
       this._connected = true
       this.reconnectAttempt = 0
       this.resetHeartbeat()
+      this.startPing()
       this.emit('connected')
     })
 
@@ -83,6 +86,7 @@ export class WebSocketManager extends EventEmitter {
         } else {
           text = Buffer.concat(raw).toString('utf-8')
         }
+        if (text === 'pong') return
         const parsed = JSON.parse(text) as WebSocketMessage
         this.emit('message', parsed)
       } catch {
@@ -120,12 +124,29 @@ export class WebSocketManager extends EventEmitter {
   private cleanup(): void {
     this._connected = false
     this.clearHeartbeat()
+    this.stopPing()
     if (this.ws) {
       this.ws.removeAllListeners()
       if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
         this.ws.terminate()
       }
       this.ws = null
+    }
+  }
+
+  private startPing(): void {
+    this.stopPing()
+    this.pingTimer = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send('ping')
+      }
+    }, PING_INTERVAL_MS)
+  }
+
+  private stopPing(): void {
+    if (this.pingTimer) {
+      clearInterval(this.pingTimer)
+      this.pingTimer = null
     }
   }
 
