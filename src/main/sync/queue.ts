@@ -8,6 +8,7 @@ type DrizzleDb = BetterSQLite3Database
 export const DEFAULT_MAX_ATTEMPTS = 5
 
 const DEAD_LETTER_PURGE_THRESHOLD = 50
+export const ERROR_RETENTION_DAYS = 7
 
 export interface EnqueueInput {
   type: SyncItemType
@@ -78,13 +79,27 @@ export class SyncQueueManager {
   }
 
   dequeue(batchSize: number): Array<typeof syncQueue.$inferSelect> {
-    return this.db
+    const items = this.db
       .select()
       .from(syncQueue)
       .where(lt(syncQueue.attempts, DEFAULT_MAX_ATTEMPTS))
       .orderBy(desc(syncQueue.priority), asc(syncQueue.createdAt))
       .limit(batchSize)
       .all()
+
+    if (items.length > 0) {
+      const ids = items.map((i) => i.id)
+      this.db
+        .update(syncQueue)
+        .set({
+          attempts: sql`${syncQueue.attempts} + 1`,
+          lastAttempt: new Date()
+        })
+        .where(sql`${syncQueue.id} IN (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})`)
+        .run()
+    }
+
+    return items
   }
 
   peek(count = 10): Array<typeof syncQueue.$inferSelect> {
@@ -104,7 +119,6 @@ export class SyncQueueManager {
     this.db
       .update(syncQueue)
       .set({
-        attempts: sql`${syncQueue.attempts} + 1`,
         lastAttempt: new Date(),
         errorMessage: error
       })
@@ -168,7 +182,7 @@ export class SyncQueueManager {
   private maybeAutoPurge(): void {
     const stats = this.getQueueStats()
     if (stats.deadLetter >= DEAD_LETTER_PURGE_THRESHOLD) {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      const sevenDaysAgo = new Date(Date.now() - ERROR_RETENTION_DAYS * 24 * 60 * 60 * 1000)
       this.purgeOldErrors(sevenDaysAgo)
     }
   }
