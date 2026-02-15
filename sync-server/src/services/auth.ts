@@ -22,7 +22,7 @@ const signToken = async (
   privateKey: CryptoKey,
   expiry: string
 ): Promise<string> =>
-  new SignJWT(claims)
+  new SignJWT({ jti: crypto.randomUUID(), ...claims })
     .setProtectedHeader({ alg: ALGORITHM })
     .setIssuedAt()
     .setIssuer(ISSUER)
@@ -76,6 +76,36 @@ export const issueTokens = async (
 
 const ROTATION_GRACE_SECONDS = 60
 
+const tryRotateBatch = async (
+  db: D1Database,
+  revokeId: string,
+  userId: string,
+  deviceId: string,
+  newHash: string,
+  expiresAt: number,
+  nowEpoch: number
+): Promise<boolean> => {
+  try {
+    await db.batch([
+      db
+        .prepare('UPDATE refresh_tokens SET revoked = 1, rotated_at = ? WHERE id = ?')
+        .bind(nowEpoch, revokeId),
+      db
+        .prepare(
+          'INSERT INTO refresh_tokens (id, user_id, device_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+        )
+        .bind(crypto.randomUUID(), userId, deviceId, newHash, expiresAt, nowEpoch)
+    ])
+    return true
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (message.includes('UNIQUE constraint failed') || message.includes('SQLITE_CONSTRAINT')) {
+      return false
+    }
+    throw err
+  }
+}
+
 export const rotateRefreshToken = async (
   db: D1Database,
   oldToken: string,
@@ -110,32 +140,18 @@ export const rotateRefreshToken = async (
         .first<{ id: string }>()
 
       if (current) {
-        const privateKey = await getPrivateKey(privateKeyPem)
-        const accessToken = await signToken(
-          { sub: userId, device_id: deviceId, type: 'access' },
-          privateKey,
-          ACCESS_TOKEN_EXPIRY
-        )
-        const refreshToken = await signToken(
-          { sub: userId, device_id: deviceId, type: 'refresh' },
-          privateKey,
-          REFRESH_TOKEN_EXPIRY
-        )
-        const newHash = await hashToken(refreshToken)
+        const tokens = await generateTokens(userId, deviceId, privateKeyPem)
+        const newHash = await hashToken(tokens.refreshToken)
         const expiresAt = nowEpoch + 7 * 24 * 60 * 60
 
-        await db.batch([
-          db
-            .prepare('UPDATE refresh_tokens SET revoked = 1, rotated_at = ? WHERE id = ?')
-            .bind(nowEpoch, current.id),
-          db
-            .prepare(
-              'INSERT INTO refresh_tokens (id, user_id, device_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)'
-            )
-            .bind(crypto.randomUUID(), userId, deviceId, newHash, expiresAt, nowEpoch)
-        ])
+        const inserted = await tryRotateBatch(
+          db, current.id, userId, deviceId, newHash, expiresAt, nowEpoch
+        )
+        if (!inserted) {
+          return generateTokens(userId, deviceId, privateKeyPem)
+        }
 
-        return { accessToken, refreshToken }
+        return tokens
       }
     }
 
@@ -151,16 +167,12 @@ export const rotateRefreshToken = async (
   const newHash = await hashToken(tokens.refreshToken)
   const expiresAt = nowEpoch + 7 * 24 * 60 * 60
 
-  await db.batch([
-    db
-      .prepare('UPDATE refresh_tokens SET revoked = 1, rotated_at = ? WHERE id = ?')
-      .bind(nowEpoch, existing.id),
-    db
-      .prepare(
-        'INSERT INTO refresh_tokens (id, user_id, device_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)'
-      )
-      .bind(crypto.randomUUID(), userId, deviceId, newHash, expiresAt, nowEpoch)
-  ])
+  const inserted = await tryRotateBatch(
+    db, existing.id, userId, deviceId, newHash, expiresAt, nowEpoch
+  )
+  if (!inserted) {
+    return generateTokens(userId, deviceId, privateKeyPem)
+  }
 
   return tokens
 }

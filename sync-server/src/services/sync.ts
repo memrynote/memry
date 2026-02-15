@@ -206,7 +206,7 @@ export const processPushItem = async (
 
     const serverCursor = await getNextCursor(db, userId)
     const now = Math.floor(Date.now() / 1000)
-    const deletedAt = item.operation === 'delete' ? now : null
+    const deletedAt = item.operation === 'delete' ? (item.deletedAt ?? now) : null
     const clockJson = item.clock ? JSON.stringify(item.clock) : null
 
     const existingCreatedAt = existing?.created_at ?? existing?.createdAt ?? now
@@ -570,40 +570,6 @@ export const getItem = async (
     payload,
     serverCursor: row.server_cursor
   }
-}
-
-export const deleteItem = async (
-  db: D1Database,
-  userId: string,
-  deviceId: string,
-  itemId: string
-): Promise<{ serverCursor: number }> => {
-  const existing = await db
-    .prepare('SELECT server_cursor, deleted_at FROM sync_items WHERE user_id = ? AND item_id = ?')
-    .bind(userId, itemId)
-    .first<{ server_cursor: number; deleted_at: number | null }>()
-
-  if (!existing) {
-    throw new AppError(ErrorCodes.SYNC_ITEM_NOT_FOUND, 'Sync item not found', 404)
-  }
-
-  if (existing.deleted_at) {
-    return { serverCursor: existing.server_cursor }
-  }
-
-  const serverCursor = await getNextCursor(db, userId)
-  const now = Math.floor(Date.now() / 1000)
-
-  await db
-    .prepare(
-      `UPDATE sync_items
-       SET deleted_at = ?, server_cursor = ?, updated_at = ?
-       WHERE user_id = ? AND item_id = ?`
-    )
-    .bind(now, serverCursor, now, userId, itemId)
-    .run()
-
-  return { serverCursor }
 }
 
 export { DEFAULT_CHANGES_LIMIT, MAX_CHANGES_LIMIT, MAX_ENCRYPTED_DATA_BYTES }

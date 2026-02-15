@@ -6,7 +6,6 @@ import { AppError, ErrorCodes } from '../lib/errors'
 import { authMiddleware } from '../middleware/auth'
 import { createRateLimiter } from '../middleware/rate-limit'
 import {
-  deleteItem,
   getChanges,
   getItem,
   getManifest,
@@ -22,7 +21,43 @@ export const sync = new Hono<AppContext>()
 
 sync.use('*', authMiddleware)
 
-sync.get('/ws', async (c) => {
+const pushRateLimit = createRateLimiter({
+  keyPrefix: 'sync_push',
+  maxRequests: 60,
+  windowSeconds: 60
+})
+
+const changesRateLimit = createRateLimiter({
+  keyPrefix: 'sync_changes',
+  maxRequests: 60,
+  windowSeconds: 60
+})
+
+const pullRateLimit = createRateLimiter({
+  keyPrefix: 'sync_pull',
+  maxRequests: 30,
+  windowSeconds: 60
+})
+
+const manifestRateLimit = createRateLimiter({
+  keyPrefix: 'sync_manifest',
+  maxRequests: 10,
+  windowSeconds: 60
+})
+
+const statusRateLimit = createRateLimiter({
+  keyPrefix: 'sync_status',
+  maxRequests: 60,
+  windowSeconds: 60
+})
+
+const wsRateLimit = createRateLimiter({
+  keyPrefix: 'sync_ws',
+  maxRequests: 5,
+  windowSeconds: 60
+})
+
+sync.get('/ws', wsRateLimit, async (c) => {
   if (c.req.header('Upgrade') !== 'websocket') {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Expected WebSocket upgrade', 426)
   }
@@ -36,26 +71,20 @@ sync.get('/ws', async (c) => {
   )
 })
 
-const pushRateLimit = createRateLimiter({
-  keyPrefix: 'sync_push',
-  maxRequests: 60,
-  windowSeconds: 60
-})
-
-sync.get('/status', async (c) => {
+sync.get('/status', statusRateLimit, async (c) => {
   const userId = c.get('userId')!
   const deviceId = c.get('deviceId')!
   const status = await getSyncStatus(c.env.DB, userId, deviceId)
   return c.json(status)
 })
 
-sync.get('/manifest', async (c) => {
+sync.get('/manifest', manifestRateLimit, async (c) => {
   const userId = c.get('userId')!
   const manifest = await getManifest(c.env.DB, userId)
   return c.json(manifest)
 })
 
-sync.get('/changes', async (c) => {
+sync.get('/changes', changesRateLimit, async (c) => {
   const userId = c.get('userId')!
   const deviceId = c.get('deviceId')!
 
@@ -142,7 +171,7 @@ sync.post('/push', pushRateLimit, async (c) => {
   })
 })
 
-sync.post('/pull', async (c) => {
+sync.post('/pull', pullRateLimit, async (c) => {
   const userId = c.get('userId')!
 
   const body: unknown = await c.req.json()
@@ -172,30 +201,3 @@ sync.get('/items/:id', async (c) => {
   return c.json(item)
 })
 
-sync.delete('/items/:id', async (c) => {
-  const userId = c.get('userId')!
-  const deviceId = c.get('deviceId')!
-  const itemId = c.req.param('id')
-
-  const parseResult = z.string().uuid().safeParse(itemId)
-  if (!parseResult.success) {
-    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid item ID format', 400)
-  }
-
-  const result = await deleteItem(c.env.DB, userId, deviceId, itemId)
-  await updateDeviceCursor(c.env.DB, deviceId, userId, result.serverCursor)
-
-  const doId = c.env.USER_SYNC_STATE.idFromName(userId)
-  const stub = c.env.USER_SYNC_STATE.get(doId)
-  c.executionCtx.waitUntil(
-    stub.fetch(
-      new Request(new URL('/broadcast', c.req.url), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ excludeDeviceId: deviceId, cursor: result.serverCursor })
-      })
-    )
-  )
-
-  return c.json(result)
-})

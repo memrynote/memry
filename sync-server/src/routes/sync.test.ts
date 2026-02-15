@@ -33,7 +33,6 @@ vi.mock('../services/sync', () => ({
     payload: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
     serverCursor: 1
   }),
-  deleteItem: vi.fn().mockResolvedValue({ serverCursor: 1 }),
   updateDeviceCursor: vi.fn().mockResolvedValue(undefined)
 }))
 
@@ -65,7 +64,6 @@ import {
   processPushItem,
   pullItems,
   getItem,
-  deleteItem,
   updateDeviceCursor
 } from '../services/sync'
 import { authMiddleware } from '../middleware/auth'
@@ -605,48 +603,4 @@ describe('sync routes', () => {
     })
   })
 
-  // ==========================================================================
-  // DELETE /sync/items/:id
-  // ==========================================================================
-
-  describe('DELETE /sync/items/:id', () => {
-    it('should return 200 with serverCursor', async () => {
-      // #when
-      const res = await app.request(
-        `/sync/items/${VALID_UUID}`,
-        { method: 'DELETE' },
-        env,
-        executionCtx
-      )
-
-      // #then
-      expect(res.status).toBe(200)
-      const json = await res.json()
-      expect(json).toEqual({ serverCursor: 1 })
-    })
-
-    it('should call deleteItem and updateDeviceCursor', async () => {
-      // #when
-      await app.request(`/sync/items/${VALID_UUID}`, { method: 'DELETE' }, env, executionCtx)
-
-      // #then
-      expect(deleteItem).toHaveBeenCalledWith(env.DB, 'user-1', 'device-1', VALID_UUID)
-      expect(updateDeviceCursor).toHaveBeenCalledWith(env.DB, 'device-1', 'user-1', 1)
-    })
-
-    it('should return 400 for non-UUID id', async () => {
-      // #when
-      const res = await app.request(
-        '/sync/items/not-a-uuid',
-        { method: 'DELETE' },
-        env,
-        executionCtx
-      )
-
-      // #then
-      expect(res.status).toBe(400)
-      const json = (await res.json()) as { error: { code: string } }
-      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
-    })
-  })
 })

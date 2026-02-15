@@ -61,6 +61,19 @@ export class UserSyncState extends DurableObject<Bindings> {
       )
     }
 
+    const device = await this.env.DB.prepare(
+      'SELECT revoked_at FROM devices WHERE id = ? AND user_id = ?'
+    )
+      .bind(claims.deviceId, claims.userId)
+      .first<{ revoked_at: number | null }>()
+
+    if (!device || device.revoked_at) {
+      return Response.json(
+        { error: { code: ErrorCodes.AUTH_DEVICE_REVOKED, message: 'Device revoked' } },
+        { status: 403 }
+      )
+    }
+
     const tag = `device:${claims.deviceId}`
     const existingSockets = this.ctx.getWebSockets(tag)
     for (const existing of existingSockets) {
