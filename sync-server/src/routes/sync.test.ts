@@ -543,9 +543,9 @@ describe('sync routes', () => {
       expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
     })
 
-    it('should return 400 for non-UUID item IDs', async () => {
+    it('should accept non-UUID item IDs (nanoid format)', async () => {
       // #given
-      const body = { itemIds: ['not-a-uuid'] }
+      const body = { itemIds: ['V1StGXR8_Z5jdHi6B-myT'] }
 
       // #when
       const res = await app.request(
@@ -556,9 +556,7 @@ describe('sync routes', () => {
       )
 
       // #then
-      expect(res.status).toBe(400)
-      const json = (await res.json()) as { error: { code: string } }
-      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+      expect(res.status).toBe(200)
     })
   })
 

@@ -212,7 +212,7 @@ export const PushResponseSchema = z.object({
 })
 
 export const PullRequestSchema = z.object({
-  itemIds: z.array(z.string().uuid()).min(1).max(100)
+  itemIds: z.array(z.string().min(1)).min(1).max(100)
 })
 
 export const SyncItemRefSchema = z.object({
