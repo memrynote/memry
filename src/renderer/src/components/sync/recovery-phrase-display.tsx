@@ -23,7 +23,7 @@ export function RecoveryPhraseDisplay({
     return () => {
       if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current)
       if (clipboardClearTimerRef.current) clearTimeout(clipboardClearTimerRef.current)
-      void navigator.clipboard.writeText('')
+      navigator.clipboard.writeText('').catch(() => {})
     }
   }, [])
 
@@ -37,7 +37,7 @@ export function RecoveryPhraseDisplay({
 
       if (clipboardClearTimerRef.current) clearTimeout(clipboardClearTimerRef.current)
       clipboardClearTimerRef.current = setTimeout(() => {
-        void navigator.clipboard.writeText('')
+        navigator.clipboard.writeText('').catch(() => {})
       }, CLIPBOARD_CLEAR_DELAY_MS)
     } catch {
       setCopied(false)
