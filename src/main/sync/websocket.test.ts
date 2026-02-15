@@ -16,6 +16,7 @@ const { MockWebSocket, getInstances, resetInstances } = vi.hoisted(() => {
       this.readyState = MockWS.CLOSED
     })
     close = vi.fn()
+    send = vi.fn()
 
     constructor(
       public url: string,
@@ -32,6 +33,10 @@ const { MockWebSocket, getInstances, resetInstances } = vi.hoisted(() => {
 
     simulateMessage(data: Record<string, unknown>): void {
       this.emit('message', JSON.stringify(data))
+    }
+
+    simulateTextMessage(text: string): void {
+      this.emit('message', text)
     }
 
     simulatePing(): void {
@@ -281,6 +286,67 @@ describe('WebSocketManager', () => {
       await manager.connect()
 
       expect(getInstances().length).toBe(1)
+    })
+  })
+
+  describe('#given connected WebSocket #when ping interval fires', () => {
+    it('#then sends text ping every 25s', async () => {
+      const manager = new WebSocketManager(createMockDeps())
+      await manager.connect()
+      const ws = lastWs()
+      ws.simulateOpen()
+
+      await vi.advanceTimersByTimeAsync(25_000)
+
+      expect(ws.send).toHaveBeenCalledWith('ping')
+      expect(ws.send).toHaveBeenCalledTimes(1)
+
+      ws.simulateTextMessage('pong')
+      await vi.advanceTimersByTimeAsync(25_000)
+
+      expect(ws.send).toHaveBeenCalledTimes(2)
+    })
+
+    it('#then keeps connection alive when server responds with pong', async () => {
+      const manager = new WebSocketManager(createMockDeps())
+      await manager.connect()
+      const ws = lastWs()
+      ws.simulateOpen()
+
+      await vi.advanceTimersByTimeAsync(25_000)
+      ws.simulateTextMessage('pong')
+      await vi.advanceTimersByTimeAsync(25_000)
+      ws.simulateTextMessage('pong')
+      await vi.advanceTimersByTimeAsync(25_000)
+
+      expect(ws.terminate).not.toHaveBeenCalled()
+    })
+
+    it('#then does not emit message event for pong responses', async () => {
+      const manager = new WebSocketManager(createMockDeps())
+      const spy = vi.fn()
+      manager.on('message', spy)
+
+      await manager.connect()
+      const ws = lastWs()
+      ws.simulateOpen()
+
+      ws.simulateTextMessage('pong')
+
+      expect(spy).not.toHaveBeenCalled()
+    })
+
+    it('#then stops ping timer on disconnect', async () => {
+      const manager = new WebSocketManager(createMockDeps())
+      await manager.connect()
+      const ws = lastWs()
+      ws.simulateOpen()
+
+      manager.disconnect()
+
+      ws.send.mockClear()
+      await vi.advanceTimersByTimeAsync(50_000)
+      expect(ws.send).not.toHaveBeenCalled()
     })
   })
 })
