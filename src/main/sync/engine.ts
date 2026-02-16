@@ -374,6 +374,12 @@ export class SyncEngine extends EventEmitter {
             receivedCount: parsed.data.items.length
           })
 
+          const signerIds = new Set(parsed.data.items.map((i) => i.signerDeviceId))
+          for (const sid of signerIds) {
+            await this.deps.getDevicePublicKey(sid)
+          }
+          log.debug('Pull: device keys prefetched', { signerCount: signerIds.size })
+
           let pageApplied = 0
           let pageSkipped = 0
           let pageFailed = 0
@@ -396,6 +402,15 @@ export class SyncEngine extends EventEmitter {
                 pageSkipped++
                 continue
               }
+
+              log.debug('Pull: verifying item', {
+                itemId: item.id,
+                signerDeviceId: item.signerDeviceId,
+                operation: item.operation,
+                cryptoVersion: item.cryptoVersion,
+                hasMetadata: !!(item.clock || item.stateVector),
+                signaturePrefix: item.signature.slice(0, 8)
+              })
 
               const decrypted = decryptItemFromPull({
                 id: item.id,

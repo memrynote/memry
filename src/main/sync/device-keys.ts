@@ -20,9 +20,11 @@ export async function getDeviceSigningKey(
     .get()
 
   if (row?.signingPublicKey) {
+    log.debug('Device key resolved from local cache', { deviceId })
     return sodium.from_base64(row.signingPublicKey, sodium.base64_variants.ORIGINAL)
   }
 
+  log.debug('Device key not in local cache, fetching from server', { deviceId })
   await fetchAndCacheDeviceKeys(db, accessToken)
 
   const refreshed = db
@@ -32,6 +34,7 @@ export async function getDeviceSigningKey(
     .get()
 
   if (refreshed?.signingPublicKey) {
+    log.debug('Device key resolved after server fetch', { deviceId })
     return sodium.from_base64(refreshed.signingPublicKey, sodium.base64_variants.ORIGINAL)
   }
 
