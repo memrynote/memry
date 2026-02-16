@@ -24,12 +24,26 @@ interface ManifestCheckDeps {
   lastCheckAt?: number
 }
 
-export async function checkManifestIntegrity(deps: ManifestCheckDeps): Promise<number> {
+export interface ManifestCheckResult {
+  checkedAt: number
+  rePullNeeded: boolean
+  serverOnlyCount: number
+}
+
+export async function checkManifestIntegrity(
+  deps: ManifestCheckDeps
+): Promise<ManifestCheckResult> {
   const now = Date.now()
-  if (now - (deps.lastCheckAt ?? 0) < MIN_INTERVAL_MS) return deps.lastCheckAt ?? 0
+  const noAction: ManifestCheckResult = {
+    checkedAt: deps.lastCheckAt ?? 0,
+    rePullNeeded: false,
+    serverOnlyCount: 0
+  }
+
+  if (now - (deps.lastCheckAt ?? 0) < MIN_INTERVAL_MS) return noAction
 
   const token = await deps.getAccessToken()
-  if (!token) return now
+  if (!token) return { checkedAt: now, rePullNeeded: false, serverOnlyCount: 0 }
 
   try {
     const result = await withRetry(() => getFromServer<SyncManifest>('/sync/manifest', token), {
@@ -39,7 +53,6 @@ export async function checkManifestIntegrity(deps: ManifestCheckDeps): Promise<n
     const serverItemMap = new Map(result.value.items.map((item) => [item.id, item]))
 
     const localItems = getLocalSyncableItems(deps.db)
-    if (localItems.length === 0) return
 
     let reEnqueuedCount = 0
     for (const local of localItems) {
@@ -66,7 +79,7 @@ export async function checkManifestIntegrity(deps: ManifestCheckDeps): Promise<n
       (item) => !localItems.some((l) => l.id === item.id)
     )
     if (serverOnlyIds.length > 0) {
-      log.warn('Server has items not found locally, may need re-pull', {
+      log.warn('Server has items not found locally, will trigger re-pull', {
         count: serverOnlyIds.length
       })
     }
@@ -74,11 +87,16 @@ export async function checkManifestIntegrity(deps: ManifestCheckDeps): Promise<n
     if (reEnqueuedCount > 0) {
       log.info('Manifest check complete', { reEnqueued: reEnqueuedCount })
     }
+
+    return {
+      checkedAt: now,
+      rePullNeeded: serverOnlyIds.length > 0,
+      serverOnlyCount: serverOnlyIds.length
+    }
   } catch (err) {
     log.error('Manifest integrity check failed', err)
+    return { checkedAt: now, rePullNeeded: false, serverOnlyCount: 0 }
   }
-
-  return now
 }
 
 interface LocalSyncableItem {
