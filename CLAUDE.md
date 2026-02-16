@@ -50,10 +50,10 @@ Electron app with 3 process layers:
 
 ### Two SQLite Databases (Drizzle ORM)
 
-| Database | Config | Purpose | FK enforcement |
-|----------|--------|---------|----------------|
-| `data.db` | `drizzle-data.config.ts` | Source of truth (tasks, projects, settings, sync) | Yes (CASCADE/SET NULL) |
-| `index.db` | `drizzle-index.config.ts` | Rebuildable cache (note search, FTS, embeddings) | No (safe to delete & rebuild) |
+| Database   | Config                    | Purpose                                           | FK enforcement                |
+| ---------- | ------------------------- | ------------------------------------------------- | ----------------------------- |
+| `data.db`  | `drizzle-data.config.ts`  | Source of truth (tasks, projects, settings, sync) | Yes (CASCADE/SET NULL)        |
+| `index.db` | `drizzle-index.config.ts` | Rebuildable cache (note search, FTS, embeddings)  | No (safe to delete & rebuild) |
 
 Schemas live in `src/shared/db/schema/`. Migrations in `src/main/database/drizzle-data/` and `drizzle-index/`. Both run automatically on app startup.
 
@@ -127,7 +127,7 @@ Use **electron-log** with scoped loggers everywhere. Never use raw `console.*`.
 ### Main Process
 
 ```typescript
-import { createLogger } from '../lib/logger'  // src/main/lib/logger.ts
+import { createLogger } from '../lib/logger' // src/main/lib/logger.ts
 const log = createLogger('Notes')
 
 log.info('note created', { id })
@@ -139,7 +139,7 @@ Config: 5MB file rotation, format `{y}-{m}-{d} {h}:{i}:{s}.{ms} [{level}] [{scop
 ### Renderer Process
 
 ```typescript
-import { createLogger } from '@/lib/logger'  // src/renderer/src/lib/logger.ts
+import { createLogger } from '@/lib/logger' // src/renderer/src/lib/logger.ts
 const log = createLogger('EditorComponent')
 ```
 
@@ -173,7 +173,8 @@ All IPC handlers go through `src/main/ipc/validate.ts`:
 
 ```typescript
 // createValidatedHandler: Zod-validates input, catches + logs errors, re-throws clean message
-ipcMain.handle('notes:create',
+ipcMain.handle(
+  'notes:create',
   createValidatedHandler(NoteCreateSchema, async (input) => notesService.create(input))
 )
 
@@ -194,7 +195,7 @@ try {
   await window.api.notes.create(data)
 } catch (err) {
   const message = extractErrorMessage(err, 'Failed to create note')
-  toast.error(message)  // Shows "Invalid OTP" not the full wrapped string
+  toast.error(message) // Shows "Invalid OTP" not the full wrapped string
 }
 ```
 

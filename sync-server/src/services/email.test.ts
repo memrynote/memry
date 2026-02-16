@@ -40,12 +40,12 @@ describe('email service', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(sendEmail('user@example.com', 'Hello', '<p>Hi</p>', 'api-key')).rejects.toMatchObject(
-      {
-        code: ErrorCodes.INTERNAL_ERROR,
-        statusCode: 500
-      }
-    )
+    await expect(
+      sendEmail('user@example.com', 'Hello', '<p>Hi</p>', 'api-key')
+    ).rejects.toMatchObject({
+      code: ErrorCodes.INTERNAL_ERROR,
+      statusCode: 500
+    })
     expect(errorSpy).toHaveBeenCalledWith('Resend API error: 500 server error')
   })
 
@@ -56,12 +56,12 @@ describe('email service', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(sendEmail('user@example.com', 'Hello', '<p>Hi</p>', 'api-key')).rejects.toMatchObject(
-      {
-        code: ErrorCodes.INTERNAL_ERROR,
-        statusCode: 500
-      }
-    )
+    await expect(
+      sendEmail('user@example.com', 'Hello', '<p>Hi</p>', 'api-key')
+    ).rejects.toMatchObject({
+      code: ErrorCodes.INTERNAL_ERROR,
+      statusCode: 500
+    })
     expect(errorSpy).toHaveBeenCalledWith('Failed to send email:', 'network down')
   })
 })

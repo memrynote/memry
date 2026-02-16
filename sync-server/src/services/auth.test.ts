@@ -183,7 +183,9 @@ describe('rotateRefreshToken', () => {
       if (query.includes('revoked = 1 AND rotated_at IS NOT NULL')) {
         return selectRecentlyRotatedStmt
       }
-      if (query.includes('UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ? AND device_id = ?')) {
+      if (
+        query.includes('UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ? AND device_id = ?')
+      ) {
         return revokeStmt
       }
       return createMockStatement()
@@ -237,9 +239,7 @@ describe('rotateRefreshToken', () => {
     selectStmt.first.mockResolvedValue({ id: 'token-id-1' })
     db.prepare.mockReturnValueOnce(selectStmt)
 
-    db.batch.mockRejectedValueOnce(
-      new Error('UNIQUE constraint failed: refresh_tokens.token_hash')
-    )
+    db.batch.mockRejectedValueOnce(new Error('UNIQUE constraint failed: refresh_tokens.token_hash'))
 
     // #when
     const result = await rotateRefreshToken(

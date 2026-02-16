@@ -1,9 +1,6 @@
 import { eq, isNull } from 'drizzle-orm'
 import { tasks } from '@shared/db/schema/tasks'
-import {
-  TaskSyncPayloadSchema,
-  type TaskSyncPayload
-} from '@shared/contracts/sync-payloads'
+import { TaskSyncPayloadSchema, type TaskSyncPayload } from '@shared/contracts/sync-payloads'
 import { TasksChannels } from '@shared/ipc-channels'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
@@ -18,7 +15,12 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
   type: 'task',
   schema: TaskSyncPayloadSchema,
 
-  applyUpsert(ctx: ApplyContext, itemId: string, data: TaskSyncPayload, clock: VectorClock): ApplyResult {
+  applyUpsert(
+    ctx: ApplyContext,
+    itemId: string,
+    data: TaskSyncPayload,
+    clock: VectorClock
+  ): ApplyResult {
     return ctx.db.transaction((tx): ApplyResult => {
       const existing = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})

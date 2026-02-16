@@ -19,7 +19,12 @@ import type {
   ResumeSyncResult,
   SyncStatusValue
 } from '@shared/contracts/ipc-sync-ops'
-import type { ChangesResponse, PushResponse, PullItemResponse, SyncItemType } from '@shared/contracts/sync-api'
+import type {
+  ChangesResponse,
+  PushResponse,
+  PullItemResponse,
+  SyncItemType
+} from '@shared/contracts/sync-api'
 import { PullResponseSchema } from '@shared/contracts/sync-api'
 import { SyncQueueManager, ERROR_RETENTION_DAYS, type QueueStats } from './queue'
 import { NetworkMonitor } from './network'
@@ -347,8 +352,7 @@ export class SyncEngine extends EventEmitter {
         )
         if (itemIds.length > 0) {
           const pullResult = await withRetry(
-            () =>
-              postToServer<{ items: PullItemResponse[] }>('/sync/pull', { itemIds }, token),
+            () => postToServer<{ items: PullItemResponse[] }>('/sync/pull', { itemIds }, token),
             { signal: this.abortController.signal, isOnline: () => this.deps.network.online }
           )
 
@@ -358,7 +362,6 @@ export class SyncEngine extends EventEmitter {
             break
           }
 
-          let hasSkippedSigners = false
           for (const item of parsed.data.items) {
             if (processedIds.has(item.id)) {
               log.debug('Skipping duplicate item in pull', { itemId: item.id })
@@ -366,11 +369,10 @@ export class SyncEngine extends EventEmitter {
             }
             const signerPubKey = await this.deps.getDevicePublicKey(item.signerDeviceId)
             if (!signerPubKey) {
-              log.warn('Unknown signer device, deferring item', {
+              log.warn('Skipping item from unresolvable signer device', {
                 itemId: item.id,
                 signerDeviceId: item.signerDeviceId
               })
-              hasSkippedSigners = true
               continue
             }
 
@@ -442,10 +444,6 @@ export class SyncEngine extends EventEmitter {
           }
         }
 
-        if (hasSkippedSigners) {
-          log.warn('Stopping pull pagination: items with unknown signers need retry')
-          break
-        }
         this.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(changes.nextCursor))
         cursor = String(changes.nextCursor)
         hasMore = changes.hasMore
@@ -505,7 +503,9 @@ export class SyncEngine extends EventEmitter {
         log.debug('fullSync: follow-up push complete')
       }
 
-      this.deps.queue.purgeOldErrors(new Date(Date.now() - ERROR_RETENTION_DAYS * 24 * 60 * 60 * 1000))
+      this.deps.queue.purgeOldErrors(
+        new Date(Date.now() - ERROR_RETENTION_DAYS * 24 * 60 * 60 * 1000)
+      )
     } finally {
       this.fullSyncActive = false
     }
@@ -764,4 +764,3 @@ export class SyncEngine extends EventEmitter {
     }
   }
 }
-

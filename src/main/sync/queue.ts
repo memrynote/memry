@@ -95,7 +95,12 @@ export class SyncQueueManager {
           attempts: sql`${syncQueue.attempts} + 1`,
           lastAttempt: new Date()
         })
-        .where(sql`${syncQueue.id} IN (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})`)
+        .where(
+          sql`${syncQueue.id} IN (${sql.join(
+            ids.map((id) => sql`${id}`),
+            sql`, `
+          )})`
+        )
         .run()
     }
 

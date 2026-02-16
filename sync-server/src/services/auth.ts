@@ -145,7 +145,13 @@ export const rotateRefreshToken = async (
         const expiresAt = nowEpoch + 7 * 24 * 60 * 60
 
         const inserted = await tryRotateBatch(
-          db, current.id, userId, deviceId, newHash, expiresAt, nowEpoch
+          db,
+          current.id,
+          userId,
+          deviceId,
+          newHash,
+          expiresAt,
+          nowEpoch
         )
         if (!inserted) {
           return generateTokens(userId, deviceId, privateKeyPem)
@@ -168,7 +174,13 @@ export const rotateRefreshToken = async (
   const expiresAt = nowEpoch + 7 * 24 * 60 * 60
 
   const inserted = await tryRotateBatch(
-    db, existing.id, userId, deviceId, newHash, expiresAt, nowEpoch
+    db,
+    existing.id,
+    userId,
+    deviceId,
+    newHash,
+    expiresAt,
+    nowEpoch
   )
   if (!inserted) {
     return generateTokens(userId, deviceId, privateKeyPem)

@@ -1,9 +1,6 @@
 import { eq, isNull, and, not } from 'drizzle-orm'
 import { inboxItems } from '@shared/db/schema/inbox'
-import {
-  InboxSyncPayloadSchema,
-  type InboxSyncPayload
-} from '@shared/contracts/sync-payloads'
+import { InboxSyncPayloadSchema, type InboxSyncPayload } from '@shared/contracts/sync-payloads'
 import { InboxChannels } from '@shared/ipc-channels'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
