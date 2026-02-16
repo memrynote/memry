@@ -647,6 +647,7 @@ describe('pullItems', () => {
           item_type: 'task',
           blob_key: 'user-1/items/item-1',
           crypto_version: 1,
+          operation: 'delete',
           signer_device_id: 'device-1',
           signature: 'sig-1',
           state_vector: 'sv-1',
@@ -684,6 +685,46 @@ describe('pullItems', () => {
         blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' }
       }
     ])
+  })
+
+  it('should preserve original operation from storage (create stays create)', async () => {
+    // #given — item stored with operation: 'create'
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({
+      results: [
+        {
+          item_id: 'item-2',
+          item_type: 'note',
+          blob_key: 'user-1/items/item-2',
+          crypto_version: 1,
+          operation: 'create',
+          signer_device_id: 'device-1',
+          signature: 'sig-2',
+          state_vector: null,
+          clock: null,
+          deleted_at: null,
+          server_cursor: 5
+        }
+      ]
+    })
+    db.prepare.mockReturnValue(stmt)
+    vi.mocked(getBlob).mockResolvedValue({
+      body: JSON.stringify({
+        encryptedKey: 'ek2',
+        keyNonce: 'kn2',
+        encryptedData: 'ed2',
+        dataNonce: 'dn2'
+      })
+    } as unknown as R2ObjectBody)
+
+    // #when
+    const result = await pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', [
+      'item-2'
+    ])
+
+    // #then — operation must be 'create', not hardcoded 'update'
+    expect(result[0].operation).toBe('create')
+    expect(result[0].id).toBe('item-2')
   })
 })
 
@@ -842,6 +883,6 @@ describe('processPushItem', () => {
     expect(result.accepted).toBe(true)
     expect(upsertStmt.bind).toHaveBeenCalled()
     const bindArgs = upsertStmt.bind.mock.calls[0]
-    expect(bindArgs[14]).toBe(123456)
+    expect(bindArgs[15]).toBe(123456)
   })
 })

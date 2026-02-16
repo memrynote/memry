@@ -215,15 +215,16 @@ export const processPushItem = async (
       .prepare(
         `INSERT INTO sync_items (
           id, user_id, item_type, item_id, blob_key, size_bytes, content_hash,
-          version, crypto_version, server_cursor, signer_device_id, signature,
+          version, crypto_version, operation, server_cursor, signer_device_id, signature,
           state_vector, clock, created_at, updated_at, deleted_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (user_id, item_type, item_id) DO UPDATE SET
           blob_key = excluded.blob_key,
           size_bytes = excluded.size_bytes,
           content_hash = excluded.content_hash,
           version = excluded.version,
           crypto_version = excluded.crypto_version,
+          operation = excluded.operation,
           server_cursor = excluded.server_cursor,
           signer_device_id = excluded.signer_device_id,
           signature = excluded.signature,
@@ -242,6 +243,7 @@ export const processPushItem = async (
         contentHash,
         version,
         CRYPTO_VERSION,
+        item.operation,
         serverCursor,
         item.signerDeviceId,
         item.signature,
@@ -409,7 +411,7 @@ export const pullItems = async (
   Array<{
     id: string
     type: string
-    operation: 'update' | 'delete'
+    operation: string
     cryptoVersion: number
     signature: string
     signerDeviceId: string
@@ -426,7 +428,7 @@ export const pullItems = async (
   const placeholders = itemIds.map(() => '?').join(', ')
   const rows = await db
     .prepare(
-      `SELECT item_id, item_type, blob_key, crypto_version, signer_device_id, signature,
+      `SELECT item_id, item_type, blob_key, crypto_version, operation, signer_device_id, signature,
               state_vector, clock, deleted_at, server_cursor
        FROM sync_items
        WHERE user_id = ? AND item_id IN (${placeholders})
@@ -438,6 +440,7 @@ export const pullItems = async (
       item_type: string
       blob_key: string
       crypto_version: number
+      operation: string
       signer_device_id: string | null
       signature: string | null
       state_vector: string | null
@@ -449,7 +452,7 @@ export const pullItems = async (
   const results: Array<{
     id: string
     type: string
-    operation: 'update' | 'delete'
+    operation: string
     cryptoVersion: number
     signature: string
     signerDeviceId: string
@@ -505,7 +508,7 @@ export const pullItems = async (
     results.push({
       id: row.item_id,
       type: row.item_type,
-      operation: row.deleted_at ? 'delete' : 'update',
+      operation: row.operation,
       cryptoVersion: row.crypto_version,
       signature: row.signature,
       signerDeviceId: row.signer_device_id,

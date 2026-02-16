@@ -411,7 +411,10 @@ export class SyncEngine extends EventEmitter {
                 deletedAt: item.deletedAt,
                 metadata:
                   item.clock || item.stateVector
-                    ? { clock: item.clock, stateVector: item.stateVector }
+                    ? {
+                        ...(item.clock ? { clock: item.clock } : {}),
+                        ...(item.stateVector ? { stateVector: item.stateVector } : {})
+                      }
                     : undefined,
                 vaultKey,
                 signerPublicKey: signerPubKey

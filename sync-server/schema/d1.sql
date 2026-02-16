@@ -145,6 +145,7 @@ CREATE TABLE sync_items (
   content_hash TEXT NOT NULL,
   version INTEGER NOT NULL DEFAULT 1,
   crypto_version INTEGER NOT NULL DEFAULT 1,
+  operation TEXT NOT NULL DEFAULT 'update',
   clock TEXT,
   state_vector TEXT,
   deleted_at INTEGER,
