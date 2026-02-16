@@ -13,6 +13,7 @@ import { initTaskSyncService, resetTaskSyncService } from './task-sync'
 import { initInboxSyncService, resetInboxSyncService } from './inbox-sync'
 import { initFilterSyncService, resetFilterSyncService } from './filter-sync'
 import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
+import { getDeviceSigningKey } from './device-keys'
 
 const log = createLogger('SyncRuntime')
 
@@ -105,17 +106,20 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         },
         getDevicePublicKey: async (deviceId) => {
           const currentDeviceId = getCurrentDeviceId(db)
-          if (!currentDeviceId || deviceId !== currentDeviceId) {
-            return null
+
+          if (currentDeviceId && deviceId === currentDeviceId) {
+            const secretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
+            if (!secretKey) return null
+            try {
+              return deriveDevicePublicKey(secretKey)
+            } finally {
+              secureCleanup(secretKey)
+            }
           }
 
-          const secretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
-          if (!secretKey) return null
-          try {
-            return deriveDevicePublicKey(secretKey)
-          } finally {
-            secureCleanup(secretKey)
-          }
+          const token = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
+          if (!token) return null
+          return getDeviceSigningKey(engineDb, deviceId, token)
         },
         emitToRenderer: (channel, data) => {
           for (const win of BrowserWindow.getAllWindows()) {

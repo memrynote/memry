@@ -442,6 +442,9 @@ const persistKeysAndRegisterDevice = async (
   await db
     .delete(syncState)
     .where(inArray(syncState.key, ['lastCursor', 'lastSyncAt', 'initialSeedDone', 'syncPaused']))
+  const pubKey = getDevicePublicKey(signingSecretKey)
+  const pubKeyBase64 = sodium.to_base64(pubKey, sodium.base64_variants.ORIGINAL)
+
   await db.insert(syncDevices).values({
     id: deviceResponse.deviceId,
     name: os.hostname(),
@@ -449,7 +452,8 @@ const persistKeysAndRegisterDevice = async (
     osVersion: os.release(),
     appVersion: app.getVersion(),
     linkedAt: new Date(),
-    isCurrentDevice: true
+    isCurrentDevice: true,
+    signingPublicKey: pubKeyBase64
   })
 
   if (!skipActivation) {

@@ -2179,7 +2179,9 @@ interface SyncOpsClientAPI {
     fieldPath: string,
     value: unknown
   ) => Promise<{ success: boolean; error?: string }>
-  getSyncedSettings: () => Promise<import('../shared/contracts/settings-sync').SyncedSettings | null>
+  getSyncedSettings: () => Promise<
+    import('../shared/contracts/settings-sync').SyncedSettings | null
+  >
 }
 
 // Crypto API

@@ -1626,4 +1626,64 @@ describe('SyncEngine', () => {
       vi.restoreAllMocks()
     })
   })
+
+  describe('#given pull with unknown signer device #when pull called', () => {
+    it('#then skips unknown signer items but continues pagination', async () => {
+      const deps = createMockDeps(testDb, {
+        getDevicePublicKey: vi.fn().mockImplementation(async (deviceId: string) => {
+          if (deviceId === 'device-1') return new Uint8Array(32)
+          return null
+        })
+      })
+      const engine = new SyncEngine(deps)
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [
+          { id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 10 },
+          { id: 'task-2', type: 'task', version: 1, modifiedAt: 1001, size: 10 }
+        ],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 2
+      })
+
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        items: [
+          {
+            id: 'task-1',
+            type: 'task',
+            operation: 'create',
+            cryptoVersion: 1,
+            blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+            signature: 'sig',
+            signerDeviceId: 'device-unknown'
+          },
+          {
+            id: 'task-2',
+            type: 'task',
+            operation: 'create',
+            cryptoVersion: 1,
+            blob: { encryptedKey: 'ek2', keyNonce: 'kn2', encryptedData: 'ed2', dataNonce: 'dn2' },
+            signature: 'sig2',
+            signerDeviceId: 'device-1'
+          }
+        ]
+      })
+
+      vi.spyOn(await import('./decrypt'), 'decryptItemFromPull').mockReturnValue({
+        content: new TextEncoder().encode(JSON.stringify({ id: 'task-2' })),
+        verified: true
+      })
+
+      const { ItemApplier } = await import('./apply-item')
+      const applySpy = vi.spyOn(ItemApplier.prototype, 'apply').mockReturnValue('applied')
+
+      await engine.pull()
+
+      expect(applySpy).toHaveBeenCalledTimes(1)
+      expect(applySpy).toHaveBeenCalledWith(expect.objectContaining({ itemId: 'task-2' }))
+
+      vi.restoreAllMocks()
+    })
+  })
 })

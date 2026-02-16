@@ -602,5 +602,4 @@ describe('sync routes', () => {
       expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
     })
   })
-
 })

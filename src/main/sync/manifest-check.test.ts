@@ -37,7 +37,14 @@ describe('checkManifestIntegrity', () => {
       const clock: VectorClock = { 'device-A': 1 }
       testDb.db
         .insert(tasks)
-        .values({ id: 'task-1', projectId: 'proj-1', title: 'Synced Task', priority: 0, position: 0, clock })
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'Synced Task',
+          priority: 0,
+          position: 0,
+          clock
+        })
         .run()
 
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
@@ -71,7 +78,14 @@ describe('checkManifestIntegrity', () => {
       const clock: VectorClock = { 'device-A': 1 }
       testDb.db
         .insert(tasks)
-        .values({ id: 'task-1', projectId: 'proj-1', title: 'Synced', priority: 0, position: 0, clock })
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'Synced',
+          priority: 0,
+          position: 0,
+          clock
+        })
         .run()
 
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
@@ -122,10 +136,12 @@ describe('checkManifestIntegrity', () => {
         .values({ id: 'task-1', projectId: 'proj-1', title: 'T', priority: 0, position: 0, clock })
         .run()
 
-      const getServerSpy = vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
-        items: [{ id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 50 }],
-        serverTime: Math.floor(Date.now() / 1000)
-      })
+      const getServerSpy = vi
+        .spyOn(await import('./http-client'), 'getFromServer')
+        .mockResolvedValue({
+          items: [{ id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 50 }],
+          serverTime: Math.floor(Date.now() / 1000)
+        })
 
       const { checkManifestIntegrity } = await import('./manifest-check')
 

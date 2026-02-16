@@ -119,4 +119,3 @@ export const deleteFromServer = async <T>(
 ): Promise<T> => {
   return syncFetch<T>('DELETE', path, undefined, token, fetchFn)
 }
-

@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "1fa44676-b642-4aa1-9a64-e312e3f39f9d",
-  "prevId": "2bde063d-9255-4c0c-8b24-aa34e8e15675",
+  "id": "fe36dd4c-be9a-4f78-ba89-b33acbbbdc3e",
+  "prevId": "7c1f9336-e830-41a5-b01d-f50b78522ab2",
   "tables": {
     "projects": {
       "name": "projects",
@@ -757,6 +757,28 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "clock": {
+          "name": "clock",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "synced_at": {
+          "name": "synced_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "local_only": {
+          "name": "local_only",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
         }
       },
       "indexes": {
@@ -1047,6 +1069,20 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(datetime('now'))"
+        },
+        "clock": {
+          "name": "clock",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "synced_at": {
+          "name": "synced_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {},
@@ -1423,6 +1459,13 @@
           "notNull": true,
           "autoincrement": false,
           "default": false
+        },
+        "signing_public_key": {
+          "name": "signing_public_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {},

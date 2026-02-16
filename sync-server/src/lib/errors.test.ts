@@ -50,8 +50,6 @@ describe('sync-server error utilities', () => {
         message: 'Internal server error'
       }
     })
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('"code":"UNHANDLED_ERROR"')
-    )
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"code":"UNHANDLED_ERROR"'))
   })
 })

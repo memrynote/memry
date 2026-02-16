@@ -86,14 +86,17 @@ describe('ItemApplier', () => {
 
   describe('#given local task with older clock #when update applied', () => {
     it('#then updates task and emits UPDATED', () => {
-      testDb.db.insert(tasks).values({
-        id: 'task-1',
-        projectId: 'proj-1',
-        title: 'Old Title',
-        priority: 0,
-        position: 0,
-        clock: { 'device-B': 1 } satisfies VectorClock
-      }).run()
+      testDb.db
+        .insert(tasks)
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'Old Title',
+          priority: 0,
+          position: 0,
+          clock: { 'device-B': 1 } satisfies VectorClock
+        })
+        .run()
 
       const result = applier.apply({
         itemId: 'task-1',
@@ -113,14 +116,17 @@ describe('ItemApplier', () => {
 
   describe('#given local task with newer clock #when update applied', () => {
     it('#then skips the update', () => {
-      testDb.db.insert(tasks).values({
-        id: 'task-1',
-        projectId: 'proj-1',
-        title: 'Local Title',
-        priority: 0,
-        position: 0,
-        clock: { 'device-A': 3 } satisfies VectorClock
-      }).run()
+      testDb.db
+        .insert(tasks)
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'Local Title',
+          priority: 0,
+          position: 0,
+          clock: { 'device-A': 3 } satisfies VectorClock
+        })
+        .run()
 
       const result = applier.apply({
         itemId: 'task-1',
@@ -139,14 +145,17 @@ describe('ItemApplier', () => {
 
   describe('#given concurrent clocks #when update applied', () => {
     it('#then applies with merged clock and returns conflict', () => {
-      testDb.db.insert(tasks).values({
-        id: 'task-1',
-        projectId: 'proj-1',
-        title: 'Local Title',
-        priority: 0,
-        position: 0,
-        clock: { 'device-A': 2 } satisfies VectorClock
-      }).run()
+      testDb.db
+        .insert(tasks)
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'Local Title',
+          priority: 0,
+          position: 0,
+          clock: { 'device-A': 2 } satisfies VectorClock
+        })
+        .run()
 
       const result = applier.apply({
         itemId: 'task-1',
@@ -166,13 +175,16 @@ describe('ItemApplier', () => {
 
   describe('#given existing task #when delete applied', () => {
     it('#then removes task and emits DELETED', () => {
-      testDb.db.insert(tasks).values({
-        id: 'task-1',
-        projectId: 'proj-1',
-        title: 'To Delete',
-        priority: 0,
-        position: 0
-      }).run()
+      testDb.db
+        .insert(tasks)
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'To Delete',
+          priority: 0,
+          position: 0
+        })
+        .run()
 
       const result = applier.apply({
         itemId: 'task-1',
@@ -187,10 +199,9 @@ describe('ItemApplier', () => {
       const task = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()
       expect(task).toBeUndefined()
 
-      expect(emitToWindows).toHaveBeenCalledWith(
-        expect.stringContaining('deleted'),
-        { id: 'task-1' }
-      )
+      expect(emitToWindows).toHaveBeenCalledWith(expect.stringContaining('deleted'), {
+        id: 'task-1'
+      })
     })
   })
 
@@ -224,14 +235,17 @@ describe('ItemApplier', () => {
 
   describe('#given local task with newer clock #when delete applied', () => {
     it('#then skips the delete', () => {
-      testDb.db.insert(tasks).values({
-        id: 'task-1',
-        projectId: 'proj-1',
-        title: 'Keep Me',
-        priority: 0,
-        position: 0,
-        clock: { 'device-A': 5 } satisfies VectorClock
-      }).run()
+      testDb.db
+        .insert(tasks)
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'Keep Me',
+          priority: 0,
+          position: 0,
+          clock: { 'device-A': 5 } satisfies VectorClock
+        })
+        .run()
 
       const result = applier.apply({
         itemId: 'task-1',
@@ -280,12 +294,15 @@ describe('ItemApplier', () => {
   describe('#given local inbox with older clock #when update applied', () => {
     it('#then updates inbox item', () => {
       // #given
-      testDb.db.insert(inboxItems).values({
-        id: 'inbox-1',
-        title: 'Old',
-        type: 'note',
-        clock: { 'device-B': 1 } satisfies VectorClock
-      }).run()
+      testDb.db
+        .insert(inboxItems)
+        .values({
+          id: 'inbox-1',
+          title: 'Old',
+          type: 'note',
+          clock: { 'device-B': 1 } satisfies VectorClock
+        })
+        .run()
 
       // #when
       const result = applier.apply({
@@ -305,12 +322,15 @@ describe('ItemApplier', () => {
 
   describe('#given concurrent inbox clocks #when update applied', () => {
     it('#then applies with merged clock and returns conflict', () => {
-      testDb.db.insert(inboxItems).values({
-        id: 'inbox-1',
-        title: 'Local',
-        type: 'note',
-        clock: { 'device-A': 2 } satisfies VectorClock
-      }).run()
+      testDb.db
+        .insert(inboxItems)
+        .values({
+          id: 'inbox-1',
+          title: 'Local',
+          type: 'note',
+          clock: { 'device-A': 2 } satisfies VectorClock
+        })
+        .run()
 
       const result = applier.apply({
         itemId: 'inbox-1',
@@ -328,11 +348,14 @@ describe('ItemApplier', () => {
 
   describe('#given existing inbox item #when delete applied', () => {
     it('#then removes item and emits ARCHIVED', () => {
-      testDb.db.insert(inboxItems).values({
-        id: 'inbox-1',
-        title: 'Delete me',
-        type: 'note'
-      }).run()
+      testDb.db
+        .insert(inboxItems)
+        .values({
+          id: 'inbox-1',
+          title: 'Delete me',
+          type: 'note'
+        })
+        .run()
 
       const result = applier.apply({
         itemId: 'inbox-1',
@@ -350,12 +373,15 @@ describe('ItemApplier', () => {
 
   describe('#given inbox with newer clock #when delete applied', () => {
     it('#then skips the delete', () => {
-      testDb.db.insert(inboxItems).values({
-        id: 'inbox-1',
-        title: 'Keep',
-        type: 'note',
-        clock: { 'device-A': 5 } satisfies VectorClock
-      }).run()
+      testDb.db
+        .insert(inboxItems)
+        .values({
+          id: 'inbox-1',
+          title: 'Keep',
+          type: 'note',
+          clock: { 'device-A': 5 } satisfies VectorClock
+        })
+        .run()
 
       const result = applier.apply({
         itemId: 'inbox-1',
@@ -367,7 +393,9 @@ describe('ItemApplier', () => {
       })
 
       expect(result).toBe('skipped')
-      expect(testDb.db.select().from(inboxItems).where(eq(inboxItems.id, 'inbox-1')).get()).toBeDefined()
+      expect(
+        testDb.db.select().from(inboxItems).where(eq(inboxItems.id, 'inbox-1')).get()
+      ).toBeDefined()
     })
   })
 
@@ -384,7 +412,11 @@ describe('ItemApplier', () => {
       })
 
       expect(result).toBe('applied')
-      const filter = testDb.db.select().from(savedFilters).where(eq(savedFilters.id, 'filter-1')).get()
+      const filter = testDb.db
+        .select()
+        .from(savedFilters)
+        .where(eq(savedFilters.id, 'filter-1'))
+        .get()
       expect(filter).toBeDefined()
       expect(filter!.name).toBe('Remote Filter')
       expect(filter!.clock).toEqual({ 'device-B': 1 })
@@ -398,13 +430,16 @@ describe('ItemApplier', () => {
 
   describe('#given local filter with older clock #when update applied', () => {
     it('#then updates filter', () => {
-      testDb.db.insert(savedFilters).values({
-        id: 'filter-1',
-        name: 'Old',
-        config: {},
-        position: 0,
-        clock: { 'device-B': 1 } satisfies VectorClock
-      }).run()
+      testDb.db
+        .insert(savedFilters)
+        .values({
+          id: 'filter-1',
+          name: 'Old',
+          config: {},
+          position: 0,
+          clock: { 'device-B': 1 } satisfies VectorClock
+        })
+        .run()
 
       const result = applier.apply({
         itemId: 'filter-1',
@@ -415,20 +450,27 @@ describe('ItemApplier', () => {
       })
 
       expect(result).toBe('applied')
-      const filter = testDb.db.select().from(savedFilters).where(eq(savedFilters.id, 'filter-1')).get()
+      const filter = testDb.db
+        .select()
+        .from(savedFilters)
+        .where(eq(savedFilters.id, 'filter-1'))
+        .get()
       expect(filter!.name).toBe('Updated Filter')
     })
   })
 
   describe('#given concurrent filter clocks #when update applied', () => {
     it('#then applies with merged clock and returns conflict', () => {
-      testDb.db.insert(savedFilters).values({
-        id: 'filter-1',
-        name: 'Local',
-        config: {},
-        position: 0,
-        clock: { 'device-A': 2 } satisfies VectorClock
-      }).run()
+      testDb.db
+        .insert(savedFilters)
+        .values({
+          id: 'filter-1',
+          name: 'Local',
+          config: {},
+          position: 0,
+          clock: { 'device-A': 2 } satisfies VectorClock
+        })
+        .run()
 
       const result = applier.apply({
         itemId: 'filter-1',
@@ -439,19 +481,26 @@ describe('ItemApplier', () => {
       })
 
       expect(result).toBe('conflict')
-      const filter = testDb.db.select().from(savedFilters).where(eq(savedFilters.id, 'filter-1')).get()
+      const filter = testDb.db
+        .select()
+        .from(savedFilters)
+        .where(eq(savedFilters.id, 'filter-1'))
+        .get()
       expect(filter!.clock).toEqual({ 'device-A': 2, 'device-B': 2 })
     })
   })
 
   describe('#given existing filter #when delete applied', () => {
     it('#then removes filter and emits DELETED', () => {
-      testDb.db.insert(savedFilters).values({
-        id: 'filter-1',
-        name: 'Delete Me',
-        config: {},
-        position: 0
-      }).run()
+      testDb.db
+        .insert(savedFilters)
+        .values({
+          id: 'filter-1',
+          name: 'Delete Me',
+          config: {},
+          position: 0
+        })
+        .run()
 
       const result = applier.apply({
         itemId: 'filter-1',
@@ -462,19 +511,24 @@ describe('ItemApplier', () => {
       })
 
       expect(result).toBe('applied')
-      expect(testDb.db.select().from(savedFilters).where(eq(savedFilters.id, 'filter-1')).get()).toBeUndefined()
+      expect(
+        testDb.db.select().from(savedFilters).where(eq(savedFilters.id, 'filter-1')).get()
+      ).toBeUndefined()
     })
   })
 
   describe('#given filter with newer clock #when delete applied', () => {
     it('#then skips the delete', () => {
-      testDb.db.insert(savedFilters).values({
-        id: 'filter-1',
-        name: 'Keep',
-        config: {},
-        position: 0,
-        clock: { 'device-A': 5 } satisfies VectorClock
-      }).run()
+      testDb.db
+        .insert(savedFilters)
+        .values({
+          id: 'filter-1',
+          name: 'Keep',
+          config: {},
+          position: 0,
+          clock: { 'device-A': 5 } satisfies VectorClock
+        })
+        .run()
 
       const result = applier.apply({
         itemId: 'filter-1',
@@ -541,14 +595,17 @@ describe('ItemApplier', () => {
   describe('#given device-A at tick 3, device-B at tick 5 #when device-B update applied', () => {
     it('#then device-B wins (strictly ahead)', () => {
       // #given — local has device-A:3
-      testDb.db.insert(tasks).values({
-        id: 'task-1',
-        projectId: 'proj-1',
-        title: 'Device A Edit',
-        priority: 0,
-        position: 0,
-        clock: { 'device-A': 3 } satisfies VectorClock
-      }).run()
+      testDb.db
+        .insert(tasks)
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'Device A Edit',
+          priority: 0,
+          position: 0,
+          clock: { 'device-A': 3 } satisfies VectorClock
+        })
+        .run()
 
       // #when — remote has device-B:5 (different device, concurrent)
       const result = applier.apply({
@@ -570,14 +627,17 @@ describe('ItemApplier', () => {
   describe('#given both devices at identical tick #when remote update applied', () => {
     it('#then concurrent: remote applied with merged clock', () => {
       // #given — local: device-A:2, remote: device-B:2 (same tick value, different devices)
-      testDb.db.insert(tasks).values({
-        id: 'task-1',
-        projectId: 'proj-1',
-        title: 'Local Tied',
-        priority: 0,
-        position: 0,
-        clock: { 'device-A': 2 } satisfies VectorClock
-      }).run()
+      testDb.db
+        .insert(tasks)
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'Local Tied',
+          priority: 0,
+          position: 0,
+          clock: { 'device-A': 2 } satisfies VectorClock
+        })
+        .run()
 
       // #when
       const result = applier.apply({
@@ -599,14 +659,17 @@ describe('ItemApplier', () => {
   describe('#given local edit at device-A:3 #when remote delete at device-B:1', () => {
     it('#then skips delete (local has unseen changes)', () => {
       // #given — local has higher tick
-      testDb.db.insert(tasks).values({
-        id: 'task-1',
-        projectId: 'proj-1',
-        title: 'Local Survives',
-        priority: 0,
-        position: 0,
-        clock: { 'device-A': 3 } satisfies VectorClock
-      }).run()
+      testDb.db
+        .insert(tasks)
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'Local Survives',
+          priority: 0,
+          position: 0,
+          clock: { 'device-A': 3 } satisfies VectorClock
+        })
+        .run()
 
       // #when — remote tries to delete with lower clock
       const result = applier.apply({
@@ -629,14 +692,17 @@ describe('ItemApplier', () => {
   describe('#given local edit at device-A:1 #when remote delete at device-B:3 (ahead)', () => {
     it('#then applies the delete', () => {
       // #given — local has device-A:1
-      testDb.db.insert(tasks).values({
-        id: 'task-1',
-        projectId: 'proj-1',
-        title: 'Will Be Deleted',
-        priority: 0,
-        position: 0,
-        clock: { 'device-A': 1 } satisfies VectorClock
-      }).run()
+      testDb.db
+        .insert(tasks)
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'Will Be Deleted',
+          priority: 0,
+          position: 0,
+          clock: { 'device-A': 1 } satisfies VectorClock
+        })
+        .run()
 
       // #when — remote delete with device-B:3, device-A:1 (remote knows about local)
       const result = applier.apply({
@@ -658,14 +724,17 @@ describe('ItemApplier', () => {
   describe('#given concurrent delete and edit (same tick) #when remote delete applied', () => {
     it('#then skips delete (edit-wins-over-delete for concurrent)', () => {
       // #given — local: device-A:2, remote delete: device-B:2
-      testDb.db.insert(tasks).values({
-        id: 'task-1',
-        projectId: 'proj-1',
-        title: 'Concurrent Edit',
-        priority: 0,
-        position: 0,
-        clock: { 'device-A': 2 } satisfies VectorClock
-      }).run()
+      testDb.db
+        .insert(tasks)
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'Concurrent Edit',
+          priority: 0,
+          position: 0,
+          clock: { 'device-A': 2 } satisfies VectorClock
+        })
+        .run()
 
       // #when — remote delete with concurrent clock
       const result = applier.apply({

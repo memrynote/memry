@@ -85,6 +85,13 @@
       "when": 1770988361099,
       "tag": "0011_silent_shooting_star",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1771255377561,
+      "tag": "0012_lush_veda",
+      "breakpoints": true
     }
   ]
 }

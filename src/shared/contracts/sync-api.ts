@@ -294,6 +294,24 @@ export const PullResponseSchema = z.object({
 export type PullItemResponse = z.infer<typeof PullItemResponseSchema>
 
 // ============================================================================
+// Device Keys (key distribution for multi-device signature verification)
+// ============================================================================
+
+export const DeviceKeySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  platform: z.string(),
+  signingPublicKey: z.string(),
+  revokedAt: z.number().nullable()
+})
+
+export const DeviceKeysResponseSchema = z.object({
+  devices: z.array(DeviceKeySchema)
+})
+
+export type DeviceKeysResponse = z.infer<typeof DeviceKeysResponseSchema>
+
+// ============================================================================
 // Cursor & Signature Metadata (T041g)
 // ============================================================================
 

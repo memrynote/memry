@@ -127,7 +127,6 @@ describe('saved-filters-handlers', () => {
       SavedFiltersChannels.events.UPDATED,
       expect.objectContaining({ id: 'sf-2' })
     )
-
     ;(settingsQueries.getSavedFilterById as Mock).mockReturnValue({
       id: 'sf-2',
       name: 'Inbox',

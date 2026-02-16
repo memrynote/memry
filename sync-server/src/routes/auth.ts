@@ -17,6 +17,7 @@ import { authMiddleware } from '../middleware/auth'
 import { createRateLimiter } from '../middleware/rate-limit'
 import { setupAuthMiddleware } from '../middleware/setup-auth'
 import { issueTokens, rotateRefreshToken, signSetupToken } from '../services/auth'
+import { listDevices } from '../services/device'
 import { sendEmail } from '../services/email'
 import {
   generateOtp,
@@ -418,6 +419,28 @@ auth.post('/setup', authMiddleware, async (c) => {
   }
 
   return c.json({ success: true })
+})
+
+// GET /devices — returns all non-revoked devices for the authenticated user
+const devicesRateLimit = createRateLimiter({
+  maxRequests: 30,
+  windowSeconds: 60,
+  keyPrefix: 'devices-list'
+})
+
+auth.get('/devices', authMiddleware, devicesRateLimit, async (c) => {
+  const userId = c.get('userId')!
+  const devices = await listDevices(c.env.DB, userId)
+
+  return c.json({
+    devices: devices.map((d) => ({
+      id: d.id,
+      name: d.name,
+      platform: d.platform,
+      signingPublicKey: d.auth_public_key,
+      revokedAt: d.revoked_at
+    }))
+  })
 })
 
 // POST /refresh

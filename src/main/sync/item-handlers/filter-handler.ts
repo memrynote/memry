@@ -1,9 +1,6 @@
 import { eq, isNull } from 'drizzle-orm'
 import { savedFilters } from '@shared/db/schema/settings'
-import {
-  FilterSyncPayloadSchema,
-  type FilterSyncPayload
-} from '@shared/contracts/sync-payloads'
+import { FilterSyncPayloadSchema, type FilterSyncPayload } from '@shared/contracts/sync-payloads'
 import { SavedFiltersChannels } from '@shared/ipc-channels'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
@@ -72,11 +69,7 @@ export const filterHandler: SyncItemHandler<FilterSyncPayload> = {
   },
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
-    const existing = ctx.db
-      .select()
-      .from(savedFilters)
-      .where(eq(savedFilters.id, itemId))
-      .get()
+    const existing = ctx.db.select().from(savedFilters).where(eq(savedFilters.id, itemId)).get()
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {

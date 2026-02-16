@@ -27,6 +27,12 @@ if (process.type === 'browser') {
   log.initialize()
 }
 
+const deviceId = process.env.MEMRY_DEVICE
+if (deviceId) {
+  const deviceUserData = `${app.getPath('userData')}-${deviceId}`
+  app.setPath('userData', deviceUserData)
+}
+
 const mainLog = createLogger('Main')
 const configLog = createLogger('Config')
 const quickCaptureLog = createLogger('QuickCapture')

@@ -200,4 +200,3 @@ sync.get('/items/:id', async (c) => {
   const item = await getItem(c.env.DB, c.env.STORAGE, userId, itemId)
   return c.json(item)
 })
-

@@ -157,9 +157,7 @@
       "indexes": {
         "idx_statuses_project": {
           "name": "idx_statuses_project",
-          "columns": [
-            "project_id"
-          ],
+          "columns": ["project_id"],
           "isUnique": false
         }
       },
@@ -168,12 +166,8 @@
           "name": "statuses_project_id_projects_id_fk",
           "tableFrom": "statuses",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -333,37 +327,27 @@
       "indexes": {
         "idx_tasks_project": {
           "name": "idx_tasks_project",
-          "columns": [
-            "project_id"
-          ],
+          "columns": ["project_id"],
           "isUnique": false
         },
         "idx_tasks_status": {
           "name": "idx_tasks_status",
-          "columns": [
-            "status_id"
-          ],
+          "columns": ["status_id"],
           "isUnique": false
         },
         "idx_tasks_parent": {
           "name": "idx_tasks_parent",
-          "columns": [
-            "parent_id"
-          ],
+          "columns": ["parent_id"],
           "isUnique": false
         },
         "idx_tasks_due_date": {
           "name": "idx_tasks_due_date",
-          "columns": [
-            "due_date"
-          ],
+          "columns": ["due_date"],
           "isUnique": false
         },
         "idx_tasks_completed": {
           "name": "idx_tasks_completed",
-          "columns": [
-            "completed_at"
-          ],
+          "columns": ["completed_at"],
           "isUnique": false
         }
       },
@@ -372,12 +356,8 @@
           "name": "tasks_project_id_projects_id_fk",
           "tableFrom": "tasks",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -385,12 +365,8 @@
           "name": "tasks_status_id_statuses_id_fk",
           "tableFrom": "tasks",
           "tableTo": "statuses",
-          "columnsFrom": [
-            "status_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["status_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -431,22 +407,15 @@
           "name": "task_notes_task_id_tasks_id_fk",
           "tableFrom": "task_notes",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "task_notes_task_id_note_id_pk": {
-          "columns": [
-            "task_id",
-            "note_id"
-          ],
+          "columns": ["task_id", "note_id"],
           "name": "task_notes_task_id_note_id_pk"
         }
       },
@@ -474,9 +443,7 @@
       "indexes": {
         "idx_task_tags_tag": {
           "name": "idx_task_tags_tag",
-          "columns": [
-            "tag"
-          ],
+          "columns": ["tag"],
           "isUnique": false
         }
       },
@@ -485,22 +452,15 @@
           "name": "task_tags_task_id_tasks_id_fk",
           "tableFrom": "task_tags",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "task_tags_task_id_tag_pk": {
-          "columns": [
-            "task_id",
-            "tag"
-          ],
+          "columns": ["task_id", "tag"],
           "name": "task_tags_task_id_tag_pk"
         }
       },
@@ -564,16 +524,12 @@
       "indexes": {
         "idx_filing_history_type": {
           "name": "idx_filing_history_type",
-          "columns": [
-            "item_type"
-          ],
+          "columns": ["item_type"],
           "isUnique": false
         },
         "idx_filing_history_filed_at": {
           "name": "idx_filing_history_filed_at",
-          "columns": [
-            "filed_at"
-          ],
+          "columns": ["filed_at"],
           "isUnique": false
         }
       },
@@ -618,16 +574,12 @@
       "indexes": {
         "idx_inbox_tags_item": {
           "name": "idx_inbox_tags_item",
-          "columns": [
-            "item_id"
-          ],
+          "columns": ["item_id"],
           "isUnique": false
         },
         "idx_inbox_tags_tag": {
           "name": "idx_inbox_tags_tag",
-          "columns": [
-            "tag"
-          ],
+          "columns": ["tag"],
           "isUnique": false
         }
       },
@@ -636,12 +588,8 @@
           "name": "inbox_item_tags_item_id_inbox_items_id_fk",
           "tableFrom": "inbox_item_tags",
           "tableTo": "inbox_items",
-          "columnsFrom": [
-            "item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["item_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -836,44 +784,32 @@
       "indexes": {
         "idx_inbox_items_type": {
           "name": "idx_inbox_items_type",
-          "columns": [
-            "type"
-          ],
+          "columns": ["type"],
           "isUnique": false
         },
         "idx_inbox_items_created": {
           "name": "idx_inbox_items_created",
-          "columns": [
-            "created_at"
-          ],
+          "columns": ["created_at"],
           "isUnique": false
         },
         "idx_inbox_items_filed": {
           "name": "idx_inbox_items_filed",
-          "columns": [
-            "filed_at"
-          ],
+          "columns": ["filed_at"],
           "isUnique": false
         },
         "idx_inbox_items_snoozed": {
           "name": "idx_inbox_items_snoozed",
-          "columns": [
-            "snoozed_until"
-          ],
+          "columns": ["snoozed_until"],
           "isUnique": false
         },
         "idx_inbox_items_processing": {
           "name": "idx_inbox_items_processing",
-          "columns": [
-            "processing_status"
-          ],
+          "columns": ["processing_status"],
           "isUnique": false
         },
         "idx_inbox_items_archived": {
           "name": "idx_inbox_items_archived",
-          "columns": [
-            "archived_at"
-          ],
+          "columns": ["archived_at"],
           "isUnique": false
         }
       },
@@ -983,16 +919,12 @@
       "indexes": {
         "inbox_stats_date_unique": {
           "name": "inbox_stats_date_unique",
-          "columns": [
-            "date"
-          ],
+          "columns": ["date"],
           "isUnique": true
         },
         "idx_inbox_stats_date": {
           "name": "idx_inbox_stats_date",
-          "columns": [
-            "date"
-          ],
+          "columns": ["date"],
           "isUnique": false
         }
       },
@@ -1079,23 +1011,17 @@
       "indexes": {
         "idx_suggestion_feedback_item_type": {
           "name": "idx_suggestion_feedback_item_type",
-          "columns": [
-            "item_type"
-          ],
+          "columns": ["item_type"],
           "isUnique": false
         },
         "idx_suggestion_feedback_accepted": {
           "name": "idx_suggestion_feedback_accepted",
-          "columns": [
-            "accepted"
-          ],
+          "columns": ["accepted"],
           "isUnique": false
         },
         "idx_suggestion_feedback_created": {
           "name": "idx_suggestion_feedback_created",
-          "columns": [
-            "created_at"
-          ],
+          "columns": ["created_at"],
           "isUnique": false
         }
       },
@@ -1241,31 +1167,22 @@
       "indexes": {
         "idx_bookmarks_unique_item": {
           "name": "idx_bookmarks_unique_item",
-          "columns": [
-            "item_type",
-            "item_id"
-          ],
+          "columns": ["item_type", "item_id"],
           "isUnique": true
         },
         "idx_bookmarks_item_type": {
           "name": "idx_bookmarks_item_type",
-          "columns": [
-            "item_type"
-          ],
+          "columns": ["item_type"],
           "isUnique": false
         },
         "idx_bookmarks_position": {
           "name": "idx_bookmarks_position",
-          "columns": [
-            "position"
-          ],
+          "columns": ["position"],
           "isUnique": false
         },
         "idx_bookmarks_created": {
           "name": "idx_bookmarks_created",
-          "columns": [
-            "created_at"
-          ],
+          "columns": ["created_at"],
           "isUnique": false
         }
       },
@@ -1389,24 +1306,17 @@
       "indexes": {
         "idx_reminders_target": {
           "name": "idx_reminders_target",
-          "columns": [
-            "target_type",
-            "target_id"
-          ],
+          "columns": ["target_type", "target_id"],
           "isUnique": false
         },
         "idx_reminders_remind_at": {
           "name": "idx_reminders_remind_at",
-          "columns": [
-            "remind_at"
-          ],
+          "columns": ["remind_at"],
           "isUnique": false
         },
         "idx_reminders_status": {
           "name": "idx_reminders_status",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         }
       },
@@ -1444,17 +1354,12 @@
       "indexes": {
         "idx_note_positions_folder": {
           "name": "idx_note_positions_folder",
-          "columns": [
-            "folder_path"
-          ],
+          "columns": ["folder_path"],
           "isUnique": false
         },
         "idx_note_positions_order": {
           "name": "idx_note_positions_order",
-          "columns": [
-            "folder_path",
-            "position"
-          ],
+          "columns": ["folder_path", "position"],
           "isUnique": false
         }
       },
@@ -1641,16 +1546,12 @@
       "indexes": {
         "idx_sync_queue_type": {
           "name": "idx_sync_queue_type",
-          "columns": [
-            "type"
-          ],
+          "columns": ["type"],
           "isUnique": false
         },
         "idx_sync_queue_created": {
           "name": "idx_sync_queue_created",
-          "columns": [
-            "created_at"
-          ],
+          "columns": ["created_at"],
           "isUnique": false
         }
       },
@@ -1746,9 +1647,7 @@
       "indexes": {
         "idx_sync_history_created": {
           "name": "idx_sync_history_created",
-          "columns": [
-            "created_at"
-          ],
+          "columns": ["created_at"],
           "isUnique": false
         }
       },
