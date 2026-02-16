@@ -31,7 +31,7 @@ import { NetworkMonitor } from './network'
 import { WebSocketManager, type WebSocketMessage } from './websocket'
 import { secureCleanup } from '../crypto/index'
 import { encryptItemForPush } from './encrypt'
-import { decryptItemFromPull } from './decrypt'
+import { decryptItemFromPull, SignatureVerificationError } from './decrypt'
 import { ItemApplier } from './apply-item'
 import { getHandler, type DrizzleDb } from './item-handlers'
 import { withRetry } from './retry'
@@ -347,6 +347,13 @@ export class SyncEngine extends EventEmitter {
 
         const changes = changesResult.value
 
+        log.debug('Pull: changes fetched', {
+          itemCount: changes.items.length,
+          deletedCount: changes.deleted.length,
+          cursor,
+          nextCursor: changes.nextCursor
+        })
+
         const itemIds = Array.from(
           new Set([...changes.items.map((item) => item.id), ...changes.deleted])
         )
@@ -362,85 +369,143 @@ export class SyncEngine extends EventEmitter {
             break
           }
 
+          log.debug('Pull: response parsed', {
+            requestedCount: itemIds.length,
+            receivedCount: parsed.data.items.length
+          })
+
+          let pageApplied = 0
+          let pageSkipped = 0
+          let pageFailed = 0
+          let cryptoFailCount = 0
+
           for (const item of parsed.data.items) {
             if (processedIds.has(item.id)) {
               log.debug('Skipping duplicate item in pull', { itemId: item.id })
-              continue
-            }
-            const signerPubKey = await this.deps.getDevicePublicKey(item.signerDeviceId)
-            if (!signerPubKey) {
-              log.warn('Skipping item from unresolvable signer device', {
-                itemId: item.id,
-                signerDeviceId: item.signerDeviceId
-              })
+              pageSkipped++
               continue
             }
 
-            const decrypted = decryptItemFromPull({
-              id: item.id,
-              type: item.type,
-              operation: item.operation,
-              cryptoVersion: item.cryptoVersion,
-              encryptedKey: item.blob.encryptedKey,
-              keyNonce: item.blob.keyNonce,
-              encryptedData: item.blob.encryptedData,
-              dataNonce: item.blob.dataNonce,
-              signature: item.signature,
-              signerDeviceId: item.signerDeviceId,
-              deletedAt: item.deletedAt,
-              metadata:
-                item.clock || item.stateVector
-                  ? { clock: item.clock, stateVector: item.stateVector }
-                  : undefined,
-              vaultKey,
-              signerPublicKey: signerPubKey
-            })
-
-            const itemOp = item.deletedAt ? 'delete' : (item.operation as 'create' | 'update')
-            const result = this.applier.apply({
-              itemId: item.id,
-              type: item.type as Parameters<ItemApplier['apply']>[0]['type'],
-              operation: itemOp,
-              content: decrypted.content,
-              clock: item.clock,
-              deletedAt: item.deletedAt
-            })
-
-            if (result === 'conflict') {
-              let remoteVersion: Record<string, unknown> = {}
-              try {
-                const parsedRemote = JSON.parse(
-                  new TextDecoder().decode(decrypted.content)
-                ) as unknown
-                if (
-                  parsedRemote &&
-                  typeof parsedRemote === 'object' &&
-                  !Array.isArray(parsedRemote)
-                ) {
-                  remoteVersion = parsedRemote as Record<string, unknown>
-                }
-                if (item.clock) remoteVersion.clock = item.clock
-              } catch {
-                log.warn('Failed to parse remote content for conflict event', {
-                  itemId: item.id
+            try {
+              const signerPubKey = await this.deps.getDevicePublicKey(item.signerDeviceId)
+              if (!signerPubKey) {
+                log.warn('Skipping item from unresolvable signer device', {
+                  itemId: item.id,
+                  signerDeviceId: item.signerDeviceId
                 })
+                pageSkipped++
+                continue
               }
 
-              const localVersion = this.fetchLocalItem(item.id, item.type)
+              const decrypted = decryptItemFromPull({
+                id: item.id,
+                type: item.type,
+                operation: item.operation,
+                cryptoVersion: item.cryptoVersion,
+                encryptedKey: item.blob.encryptedKey,
+                keyNonce: item.blob.keyNonce,
+                encryptedData: item.blob.encryptedData,
+                dataNonce: item.blob.dataNonce,
+                signature: item.signature,
+                signerDeviceId: item.signerDeviceId,
+                deletedAt: item.deletedAt,
+                metadata:
+                  item.clock || item.stateVector
+                    ? { clock: item.clock, stateVector: item.stateVector }
+                    : undefined,
+                vaultKey,
+                signerPublicKey: signerPubKey
+              })
 
-              this.deps.emitToRenderer(EVENT_CHANNELS.CONFLICT_DETECTED, {
+              const itemOp = item.deletedAt ? 'delete' : (item.operation as 'create' | 'update')
+              const result = this.applier.apply({
+                itemId: item.id,
+                type: item.type as Parameters<ItemApplier['apply']>[0]['type'],
+                operation: itemOp,
+                content: decrypted.content,
+                clock: item.clock,
+                deletedAt: item.deletedAt
+              })
+
+              if (result === 'conflict') {
+                let remoteVersion: Record<string, unknown> = {}
+                try {
+                  const parsedRemote = JSON.parse(
+                    new TextDecoder().decode(decrypted.content)
+                  ) as unknown
+                  if (
+                    parsedRemote &&
+                    typeof parsedRemote === 'object' &&
+                    !Array.isArray(parsedRemote)
+                  ) {
+                    remoteVersion = parsedRemote as Record<string, unknown>
+                  }
+                  if (item.clock) remoteVersion.clock = item.clock
+                } catch {
+                  log.warn('Failed to parse remote content for conflict event', {
+                    itemId: item.id
+                  })
+                }
+
+                const localVersion = this.fetchLocalItem(item.id, item.type)
+
+                this.deps.emitToRenderer(EVENT_CHANNELS.CONFLICT_DETECTED, {
+                  itemId: item.id,
+                  type: item.type,
+                  localVersion,
+                  remoteVersion,
+                  localClock: (localVersion.clock as Record<string, number>) ?? undefined,
+                  remoteClock: item.clock ?? undefined
+                } satisfies ConflictDetectedEvent)
+              }
+
+              processedIds.add(item.id)
+              pulledCount++
+              pageApplied++
+              this.emitItemSynced(item.id, item.type, 'pull', itemOp)
+            } catch (itemError) {
+              const isCryptoError =
+                itemError instanceof SignatureVerificationError ||
+                (itemError instanceof Error &&
+                  (itemError.message.includes('signature') ||
+                    itemError.message.includes('decrypt') ||
+                    itemError.message.includes('sodium') ||
+                    itemError.message.includes('nonce') ||
+                    itemError.message.includes('base64')))
+
+              log.error('Pull: failed to process item', {
                 itemId: item.id,
                 type: item.type,
-                localVersion,
-                remoteVersion,
-                localClock: (localVersion.clock as Record<string, number>) ?? undefined,
-                remoteClock: item.clock ?? undefined
-              } satisfies ConflictDetectedEvent)
+                signerDeviceId: item.signerDeviceId,
+                isCryptoError,
+                error: itemError instanceof Error ? itemError.message : String(itemError)
+              })
+              pageFailed++
+              if (isCryptoError) cryptoFailCount++
             }
+          }
 
-            processedIds.add(item.id)
-            pulledCount++
-            this.emitItemSynced(item.id, item.type, 'pull', itemOp)
+          log.info('Pull page processed', {
+            total: parsed.data.items.length,
+            applied: pageApplied,
+            skipped: pageSkipped,
+            failed: pageFailed
+          })
+
+          if (
+            pageFailed > 0 &&
+            pageFailed === cryptoFailCount &&
+            parsed.data.items.length > 0 &&
+            pageApplied === 0
+          ) {
+            this.lastError =
+              'All items failed with crypto errors — possible vault key mismatch. ' +
+              `${cryptoFailCount} item(s) could not be decrypted.`
+            this.setState('error')
+            log.error('Pull: circuit breaker tripped — all items failed crypto', {
+              cryptoFailCount
+            })
+            break
           }
         }
 
@@ -449,6 +514,7 @@ export class SyncEngine extends EventEmitter {
         hasMore = changes.hasMore
       }
 
+      log.debug('Pull complete', { totalPulled: pulledCount, finalCursor: cursor })
       this.recordHistory('pull', pulledCount, Date.now() - startTime)
       this.updateLastSyncAt()
     } catch (error) {
@@ -485,14 +551,27 @@ export class SyncEngine extends EventEmitter {
       await this.push()
       log.debug('fullSync: push complete')
 
-      this.lastManifestCheckAt = await checkManifestIntegrity({
+      const manifestResult = await checkManifestIntegrity({
         db: this.deps.db,
         queue: this.deps.queue,
         getAccessToken: this.deps.getAccessToken,
         isOnline: () => this.deps.network.online,
         lastCheckAt: this.lastManifestCheckAt
       })
-      log.debug('fullSync: manifest check complete')
+      this.lastManifestCheckAt = manifestResult.checkedAt
+      log.debug('fullSync: manifest check complete', {
+        rePullNeeded: manifestResult.rePullNeeded,
+        serverOnlyCount: manifestResult.serverOnlyCount
+      })
+
+      if (manifestResult.rePullNeeded) {
+        log.info('fullSync: manifest detected server-only items, resetting cursor for re-pull', {
+          serverOnlyCount: manifestResult.serverOnlyCount
+        })
+        this.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '0')
+        await this.pull()
+        log.debug('fullSync: re-pull complete')
+      }
 
       const pendingAfterManifest = this.deps.queue.getPendingCount()
       if (pendingAfterManifest > 0 && !this.isPaused()) {

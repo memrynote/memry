@@ -1361,6 +1361,7 @@ describe('SyncEngine', () => {
             clock: { 'device-1': 1 }
           })
         })
+        return { checkedAt: Date.now(), rePullNeeded: false, serverOnlyCount: 0 }
       })
 
       vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
@@ -1402,7 +1403,7 @@ describe('SyncEngine', () => {
       vi.spyOn(initialSeedModule, 'runInitialSeed').mockImplementation(() => {})
 
       const manifestModule = await import('./manifest-check')
-      vi.spyOn(manifestModule, 'checkManifestIntegrity').mockResolvedValue()
+      vi.spyOn(manifestModule, 'checkManifestIntegrity').mockResolvedValue({ checkedAt: Date.now(), rePullNeeded: false, serverOnlyCount: 0 })
 
       const deps = createMockDeps(testDb)
       const engine = new SyncEngine(deps)
@@ -1446,7 +1447,7 @@ describe('SyncEngine', () => {
       vi.spyOn(initialSeedModule, 'runInitialSeed').mockImplementation(() => {})
 
       const manifestModule = await import('./manifest-check')
-      vi.spyOn(manifestModule, 'checkManifestIntegrity').mockResolvedValue()
+      vi.spyOn(manifestModule, 'checkManifestIntegrity').mockResolvedValue({ checkedAt: Date.now(), rePullNeeded: false, serverOnlyCount: 0 })
 
       const deps = createMockDeps(testDb)
       const engine = new SyncEngine(deps)
@@ -1547,7 +1548,7 @@ describe('SyncEngine', () => {
       vi.spyOn(initialSeedModule, 'runInitialSeed').mockImplementation(() => {})
 
       const manifestModule = await import('./manifest-check')
-      vi.spyOn(manifestModule, 'checkManifestIntegrity').mockResolvedValue()
+      vi.spyOn(manifestModule, 'checkManifestIntegrity').mockResolvedValue({ checkedAt: Date.now(), rePullNeeded: false, serverOnlyCount: 0 })
 
       const deps = createMockDeps(testDb)
       const engine = new SyncEngine(deps)
@@ -1682,6 +1683,165 @@ describe('SyncEngine', () => {
 
       expect(applySpy).toHaveBeenCalledTimes(1)
       expect(applySpy).toHaveBeenCalledWith(expect.objectContaining({ itemId: 'task-2' }))
+
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given pull with one bad item #when decrypt throws for first item', () => {
+    it('#then still applies remaining items', async () => {
+      // #given
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [
+          { id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 10 },
+          { id: 'task-2', type: 'task', version: 1, modifiedAt: 1001, size: 10 }
+        ],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 2
+      })
+
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        items: [
+          {
+            id: 'task-1',
+            type: 'task',
+            operation: 'create',
+            cryptoVersion: 1,
+            blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+            signature: 'sig',
+            signerDeviceId: 'device-1',
+            clock: { 'device-1': 1 }
+          },
+          {
+            id: 'task-2',
+            type: 'task',
+            operation: 'create',
+            cryptoVersion: 1,
+            blob: { encryptedKey: 'ek2', keyNonce: 'kn2', encryptedData: 'ed2', dataNonce: 'dn2' },
+            signature: 'sig2',
+            signerDeviceId: 'device-1',
+            clock: { 'device-1': 2 }
+          }
+        ]
+      })
+
+      const decryptMock = vi.spyOn(await import('./decrypt'), 'decryptItemFromPull')
+      decryptMock.mockImplementationOnce(() => {
+        throw new Error('base64 decode failed')
+      })
+      decryptMock.mockReturnValueOnce({
+        content: new TextEncoder().encode(JSON.stringify({ id: 'task-2', title: 'Good' })),
+        verified: true
+      })
+
+      const { ItemApplier } = await import('./apply-item')
+      const applySpy = vi.spyOn(ItemApplier.prototype, 'apply').mockReturnValue('applied')
+
+      // #when
+      await engine.pull()
+
+      // #then — item-2 applied despite item-1 failing
+      expect(applySpy).toHaveBeenCalledTimes(1)
+      expect(applySpy).toHaveBeenCalledWith(expect.objectContaining({ itemId: 'task-2' }))
+      expect(engine.currentState).not.toBe('error')
+
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given pull with all crypto failures #when every item throws SignatureVerificationError', () => {
+    it('#then trips circuit breaker and sets error state', async () => {
+      // #given
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [
+          { id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 10 },
+          { id: 'task-2', type: 'task', version: 1, modifiedAt: 1001, size: 10 }
+        ],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 2
+      })
+
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        items: [
+          {
+            id: 'task-1',
+            type: 'task',
+            operation: 'create',
+            cryptoVersion: 1,
+            blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+            signature: 'sig',
+            signerDeviceId: 'device-1',
+            clock: { 'device-1': 1 }
+          },
+          {
+            id: 'task-2',
+            type: 'task',
+            operation: 'create',
+            cryptoVersion: 1,
+            blob: { encryptedKey: 'ek2', keyNonce: 'kn2', encryptedData: 'ed2', dataNonce: 'dn2' },
+            signature: 'sig2',
+            signerDeviceId: 'device-1',
+            clock: { 'device-1': 2 }
+          }
+        ]
+      })
+
+      const { SignatureVerificationError } = await import('./decrypt')
+      vi.spyOn(await import('./decrypt'), 'decryptItemFromPull').mockImplementation((input) => {
+        throw new SignatureVerificationError(input.id, input.signerDeviceId)
+      })
+
+      // #when
+      await engine.pull()
+
+      // #then — circuit breaker trips
+      expect(engine.currentState).toBe('error')
+
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given manifest detects server-only items #when fullSync runs', () => {
+    it('#then resets cursor and re-pulls', async () => {
+      // #given
+      const getServerMock = vi.fn().mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockImplementation(getServerMock)
+
+      const manifestModule = await import('./manifest-check')
+      vi.spyOn(manifestModule, 'checkManifestIntegrity').mockResolvedValue({
+        checkedAt: Date.now(),
+        rePullNeeded: true,
+        serverOnlyCount: 3
+      })
+
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      const origPull = engine.pull.bind(engine)
+      let pullCallCount = 0
+      engine.pull = async () => {
+        pullCallCount++
+        return origPull()
+      }
+
+      // #when
+      await engine.fullSync()
+
+      // #then — pull called twice: initial + re-pull after manifest
+      expect(pullCallCount).toBe(2)
 
       vi.restoreAllMocks()
     })
