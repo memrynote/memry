@@ -1,5 +1,5 @@
 import { useReducer, useCallback, useEffect, useRef, useState } from 'react'
-import { CheckCircle } from 'lucide-react'
+import { CheckCircle, QrCode, KeyRound } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAuth } from '@/contexts/auth-context'
@@ -9,6 +9,8 @@ import { OAuthButtons } from '@/components/sync/oauth-buttons'
 import { RecoveryPhraseDisplay } from '@/components/sync/recovery-phrase-display'
 import { RecoveryPhraseConfirm } from '@/components/sync/recovery-phrase-confirm'
 import { RecoveryPhraseInput } from '@/components/sync/recovery-phrase-input'
+import { LinkingCodeEntry } from '@/components/sync/linking-code-entry'
+import { LinkingPending } from '@/components/sync/linking-pending'
 
 type WizardStep =
   | 'sign-in'
@@ -16,6 +18,9 @@ type WizardStep =
   | 'recovery-display'
   | 'recovery-confirm'
   | 'recovery-input'
+  | 'linking-choice'
+  | 'linking-scan'
+  | 'linking-pending'
   | 'complete'
 
 interface WizardState {
@@ -26,6 +31,7 @@ interface WizardState {
   isLoading: boolean
   isResending: boolean
   expiresIn: number
+  linkingSessionId: string | null
 }
 
 type WizardAction =
@@ -42,6 +48,10 @@ type WizardAction =
   | { type: 'RECOVERY_DISPLAYED' }
   | { type: 'RECOVERY_CONFIRMED' }
   | { type: 'RECOVERY_LINKED'; deviceId: string }
+  | { type: 'CHOOSE_QR_LINKING' }
+  | { type: 'CHOOSE_RECOVERY' }
+  | { type: 'LINKING_SCANNED'; sessionId: string }
+  | { type: 'LINKING_COMPLETED'; deviceId: string }
   | { type: 'GO_BACK'; step: WizardStep }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
@@ -53,7 +63,8 @@ const initialState: WizardState = {
   error: null,
   isLoading: false,
   isResending: false,
-  expiresIn: 60
+  expiresIn: 60,
+  linkingSessionId: null
 }
 
 const wizardReducer = (state: WizardState, action: WizardAction): WizardState => {
@@ -75,7 +86,7 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
       return { ...state, expiresIn: action.expiresIn, isResending: false, error: null }
     case 'OTP_VERIFIED': {
       let nextStep: WizardStep = 'complete'
-      if (action.needsRecoveryInput) nextStep = 'recovery-input'
+      if (action.needsRecoveryInput) nextStep = 'linking-choice'
       else if (action.needsRecovery) nextStep = 'recovery-display'
       return {
         ...state,
@@ -97,6 +108,26 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
         isLoading: false,
         error: null
       }
+    case 'CHOOSE_QR_LINKING':
+      return { ...state, step: 'linking-scan', error: null }
+    case 'CHOOSE_RECOVERY':
+      return { ...state, step: 'recovery-input', error: null }
+    case 'LINKING_SCANNED':
+      return {
+        ...state,
+        step: 'linking-pending',
+        linkingSessionId: action.sessionId,
+        error: null
+      }
+    case 'LINKING_COMPLETED':
+      return {
+        ...state,
+        step: 'complete',
+        deviceId: action.deviceId,
+        linkingSessionId: null,
+        isLoading: false,
+        error: null
+      }
     case 'GO_BACK':
       return { ...state, step: action.step, error: null }
     case 'SET_ERROR':
@@ -108,13 +139,16 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
   }
 }
 
-const STEPS = ['Sign In', 'Verify', 'Recovery', 'Done'] as const
+const STEPS = ['Sign In', 'Verify', 'Link', 'Done'] as const
 const STEP_MAP: Record<WizardStep, number> = {
   'sign-in': 0,
   'otp-verification': 1,
   'recovery-display': 2,
   'recovery-confirm': 2,
   'recovery-input': 2,
+  'linking-choice': 2,
+  'linking-scan': 2,
+  'linking-pending': 2,
   complete: 3
 }
 
@@ -131,8 +165,7 @@ export function SetupWizard(): React.JSX.Element {
   const [state, dispatch] = useReducer(wizardReducer, initialState)
   const containerRef = useRef<HTMLDivElement>(null)
   const oauthStateRef = useRef<string | null>(null)
-  const recoveryPhraseRef = useRef<string | null>(null)
-  const [phraseLoaded, setPhraseLoaded] = useState(false)
+  const [recoveryPhrase, setRecoveryPhrase] = useState<string | null>(null)
 
   useEffect(() => {
     const el = containerRef.current
@@ -145,27 +178,24 @@ export function SetupWizard(): React.JSX.Element {
 
   useEffect(() => {
     if (state.step !== 'recovery-display' && state.step !== 'recovery-confirm') return
-    if (recoveryPhraseRef.current) {
-      setPhraseLoaded(true)
-      return
-    }
+    if (recoveryPhrase) return
     let cancelled = false
-    window.api.syncSetup.getRecoveryPhrase().then((phrase) => {
-      if (cancelled) return
-      recoveryPhraseRef.current = phrase
-      setPhraseLoaded(true)
-    })
+    void window.api.syncSetup
+      .getRecoveryPhrase()
+      .then((phrase) => {
+        if (cancelled) return
+        setRecoveryPhrase(phrase)
+      })
+      .catch(() => {
+        /* recovery phrase fetch failed — user can retry via back navigation */
+      })
     return () => {
       cancelled = true
     }
-  }, [state.step])
+  }, [state.step, recoveryPhrase])
 
-  useEffect(() => {
-    if (state.step === 'complete' || state.step === 'sign-in') {
-      recoveryPhraseRef.current = null
-      setPhraseLoaded(false)
-    }
-  }, [state.step])
+  const isRecoveryStep = state.step === 'recovery-display' || state.step === 'recovery-confirm'
+  const activePhrase = isRecoveryStep ? recoveryPhrase : null
 
   useEffect(() => {
     const unsubCallback = window.api.onOAuthCallback(({ code, state: cbState }) => {
@@ -367,18 +397,42 @@ export function SetupWizard(): React.JSX.Element {
         </div>
       )}
 
-      {state.step === 'recovery-display' && phraseLoaded && recoveryPhraseRef.current && (
+      {state.step === 'recovery-display' && activePhrase && (
         <RecoveryPhraseDisplay
-          phrase={recoveryPhraseRef.current}
+          phrase={activePhrase}
           onContinue={() => dispatch({ type: 'RECOVERY_DISPLAYED' })}
         />
       )}
 
-      {state.step === 'recovery-confirm' && recoveryPhraseRef.current && (
+      {state.step === 'recovery-confirm' && activePhrase && (
         <RecoveryPhraseConfirm
-          phrase={recoveryPhraseRef.current}
+          phrase={activePhrase}
           onConfirmed={handleConfirmRecovery}
           onBack={() => dispatch({ type: 'GO_BACK', step: 'recovery-display' })}
+        />
+      )}
+
+      {state.step === 'linking-choice' && (
+        <LinkingChoiceStep
+          onChooseQr={() => dispatch({ type: 'CHOOSE_QR_LINKING' })}
+          onChooseRecovery={() => dispatch({ type: 'CHOOSE_RECOVERY' })}
+        />
+      )}
+
+      {state.step === 'linking-scan' && (
+        <LinkingCodeEntry
+          onLinked={(sessionId) => dispatch({ type: 'LINKING_SCANNED', sessionId })}
+          onError={(error) => dispatch({ type: 'SET_ERROR', error })}
+          onBack={() => dispatch({ type: 'GO_BACK', step: 'linking-choice' })}
+        />
+      )}
+
+      {state.step === 'linking-pending' && state.linkingSessionId && (
+        <LinkingPending
+          sessionId={state.linkingSessionId}
+          onComplete={(deviceId) => dispatch({ type: 'LINKING_COMPLETED', deviceId })}
+          onError={(error) => dispatch({ type: 'SET_ERROR', error })}
+          onCancel={() => dispatch({ type: 'GO_BACK', step: 'linking-choice' })}
         />
       )}
 
@@ -387,7 +441,7 @@ export function SetupWizard(): React.JSX.Element {
           onSubmit={handleRecoverySubmit}
           isLoading={state.isLoading}
           error={state.error}
-          onBack={() => dispatch({ type: 'GO_BACK', step: 'sign-in' })}
+          onBack={() => dispatch({ type: 'GO_BACK', step: 'linking-choice' })}
         />
       )}
 
@@ -406,6 +460,64 @@ export function SetupWizard(): React.JSX.Element {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function LinkingChoiceStep({
+  onChooseQr,
+  onChooseRecovery
+}: {
+  onChooseQr: () => void
+  onChooseRecovery: () => void
+}): React.JSX.Element {
+  return (
+    <div className="wizard-step-enter space-y-6">
+      <div className="space-y-2">
+        <h3 className="font-display text-2xl tracking-tight">Link this device</h3>
+        <p className="font-serif text-[15px] text-muted-foreground leading-relaxed">
+          This account already exists. Transfer your encryption keys from another device or restore
+          from your recovery phrase.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <button
+          type="button"
+          onClick={onChooseQr}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-background hover:bg-muted/50 transition-colors text-left group"
+        >
+          <div className="w-11 h-11 rounded-xl bg-amber-500/10 dark:bg-amber-400/10 flex items-center justify-center flex-shrink-0">
+            <QrCode className="w-5 h-5 text-amber-700 dark:text-amber-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium group-hover:text-foreground transition-colors">
+              Link via QR code
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Scan the code shown on your other device
+            </p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={onChooseRecovery}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-background hover:bg-muted/50 transition-colors text-left group"
+        >
+          <div className="w-11 h-11 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+            <KeyRound className="w-5 h-5 text-muted-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium group-hover:text-foreground transition-colors">
+              Recovery phrase
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Enter your 24-word recovery phrase
+            </p>
+          </div>
+        </button>
+      </div>
     </div>
   )
 }

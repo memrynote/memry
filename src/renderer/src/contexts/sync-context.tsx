@@ -5,10 +5,12 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useState,
   type ReactNode
 } from 'react'
 import { useAuth } from './auth-context'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import type { LinkingRequestEvent } from '@shared/contracts/ipc-events'
 
 type SyncStatus = 'idle' | 'syncing' | 'paused' | 'error' | 'offline' | 'unknown'
 
@@ -140,6 +142,8 @@ interface SyncContextValue {
   pause: () => Promise<void>
   resume: () => Promise<void>
   clearError: () => void
+  linkingRequest: LinkingRequestEvent | null
+  clearLinkingRequest: () => void
 }
 
 const SyncContext = createContext<SyncContextValue | null>(null)
@@ -159,6 +163,7 @@ interface SyncProviderProps {
 export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element {
   const { state: authState } = useAuth()
   const [state, dispatch] = useReducer(syncReducer, initialState)
+  const [linkingRequest, setLinkingRequest] = useState<LinkingRequestEvent | null>(null)
 
   useEffect(() => {
     if (authState.status !== 'authenticated') {
@@ -286,8 +291,21 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       })
     )
 
+    cleanups.push(
+      window.api.onLinkingRequest((event) => {
+        if (cancelled) return
+        setLinkingRequest(event)
+      })
+    )
+
+    cleanups.push(
+      window.api.onLinkingApproved(() => {
+        if (cancelled) return
+        setLinkingRequest(null)
+      })
+    )
+
     // TODO: onKeyRotationProgress — connect in key rotation phase (Phase 5)
-    // TODO: onLinkingRequest / onLinkingApproved — device linking phase (Phase 5)
 
     return () => {
       cancelled = true
@@ -326,9 +344,13 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     dispatch({ type: 'CLEAR_ERROR' })
   }, [])
 
+  const clearLinkingRequest = useCallback(() => {
+    setLinkingRequest(null)
+  }, [])
+
   const value = useMemo<SyncContextValue>(
-    () => ({ state, triggerSync, pause, resume, clearError }),
-    [state, triggerSync, pause, resume, clearError]
+    () => ({ state, triggerSync, pause, resume, clearError, linkingRequest, clearLinkingRequest }),
+    [state, triggerSync, pause, resume, clearError, linkingRequest, clearLinkingRequest]
   )
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>

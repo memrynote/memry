@@ -48,7 +48,7 @@ import {
   RefreshCw,
   PenLine,
   LogOut,
-  Monitor
+  QrCode
 } from 'lucide-react'
 import {
   Select,
@@ -68,7 +68,10 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAuth } from '@/contexts/auth-context'
+import { useSync } from '@/contexts/sync-context'
 import { SetupWizard } from './settings/setup-wizard'
+import { QrLinking } from '@/components/sync/qr-linking'
+import { LinkingApprovalDialog } from '@/components/sync/linking-approval-dialog'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Page:Settings')
@@ -1280,8 +1283,10 @@ function AISettings() {
 
 function SyncSettings() {
   const { state, logout } = useAuth()
+  const { linkingRequest, clearLinkingRequest } = useSync()
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const [showLinkingQr, setShowLinkingQr] = useState(false)
 
   const handleSignOut = useCallback(async () => {
     setSigningOut(true)
@@ -1327,10 +1332,19 @@ function SyncSettings() {
             </div>
           </div>
 
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/30 text-sm">
-            <Monitor className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-            <p className="text-muted-foreground">Device management coming soon.</p>
-          </div>
+          {showLinkingQr ? (
+            <QrLinking onCancel={() => setShowLinkingQr(false)} />
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowLinkingQr(true)}
+              className="gap-2"
+            >
+              <QrCode className="w-4 h-4" />
+              Link New Device
+            </Button>
+          )}
         </div>
 
         <Separator />
@@ -1371,6 +1385,16 @@ function SyncSettings() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <LinkingApprovalDialog
+          open={!!linkingRequest}
+          event={linkingRequest}
+          onApprove={() => {
+            clearLinkingRequest()
+            toast.success('Device linked successfully')
+          }}
+          onReject={clearLinkingRequest}
+        />
       </div>
     )
   }
