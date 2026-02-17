@@ -160,7 +160,8 @@ export function SetupWizard(): React.JSX.Element {
     initOAuth,
     setupFirstDevice,
     confirmRecoveryPhrase,
-    linkViaRecovery
+    linkViaRecovery,
+    linkingCompleted
   } = useAuth()
   const [state, dispatch] = useReducer(wizardReducer, initialState)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -430,7 +431,10 @@ export function SetupWizard(): React.JSX.Element {
       {state.step === 'linking-pending' && state.linkingSessionId && (
         <LinkingPending
           sessionId={state.linkingSessionId}
-          onComplete={(deviceId) => dispatch({ type: 'LINKING_COMPLETED', deviceId })}
+          onComplete={(deviceId) => {
+            linkingCompleted(deviceId)
+            dispatch({ type: 'LINKING_COMPLETED', deviceId })
+          }}
           onError={(error) => dispatch({ type: 'SET_ERROR', error })}
           onCancel={() => dispatch({ type: 'GO_BACK', step: 'linking-choice' })}
         />

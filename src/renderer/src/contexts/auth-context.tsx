@@ -45,6 +45,7 @@ type AuthAction =
     }
   | { type: 'RECOVERY_CONFIRMED' }
   | { type: 'RECOVERY_LINKED'; deviceId: string }
+  | { type: 'LINKING_COMPLETED'; deviceId: string }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
   | { type: 'RESET_AUTH' }
@@ -98,6 +99,14 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         needsRecoverySetup: false,
         error: null
       }
+    case 'LINKING_COMPLETED':
+      return {
+        ...state,
+        status: 'authenticated',
+        deviceId: action.deviceId,
+        needsRecoverySetup: false,
+        error: null
+      }
     case 'SET_ERROR':
       return { ...state, error: action.error, status: 'error' }
     case 'CLEAR_ERROR':
@@ -134,6 +143,7 @@ interface AuthContextValue {
   }) => Promise<SetupFirstDeviceResult | null>
   confirmRecoveryPhrase: () => Promise<void>
   linkViaRecovery: (phrase: string) => Promise<{ deviceId?: string }>
+  linkingCompleted: (deviceId: string) => void
   logout: () => Promise<void>
   clearError: () => void
   resetAuthState: () => void
@@ -344,6 +354,10 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     }
   }, [])
 
+  const linkingCompleted = useCallback((deviceId: string) => {
+    dispatch({ type: 'LINKING_COMPLETED', deviceId })
+  }, [])
+
   const clearError = useCallback(() => {
     dispatch({ type: 'CLEAR_ERROR' })
   }, [])
@@ -367,6 +381,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       setupFirstDevice,
       confirmRecoveryPhrase,
       linkViaRecovery,
+      linkingCompleted,
       logout,
       clearError,
       resetAuthState
@@ -380,6 +395,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       setupFirstDevice,
       confirmRecoveryPhrase,
       linkViaRecovery,
+      linkingCompleted,
       logout,
       clearError,
       resetAuthState

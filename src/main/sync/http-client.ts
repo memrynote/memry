@@ -35,7 +35,7 @@ export class RateLimitError extends SyncServerError {
 }
 
 interface ServerErrorResponse {
-  error?: string
+  error?: string | { code: string; message: string }
   message?: string
 }
 
@@ -88,7 +88,10 @@ export const syncFetch = async <T>(
 
   if (!response.ok) {
     const errorBody = responseBody as ServerErrorResponse
-    const message = errorBody?.error || errorBody?.message || `Server error (${response.status})`
+    const message =
+      (typeof errorBody?.error === 'string' ? errorBody.error : errorBody?.error?.message) ||
+      errorBody?.message ||
+      `Server error (${response.status})`
     throw new SyncServerError(message, response.status, message)
   }
 
