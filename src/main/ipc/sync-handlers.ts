@@ -329,48 +329,42 @@ const extractJtiFromToken = (token: string): string => {
   return payload.jti
 }
 
-const registerDevice = async (setupToken: string): Promise<DeviceRegisterResponse> => {
+const registerDevice = async (
+  setupToken: string,
+  signingSecretKey: Uint8Array
+): Promise<DeviceRegisterResponse> => {
   await sodium.ready
 
-  const signingKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
-  if (!signingKey) {
-    throw new Error('Device signing key not found in keychain')
-  }
+  const publicKey = getDevicePublicKey(signingSecretKey)
+  const publicKeyBase64 = sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL)
 
-  try {
-    const publicKey = getDevicePublicKey(signingKey)
-    const publicKeyBase64 = sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL)
+  const nonce = crypto.randomUUID()
+  const jti = extractJtiFromToken(setupToken)
+  const challengePayload = `${nonce}:${jti}`
+  const payloadBytes = new TextEncoder().encode(challengePayload)
+  const signature = sodium.crypto_sign_detached(payloadBytes, signingSecretKey)
+  const signatureBase64 = sodium.to_base64(signature, sodium.base64_variants.ORIGINAL)
 
-    const nonce = crypto.randomUUID()
-    const jti = extractJtiFromToken(setupToken)
-    const challengePayload = `${nonce}:${jti}`
-    const payloadBytes = new TextEncoder().encode(challengePayload)
-    const signature = sodium.crypto_sign_detached(payloadBytes, signingKey)
-    const signatureBase64 = sodium.to_base64(signature, sodium.base64_variants.ORIGINAL)
+  const raw = await postToServer<unknown>(
+    '/auth/devices',
+    {
+      name: os.hostname(),
+      platform: PLATFORM_MAP[process.platform] || 'linux',
+      osVersion: os.release(),
+      appVersion: app.getVersion(),
+      authPublicKey: publicKeyBase64,
+      challengeSignature: signatureBase64,
+      challengeNonce: nonce
+    },
+    setupToken
+  )
+  const response = DeviceRegisterResponseSchema.parse(raw)
 
-    const raw = await postToServer<unknown>(
-      '/auth/devices',
-      {
-        name: os.hostname(),
-        platform: PLATFORM_MAP[process.platform] || 'linux',
-        osVersion: os.release(),
-        appVersion: app.getVersion(),
-        authPublicKey: publicKeyBase64,
-        challengeSignature: signatureBase64,
-        challengeNonce: nonce
-      },
-      setupToken
-    )
-    const response = DeviceRegisterResponseSchema.parse(raw)
+  await storeToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN, response.accessToken)
+  await storeToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN, response.refreshToken)
+  scheduleTokenRefresh(ACCESS_TOKEN_EXPIRY_SECONDS)
 
-    await storeToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN, response.accessToken)
-    await storeToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN, response.refreshToken)
-    scheduleTokenRefresh(ACCESS_TOKEN_EXPIRY_SECONDS)
-
-    return response
-  } finally {
-    secureCleanup(signingKey)
-  }
+  return response
 }
 
 // ============================================================================
@@ -390,7 +384,7 @@ const persistKeysAndRegisterDevice = async (
 
   let deviceResponse: DeviceRegisterResponse
   try {
-    deviceResponse = await registerDevice(setupToken)
+    deviceResponse = await registerDevice(setupToken, signingSecretKey)
   } catch (err) {
     await deleteKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => {})
     throw err
@@ -533,24 +527,54 @@ export async function checkSyncIntegrity(): Promise<void> {
     if (!currentDevice) return
 
     const masterKey = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY).catch(() => null)
-    if (masterKey) return
+    if (!masterKey) {
+      logger.error(
+        'Detected orphaned device registration — master key missing from keychain. ' +
+          'Cleaning up local state. User will need to re-authenticate.',
+        { deviceId: currentDevice.id }
+      )
+      await cleanupLocalSyncState(db)
+      return
+    }
 
-    logger.error(
-      'Detected orphaned device registration — device registered but master key missing from keychain. ' +
-        'Cleaning up local state. User will need to re-authenticate.',
-      { deviceId: currentDevice.id }
-    )
+    const signingKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => null)
+    if (!signingKey) {
+      logger.error(
+        'Signing key missing from keychain but device registered. ' +
+          'Cleaning up local state. User will need to re-authenticate.',
+        { deviceId: currentDevice.id }
+      )
+      await cleanupLocalSyncState(db)
+      return
+    }
 
-    await db.delete(syncDevices).where(eq(syncDevices.isCurrentDevice, true))
-    await Promise.allSettled([
-      deleteKey(KEYCHAIN_ENTRIES.ACCESS_TOKEN),
-      deleteKey(KEYCHAIN_ENTRIES.REFRESH_TOKEN),
-      deleteKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
-    ])
-    store.set('sync', {})
+    const derivedPubKey = getDevicePublicKey(signingKey)
+    secureCleanup(signingKey)
+    const derivedPubKeyB64 = sodium.to_base64(derivedPubKey, sodium.base64_variants.ORIGINAL)
+
+    if (currentDevice.signingPublicKey && currentDevice.signingPublicKey !== derivedPubKeyB64) {
+      logger.error(
+        'Signing key mismatch: keychain key does not match registered device key. ' +
+          'Cleaning up local state. User will need to re-authenticate.',
+        { deviceId: currentDevice.id }
+      )
+      await cleanupLocalSyncState(db)
+      return
+    }
   } catch (err) {
     logger.error('Sync integrity check failed', err)
   }
+}
+
+async function cleanupLocalSyncState(db: ReturnType<typeof getDatabase>): Promise<void> {
+  await db.delete(syncDevices).where(eq(syncDevices.isCurrentDevice, true))
+  await Promise.allSettled([
+    deleteKey(KEYCHAIN_ENTRIES.ACCESS_TOKEN),
+    deleteKey(KEYCHAIN_ENTRIES.REFRESH_TOKEN),
+    deleteKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY),
+    deleteKey(KEYCHAIN_ENTRIES.MASTER_KEY)
+  ])
+  store.set('sync', {})
 }
 
 // ============================================================================
