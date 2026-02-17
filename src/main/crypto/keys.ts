@@ -5,10 +5,14 @@ import {
   KEY_DERIVATION_CONTEXTS,
   KEYCHAIN_ENTRIES,
   LINKING_HKDF_CONTEXTS,
+  X25519_PARAMS,
   type DeviceSigningKeyPair,
+  type EphemeralKeyPair,
   type MasterKeyMaterial
 } from '@shared/contracts/crypto'
+import { CBOR_FIELD_ORDER } from '@shared/contracts/cbor-ordering'
 
+import { encodeCbor } from './cbor'
 import { retrieveKey } from './keychain'
 
 const KDF_CONTEXT_MAP: Record<string, { ctx: string; id: number }> = {
@@ -124,4 +128,60 @@ export const getOrDeriveVaultKey = async (): Promise<Uint8Array> => {
   } finally {
     sodium.memzero(masterKey)
   }
+}
+
+// ============================================================================
+// X25519 ECDH — Device Linking
+// ============================================================================
+
+export const generateX25519KeyPair = async (): Promise<EphemeralKeyPair> => {
+  await sodium.ready
+  const keyPair = sodium.crypto_box_keypair()
+  return { publicKey: keyPair.publicKey, secretKey: keyPair.privateKey }
+}
+
+export const computeSharedSecret = async (
+  myPrivateKey: Uint8Array,
+  theirPublicKey: Uint8Array
+): Promise<Uint8Array> => {
+  await sodium.ready
+
+  if (myPrivateKey.length !== X25519_PARAMS.SECRET_KEY_LENGTH) {
+    throw new Error(`X25519 private key must be ${X25519_PARAMS.SECRET_KEY_LENGTH} bytes`)
+  }
+  if (theirPublicKey.length !== X25519_PARAMS.PUBLIC_KEY_LENGTH) {
+    throw new Error(`X25519 public key must be ${X25519_PARAMS.PUBLIC_KEY_LENGTH} bytes`)
+  }
+
+  return sodium.crypto_scalarmult(myPrivateKey, theirPublicKey)
+}
+
+export const deriveLinkingKeys = async (
+  sharedSecret: Uint8Array
+): Promise<{ encKey: Uint8Array; macKey: Uint8Array }> => {
+  const encKey = await deriveKey(sharedSecret, LINKING_HKDF_CONTEXTS.ENCRYPTION, 32)
+  const macKey = await deriveKey(sharedSecret, LINKING_HKDF_CONTEXTS.MAC, 32)
+  return { encKey, macKey }
+}
+
+// ============================================================================
+// HMAC Proofs — Canonical CBOR → keyed MAC
+// ============================================================================
+
+export const computeLinkingProof = (
+  macKey: Uint8Array,
+  sessionId: string,
+  devicePublicKey: string
+): Uint8Array => {
+  const payload = encodeCbor({ sessionId, devicePublicKey }, CBOR_FIELD_ORDER.LINKING_PROOF)
+  return sodium.crypto_auth(payload, macKey)
+}
+
+export const computeKeyConfirm = (
+  macKey: Uint8Array,
+  sessionId: string,
+  encryptedMasterKey: string
+): Uint8Array => {
+  const payload = encodeCbor({ sessionId, encryptedMasterKey }, CBOR_FIELD_ORDER.KEY_CONFIRM)
+  return sodium.crypto_auth(payload, macKey)
 }
