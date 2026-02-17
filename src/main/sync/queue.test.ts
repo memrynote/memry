@@ -401,4 +401,36 @@ describe('SyncQueueManager', () => {
       expect(ids).toContain('persist-2')
     })
   })
+
+  describe('dequeue/getPendingCount consistency', () => {
+    it('dequeue finds items enqueued after a previous empty dequeue', () => {
+      // #given first dequeue returns nothing
+      expect(queue.dequeue(100)).toHaveLength(0)
+
+      // #when manifest check enqueues 2 items
+      queue.enqueue(makeInput({ type: 'inbox', itemId: 'inbox-1', operation: 'create' }))
+      queue.enqueue(makeInput({ type: 'inbox', itemId: 'inbox-2', operation: 'create' }))
+
+      // #then getPendingCount and dequeue agree
+      const pending = queue.getPendingCount()
+      const items = queue.dequeue(100)
+      expect(pending).toBe(2)
+      expect(items).toHaveLength(2)
+    })
+
+    it('dequeue finds new items even when old failed items exist for same itemId', () => {
+      // #given old items from previous session with attempts > 0
+      queue.enqueue(makeInput({ type: 'inbox', itemId: 'inbox-1', operation: 'create', payload: '{"v":1}' }))
+      queue.dequeue(1)
+
+      // #when manifest re-enqueues same item (creates new row since attempts > 0)
+      queue.enqueue(makeInput({ type: 'inbox', itemId: 'inbox-1', operation: 'create', payload: '{"v":2}' }))
+
+      // #then getPendingCount matches dequeue count
+      const pending = queue.getPendingCount()
+      const items = queue.dequeue(100)
+      expect(pending).toBe(items.length)
+      expect(items.length).toBeGreaterThanOrEqual(1)
+    })
+  })
 })
