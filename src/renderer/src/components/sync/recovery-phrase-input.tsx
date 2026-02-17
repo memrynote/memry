@@ -1,4 +1,4 @@
-import { useState, useCallback, type FormEvent } from 'react'
+import { useState, useCallback, useEffect, useRef, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft, KeyRound, Loader2 } from 'lucide-react'
@@ -10,6 +10,14 @@ interface RecoveryPhraseInputProps {
   onBack: () => void
 }
 
+const PROGRESS_STEPS = [
+  'Deriving encryption keys...',
+  'Validating recovery phrase...',
+  'Registering device...'
+] as const
+
+const STEP_INTERVAL_MS = 2000
+
 const EXPECTED_WORD_COUNT = 24
 
 export function RecoveryPhraseInput({
@@ -19,6 +27,23 @@ export function RecoveryPhraseInput({
   onBack
 }: RecoveryPhraseInputProps): React.JSX.Element {
   const [phrase, setPhrase] = useState('')
+  const [progressStep, setProgressStep] = useState(0)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      return
+    }
+
+    intervalRef.current = setInterval(() => {
+      setProgressStep((prev) => Math.min(prev + 1, PROGRESS_STEPS.length - 1))
+    }, STEP_INTERVAL_MS)
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [isLoading])
 
   const wordCount = phrase.trim() ? phrase.trim().split(/\s+/).length : 0
   const isValidLength = wordCount === EXPECTED_WORD_COUNT
@@ -26,6 +51,7 @@ export function RecoveryPhraseInput({
   const handleSubmit = useCallback(
     (e: FormEvent) => {
       e.preventDefault()
+      setProgressStep(0)
       const normalized = phrase.trim().toLowerCase().replace(/\s+/g, ' ')
       onSubmit(normalized)
     },
@@ -95,7 +121,7 @@ export function RecoveryPhraseInput({
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Verifying...
+                {PROGRESS_STEPS[progressStep]}
               </>
             ) : (
               'Restore access'
