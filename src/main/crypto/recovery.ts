@@ -3,6 +3,8 @@ import sodium from 'libsodium-wrappers-sumo'
 
 import type { RecoveryPhraseResult } from '@shared/contracts/crypto'
 
+import { deriveMasterKey } from './keys'
+
 // Callers MUST call secureCleanup(result.seed) after using the seed for key derivation.
 // The seed contains sensitive key material that should not persist in memory.
 export const generateRecoveryPhrase = async (): Promise<RecoveryPhraseResult> => {
@@ -27,4 +29,34 @@ export const phraseToSeed = async (phrase: string): Promise<Uint8Array> => {
   const original = new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength)
   sodium.memzero(original)
   return seed
+}
+
+export interface RecoveredKeyMaterial {
+  masterKey: Uint8Array
+  keyVerifier: string
+  kdfSalt: string
+}
+
+export const recoverMasterKeyFromPhrase = async (
+  phrase: string,
+  kdfSalt: string
+): Promise<RecoveredKeyMaterial> => {
+  const seed = await phraseToSeed(phrase)
+  const saltBytes = sodium.from_base64(kdfSalt, sodium.base64_variants.ORIGINAL)
+
+  try {
+    return await deriveMasterKey(seed, saltBytes)
+  } finally {
+    sodium.memzero(seed)
+    sodium.memzero(saltBytes)
+  }
+}
+
+export const validateKeyVerifier = (derivedVerifier: string, serverVerifier: string): boolean => {
+  const derivedBytes = new TextEncoder().encode(derivedVerifier)
+  const serverBytes = new TextEncoder().encode(serverVerifier)
+  if (derivedBytes.length !== serverBytes.length) {
+    return false
+  }
+  return sodium.memcmp(derivedBytes, serverBytes)
 }
