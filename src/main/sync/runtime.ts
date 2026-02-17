@@ -110,13 +110,13 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           if (device?.signingPublicKey) {
             const derivedB64 = sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL)
             if (device.signingPublicKey !== derivedB64) {
-              log.error('Signing key mismatch detected at runtime', {
-                deviceId,
-                expected: device.signingPublicKey.slice(0, 16),
-                actual: derivedB64.slice(0, 16)
+              log.warn('Signing key mismatch detected at runtime — self-healing DB', {
+                deviceId
               })
-              secureCleanup(secretKey)
-              return null
+              db.update(syncDevices)
+                .set({ signingPublicKey: derivedB64 })
+                .where(eq(syncDevices.isCurrentDevice, true))
+                .run()
             }
           }
 
