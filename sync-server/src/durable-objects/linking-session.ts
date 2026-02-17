@@ -1,34 +1,88 @@
 import { DurableObject } from 'cloudflare:workers'
 
-// TODO: Implement device linking session management
-// - Generate and validate QR codes for device pairing
-// - Track linking session state (pending, approved, expired)
-// - Coordinate key exchange between existing and new devices
-// - Auto-expire sessions after timeout
+type SessionStatus = 'pending' | 'scanned' | 'approved' | 'completed' | 'expired'
+
+interface SessionMeta {
+  sessionId: string
+  userId: string
+  initiatorDeviceId: string
+  status: SessionStatus
+  expiresAt: number
+}
+
 export class LinkingSession extends DurableObject {
-  // TODO: Implement fetch handler for linking session operations
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
 
     switch (url.pathname) {
       case '/create':
-        // TODO: Create a new linking session with QR data
-        return new Response('Not implemented', { status: 501 })
-
-      case '/status':
-        // TODO: Return current session status
-        return Response.json({ status: 'pending', expiresAt: null })
-
+        return this.handleCreate(request)
+      case '/scan':
+        return this.handleTransition(request, 'scanned')
       case '/approve':
-        // TODO: Mark session as approved by existing device
-        return new Response('Not implemented', { status: 501 })
-
+        return this.handleTransition(request, 'approved')
       case '/complete':
-        // TODO: Finalize linking and exchange keys
-        return new Response('Not implemented', { status: 501 })
-
+        return this.handleTransition(request, 'completed')
+      case '/status':
+        return this.handleStatus()
       default:
         return new Response('Not found', { status: 404 })
     }
+  }
+
+  private async handleCreate(request: Request): Promise<Response> {
+    const body: {
+      sessionId: string
+      userId: string
+      initiatorDeviceId: string
+      expiresAt: number
+    } = await request.json()
+
+    const meta: SessionMeta = {
+      sessionId: body.sessionId,
+      userId: body.userId,
+      initiatorDeviceId: body.initiatorDeviceId,
+      status: 'pending',
+      expiresAt: body.expiresAt
+    }
+
+    await this.ctx.storage.put('meta', meta)
+    await this.ctx.storage.setAlarm(body.expiresAt * 1000)
+
+    return Response.json({ ok: true })
+  }
+
+  private async handleTransition(_request: Request, newStatus: SessionStatus): Promise<Response> {
+    const meta = await this.ctx.storage.get<SessionMeta>('meta')
+    if (!meta) {
+      return Response.json({ error: 'Session not found in DO' }, { status: 404 })
+    }
+
+    meta.status = newStatus
+    await this.ctx.storage.put('meta', meta)
+
+    return Response.json({
+      ok: true,
+      userId: meta.userId,
+      initiatorDeviceId: meta.initiatorDeviceId
+    })
+  }
+
+  private async handleStatus(): Promise<Response> {
+    const meta = await this.ctx.storage.get<SessionMeta>('meta')
+    if (!meta) {
+      return Response.json({ status: 'expired', expiresAt: null })
+    }
+
+    const now = Math.floor(Date.now() / 1000)
+    if (meta.expiresAt < now) {
+      return Response.json({ status: 'expired', expiresAt: meta.expiresAt })
+    }
+
+    return Response.json({ status: meta.status, expiresAt: meta.expiresAt })
+  }
+
+  async alarm(): Promise<void> {
+    await this.ctx.storage.deleteAll()
   }
 }

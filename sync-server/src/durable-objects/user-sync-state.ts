@@ -36,6 +36,8 @@ export class UserSyncState extends DurableObject<Bindings> {
         return this.handleBroadcast(request)
       case '/revoke-device':
         return this.handleRevokeDevice(request)
+      case '/notify-linking':
+        return this.handleNotifyLinking(request)
       default:
         return new Response('Not found', { status: 404 })
     }
@@ -149,6 +151,34 @@ export class UserSyncState extends DurableObject<Bindings> {
     }
 
     return Response.json({ closed })
+  }
+
+  private async handleNotifyLinking(request: Request): Promise<Response> {
+    const body: {
+      type: string
+      targetDeviceId: string
+      payload: Record<string, unknown>
+    } = await request.json()
+
+    const tag = `device:${body.targetDeviceId}`
+    const sockets = this.ctx.getWebSockets(tag)
+
+    const message = JSON.stringify({
+      type: body.type,
+      payload: body.payload
+    })
+
+    let sent = 0
+    for (const ws of sockets) {
+      try {
+        ws.send(message)
+        sent++
+      } catch {
+        // socket may have closed
+      }
+    }
+
+    return Response.json({ sent })
   }
 
   webSocketMessage(ws: WebSocket): void {

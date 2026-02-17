@@ -1,0 +1,189 @@
+import { AppError, ErrorCodes } from '../lib/errors'
+
+const SESSION_TTL_SECONDS = 300
+
+interface LinkingSessionRow {
+  id: string
+  user_id: string
+  initiator_device_id: string
+  ephemeral_public_key: string
+  new_device_public_key: string | null
+  new_device_confirm: string | null
+  encrypted_master_key: string | null
+  encrypted_key_nonce: string | null
+  key_confirm: string | null
+  status: string
+  expires_at: number
+  created_at: number
+  completed_at: number | null
+}
+
+const isSessionExpired = (session: LinkingSessionRow): boolean =>
+  session.expires_at < Math.floor(Date.now() / 1000)
+
+const assertNotExpired = (session: LinkingSessionRow): void => {
+  if (isSessionExpired(session)) {
+    throw new AppError(ErrorCodes.LINKING_SESSION_EXPIRED, 'Linking session has expired', 410)
+  }
+}
+
+const getSession = async (db: D1Database, sessionId: string): Promise<LinkingSessionRow | null> => {
+  return db
+    .prepare('SELECT * FROM linking_sessions WHERE id = ?')
+    .bind(sessionId)
+    .first<LinkingSessionRow>()
+}
+
+const requireSession = async (db: D1Database, sessionId: string): Promise<LinkingSessionRow> => {
+  const session = await getSession(db, sessionId)
+  if (!session) {
+    throw new AppError(ErrorCodes.LINKING_SESSION_NOT_FOUND, 'Linking session not found', 404)
+  }
+  return session
+}
+
+const createLinkingSession = async (
+  db: D1Database,
+  userId: string,
+  deviceId: string,
+  ephemeralPublicKey: string
+): Promise<{ sessionId: string; expiresAt: number }> => {
+  const existing = await db
+    .prepare(
+      `SELECT id FROM linking_sessions
+       WHERE user_id = ? AND status IN ('pending', 'scanned')
+       AND expires_at > ?`
+    )
+    .bind(userId, Math.floor(Date.now() / 1000))
+    .first<{ id: string }>()
+
+  if (existing) {
+    await db
+      .prepare(`UPDATE linking_sessions SET status = 'cancelled' WHERE id = ?`)
+      .bind(existing.id)
+      .run()
+  }
+
+  const sessionId = crypto.randomUUID()
+  const now = Math.floor(Date.now() / 1000)
+  const expiresAt = now + SESSION_TTL_SECONDS
+
+  await db
+    .prepare(
+      `INSERT INTO linking_sessions
+       (id, user_id, initiator_device_id, ephemeral_public_key, status, expires_at, created_at)
+       VALUES (?, ?, ?, ?, 'pending', ?, ?)`
+    )
+    .bind(sessionId, userId, deviceId, ephemeralPublicKey, expiresAt, now)
+    .run()
+
+  return { sessionId, expiresAt }
+}
+
+const transitionToScanned = async (
+  db: D1Database,
+  sessionId: string,
+  newDevicePublicKey: string,
+  newDeviceConfirm: string
+): Promise<{ userId: string; initiatorDeviceId: string }> => {
+  const session = await requireSession(db, sessionId)
+  assertNotExpired(session)
+
+  const result = await db
+    .prepare(
+      `UPDATE linking_sessions
+       SET status = 'scanned', new_device_public_key = ?, new_device_confirm = ?
+       WHERE id = ? AND status = 'pending'`
+    )
+    .bind(newDevicePublicKey, newDeviceConfirm, sessionId)
+    .run()
+
+  if (!result.meta.changes) {
+    throw new AppError(
+      ErrorCodes.LINKING_INVALID_TRANSITION,
+      'Session is not in pending state',
+      409
+    )
+  }
+
+  return { userId: session.user_id, initiatorDeviceId: session.initiator_device_id }
+}
+
+const transitionToApproved = async (
+  db: D1Database,
+  sessionId: string,
+  userId: string,
+  encryptedMasterKey: string,
+  encryptedKeyNonce: string,
+  keyConfirm: string
+): Promise<void> => {
+  const session = await requireSession(db, sessionId)
+  assertNotExpired(session)
+
+  if (session.user_id !== userId) {
+    throw new AppError(
+      ErrorCodes.LINKING_INVALID_TRANSITION,
+      'Not authorized to approve this session',
+      409
+    )
+  }
+
+  const result = await db
+    .prepare(
+      `UPDATE linking_sessions
+       SET status = 'approved', encrypted_master_key = ?, encrypted_key_nonce = ?, key_confirm = ?
+       WHERE id = ? AND status = 'scanned'`
+    )
+    .bind(encryptedMasterKey, encryptedKeyNonce, keyConfirm, sessionId)
+    .run()
+
+  if (!result.meta.changes) {
+    throw new AppError(
+      ErrorCodes.LINKING_INVALID_TRANSITION,
+      'Session is not in scanned state',
+      409
+    )
+  }
+}
+
+const transitionToCompleted = async (
+  db: D1Database,
+  sessionId: string
+): Promise<{ encryptedMasterKey: string; encryptedKeyNonce: string; keyConfirm: string }> => {
+  const session = await requireSession(db, sessionId)
+  assertNotExpired(session)
+
+  const now = Math.floor(Date.now() / 1000)
+  const result = await db
+    .prepare(
+      `UPDATE linking_sessions
+       SET status = 'completed', completed_at = ?
+       WHERE id = ? AND status = 'approved'`
+    )
+    .bind(now, sessionId)
+    .run()
+
+  if (!result.meta.changes) {
+    throw new AppError(
+      ErrorCodes.LINKING_INVALID_TRANSITION,
+      'Session is not in approved state',
+      409
+    )
+  }
+
+  return {
+    encryptedMasterKey: session.encrypted_master_key!,
+    encryptedKeyNonce: session.encrypted_key_nonce!,
+    keyConfirm: session.key_confirm!
+  }
+}
+
+export {
+  createLinkingSession,
+  getSession,
+  isSessionExpired,
+  transitionToScanned,
+  transitionToApproved,
+  transitionToCompleted
+}
+export type { LinkingSessionRow }

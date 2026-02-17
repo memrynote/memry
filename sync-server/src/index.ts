@@ -6,6 +6,7 @@ import { cors } from 'hono/cors'
 
 import { AppError, ErrorCodes, errorHandler } from './lib/errors'
 import { auth } from './routes/auth'
+import { linking } from './routes/linking'
 import { sync } from './routes/sync'
 import { securityHeaders } from './middleware/security'
 import {
@@ -88,6 +89,7 @@ app.onError(errorHandler)
 app.get('/health', (c) => c.json({ status: 'ok' }))
 
 app.route('/auth', auth)
+app.route('/auth/linking', linking)
 app.route('/sync', sync)
 
 const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env, _ctx) => {
