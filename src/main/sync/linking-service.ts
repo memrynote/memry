@@ -24,7 +24,7 @@ import {
 } from '../crypto'
 import { createLogger } from '../lib/logger'
 
-import { getFromServer, postToServer } from './http-client'
+import { getFromServer, postToServer, SyncServerError } from './http-client'
 
 const log = createLogger('DeviceLinking')
 
@@ -248,6 +248,9 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
     log.info('Device linking completed', { deviceId })
     return { success: true, deviceId }
   } catch (err) {
+    if (err instanceof SyncServerError && err.statusCode === 409) {
+      return { success: false, error: 'Session not yet approved' }
+    }
     log.error('Failed to complete device linking', err)
     clearPendingLinkCompletion()
     throw err
