@@ -32,6 +32,7 @@ const mockGenerateDeviceSigningKeyPair = vi.fn()
 const mockGenerateRecoveryPhrase = vi.fn()
 const mockGenerateSalt = vi.fn()
 const mockGetDevicePublicKey = vi.fn()
+const mockGetOrCreateSigningKeyPair = vi.fn()
 
 vi.mock('../crypto', () => ({
   storeKey: (...args: unknown[]) => mockStoreKey(...args),
@@ -40,6 +41,7 @@ vi.mock('../crypto', () => ({
   deriveKey: (...args: unknown[]) => mockDeriveKey(...args),
   deriveMasterKey: (...args: unknown[]) => mockDeriveMasterKey(...args),
   generateDeviceSigningKeyPair: () => mockGenerateDeviceSigningKeyPair(),
+  getOrCreateSigningKeyPair: () => mockGetOrCreateSigningKeyPair(),
   generateRecoveryPhrase: () => mockGenerateRecoveryPhrase(),
   generateSalt: () => mockGenerateSalt(),
   getDevicePublicKey: (...args: unknown[]) => mockGetDevicePublicKey(...args),
@@ -59,11 +61,27 @@ vi.mock('../store', () => ({
 }))
 
 const mockInsertValues = vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) })
+const mockUpdateRun = vi.fn()
+const mockUpdateSet = vi.fn().mockReturnValue({
+  where: vi.fn().mockReturnValue({ run: mockUpdateRun })
+})
+const mockSelectGet = vi.fn().mockReturnValue(undefined)
+
+const createWhereResult = (defaultValue: unknown = undefined) => {
+  const result = Promise.resolve(defaultValue)
+  ;(result as Record<string, unknown>).get = mockSelectGet
+  ;(result as Record<string, unknown>).run = vi.fn()
+  return result
+}
+
+const mockDeleteWhere = vi.fn().mockImplementation(() => createWhereResult())
 const mockDb = {
-  insert: vi.fn().mockReturnValue({ values: mockInsertValues }),
+  insert: vi.fn().mockReturnValue({
+    values: vi.fn().mockReturnValue({ run: vi.fn() })
+  }),
   select: vi.fn().mockReturnValue({
     from: vi.fn().mockReturnValue({
-      where: vi.fn().mockResolvedValue([]),
+      where: vi.fn().mockImplementation(() => createWhereResult([])),
       orderBy: vi.fn().mockReturnValue({
         limit: vi.fn().mockReturnValue({
           offset: vi.fn().mockReturnValue({ all: vi.fn().mockReturnValue([]) })
@@ -72,10 +90,16 @@ const mockDb = {
       all: vi.fn().mockReturnValue([])
     })
   }),
-  delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
+  delete: vi.fn().mockReturnValue({ where: mockDeleteWhere }),
+  update: vi.fn().mockReturnValue({ set: mockUpdateSet }),
+  transaction: vi.fn((fn: (tx: unknown) => void) => {
+    fn(mockDb)
+  })
 }
+const mockIsDatabaseInitialized = vi.fn().mockReturnValue(true)
 vi.mock('../database/client', () => ({
-  getDatabase: () => mockDb
+  getDatabase: () => mockDb,
+  isDatabaseInitialized: () => mockIsDatabaseInitialized()
 }))
 
 const mockClipboardReadText = vi.fn().mockReturnValue('')
@@ -133,7 +157,12 @@ vi.mock('../sync/runtime', () => ({
   getSyncEngine: vi.fn().mockReturnValue(null)
 }))
 
-import { registerSyncHandlers, unregisterSyncHandlers, seedOAuthSession } from './sync-handlers'
+import {
+  registerSyncHandlers,
+  unregisterSyncHandlers,
+  seedOAuthSession,
+  checkSyncIntegrity
+} from './sync-handlers'
 import { getSyncEngine } from '../sync/runtime'
 
 const mockGetSyncEngine = vi.mocked(getSyncEngine)
@@ -390,7 +419,7 @@ describe('sync IPC handlers', () => {
         keyVerifier: 'verifier'
       })
       mockDeriveKey.mockResolvedValue(new Uint8Array(32))
-      mockGenerateDeviceSigningKeyPair.mockResolvedValue({
+      mockGetOrCreateSigningKeyPair.mockResolvedValue({
         deviceId: 'dev-oauth',
         publicKey: new Uint8Array(32),
         secretKey: fakeSecretKey
@@ -471,7 +500,7 @@ describe('sync IPC handlers', () => {
         keyVerifier: 'verifier'
       })
       mockDeriveKey.mockResolvedValue(new Uint8Array(32))
-      mockGenerateDeviceSigningKeyPair.mockResolvedValue({
+      mockGetOrCreateSigningKeyPair.mockResolvedValue({
         deviceId: 'dev-1',
         publicKey: new Uint8Array(32),
         secretKey: fakeSecretKey
@@ -641,6 +670,57 @@ describe('sync IPC handlers', () => {
 
       // #then - no events after timeout
       expect(mockWebContents.send).not.toHaveBeenCalled()
+    })
+  })
+
+  // --------------------------------------------------------------------------
+  // checkSyncIntegrity — self-healing
+  // --------------------------------------------------------------------------
+
+  describe('checkSyncIntegrity', () => {
+    it('skips check when database is not initialized', async () => {
+      // #given
+      mockIsDatabaseInitialized.mockReturnValue(false)
+
+      // #when
+      await checkSyncIntegrity()
+
+      // #then
+      expect(mockDb.select).not.toHaveBeenCalled()
+    })
+
+    it('does nothing when no current device exists', async () => {
+      // #given
+      mockIsDatabaseInitialized.mockReturnValue(true)
+      mockSelectGet.mockReturnValue(undefined)
+
+      // #when
+      await checkSyncIntegrity()
+
+      // #then
+      expect(mockRetrieveKey).not.toHaveBeenCalled()
+    })
+
+    it('self-heals when keychain key differs from DB public key', async () => {
+      // #given
+      mockIsDatabaseInitialized.mockReturnValue(true)
+      const device = { id: 'dev-1', signingPublicKey: 'old-pubkey-b64' }
+      mockSelectGet.mockReturnValue(device)
+
+      const fakeSigningKey = new Uint8Array(64).fill(9)
+      mockRetrieveKey
+        .mockResolvedValueOnce(new Uint8Array(32).fill(1))
+        .mockResolvedValueOnce(fakeSigningKey)
+
+      mockGetDevicePublicKey.mockReturnValue(new Uint8Array(32).fill(8))
+
+      // #when
+      await checkSyncIntegrity()
+
+      // #then — should update DB, not wipe state
+      expect(mockDb.update).toHaveBeenCalled()
+      expect(mockUpdateSet).toHaveBeenCalledWith({ signingPublicKey: 'base64-encoded' })
+      expect(mockStoreSet).not.toHaveBeenCalled()
     })
   })
 })

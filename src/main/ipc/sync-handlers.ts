@@ -38,10 +38,10 @@ import {
   constantTimeEqual,
   deleteKey,
   deriveMasterKey,
-  generateDeviceSigningKeyPair,
   generateRecoveryPhrase,
   generateSalt,
   getDevicePublicKey,
+  getOrCreateSigningKeyPair,
   phraseToSeed,
   secureCleanup,
   storeKey,
@@ -433,21 +433,26 @@ const persistKeysAndRegisterDevice = async (
   }
 
   const db = getDatabase()
-  await db
-    .delete(syncState)
-    .where(inArray(syncState.key, ['lastCursor', 'lastSyncAt', 'initialSeedDone', 'syncPaused']))
   const pubKey = getDevicePublicKey(signingSecretKey)
   const pubKeyBase64 = sodium.to_base64(pubKey, sodium.base64_variants.ORIGINAL)
 
-  await db.insert(syncDevices).values({
-    id: deviceResponse.deviceId,
-    name: os.hostname(),
-    platform: PLATFORM_MAP[process.platform] || 'linux',
-    osVersion: os.release(),
-    appVersion: app.getVersion(),
-    linkedAt: new Date(),
-    isCurrentDevice: true,
-    signingPublicKey: pubKeyBase64
+  db.transaction((tx) => {
+    tx.delete(syncDevices).where(eq(syncDevices.isCurrentDevice, true)).run()
+    tx.delete(syncState)
+      .where(inArray(syncState.key, ['lastCursor', 'lastSyncAt', 'initialSeedDone', 'syncPaused']))
+      .run()
+    tx.insert(syncDevices)
+      .values({
+        id: deviceResponse.deviceId,
+        name: os.hostname(),
+        platform: PLATFORM_MAP[process.platform] || 'linux',
+        osVersion: os.release(),
+        appVersion: app.getVersion(),
+        linkedAt: new Date(),
+        isCurrentDevice: true,
+        signingPublicKey: pubKeyBase64
+      })
+      .run()
   })
 
   if (!skipActivation) {
@@ -471,7 +476,7 @@ const performFirstDeviceSetup = async (setupToken: string): Promise<FirstDeviceS
     const { masterKey: mk, kdfSalt, keyVerifier } = await deriveMasterKey(seed, salt)
     masterKey = mk
 
-    const keyPair = await generateDeviceSigningKeyPair()
+    const keyPair = await getOrCreateSigningKeyPair()
     signingSecretKey = keyPair.secretKey
 
     const deviceId = await persistKeysAndRegisterDevice(
@@ -553,12 +558,15 @@ export async function checkSyncIntegrity(): Promise<void> {
     const derivedPubKeyB64 = sodium.to_base64(derivedPubKey, sodium.base64_variants.ORIGINAL)
 
     if (currentDevice.signingPublicKey && currentDevice.signingPublicKey !== derivedPubKeyB64) {
-      logger.error(
-        'Signing key mismatch: keychain key does not match registered device key. ' +
-          'Cleaning up local state. User will need to re-authenticate.',
+      logger.warn(
+        'Signing key mismatch: DB public key does not match keychain-derived key. ' +
+          'Self-healing by updating DB to match keychain (keychain is authority).',
         { deviceId: currentDevice.id }
       )
-      await cleanupLocalSyncState(db)
+      db.update(syncDevices)
+        .set({ signingPublicKey: derivedPubKeyB64 })
+        .where(eq(syncDevices.id, currentDevice.id))
+        .run()
       return
     }
   } catch (err) {
@@ -840,7 +848,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
           return { success: false, error: 'Recovery phrase does not match. Please try again.' }
         }
 
-        const keyPair = await generateDeviceSigningKeyPair()
+        const keyPair = await getOrCreateSigningKeyPair()
         signingSecretKey = keyPair.secretKey
 
         const deviceId = await persistKeysAndRegisterDevice(
