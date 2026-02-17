@@ -48,6 +48,32 @@ export const FilterSyncPayloadSchema = z.object({
   createdAt: z.string().optional()
 })
 
+export const StatusSyncSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string(),
+  position: z.number(),
+  isDefault: z.boolean().optional(),
+  isDone: z.boolean().optional(),
+  createdAt: z.string().optional()
+})
+
+export const ProjectSyncPayloadSchema = z.object({
+  name: z.string().optional(),
+  description: z.string().nullable().optional(),
+  color: z.string().optional(),
+  icon: z.string().nullable().optional(),
+  position: z.number().optional(),
+  isInbox: z.boolean().optional(),
+  archivedAt: z.string().nullable().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional(),
+  statuses: z.array(StatusSyncSchema).optional()
+})
+
 export type TaskSyncPayload = z.infer<typeof TaskSyncPayloadSchema>
 export type InboxSyncPayload = z.infer<typeof InboxSyncPayloadSchema>
 export type FilterSyncPayload = z.infer<typeof FilterSyncPayloadSchema>
+export type ProjectSyncPayload = z.infer<typeof ProjectSyncPayloadSchema>
+export type StatusSync = z.infer<typeof StatusSyncSchema>

@@ -13,6 +13,7 @@ import { WebSocketManager } from './websocket'
 import { initTaskSyncService, resetTaskSyncService } from './task-sync'
 import { initInboxSyncService, resetInboxSyncService } from './inbox-sync'
 import { initFilterSyncService, resetFilterSyncService } from './filter-sync'
+import { initProjectSyncService, resetProjectSyncService } from './project-sync'
 import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
 import { getDeviceSigningKey } from './device-keys'
 
@@ -71,6 +72,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       initTaskSyncService({ queue, db: serviceDb, getDeviceId })
       initInboxSyncService({ queue, db: serviceDb, getDeviceId })
       initFilterSyncService({ queue, db: serviceDb, getDeviceId })
+      initProjectSyncService({ queue, db: serviceDb, getDeviceId })
       initSettingsSyncManager({ db: settingsDb, queue, getDeviceId })
 
       const network = new NetworkMonitor()
@@ -152,6 +154,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       resetTaskSyncService()
       resetInboxSyncService()
       resetFilterSyncService()
+      resetProjectSyncService()
       resetSettingsSyncManager()
       log.error('Failed to start sync runtime', error)
       return null
@@ -171,6 +174,7 @@ export async function stopSyncRuntime(): Promise<void> {
   resetTaskSyncService()
   resetInboxSyncService()
   resetFilterSyncService()
+  resetProjectSyncService()
   resetSettingsSyncManager()
 
   if (!active) return
