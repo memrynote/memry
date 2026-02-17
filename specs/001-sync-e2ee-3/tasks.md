@@ -494,38 +494,38 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Server Linking Endpoints for US3
 
-- [ ] T104 [US3] Implement linking session initiation endpoint POST /auth/linking/initiate in sync-server/src/routes/auth.ts
-- [ ] T105 [US3] Implement QR scan endpoint POST /auth/linking/scan (accept new_device_confirm) in sync-server/src/routes/auth.ts
-- [ ] T106 [US3] Implement linking approval endpoint POST /auth/linking/approve (verify new_device_confirm, return key_confirm) in sync-server/src/routes/auth.ts
-- [ ] T107 [US3] Implement linking completion endpoint POST /auth/linking/complete (return encrypted key + key_confirm) in sync-server/src/routes/auth.ts
-- [ ] T108 [US3] Create LinkingSession Durable Object for real-time linking coordination in sync-server/src/durable-objects/linking-session.ts
-- [ ] T108a [US3] Implement linking session expiry check (reject operations on sessions with expires_at < now) in sync-server/src/routes/auth.ts
+- [x] T104 [US3] Implement linking session initiation endpoint POST /auth/linking/initiate in sync-server/src/routes/auth.ts
+- [x] T105 [US3] Implement QR scan endpoint POST /auth/linking/scan (accept new_device_confirm) in sync-server/src/routes/auth.ts
+- [x] T106 [US3] Implement linking approval endpoint POST /auth/linking/approve (verify new_device_confirm, return key_confirm) in sync-server/src/routes/auth.ts
+- [x] T107 [US3] Implement linking completion endpoint POST /auth/linking/complete (return encrypted key + key_confirm) in sync-server/src/routes/auth.ts
+- [x] T108 [US3] Create LinkingSession Durable Object for real-time linking coordination in sync-server/src/durable-objects/linking-session.ts
+- [x] T108a [US3] Implement linking session expiry check (reject operations on sessions with expires_at < now) in sync-server/src/routes/auth.ts
 
 ### Client Linking for US3
 
-- [ ] T109 [US3] Implement X25519 key pair generation in src/main/crypto/keys.ts
-- [ ] T110 [US3] Implement ECDH shared secret computation and HKDF enc/mac keys in src/main/crypto/keys.ts
-- [ ] T110a [US3] Implement linking HMAC proofs using canonical CBOR (new_device_confirm, key_confirm) in src/main/crypto/keys.ts
-- [ ] T111 [US3] Implement master key encryption with enc_key in src/main/crypto/encryption.ts
-- [ ] T112 [US3] Implement generate linking QR IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T113 [US3] Implement link via QR IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T114 [US3] Implement approve linking IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T109 [US3] Implement X25519 key pair generation in src/main/crypto/keys.ts
+- [x] T110 [US3] Implement ECDH shared secret computation and HKDF enc/mac keys in src/main/crypto/keys.ts
+- [x] T110a [US3] Implement linking HMAC proofs using canonical CBOR (new_device_confirm, key_confirm) in src/main/crypto/keys.ts
+- [x] T111 [US3] Implement master key encryption with enc_key in src/main/crypto/encryption.ts
+- [x] T112 [US3] Implement generate linking QR IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T113 [US3] Implement link via QR IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T114 [US3] Implement approve linking IPC handler in src/main/ipc/sync-handlers.ts
 
 ### UI Components for US3
 
-- [ ] T115 [P] [US3] Create QR code display component in src/renderer/src/components/sync/qr-linking.tsx
-- [ ] T116 [P] [US3] Create QR code scanner component in src/renderer/src/components/sync/qr-scanner.tsx
-- [ ] T117 [US3] Create linking approval dialog in src/renderer/src/components/sync/linking-approval-dialog.tsx
-- [ ] T118 [US3] Create waiting for approval screen in src/renderer/src/components/sync/linking-pending.tsx
-- [ ] T119 [US3] Implement 5-minute expiration timer display and expired QR error dialog in src/renderer/src/components/sync/qr-linking.tsx
-- [ ] T119a [US3] Wire QR linking flow into Settings/Setup UI and bind IPC calls in src/renderer/src/pages/settings.tsx and src/renderer/src/pages/settings/setup-wizard.tsx
+- [x] T115 [P] [US3] Create QR code display component in src/renderer/src/components/sync/qr-linking.tsx
+- [x] T116 [P] [US3] Create QR code scanner component in src/renderer/src/components/sync/qr-scanner.tsx
+- [x] T117 [US3] Create linking approval dialog in src/renderer/src/components/sync/linking-approval-dialog.tsx
+- [x] T118 [US3] Create waiting for approval screen in src/renderer/src/components/sync/linking-pending.tsx
+- [x] T119 [US3] Implement 5-minute expiration timer display and expired QR error dialog in src/renderer/src/components/sync/qr-linking.tsx
+- [x] T119a [US3] Wire QR linking flow into Settings/Setup UI and bind IPC calls in src/renderer/src/pages/settings.tsx and src/renderer/src/pages/settings/setup-wizard.tsx
 
 ### Linking Events for US3
 
-- [ ] T120 [US3] Implement linking request event in src/main/sync/websocket.ts
-- [ ] T121 [US3] Implement linking approved event in src/main/sync/websocket.ts
-- [ ] T121a [US3] Implement HMAC key derivation from ECDH shared secret via HKDF in src/main/crypto/keys.ts
-- [ ] T121b [US3] Document HMAC proof CBOR field ordering for new_device_confirm (reference src/shared/contracts/cbor-ordering.ts) in src/main/crypto/keys.ts
+- [x] T120 [US3] Implement linking request event in src/main/sync/websocket.ts
+- [x] T121 [US3] Implement linking approved event in src/main/sync/websocket.ts
+- [x] T121a [US3] Implement HMAC key derivation from ECDH shared secret via HKDF in src/main/crypto/keys.ts
+- [x] T121b [US3] Document HMAC proof CBOR field ordering for new_device_confirm (reference src/shared/contracts/cbor-ordering.ts) in src/main/crypto/keys.ts
 
 **Checkpoint**: User Story 3 complete - users can link devices via QR code
 
