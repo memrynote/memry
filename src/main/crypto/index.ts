@@ -1,12 +1,17 @@
 import sodium from 'libsodium-wrappers-sumo'
 
 export {
+  computeKeyConfirm,
+  computeLinkingProof,
+  computeSharedSecret,
   deriveKey,
+  deriveLinkingKeys,
   deriveMasterKey,
   generateDeviceSigningKeyPair,
   generateFileKey,
   generateKeyVerifier,
   generateSalt,
+  generateX25519KeyPair,
   getDevicePublicKey,
   getOrCreateSigningKeyPair,
   getOrDeriveVaultKey
@@ -14,7 +19,15 @@ export {
 
 export { generateRecoveryPhrase, phraseToSeed, validateRecoveryPhrase } from './recovery'
 
-export { decrypt, encrypt, generateNonce, unwrapFileKey, wrapFileKey } from './encryption'
+export {
+  decrypt,
+  decryptMasterKeyFromLinking,
+  encrypt,
+  encryptMasterKeyForLinking,
+  generateNonce,
+  unwrapFileKey,
+  wrapFileKey
+} from './encryption'
 
 export { signPayload, verifySignature } from './signatures'
 

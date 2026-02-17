@@ -68,3 +68,22 @@ export const unwrapFileKey = (
     sodium.memzero(fileKey)
   }
 }
+
+// ============================================================================
+// Device Linking — Master key transfer via ephemeral ECDH channel
+// ============================================================================
+
+export const encryptMasterKeyForLinking = (
+  masterKey: Uint8Array,
+  encKey: Uint8Array
+): { ciphertext: Uint8Array; nonce: Uint8Array } => {
+  return encrypt(masterKey, encKey)
+}
+
+export const decryptMasterKeyFromLinking = (
+  ciphertext: Uint8Array,
+  nonce: Uint8Array,
+  encKey: Uint8Array
+): Uint8Array => {
+  return decrypt(ciphertext, nonce, encKey)
+}
