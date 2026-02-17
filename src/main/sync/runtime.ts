@@ -1,4 +1,5 @@
 import { BrowserWindow } from 'electron'
+import sodium from 'libsodium-wrappers-sumo'
 import { eq } from 'drizzle-orm'
 import { KEYCHAIN_ENTRIES } from '@shared/contracts/crypto'
 import { syncDevices } from '@shared/db/schema/sync-devices'
@@ -98,25 +99,30 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             return null
           }
 
-          return {
-            secretKey,
-            publicKey: deriveDevicePublicKey(secretKey),
-            deviceId
-          }
-        },
-        getDevicePublicKey: async (deviceId) => {
-          const currentDeviceId = getCurrentDeviceId(db)
+          const publicKey = deriveDevicePublicKey(secretKey)
 
-          if (currentDeviceId && deviceId === currentDeviceId) {
-            const secretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
-            if (!secretKey) return null
-            try {
-              return deriveDevicePublicKey(secretKey)
-            } finally {
+          const device = db
+            .select({ signingPublicKey: syncDevices.signingPublicKey })
+            .from(syncDevices)
+            .where(eq(syncDevices.isCurrentDevice, true))
+            .get()
+
+          if (device?.signingPublicKey) {
+            const derivedB64 = sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL)
+            if (device.signingPublicKey !== derivedB64) {
+              log.error('Signing key mismatch detected at runtime', {
+                deviceId,
+                expected: device.signingPublicKey.slice(0, 16),
+                actual: derivedB64.slice(0, 16)
+              })
               secureCleanup(secretKey)
+              return null
             }
           }
 
+          return { secretKey, publicKey, deviceId }
+        },
+        getDevicePublicKey: async (deviceId) => {
           const token = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
           if (!token) return null
           return getDeviceSigningKey(engineDb, deviceId, token)
