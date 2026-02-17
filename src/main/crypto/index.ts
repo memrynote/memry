@@ -8,6 +8,7 @@ export {
   generateKeyVerifier,
   generateSalt,
   getDevicePublicKey,
+  getOrCreateSigningKeyPair,
   getOrDeriveVaultKey
 } from './keys'
 

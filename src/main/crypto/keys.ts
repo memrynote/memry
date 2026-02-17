@@ -87,6 +87,19 @@ export const getDevicePublicKey = (secretKey: Uint8Array): Uint8Array => {
   return sodium.crypto_sign_ed25519_sk_to_pk(secretKey)
 }
 
+export const getOrCreateSigningKeyPair = async (): Promise<DeviceSigningKeyPair> => {
+  await sodium.ready
+
+  const existing = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
+  if (existing) {
+    const publicKey = sodium.crypto_sign_ed25519_sk_to_pk(existing)
+    const deviceId = sodium.to_hex(sodium.crypto_generichash(16, publicKey, null))
+    return { deviceId, publicKey, secretKey: existing }
+  }
+
+  return generateDeviceSigningKeyPair()
+}
+
 export const generateKeyVerifier = async (masterKey: Uint8Array): Promise<string> => {
   const verifierKey = await deriveKey(masterKey, 'memry-key-verifier-v1', 32)
   try {
