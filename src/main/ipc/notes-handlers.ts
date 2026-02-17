@@ -21,6 +21,8 @@ import {
 import { PropertyTypes } from '@shared/db/schema/notes-cache'
 import { RenameFolderSchema } from '@shared/contracts/tasks-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
+import { getNoteSyncService } from '../sync/note-sync'
+import { getCrdtProvider } from '../sync/crdt-provider'
 import {
   createNote,
   getNoteById,
@@ -137,6 +139,8 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(NoteCreateSchema, async (input) => {
       try {
         const note = await createNote(input)
+        getNoteSyncService()?.enqueueCreate(note.id)
+        getCrdtProvider().initForNote(note.id, { title: note.title }, note.tags).catch(() => {})
         return { success: true, note }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to create note'
@@ -195,6 +199,7 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(NoteUpdateSchema, async (input) => {
       try {
         const note = await updateNote(input)
+        getNoteSyncService()?.enqueueUpdate(input.id)
         return { success: true, note }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update note'
@@ -209,6 +214,7 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(NoteRenameSchema, async (input) => {
       try {
         const note = await renameNote(input.id, input.newTitle)
+        getNoteSyncService()?.enqueueUpdate(input.id)
         return { success: true, note }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to rename note'
@@ -223,6 +229,7 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(NoteMoveSchema, async (input) => {
       try {
         const note = await moveNote(input.id, input.newFolder)
+        getNoteSyncService()?.enqueueUpdate(input.id)
         return { success: true, note }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to move note'
@@ -236,6 +243,7 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.DELETE,
     createStringHandler(async (id) => {
       try {
+        getNoteSyncService()?.enqueueDelete(id)
         await deleteNote(id)
         return { success: true }
       } catch (error) {

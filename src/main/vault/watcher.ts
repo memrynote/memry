@@ -35,6 +35,9 @@ import { trackPendingDelete, checkForRename, clearAllPendingDeletes } from './re
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@shared/file-types'
 import { createLogger } from '../lib/logger'
+import { isWritebackIgnored, clearWritebackIgnore, wasRecentNetworkUpdate } from '../sync/crdt-writeback'
+import { getCrdtProvider, ORIGIN_LOCAL } from '../sync/crdt-provider'
+import { markdownToBlocks, blocksToYFragment } from '../sync/blocknote-converter'
 
 const logger = createLogger('Watcher')
 
@@ -130,6 +133,25 @@ function isJournalPath(relativePath: string, journalFolder: string): boolean {
 function extractJournalDate(relativePath: string): string {
   const filename = relativePath.substring(relativePath.lastIndexOf('/') + 1)
   return filename.replace('.md', '')
+}
+
+async function feedExternalEditToCrdt(noteId: string, markdownContent: string): Promise<void> {
+  const provider = getCrdtProvider()
+  const doc = provider.getDoc(noteId)
+  if (!doc) return
+
+  if (wasRecentNetworkUpdate(noteId)) {
+    emitEvent('sync:concurrent-edit', { noteId })
+  }
+
+  const blocks = await markdownToBlocks(markdownContent)
+  if (!blocks) return
+
+  const fragment = doc.getXmlFragment('prosemirror')
+  doc.transact(() => {
+    fragment.delete(0, fragment.length)
+    blocksToYFragment(blocks, fragment)
+  }, ORIGIN_LOCAL)
 }
 
 // ============================================================================
@@ -282,29 +304,29 @@ export class VaultWatcher {
   private async handleFileAdd(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
 
+    if (isWritebackIgnored(absolutePath)) {
+      clearWritebackIgnore(absolutePath)
+      return
+    }
+
     try {
       const relativePath = path.relative(this.vaultPath, absolutePath)
       const fileType = getFileType(getExtension(absolutePath))
 
       if (!fileType) {
-        // Unsupported file type, skip
         return
       }
 
       const db = getIndexDatabase()
 
-      // Check if already in cache (might have been added by internal operation)
       const existing = getNoteCacheByPath(db, relativePath)
       if (existing) {
-        // Already cached, skip
         return
       }
 
-      // Handle markdown files with full frontmatter support
       if (fileType === 'markdown') {
         await this.handleMarkdownFileAdd(absolutePath, relativePath, db)
       } else {
-        // Handle non-markdown files (PDF, images, audio, video)
         await this.handleNonMarkdownFileAdd(absolutePath, relativePath, fileType, db)
       }
     } catch (error) {
@@ -476,31 +498,31 @@ export class VaultWatcher {
   private async handleFileChange(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
 
+    if (isWritebackIgnored(absolutePath)) {
+      clearWritebackIgnore(absolutePath)
+      return
+    }
+
     try {
       const relativePath = path.relative(this.vaultPath, absolutePath)
       const fileType = getFileType(getExtension(absolutePath))
 
       if (!fileType) {
-        // Unsupported file type, skip
         return
       }
 
       const db = getIndexDatabase()
 
-      // Get cached version
       const cached = getNoteCacheByPath(db, relativePath)
 
       if (!cached) {
-        // File not in cache, treat as add
         await this.handleFileAdd(absolutePath)
         return
       }
 
-      // Handle markdown files with full frontmatter support
       if (fileType === 'markdown') {
         await this.handleMarkdownFileChange(absolutePath, relativePath, cached, db)
       } else {
-        // Handle non-markdown files (PDF, images, audio, video)
         await this.handleNonMarkdownFileChange(absolutePath, relativePath, fileType, cached, db)
       }
     } catch (err) {
@@ -518,7 +540,6 @@ export class VaultWatcher {
     cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
-    // Read and parse the file
     const content = await safeRead(absolutePath)
     if (!content) {
       return
@@ -526,16 +547,12 @@ export class VaultWatcher {
 
     const parsed = parseNote(content, relativePath)
 
-    // Calculate new hash
     const contentHash = generateContentHash(content)
 
-    // Check if content actually changed
     if (cached.contentHash === contentHash) {
-      // No actual change, skip
       return
     }
 
-    // Sync to cache using NoteSyncService (handles tags, properties, FTS, links)
     const syncResult = syncNoteToCache(
       db,
       {
@@ -548,7 +565,6 @@ export class VaultWatcher {
       { isNew: false }
     )
 
-    // Extract tags and properties for event emission
     const tags = extractTags(parsed.frontmatter)
     const properties = extractProperties(parsed.frontmatter)
     const title = parsed.frontmatter.title ?? path.basename(relativePath, '.md')
@@ -557,14 +573,13 @@ export class VaultWatcher {
       ensureTagDefinitions(getDatabase(), tags)
     }
 
-    // Emit update event for notes
     emitEvent(NotesChannels.events.UPDATED, {
       id: cached.id,
       changes: {
         title,
         content: parsed.content,
         tags,
-        properties, // T012: Include properties in event
+        properties,
         modified: new Date(parsed.frontmatter.modified),
         wordCount: syncResult.wordCount,
         snippet: syncResult.snippet
@@ -572,10 +587,12 @@ export class VaultWatcher {
       source: 'external'
     })
 
-    // Queue embedding update for AI suggestions (batched for performance)
     queueEmbeddingUpdate(cached.id)
 
-    // Also emit journal event if this is a journal entry
+    feedExternalEditToCrdt(cached.id, parsed.content).catch((err) => {
+      logger.warn('Failed to feed external edit to CRDT', { noteId: cached.id, error: err })
+    })
+
     const config = getConfig()
     if (isJournalPath(relativePath, config.journalFolder)) {
       const journalDate = extractJournalDate(relativePath)

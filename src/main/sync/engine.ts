@@ -11,7 +11,8 @@ import type {
   SyncResumedEvent,
   ConflictDetectedEvent,
   QueueClearedEvent,
-  ClockSkewWarningEvent
+  ClockSkewWarningEvent,
+  InitialSyncProgressEvent
 } from '@shared/contracts/ipc-events'
 import type {
   GetSyncStatusResult,
@@ -38,6 +39,8 @@ import { withRetry } from './retry'
 import { postToServer, getFromServer } from './http-client'
 import { checkManifestIntegrity } from './manifest-check'
 import { runInitialSeed } from './initial-seed'
+import type { CrdtProvider } from './crdt-provider'
+import { decryptCrdtUpdate } from './crdt-encrypt'
 
 const log = createLogger('SyncEngine')
 
@@ -66,6 +69,7 @@ export interface SyncEngineDeps {
   getDevicePublicKey: (deviceId: string) => Promise<Uint8Array | null>
   db: DrizzleDb
   emitToRenderer: (channel: string, data: unknown) => void
+  crdtProvider?: CrdtProvider
 }
 
 export interface SyncEngineOptions {
@@ -541,6 +545,14 @@ export class SyncEngine extends EventEmitter {
                 } satisfies ConflictDetectedEvent)
               }
 
+              if (
+                (item.type === 'note' || item.type === 'journal') &&
+                this.deps.crdtProvider &&
+                itemOp !== 'delete'
+              ) {
+                await this.applyCrdtIncrementals(item.id, token, vaultKey)
+              }
+
               processedIds.add(item.id)
               pulledCount++
               pageApplied++
@@ -589,6 +601,17 @@ export class SyncEngine extends EventEmitter {
             })
             break
           }
+        }
+
+        if (this.fullSyncActive) {
+          const estimatedTotal = changes.hasMore
+            ? pulledCount + this.options.pullPageLimit
+            : pulledCount
+          this.deps.emitToRenderer(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
+            phase: 'notes',
+            processedItems: pulledCount,
+            totalItems: estimatedTotal
+          } satisfies InitialSyncProgressEvent)
         }
 
         this.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(changes.nextCursor))
@@ -673,6 +696,12 @@ export class SyncEngine extends EventEmitter {
       this.deps.queue.purgeOldErrors(
         new Date(Date.now() - ERROR_RETENTION_DAYS * 24 * 60 * 60 * 1000)
       )
+
+      this.deps.emitToRenderer(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
+        phase: 'complete',
+        processedItems: 0,
+        totalItems: 0
+      } satisfies InitialSyncProgressEvent)
     } finally {
       this.fullSyncActive = false
     }
@@ -942,6 +971,47 @@ export class SyncEngine extends EventEmitter {
     } catch {
       log.warn('Failed to fetch local item for conflict', { itemId, type })
       return {}
+    }
+  }
+
+  private async applyCrdtIncrementals(
+    noteId: string,
+    token: string,
+    vaultKey: Uint8Array
+  ): Promise<void> {
+    if (!this.deps.crdtProvider) return
+
+    try {
+      const doc = await this.deps.crdtProvider.open(noteId)
+      if (!doc) return
+
+      let since = 0
+      let hasMore = true
+
+      while (hasMore) {
+        const result = await getFromServer<{
+          updates: Array<{ sequenceNum: number; data: string; createdAt: number }>
+          hasMore: boolean
+        }>(`/sync/crdt/updates?note_id=${encodeURIComponent(noteId)}&since=${since}&limit=100`, token)
+
+        for (const entry of result.updates) {
+          const packed = Uint8Array.from(atob(entry.data), (ch) => ch.charCodeAt(0))
+          const decrypted = decryptCrdtUpdate(packed, vaultKey)
+          this.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted)
+          since = entry.sequenceNum
+        }
+
+        hasMore = result.hasMore
+      }
+
+      if (since > 0) {
+        log.debug('Applied CRDT incrementals', { noteId, lastSeq: since })
+      }
+    } catch (err) {
+      log.warn('Failed to apply CRDT incrementals', {
+        noteId,
+        error: err instanceof Error ? err.message : String(err)
+      })
     }
   }
 }

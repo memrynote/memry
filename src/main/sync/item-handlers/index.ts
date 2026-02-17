@@ -5,6 +5,8 @@ import { inboxHandler } from './inbox-handler'
 import { filterHandler } from './filter-handler'
 import { projectHandler } from './project-handler'
 import { settingsHandler } from './settings-handler'
+import { noteHandler } from './note-handler'
+import { journalHandler } from './journal-handler'
 
 export type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb, EmitToWindows } from './types'
 export { resolveClockConflict } from './types'
@@ -14,7 +16,9 @@ const handlers = new Map<SyncItemType, SyncItemHandler>([
   ['inbox', inboxHandler],
   ['filter', filterHandler],
   ['project', projectHandler],
-  ['settings', settingsHandler]
+  ['settings', settingsHandler],
+  ['note', noteHandler],
+  ['journal', journalHandler]
 ])
 
 export function getHandler(type: SyncItemType): SyncItemHandler | undefined {

@@ -56,6 +56,8 @@ import {
 } from '@shared/db/queries/notes'
 import { getTasksByDueDate, countOverdueTasksBeforeDate } from '@shared/db/queries/tasks'
 import { getIndexDatabase, getDatabase } from '../database'
+import { getJournalSyncService } from '../sync/journal-sync'
+import { getCrdtProvider } from '../sync/crdt-provider'
 
 const logger = createLogger('IPC:Journal')
 
@@ -139,6 +141,10 @@ export function registerJournalHandlers(): void {
         { isNew: !cached }
       )
       queueEmbeddingUpdate(cacheId)
+      getJournalSyncService()?.enqueueCreate(cacheId, entry.date)
+      getCrdtProvider()
+        .initForNote(cacheId, { date: entry.date }, entry.tags)
+        .catch(() => {})
 
       // Emit event
       emitJournalEvent(JournalChannels.events.ENTRY_CREATED, {
@@ -190,6 +196,10 @@ export function registerJournalHandlers(): void {
           { isNew: !cached }
         )
         queueEmbeddingUpdate(cacheId)
+        getJournalSyncService()?.enqueueCreate(cacheId, entry.date)
+        getCrdtProvider()
+          .initForNote(cacheId, { date: entry.date }, entry.tags)
+          .catch(() => {})
 
         emitJournalEvent(JournalChannels.events.ENTRY_CREATED, {
           date: entry.date,
@@ -258,6 +268,7 @@ export function registerJournalHandlers(): void {
         { isNew: !cached }
       )
       queueEmbeddingUpdate(cacheId)
+      getJournalSyncService()?.enqueueUpdate(cacheId, entry.date)
 
       // Emit event
       emitJournalEvent(JournalChannels.events.ENTRY_UPDATED, {
@@ -283,6 +294,7 @@ export function registerJournalHandlers(): void {
 
       // Delete from unified cache
       if (cached) {
+        getJournalSyncService()?.enqueueDelete(cached.id, input.date)
         deleteNoteCache(db, cached.id)
       }
 
