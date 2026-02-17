@@ -53,7 +53,7 @@ const statusRateLimit = createRateLimiter({
 
 const wsRateLimit = createRateLimiter({
   keyPrefix: 'sync_ws',
-  maxRequests: 5,
+  maxRequests: 15,
   windowSeconds: 60
 })
 
