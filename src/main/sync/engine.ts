@@ -87,6 +87,7 @@ export class SyncEngine extends EventEmitter {
   private abortController: AbortController | null = null
   private inFlightSync: Promise<void> | null = null
   private pushDebounceTimer: ReturnType<typeof setTimeout> | null = null
+  private pullInterval: ReturnType<typeof setInterval> | null = null
   private pendingPushRequested = false
   private readonly PUSH_DEBOUNCE_MS = 2000
   private applier: ItemApplier
@@ -135,6 +136,8 @@ export class SyncEngine extends EventEmitter {
     } else {
       this.setState('offline')
     }
+
+    this.pullInterval = setInterval(() => this.periodicPull(), 60_000)
   }
 
   async activate(): Promise<void> {
@@ -155,6 +158,10 @@ export class SyncEngine extends EventEmitter {
       clearTimeout(this.pushDebounceTimer)
       this.pushDebounceTimer = null
     }
+    if (this.pullInterval) {
+      clearInterval(this.pullInterval)
+      this.pullInterval = null
+    }
     this.pendingPushRequested = false
     this.abortController?.abort()
     if (this.inFlightSync) {
@@ -170,12 +177,33 @@ export class SyncEngine extends EventEmitter {
     SyncEngine.activeInstance = null
   }
 
+  private periodicPull(): void {
+    if (this.syncing || this.fullSyncActive || this.isPaused() || !this.deps.network.online) {
+      log.debug('Periodic pull skipped', {
+        syncing: this.syncing,
+        fullSyncActive: this.fullSyncActive,
+        paused: this.isPaused(),
+        online: this.deps.network.online
+      })
+      return
+    }
+    log.debug('Periodic pull triggered')
+    this.scheduleSync(() => this.pull())
+  }
+
   async push(): Promise<void> {
+    log.debug('Push entered', {
+      queuePending: this.deps.queue.getPendingCount(),
+      queueTotal: this.deps.queue.getSize(),
+      syncing: this.syncing,
+      fullSyncActive: this.fullSyncActive
+    })
     const release = await this.acquireSyncLock()
     if (!release) {
       log.debug('Push skipped', { syncing: this.syncing, paused: this.isPaused() })
       return
     }
+    log.debug('Push: lock acquired', { queuePending: this.deps.queue.getPendingCount() })
     this.setState('syncing')
     this.abortController = new AbortController()
 
@@ -186,6 +214,7 @@ export class SyncEngine extends EventEmitter {
       release()
       return
     }
+    log.debug('Push: token acquired', { queuePending: this.deps.queue.getPendingCount() })
 
     const signingKeys = await this.deps.getSigningKeys()
     if (!signingKeys) {
@@ -194,6 +223,7 @@ export class SyncEngine extends EventEmitter {
       release()
       return
     }
+    log.debug('Push: signingKeys acquired', { queuePending: this.deps.queue.getPendingCount() })
 
     const vaultKey = await this.deps.getVaultKey()
     if (!vaultKey) {
@@ -202,6 +232,10 @@ export class SyncEngine extends EventEmitter {
       release()
       return
     }
+    log.debug('Push: vaultKey acquired', {
+      queuePending: this.deps.queue.getPendingCount(),
+      rawPending: this.deps.queue.getRawPendingCount()
+    })
     const startTime = Date.now()
     let pushedCount = 0
     let lastServerTime = 0
@@ -210,11 +244,30 @@ export class SyncEngine extends EventEmitter {
       for (let iteration = 0; iteration < MAX_PUSH_ITERATIONS; iteration++) {
         if (this.abortController.signal.aborted) break
 
+        const preDequeueCount = this.deps.queue.getPendingCount()
+        const rawCount = this.deps.queue.getRawPendingCount()
+        if (preDequeueCount !== rawCount) {
+          log.error('Push: Drizzle vs raw SQL mismatch!', {
+            drizzle: preDequeueCount,
+            raw: rawCount
+          })
+        }
         const items = this.deps.queue.dequeue(this.options.pushBatchSize)
         if (items.length === 0) {
-          log.debug('Push complete: queue empty')
+          log.debug('Push complete: queue empty', { preDequeueCount, rawCount })
           break
         }
+
+        log.info('Push: dequeued batch', {
+          iteration,
+          batchSize: items.length,
+          items: items.map((i) => ({
+            id: i.id.slice(0, 8),
+            type: i.type,
+            itemId: i.itemId.slice(0, 8),
+            attempts: i.attempts
+          }))
+        })
 
         const pushItems = items.map((item) => {
           const payloadMeta = this.extractPayloadMetadata(item.payload)
@@ -245,6 +298,14 @@ export class SyncEngine extends EventEmitter {
           { signal: this.abortController.signal, isOnline: () => this.deps.network.online }
         )
 
+        log.info('Push: server response', {
+          iteration,
+          accepted: response.value.accepted.length,
+          rejected: response.value.rejected.length,
+          serverTime: response.value.serverTime
+        })
+
+        lastServerTime = response.value.serverTime
         const acceptedSet = new Set(response.value.accepted)
         for (const { queueId, pushItem } of pushItems) {
           if (acceptedSet.has(pushItem.id)) {
@@ -253,11 +314,14 @@ export class SyncEngine extends EventEmitter {
             this.emitItemSynced(pushItem.id, pushItem.type, 'push')
           } else {
             const rejection = response.value.rejected.find((r) => r.id === pushItem.id)
+            log.warn('Push: item rejected', {
+              queueId: queueId.slice(0, 8),
+              itemId: pushItem.id.slice(0, 8),
+              reason: rejection?.reason ?? 'Unknown rejection'
+            })
             this.deps.queue.markFailed(queueId, rejection?.reason ?? 'Unknown rejection')
           }
         }
-
-        lastServerTime = response.value.serverTime
       }
 
       if (pushedCount > 0) {
@@ -591,6 +655,12 @@ export class SyncEngine extends EventEmitter {
         log.debug('fullSync: re-pull complete')
       }
 
+      if (this.pushDebounceTimer) {
+        clearTimeout(this.pushDebounceTimer)
+        this.pushDebounceTimer = null
+        this.pendingPushRequested = false
+      }
+
       const pendingAfterManifest = this.deps.queue.getPendingCount()
       if (pendingAfterManifest > 0 && !this.isPaused()) {
         log.debug('fullSync: pending items after manifest check, running follow-up push', {
@@ -648,13 +718,21 @@ export class SyncEngine extends EventEmitter {
 
   private scheduleSync(fn: () => Promise<void>): void {
     if (this.fullSyncActive) return
-    this.inFlightSync = fn()
-      .catch((error) => {
-        log.error('Scheduled sync failed', error)
-      })
-      .finally(() => {
-        this.inFlightSync = null
-      })
+    const run = () =>
+      fn()
+        .catch((error) => {
+          log.error('Scheduled sync failed', error)
+        })
+        .finally(() => {
+          this.inFlightSync = null
+        })
+
+    if (this.inFlightSync) {
+      log.debug('scheduleSync: chaining onto in-flight sync')
+      this.inFlightSync = this.inFlightSync.then(run)
+    } else {
+      this.inFlightSync = run()
+    }
   }
 
   private handleNetworkChange = ({ online }: { online: boolean }): void => {
