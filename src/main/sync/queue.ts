@@ -2,6 +2,9 @@ import { eq, and, sql, desc, asc, lt, lte, count } from 'drizzle-orm'
 import { syncQueue } from '@shared/db/schema/sync-queue'
 import type { SyncItemType, SyncOperation } from '@shared/contracts/sync-api'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import { createLogger } from '../lib/logger'
+
+const log = createLogger('SyncQueue')
 
 type DrizzleDb = BetterSQLite3Database
 
@@ -74,18 +77,55 @@ export class SyncQueueManager {
       return newId
     })
 
+    log.debug('enqueue: item queued', {
+      id: id.slice(0, 8),
+      type,
+      itemId: itemId.slice(0, 8),
+      operation
+    })
     this.onItemEnqueued?.()
     return id
   }
 
   dequeue(batchSize: number): Array<typeof syncQueue.$inferSelect> {
-    const items = this.db
+    let items = this.db
       .select()
       .from(syncQueue)
       .where(lt(syncQueue.attempts, DEFAULT_MAX_ATTEMPTS))
       .orderBy(desc(syncQueue.priority), asc(syncQueue.createdAt))
       .limit(batchSize)
       .all()
+
+    if (items.length === 0) {
+      const pendingCount = this.getPendingCount()
+      if (pendingCount > 0) {
+        const allRows = this.db.select().from(syncQueue).all()
+        log.error('dequeue/getPendingCount mismatch', {
+          dequeueResult: 0,
+          pendingCount,
+          totalRows: allRows.length,
+          rows: allRows.map((r) => ({
+            id: r.id.slice(0, 8),
+            type: r.type,
+            itemId: r.itemId.slice(0, 8),
+            attempts: r.attempts,
+            createdAt: r.createdAt
+          }))
+        })
+
+        const fallbackItems = this.db
+          .select()
+          .from(syncQueue)
+          .where(lt(syncQueue.attempts, DEFAULT_MAX_ATTEMPTS))
+          .limit(batchSize)
+          .all()
+
+        if (fallbackItems.length > 0) {
+          log.warn('dequeue: fallback query recovered items', { count: fallbackItems.length })
+          items = fallbackItems
+        }
+      }
+    }
 
     if (items.length > 0) {
       const ids = items.map((i) => i.id)
@@ -117,10 +157,12 @@ export class SyncQueueManager {
   }
 
   markSuccess(id: string): void {
+    log.debug('markSuccess: deleting item', { id: id.slice(0, 8) })
     this.db.delete(syncQueue).where(eq(syncQueue.id, id)).run()
   }
 
   markFailed(id: string, error: string): void {
+    log.warn('markFailed: item push rejected', { id: id.slice(0, 8), error })
     this.db
       .update(syncQueue)
       .set({
@@ -145,6 +187,13 @@ export class SyncQueueManager {
     return result?.count ?? 0
   }
 
+  getRawPendingCount(): number {
+    const result = this.db.get<{ cnt: number }>(
+      sql`SELECT count(*) as cnt FROM sync_queue WHERE attempts < ${DEFAULT_MAX_ATTEMPTS}`
+    )
+    return result?.cnt ?? 0
+  }
+
   getFailedCount(): number {
     const result = this.db
       .select({ count: count() })
@@ -155,10 +204,12 @@ export class SyncQueueManager {
   }
 
   clear(): void {
+    log.warn('clear: deleting ALL queue items', { count: this.getSize() })
     this.db.delete(syncQueue).run()
   }
 
   removeById(id: string): void {
+    log.debug('removeById: deleting item', { id: id.slice(0, 8) })
     this.db.delete(syncQueue).where(eq(syncQueue.id, id)).run()
   }
 
@@ -172,6 +223,7 @@ export class SyncQueueManager {
   }
 
   purgeOldErrors(olderThan: Date): number {
+    const beforeCount = this.getSize()
     const result = this.db
       .delete(syncQueue)
       .where(
@@ -181,6 +233,9 @@ export class SyncQueueManager {
         )
       )
       .run()
+    if (result.changes > 0) {
+      log.debug('purgeOldErrors: purged', { purged: result.changes, beforeCount })
+    }
     return result.changes
   }
 
