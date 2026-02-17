@@ -1,6 +1,7 @@
 import { sqliteTable, text, integer, index, primaryKey } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
 import type { FileType } from '../../file-types'
+import type { VectorClock } from '../../contracts/sync-api'
 
 export const noteCache = sqliteTable(
   'note_cache',
@@ -25,6 +26,8 @@ export const noteCache = sqliteTable(
     snippet: text('snippet'),
     // Unified: date field for journal entries (YYYY-MM-DD), null for regular notes
     date: text('date'),
+    clock: text('clock', { mode: 'json' }).$type<VectorClock>(),
+    syncedAt: text('synced_at'),
     createdAt: text('created_at').notNull(),
     modifiedAt: text('modified_at').notNull(),
     indexedAt: text('indexed_at')
