@@ -108,6 +108,10 @@ export const verifyItemSignature = async (
     delete signaturePayload.metadata
   }
 
+  if (item.deletedAt !== undefined) {
+    signaturePayload.deletedAt = item.deletedAt
+  }
+
   const cborBytes = encodeSignaturePayload(signaturePayload, 'SYNC_ITEM')
   const valid = await verifyEd25519(device.auth_public_key, item.signature, cborBytes)
   if (!valid) {
