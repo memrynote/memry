@@ -154,6 +154,7 @@
     "pako": "^2.1.0",
     "pdf-parse": "^2.4.5",
     "pdfjs-dist": "^5.4.296",
+    "qrcode.react": "^4.2.0",
     "radix-ui": "^1.4.3",
     "react-complex-tree": "^2.6.1",
     "react-day-picker": "^9.13.0",
