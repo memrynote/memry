@@ -92,6 +92,13 @@
       "when": 1771255377561,
       "tag": "0012_lush_veda",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1771286986279,
+      "tag": "0013_last_guardian",
+      "breakpoints": true
     }
   ]
 }

@@ -9,7 +9,7 @@ export const syncDevices = sqliteTable('sync_devices', {
   linkedAt: integer('linked_at', { mode: 'timestamp' }).notNull(),
   lastSyncAt: integer('last_sync_at', { mode: 'timestamp' }),
   isCurrentDevice: integer('is_current_device', { mode: 'boolean' }).notNull().default(false),
-  signingPublicKey: text('signing_public_key')
+  signingPublicKey: text('signing_public_key').notNull()
 })
 
 export type SyncDevice = typeof syncDevices.$inferSelect
