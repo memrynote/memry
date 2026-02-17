@@ -17,7 +17,8 @@ const TEST_PROJECT = {
   name: 'Test Project',
   color: '#000',
   position: 0,
-  isInbox: false
+  isInbox: false,
+  clock: { [DEVICE_ID]: 1 }
 }
 
 describe('runInitialSeed', () => {

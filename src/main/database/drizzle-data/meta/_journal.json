@@ -106,6 +106,13 @@
       "when": 1771321592131,
       "tag": "0014_dazzling_leopardon",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1771343866906,
+      "tag": "0015_brief_hex",
+      "breakpoints": true
     }
   ]
 }
