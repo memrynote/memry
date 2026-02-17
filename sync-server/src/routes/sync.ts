@@ -15,6 +15,13 @@ import {
   updateDeviceCursor
 } from '../services/sync'
 import { updateDevice } from '../services/device'
+import {
+  storeUpdates,
+  getUpdates,
+  storeSnapshot,
+  getSnapshot,
+  pruneUpdatesBeforeSnapshot
+} from '../services/crdt'
 import type { AppContext } from '../types'
 
 export const sync = new Hono<AppContext>()
@@ -199,4 +206,100 @@ sync.get('/items/:id', async (c) => {
 
   const item = await getItem(c.env.DB, c.env.STORAGE, userId, itemId)
   return c.json(item)
+})
+
+// ============================================================================
+// CRDT Endpoints
+// ============================================================================
+
+const crdtPushRateLimit = createRateLimiter({
+  keyPrefix: 'crdt_push',
+  maxRequests: 120,
+  windowSeconds: 60
+})
+
+const crdtPullRateLimit = createRateLimiter({
+  keyPrefix: 'crdt_pull',
+  maxRequests: 120,
+  windowSeconds: 60
+})
+
+const CrdtPushSchema = z.object({
+  noteId: z.string().min(1),
+  updates: z.array(z.string())
+})
+
+sync.post('/crdt/updates', crdtPushRateLimit, async (c) => {
+  const userId = c.get('userId')!
+  const body = await c.req.json()
+  const parsed = CrdtPushSchema.parse(body)
+
+  const buffers = parsed.updates.map((b64) => {
+    const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0))
+    return bytes.buffer as ArrayBuffer
+  })
+
+  const sequences = await storeUpdates(c.env.DB, userId, parsed.noteId, buffers)
+  return c.json({ sequences })
+})
+
+sync.get('/crdt/updates', crdtPullRateLimit, async (c) => {
+  const userId = c.get('userId')!
+  const noteId = c.req.query('note_id')
+  const since = parseInt(c.req.query('since') ?? '0', 10)
+  const limit = parseInt(c.req.query('limit') ?? '100', 10)
+
+  if (!noteId) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'note_id is required', 400)
+  }
+
+  const result = await getUpdates(c.env.DB, userId, noteId, since, Math.min(limit, 500))
+
+  const encoded = result.updates.map((u) => ({
+    sequenceNum: u.sequence_num,
+    data: btoa(String.fromCharCode(...new Uint8Array(u.update_data as ArrayBuffer))),
+    createdAt: u.created_at
+  }))
+
+  return c.json({ updates: encoded, hasMore: result.hasMore })
+})
+
+const CrdtSnapshotPushSchema = z.object({
+  noteId: z.string().min(1),
+  snapshot: z.string()
+})
+
+sync.post('/crdt/snapshot', crdtPushRateLimit, async (c) => {
+  const userId = c.get('userId')!
+  const body = await c.req.json()
+  const parsed = CrdtSnapshotPushSchema.parse(body)
+
+  const bytes = Uint8Array.from(atob(parsed.snapshot), (ch) => ch.charCodeAt(0))
+  const result = await storeSnapshot(
+    c.env.DB,
+    c.env.STORAGE,
+    userId,
+    parsed.noteId,
+    bytes.buffer as ArrayBuffer
+  )
+
+  await pruneUpdatesBeforeSnapshot(c.env.DB, userId, parsed.noteId)
+
+  return c.json({ sequenceNum: result.sequenceNum })
+})
+
+sync.get('/crdt/snapshot/:noteId', crdtPullRateLimit, async (c) => {
+  const userId = c.get('userId')!
+  const noteId = c.req.param('noteId')
+
+  const result = await getSnapshot(c.env.DB, c.env.STORAGE, userId, noteId)
+  if (!result) {
+    return c.json({ snapshot: null, sequenceNum: 0 })
+  }
+
+  const encoded = btoa(
+    String.fromCharCode(...new Uint8Array(result.snapshotData))
+  )
+
+  return c.json({ snapshot: encoded, sequenceNum: result.sequenceNum })
 })
