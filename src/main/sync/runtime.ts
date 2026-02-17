@@ -15,7 +15,15 @@ import { initInboxSyncService, resetInboxSyncService } from './inbox-sync'
 import { initFilterSyncService, resetFilterSyncService } from './filter-sync'
 import { initProjectSyncService, resetProjectSyncService } from './project-sync'
 import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
+import { initNoteSyncService, resetNoteSyncService } from './note-sync'
+import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
+import { getIndexDatabase } from '../database/client'
+import { noteCache } from '@shared/db/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
+import { getCrdtProvider } from './crdt-provider'
+import { CrdtUpdateQueue } from './crdt-queue'
+import { encryptCrdtUpdate } from './crdt-encrypt'
+import { postToServer } from './http-client'
 
 const log = createLogger('SyncRuntime')
 
@@ -24,6 +32,7 @@ interface SyncRuntimeState {
   network: NetworkMonitor
   ws: WebSocketManager
   engine: SyncEngine
+  crdtQueue: CrdtUpdateQueue
 }
 
 const SYNC_SERVER_URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'
@@ -52,6 +61,31 @@ export function getSyncEngine(): SyncEngine | null {
   return runtime?.engine ?? null
 }
 
+async function seedExistingCrdtDocs(crdtProvider: ReturnType<typeof getCrdtProvider>): Promise<void> {
+  const indexDb = getIndexDatabase()
+  const rows = indexDb
+    .select({
+      id: noteCache.id,
+      title: noteCache.title,
+      date: noteCache.date
+    })
+    .from(noteCache)
+    .all()
+
+  if (rows.length === 0) return
+
+  const entries = rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    date: r.date ?? undefined
+  }))
+
+  const seeded = await crdtProvider.seedExistingDocs(entries)
+  if (seeded > 0) {
+    log.info('Initial CRDT seed complete', { seeded, total: entries.length })
+  }
+}
+
 export async function startSyncRuntime(): Promise<SyncEngine | null> {
   if (runtime) return runtime.engine
   if (startPromise) return startPromise
@@ -74,6 +108,34 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       initFilterSyncService({ queue, db: serviceDb, getDeviceId })
       initProjectSyncService({ queue, db: serviceDb, getDeviceId })
       initSettingsSyncManager({ db: settingsDb, queue, getDeviceId })
+      initNoteSyncService({ queue, getDeviceId })
+      initJournalSyncService({ queue, getDeviceId })
+
+      const crdtQueue = new CrdtUpdateQueue()
+      crdtQueue.start(async (noteId, updates) => {
+        const token = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
+        const vaultKey = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY)
+        if (!token || !vaultKey) return
+
+        try {
+          const b64Updates = updates.map((raw) => {
+            const encrypted = encryptCrdtUpdate(raw, vaultKey)
+            return btoa(String.fromCharCode(...encrypted))
+          })
+          await postToServer('/sync/crdt/updates', { noteId, updates: b64Updates }, token)
+        } finally {
+          secureCleanup(vaultKey)
+        }
+      })
+
+      const crdtProvider = getCrdtProvider()
+      await crdtProvider.init(crdtQueue)
+
+      const emitFn = (channel: string, data: unknown): void => {
+        for (const win of BrowserWindow.getAllWindows()) {
+          win.webContents.send(channel, data)
+        }
+      }
 
       const network = new NetworkMonitor()
       network.start()
@@ -129,22 +191,25 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           if (!token) return null
           return getDeviceSigningKey(engineDb, deviceId, token)
         },
-        emitToRenderer: (channel, data) => {
-          for (const win of BrowserWindow.getAllWindows()) {
-            win.webContents.send(channel, data)
-          }
-        }
+        emitToRenderer: emitFn,
+        crdtProvider
       })
 
       queue.setOnItemEnqueued(() => engine.requestPush())
 
-      pendingRuntime = { queue, network, ws, engine }
+      pendingRuntime = { queue, network, ws, engine, crdtQueue }
       runtime = pendingRuntime
       await engine.start()
       log.info('Sync runtime started')
+
+      seedExistingCrdtDocs(crdtProvider).catch((err) => {
+        log.warn('CRDT seed failed (non-fatal)', err)
+      })
+
       return engine
     } catch (error) {
       if (pendingRuntime) {
+        pendingRuntime.crdtQueue.stop()
         pendingRuntime.ws.disconnect()
         pendingRuntime.network.stop()
         await pendingRuntime.engine.stop().catch(() => {})
@@ -156,6 +221,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       resetFilterSyncService()
       resetProjectSyncService()
       resetSettingsSyncManager()
+      resetNoteSyncService()
+      resetJournalSyncService()
       log.error('Failed to start sync runtime', error)
       return null
     } finally {
@@ -176,6 +243,8 @@ export async function stopSyncRuntime(): Promise<void> {
   resetFilterSyncService()
   resetProjectSyncService()
   resetSettingsSyncManager()
+  resetNoteSyncService()
+  resetJournalSyncService()
 
   if (!active) return
 
@@ -185,6 +254,10 @@ export async function stopSyncRuntime(): Promise<void> {
     log.error('Failed to stop sync engine cleanly', error)
   }
 
+  active.crdtQueue.stop()
+  await getCrdtProvider().destroy().catch((err) => {
+    log.error('Failed to destroy CrdtProvider', err)
+  })
   active.ws.disconnect()
   active.network.stop()
   log.info('Sync runtime stopped')

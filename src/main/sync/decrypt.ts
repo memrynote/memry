@@ -4,6 +4,7 @@ import { verifySignature } from '../crypto/signatures'
 import { secureCleanup } from '../crypto/index'
 import { CBOR_FIELD_ORDER } from '@shared/contracts/cbor-ordering'
 import type { VectorClock } from '@shared/contracts/sync-api'
+import { decompressPayload } from './compress'
 
 export class SignatureVerificationError extends Error {
   constructor(
@@ -86,7 +87,8 @@ export function decryptItemFromPull(input: DecryptItemInput): DecryptItemResult 
 
   try {
     const plaintext = decrypt(encryptedData, dataNonce, fileKey)
-    return { content: plaintext, verified: true }
+    const content = decompressPayload(plaintext)
+    return { content, verified: true }
   } finally {
     secureCleanup(fileKey)
   }

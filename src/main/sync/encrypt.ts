@@ -5,6 +5,7 @@ import { signPayload } from '../crypto/signatures'
 import { secureCleanup } from '../crypto/index'
 import { CBOR_FIELD_ORDER } from '@shared/contracts/cbor-ordering'
 import type { PushItem, SyncItemType, SyncOperation, VectorClock } from '@shared/contracts/sync-api'
+import { compressPayload } from './compress'
 
 export interface EncryptItemInput {
   id: string
@@ -36,7 +37,8 @@ export function encryptItemForPush(input: EncryptItemInput): EncryptItemResult {
   const fileKey = generateFileKey()
 
   try {
-    const { ciphertext, nonce: dataNonce } = encrypt(input.content, fileKey)
+    const compressed = compressPayload(input.content)
+    const { ciphertext, nonce: dataNonce } = encrypt(compressed, fileKey)
     const { wrappedKey, nonce: keyNonce } = wrapFileKey(fileKey, input.vaultKey)
 
     const toB64 = (bytes: Uint8Array): string =>

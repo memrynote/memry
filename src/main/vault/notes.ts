@@ -212,7 +212,7 @@ function getVaultPath(): string {
 /**
  * Get the notes directory path.
  */
-function getNotesDir(): string {
+export function getNotesDir(): string {
   const vaultPath = getVaultPath()
   const config = getConfig()
   return path.join(vaultPath, config.defaultNoteFolder)
@@ -221,7 +221,7 @@ function getNotesDir(): string {
 /**
  * Convert relative path to absolute path.
  */
-function toAbsolutePath(relativePath: string): string {
+export function toAbsolutePath(relativePath: string): string {
   const vaultPath = getVaultPath()
   return path.join(vaultPath, relativePath)
 }
@@ -229,7 +229,7 @@ function toAbsolutePath(relativePath: string): string {
 /**
  * Convert absolute path to relative path (from vault root).
  */
-function toRelativePath(absolutePath: string): string {
+export function toRelativePath(absolutePath: string): string {
   const vaultPath = getVaultPath()
   return path.relative(vaultPath, absolutePath)
 }

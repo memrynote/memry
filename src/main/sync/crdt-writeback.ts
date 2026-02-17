@@ -1,0 +1,368 @@
+import * as Y from 'yjs'
+import { createLogger } from '../lib/logger'
+import { yDocToMarkdown } from './blocknote-converter'
+import { atomicWrite, safeRead, fileExists, generateNotePath, ensureDirectory } from '../vault/file-ops'
+import { parseNote, serializeNote, type NoteFrontmatter } from '../vault/frontmatter'
+import { getNotesDir, toRelativePath, toAbsolutePath } from '../vault/notes'
+import { getJournalPath } from '../vault/journal'
+import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
+import { getIndexDatabase } from '../database/client'
+import { getNoteCacheById } from '@shared/db/queries/notes'
+import { deleteFile } from '../vault/file-ops'
+import { NotesChannels, JournalChannels } from '@shared/ipc-channels'
+import { BrowserWindow } from 'electron'
+import path from 'path'
+import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
+
+const log = createLogger('CrdtWriteback')
+
+const WRITEBACK_DEBOUNCE_MS = 500
+
+const pendingTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const ignoredPaths = new Set<string>()
+const lastNetworkUpdateMs = new Map<string, number>()
+
+function isJournalId(noteId: string): boolean {
+  return noteId.startsWith('j') && /^j\d{4}-\d{2}-\d{2}$/.test(noteId)
+}
+
+function journalIdToDate(journalId: string): string {
+  return journalId.slice(1)
+}
+
+export function isWritebackIgnored(absolutePath: string): boolean {
+  return ignoredPaths.has(absolutePath)
+}
+
+export function clearWritebackIgnore(absolutePath: string): void {
+  ignoredPaths.delete(absolutePath)
+}
+
+const CONCURRENT_EDIT_WINDOW_MS = 2000
+
+export function recordNetworkUpdate(noteId: string): void {
+  lastNetworkUpdateMs.set(noteId, Date.now())
+}
+
+export function wasRecentNetworkUpdate(noteId: string): boolean {
+  const ts = lastNetworkUpdateMs.get(noteId)
+  if (!ts) return false
+  return Date.now() - ts < CONCURRENT_EDIT_WINDOW_MS
+}
+
+function emitToRenderer(channel: string, data: unknown): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send(channel, data)
+  }
+}
+
+export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
+  const existing = pendingTimers.get(noteId)
+  if (existing) clearTimeout(existing)
+
+  const timer = setTimeout(() => {
+    pendingTimers.delete(noteId)
+    performWriteback(noteId, doc).catch((err) => {
+      log.error('Write-back failed', { noteId, error: err })
+      emitToRenderer('sync:write-back-failed', { noteId })
+    })
+  }, WRITEBACK_DEBOUNCE_MS)
+
+  pendingTimers.set(noteId, timer)
+}
+
+export function cancelPendingWritebacks(): void {
+  for (const timer of pendingTimers.values()) {
+    clearTimeout(timer)
+  }
+  pendingTimers.clear()
+}
+
+async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
+  const markdown = await yDocToMarkdown(doc)
+  if (markdown === null) {
+    log.warn('Conversion returned null, keeping stale file', { noteId })
+    return
+  }
+
+  const indexDb = getIndexDatabase()
+  const cached = getNoteCacheById(indexDb, noteId)
+
+  if (isJournalId(noteId)) {
+    await writebackJournal(noteId, doc, markdown, cached, indexDb)
+  } else if (cached) {
+    await writebackExisting(noteId, cached.path, doc, markdown, indexDb)
+  } else {
+    await writebackNewNote(noteId, doc, markdown, indexDb)
+  }
+}
+
+async function writebackExisting(
+  noteId: string,
+  relativePath: string,
+  doc: Y.Doc,
+  markdown: string,
+  indexDb: ReturnType<typeof getIndexDatabase>
+): Promise<void> {
+  const absolutePath = toAbsolutePath(relativePath)
+
+  const existingFrontmatter = await readExistingFrontmatter(absolutePath)
+  const mergedFrontmatter = mergeFrontmatter(noteId, existingFrontmatter, doc)
+  const fileContent = serializeNote(mergedFrontmatter, markdown)
+
+  ignoredPaths.add(absolutePath)
+  await atomicWrite(absolutePath, fileContent)
+
+  syncNoteToCache(
+    indexDb,
+    { id: noteId, path: relativePath, fileContent, frontmatter: mergedFrontmatter, parsedContent: markdown },
+    { isNew: false }
+  )
+
+  queueEmbeddingUpdate(noteId)
+  log.debug('Write-back complete', { noteId })
+}
+
+async function writebackNewNote(
+  noteId: string,
+  doc: Y.Doc,
+  markdown: string,
+  indexDb: ReturnType<typeof getIndexDatabase>
+): Promise<void> {
+  const meta = doc.getMap('meta')
+  const title = (meta.get('title') as string) || 'Untitled'
+
+  const notesDir = getNotesDir()
+  const absolutePath = generateNotePath(notesDir, title)
+  const relativePath = toRelativePath(absolutePath)
+
+  const frontmatter = mergeFrontmatter(noteId, null, doc)
+  const fileContent = serializeNote(frontmatter, markdown)
+
+  ignoredPaths.add(absolutePath)
+  await atomicWrite(absolutePath, fileContent)
+
+  syncNoteToCache(
+    indexDb,
+    { id: noteId, path: relativePath, fileContent, frontmatter, parsedContent: markdown },
+    { isNew: true }
+  )
+
+  queueEmbeddingUpdate(noteId)
+
+  emitToRenderer(NotesChannels.events.CREATED, {
+    note: { id: noteId, path: relativePath, title },
+    source: 'sync'
+  })
+
+  log.info('Created new note from sync', { noteId, title })
+}
+
+async function writebackJournal(
+  noteId: string,
+  doc: Y.Doc,
+  markdown: string,
+  cached: ReturnType<typeof getNoteCacheById> | undefined,
+  indexDb: ReturnType<typeof getIndexDatabase>
+): Promise<void> {
+  const date = journalIdToDate(noteId)
+  const journalPath = getJournalPath(date)
+
+  await ensureDirectory(path.dirname(journalPath))
+
+  if (cached) {
+    const absolutePath = toAbsolutePath(cached.path)
+    const existing = await readExistingFrontmatter(absolutePath)
+
+    if (existing && existing.id !== noteId) {
+      await handleJournalCollision(noteId, date, existing.id, doc, markdown, indexDb)
+      return
+    }
+
+    const mergedFrontmatter = mergeJournalFrontmatter(noteId, date, existing, doc)
+    const fileContent = serializeNote(mergedFrontmatter, markdown)
+
+    ignoredPaths.add(absolutePath)
+    await atomicWrite(absolutePath, fileContent)
+
+    syncNoteToCache(
+      indexDb,
+      { id: noteId, path: cached.path, fileContent, frontmatter: mergedFrontmatter, parsedContent: markdown },
+      { isNew: false }
+    )
+
+    queueEmbeddingUpdate(noteId)
+    log.debug('Journal write-back complete', { noteId, date })
+    return
+  }
+
+  if (await fileExists(journalPath)) {
+    const raw = await safeRead(journalPath)
+    if (raw) {
+      const parsed = parseNote(raw, journalPath)
+      if (parsed.frontmatter.id !== noteId) {
+        await handleJournalCollision(noteId, date, parsed.frontmatter.id, doc, markdown, indexDb)
+        return
+      }
+    }
+  }
+
+  const relativePath = toRelativePath(journalPath)
+  const frontmatter = mergeJournalFrontmatter(noteId, date, null, doc)
+  const fileContent = serializeNote(frontmatter, markdown)
+
+  ignoredPaths.add(journalPath)
+  await atomicWrite(journalPath, fileContent)
+
+  syncNoteToCache(
+    indexDb,
+    { id: noteId, path: relativePath, fileContent, frontmatter, parsedContent: markdown },
+    { isNew: true }
+  )
+
+  queueEmbeddingUpdate(noteId)
+
+  emitToRenderer(JournalChannels.events.ENTRY_CREATED, {
+    date,
+    source: 'sync'
+  })
+
+  log.info('Created journal from sync', { noteId, date })
+}
+
+async function handleJournalCollision(
+  incomingId: string,
+  date: string,
+  existingId: string,
+  doc: Y.Doc,
+  markdown: string,
+  indexDb: ReturnType<typeof getIndexDatabase>
+): Promise<void> {
+  const shortId = incomingId.slice(0, 8)
+  const collisionFilename = `${date}-${shortId}.md`
+  const journalDir = path.dirname(getJournalPath(date))
+  const collisionPath = path.join(journalDir, collisionFilename)
+  const relativePath = toRelativePath(collisionPath)
+
+  const frontmatter = mergeJournalFrontmatter(incomingId, date, null, doc)
+  const fileContent = serializeNote(frontmatter, markdown)
+
+  await ensureDirectory(journalDir)
+  ignoredPaths.add(collisionPath)
+  await atomicWrite(collisionPath, fileContent)
+
+  syncNoteToCache(
+    indexDb,
+    { id: incomingId, path: relativePath, fileContent, frontmatter, parsedContent: markdown },
+    { isNew: true }
+  )
+
+  queueEmbeddingUpdate(incomingId)
+
+  emitToRenderer('sync:journal-conflict', {
+    date,
+    incomingId,
+    existingId,
+    collisionPath: relativePath
+  })
+
+  log.warn('Journal date collision', { date, incomingId, existingId, collisionPath: relativePath })
+}
+
+export async function handleSyncDeletion(noteId: string): Promise<void> {
+  const indexDb = getIndexDatabase()
+  const cached = getNoteCacheById(indexDb, noteId)
+  if (!cached) return
+
+  const absolutePath = toAbsolutePath(cached.path)
+  deleteNoteFromCache(indexDb, noteId)
+
+  ignoredPaths.add(absolutePath)
+  await deleteFile(absolutePath).catch((err) => {
+    log.error('Failed to delete synced note file', { noteId, error: err })
+  })
+
+  const channel = isJournalId(noteId)
+    ? JournalChannels.events.ENTRY_DELETED
+    : NotesChannels.events.DELETED
+
+  emitToRenderer(channel, {
+    id: noteId,
+    path: cached.path,
+    date: isJournalId(noteId) ? journalIdToDate(noteId) : undefined,
+    source: 'sync'
+  })
+
+  log.info('Deleted from sync', { noteId })
+}
+
+async function readExistingFrontmatter(absolutePath: string): Promise<NoteFrontmatter | null> {
+  if (!(await fileExists(absolutePath))) return null
+  const raw = await safeRead(absolutePath)
+  if (!raw) return null
+  const parsed = parseNote(raw, absolutePath)
+  return parsed.frontmatter
+}
+
+function mergeFrontmatter(
+  noteId: string,
+  existing: NoteFrontmatter | null,
+  doc: Y.Doc
+): NoteFrontmatter {
+  const meta = doc.getMap('meta')
+  const yjsTitle = meta.get('title') as string | undefined
+  const yjsTags = getYjsTags(doc)
+
+  if (!existing) {
+    return {
+      id: noteId,
+      title: yjsTitle,
+      created: (meta.get('date') as string) || new Date().toISOString(),
+      modified: new Date().toISOString(),
+      tags: yjsTags.length > 0 ? yjsTags : undefined
+    }
+  }
+
+  return {
+    ...existing,
+    title: yjsTitle || existing.title,
+    modified: new Date().toISOString(),
+    tags: yjsTags.length > 0 ? yjsTags : existing.tags
+  }
+}
+
+function mergeJournalFrontmatter(
+  noteId: string,
+  date: string,
+  existing: NoteFrontmatter | null,
+  doc: Y.Doc
+): NoteFrontmatter {
+  const yjsTags = getYjsTags(doc)
+
+  if (!existing) {
+    return {
+      id: noteId,
+      date,
+      created: new Date().toISOString(),
+      modified: new Date().toISOString(),
+      tags: yjsTags.length > 0 ? yjsTags : undefined
+    }
+  }
+
+  return {
+    ...existing,
+    date,
+    modified: new Date().toISOString(),
+    tags: yjsTags.length > 0 ? yjsTags : existing.tags
+  }
+}
+
+function getYjsTags(doc: Y.Doc): string[] {
+  const tagArray = doc.getArray('tags')
+  const tags: string[] = []
+  for (let i = 0; i < tagArray.length; i++) {
+    const val = tagArray.get(i)
+    if (typeof val === 'string') tags.push(val)
+  }
+  return tags
+}
