@@ -72,8 +72,33 @@ export const ProjectSyncPayloadSchema = z.object({
   statuses: z.array(StatusSyncSchema).optional()
 })
 
+export const NoteSyncPayloadSchema = z.object({
+  title: z.string().optional(),
+  content: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  emoji: z.string().nullable().optional(),
+  properties: z.record(z.string(), z.unknown()).nullable().optional(),
+  aliases: z.array(z.string()).nullable().optional(),
+  fileType: z.enum(['markdown', 'pdf', 'image', 'audio', 'video']).optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional()
+})
+
+export const JournalSyncPayloadSchema = z.object({
+  date: z.string(),
+  content: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  properties: z.record(z.string(), z.unknown()).nullable().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional()
+})
+
 export type TaskSyncPayload = z.infer<typeof TaskSyncPayloadSchema>
 export type InboxSyncPayload = z.infer<typeof InboxSyncPayloadSchema>
 export type FilterSyncPayload = z.infer<typeof FilterSyncPayloadSchema>
 export type ProjectSyncPayload = z.infer<typeof ProjectSyncPayloadSchema>
 export type StatusSync = z.infer<typeof StatusSyncSchema>
+export type NoteSyncPayload = z.infer<typeof NoteSyncPayloadSchema>
+export type JournalSyncPayload = z.infer<typeof JournalSyncPayloadSchema>
