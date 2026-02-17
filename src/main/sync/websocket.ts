@@ -1,6 +1,9 @@
 import WebSocket from 'ws'
 import { EventEmitter } from 'events'
 import { z } from 'zod'
+import { createLogger } from '../lib/logger'
+
+const log = createLogger('WebSocket')
 
 const HEARTBEAT_TIMEOUT_MS = 31_000
 const MAX_RECONNECT_DELAY_MS = 30_000
@@ -35,6 +38,9 @@ export class WebSocketManager extends EventEmitter {
   constructor(deps: WebSocketManagerDeps) {
     super()
     this.deps = deps
+    this.on('error', (err: Error) => {
+      log.warn('WebSocket error event', { message: err.message })
+    })
   }
 
   get connected(): boolean {
@@ -73,6 +79,7 @@ export class WebSocketManager extends EventEmitter {
       this.reconnectAttempt = 0
       this.resetHeartbeat()
       this.startPing()
+      log.info('WebSocket connected', { url: wsUrl })
       this.emit('connected')
     })
 
@@ -95,6 +102,7 @@ export class WebSocketManager extends EventEmitter {
           this.emit('error', new Error('Invalid WebSocket message format'))
           return
         }
+        log.debug('WebSocket message received', { type: result.data.type })
         this.emit('message', result.data)
       } catch {
         this.emit('error', new Error('Failed to parse WebSocket message'))
@@ -105,7 +113,8 @@ export class WebSocketManager extends EventEmitter {
       this.resetHeartbeat()
     })
 
-    ws.on('close', () => {
+    ws.on('close', (code: number, reason: Buffer) => {
+      log.info('WebSocket disconnected', { code, reason: reason.toString() })
       this.cleanup()
       this.emit('disconnected')
       if (this.shouldBeConnected) {
@@ -114,6 +123,7 @@ export class WebSocketManager extends EventEmitter {
     })
 
     ws.on('error', (err: Error) => {
+      log.warn('WebSocket error', { message: err.message })
       if (err.message?.includes('401')) {
         this.authFailed = true
       }
