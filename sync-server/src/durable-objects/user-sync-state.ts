@@ -207,13 +207,21 @@ export class UserSyncState extends DurableObject<Bindings> {
       if (!attachment) continue
 
       if (attachment.tokenExp <= now) {
-        ws.send(
-          JSON.stringify({
-            type: 'error',
-            payload: { code: ErrorCodes.WS_TOKEN_EXPIRED, message: 'Token expired, reconnect' }
-          })
-        )
-        ws.close(CLOSE_CODE_TOKEN_EXPIRED, 'Token expired')
+        try {
+          ws.send(
+            JSON.stringify({
+              type: 'error',
+              payload: { code: ErrorCodes.WS_TOKEN_EXPIRED, message: 'Token expired, reconnect' }
+            })
+          )
+        } catch {
+          // Socket already closed
+        }
+        try {
+          ws.close(CLOSE_CODE_TOKEN_EXPIRED, 'Token expired')
+        } catch {
+          // Already closed
+        }
       } else {
         remaining++
       }
