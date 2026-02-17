@@ -348,15 +348,24 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Device challenge verification failed', 401)
   }
 
-  const deviceId = crypto.randomUUID()
+  const candidateDeviceId = crypto.randomUUID()
   const now = Math.floor(Date.now() / 1000)
 
-  await c.env.DB.prepare(
+  const { results } = await c.env.DB.prepare(
     `INSERT INTO devices (id, user_id, name, platform, os_version, app_version, auth_public_key, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(user_id, auth_public_key) DO UPDATE SET
+       name = excluded.name,
+       platform = excluded.platform,
+       os_version = excluded.os_version,
+       app_version = excluded.app_version,
+       updated_at = excluded.updated_at
+     RETURNING id`
   )
-    .bind(deviceId, userId, name, platform, osVersion ?? null, appVersion, authPublicKey, now, now)
-    .run()
+    .bind(candidateDeviceId, userId, name, platform, osVersion ?? null, appVersion, authPublicKey, now, now)
+    .all()
+
+  const deviceId = (results[0] as { id: string }).id
 
   const { accessToken, refreshToken } = await issueTokens(
     c.env.DB,
