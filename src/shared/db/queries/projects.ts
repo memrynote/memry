@@ -5,6 +5,7 @@
  * @module db/queries/projects
  */
 
+import { nanoid } from 'nanoid'
 import { eq, asc, and, isNull, sql, count } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { projects, type Project, type NewProject } from '../schema/projects'
@@ -460,6 +461,75 @@ export function createDefaultStatuses(db: DrizzleDb, projectId: string): Status[
   })
 
   return [todoStatus, inProgressStatus, doneStatus]
+}
+
+export function createCustomStatuses(
+  db: DrizzleDb,
+  projectId: string,
+  inputs: Array<{ name: string; color: string; type: 'todo' | 'in_progress' | 'done'; order: number }>
+): Status[] {
+  return inputs.map((input) =>
+    insertStatus(db, {
+      id: `${projectId}-${input.order}`,
+      projectId,
+      name: input.name,
+      color: input.color,
+      position: input.order,
+      isDefault: input.type === 'todo' && input.order === 0,
+      isDone: input.type === 'done'
+    })
+  )
+}
+
+/**
+ * Reconcile project statuses against a new set of inputs.
+ * Creates, updates, or deletes statuses to match the incoming list.
+ */
+export function reconcileProjectStatuses(
+  db: DrizzleDb,
+  projectId: string,
+  inputs: Array<{
+    id?: string
+    name: string
+    color: string
+    type: 'todo' | 'in_progress' | 'done'
+    order: number
+  }>
+): void {
+  const existing = getStatusesByProject(db, projectId)
+  const existingIds = new Set(existing.map((s) => s.id))
+  const inputIds = new Set(inputs.filter((s) => s.id).map((s) => s.id!))
+
+  for (const ex of existing) {
+    if (!inputIds.has(ex.id)) {
+      deleteStatus(db, ex.id)
+    }
+  }
+
+  for (const input of inputs) {
+    const isDefault = input.type === 'todo' && input.order === 0
+    const isDone = input.type === 'done'
+
+    if (input.id && existingIds.has(input.id)) {
+      updateStatus(db, input.id, {
+        name: input.name,
+        color: input.color,
+        position: input.order,
+        isDefault,
+        isDone
+      })
+    } else {
+      insertStatus(db, {
+        id: nanoid(),
+        projectId,
+        name: input.name,
+        color: input.color,
+        position: input.order,
+        isDefault,
+        isDone
+      })
+    }
+  }
 }
 
 /**

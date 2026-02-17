@@ -355,6 +355,12 @@ const api = {
       description?: string | null
       color?: string
       icon?: string | null
+      statuses?: Array<{
+        name: string
+        color: string
+        type: string
+        order: number
+      }>
     }) => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_CREATE, input),
     getProject: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_GET, id),
     updateProject: (input: {
@@ -363,6 +369,13 @@ const api = {
       description?: string | null
       color?: string
       icon?: string | null
+      statuses?: Array<{
+        id?: string
+        name: string
+        color: string
+        type: string
+        order: number
+      }>
     }) => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_UPDATE, input),
     deleteProject: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_DELETE, id),
     listProjects: () => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_LIST),

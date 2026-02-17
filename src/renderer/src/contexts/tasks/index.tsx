@@ -143,14 +143,19 @@ function dbTaskToUiTask(dbTask: DbTask): Task {
 /**
  * Convert database project to UI project format
  */
-function dbProjectToUiProject(dbProject: DbProject | ProjectWithStats): Project {
+function dbProjectToUiProject(
+  dbProject: DbProject | ProjectWithStats | (DbProject & { statuses: DbStatus[] })
+): Project {
   return {
     id: dbProject.id,
     name: dbProject.name,
     description: dbProject.description ?? '',
     icon: dbProject.icon ?? 'folder',
     color: dbProject.color,
-    statuses: [], // Loaded separately
+    statuses:
+      'statuses' in dbProject && Array.isArray(dbProject.statuses)
+        ? dbProject.statuses.map(dbStatusToUiStatus)
+        : [],
     isDefault: dbProject.isInbox,
     isArchived: !!dbProject.archivedAt,
     createdAt: new Date(dbProject.createdAt),
@@ -735,7 +740,16 @@ export const TasksProvider = ({
             name: project.name,
             description: project.description || null,
             color: project.color,
-            icon: project.icon || null
+            icon: project.icon || null,
+            statuses:
+              project.statuses && project.statuses.length >= 2
+                ? project.statuses.map((s) => ({
+                    name: s.name,
+                    color: s.color,
+                    type: s.type,
+                    order: s.order
+                  }))
+                : undefined
           })
           // Event listener will add to state
         } catch (error) {
@@ -758,7 +772,14 @@ export const TasksProvider = ({
             name: updates.name,
             description: updates.description ?? undefined,
             color: updates.color,
-            icon: updates.icon ?? undefined
+            icon: updates.icon ?? undefined,
+            statuses: updates.statuses?.map((s) => ({
+              id: s.id,
+              name: s.name,
+              color: s.color,
+              type: s.type,
+              order: s.order
+            }))
           })
           // Event listener will update state
         } catch (error) {

@@ -36,6 +36,7 @@ import { generateId } from '../lib/id'
 import * as taskQueries from '@shared/db/queries/tasks'
 import * as projectQueries from '@shared/db/queries/projects'
 import { getTaskSyncService } from '../sync/task-sync'
+import { getProjectSyncService } from '../sync/project-sync'
 
 const logger = createLogger('IPC:Tasks')
 
@@ -606,12 +607,17 @@ export function registerTasksHandlers(): void {
           isInbox: false
         })
 
-        // Create default statuses for the project
-        projectQueries.createDefaultStatuses(db, id)
+        if (input.statuses && input.statuses.length >= 2) {
+          projectQueries.createCustomStatuses(db, id, input.statuses)
+        } else {
+          projectQueries.createDefaultStatuses(db, id)
+        }
 
-        emitTaskEvent(TasksChannels.events.PROJECT_CREATED, { project })
+        const fullProject = projectQueries.getProjectWithStatuses(db, id)
+        emitTaskEvent(TasksChannels.events.PROJECT_CREATED, { project: fullProject ?? project })
+        getProjectSyncService()?.enqueueCreate(id)
 
-        return { success: true, project }
+        return { success: true, project: fullProject ?? project }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to create project'
         return { success: false, project: null, error: message }
@@ -634,16 +640,22 @@ export function registerTasksHandlers(): void {
     createValidatedHandler(ProjectUpdateSchema, async (input) => {
       try {
         const db = requireDatabase()
-        const { id, ...updates } = input
-        const project = projectQueries.updateProject(db, id, updates)
+        const { id, statuses: statusUpdates, ...metadataUpdates } = input
+        const project = projectQueries.updateProject(db, id, metadataUpdates)
 
         if (!project) {
           return { success: false, project: null, error: 'Project not found' }
         }
 
-        emitTaskEvent(TasksChannels.events.PROJECT_UPDATED, { id, project })
+        if (statusUpdates) {
+          projectQueries.reconcileProjectStatuses(db, id, statusUpdates)
+        }
 
-        return { success: true, project }
+        const fullProject = projectQueries.getProjectWithStatuses(db, id)
+        emitTaskEvent(TasksChannels.events.PROJECT_UPDATED, { id, project: fullProject ?? project })
+        getProjectSyncService()?.enqueueUpdate(id)
+
+        return { success: true, project: fullProject ?? project }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update project'
         return { success: false, project: null, error: message }
@@ -657,8 +669,15 @@ export function registerTasksHandlers(): void {
     createStringHandler(async (id) => {
       try {
         const db = requireDatabase()
+        const syncService = getProjectSyncService()
+        let snapshot: string | undefined
+        if (syncService) {
+          const project = projectQueries.getProjectWithStatuses(db, id)
+          if (project) snapshot = JSON.stringify(project)
+        }
         projectQueries.deleteProject(db, id)
         emitTaskEvent(TasksChannels.events.PROJECT_DELETED, { id })
+        if (syncService && snapshot) syncService.enqueueDelete(id, snapshot)
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to delete project'
@@ -684,6 +703,7 @@ export function registerTasksHandlers(): void {
       try {
         const db = requireDatabase()
         projectQueries.archiveProject(db, id)
+        getProjectSyncService()?.enqueueUpdate(id)
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to archive project'
@@ -699,6 +719,12 @@ export function registerTasksHandlers(): void {
       try {
         const db = requireDatabase()
         projectQueries.reorderProjects(db, input.projectIds, input.positions)
+        const syncService = getProjectSyncService()
+        if (syncService) {
+          for (const pid of input.projectIds) {
+            syncService.enqueueUpdate(pid)
+          }
+        }
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to reorder projects'
@@ -730,6 +756,7 @@ export function registerTasksHandlers(): void {
           isDone: input.isDone ?? false
         })
 
+        getProjectSyncService()?.enqueueUpdate(input.projectId)
         return { success: true, status }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to create status'
@@ -749,6 +776,8 @@ export function registerTasksHandlers(): void {
         if (!status) {
           return { success: false, error: 'Status not found' }
         }
+        const resolved = projectQueries.getStatusById(db, id)
+        if (resolved) getProjectSyncService()?.enqueueUpdate(resolved.projectId)
         return { success: true, status }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update status'
@@ -763,7 +792,9 @@ export function registerTasksHandlers(): void {
     createStringHandler(async (id) => {
       try {
         const db = requireDatabase()
+        const statusBefore = projectQueries.getStatusById(db, id)
         projectQueries.deleteStatus(db, id)
+        if (statusBefore) getProjectSyncService()?.enqueueUpdate(statusBefore.projectId)
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to delete status'
@@ -779,6 +810,10 @@ export function registerTasksHandlers(): void {
       try {
         const db = requireDatabase()
         projectQueries.reorderStatuses(db, input.statusIds, input.positions)
+        if (input.statusIds.length > 0) {
+          const firstStatus = projectQueries.getStatusById(db, input.statusIds[0])
+          if (firstStatus) getProjectSyncService()?.enqueueUpdate(firstStatus.projectId)
+        }
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to reorder statuses'
