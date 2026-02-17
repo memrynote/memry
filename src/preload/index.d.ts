@@ -2102,7 +2102,7 @@ interface SyncLinkingClientAPI {
     qrData?: string
     expiresAt?: number
   }>
-  linkViaQr: (input: { qrData: string; provider: string; oauthToken: string }) => Promise<{
+  linkViaQr: (input: { qrData: string; provider?: string; oauthToken?: string }) => Promise<{
     success: boolean
     status?: 'waiting_approval' | 'approved' | 'error'
     error?: string
@@ -2114,6 +2114,11 @@ interface SyncLinkingClientAPI {
   }>
   approveLinking: (input: { sessionId: string }) => Promise<{
     success: boolean
+    error?: string
+  }>
+  completeLinkingQr: (input: { sessionId: string }) => Promise<{
+    success: boolean
+    deviceId?: string
     error?: string
   }>
 }

@@ -24,9 +24,20 @@ import {
   VerifyOtpResponseSchema
 } from '@shared/contracts/auth-api'
 import type { DeviceRegisterResponse } from '@shared/contracts/auth-api'
-import { LinkViaRecoverySchema } from '@shared/contracts/ipc-devices'
+import {
+  ApproveLinkingSchema,
+  CompleteLinkingQrSchema,
+  LinkViaQrSchema,
+  LinkViaRecoverySchema
+} from '@shared/contracts/ipc-devices'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@shared/contracts/ipc-sync'
 import { GetHistorySchema, UpdateSyncedSettingSchema } from '@shared/contracts/ipc-sync-ops'
+import {
+  approveDeviceLinking,
+  completeLinkingQr,
+  initiateDeviceLinking,
+  linkViaQr
+} from '../sync/linking-service'
 import { getSettingsSyncManager } from '../sync/settings-sync'
 import { syncHistory } from '@shared/db/schema/sync-history'
 
@@ -371,7 +382,7 @@ const registerDevice = async (
 // First Device Setup Orchestration (T050f)
 // ============================================================================
 
-const persistKeysAndRegisterDevice = async (
+export const persistKeysAndRegisterDevice = async (
   masterKey: Uint8Array,
   signingSecretKey: Uint8Array,
   setupToken: string,
@@ -814,8 +825,27 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
 
   // --- Not-yet-implemented handlers ---
 
-  ipcMain.handle(SYNC_CHANNELS.GENERATE_LINKING_QR, notImplemented('QR device linking', 5))
-  ipcMain.handle(SYNC_CHANNELS.LINK_VIA_QR, notImplemented('QR device linking', 5))
+  ipcMain.handle(SYNC_CHANNELS.GENERATE_LINKING_QR, async () => {
+    const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
+    if (!accessToken) throw new Error('Not authenticated')
+    return initiateDeviceLinking(accessToken)
+  })
+
+  ipcMain.handle(
+    SYNC_CHANNELS.LINK_VIA_QR,
+    createValidatedHandler(LinkViaQrSchema, async (input) => {
+      const token = input.oauthToken || (await retrieveToken(KEYCHAIN_ENTRIES.SETUP_TOKEN))
+      if (!token) throw new Error('No auth token available for device linking')
+      return linkViaQr(input.qrData, token)
+    })
+  )
+
+  ipcMain.handle(
+    SYNC_CHANNELS.COMPLETE_LINKING_QR,
+    createValidatedHandler(CompleteLinkingQrSchema, async (input) => {
+      return completeLinkingQr(input.sessionId)
+    })
+  )
   ipcMain.handle(
     SYNC_CHANNELS.LINK_VIA_RECOVERY,
     createValidatedHandler(LinkViaRecoverySchema, async (input) => {
@@ -868,7 +898,14 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
       }
     })
   )
-  ipcMain.handle(SYNC_CHANNELS.APPROVE_LINKING, notImplemented('device linking approval', 5))
+  ipcMain.handle(
+    SYNC_CHANNELS.APPROVE_LINKING,
+    createValidatedHandler(ApproveLinkingSchema, async (input) => {
+      const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
+      if (!accessToken) throw new Error('Not authenticated')
+      return approveDeviceLinking(input.sessionId, accessToken)
+    })
+  )
 
   ipcMain.handle(SYNC_CHANNELS.GET_DEVICES, async () => {
     if (!isDatabaseInitialized()) return { devices: [], email: undefined }
@@ -1007,6 +1044,7 @@ export function unregisterSyncHandlers(): void {
 
   ipcMain.removeHandler(SYNC_CHANNELS.GENERATE_LINKING_QR)
   ipcMain.removeHandler(SYNC_CHANNELS.LINK_VIA_QR)
+  ipcMain.removeHandler(SYNC_CHANNELS.COMPLETE_LINKING_QR)
   ipcMain.removeHandler(SYNC_CHANNELS.LINK_VIA_RECOVERY)
   ipcMain.removeHandler(SYNC_CHANNELS.APPROVE_LINKING)
 

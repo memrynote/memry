@@ -1373,12 +1373,14 @@ const api = {
   // Device Linking API
   syncLinking: {
     generateLinkingQr: () => ipcRenderer.invoke(SYNC_CHANNELS.GENERATE_LINKING_QR),
-    linkViaQr: (input: { qrData: string; provider: string; oauthToken: string }) =>
+    linkViaQr: (input: { qrData: string; provider?: string; oauthToken?: string }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.LINK_VIA_QR, input),
     linkViaRecovery: (input: { recoveryPhrase: string }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.LINK_VIA_RECOVERY, input),
     approveLinking: (input: { sessionId: string }) =>
-      ipcRenderer.invoke(SYNC_CHANNELS.APPROVE_LINKING, input)
+      ipcRenderer.invoke(SYNC_CHANNELS.APPROVE_LINKING, input),
+    completeLinkingQr: (input: { sessionId: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.COMPLETE_LINKING_QR, input)
   },
 
   // Device Management API

@@ -12,7 +12,7 @@ const RECONNECT_JITTER_MS = 500
 const PING_INTERVAL_MS = 25_000
 
 const WebSocketMessageSchema = z.object({
-  type: z.enum(['changes_available', 'heartbeat', 'error']),
+  type: z.enum(['changes_available', 'heartbeat', 'error', 'linking_request', 'linking_approved']),
   payload: z.record(z.string(), z.unknown()).optional()
 })
 

@@ -1,0 +1,345 @@
+import os from 'os'
+import sodium from 'libsodium-wrappers-sumo'
+
+import { KEYCHAIN_ENTRIES } from '@shared/contracts/crypto'
+import type {
+  ApproveLinkingResult,
+  CompleteLinkingQrResult,
+  GenerateLinkingQrResult,
+  LinkViaQrResult
+} from '@shared/contracts/ipc-devices'
+
+import {
+  computeKeyConfirm,
+  computeLinkingProof,
+  computeSharedSecret,
+  constantTimeEqual,
+  decryptMasterKeyFromLinking,
+  deriveLinkingKeys,
+  encryptMasterKeyForLinking,
+  generateX25519KeyPair,
+  getOrCreateSigningKeyPair,
+  retrieveKey,
+  secureCleanup
+} from '../crypto'
+import { createLogger } from '../lib/logger'
+
+import { getFromServer, postToServer } from './http-client'
+
+const log = createLogger('DeviceLinking')
+
+const PLATFORM_MAP: Record<string, string> = {
+  darwin: 'macos',
+  win32: 'windows',
+  linux: 'linux'
+}
+
+// ============================================================================
+// Ephemeral State — cleared after use or on expiry
+// ============================================================================
+
+interface PendingSession {
+  sessionId: string
+  ephemeralPrivateKey: Uint8Array
+  expiresAt: number
+}
+
+interface PendingLinkCompletion {
+  sessionId: string
+  encKey: Uint8Array
+  macKey: Uint8Array
+  setupToken: string
+  expiresAt: number
+}
+
+let pendingSession: PendingSession | null = null
+let pendingLinkCompletion: PendingLinkCompletion | null = null
+
+const clearPendingSession = (): void => {
+  if (pendingSession) {
+    secureCleanup(pendingSession.ephemeralPrivateKey)
+    pendingSession = null
+  }
+}
+
+const clearPendingLinkCompletion = (): void => {
+  if (pendingLinkCompletion) {
+    secureCleanup(pendingLinkCompletion.encKey, pendingLinkCompletion.macKey)
+    pendingLinkCompletion = null
+  }
+}
+
+const isExpired = (expiresAt: number): boolean => Date.now() / 1000 > expiresAt
+
+// ============================================================================
+// Flow 1: Existing device generates QR code
+// ============================================================================
+
+export const initiateDeviceLinking = async (
+  accessToken: string
+): Promise<GenerateLinkingQrResult> => {
+  clearPendingSession()
+
+  const keyPair = await generateX25519KeyPair()
+  const ephemeralPublicKeyB64 = sodium.to_base64(keyPair.publicKey, sodium.base64_variants.ORIGINAL)
+
+  const response = await postToServer<{ sessionId: string; expiresAt: number }>(
+    '/auth/linking/initiate',
+    { ephemeralPublicKey: ephemeralPublicKeyB64 },
+    accessToken
+  )
+
+  pendingSession = {
+    sessionId: response.sessionId,
+    ephemeralPrivateKey: keyPair.secretKey,
+    expiresAt: response.expiresAt
+  }
+
+  const qrData = JSON.stringify({
+    sessionId: response.sessionId,
+    ephemeralPublicKey: ephemeralPublicKeyB64,
+    expiresAt: response.expiresAt
+  })
+
+  log.info('Linking session initiated', { sessionId: response.sessionId })
+
+  return { qrData, sessionId: response.sessionId, expiresAt: response.expiresAt }
+}
+
+// ============================================================================
+// Flow 2: New device scans QR → sends proof → waits for approval
+// ============================================================================
+
+export const linkViaQr = async (qrData: string, setupToken: string): Promise<LinkViaQrResult> => {
+  clearPendingLinkCompletion()
+
+  let parsed: { sessionId: string; ephemeralPublicKey: string; expiresAt: number }
+  try {
+    parsed = JSON.parse(qrData) as typeof parsed
+  } catch {
+    return { success: false, error: 'Invalid QR code data' }
+  }
+
+  if (!parsed.sessionId || !parsed.ephemeralPublicKey || !parsed.expiresAt) {
+    return { success: false, error: 'Malformed QR code data' }
+  }
+
+  if (isExpired(parsed.expiresAt)) {
+    return { success: false, error: 'Linking session has expired' }
+  }
+
+  const initiatorPublicKey = sodium.from_base64(
+    parsed.ephemeralPublicKey,
+    sodium.base64_variants.ORIGINAL
+  )
+
+  const newDeviceKeyPair = await generateX25519KeyPair()
+  const sharedSecret = await computeSharedSecret(newDeviceKeyPair.secretKey, initiatorPublicKey)
+  const { encKey, macKey } = await deriveLinkingKeys(sharedSecret)
+
+  const newDevicePublicKeyB64 = sodium.to_base64(
+    newDeviceKeyPair.publicKey,
+    sodium.base64_variants.ORIGINAL
+  )
+
+  const proof = computeLinkingProof(macKey, parsed.sessionId, newDevicePublicKeyB64)
+  const proofB64 = sodium.to_base64(proof, sodium.base64_variants.ORIGINAL)
+
+  await postToServer('/auth/linking/scan', {
+    sessionId: parsed.sessionId,
+    newDevicePublicKey: newDevicePublicKeyB64,
+    newDeviceConfirm: proofB64,
+    deviceName: os.hostname(),
+    devicePlatform: PLATFORM_MAP[process.platform] || 'linux'
+  })
+
+  pendingLinkCompletion = {
+    sessionId: parsed.sessionId,
+    encKey,
+    macKey,
+    setupToken,
+    expiresAt: parsed.expiresAt
+  }
+
+  secureCleanup(sharedSecret, newDeviceKeyPair.secretKey)
+
+  log.info('QR scanned, awaiting approval', { sessionId: parsed.sessionId })
+
+  return { success: true, status: 'waiting_approval' }
+}
+
+// ============================================================================
+// Flow 3: New device completes linking after approval
+// ============================================================================
+
+export const completeLinkingQr = async (sessionId: string): Promise<CompleteLinkingQrResult> => {
+  if (!pendingLinkCompletion || pendingLinkCompletion.sessionId !== sessionId) {
+    return { success: false, error: 'No pending linking session found' }
+  }
+
+  if (isExpired(pendingLinkCompletion.expiresAt)) {
+    clearPendingLinkCompletion()
+    return { success: false, error: 'Linking session has expired' }
+  }
+
+  const { encKey, macKey, setupToken } = pendingLinkCompletion
+
+  try {
+    const completeResponse = await postToServer<{
+      success: boolean
+      encryptedMasterKey?: string
+      encryptedKeyNonce?: string
+      keyConfirm?: string
+    }>('/auth/linking/complete', { sessionId })
+
+    if (
+      !completeResponse.encryptedMasterKey ||
+      !completeResponse.encryptedKeyNonce ||
+      !completeResponse.keyConfirm
+    ) {
+      return { success: false, error: 'Session not yet approved' }
+    }
+
+    const receivedKeyConfirm = sodium.from_base64(
+      completeResponse.keyConfirm,
+      sodium.base64_variants.ORIGINAL
+    )
+    const expectedKeyConfirm = computeKeyConfirm(
+      macKey,
+      sessionId,
+      completeResponse.encryptedMasterKey
+    )
+
+    if (!constantTimeEqual(expectedKeyConfirm, receivedKeyConfirm)) {
+      log.error('Key confirmation HMAC mismatch — possible tampering')
+      return { success: false, error: 'Key confirmation failed — linking data may be corrupted' }
+    }
+
+    const ciphertext = sodium.from_base64(
+      completeResponse.encryptedMasterKey,
+      sodium.base64_variants.ORIGINAL
+    )
+    const nonce = sodium.from_base64(
+      completeResponse.encryptedKeyNonce,
+      sodium.base64_variants.ORIGINAL
+    )
+    const masterKey = decryptMasterKeyFromLinking(ciphertext, nonce, encKey)
+
+    const recoveryInfo = await getFromServer<{ kdfSalt: string; keyVerifier: string }>(
+      '/auth/recovery-info',
+      setupToken
+    )
+
+    const signingKeyPair = await getOrCreateSigningKeyPair()
+
+    const { persistKeysAndRegisterDevice } = await import('../ipc/sync-handlers')
+    const deviceId = await persistKeysAndRegisterDevice(
+      masterKey,
+      signingKeyPair.secretKey,
+      setupToken,
+      recoveryInfo.kdfSalt,
+      recoveryInfo.keyVerifier,
+      true
+    )
+
+    secureCleanup(masterKey, signingKeyPair.secretKey)
+    clearPendingLinkCompletion()
+
+    log.info('Device linking completed', { deviceId })
+    return { success: true, deviceId }
+  } catch (err) {
+    log.error('Failed to complete device linking', err)
+    clearPendingLinkCompletion()
+    throw err
+  }
+}
+
+// ============================================================================
+// Flow 4: Existing device approves linking request
+// ============================================================================
+
+export const approveDeviceLinking = async (
+  sessionId: string,
+  accessToken: string
+): Promise<ApproveLinkingResult> => {
+  if (!pendingSession || pendingSession.sessionId !== sessionId) {
+    return { success: false, error: 'No pending linking session found for this session ID' }
+  }
+
+  if (isExpired(pendingSession.expiresAt)) {
+    clearPendingSession()
+    return { success: false, error: 'Linking session has expired' }
+  }
+
+  try {
+    const session = await getFromServer<{
+      sessionId: string
+      status: string
+      newDevicePublicKey: string | null
+      newDeviceConfirm: string | null
+      expiresAt: number
+    }>(`/auth/linking/session/${sessionId}`, accessToken)
+
+    if (!session.newDevicePublicKey || !session.newDeviceConfirm) {
+      return { success: false, error: 'Session has not been scanned yet' }
+    }
+
+    const newDevicePublicKey = sodium.from_base64(
+      session.newDevicePublicKey,
+      sodium.base64_variants.ORIGINAL
+    )
+    const sharedSecret = await computeSharedSecret(
+      pendingSession.ephemeralPrivateKey,
+      newDevicePublicKey
+    )
+    const { encKey, macKey } = await deriveLinkingKeys(sharedSecret)
+
+    const receivedConfirm = sodium.from_base64(
+      session.newDeviceConfirm,
+      sodium.base64_variants.ORIGINAL
+    )
+    const expectedConfirm = computeLinkingProof(macKey, sessionId, session.newDevicePublicKey)
+
+    if (!constantTimeEqual(expectedConfirm, receivedConfirm)) {
+      secureCleanup(sharedSecret, encKey, macKey)
+      clearPendingSession()
+      log.error('New device HMAC mismatch — possible tampering')
+      return { success: false, error: 'Device verification failed — linking data may be corrupted' }
+    }
+
+    const masterKey = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY)
+    if (!masterKey) {
+      secureCleanup(sharedSecret, encKey, macKey)
+      clearPendingSession()
+      return { success: false, error: 'Master key not found in keychain' }
+    }
+
+    const { ciphertext, nonce } = encryptMasterKeyForLinking(masterKey, encKey)
+    const encryptedMasterKeyB64 = sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL)
+    const encryptedKeyNonceB64 = sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+
+    const keyConfirm = computeKeyConfirm(macKey, sessionId, encryptedMasterKeyB64)
+    const keyConfirmB64 = sodium.to_base64(keyConfirm, sodium.base64_variants.ORIGINAL)
+
+    await postToServer(
+      '/auth/linking/approve',
+      {
+        sessionId,
+        encryptedMasterKey: encryptedMasterKeyB64,
+        encryptedKeyNonce: encryptedKeyNonceB64,
+        keyConfirm: keyConfirmB64
+      },
+      accessToken
+    )
+
+    secureCleanup(sharedSecret, encKey, macKey, masterKey)
+    clearPendingSession()
+
+    log.info('Device linking approved', { sessionId })
+    return { success: true }
+  } catch (err) {
+    log.error('Failed to approve device linking', err)
+    clearPendingSession()
+    throw err
+  }
+}

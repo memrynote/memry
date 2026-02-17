@@ -761,10 +761,16 @@ export class SyncEngine extends EventEmitter {
       case 'heartbeat':
         break
       case 'error':
-        this.log.warn('Server-sent WS error', { payload: message.payload })
+        log.warn('Server-sent WS error', { payload: message.payload })
+        break
+      case 'linking_request':
+        this.deps.emitToRenderer(EVENT_CHANNELS.LINKING_REQUEST, message.payload)
+        break
+      case 'linking_approved':
+        this.deps.emitToRenderer(EVENT_CHANNELS.LINKING_APPROVED, message.payload)
         break
       default:
-        this.log.debug('Unknown WS message type', { type: (message as { type: string }).type })
+        log.debug('Unknown WS message type', { type: (message as { type: string }).type })
     }
   }
 
