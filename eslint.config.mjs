@@ -18,7 +18,7 @@ export default defineConfig(
       '*.config.ts',
       '*.config.mjs',
       '*.config.js',
-      'vitest.workspace.ts',
+      'config/**',
       'scripts/**',
       'specs/**',
       'docs/**'

@@ -3,10 +3,11 @@ import { resolve } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
+const projectRoot = resolve(__dirname, '..')
 
 export default defineWorkspace([
   // Sync Server - references its own vitest.config.ts with its own root
-  'sync-server',
+  '../sync-server',
 
   // Shared Workspace - Pure TypeScript (Zod schemas, Drizzle queries)
   {
@@ -20,8 +21,8 @@ export default defineWorkspace([
     },
     resolve: {
       alias: {
-        '@shared': resolve(__dirname, 'src/shared'),
-        '@tests': resolve(__dirname, 'tests')
+        '@shared': resolve(projectRoot, 'src/shared'),
+        '@tests': resolve(projectRoot, 'tests')
       }
     }
   },
@@ -42,8 +43,8 @@ export default defineWorkspace([
     },
     resolve: {
       alias: {
-        '@shared': resolve(__dirname, 'src/shared'),
-        '@tests': resolve(__dirname, 'tests')
+        '@shared': resolve(projectRoot, 'src/shared'),
+        '@tests': resolve(projectRoot, 'tests')
       }
     }
   },
@@ -66,10 +67,10 @@ export default defineWorkspace([
     },
     resolve: {
       alias: {
-        '@': resolve(__dirname, 'src/renderer/src'),
-        '@renderer': resolve(__dirname, 'src/renderer/src'),
-        '@shared': resolve(__dirname, 'src/shared'),
-        '@tests': resolve(__dirname, 'tests')
+        '@': resolve(projectRoot, 'src/renderer/src'),
+        '@renderer': resolve(projectRoot, 'src/renderer/src'),
+        '@shared': resolve(projectRoot, 'src/shared'),
+        '@tests': resolve(projectRoot, 'tests')
       }
     }
   }

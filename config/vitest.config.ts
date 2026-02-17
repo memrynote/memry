@@ -1,6 +1,8 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { resolve } from 'path'
 
+const projectRoot = resolve(__dirname, '..')
+
 const baseConfig = defineConfig({
   test: {
     globals: true,
@@ -34,10 +36,10 @@ const baseConfig = defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src/renderer/src'),
-      '@renderer': resolve(__dirname, 'src/renderer/src'),
-      '@shared': resolve(__dirname, 'src/shared'),
-      '@tests': resolve(__dirname, 'tests')
+      '@': resolve(projectRoot, 'src/renderer/src'),
+      '@renderer': resolve(projectRoot, 'src/renderer/src'),
+      '@shared': resolve(projectRoot, 'src/shared'),
+      '@tests': resolve(projectRoot, 'tests')
     }
   }
 })
@@ -122,10 +124,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src/renderer/src'),
-      '@renderer': resolve(__dirname, 'src/renderer/src'),
-      '@shared': resolve(__dirname, 'src/shared'),
-      '@tests': resolve(__dirname, 'tests')
+      '@': resolve(projectRoot, 'src/renderer/src'),
+      '@renderer': resolve(projectRoot, 'src/renderer/src'),
+      '@shared': resolve(projectRoot, 'src/shared'),
+      '@tests': resolve(projectRoot, 'tests')
     }
   }
 })
