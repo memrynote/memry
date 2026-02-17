@@ -1,6 +1,8 @@
 import { Hono } from 'hono'
 import { jwtVerify, createRemoteJWKSet, SignJWT } from 'jose'
 
+import { z } from 'zod'
+
 import {
   RequestOtpRequestSchema,
   VerifyOtpRequestSchema,
@@ -26,7 +28,7 @@ import {
   checkEmailRateLimit,
   hasPendingOtp
 } from '../services/otp'
-import { getOrCreateUserByEmail, getUserById, updateUser } from '../services/user'
+import { getOrCreateUserByEmail, getUserByEmail, getUserById, updateUser } from '../services/user'
 import type { AppContext } from '../types'
 
 const OTP_EXPIRY_MINUTES = 10
@@ -41,6 +43,12 @@ const refreshRateLimit = createRateLimiter({
   maxRequests: 30,
   windowSeconds: 60,
   keyPrefix: 'refresh'
+})
+
+const recoveryIpRateLimit = createRateLimiter({
+  maxRequests: 3,
+  windowSeconds: 600,
+  keyPrefix: 'recovery-ip'
 })
 
 const handleOtpRequest = async (c: Parameters<typeof otpIpRateLimit>[0]): Promise<Response> => {
@@ -399,6 +407,44 @@ auth.get('/recovery-info', setupAuthMiddleware, async (c) => {
     kdfSalt: user.kdf_salt,
     keyVerifier: user.key_verifier
   })
+})
+
+const RecoveryQuerySchema = z.object({ email: z.string().email() })
+
+async function generateDummyRecoveryData(
+  email: string,
+  secret: string
+): Promise<{ kdfSalt: string; keyVerifier: string }> {
+  const encoder = new TextEncoder()
+  const saltHash = await crypto.subtle.digest('SHA-256', encoder.encode(email + secret + 'salt'))
+  const verifierHash = await crypto.subtle.digest(
+    'SHA-256',
+    encoder.encode(email + secret + 'verifier')
+  )
+
+  const saltBytes = new Uint8Array(saltHash).slice(0, 16)
+  const verifierBytes = new Uint8Array(verifierHash)
+
+  return {
+    kdfSalt: btoa(String.fromCharCode(...saltBytes)),
+    keyVerifier: btoa(String.fromCharCode(...verifierBytes))
+  }
+}
+
+auth.get('/recovery', recoveryIpRateLimit, async (c) => {
+  const parsed = RecoveryQuerySchema.safeParse({ email: c.req.query('email') })
+  if (!parsed.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Valid email is required', 400)
+  }
+
+  const user = await getUserByEmail(c.env.DB, parsed.data.email)
+
+  if (user?.kdf_salt && user.key_verifier) {
+    return c.json({ kdfSalt: user.kdf_salt, keyVerifier: user.key_verifier })
+  }
+
+  const dummy = await generateDummyRecoveryData(parsed.data.email, c.env.JWT_PRIVATE_KEY)
+  return c.json(dummy)
 })
 
 // POST /setup — requires authenticated device (access token). The kdf_salt null
