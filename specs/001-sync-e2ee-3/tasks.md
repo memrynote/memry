@@ -539,21 +539,21 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Server Recovery for US4
 
-- [ ] T122 [US4] Implement recovery data fetch endpoint GET /auth/recovery (requires email + recovery phrase derived proof, returns kdf_salt, key_verifier) in sync-server/src/routes/auth.ts - protected by rate limiting, does not reveal if account exists, uses email-based lookup (NOT user_id) to prevent account enumeration
-- [ ] T122a [US4] Implement rate limiting on recovery endpoint (3 requests per 10 minutes per IP) in sync-server/src/middleware/rate-limit.ts
+- [x] T122 [US4] Implement recovery data fetch endpoint GET /auth/recovery (requires email + recovery phrase derived proof, returns kdf_salt, key_verifier) in sync-server/src/routes/auth.ts - protected by rate limiting, does not reveal if account exists, uses email-based lookup (NOT user_id) to prevent account enumeration
+- [x] T122a [US4] Implement rate limiting on recovery endpoint (3 requests per 10 minutes per IP) in sync-server/src/middleware/rate-limit.ts
 
 ### Client Recovery for US4
 
-- [ ] T123 [US4] Implement recovery phrase to master key derivation in src/main/crypto/recovery.ts
-- [ ] T124 [US4] Implement key_verifier validation in src/main/crypto/recovery.ts
-- [ ] T125 [US4] Implement link via recovery phrase IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T123 [US4] Implement recovery phrase to master key derivation in src/main/crypto/recovery.ts
+- [x] T124 [US4] Implement key_verifier validation in src/main/crypto/recovery.ts
+- [x] T125 [US4] Implement link via recovery phrase IPC handler in src/main/ipc/sync-handlers.ts
 
 ### UI Components for US4
 
-- [ ] T126 [P] [US4] Create recovery phrase input component in src/renderer/src/components/sync/recovery-input.tsx
-- [ ] T127 [US4] Create recovery in progress screen in src/renderer/src/components/sync/recovery-progress.tsx
-- [ ] T128 [US4] Add recovery phrase option to login flow in src/renderer/src/pages/settings/setup-wizard.tsx
-- [ ] T128a [US4] Wire recovery flow UI to recovery IPC handler in src/renderer/src/pages/settings/setup-wizard.tsx
+- [x] T126 [P] [US4] Create recovery phrase input component in src/renderer/src/components/sync/recovery-input.tsx
+- [x] T127 [US4] Create recovery in progress screen in src/renderer/src/components/sync/recovery-progress.tsx
+- [x] T128 [US4] Add recovery phrase option to login flow in src/renderer/src/pages/settings/setup-wizard.tsx
+- [x] T128a [US4] Wire recovery flow UI to recovery IPC handler in src/renderer/src/pages/settings/setup-wizard.tsx
 
 **Checkpoint**: User Story 4 complete - users can recover accounts with recovery phrase
 
