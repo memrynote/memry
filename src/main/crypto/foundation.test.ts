@@ -26,6 +26,7 @@ import {
   generateRecoveryPhrase,
   generateSalt,
   getDevicePublicKey,
+  getOrCreateSigningKeyPair,
   initCrypto,
   phraseToSeed,
   retrieveKey,
@@ -251,5 +252,52 @@ describe('crypto foundation', () => {
 
   it('initializes sodium readiness', async () => {
     await expect(initCrypto()).resolves.toBeUndefined()
+  })
+
+  // --------------------------------------------------------------------------
+  // getOrCreateSigningKeyPair
+  // --------------------------------------------------------------------------
+
+  describe('getOrCreateSigningKeyPair', () => {
+    it('returns existing keychain key when present', async () => {
+      // #given — generate a key, store it in mock keychain
+      const original = await generateDeviceSigningKeyPair()
+      const storedB64 = sodium.to_base64(original.secretKey, sodium.base64_variants.ORIGINAL)
+      vi.mocked(keytar.getPassword).mockResolvedValue(storedB64)
+
+      // #when
+      const result = await getOrCreateSigningKeyPair()
+
+      // #then — same deviceId and public key
+      expect(result.deviceId).toBe(original.deviceId)
+      expect(sodium.to_hex(result.publicKey)).toBe(sodium.to_hex(original.publicKey))
+    })
+
+    it('generates new key when keychain is empty', async () => {
+      // #given
+      vi.mocked(keytar.getPassword).mockResolvedValue(null)
+
+      // #when
+      const result = await getOrCreateSigningKeyPair()
+
+      // #then — returns valid key material
+      expect(result.deviceId).toBeTruthy()
+      expect(result.publicKey.length).toBe(32)
+      expect(result.secretKey.length).toBe(64)
+    })
+
+    it('derives consistent public key from secret key', async () => {
+      // #given
+      const original = await generateDeviceSigningKeyPair()
+      const storedB64 = sodium.to_base64(original.secretKey, sodium.base64_variants.ORIGINAL)
+      vi.mocked(keytar.getPassword).mockResolvedValue(storedB64)
+
+      // #when
+      const result = await getOrCreateSigningKeyPair()
+      const reDerived = getDevicePublicKey(result.secretKey)
+
+      // #then — public key matches re-derivation
+      expect(sodium.to_hex(result.publicKey)).toBe(sodium.to_hex(reDerived))
+    })
   })
 })
