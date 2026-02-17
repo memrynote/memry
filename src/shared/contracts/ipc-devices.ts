@@ -7,6 +7,7 @@ import { z } from 'zod'
 export const DEVICE_CHANNELS = {
   GENERATE_LINKING_QR: 'sync:generate-linking-qr',
   LINK_VIA_QR: 'sync:link-via-qr',
+  COMPLETE_LINKING_QR: 'sync:complete-linking-qr',
   LINK_VIA_RECOVERY: 'sync:link-via-recovery',
   APPROVE_LINKING: 'sync:approve-linking',
   GET_DEVICES: 'sync:get-devices',
@@ -26,8 +27,8 @@ export interface GenerateLinkingQrResult {
 
 export interface LinkViaQrInput {
   qrData: string
-  oauthToken: string
-  provider: string
+  oauthToken?: string
+  provider?: string
 }
 
 export interface LinkViaQrResult {
@@ -41,6 +42,16 @@ export interface LinkViaRecoveryInput {
 }
 
 export interface LinkViaRecoveryResult {
+  success: boolean
+  deviceId?: string
+  error?: string
+}
+
+export interface CompleteLinkingQrInput {
+  sessionId: string
+}
+
+export interface CompleteLinkingQrResult {
   success: boolean
   deviceId?: string
   error?: string
@@ -94,12 +105,16 @@ export interface RenameDeviceResult {
 
 export const LinkViaQrSchema = z.object({
   qrData: z.string().min(1),
-  oauthToken: z.string().min(1),
-  provider: z.string().min(1)
+  oauthToken: z.string().optional(),
+  provider: z.string().optional()
 })
 
 export const LinkViaRecoverySchema = z.object({
   recoveryPhrase: z.string().min(1)
+})
+
+export const CompleteLinkingQrSchema = z.object({
+  sessionId: z.string().min(1)
 })
 
 export const ApproveLinkingSchema = z.object({
@@ -120,6 +135,7 @@ export const RenameDeviceSchema = z.object({
 // ============================================================================
 
 export type LinkViaQrSchemaInput = z.infer<typeof LinkViaQrSchema>
+export type CompleteLinkingQrSchemaInput = z.infer<typeof CompleteLinkingQrSchema>
 export type LinkViaRecoverySchemaInput = z.infer<typeof LinkViaRecoverySchema>
 export type ApproveLinkingSchemaInput = z.infer<typeof ApproveLinkingSchema>
 export type RemoveDeviceSchemaInput = z.infer<typeof RemoveDeviceSchema>
