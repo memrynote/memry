@@ -22,9 +22,11 @@ import { useTheme } from 'next-themes'
 import '@blocknote/core/fonts/inter.css'
 import '@blocknote/shadcn/style.css'
 
+import type * as Y from 'yjs'
 import { cn } from '@/lib/utils'
 import { fuzzySearch } from '@/lib/fuzzy-search'
 import { notesService } from '@/services/notes-service'
+import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 import type { ContentAreaProps, HeadingInfo } from './types'
 import { createWikiLinkInlineContent, WikiLink } from './wiki-link'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
@@ -362,7 +364,11 @@ function normalizeMarkdownHardBreaks(markdown: string): string {
  * - Heading extraction for outline panel
  * - shadcn/ui styling integration
  */
-export const ContentArea = memo(function ContentArea({
+interface ContentAreaEditorProps extends ContentAreaProps {
+  yjsFragment?: Y.XmlFragment
+}
+
+const ContentAreaEditor = memo(function ContentAreaEditor({
   noteId,
   initialContent,
   contentType = 'html',
@@ -375,8 +381,9 @@ export const ContentArea = memo(function ContentArea({
   onLinkClick,
   onInternalLinkClick,
   className,
-  initialHighlight
-}: ContentAreaProps) {
+  initialHighlight,
+  yjsFragment
+}: ContentAreaEditorProps) {
   // T030: Get current theme for dark mode support
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
@@ -509,7 +516,16 @@ export const ContentArea = memo(function ContentArea({
       bulletListItem: 'List item',
       numberedListItem: 'List item',
       checkListItem: 'To-do item'
-    }
+    },
+    // T140: Yjs collaboration (when fragment is available from IPC provider)
+    ...(yjsFragment
+      ? {
+          collaboration: {
+            fragment: yjsFragment,
+            user: { name: 'Local User', color: '#3b82f6' }
+          }
+        }
+      : {})
   })
 
   const notesCacheRef = useRef<{ notes: NoteSuggestion[]; fetchedAt: number } | null>(null)
@@ -587,6 +603,12 @@ export const ContentArea = memo(function ContentArea({
       return
     }
     initialContentLoadedRef.current = true
+
+    // When Yjs collaboration is active, content comes from Y.Doc — skip file-based loading
+    if (yjsFragment) {
+      isContentReadyRef.current = true
+      return
+    }
 
     async function loadContent(): Promise<void> {
       try {
@@ -1066,6 +1088,25 @@ export const ContentArea = memo(function ContentArea({
         )}
       </div>
     </div>
+  )
+})
+
+export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
+  const { fragment, isReady } = useYjsCollaboration(props.noteId)
+
+  if (props.noteId && !isReady) {
+    return (
+      <div className={cn('content-area h-full flex flex-col', props.className)}>
+        <div className="flex-1 animate-pulse bg-muted/10 rounded-md" />
+      </div>
+    )
+  }
+
+  return (
+    <ContentAreaEditor
+      {...props}
+      yjsFragment={isReady && fragment ? fragment : undefined}
+    />
   )
 })
 

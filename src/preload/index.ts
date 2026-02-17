@@ -1457,6 +1457,33 @@ const api = {
       ipcRenderer.invoke(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS, input)
   },
 
+  // CRDT Collaboration API
+  syncCrdt: {
+    openDoc: (input: { noteId: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.OPEN_DOC, input),
+    closeDoc: (input: { noteId: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.CLOSE_DOC, input),
+    applyUpdate: (input: { noteId: string; update: number[]; sourceWindowId: number }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.APPLY_UPDATE, input),
+    syncStep1: (input: {
+      noteId: string
+      stateVector: number[]
+      sourceWindowId: number
+    }) => ipcRenderer.invoke(SYNC_CHANNELS.SYNC_STEP_1, input),
+    syncStep2: (input: { noteId: string; diff: number[]; sourceWindowId: number }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.SYNC_STEP_2, input)
+  },
+  onCrdtStateChanged: (
+    callback: (data: { noteId: string; update: number[]; origin: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { noteId: string; update: number[]; origin: string }
+    ): void => callback(data)
+    ipcRenderer.on(SYNC_EVENTS.STATE_CHANGED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.STATE_CHANGED, handler)
+  },
+
   // Sync event subscriptions
   onSyncStatusChanged: (callback: (event: SyncStatusChangedEvent) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, data: SyncStatusChangedEvent): void =>
