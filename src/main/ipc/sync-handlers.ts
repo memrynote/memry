@@ -46,17 +46,17 @@ import { eq, desc, count, inArray } from 'drizzle-orm'
 import type { SyncEngine } from '../sync/engine'
 
 import {
-  constantTimeEqual,
   deleteKey,
   deriveMasterKey,
   generateRecoveryPhrase,
   generateSalt,
   getDevicePublicKey,
   getOrCreateSigningKeyPair,
-  phraseToSeed,
+  recoverMasterKeyFromPhrase,
   secureCleanup,
   storeKey,
   retrieveKey,
+  validateKeyVerifier,
   validateRecoveryPhrase
 } from '../crypto'
 import { getDatabase, isDatabaseInitialized } from '../database/client'
@@ -861,20 +861,12 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
       const rawRecovery = await getFromServer<unknown>('/auth/recovery-info', setupToken)
       const recoveryInfo = RecoveryDataResponseSchema.parse(rawRecovery)
 
-      const seed = await phraseToSeed(input.recoveryPhrase)
-      const saltBytes = sodium.from_base64(recoveryInfo.kdfSalt, sodium.base64_variants.ORIGINAL)
+      const derived = await recoverMasterKeyFromPhrase(input.recoveryPhrase, recoveryInfo.kdfSalt)
 
-      let masterKey: Uint8Array | undefined
       let signingSecretKey: Uint8Array | undefined
 
       try {
-        const derived = await deriveMasterKey(seed, saltBytes)
-        masterKey = derived.masterKey
-
-        const serverVerifierBytes = new TextEncoder().encode(recoveryInfo.keyVerifier)
-        const derivedVerifierBytes = new TextEncoder().encode(derived.keyVerifier)
-
-        if (!constantTimeEqual(derivedVerifierBytes, serverVerifierBytes)) {
+        if (!validateKeyVerifier(derived.keyVerifier, recoveryInfo.keyVerifier)) {
           return { success: false, error: 'Recovery phrase does not match. Please try again.' }
         }
 
@@ -882,7 +874,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
         signingSecretKey = keyPair.secretKey
 
         const deviceId = await persistKeysAndRegisterDevice(
-          masterKey,
+          derived.masterKey,
           signingSecretKey,
           setupToken,
           derived.kdfSalt,
@@ -892,8 +884,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
 
         return { success: true, deviceId }
       } finally {
-        secureCleanup(seed, saltBytes)
-        if (masterKey) secureCleanup(masterKey)
+        secureCleanup(derived.masterKey)
         if (signingSecretKey) secureCleanup(signingSecretKey)
       }
     })

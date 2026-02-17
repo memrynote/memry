@@ -17,7 +17,14 @@ export {
   getOrDeriveVaultKey
 } from './keys'
 
-export { generateRecoveryPhrase, phraseToSeed, validateRecoveryPhrase } from './recovery'
+export {
+  generateRecoveryPhrase,
+  phraseToSeed,
+  recoverMasterKeyFromPhrase,
+  validateKeyVerifier,
+  validateRecoveryPhrase
+} from './recovery'
+export type { RecoveredKeyMaterial } from './recovery'
 
 export {
   decrypt,
