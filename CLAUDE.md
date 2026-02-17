@@ -52,8 +52,8 @@ Electron app with 3 process layers:
 
 | Database   | Config                    | Purpose                                           | FK enforcement                |
 | ---------- | ------------------------- | ------------------------------------------------- | ----------------------------- |
-| `data.db`  | `drizzle-data.config.ts`  | Source of truth (tasks, projects, settings, sync) | Yes (CASCADE/SET NULL)        |
-| `index.db` | `drizzle-index.config.ts` | Rebuildable cache (note search, FTS, embeddings)  | No (safe to delete & rebuild) |
+| `data.db`  | `config/drizzle-data.config.ts`  | Source of truth (tasks, projects, settings, sync) | Yes (CASCADE/SET NULL)        |
+| `index.db` | `config/drizzle-index.config.ts` | Rebuildable cache (note search, FTS, embeddings)  | No (safe to delete & rebuild) |
 
 Schemas live in `src/shared/db/schema/`. Migrations in `src/main/database/drizzle-data/` and `drizzle-index/`. Both run automatically on app startup.
 
