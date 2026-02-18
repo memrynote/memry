@@ -191,6 +191,15 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
     return { ...project, statuses: projectStatuses } as Record<string, unknown>
   },
 
+  buildPushPayload(db: DrizzleDb, itemId: string, _deviceId: string): string | null {
+    const project = db.select().from(projects).where(eq(projects.id, itemId)).get()
+    if (!project) return null
+
+    const projectStatuses = db.select().from(statuses).where(eq(statuses.projectId, itemId)).all()
+
+    return JSON.stringify({ ...project, statuses: projectStatuses })
+  },
+
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db.select().from(projects).where(isNull(projects.clock)).all()
     for (const item of items) {

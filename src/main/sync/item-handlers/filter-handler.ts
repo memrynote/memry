@@ -91,6 +91,12 @@ export const filterHandler: SyncItemHandler<FilterSyncPayload> = {
       | undefined
   },
 
+  buildPushPayload(db: DrizzleDb, itemId: string, _deviceId: string): string | null {
+    const filter = db.select().from(savedFilters).where(eq(savedFilters.id, itemId)).get()
+    if (!filter) return null
+    return JSON.stringify(filter)
+  },
+
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db.select().from(savedFilters).where(isNull(savedFilters.clock)).all()
     for (const item of items) {
