@@ -10,7 +10,14 @@ import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { getIndexDatabase } from '../../database/client'
 import { getNoteCacheById, updateNoteCache, deleteNoteCache } from '@shared/db/queries/notes'
-import { writeJournalEntry, deleteJournalEntryFile, readJournalEntry } from '../../vault/journal'
+import {
+  writeJournalEntry,
+  deleteJournalEntryFile,
+  readJournalEntry,
+  getJournalPath,
+  parseJournalEntry
+} from '../../vault/journal'
+import fs from 'fs'
 import { createLogger } from '../../lib/logger'
 import { resolveClockConflict } from './types'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -117,6 +124,38 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
     const cached = getNoteCacheById(indexDb, itemId)
     if (!cached || !cached.date) return undefined
     return cached as unknown as Record<string, unknown>
+  },
+
+  buildPushPayload(_db: DrizzleDb, itemId: string, _deviceId: string): string | null {
+    const indexDb = getIndexDatabase()
+    const cached = getNoteCacheById(indexDb, itemId)
+    if (!cached || !cached.date) return null
+
+    let content: string | null = null
+    let tags: string[] = []
+    let properties: Record<string, unknown> | null = null
+    const filePath = getJournalPath(cached.date)
+    try {
+      const raw = fs.readFileSync(filePath, 'utf-8')
+      const parsed = parseJournalEntry(raw, cached.date)
+      content = parsed.content
+      tags = parsed.frontmatter.tags ?? []
+      if (parsed.frontmatter.properties) {
+        properties = parsed.frontmatter.properties as Record<string, unknown>
+      }
+    } catch {
+      log.warn('Could not read journal file for push payload', { noteId: cached.id, date: cached.date })
+    }
+
+    return JSON.stringify({
+      date: cached.date,
+      content,
+      tags,
+      properties,
+      clock: cached.clock ?? {},
+      createdAt: cached.createdAt,
+      modifiedAt: cached.modifiedAt
+    })
   },
 
   seedUnclocked(_db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {

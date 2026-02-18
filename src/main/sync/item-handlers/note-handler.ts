@@ -205,6 +205,38 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     return cached as unknown as Record<string, unknown>
   },
 
+  buildPushPayload(_db: DrizzleDb, itemId: string, _deviceId: string): string | null {
+    const indexDb = getIndexDatabase()
+    const cached = getNoteCacheById(indexDb, itemId)
+    if (!cached) return null
+
+    let content: string | null = null
+    let tags: string[] = []
+    const absolutePath = toAbsolutePath(cached.path)
+    try {
+      const raw = fs.readFileSync(absolutePath, 'utf-8')
+      const parsed = parseNote(raw)
+      content = parsed.content
+      tags = parsed.frontmatter.tags ?? []
+    } catch {
+      log.warn('Could not read note file for push payload', { noteId: cached.id })
+    }
+
+    const folderPath = extractFolderFromPath(cached.path)
+
+    return JSON.stringify({
+      title: cached.title,
+      content,
+      tags,
+      emoji: cached.emoji,
+      fileType: cached.fileType,
+      folderPath,
+      clock: cached.clock ?? {},
+      createdAt: cached.createdAt,
+      modifiedAt: cached.modifiedAt
+    })
+  },
+
   seedUnclocked(_db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const indexDb = getIndexDatabase()
     const items = indexDb

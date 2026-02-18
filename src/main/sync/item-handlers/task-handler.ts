@@ -119,6 +119,12 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
       | undefined
   },
 
+  buildPushPayload(db: DrizzleDb, itemId: string, _deviceId: string): string | null {
+    const task = db.select().from(tasks).where(eq(tasks.id, itemId)).get()
+    if (!task) return null
+    return JSON.stringify(task)
+  },
+
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db.select().from(tasks).where(isNull(tasks.clock)).all()
     for (const item of items) {

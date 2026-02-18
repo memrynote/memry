@@ -21,6 +21,7 @@ export interface SyncItemHandler<T = unknown> {
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped'
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number
+  buildPushPayload?(db: DrizzleDb, itemId: string, deviceId: string): string | null
 }
 
 export interface ClockResolution {
