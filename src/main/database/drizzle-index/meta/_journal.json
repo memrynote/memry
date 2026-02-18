@@ -92,6 +92,13 @@
       "when": 1769997600000,
       "tag": "0012_snapshot_title_column",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1771404117751,
+      "tag": "0013_tidy_puppet_master",
+      "breakpoints": true
     }
   ]
 }
