@@ -1,5 +1,6 @@
 import * as Y from 'yjs'
 import { createLogger } from '../lib/logger'
+import { getCrdtProvider } from './crdt-provider'
 import { yDocToMarkdown } from './blocknote-converter'
 import { atomicWrite, safeRead, fileExists, generateNotePath, ensureDirectory } from '../vault/file-ops'
 import { parseNote, serializeNote, type NoteFrontmatter } from '../vault/frontmatter'
@@ -17,9 +18,10 @@ import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 const log = createLogger('CrdtWriteback')
 
 const WRITEBACK_DEBOUNCE_MS = 500
+const IGNORED_WRITE_TTL_MS = 5000
 
 const pendingTimers = new Map<string, ReturnType<typeof setTimeout>>()
-const ignoredPaths = new Set<string>()
+const ignoredWrites = new Map<string, number>()
 const lastNetworkUpdateMs = new Map<string, number>()
 
 function isJournalId(noteId: string): boolean {
@@ -31,11 +33,17 @@ function journalIdToDate(journalId: string): string {
 }
 
 export function isWritebackIgnored(absolutePath: string): boolean {
-  return ignoredPaths.has(absolutePath)
+  const now = Date.now()
+  for (const [p, ts] of ignoredWrites) {
+    if (now - ts >= IGNORED_WRITE_TTL_MS) ignoredWrites.delete(p)
+  }
+  const ts = ignoredWrites.get(absolutePath)
+  if (!ts) return false
+  return now - ts < IGNORED_WRITE_TTL_MS
 }
 
-export function clearWritebackIgnore(absolutePath: string): void {
-  ignoredPaths.delete(absolutePath)
+export function clearWritebackIgnore(_absolutePath: string): void {
+  // no-op: auto-evicted by TTL in isWritebackIgnored
 }
 
 const CONCURRENT_EDIT_WINDOW_MS = 2000
@@ -47,7 +55,11 @@ export function recordNetworkUpdate(noteId: string): void {
 export function wasRecentNetworkUpdate(noteId: string): boolean {
   const ts = lastNetworkUpdateMs.get(noteId)
   if (!ts) return false
-  return Date.now() - ts < CONCURRENT_EDIT_WINDOW_MS
+  if (Date.now() - ts >= CONCURRENT_EDIT_WINDOW_MS) {
+    lastNetworkUpdateMs.delete(noteId)
+    return false
+  }
+  return true
 }
 
 function emitToRenderer(channel: string, data: unknown): void {
@@ -110,7 +122,7 @@ async function writebackExisting(
   const mergedFrontmatter = mergeFrontmatter(noteId, existingFrontmatter, doc)
   const fileContent = serializeNote(mergedFrontmatter, markdown)
 
-  ignoredPaths.add(absolutePath)
+  ignoredWrites.set(absolutePath, Date.now())
   await atomicWrite(absolutePath, fileContent)
 
   syncNoteToCache(
@@ -139,7 +151,7 @@ async function writebackNewNote(
   const frontmatter = mergeFrontmatter(noteId, null, doc)
   const fileContent = serializeNote(frontmatter, markdown)
 
-  ignoredPaths.add(absolutePath)
+  ignoredWrites.set(absolutePath, Date.now())
   await atomicWrite(absolutePath, fileContent)
 
   syncNoteToCache(
@@ -182,7 +194,7 @@ async function writebackJournal(
     const mergedFrontmatter = mergeJournalFrontmatter(noteId, date, existing, doc)
     const fileContent = serializeNote(mergedFrontmatter, markdown)
 
-    ignoredPaths.add(absolutePath)
+    ignoredWrites.set(absolutePath, Date.now())
     await atomicWrite(absolutePath, fileContent)
 
     syncNoteToCache(
@@ -211,7 +223,7 @@ async function writebackJournal(
   const frontmatter = mergeJournalFrontmatter(noteId, date, null, doc)
   const fileContent = serializeNote(frontmatter, markdown)
 
-  ignoredPaths.add(journalPath)
+  ignoredWrites.set(journalPath, Date.now())
   await atomicWrite(journalPath, fileContent)
 
   syncNoteToCache(
@@ -248,7 +260,7 @@ async function handleJournalCollision(
   const fileContent = serializeNote(frontmatter, markdown)
 
   await ensureDirectory(journalDir)
-  ignoredPaths.add(collisionPath)
+  ignoredWrites.set(collisionPath, Date.now())
   await atomicWrite(collisionPath, fileContent)
 
   syncNoteToCache(
@@ -277,10 +289,12 @@ export async function handleSyncDeletion(noteId: string): Promise<void> {
   const absolutePath = toAbsolutePath(cached.path)
   deleteNoteFromCache(indexDb, noteId)
 
-  ignoredPaths.add(absolutePath)
+  ignoredWrites.set(absolutePath, Date.now())
   await deleteFile(absolutePath).catch((err) => {
     log.error('Failed to delete synced note file', { noteId, error: err })
   })
+
+  getCrdtProvider().close(noteId)
 
   const channel = isJournalId(noteId)
     ? JournalChannels.events.ENTRY_DELETED
