@@ -36,7 +36,7 @@ import { decryptItemFromPull, SignatureVerificationError } from './decrypt'
 import { ItemApplier } from './apply-item'
 import { getHandler, type DrizzleDb } from './item-handlers'
 import { withRetry } from './retry'
-import { postToServer, getFromServer } from './http-client'
+import { postToServer, getFromServer, fetchCrdtSnapshot } from './http-client'
 import { checkManifestIntegrity } from './manifest-check'
 import { runInitialSeed } from './initial-seed'
 import type { CrdtProvider } from './crdt-provider'
@@ -169,7 +169,7 @@ export class SyncEngine extends EventEmitter {
     this.pendingPushRequested = false
     this.abortController?.abort()
     if (this.inFlightSync) {
-      await this.inFlightSync.catch(() => { })
+      await this.inFlightSync.catch(() => {})
     }
     this.abortController = null
     this.inFlightSync = null
@@ -490,9 +490,9 @@ export class SyncEngine extends EventEmitter {
                 metadata:
                   item.clock || item.stateVector
                     ? {
-                      ...(item.clock ? { clock: item.clock } : {}),
-                      ...(item.stateVector ? { stateVector: item.stateVector } : {})
-                    }
+                        ...(item.clock ? { clock: item.clock } : {}),
+                        ...(item.stateVector ? { stateVector: item.stateVector } : {})
+                      }
                     : undefined,
                 vaultKey,
                 signerPublicKey: signerPubKey
@@ -1036,6 +1036,33 @@ export class SyncEngine extends EventEmitter {
       if (!doc) return
 
       let since = 0
+
+      const stateVector = this.deps.crdtProvider.getStateVector(noteId)
+      const needsBootstrap = !stateVector || stateVector.length <= 2
+
+      if (needsBootstrap) {
+        const snapshotResult = await fetchCrdtSnapshot(noteId, token)
+        if (snapshotResult) {
+          const signerPubKey = await this.deps.getDevicePublicKey(snapshotResult.signerDeviceId)
+          if (signerPubKey) {
+            const decrypted = decryptCrdtUpdate(
+              snapshotResult.snapshot,
+              vaultKey,
+              noteId,
+              signerPubKey
+            )
+            this.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted)
+            since = snapshotResult.sequenceNum
+            log.debug('Applied CRDT snapshot', { noteId, sequenceNum: since })
+          } else {
+            log.warn('Skipping CRDT snapshot from unresolvable signer', {
+              noteId,
+              signerDeviceId: snapshotResult.signerDeviceId
+            })
+          }
+        }
+      }
+
       let hasMore = true
 
       while (hasMore) {
@@ -1047,7 +1074,10 @@ export class SyncEngine extends EventEmitter {
             signerDeviceId: string
           }>
           hasMore: boolean
-        }>(`/sync/crdt/updates?note_id=${encodeURIComponent(noteId)}&since=${since}&limit=100`, token)
+        }>(
+          `/sync/crdt/updates?note_id=${encodeURIComponent(noteId)}&since=${since}&limit=100`,
+          token
+        )
 
         const signerIds = new Set(result.updates.map((u) => u.signerDeviceId))
         for (const sid of signerIds) {

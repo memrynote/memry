@@ -220,6 +220,7 @@ CREATE TABLE crdt_snapshots (
   blob_key TEXT NOT NULL,
   sequence_num INTEGER NOT NULL,
   size_bytes INTEGER NOT NULL,
+  signer_device_id TEXT NOT NULL,
   created_at INTEGER NOT NULL,
   UNIQUE (user_id, note_id)
 );

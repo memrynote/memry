@@ -31,6 +31,8 @@ const ORIGIN_NETWORK = 'network'
 export const ORIGIN_LOCAL = 'local'
 const COMPACTION_THRESHOLD_BYTES = 1024 * 1024
 
+export type SnapshotPushFn = (noteId: string, state: Uint8Array) => Promise<void>
+
 interface ActiveDoc {
   doc: Y.Doc
   windowIds: Set<number>
@@ -41,9 +43,11 @@ export class CrdtProvider {
   private docs = new Map<string, ActiveDoc>()
   private persistence: LeveldbPersistence | null = null
   private updateQueue: CrdtUpdateQueue | null = null
+  private snapshotPushFn: SnapshotPushFn | null = null
 
-  async init(queue?: CrdtUpdateQueue): Promise<void> {
+  async init(queue?: CrdtUpdateQueue, snapshotPush?: SnapshotPushFn): Promise<void> {
     this.updateQueue = queue ?? null
+    this.snapshotPushFn = snapshotPush ?? null
     const storagePath = path.join(app.getPath('userData'), 'crdt-store')
     this.persistence = new LeveldbPersistence(storagePath)
     this.registerIpcHandlers()
@@ -89,6 +93,13 @@ export class CrdtProvider {
     if (windowId) {
       entry.windowIds.delete(windowId)
       if (entry.windowIds.size > 0) return
+    }
+
+    if (this.snapshotPushFn && entry.accumulatedBytes > 0) {
+      const state = Y.encodeStateAsUpdate(entry.doc)
+      this.snapshotPushFn(noteId, state).catch((err) => {
+        log.warn('Failed to push snapshot on close', { noteId, error: err })
+      })
     }
 
     this.flushDoc(noteId).catch((err) => {
@@ -190,11 +201,7 @@ export class CrdtProvider {
           if (hasContent) continue
         }
 
-        await this.initForNote(
-          entry.id,
-          { title: entry.title, date: entry.date },
-          entry.tags
-        )
+        await this.initForNote(entry.id, { title: entry.title, date: entry.date }, entry.tags)
         await this.close(entry.id)
         seeded++
       }
@@ -285,47 +292,38 @@ export class CrdtProvider {
   }
 
   private registerIpcHandlers(): void {
-    ipcMain.handle(
-      CRDT_CHANNELS.OPEN_DOC,
-      async (event, rawInput: unknown) => {
-        const { noteId } = CrdtOpenDocSchema.parse(rawInput)
-        const windowId = BrowserWindow.fromWebContents(event.sender)?.id
+    ipcMain.handle(CRDT_CHANNELS.OPEN_DOC, async (event, rawInput: unknown) => {
+      const { noteId } = CrdtOpenDocSchema.parse(rawInput)
+      const windowId = BrowserWindow.fromWebContents(event.sender)?.id
 
-        const indexDb = getIndexDatabase()
-        const noteExists = getNoteCacheById(indexDb, noteId)
-        if (!noteExists) {
-          return { success: false, error: `Note not found: ${noteId}` }
-        }
-
-        await this.open(noteId, windowId)
-        return { success: true }
+      const indexDb = getIndexDatabase()
+      const noteExists = getNoteCacheById(indexDb, noteId)
+      if (!noteExists) {
+        return { success: false, error: `Note not found: ${noteId}` }
       }
-    )
 
-    ipcMain.handle(
-      CRDT_CHANNELS.CLOSE_DOC,
-      async (event, rawInput: unknown) => {
-        const { noteId } = CrdtCloseDocSchema.parse(rawInput)
-        const windowId = BrowserWindow.fromWebContents(event.sender)?.id
-        this.close(noteId, windowId)
-        return { success: true }
-      }
-    )
+      await this.open(noteId, windowId)
+      return { success: true }
+    })
 
-    ipcMain.handle(
-      CRDT_CHANNELS.APPLY_UPDATE,
-      async (event, rawInput: unknown) => {
-        const { noteId, update: updateArr } = CrdtApplyUpdateSchema.parse(rawInput)
-        const sourceWindowId = BrowserWindow.fromWebContents(event.sender)?.id ?? -1
+    ipcMain.handle(CRDT_CHANNELS.CLOSE_DOC, async (event, rawInput: unknown) => {
+      const { noteId } = CrdtCloseDocSchema.parse(rawInput)
+      const windowId = BrowserWindow.fromWebContents(event.sender)?.id
+      this.close(noteId, windowId)
+      return { success: true }
+    })
 
-        const entry = this.docs.get(noteId)
-        if (!entry) return
+    ipcMain.handle(CRDT_CHANNELS.APPLY_UPDATE, async (event, rawInput: unknown) => {
+      const { noteId, update: updateArr } = CrdtApplyUpdateSchema.parse(rawInput)
+      const sourceWindowId = BrowserWindow.fromWebContents(event.sender)?.id ?? -1
 
-        const update = new Uint8Array(updateArr)
-        const origin: IpcOrigin = { source: 'ipc', windowId: sourceWindowId }
-        Y.applyUpdate(entry.doc, update, origin)
-      }
-    )
+      const entry = this.docs.get(noteId)
+      if (!entry) return
+
+      const update = new Uint8Array(updateArr)
+      const origin: IpcOrigin = { source: 'ipc', windowId: sourceWindowId }
+      Y.applyUpdate(entry.doc, update, origin)
+    })
 
     ipcMain.handle(
       CRDT_CHANNELS.SYNC_STEP_1,

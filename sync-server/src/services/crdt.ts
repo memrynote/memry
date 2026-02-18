@@ -15,6 +15,7 @@ interface CrdtSnapshot {
   blob_key: string
   sequence_num: number
   size_bytes: number
+  signer_device_id: string
   created_at: number
 }
 
@@ -75,6 +76,7 @@ export const storeSnapshot = async (
   storage: R2Bucket,
   userId: string,
   noteId: string,
+  signerDeviceId: string,
   snapshotData: ArrayBuffer
 ): Promise<{ sequenceNum: number }> => {
   const id = crypto.randomUUID()
@@ -94,12 +96,12 @@ export const storeSnapshot = async (
 
   await db
     .prepare(
-      `INSERT INTO crdt_snapshots (id, user_id, note_id, blob_key, sequence_num, size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO crdt_snapshots (id, user_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT (user_id, note_id)
-       DO UPDATE SET blob_key = excluded.blob_key, sequence_num = excluded.sequence_num, size_bytes = excluded.size_bytes, created_at = excluded.created_at`
+       DO UPDATE SET blob_key = excluded.blob_key, sequence_num = excluded.sequence_num, size_bytes = excluded.size_bytes, signer_device_id = excluded.signer_device_id, created_at = excluded.created_at`
     )
-    .bind(id, userId, noteId, blobKey, sequenceNum, snapshotData.byteLength, now)
+    .bind(id, userId, noteId, blobKey, sequenceNum, snapshotData.byteLength, signerDeviceId, now)
     .run()
 
   return { sequenceNum }
@@ -110,13 +112,13 @@ export const getSnapshot = async (
   storage: R2Bucket,
   userId: string,
   noteId: string
-): Promise<{ snapshotData: ArrayBuffer; sequenceNum: number } | null> => {
+): Promise<{ snapshotData: ArrayBuffer; sequenceNum: number; signerDeviceId: string } | null> => {
   const row = await db
     .prepare(
-      'SELECT blob_key, sequence_num FROM crdt_snapshots WHERE user_id = ? AND note_id = ?'
+      'SELECT blob_key, sequence_num, signer_device_id FROM crdt_snapshots WHERE user_id = ? AND note_id = ?'
     )
     .bind(userId, noteId)
-    .first<{ blob_key: string; sequence_num: number }>()
+    .first<{ blob_key: string; sequence_num: number; signer_device_id: string }>()
 
   if (!row) return null
 
@@ -124,7 +126,7 @@ export const getSnapshot = async (
   if (!obj) return null
 
   const snapshotData = await obj.arrayBuffer()
-  return { snapshotData, sequenceNum: row.sequence_num }
+  return { snapshotData, sequenceNum: row.sequence_num, signerDeviceId: row.signer_device_id }
 }
 
 export const pruneUpdatesBeforeSnapshot = async (
@@ -133,18 +135,14 @@ export const pruneUpdatesBeforeSnapshot = async (
   noteId: string
 ): Promise<number> => {
   const snapshot = await db
-    .prepare(
-      'SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND note_id = ?'
-    )
+    .prepare('SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND note_id = ?')
     .bind(userId, noteId)
     .first<{ sequence_num: number }>()
 
   if (!snapshot) return 0
 
   const result = await db
-    .prepare(
-      'DELETE FROM crdt_updates WHERE user_id = ? AND note_id = ? AND sequence_num <= ?'
-    )
+    .prepare('DELETE FROM crdt_updates WHERE user_id = ? AND note_id = ? AND sequence_num <= ?')
     .bind(userId, noteId, snapshot.sequence_num)
     .run()
 

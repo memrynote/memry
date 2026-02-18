@@ -23,7 +23,7 @@ import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider } from './crdt-provider'
 import { CrdtUpdateQueue } from './crdt-queue'
 import { encryptCrdtUpdate } from './crdt-encrypt'
-import { postToServer, SyncServerError } from './http-client'
+import { postToServer, pushCrdtSnapshot, SyncServerError } from './http-client'
 
 const log = createLogger('SyncRuntime')
 
@@ -65,7 +65,9 @@ export function getCrdtQueue(): CrdtUpdateQueue | null {
   return runtime?.crdtQueue ?? null
 }
 
-async function seedExistingCrdtDocs(crdtProvider: ReturnType<typeof getCrdtProvider>): Promise<void> {
+async function seedExistingCrdtDocs(
+  crdtProvider: ReturnType<typeof getCrdtProvider>
+): Promise<void> {
   const indexDb = getIndexDatabase()
   const rows = indexDb
     .select({
@@ -139,8 +141,33 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         }
       })
 
+      const snapshotPushFn = async (noteId: string, state: Uint8Array): Promise<void> => {
+        const token = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
+        const vaultKey = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY)
+        const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
+        if (!token || !vaultKey || !signingSecretKey) {
+          if (vaultKey) secureCleanup(vaultKey)
+          if (signingSecretKey) secureCleanup(signingSecretKey)
+          return
+        }
+
+        try {
+          const encrypted = encryptCrdtUpdate(state, vaultKey, noteId, signingSecretKey)
+          await pushCrdtSnapshot(noteId, encrypted, token)
+          log.debug('Pushed CRDT snapshot', { noteId, size: state.byteLength })
+        } catch (err) {
+          if (err instanceof SyncServerError && err.statusCode === 401) {
+            crdtQueue.pause()
+          }
+          throw err
+        } finally {
+          secureCleanup(vaultKey)
+          secureCleanup(signingSecretKey)
+        }
+      }
+
       const crdtProvider = getCrdtProvider()
-      await crdtProvider.init(crdtQueue)
+      await crdtProvider.init(crdtQueue, snapshotPushFn)
 
       const emitFn = (channel: string, data: unknown): void => {
         for (const win of BrowserWindow.getAllWindows()) {
@@ -266,9 +293,11 @@ export async function stopSyncRuntime(): Promise<void> {
   }
 
   active.crdtQueue.stop()
-  await getCrdtProvider().destroy().catch((err) => {
-    log.error('Failed to destroy CrdtProvider', err)
-  })
+  await getCrdtProvider()
+    .destroy()
+    .catch((err) => {
+      log.error('Failed to destroy CrdtProvider', err)
+    })
   active.ws.disconnect()
   active.network.stop()
   log.info('Sync runtime stopped')

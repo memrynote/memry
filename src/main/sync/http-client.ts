@@ -122,3 +122,38 @@ export const deleteFromServer = async <T>(
 ): Promise<T> => {
   return syncFetch<T>('DELETE', path, undefined, token, fetchFn)
 }
+
+export interface CrdtSnapshotResponse {
+  snapshot: string | null
+  sequenceNum: number
+  signerDeviceId: string | null
+}
+
+export async function pushCrdtSnapshot(
+  noteId: string,
+  encryptedSnapshot: Uint8Array,
+  token: string
+): Promise<{ sequenceNum: number }> {
+  const b64 = Buffer.from(encryptedSnapshot).toString('base64')
+  return postToServer<{ sequenceNum: number }>(
+    '/sync/crdt/snapshot',
+    { noteId, snapshot: b64 },
+    token
+  )
+}
+
+export async function fetchCrdtSnapshot(
+  noteId: string,
+  token: string
+): Promise<{ snapshot: Uint8Array; sequenceNum: number; signerDeviceId: string } | null> {
+  const result = await getFromServer<CrdtSnapshotResponse>(
+    `/sync/crdt/snapshot/${encodeURIComponent(noteId)}`,
+    token
+  )
+
+  if (!result.snapshot || !result.signerDeviceId) return null
+
+  const bytes = new Uint8Array(Buffer.from(result.snapshot, 'base64'))
+
+  return { snapshot: bytes, sequenceNum: result.sequenceNum, signerDeviceId: result.signerDeviceId }
+}

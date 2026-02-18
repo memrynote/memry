@@ -234,7 +234,10 @@ function safeBase64Decode(b64: string): Uint8Array {
   return bytes
 }
 
-const NoteIdSchema = z.string().regex(/^[a-zA-Z0-9_-]+$/).max(128)
+const NoteIdSchema = z
+  .string()
+  .regex(/^[a-zA-Z0-9_-]+$/)
+  .max(128)
 
 const crdtPushRateLimit = createRateLimiter({
   keyPrefix: 'crdt_push',
@@ -322,6 +325,7 @@ const CrdtSnapshotPushSchema = z.object({
 
 sync.post('/crdt/snapshot', crdtPushRateLimit, async (c) => {
   const userId = c.get('userId')!
+  const deviceId = c.get('deviceId')!
   const body = await c.req.json()
   const parsed = CrdtSnapshotPushSchema.parse(body)
 
@@ -335,6 +339,7 @@ sync.post('/crdt/snapshot', crdtPushRateLimit, async (c) => {
     c.env.STORAGE,
     userId,
     parsed.noteId,
+    deviceId,
     bytes.buffer as ArrayBuffer
   )
 
@@ -354,9 +359,13 @@ sync.get('/crdt/snapshot/:noteId', crdtPullRateLimit, async (c) => {
 
   const result = await getSnapshot(c.env.DB, c.env.STORAGE, userId, noteIdResult.data)
   if (!result) {
-    return c.json({ snapshot: null, sequenceNum: 0 })
+    return c.json({ snapshot: null, sequenceNum: 0, signerDeviceId: null })
   }
 
   const encoded = safeBase64Encode(result.snapshotData)
-  return c.json({ snapshot: encoded, sequenceNum: result.sequenceNum })
+  return c.json({
+    snapshot: encoded,
+    sequenceNum: result.sequenceNum,
+    signerDeviceId: result.signerDeviceId
+  })
 })
