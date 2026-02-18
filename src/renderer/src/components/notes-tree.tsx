@@ -227,10 +227,14 @@ function buildTreeFromNotes(
   const folderMap = new Map<string, FolderNode>()
   const rootNotes: NoteListItem[] = []
 
-  folders.forEach((folderPath) => {
+  const ensureFolderInMap = (folderPath: string): FolderNode => {
+    const existing = folderMap.get(folderPath)
+    if (existing) return existing
+
     const parts = folderPath.split('/').filter(Boolean)
     let currentPath = ''
 
+    let lastNode: FolderNode | undefined
     parts.forEach((part) => {
       const parentPath = currentPath
       currentPath = currentPath ? `${currentPath}/${part}` : part
@@ -250,8 +254,17 @@ function buildTreeFromNotes(
             parent.children.push(node)
           }
         }
+        lastNode = node
+      } else {
+        lastNode = folderMap.get(currentPath)!
       }
     })
+
+    return lastNode!
+  }
+
+  folders.forEach((folderPath) => {
+    ensureFolderInMap(folderPath)
   })
 
   notes.forEach((note) => {
@@ -263,23 +276,14 @@ function buildTreeFromNotes(
         rootNotes.push(note)
       } else {
         const folderPath = pathParts.slice(1).join('/')
-        if (folderMap.has(folderPath)) {
-          folderMap.get(folderPath)!.notes.push(note)
-        } else {
-          rootNotes.push(note)
-        }
+        ensureFolderInMap(folderPath).notes.push(note)
       }
     } else {
       const folderPath = pathParts.join('/')
-      if (folderMap.has(folderPath)) {
-        folderMap.get(folderPath)!.notes.push(note)
-      } else {
-        rootNotes.push(note)
-      }
+      ensureFolderInMap(folderPath).notes.push(note)
     }
   })
 
-  // Sort notes by position, fallback to modified date
   const sortByPosition = (a: NoteListItem, b: NoteListItem): number => {
     const posA = positions[a.path] ?? Number.MAX_SAFE_INTEGER
     const posB = positions[b.path] ?? Number.MAX_SAFE_INTEGER
@@ -287,7 +291,6 @@ function buildTreeFromNotes(
     return b.modified.getTime() - a.modified.getTime()
   }
 
-  // Sort folders by position, fallback to alphabetical
   const sortFoldersByPosition = (a: FolderNode, b: FolderNode): number => {
     const posA = positions[a.path] ?? Number.MAX_SAFE_INTEGER
     const posB = positions[b.path] ?? Number.MAX_SAFE_INTEGER
@@ -307,7 +310,6 @@ function buildTreeFromNotes(
     return !folder.path.includes('/')
   })
 
-  // Sort root folders by position
   rootFolders.sort(sortFoldersByPosition)
   rootFolders.forEach(sortFolderContents)
 

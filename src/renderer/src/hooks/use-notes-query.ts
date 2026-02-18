@@ -307,6 +307,26 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
     gcTime: NOTE_GC_TIME
   })
 
+  useEffect(() => {
+    const unsubCreated = onNoteCreated(() => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
+    })
+
+    const unsubDeleted = onNoteDeleted(() => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
+    })
+
+    const unsubMoved = onNoteMoved(() => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
+    })
+
+    return () => {
+      unsubCreated()
+      unsubDeleted()
+      unsubMoved()
+    }
+  }, [queryClient])
+
   const createFolderMutation = useMutation({
     mutationFn: (path: string) => notesService.createFolder(path),
     onSuccess: () => {
