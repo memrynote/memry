@@ -115,16 +115,18 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       crdtQueue.start(async (noteId, updates) => {
         const token = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
         const vaultKey = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY)
-        if (!token || !vaultKey) return
+        const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
+        if (!token || !vaultKey || !signingSecretKey) return
 
         try {
           const b64Updates = updates.map((raw) => {
-            const encrypted = encryptCrdtUpdate(raw, vaultKey)
+            const encrypted = encryptCrdtUpdate(raw, vaultKey, noteId, signingSecretKey)
             return btoa(String.fromCharCode(...encrypted))
           })
           await postToServer('/sync/crdt/updates', { noteId, updates: b64Updates }, token)
         } finally {
           secureCleanup(vaultKey)
+          secureCleanup(signingSecretKey)
         }
       })
 
