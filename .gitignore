@@ -21,3 +21,5 @@ private.pem
 public.pem
 *.tsbuildinfo
 identifier.sqlite
+test-data.db
+test-index.db
