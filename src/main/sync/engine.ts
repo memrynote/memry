@@ -169,7 +169,7 @@ export class SyncEngine extends EventEmitter {
     this.pendingPushRequested = false
     this.abortController?.abort()
     if (this.inFlightSync) {
-      await this.inFlightSync.catch(() => {})
+      await this.inFlightSync.catch(() => { })
     }
     this.abortController = null
     this.inFlightSync = null
@@ -207,7 +207,6 @@ export class SyncEngine extends EventEmitter {
       log.debug('Push skipped', { syncing: this.syncing, paused: this.isPaused() })
       return
     }
-    log.debug('Push: lock acquired', { queuePending: this.deps.queue.getPendingCount() })
     this.setState('syncing')
     this.abortController = new AbortController()
 
@@ -218,7 +217,6 @@ export class SyncEngine extends EventEmitter {
       release()
       return
     }
-    log.debug('Push: token acquired', { queuePending: this.deps.queue.getPendingCount() })
 
     const signingKeys = await this.deps.getSigningKeys()
     if (!signingKeys) {
@@ -227,7 +225,6 @@ export class SyncEngine extends EventEmitter {
       release()
       return
     }
-    log.debug('Push: signingKeys acquired', { queuePending: this.deps.queue.getPendingCount() })
 
     const vaultKey = await this.deps.getVaultKey()
     if (!vaultKey) {
@@ -236,10 +233,7 @@ export class SyncEngine extends EventEmitter {
       release()
       return
     }
-    log.debug('Push: vaultKey acquired', {
-      queuePending: this.deps.queue.getPendingCount(),
-      rawPending: this.deps.queue.getRawPendingCount()
-    })
+
     const startTime = Date.now()
     let pushedCount = 0
     let lastServerTime = 0
@@ -262,16 +256,7 @@ export class SyncEngine extends EventEmitter {
           break
         }
 
-        log.info('Push: dequeued batch', {
-          iteration,
-          batchSize: items.length,
-          items: items.map((i) => ({
-            id: i.id.slice(0, 8),
-            type: i.type,
-            itemId: i.itemId.slice(0, 8),
-            attempts: i.attempts
-          }))
-        })
+
 
         const pushItems = items.map((item) => {
           const payloadMeta = this.extractPayloadMetadata(item.payload)
@@ -495,9 +480,9 @@ export class SyncEngine extends EventEmitter {
                 metadata:
                   item.clock || item.stateVector
                     ? {
-                        ...(item.clock ? { clock: item.clock } : {}),
-                        ...(item.stateVector ? { stateVector: item.stateVector } : {})
-                      }
+                      ...(item.clock ? { clock: item.clock } : {}),
+                      ...(item.stateVector ? { stateVector: item.stateVector } : {})
+                    }
                     : undefined,
                 vaultKey,
                 signerPublicKey: signerPubKey
