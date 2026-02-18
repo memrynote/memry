@@ -358,6 +358,25 @@ export async function generateUniquePath(basePath: string): Promise<string> {
   return newPath
 }
 
+export function generateUniquePathSync(
+  basePath: string,
+  isPathTaken?: (p: string) => boolean
+): string {
+  const taken = (p: string) => existsSync(p) || (isPathTaken?.(p) ?? false)
+  if (!taken(basePath)) return basePath
+
+  const dir = path.dirname(basePath)
+  const ext = path.extname(basePath)
+  const name = path.basename(basePath, ext)
+  let counter = 1
+  let candidate: string
+  do {
+    candidate = path.join(dir, `${name} ${counter}${ext}`)
+    counter++
+  } while (taken(candidate))
+  return candidate
+}
+
 // ============================================================================
 // Helpers
 // ============================================================================

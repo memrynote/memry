@@ -22,7 +22,10 @@ import {
   type MoveOperation,
   type DropPosition
 } from '@/components/kibo-ui/tree'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTabActions } from '@/contexts/tabs'
+import { notesKeys } from '@/hooks/use-notes-query'
+import type { Note } from '@shared/contracts/notes-api'
 import {
   useNotesList,
   useNoteFoldersQuery,
@@ -396,7 +399,9 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   const renameNoteMutateAsync = mutations.renameNote.mutateAsync
   const moveNoteMutateAsync = mutations.moveNote.mutateAsync
   const { folders, createFolder, refetch: refreshFolders } = useNoteFoldersQuery()
-  const { openTab, closeTab } = useTabActions()
+  const { openTab, closeTab, updateTabTitleByEntityId } = useTabActions()
+  const queryClient = useQueryClient()
+  const originalRenameTitle = useRef<string>('')
   const [isCreating, setIsCreating] = useState(false)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
   const [isMoving, setIsMoving] = useState(false)
@@ -619,6 +624,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           isDeleted: false
         })
 
+        originalRenameTitle.current = 'Untitled'
         setRenamingNoteId(newNote.id)
         setRenameValue('Untitled')
       }
@@ -815,19 +821,57 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
 
   // Context menu action handlers
   const handleRenameClick = useCallback((note: NoteListItem) => {
+    const displayName = getDisplayName(note.path)
+    originalRenameTitle.current = displayName
     setRenamingNoteId(note.id)
-    setRenameValue(getDisplayName(note.path))
+    setRenameValue(displayName)
   }, [])
+
+  const renameCallbackRef = useCallback(
+    (el: HTMLInputElement | null) => {
+      renameInputRef.current = el
+      if (el) {
+        el.focus()
+        el.select()
+      }
+    },
+    []
+  )
+
+  const handleRenameInputChange = useCallback(
+    (noteId: string, value: string) => {
+      setRenameValue(value)
+      const displayTitle = value || 'Untitled'
+      updateTabTitleByEntityId(noteId, displayTitle)
+      queryClient.setQueryData<Note>(notesKeys.note(noteId), (old) =>
+        old ? { ...old, title: displayTitle } : old
+      )
+    },
+    [updateTabTitleByEntityId, queryClient]
+  )
+
+  const revertOptimisticTitle = useCallback(
+    (noteId: string) => {
+      const title = originalRenameTitle.current
+      updateTabTitleByEntityId(noteId, title)
+      queryClient.setQueryData<Note>(notesKeys.note(noteId), (old) =>
+        old ? { ...old, title } : old
+      )
+    },
+    [updateTabTitleByEntityId, queryClient]
+  )
 
   const handleRenameSubmit = useCallback(
     async (noteId: string, originalPath: string) => {
       if (!renameValue.trim() || isRenaming) {
+        revertOptimisticTitle(noteId)
         setRenamingNoteId(null)
         return
       }
 
       const currentName = getDisplayName(originalPath)
       if (renameValue.trim() === currentName) {
+        revertOptimisticTitle(noteId)
         setRenamingNoteId(null)
         return
       }
@@ -837,18 +881,25 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         await renameNoteMutateAsync({ id: noteId, newTitle: renameValue.trim() })
       } catch (err) {
         log.error('Failed to rename note', err)
+        revertOptimisticTitle(noteId)
       } finally {
         setIsRenaming(false)
         setRenamingNoteId(null)
       }
     },
-    [renameValue, isRenaming, renameNoteMutateAsync]
+    [renameValue, isRenaming, renameNoteMutateAsync, revertOptimisticTitle]
   )
 
-  const handleRenameCancel = useCallback(() => {
-    setRenamingNoteId(null)
-    setRenameValue('')
-  }, [])
+  const handleRenameCancel = useCallback(
+    (noteId?: string) => {
+      if (noteId) {
+        revertOptimisticTitle(noteId)
+      }
+      setRenamingNoteId(null)
+      setRenameValue('')
+    },
+    [revertOptimisticTitle]
+  )
 
   // Folder rename handlers
   const handleRenameFolderClick = useCallback((folderPath: string) => {
@@ -1593,17 +1644,17 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           <TreeIcon icon={getFileIcon(note)} />
           {isBeingRenamed ? (
             <input
-              ref={renameInputRef}
+              ref={renameCallbackRef}
               type="text"
               value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
+              onChange={(e) => handleRenameInputChange(note.id, e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
                   handleRenameSubmit(note.id, note.path)
                 } else if (e.key === 'Escape') {
                   e.preventDefault()
-                  handleRenameCancel()
+                  handleRenameCancel(note.id)
                 }
                 e.stopPropagation()
               }}
