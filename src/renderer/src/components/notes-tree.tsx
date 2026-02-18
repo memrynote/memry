@@ -430,6 +430,19 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   const [isFolderRenaming, setIsFolderRenaming] = useState(false)
   const folderRenameInputRef = useRef<HTMLInputElement>(null)
 
+  const folderRenameCallbackRef = useCallback(
+    (el: HTMLInputElement | null) => {
+      folderRenameInputRef.current = el
+      if (el) {
+        requestAnimationFrame(() => {
+          el.focus()
+          el.select()
+        })
+      }
+    },
+    []
+  )
+
   // Folder template configuration state
   const [folderToConfigureTemplate, setFolderToConfigureTemplate] = useState<string | null>(null)
   const [folderTemplateNames, setFolderTemplateNames] = useState<Map<string, string>>(new Map())
@@ -437,21 +450,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   // Note positions for custom ordering
   const [notePositions, setNotePositions] = useState<Record<string, number>>({})
 
-  // Focus input when note renaming starts
-  useEffect(() => {
-    if (renamingNoteId && renameInputRef.current) {
-      renameInputRef.current.focus()
-      renameInputRef.current.select()
-    }
-  }, [renamingNoteId])
-
-  // Focus input when folder renaming starts
-  useEffect(() => {
-    if (renamingFolderPath && folderRenameInputRef.current) {
-      folderRenameInputRef.current.focus()
-      folderRenameInputRef.current.select()
-    }
-  }, [renamingFolderPath])
+  // Focus handled by renameCallbackRef / folderRenameCallbackRef (synchronous on mount)
 
   // Load folder template names on mount/folder change
   useEffect(() => {
@@ -831,8 +830,10 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     (el: HTMLInputElement | null) => {
       renameInputRef.current = el
       if (el) {
-        el.focus()
-        el.select()
+        requestAnimationFrame(() => {
+          el.focus()
+          el.select()
+        })
       }
     },
     []
@@ -1723,7 +1724,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           <TreeIcon hasChildren={hasChildren} icon={<Folder className="h-4 w-4" />} />
           {isBeingRenamed ? (
             <input
-              ref={folderRenameInputRef}
+              ref={folderRenameCallbackRef}
               type="text"
               value={folderRenameValue}
               onChange={(e) => setFolderRenameValue(e.target.value)}
