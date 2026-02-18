@@ -27,6 +27,13 @@ async function removeEmptyParents(dir: string, stopAt: string): Promise<void> {
   let current = dir
   while (current !== stopAt && current.startsWith(stopAt)) {
     try {
+      const entries = await fs.promises.readdir(current)
+      const meaningful = entries.filter((e) => e !== '.DS_Store' && !e.startsWith('._'))
+      if (meaningful.length > 0) break
+
+      for (const junk of entries) {
+        await fs.promises.unlink(path.join(current, junk)).catch(() => {})
+      }
       await fs.promises.rmdir(current)
       log.debug('Removed empty folder', { dir: current })
       current = path.dirname(current)

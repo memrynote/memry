@@ -31,7 +31,12 @@ import {
 } from '@shared/db/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NotesChannels, JournalChannels } from '@shared/ipc-channels'
-import { trackPendingDelete, checkForRename, clearAllPendingDeletes } from './rename-tracker'
+import {
+  trackPendingDelete,
+  checkForRename,
+  clearAllPendingDeletes,
+  processRename
+} from './rename-tracker'
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@shared/file-types'
 import { createLogger } from '../lib/logger'
@@ -356,14 +361,26 @@ export class VaultWatcher {
       return
     }
 
-    // Check if a note with this ID exists at a different path (copy-paste scenario)
+    // Check if a note with this ID exists at a different path
     const existingById = getNoteCacheById(db, parsed.frontmatter.id)
     if (existingById && existingById.path !== relativePath) {
-      // This is a copy of an existing note - regenerate ID
+      const oldAbsPath = path.join(this.vaultPath!, existingById.path)
+      let oldFileExists = false
+      try {
+        await fs.access(oldAbsPath)
+        oldFileExists = true
+      } catch {
+        // old file gone
+      }
+
+      if (!oldFileExists) {
+        processRename(existingById.id, existingById.path, relativePath)
+        return
+      }
+
+      // Old file still exists — genuine copy, regenerate ID
       const newId = generateNoteId()
       parsed.frontmatter.id = newId
-
-      // Write back to file with new ID
       try {
         const newContent = serializeNote(parsed.frontmatter, parsed.content)
         await atomicWrite(absolutePath, newContent)

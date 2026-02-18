@@ -202,7 +202,7 @@ export function getPendingDeleteCount(): number {
  * @param oldPath - Old relative path
  * @param newPath - New relative path
  */
-function processRename(id: string, oldPath: string, newPath: string): void {
+export function processRename(id: string, oldPath: string, newPath: string): void {
   const db = getIndexDatabase()
 
   // Extract old and new titles from filenames
