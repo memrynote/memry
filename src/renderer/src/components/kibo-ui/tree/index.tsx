@@ -760,9 +760,11 @@ export const TreeNodeTrigger = ({
             )}
             onClick={(e) => {
               setFocusedId(nodeId)
-              toggleExpanded(nodeId)
-              // Skip selection handling for expandOnly mode (faster folder expand/collapse)
-              if (!expandOnly) {
+              const hasModifier = e.ctrlKey || e.metaKey || e.shiftKey
+              if (!expandOnly || !hasModifier) {
+                toggleExpanded(nodeId)
+              }
+              if (!expandOnly || hasModifier) {
                 handleSelection(nodeId, e.ctrlKey || e.metaKey, e.shiftKey)
               }
               onClick?.(e)
