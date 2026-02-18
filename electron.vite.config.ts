@@ -30,7 +30,8 @@ export default defineConfig({
           '@blocknote/server-util',
           '@blocknote/core',
           '@blocknote/react',
-          '@handlewithcare/prosemirror-inputrules'
+          '@handlewithcare/prosemirror-inputrules',
+          'y-prosemirror'
         ]
       },
       rollupOptions: {
@@ -40,7 +41,13 @@ export default defineConfig({
     resolve: {
       alias: {
         '@shared': resolve('src/shared')
-      }
+      },
+      dedupe: [
+        'prosemirror-model',
+        'prosemirror-state',
+        'prosemirror-view',
+        'prosemirror-transform'
+      ]
     }
   },
   preload: {
