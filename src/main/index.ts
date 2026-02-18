@@ -129,10 +129,10 @@ function createWindow(): void {
     autoHideMenuBar: true,
     ...(process.platform === 'darwin'
       ? {
-          titleBarStyle: 'hidden',
-          // Hide native traffic lights - we use custom ones
-          trafficLightPosition: { x: -100, y: -100 }
-        }
+        titleBarStyle: 'hidden',
+        // Hide native traffic lights - we use custom ones
+        trafficLightPosition: { x: -100, y: -100 }
+      }
       : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -144,7 +144,7 @@ function createWindow(): void {
     // Zoom out once (equivalent to Cmd+-)
     // mainWindow.webContents.setZoomLevel(-0.8)
     mainWindow.show()
-    mainWindow.webContents.openDevTools()
+    // mainWindow.webContents.openDevTools()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
