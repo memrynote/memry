@@ -56,6 +56,16 @@ interface PendingDelete {
  */
 const pendingDeletes = new Map<string, PendingDelete>()
 
+let onRenameSyncCallback: ((id: string) => void) | null = null
+
+export function registerRenameSyncCallback(cb: (id: string) => void): void {
+  onRenameSyncCallback = cb
+}
+
+export function unregisterRenameSyncCallback(): void {
+  onRenameSyncCallback = null
+}
+
 // ============================================================================
 // Event Emission
 // ============================================================================
@@ -225,6 +235,8 @@ function processRename(id: string, oldPath: string, newPath: string): void {
 
   emitNoteRenamed(event)
   logger.debug(`Emitted RENAMED event for ${id}`)
+
+  onRenameSyncCallback?.(id)
 }
 
 /**
