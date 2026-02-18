@@ -308,22 +308,20 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
   })
 
   useEffect(() => {
-    const unsubCreated = onNoteCreated(() => {
+    const invalidate = () => {
       void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
-    })
+    }
 
-    const unsubDeleted = onNoteDeleted(() => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
-    })
-
-    const unsubMoved = onNoteMoved(() => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
-    })
+    const unsubCreated = onNoteCreated(invalidate)
+    const unsubDeleted = onNoteDeleted(invalidate)
+    const unsubMoved = onNoteMoved(invalidate)
+    const unsubRenamed = onNoteRenamed(invalidate)
 
     return () => {
       unsubCreated()
       unsubDeleted()
       unsubMoved()
+      unsubRenamed()
     }
   }, [queryClient])
 
