@@ -256,15 +256,16 @@ export class SyncEngine extends EventEmitter {
           break
         }
 
+        const dedupedItems = this.deduplicateByItemId(items)
 
-
-        const pushItems = items.map((item) => {
-          const payloadMeta = this.extractPayloadMetadata(item.payload)
+        const pushItems = dedupedItems.map((item) => {
+          const payload = this.resolvePushPayload(item, signingKeys.deviceId)
+          const payloadMeta = this.extractPayloadMetadata(payload)
           const result = encryptItemForPush({
             id: item.itemId,
             type: item.type as Parameters<typeof encryptItemForPush>[0]['type'],
             operation: item.operation as Parameters<typeof encryptItemForPush>[0]['operation'],
-            content: new TextEncoder().encode(item.payload),
+            content: new TextEncoder().encode(payload),
             vaultKey,
             signingSecretKey: signingKeys.secretKey,
             signerDeviceId: signingKeys.deviceId,
@@ -303,12 +304,21 @@ export class SyncEngine extends EventEmitter {
             this.emitItemSynced(pushItem.id, pushItem.type, 'push')
           } else {
             const rejection = response.value.rejected.find((r) => r.id === pushItem.id)
-            log.warn('Push: item rejected', {
-              queueId: queueId.slice(0, 8),
-              itemId: pushItem.id.slice(0, 8),
-              reason: rejection?.reason ?? 'Unknown rejection'
-            })
-            this.deps.queue.markFailed(queueId, rejection?.reason ?? 'Unknown rejection')
+            const reason = rejection?.reason ?? 'Unknown rejection'
+            if (reason === 'SYNC_REPLAY_DETECTED') {
+              log.info('Push: replay detected, server already has this or newer', {
+                queueId: queueId.slice(0, 8),
+                itemId: pushItem.id.slice(0, 8)
+              })
+              this.deps.queue.markSuccess(queueId)
+            } else {
+              log.warn('Push: item rejected', {
+                queueId: queueId.slice(0, 8),
+                itemId: pushItem.id.slice(0, 8),
+                reason
+              })
+              this.deps.queue.markFailed(queueId, reason)
+            }
           }
         }
       }
@@ -956,6 +966,61 @@ export class SyncEngine extends EventEmitter {
     } catch {
       log.warn('Failed to fetch local item for conflict', { itemId, type })
       return {}
+    }
+  }
+
+  private deduplicateByItemId(
+    items: Array<typeof import('@shared/db/schema/sync-queue').syncQueue.$inferSelect>
+  ): typeof items {
+    const seen = new Map<string, (typeof items)[0]>()
+    const dupeIds: string[] = []
+
+    for (const item of items) {
+      const key = `${item.type}:${item.itemId}`
+      if (!seen.has(key)) {
+        seen.set(key, item)
+      } else {
+        dupeIds.push(item.id)
+      }
+    }
+
+    if (dupeIds.length > 0) {
+      log.info('Push: deduplicated queue items', { removed: dupeIds.length })
+      for (const id of dupeIds) {
+        this.deps.queue.markSuccess(id)
+      }
+    }
+
+    return Array.from(seen.values())
+  }
+
+  private resolvePushPayload(
+    item: typeof import('@shared/db/schema/sync-queue').syncQueue.$inferSelect,
+    deviceId: string
+  ): string {
+    if (item.operation === 'delete') return item.payload
+
+    try {
+      const handler = getHandler(item.type as SyncItemType)
+      if (!handler?.buildPushPayload) return item.payload
+
+      const fresh = handler.buildPushPayload(this.deps.db, item.itemId, deviceId)
+      if (!fresh) {
+        log.debug('Push: item no longer exists locally, using frozen payload', {
+          itemId: item.itemId.slice(0, 8),
+          type: item.type
+        })
+        return item.payload
+      }
+
+      return fresh
+    } catch (err) {
+      log.warn('Push: failed to build fresh payload, using frozen', {
+        itemId: item.itemId.slice(0, 8),
+        type: item.type,
+        error: err
+      })
+      return item.payload
     }
   }
 
