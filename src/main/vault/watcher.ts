@@ -35,7 +35,7 @@ import { trackPendingDelete, checkForRename, clearAllPendingDeletes } from './re
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@shared/file-types'
 import { createLogger } from '../lib/logger'
-import { isWritebackIgnored, clearWritebackIgnore, wasRecentNetworkUpdate } from '../sync/crdt-writeback'
+import { isWritebackIgnored, wasRecentNetworkUpdate } from '../sync/crdt-writeback'
 import { getCrdtProvider, ORIGIN_LOCAL } from '../sync/crdt-provider'
 import { markdownToBlocks, blocksToYFragment } from '../sync/blocknote-converter'
 
@@ -135,6 +135,8 @@ function extractJournalDate(relativePath: string): string {
   return filename.replace('.md', '')
 }
 
+// Full fragment replace on external edits: lossy but acceptable since
+// out-of-app edits are infrequent and round-trip through MD destroys Yjs history anyway
 async function feedExternalEditToCrdt(noteId: string, markdownContent: string): Promise<void> {
   const provider = getCrdtProvider()
   const doc = provider.getDoc(noteId)
@@ -304,10 +306,7 @@ export class VaultWatcher {
   private async handleFileAdd(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
 
-    if (isWritebackIgnored(absolutePath)) {
-      clearWritebackIgnore(absolutePath)
-      return
-    }
+    if (isWritebackIgnored(absolutePath)) return
 
     try {
       const relativePath = path.relative(this.vaultPath, absolutePath)
@@ -498,10 +497,7 @@ export class VaultWatcher {
   private async handleFileChange(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
 
-    if (isWritebackIgnored(absolutePath)) {
-      clearWritebackIgnore(absolutePath)
-      return
-    }
+    if (isWritebackIgnored(absolutePath)) return
 
     try {
       const relativePath = path.relative(this.vaultPath, absolutePath)
