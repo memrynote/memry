@@ -1,10 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDataDb,
+  createTestIndexDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { tasks } from '@shared/db/schema/tasks'
 import { projects } from '@shared/db/schema/projects'
 import { inboxItems } from '@shared/db/schema/inbox'
+import { noteCache } from '@shared/db/schema/notes-cache'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import { SyncQueueManager } from './queue'
+
+vi.mock('../database/client', () => ({
+  getIndexDatabase: vi.fn()
+}))
 
 const TEST_PROJECT = {
   id: 'proj-1',
@@ -16,19 +25,25 @@ const TEST_PROJECT = {
 
 describe('checkManifestIntegrity', () => {
   let testDb: TestDatabaseResult
+  let testIndexDb: TestDatabaseResult
   let queue: SyncQueueManager
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetModules()
     testDb = createTestDataDb()
+    testIndexDb = createTestIndexDb()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     queue = new SyncQueueManager(testDb.db as any)
     testDb.db.insert(projects).values(TEST_PROJECT).run()
+
+    const { getIndexDatabase } = await import('../database/client')
+    vi.mocked(getIndexDatabase).mockReturnValue(testIndexDb.db)
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
     testDb.close()
+    testIndexDb.close()
   })
 
   describe('#given local item missing from server manifest #when check runs', () => {
@@ -196,6 +211,111 @@ describe('checkManifestIntegrity', () => {
       const inboxQueueItem = items.find((i) => i.itemId === 'inbox-1')
       expect(inboxQueueItem).toBeDefined()
       expect(inboxQueueItem!.type).toBe('inbox')
+    })
+  })
+
+  describe('#given project with clock on server #when check runs', () => {
+    it('#then recognizes project as local and does not trigger re-pull', async () => {
+      // #given
+      const clock: VectorClock = { 'device-A': 1 }
+      testDb.db.update(projects).set({ clock }).run()
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'proj-1', type: 'project', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      const result = await checkManifestIntegrity({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        db: testDb.db as any,
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then
+      expect(result.rePullNeeded).toBe(false)
+      expect(result.serverOnlyCount).toBe(0)
+    })
+  })
+
+  describe('#given note with clock in index db #when check runs', () => {
+    it('#then recognizes note as local and does not trigger re-pull', async () => {
+      // #given
+      const clock: VectorClock = { 'device-A': 1 }
+      testIndexDb.db
+        .insert(noteCache)
+        .values({
+          id: 'note-1',
+          path: 'notes/test.md',
+          title: 'Test Note',
+          clock,
+          createdAt: new Date().toISOString(),
+          modifiedAt: new Date().toISOString()
+        })
+        .run()
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'note-1', type: 'note', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      const result = await checkManifestIntegrity({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        db: testDb.db as any,
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then
+      expect(result.rePullNeeded).toBe(false)
+      expect(result.serverOnlyCount).toBe(0)
+    })
+  })
+
+  describe('#given journal with clock in index db #when check runs', () => {
+    it('#then recognizes journal as local and does not trigger re-pull', async () => {
+      // #given
+      const clock: VectorClock = { 'device-A': 1 }
+      testIndexDb.db
+        .insert(noteCache)
+        .values({
+          id: 'journal-1',
+          path: 'journals/2026-02-18.md',
+          title: '2026-02-18',
+          date: '2026-02-18',
+          clock,
+          createdAt: new Date().toISOString(),
+          modifiedAt: new Date().toISOString()
+        })
+        .run()
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'journal-1', type: 'journal', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      const result = await checkManifestIntegrity({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        db: testDb.db as any,
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then
+      expect(result.rePullNeeded).toBe(false)
+      expect(result.serverOnlyCount).toBe(0)
     })
   })
 })

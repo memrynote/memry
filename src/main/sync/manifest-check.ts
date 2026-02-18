@@ -1,13 +1,16 @@
-import { isNotNull } from 'drizzle-orm'
+import { and, isNotNull, isNull } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type * as schema from '@shared/db/schema/data-schema'
 import { tasks } from '@shared/db/schema/tasks'
+import { projects } from '@shared/db/schema/projects'
 import { inboxItems } from '@shared/db/schema/inbox'
 import { savedFilters } from '@shared/db/schema/settings'
-import type { SyncManifest } from '@shared/contracts/sync-api'
+import { noteCache } from '@shared/db/schema/notes-cache'
+import type { SyncItemType, SyncManifest } from '@shared/contracts/sync-api'
 import { withRetry } from './retry'
 import { getFromServer } from './http-client'
 import type { SyncQueueManager } from './queue'
+import { getIndexDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
@@ -101,7 +104,7 @@ export async function checkManifestIntegrity(
 
 interface LocalSyncableItem {
   id: string
-  type: 'task' | 'inbox' | 'filter'
+  type: SyncItemType
   payload: string
 }
 
@@ -113,6 +116,11 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
     items.push({ id: t.id, type: 'task', payload: JSON.stringify(t) })
   }
 
+  const syncedProjects = db.select().from(projects).where(isNotNull(projects.clock)).all()
+  for (const p of syncedProjects) {
+    items.push({ id: p.id, type: 'project', payload: JSON.stringify(p) })
+  }
+
   const syncedInbox = db.select().from(inboxItems).where(isNotNull(inboxItems.clock)).all()
   for (const i of syncedInbox) {
     items.push({ id: i.id, type: 'inbox', payload: JSON.stringify(i) })
@@ -121,6 +129,26 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
   const syncedFilters = db.select().from(savedFilters).where(isNotNull(savedFilters.clock)).all()
   for (const f of syncedFilters) {
     items.push({ id: f.id, type: 'filter', payload: JSON.stringify(f) })
+  }
+
+  const indexDb = getIndexDatabase()
+
+  const syncedNotes = indexDb
+    .select({ id: noteCache.id })
+    .from(noteCache)
+    .where(and(isNotNull(noteCache.clock), isNull(noteCache.date)))
+    .all()
+  for (const n of syncedNotes) {
+    items.push({ id: n.id, type: 'note', payload: '' })
+  }
+
+  const syncedJournals = indexDb
+    .select({ id: noteCache.id })
+    .from(noteCache)
+    .where(and(isNotNull(noteCache.clock), isNotNull(noteCache.date)))
+    .all()
+  for (const j of syncedJournals) {
+    items.push({ id: j.id, type: 'journal', payload: '' })
   }
 
   return items

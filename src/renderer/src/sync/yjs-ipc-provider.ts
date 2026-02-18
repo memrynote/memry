@@ -13,6 +13,7 @@ export class YjsIpcProvider extends Observable<string> {
   readonly noteId: string
   readonly doc: Y.Doc
   private synced = false
+  private destroyed = false
   private updateHandler: ((update: Uint8Array, origin: unknown) => void) | null = null
   private ipcCleanup: (() => void) | null = null
 
@@ -38,6 +39,7 @@ export class YjsIpcProvider extends Observable<string> {
     )
 
     await this.openDoc()
+    if (this.destroyed) return
     await this.performSyncHandshake()
   }
 
@@ -62,6 +64,7 @@ export class YjsIpcProvider extends Observable<string> {
   }
 
   destroy(): void {
+    this.destroyed = true
     this.disconnect()
     super.destroy()
   }
@@ -74,12 +77,16 @@ export class YjsIpcProvider extends Observable<string> {
   }
 
   private async performSyncHandshake(): Promise<void> {
+    if (this.destroyed) return
+
     const stateVector = Y.encodeStateVector(this.doc)
 
     const result = await window.api.syncCrdt.syncStep1({
       noteId: this.noteId,
       stateVector: Array.from(stateVector)
     })
+
+    if (this.destroyed) return
 
     if (result) {
       const diff = new Uint8Array(result.diff)
@@ -93,6 +100,8 @@ export class YjsIpcProvider extends Observable<string> {
         })
       }
     }
+
+    if (this.destroyed) return
 
     this.synced = true
     this.emit('synced', [{ synced: true }])
