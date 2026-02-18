@@ -202,6 +202,7 @@ CREATE TABLE crdt_updates (
   note_id TEXT NOT NULL,
   update_data BLOB NOT NULL,
   sequence_num INTEGER NOT NULL,
+  signer_device_id TEXT NOT NULL,
   created_at INTEGER NOT NULL,
   UNIQUE (user_id, note_id, sequence_num)
 );
@@ -216,7 +217,7 @@ CREATE TABLE crdt_snapshots (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   note_id TEXT NOT NULL,
-  snapshot_data BLOB NOT NULL,
+  blob_key TEXT NOT NULL,
   sequence_num INTEGER NOT NULL,
   size_bytes INTEGER NOT NULL,
   created_at INTEGER NOT NULL,

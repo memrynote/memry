@@ -212,6 +212,30 @@ sync.get('/items/:id', async (c) => {
 // CRDT Endpoints
 // ============================================================================
 
+const MAX_UPDATE_BYTES = 5 * 1024 * 1024 // 5MB per individual update
+const BASE64_CHUNK_SIZE = 8192
+
+function safeBase64Encode(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let result = ''
+  for (let i = 0; i < bytes.length; i += BASE64_CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, i + BASE64_CHUNK_SIZE)
+    result += String.fromCharCode(...chunk)
+  }
+  return btoa(result)
+}
+
+function safeBase64Decode(b64: string): Uint8Array {
+  const raw = atob(b64)
+  const bytes = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) {
+    bytes[i] = raw.charCodeAt(i)
+  }
+  return bytes
+}
+
+const NoteIdSchema = z.string().regex(/^[a-zA-Z0-9_-]+$/).max(128)
+
 const crdtPushRateLimit = createRateLimiter({
   keyPrefix: 'crdt_push',
   maxRequests: 120,
@@ -225,39 +249,66 @@ const crdtPullRateLimit = createRateLimiter({
 })
 
 const CrdtPushSchema = z.object({
-  noteId: z.string().min(1),
-  updates: z.array(z.string())
+  noteId: NoteIdSchema,
+  updates: z.array(z.string().max(MAX_UPDATE_BYTES * 2)).max(100)
 })
 
 sync.post('/crdt/updates', crdtPushRateLimit, async (c) => {
   const userId = c.get('userId')!
+  const deviceId = c.get('deviceId')!
   const body = await c.req.json()
   const parsed = CrdtPushSchema.parse(body)
 
   const buffers = parsed.updates.map((b64) => {
-    const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0))
+    const bytes = safeBase64Decode(b64)
+    if (bytes.byteLength > MAX_UPDATE_BYTES) {
+      throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Individual update exceeds 5MB limit', 413)
+    }
     return bytes.buffer as ArrayBuffer
   })
 
-  const sequences = await storeUpdates(c.env.DB, userId, parsed.noteId, buffers)
+  const sequences = await storeUpdates(c.env.DB, userId, parsed.noteId, deviceId, buffers)
+
+  const doId = c.env.USER_SYNC_STATE.idFromName(userId)
+  const stub = c.env.USER_SYNC_STATE.get(doId)
+  c.executionCtx.waitUntil(
+    stub.fetch(
+      new Request(new URL('/broadcast', c.req.url), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          excludeDeviceId: deviceId,
+          type: 'crdt_updated',
+          noteId: parsed.noteId
+        })
+      })
+    )
+  )
+
   return c.json({ sequences })
 })
 
 sync.get('/crdt/updates', crdtPullRateLimit, async (c) => {
   const userId = c.get('userId')!
-  const noteId = c.req.query('note_id')
+  const noteIdRaw = c.req.query('note_id')
   const since = parseInt(c.req.query('since') ?? '0', 10)
   const limit = parseInt(c.req.query('limit') ?? '100', 10)
 
-  if (!noteId) {
+  if (!noteIdRaw) {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'note_id is required', 400)
   }
+  const noteIdResult = NoteIdSchema.safeParse(noteIdRaw)
+  if (!noteIdResult.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid note_id format', 400)
+  }
+  const noteId = noteIdResult.data
 
   const result = await getUpdates(c.env.DB, userId, noteId, since, Math.min(limit, 500))
 
   const encoded = result.updates.map((u) => ({
     sequenceNum: u.sequence_num,
-    data: btoa(String.fromCharCode(...new Uint8Array(u.update_data as ArrayBuffer))),
+    data: safeBase64Encode(u.update_data as ArrayBuffer),
+    signerDeviceId: u.signer_device_id,
     createdAt: u.created_at
   }))
 
@@ -265,7 +316,7 @@ sync.get('/crdt/updates', crdtPullRateLimit, async (c) => {
 })
 
 const CrdtSnapshotPushSchema = z.object({
-  noteId: z.string().min(1),
+  noteId: NoteIdSchema,
   snapshot: z.string()
 })
 
@@ -274,7 +325,11 @@ sync.post('/crdt/snapshot', crdtPushRateLimit, async (c) => {
   const body = await c.req.json()
   const parsed = CrdtSnapshotPushSchema.parse(body)
 
-  const bytes = Uint8Array.from(atob(parsed.snapshot), (ch) => ch.charCodeAt(0))
+  const bytes = safeBase64Decode(parsed.snapshot)
+  if (bytes.byteLength > MAX_UPDATE_BYTES) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Snapshot exceeds 5MB limit', 413)
+  }
+
   const result = await storeSnapshot(
     c.env.DB,
     c.env.STORAGE,
@@ -290,16 +345,18 @@ sync.post('/crdt/snapshot', crdtPushRateLimit, async (c) => {
 
 sync.get('/crdt/snapshot/:noteId', crdtPullRateLimit, async (c) => {
   const userId = c.get('userId')!
-  const noteId = c.req.param('noteId')
+  const noteIdRaw = c.req.param('noteId')
 
-  const result = await getSnapshot(c.env.DB, c.env.STORAGE, userId, noteId)
+  const noteIdResult = NoteIdSchema.safeParse(noteIdRaw)
+  if (!noteIdResult.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid noteId format', 400)
+  }
+
+  const result = await getSnapshot(c.env.DB, c.env.STORAGE, userId, noteIdResult.data)
   if (!result) {
     return c.json({ snapshot: null, sequenceNum: 0 })
   }
 
-  const encoded = btoa(
-    String.fromCharCode(...new Uint8Array(result.snapshotData))
-  )
-
+  const encoded = safeBase64Encode(result.snapshotData)
   return c.json({ snapshot: encoded, sequenceNum: result.sequenceNum })
 })
