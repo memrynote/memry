@@ -1846,4 +1846,241 @@ describe('SyncEngine', () => {
       vi.restoreAllMocks()
     })
   })
+
+  describe('#given SYNC_REPLAY_DETECTED rejection #when push processes response', () => {
+    it('#then treats replay as success and removes from queue', async () => {
+      // #given
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Stale', clock: { 'device-1': 1 } })
+      })
+
+      const markSuccessSpy = vi.spyOn(deps.queue, 'markSuccess')
+      const markFailedSpy = vi.spyOn(deps.queue, 'markFailed')
+
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockImplementation((input) => ({
+        pushItem: {
+          id: input.id,
+          type: input.type,
+          operation: input.operation,
+          encryptedKey: 'ek',
+          keyNonce: 'kn',
+          encryptedData: 'ed',
+          dataNonce: 'dn',
+          signature: 'sig',
+          signerDeviceId: 'device-1'
+        },
+        sizeBytes: 100
+      }))
+
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        accepted: [],
+        rejected: [{ id: 'task-1', reason: 'SYNC_REPLAY_DETECTED' }],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      // #when
+      await engine.push()
+
+      // #then — replay treated as success, not failure
+      expect(markSuccessSpy).toHaveBeenCalled()
+      expect(markFailedSpy).not.toHaveBeenCalled()
+      expect(deps.queue.getPendingCount()).toBe(0)
+
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given duplicate queue items for same itemId #when push called', () => {
+    it('#then deduplicates and marks extras as success', async () => {
+      // #given — two queue entries for same item (simulating failed retry + re-enqueue)
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      const id1 = deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-dup',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'V1', clock: { 'device-1': 1 } })
+      })
+
+      // Simulate first item having been attempted (so dedup in enqueue doesn't collapse)
+      deps.queue.dequeue(1)
+      deps.queue.markFailed(id1, 'network error')
+
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-dup',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'V2', clock: { 'device-1': 2 } })
+      })
+
+      const markSuccessSpy = vi.spyOn(deps.queue, 'markSuccess')
+
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockImplementation((input) => ({
+        pushItem: {
+          id: input.id,
+          type: input.type,
+          operation: input.operation,
+          encryptedKey: 'ek',
+          keyNonce: 'kn',
+          encryptedData: 'ed',
+          dataNonce: 'dn',
+          signature: 'sig',
+          signerDeviceId: 'device-1'
+        },
+        sizeBytes: 100
+      }))
+
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        accepted: ['task-dup'],
+        rejected: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      // #when
+      await engine.push()
+
+      // #then — one item deduped (markSuccess), one pushed and accepted (markSuccess)
+      expect(markSuccessSpy).toHaveBeenCalledTimes(2)
+      expect(deps.queue.getPendingCount()).toBe(0)
+
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given handler with buildPushPayload #when push called for upsert', () => {
+    it('#then uses fresh payload instead of frozen queue payload', async () => {
+      // #given
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-fresh',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Stale content', clock: { 'device-1': 1 } })
+      })
+
+      const freshPayload = JSON.stringify({
+        title: 'Fresh content',
+        clock: { 'device-1': 3 }
+      })
+
+      const mockHandler = {
+        type: 'task' as const,
+        schema: {} as never,
+        applyUpsert: vi.fn(),
+        applyDelete: vi.fn(),
+        fetchLocal: vi.fn(),
+        seedUnclocked: vi.fn(),
+        buildPushPayload: vi.fn().mockReturnValue(freshPayload)
+      }
+
+      vi.spyOn(await import('./item-handlers'), 'getHandler').mockReturnValue(mockHandler)
+
+      let capturedContent: string | undefined
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockImplementation((input) => {
+        capturedContent = new TextDecoder().decode(input.content)
+        return {
+          pushItem: {
+            id: input.id,
+            type: input.type,
+            operation: input.operation,
+            encryptedKey: 'ek',
+            keyNonce: 'kn',
+            encryptedData: 'ed',
+            dataNonce: 'dn',
+            signature: 'sig',
+            signerDeviceId: 'device-1'
+          },
+          sizeBytes: 100
+        }
+      })
+
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        accepted: ['task-fresh'],
+        rejected: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      // #when
+      await engine.push()
+
+      // #then — encryptItemForPush received fresh payload, not stale
+      expect(mockHandler.buildPushPayload).toHaveBeenCalledWith(
+        deps.db,
+        'task-fresh',
+        'device-1'
+      )
+      expect(capturedContent).toBe(freshPayload)
+
+      vi.restoreAllMocks()
+    })
+
+    it('#then falls back to frozen payload for delete operations', async () => {
+      // #given
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      const frozenPayload = JSON.stringify({ title: 'Deleted note', clock: { 'device-1': 1 } })
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-del',
+        operation: 'delete',
+        payload: frozenPayload
+      })
+
+      const mockHandler = {
+        type: 'task' as const,
+        schema: {} as never,
+        applyUpsert: vi.fn(),
+        applyDelete: vi.fn(),
+        fetchLocal: vi.fn(),
+        seedUnclocked: vi.fn(),
+        buildPushPayload: vi.fn()
+      }
+
+      vi.spyOn(await import('./item-handlers'), 'getHandler').mockReturnValue(mockHandler)
+
+      let capturedContent: string | undefined
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockImplementation((input) => {
+        capturedContent = new TextDecoder().decode(input.content)
+        return {
+          pushItem: {
+            id: input.id,
+            type: input.type,
+            operation: input.operation,
+            encryptedKey: 'ek',
+            keyNonce: 'kn',
+            encryptedData: 'ed',
+            dataNonce: 'dn',
+            signature: 'sig',
+            signerDeviceId: 'device-1'
+          },
+          sizeBytes: 100
+        }
+      })
+
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        accepted: ['task-del'],
+        rejected: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      // #when
+      await engine.push()
+
+      // #then — delete uses frozen payload, buildPushPayload NOT called
+      expect(mockHandler.buildPushPayload).not.toHaveBeenCalled()
+      expect(capturedContent).toBe(frozenPayload)
+
+      vi.restoreAllMocks()
+    })
+  })
 })
