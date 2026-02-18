@@ -802,15 +802,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
-      e.preventDefault()
       e.stopPropagation()
 
-      // Only show drag state for file drops, not internal BlockNote drags
       if (!e.dataTransfer.types.includes('Files')) return
+
+      e.preventDefault()
 
       setIsDragging(true)
 
-      // Find the drop target based on cursor position (for block-level targeting)
       const target = findDropTarget(e.clientY, containerRef)
       setDropTarget(target)
     },

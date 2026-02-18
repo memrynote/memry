@@ -654,7 +654,7 @@ export const TreeNodeTrigger = ({
       if (!draggable) return
 
       e.dataTransfer.effectAllowed = 'move'
-      e.dataTransfer.setData('text/plain', nodeId)
+      e.dataTransfer.setData('application/x-memry-tree-node', nodeId)
       setDragState({ draggedId: nodeId })
     },
     [draggable, nodeId, setDragState]
@@ -706,6 +706,7 @@ export const TreeNodeTrigger = ({
   const handleDropEvent = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
+      e.stopPropagation()
       handleDrop()
     },
     [handleDrop]
