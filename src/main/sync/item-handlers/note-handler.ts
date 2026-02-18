@@ -11,11 +11,11 @@ import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { extractFolderFromPath } from '../note-sync'
 import { getIndexDatabase } from '../../database/client'
-import { atomicWrite, deleteFile, generateNotePath } from '../../vault/file-ops'
+import { atomicWrite, deleteFile, generateNotePath, generateUniquePathSync } from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getNotesDir } from '../../vault/notes'
 import { serializeNote, type NoteFrontmatter } from '../../vault/frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
-import { getNoteCacheById, updateNoteCache } from '@shared/db/queries/notes'
+import { getNoteCacheById, getNoteCacheByPath, updateNoteCache } from '@shared/db/queries/notes'
 import { createLogger } from '../../lib/logger'
 import { resolveClockConflict } from './types'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -63,7 +63,10 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       if (folderChanged) {
         const notesDir = getNotesDir()
         const title = data.title ?? existing.title
-        const newAbsPath = generateNotePath(notesDir, title, remoteFolder ?? undefined)
+        const baseAbsPath = generateNotePath(notesDir, title, remoteFolder ?? undefined)
+        const newAbsPath = generateUniquePathSync(baseAbsPath, (p) =>
+          !!getNoteCacheByPath(indexDb, toRelativePath(p))
+        )
         const newRelPath = toRelativePath(newAbsPath)
         const oldAbsPath = toAbsolutePath(existing.path)
 
@@ -103,7 +106,10 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     }
 
     const fileContent = serializeNote(frontmatter, content)
-    const absolutePath = generateNotePath(notesDir, title, data.folderPath ?? undefined)
+    const basePath = generateNotePath(notesDir, title, data.folderPath ?? undefined)
+    const absolutePath = generateUniquePathSync(basePath, (p) =>
+      !!getNoteCacheByPath(indexDb, toRelativePath(p))
+    )
     const relPath = toRelativePath(absolutePath)
 
     syncNoteToCache(

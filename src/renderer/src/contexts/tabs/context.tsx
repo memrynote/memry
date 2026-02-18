@@ -132,6 +132,11 @@ interface TabContextType {
   updateTabTitle: (tabId: string, title: string, groupId?: string) => void
 
   /**
+   * Update a tab's title by entity ID (searches all groups)
+   */
+  updateTabTitleByEntityId: (entityId: string, title: string) => void
+
+  /**
    * Promote a preview tab to permanent
    */
   promotePreviewTab: (tabId: string, groupId?: string) => void
@@ -452,6 +457,19 @@ export const TabProvider = ({
     })
   }, [])
 
+  const updateTabTitleByEntityId = useCallback((entityId: string, title: string) => {
+    for (const [groupId, group] of Object.entries(tabGroupsRef.current)) {
+      const tab = group.tabs.find((t) => t.entityId === entityId)
+      if (tab) {
+        dispatch({
+          type: 'UPDATE_TAB_TITLE',
+          payload: { tabId: tab.id, groupId, title }
+        })
+        return
+      }
+    }
+  }, [])
+
   const promotePreviewTab = useCallback((tabId: string, groupId?: string) => {
     const actualGroupId = groupId ?? activeGroupIdRef.current
     dispatch({
@@ -598,6 +616,7 @@ export const TabProvider = ({
       setTabModified,
       setTabDeleted,
       updateTabTitle,
+      updateTabTitleByEntityId,
       promotePreviewTab,
       reorderTabs,
       moveTabToGroup,
@@ -634,6 +653,7 @@ export const TabProvider = ({
       setTabModified,
       setTabDeleted,
       updateTabTitle,
+      updateTabTitleByEntityId,
       promotePreviewTab,
       reorderTabs,
       moveTabToGroup,
@@ -776,6 +796,7 @@ export const useTabActions = () => {
     setTabModified,
     setTabDeleted,
     updateTabTitle,
+    updateTabTitleByEntityId,
     promotePreviewTab,
     reorderTabs,
     moveTabToGroup,
@@ -809,6 +830,7 @@ export const useTabActions = () => {
       setTabModified,
       setTabDeleted,
       updateTabTitle,
+      updateTabTitleByEntityId,
       promotePreviewTab,
       reorderTabs,
       moveTabToGroup,
@@ -839,6 +861,7 @@ export const useTabActions = () => {
       setTabModified,
       setTabDeleted,
       updateTabTitle,
+      updateTabTitleByEntityId,
       promotePreviewTab,
       reorderTabs,
       moveTabToGroup,
