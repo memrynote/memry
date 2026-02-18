@@ -7,14 +7,14 @@ const MAX_BATCH_SIZE = 50
 
 interface BufferedUpdate {
   noteId: string
-  encryptedData: Uint8Array
+  rawUpdate: Uint8Array
   timestamp: number
 }
 
 export class CrdtUpdateQueue {
   private buffers = new Map<string, BufferedUpdate[]>()
   private flushTimer: ReturnType<typeof setInterval> | null = null
-  private flushing = false
+  private flushingNotes = new Set<string>()
   private pushFn: ((noteId: string, updates: Uint8Array[]) => Promise<void>) | null = null
 
   start(pushFn: (noteId: string, updates: Uint8Array[]) => Promise<void>): void {
@@ -34,13 +34,13 @@ export class CrdtUpdateQueue {
     log.info('CrdtUpdateQueue stopped')
   }
 
-  enqueue(noteId: string, encryptedData: Uint8Array): void {
+  enqueue(noteId: string, rawUpdate: Uint8Array): void {
     let buffer = this.buffers.get(noteId)
     if (!buffer) {
       buffer = []
       this.buffers.set(noteId, buffer)
     }
-    buffer.push({ noteId, encryptedData, timestamp: Date.now() })
+    buffer.push({ noteId, rawUpdate, timestamp: Date.now() })
 
     if (buffer.length >= MAX_BATCH_SIZE) {
       this.flushNote(noteId)
@@ -56,13 +56,14 @@ export class CrdtUpdateQueue {
   }
 
   private flushAll(): void {
-    if (this.flushing) return
     for (const noteId of this.buffers.keys()) {
       this.flushNote(noteId)
     }
   }
 
   private flushNote(noteId: string): void {
+    if (this.flushingNotes.has(noteId)) return
+
     const buffer = this.buffers.get(noteId)
     if (!buffer || buffer.length === 0) return
 
@@ -74,8 +75,8 @@ export class CrdtUpdateQueue {
       return
     }
 
-    this.flushing = true
-    this.pushFn(noteId, updates.map((u) => u.encryptedData))
+    this.flushingNotes.add(noteId)
+    this.pushFn(noteId, updates.map((u) => u.rawUpdate))
       .catch((err) => {
         log.error('Failed to push CRDT updates', { noteId, error: err })
         let existing = this.buffers.get(noteId)
@@ -86,7 +87,7 @@ export class CrdtUpdateQueue {
         existing.unshift(...updates)
       })
       .finally(() => {
-        this.flushing = false
+        this.flushingNotes.delete(noteId)
       })
   }
 }
