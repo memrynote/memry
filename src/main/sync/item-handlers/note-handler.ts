@@ -1,4 +1,5 @@
 import fs from 'fs'
+import path from 'path'
 import { isNull, and } from 'drizzle-orm'
 import { noteCache } from '@shared/db/schema/notes-cache'
 import {
@@ -13,7 +14,7 @@ import { extractFolderFromPath } from '../note-sync'
 import { getIndexDatabase } from '../../database/client'
 import { atomicWrite, deleteFile, generateNotePath, generateUniquePathSync } from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getNotesDir } from '../../vault/notes'
-import { serializeNote, type NoteFrontmatter } from '../../vault/frontmatter'
+import { parseNote, serializeNote, type NoteFrontmatter } from '../../vault/frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { getNoteCacheById, getNoteCacheByPath, updateNoteCache } from '@shared/db/queries/notes'
 import { createLogger } from '../../lib/logger'
@@ -21,6 +22,19 @@ import { resolveClockConflict } from './types'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('NoteHandler')
+
+async function removeEmptyParents(dir: string, stopAt: string): Promise<void> {
+  let current = dir
+  while (current !== stopAt && current.startsWith(stopAt)) {
+    try {
+      await fs.promises.rmdir(current)
+      log.debug('Removed empty folder', { dir: current })
+      current = path.dirname(current)
+    } catch {
+      break
+    }
+  }
+}
 
 export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
   type: 'note',
@@ -51,19 +65,21 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       const localFolder = extractFolderFromPath(existing.path)
       const remoteFolder = data.folderPath ?? null
       const folderChanged = localFolder !== remoteFolder
+      const newTitle = data.title ?? existing.title
+      const titleChanged = newTitle !== existing.title
+      const needsPathUpdate = folderChanged || titleChanged
 
       const updateFields: Parameters<typeof updateNoteCache>[2] = {
-        title: data.title ?? existing.title,
+        title: newTitle,
         emoji: data.emoji ?? existing.emoji,
         clock: resolution.mergedClock,
         syncedAt: now,
         modifiedAt: data.modifiedAt ?? now
       }
 
-      if (folderChanged) {
+      if (needsPathUpdate) {
         const notesDir = getNotesDir()
-        const title = data.title ?? existing.title
-        const baseAbsPath = generateNotePath(notesDir, title, remoteFolder ?? undefined)
+        const baseAbsPath = generateNotePath(notesDir, newTitle, remoteFolder ?? undefined)
         const newAbsPath = generateUniquePathSync(baseAbsPath, (p) =>
           !!getNoteCacheByPath(indexDb, toRelativePath(p))
         )
@@ -73,17 +89,39 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
         updateFields.path = newRelPath
 
         try {
-          const fileContent = fs.readFileSync(oldAbsPath, 'utf-8')
-          atomicWrite(newAbsPath, fileContent)
+          const raw = fs.readFileSync(oldAbsPath, 'utf-8')
+          const parsed = parseNote(raw)
+          parsed.frontmatter.title = newTitle
+          const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
+
+          atomicWrite(newAbsPath, updatedContent)
             .then(() => deleteFile(oldAbsPath))
+            .then(() => removeEmptyParents(path.dirname(oldAbsPath), notesDir))
             .catch((err: unknown) => {
-              log.error('Failed to move synced note to new folder', { itemId, error: err })
+              log.error('Failed to move/rename synced note', { itemId, error: err })
             })
         } catch {
-          log.warn('Could not read old note for folder move', { itemId })
+          log.warn('Could not read old note for rename/move', { itemId })
         }
 
-        ctx.emit(NotesChannels.events.MOVED, { id: itemId, oldPath: existing.path, newPath: newRelPath, source: 'sync' })
+        if (titleChanged) {
+          ctx.emit(NotesChannels.events.RENAMED, {
+            id: itemId,
+            oldPath: existing.path,
+            newPath: newRelPath,
+            oldTitle: existing.title,
+            newTitle,
+            source: 'sync'
+          })
+        }
+        if (folderChanged) {
+          ctx.emit(NotesChannels.events.MOVED, {
+            id: itemId,
+            oldPath: existing.path,
+            newPath: newRelPath,
+            source: 'sync'
+          })
+        }
       }
 
       updateNoteCache(indexDb, itemId, updateFields)
