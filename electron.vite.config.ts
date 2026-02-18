@@ -1,6 +1,6 @@
 import { resolve } from 'path'
 import { cpSync } from 'fs'
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import type { Plugin } from 'vite'
@@ -22,10 +22,19 @@ function copyMigrations(): Plugin {
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin({ exclude: ['cborg'] }), copyMigrations()],
+    plugins: [copyMigrations()],
     build: {
+      externalizeDeps: {
+        exclude: [
+          'cborg',
+          '@blocknote/server-util',
+          '@blocknote/core',
+          '@blocknote/react',
+          '@handlewithcare/prosemirror-inputrules'
+        ]
+      },
       rollupOptions: {
-        external: ['better-sqlite3']
+        external: ['better-sqlite3', 'jsdom', 'canvas']
       }
     },
     resolve: {
@@ -35,7 +44,6 @@ export default defineConfig({
     }
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
     resolve: {
       alias: {
         '@shared': resolve('src/shared')
