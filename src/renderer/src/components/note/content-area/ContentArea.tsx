@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils'
 import { fuzzySearch } from '@/lib/fuzzy-search'
 import { notesService } from '@/services/notes-service'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
+import { useSync } from '@/contexts/sync-context'
 import type { ContentAreaProps, HeadingInfo } from './types'
 import { createWikiLinkInlineContent, WikiLink } from './wiki-link'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
@@ -1092,9 +1093,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 })
 
 export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
-  const { fragment, isReady } = useYjsCollaboration(props.noteId)
+  const { state } = useSync()
+  const syncActive = state.status === 'idle' || state.status === 'syncing'
+  const { fragment, isReady } = useYjsCollaboration({
+    noteId: props.noteId,
+    enabled: syncActive
+  })
 
-  if (props.noteId && !isReady) {
+  if (syncActive && props.noteId && !isReady) {
     return (
       <div className={cn('content-area h-full flex flex-col', props.className)}>
         <div className="flex-1 animate-pulse bg-muted/10 rounded-md" />

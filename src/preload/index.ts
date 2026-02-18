@@ -1457,20 +1457,19 @@ const api = {
       ipcRenderer.invoke(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS, input)
   },
 
-  // CRDT Collaboration API
+  // CRDT channels are merged into SYNC_CHANNELS (single flat namespace for the preload bridge)
   syncCrdt: {
     openDoc: (input: { noteId: string }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.OPEN_DOC, input),
     closeDoc: (input: { noteId: string }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.CLOSE_DOC, input),
-    applyUpdate: (input: { noteId: string; update: number[]; sourceWindowId: number }) =>
+    applyUpdate: (input: { noteId: string; update: number[] }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.APPLY_UPDATE, input),
     syncStep1: (input: {
       noteId: string
       stateVector: number[]
-      sourceWindowId: number
     }) => ipcRenderer.invoke(SYNC_CHANNELS.SYNC_STEP_1, input),
-    syncStep2: (input: { noteId: string; diff: number[]; sourceWindowId: number }) =>
+    syncStep2: (input: { noteId: string; diff: number[] }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.SYNC_STEP_2, input)
   },
   onCrdtStateChanged: (

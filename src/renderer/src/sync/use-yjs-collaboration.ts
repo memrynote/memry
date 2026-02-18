@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import * as Y from 'yjs'
+import { CRDT_FRAGMENT_NAME } from '@shared/contracts/ipc-crdt'
 import { YjsIpcProvider } from './yjs-ipc-provider'
 import { createLogger } from '@/lib/logger'
 
@@ -11,18 +12,22 @@ export interface YjsCollaborationState {
   isReady: boolean
 }
 
-export function useYjsCollaboration(noteId: string | undefined): YjsCollaborationState {
-  const [state, setState] = useState<YjsCollaborationState>({
-    fragment: null,
-    provider: null,
-    isReady: false
-  })
+export interface UseYjsCollaborationOptions {
+  noteId: string | undefined
+  enabled?: boolean
+}
+
+const DISABLED_STATE: YjsCollaborationState = { fragment: null, provider: null, isReady: false }
+
+export function useYjsCollaboration(options: UseYjsCollaborationOptions): YjsCollaborationState {
+  const { noteId, enabled = true } = options
+  const [state, setState] = useState<YjsCollaborationState>(DISABLED_STATE)
   const providerRef = useRef<YjsIpcProvider | null>(null)
   const docRef = useRef<Y.Doc | null>(null)
 
   useEffect(() => {
-    if (!noteId) {
-      setState({ fragment: null, provider: null, isReady: false })
+    if (!noteId || !enabled) {
+      setState(DISABLED_STATE)
       return
     }
 
@@ -38,7 +43,7 @@ export function useYjsCollaboration(noteId: string | undefined): YjsCollaboratio
       .connect()
       .then(() => {
         if (cancelled) return
-        const fragment = doc.getXmlFragment('prosemirror')
+        const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
         setState({ fragment, provider, isReady: true })
         log.debug('Collaboration ready', { noteId })
       })
@@ -56,7 +61,7 @@ export function useYjsCollaboration(noteId: string | undefined): YjsCollaboratio
       docRef.current = null
       setState({ fragment: null, provider: null, isReady: false })
     }
-  }, [noteId])
+  }, [noteId, enabled])
 
   return state
 }

@@ -1,6 +1,7 @@
 import { ServerBlockNoteEditor } from '@blocknote/server-util'
 import type { Block, PartialBlock } from '@blocknote/core'
 import type * as Y from 'yjs'
+import { CRDT_FRAGMENT_NAME } from '@shared/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('BlockNoteConverter')
@@ -16,7 +17,7 @@ function getEditor(): ServerBlockNoteEditor {
 
 export async function yDocToMarkdown(
   doc: Y.Doc,
-  fragmentName = 'prosemirror'
+  fragmentName = CRDT_FRAGMENT_NAME
 ): Promise<string | null> {
   try {
     const editor = getEditor()

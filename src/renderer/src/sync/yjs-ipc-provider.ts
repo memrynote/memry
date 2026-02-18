@@ -78,8 +78,7 @@ export class YjsIpcProvider extends Observable<string> {
 
     const result = await window.api.syncCrdt.syncStep1({
       noteId: this.noteId,
-      stateVector: Array.from(stateVector),
-      sourceWindowId: 0
+      stateVector: Array.from(stateVector)
     })
 
     if (result) {
@@ -90,8 +89,7 @@ export class YjsIpcProvider extends Observable<string> {
       if (localDiff.byteLength > 0) {
         await window.api.syncCrdt.syncStep2({
           noteId: this.noteId,
-          diff: Array.from(localDiff),
-          sourceWindowId: 0
+          diff: Array.from(localDiff)
         })
       }
     }
@@ -105,8 +103,7 @@ export class YjsIpcProvider extends Observable<string> {
   private sendUpdate(update: Uint8Array): void {
     window.api.syncCrdt.applyUpdate({
       noteId: this.noteId,
-      update: Array.from(update),
-      sourceWindowId: 0
+      update: Array.from(update)
     })
   }
 }
