@@ -1,10 +1,12 @@
 import fs from 'fs'
+import path from 'path'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { NoteSyncPayload } from '@shared/contracts/sync-payloads'
 import type { NoteCache } from '@shared/db/schema/notes-cache'
 import { ContentSyncService, type ContentSyncDeps } from './content-sync-base'
 import { createLogger } from '../lib/logger'
 import { toAbsolutePath } from '../vault/notes'
+import { getConfig } from '../vault/index'
 import { parseNote } from '../vault/frontmatter'
 
 const log = createLogger('NoteSync')
@@ -58,15 +60,28 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
       log.warn('Could not read note file for sync snapshot', { noteId: cached.id })
     }
 
+    const folderPath = extractFolderFromPath(cached.path)
+
     return {
       title: cached.title,
       content,
       tags,
       emoji: cached.emoji,
       fileType: cached.fileType,
+      folderPath,
       clock,
       createdAt: cached.createdAt,
       modifiedAt: cached.modifiedAt
     }
   }
+}
+
+export function extractFolderFromPath(relativePath: string): string | null {
+  const config = getConfig()
+  const prefix = config.defaultNoteFolder + '/'
+  const withoutPrefix = relativePath.startsWith(prefix)
+    ? relativePath.slice(prefix.length)
+    : relativePath
+  const dir = path.dirname(withoutPrefix)
+  return dir === '.' ? null : dir
 }
