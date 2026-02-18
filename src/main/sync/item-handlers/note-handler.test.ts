@@ -45,7 +45,8 @@ vi.mock('../note-sync', () => ({
 }))
 
 vi.mock('../../vault/file-ops', async () => {
-  const actual = await vi.importActual<typeof import('../../vault/file-ops')>('../../vault/file-ops')
+  const actual =
+    await vi.importActual<typeof import('../../vault/file-ops')>('../../vault/file-ops')
   return {
     ...actual,
     atomicWrite: vi.fn().mockResolvedValue(undefined),
@@ -86,7 +87,9 @@ describe('noteHandler.applyUpsert — path collision', () => {
     takenRelPaths.clear()
 
     vi.mocked(getNoteCacheByPath).mockImplementation((_db, p) =>
-      takenRelPaths.has(p) ? ({ id: 'existing', path: p } as ReturnType<typeof getNoteCacheByPath>) : undefined
+      takenRelPaths.has(p)
+        ? ({ id: 'existing', path: p } as ReturnType<typeof getNoteCacheByPath>)
+        : undefined
     )
 
     vi.mocked(syncNoteToCache).mockImplementation((_db, data, _opts) => {

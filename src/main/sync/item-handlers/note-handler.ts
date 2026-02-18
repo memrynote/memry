@@ -2,17 +2,19 @@ import fs from 'fs'
 import path from 'path'
 import { isNull, and } from 'drizzle-orm'
 import { noteCache } from '@shared/db/schema/notes-cache'
-import {
-  NoteSyncPayloadSchema,
-  type NoteSyncPayload
-} from '@shared/contracts/sync-payloads'
+import { NoteSyncPayloadSchema, type NoteSyncPayload } from '@shared/contracts/sync-payloads'
 import { NotesChannels } from '@shared/ipc-channels'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { extractFolderFromPath } from '../note-sync'
 import { getIndexDatabase } from '../../database/client'
-import { atomicWrite, deleteFile, generateNotePath, generateUniquePathSync } from '../../vault/file-ops'
+import {
+  atomicWrite,
+  deleteFile,
+  generateNotePath,
+  generateUniquePathSync
+} from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getNotesDir } from '../../vault/notes'
 import { parseNote, serializeNote, type NoteFrontmatter } from '../../vault/frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
@@ -87,8 +89,9 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       if (needsPathUpdate) {
         const notesDir = getNotesDir()
         const baseAbsPath = generateNotePath(notesDir, newTitle, remoteFolder ?? undefined)
-        const newAbsPath = generateUniquePathSync(baseAbsPath, (p) =>
-          !!getNoteCacheByPath(indexDb, toRelativePath(p))
+        const newAbsPath = generateUniquePathSync(
+          baseAbsPath,
+          (p) => !!getNoteCacheByPath(indexDb, toRelativePath(p))
         )
         const newRelPath = toRelativePath(newAbsPath)
         const oldAbsPath = toAbsolutePath(existing.path)
@@ -152,8 +155,9 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
 
     const fileContent = serializeNote(frontmatter, content)
     const basePath = generateNotePath(notesDir, title, data.folderPath ?? undefined)
-    const absolutePath = generateUniquePathSync(basePath, (p) =>
-      !!getNoteCacheByPath(indexDb, toRelativePath(p))
+    const absolutePath = generateUniquePathSync(
+      basePath,
+      (p) => !!getNoteCacheByPath(indexDb, toRelativePath(p))
     )
     const relPath = toRelativePath(absolutePath)
 

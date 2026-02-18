@@ -566,6 +566,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 **Independent Test**: Edit same note on two offline devices, bring online, verify all changes merged
 
 **Architecture Decision**: Notes use a **hybrid sync approach**:
+
 - **Full snapshots** (initial seed, new device sync) flow through the existing `/sync/push` + `/sync/pull` pipeline via `SyncItemHandler` — same pattern as tasks/projects
 - **Incremental CRDT updates** (real-time collaboration) flow through dedicated `/sync/crdt/updates` endpoints for efficiency
 - **Markdown files** remain on disk as derived representation — Yjs document is the source of truth for sync
@@ -637,6 +638,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 **Independent Test**: Edit note on Device A, verify .md file appears on Device B. Edit .md file externally, verify change syncs. Create journal entry, verify it syncs.
 
 **Architecture Decision**: Markdown is a **lossy export** of Yjs CRDT state. Known limitations:
+
 - `editor.blocksToMarkdownLossy()` drops custom block metadata (file blocks serialized as special markers)
 - Round-tripping MD → Yjs → MD may alter formatting (lists, emphasis nesting)
 - Conversion failures must be handled gracefully (log + skip, never crash sync)

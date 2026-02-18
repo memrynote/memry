@@ -466,7 +466,12 @@ export function createDefaultStatuses(db: DrizzleDb, projectId: string): Status[
 export function createCustomStatuses(
   db: DrizzleDb,
   projectId: string,
-  inputs: Array<{ name: string; color: string; type: 'todo' | 'in_progress' | 'done'; order: number }>
+  inputs: Array<{
+    name: string
+    color: string
+    type: 'todo' | 'in_progress' | 'done'
+    order: number
+  }>
 ): Status[] {
   return inputs.map((input) =>
     insertStatus(db, {

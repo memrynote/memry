@@ -50,8 +50,8 @@ Electron app with 3 process layers:
 
 ### Two SQLite Databases (Drizzle ORM)
 
-| Database   | Config                    | Purpose                                           | FK enforcement                |
-| ---------- | ------------------------- | ------------------------------------------------- | ----------------------------- |
+| Database   | Config                           | Purpose                                           | FK enforcement                |
+| ---------- | -------------------------------- | ------------------------------------------------- | ----------------------------- |
 | `data.db`  | `config/drizzle-data.config.ts`  | Source of truth (tasks, projects, settings, sync) | Yes (CASCADE/SET NULL)        |
 | `index.db` | `config/drizzle-index.config.ts` | Rebuildable cache (note search, FTS, embeddings)  | No (safe to delete & rebuild) |
 

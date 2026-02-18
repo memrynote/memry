@@ -91,7 +91,10 @@ export class CrdtUpdateQueue {
     }
 
     this.flushingNotes.add(noteId)
-    this.pushFn(noteId, updates.map((u) => u.rawUpdate))
+    this.pushFn(
+      noteId,
+      updates.map((u) => u.rawUpdate)
+    )
       .catch((err) => {
         if (!this.paused) {
           log.error('Failed to push CRDT updates', { noteId, error: err })

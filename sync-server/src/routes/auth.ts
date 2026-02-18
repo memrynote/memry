@@ -370,7 +370,17 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
        updated_at = excluded.updated_at
      RETURNING id`
   )
-    .bind(candidateDeviceId, userId, name, platform, osVersion ?? null, appVersion, authPublicKey, now, now)
+    .bind(
+      candidateDeviceId,
+      userId,
+      name,
+      platform,
+      osVersion ?? null,
+      appVersion,
+      authPublicKey,
+      now,
+      now
+    )
     .all()
 
   const deviceId = (results[0] as { id: string }).id

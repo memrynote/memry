@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import {
-  createTestDataDb,
-  createTestIndexDb,
-  type TestDatabaseResult
-} from '@tests/utils/test-db'
+import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { tasks } from '@shared/db/schema/tasks'
 import { projects } from '@shared/db/schema/projects'
 import { inboxItems } from '@shared/db/schema/inbox'

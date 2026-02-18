@@ -41,10 +41,7 @@ export async function markdownToBlocks(markdown: string): Promise<Block[] | null
   }
 }
 
-export function blocksToYFragment(
-  blocks: Block[],
-  fragment: Y.XmlFragment
-): boolean {
+export function blocksToYFragment(blocks: Block[], fragment: Y.XmlFragment): boolean {
   try {
     const editor = getEditor()
     editor.blocksToYXmlFragment(blocks, fragment)

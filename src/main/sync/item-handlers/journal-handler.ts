@@ -1,9 +1,6 @@
 import { isNull, and, isNotNull } from 'drizzle-orm'
 import { noteCache } from '@shared/db/schema/notes-cache'
-import {
-  JournalSyncPayloadSchema,
-  type JournalSyncPayload
-} from '@shared/contracts/sync-payloads'
+import { JournalSyncPayloadSchema, type JournalSyncPayload } from '@shared/contracts/sync-payloads'
 import { JournalChannels } from '@shared/ipc-channels'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
@@ -69,25 +66,27 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
       return resolution.action === 'merge' ? 'conflict' : 'applied'
     }
 
-    writeJournalEntry(
-      data.date,
-      data.content ?? '',
-      data.tags,
-      data.properties ?? undefined
-    ).then(() => {
-      const entry = readJournalEntry(data.date)
-      return entry
-    }).then((entry) => {
-      if (entry) {
-        updateNoteCache(indexDb, entry.id, {
-          clock: remoteClock,
-          syncedAt: now
+    writeJournalEntry(data.date, data.content ?? '', data.tags, data.properties ?? undefined)
+      .then(() => {
+        const entry = readJournalEntry(data.date)
+        return entry
+      })
+      .then((entry) => {
+        if (entry) {
+          updateNoteCache(indexDb, entry.id, {
+            clock: remoteClock,
+            syncedAt: now
+          })
+        }
+        ctx.emit(JournalChannels.events.ENTRY_CREATED, { date: data.date, source: 'sync' })
+      })
+      .catch((err) => {
+        log.error('Failed to write new synced journal entry', {
+          itemId,
+          date: data.date,
+          error: err
         })
-      }
-      ctx.emit(JournalChannels.events.ENTRY_CREATED, { date: data.date, source: 'sync' })
-    }).catch((err) => {
-      log.error('Failed to write new synced journal entry', { itemId, date: data.date, error: err })
-    })
+      })
 
     return 'applied'
   },
@@ -144,7 +143,10 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
         properties = parsed.frontmatter.properties as Record<string, unknown>
       }
     } catch {
-      log.warn('Could not read journal file for push payload', { noteId: cached.id, date: cached.date })
+      log.warn('Could not read journal file for push payload', {
+        noteId: cached.id,
+        date: cached.date
+      })
     }
 
     return JSON.stringify({

@@ -1107,12 +1107,7 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
     )
   }
 
-  return (
-    <ContentAreaEditor
-      {...props}
-      yjsFragment={isReady && fragment ? fragment : undefined}
-    />
-  )
+  return <ContentAreaEditor {...props} yjsFragment={isReady && fragment ? fragment : undefined} />
 })
 
 export default ContentArea

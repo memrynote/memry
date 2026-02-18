@@ -430,18 +430,15 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   const [isFolderRenaming, setIsFolderRenaming] = useState(false)
   const folderRenameInputRef = useRef<HTMLInputElement>(null)
 
-  const folderRenameCallbackRef = useCallback(
-    (el: HTMLInputElement | null) => {
-      folderRenameInputRef.current = el
-      if (el) {
-        requestAnimationFrame(() => {
-          el.focus()
-          el.select()
-        })
-      }
-    },
-    []
-  )
+  const folderRenameCallbackRef = useCallback((el: HTMLInputElement | null) => {
+    folderRenameInputRef.current = el
+    if (el) {
+      requestAnimationFrame(() => {
+        el.focus()
+        el.select()
+      })
+    }
+  }, [])
 
   // Folder template configuration state
   const [folderToConfigureTemplate, setFolderToConfigureTemplate] = useState<string | null>(null)
@@ -826,18 +823,15 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     setRenameValue(displayName)
   }, [])
 
-  const renameCallbackRef = useCallback(
-    (el: HTMLInputElement | null) => {
-      renameInputRef.current = el
-      if (el) {
-        requestAnimationFrame(() => {
-          el.focus()
-          el.select()
-        })
-      }
-    },
-    []
-  )
+  const renameCallbackRef = useCallback((el: HTMLInputElement | null) => {
+    renameInputRef.current = el
+    if (el) {
+      requestAnimationFrame(() => {
+        el.focus()
+        el.select()
+      })
+    }
+  }, [])
 
   const handleRenameInputChange = useCallback(
     (noteId: string, value: string) => {
@@ -1678,7 +1672,13 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     const isBeingRenamed = renamingFolderPath === folder.path
 
     return (
-      <TreeNode key={folder.path} nodeId={`folder-${folder.path}`} level={level} isLast={isLast} acceptsDropInside>
+      <TreeNode
+        key={folder.path}
+        nodeId={`folder-${folder.path}`}
+        level={level}
+        isLast={isLast}
+        acceptsDropInside
+      >
         <TreeNodeTrigger
           expandOnly
           contextMenuContent={

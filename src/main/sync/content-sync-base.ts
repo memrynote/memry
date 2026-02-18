@@ -52,7 +52,7 @@ export abstract class ContentSyncService<TPayload> {
     try {
       const indexDb = getIndexDatabase()
       const cached = getNoteCacheById(indexDb, itemId)
-      const existingClock = ((cached?.clock as VectorClock) ?? {})
+      const existingClock = (cached?.clock as VectorClock) ?? {}
       const newClock = increment(existingClock, deviceId)
 
       const payload = this.buildDeletePayload(cached, newClock, ...extra)

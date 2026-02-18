@@ -140,7 +140,9 @@ export function registerNotesHandlers(): void {
       try {
         const note = await createNote(input)
         getNoteSyncService()?.enqueueCreate(note.id)
-        getCrdtProvider().initForNote(note.id, { title: note.title }, note.tags).catch(() => {})
+        getCrdtProvider()
+          .initForNote(note.id, { title: note.title }, note.tags)
+          .catch(() => {})
         return { success: true, note }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to create note'

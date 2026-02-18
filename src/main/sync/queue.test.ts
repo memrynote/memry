@@ -420,11 +420,15 @@ describe('SyncQueueManager', () => {
 
     it('dequeue finds new items even when old failed items exist for same itemId', () => {
       // #given old items from previous session with attempts > 0
-      queue.enqueue(makeInput({ type: 'inbox', itemId: 'inbox-1', operation: 'create', payload: '{"v":1}' }))
+      queue.enqueue(
+        makeInput({ type: 'inbox', itemId: 'inbox-1', operation: 'create', payload: '{"v":1}' })
+      )
       queue.dequeue(1)
 
       // #when manifest re-enqueues same item (creates new row since attempts > 0)
-      queue.enqueue(makeInput({ type: 'inbox', itemId: 'inbox-1', operation: 'create', payload: '{"v":2}' }))
+      queue.enqueue(
+        makeInput({ type: 'inbox', itemId: 'inbox-1', operation: 'create', payload: '{"v":2}' })
+      )
 
       // #then getPendingCount matches dequeue count
       const pending = queue.getPendingCount()

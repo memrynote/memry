@@ -8,10 +8,7 @@ import { createLogger } from '../lib/logger'
 import { toAbsolutePath } from '../vault/notes'
 import { getConfig } from '../vault/index'
 import { parseNote } from '../vault/frontmatter'
-import {
-  registerRenameSyncCallback,
-  unregisterRenameSyncCallback
-} from '../vault/rename-tracker'
+import { registerRenameSyncCallback, unregisterRenameSyncCallback } from '../vault/rename-tracker'
 
 const log = createLogger('NoteSync')
 

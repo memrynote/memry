@@ -2,7 +2,13 @@ import * as Y from 'yjs'
 import { createLogger } from '../lib/logger'
 import { getCrdtProvider } from './crdt-provider'
 import { yDocToMarkdown } from './blocknote-converter'
-import { atomicWrite, safeRead, fileExists, generateNotePath, ensureDirectory } from '../vault/file-ops'
+import {
+  atomicWrite,
+  safeRead,
+  fileExists,
+  generateNotePath,
+  ensureDirectory
+} from '../vault/file-ops'
 import { parseNote, serializeNote, type NoteFrontmatter } from '../vault/frontmatter'
 import { getNotesDir, toRelativePath, toAbsolutePath } from '../vault/notes'
 import { getJournalPath } from '../vault/journal'
@@ -127,7 +133,13 @@ async function writebackExisting(
 
   syncNoteToCache(
     indexDb,
-    { id: noteId, path: relativePath, fileContent, frontmatter: mergedFrontmatter, parsedContent: markdown },
+    {
+      id: noteId,
+      path: relativePath,
+      fileContent,
+      frontmatter: mergedFrontmatter,
+      parsedContent: markdown
+    },
     { isNew: false }
   )
 
@@ -199,7 +211,13 @@ async function writebackJournal(
 
     syncNoteToCache(
       indexDb,
-      { id: noteId, path: cached.path, fileContent, frontmatter: mergedFrontmatter, parsedContent: markdown },
+      {
+        id: noteId,
+        path: cached.path,
+        fileContent,
+        frontmatter: mergedFrontmatter,
+        parsedContent: markdown
+      },
       { isNew: false }
     )
 

@@ -65,9 +65,9 @@ describe('crdt-encrypt', () => {
 
       packed[72] ^= 0xff
 
-      expect(() =>
-        decryptCrdtUpdate(packed, keys.vaultKey, noteId, keys.signingPublicKey)
-      ).toThrow(SignatureVerificationError)
+      expect(() => decryptCrdtUpdate(packed, keys.vaultKey, noteId, keys.signingPublicKey)).toThrow(
+        SignatureVerificationError
+      )
     })
   })
 
@@ -117,9 +117,9 @@ describe('crdt-encrypt', () => {
       const keys = generateTestKeys()
       const short = new Uint8Array(10)
 
-      expect(() =>
-        decryptCrdtUpdate(short, keys.vaultKey, noteId, keys.signingPublicKey)
-      ).toThrow('CRDT update too short')
+      expect(() => decryptCrdtUpdate(short, keys.vaultKey, noteId, keys.signingPublicKey)).toThrow(
+        'CRDT update too short'
+      )
     })
   })
 })
