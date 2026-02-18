@@ -5,18 +5,28 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import {
   CRDT_CHANNELS,
   CRDT_EVENTS,
-  type CrdtApplyUpdateInput,
-  type CrdtSyncStep1Input,
-  type CrdtSyncStep1Result,
-  type CrdtSyncStep2Input
+  CRDT_FRAGMENT_NAME,
+  CrdtApplyUpdateSchema,
+  CrdtCloseDocSchema,
+  CrdtOpenDocSchema,
+  CrdtSyncStep1Schema,
+  CrdtSyncStep2Schema,
+  type CrdtSyncStep1Result
 } from '@shared/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
+import { createValidatedHandler } from '../ipc/validate'
+import { getIndexDatabase } from '../database/client'
+import { getNoteCacheById } from '@shared/db/queries/notes'
 import type { CrdtUpdateQueue } from './crdt-queue'
 import { scheduleWriteback, cancelPendingWritebacks, recordNetworkUpdate } from './crdt-writeback'
 
 const log = createLogger('CrdtProvider')
 
-const ORIGIN_IPC = 'ipc'
+interface IpcOrigin {
+  source: 'ipc'
+  windowId: number
+}
+
 const ORIGIN_NETWORK = 'network'
 export const ORIGIN_LOCAL = 'local'
 const COMPACTION_THRESHOLD_BYTES = 1024 * 1024
@@ -24,6 +34,7 @@ const COMPACTION_THRESHOLD_BYTES = 1024 * 1024
 interface ActiveDoc {
   doc: Y.Doc
   windowIds: Set<number>
+  accumulatedBytes: number
 }
 
 export class CrdtProvider {
@@ -56,7 +67,11 @@ export class CrdtProvider {
       persisted.destroy()
     }
 
-    const entry: ActiveDoc = { doc, windowIds: new Set(windowId ? [windowId] : []) }
+    const entry: ActiveDoc = {
+      doc,
+      windowIds: new Set(windowId ? [windowId] : []),
+      accumulatedBytes: 0
+    }
     this.docs.set(noteId, entry)
 
     doc.on('update', (update: Uint8Array, origin: unknown) => {
@@ -83,6 +98,11 @@ export class CrdtProvider {
     entry.doc.destroy()
     this.docs.delete(noteId)
     log.debug('Doc closed', { noteId })
+  }
+
+  async purge(noteId: string): Promise<void> {
+    this.close(noteId)
+    await this.persistence?.clearDocument(noteId)
   }
 
   getDoc(noteId: string): Y.Doc | undefined {
@@ -123,7 +143,7 @@ export class CrdtProvider {
   }
 
   private initDocStructure(doc: Y.Doc): void {
-    doc.getXmlFragment('prosemirror')
+    doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     doc.getMap('meta')
     doc.getArray('tags')
   }
@@ -194,8 +214,12 @@ export class CrdtProvider {
     const entry = this.docs.get(noteId)
     if (!entry) return
 
-    if (origin === ORIGIN_IPC || origin === ORIGIN_NETWORK) {
-      this.broadcastToWindows(noteId, update, origin as string, undefined)
+    entry.accumulatedBytes += update.byteLength
+
+    if (isIpcOrigin(origin)) {
+      this.broadcastToWindows(noteId, update, 'ipc', origin.windowId)
+    } else if (origin === ORIGIN_NETWORK) {
+      this.broadcastToWindows(noteId, update, ORIGIN_NETWORK, undefined)
     } else {
       this.broadcastToWindows(noteId, update, ORIGIN_LOCAL, undefined)
     }
@@ -247,8 +271,8 @@ export class CrdtProvider {
     const entry = this.docs.get(noteId)
     if (!entry) return
 
-    const size = Y.encodeStateAsUpdate(entry.doc).byteLength
-    if (size > COMPACTION_THRESHOLD_BYTES) {
+    if (entry.accumulatedBytes > COMPACTION_THRESHOLD_BYTES) {
+      entry.accumulatedBytes = 0
       this.flushDoc(noteId).catch((err) => {
         log.error('Failed to compact doc', { noteId, error: err })
       })
@@ -261,51 +285,81 @@ export class CrdtProvider {
   }
 
   private registerIpcHandlers(): void {
-    ipcMain.handle(CRDT_CHANNELS.OPEN_DOC, async (_event, input: { noteId: string }) => {
-      const windowId = BrowserWindow.fromWebContents(_event.sender)?.id
-      await this.open(input.noteId, windowId)
-      return { success: true }
-    })
+    ipcMain.handle(
+      CRDT_CHANNELS.OPEN_DOC,
+      async (event, rawInput: unknown) => {
+        const { noteId } = CrdtOpenDocSchema.parse(rawInput)
+        const windowId = BrowserWindow.fromWebContents(event.sender)?.id
 
-    ipcMain.handle(CRDT_CHANNELS.CLOSE_DOC, async (_event, input: { noteId: string }) => {
-      const windowId = BrowserWindow.fromWebContents(_event.sender)?.id
-      this.close(input.noteId, windowId)
-      return { success: true }
-    })
+        const indexDb = getIndexDatabase()
+        const noteExists = getNoteCacheById(indexDb, noteId)
+        if (!noteExists) {
+          return { success: false, error: `Note not found: ${noteId}` }
+        }
+
+        await this.open(noteId, windowId)
+        return { success: true }
+      }
+    )
+
+    ipcMain.handle(
+      CRDT_CHANNELS.CLOSE_DOC,
+      async (event, rawInput: unknown) => {
+        const { noteId } = CrdtCloseDocSchema.parse(rawInput)
+        const windowId = BrowserWindow.fromWebContents(event.sender)?.id
+        this.close(noteId, windowId)
+        return { success: true }
+      }
+    )
 
     ipcMain.handle(
       CRDT_CHANNELS.APPLY_UPDATE,
-      async (_event, input: CrdtApplyUpdateInput) => {
-        const entry = this.docs.get(input.noteId)
+      async (event, rawInput: unknown) => {
+        const { noteId, update: updateArr } = CrdtApplyUpdateSchema.parse(rawInput)
+        const sourceWindowId = BrowserWindow.fromWebContents(event.sender)?.id ?? -1
+
+        const entry = this.docs.get(noteId)
         if (!entry) return
 
-        const update = new Uint8Array(input.update)
-        Y.applyUpdate(entry.doc, update, ORIGIN_IPC)
-        this.broadcastToWindows(input.noteId, update, ORIGIN_IPC, input.sourceWindowId)
+        const update = new Uint8Array(updateArr)
+        const origin: IpcOrigin = { source: 'ipc', windowId: sourceWindowId }
+        Y.applyUpdate(entry.doc, update, origin)
       }
     )
 
     ipcMain.handle(
       CRDT_CHANNELS.SYNC_STEP_1,
-      async (_event, input: CrdtSyncStep1Input): Promise<CrdtSyncStep1Result | null> => {
-        const doc = await this.open(input.noteId)
-        const remoteVector = new Uint8Array(input.stateVector)
-        const diff = Y.encodeStateAsUpdate(doc, remoteVector)
-        const stateVector = Y.encodeStateVector(doc)
-        return { diff, stateVector }
-      }
+      createValidatedHandler(
+        CrdtSyncStep1Schema,
+        async (input): Promise<CrdtSyncStep1Result | null> => {
+          const doc = await this.open(input.noteId)
+          const remoteVector = new Uint8Array(input.stateVector)
+          const diff = Y.encodeStateAsUpdate(doc, remoteVector)
+          const stateVector = Y.encodeStateVector(doc)
+          return { diff, stateVector }
+        }
+      )
     )
 
     ipcMain.handle(
       CRDT_CHANNELS.SYNC_STEP_2,
-      async (_event, input: CrdtSyncStep2Input) => {
+      createValidatedHandler(CrdtSyncStep2Schema, async (input) => {
         const entry = this.docs.get(input.noteId)
         if (!entry) return
         const diff = new Uint8Array(input.diff)
-        Y.applyUpdate(entry.doc, diff, ORIGIN_IPC)
-      }
+        Y.applyUpdate(entry.doc, diff, { source: 'ipc', windowId: -1 } satisfies IpcOrigin)
+      })
     )
   }
+}
+
+function isIpcOrigin(origin: unknown): origin is IpcOrigin {
+  return (
+    typeof origin === 'object' &&
+    origin !== null &&
+    'source' in origin &&
+    (origin as IpcOrigin).source === 'ipc'
+  )
 }
 
 let instance: CrdtProvider | null = null
@@ -315,4 +369,8 @@ export function getCrdtProvider(): CrdtProvider {
     instance = new CrdtProvider()
   }
   return instance
+}
+
+export function resetCrdtProvider(): void {
+  instance = null
 }

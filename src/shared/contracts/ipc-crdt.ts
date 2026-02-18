@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 export const CRDT_CHANNELS = {
   OPEN_DOC: 'crdt:open-doc',
   CLOSE_DOC: 'crdt:close-doc',
@@ -11,6 +13,23 @@ export const CRDT_EVENTS = {
   DOC_LOADED: 'crdt:doc-loaded',
   DOC_ERROR: 'crdt:doc-error'
 } as const
+
+export const CRDT_FRAGMENT_NAME = 'prosemirror' as const
+
+export const CrdtOpenDocSchema = z.object({ noteId: z.string().min(1) })
+export const CrdtCloseDocSchema = z.object({ noteId: z.string().min(1) })
+export const CrdtApplyUpdateSchema = z.object({
+  noteId: z.string().min(1),
+  update: z.array(z.number().int().min(0).max(255))
+})
+export const CrdtSyncStep1Schema = z.object({
+  noteId: z.string().min(1),
+  stateVector: z.array(z.number().int().min(0).max(255))
+})
+export const CrdtSyncStep2Schema = z.object({
+  noteId: z.string().min(1),
+  diff: z.array(z.number().int().min(0).max(255))
+})
 
 export interface CrdtOpenDocInput {
   noteId: string
@@ -28,13 +47,11 @@ export interface CrdtCloseDocInput {
 export interface CrdtApplyUpdateInput {
   noteId: string
   update: Uint8Array
-  sourceWindowId: number
 }
 
 export interface CrdtSyncStep1Input {
   noteId: string
   stateVector: Uint8Array
-  sourceWindowId: number
 }
 
 export interface CrdtSyncStep1Result {
@@ -45,7 +62,6 @@ export interface CrdtSyncStep1Result {
 export interface CrdtSyncStep2Input {
   noteId: string
   diff: Uint8Array
-  sourceWindowId: number
 }
 
 export interface CrdtStateChangedEvent {
