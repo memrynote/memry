@@ -23,7 +23,7 @@ import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider } from './crdt-provider'
 import { CrdtUpdateQueue } from './crdt-queue'
 import { encryptCrdtUpdate } from './crdt-encrypt'
-import { postToServer } from './http-client'
+import { postToServer, SyncServerError } from './http-client'
 
 const log = createLogger('SyncRuntime')
 
@@ -59,6 +59,10 @@ function getCurrentDeviceId(db: DrizzleDb): string | null {
 
 export function getSyncEngine(): SyncEngine | null {
   return runtime?.engine ?? null
+}
+
+export function getCrdtQueue(): CrdtUpdateQueue | null {
+  return runtime?.crdtQueue ?? null
 }
 
 async function seedExistingCrdtDocs(crdtProvider: ReturnType<typeof getCrdtProvider>): Promise<void> {
@@ -124,6 +128,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             return btoa(String.fromCharCode(...encrypted))
           })
           await postToServer('/sync/crdt/updates', { noteId, updates: b64Updates }, token)
+        } catch (err) {
+          if (err instanceof SyncServerError && err.statusCode === 401) {
+            crdtQueue.pause()
+          }
+          throw err
         } finally {
           secureCleanup(vaultKey)
           secureCleanup(signingSecretKey)

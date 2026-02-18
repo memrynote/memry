@@ -16,6 +16,7 @@ export class CrdtUpdateQueue {
   private flushTimer: ReturnType<typeof setInterval> | null = null
   private flushingNotes = new Set<string>()
   private pushFn: ((noteId: string, updates: Uint8Array[]) => Promise<void>) | null = null
+  private paused = false
 
   start(pushFn: (noteId: string, updates: Uint8Array[]) => Promise<void>): void {
     this.pushFn = pushFn
@@ -32,6 +33,19 @@ export class CrdtUpdateQueue {
     }
     this.flushAll()
     log.info('CrdtUpdateQueue stopped')
+  }
+
+  pause(): void {
+    if (this.paused) return
+    this.paused = true
+    log.warn('CrdtUpdateQueue paused — buffered updates will flush on resume')
+  }
+
+  resume(): void {
+    if (!this.paused) return
+    this.paused = false
+    log.info('CrdtUpdateQueue resumed')
+    this.flushAll()
   }
 
   enqueue(noteId: string, rawUpdate: Uint8Array): void {
@@ -62,6 +76,7 @@ export class CrdtUpdateQueue {
   }
 
   private flushNote(noteId: string): void {
+    if (this.paused) return
     if (this.flushingNotes.has(noteId)) return
 
     const buffer = this.buffers.get(noteId)
@@ -78,7 +93,9 @@ export class CrdtUpdateQueue {
     this.flushingNotes.add(noteId)
     this.pushFn(noteId, updates.map((u) => u.rawUpdate))
       .catch((err) => {
-        log.error('Failed to push CRDT updates', { noteId, error: err })
+        if (!this.paused) {
+          log.error('Failed to push CRDT updates', { noteId, error: err })
+        }
         let existing = this.buffers.get(noteId)
         if (!existing) {
           existing = []

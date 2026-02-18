@@ -65,7 +65,7 @@ import { deleteFromServer, getFromServer, postToServer, SyncServerError } from '
 
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler } from './validate'
-import { getSyncEngine } from '../sync/runtime'
+import { getCrdtQueue, getSyncEngine } from '../sync/runtime'
 
 const logger = createLogger('IPC:Sync')
 
@@ -264,6 +264,7 @@ const doRefreshAccessToken = async (): Promise<boolean> => {
       await storeToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN, response.accessToken)
       await storeToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN, response.refreshToken)
       scheduleTokenRefresh(response.expiresIn)
+      getCrdtQueue()?.resume()
       return true
     } catch (error: unknown) {
       if (error instanceof SyncServerError && error.statusCode === 401) break
