@@ -11,7 +11,7 @@ import { increment } from '../vector-clock'
 import { getIndexDatabase } from '../../database/client'
 import { atomicWrite, deleteFile, generateNotePath } from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getNotesDir } from '../../vault/notes'
-import { serializeNote } from '../../vault/frontmatter'
+import { serializeNote, type NoteFrontmatter } from '../../vault/frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { getNoteCacheById, updateNoteCache } from '@shared/db/queries/notes'
 import { createLogger } from '../../lib/logger'
@@ -62,13 +62,13 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     const title = data.title ?? 'Untitled'
     const content = data.content ?? ''
 
-    const frontmatter = {
+    const frontmatter: NoteFrontmatter = {
       id: itemId,
       title,
       created: data.createdAt ?? now,
       modified: data.modifiedAt ?? now,
       tags: data.tags ?? [],
-      aliases: data.aliases ?? undefined
+      ...(data.aliases?.length ? { aliases: data.aliases } : {})
     }
 
     const fileContent = serializeNote(frontmatter, content)
