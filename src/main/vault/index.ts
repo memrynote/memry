@@ -258,14 +258,13 @@ async function openVault(vaultPath: string): Promise<void> {
   // Start file watcher for external changes
   await startWatcher(vaultPath)
 
-  await startSyncRuntime()
-
-  // Update status
   updateStatus({
     isOpen: true,
     path: vaultPath,
     error: null
   })
+
+  await startSyncRuntime()
 
   // Start loading embedding model in background (non-blocking)
   // This ensures the model is ready when user needs AI suggestions
