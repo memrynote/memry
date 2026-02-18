@@ -990,13 +990,37 @@ export class SyncEngine extends EventEmitter {
 
       while (hasMore) {
         const result = await getFromServer<{
-          updates: Array<{ sequenceNum: number; data: string; createdAt: number }>
+          updates: Array<{
+            sequenceNum: number
+            data: string
+            createdAt: number
+            signerDeviceId: string
+          }>
           hasMore: boolean
         }>(`/sync/crdt/updates?note_id=${encodeURIComponent(noteId)}&since=${since}&limit=100`, token)
 
+        const signerIds = new Set(result.updates.map((u) => u.signerDeviceId))
+        for (const sid of signerIds) {
+          await this.deps.getDevicePublicKey(sid)
+        }
+
         for (const entry of result.updates) {
-          const packed = Uint8Array.from(atob(entry.data), (ch) => ch.charCodeAt(0))
-          const decrypted = decryptCrdtUpdate(packed, vaultKey)
+          const bin = atob(entry.data)
+          const packed = new Uint8Array(bin.length)
+          for (let i = 0; i < bin.length; i++) packed[i] = bin.charCodeAt(i)
+
+          const signerPubKey = await this.deps.getDevicePublicKey(entry.signerDeviceId)
+          if (!signerPubKey) {
+            log.warn('Skipping CRDT update from unresolvable signer', {
+              noteId,
+              signerDeviceId: entry.signerDeviceId,
+              sequenceNum: entry.sequenceNum
+            })
+            since = entry.sequenceNum
+            continue
+          }
+
+          const decrypted = decryptCrdtUpdate(packed, vaultKey, noteId, signerPubKey)
           this.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted)
           since = entry.sequenceNum
         }

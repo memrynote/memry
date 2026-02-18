@@ -5,6 +5,9 @@ import { signPayload } from '../crypto/signatures'
 import { secureCleanup } from '../crypto/index'
 import { CBOR_FIELD_ORDER } from '@shared/contracts/cbor-ordering'
 import type { PushItem, SyncItemType, SyncOperation, VectorClock } from '@shared/contracts/sync-api'
+// Compression before encryption: compression oracle risk accepted because CRDT updates
+// have low entropy variance (attacker can't adaptively probe content) and all crypto
+// operations use constant-time primitives (no timing side-channel)
 import { compressPayload } from './compress'
 
 export interface EncryptItemInput {
