@@ -80,6 +80,7 @@ export const NoteSyncPayloadSchema = z.object({
   properties: z.record(z.string(), z.unknown()).nullable().optional(),
   aliases: z.array(z.string()).nullable().optional(),
   fileType: z.enum(['markdown', 'pdf', 'image', 'audio', 'video']).optional(),
+  folderPath: z.string().nullable().optional(),
   clock: VectorClockSchema.optional(),
   createdAt: z.string().optional(),
   modifiedAt: z.string().optional()

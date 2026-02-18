@@ -1,3 +1,4 @@
+import fs from 'fs'
 import { isNull, and } from 'drizzle-orm'
 import { noteCache } from '@shared/db/schema/notes-cache'
 import {
@@ -8,6 +9,7 @@ import { NotesChannels } from '@shared/ipc-channels'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
+import { extractFolderFromPath } from '../note-sync'
 import { getIndexDatabase } from '../../database/client'
 import { atomicWrite, deleteFile, generateNotePath } from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getNotesDir } from '../../vault/notes'
@@ -46,13 +48,42 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
         log.warn('Concurrent note edit, applying (CRDT handles merge)', { itemId })
       }
 
-      updateNoteCache(indexDb, itemId, {
+      const localFolder = extractFolderFromPath(existing.path)
+      const remoteFolder = data.folderPath ?? null
+      const folderChanged = localFolder !== remoteFolder
+
+      const updateFields: Parameters<typeof updateNoteCache>[2] = {
         title: data.title ?? existing.title,
         emoji: data.emoji ?? existing.emoji,
         clock: resolution.mergedClock,
         syncedAt: now,
         modifiedAt: data.modifiedAt ?? now
-      })
+      }
+
+      if (folderChanged) {
+        const notesDir = getNotesDir()
+        const title = data.title ?? existing.title
+        const newAbsPath = generateNotePath(notesDir, title, remoteFolder ?? undefined)
+        const newRelPath = toRelativePath(newAbsPath)
+        const oldAbsPath = toAbsolutePath(existing.path)
+
+        updateFields.path = newRelPath
+
+        try {
+          const fileContent = fs.readFileSync(oldAbsPath, 'utf-8')
+          atomicWrite(newAbsPath, fileContent)
+            .then(() => deleteFile(oldAbsPath))
+            .catch((err: unknown) => {
+              log.error('Failed to move synced note to new folder', { itemId, error: err })
+            })
+        } catch {
+          log.warn('Could not read old note for folder move', { itemId })
+        }
+
+        ctx.emit(NotesChannels.events.MOVED, { id: itemId, oldPath: existing.path, newPath: newRelPath, source: 'sync' })
+      }
+
+      updateNoteCache(indexDb, itemId, updateFields)
 
       ctx.emit(NotesChannels.events.UPDATED, { id: itemId, source: 'sync' })
       return resolution.action === 'merge' ? 'conflict' : 'applied'
@@ -72,7 +103,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     }
 
     const fileContent = serializeNote(frontmatter, content)
-    const absolutePath = generateNotePath(notesDir, title)
+    const absolutePath = generateNotePath(notesDir, title, data.folderPath ?? undefined)
     const relPath = toRelativePath(absolutePath)
 
     syncNoteToCache(
@@ -133,6 +164,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
 
     for (const item of items) {
       const clock = increment({}, deviceId)
+      const folderPath = extractFolderFromPath(item.path)
       updateNoteCache(indexDb, item.id, { clock })
       queue.enqueue({
         type: 'note',
@@ -142,6 +174,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
           title: item.title,
           emoji: item.emoji,
           fileType: item.fileType,
+          folderPath,
           clock,
           createdAt: item.createdAt,
           modifiedAt: item.modifiedAt
