@@ -414,6 +414,8 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   const [isRenaming, setIsRenaming] = useState(false)
   const renameInputRef = useRef<HTMLInputElement>(null)
   const treeContainerRef = useRef<HTMLDivElement>(null)
+  const [isTreeFocused, setIsTreeFocused] = useState(false)
+  const isTreeFocusedRef = useRef(false)
 
   // Inline rename state for folders
   const [renamingFolderPath, setRenamingFolderPath] = useState<string | null>(null)
@@ -508,32 +510,30 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     return map
   }, [notes])
 
-  // Compute target folder from selection (for creating notes/folders in context)
+  // Compute target folder from selection — only when tree is focused so toolbar
+  // buttons create at root when the user clicks away from the tree
   const targetFolder = useMemo(() => {
-    if (selectedIds.length === 0) return '' // root
+    if (!isTreeFocused) return ''
+    if (selectedIds.length === 0) return ''
 
     const selectedId = selectedIds[0]
 
-    // If folder selected, use its path
     if (selectedId.startsWith('folder-')) {
       return selectedId.replace('folder-', '')
     }
 
-    // If note selected, get its parent folder
     const note = noteMap.get(selectedId)
     if (note) {
       const parts = note.path.split('/')
-      parts.pop() // remove filename
-      // If path is "notes/subfolder/file.md", after pop we have ["notes", "subfolder"]
-      // We want "subfolder" (remove the "notes" prefix)
+      parts.pop()
       if (parts.length > 1 && parts[0] === 'notes') {
         return parts.slice(1).join('/')
       }
-      return '' // root notes folder
+      return ''
     }
 
     return ''
-  }, [selectedIds, noteMap])
+  }, [selectedIds, noteMap, isTreeFocused])
 
   // Handle note selection - update state and optionally open in tab
   const handleSelectionChange = useCallback(
@@ -590,21 +590,20 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   const handleCreateNote = useCallback(async () => {
     if (isCreating) return
 
+    const folder = isTreeFocusedRef.current ? targetFolder : ''
+
     setIsCreating(true)
     try {
-      // Get folder's default template (if any)
-      const templateId = targetFolder ? await notesService.getFolderTemplate(targetFolder) : null
+      const templateId = folder ? await notesService.getFolderTemplate(folder) : null
 
       const result = await createNoteMutateAsync({
         title: 'Untitled',
-        folder: targetFolder || undefined,
+        folder: folder || undefined,
         template: templateId ?? undefined
-        // Note: content is intentionally omitted to allow template content to be used
       })
 
       if (result.success && result.note) {
         const newNote = result.note
-        // Open the new note in a tab
         openTab({
           type: 'note',
           title: getDisplayName(newNote.path),
@@ -618,7 +617,6 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           isDeleted: false
         })
 
-        // Auto-focus rename mode for the new note
         setRenamingNoteId(newNote.id)
         setRenameValue('Untitled')
       }
@@ -688,15 +686,15 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   const handleCreateFolder = useCallback(async () => {
     if (isCreatingFolder) return
 
+    const folder = isTreeFocusedRef.current ? targetFolder : ''
+
     setIsCreatingFolder(true)
     try {
-      // Generate unique folder name
       const baseName = 'Untitled Folder'
       let folderName = baseName
       let counter = 1
-      const targetPath = targetFolder ? `${targetFolder}/` : ''
+      const targetPath = folder ? `${folder}/` : ''
 
-      // Check for existing folders with same name
       while (folders.includes(`${targetPath}${folderName}`)) {
         folderName = `${baseName} ${counter++}`
       }
@@ -705,10 +703,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       const success = await createFolder(fullPath)
 
       if (success) {
-        // Reload folders to show the new one
         await refreshFolders()
-
-        // Auto-focus rename mode for the new folder
         setRenamingFolderPath(fullPath)
         setFolderRenameValue(folderName)
       }
@@ -719,17 +714,15 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     }
   }, [isCreatingFolder, createFolder, folders, targetFolder, refreshFolders])
 
-  // Handle importing files
   const handleImportFiles = useCallback(async () => {
+    const folder = isTreeFocusedRef.current ? targetFolder : ''
     try {
-      // Show file dialog
       const dialogResult = await notesService.showImportDialog()
       if (dialogResult.canceled || dialogResult.filePaths.length === 0) {
         return
       }
 
-      // Import files to current folder
-      const result = await notesService.importFiles(dialogResult.filePaths, targetFolder || '')
+      const result = await notesService.importFiles(dialogResult.filePaths, folder || '')
 
       if (result.imported > 0) {
         toast.success(`Imported ${result.imported} file${result.imported > 1 ? 's' : ''}`)
@@ -1631,7 +1624,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     const isBeingRenamed = renamingFolderPath === folder.path
 
     return (
-      <TreeNode key={folder.path} nodeId={`folder-${folder.path}`} level={level} isLast={isLast}>
+      <TreeNode key={folder.path} nodeId={`folder-${folder.path}`} level={level} isLast={isLast} acceptsDropInside>
         <TreeNodeTrigger
           expandOnly
           contextMenuContent={
@@ -1737,7 +1730,21 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   }
 
   return (
-    <div ref={treeContainerRef} className="flex flex-col" tabIndex={-1}>
+    <div
+      ref={treeContainerRef}
+      className="flex flex-col"
+      tabIndex={-1}
+      onFocus={() => {
+        isTreeFocusedRef.current = true
+        setIsTreeFocused(true)
+      }}
+      onBlur={(e) => {
+        if (!treeContainerRef.current?.contains(e.relatedTarget as Node)) {
+          isTreeFocusedRef.current = false
+          setIsTreeFocused(false)
+        }
+      }}
+    >
       <TreeProvider
         selectedIds={selectedIds}
         onSelectionChange={handleSelectionChange}

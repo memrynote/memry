@@ -105,6 +105,7 @@ type TreeNodeContextType = {
   parentPath: boolean[]
   hasChildren: boolean
   setHasChildren: (value: boolean) => void
+  acceptsDropInside: boolean
   customIcon?: string
   inheritedIcon?: string
   setCustomIcon: (iconName: string | undefined) => void
@@ -436,6 +437,7 @@ export type TreeNodeProps = HTMLAttributes<HTMLDivElement> & {
   isLast?: boolean
   parentPath?: boolean[]
   children?: ReactNode
+  acceptsDropInside?: boolean
   customIcon?: string
   inheritedIcon?: string
 }
@@ -448,6 +450,7 @@ export const TreeNode = ({
   children,
   className,
   onClick,
+  acceptsDropInside = false,
   customIcon: initialCustomIcon,
   inheritedIcon: initialInheritedIcon,
   ...props
@@ -498,6 +501,7 @@ export const TreeNode = ({
         parentPath: currentPath,
         hasChildren,
         setHasChildren,
+        acceptsDropInside,
         customIcon,
         inheritedIcon,
         setCustomIcon,
@@ -547,7 +551,7 @@ export const TreeNodeTrigger = ({
     setNodeIcon,
     getEffectiveIcon
   } = useTree()
-  const { nodeId, level, hasChildren, parentId, customIcon } = useTreeNode()
+  const { nodeId, level, hasChildren, parentId, customIcon, acceptsDropInside } = useTreeNode()
   const isSelected = selectedIds.includes(nodeId)
   const triggerRef = useRef<HTMLDivElement>(null)
 
@@ -672,7 +676,8 @@ export const TreeNodeTrigger = ({
 
       const y = e.clientY - rect.top
       const height = rect.height
-      const threshold = height / 3
+      const canDropInside = hasChildren || acceptsDropInside
+      const threshold = canDropInside ? height / 4 : height / 2
 
       let position: DropPosition
       if (y < threshold) {
@@ -680,12 +685,12 @@ export const TreeNodeTrigger = ({
       } else if (y > height - threshold) {
         position = 'after'
       } else {
-        position = hasChildren ? 'inside' : 'after'
+        position = canDropInside ? 'inside' : 'after'
       }
 
       setDragState({ dropTargetId: nodeId, dropPosition: position })
     },
-    [draggable, dragState.draggedId, nodeId, hasChildren, setDragState]
+    [draggable, dragState.draggedId, nodeId, hasChildren, acceptsDropInside, setDragState]
   )
 
   const handleDragLeave = useCallback(
