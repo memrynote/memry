@@ -76,6 +76,7 @@ export const NoteSyncPayloadSchema = z.object({
   title: z.string().optional(),
   content: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
+  pinnedTags: z.array(z.string()).optional(),
   emoji: z.string().nullable().optional(),
   properties: z.record(z.string(), z.unknown()).nullable().optional(),
   aliases: z.array(z.string()).nullable().optional(),
@@ -96,6 +97,13 @@ export const JournalSyncPayloadSchema = z.object({
   modifiedAt: z.string().optional()
 })
 
+export const TagDefinitionSyncPayloadSchema = z.object({
+  name: z.string(),
+  color: z.string(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional()
+})
+
 export type TaskSyncPayload = z.infer<typeof TaskSyncPayloadSchema>
 export type InboxSyncPayload = z.infer<typeof InboxSyncPayloadSchema>
 export type FilterSyncPayload = z.infer<typeof FilterSyncPayloadSchema>
@@ -103,3 +111,4 @@ export type ProjectSyncPayload = z.infer<typeof ProjectSyncPayloadSchema>
 export type StatusSync = z.infer<typeof StatusSyncSchema>
 export type NoteSyncPayload = z.infer<typeof NoteSyncPayloadSchema>
 export type JournalSyncPayload = z.infer<typeof JournalSyncPayloadSchema>
+export type TagDefinitionSyncPayload = z.infer<typeof TagDefinitionSyncPayloadSchema>
