@@ -574,9 +574,10 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     modified: new Date().toISOString()
   }
 
-  // T013: Add properties to frontmatter if present
   if (Object.keys(newProperties).length > 0) {
     newFrontmatter.properties = newProperties
+  } else {
+    delete newFrontmatter.properties
   }
 
   // T028: Add emoji to frontmatter if present
