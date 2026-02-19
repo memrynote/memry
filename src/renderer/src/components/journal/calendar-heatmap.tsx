@@ -56,10 +56,12 @@ export function getHeatmapLevel(charCount: number): 0 | 1 | 2 | 3 | 4 {
 // COMPONENT
 // =============================================================================
 
+const EMPTY_HEATMAP: HeatmapEntry[] = []
+
 export function JournalCalendar({
   selectedDate,
   onDayClick,
-  heatmapData = [],
+  heatmapData = EMPTY_HEATMAP,
   className
 }: JournalCalendarProps): React.JSX.Element {
   const today = getTodayString()

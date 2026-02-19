@@ -19,9 +19,11 @@ interface NoteLayoutProps {
   stats?: DocumentStats
 }
 
+const EMPTY_HEADINGS: HeadingItem[] = []
+
 export function NoteLayout({
   children,
-  headings = [],
+  headings = EMPTY_HEADINGS,
   onHeadingClick,
   className,
   stats
