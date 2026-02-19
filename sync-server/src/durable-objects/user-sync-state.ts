@@ -103,15 +103,22 @@ export class UserSyncState extends DurableObject<Bindings> {
   }
 
   private async handleBroadcast(request: Request): Promise<Response> {
-    const body: { excludeDeviceId: string; cursor: number } = await request.json()
+    const body: {
+      excludeDeviceId: string
+      cursor?: number
+      type?: string
+      noteId?: string
+    } = await request.json()
 
     const allSockets = this.ctx.getWebSockets()
     let sent = 0
 
-    const message = JSON.stringify({
-      type: 'changes_available',
-      payload: { cursor: body.cursor }
-    })
+    const msgType = body.type ?? 'changes_available'
+    const payload: Record<string, unknown> = {}
+    if (body.cursor !== undefined) payload.cursor = body.cursor
+    if (body.noteId) payload.noteId = body.noteId
+
+    const message = JSON.stringify({ type: msgType, payload })
 
     for (const ws of allSockets) {
       const attachment = ws.deserializeAttachment() as WsAttachment | null

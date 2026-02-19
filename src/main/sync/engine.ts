@@ -797,6 +797,15 @@ export class SyncEngine extends EventEmitter {
           this.scheduleSync(() => this.pull())
         }
         break
+      case 'crdt_updated': {
+        if (!this.isPaused()) {
+          const noteId = message.payload?.noteId as string | undefined
+          if (noteId && this.deps.crdtProvider) {
+            this.scheduleSync(() => this.pullCrdtForNote(noteId))
+          }
+        }
+        break
+      }
       case 'heartbeat':
         break
       case 'error':
@@ -1140,6 +1149,20 @@ export class SyncEngine extends EventEmitter {
         noteId,
         error: err instanceof Error ? err.message : String(err)
       })
+    }
+  }
+
+  private async pullCrdtForNote(noteId: string): Promise<void> {
+    const token = await this.deps.getAccessToken()
+    if (!token) return
+
+    const vaultKey = await this.deps.getVaultKey()
+    if (!vaultKey) return
+
+    try {
+      await this.applyCrdtIncrementals(noteId, token, vaultKey)
+    } finally {
+      secureCleanup(vaultKey)
     }
   }
 }
