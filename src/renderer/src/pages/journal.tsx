@@ -247,7 +247,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const selectedDateObj = parseISODate(selectedDate)
   const dateParts = useMemo(() => formatDateParts(selectedDate), [selectedDate])
 
-  const currentYear = useMemo(() => dateParts.year, [dateParts.year])
+  const currentYear = dateParts.year
   const { data: heatmapData } = useJournalHeatmap(currentYear)
 
   const viewMonth = viewState.type === 'month' ? viewState.month : dateParts.monthIndex
@@ -856,6 +856,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                       )}
 
                       <div
+                        role="presentation"
                         className={cn(
                           'editor-click-area min-h-[300px] relative transition-all duration-500 ease-in-out overflow-visible',
                           isCompactMode ? 'pl-0' : 'note-margin-line pl-6 lg:pl-8'

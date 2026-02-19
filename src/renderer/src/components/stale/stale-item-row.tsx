@@ -103,6 +103,12 @@ export const StaleItemRow = ({
       aria-label={`${item.type}: ${item.title}`}
       aria-selected={isSelected}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleClick()
+        }
+      }}
       data-item-id={item.id}
     >
       {/* Top row: checkbox, icon, title, timestamp */}

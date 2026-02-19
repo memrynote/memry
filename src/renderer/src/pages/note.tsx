@@ -713,6 +713,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
           {/* Main content - BlockNote Editor with Markdown */}
           <div
+            role="presentation"
             className="editor-click-area min-h-[400px] relative"
             onMouseDown={(e) => {
               const target = e.target as HTMLElement

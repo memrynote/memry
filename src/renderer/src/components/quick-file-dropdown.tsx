@@ -71,6 +71,13 @@ const QuickFileDropdownItem = ({
         isHighlighted ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted'
       )}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleClick()
+        }
+      }}
+      tabIndex={0}
       role="option"
       aria-selected={isHighlighted}
     >

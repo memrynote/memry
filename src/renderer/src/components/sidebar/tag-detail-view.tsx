@@ -225,7 +225,15 @@ function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): R
   return (
     <div
       className="group/noteitem px-3 py-2 hover:bg-accent/50 cursor-pointer relative"
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick()
+        }
+      }}
     >
       <div className="flex items-start gap-2">
         {/* Icon */}
