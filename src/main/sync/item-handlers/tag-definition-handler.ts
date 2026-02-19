@@ -55,6 +55,7 @@ export const tagDefinitionHandler: SyncItemHandler<TagDefinitionSyncPayload> = {
           .run()
 
         ctx.emit(TagsChannels.events.COLOR_UPDATED, { tag: itemId, color: data.color })
+        ctx.emit('notes:tags-changed', {})
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
 
@@ -68,6 +69,7 @@ export const tagDefinitionHandler: SyncItemHandler<TagDefinitionSyncPayload> = {
         .run()
 
       ctx.emit(TagsChannels.events.NOTES_CHANGED, { tag: itemId })
+      ctx.emit('notes:tags-changed', {})
       return 'applied'
     })
   },
@@ -90,6 +92,7 @@ export const tagDefinitionHandler: SyncItemHandler<TagDefinitionSyncPayload> = {
 
     ctx.db.delete(tagDefinitions).where(eq(tagDefinitions.name, itemId)).run()
     ctx.emit(TagsChannels.events.DELETED, { tag: itemId })
+    ctx.emit('notes:tags-changed', {})
     return 'applied'
   },
 

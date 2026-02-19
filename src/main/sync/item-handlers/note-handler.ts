@@ -16,20 +16,29 @@ import {
   generateUniquePathSync
 } from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getNotesDir } from '../../vault/notes'
-import { parseNote, serializeNote, type NoteFrontmatter } from '../../vault/frontmatter'
+import { parseNote, serializeNote, inferPropertyType, type NoteFrontmatter } from '../../vault/frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import {
   getNoteCacheById,
   getNoteCacheByPath,
   getNoteTags,
   setNoteTags,
-  updateNoteCache
+  updateNoteCache,
+  getNoteProperties,
+  setNoteProperties,
+  getPropertyType,
+  type PropertyValue
 } from '@shared/db/queries/notes'
 import { createLogger } from '../../lib/logger'
 import { resolveClockConflict } from './types'
+import { getPinnedTagsForNote, applyPinnedTags } from './note-pin-helpers'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('NoteHandler')
+
+function propsToRecord(props: PropertyValue[]): Record<string, unknown> {
+  return Object.fromEntries(props.map((p) => [p.name, p.value]))
+}
 
 async function removeEmptyParents(dir: string, stopAt: string): Promise<void> {
   let current = dir
@@ -92,9 +101,15 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
         (remoteTags.length !== localTags.length ||
           remoteTags.some((t) => !localTags.includes(t)))
 
+      const remoteProperties = data.properties
+      const propertiesPresent = remoteProperties !== undefined && remoteProperties !== null
+
+      const resolvedEmoji = data.emoji ?? existing.emoji
+      const emojiChanged = data.emoji !== undefined && data.emoji !== existing.emoji
+
       const updateFields: Parameters<typeof updateNoteCache>[2] = {
         title: newTitle,
-        emoji: data.emoji ?? existing.emoji,
+        emoji: resolvedEmoji,
         clock: resolution.mergedClock,
         syncedAt: now,
         modifiedAt: data.modifiedAt ?? now
@@ -118,6 +133,12 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
           parsed.frontmatter.title = newTitle
           if (tagsChanged && remoteTags) {
             parsed.frontmatter.tags = remoteTags
+          }
+          if (propertiesPresent) {
+            parsed.frontmatter.properties = remoteProperties
+          }
+          if (emojiChanged) {
+            parsed.frontmatter.emoji = resolvedEmoji
           }
           const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
 
@@ -149,18 +170,26 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
             source: 'sync'
           })
         }
-      } else if (tagsChanged && remoteTags) {
+      } else if ((tagsChanged && remoteTags) || propertiesPresent || emojiChanged) {
         const absPath = toAbsolutePath(existing.path)
         try {
           const raw = fs.readFileSync(absPath, 'utf-8')
           const parsed = parseNote(raw)
-          parsed.frontmatter.tags = remoteTags
+          if (tagsChanged && remoteTags) {
+            parsed.frontmatter.tags = remoteTags
+          }
+          if (propertiesPresent) {
+            parsed.frontmatter.properties = remoteProperties
+          }
+          if (emojiChanged) {
+            parsed.frontmatter.emoji = resolvedEmoji
+          }
           const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
           atomicWrite(absPath, updatedContent).catch((err: unknown) => {
-            log.error('Failed to write tag update to synced note', { itemId, error: err })
+            log.error('Failed to write frontmatter update to synced note', { itemId, error: err })
           })
         } catch {
-          log.warn('Could not read note for tag update', { itemId })
+          log.warn('Could not read note for frontmatter update', { itemId })
         }
       }
 
@@ -168,9 +197,22 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
         setNoteTags(indexDb, itemId, remoteTags)
       }
 
+      if (propertiesPresent) {
+        const getType = (name: string, value: unknown) =>
+          getPropertyType(indexDb, name, value, inferPropertyType)
+        setNoteProperties(indexDb, itemId, remoteProperties, getType)
+      }
+
+      if (data.pinnedTags) {
+        applyPinnedTags(indexDb, itemId, data.pinnedTags)
+      }
+
       updateNoteCache(indexDb, itemId, updateFields)
 
       ctx.emit(NotesChannels.events.UPDATED, { id: itemId, source: 'sync' })
+      if (tagsChanged) {
+        ctx.emit('notes:tags-changed', {})
+      }
       return resolution.action === 'merge' ? 'conflict' : 'applied'
     }
 
@@ -184,7 +226,9 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       created: data.createdAt ?? now,
       modified: data.modifiedAt ?? now,
       tags: data.tags ?? [],
-      ...(data.aliases?.length ? { aliases: data.aliases } : {})
+      ...(data.aliases?.length ? { aliases: data.aliases } : {}),
+      ...(data.properties ? { properties: data.properties } : {}),
+      ...(data.emoji ? { emoji: data.emoji } : {})
     }
 
     const fileContent = serializeNote(frontmatter, content)
@@ -201,6 +245,10 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       { isNew: true }
     )
     updateNoteCache(indexDb, itemId, { clock: remoteClock, syncedAt: now })
+
+    if (data.pinnedTags) {
+      applyPinnedTags(indexDb, itemId, data.pinnedTags)
+    }
 
     atomicWrite(absolutePath, fileContent).catch((err) => {
       log.error('Failed to write synced note to disk', { itemId, error: err })
@@ -261,11 +309,15 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     }
 
     const folderPath = extractFolderFromPath(cached.path)
+    const properties = propsToRecord(getNoteProperties(indexDb, itemId))
+    const pinnedTags = getPinnedTagsForNote(indexDb, itemId)
 
     return JSON.stringify({
       title: cached.title,
       content,
       tags,
+      properties,
+      pinnedTags,
       emoji: cached.emoji,
       fileType: cached.fileType,
       folderPath,
@@ -286,6 +338,8 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     for (const item of items) {
       const clock = increment({}, deviceId)
       const folderPath = extractFolderFromPath(item.path)
+      const properties = propsToRecord(getNoteProperties(indexDb, item.id))
+      const pinnedTags = getPinnedTagsForNote(indexDb, item.id)
       updateNoteCache(indexDb, item.id, { clock })
       queue.enqueue({
         type: 'note',
@@ -296,6 +350,8 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
           emoji: item.emoji,
           fileType: item.fileType,
           folderPath,
+          ...(Object.keys(properties).length > 0 ? { properties } : {}),
+          ...(pinnedTags.length > 0 ? { pinnedTags } : {}),
           clock,
           createdAt: item.createdAt,
           modifiedAt: item.modifiedAt
