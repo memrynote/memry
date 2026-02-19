@@ -367,6 +367,7 @@ function normalizeMarkdownHardBreaks(markdown: string): string {
  */
 interface ContentAreaEditorProps extends ContentAreaProps {
   yjsFragment?: Y.XmlFragment
+  isRemoteUpdateRef?: React.RefObject<boolean>
 }
 
 const ContentAreaEditor = memo(function ContentAreaEditor({
@@ -383,7 +384,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   onInternalLinkClick,
   className,
   initialHighlight,
-  yjsFragment
+  yjsFragment,
+  isRemoteUpdateRef
 }: ContentAreaEditorProps) {
   // T030: Get current theme for dark mode support
   const { resolvedTheme } = useTheme()
@@ -699,6 +701,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
     // Notify parent of content changes (blocks) - synchronous, lightweight
     onContentChange?.(blocks as Block[])
+
+    // Skip save for remote Y.Doc updates — content came from another device via CRDT,
+    // re-saving would enqueue a metadata push and trigger a sync ping-pong loop
+    if (isRemoteUpdateRef?.current) return
 
     // Debounce markdown conversion (150ms) - expensive async operation
     // This is the main performance optimization: converts blocks to markdown only after typing pauses
@@ -1094,7 +1100,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   const { state } = useSync()
   const syncActive = state.status === 'idle' || state.status === 'syncing'
-  const { fragment, isReady } = useYjsCollaboration({
+  const { fragment, isReady, isRemoteUpdateRef } = useYjsCollaboration({
     noteId: props.noteId,
     enabled: syncActive
   })
@@ -1107,7 +1113,13 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
     )
   }
 
-  return <ContentAreaEditor {...props} yjsFragment={isReady && fragment ? fragment : undefined} />
+  return (
+    <ContentAreaEditor
+      {...props}
+      yjsFragment={isReady && fragment ? fragment : undefined}
+      isRemoteUpdateRef={isRemoteUpdateRef}
+    />
+  )
 })
 
 export default ContentArea
