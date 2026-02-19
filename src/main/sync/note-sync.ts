@@ -3,7 +3,10 @@ import path from 'path'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { NoteSyncPayload } from '@shared/contracts/sync-payloads'
 import type { NoteCache } from '@shared/db/schema/notes-cache'
+import { getNoteProperties, type PropertyValue } from '@shared/db/queries/notes'
+import { getPinnedTagsForNote } from './item-handlers/note-pin-helpers'
 import { ContentSyncService, type ContentSyncDeps } from './content-sync-base'
+import { getIndexDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
 import { toAbsolutePath } from '../vault/notes'
 import { getConfig } from '../vault/index'
@@ -11,6 +14,10 @@ import { parseNote } from '../vault/frontmatter'
 import { registerRenameSyncCallback, unregisterRenameSyncCallback } from '../vault/rename-tracker'
 
 const log = createLogger('NoteSync')
+
+function propsToRecord(props: PropertyValue[]): Record<string, unknown> {
+  return Object.fromEntries(props.map((p) => [p.name, p.value]))
+}
 
 let instance: NoteSyncService | null = null
 
@@ -68,11 +75,16 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
     }
 
     const folderPath = extractFolderFromPath(cached.path)
+    const indexDb = getIndexDatabase()
+    const properties = propsToRecord(getNoteProperties(indexDb, cached.id))
+    const pinnedTags = getPinnedTagsForNote(indexDb, cached.id)
 
     return {
       title: cached.title,
       content,
       tags,
+      properties,
+      pinnedTags,
       emoji: cached.emoji,
       fileType: cached.fileType,
       folderPath,
