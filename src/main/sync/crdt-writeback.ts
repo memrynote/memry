@@ -143,6 +143,7 @@ async function writebackExisting(
     { isNew: false }
   )
 
+  emitToRenderer(NotesChannels.events.UPDATED, { id: noteId, source: 'sync' })
   queueEmbeddingUpdate(noteId)
   log.debug('Write-back complete', { noteId })
 }
@@ -345,10 +346,14 @@ function mergeFrontmatter(
   const yjsTitle = meta.get('title') as string | undefined
   const yjsTags = getYjsTags(doc)
 
+  const indexDb = getIndexDatabase()
+  const cached = getNoteCacheById(indexDb, noteId)
+  const authorityTitle = cached?.title
+
   if (!existing) {
     return {
       id: noteId,
-      title: yjsTitle,
+      title: authorityTitle || yjsTitle,
       created: (meta.get('date') as string) || new Date().toISOString(),
       modified: new Date().toISOString(),
       tags: yjsTags.length > 0 ? yjsTags : undefined
@@ -357,7 +362,7 @@ function mergeFrontmatter(
 
   return {
     ...existing,
-    title: yjsTitle || existing.title,
+    title: authorityTitle || existing.title || yjsTitle,
     modified: new Date().toISOString(),
     tags: yjsTags.length > 0 ? yjsTags : existing.tags
   }

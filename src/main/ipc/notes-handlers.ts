@@ -202,6 +202,7 @@ export function registerNotesHandlers(): void {
       try {
         const note = await updateNote(input)
         getNoteSyncService()?.enqueueUpdate(input.id)
+        if (input.title) getCrdtProvider()?.updateMeta(input.id, { title: input.title })
         return { success: true, note }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update note'
@@ -217,6 +218,7 @@ export function registerNotesHandlers(): void {
       try {
         const note = await renameNote(input.id, input.newTitle)
         getNoteSyncService()?.enqueueUpdate(input.id)
+        getCrdtProvider()?.updateMeta(input.id, { title: input.newTitle })
         return { success: true, note }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to rename note'
