@@ -17,6 +17,10 @@ import { initProjectSyncService, resetProjectSyncService } from './project-sync'
 import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
+import {
+  initTagDefinitionSyncService,
+  resetTagDefinitionSyncService
+} from './tag-definition-sync'
 import { getIndexDatabase } from '../database/client'
 import { noteCache } from '@shared/db/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
@@ -115,6 +119,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       initSettingsSyncManager({ db: settingsDb, queue, getDeviceId })
       initNoteSyncService({ queue, getDeviceId })
       initJournalSyncService({ queue, getDeviceId })
+      initTagDefinitionSyncService({ queue, db: serviceDb, getDeviceId })
 
       const crdtQueue = new CrdtUpdateQueue()
       setOnTokenRefreshed(() => crdtQueue.resume())
@@ -261,6 +266,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       resetSettingsSyncManager()
       resetNoteSyncService()
       resetJournalSyncService()
+      resetTagDefinitionSyncService()
       log.error('Failed to start sync runtime', error)
       return null
     } finally {
@@ -283,6 +289,7 @@ export async function stopSyncRuntime(): Promise<void> {
   resetSettingsSyncManager()
   resetNoteSyncService()
   resetJournalSyncService()
+  resetTagDefinitionSyncService()
 
   if (!active) return
 
