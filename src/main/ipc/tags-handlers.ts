@@ -23,6 +23,7 @@ import {
   type DeleteTagResponse
 } from '@shared/contracts/tags-api'
 import { noteTags } from '@shared/db/schema/notes-cache'
+import { tagDefinitions } from '@shared/db/schema/tag-definitions'
 import { createValidatedHandler, createStringHandler } from './validate'
 import { getDatabase, getIndexDatabase } from '../database'
 import {
@@ -44,6 +45,7 @@ import { toAbsolutePath } from '../vault/notes'
 import { parseNote, serializeNote } from '../vault/frontmatter'
 import { atomicWrite } from '../vault/file-ops'
 import { getNoteSyncService } from '../sync/note-sync'
+import { getTagDefinitionSyncService } from '../sync/tag-definition-sync'
 
 const log = createLogger('TagsHandlers')
 
@@ -256,7 +258,20 @@ export function registerTagsHandlers(): void {
         const noteIds = getAffectedNoteIds(indexDb, input.oldName)
 
         const affectedNotes = renameTag(indexDb, input.oldName, input.newName)
+
+        const oldTagSnapshot = dataDb
+          .select()
+          .from(tagDefinitions)
+          .where(eq(tagDefinitions.name, input.oldName.toLowerCase().trim()))
+          .get()
+
         renameTagDefinition(dataDb, input.oldName, input.newName)
+
+        const syncService = getTagDefinitionSyncService()
+        if (syncService && oldTagSnapshot) {
+          syncService.enqueueDelete(input.oldName, JSON.stringify(oldTagSnapshot))
+          syncService.enqueueCreate(input.newName.toLowerCase().trim())
+        }
 
         const normalizedOld = input.oldName.toLowerCase().trim()
         const normalizedNew = input.newName.toLowerCase().trim()
@@ -292,8 +307,8 @@ export function registerTagsHandlers(): void {
       try {
         getOrCreateTag(dataDb, input.tag)
         updateTagColor(dataDb, input.tag, input.color)
+        getTagDefinitionSyncService()?.enqueueUpdate(input.tag)
 
-        // Emit event
         emitTagEvent(TagsChannels.events.COLOR_UPDATED, {
           tag: input.tag,
           color: input.color
@@ -320,10 +335,19 @@ export function registerTagsHandlers(): void {
       try {
         const noteIds = getAffectedNoteIds(indexDb, tag)
 
+        const normalizedTag = tag.toLowerCase().trim()
+        const tagSnapshot = dataDb
+          .select()
+          .from(tagDefinitions)
+          .where(eq(tagDefinitions.name, normalizedTag))
+          .get()
+
         const affectedNotes = deleteTag(indexDb, tag)
         deleteTagDefinition(dataDb, tag)
 
-        const normalizedTag = tag.toLowerCase().trim()
+        if (tagSnapshot) {
+          getTagDefinitionSyncService()?.enqueueDelete(normalizedTag, JSON.stringify(tagSnapshot))
+        }
         await Promise.all(
           noteIds.map((noteId) =>
             updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
