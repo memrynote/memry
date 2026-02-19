@@ -19,6 +19,10 @@ import { getIndexDatabase } from '../database/client'
 import { getNoteCacheById } from '@shared/db/queries/notes'
 import type { CrdtUpdateQueue } from './crdt-queue'
 import { scheduleWriteback, cancelPendingWritebacks, recordNetworkUpdate } from './crdt-writeback'
+import { toAbsolutePath } from '../vault/notes'
+import { safeRead } from '../vault/file-ops'
+import { parseNote } from '../vault/frontmatter'
+import { markdownToYFragment } from './blocknote-converter'
 
 const log = createLogger('CrdtProvider')
 
@@ -70,6 +74,8 @@ export class CrdtProvider {
       Y.applyUpdate(doc, update)
       persisted.destroy()
     }
+
+    await this.seedFromMarkdown(noteId, doc)
 
     const entry: ActiveDoc = {
       doc,
@@ -157,6 +163,27 @@ export class CrdtProvider {
     doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     doc.getMap('meta')
     doc.getArray('tags')
+  }
+
+  private async seedFromMarkdown(noteId: string, doc: Y.Doc): Promise<void> {
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    if (fragment.length > 0) return
+
+    const indexDb = getIndexDatabase()
+    const cached = getNoteCacheById(indexDb, noteId)
+    if (!cached) return
+
+    const raw = await safeRead(toAbsolutePath(cached.path))
+    if (!raw) return
+
+    const parsed = parseNote(raw, cached.path)
+    if (!parsed.content?.trim()) return
+
+    const ok = await markdownToYFragment(parsed.content, fragment)
+    if (ok && this.persistence) {
+      await this.persistence.storeUpdate(noteId, Y.encodeStateAsUpdate(doc))
+    }
+    if (ok) log.debug('Seeded Y.Doc from markdown', { noteId })
   }
 
   async initForNote(

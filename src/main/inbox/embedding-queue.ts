@@ -101,42 +101,34 @@ export async function processEmbeddingQueue(): Promise<{
   let totalSucceeded = 0
   let totalFailed = 0
 
-  try {
-    // Process in batches
-    while (pendingNoteIds.size > 0) {
-      // Get next batch
-      const batch = Array.from(pendingNoteIds).slice(0, BATCH_SIZE)
 
-      // Remove from pending
-      for (const noteId of batch) {
-        pendingNoteIds.delete(noteId)
-      }
+  // Process in batches
+  while (pendingNoteIds.size > 0) {
+    // Get next batch
+    const batch = Array.from(pendingNoteIds).slice(0, BATCH_SIZE)
 
-      // Process batch in parallel
-      const results = await Promise.allSettled(batch.map((noteId) => updateNoteEmbedding(noteId)))
+    // Remove from pending
+    for (const noteId of batch) {
+      pendingNoteIds.delete(noteId)
+    }
 
-      // Count results
-      for (const result of results) {
-        totalProcessed++
-        if (result.status === 'fulfilled' && result.value === true) {
-          totalSucceeded++
-        } else {
-          totalFailed++
-        }
-      }
+    // Process batch in parallel
+    const results = await Promise.allSettled(batch.map((noteId) => updateNoteEmbedding(noteId)))
 
-      // Delay before next batch if there are more items
-      if (pendingNoteIds.size > 0) {
-        await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS))
+    // Count results
+    for (const result of results) {
+      totalProcessed++
+      if (result.status === 'fulfilled' && result.value === true) {
+        totalSucceeded++
+      } else {
+        totalFailed++
       }
     }
-  } finally {
-    isProcessing = false
-    log.debug('Embedding queue processed', {
-      processed: totalProcessed,
-      succeeded: totalSucceeded,
-      failed: totalFailed
-    })
+
+    // Delay before next batch if there are more items
+    if (pendingNoteIds.size > 0) {
+      await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS))
+    }
   }
 
   return {
