@@ -18,10 +18,11 @@ export function TextEditor({
 }: TextEditorProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [localValue, setLocalValue] = useState(value)
-
-  useEffect(() => {
+  const [prevValue, setPrevValue] = useState(value)
+  if (value !== prevValue) {
+    setPrevValue(value)
     setLocalValue(value)
-  }, [value])
+  }
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {
