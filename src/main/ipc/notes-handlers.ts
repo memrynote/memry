@@ -201,7 +201,14 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(NoteUpdateSchema, async (input) => {
       try {
         const note = await updateNote(input)
-        getNoteSyncService()?.enqueueUpdate(input.id)
+        const hasMetadataChanges =
+          input.title !== undefined ||
+          input.tags !== undefined ||
+          input.frontmatter !== undefined ||
+          input.emoji !== undefined
+        if (hasMetadataChanges) {
+          getNoteSyncService()?.enqueueUpdate(input.id)
+        }
         if (input.title) getCrdtProvider()?.updateMeta(input.id, { title: input.title })
         return { success: true, note }
       } catch (error) {
