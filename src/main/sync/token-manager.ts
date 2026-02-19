@@ -151,7 +151,7 @@ export async function getValidAccessToken(): Promise<string | null> {
 
   if (!isTokenExpired(token)) return token
 
-  log.info('Access token expired or near-expiry, attempting refresh')
+  log.debug('Access token expired or near-expiry, attempting refresh')
   const refreshed = await refreshAccessToken()
   if (!refreshed) return null
 
