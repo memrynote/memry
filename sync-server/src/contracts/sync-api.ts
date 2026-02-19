@@ -99,6 +99,7 @@ export interface PushResponse {
   accepted: string[]
   rejected: Array<{ id: string; reason: string }>
   serverTime: number
+  maxCursor: number
 }
 
 export interface SyncItemRef {
@@ -217,7 +218,8 @@ export const PushResponseSchema = z.object({
       reason: z.string()
     })
   ),
-  serverTime: z.number().int().min(0)
+  serverTime: z.number().int().min(0),
+  maxCursor: z.number().int().min(0)
 })
 
 export const PullRequestSchema = z.object({

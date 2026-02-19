@@ -174,7 +174,8 @@ sync.post('/push', pushRateLimit, async (c) => {
   return c.json({
     accepted,
     rejected,
-    serverTime: Math.floor(Date.now() / 1000)
+    serverTime: Math.floor(Date.now() / 1000),
+    maxCursor
   })
 })
 

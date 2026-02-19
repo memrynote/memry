@@ -238,6 +238,7 @@ export class SyncEngine extends EventEmitter {
     const startTime = Date.now()
     let pushedCount = 0
     let lastServerTime = 0
+    let lastMaxCursor = 0
 
     try {
       for (let iteration = 0; iteration < MAX_PUSH_ITERATIONS; iteration++) {
@@ -297,6 +298,9 @@ export class SyncEngine extends EventEmitter {
         })
 
         lastServerTime = response.value.serverTime
+        if (response.value.maxCursor > lastMaxCursor) {
+          lastMaxCursor = response.value.maxCursor
+        }
         const acceptedSet = new Set(response.value.accepted)
         for (const { queueId, pushItem } of pushItems) {
           if (acceptedSet.has(pushItem.id)) {
@@ -328,6 +332,14 @@ export class SyncEngine extends EventEmitter {
         this.recordHistory('push', pushedCount, Date.now() - startTime)
         this.updateLastSyncAt()
         if (lastServerTime > 0) this.checkClockSkew(lastServerTime)
+
+        if (lastMaxCursor > 0) {
+          const currentCursor = Number(this.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? '0')
+          if (lastMaxCursor > currentCursor) {
+            this.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(lastMaxCursor))
+            log.debug('Push: advanced pull cursor', { from: currentCursor, to: lastMaxCursor })
+          }
+        }
 
         if (this.deps.queue.getPendingCount() === 0) {
           this.deps.emitToRenderer(EVENT_CHANNELS.QUEUE_CLEARED, {
