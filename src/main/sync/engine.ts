@@ -1016,7 +1016,7 @@ export class SyncEngine extends EventEmitter {
       const handler = getHandler(item.type as SyncItemType)
       if (!handler?.buildPushPayload) return item.payload
 
-      const fresh = handler.buildPushPayload(this.deps.db, item.itemId, deviceId)
+      const fresh = handler.buildPushPayload(this.deps.db, item.itemId, deviceId, item.operation)
       if (!fresh) {
         log.debug('Push: item no longer exists locally, using frozen payload', {
           itemId: item.itemId.slice(0, 8),

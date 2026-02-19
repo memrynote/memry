@@ -2025,7 +2025,7 @@ describe('SyncEngine', () => {
       await engine.push()
 
       // #then — encryptItemForPush received fresh payload, not stale
-      expect(mockHandler.buildPushPayload).toHaveBeenCalledWith(deps.db, 'task-fresh', 'device-1')
+      expect(mockHandler.buildPushPayload).toHaveBeenCalledWith(deps.db, 'task-fresh', 'device-1', 'update')
       expect(capturedContent).toBe(freshPayload)
 
       vi.restoreAllMocks()

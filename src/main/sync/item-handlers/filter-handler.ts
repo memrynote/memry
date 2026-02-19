@@ -91,7 +91,7 @@ export const filterHandler: SyncItemHandler<FilterSyncPayload> = {
       | undefined
   },
 
-  buildPushPayload(db: DrizzleDb, itemId: string, _deviceId: string): string | null {
+  buildPushPayload(db: DrizzleDb, itemId: string, _deviceId: string, _operation: string): string | null {
     const filter = db.select().from(savedFilters).where(eq(savedFilters.id, itemId)).get()
     if (!filter) return null
     return JSON.stringify(filter)

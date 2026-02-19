@@ -119,7 +119,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
       | undefined
   },
 
-  buildPushPayload(db: DrizzleDb, itemId: string, _deviceId: string): string | null {
+  buildPushPayload(db: DrizzleDb, itemId: string, _deviceId: string, _operation: string): string | null {
     const task = db.select().from(tasks).where(eq(tasks.id, itemId)).get()
     if (!task) return null
     return JSON.stringify(task)

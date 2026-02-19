@@ -25,6 +25,7 @@ export abstract class ContentSyncService<TPayload> {
   protected abstract buildSnapshotPayload(
     cached: NoteCache,
     clock: VectorClock,
+    operation: 'create' | 'update',
     ...extra: string[]
   ): TPayload
 
@@ -94,7 +95,7 @@ export abstract class ContentSyncService<TPayload> {
 
       updateNoteCache(indexDb, itemId, { clock: newClock })
 
-      const payload = this.buildSnapshotPayload(cached, newClock, ...extra)
+      const payload = this.buildSnapshotPayload(cached, newClock, operation, ...extra)
 
       this.queue.enqueue({
         type: this.itemType,

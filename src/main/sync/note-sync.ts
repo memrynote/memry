@@ -50,14 +50,18 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
     }
   }
 
-  protected buildSnapshotPayload(cached: NoteCache, clock: VectorClock): NoteSyncPayload {
+  protected buildSnapshotPayload(
+    cached: NoteCache,
+    clock: VectorClock,
+    operation: 'create' | 'update'
+  ): NoteSyncPayload {
     let content: string | null = null
     let tags: string[] = []
     const absolutePath = toAbsolutePath(cached.path)
     try {
       const raw = fs.readFileSync(absolutePath, 'utf-8')
       const parsed = parseNote(raw)
-      content = parsed.content
+      content = operation === 'create' ? parsed.content : null
       tags = parsed.frontmatter.tags ?? []
     } catch {
       log.warn('Could not read note file for sync snapshot', { noteId: cached.id })
