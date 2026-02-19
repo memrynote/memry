@@ -3,6 +3,8 @@ import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@t
 import { tasks } from '@shared/db/schema/tasks'
 import { projects } from '@shared/db/schema/projects'
 import { inboxItems } from '@shared/db/schema/inbox'
+import { settings } from '@shared/db/schema/settings'
+import { tagDefinitions } from '@shared/db/schema/tag-definitions'
 import { noteCache } from '@shared/db/schema/notes-cache'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import { SyncQueueManager } from './queue'
@@ -295,6 +297,71 @@ describe('checkManifestIntegrity', () => {
 
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
         items: [{ id: 'journal-1', type: 'journal', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      const result = await checkManifestIntegrity({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        db: testDb.db as any,
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then
+      expect(result.rePullNeeded).toBe(false)
+      expect(result.serverOnlyCount).toBe(0)
+    })
+  })
+
+  describe('#given tag_definition with clock on server #when check runs', () => {
+    it('#then recognizes tag as local and does not trigger re-pull', async () => {
+      // #given
+      const clock: VectorClock = { 'device-A': 1 }
+      testDb.db
+        .insert(tagDefinitions)
+        .values({ name: 'important', color: '#ff0000', clock })
+        .run()
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [
+          { id: 'important', type: 'tag_definition', version: 1, modifiedAt: 1000, size: 50 }
+        ],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      const result = await checkManifestIntegrity({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        db: testDb.db as any,
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then
+      expect(result.rePullNeeded).toBe(false)
+      expect(result.serverOnlyCount).toBe(0)
+    })
+  })
+
+  describe('#given synced_settings exists locally and on server #when check runs', () => {
+    it('#then recognizes settings as local and does not trigger re-pull', async () => {
+      // #given
+      testDb.db
+        .insert(settings)
+        .values({ key: 'synced_settings', value: '{}' })
+        .run()
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [
+          { id: 'synced_settings', type: 'settings', version: 1, modifiedAt: 1000, size: 50 }
+        ],
         serverTime: Math.floor(Date.now() / 1000)
       })
 
