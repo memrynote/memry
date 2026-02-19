@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
+import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { NoteReminderButton } from '@/components/note/note-reminder-button'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
@@ -167,6 +168,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Refs for debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const pendingMarkdownRef = useRef<string | null>(null)
 
   // Compute document stats for the Info tab in OutlineInfoPanel
   const documentStats = useMemo(() => {
@@ -192,14 +194,39 @@ export function NotePage({ noteId }: NotePageProps) {
     setIsDeleted(false)
   }, [note?.id, note?.content])
 
-  // Cleanup save timeout on unmount
+  // Stable ref so cleanup can always call the latest mutateAsync
+  const updateNoteRef = useRef(updateNote.mutateAsync)
+  updateNoteRef.current = updateNote.mutateAsync
+
+  // Register with save registry + flush on unmount
   useEffect(() => {
+    if (!noteId) return
+
+    const registryKey = `note-page:${noteId}`
+
+    registerPendingSave(registryKey, async () => {
+      const pending = pendingMarkdownRef.current
+      if (pending !== null) {
+        pendingMarkdownRef.current = null
+        await updateNoteRef.current({ id: noteId, content: pending })
+      }
+    })
+
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
+        saveTimeoutRef.current = null
       }
+
+      const pending = pendingMarkdownRef.current
+      if (pending !== null) {
+        pendingMarkdownRef.current = null
+        void updateNoteRef.current({ id: noteId, content: pending })
+      }
+
+      unregisterPendingSave(registryKey)
     }
-  }, [])
+  }, [noteId])
 
   // Listen for note deletion events
   useEffect(() => {
@@ -351,6 +378,8 @@ export function NotePage({ noteId }: NotePageProps) {
       // Skip if content hasn't changed
       if (markdown === lastSavedContent.current) return
 
+      pendingMarkdownRef.current = markdown
+
       // Clear previous timeout
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
@@ -362,6 +391,7 @@ export function NotePage({ noteId }: NotePageProps) {
         try {
           await updateNote.mutateAsync({ id: noteId, content: markdown })
           lastSavedContent.current = markdown
+          pendingMarkdownRef.current = null
         } catch (err) {
           log.error('Failed to save note:', err)
         } finally {

@@ -380,7 +380,8 @@ void app.whenReady().then(async () => {
 
   ipcMain.on('window-close', () => {
     const win = BrowserWindow.getFocusedWindow()
-    win?.close()
+    if (!win) return
+    flushWindow(win).then(() => win.close())
   })
 
   // Quick Capture IPC handlers
@@ -615,6 +616,38 @@ function registerQuickCaptureShortcut(): void {
 // Track if shutdown is already in progress to prevent duplicate handling
 let isShuttingDown = false
 
+function flushWindow(win: BrowserWindow, timeoutMs = 2000): Promise<void> {
+  return new Promise<void>((resolve) => {
+    if (win.isDestroyed() || !win.webContents) {
+      resolve()
+      return
+    }
+
+    const timer = setTimeout(() => {
+      shutdownLog.warn('flush timeout for window', win.id)
+      resolve()
+    }, timeoutMs)
+
+    const channel = 'app:flush-done'
+    const handler = (): void => {
+      clearTimeout(timer)
+      ipcMain.removeListener(channel, handler)
+      resolve()
+    }
+
+    ipcMain.on(channel, handler)
+    win.webContents.send('app:request-flush')
+  })
+}
+
+async function flushAllWindows(): Promise<void> {
+  const windows = BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed())
+  if (windows.length === 0) return
+  shutdownLog.info(`flushing ${windows.length} window(s)...`)
+  await Promise.allSettled(windows.map((w) => flushWindow(w)))
+  shutdownLog.info('flush complete')
+}
+
 // Graceful shutdown: close vault and databases before quitting
 app.on('before-quit', (event) => {
   // Prevent duplicate shutdown handling
@@ -631,16 +664,20 @@ app.on('before-quit', (event) => {
     app.exit(1)
   }, 5000) // 5 second timeout
 
-  // Stop the snooze scheduler
-  shutdownLog.info('stopping snooze scheduler...')
-  stopSnoozeScheduler()
+  // Flush pending saves from all renderer windows before closing vault
+  flushAllWindows()
+    .then(() => {
+      // Stop the snooze scheduler
+      shutdownLog.info('stopping snooze scheduler...')
+      stopSnoozeScheduler()
 
-  // Stop the reminder scheduler
-  shutdownLog.info('stopping reminder scheduler...')
-  stopReminderScheduler()
+      // Stop the reminder scheduler
+      shutdownLog.info('stopping reminder scheduler...')
+      stopReminderScheduler()
 
-  shutdownLog.info('closing vault and stopping watcher...')
-  closeVault()
+      shutdownLog.info('closing vault and stopping watcher...')
+      return closeVault()
+    })
     .then(() => {
       shutdownLog.info('cleanup complete')
       clearTimeout(shutdownTimeout)

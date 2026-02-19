@@ -1581,6 +1581,16 @@ const api = {
       callback(data)
     ipcRenderer.on(SYNC_EVENTS.CLOCK_SKEW_WARNING, handler)
     return () => ipcRenderer.removeListener(SYNC_EVENTS.CLOCK_SKEW_WARNING, handler)
+  },
+
+  // Flush-on-quit protocol: main asks renderer to flush pending saves before shutdown
+  onFlushRequested: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on('app:request-flush', handler)
+    return () => ipcRenderer.removeListener('app:request-flush', handler)
+  },
+  notifyFlushDone: (): void => {
+    ipcRenderer.send('app:flush-done')
   }
 }
 

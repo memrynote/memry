@@ -13,6 +13,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { notesService, onNoteDeleted, onNoteExternalChange } from '@/services/notes-service'
+import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import type { Note } from '../../../preload/index.d'
 import { toast } from 'sonner'
 
@@ -107,6 +108,7 @@ export function useNoteEditor(
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lastSavedContentRef = useRef<string>('')
   const pendingContentRef = useRef<string | null>(null)
+  const performSaveRef = useRef<(content: string) => Promise<void>>(async () => {})
 
   // ============================================================================
   // Load Note
@@ -176,14 +178,35 @@ export function useNoteEditor(
     }
   }, [noteId])
 
-  // Cleanup save timeout on unmount
+  // Register with save registry + flush on unmount
   useEffect(() => {
+    if (!noteId) return
+
+    const registryKey = `note-editor:${noteId}`
+
+    registerPendingSave(registryKey, async () => {
+      const pending = pendingContentRef.current
+      if (pending !== null) {
+        pendingContentRef.current = null
+        await performSaveRef.current(pending)
+      }
+    })
+
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
+        saveTimeoutRef.current = null
       }
+
+      const pending = pendingContentRef.current
+      if (pending !== null) {
+        pendingContentRef.current = null
+        void performSaveRef.current(pending)
+      }
+
+      unregisterPendingSave(registryKey)
     }
-  }, [])
+  }, [noteId])
 
   // ============================================================================
   // Save Logic
@@ -218,6 +241,9 @@ export function useNoteEditor(
     },
     [noteId, note, isDeleted, showToasts]
   )
+
+  // Keep ref in sync so cleanup always calls the latest version
+  performSaveRef.current = performSave
 
   // ============================================================================
   // Actions

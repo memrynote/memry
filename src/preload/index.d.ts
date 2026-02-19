@@ -2410,6 +2410,8 @@ interface API extends WindowAPI {
   onOAuthCallback: (callback: (event: OAuthCallbackEvent) => void) => () => void
   onOAuthError: (callback: (event: OAuthErrorEvent) => void) => () => void
   onClockSkewWarning: (callback: (event: ClockSkewWarningEvent) => void) => () => void
+  onFlushRequested: (callback: () => void) => () => void
+  notifyFlushDone: () => void
 }
 
 declare global {

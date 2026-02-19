@@ -36,6 +36,7 @@ import {
   useReminderNotifications
 } from '@/hooks'
 import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
+import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
 import { tasksService } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
 import { VaultOnboarding } from '@/components/vault-onboarding'
@@ -284,6 +285,9 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
 // =============================================================================
 
 function App(): React.JSX.Element {
+  // Flush pending saves when main process requests it (Cmd+Q, window close)
+  useFlushOnQuit()
+
   // Vault state - check if vault is open
   const { status: vaultStatus, isLoading: vaultLoading } = useVault()
   const isVaultOpen = vaultStatus?.isOpen ?? false

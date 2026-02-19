@@ -9,6 +9,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 
 const log = createLogger('Hook:Journal')
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -128,6 +129,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   const isDirtyRef = useRef(isDirty)
   // Track if we're currently saving to ignore our own update events
   const isSavingRef = useRef(false)
+  const performSaveRef = useRef<() => Promise<void>>(async () => {})
 
   // Keep refs in sync
   useEffect(() => {
@@ -302,6 +304,9 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     }
   }, [updateMutation])
 
+  // Keep ref in sync so cleanup always calls the latest version
+  performSaveRef.current = performSave
+
   // Debounced save
   const scheduleSave = useCallback(() => {
     // Clear existing timer
@@ -407,16 +412,29 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     setSaveError(null)
   }, [])
 
-  // Cleanup on unmount - save pending changes
+  // Register with save registry + flush on unmount
   useEffect(() => {
+    const registryKey = `journal:${date}`
+
+    registerPendingSave(registryKey, async () => {
+      if (pendingContentRef.current !== null || pendingTagsRef.current !== null) {
+        await performSaveRef.current()
+      }
+    })
+
     return () => {
-      // Clear timer
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current)
         saveTimerRef.current = null
       }
+
+      if (pendingContentRef.current !== null || pendingTagsRef.current !== null) {
+        void performSaveRef.current()
+      }
+
+      unregisterPendingSave(registryKey)
     }
-  }, [])
+  }, [date])
 
   // Subscribe to external updates - use refs to avoid re-subscribing on state changes
   useEffect(() => {
