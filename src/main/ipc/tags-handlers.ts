@@ -5,7 +5,9 @@
  * @module ipc/tags-handlers
  */
 
+import { readFile } from 'fs/promises'
 import { ipcMain, BrowserWindow } from 'electron'
+import { eq } from 'drizzle-orm'
 import { TagsChannels } from '@shared/ipc-channels'
 import {
   GetNotesByTagSchema,
@@ -20,6 +22,7 @@ import {
   type RenameTagResponse,
   type DeleteTagResponse
 } from '@shared/contracts/tags-api'
+import { noteTags } from '@shared/db/schema/notes-cache'
 import { createValidatedHandler, createStringHandler } from './validate'
 import { getDatabase, getIndexDatabase } from '../database'
 import {
@@ -33,8 +36,16 @@ import {
   renameTagDefinition,
   deleteTagDefinition,
   updateTagColor,
-  getNoteTags
+  getNoteTags,
+  getNoteCacheById
 } from '@shared/db/queries/notes'
+import { createLogger } from '../lib/logger'
+import { toAbsolutePath } from '../vault/notes'
+import { parseNote, serializeNote } from '../vault/frontmatter'
+import { atomicWrite } from '../vault/file-ops'
+import { getNoteSyncService } from '../sync/note-sync'
+
+const log = createLogger('TagsHandlers')
 
 /**
  * Emit tag event to all windows
@@ -96,6 +107,47 @@ function toTagNoteItem(
     pinnedAt: note.pinnedAt,
     emoji: note.emoji
   }
+}
+
+function getAffectedNoteIds(
+  indexDb: ReturnType<typeof getIndexDatabase>,
+  tag: string
+): string[] {
+  const normalized = tag.toLowerCase().trim()
+  return indexDb
+    .select({ noteId: noteTags.noteId })
+    .from(noteTags)
+    .where(eq(noteTags.tag, normalized))
+    .all()
+    .map((r) => r.noteId)
+}
+
+async function updateNoteFrontmatterTag(
+  indexDb: ReturnType<typeof getIndexDatabase>,
+  noteId: string,
+  mutate: (tags: string[]) => string[]
+): Promise<void> {
+  const cached = getNoteCacheById(indexDb, noteId)
+  if (!cached) return
+
+  const absolutePath = toAbsolutePath(cached.path)
+  const raw = await readFile(absolutePath, 'utf-8')
+  const parsed = parseNote(raw, absolutePath)
+
+  const currentTags: string[] = Array.isArray(parsed.frontmatter.tags)
+    ? parsed.frontmatter.tags
+    : []
+  const updatedTags = mutate(currentTags)
+
+  if (updatedTags.length === 0) {
+    delete parsed.frontmatter.tags
+  } else {
+    parsed.frontmatter.tags = updatedTags
+  }
+
+  const serialized = serializeNote(parsed.frontmatter, parsed.content)
+  await atomicWrite(absolutePath, serialized)
+  getNoteSyncService()?.enqueueUpdate(noteId)
 }
 
 /**
@@ -196,22 +248,31 @@ export function registerTagsHandlers(): void {
   // tags:rename - Rename a tag across all notes
   ipcMain.handle(
     TagsChannels.invoke.RENAME_TAG,
-    createValidatedHandler(RenameTagSchema, (input) => {
+    createValidatedHandler(RenameTagSchema, async (input) => {
       const indexDb = requireIndexDatabase()
       const dataDb = requireDatabase()
 
       try {
+        const noteIds = getAffectedNoteIds(indexDb, input.oldName)
+
         const affectedNotes = renameTag(indexDb, input.oldName, input.newName)
         renameTagDefinition(dataDb, input.oldName, input.newName)
 
-        // Emit event
+        const normalizedOld = input.oldName.toLowerCase().trim()
+        const normalizedNew = input.newName.toLowerCase().trim()
+        await Promise.all(
+          noteIds.map((noteId) =>
+            updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
+              tags.map((t) => (t.toLowerCase() === normalizedOld ? normalizedNew : t))
+            ).catch((err) => log.warn('Failed to update frontmatter for note', { noteId, err }))
+          )
+        )
+
         emitTagEvent(TagsChannels.events.RENAMED, {
           oldName: input.oldName,
           newName: input.newName,
           affectedNotes
         })
-
-        // Also emit tags changed for sidebar update
         emitTagEvent('notes:tags-changed', {})
 
         return { success: true, affectedNotes } as RenameTagResponse
@@ -252,21 +313,26 @@ export function registerTagsHandlers(): void {
   // tags:delete - Delete a tag from all notes
   ipcMain.handle(
     TagsChannels.invoke.DELETE_TAG,
-    createStringHandler((tag: string) => {
+    createStringHandler(async (tag: string) => {
       const indexDb = requireIndexDatabase()
       const dataDb = requireDatabase()
 
       try {
+        const noteIds = getAffectedNoteIds(indexDb, tag)
+
         const affectedNotes = deleteTag(indexDb, tag)
         deleteTagDefinition(dataDb, tag)
 
-        // Emit event
-        emitTagEvent(TagsChannels.events.DELETED, {
-          tag,
-          affectedNotes
-        })
+        const normalizedTag = tag.toLowerCase().trim()
+        await Promise.all(
+          noteIds.map((noteId) =>
+            updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
+              tags.filter((t) => t.toLowerCase() !== normalizedTag)
+            ).catch((err) => log.warn('Failed to update frontmatter for note', { noteId, err }))
+          )
+        )
 
-        // Also emit tags changed for sidebar update
+        emitTagEvent(TagsChannels.events.DELETED, { tag, affectedNotes })
         emitTagEvent('notes:tags-changed', {})
 
         return { success: true, affectedNotes } as DeleteTagResponse
@@ -280,20 +346,24 @@ export function registerTagsHandlers(): void {
   // tags:remove-from-note - Remove tag from a specific note
   ipcMain.handle(
     TagsChannels.invoke.REMOVE_TAG_FROM_NOTE,
-    createValidatedHandler(RemoveTagFromNoteSchema, (input) => {
+    createValidatedHandler(RemoveTagFromNoteSchema, async (input) => {
       const db = requireIndexDatabase()
 
       try {
         removeTagFromNote(db, input.noteId, input.tag)
 
-        // Emit event
+        const normalizedTag = input.tag.toLowerCase().trim()
+        await updateNoteFrontmatterTag(db, input.noteId, (tags) =>
+          tags.filter((t) => t.toLowerCase() !== normalizedTag)
+        ).catch((err) =>
+          log.warn('Failed to update frontmatter for note', { noteId: input.noteId, err })
+        )
+
         emitTagEvent(TagsChannels.events.NOTES_CHANGED, {
           tag: input.tag,
           noteId: input.noteId,
           action: 'removed'
         })
-
-        // Also emit tags changed for sidebar update
         emitTagEvent('notes:tags-changed', {})
 
         return { success: true } as TagOperationResponse
