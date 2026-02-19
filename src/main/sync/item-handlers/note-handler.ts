@@ -18,7 +18,13 @@ import {
 import { toAbsolutePath, toRelativePath, getNotesDir } from '../../vault/notes'
 import { parseNote, serializeNote, type NoteFrontmatter } from '../../vault/frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
-import { getNoteCacheById, getNoteCacheByPath, updateNoteCache } from '@shared/db/queries/notes'
+import {
+  getNoteCacheById,
+  getNoteCacheByPath,
+  getNoteTags,
+  setNoteTags,
+  updateNoteCache
+} from '@shared/db/queries/notes'
 import { createLogger } from '../../lib/logger'
 import { resolveClockConflict } from './types'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -78,6 +84,14 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       const titleChanged = newTitle !== existing.title
       const needsPathUpdate = folderChanged || titleChanged
 
+      const remoteTags = data.tags
+      const localTags = remoteTags !== undefined ? getNoteTags(indexDb, itemId) : undefined
+      const tagsChanged =
+        remoteTags !== undefined &&
+        localTags !== undefined &&
+        (remoteTags.length !== localTags.length ||
+          remoteTags.some((t) => !localTags.includes(t)))
+
       const updateFields: Parameters<typeof updateNoteCache>[2] = {
         title: newTitle,
         emoji: data.emoji ?? existing.emoji,
@@ -102,6 +116,9 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
           const raw = fs.readFileSync(oldAbsPath, 'utf-8')
           const parsed = parseNote(raw)
           parsed.frontmatter.title = newTitle
+          if (tagsChanged && remoteTags) {
+            parsed.frontmatter.tags = remoteTags
+          }
           const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
 
           atomicWrite(newAbsPath, updatedContent)
@@ -132,6 +149,23 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
             source: 'sync'
           })
         }
+      } else if (tagsChanged && remoteTags) {
+        const absPath = toAbsolutePath(existing.path)
+        try {
+          const raw = fs.readFileSync(absPath, 'utf-8')
+          const parsed = parseNote(raw)
+          parsed.frontmatter.tags = remoteTags
+          const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
+          atomicWrite(absPath, updatedContent).catch((err: unknown) => {
+            log.error('Failed to write tag update to synced note', { itemId, error: err })
+          })
+        } catch {
+          log.warn('Could not read note for tag update', { itemId })
+        }
+      }
+
+      if (tagsChanged && remoteTags) {
+        setNoteTags(indexDb, itemId, remoteTags)
       }
 
       updateNoteCache(indexDb, itemId, updateFields)
