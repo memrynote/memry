@@ -12,7 +12,8 @@ export const SYNC_ITEM_TYPES = [
   'attachment',
   'inbox',
   'filter',
-  'journal'
+  'journal',
+  'tag_definition'
 ] as const
 
 export const SYNC_OPERATIONS = ['create', 'update', 'delete'] as const
@@ -24,7 +25,8 @@ export const ENCRYPTABLE_ITEM_TYPES = [
   'settings',
   'inbox',
   'filter',
-  'journal'
+  'journal',
+  'tag_definition'
 ] as const
 export type EncryptableItemType = (typeof ENCRYPTABLE_ITEM_TYPES)[number]
 
