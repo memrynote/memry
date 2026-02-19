@@ -796,7 +796,7 @@ function JournalSettings() {
       {/* Default Template Setting */}
       <div className="space-y-4">
         <div>
-          <label className="text-sm font-medium">Default Template</label>
+          <label htmlFor="default-template" className="text-sm font-medium">Default Template</label>
           <p className="text-sm text-muted-foreground mt-1">
             New journal entries will start with this template. You can always change it when
             creating an entry.
@@ -808,7 +808,7 @@ function JournalSettings() {
           onValueChange={handleTemplateChange}
           disabled={isLoadingTemplates || isLoadingSettings}
         >
-          <SelectTrigger className="w-full max-w-xs">
+          <SelectTrigger id="default-template" className="w-full max-w-xs">
             <SelectValue placeholder="Select a template">
               {isLoadingSettings
                 ? 'Loading...'

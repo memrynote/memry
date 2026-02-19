@@ -447,7 +447,9 @@ function TemplateListRow({ template, onEdit, onDuplicate, onDelete }: TemplateLi
           'opacity-0 group-hover:opacity-100',
           'transition-opacity duration-150'
         )}
+        role="group"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         <Button
           variant="ghost"
