@@ -37,6 +37,10 @@ const OPERATOR_SUGGESTIONS = [
   { prefix: 'file:', label: 'file:', description: 'Match filename', icon: File }
 ]
 
+function sanitizeSnippet(html: string): string {
+  return html.replace(/<(?!\/?mark\b)[^>]*>/gi, '')
+}
+
 function highlightOperators(text: string): React.ReactNode[] {
   if (!text) return []
 
@@ -125,36 +129,22 @@ export function CommandPalette({
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (isOpen) {
-      window.api.notes
-        .getFolders()
-        .then(setFolders)
-        .catch((err) => log.error('Failed to load folders', err))
-    }
-  }, [isOpen])
-
-  // Fetch recent notes when dialog opens
-  useEffect(() => {
     if (!isOpen) return
 
-    const loadRecentNotes = async () => {
-      setIsLoadingRecent(true)
-      try {
-        const response = await notesService.list({
-          sortBy: 'modified',
-          sortOrder: 'desc',
-          limit: 50
-        })
-        setRecentNotes(response.notes)
-      } catch (error) {
+    window.api.notes
+      .getFolders()
+      .then(setFolders)
+      .catch((err) => log.error('Failed to load folders', err))
+
+    setIsLoadingRecent(true)
+    notesService
+      .list({ sortBy: 'modified', sortOrder: 'desc', limit: 50 })
+      .then((response) => setRecentNotes(response.notes))
+      .catch((error) => {
         log.error('Failed to load recent notes', error)
         setRecentNotes([])
-      } finally {
-        setIsLoadingRecent(false)
-      }
-    }
-
-    loadRecentNotes()
+      })
+      .finally(() => setIsLoadingRecent(false))
   }, [isOpen])
 
   useEffect(() => {
@@ -310,11 +300,20 @@ export function CommandPalette({
                     ].map((opt) => (
                       <div
                         key={opt.value}
+                        role="option"
+                        tabIndex={0}
+                        aria-selected={sortBy === opt.value}
                         className={cn(
                           'flex items-center justify-between px-2 py-1.5 text-sm rounded-sm cursor-pointer hover:bg-accent hover:text-accent-foreground',
                           sortBy === opt.value && 'bg-accent/50'
                         )}
                         onClick={() => setSortBy(opt.value as SortOption)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            setSortBy(opt.value as SortOption)
+                          }
+                        }}
                       >
                         {opt.label}
                         {sortBy === opt.value && <Check className="h-3 w-3" />}
@@ -325,8 +324,17 @@ export function CommandPalette({
                       Order
                     </div>
                     <div
+                      role="option"
+                      tabIndex={0}
+                      aria-selected={sortDirection === 'asc'}
                       className="flex items-center justify-between px-2 py-1.5 text-sm rounded-sm cursor-pointer hover:bg-accent hover:text-accent-foreground"
                       onClick={() => setSortDirection('asc')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setSortDirection('asc')
+                        }
+                      }}
                     >
                       Ascending{' '}
                       <ArrowUp
@@ -337,8 +345,17 @@ export function CommandPalette({
                       />
                     </div>
                     <div
+                      role="option"
+                      tabIndex={0}
+                      aria-selected={sortDirection === 'desc'}
                       className="flex items-center justify-between px-2 py-1.5 text-sm rounded-sm cursor-pointer hover:bg-accent hover:text-accent-foreground"
                       onClick={() => setSortDirection('desc')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setSortDirection('desc')
+                        }
+                      }}
                     >
                       Descending{' '}
                       <ArrowDown
@@ -437,11 +454,20 @@ export function CommandPalette({
                   ].map((opt) => (
                     <div
                       key={opt.value}
+                      role="option"
+                      tabIndex={0}
+                      aria-selected={dateFilter === opt.value}
                       className={cn(
                         'flex items-center justify-between px-2 py-1.5 text-sm rounded-sm cursor-pointer hover:bg-accent hover:text-accent-foreground',
                         dateFilter === opt.value && 'bg-accent/50'
                       )}
                       onClick={() => setDateFilter(opt.value as DateFilterOption)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setDateFilter(opt.value as DateFilterOption)
+                        }
+                      }}
                     >
                       {opt.label}
                       {dateFilter === opt.value && <Check className="h-3 w-3" />}
@@ -599,7 +625,7 @@ export function CommandPalette({
                             <span className="w-1 h-1 rounded-full bg-border" />
                             <span
                               className="truncate max-w-[300px]"
-                              dangerouslySetInnerHTML={{ __html: note.snippet }}
+                              dangerouslySetInnerHTML={{ __html: sanitizeSnippet(note.snippet) }}
                             />
                           </>
                         )}

@@ -799,15 +799,15 @@ function FolderViewSkeleton({ columns, className }: FolderViewSkeletonProps): Re
     <div ref={containerRef} className={`h-full p-4 space-y-2 ${className ?? ''}`}>
       {/* Header skeleton */}
       <div className="flex gap-4 pb-2 border-b">
-        {columns.map((col, i) => (
-          <Skeleton key={i} className="h-6" style={{ width: col.width ?? 150 }} />
+        {columns.map((col) => (
+          <Skeleton key={col.id} className="h-6" style={{ width: col.width ?? 150 }} />
         ))}
       </div>
       {/* Row skeletons */}
       {Array.from({ length: rowCount }).map((_, i) => (
         <div key={i} className="flex gap-4">
-          {columns.map((col, j) => (
-            <Skeleton key={j} className="h-8" style={{ width: col.width ?? 150 }} />
+          {columns.map((col) => (
+            <Skeleton key={col.id} className="h-8" style={{ width: col.width ?? 150 }} />
           ))}
         </div>
       ))}

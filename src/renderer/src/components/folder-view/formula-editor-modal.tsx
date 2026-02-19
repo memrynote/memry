@@ -7,7 +7,7 @@
  * @module components/folder-view/formula-editor-modal
  */
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { AlertCircle, HelpCircle } from 'lucide-react'
 import {
   Dialog,
@@ -197,6 +197,9 @@ const BASE_SUGGESTIONS: AutocompleteSuggestion[] = [
 /**
  * Modal dialog for creating and editing formula columns.
  */
+const EMPTY_NAMES: string[] = []
+const EMPTY_PROPERTIES: Array<{ name: string; type: string }> = []
+
 export function FormulaEditorModal({
   open,
   onOpenChange,
@@ -204,8 +207,8 @@ export function FormulaEditorModal({
   initialExpression = '',
   sampleNote,
   onSave,
-  existingNames = [],
-  availableProperties = []
+  existingNames = EMPTY_NAMES,
+  availableProperties = EMPTY_PROPERTIES
 }: FormulaEditorModalProps): React.JSX.Element {
   // Form state
   const [name, setName] = useState(initialName)
@@ -246,14 +249,17 @@ export function FormulaEditorModal({
     minChars: 2
   })
 
-  // Reset form when modal opens/closes or initial values change
-  useEffect(() => {
-    if (open) {
-      setName(initialName)
-      setExpression(initialExpression)
-      closeAutocomplete()
-    }
-  }, [open, initialName, initialExpression, closeAutocomplete])
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (nextOpen) {
+        setName(initialName)
+        setExpression(initialExpression)
+        closeAutocomplete()
+      }
+      onOpenChange(nextOpen)
+    },
+    [initialName, initialExpression, closeAutocomplete, onOpenChange]
+  )
 
   // Validation
   const nameError = useMemo(() => {
@@ -317,13 +323,13 @@ export function FormulaEditorModal({
     setIsSubmitting(true)
     try {
       await onSave(name.trim(), expression.trim())
-      onOpenChange(false)
+      handleOpenChange(false)
     } catch (err) {
       log.error('Failed to save formula', err)
     } finally {
       setIsSubmitting(false)
     }
-  }, [name, expression, nameError, expressionValidation.valid, onSave, onOpenChange])
+  }, [name, expression, nameError, expressionValidation.valid, onSave, handleOpenChange])
 
   // Handle Enter key in name field
   const handleNameKeyDown = useCallback(
@@ -343,7 +349,7 @@ export function FormulaEditorModal({
   const canSave = !nameError && expressionValidation.valid && !isSubmitting
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit Formula' : 'Create Formula'}</DialogTitle>
@@ -490,7 +496,7 @@ export function FormulaEditorModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={!canSave}>

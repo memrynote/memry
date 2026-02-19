@@ -19,7 +19,7 @@
  * - Shift+click range selection works across virtualized rows
  */
 
-import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
+import { useMemo, useCallback, useState, useRef } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -94,6 +94,11 @@ export interface OrderConfig {
   property: string
   direction: 'asc' | 'desc'
 }
+
+const EMPTY_FORMULAS: Record<string, string> = {}
+const EMPTY_PROPERTY_TYPES: Record<string, PropertyType> = {}
+const EMPTY_HIGHLIGHTED: string[] = []
+const EMPTY_SUMMARIES: Record<string, SummaryConfig> = {}
 
 interface FolderTableViewProps {
   /** Notes to display */
@@ -253,8 +258,8 @@ function sortingStateToOrderConfig(sorting: SortingState): OrderConfig[] {
 export function FolderTableView({
   notes,
   columns: columnConfig,
-  formulas = {},
-  propertyTypes = {},
+  formulas = EMPTY_FORMULAS,
+  propertyTypes = EMPTY_PROPERTY_TYPES,
   initialSorting,
   globalFilter,
   highlightQuery,
@@ -273,12 +278,12 @@ export function FolderTableView({
   onMoveToFolder,
   onCreateNote,
   onClearAll,
-  highlightedColumns = [],
+  highlightedColumns = EMPTY_HIGHLIGHTED,
   isLoading,
   density = 'comfortable',
   showColumnBorders = true,
   showSummaries = false,
-  summaries = {},
+  summaries = EMPTY_SUMMARIES,
   exitingRowIds = new Set<string>(),
   className
 }: FolderTableViewProps): React.JSX.Element {
@@ -455,13 +460,9 @@ export function FolderTableView({
   // T116: Uses propertyTypes map for correct type rendering
   const renderPropertyCell = useCallback(
     (columnId: string) => {
-      // Return a named function for React DevTools display name
-      const PropertyCellRenderer = (
-        info: CellContext<NoteWithProperties, unknown>
-      ): React.JSX.Element => {
+      return (info: CellContext<NoteWithProperties, unknown>): React.JSX.Element => {
         const note = info.row.original
         const value = info.getValue()
-        // T116: Use propertyTypes from available properties if available
         const type = propertyTypes[columnId] ?? getColumnType(columnId)
         return (
           <EditablePropertyCell
@@ -478,44 +479,27 @@ export function FolderTableView({
           />
         )
       }
-      return PropertyCellRenderer
     },
     [highlightQuery, onPropertyUpdate, propertyTypes]
   )
 
-  // Memoized cell renderer for formula columns
   const renderFormulaCell = useCallback(
-    (formulaName: string, expression: string) => {
-      // Return a named function for React DevTools display name
-      const FormulaCellRenderer = (
-        info: CellContext<NoteWithProperties, unknown>
-      ): React.JSX.Element => {
+    (_formulaName: string, expression: string) => {
+      return (info: CellContext<NoteWithProperties, unknown>): React.JSX.Element => {
         const note = info.row.original
-        // Evaluate formula against note (cached by React's memoization)
         const result = evaluateFormula(expression, note)
 
-        // Handle null/undefined (evaluation error or empty)
         if (result === null || result === undefined) {
           return <span className="text-muted-foreground/50">—</span>
         }
 
-        // Render based on result type
-        if (typeof result === 'boolean') {
-          return <CheckboxCell value={result} />
-        }
-        if (typeof result === 'number') {
-          return <NumberCell value={result} />
-        }
-        if (result instanceof Date) {
-          return <DateCell value={result.toISOString()} />
-        }
-        if (Array.isArray(result)) {
+        if (typeof result === 'boolean') return <CheckboxCell value={result} />
+        if (typeof result === 'number') return <NumberCell value={result} />
+        if (result instanceof Date) return <DateCell value={result.toISOString()} />
+        if (Array.isArray(result))
           return <TextCell value={result.join(', ')} highlightQuery={highlightQuery} />
-        }
         return <TextCell value={String(result)} highlightQuery={highlightQuery} />
       }
-      FormulaCellRenderer.displayName = `FormulaCell_${formulaName}`
-      return FormulaCellRenderer
     },
     [highlightQuery]
   )
@@ -839,15 +823,16 @@ export function FolderTableView({
     [rows, selectedRowIds, setSelectedRowIds]
   )
 
-  /**
-   * Keyboard event handler for table navigation
-   * - ArrowDown/ArrowUp: Navigate rows (with wrap-around)
-   * - Shift+ArrowDown/Up: Extend selection in that direction
-   * - Enter/Cmd+Enter: Open selected note
-   * - Escape: Clear selection
-   * - Cmd/Ctrl+A: Select all rows
-   * - Space: Jump to last row
-   */
+  const scrollToRowById = useCallback(
+    (rowId: string) => {
+      const rowIndex = rows.findIndex((r) => r.original.id === rowId)
+      if (rowIndex >= 0) {
+        rowVirtualizer.scrollToIndex(rowIndex, { align: 'auto', behavior: 'smooth' })
+      }
+    },
+    [rows, rowVirtualizer]
+  )
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       const rows = table.getRowModel().rows
@@ -858,16 +843,11 @@ export function FolderTableView({
       switch (e.key) {
         case 'ArrowDown': {
           e.preventDefault()
-          // Calculate next index (no wrap when shift is held)
           let nextIndex: number
           if (currentIndex === -1) {
             nextIndex = 0
           } else if (currentIndex >= rows.length - 1) {
-            // At last row
-            if (e.shiftKey) {
-              // Don't wrap when extending selection
-              return
-            }
+            if (e.shiftKey) return
             nextIndex = 0
           } else {
             nextIndex = currentIndex + 1
@@ -875,16 +855,15 @@ export function FolderTableView({
 
           const nextRow = rows[nextIndex]
           setFocusedRowId(nextRow.original.id)
+          scrollToRowById(nextRow.original.id)
 
           if (e.shiftKey) {
-            // Shift+ArrowDown: Extend selection to include next row
             setSelectedRowIds((prev) => {
               const newSet = new Set(prev)
               newSet.add(nextRow.original.id)
               return newSet
             })
           } else {
-            // ArrowDown: Single select
             setSelectedRowIds(new Set([nextRow.original.id]))
             lastSelectedIndexRef.current = nextIndex
           }
@@ -893,16 +872,11 @@ export function FolderTableView({
 
         case 'ArrowUp': {
           e.preventDefault()
-          // Calculate prev index (no wrap when shift is held)
           let prevIndex: number
           if (currentIndex === -1) {
             prevIndex = rows.length - 1
           } else if (currentIndex <= 0) {
-            // At first row
-            if (e.shiftKey) {
-              // Don't wrap when extending selection
-              return
-            }
+            if (e.shiftKey) return
             prevIndex = rows.length - 1
           } else {
             prevIndex = currentIndex - 1
@@ -910,16 +884,15 @@ export function FolderTableView({
 
           const prevRow = rows[prevIndex]
           setFocusedRowId(prevRow.original.id)
+          scrollToRowById(prevRow.original.id)
 
           if (e.shiftKey) {
-            // Shift+ArrowUp: Extend selection to include previous row
             setSelectedRowIds((prev) => {
               const newSet = new Set(prev)
               newSet.add(prevRow.original.id)
               return newSet
             })
           } else {
-            // ArrowUp: Single select
             setSelectedRowIds(new Set([prevRow.original.id]))
             lastSelectedIndexRef.current = prevIndex
           }
@@ -927,17 +900,16 @@ export function FolderTableView({
         }
 
         case ' ': {
-          // Space: Jump to last row
           e.preventDefault()
           const lastRow = rows[rows.length - 1]
           setFocusedRowId(lastRow.original.id)
+          scrollToRowById(lastRow.original.id)
           setSelectedRowIds(new Set([lastRow.original.id]))
           lastSelectedIndexRef.current = rows.length - 1
           break
         }
 
         case 'Enter': {
-          // Enter or Cmd/Ctrl+Enter: Open selected note
           if (focusedRowId) {
             e.preventDefault()
             onNoteOpen?.(focusedRowId)
@@ -946,7 +918,6 @@ export function FolderTableView({
         }
 
         case 'Escape': {
-          // Clear selection
           e.preventDefault()
           setFocusedRowId(null)
           setSelectedRowIds(new Set())
@@ -955,14 +926,13 @@ export function FolderTableView({
         }
 
         case 'a': {
-          // Cmd/Ctrl+A: Select all rows
           if (e.metaKey || e.ctrlKey) {
             e.preventDefault()
             const allIds = new Set(rows.map((r) => r.original.id))
             setSelectedRowIds(allIds)
-            // Keep focus on current row, or set to first if none
             if (!focusedRowId && rows.length > 0) {
               setFocusedRowId(rows[0].original.id)
+              scrollToRowById(rows[0].original.id)
             }
           }
           break
@@ -970,7 +940,6 @@ export function FolderTableView({
 
         case 'm':
         case 'M': {
-          // Cmd/Ctrl+Shift+M: Move to folder
           if ((e.metaKey || e.ctrlKey) && e.shiftKey && selectedRowIds.size > 0) {
             e.preventDefault()
             onMoveToFolder?.(Array.from(selectedRowIds))
@@ -979,25 +948,8 @@ export function FolderTableView({
         }
       }
     },
-    [focusedRowId, table, onNoteOpen, onMoveToFolder, selectedRowIds, setSelectedRowIds]
+    [focusedRowId, table, onNoteOpen, onMoveToFolder, selectedRowIds, setSelectedRowIds, scrollToRowById]
   )
-
-  /**
-   * Scroll focused row into view when it changes.
-   * Uses virtualizer's scrollToIndex for efficient scrolling with virtualized rows.
-   */
-  // Scroll to focused row when it changes
-  // This is a legitimate external synchronization (syncing virtualizer scroll with state)
-  useEffect(() => {
-    if (focusedRowId) {
-      // Find the row index for the focused row
-      const rowIndex = rows.findIndex((r) => r.original.id === focusedRowId)
-      if (rowIndex >= 0) {
-        // Use virtualizer to scroll to the row (more efficient than DOM query)
-        rowVirtualizer.scrollToIndex(rowIndex, { align: 'auto', behavior: 'smooth' })
-      }
-    }
-  }, [focusedRowId, rows, rowVirtualizer])
 
   // Calculate total width of all columns for table min-width
   // (Must be before early returns to satisfy React hook rules)
@@ -1047,6 +999,8 @@ export function FolderTableView({
       {/* max-w-full ensures container stays within parent bounds while overflow-auto enables independent horizontal scroll */}
       <div
         ref={tableContainerRef}
+        role="grid"
+        aria-label="Notes table"
         className={cn('w-full max-w-full overflow-auto outline-none', className)}
         tabIndex={0}
         onKeyDown={handleKeyDown}

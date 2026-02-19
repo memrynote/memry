@@ -608,6 +608,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     // When Yjs collaboration is active, content comes from Y.Doc — skip file-based loading
     if (yjsFragment) {
       isContentReadyRef.current = true
+      if (onHeadingsChange) {
+        const headings = extractHeadings(editor.document as Block[])
+        onHeadingsChange(headings)
+      }
       return
     }
 
@@ -669,6 +673,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         // Mark content as ready for saving (prevents race condition where empty content is saved)
         // Using finally ensures the flag is set even if parsing fails
         isContentReadyRef.current = true
+        if (onHeadingsChange) {
+          const headings = extractHeadings(editor.document as Block[])
+          onHeadingsChange(headings)
+        }
       }
     }
     void loadContent()
@@ -736,14 +744,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       }, 200)
     }
   }, [editor, onContentChange, onMarkdownChange, onHeadingsChange])
-
-  // Initial heading extraction
-  useEffect(() => {
-    if (onHeadingsChange) {
-      const headings = extractHeadings(editor.document as Block[])
-      onHeadingsChange(headings)
-    }
-  }, [editor, onHeadingsChange])
 
   // Handle link clicks
   useEffect(() => {

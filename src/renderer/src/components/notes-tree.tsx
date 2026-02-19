@@ -379,6 +379,49 @@ function NotesTreeError({ error }: { error: string }) {
 }
 
 // ============================================================================
+// RevealHandler — must render inside TreeProvider to access useTree()
+// ============================================================================
+
+interface RevealHandlerProps {
+  pendingRevealNoteId: string | null
+  noteMap: Map<string, { path: string }>
+  onReveal: (noteId: string) => void
+  onClear: () => void
+}
+
+function RevealHandler({ pendingRevealNoteId, noteMap, onReveal, onClear }: RevealHandlerProps) {
+  const { expandNode } = useTree()
+
+  useEffect(() => {
+    if (!pendingRevealNoteId) return
+
+    const note = noteMap.get(pendingRevealNoteId)
+    if (!note) {
+      onClear()
+      return
+    }
+
+    const pathParts = note.path.split('/')
+    pathParts.pop()
+
+    if (pathParts.length > 1) {
+      const folderParts = pathParts.slice(1)
+      let currentPath = ''
+      for (const part of folderParts) {
+        currentPath = currentPath ? `${currentPath}/${part}` : part
+        expandNode(`folder-${currentPath}`)
+      }
+    }
+
+    setTimeout(() => {
+      onReveal(pendingRevealNoteId)
+    }, 50)
+  }, [pendingRevealNoteId, noteMap, expandNode, onReveal, onClear])
+
+  return null
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -1445,58 +1488,23 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     }
   }, [noteMap])
 
-  // Helper component that runs inside TreeProvider to handle folder expansion
-  const RevealHandler = useCallback(() => {
-    const { expandNode } = useTree()
-
-    useEffect(() => {
-      if (!pendingRevealNoteId) return
-
-      const note = noteMap.get(pendingRevealNoteId)
-      if (!note) {
-        setPendingRevealNoteId(null)
-        return
-      }
-
-      // Extract folder path from note path to expand parent folders
-      const pathParts = note.path.split('/')
-      pathParts.pop() // Remove filename
-
-      // If note is in a subfolder, expand all parent folders
-      if (pathParts.length > 1) {
-        const folderParts = pathParts.slice(1) // Remove "notes" prefix
-        let currentPath = ''
-        for (const part of folderParts) {
-          currentPath = currentPath ? `${currentPath}/${part}` : part
-          // Expand this folder
-          expandNode(`folder-${currentPath}`)
-        }
-      }
-
-      // Select the note and scroll to it
+  const handleRevealComplete = useCallback(
+    (noteId: string) => {
+      setSelectedIds([noteId])
       setTimeout(() => {
-        setSelectedIds([pendingRevealNoteId])
-
-        // Scroll the note into view
-        setTimeout(() => {
-          const element = document.querySelector(`[data-tree-node-id="${pendingRevealNoteId}"]`)
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            // Add a brief highlight effect
-            element.classList.add('bg-accent')
-            setTimeout(() => {
-              element.classList.remove('bg-accent')
-            }, 2000)
-          }
-        }, 100)
-
-        // Clear pending reveal
-        setPendingRevealNoteId(null)
-      }, 50)
-    }, [pendingRevealNoteId, expandNode])
-
-    return null
-  }, [pendingRevealNoteId, noteMap])
+        const element = document.querySelector(`[data-tree-node-id="${noteId}"]`)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          element.classList.add('bg-accent')
+          setTimeout(() => {
+            element.classList.remove('bg-accent')
+          }, 2000)
+        }
+      }, 100)
+      setPendingRevealNoteId(null)
+    },
+    [setSelectedIds]
+  )
 
   // Render action buttons (must be before early returns to follow Rules of Hooks)
   const actionButtons = useMemo(
@@ -1809,7 +1817,12 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         indent={16}
       >
         {/* Handle reveal-in-sidebar requests */}
-        <RevealHandler />
+        <RevealHandler
+          pendingRevealNoteId={pendingRevealNoteId}
+          noteMap={noteMap}
+          onReveal={handleRevealComplete}
+          onClear={() => setPendingRevealNoteId(null)}
+        />
         <TreeView>
           {/* Folders first */}
           {tree.folders.map((folder, index) =>

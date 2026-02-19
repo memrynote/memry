@@ -114,7 +114,9 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
   const [content, setContent] = useState('')
 
   // Track if modified
-  const initialStateRef = useRef<string>('')
+  const initialStateRef = useRef<string>(
+    isNew ? JSON.stringify({ name: '', description: '', icon: null, tags: [], properties: [], content: '' }) : ''
+  )
   const isModified = useMemo(() => {
     const currentState = JSON.stringify({ name, description, icon, tags, properties, content })
     return currentState !== initialStateRef.current
@@ -150,20 +152,6 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
     }
     load()
   }, [templateId, getTemplate])
-
-  // Initialize state for new template
-  useEffect(() => {
-    if (isNew) {
-      initialStateRef.current = JSON.stringify({
-        name: '',
-        description: '',
-        icon: null,
-        tags: [],
-        properties: [],
-        content: ''
-      })
-    }
-  }, [isNew])
 
   // Convert tags to UI format
   const tagColorMap = useMemo(() => {

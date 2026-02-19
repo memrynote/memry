@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect, useState } from 'react'
+import { useRef, useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useClickOutside } from '../note-title/use-click-outside'
 import { PropertyType, PROPERTY_TYPE_CONFIG, PROPERTY_TYPES, NewProperty } from './types'
@@ -11,25 +11,20 @@ interface AddPropertyPopupProps {
   existingPropertyNames?: string[]
 }
 
+const EMPTY_PROPERTY_NAMES: string[] = []
+
 export function AddPropertyPopup({
   isOpen,
   onClose,
   onAdd,
   position,
-  existingPropertyNames = []
+  existingPropertyNames = EMPTY_PROPERTY_NAMES
 }: AddPropertyPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [propertyName, setPropertyName] = useState('')
 
   useClickOutside(popupRef, onClose, isOpen)
-
-  // Reset property name when popup opens/closes
-  useEffect(() => {
-    if (isOpen) {
-      setPropertyName('')
-    }
-  }, [isOpen])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -63,12 +58,10 @@ export function AddPropertyPopup({
     [onAdd, onClose, propertyName]
   )
 
-  // Focus input when opened
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus()
-    }
-  }, [isOpen])
+  const focusInput = useCallback((node: HTMLInputElement | null) => {
+    inputRef.current = node
+    node?.focus()
+  }, [])
 
   if (!isOpen) return null
 
@@ -91,7 +84,7 @@ export function AddPropertyPopup({
       {/* Property name input */}
       <div className="px-3 py-2 border-b border-stone-100 dark:border-stone-800">
         <input
-          ref={inputRef}
+          ref={focusInput}
           type="text"
           value={propertyName}
           onChange={(e) => setPropertyName(e.target.value)}

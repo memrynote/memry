@@ -1,7 +1,7 @@
 'use client'
 
 import { ChevronRight, File, Folder, FolderOpen, Palette } from 'lucide-react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, LazyMotion, domAnimation, m } from 'motion/react'
 import {
   type ComponentProps,
   createContext,
@@ -122,6 +122,9 @@ const useTreeNode = () => {
   return context
 }
 
+const EMPTY_IDS: string[] = []
+const EMPTY_PATH: boolean[] = []
+
 export type TreeProviderProps = {
   children: ReactNode
   defaultExpandedIds?: string[]
@@ -141,7 +144,7 @@ export type TreeProviderProps = {
 
 export const TreeProvider = ({
   children,
-  defaultExpandedIds = [],
+  defaultExpandedIds = EMPTY_IDS,
   showLines = true,
   showIcons = true,
   selectable = true,
@@ -411,14 +414,16 @@ export const TreeProvider = ({
         animateExpand
       }}
     >
-      <motion.div
-        animate={{ opacity: 1, y: 0 }}
-        className={cn('w-full', className)}
-        initial={{ opacity: 0, y: 10 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
-      >
-        {children}
-      </motion.div>
+      <LazyMotion features={domAnimation}>
+        <m.div
+          animate={{ opacity: 1, y: 0 }}
+          className={cn('w-full', className)}
+          initial={{ opacity: 0, y: 10 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+        >
+          {children}
+        </m.div>
+      </LazyMotion>
     </TreeContext.Provider>
   )
 }
@@ -446,7 +451,7 @@ export const TreeNode = ({
   nodeId: providedNodeId,
   level = 0,
   isLast = false,
-  parentPath = [],
+  parentPath = EMPTY_PATH,
   children,
   className,
   onClick,
@@ -515,7 +520,7 @@ export const TreeNode = ({
   )
 }
 
-export type TreeNodeTriggerProps = ComponentProps<typeof motion.div> & {
+export type TreeNodeTriggerProps = ComponentProps<typeof m.div> & {
   /** Custom context menu content to render instead of the default "Set Icon" menu */
   contextMenuContent?: ReactNode
   /** Whether to show the default icon context menu (default: true) */
@@ -745,7 +750,7 @@ export const TreeNodeTrigger = ({
     <>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <motion.div
+          <m.div
             ref={triggerRef}
             tabIndex={0}
             data-tree-node-id={nodeId}
@@ -806,7 +811,7 @@ export const TreeNodeTrigger = ({
 
             <TreeLines />
             {children as ReactNode}
-          </motion.div>
+          </m.div>
         </ContextMenuTrigger>
         <ContextMenuContent>
           {contextMenuContent ? (
@@ -867,7 +872,7 @@ export const TreeLines = () => {
         return (
           <div
             className="absolute top-0 bottom-0 border-border border-l"
-            key={index.toString()}
+            key={`indent-${index}`}
             style={{
               left: index * (indent ?? 0) + 12,
               display: shouldHideLine ? 'none' : 'block'
@@ -900,7 +905,7 @@ export const TreeLines = () => {
   )
 }
 
-export type TreeNodeContentProps = ComponentProps<typeof motion.div> & {
+export type TreeNodeContentProps = ComponentProps<typeof m.div> & {
   hasChildren?: boolean
 }
 
@@ -911,20 +916,17 @@ export const TreeNodeContent = ({
   ...props
 }: TreeNodeContentProps) => {
   const { animateExpand, expandedIds } = useTree()
-  const { nodeId, setHasChildren } = useTreeNode()
+  const { nodeId, setHasChildren, hasChildren } = useTreeNode()
   const isExpanded = expandedIds.has(nodeId)
 
-  // Update parent node's hasChildren state
-  useEffect(() => {
-    if (hasChildrenProp) {
-      setHasChildren(true)
-    }
-  }, [hasChildrenProp, setHasChildren])
+  if (hasChildrenProp && !hasChildren) {
+    setHasChildren(true)
+  }
 
   return (
     <AnimatePresence>
       {hasChildrenProp && isExpanded && (
-        <motion.div
+        <m.div
           animate={{ height: 'auto', opacity: 1 }}
           className="overflow-hidden"
           exit={{ height: 0, opacity: 0 }}
@@ -934,7 +936,7 @@ export const TreeNodeContent = ({
             ease: 'easeInOut'
           }}
         >
-          <motion.div
+          <m.div
             animate={{ y: 0 }}
             className={className}
             exit={{ y: -10 }}
@@ -946,14 +948,14 @@ export const TreeNodeContent = ({
             {...props}
           >
             {children}
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       )}
     </AnimatePresence>
   )
 }
 
-export type TreeExpanderProps = ComponentProps<typeof motion.div> & {
+export type TreeExpanderProps = ComponentProps<typeof m.div> & {
   hasChildren?: boolean
 }
 
@@ -964,22 +966,19 @@ export const TreeExpander = ({
   ...props
 }: TreeExpanderProps) => {
   const { expandedIds, toggleExpanded } = useTree()
-  const { nodeId, setHasChildren } = useTreeNode()
+  const { nodeId, setHasChildren, hasChildren } = useTreeNode()
   const isExpanded = expandedIds.has(nodeId)
 
-  // Update parent node's hasChildren state
-  useEffect(() => {
-    if (hasChildrenProp) {
-      setHasChildren(true)
-    }
-  }, [hasChildrenProp, setHasChildren])
+  if (hasChildrenProp && !hasChildren) {
+    setHasChildren(true)
+  }
 
   if (!hasChildrenProp) {
     return <div className="mr-1 h-4 w-4" />
   }
 
   return (
-    <motion.div
+    <m.div
       animate={{ rotate: isExpanded ? 90 : 0 }}
       className={cn('mr-1 flex h-4 w-4 cursor-pointer items-center justify-center', className)}
       onClick={(e) => {
@@ -991,11 +990,11 @@ export const TreeExpander = ({
       {...props}
     >
       <ChevronRight className="h-3 w-3 text-muted-foreground" />
-    </motion.div>
+    </m.div>
   )
 }
 
-export type TreeIconProps = ComponentProps<typeof motion.div> & {
+export type TreeIconProps = ComponentProps<typeof m.div> & {
   icon?: ReactNode
   hasChildren?: boolean
   iconName?: string
@@ -1046,7 +1045,7 @@ export const TreeIcon = ({
   }
 
   return (
-    <motion.div
+    <m.div
       className={cn(
         'mr-2 flex h-4 w-4 items-center justify-center text-muted-foreground',
         className
@@ -1056,7 +1055,7 @@ export const TreeIcon = ({
       {...props}
     >
       {getIconComponent()}
-    </motion.div>
+    </m.div>
   )
 }
 
