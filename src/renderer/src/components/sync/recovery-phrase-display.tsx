@@ -65,7 +65,7 @@ export function RecoveryPhraseDisplay({
         <div className="grid grid-cols-4 gap-x-3 gap-y-2">
           {words.map((word, i) => (
             <div
-              key={i}
+              key={word}
               className="flex items-baseline gap-1.5 px-2.5 py-1.5 rounded-md bg-background/60"
             >
               <span className="text-[10px] tabular-nums text-muted-foreground/50 w-4 text-right select-none">

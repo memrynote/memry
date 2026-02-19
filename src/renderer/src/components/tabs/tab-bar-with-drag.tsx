@@ -56,7 +56,7 @@ export const TabBarWithDrag = ({
     if (!el) return
 
     checkScroll()
-    el.addEventListener('scroll', checkScroll)
+    el.addEventListener('scroll', checkScroll, { passive: true })
 
     const resizeObserver = new ResizeObserver(checkScroll)
     resizeObserver.observe(el)
