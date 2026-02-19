@@ -197,12 +197,19 @@ export class SyncEngine extends EventEmitter {
   }
 
   async push(): Promise<void> {
+    const pendingCount = this.deps.queue.getPendingCount()
     log.debug('Push entered', {
-      queuePending: this.deps.queue.getPendingCount(),
+      queuePending: pendingCount,
       queueTotal: this.deps.queue.getSize(),
       syncing: this.syncing,
       fullSyncActive: this.fullSyncActive
     })
+
+    if (pendingCount === 0) {
+      log.debug('Push skipped: queue empty')
+      return
+    }
+
     const release = await this.acquireSyncLock()
     if (!release) {
       log.debug('Push skipped', { syncing: this.syncing, paused: this.isPaused() })
