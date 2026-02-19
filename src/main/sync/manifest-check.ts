@@ -1,10 +1,11 @@
-import { and, isNotNull, isNull } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type * as schema from '@shared/db/schema/data-schema'
 import { tasks } from '@shared/db/schema/tasks'
 import { projects } from '@shared/db/schema/projects'
 import { inboxItems } from '@shared/db/schema/inbox'
-import { savedFilters } from '@shared/db/schema/settings'
+import { savedFilters, settings } from '@shared/db/schema/settings'
+import { tagDefinitions } from '@shared/db/schema/tag-definitions'
 import { noteCache } from '@shared/db/schema/notes-cache'
 import type { SyncItemType, SyncManifest } from '@shared/contracts/sync-api'
 import { withRetry } from './retry'
@@ -129,6 +130,24 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
   const syncedFilters = db.select().from(savedFilters).where(isNotNull(savedFilters.clock)).all()
   for (const f of syncedFilters) {
     items.push({ id: f.id, type: 'filter', payload: JSON.stringify(f) })
+  }
+
+  const syncedTagDefs = db
+    .select()
+    .from(tagDefinitions)
+    .where(isNotNull(tagDefinitions.clock))
+    .all()
+  for (const td of syncedTagDefs) {
+    items.push({ id: td.name, type: 'tag_definition', payload: JSON.stringify(td) })
+  }
+
+  const syncedSettings = db
+    .select()
+    .from(settings)
+    .where(eq(settings.key, 'synced_settings'))
+    .get()
+  if (syncedSettings) {
+    items.push({ id: 'synced_settings', type: 'settings', payload: JSON.stringify(syncedSettings) })
   }
 
   const indexDb = getIndexDatabase()
