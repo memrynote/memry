@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { LazyMotion, domAnimation, m, AnimatePresence } from 'framer-motion'
 
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useTabs } from '@/contexts/tabs'
@@ -385,138 +385,143 @@ export const TaskDetailPanel = ({
 
   return (
     <>
-      <AnimatePresence>
-        {isOpen && task && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-40 bg-black/20"
-              onClick={onClose}
-              aria-hidden="true"
-            />
-
-            {/* Panel */}
-            <motion.aside
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className={cn(
-                'fixed right-0 top-0 z-50 flex h-full w-[420px] flex-col bg-background shadow-xl border-l border-border',
-                className
-              )}
-              role="dialog"
-              aria-modal="true"
-              aria-label="Task details"
-            >
-              {/* Header */}
-              <TaskDetailHeader
-                title={task.title}
-                isCompleted={isCompleted}
-                onTitleChange={handleTitleChange}
-                onToggleComplete={handleToggleComplete}
-                onClose={onClose}
+      <LazyMotion features={domAnimation}>
+        <AnimatePresence>
+          {isOpen && task && (
+            <>
+              {/* Backdrop */}
+              <m.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 z-40 bg-black/20"
+                onClick={onClose}
+                aria-hidden="true"
               />
 
-              {/* Scrollable content */}
-              <ScrollArea className="flex-1">
-                <div className="flex flex-col gap-6 p-4">
-                  {/* Properties Grid */}
-                  <TaskPropertiesGrid
-                    task={task}
-                    projects={projects}
-                    isCompleted={isCompleted}
-                    onUpdateProject={handleUpdateProject}
-                    onUpdateStatus={handleUpdateStatus}
-                    onUpdateDueDate={handleUpdateDueDate}
-                    onUpdateDueTime={handleUpdateDueTime}
-                    onUpdatePriority={handleUpdatePriority}
-                  />
+              {/* Panel */}
+              <m.aside
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className={cn(
+                  'fixed right-0 top-0 z-50 flex h-full w-[420px] flex-col bg-background shadow-xl border-l border-border',
+                  className
+                )}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Task details"
+              >
+                {/* Header */}
+                <TaskDetailHeader
+                  title={task.title}
+                  isCompleted={isCompleted}
+                  onTitleChange={handleTitleChange}
+                  onToggleComplete={handleToggleComplete}
+                  onClose={onClose}
+                />
 
-                  {/* Divider */}
-                  <div className="h-px bg-border" />
+                {/* Scrollable content */}
+                <ScrollArea className="flex-1">
+                  <div className="flex flex-col gap-6 p-4">
+                    {/* Properties Grid */}
+                    <TaskPropertiesGrid
+                      task={task}
+                      projects={projects}
+                      isCompleted={isCompleted}
+                      onUpdateProject={handleUpdateProject}
+                      onUpdateStatus={handleUpdateStatus}
+                      onUpdateDueDate={handleUpdateDueDate}
+                      onUpdateDueTime={handleUpdateDueTime}
+                      onUpdatePriority={handleUpdatePriority}
+                    />
 
-                  {/* Description */}
-                  <TaskDescription value={task.description} onChange={handleUpdateDescription} />
+                    {/* Divider */}
+                    <div className="h-px bg-border" />
 
-                  {/* Divider */}
-                  <div className="h-px bg-border" />
+                    {/* Description */}
+                    <TaskDescription
+                      value={task.description}
+                      onChange={handleUpdateDescription}
+                    />
 
-                  {/* Subtasks Section (only for top-level tasks) */}
-                  {showSubtasksSection && onAddSubtask && (
-                    <>
-                      <SubtasksSection
-                        parentTask={task}
-                        subtasks={subtasks}
-                        progress={subtaskProgress}
-                        onAddSubtask={handleAddSubtask}
-                        onBulkAddSubtasks={handleBulkAddSubtasks}
-                        onUpdateSubtask={handleUpdateSubtask}
-                        onToggleSubtaskComplete={handleToggleSubtaskComplete}
-                        onDeleteSubtask={handleDeleteSubtask}
-                        onReorderSubtasks={handleReorderSubtasks}
-                        onPromoteSubtask={handlePromoteSubtask}
-                        onCompleteAllSubtasks={handleCompleteAllSubtasks}
-                        onMarkAllSubtasksIncomplete={handleMarkAllSubtasksIncomplete}
-                        onOpenBulkDueDateDialog={handleOpenBulkDueDateDialog}
-                        onOpenBulkPriorityDialog={handleOpenBulkPriorityDialog}
-                        onOpenDeleteAllSubtasksDialog={handleOpenDeleteAllSubtasksDialog}
-                      />
+                    {/* Divider */}
+                    <div className="h-px bg-border" />
 
-                      {/* Divider */}
-                      <div className="h-px bg-border" />
-                    </>
-                  )}
+                    {/* Subtasks Section (only for top-level tasks) */}
+                    {showSubtasksSection && onAddSubtask && (
+                      <>
+                        <SubtasksSection
+                          parentTask={task}
+                          subtasks={subtasks}
+                          progress={subtaskProgress}
+                          onAddSubtask={handleAddSubtask}
+                          onBulkAddSubtasks={handleBulkAddSubtasks}
+                          onUpdateSubtask={handleUpdateSubtask}
+                          onToggleSubtaskComplete={handleToggleSubtaskComplete}
+                          onDeleteSubtask={handleDeleteSubtask}
+                          onReorderSubtasks={handleReorderSubtasks}
+                          onPromoteSubtask={handlePromoteSubtask}
+                          onCompleteAllSubtasks={handleCompleteAllSubtasks}
+                          onMarkAllSubtasksIncomplete={handleMarkAllSubtasksIncomplete}
+                          onOpenBulkDueDateDialog={handleOpenBulkDueDateDialog}
+                          onOpenBulkPriorityDialog={handleOpenBulkPriorityDialog}
+                          onOpenDeleteAllSubtasksDialog={handleOpenDeleteAllSubtasksDialog}
+                        />
 
-                  {/* Repeat */}
-                  <TaskRepeatDisplay
-                    isRepeating={task.isRepeating}
-                    repeatConfig={task.repeatConfig}
-                    dueDate={task.dueDate}
-                    onConfigChange={handleRepeatConfigChange}
-                    onSkipOccurrence={
-                      task.isRepeating && onSkipOccurrence ? handleSkipOccurrence : undefined
-                    }
-                  />
+                        {/* Divider */}
+                        <div className="h-px bg-border" />
+                      </>
+                    )}
 
-                  {/* Divider */}
-                  <div className="h-px bg-border" />
+                    {/* Repeat */}
+                    <TaskRepeatDisplay
+                      isRepeating={task.isRepeating}
+                      repeatConfig={task.repeatConfig}
+                      dueDate={task.dueDate}
+                      onConfigChange={handleRepeatConfigChange}
+                      onSkipOccurrence={
+                        task.isRepeating && onSkipOccurrence ? handleSkipOccurrence : undefined
+                      }
+                    />
 
-                  {/* Linked Notes */}
-                  <TaskLinksSection
-                    linkedNoteIds={task.linkedNoteIds}
-                    onAddLink={handleAddLink}
-                    onRemoveLink={handleRemoveLink}
-                    onNoteClick={handleNoteClick}
-                  />
+                    {/* Divider */}
+                    <div className="h-px bg-border" />
 
-                  {/* Divider */}
-                  <div className="h-px bg-border" />
+                    {/* Linked Notes */}
+                    <TaskLinksSection
+                      linkedNoteIds={task.linkedNoteIds}
+                      onAddLink={handleAddLink}
+                      onRemoveLink={handleRemoveLink}
+                      onNoteClick={handleNoteClick}
+                    />
 
-                  {/* Metadata */}
-                  <TaskMetadata
-                    createdAt={task.createdAt}
-                    completedAt={task.completedAt}
-                    sourceNoteId={task.sourceNoteId}
-                  />
-                </div>
-              </ScrollArea>
+                    {/* Divider */}
+                    <div className="h-px bg-border" />
 
-              {/* Footer */}
-              <TaskDetailFooter
-                onDelete={handleDelete}
-                onDuplicate={handleDuplicate}
-                onMoveToProject={handleMoveToProject}
-                onCopyLink={handleCopyLink}
-              />
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+                    {/* Metadata */}
+                    <TaskMetadata
+                      createdAt={task.createdAt}
+                      completedAt={task.completedAt}
+                      sourceNoteId={task.sourceNoteId}
+                    />
+                  </div>
+                </ScrollArea>
+
+                {/* Footer */}
+                <TaskDetailFooter
+                  onDelete={handleDelete}
+                  onDuplicate={handleDuplicate}
+                  onMoveToProject={handleMoveToProject}
+                  onCopyLink={handleCopyLink}
+                />
+              </m.aside>
+            </>
+          )}
+        </AnimatePresence>
+      </LazyMotion>
 
       {/* Delete Confirmation Dialog */}
       <DeleteTaskDialog

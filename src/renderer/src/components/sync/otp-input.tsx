@@ -71,6 +71,12 @@ export function OtpInput({
   const [value, setValue] = useState('')
   const { seconds, canResend, reset, start } = useCountdown(onResend)
   const startedRef = useRef(false)
+  const prevErrorRef = useRef<string | null>(null)
+
+  if (error && error !== prevErrorRef.current) {
+    setValue('')
+  }
+  prevErrorRef.current = error
 
   useEffect(() => {
     if (!startedRef.current && expiresIn > 0) {
@@ -78,10 +84,6 @@ export function OtpInput({
       startedRef.current = true
     }
   }, [expiresIn, start])
-
-  useEffect(() => {
-    if (error) setValue('')
-  }, [error])
 
   useEffect(() => {
     const unsubscribe = window.api.onOtpDetected((event) => {
@@ -116,7 +118,7 @@ export function OtpInput({
           <InputOTPGroup className="gap-1.5">
             {[0, 1, 2].map((i) => (
               <InputOTPSlot
-                key={i}
+                key={`otp-${i}`}
                 index={i}
                 className="h-12 w-11 text-lg font-semibold border rounded-lg"
                 style={{ animationDelay: `${i * 60}ms` }}
@@ -131,7 +133,7 @@ export function OtpInput({
           <InputOTPGroup className="gap-1.5">
             {[3, 4, 5].map((i) => (
               <InputOTPSlot
-                key={i}
+                key={`otp-${i}`}
                 index={i}
                 className="h-12 w-11 text-lg font-semibold border rounded-lg"
                 style={{ animationDelay: `${(i + 1) * 60}ms` }}

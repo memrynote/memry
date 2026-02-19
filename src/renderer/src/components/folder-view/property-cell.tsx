@@ -225,7 +225,7 @@ function valuesAreEqual(a: unknown, b: unknown): boolean {
 /**
  * Renders a property value based on its type.
  */
-interface RenderPropertyValueOptions {
+interface PropertyValueDisplayProps {
   value: unknown
   type: PropertyType
   highlightQuery?: string
@@ -233,13 +233,13 @@ interface RenderPropertyValueOptions {
   urlAsLink?: boolean
 }
 
-function renderPropertyValue({
+function PropertyValueDisplay({
   value,
   type,
   highlightQuery,
   className,
   urlAsLink = true
-}: RenderPropertyValueOptions): React.JSX.Element {
+}: PropertyValueDisplayProps): React.JSX.Element {
   if (value === null || value === undefined || value === '') {
     return <span className={cn('text-muted-foreground/50', className)}>—</span>
   }
@@ -288,7 +288,7 @@ export const PropertyCell = memo(function PropertyCell({
   highlightQuery,
   className
 }: PropertyCellProps): React.JSX.Element {
-  return renderPropertyValue({ value, type, highlightQuery, className })
+  return <PropertyValueDisplay value={value} type={type} highlightQuery={highlightQuery} className={className} />
 })
 
 export const EditablePropertyCell = memo(function EditablePropertyCell({
@@ -332,12 +332,13 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
   )
 
   if (!onSave) {
-    return renderPropertyValue({ value, type, highlightQuery, className })
+    return <PropertyValueDisplay value={value} type={type} highlightQuery={highlightQuery} className={className} />
   }
 
   if (type === 'checkbox') {
     return (
       <div
+        role="presentation"
         className={cn(
           'w-full focus-within:ring-1 focus-within:ring-amber-400/60 dark:focus-within:ring-amber-600/60',
           className
@@ -373,8 +374,9 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
 
     return (
       <div
+        role="presentation"
         className={cn(
-          'w-full  focus-within:ring-1 focus-within:ring-amber-400/60 dark:focus-within:ring-amber-600/60',
+          'w-full focus-within:ring-1 focus-within:ring-amber-400/60 dark:focus-within:ring-amber-600/60',
           className
         )}
         onMouseDown={stopPropagation}
@@ -440,7 +442,7 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
       onDoubleClick={stopPropagation}
       className={cn('w-full text-left focus:outline-none cursor-text')}
     >
-      {renderPropertyValue({ value, type, highlightQuery, className, urlAsLink: false })}
+      <PropertyValueDisplay value={value} type={type} highlightQuery={highlightQuery} className={className} urlAsLink={false} />
     </button>
   )
 })
@@ -558,9 +560,9 @@ export const MultiSelectCell = memo(function MultiSelectCell({
 
   return (
     <div className={cn('flex flex-wrap gap-1', className)}>
-      {values.slice(0, 3).map((item, i) => (
+      {values.slice(0, 3).map((item) => (
         <span
-          key={i}
+          key={item}
           className="inline-flex px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground"
         >
           {item.trim()}

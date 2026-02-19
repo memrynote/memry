@@ -7,6 +7,120 @@ import { cn } from '@/lib/utils'
 import { Property, PROPERTY_TYPE_CONFIG } from './types'
 import { TextEditor, NumberEditor, CheckboxEditor, DateEditor, UrlEditor } from './editors'
 
+interface PropertyValueRendererProps {
+  property: Property
+  isEditing: boolean
+  onValueChange: (value: unknown) => void
+  onEndEdit: () => void
+}
+
+function PropertyValueDisplay({ property }: { property: Property }) {
+  const value = property.value
+
+  if (value === null || value === undefined || value === '') {
+    return <span className="text-[13px] text-muted-foreground/50">Empty</span>
+  }
+
+  switch (property.type) {
+    case 'date':
+      return (
+        <span className="text-[13px] text-foreground">
+          {format(new Date(value as string | number | Date), 'dd.MM.yyyy')}
+        </span>
+      )
+
+    case 'url':
+      return (
+        <span className="text-[13px] text-blue-600 truncate max-w-[200px] hover:underline hover:text-blue-700">
+          {String(value)}
+        </span>
+      )
+
+    default:
+      return <span className="text-[13px] text-foreground">{String(value)}</span>
+  }
+}
+
+function PropertyValueEditor({
+  property,
+  onValueChange,
+  onEndEdit
+}: {
+  property: Property
+  onValueChange: (value: unknown) => void
+  onEndEdit: () => void
+}) {
+  switch (property.type) {
+    case 'text':
+      return (
+        <TextEditor
+          value={String(property.value ?? '')}
+          onChange={onValueChange}
+          onBlur={onEndEdit}
+        />
+      )
+
+    case 'number':
+      return (
+        <NumberEditor
+          value={property.value as number | null}
+          onChange={onValueChange}
+          onBlur={onEndEdit}
+        />
+      )
+
+    case 'date':
+      return (
+        <DateEditor
+          value={property.value ? new Date(property.value as string | number | Date) : null}
+          onChange={(date) => onValueChange(date?.toISOString() ?? null)}
+          onBlur={onEndEdit}
+        />
+      )
+
+    case 'url':
+      return (
+        <UrlEditor
+          value={String(property.value ?? '')}
+          onChange={onValueChange}
+          onBlur={onEndEdit}
+        />
+      )
+
+    default:
+      return (
+        <TextEditor
+          value={String(property.value ?? '')}
+          onChange={onValueChange}
+          onBlur={onEndEdit}
+        />
+      )
+  }
+}
+
+function PropertyValueRenderer({
+  property,
+  isEditing,
+  onValueChange,
+  onEndEdit
+}: PropertyValueRendererProps) {
+  if (property.type === 'checkbox') {
+    return <CheckboxEditor value={Boolean(property.value)} onChange={onValueChange} />
+  }
+
+  if (isEditing) {
+    return (
+      <PropertyValueEditor
+        property={property}
+        onValueChange={onValueChange}
+        onEndEdit={onEndEdit}
+      />
+    )
+  }
+
+  return <PropertyValueDisplay property={property} />
+}
+
 interface PropertyRowProps {
   property: Property
   onValueChange: (value: unknown) => void
@@ -104,97 +218,6 @@ export function PropertyRow({
     }
   }, [isEditingName])
 
-  const renderValue = () => {
-    // Checkbox is always interactive (no edit mode)
-    if (property.type === 'checkbox') {
-      return <CheckboxEditor value={Boolean(property.value)} onChange={onValueChange} />
-    }
-
-    // Other types show display value or editor
-    if (isEditing) {
-      return renderEditor()
-    }
-
-    return renderDisplayValue()
-  }
-
-  const renderDisplayValue = () => {
-    const value = property.value
-
-    // Empty state
-    if (value === null || value === undefined || value === '') {
-      return <span className="text-[13px] text-muted-foreground/50">Empty</span>
-    }
-
-    switch (property.type) {
-      case 'date':
-        return (
-          <span className="text-[13px] text-foreground">
-            {format(new Date(value as string | number | Date), 'dd.MM.yyyy')}
-          </span>
-        )
-
-      case 'url':
-        return (
-          <span className="text-[13px] text-blue-600 truncate max-w-[200px] hover:underline hover:text-blue-700">
-            {String(value)}
-          </span>
-        )
-
-      default:
-        return <span className="text-[13px] text-foreground">{String(value)}</span>
-    }
-  }
-
-  const renderEditor = () => {
-    switch (property.type) {
-      case 'text':
-        return (
-          <TextEditor
-            value={String(property.value ?? '')}
-            onChange={onValueChange}
-            onBlur={handleEndEdit}
-          />
-        )
-
-      case 'number':
-        return (
-          <NumberEditor
-            value={property.value as number | null}
-            onChange={onValueChange}
-            onBlur={handleEndEdit}
-          />
-        )
-
-      case 'date':
-        return (
-          <DateEditor
-            value={property.value ? new Date(property.value as string | number | Date) : null}
-            onChange={(date) => onValueChange(date?.toISOString() ?? null)}
-            onBlur={handleEndEdit}
-          />
-        )
-
-      case 'url':
-        return (
-          <UrlEditor
-            value={String(property.value ?? '')}
-            onChange={onValueChange}
-            onBlur={handleEndEdit}
-          />
-        )
-
-      default:
-        return (
-          <TextEditor
-            value={String(property.value ?? '')}
-            onChange={onValueChange}
-            onBlur={handleEndEdit}
-          />
-        )
-    }
-  }
-
   return (
     <div
       ref={setNodeRef}
@@ -284,13 +307,26 @@ export function PropertyRow({
 
       {/* Value */}
       <div
+        role="button"
+        tabIndex={0}
         onClick={handleStartEdit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            handleStartEdit()
+          }
+        }}
         className={cn(
           'flex-1 min-w-0 transition-colors rounded px-1 -mx-1',
           !isEditing && property.type !== 'checkbox' && 'cursor-pointer hover:bg-muted/10'
         )}
       >
-        {renderValue()}
+        <PropertyValueRenderer
+          property={property}
+          isEditing={isEditing}
+          onValueChange={onValueChange}
+          onEndEdit={handleEndEdit}
+        />
       </div>
 
       {/* Delete button (only for custom properties) - always rendered to prevent layout shift */}

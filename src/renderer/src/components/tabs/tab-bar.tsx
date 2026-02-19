@@ -30,15 +30,6 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
 
-  // If group doesn't exist, don't render
-  if (!group) return null
-
-  // Separate pinned and regular tabs
-  const pinnedTabs = group.tabs.filter((t) => t.isPinned)
-  const regularTabs = group.tabs.filter((t) => !t.isPinned)
-  const isActiveGroup = state.activeGroupId === groupId
-
-  // Check scroll state
   const checkScroll = useCallback(() => {
     if (!scrollRef.current) return
     const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current
@@ -46,17 +37,16 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
     setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1)
   }, [])
 
-  // Set up scroll listener and resize observer
+  const regularTabCount = group?.tabs.filter((t) => !t.isPinned).length ?? 0
+
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
 
     checkScroll()
 
-    // Listen for scroll events
-    el.addEventListener('scroll', checkScroll)
+    el.addEventListener('scroll', checkScroll, { passive: true })
 
-    // Listen for resize
     const resizeObserver = new ResizeObserver(checkScroll)
     resizeObserver.observe(el)
 
@@ -64,9 +54,14 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
       el.removeEventListener('scroll', checkScroll)
       resizeObserver.disconnect()
     }
-  }, [checkScroll, regularTabs.length])
+  }, [checkScroll, regularTabCount])
 
-  // Scroll handlers
+  if (!group) return null
+
+  const pinnedTabs = group.tabs.filter((t) => t.isPinned)
+  const regularTabs = group.tabs.filter((t) => !t.isPinned)
+  const isActiveGroup = state.activeGroupId === groupId
+
   const scrollLeft = (): void => {
     if (!scrollRef.current) return
     scrollRef.current.scrollBy({ left: -200, behavior: 'smooth' })

@@ -106,6 +106,11 @@ export interface OrderConfig {
   direction: 'asc' | 'desc'
 }
 
+const EMPTY_FORMULAS: Record<string, string> = {}
+const EMPTY_PROPERTY_TYPES: Record<string, PropertyType> = {}
+const EMPTY_HIGHLIGHTED: string[] = []
+const EMPTY_SUMMARIES: Record<string, SummaryConfig> = {}
+
 interface GroupedTableProps {
   /** Notes to display */
   notes: NoteWithProperties[]
@@ -292,8 +297,8 @@ function getGroupDisplayValue(value: unknown): string {
 export function GroupedTable({
   notes,
   columns: columnConfig,
-  formulas = {},
-  propertyTypes = {},
+  formulas = EMPTY_FORMULAS,
+  propertyTypes = EMPTY_PROPERTY_TYPES,
   groupBy,
   initialSorting,
   globalFilter,
@@ -313,12 +318,12 @@ export function GroupedTable({
   onMoveToFolder,
   onCreateNote,
   onClearAll,
-  highlightedColumns = [],
+  highlightedColumns = EMPTY_HIGHLIGHTED,
   isLoading,
   density = 'comfortable',
   showColumnBorders = false,
   showSummaries = false,
-  summaries = {},
+  summaries = EMPTY_SUMMARIES,
   exitingRowIds = new Set<string>(),
   className
 }: GroupedTableProps): React.JSX.Element {
@@ -493,12 +498,9 @@ export function GroupedTable({
   // T116: Uses propertyTypes map for correct type rendering
   const renderPropertyCell = useCallback(
     (columnId: string) => {
-      const PropertyCellRenderer = (
-        info: CellContext<NoteWithProperties, unknown>
-      ): React.JSX.Element => {
+      return (info: CellContext<NoteWithProperties, unknown>): React.JSX.Element => {
         const note = info.row.original
         const value = info.getValue()
-        // T116: Use propertyTypes from available properties if available
         const type = propertyTypes[columnId] ?? getColumnType(columnId)
         return (
           <EditablePropertyCell
@@ -515,16 +517,13 @@ export function GroupedTable({
           />
         )
       }
-      return PropertyCellRenderer
     },
     [highlightQuery, onPropertyUpdate, propertyTypes]
   )
 
   const renderFormulaCell = useCallback(
-    (formulaName: string, expression: string) => {
-      const FormulaCellRenderer = (
-        info: CellContext<NoteWithProperties, unknown>
-      ): React.JSX.Element => {
+    (_formulaName: string, expression: string) => {
+      return (info: CellContext<NoteWithProperties, unknown>): React.JSX.Element => {
         const note = info.row.original
         const result = evaluateFormula(expression, note)
 
@@ -539,8 +538,6 @@ export function GroupedTable({
           return <TextCell value={result.join(', ')} highlightQuery={highlightQuery} />
         return <TextCell value={String(result)} highlightQuery={highlightQuery} />
       }
-      FormulaCellRenderer.displayName = `FormulaCell_${formulaName}`
-      return FormulaCellRenderer
     },
     [highlightQuery]
   )
@@ -851,6 +848,16 @@ export function GroupedTable({
     [rows, selectedRowIds, setSelectedRowIds]
   )
 
+  const scrollToRowById = useCallback(
+    (rowId: string) => {
+      const rowIndex = rows.findIndex((r) => r.original?.id === rowId)
+      if (rowIndex >= 0) {
+        rowVirtualizer.scrollToIndex(rowIndex, { align: 'auto', behavior: 'smooth' })
+      }
+    },
+    [rows, rowVirtualizer]
+  )
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       const rows = table.getRowModel().rows.filter((r) => !r.getIsGrouped())
@@ -870,6 +877,7 @@ export function GroupedTable({
 
           const nextRow = rows[nextIndex]
           setFocusedRowId(nextRow.original.id)
+          scrollToRowById(nextRow.original.id)
 
           if (e.shiftKey) {
             setSelectedRowIds((prev) => {
@@ -895,6 +903,7 @@ export function GroupedTable({
 
           const prevRow = rows[prevIndex]
           setFocusedRowId(prevRow.original.id)
+          scrollToRowById(prevRow.original.id)
 
           if (e.shiftKey) {
             setSelectedRowIds((prev) => {
@@ -913,6 +922,7 @@ export function GroupedTable({
           e.preventDefault()
           const lastRow = rows[rows.length - 1]
           setFocusedRowId(lastRow.original.id)
+          scrollToRowById(lastRow.original.id)
           setSelectedRowIds(new Set([lastRow.original.id]))
           lastSelectedIndexRef.current = rows.length - 1
           break
@@ -941,6 +951,7 @@ export function GroupedTable({
             setSelectedRowIds(allIds)
             if (!focusedRowId && rows.length > 0) {
               setFocusedRowId(rows[0].original.id)
+              scrollToRowById(rows[0].original.id)
             }
           }
           break
@@ -948,7 +959,6 @@ export function GroupedTable({
 
         case 'm':
         case 'M': {
-          // Cmd/Ctrl+Shift+M: Move to folder
           if ((e.metaKey || e.ctrlKey) && e.shiftKey && selectedRowIds.size > 0) {
             e.preventDefault()
             onMoveToFolder?.(Array.from(selectedRowIds))
@@ -957,19 +967,8 @@ export function GroupedTable({
         }
       }
     },
-    [focusedRowId, table, onNoteOpen, onMoveToFolder, selectedRowIds, setSelectedRowIds]
+    [focusedRowId, table, onNoteOpen, onMoveToFolder, selectedRowIds, setSelectedRowIds, scrollToRowById]
   )
-
-  // Scroll to focused row when it changes
-  // This is a legitimate external synchronization (syncing virtualizer scroll with state)
-  useEffect(() => {
-    if (focusedRowId) {
-      const rowIndex = rows.findIndex((r) => r.original?.id === focusedRowId)
-      if (rowIndex >= 0) {
-        rowVirtualizer.scrollToIndex(rowIndex, { align: 'auto', behavior: 'smooth' })
-      }
-    }
-  }, [focusedRowId, rows, rowVirtualizer])
 
   // ============================================================================
   // Rendering
@@ -1017,6 +1016,8 @@ export function GroupedTable({
     >
       <div
         ref={tableContainerRef}
+        role="grid"
+        aria-label="Grouped notes table"
         className={cn('w-full max-w-full overflow-auto outline-none', className)}
         tabIndex={0}
         onKeyDown={handleKeyDown}

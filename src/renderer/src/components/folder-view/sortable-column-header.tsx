@@ -161,7 +161,7 @@ export function SortableColumnHeader({
       }
 
       document.addEventListener('mouseup', handleEnd)
-      document.addEventListener('touchend', handleEnd)
+      document.addEventListener('touchend', handleEnd, { passive: true })
     },
     [header, handleResizeStart, handleResizeEnd]
   )
@@ -257,15 +257,23 @@ export function SortableColumnHeader({
       <div className="flex items-center gap-1 min-w-0">
         {/* Drag handle - visible on hover */}
         <div
+          role="button"
+          tabIndex={0}
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.stopPropagation()
+            }
+          }}
           className={cn(
             'flex-shrink-0 cursor-grab active:cursor-grabbing',
             'opacity-0 group-hover:opacity-100 transition-opacity',
             'text-muted-foreground/50 hover:text-muted-foreground',
             '-ml-1 mr-0.5'
           )}
+          aria-label={`Drag to reorder column: ${columnConfig.name}`}
           title="Drag to reorder column"
         >
           <GripVertical className="h-4 w-4" />
@@ -305,9 +313,22 @@ export function SortableColumnHeader({
 
       {/* Resize handle */}
       <div
+        role="separator"
+        aria-orientation="vertical"
+        tabIndex={0}
         onMouseDown={handleResize}
         onTouchStart={handleResize}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            e.preventDefault()
+            e.stopPropagation()
+            const delta = e.key === 'ArrowLeft' ? -10 : 10
+            const newWidth = Math.max(50, column.getSize() + delta)
+            onWidthChange?.(columnId, newWidth)
+          }
+        }}
+        aria-label="Resize column"
         className={cn(
           'absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none',
           'opacity-0 group-hover:opacity-100 hover:bg-primary/50',
