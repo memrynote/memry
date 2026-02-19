@@ -31,9 +31,11 @@ type NoteItem = {
 // NOTE SEARCH DROPDOWN COMPONENT
 // ============================================================================
 
+const EMPTY_NOTE_IDS: string[] = []
+
 export const NoteSearchDropdown = ({
   onSelectNote,
-  excludeNoteIds = [],
+  excludeNoteIds = EMPTY_NOTE_IDS,
   children,
   className
 }: NoteSearchDropdownProps): React.JSX.Element => {
