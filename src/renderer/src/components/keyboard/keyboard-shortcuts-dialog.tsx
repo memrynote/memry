@@ -105,15 +105,15 @@ export const KeyboardShortcutsDialog = ({
                 {group.title}
               </h3>
               <div className="space-y-2">
-                {group.shortcuts.map((shortcut, i) => (
-                  <div key={i} className="flex items-center justify-between gap-4">
+                {group.shortcuts.map((shortcut) => (
+                  <div key={shortcut.description} className="flex items-center justify-between gap-4">
                     <span className="text-sm text-gray-600 dark:text-gray-400">
                       {shortcut.description}
                     </span>
                     <div className="flex gap-1 flex-shrink-0">
-                      {shortcut.keys.map((key, j) => (
+                      {shortcut.keys.map((key) => (
                         <kbd
-                          key={j}
+                          key={key}
                           className={cn(
                             'px-1.5 py-0.5 text-xs font-mono',
                             'bg-gray-100 dark:bg-gray-800',
