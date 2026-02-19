@@ -24,6 +24,7 @@ import { getCrdtProvider } from './crdt-provider'
 import { CrdtUpdateQueue } from './crdt-queue'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { postToServer, pushCrdtSnapshot, SyncServerError } from './http-client'
+import { getValidAccessToken, setOnTokenRefreshed } from './token-manager'
 
 const log = createLogger('SyncRuntime')
 
@@ -39,14 +40,6 @@ const SYNC_SERVER_URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'
 
 let runtime: SyncRuntimeState | null = null
 let startPromise: Promise<SyncEngine | null> | null = null
-
-async function retrieveToken(
-  entry: (typeof KEYCHAIN_ENTRIES)[keyof typeof KEYCHAIN_ENTRIES]
-): Promise<string | null> {
-  const encoded = await retrieveKey(entry)
-  if (!encoded) return null
-  return new TextDecoder().decode(encoded)
-}
 
 function getCurrentDeviceId(db: DrizzleDb): string | null {
   const device = db
@@ -118,8 +111,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       initJournalSyncService({ queue, getDeviceId })
 
       const crdtQueue = new CrdtUpdateQueue()
+      setOnTokenRefreshed(() => crdtQueue.resume())
       crdtQueue.start(async (noteId, updates) => {
-        const token = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
+        const token = await getValidAccessToken()
         const vaultKey = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY)
         const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
         if (!token || !vaultKey || !signingSecretKey) return
@@ -142,7 +136,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       })
 
       const snapshotPushFn = async (noteId: string, state: Uint8Array): Promise<void> => {
-        const token = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
+        const token = await getValidAccessToken()
         const vaultKey = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY)
         const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
         if (!token || !vaultKey || !signingSecretKey) {
@@ -179,7 +173,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       network.start()
 
       const ws = new WebSocketManager({
-        getAccessToken: () => retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN),
+        getAccessToken: () => getValidAccessToken(),
         isOnline: () => network.online,
         serverUrl: SYNC_SERVER_URL
       })
@@ -189,7 +183,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         network,
         ws,
         db: engineDb,
-        getAccessToken: () => retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN),
+        getAccessToken: () => getValidAccessToken(),
         getVaultKey: () => retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY),
         getSigningKeys: async () => {
           const secretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
@@ -225,7 +219,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           return { secretKey, publicKey, deviceId }
         },
         getDevicePublicKey: async (deviceId) => {
-          const token = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
+          const token = await getValidAccessToken()
           if (!token) return null
           return getDeviceSigningKey(engineDb, deviceId, token)
         },
