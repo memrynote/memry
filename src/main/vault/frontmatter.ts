@@ -273,7 +273,7 @@ import type { PropertyType } from '@shared/db/schema/notes-cache'
 /**
  * Reserved frontmatter keys that are NOT properties.
  */
-const RESERVED_FRONTMATTER_KEYS = new Set(['id', 'title', 'created', 'modified', 'tags', 'aliases'])
+const RESERVED_FRONTMATTER_KEYS = new Set(['id', 'title', 'created', 'modified', 'tags', 'aliases', 'emoji'])
 
 /**
  * Extract custom properties from frontmatter.

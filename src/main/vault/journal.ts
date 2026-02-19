@@ -182,7 +182,7 @@ export function createJournalFrontmatter(date: string, tags?: string[]): Journal
 /**
  * Reserved frontmatter keys that are NOT custom properties.
  */
-const RESERVED_JOURNAL_KEYS = new Set(['id', 'date', 'created', 'modified', 'tags', 'properties'])
+const RESERVED_JOURNAL_KEYS = new Set(['id', 'date', 'created', 'modified', 'tags', 'properties', 'emoji'])
 
 /**
  * Extract custom properties from journal frontmatter.

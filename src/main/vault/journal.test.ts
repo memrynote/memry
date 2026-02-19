@@ -264,6 +264,33 @@ describe('extractJournalProperties', () => {
     expect(result).not.toHaveProperty('tags')
   })
 
+  it('excludes emoji from extracted properties (regression: emoji leak on sync)', () => {
+    const frontmatter = {
+      id: 'j2026-01-15',
+      date: '2026-01-15',
+      created: FIXED_ISO,
+      modified: FIXED_ISO,
+      emoji: '🎉'
+    }
+
+    expect(extractJournalProperties(frontmatter)).toBeUndefined()
+  })
+
+  it('excludes emoji but keeps custom keys in fallback extraction', () => {
+    const frontmatter = {
+      id: 'j2026-01-15',
+      date: '2026-01-15',
+      created: FIXED_ISO,
+      modified: FIXED_ISO,
+      emoji: '📝',
+      mood: 'happy'
+    }
+
+    const result = extractJournalProperties(frontmatter)
+    expect(result).toEqual({ mood: 'happy' })
+    expect(result).not.toHaveProperty('emoji')
+  })
+
   it('returns undefined for frontmatter with no custom properties', () => {
     const frontmatter = {
       id: 'j2026-01-15',

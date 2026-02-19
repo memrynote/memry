@@ -189,6 +189,31 @@ describe('properties helpers', () => {
     expect(extractProperties(frontmatter)).toEqual({ project: 'alpha', priority: 2 })
   })
 
+  it('excludes emoji from extracted properties (regression: emoji leak on sync)', () => {
+    const frontmatter: NoteFrontmatter = {
+      id: 'abc123def456',
+      created: FIXED_ISO,
+      modified: FIXED_ISO,
+      emoji: '🎉'
+    }
+
+    expect(extractProperties(frontmatter)).toEqual({})
+  })
+
+  it('excludes emoji but keeps custom keys in fallback extraction', () => {
+    const frontmatter: NoteFrontmatter = {
+      id: 'abc123def456',
+      created: FIXED_ISO,
+      modified: FIXED_ISO,
+      emoji: '📝',
+      customField: 'val'
+    }
+
+    const result = extractProperties(frontmatter)
+    expect(result).toEqual({ customField: 'val' })
+    expect(result).not.toHaveProperty('emoji')
+  })
+
   it('inferPropertyType detects common property types', () => {
     expect(inferPropertyType('done', true)).toBe('checkbox')
     expect(inferPropertyType('score', 4)).toBe('number')
