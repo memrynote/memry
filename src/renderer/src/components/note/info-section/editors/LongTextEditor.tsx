@@ -18,10 +18,11 @@ export function LongTextEditor({
 }: LongTextEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [localValue, setLocalValue] = useState(value)
-
-  useEffect(() => {
+  const [prevValue, setPrevValue] = useState(value)
+  if (value !== prevValue) {
+    setPrevValue(value)
     setLocalValue(value)
-  }, [value])
+  }
 
   useEffect(() => {
     if (autoFocus && textareaRef.current) {

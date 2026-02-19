@@ -37,11 +37,12 @@ export function UrlEditor({
   const inputRef = useRef<HTMLInputElement>(null)
   const [localValue, setLocalValue] = useState(value)
   const [isValid, setIsValid] = useState(true)
-
-  useEffect(() => {
+  const [prevValue, setPrevValue] = useState(value)
+  if (value !== prevValue) {
+    setPrevValue(value)
     setLocalValue(value)
     setIsValid(true)
-  }, [value])
+  }
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {
