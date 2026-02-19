@@ -209,7 +209,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     return cached as unknown as Record<string, unknown>
   },
 
-  buildPushPayload(_db: DrizzleDb, itemId: string, _deviceId: string): string | null {
+  buildPushPayload(_db: DrizzleDb, itemId: string, _deviceId: string, operation: string): string | null {
     const indexDb = getIndexDatabase()
     const cached = getNoteCacheById(indexDb, itemId)
     if (!cached) return null
@@ -220,7 +220,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     try {
       const raw = fs.readFileSync(absolutePath, 'utf-8')
       const parsed = parseNote(raw)
-      content = parsed.content
+      content = operation === 'create' ? parsed.content : null
       tags = parsed.frontmatter.tags ?? []
     } catch {
       log.warn('Could not read note file for push payload', { noteId: cached.id })

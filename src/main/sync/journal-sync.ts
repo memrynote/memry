@@ -43,6 +43,7 @@ export class JournalSyncService extends ContentSyncService<JournalSyncPayload> {
   protected buildSnapshotPayload(
     cached: NoteCache,
     clock: VectorClock,
+    operation: 'create' | 'update',
     date: string
   ): JournalSyncPayload {
     let content: string | null = null
@@ -52,7 +53,7 @@ export class JournalSyncService extends ContentSyncService<JournalSyncPayload> {
     try {
       const raw = fs.readFileSync(filePath, 'utf-8')
       const parsed = parseJournalEntry(raw, date)
-      content = parsed.content
+      content = operation === 'create' ? parsed.content : null
       tags = parsed.frontmatter.tags ?? []
       if (parsed.frontmatter.properties) {
         properties = parsed.frontmatter.properties as Record<string, unknown>

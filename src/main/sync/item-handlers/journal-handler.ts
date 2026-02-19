@@ -125,7 +125,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
     return cached as unknown as Record<string, unknown>
   },
 
-  buildPushPayload(_db: DrizzleDb, itemId: string, _deviceId: string): string | null {
+  buildPushPayload(_db: DrizzleDb, itemId: string, _deviceId: string, operation: string): string | null {
     const indexDb = getIndexDatabase()
     const cached = getNoteCacheById(indexDb, itemId)
     if (!cached || !cached.date) return null
@@ -137,7 +137,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
     try {
       const raw = fs.readFileSync(filePath, 'utf-8')
       const parsed = parseJournalEntry(raw, cached.date)
-      content = parsed.content
+      content = operation === 'create' ? parsed.content : null
       tags = parsed.frontmatter.tags ?? []
       if (parsed.frontmatter.properties) {
         properties = parsed.frontmatter.properties as Record<string, unknown>
