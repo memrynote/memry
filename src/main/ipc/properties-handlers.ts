@@ -23,6 +23,8 @@ import { createValidatedHandler } from './validate'
 import { getNoteCacheById, getNoteProperties } from '@shared/db/queries/notes'
 import { getIndexDatabase } from '../database'
 import { updateNote } from '../vault/notes'
+import { getNoteSyncService } from '../sync/note-sync'
+import { getJournalSyncService } from '../sync/journal-sync'
 import {
   readJournalEntry,
   writeJournalEntryWithContent,
@@ -66,15 +68,18 @@ export function registerPropertiesHandlers(): void {
         return { success: false, error: 'Entity not found' }
       }
 
+      logger.debug('properties:set', {
+        entityId: input.entityId,
+        propertyKeys: Object.keys(input.properties)
+      })
+
       try {
-        // Determine entity type by checking the date field
-        // Non-null date = journal entry, null date = regular note
         if (entity.date) {
-          // Journal entry - update via journal file operations
           await updateJournalProperties(entity.date, input.properties)
+          getJournalSyncService()?.enqueueUpdate(input.entityId)
         } else {
-          // Regular note - update via note file operations
           await updateNote({ id: input.entityId, properties: input.properties })
+          getNoteSyncService()?.enqueueUpdate(input.entityId)
         }
         return { success: true }
       } catch (error) {
@@ -124,11 +129,11 @@ export function registerPropertiesHandlers(): void {
 
         // Update based on entity type
         if (entity.date) {
-          // Journal entry
           await updateJournalProperties(entity.date, newProperties)
+          getJournalSyncService()?.enqueueUpdate(input.entityId)
         } else {
-          // Regular note
           await updateNote({ id: input.entityId, properties: newProperties })
+          getNoteSyncService()?.enqueueUpdate(input.entityId)
         }
 
         return { success: true }
