@@ -112,6 +112,9 @@ const DEFAULT_WIDTHS: Record<string, number> = {
 const DEFAULT_PROPERTY_WIDTH = 120
 const DEFAULT_FORMULA_WIDTH = 120
 
+const EMPTY_FORMULAS: FormulaInfo[] = []
+const EMPTY_SUMMARIES: Record<string, SummaryConfig> = {}
+
 // ============================================================================
 // Component
 // ============================================================================
@@ -123,14 +126,14 @@ export function ColumnSelector({
   columns,
   builtInColumns,
   availableProperties,
-  formulas = [],
+  formulas = EMPTY_FORMULAS,
   onColumnsChange,
   onSearchChange,
   onFormulaAdd,
   onFormulaEdit,
   onFormulaDelete,
   sampleNote,
-  summaries = {},
+  summaries = EMPTY_SUMMARIES,
   onSummaryChange,
   className
 }: ColumnSelectorProps): React.JSX.Element {
