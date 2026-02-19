@@ -52,6 +52,10 @@ export function clearWritebackIgnore(_absolutePath: string): void {
   // no-op: auto-evicted by TTL in isWritebackIgnored
 }
 
+export function markWritebackIgnored(absolutePath: string): void {
+  ignoredWrites.set(absolutePath, Date.now())
+}
+
 const CONCURRENT_EDIT_WINDOW_MS = 2000
 
 export function recordNetworkUpdate(noteId: string): void {

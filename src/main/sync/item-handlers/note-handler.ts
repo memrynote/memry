@@ -8,6 +8,7 @@ import type { VectorClock } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { extractFolderFromPath } from '../note-sync'
+import { markWritebackIgnored } from '../crdt-writeback'
 import { getIndexDatabase } from '../../database/client'
 import {
   atomicWrite,
@@ -104,6 +105,13 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       const remoteProperties = data.properties
       const propertiesPresent = remoteProperties !== undefined && remoteProperties !== null
 
+      log.debug('applyUpsert properties', {
+        itemId,
+        propertiesPresent,
+        remotePropertiesKeys: remoteProperties ? Object.keys(remoteProperties) : 'undefined',
+        action: resolution.action
+      })
+
       const resolvedEmoji = data.emoji ?? existing.emoji
       const emojiChanged = data.emoji !== undefined && data.emoji !== existing.emoji
 
@@ -135,13 +143,18 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
             parsed.frontmatter.tags = remoteTags
           }
           if (propertiesPresent) {
-            parsed.frontmatter.properties = remoteProperties
+            if (Object.keys(remoteProperties).length > 0) {
+              parsed.frontmatter.properties = remoteProperties
+            } else {
+              delete parsed.frontmatter.properties
+            }
           }
           if (emojiChanged) {
             parsed.frontmatter.emoji = resolvedEmoji
           }
           const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
 
+          markWritebackIgnored(newAbsPath)
           atomicWrite(newAbsPath, updatedContent)
             .then(() => deleteFile(oldAbsPath))
             .then(() => removeEmptyParents(path.dirname(oldAbsPath), notesDir))
@@ -179,12 +192,17 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
             parsed.frontmatter.tags = remoteTags
           }
           if (propertiesPresent) {
-            parsed.frontmatter.properties = remoteProperties
+            if (Object.keys(remoteProperties).length > 0) {
+              parsed.frontmatter.properties = remoteProperties
+            } else {
+              delete parsed.frontmatter.properties
+            }
           }
           if (emojiChanged) {
             parsed.frontmatter.emoji = resolvedEmoji
           }
           const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
+          markWritebackIgnored(absPath)
           atomicWrite(absPath, updatedContent).catch((err: unknown) => {
             log.error('Failed to write frontmatter update to synced note', { itemId, error: err })
           })
@@ -227,7 +245,9 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       modified: data.modifiedAt ?? now,
       tags: data.tags ?? [],
       ...(data.aliases?.length ? { aliases: data.aliases } : {}),
-      ...(data.properties ? { properties: data.properties } : {}),
+      ...(data.properties && Object.keys(data.properties).length > 0
+        ? { properties: data.properties }
+        : {}),
       ...(data.emoji ? { emoji: data.emoji } : {})
     }
 
@@ -250,6 +270,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       applyPinnedTags(indexDb, itemId, data.pinnedTags)
     }
 
+    markWritebackIgnored(absolutePath)
     atomicWrite(absolutePath, fileContent).catch((err) => {
       log.error('Failed to write synced note to disk', { itemId, error: err })
     })
@@ -278,6 +299,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     deleteNoteFromCache(indexDb, itemId)
     ctx.emit(NotesChannels.events.DELETED, { id: itemId, path: existing.path, source: 'sync' })
 
+    markWritebackIgnored(absolutePath)
     deleteFile(absolutePath).catch((err) => {
       log.error('Failed to delete synced note file', { itemId, error: err })
     })
