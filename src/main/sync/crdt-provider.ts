@@ -209,6 +209,17 @@ export class CrdtProvider {
     return doc
   }
 
+  updateMeta(noteId: string, meta: { title?: string; date?: string }): void {
+    const entry = this.docs.get(noteId)
+    if (!entry) return
+
+    entry.doc.transact(() => {
+      const metaMap = entry.doc.getMap('meta')
+      if (meta.title !== undefined) metaMap.set('title', meta.title)
+      if (meta.date !== undefined) metaMap.set('date', meta.date)
+    }, ORIGIN_LOCAL)
+  }
+
   async seedExistingDocs(
     entries: Array<{ id: string; title?: string; date?: string; tags?: string[] }>,
     onProgress?: (done: number, total: number) => void
