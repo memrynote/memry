@@ -1,5 +1,4 @@
 import { app, BrowserWindow, clipboard, ipcMain, shell } from 'electron'
-import { decodeJwt } from 'jose'
 import http from 'node:http'
 import https from 'node:https'
 import os from 'os'
@@ -20,7 +19,6 @@ import {
   DeviceRegisterResponseSchema,
   OAuthCallbackResponseSchema,
   RecoveryDataResponseSchema,
-  RefreshTokenResponseSchema,
   VerifyOtpResponseSchema
 } from '@shared/contracts/auth-api'
 import type { DeviceRegisterResponse } from '@shared/contracts/auth-api'
@@ -61,11 +59,21 @@ import {
 } from '../crypto'
 import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { store } from '../store'
-import { deleteFromServer, getFromServer, postToServer, SyncServerError } from '../sync/http-client'
+import { deleteFromServer, getFromServer, postToServer } from '../sync/http-client'
 
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler } from './validate'
-import { getCrdtQueue, getSyncEngine } from '../sync/runtime'
+import { getSyncEngine } from '../sync/runtime'
+import {
+  getValidAccessToken,
+  retrieveToken,
+  storeToken,
+  extractJtiFromToken,
+  scheduleTokenRefresh,
+  cancelTokenRefresh,
+  refreshAccessToken,
+  ACCESS_TOKEN_EXPIRY_SECONDS
+} from '../sync/token-manager'
 
 const logger = createLogger('IPC:Sync')
 
@@ -206,126 +214,6 @@ const startLoopbackServer = (): Promise<{ server: http.Server; port: number }> =
 }
 
 // ============================================================================
-// Token Refresh (T073, T073a)
-// ============================================================================
-
-const ACCESS_TOKEN_EXPIRY_SECONDS = 900
-const REFRESH_MAX_RETRIES = 3
-const REFRESH_BACKOFF_BASE_MS = 1000
-const FALLBACK_RETRY_THRESHOLD_S = 60
-
-let refreshTimer: ReturnType<typeof setTimeout> | null = null
-let activeRefreshPromise: Promise<boolean> | null = null
-let fallbackRetryScheduled = false
-let tokenIssuedAt = 0
-
-const scheduleTokenRefresh = (expiresInSeconds: number): void => {
-  cancelTokenRefresh()
-  fallbackRetryScheduled = false
-  tokenIssuedAt = Date.now()
-  const jitter = 0.5 + Math.random() * 0.2
-  const refreshAtMs = Math.floor(expiresInSeconds * jitter) * 1000
-  refreshTimer = setTimeout(() => {
-    void refreshAccessToken()
-  }, refreshAtMs)
-}
-
-const cancelTokenRefresh = (): void => {
-  if (refreshTimer) {
-    clearTimeout(refreshTimer)
-    refreshTimer = null
-  }
-}
-
-const emitSessionExpired = (): void => {
-  cancelTokenRefresh()
-  const windows = BrowserWindow.getAllWindows()
-  for (const win of windows) {
-    win.webContents.send(SYNC_EVENTS.SESSION_EXPIRED, {
-      reason: 'token_expired'
-    })
-  }
-}
-
-const doRefreshAccessToken = async (): Promise<boolean> => {
-  for (let attempt = 0; attempt < REFRESH_MAX_RETRIES; attempt++) {
-    const currentRefreshToken = await retrieveToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN)
-    if (!currentRefreshToken) {
-      emitSessionExpired()
-      return false
-    }
-
-    try {
-      const raw = await postToServer<unknown>('/auth/refresh', {
-        refreshToken: currentRefreshToken
-      })
-      const response = RefreshTokenResponseSchema.parse(raw)
-
-      await storeToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN, response.accessToken)
-      await storeToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN, response.refreshToken)
-      scheduleTokenRefresh(response.expiresIn)
-      getCrdtQueue()?.resume()
-      return true
-    } catch (error: unknown) {
-      if (error instanceof SyncServerError && error.statusCode === 401) break
-
-      if (attempt < REFRESH_MAX_RETRIES - 1) {
-        const backoff = REFRESH_BACKOFF_BASE_MS * Math.pow(2, attempt)
-        await new Promise((resolve) => setTimeout(resolve, backoff))
-      }
-    }
-  }
-
-  if (!fallbackRetryScheduled && tokenIssuedAt > 0) {
-    const elapsedS = (Date.now() - tokenIssuedAt) / 1000
-    const remainingS = ACCESS_TOKEN_EXPIRY_SECONDS - elapsedS
-    if (remainingS > FALLBACK_RETRY_THRESHOLD_S) {
-      fallbackRetryScheduled = true
-      const retryAtMs = Math.floor(remainingS * 0.9) * 1000
-      refreshTimer = setTimeout(() => {
-        void refreshAccessToken()
-      }, retryAtMs)
-      logger.warn(`Scheduling fallback retry in ${Math.floor(retryAtMs / 1000)}s`)
-      return false
-    }
-  }
-
-  emitSessionExpired()
-  return false
-}
-
-const refreshAccessToken = async (): Promise<boolean> => {
-  if (activeRefreshPromise) return activeRefreshPromise
-
-  activeRefreshPromise = doRefreshAccessToken()
-  try {
-    return await activeRefreshPromise
-  } finally {
-    activeRefreshPromise = null
-  }
-}
-
-// ============================================================================
-// Token Keychain Helpers
-// ============================================================================
-
-const storeToken = async (
-  entry: (typeof KEYCHAIN_ENTRIES)[keyof typeof KEYCHAIN_ENTRIES],
-  token: string
-): Promise<void> => {
-  const encoded = new TextEncoder().encode(token)
-  await storeKey(entry, encoded)
-}
-
-const retrieveToken = async (
-  entry: (typeof KEYCHAIN_ENTRIES)[keyof typeof KEYCHAIN_ENTRIES]
-): Promise<string | null> => {
-  const encoded = await retrieveKey(entry)
-  if (!encoded) return null
-  return new TextDecoder().decode(encoded)
-}
-
-// ============================================================================
 // Device Registration (T050c)
 // ============================================================================
 
@@ -333,12 +221,6 @@ const PLATFORM_MAP: Record<string, string> = {
   darwin: 'macos',
   win32: 'windows',
   linux: 'linux'
-}
-
-const extractJtiFromToken = (token: string): string => {
-  const payload = decodeJwt(token)
-  if (!payload.jti) throw new Error('Token missing jti claim')
-  return payload.jti
 }
 
 const registerDevice = async (
@@ -827,7 +709,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   // --- Not-yet-implemented handlers ---
 
   ipcMain.handle(SYNC_CHANNELS.GENERATE_LINKING_QR, async () => {
-    const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
+    const accessToken = await getValidAccessToken()
     if (!accessToken) throw new Error('Not authenticated')
     return initiateDeviceLinking(accessToken)
   })
@@ -893,7 +775,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   ipcMain.handle(
     SYNC_CHANNELS.APPROVE_LINKING,
     createValidatedHandler(ApproveLinkingSchema, async (input) => {
-      const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
+      const accessToken = await getValidAccessToken()
       if (!accessToken) throw new Error('Not authenticated')
       return approveDeviceLinking(input.sessionId, accessToken)
     })

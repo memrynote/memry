@@ -157,6 +157,24 @@ vi.mock('../sync/runtime', () => ({
   getSyncEngine: vi.fn().mockReturnValue(null)
 }))
 
+const mockGetValidAccessToken = vi.fn()
+const mockRetrieveToken = vi.fn()
+const mockStoreToken = vi.fn()
+const mockExtractJtiFromToken = vi.fn().mockReturnValue('test-jti')
+const mockScheduleTokenRefresh = vi.fn()
+const mockCancelTokenRefresh = vi.fn()
+const mockRefreshAccessToken = vi.fn()
+vi.mock('../sync/token-manager', () => ({
+  getValidAccessToken: (...args: unknown[]) => mockGetValidAccessToken(...args),
+  retrieveToken: (...args: unknown[]) => mockRetrieveToken(...args),
+  storeToken: (...args: unknown[]) => mockStoreToken(...args),
+  extractJtiFromToken: (...args: unknown[]) => mockExtractJtiFromToken(...args),
+  scheduleTokenRefresh: (...args: unknown[]) => mockScheduleTokenRefresh(...args),
+  cancelTokenRefresh: (...args: unknown[]) => mockCancelTokenRefresh(...args),
+  refreshAccessToken: (...args: unknown[]) => mockRefreshAccessToken(...args),
+  ACCESS_TOKEN_EXPIRY_SECONDS: 900
+}))
+
 import {
   registerSyncHandlers,
   unregisterSyncHandlers,
@@ -213,6 +231,11 @@ describe('sync IPC handlers', () => {
     vi.clearAllMocks()
     vi.useFakeTimers()
     mockStoreGet.mockReturnValue({})
+    mockRetrieveToken.mockResolvedValue('mock-access-token')
+    mockStoreToken.mockResolvedValue(undefined)
+    mockGetValidAccessToken.mockResolvedValue('mock-access-token')
+    mockRefreshAccessToken.mockResolvedValue(true)
+    mockExtractJtiFromToken.mockReturnValue('test-jti')
   })
 
   afterEach(() => {
