@@ -24,7 +24,7 @@ import { getCrdtProvider } from './crdt-provider'
 import { CrdtUpdateQueue } from './crdt-queue'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { postToServer, pushCrdtSnapshot, SyncServerError } from './http-client'
-import { getValidAccessToken, setOnTokenRefreshed } from './token-manager'
+import { getValidAccessToken, retrieveToken, setOnTokenRefreshed } from './token-manager'
 
 const log = createLogger('SyncRuntime')
 
@@ -88,6 +88,12 @@ async function seedExistingCrdtDocs(
 export async function startSyncRuntime(): Promise<SyncEngine | null> {
   if (runtime) return runtime.engine
   if (startPromise) return startPromise
+
+  const hasRefreshToken = await retrieveToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN)
+  if (!hasRefreshToken) {
+    log.debug('Sync runtime skipped: no user session')
+    return null
+  }
 
   startPromise = (async () => {
     let pendingRuntime: SyncRuntimeState | null = null

@@ -63,7 +63,7 @@ import { deleteFromServer, getFromServer, postToServer } from '../sync/http-clie
 
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler } from './validate'
-import { getSyncEngine } from '../sync/runtime'
+import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import {
   getValidAccessToken,
   retrieveToken,
@@ -350,7 +350,7 @@ export const persistKeysAndRegisterDevice = async (
   })
 
   if (!skipActivation) {
-    const engine = getSyncEngine()
+    const engine = getSyncEngine() ?? (await startSyncRuntime())
     if (engine) {
       void engine.activate()
     }
@@ -667,10 +667,10 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
 
   ipcMain.handle(
     SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE,
-    createValidatedHandler(ConfirmRecoveryPhraseSchema, (input) => {
+    createValidatedHandler(ConfirmRecoveryPhraseSchema, async (input) => {
       if (input.confirmed) {
         store.set('sync', { ...store.get('sync'), recoveryPhraseConfirmed: true })
-        const engine = getSyncEngine()
+        const engine = getSyncEngine() ?? (await startSyncRuntime())
         if (engine) void engine.activate()
       }
       return { success: true }
