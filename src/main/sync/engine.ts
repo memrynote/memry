@@ -95,6 +95,7 @@ export class SyncEngine extends EventEmitter {
   private pendingPushRequested = false
   private readonly PUSH_DEBOUNCE_MS = 2000
   private applier: ItemApplier
+  private deviceKeyCache = new Map<string, Uint8Array | null>()
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
@@ -390,6 +391,7 @@ export class SyncEngine extends EventEmitter {
     const startTime = Date.now()
     let pulledCount = 0
     const processedIds = new Set<string>()
+    this.deviceKeyCache.clear()
 
     try {
       let cursor = this.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)
@@ -439,7 +441,7 @@ export class SyncEngine extends EventEmitter {
 
           const signerIds = new Set(parsed.data.items.map((i) => i.signerDeviceId))
           for (const sid of signerIds) {
-            await this.deps.getDevicePublicKey(sid)
+            await this.resolveDeviceKey(sid)
           }
           log.debug('Pull: device keys prefetched', { signerCount: signerIds.size })
 
@@ -456,7 +458,7 @@ export class SyncEngine extends EventEmitter {
             }
 
             try {
-              const signerPubKey = await this.deps.getDevicePublicKey(item.signerDeviceId)
+              const signerPubKey = await this.resolveDeviceKey(item.signerDeviceId)
               if (!signerPubKey) {
                 log.warn('Skipping item from unresolvable signer device', {
                   itemId: item.id,
@@ -622,6 +624,7 @@ export class SyncEngine extends EventEmitter {
       this.setState('error')
       this.recordHistory('error', 0, Date.now() - startTime, this.lastError)
     } finally {
+      this.deviceKeyCache.clear()
       secureCleanup(vaultKey)
       this.releaseLock()
       release()
@@ -823,6 +826,15 @@ export class SyncEngine extends EventEmitter {
     if (this.state === 'syncing') {
       this.setState(this.deps.network.online ? 'idle' : 'offline')
     }
+  }
+
+  private async resolveDeviceKey(deviceId: string): Promise<Uint8Array | null> {
+    if (this.deviceKeyCache.has(deviceId)) {
+      return this.deviceKeyCache.get(deviceId)!
+    }
+    const key = await this.deps.getDevicePublicKey(deviceId)
+    this.deviceKeyCache.set(deviceId, key)
+    return key
   }
 
   private setState(newState: SyncStatusValue): void {
@@ -1043,7 +1055,7 @@ export class SyncEngine extends EventEmitter {
       if (needsBootstrap) {
         const snapshotResult = await fetchCrdtSnapshot(noteId, token)
         if (snapshotResult) {
-          const signerPubKey = await this.deps.getDevicePublicKey(snapshotResult.signerDeviceId)
+          const signerPubKey = await this.resolveDeviceKey(snapshotResult.signerDeviceId)
           if (signerPubKey) {
             const decrypted = decryptCrdtUpdate(
               snapshotResult.snapshot,
@@ -1081,7 +1093,7 @@ export class SyncEngine extends EventEmitter {
 
         const signerIds = new Set(result.updates.map((u) => u.signerDeviceId))
         for (const sid of signerIds) {
-          await this.deps.getDevicePublicKey(sid)
+          await this.resolveDeviceKey(sid)
         }
 
         for (const entry of result.updates) {
@@ -1089,7 +1101,7 @@ export class SyncEngine extends EventEmitter {
           const packed = new Uint8Array(bin.length)
           for (let i = 0; i < bin.length; i++) packed[i] = bin.charCodeAt(i)
 
-          const signerPubKey = await this.deps.getDevicePublicKey(entry.signerDeviceId)
+          const signerPubKey = await this.resolveDeviceKey(entry.signerDeviceId)
           if (!signerPubKey) {
             log.warn('Skipping CRDT update from unresolvable signer', {
               noteId,
