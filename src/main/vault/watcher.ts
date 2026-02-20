@@ -41,6 +41,8 @@ import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@shared/file-types'
 import { createLogger } from '../lib/logger'
 import { isWritebackIgnored, wasRecentNetworkUpdate } from '../sync/crdt-writeback'
+import { getNoteSyncService } from '../sync/note-sync'
+import { getJournalSyncService } from '../sync/journal-sync'
 import { getCrdtProvider, ORIGIN_LOCAL } from '../sync/crdt-provider'
 import { markdownToBlocks, blocksToYFragment } from '../sync/blocknote-converter'
 
@@ -689,8 +691,13 @@ export class VaultWatcher {
 
       // Track as pending delete - wait for potential rename (matching 'add' event)
       trackPendingDelete(cached.id, relativePath, async () => {
-        // This callback runs if no rename is detected within 500ms
-        // Remove from cache (cascades to tags and links)
+        // Enqueue sync delete BEFORE cache removal (enqueue reads cache for vector clock)
+        if (isJournal && journalDate) {
+          getJournalSyncService()?.enqueueDelete(cached.id, journalDate)
+        } else {
+          getNoteSyncService()?.enqueueDelete(cached.id)
+        }
+
         deleteNoteCache(db, cached.id)
 
         // Emit delete event
