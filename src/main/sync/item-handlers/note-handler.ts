@@ -10,12 +10,7 @@ import { increment } from '../vector-clock'
 import { extractFolderFromPath } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
 import { getIndexDatabase } from '../../database/client'
-import {
-  atomicWrite,
-  deleteFile,
-  generateNotePath,
-  generateUniquePathSync
-} from '../../vault/file-ops'
+import { deleteFile, generateNotePath, generateUniquePathSync } from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getNotesDir } from '../../vault/notes'
 import {
   parseNote,
@@ -159,12 +154,13 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
           const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
 
           markWritebackIgnored(newAbsPath)
-          atomicWrite(newAbsPath, updatedContent)
-            .then(() => deleteFile(oldAbsPath))
-            .then(() => removeEmptyParents(path.dirname(oldAbsPath), notesDir))
-            .catch((err: unknown) => {
-              log.error('Failed to move/rename synced note', { itemId, error: err })
-            })
+          const dir = path.dirname(newAbsPath)
+          fs.mkdirSync(dir, { recursive: true })
+          const tmpPath = newAbsPath + '.tmp'
+          fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
+          fs.renameSync(tmpPath, newAbsPath)
+          fs.unlinkSync(oldAbsPath)
+          removeEmptyParents(path.dirname(oldAbsPath), notesDir).catch(() => {})
         } catch {
           log.warn('Could not read old note for rename/move', { itemId })
         }
@@ -207,9 +203,9 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
           }
           const updatedContent = serializeNote(parsed.frontmatter, parsed.content)
           markWritebackIgnored(absPath)
-          atomicWrite(absPath, updatedContent).catch((err: unknown) => {
-            log.error('Failed to write frontmatter update to synced note', { itemId, error: err })
-          })
+          const tmpPath = absPath + '.tmp'
+          fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
+          fs.renameSync(tmpPath, absPath)
         } catch {
           log.warn('Could not read note for frontmatter update', { itemId })
         }
@@ -275,9 +271,11 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     }
 
     markWritebackIgnored(absolutePath)
-    atomicWrite(absolutePath, fileContent).catch((err) => {
-      log.error('Failed to write synced note to disk', { itemId, error: err })
-    })
+    const dir = path.dirname(absolutePath)
+    fs.mkdirSync(dir, { recursive: true })
+    const tmpPath = absolutePath + '.tmp'
+    fs.writeFileSync(tmpPath, fileContent, 'utf-8')
+    fs.renameSync(tmpPath, absolutePath)
 
     ctx.emit(NotesChannels.events.CREATED, {
       note: { id: itemId, path: relPath, title },
