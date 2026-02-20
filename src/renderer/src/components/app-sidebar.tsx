@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useMemo, useState, useCallback, useRef } from 'react'
-import { BookOpen, Cloud, Home, Inbox, ListTodo, Plus, Search } from 'lucide-react'
+import { BookOpen, Home, Inbox, ListTodo, Plus, Search } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { VaultSwitcher } from '@/components/vault-switcher'
@@ -32,6 +32,7 @@ import { useTabActions } from '@/contexts/tabs'
 import { notesService } from '@/services/notes-service'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useAuth } from '@/contexts/auth-context'
+import { SyncStatus } from '@/components/sync/sync-status'
 import { useInboxList } from '@/hooks/use-inbox'
 import type { SidebarItem, TabType } from '@/contexts/tabs/types'
 import type { AppPage } from '@/App'
@@ -363,18 +364,7 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                size="sm"
-                tooltip="Sync active"
-                onClick={handleSyncClick}
-                className="text-muted-foreground"
-              >
-                <span className="relative">
-                  <Cloud className="size-4" />
-                  <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-green-500" />
-                </span>
-                <span className="text-xs">Synced</span>
-              </SidebarMenuButton>
+              <SyncStatus onOpenSettings={handleSyncClick} />
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
