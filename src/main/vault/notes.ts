@@ -544,22 +544,28 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   // T028: Handle emoji - use input.emoji if provided, otherwise keep existing
   const newEmoji = input.emoji !== undefined ? input.emoji : existing.emoji
 
-  // T111: Create snapshot before significant content changes
-  // Read current file content BEFORE making any changes
   if (input.content !== undefined && input.content !== existing.content) {
+    logger.info('updateNote: content changed, attempting snapshot', { noteId: input.id })
     try {
       const absolutePath = toAbsolutePath(existing.path)
       const currentFileContent = await fs.readFile(absolutePath, 'utf-8')
-      maybeCreateSignificantSnapshot(
+      const snap = maybeCreateSignificantSnapshot(
         input.id,
         currentFileContent,
         existing.content,
         newContent,
         existing.title
       )
+      if (snap) {
+        logger.info('updateNote: snapshot created', { noteId: input.id, snapshotId: snap.id })
+      } else {
+        logger.info('updateNote: snapshot skipped (below threshold)', { noteId: input.id })
+      }
     } catch (err) {
       logger.error('Failed to read current file for snapshot:', err)
     }
+  } else if (input.content !== undefined) {
+    logger.info('updateNote: content unchanged, skipping snapshot', { noteId: input.id })
   }
 
   // Update frontmatter

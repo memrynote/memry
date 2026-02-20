@@ -10,7 +10,12 @@ import {
   ensureDirectory
 } from '../vault/file-ops'
 import { parseNote, serializeNote, type NoteFrontmatter } from '../vault/frontmatter'
-import { getNotesDir, toRelativePath, toAbsolutePath } from '../vault/notes'
+import {
+  getNotesDir,
+  toRelativePath,
+  toAbsolutePath,
+  maybeCreateSignificantSnapshot
+} from '../vault/notes'
 import { getJournalPath } from '../vault/journal'
 import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
 import { getIndexDatabase } from '../database/client'
@@ -128,7 +133,27 @@ async function writebackExisting(
 ): Promise<void> {
   const absolutePath = toAbsolutePath(relativePath)
 
-  const existingFrontmatter = await readExistingFrontmatter(absolutePath)
+  const existingRaw = await safeRead(absolutePath)
+  let existingFrontmatter: NoteFrontmatter | null = null
+
+  if (existingRaw) {
+    const parsed = parseNote(existingRaw, absolutePath)
+    existingFrontmatter = parsed.frontmatter
+    const title = existingFrontmatter?.title || 'Untitled'
+    try {
+      const snap = maybeCreateSignificantSnapshot(
+        noteId,
+        existingRaw,
+        parsed.content,
+        markdown,
+        title
+      )
+      if (snap) log.info('Snapshot created during writeback', { noteId, snapshotId: snap.id })
+    } catch (err) {
+      log.error('Snapshot creation failed during writeback', { noteId, error: err })
+    }
+  }
+
   const mergedFrontmatter = mergeFrontmatter(noteId, existingFrontmatter, doc)
   const fileContent = serializeNote(mergedFrontmatter, markdown)
 
@@ -201,11 +226,30 @@ async function writebackJournal(
 
   if (cached) {
     const absolutePath = toAbsolutePath(cached.path)
-    const existing = await readExistingFrontmatter(absolutePath)
+    const existingRaw = await safeRead(absolutePath)
+    const existing = existingRaw ? parseNote(existingRaw, absolutePath).frontmatter : null
 
     if (existing && existing.id !== noteId) {
       await handleJournalCollision(noteId, date, existing.id, doc, markdown, indexDb)
       return
+    }
+
+    if (existingRaw) {
+      const parsed = parseNote(existingRaw, absolutePath)
+      const title = existing?.title || `Journal ${date}`
+      try {
+        const snap = maybeCreateSignificantSnapshot(
+          noteId,
+          existingRaw,
+          parsed.content,
+          markdown,
+          title
+        )
+        if (snap)
+          log.info('Journal snapshot created during writeback', { noteId, snapshotId: snap.id })
+      } catch (err) {
+        log.error('Journal snapshot creation failed during writeback', { noteId, error: err })
+      }
     }
 
     const mergedFrontmatter = mergeJournalFrontmatter(noteId, date, existing, doc)
@@ -331,14 +375,6 @@ export async function handleSyncDeletion(noteId: string): Promise<void> {
   })
 
   log.info('Deleted from sync', { noteId })
-}
-
-async function readExistingFrontmatter(absolutePath: string): Promise<NoteFrontmatter | null> {
-  if (!(await fileExists(absolutePath))) return null
-  const raw = await safeRead(absolutePath)
-  if (!raw) return null
-  const parsed = parseNote(raw, absolutePath)
-  return parsed.frontmatter
 }
 
 function mergeFrontmatter(
