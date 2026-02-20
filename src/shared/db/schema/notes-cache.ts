@@ -51,6 +51,7 @@ export const noteTags = sqliteTable(
       .notNull()
       .references(() => noteCache.id, { onDelete: 'cascade' }),
     tag: text('tag').notNull(),
+    position: integer('position').notNull().default(0),
     // When the note was pinned to this tag (null = not pinned)
     pinnedAt: text('pinned_at')
   },

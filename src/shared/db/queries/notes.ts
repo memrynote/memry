@@ -212,11 +212,12 @@ export function setNoteTags(db: DrizzleDb, noteId: string, tags: string[]): void
   // Delete existing tags
   db.delete(noteTags).where(eq(noteTags.noteId, noteId)).run()
 
-  // Insert new tags
+  // Insert new tags with position to preserve insertion order
   if (tags.length > 0) {
-    const tagRecords: NewNoteTag[] = tags.map((tag) => ({
+    const tagRecords: NewNoteTag[] = tags.map((tag, index) => ({
       noteId,
-      tag: tag.toLowerCase().trim()
+      tag: tag.toLowerCase().trim(),
+      position: index
     }))
     db.insert(noteTags).values(tagRecords).run()
   }
@@ -230,6 +231,7 @@ export function getNoteTags(db: DrizzleDb, noteId: string): string[] {
     .select({ tag: noteTags.tag })
     .from(noteTags)
     .where(eq(noteTags.noteId, noteId))
+    .orderBy(noteTags.position)
     .all()
 
   return results.map((r) => r.tag)
