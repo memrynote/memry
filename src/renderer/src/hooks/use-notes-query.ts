@@ -218,18 +218,21 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     })
 
+    const unsubUpdated = onNoteUpdated(() => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+    })
+
     const unsubRenamed = onNoteRenamed(() => {
-      // Title changed, may affect sort order
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     })
 
     const unsubMoved = onNoteMoved(() => {
-      // Folder changed, invalidate lists
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     })
 
     return () => {
       unsubCreated()
+      unsubUpdated()
       unsubDeleted()
       unsubRenamed()
       unsubMoved()
