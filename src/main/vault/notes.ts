@@ -370,8 +370,10 @@ export async function getNoteById(id: string): Promise<Note | null> {
   const fileContent = await safeRead(absolutePath)
 
   if (!fileContent) {
-    // File was deleted externally, remove from cache
-    deleteNoteCache(db, id)
+    logger.warn('getNoteById: file missing on disk, returning null (watcher handles cleanup)', {
+      id,
+      path: cached.path
+    })
     return null
   }
 

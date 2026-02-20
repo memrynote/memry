@@ -106,6 +106,13 @@
       "when": 1771589398214,
       "tag": "0014_ordinary_mathemanic",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1771591565928,
+      "tag": "0015_parched_karnak",
+      "breakpoints": true
     }
   ]
 }

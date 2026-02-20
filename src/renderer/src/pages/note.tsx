@@ -24,7 +24,7 @@ import {
 } from '@/hooks/use-notes-query'
 import { usePropertySection, type PropertySectionAction } from '@/hooks/use-property-section'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
-import { onNoteDeleted, onNoteUpdated } from '@/services/notes-service'
+import { onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { MoreHorizontal, History, Bookmark } from 'lucide-react'
@@ -98,7 +98,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinksQuery(noteId ?? null)
   const { tasks: linkedTasks, isLoading: linkedTasksLoading } = useTasksLinkedToNote(noteId ?? null)
   const { tags: allAvailableTags } = useNoteTagsQuery()
-  const { openTab, setTabDeleted } = useTabs()
+  const { openTab, setTabDeleted, updateTabTitleByEntityId } = useTabs()
   const activeTab = useActiveTab()
 
   // Extract highlight info from tab viewState (from reminder navigation)
@@ -246,6 +246,19 @@ export function NotePage({ noteId }: NotePageProps) {
       unsubDeleted()
     }
   }, [noteId, setTabDeleted])
+
+  // Listen for sync-driven rename events to update tab title
+  useEffect(() => {
+    if (!noteId) return
+
+    const unsub = onNoteRenamed((event) => {
+      if (event.id === noteId) {
+        updateTabTitleByEntityId(noteId, event.newTitle)
+      }
+    })
+
+    return unsub
+  }, [noteId, updateTabTitleByEntityId])
 
   // Listen for external note updates (file changed outside app)
   // Track if we're currently saving to ignore our own updates
