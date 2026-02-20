@@ -288,7 +288,14 @@ export const PropertyCell = memo(function PropertyCell({
   highlightQuery,
   className
 }: PropertyCellProps): React.JSX.Element {
-  return <PropertyValueDisplay value={value} type={type} highlightQuery={highlightQuery} className={className} />
+  return (
+    <PropertyValueDisplay
+      value={value}
+      type={type}
+      highlightQuery={highlightQuery}
+      className={className}
+    />
+  )
 })
 
 export const EditablePropertyCell = memo(function EditablePropertyCell({
@@ -332,7 +339,14 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
   )
 
   if (!onSave) {
-    return <PropertyValueDisplay value={value} type={type} highlightQuery={highlightQuery} className={className} />
+    return (
+      <PropertyValueDisplay
+        value={value}
+        type={type}
+        highlightQuery={highlightQuery}
+        className={className}
+      />
+    )
   }
 
   if (type === 'checkbox') {
@@ -442,7 +456,13 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
       onDoubleClick={stopPropagation}
       className={cn('w-full text-left focus:outline-none cursor-text')}
     >
-      <PropertyValueDisplay value={value} type={type} highlightQuery={highlightQuery} className={className} urlAsLink={false} />
+      <PropertyValueDisplay
+        value={value}
+        type={type}
+        highlightQuery={highlightQuery}
+        className={className}
+        urlAsLink={false}
+      />
     </button>
   )
 })

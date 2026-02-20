@@ -967,7 +967,15 @@ export function GroupedTable({
         }
       }
     },
-    [focusedRowId, table, onNoteOpen, onMoveToFolder, selectedRowIds, setSelectedRowIds, scrollToRowById]
+    [
+      focusedRowId,
+      table,
+      onNoteOpen,
+      onMoveToFolder,
+      selectedRowIds,
+      setSelectedRowIds,
+      scrollToRowById
+    ]
   )
 
   // ============================================================================

@@ -106,7 +106,10 @@ export const KeyboardShortcutsDialog = ({
               </h3>
               <div className="space-y-2">
                 {group.shortcuts.map((shortcut) => (
-                  <div key={shortcut.description} className="flex items-center justify-between gap-4">
+                  <div
+                    key={shortcut.description}
+                    className="flex items-center justify-between gap-4"
+                  >
                     <span className="text-sm text-gray-600 dark:text-gray-400">
                       {shortcut.description}
                     </span>

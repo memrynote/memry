@@ -101,7 +101,6 @@ export async function processEmbeddingQueue(): Promise<{
   let totalSucceeded = 0
   let totalFailed = 0
 
-
   // Process in batches
   while (pendingNoteIds.size > 0) {
     // Get next batch

@@ -18,11 +18,7 @@ export function applyPinnedTags(indexDb: IndexDb, noteId: string, pinnedTags: st
   const pinnedSet = new Set(pinnedTags)
   const now = new Date().toISOString()
 
-  const existingRows = indexDb
-    .select()
-    .from(noteTags)
-    .where(eq(noteTags.noteId, noteId))
-    .all()
+  const existingRows = indexDb.select().from(noteTags).where(eq(noteTags.noteId, noteId)).all()
 
   for (const row of existingRows) {
     if (pinnedSet.has(row.tag) && !row.pinnedAt) {

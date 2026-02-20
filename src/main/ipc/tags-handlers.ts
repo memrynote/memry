@@ -111,10 +111,7 @@ function toTagNoteItem(
   }
 }
 
-function getAffectedNoteIds(
-  indexDb: ReturnType<typeof getIndexDatabase>,
-  tag: string
-): string[] {
+function getAffectedNoteIds(indexDb: ReturnType<typeof getIndexDatabase>, tag: string): string[] {
   const normalized = tag.toLowerCase().trim()
   return indexDb
     .select({ noteId: noteTags.noteId })

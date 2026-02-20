@@ -17,7 +17,12 @@ import {
   generateUniquePathSync
 } from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getNotesDir } from '../../vault/notes'
-import { parseNote, serializeNote, inferPropertyType, type NoteFrontmatter } from '../../vault/frontmatter'
+import {
+  parseNote,
+  serializeNote,
+  inferPropertyType,
+  type NoteFrontmatter
+} from '../../vault/frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import {
   getNoteCacheById,
@@ -99,8 +104,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       const tagsChanged =
         remoteTags !== undefined &&
         localTags !== undefined &&
-        (remoteTags.length !== localTags.length ||
-          remoteTags.some((t) => !localTags.includes(t)))
+        (remoteTags.length !== localTags.length || remoteTags.some((t) => !localTags.includes(t)))
 
       const remoteProperties = data.properties
       const propertiesPresent = remoteProperties !== undefined && remoteProperties !== null
@@ -313,7 +317,12 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     return cached as unknown as Record<string, unknown>
   },
 
-  buildPushPayload(_db: DrizzleDb, itemId: string, _deviceId: string, operation: string): string | null {
+  buildPushPayload(
+    _db: DrizzleDb,
+    itemId: string,
+    _deviceId: string,
+    operation: string
+  ): string | null {
     const indexDb = getIndexDatabase()
     const cached = getNoteCacheById(indexDb, itemId)
     if (!cached) return null

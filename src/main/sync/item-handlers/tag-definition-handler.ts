@@ -25,19 +25,12 @@ export const tagDefinitionHandler: SyncItemHandler<TagDefinitionSyncPayload> = {
     clock: VectorClock
   ): ApplyResult {
     return ctx.db.transaction((tx): ApplyResult => {
-      const existing = tx
-        .select()
-        .from(tagDefinitions)
-        .where(eq(tagDefinitions.name, itemId))
-        .get()
+      const existing = tx.select().from(tagDefinitions).where(eq(tagDefinitions.name, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
       const now = new Date().toISOString()
 
       if (existing) {
-        const resolution = resolveClockConflict(
-          existing.clock as VectorClock | null,
-          remoteClock
-        )
+        const resolution = resolveClockConflict(existing.clock as VectorClock | null, remoteClock)
         if (resolution.action === 'skip') {
           log.info('Skipping remote tag definition update, local is newer', { itemId })
           return 'skipped'
