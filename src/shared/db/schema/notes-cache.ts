@@ -176,7 +176,8 @@ export const SnapshotReasons = {
   MANUAL: 'manual', // User explicitly saved a version
   AUTO: 'auto', // Auto-save triggered snapshot
   TIMER: 'timer', // Periodic timer (e.g., every 5 minutes of editing)
-  SIGNIFICANT: 'significant' // Significant content change detected
+  SIGNIFICANT: 'significant', // Significant content change detected
+  CLOSE: 'close' // Tab/window/app close — bypass word threshold
 } as const
 
 export type SnapshotReason = (typeof SnapshotReasons)[keyof typeof SnapshotReasons]

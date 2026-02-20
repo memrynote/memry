@@ -159,6 +159,31 @@ export class CrdtProvider {
     log.info('CrdtProvider destroyed')
   }
 
+  getOpenNoteIds(): string[] {
+    return Array.from(this.docs.keys())
+  }
+
+  async pushAllSnapshots(): Promise<number> {
+    if (!this.snapshotPushFn) {
+      log.debug('No snapshotPushFn configured, skipping server push')
+      return 0
+    }
+
+    let pushed = 0
+    for (const [noteId, entry] of this.docs) {
+      try {
+        const state = Y.encodeStateAsUpdate(entry.doc)
+        await this.snapshotPushFn(noteId, state)
+        entry.accumulatedBytes = 0
+        pushed++
+        log.info('Pushed server snapshot', { noteId, size: state.byteLength })
+      } catch (err) {
+        log.warn('Failed to push server snapshot', { noteId, error: err })
+      }
+    }
+    return pushed
+  }
+
   private initDocStructure(doc: Y.Doc): void {
     doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     doc.getMap('meta')

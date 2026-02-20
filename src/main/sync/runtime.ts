@@ -151,9 +151,15 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         const vaultKey = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY)
         const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
         if (!token || !vaultKey || !signingSecretKey) {
+          log.warn('Missing credentials for CRDT snapshot push', {
+            noteId,
+            hasToken: !!token,
+            hasVaultKey: !!vaultKey,
+            hasSigningKey: !!signingSecretKey
+          })
           if (vaultKey) secureCleanup(vaultKey)
           if (signingSecretKey) secureCleanup(signingSecretKey)
-          return
+          throw new Error('Missing credentials for CRDT snapshot push')
         }
 
         try {
@@ -279,6 +285,16 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
 export async function stopSyncRuntime(): Promise<void> {
   const active = runtime
+
+  if (active) {
+    try {
+      const pushed = await getCrdtProvider().pushAllSnapshots()
+      if (pushed > 0) log.info(`Pushed ${pushed} CRDT snapshot(s) before shutdown`)
+    } catch (err) {
+      log.warn('Pre-shutdown CRDT snapshot push failed', err)
+    }
+  }
+
   runtime = null
   startPromise = null
 

@@ -22,6 +22,12 @@ import { autoOpenLastVault, closeVault } from './vault'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { log, createLogger } from './lib/logger'
+import { getCrdtProvider } from './sync/crdt-provider'
+import { getNoteCacheById } from '@shared/db/queries/notes'
+import { getIndexDatabase } from './database/client'
+import { toAbsolutePath, createSnapshot } from './vault/notes'
+import { safeRead } from './vault/file-ops'
+import { SnapshotReasons } from '@shared/db/schema/notes-cache'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -381,7 +387,9 @@ void app.whenReady().then(async () => {
   ipcMain.on('window-close', () => {
     const win = BrowserWindow.getFocusedWindow()
     if (!win) return
-    flushWindow(win).then(() => win.close())
+    flushWindow(win)
+      .then(() => createCloseSnapshots())
+      .then(() => win.close())
   })
 
   // Quick Capture IPC handlers
@@ -619,17 +627,21 @@ let isShuttingDown = false
 function flushWindow(win: BrowserWindow, timeoutMs = 2000): Promise<void> {
   return new Promise<void>((resolve) => {
     if (win.isDestroyed() || !win.webContents) {
+      shutdownLog.info('flushWindow: window already destroyed', win.id)
       resolve()
       return
     }
 
+    shutdownLog.info('flushWindow: requesting flush from window', win.id)
+
     const timer = setTimeout(() => {
-      shutdownLog.warn('flush timeout for window', win.id)
+      shutdownLog.warn('flushWindow: timeout for window', win.id)
       resolve()
     }, timeoutMs)
 
     const channel = 'app:flush-done'
     const handler = (): void => {
+      shutdownLog.info('flushWindow: flush-done received from window', win.id)
       clearTimeout(timer)
       ipcMain.removeListener(channel, handler)
       resolve()
@@ -646,6 +658,37 @@ async function flushAllWindows(): Promise<void> {
   shutdownLog.info(`flushing ${windows.length} window(s)...`)
   await Promise.allSettled(windows.map((w) => flushWindow(w)))
   shutdownLog.info('flush complete')
+}
+
+async function createCloseSnapshots(): Promise<void> {
+  try {
+    const provider = getCrdtProvider()
+    const openNoteIds = provider.getOpenNoteIds()
+    if (openNoteIds.length === 0) return
+
+    const indexDb = getIndexDatabase()
+    let created = 0
+
+    for (const noteId of openNoteIds) {
+      try {
+        const cached = getNoteCacheById(indexDb, noteId)
+        if (!cached) continue
+        const absolutePath = toAbsolutePath(cached.path)
+        const fileContent = await safeRead(absolutePath)
+        if (!fileContent) continue
+        const result = createSnapshot(noteId, fileContent, cached.title, SnapshotReasons.CLOSE)
+        if (result) created++
+      } catch (err) {
+        shutdownLog.error('close snapshot failed', { noteId, error: err })
+      }
+    }
+
+    if (created > 0) {
+      shutdownLog.info(`created ${created} close snapshot(s)`)
+    }
+  } catch {
+    shutdownLog.warn('skipped close snapshots (provider not initialized)')
+  }
 }
 
 // Graceful shutdown: close vault and databases before quitting
@@ -666,12 +709,11 @@ app.on('before-quit', (event) => {
 
   // Flush pending saves from all renderer windows before closing vault
   flushAllWindows()
+    .then(() => createCloseSnapshots())
     .then(() => {
-      // Stop the snooze scheduler
       shutdownLog.info('stopping snooze scheduler...')
       stopSnoozeScheduler()
 
-      // Stop the reminder scheduler
       shutdownLog.info('stopping reminder scheduler...')
       stopReminderScheduler()
 
