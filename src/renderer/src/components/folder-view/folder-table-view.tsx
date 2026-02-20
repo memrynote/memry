@@ -948,7 +948,15 @@ export function FolderTableView({
         }
       }
     },
-    [focusedRowId, table, onNoteOpen, onMoveToFolder, selectedRowIds, setSelectedRowIds, scrollToRowById]
+    [
+      focusedRowId,
+      table,
+      onNoteOpen,
+      onMoveToFolder,
+      selectedRowIds,
+      setSelectedRowIds,
+      scrollToRowById
+    ]
   )
 
   // Calculate total width of all columns for table min-width

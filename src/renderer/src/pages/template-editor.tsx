@@ -115,7 +115,16 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
 
   // Track if modified
   const initialStateRef = useRef<string>(
-    isNew ? JSON.stringify({ name: '', description: '', icon: null, tags: [], properties: [], content: '' }) : ''
+    isNew
+      ? JSON.stringify({
+          name: '',
+          description: '',
+          icon: null,
+          tags: [],
+          properties: [],
+          content: ''
+        })
+      : ''
   )
   const isModified = useMemo(() => {
     const currentState = JSON.stringify({ name, description, icon, tags, properties, content })

@@ -191,7 +191,12 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
     return { ...project, statuses: projectStatuses } as Record<string, unknown>
   },
 
-  buildPushPayload(db: DrizzleDb, itemId: string, _deviceId: string, _operation: string): string | null {
+  buildPushPayload(
+    db: DrizzleDb,
+    itemId: string,
+    _deviceId: string,
+    _operation: string
+  ): string | null {
     const project = db.select().from(projects).where(eq(projects.id, itemId)).get()
     if (!project) return null
 

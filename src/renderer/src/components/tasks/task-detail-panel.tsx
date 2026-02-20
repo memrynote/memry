@@ -442,10 +442,7 @@ export const TaskDetailPanel = ({
                     <div className="h-px bg-border" />
 
                     {/* Description */}
-                    <TaskDescription
-                      value={task.description}
-                      onChange={handleUpdateDescription}
-                    />
+                    <TaskDescription value={task.description} onChange={handleUpdateDescription} />
 
                     {/* Divider */}
                     <div className="h-px bg-border" />

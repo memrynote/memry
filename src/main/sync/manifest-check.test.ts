@@ -321,10 +321,7 @@ describe('checkManifestIntegrity', () => {
     it('#then recognizes tag as local and does not trigger re-pull', async () => {
       // #given
       const clock: VectorClock = { 'device-A': 1 }
-      testDb.db
-        .insert(tagDefinitions)
-        .values({ name: 'important', color: '#ff0000', clock })
-        .run()
+      testDb.db.insert(tagDefinitions).values({ name: 'important', color: '#ff0000', clock }).run()
 
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
         items: [
@@ -353,10 +350,7 @@ describe('checkManifestIntegrity', () => {
   describe('#given synced_settings exists locally and on server #when check runs', () => {
     it('#then recognizes settings as local and does not trigger re-pull', async () => {
       // #given
-      testDb.db
-        .insert(settings)
-        .values({ key: 'synced_settings', value: '{}' })
-        .run()
+      testDb.db.insert(settings).values({ key: 'synced_settings', value: '{}' }).run()
 
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
         items: [

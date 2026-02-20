@@ -17,10 +17,7 @@ import { initProjectSyncService, resetProjectSyncService } from './project-sync'
 import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
-import {
-  initTagDefinitionSyncService,
-  resetTagDefinitionSyncService
-} from './tag-definition-sync'
+import { initTagDefinitionSyncService, resetTagDefinitionSyncService } from './tag-definition-sync'
 import { getIndexDatabase } from '../database/client'
 import { noteCache } from '@shared/db/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'

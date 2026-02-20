@@ -85,11 +85,7 @@ export class TagDefinitionSyncService {
     }
 
     try {
-      const tag = this.db
-        .select()
-        .from(tagDefinitions)
-        .where(eq(tagDefinitions.name, name))
-        .get()
+      const tag = this.db.select().from(tagDefinitions).where(eq(tagDefinitions.name, name)).get()
       if (!tag) {
         log.warn('Tag definition not found for sync enqueue', { name })
         return

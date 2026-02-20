@@ -141,11 +141,7 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
     items.push({ id: td.name, type: 'tag_definition', payload: JSON.stringify(td) })
   }
 
-  const syncedSettings = db
-    .select()
-    .from(settings)
-    .where(eq(settings.key, 'synced_settings'))
-    .get()
+  const syncedSettings = db.select().from(settings).where(eq(settings.key, 'synced_settings')).get()
   if (syncedSettings) {
     items.push({ id: 'synced_settings', type: 'settings', payload: JSON.stringify(syncedSettings) })
   }

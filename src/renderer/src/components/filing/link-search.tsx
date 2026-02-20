@@ -161,7 +161,6 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setSearchQuery(e.target.value)
     setIsDropdownOpen(true)
