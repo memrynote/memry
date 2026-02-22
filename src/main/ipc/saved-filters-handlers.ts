@@ -19,6 +19,26 @@ import { getDatabase } from '../database'
 import { generateId } from '../lib/id'
 import * as settingsQueries from '@shared/db/queries/settings'
 import { getFilterSyncService } from '../sync/filter-sync'
+import { incrementFilterClockOffline } from '../sync/offline-clock'
+import type { DrizzleDb } from '../database/client'
+
+function syncFilterCreate(db: DrizzleDb, filterId: string): void {
+  const svc = getFilterSyncService()
+  if (svc) {
+    svc.enqueueCreate(filterId)
+  } else {
+    incrementFilterClockOffline(db, filterId)
+  }
+}
+
+function syncFilterUpdate(db: DrizzleDb, filterId: string): void {
+  const svc = getFilterSyncService()
+  if (svc) {
+    svc.enqueueUpdate(filterId)
+  } else {
+    incrementFilterClockOffline(db, filterId)
+  }
+}
 
 /**
  * Emit saved filter event to all windows
@@ -94,7 +114,7 @@ export function registerSavedFiltersHandlers(): void {
 
       const apiFilter = toApiFilter(filter)!
       emitSavedFilterEvent(SavedFiltersChannels.events.CREATED, { savedFilter: apiFilter })
-      getFilterSyncService()?.enqueueCreate(id)
+      syncFilterCreate(db, id)
 
       return { success: true, savedFilter: apiFilter }
     })
@@ -123,7 +143,7 @@ export function registerSavedFiltersHandlers(): void {
         id: input.id,
         savedFilter: apiFilter
       })
-      getFilterSyncService()?.enqueueUpdate(input.id)
+      syncFilterUpdate(db, input.id)
 
       return { success: true, savedFilter: apiFilter }
     })

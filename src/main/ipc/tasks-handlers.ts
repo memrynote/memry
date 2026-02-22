@@ -37,8 +37,45 @@ import * as taskQueries from '@shared/db/queries/tasks'
 import * as projectQueries from '@shared/db/queries/projects'
 import { getTaskSyncService } from '../sync/task-sync'
 import { getProjectSyncService } from '../sync/project-sync'
+import { incrementTaskClocksOffline, incrementProjectClocksOffline } from '../sync/offline-clock'
 
 const logger = createLogger('IPC:Tasks')
+
+function syncTaskUpdate(db: DrizzleDb, taskId: string, changedFields: string[]): void {
+  const svc = getTaskSyncService()
+  if (svc) {
+    svc.enqueueUpdate(taskId, changedFields)
+  } else {
+    incrementTaskClocksOffline(db, taskId, changedFields)
+  }
+}
+
+function syncTaskCreate(db: DrizzleDb, taskId: string): void {
+  const svc = getTaskSyncService()
+  if (svc) {
+    svc.enqueueCreate(taskId)
+  } else {
+    incrementTaskClocksOffline(db, taskId, [])
+  }
+}
+
+function syncProjectUpdate(db: DrizzleDb, projectId: string, changedFields?: string[]): void {
+  const svc = getProjectSyncService()
+  if (svc) {
+    svc.enqueueUpdate(projectId, changedFields)
+  } else {
+    incrementProjectClocksOffline(db, projectId, changedFields)
+  }
+}
+
+function syncProjectCreate(db: DrizzleDb, projectId: string): void {
+  const svc = getProjectSyncService()
+  if (svc) {
+    svc.enqueueCreate(projectId)
+  } else {
+    incrementProjectClocksOffline(db, projectId)
+  }
+}
 
 /**
  * Emit task event to all windows
@@ -113,7 +150,7 @@ export function registerTasksHandlers(): void {
         }
 
         emitTaskEvent(TasksChannels.events.CREATED, { task: enrichedTask })
-        getTaskSyncService()?.enqueueCreate(id)
+        syncTaskCreate(db, id)
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -154,13 +191,14 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         const { id, tags, linkedNoteIds, ...updates } = input
 
+        const existingTask = taskQueries.getTaskById(db, id)
+
         // If projectId is changing, we need to map the status to the new project
         if (updates.projectId) {
-          const currentTask = taskQueries.getTaskById(db, id)
-          if (currentTask && currentTask.projectId !== updates.projectId) {
+          if (existingTask && existingTask.projectId !== updates.projectId) {
             // Get the current status
-            const currentStatus = currentTask.statusId
-              ? projectQueries.getStatusById(db, currentTask.statusId)
+            const currentStatus = existingTask.statusId
+              ? projectQueries.getStatusById(db, existingTask.statusId)
               : undefined
             // Find equivalent status in the new project
             const newStatus = projectQueries.getEquivalentStatus(
@@ -195,8 +233,16 @@ export function registerTasksHandlers(): void {
           linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
         }
 
+        const actualChanged = existingTask
+          ? Object.keys(updates).filter((k) => {
+              const oldVal = (existingTask as Record<string, unknown>)[k]
+              const newVal = (updates as Record<string, unknown>)[k]
+              return JSON.stringify(oldVal) !== JSON.stringify(newVal)
+            })
+          : Object.keys(updates)
+
         emitTaskEvent(TasksChannels.events.UPDATED, { id, task: enrichedTask, changes: updates })
-        getTaskSyncService()?.enqueueUpdate(id, Object.keys(updates))
+        syncTaskUpdate(db, id, actualChanged)
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -283,7 +329,7 @@ export function registerTasksHandlers(): void {
         }
 
         emitTaskEvent(TasksChannels.events.COMPLETED, { id: input.id, task: enrichedTask })
-        getTaskSyncService()?.enqueueUpdate(input.id, ['completedAt'])
+        syncTaskUpdate(db, input.id, ['completedAt'])
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -314,7 +360,7 @@ export function registerTasksHandlers(): void {
           task: enrichedTask,
           changes: { completedAt: null }
         })
-        getTaskSyncService()?.enqueueUpdate(id, ['completedAt'])
+        syncTaskUpdate(db, id, ['completedAt'])
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -345,7 +391,7 @@ export function registerTasksHandlers(): void {
           task: enrichedTask,
           changes: { archivedAt: task.archivedAt }
         })
-        getTaskSyncService()?.enqueueUpdate(id, ['archivedAt'])
+        syncTaskUpdate(db, id, ['archivedAt'])
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to archive task'
@@ -375,7 +421,7 @@ export function registerTasksHandlers(): void {
           task: enrichedTask,
           changes: { archivedAt: null }
         })
-        getTaskSyncService()?.enqueueUpdate(id, ['archivedAt'])
+        syncTaskUpdate(db, id, ['archivedAt'])
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to unarchive task'
@@ -431,7 +477,7 @@ export function registerTasksHandlers(): void {
         if (targetStatusId) movedFields.push('statusId')
         if (input.targetParentId !== undefined) movedFields.push('parentId')
         emitTaskEvent(TasksChannels.events.MOVED, { id: input.taskId, task: enrichedTask })
-        getTaskSyncService()?.enqueueUpdate(input.taskId, movedFields)
+        syncTaskUpdate(db, input.taskId, movedFields)
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -488,7 +534,7 @@ export function registerTasksHandlers(): void {
 
         // IMPORTANT: Emit parent task FIRST so it exists in state when subtasks arrive
         emitTaskEvent(TasksChannels.events.CREATED, { task: enrichedTask })
-        getTaskSyncService()?.enqueueCreate(newId)
+        syncTaskCreate(db, newId)
 
         // Duplicate subtasks (if any)
         const subtasks = taskQueries.getSubtasks(db, id)
@@ -519,7 +565,7 @@ export function registerTasksHandlers(): void {
             emitTaskEvent(TasksChannels.events.CREATED, {
               task: { ...duplicatedSubtask, linkedNoteIds: subtaskNoteIds }
             })
-            getTaskSyncService()?.enqueueCreate(newSubtaskId)
+            syncTaskCreate(db, newSubtaskId)
           }
         }
 
@@ -558,6 +604,7 @@ export function registerTasksHandlers(): void {
           ...task,
           linkedNoteIds: taskQueries.getTaskNoteIds(db, input.taskId)
         }
+        syncTaskUpdate(db, input.taskId, ['parentId'])
         return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to convert to subtask'
@@ -580,6 +627,7 @@ export function registerTasksHandlers(): void {
           ...task,
           linkedNoteIds: taskQueries.getTaskNoteIds(db, taskId)
         }
+        syncTaskUpdate(db, taskId, ['parentId'])
         return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to convert to task'
@@ -619,7 +667,7 @@ export function registerTasksHandlers(): void {
 
         const fullProject = projectQueries.getProjectWithStatuses(db, id)
         emitTaskEvent(TasksChannels.events.PROJECT_CREATED, { project: fullProject ?? project })
-        getProjectSyncService()?.enqueueCreate(id)
+        syncProjectCreate(db, id)
 
         return { success: true, project: fullProject ?? project }
       } catch (error) {
@@ -657,7 +705,7 @@ export function registerTasksHandlers(): void {
 
         const fullProject = projectQueries.getProjectWithStatuses(db, id)
         emitTaskEvent(TasksChannels.events.PROJECT_UPDATED, { id, project: fullProject ?? project })
-        getProjectSyncService()?.enqueueUpdate(id)
+        syncProjectUpdate(db, id)
 
         return { success: true, project: fullProject ?? project }
       } catch (error) {
@@ -707,7 +755,7 @@ export function registerTasksHandlers(): void {
       try {
         const db = requireDatabase()
         projectQueries.archiveProject(db, id)
-        getProjectSyncService()?.enqueueUpdate(id)
+        syncProjectUpdate(db, id)
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to archive project'
@@ -723,11 +771,8 @@ export function registerTasksHandlers(): void {
       try {
         const db = requireDatabase()
         projectQueries.reorderProjects(db, input.projectIds, input.positions)
-        const syncService = getProjectSyncService()
-        if (syncService) {
-          for (const pid of input.projectIds) {
-            syncService.enqueueUpdate(pid)
-          }
+        for (const pid of input.projectIds) {
+          syncProjectUpdate(db, pid, ['position'])
         }
         return { success: true }
       } catch (error) {
@@ -760,7 +805,7 @@ export function registerTasksHandlers(): void {
           isDone: input.isDone ?? false
         })
 
-        getProjectSyncService()?.enqueueUpdate(input.projectId)
+        syncProjectUpdate(db, input.projectId)
         return { success: true, status }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to create status'
@@ -781,7 +826,7 @@ export function registerTasksHandlers(): void {
           return { success: false, error: 'Status not found' }
         }
         const resolved = projectQueries.getStatusById(db, id)
-        if (resolved) getProjectSyncService()?.enqueueUpdate(resolved.projectId)
+        if (resolved) syncProjectUpdate(db, resolved.projectId)
         return { success: true, status }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update status'
@@ -798,7 +843,7 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         const statusBefore = projectQueries.getStatusById(db, id)
         projectQueries.deleteStatus(db, id)
-        if (statusBefore) getProjectSyncService()?.enqueueUpdate(statusBefore.projectId)
+        if (statusBefore) syncProjectUpdate(db, statusBefore.projectId)
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to delete status'
@@ -816,7 +861,7 @@ export function registerTasksHandlers(): void {
         projectQueries.reorderStatuses(db, input.statusIds, input.positions)
         if (input.statusIds.length > 0) {
           const firstStatus = projectQueries.getStatusById(db, input.statusIds[0])
-          if (firstStatus) getProjectSyncService()?.enqueueUpdate(firstStatus.projectId)
+          if (firstStatus) syncProjectUpdate(db, firstStatus.projectId)
         }
         return { success: true }
       } catch (error) {
@@ -860,7 +905,6 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         const count = taskQueries.bulkCompleteTasks(db, input.ids)
 
-        const syncService = getTaskSyncService()
         for (const id of input.ids) {
           const task = taskQueries.getTaskById(db, id)
           if (task) {
@@ -869,7 +913,7 @@ export function registerTasksHandlers(): void {
               linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
             }
             emitTaskEvent(TasksChannels.events.COMPLETED, { id, task: enrichedTask })
-            syncService?.enqueueUpdate(id, ['completedAt'])
+            syncTaskUpdate(db, id, ['completedAt'])
           }
         }
 
@@ -912,7 +956,6 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         const count = taskQueries.bulkMoveTasks(db, input.ids, input.projectId)
 
-        const syncService = getTaskSyncService()
         for (const id of input.ids) {
           const task = taskQueries.getTaskById(db, id)
           if (task) {
@@ -925,7 +968,7 @@ export function registerTasksHandlers(): void {
               task: enrichedTask,
               changes: { projectId: input.projectId }
             })
-            syncService?.enqueueUpdate(id, ['projectId', 'position'])
+            syncTaskUpdate(db, id, ['projectId', 'position'])
           }
         }
 
@@ -945,7 +988,6 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         const count = taskQueries.bulkArchiveTasks(db, input.ids)
 
-        const syncService = getTaskSyncService()
         for (const id of input.ids) {
           const task = taskQueries.getTaskById(db, id)
           if (task) {
@@ -958,7 +1000,7 @@ export function registerTasksHandlers(): void {
               task: enrichedTask,
               changes: { archivedAt: task.archivedAt }
             })
-            syncService?.enqueueUpdate(id, ['archivedAt'])
+            syncTaskUpdate(db, id, ['archivedAt'])
           }
         }
 

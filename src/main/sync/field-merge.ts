@@ -1,5 +1,8 @@
 import type { VectorClock, FieldClocks } from '@shared/contracts/sync-api'
 import { merge as mergeClock } from './vector-clock'
+import { createLogger } from '../lib/logger'
+
+const log = createLogger('FieldMerge')
 
 export type { FieldClocks }
 
@@ -74,17 +77,31 @@ export function mergeFields<T>(
     const isConcurrent = localSum > 0 && remoteSum > 0 && localSum === remoteSum
     const valsDiffer = JSON.stringify(localVal) !== JSON.stringify(remoteVal)
 
+    let winner: 'local' | 'remote'
     if (remoteSum > localSum) {
       merged[field] = remoteVal
+      winner = 'remote'
     } else if (localSum > remoteSum) {
       merged[field] = localVal
+      winner = 'local'
     } else {
-      // Equal tick sums — remote wins (consistent tiebreaker)
       merged[field] = remoteVal
+      winner = 'remote'
       if (isConcurrent && valsDiffer) {
         hadConflicts = true
         conflictedFields.push(field)
       }
+    }
+
+    if (valsDiffer) {
+      log.debug('Field merge decision', {
+        field,
+        winner,
+        localSum,
+        remoteSum,
+        localFC,
+        remoteFC
+      })
     }
 
     mergedFieldClocks[field] = mergeClock(localFC, remoteFC)

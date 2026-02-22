@@ -62,12 +62,12 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
             remoteFC
           )
 
-          if (result.hadConflicts) {
-            log.warn('Concurrent task edit with field conflicts', {
-              itemId,
-              conflictedFields: result.conflictedFields
-            })
-          }
+          log.info('Task field merge result', {
+            itemId,
+            hadConflicts: result.hadConflicts,
+            conflictedFields: result.conflictedFields,
+            mergedKeys: Object.keys(result.merged)
+          })
 
           tx.update(tasks)
             .set({

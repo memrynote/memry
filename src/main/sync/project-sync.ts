@@ -53,6 +53,32 @@ export class ProjectSyncService {
     this.enqueue(projectId, 'update', changedFields)
   }
 
+  enqueueForPush(projectId: string, operation: 'create' | 'update'): void {
+    try {
+      const project = this.db.select().from(projects).where(eq(projects.id, projectId)).get()
+      if (!project) {
+        log.warn('Project not found for re-enqueue', { projectId })
+        return
+      }
+
+      const projectStatuses = this.db
+        .select()
+        .from(statuses)
+        .where(eq(statuses.projectId, projectId))
+        .all()
+
+      this.queue.enqueue({
+        type: 'project',
+        itemId: projectId,
+        operation,
+        payload: JSON.stringify({ ...project, statuses: projectStatuses }),
+        priority: 0
+      })
+    } catch (err) {
+      log.error('Failed to re-enqueue project for push', err)
+    }
+  }
+
   enqueueDelete(projectId: string, snapshotPayload: string): void {
     const deviceId = this.getDeviceId()
     if (!deviceId) {
