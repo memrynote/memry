@@ -116,6 +116,13 @@ export const inboxHandler: SyncItemHandler<InboxSyncPayload> = {
     return JSON.stringify(item)
   },
 
+  markPushSynced(db: DrizzleDb, itemId: string): void {
+    db.update(inboxItems)
+      .set({ syncedAt: new Date().toISOString() })
+      .where(eq(inboxItems.id, itemId))
+      .run()
+  },
+
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db
       .select()

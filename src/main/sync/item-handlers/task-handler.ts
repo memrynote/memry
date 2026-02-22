@@ -34,8 +34,16 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
 
       if (existing) {
         const resolution = resolveClockConflict(existing.clock, remoteClock)
+        log.info('Task clock resolution', {
+          itemId,
+          action: resolution.action,
+          localClock: existing.clock,
+          remoteClock,
+          hasLocalFC: !!existing.fieldClocks,
+          hasRemoteFC: !!remoteFieldClocks
+        })
+
         if (resolution.action === 'skip') {
-          log.info('Skipping remote task update, local is newer', { itemId })
           return 'skipped'
         }
 
@@ -179,6 +187,13 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
     const task = db.select().from(tasks).where(eq(tasks.id, itemId)).get()
     if (!task) return null
     return JSON.stringify(task)
+  },
+
+  markPushSynced(db: DrizzleDb, itemId: string): void {
+    db.update(tasks)
+      .set({ syncedAt: new Date().toISOString() })
+      .where(eq(tasks.id, itemId))
+      .run()
   },
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {

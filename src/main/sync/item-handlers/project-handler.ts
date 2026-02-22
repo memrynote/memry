@@ -240,6 +240,13 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
     return JSON.stringify({ ...project, statuses: projectStatuses })
   },
 
+  markPushSynced(db: DrizzleDb, itemId: string): void {
+    db.update(projects)
+      .set({ syncedAt: new Date().toISOString() })
+      .where(eq(projects.id, itemId))
+      .run()
+  },
+
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db.select().from(projects).where(isNull(projects.clock)).all()
     for (const item of items) {

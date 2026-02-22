@@ -43,6 +43,8 @@ export function recoverDirtyItems(db: DrizzleDb): RecoveryResult {
       .all()
 
     for (const t of dirtyTasks) {
+      const op = t.syncedAt ? 'update' : 'create'
+      log.debug('Recovering dirty task', { taskId: t.id, op, syncedAt: t.syncedAt })
       if (t.syncedAt) {
         taskSync.enqueueUpdate(t.id)
       } else {

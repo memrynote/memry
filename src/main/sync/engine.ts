@@ -312,6 +312,7 @@ export class SyncEngine extends EventEmitter {
         for (const { queueId, pushItem } of pushItems) {
           if (acceptedSet.has(pushItem.id)) {
             this.deps.queue.markSuccess(queueId)
+            this.markItemSynced(pushItem.id, pushItem.type as SyncItemType)
             pushedCount++
             this.emitItemSynced(pushItem.id, pushItem.type, 'push')
           } else {
@@ -323,6 +324,7 @@ export class SyncEngine extends EventEmitter {
                 itemId: pushItem.id.slice(0, 8)
               })
               this.deps.queue.markSuccess(queueId)
+              this.markItemSynced(pushItem.id, pushItem.type as SyncItemType)
             } else {
               log.warn('Push: item rejected', {
                 queueId: queueId.slice(0, 8),
@@ -951,6 +953,15 @@ export class SyncEngine extends EventEmitter {
     }
     this.deps.emitToRenderer(EVENT_CHANNELS.STATUS_CHANGED, event)
     this.emit('status-changed', event)
+  }
+
+  private markItemSynced(itemId: string, type: SyncItemType): void {
+    try {
+      const handler = getHandler(type)
+      handler?.markPushSynced?.(this.deps.db, itemId)
+    } catch (err) {
+      log.warn('Failed to mark item syncedAt after push', { itemId, type, error: err })
+    }
   }
 
   private emitItemSynced(

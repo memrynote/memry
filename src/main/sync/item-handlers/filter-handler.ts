@@ -102,6 +102,13 @@ export const filterHandler: SyncItemHandler<FilterSyncPayload> = {
     return JSON.stringify(filter)
   },
 
+  markPushSynced(db: DrizzleDb, itemId: string): void {
+    db.update(savedFilters)
+      .set({ syncedAt: new Date().toISOString() })
+      .where(eq(savedFilters.id, itemId))
+      .run()
+  },
+
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db.select().from(savedFilters).where(isNull(savedFilters.clock)).all()
     for (const item of items) {

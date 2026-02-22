@@ -27,6 +27,7 @@ export interface SyncItemHandler<T = unknown> {
     deviceId: string,
     operation: string
   ): string | null
+  markPushSynced?(db: DrizzleDb, itemId: string): void
 }
 
 export interface ClockResolution {
