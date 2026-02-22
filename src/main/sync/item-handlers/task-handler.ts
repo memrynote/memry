@@ -34,13 +34,30 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
 
       if (existing) {
         const resolution = resolveClockConflict(existing.clock, remoteClock)
-        log.info('Task clock resolution', {
+
+        log.info('=== TASK SYNC: LOCAL vs REMOTE ===', {
           itemId,
           action: resolution.action,
-          localClock: existing.clock,
-          remoteClock,
-          hasLocalFC: !!existing.fieldClocks,
-          hasRemoteFC: !!remoteFieldClocks
+          LOCAL: {
+            title: existing.title,
+            projectId: existing.projectId,
+            statusId: existing.statusId,
+            priority: existing.priority,
+            description: existing.description?.slice(0, 50) ?? null,
+            completedAt: existing.completedAt,
+            clock: existing.clock,
+            fieldClocks: existing.fieldClocks
+          },
+          REMOTE: {
+            title: data.title,
+            projectId: data.projectId,
+            statusId: data.statusId,
+            priority: data.priority,
+            description: data.description?.slice(0, 50) ?? null,
+            completedAt: data.completedAt,
+            clock: remoteClock,
+            fieldClocks: remoteFieldClocks
+          }
         })
 
         if (resolution.action === 'skip') {
@@ -62,11 +79,17 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
             remoteFC
           )
 
-          log.info('Task field merge result', {
+          log.info('=== TASK SYNC: MERGE RESULT ===', {
             itemId,
             hadConflicts: result.hadConflicts,
             conflictedFields: result.conflictedFields,
-            mergedKeys: Object.keys(result.merged)
+            merged: {
+              title: result.merged.title,
+              projectId: result.merged.projectId,
+              statusId: result.merged.statusId,
+              priority: result.merged.priority,
+              description: (result.merged.description as string)?.slice(0, 50) ?? null
+            }
           })
 
           tx.update(tasks)
@@ -84,6 +107,22 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
           ctx.emit(TasksChannels.events.UPDATED, { id: itemId, task: updated, changes: {} })
           return result.hadConflicts ? 'conflict' : 'applied'
         }
+
+        log.info('=== TASK SYNC: APPLY (remote wins) ===', {
+          itemId,
+          localOverwritten: {
+            title: existing.title,
+            projectId: existing.projectId,
+            statusId: existing.statusId,
+            priority: existing.priority
+          },
+          remoteApplied: {
+            title: data.title,
+            projectId: data.projectId,
+            statusId: data.statusId,
+            priority: data.priority
+          }
+        })
 
         const appliedFC =
           remoteFieldClocks ??

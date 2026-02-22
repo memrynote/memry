@@ -85,8 +85,14 @@ export function mergeFields<T>(
       merged[field] = localVal
       winner = 'local'
     } else {
-      merged[field] = remoteVal
-      winner = 'remote'
+      const localHasOffline = '_offline' in localFC && !('_offline' in remoteFC)
+      if (localHasOffline && valsDiffer) {
+        merged[field] = localVal
+        winner = 'local'
+      } else {
+        merged[field] = remoteVal
+        winner = 'remote'
+      }
       if (isConcurrent && valsDiffer) {
         hadConflicts = true
         conflictedFields.push(field)

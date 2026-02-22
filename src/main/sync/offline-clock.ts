@@ -51,7 +51,14 @@ export function incrementTaskClocksOffline(
       .where(eq(tasks.id, taskId))
       .run()
 
-    log.debug('Incremented offline task clocks', { taskId, fields: changedFields })
+    log.info('=== OFFLINE CLOCK: task incremented ===', {
+      taskId,
+      changedFields,
+      newClock,
+      updatedFieldClocks: Object.fromEntries(
+        changedFields.map((f) => [f, updatedFC[f]])
+      )
+    })
   } catch (err) {
     log.warn('Failed to increment offline task clocks', { taskId, error: err })
   }

@@ -235,8 +235,8 @@ export function registerTasksHandlers(): void {
 
         const actualChanged = existingTask
           ? Object.keys(updates).filter((k) => {
-              const oldVal = (existingTask as Record<string, unknown>)[k]
-              const newVal = (updates as Record<string, unknown>)[k]
+              const oldVal = (existingTask as Record<string, unknown>)[k] ?? null
+              const newVal = (updates as Record<string, unknown>)[k] ?? null
               return JSON.stringify(oldVal) !== JSON.stringify(newVal)
             })
           : Object.keys(updates)
