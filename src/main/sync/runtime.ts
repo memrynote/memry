@@ -23,6 +23,7 @@ import { noteCache } from '@shared/db/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider } from './crdt-provider'
 import { CrdtUpdateQueue } from './crdt-queue'
+import { recoverDirtyItems } from './dirty-recovery'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { postToServer, pushCrdtSnapshot, SyncServerError } from './http-client'
 import { getValidAccessToken, retrieveToken, setOnTokenRefreshed } from './token-manager'
@@ -242,6 +243,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       })
 
       queue.setOnItemEnqueued(() => engine.requestPush())
+
+      recoverDirtyItems(db as unknown as Parameters<typeof recoverDirtyItems>[0])
 
       pendingRuntime = { queue, network, ws, engine, crdtQueue }
       runtime = pendingRuntime

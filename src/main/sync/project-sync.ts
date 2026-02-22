@@ -6,6 +6,7 @@ import { statuses } from '@shared/db/schema/statuses'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from './queue'
 import { increment } from './vector-clock'
+import { type FieldClocks, initAllFieldClocks, PROJECT_SYNCABLE_FIELDS } from './field-merge'
 import { createLogger } from '../lib/logger'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
@@ -48,8 +49,8 @@ export class ProjectSyncService {
     this.enqueue(projectId, 'create')
   }
 
-  enqueueUpdate(projectId: string): void {
-    this.enqueue(projectId, 'update')
+  enqueueUpdate(projectId: string, changedFields?: string[]): void {
+    this.enqueue(projectId, 'update', changedFields)
   }
 
   enqueueDelete(projectId: string, snapshotPayload: string): void {
@@ -73,7 +74,11 @@ export class ProjectSyncService {
     }
   }
 
-  private enqueue(projectId: string, operation: 'create' | 'update'): void {
+  private enqueue(
+    projectId: string,
+    operation: 'create' | 'update',
+    changedFields?: string[]
+  ): void {
     const deviceId = this.getDeviceId()
     if (!deviceId) {
       log.warn('No device ID available, skipping sync enqueue')
@@ -96,11 +101,28 @@ export class ProjectSyncService {
       const existingClock = (project.clock as VectorClock) ?? {}
       const newClock = increment(existingClock, deviceId)
 
-      this.db.update(projects).set({ clock: newClock }).where(eq(projects.id, projectId)).run()
+      let fieldClocks = (project.fieldClocks as FieldClocks) ?? null
+      if (!fieldClocks) {
+        fieldClocks = initAllFieldClocks(existingClock, PROJECT_SYNCABLE_FIELDS)
+      }
+
+      const fieldsToIncrement =
+        operation === 'create' ? PROJECT_SYNCABLE_FIELDS : (changedFields ?? PROJECT_SYNCABLE_FIELDS)
+      const updatedFieldClocks = { ...fieldClocks }
+      for (const field of fieldsToIncrement) {
+        updatedFieldClocks[field] = increment(updatedFieldClocks[field] ?? {}, deviceId)
+      }
+
+      this.db
+        .update(projects)
+        .set({ clock: newClock, fieldClocks: updatedFieldClocks })
+        .where(eq(projects.id, projectId))
+        .run()
 
       const payload = JSON.stringify({
         ...project,
         clock: newClock,
+        fieldClocks: updatedFieldClocks,
         statuses: projectStatuses
       })
 

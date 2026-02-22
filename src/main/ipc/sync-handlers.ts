@@ -63,7 +63,7 @@ import { deleteFromServer, getFromServer, postToServer } from '../sync/http-clie
 
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler } from './validate'
-import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
+import { getSyncEngine, startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
 import {
   getValidAccessToken,
   retrieveToken,
@@ -686,6 +686,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   // --- Logout (clears all local auth state) ---
 
   ipcMain.handle(SYNC_CHANNELS.AUTH_LOGOUT, async () => {
+    await stopSyncRuntime()
     cancelTokenRefresh()
     pendingRecoveryPhrase = null
 
@@ -698,8 +699,10 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     ]
     await Promise.allSettled(keychainEntries.map((entry) => deleteKey(entry)))
 
-    const db = getDatabase()
-    await db.delete(syncDevices).where(eq(syncDevices.isCurrentDevice, true))
+    if (isDatabaseInitialized()) {
+      const db = getDatabase()
+      db.delete(syncDevices).where(eq(syncDevices.isCurrentDevice, true)).run()
+    }
 
     store.set('sync', {})
 

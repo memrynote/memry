@@ -156,6 +156,13 @@ export class CrdtProvider {
       entry.doc.destroy()
     }
     this.docs.clear()
+
+    ipcMain.removeHandler(CRDT_CHANNELS.OPEN_DOC)
+    ipcMain.removeHandler(CRDT_CHANNELS.CLOSE_DOC)
+    ipcMain.removeHandler(CRDT_CHANNELS.APPLY_UPDATE)
+    ipcMain.removeHandler(CRDT_CHANNELS.SYNC_STEP_1)
+    ipcMain.removeHandler(CRDT_CHANNELS.SYNC_STEP_2)
+
     log.info('CrdtProvider destroyed')
   }
 
