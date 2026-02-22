@@ -46,7 +46,7 @@ export function recoverDirtyItems(db: DrizzleDb): RecoveryResult {
       const op = t.syncedAt ? 'update' : 'create'
       log.debug('Recovering dirty task', { taskId: t.id, op, syncedAt: t.syncedAt })
       if (t.syncedAt) {
-        taskSync.enqueueUpdate(t.id)
+        taskSync.enqueueForPush(t.id, 'update')
       } else {
         taskSync.enqueueCreate(t.id)
       }
@@ -67,8 +67,9 @@ export function recoverDirtyItems(db: DrizzleDb): RecoveryResult {
       .all()
 
     for (const p of dirtyProjects) {
+      log.debug('Recovering dirty project', { projectId: p.id, syncedAt: p.syncedAt })
       if (p.syncedAt) {
-        projectSync.enqueueUpdate(p.id)
+        projectSync.enqueueForPush(p.id, 'update')
       } else {
         projectSync.enqueueCreate(p.id)
       }

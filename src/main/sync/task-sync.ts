@@ -52,6 +52,26 @@ export class TaskSyncService {
     this.enqueue(taskId, 'update', changedFields)
   }
 
+  enqueueForPush(taskId: string, operation: 'create' | 'update'): void {
+    try {
+      const task = this.db.select().from(tasks).where(eq(tasks.id, taskId)).get()
+      if (!task) {
+        log.warn('Task not found for re-enqueue', { taskId })
+        return
+      }
+
+      this.queue.enqueue({
+        type: 'task',
+        itemId: taskId,
+        operation,
+        payload: JSON.stringify(task),
+        priority: 0
+      })
+    } catch (err) {
+      log.error('Failed to re-enqueue task for push', err)
+    }
+  }
+
   enqueueDelete(taskId: string, snapshotPayload: string): void {
     const deviceId = this.getDeviceId()
     if (!deviceId) {
