@@ -10,6 +10,11 @@ import { TasksChannels } from '@shared/ipc-channels'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
+import {
+  mergeProjectFields,
+  initAllFieldClocks,
+  PROJECT_SYNCABLE_FIELDS
+} from '../field-merge'
 import { createLogger } from '../../lib/logger'
 import { resolveClockConflict } from './types'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -89,25 +94,54 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
           log.info('Skipping remote project update, local is newer', { itemId })
           return 'skipped'
         }
-        if (resolution.action === 'merge') {
-          log.warn('Concurrent project edit, using last-write-wins', { itemId })
-        }
 
-        tx.update(projects)
-          .set({
-            name: data.name ?? existing.name,
-            description: data.description ?? null,
-            color: data.color ?? existing.color,
-            icon: data.icon ?? null,
-            position: data.position ?? existing.position,
-            isInbox: data.isInbox ?? existing.isInbox,
-            archivedAt: data.archivedAt ?? null,
-            clock: resolution.mergedClock,
-            syncedAt: now,
-            modifiedAt: data.modifiedAt ?? now
-          })
-          .where(eq(projects.id, itemId))
-          .run()
+        if (resolution.action === 'merge') {
+          log.warn('Concurrent project edit, using field-level merge', { itemId })
+          const localFC =
+            existing.fieldClocks ?? initAllFieldClocks(existing.clock ?? {}, PROJECT_SYNCABLE_FIELDS)
+          const remoteFC =
+            data.fieldClocks ?? initAllFieldClocks(remoteClock, PROJECT_SYNCABLE_FIELDS)
+          const mergeResult = mergeProjectFields(
+            existing as unknown as Record<string, unknown>,
+            data as unknown as Record<string, unknown>,
+            localFC,
+            remoteFC
+          )
+
+          tx.update(projects)
+            .set({
+              name: (mergeResult.merged.name as string) ?? existing.name,
+              description: (mergeResult.merged.description as string | null) ?? null,
+              color: (mergeResult.merged.color as string) ?? existing.color,
+              icon: (mergeResult.merged.icon as string | null) ?? null,
+              position: (mergeResult.merged.position as number) ?? existing.position,
+              isInbox: (mergeResult.merged.isInbox as boolean) ?? existing.isInbox,
+              archivedAt: (mergeResult.merged.archivedAt as string | null) ?? null,
+              clock: resolution.mergedClock,
+              fieldClocks: mergeResult.mergedFieldClocks,
+              syncedAt: now,
+              modifiedAt: (mergeResult.merged.modifiedAt as string) ?? now
+            })
+            .where(eq(projects.id, itemId))
+            .run()
+        } else {
+          tx.update(projects)
+            .set({
+              name: data.name ?? existing.name,
+              description: data.description ?? null,
+              color: data.color ?? existing.color,
+              icon: data.icon ?? null,
+              position: data.position ?? existing.position,
+              isInbox: data.isInbox ?? existing.isInbox,
+              archivedAt: data.archivedAt ?? null,
+              clock: resolution.mergedClock,
+              fieldClocks: data.fieldClocks ?? existing.fieldClocks ?? null,
+              syncedAt: now,
+              modifiedAt: data.modifiedAt ?? now
+            })
+            .where(eq(projects.id, itemId))
+            .run()
+        }
 
         if (data.statuses) {
           reconcileStatuses(tx as unknown as DrizzleDb, itemId, data.statuses)
@@ -137,6 +171,7 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
           isInbox: data.isInbox ?? false,
           archivedAt: data.archivedAt ?? null,
           clock: remoteClock,
+          fieldClocks: data.fieldClocks ?? null,
           syncedAt: now,
           createdAt: data.createdAt ?? now,
           modifiedAt: data.modifiedAt ?? now
@@ -209,7 +244,8 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
     const items = db.select().from(projects).where(isNull(projects.clock)).all()
     for (const item of items) {
       const clock = increment({}, deviceId)
-      db.update(projects).set({ clock }).where(eq(projects.id, item.id)).run()
+      const fieldClocks = initAllFieldClocks(clock, PROJECT_SYNCABLE_FIELDS)
+      db.update(projects).set({ clock, fieldClocks }).where(eq(projects.id, item.id)).run()
 
       const projectStatuses = db
         .select()
@@ -221,7 +257,7 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
         type: 'project',
         itemId: item.id,
         operation: 'create',
-        payload: JSON.stringify({ ...item, clock, statuses: projectStatuses }),
+        payload: JSON.stringify({ ...item, clock, fieldClocks, statuses: projectStatuses }),
         priority: 0
       })
     }

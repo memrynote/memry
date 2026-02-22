@@ -1,6 +1,6 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
-import type { VectorClock } from '@shared/contracts/sync-api'
+import type { FieldClocks, VectorClock } from '@shared/contracts/sync-api'
 
 export const projects = sqliteTable('projects', {
   id: text('id').primaryKey(),
@@ -19,6 +19,7 @@ export const projects = sqliteTable('projects', {
   archivedAt: text('archived_at'),
 
   clock: text('clock', { mode: 'json' }).$type<VectorClock>(),
+  fieldClocks: text('field_clocks', { mode: 'json' }).$type<FieldClocks>(),
   syncedAt: text('synced_at')
 })
 

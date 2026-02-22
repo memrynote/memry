@@ -689,28 +689,44 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 **Independent Test**: Change different fields of same task on two devices, verify all field changes preserved
 
+### Engine: Offline→Online Push Race Prevention
+
+- [x] T140p [US6] Guard requestPush() when offline — skip debounce timer, items stay in queue for fullSync in src/main/sync/engine.ts
+- [x] T140q [US6] Abort in-flight push on network restore and await completion before fullSync in src/main/sync/engine.ts
+- [x] T140r [US6] Graceful AbortError handling in push() and pull() catch blocks — no error state for intentional aborts in src/main/sync/engine.ts
+- [x] T140s [US6] Clear pendingPushRequested unconditionally in fullSync Phase 5 (not gated on pushDebounceTimer) in src/main/sync/engine.ts1
+
+### Schema Changes for US6
+
+- [x] T141 [US6] Add field_clocks JSON column to tasks table in src/shared/db/schema/data-schema.ts
+- [x] T141a [US6] Implement FieldClocks type (Record<string, VectorClock>) and initAllFieldClocks fallback for pre-Phase-8 items in src/main/sync/field-merge.ts
+
 ### Task Sync for US6
 
-- [ ] T141 [US6] Implement per-field vector clocks for tasks in src/main/sync/vector-clock.ts
-- [ ] T142 [US6] Implement field-level LWW merge logic in src/main/sync/task-merge.ts
-- [ ] T143 [US6] Update task create handler to initialize vector clock in src/main/ipc/tasks-handlers.ts
-- [ ] T144 [US6] Update task update handler to increment field clocks in src/main/ipc/tasks-handlers.ts
-- [ ] T145 [US6] Implement conflict detection for concurrent edits in src/main/sync/task-merge.ts
+- [x] T142 [US6] Implement field-level LWW merge logic (mergeFields generic + mergeTaskFields wrapper) in src/main/sync/field-merge.ts
+- [x] T143 [US6] Update task create handler to initialize field clocks for all syncable fields in src/main/ipc/tasks-handlers.ts
+- [x] T144 [US6] Pass changedFields from task update IPC handler through enqueueUpdate(id, changedFields) to increment only changed field clocks in src/main/ipc/tasks-handlers.ts, src/main/sync/task-sync.ts
+- [x] T144a [US6] Wire mergeTaskFields into taskHandler.applyUpsert — on concurrent clocks, merge per-field instead of blindly overwriting all remote fields in src/main/sync/item-handlers/task-handler.ts
+- [x] T145 [US6] Implement conflict detection for concurrent edits in src/main/sync/field-merge.ts
 
 ### Server Task Sync for US6
 
-- [ ] T146 [US6] Store task vector clocks in sync_items.clock column in sync-server/src/services/sync.ts
-- [ ] T147 [US6] Implement server-side conflict response in sync-server/src/routes/sync.ts
+- [x] T146 [US6] Store task vector clocks in sync_items.clock column in sync-server/src/services/sync.ts
+- [x] T147 [US6] Implement server-side conflict response in sync-server/src/routes/sync.ts
 
 ### Project Sync for US6
 
-- [ ] T147a [US6] Implement ProjectVectorClock interface (same as TaskVectorClock) in src/shared/contracts/sync-api.ts
-- [ ] T147b [US6] Implement project field-level merge logic in src/main/sync/project-merge.ts
-- [ ] T147c [US6] Add clock JSON column to projects table in src/shared/db/schema/data-schema.ts
-- [ ] T147d [US6] Implement project sync handlers (create, update, delete) in src/main/ipc/tasks-handlers.ts
-- [ ] T147e [US6] Server-side project sync handlers (store/retrieve encrypted projects) in sync-server/src/services/sync.ts
+- [x] T147a [US6] Implement ProjectVectorClock interface (same as TaskVectorClock) in src/shared/contracts/sync-api.ts
+- [x] T147b [US6] Implement project field-level merge logic (mergeProjectFields wrapper) in src/main/sync/field-merge.ts
+- [x] T147c [US6] Add field_clocks JSON column to projects table in src/shared/db/schema/data-schema.ts
+- [x] T147d [US6] Wire mergeProjectFields into projectHandler.applyUpsert — same pattern as T144a in src/main/sync/item-handlers/project-handler.ts
+- [x] T147e [US6] Server-side project sync handlers (store/retrieve encrypted projects) in sync-server/src/services/sync.ts
 
-**Checkpoint**: User Story 6 complete - task and project changes merge at field level
+### Integration Test for US6
+
+- [x] T147f [US6] Integration test: DeviceA offline status change + DeviceB online dueDate change → both fields preserved after sync in src/main/sync/field-merge.test.ts
+
+**Checkpoint**: User Story 6 complete - task and project changes merge at field level, offline→online race prevented
 
 ---
 

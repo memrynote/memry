@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { VectorClockSchema } from './sync-api'
+import { FieldClocksSchema, VectorClockSchema } from './sync-api'
 
 export const TaskSyncPayloadSchema = z.object({
   title: z.string().optional(),
@@ -18,6 +18,7 @@ export const TaskSyncPayloadSchema = z.object({
   completedAt: z.string().nullable().optional(),
   archivedAt: z.string().nullable().optional(),
   clock: VectorClockSchema.optional(),
+  fieldClocks: FieldClocksSchema.optional(),
   createdAt: z.string().optional(),
   modifiedAt: z.string().optional()
 })
@@ -67,6 +68,7 @@ export const ProjectSyncPayloadSchema = z.object({
   isInbox: z.boolean().optional(),
   archivedAt: z.string().nullable().optional(),
   clock: VectorClockSchema.optional(),
+  fieldClocks: FieldClocksSchema.optional(),
   createdAt: z.string().optional(),
   modifiedAt: z.string().optional(),
   statuses: z.array(StatusSyncSchema).optional()

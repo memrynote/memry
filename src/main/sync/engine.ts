@@ -356,6 +356,10 @@ export class SyncEngine extends EventEmitter {
         }
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        log.debug('Push aborted (likely network change)')
+        return
+      }
       this.lastError = error instanceof Error ? error.message : String(error)
       this.setState('error')
       this.recordHistory('error', 0, Date.now() - startTime, this.lastError)
@@ -369,6 +373,7 @@ export class SyncEngine extends EventEmitter {
   requestPush(): void {
     if (this.isPaused()) return
     this.pendingPushRequested = true
+    if (!this.deps.network.online) return
     if (this.pushDebounceTimer) return
 
     this.pushDebounceTimer = setTimeout(() => {
@@ -639,6 +644,10 @@ export class SyncEngine extends EventEmitter {
       this.recordHistory('pull', pulledCount, Date.now() - startTime)
       this.updateLastSyncAt()
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        log.debug('Pull aborted (likely network change)')
+        return
+      }
       this.lastError = error instanceof Error ? error.message : String(error)
       this.setState('error')
       this.recordHistory('error', 0, Date.now() - startTime, this.lastError)
@@ -695,10 +704,10 @@ export class SyncEngine extends EventEmitter {
         log.debug('fullSync: re-pull complete')
       }
 
+      this.pendingPushRequested = false
       if (this.pushDebounceTimer) {
         clearTimeout(this.pushDebounceTimer)
         this.pushDebounceTimer = null
-        this.pendingPushRequested = false
       }
 
       const pendingAfterManifest = this.deps.queue.getPendingCount()
@@ -785,6 +794,16 @@ export class SyncEngine extends EventEmitter {
     if (online) {
       void (async () => {
         if (!(await this.isAuthReady())) return
+
+        if (this.abortController && this.syncing) {
+          log.info('Network restored: aborting in-flight sync to run fullSync')
+          this.abortController.abort()
+        }
+
+        if (this.inFlightSync) {
+          await this.inFlightSync.catch(() => {})
+        }
+
         this.setState('idle')
         void this.deps.ws.connect()
         if (!this.isPaused()) {

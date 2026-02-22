@@ -196,7 +196,7 @@ export function registerTasksHandlers(): void {
         }
 
         emitTaskEvent(TasksChannels.events.UPDATED, { id, task: enrichedTask, changes: updates })
-        getTaskSyncService()?.enqueueUpdate(id)
+        getTaskSyncService()?.enqueueUpdate(id, Object.keys(updates))
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -283,7 +283,7 @@ export function registerTasksHandlers(): void {
         }
 
         emitTaskEvent(TasksChannels.events.COMPLETED, { id: input.id, task: enrichedTask })
-        getTaskSyncService()?.enqueueUpdate(input.id)
+        getTaskSyncService()?.enqueueUpdate(input.id, ['completedAt'])
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -314,7 +314,7 @@ export function registerTasksHandlers(): void {
           task: enrichedTask,
           changes: { completedAt: null }
         })
-        getTaskSyncService()?.enqueueUpdate(id)
+        getTaskSyncService()?.enqueueUpdate(id, ['completedAt'])
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -345,7 +345,7 @@ export function registerTasksHandlers(): void {
           task: enrichedTask,
           changes: { archivedAt: task.archivedAt }
         })
-        getTaskSyncService()?.enqueueUpdate(id)
+        getTaskSyncService()?.enqueueUpdate(id, ['archivedAt'])
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to archive task'
@@ -375,7 +375,7 @@ export function registerTasksHandlers(): void {
           task: enrichedTask,
           changes: { archivedAt: null }
         })
-        getTaskSyncService()?.enqueueUpdate(id)
+        getTaskSyncService()?.enqueueUpdate(id, ['archivedAt'])
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to unarchive task'
@@ -426,8 +426,12 @@ export function registerTasksHandlers(): void {
           linkedNoteIds: taskQueries.getTaskNoteIds(db, input.taskId)
         }
 
+        const movedFields: string[] = ['position']
+        if (input.targetProjectId) movedFields.push('projectId')
+        if (targetStatusId) movedFields.push('statusId')
+        if (input.targetParentId !== undefined) movedFields.push('parentId')
         emitTaskEvent(TasksChannels.events.MOVED, { id: input.taskId, task: enrichedTask })
-        getTaskSyncService()?.enqueueUpdate(input.taskId)
+        getTaskSyncService()?.enqueueUpdate(input.taskId, movedFields)
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -865,7 +869,7 @@ export function registerTasksHandlers(): void {
               linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
             }
             emitTaskEvent(TasksChannels.events.COMPLETED, { id, task: enrichedTask })
-            syncService?.enqueueUpdate(id)
+            syncService?.enqueueUpdate(id, ['completedAt'])
           }
         }
 
@@ -921,7 +925,7 @@ export function registerTasksHandlers(): void {
               task: enrichedTask,
               changes: { projectId: input.projectId }
             })
-            syncService?.enqueueUpdate(id)
+            syncService?.enqueueUpdate(id, ['projectId', 'position'])
           }
         }
 
@@ -954,7 +958,7 @@ export function registerTasksHandlers(): void {
               task: enrichedTask,
               changes: { archivedAt: task.archivedAt }
             })
-            syncService?.enqueueUpdate(id)
+            syncService?.enqueueUpdate(id, ['archivedAt'])
           }
         }
 

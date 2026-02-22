@@ -38,6 +38,7 @@ export type SyncItemType = (typeof SYNC_ITEM_TYPES)[number]
 export type SyncOperation = (typeof SYNC_OPERATIONS)[number]
 
 export type VectorClock = Record<string, number>
+export type FieldClocks = Record<string, VectorClock>
 
 export interface SyncItem {
   id: string
@@ -153,6 +154,7 @@ export interface DeviceSyncState {
 // ============================================================================
 
 export const VectorClockSchema = z.record(z.string(), z.number().int().nonnegative())
+export const FieldClocksSchema = z.record(z.string(), VectorClockSchema)
 
 export const EncryptedItemPayloadSchema = z.object({
   encryptedKey: z.string().min(1),

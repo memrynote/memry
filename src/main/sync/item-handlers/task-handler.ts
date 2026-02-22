@@ -2,9 +2,14 @@ import { eq, isNull } from 'drizzle-orm'
 import { tasks } from '@shared/db/schema/tasks'
 import { TaskSyncPayloadSchema, type TaskSyncPayload } from '@shared/contracts/sync-payloads'
 import { TasksChannels } from '@shared/ipc-channels'
-import type { VectorClock } from '@shared/contracts/sync-api'
+import type { VectorClock, FieldClocks } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
+import {
+  mergeTaskFields,
+  initAllFieldClocks,
+  TASK_SYNCABLE_FIELDS
+} from '../field-merge'
 import { createLogger } from '../../lib/logger'
 import { resolveClockConflict } from './types'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -24,6 +29,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
     return ctx.db.transaction((tx): ApplyResult => {
       const existing = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
+      const remoteFieldClocks = data.fieldClocks ?? null
       const now = new Date().toISOString()
 
       if (existing) {
@@ -32,9 +38,48 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
           log.info('Skipping remote task update, local is newer', { itemId })
           return 'skipped'
         }
+
         if (resolution.action === 'merge') {
-          log.warn('Concurrent task edit, using last-write-wins', { itemId })
+          const localFC =
+            (existing.fieldClocks as FieldClocks) ??
+            initAllFieldClocks(existing.clock ?? {}, TASK_SYNCABLE_FIELDS)
+          const remoteFC =
+            remoteFieldClocks ??
+            initAllFieldClocks(remoteClock, TASK_SYNCABLE_FIELDS)
+
+          const result = mergeTaskFields(
+            existing as Record<string, unknown>,
+            data as Record<string, unknown>,
+            localFC,
+            remoteFC
+          )
+
+          if (result.hadConflicts) {
+            log.warn('Concurrent task edit with field conflicts', {
+              itemId,
+              conflictedFields: result.conflictedFields
+            })
+          }
+
+          tx.update(tasks)
+            .set({
+              ...result.merged,
+              clock: resolution.mergedClock,
+              fieldClocks: result.mergedFieldClocks,
+              syncedAt: now,
+              modifiedAt: data.modifiedAt ?? now
+            })
+            .where(eq(tasks.id, itemId))
+            .run()
+
+          const updated = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
+          ctx.emit(TasksChannels.events.UPDATED, { id: itemId, task: updated, changes: {} })
+          return result.hadConflicts ? 'conflict' : 'applied'
         }
+
+        const appliedFC =
+          remoteFieldClocks ??
+          initAllFieldClocks(remoteClock, TASK_SYNCABLE_FIELDS)
 
         tx.update(tasks)
           .set({
@@ -54,6 +99,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
             completedAt: data.completedAt ?? null,
             archivedAt: data.archivedAt ?? null,
             clock: resolution.mergedClock,
+            fieldClocks: appliedFC,
             syncedAt: now,
             modifiedAt: data.modifiedAt ?? now
           })
@@ -62,8 +108,12 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
 
         const updated = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
         ctx.emit(TasksChannels.events.UPDATED, { id: itemId, task: updated, changes: {} })
-        return resolution.action === 'merge' ? 'conflict' : 'applied'
+        return 'applied'
       }
+
+      const insertedFC =
+        remoteFieldClocks ??
+        initAllFieldClocks(remoteClock, TASK_SYNCABLE_FIELDS)
 
       tx.insert(tasks)
         .values({
@@ -84,6 +134,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
           completedAt: data.completedAt ?? null,
           archivedAt: data.archivedAt ?? null,
           clock: remoteClock,
+          fieldClocks: insertedFC,
           syncedAt: now,
           createdAt: data.createdAt ?? now,
           modifiedAt: data.modifiedAt ?? now
@@ -134,12 +185,13 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
     const items = db.select().from(tasks).where(isNull(tasks.clock)).all()
     for (const item of items) {
       const clock = increment({}, deviceId)
-      db.update(tasks).set({ clock }).where(eq(tasks.id, item.id)).run()
+      const fieldClocks = initAllFieldClocks(clock, TASK_SYNCABLE_FIELDS)
+      db.update(tasks).set({ clock, fieldClocks }).where(eq(tasks.id, item.id)).run()
       queue.enqueue({
         type: 'task',
         itemId: item.id,
         operation: 'create',
-        payload: JSON.stringify({ ...item, clock }),
+        payload: JSON.stringify({ ...item, clock, fieldClocks }),
         priority: 0
       })
     }

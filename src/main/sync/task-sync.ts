@@ -2,9 +2,10 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { eq } from 'drizzle-orm'
 import type * as schema from '@shared/db/schema/data-schema'
 import { tasks } from '@shared/db/schema/tasks'
-import type { VectorClock } from '@shared/contracts/sync-api'
+import type { VectorClock, FieldClocks } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from './queue'
 import { increment } from './vector-clock'
+import { initAllFieldClocks, TASK_SYNCABLE_FIELDS } from './field-merge'
 import { createLogger } from '../lib/logger'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
@@ -47,8 +48,8 @@ export class TaskSyncService {
     this.enqueue(taskId, 'create')
   }
 
-  enqueueUpdate(taskId: string): void {
-    this.enqueue(taskId, 'update')
+  enqueueUpdate(taskId: string, changedFields?: string[]): void {
+    this.enqueue(taskId, 'update', changedFields)
   }
 
   enqueueDelete(taskId: string, snapshotPayload: string): void {
@@ -72,7 +73,11 @@ export class TaskSyncService {
     }
   }
 
-  private enqueue(taskId: string, operation: 'create' | 'update'): void {
+  private enqueue(
+    taskId: string,
+    operation: 'create' | 'update',
+    changedFields?: string[]
+  ): void {
     const deviceId = this.getDeviceId()
     if (!deviceId) {
       log.warn('No device ID available, skipping sync enqueue')
@@ -89,9 +94,29 @@ export class TaskSyncService {
       const existingClock = (task.clock as VectorClock) ?? {}
       const newClock = increment(existingClock, deviceId)
 
-      this.db.update(tasks).set({ clock: newClock }).where(eq(tasks.id, taskId)).run()
+      let fieldClocks = (task.fieldClocks as FieldClocks) ?? null
+      if (!fieldClocks) {
+        fieldClocks = initAllFieldClocks(existingClock, TASK_SYNCABLE_FIELDS)
+      }
 
-      const payload = JSON.stringify({ ...task, clock: newClock })
+      const fieldsToIncrement =
+        operation === 'create' ? TASK_SYNCABLE_FIELDS : (changedFields ?? TASK_SYNCABLE_FIELDS)
+      const updatedFieldClocks = { ...fieldClocks }
+      for (const field of fieldsToIncrement) {
+        updatedFieldClocks[field] = increment(updatedFieldClocks[field] ?? {}, deviceId)
+      }
+
+      this.db
+        .update(tasks)
+        .set({ clock: newClock, fieldClocks: updatedFieldClocks })
+        .where(eq(tasks.id, taskId))
+        .run()
+
+      const payload = JSON.stringify({
+        ...task,
+        clock: newClock,
+        fieldClocks: updatedFieldClocks
+      })
 
       this.queue.enqueue({
         type: 'task',
