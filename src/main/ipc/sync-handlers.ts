@@ -1088,7 +1088,15 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
       })
       await service.uploadAttachment(noteId, diskPath)
     } catch (err) {
-      logger.warn('Background attachment sync failed', err)
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      logger.error('Attachment upload failed', { noteId, diskPath, error: message })
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
+          noteId,
+          diskPath,
+          error: message
+        })
+      }
     } finally {
       service.setProgressCallback(null)
     }
