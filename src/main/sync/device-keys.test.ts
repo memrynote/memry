@@ -98,6 +98,7 @@ describe('fetchAndCacheDeviceKeys', () => {
     it('#then upserts all devices', async () => {
       const keyA = makeBase64Key()
       const keyB = makeBase64Key()
+      const existingKey = makeBase64Key()
 
       testDb.db
         .insert(syncDevices)
@@ -108,7 +109,7 @@ describe('fetchAndCacheDeviceKeys', () => {
           appVersion: '1.0.0',
           linkedAt: new Date(),
           isCurrentDevice: true,
-          signingPublicKey: null
+          signingPublicKey: existingKey
         })
         .run()
 

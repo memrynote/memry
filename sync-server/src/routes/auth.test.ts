@@ -128,7 +128,7 @@ const createD1Statement = () => {
     bind: vi.fn(),
     first: vi.fn().mockResolvedValue(null),
     run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1 } }),
-    all: vi.fn().mockResolvedValue({ results: [] })
+    all: vi.fn().mockResolvedValue({ results: [{ id: 'device-uuid-1' }] })
   }
   statement.bind.mockReturnValue(statement)
   return statement

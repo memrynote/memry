@@ -175,9 +175,8 @@ describe('T519: InboxListItem - item type display', () => {
       })
       renderWithContext(item)
 
-      // Should show title with duration
-      expect(screen.getByText(/Voice memo/)).toBeInTheDocument()
-      expect(screen.getByText(/1:05/)).toBeInTheDocument()
+      // Match the full display title to avoid colliding with timestamp text.
+      expect(screen.getByText('Voice memo · 1:05')).toBeInTheDocument()
     })
 
     it('should show transcription status when transcribing', () => {

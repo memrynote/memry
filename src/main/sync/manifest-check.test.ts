@@ -167,12 +167,12 @@ describe('checkManifestIntegrity', () => {
       }
 
       // #when — first call succeeds
-      await checkManifestIntegrity(deps)
+      const first = await checkManifestIntegrity(deps)
       expect(getServerSpy).toHaveBeenCalledTimes(1)
 
       // second call within rate limit window
       getServerSpy.mockClear()
-      await checkManifestIntegrity(deps)
+      await checkManifestIntegrity({ ...deps, lastCheckAt: first.checkedAt })
 
       // #then — no second network call
       expect(getServerSpy).not.toHaveBeenCalled()

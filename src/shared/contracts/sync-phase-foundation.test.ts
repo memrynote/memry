@@ -29,6 +29,8 @@ import {
 import {
   AUTH_CHANNELS,
   ATTACHMENT_CHANNELS,
+  CRDT_CHANNELS,
+  CRDT_EVENTS,
   CRYPTO_CHANNELS,
   DEVICE_CHANNELS,
   EVENT_CHANNELS,
@@ -238,13 +240,14 @@ describe('sync phase contract schemas', () => {
       ...CRYPTO_CHANNELS,
       ...SYNC_OP_CHANNELS,
       ...DEVICE_CHANNELS,
-      ...ATTACHMENT_CHANNELS
+      ...ATTACHMENT_CHANNELS,
+      ...CRDT_CHANNELS
     }
 
     expect(SYNC_CHANNELS).toEqual(sourceChannels)
     expect(new Set(Object.keys(SYNC_CHANNELS)).size).toBe(Object.keys(SYNC_CHANNELS).length)
 
-    expect(SYNC_EVENTS).toEqual({ ...EVENT_CHANNELS })
+    expect(SYNC_EVENTS).toEqual({ ...EVENT_CHANNELS, ...CRDT_EVENTS })
     expect(new Set(Object.keys(SYNC_EVENTS)).size).toBe(Object.keys(SYNC_EVENTS).length)
   })
 })

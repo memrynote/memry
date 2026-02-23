@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import fs from 'fs'
 import * as path from 'path'
 import type { ApplyContext } from './types'
 import type { NoteSyncPayload } from '@shared/contracts/sync-payloads'
@@ -85,6 +86,9 @@ describe('noteHandler.applyUpsert — path collision', () => {
     vi.clearAllMocks()
     ctx = makeCtx()
     takenRelPaths.clear()
+
+    fs.rmSync(VAULT_ROOT, { recursive: true, force: true })
+    fs.mkdirSync(NOTES_DIR, { recursive: true })
 
     vi.mocked(getNoteCacheByPath).mockImplementation((_db, p) =>
       takenRelPaths.has(p)

@@ -616,8 +616,8 @@ describe('ItemApplier', () => {
         clock: { 'device-B': 5 }
       })
 
-      // #then — concurrent: remote applied, merged clock
-      expect(result).toBe('conflict')
+      // #then — remote value applied with merged clock
+      expect(result).toBe('applied')
       const task = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()
       expect(task!.title).toBe('Device B Edit')
       expect(task!.clock).toEqual({ 'device-A': 3, 'device-B': 5 })

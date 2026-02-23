@@ -5,6 +5,7 @@ import { decrypt, unwrapFileKey } from '../crypto/encryption'
 import { verifySignature } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@shared/contracts/cbor-ordering'
 import { encryptItemForPush, type EncryptItemInput } from './encrypt'
+import { decompressPayload } from './compress'
 
 beforeAll(async () => {
   await initCrypto()
@@ -171,10 +172,12 @@ describe('encryptItemForPush', () => {
         keys.vaultKey
       )
 
-      const plaintext = decrypt(
+      const plaintext = decompressPayload(
+        decrypt(
         fromB64(result.pushItem.encryptedData),
         fromB64(result.pushItem.dataNonce),
         fileKey
+        )
       )
 
       expect(plaintext).toEqual(originalContent)
