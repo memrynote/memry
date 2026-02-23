@@ -31,12 +31,22 @@ import {
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@shared/contracts/ipc-sync'
 import { GetHistorySchema, UpdateSyncedSettingSchema } from '@shared/contracts/ipc-sync-ops'
 import {
+  UploadAttachmentSchema,
+  GetUploadProgressSchema,
+  DownloadAttachmentSchema,
+  GetDownloadProgressSchema
+} from '@shared/contracts/ipc-attachments'
+import path from 'node:path'
+import { AttachmentSyncService } from '../sync/attachments'
+import { attachmentEvents } from '../sync/attachment-events'
+import {
   approveDeviceLinking,
   completeLinkingQr,
   initiateDeviceLinking,
   linkViaQr
 } from '../sync/linking-service'
 import { getSettingsSyncManager } from '../sync/settings-sync'
+import { getStatus as getVaultStatus } from '../vault/index'
 import { syncHistory } from '@shared/db/schema/sync-history'
 
 import { eq, desc, count, inArray } from 'drizzle-orm'
@@ -480,6 +490,55 @@ async function cleanupLocalSyncState(db: ReturnType<typeof getDatabase>): Promis
 }
 
 // ============================================================================
+// Attachment Service (lazy singleton)
+// ============================================================================
+
+let attachmentService: AttachmentSyncService | null = null
+
+const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
+  if (attachmentService) return attachmentService
+
+  attachmentService = new AttachmentSyncService({
+    getAccessToken: () => getValidAccessToken(),
+    getVaultKey: () => retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY),
+    getSigningKeys: async () => {
+      const secretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
+      if (!secretKey) return null
+      const publicKey = getDevicePublicKey(secretKey)
+      if (!isDatabaseInitialized()) {
+        secureCleanup(secretKey)
+        return null
+      }
+      const db = getDatabase()
+      const device = db
+        .select({ id: syncDevices.id })
+        .from(syncDevices)
+        .where(eq(syncDevices.isCurrentDevice, true))
+        .get()
+      if (!device) {
+        secureCleanup(secretKey)
+        return null
+      }
+      return { secretKey, publicKey, deviceId: device.id }
+    },
+    getDevicePublicKey: async (deviceId: string) => {
+      if (!isDatabaseInitialized()) return null
+      const db = getDatabase()
+      const device = db
+        .select({ signingPublicKey: syncDevices.signingPublicKey })
+        .from(syncDevices)
+        .where(eq(syncDevices.id, deviceId))
+        .get()
+      if (!device?.signingPublicKey) return null
+      return sodium.from_base64(device.signingPublicKey, sodium.base64_variants.ORIGINAL)
+    },
+    getSyncServerUrl: () => SYNC_SERVER_URL
+  })
+
+  return attachmentService
+}
+
+// ============================================================================
 // Handler Registration
 // ============================================================================
 
@@ -889,23 +948,163 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     return manager.getSettings()
   })
 
-  ipcMain.handle(SYNC_CHANNELS.UPLOAD_ATTACHMENT, notImplemented('attachment upload', 6))
-  ipcMain.handle(SYNC_CHANNELS.GET_UPLOAD_PROGRESS, notImplemented('attachment upload progress', 6))
-  ipcMain.handle(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT, notImplemented('attachment download', 6))
+  // --- Attachment Sync Handlers (T159–T162) ---
+
+  ipcMain.handle(
+    SYNC_CHANNELS.UPLOAD_ATTACHMENT,
+    createValidatedHandler(UploadAttachmentSchema, async (input) => {
+      const service = getOrCreateAttachmentService()
+      if (!service) return { success: false, error: 'Sync not initialized' }
+
+      service.setProgressCallback((progress) => {
+        const percent =
+          progress.totalChunks > 0
+            ? Math.round((progress.chunksCompleted / progress.totalChunks) * 100)
+            : 0
+        for (const win of BrowserWindow.getAllWindows()) {
+          win.webContents.send(SYNC_EVENTS.UPLOAD_PROGRESS, {
+            attachmentId: progress.attachmentId,
+            sessionId: '',
+            progress: percent,
+            status: progress.phase
+          })
+        }
+      })
+
+      try {
+        const result = await service.uploadAttachment(input.noteId, input.filePath)
+        return { success: true, attachmentId: result.attachmentId, sessionId: result.sessionId }
+      } catch (err) {
+        logger.error('Attachment upload failed', err)
+        return { success: false, error: err instanceof Error ? err.message : String(err) }
+      } finally {
+        service.setProgressCallback(null)
+      }
+    })
+  )
+
+  ipcMain.handle(
+    SYNC_CHANNELS.GET_UPLOAD_PROGRESS,
+    createValidatedHandler(GetUploadProgressSchema, (input) => {
+      const service = getOrCreateAttachmentService()
+      if (!service) return null
+      const progress = service.getUploadProgress(input.sessionId)
+      if (!progress) return null
+      return {
+        progress:
+          progress.totalChunks > 0
+            ? Math.round((progress.chunksCompleted / progress.totalChunks) * 100)
+            : 0,
+        uploadedChunks: progress.chunksCompleted,
+        totalChunks: progress.totalChunks,
+        status: 'uploading' as const
+      }
+    })
+  )
+
+  ipcMain.handle(
+    SYNC_CHANNELS.DOWNLOAD_ATTACHMENT,
+    createValidatedHandler(DownloadAttachmentSchema, async (input) => {
+      const service = getOrCreateAttachmentService()
+      if (!service) return { success: false, error: 'Sync not initialized' }
+
+      service.setProgressCallback((progress) => {
+        const percent =
+          progress.totalChunks > 0
+            ? Math.round((progress.chunksCompleted / progress.totalChunks) * 100)
+            : 0
+        for (const win of BrowserWindow.getAllWindows()) {
+          win.webContents.send(SYNC_EVENTS.DOWNLOAD_PROGRESS, {
+            attachmentId: progress.attachmentId,
+            progress: percent,
+            status: progress.phase
+          })
+        }
+      })
+
+      try {
+        const targetPath = input.targetPath ?? ''
+        if (!targetPath) return { success: false, error: 'Target path is required' }
+
+        const vaultStatus = getVaultStatus()
+        if (vaultStatus.path) {
+          const resolved = path.resolve(targetPath)
+          const vaultAttachments = path.resolve(vaultStatus.path, 'attachments')
+          if (!resolved.startsWith(vaultAttachments + path.sep) && resolved !== vaultAttachments) {
+            return {
+              success: false,
+              error: 'Target path must be within the vault attachments directory'
+            }
+          }
+        }
+
+        const result = await service.downloadAttachment(input.attachmentId, targetPath)
+        return { success: true, filePath: result.filePath }
+      } catch (err) {
+        logger.error('Attachment download failed', err)
+        return { success: false, error: err instanceof Error ? err.message : String(err) }
+      } finally {
+        service.setProgressCallback(null)
+      }
+    })
+  )
+
   ipcMain.handle(
     SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS,
-    notImplemented('attachment download progress', 6)
+    createValidatedHandler(GetDownloadProgressSchema, (input) => {
+      const service = getOrCreateAttachmentService()
+      if (!service) return null
+      const progress = service.getDownloadProgress(input.attachmentId)
+      if (!progress) return null
+      return {
+        progress:
+          progress.totalChunks > 0
+            ? Math.round((progress.chunksCompleted / progress.totalChunks) * 100)
+            : 0,
+        downloadedChunks: progress.chunksCompleted,
+        totalChunks: progress.totalChunks,
+        status: 'downloading' as const
+      }
+    })
   )
+
+  attachmentEvents.onSaved(async ({ noteId, diskPath }) => {
+    const service = getOrCreateAttachmentService()
+    if (!service) return
+    try {
+      service.setProgressCallback((progress) => {
+        const percent =
+          progress.totalChunks > 0
+            ? Math.round((progress.chunksCompleted / progress.totalChunks) * 100)
+            : 0
+        for (const win of BrowserWindow.getAllWindows()) {
+          win.webContents.send(SYNC_EVENTS.UPLOAD_PROGRESS, {
+            attachmentId: progress.attachmentId,
+            sessionId: '',
+            progress: percent,
+            status: progress.phase
+          })
+        }
+      })
+      await service.uploadAttachment(noteId, diskPath)
+    } catch (err) {
+      logger.warn('Background attachment sync failed', err)
+    } finally {
+      service.setProgressCallback(null)
+    }
+  })
 
   logger.info('Sync handlers registered')
 }
 
 export function unregisterSyncHandlers(): void {
+  attachmentEvents.removeAllListeners('saved')
   stopOtpClipboardDetection()
   cancelTokenRefresh()
   pendingRecoveryPhrase = null
   oauthSessions.clear()
   shutdownLoopbackServer()
+  attachmentService = null
 
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_REQUEST_OTP)
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_VERIFY_OTP)

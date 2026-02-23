@@ -52,6 +52,8 @@ import {
 import { getAllSupportedExtensions } from '@shared/file-types'
 import { deleteNoteSnapshot } from '@shared/db/queries/notes'
 import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
+import { fromMemryFileUrl } from '../lib/paths'
+import { attachmentEvents } from '../sync/attachment-events'
 import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault/folders'
 import { renderNoteAsHtml, sanitizeFilename } from '../lib/export-utils'
 import { SetFolderConfigSchema } from '@shared/contracts/templates-api'
@@ -428,11 +430,19 @@ export function registerNotesHandlers(): void {
   ipcMain.handle(
     NotesChannels.invoke.UPLOAD_ATTACHMENT,
     createValidatedHandler(UploadAttachmentSchema, async (input) => {
-      // Convert ArrayBuffer or number[] to Buffer
       const data = Array.isArray(input.data)
         ? Buffer.from(input.data)
         : Buffer.from(new Uint8Array(input.data))
-      return saveAttachment(input.noteId, data, input.filename)
+      const result = await saveAttachment(input.noteId, data, input.filename)
+      if (result.success && result.path) {
+        try {
+          const diskPath = fromMemryFileUrl(result.path)
+          attachmentEvents.emitSaved({ noteId: input.noteId, diskPath })
+        } catch {
+          // Don't block local save if sync event fails
+        }
+      }
+      return result
     })
   )
 
