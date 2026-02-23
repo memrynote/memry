@@ -15,6 +15,8 @@ export const noteCache = sqliteTable(
     mimeType: text('mime_type'),
     // File size in bytes
     fileSize: integer('file_size'),
+    // Attachment ID for synced binary files (links to R2 blob)
+    attachmentId: text('attachment_id'),
     emoji: text('emoji'), // T003: Emoji icon for visual identification (markdown only)
     // Content hash for change detection (markdown only - nullable for other types)
     contentHash: text('content_hash'),

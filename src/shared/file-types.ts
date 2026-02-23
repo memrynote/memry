@@ -100,6 +100,17 @@ export function getMimeType(extension: string): string | null {
   return MIME_TYPES[ext] ?? null
 }
 
+export function getExtensionFromMimeType(mimeType: string): string | null {
+  for (const [ext, mime] of Object.entries(MIME_TYPES)) {
+    if (mime === mimeType) return ext
+  }
+  return null
+}
+
+export function getDefaultExtension(fileType: FileType): string {
+  return SUPPORTED_EXTENSIONS[fileType][0]
+}
+
 /**
  * Extract extension from a file path or filename
  */
