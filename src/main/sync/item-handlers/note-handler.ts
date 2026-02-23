@@ -357,7 +357,15 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
   },
 
   seedUnclocked(_db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
-    const indexDb = getIndexDatabase()
+    let indexDb: ReturnType<typeof getIndexDatabase>
+    try {
+      indexDb = getIndexDatabase()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      log.warn('Skipping unclocked note seeding: index database unavailable', { message })
+      return 0
+    }
+
     const items = indexDb
       .select()
       .from(noteCache)
