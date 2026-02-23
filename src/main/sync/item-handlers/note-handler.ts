@@ -3,15 +3,27 @@ import path from 'path'
 import { isNull, and } from 'drizzle-orm'
 import { noteCache } from '@shared/db/schema/notes-cache'
 import { NoteSyncPayloadSchema, type NoteSyncPayload } from '@shared/contracts/sync-payloads'
-import { isBinaryFileType } from '@shared/file-types'
+import {
+  isBinaryFileType,
+  getExtensionFromMimeType,
+  getDefaultExtension,
+  getMimeType,
+  type FileType
+} from '@shared/file-types'
 import { NotesChannels } from '@shared/ipc-channels'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { extractFolderFromPath } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
+import { attachmentEvents } from '../attachment-events'
 import { getIndexDatabase } from '../../database/client'
-import { deleteFile, generateNotePath, generateUniquePathSync } from '../../vault/file-ops'
+import {
+  deleteFile,
+  generateNotePath,
+  generateFilePath,
+  generateUniquePathSync
+} from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getNotesDir } from '../../vault/notes'
 import {
   parseNote,
@@ -19,7 +31,7 @@ import {
   inferPropertyType,
   type NoteFrontmatter
 } from '../../vault/frontmatter'
-import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
+import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import {
   getNoteCacheById,
   getNoteCacheByPath,
@@ -86,6 +98,76 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       }
       if (resolution.action === 'merge') {
         log.warn('Concurrent note edit, applying (CRDT handles merge)', { itemId })
+      }
+
+      if (existing.fileType && isBinaryFileType(existing.fileType)) {
+        const newTitle = data.title ?? existing.title
+        const titleChanged = newTitle !== existing.title
+        const localFolder = extractFolderFromPath(existing.path)
+        const remoteFolder = data.folderPath ?? null
+        const folderChanged = localFolder !== remoteFolder
+        const resolvedEmoji = data.emoji ?? existing.emoji
+        const needsPathUpdate = folderChanged || titleChanged
+
+        const updateFields: Parameters<typeof updateNoteCache>[2] = {
+          title: newTitle,
+          emoji: resolvedEmoji,
+          clock: resolution.mergedClock,
+          syncedAt: now,
+          modifiedAt: data.modifiedAt ?? now
+        }
+
+        if (needsPathUpdate) {
+          const notesDir = getNotesDir()
+          const ext = existing.mimeType
+            ? (getExtensionFromMimeType(existing.mimeType) ??
+              getDefaultExtension(existing.fileType))
+            : getDefaultExtension(existing.fileType)
+          const baseAbsPath = generateFilePath(notesDir, newTitle, ext, remoteFolder ?? undefined)
+          const newAbsPath = generateUniquePathSync(
+            baseAbsPath,
+            (p) => !!getNoteCacheByPath(indexDb, toRelativePath(p))
+          )
+          const newRelPath = toRelativePath(newAbsPath)
+          const oldAbsPath = toAbsolutePath(existing.path)
+
+          updateFields.path = newRelPath
+
+          try {
+            if (fs.existsSync(oldAbsPath)) {
+              markWritebackIgnored(newAbsPath)
+              const dir = path.dirname(newAbsPath)
+              fs.mkdirSync(dir, { recursive: true })
+              fs.renameSync(oldAbsPath, newAbsPath)
+              removeEmptyParents(path.dirname(oldAbsPath), notesDir).catch(() => {})
+            }
+          } catch {
+            log.warn('Could not rename binary file', { itemId })
+          }
+
+          if (titleChanged) {
+            ctx.emit(NotesChannels.events.RENAMED, {
+              id: itemId,
+              oldPath: existing.path,
+              newPath: newRelPath,
+              oldTitle: existing.title,
+              newTitle,
+              source: 'sync'
+            })
+          }
+          if (folderChanged) {
+            ctx.emit(NotesChannels.events.MOVED, {
+              id: itemId,
+              oldPath: existing.path,
+              newPath: newRelPath,
+              source: 'sync'
+            })
+          }
+        }
+
+        updateNoteCache(indexDb, itemId, updateFields)
+        ctx.emit(NotesChannels.events.UPDATED, { id: itemId, source: 'sync' })
+        return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
 
       const localFolder = extractFolderFromPath(existing.path)
@@ -237,6 +319,50 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
 
     const notesDir = getNotesDir()
     const title = data.title ?? 'Untitled'
+
+    if (data.fileType && isBinaryFileType(data.fileType)) {
+      const ext =
+        (data.mimeType ? getExtensionFromMimeType(data.mimeType) : null) ??
+        getDefaultExtension(data.fileType as FileType)
+      const basePath = generateFilePath(notesDir, title, ext, data.folderPath ?? undefined)
+      const absolutePath = generateUniquePathSync(
+        basePath,
+        (p) => !!getNoteCacheByPath(indexDb, toRelativePath(p))
+      )
+      const relPath = toRelativePath(absolutePath)
+
+      syncFileToCache(indexDb, {
+        id: itemId,
+        path: relPath,
+        title,
+        fileType: data.fileType as Exclude<FileType, 'markdown'>,
+        mimeType: data.mimeType ?? getMimeType(ext) ?? null,
+        fileSize: 0,
+        createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+        modifiedAt: data.modifiedAt ? new Date(data.modifiedAt) : new Date()
+      })
+      updateNoteCache(indexDb, itemId, {
+        clock: remoteClock,
+        syncedAt: now,
+        emoji: data.emoji ?? null,
+        attachmentId: data.attachmentId ?? null
+      })
+
+      if (data.attachmentId) {
+        attachmentEvents.emitDownloadNeeded({
+          noteId: itemId,
+          attachmentId: data.attachmentId,
+          diskPath: absolutePath
+        })
+      }
+
+      ctx.emit(NotesChannels.events.CREATED, {
+        note: { id: itemId, path: relPath, title },
+        source: 'sync'
+      })
+      return 'applied'
+    }
+
     const content = data.content ?? ''
 
     const frontmatter: NoteFrontmatter = {
@@ -332,6 +458,8 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
         title: cached.title,
         emoji: cached.emoji,
         fileType: cached.fileType,
+        mimeType: cached.mimeType,
+        attachmentId: cached.attachmentId,
         folderPath,
         clock: cached.clock ?? {},
         createdAt: cached.createdAt,
