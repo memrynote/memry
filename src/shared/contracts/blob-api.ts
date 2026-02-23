@@ -4,7 +4,7 @@ export const UploadInitRequestSchema = z.object({
   attachmentId: z.string().min(1),
   filename: z.string().min(1),
   totalSize: z.number().int().positive(),
-  chunkCount: z.number().int().positive()
+  chunkCount: z.number().int().positive().max(128)
 })
 
 export const ChunkUploadParamsSchema = z.object({

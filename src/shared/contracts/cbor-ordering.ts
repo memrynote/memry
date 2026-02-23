@@ -13,7 +13,13 @@ export const CBOR_FIELD_ORDER = {
   ] as const,
   TOMBSTONE: ['id', 'type', 'deletedAt', 'deviceId'] as const,
   LINKING_PROOF: ['sessionId', 'devicePublicKey'] as const,
-  KEY_CONFIRM: ['sessionId', 'encryptedMasterKey'] as const
+  KEY_CONFIRM: ['sessionId', 'encryptedMasterKey'] as const,
+  ATTACHMENT_MANIFEST: [
+    'encryptedManifest',
+    'manifestNonce',
+    'encryptedFileKey',
+    'keyNonce'
+  ] as const
 } as const
 
 export type CborPayloadType = keyof typeof CBOR_FIELD_ORDER
