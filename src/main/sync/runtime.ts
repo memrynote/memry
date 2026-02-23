@@ -21,7 +21,7 @@ import { initTagDefinitionSyncService, resetTagDefinitionSyncService } from './t
 import { getIndexDatabase } from '../database/client'
 import { noteCache } from '@shared/db/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
-import { getCrdtProvider } from './crdt-provider'
+import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { CrdtUpdateQueue } from './crdt-queue'
 import { recoverDirtyItems } from './dirty-recovery'
 import { encryptCrdtUpdate } from './crdt-encrypt'
@@ -263,6 +263,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         pendingRuntime.network.stop()
         await pendingRuntime.engine.stop().catch(() => {})
       }
+      await getCrdtProvider()
+        .destroy()
+        .catch((err) => {
+          log.error('Failed to destroy CrdtProvider after startup failure', err)
+        })
+      resetCrdtProvider()
 
       runtime = null
       resetTaskSyncService()
@@ -307,7 +313,15 @@ export async function stopSyncRuntime(): Promise<void> {
   resetJournalSyncService()
   resetTagDefinitionSyncService()
 
-  if (!active) return
+  if (!active) {
+    await getCrdtProvider()
+      .destroy()
+      .catch((err) => {
+        log.error('Failed to destroy CrdtProvider while runtime inactive', err)
+      })
+    resetCrdtProvider()
+    return
+  }
 
   try {
     await active.engine.stop()
@@ -321,6 +335,7 @@ export async function stopSyncRuntime(): Promise<void> {
     .catch((err) => {
       log.error('Failed to destroy CrdtProvider', err)
     })
+  resetCrdtProvider()
   active.ws.disconnect()
   active.network.stop()
   log.info('Sync runtime stopped')

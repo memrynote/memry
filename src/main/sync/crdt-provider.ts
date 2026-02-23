@@ -48,13 +48,37 @@ export class CrdtProvider {
   private persistence: LeveldbPersistence | null = null
   private updateQueue: CrdtUpdateQueue | null = null
   private snapshotPushFn: SnapshotPushFn | null = null
+  private ipcHandlersRegistered = false
 
   async init(queue?: CrdtUpdateQueue, snapshotPush?: SnapshotPushFn): Promise<void> {
+    // If already initialized in this process, keep the existing persistence handle.
+    // Re-registering handlers or re-opening the same LevelDB path can lead to runtime errors.
+    if (this.persistence && this.ipcHandlersRegistered) {
+      this.updateQueue = queue ?? null
+      this.snapshotPushFn = snapshotPush ?? null
+      log.debug('CrdtProvider already initialized; callbacks updated')
+      return
+    }
+
     this.updateQueue = queue ?? null
     this.snapshotPushFn = snapshotPush ?? null
+
+    // Defensive cleanup for partial init/destroy races.
+    if (this.persistence) {
+      try {
+        await this.persistence.destroy()
+      } catch (err) {
+        log.warn('Failed to close stale CRDT persistence before init', { error: err })
+      }
+      this.persistence = null
+    }
+
     const storagePath = path.join(app.getPath('userData'), 'crdt-store')
     this.persistence = new LeveldbPersistence(storagePath)
-    this.registerIpcHandlers()
+    if (!this.ipcHandlersRegistered) {
+      this.registerIpcHandlers()
+      this.ipcHandlersRegistered = true
+    }
     log.info('CrdtProvider initialized', { storagePath })
   }
 
@@ -70,9 +94,15 @@ export class CrdtProvider {
 
     if (this.persistence) {
       const persisted = await this.persistence.getYDoc(noteId)
-      const update = Y.encodeStateAsUpdate(persisted)
-      Y.applyUpdate(doc, update)
-      persisted.destroy()
+      if (persisted) {
+        const update = Y.encodeStateAsUpdate(persisted)
+        Y.applyUpdate(doc, update)
+        persisted.destroy()
+      } else {
+        // y-leveldb swallows transaction errors and returns null.
+        // Continue with an empty in-memory doc so editor remains usable.
+        log.warn('CRDT persistence returned empty doc; continuing in-memory', { noteId })
+      }
     }
 
     await this.seedFromMarkdown(noteId, doc)
@@ -150,18 +180,37 @@ export class CrdtProvider {
   async destroy(): Promise<void> {
     cancelPendingWritebacks()
     for (const [noteId] of this.docs) {
-      await this.flushDoc(noteId)
+      try {
+        await this.flushDoc(noteId)
+      } catch (err) {
+        log.warn('Failed to flush doc during CRDT destroy', { noteId, error: err })
+      }
     }
     for (const [, entry] of this.docs) {
       entry.doc.destroy()
     }
     this.docs.clear()
 
-    ipcMain.removeHandler(CRDT_CHANNELS.OPEN_DOC)
-    ipcMain.removeHandler(CRDT_CHANNELS.CLOSE_DOC)
-    ipcMain.removeHandler(CRDT_CHANNELS.APPLY_UPDATE)
-    ipcMain.removeHandler(CRDT_CHANNELS.SYNC_STEP_1)
-    ipcMain.removeHandler(CRDT_CHANNELS.SYNC_STEP_2)
+    if (this.ipcHandlersRegistered) {
+      ipcMain.removeHandler(CRDT_CHANNELS.OPEN_DOC)
+      ipcMain.removeHandler(CRDT_CHANNELS.CLOSE_DOC)
+      ipcMain.removeHandler(CRDT_CHANNELS.APPLY_UPDATE)
+      ipcMain.removeHandler(CRDT_CHANNELS.SYNC_STEP_1)
+      ipcMain.removeHandler(CRDT_CHANNELS.SYNC_STEP_2)
+      this.ipcHandlersRegistered = false
+    }
+
+    if (this.persistence) {
+      try {
+        await this.persistence.destroy()
+      } catch (err) {
+        log.warn('Failed to close CRDT persistence on destroy', { error: err })
+      }
+      this.persistence = null
+    }
+
+    this.updateQueue = null
+    this.snapshotPushFn = null
 
     log.info('CrdtProvider destroyed')
   }
