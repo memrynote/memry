@@ -997,7 +997,13 @@ export interface NotesClientAPI {
   importFiles(
     sourcePaths: string[],
     targetFolder?: string
-  ): Promise<{ success: boolean; imported: number; failed: number; errors: string[] }>
+  ): Promise<{
+    success: boolean
+    imported: number
+    failed: number
+    errors: string[]
+    importedFiles: Array<{ destPath: string; filename: string; fileType: string }>
+  }>
   showImportDialog(): Promise<{ canceled: boolean; filePaths: string[] }>
 }
 

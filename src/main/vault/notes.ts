@@ -64,6 +64,7 @@ import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@shared/contracts/notes-api'
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { createLogger } from '../lib/logger'
+import { getFileType, getExtension } from '@shared/file-types'
 
 const logger = createLogger('Notes')
 
@@ -1307,11 +1308,18 @@ export interface ImportFilesInput {
   targetFolder?: string
 }
 
+export interface ImportedFileInfo {
+  destPath: string
+  filename: string
+  fileType: string
+}
+
 export interface ImportFilesResult {
   success: boolean
   imported: number
   failed: number
   errors: string[]
+  importedFiles: ImportedFileInfo[]
 }
 
 /**
@@ -1332,6 +1340,7 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
   await ensureDirectory(notesPath)
 
   const errors: string[] = []
+  const importedFiles: ImportedFileInfo[] = []
   let imported = 0
   let failed = 0
 
@@ -1367,7 +1376,8 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
       await fs.copyFile(sourcePath, destPath)
       imported++
 
-      // Note: The watcher will automatically pick up the new file and index it
+      const fileType = getFileType(getExtension(destPath)) ?? 'markdown'
+      importedFiles.push({ destPath, filename, fileType })
     } catch (error) {
       failed++
       const message = error instanceof Error ? error.message : 'Unknown error'
@@ -1379,6 +1389,7 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
     success: failed === 0,
     imported,
     failed,
-    errors
+    errors,
+    importedFiles
   }
 }

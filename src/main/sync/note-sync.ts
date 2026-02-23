@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { NoteSyncPayload } from '@shared/contracts/sync-payloads'
+import { isBinaryFileType } from '@shared/file-types'
 import type { NoteCache } from '@shared/db/schema/notes-cache'
 import { getNoteProperties, type PropertyValue } from '@shared/db/queries/notes'
 import { getPinnedTagsForNote } from './item-handlers/note-pin-helpers'
@@ -62,6 +63,20 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
     clock: VectorClock,
     operation: 'create' | 'update'
   ): NoteSyncPayload {
+    const folderPath = extractFolderFromPath(cached.path)
+
+    if (cached.fileType && isBinaryFileType(cached.fileType)) {
+      return {
+        title: cached.title,
+        emoji: cached.emoji,
+        fileType: cached.fileType,
+        folderPath,
+        clock,
+        createdAt: cached.createdAt,
+        modifiedAt: cached.modifiedAt
+      }
+    }
+
     let content: string | null = null
     let tags: string[] = []
     const absolutePath = toAbsolutePath(cached.path)
@@ -74,7 +89,6 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
       log.warn('Could not read note file for sync snapshot', { noteId: cached.id })
     }
 
-    const folderPath = extractFolderFromPath(cached.path)
     const indexDb = getIndexDatabase()
     const properties = propsToRecord(getNoteProperties(indexDb, cached.id))
     const pinnedTags = getPinnedTagsForNote(indexDb, cached.id)
