@@ -18,7 +18,7 @@ export interface RecoveryResult {
 
 /**
  * Scans for locally-modified items that were never synced (e.g. edited while signed out).
- * Re-enqueues them with fresh clocks so they participate in the next sync cycle.
+ * Re-enqueues them for the next sync cycle, rebinding offline placeholder clocks when present.
  *
  * Detection: modifiedAt > syncedAt (modified since last sync) OR syncedAt IS NULL (never synced).
  * Safe to call multiple times — SyncQueueManager.enqueue() deduplicates by itemId+type+operation.
@@ -46,7 +46,7 @@ export function recoverDirtyItems(db: DrizzleDb): RecoveryResult {
       const op = t.syncedAt ? 'update' : 'create'
       log.debug('Recovering dirty task', { taskId: t.id, op, syncedAt: t.syncedAt })
       if (t.syncedAt) {
-        taskSync.enqueueUpdate(t.id)
+        taskSync.enqueueRecoveredUpdate(t.id)
       } else {
         taskSync.enqueueCreate(t.id)
       }
@@ -69,7 +69,7 @@ export function recoverDirtyItems(db: DrizzleDb): RecoveryResult {
     for (const p of dirtyProjects) {
       log.debug('Recovering dirty project', { projectId: p.id, syncedAt: p.syncedAt })
       if (p.syncedAt) {
-        projectSync.enqueueUpdate(p.id)
+        projectSync.enqueueRecoveredUpdate(p.id)
       } else {
         projectSync.enqueueCreate(p.id)
       }
