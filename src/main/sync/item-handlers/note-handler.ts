@@ -3,6 +3,7 @@ import path from 'path'
 import { isNull, and } from 'drizzle-orm'
 import { noteCache } from '@shared/db/schema/notes-cache'
 import { NoteSyncPayloadSchema, type NoteSyncPayload } from '@shared/contracts/sync-payloads'
+import { isBinaryFileType } from '@shared/file-types'
 import { NotesChannels } from '@shared/ipc-channels'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
@@ -324,6 +325,19 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     const indexDb = getIndexDatabase()
     const cached = getNoteCacheById(indexDb, itemId)
     if (!cached) return null
+
+    if (cached.fileType && isBinaryFileType(cached.fileType)) {
+      const folderPath = extractFolderFromPath(cached.path)
+      return JSON.stringify({
+        title: cached.title,
+        emoji: cached.emoji,
+        fileType: cached.fileType,
+        folderPath,
+        clock: cached.clock ?? {},
+        createdAt: cached.createdAt,
+        modifiedAt: cached.modifiedAt
+      })
+    }
 
     let content: string | null = null
     let tags: string[] = []

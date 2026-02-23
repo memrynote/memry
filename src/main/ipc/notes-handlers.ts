@@ -747,10 +747,16 @@ export function registerNotesHandlers(): void {
       }),
       async (input) => {
         try {
-          return await importFiles(input)
+          const result = await importFiles(input)
+          for (const file of result.importedFiles) {
+            if (file.fileType !== 'markdown') {
+              attachmentEvents.emitSaved({ noteId: 'vault-import', diskPath: file.destPath })
+            }
+          }
+          return result
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Failed to import files'
-          return { success: false, imported: 0, failed: 0, errors: [message] }
+          return { success: false, imported: 0, failed: 0, errors: [message], importedFiles: [] }
         }
       }
     )

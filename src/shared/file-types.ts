@@ -193,3 +193,10 @@ export function isSupportedPath(filePath: string): boolean {
   const ext = getExtension(filePath)
   return ext !== '' && isSupported(ext)
 }
+
+/**
+ * Check if a file type represents binary content (anything non-markdown)
+ */
+export function isBinaryFileType(fileType: string): boolean {
+  return fileType !== 'markdown'
+}
