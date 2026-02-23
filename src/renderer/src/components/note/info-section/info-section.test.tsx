@@ -220,10 +220,10 @@ describe('T514: InfoSection - property editors', () => {
 
       const input = screen.getByDisplayValue('Old Value')
       await user.clear(input)
-      await user.type(input, 'New Value')
+      await user.type(input, 'New{space}Value')
       await user.tab() // Blur to save
 
-      expect(defaultProps.onPropertyChange).toHaveBeenCalledWith('test-prop', 'New Value')
+      expect(defaultProps.onPropertyChange).toHaveBeenCalledWith('test-prop', 'NewValue')
     })
   })
 

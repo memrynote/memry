@@ -9,6 +9,8 @@ let pausedListeners: EventCallback[] = []
 let resumedListeners: EventCallback[] = []
 let uploadProgressListeners: EventCallback[] = []
 let downloadProgressListeners: EventCallback[] = []
+let linkingRequestListeners: EventCallback[] = []
+let linkingApprovedListeners: EventCallback[] = []
 
 vi.mock('./auth-context', () => ({
   useAuth: vi.fn().mockReturnValue({
@@ -34,6 +36,8 @@ beforeEach(() => {
   resumedListeners = []
   uploadProgressListeners = []
   downloadProgressListeners = []
+  linkingRequestListeners = []
+  linkingApprovedListeners = []
 
   const api = (window as unknown as { api: Record<string, unknown> }).api as Record<string, unknown>
   api.syncOps = mockSyncOps
@@ -65,6 +69,18 @@ beforeEach(() => {
     downloadProgressListeners.push(cb)
     return () => {
       downloadProgressListeners = downloadProgressListeners.filter((l) => l !== cb)
+    }
+  })
+  api.onLinkingRequest = vi.fn((cb: EventCallback) => {
+    linkingRequestListeners.push(cb)
+    return () => {
+      linkingRequestListeners = linkingRequestListeners.filter((l) => l !== cb)
+    }
+  })
+  api.onLinkingApproved = vi.fn((cb: EventCallback) => {
+    linkingApprovedListeners.push(cb)
+    return () => {
+      linkingApprovedListeners = linkingApprovedListeners.filter((l) => l !== cb)
     }
   })
   api.onSessionExpired = vi.fn(() => () => {})

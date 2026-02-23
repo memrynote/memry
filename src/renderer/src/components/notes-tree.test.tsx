@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NotesTree } from './notes-tree'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -16,8 +17,21 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => (
   <TooltipProvider>{children}</TooltipProvider>
 )
 
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false }
+    }
+  })
+
 const renderWithProviders = (ui: React.ReactElement) => {
-  return render(<TestWrapper>{ui}</TestWrapper>)
+  const queryClient = createTestQueryClient()
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <TestWrapper>{ui}</TestWrapper>
+    </QueryClientProvider>
+  )
 }
 
 // ============================================================================

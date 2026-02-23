@@ -13,7 +13,9 @@ const TEST_PROJECT = {
   name: 'Test Project',
   color: '#000',
   position: 0,
-  isInbox: false
+  isInbox: false,
+  modifiedAt: '2026-01-01T00:00:00Z',
+  syncedAt: '2026-01-01T00:00:00Z'
 }
 
 describe('dirty-recovery', () => {
@@ -118,7 +120,7 @@ describe('dirty-recovery', () => {
         title: 'Stale',
         priority: 0,
         position: 0,
-        clock: JSON.stringify({ 'old-device': 1 }),
+        clock: { 'old-device': 1 },
         syncedAt: '2026-01-01T00:00:00Z',
         modifiedAt: '2026-01-02T00:00:00Z'
       })
