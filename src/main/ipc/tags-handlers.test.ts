@@ -166,11 +166,7 @@ describe('tags-handlers', () => {
     })
     expect(colorResult).toEqual({ success: true })
     expect(notesQueries.getOrCreateTag).toHaveBeenCalledWith(expect.any(Object), 'new')
-    expect(notesQueries.updateTagColor).toHaveBeenCalledWith(
-      expect.any(Object),
-      'new',
-      '#ff0000'
-    )
+    expect(notesQueries.updateTagColor).toHaveBeenCalledWith(expect.any(Object), 'new', '#ff0000')
     expect(mockSend).toHaveBeenCalledWith('notes:tags-changed', {})
     ;(notesQueries.deleteTag as Mock).mockReturnValue(5)
     const deleteResult = await invokeHandler(TagsChannels.invoke.DELETE_TAG, 'new')

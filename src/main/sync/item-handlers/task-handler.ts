@@ -5,11 +5,7 @@ import { TasksChannels } from '@shared/ipc-channels'
 import type { VectorClock, FieldClocks } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
-import {
-  mergeTaskFields,
-  initAllFieldClocks,
-  TASK_SYNCABLE_FIELDS
-} from '../field-merge'
+import { mergeTaskFields, initAllFieldClocks, TASK_SYNCABLE_FIELDS } from '../field-merge'
 import { createLogger } from '../../lib/logger'
 import { resolveClockConflict } from './types'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -44,8 +40,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
             (existing.fieldClocks as FieldClocks) ??
             initAllFieldClocks(existing.clock ?? {}, TASK_SYNCABLE_FIELDS)
           const remoteFC =
-            remoteFieldClocks ??
-            initAllFieldClocks(remoteClock, TASK_SYNCABLE_FIELDS)
+            remoteFieldClocks ?? initAllFieldClocks(remoteClock, TASK_SYNCABLE_FIELDS)
 
           const result = mergeTaskFields(
             existing as Record<string, unknown>,
@@ -83,9 +78,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
           return result.hadConflicts ? 'conflict' : 'applied'
         }
 
-        const appliedFC =
-          remoteFieldClocks ??
-          initAllFieldClocks(remoteClock, TASK_SYNCABLE_FIELDS)
+        const appliedFC = remoteFieldClocks ?? initAllFieldClocks(remoteClock, TASK_SYNCABLE_FIELDS)
 
         tx.update(tasks)
           .set({
@@ -117,9 +110,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
         return 'applied'
       }
 
-      const insertedFC =
-        remoteFieldClocks ??
-        initAllFieldClocks(remoteClock, TASK_SYNCABLE_FIELDS)
+      const insertedFC = remoteFieldClocks ?? initAllFieldClocks(remoteClock, TASK_SYNCABLE_FIELDS)
 
       tx.insert(tasks)
         .values({
@@ -188,10 +179,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
   },
 
   markPushSynced(db: DrizzleDb, itemId: string): void {
-    db.update(tasks)
-      .set({ syncedAt: new Date().toISOString() })
-      .where(eq(tasks.id, itemId))
-      .run()
+    db.update(tasks).set({ syncedAt: new Date().toISOString() }).where(eq(tasks.id, itemId)).run()
   },
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {

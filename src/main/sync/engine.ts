@@ -170,7 +170,7 @@ export class SyncEngine extends EventEmitter {
     this.pendingPushRequested = false
     this.abortController?.abort()
     if (this.inFlightSync) {
-      await this.inFlightSync.catch(() => { })
+      await this.inFlightSync.catch(() => {})
     }
     this.abortController = null
     this.inFlightSync = null
@@ -510,9 +510,9 @@ export class SyncEngine extends EventEmitter {
                 metadata:
                   item.clock || item.stateVector
                     ? {
-                      ...(item.clock ? { clock: item.clock } : {}),
-                      ...(item.stateVector ? { stateVector: item.stateVector } : {})
-                    }
+                        ...(item.clock ? { clock: item.clock } : {}),
+                        ...(item.stateVector ? { stateVector: item.stateVector } : {})
+                      }
                     : undefined,
                 vaultKey,
                 signerPublicKey: signerPubKey
@@ -794,7 +794,7 @@ export class SyncEngine extends EventEmitter {
         }
 
         if (this.inFlightSync) {
-          await this.inFlightSync.catch(() => { })
+          await this.inFlightSync.catch(() => {})
         }
 
         this.setState('idle')

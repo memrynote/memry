@@ -107,9 +107,7 @@ export function incrementTaskClocksOffline(
       taskId,
       changedFields,
       newClock,
-      updatedFieldClocks: Object.fromEntries(
-        changedFields.map((f) => [f, updatedFC[f]])
-      )
+      updatedFieldClocks: Object.fromEntries(changedFields.map((f) => [f, updatedFC[f]]))
     })
   } catch (err) {
     log.warn('Failed to increment offline task clocks', { taskId, error: err })
@@ -154,10 +152,7 @@ export function incrementInboxClockOffline(db: DrizzleDb, itemId: string): void 
     const existingClock = (item.clock as VectorClock) ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
 
-    db.update(inboxItems)
-      .set({ clock: newClock })
-      .where(eq(inboxItems.id, itemId))
-      .run()
+    db.update(inboxItems).set({ clock: newClock }).where(eq(inboxItems.id, itemId)).run()
 
     log.debug('Incremented offline inbox clock', { itemId })
   } catch (err) {
@@ -173,10 +168,7 @@ export function incrementFilterClockOffline(db: DrizzleDb, filterId: string): vo
     const existingClock = (filter.clock as VectorClock) ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
 
-    db.update(savedFilters)
-      .set({ clock: newClock })
-      .where(eq(savedFilters.id, filterId))
-      .run()
+    db.update(savedFilters).set({ clock: newClock }).where(eq(savedFilters.id, filterId)).run()
 
     log.debug('Incremented offline filter clock', { filterId })
   } catch (err) {

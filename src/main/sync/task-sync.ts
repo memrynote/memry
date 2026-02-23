@@ -117,7 +117,11 @@ export class TaskSyncService {
         type: 'task',
         itemId: taskId,
         operation: 'update',
-        payload: JSON.stringify({ ...task, clock: rebased.clock, fieldClocks: rebased.fieldClocks }),
+        payload: JSON.stringify({
+          ...task,
+          clock: rebased.clock,
+          fieldClocks: rebased.fieldClocks
+        }),
         priority: 0
       })
     } catch (err) {
@@ -146,11 +150,7 @@ export class TaskSyncService {
     }
   }
 
-  private enqueue(
-    taskId: string,
-    operation: 'create' | 'update',
-    changedFields?: string[]
-  ): void {
+  private enqueue(taskId: string, operation: 'create' | 'update', changedFields?: string[]): void {
     const deviceId = this.getDeviceId()
     if (!deviceId) {
       log.warn('No device ID available, tracking task change with offline clock', {
