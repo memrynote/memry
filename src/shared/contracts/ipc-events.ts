@@ -23,7 +23,8 @@ export const EVENT_CHANNELS = {
   OTP_DETECTED: 'auth:otp-detected',
   CLOCK_SKEW_WARNING: 'sync:clock-skew-warning',
   OAUTH_CALLBACK: 'auth:oauth-callback',
-  OAUTH_ERROR: 'auth:oauth-error'
+  OAUTH_ERROR: 'auth:oauth-error',
+  ATTACHMENT_UPLOAD_FAILED: 'sync:attachment-upload-failed'
 } as const
 
 // ============================================================================
@@ -127,5 +128,11 @@ export interface ClockSkewWarningEvent {
 }
 
 export interface OAuthErrorEvent {
+  error: string
+}
+
+export interface AttachmentUploadFailedEvent {
+  noteId: string
+  diskPath: string
   error: string
 }

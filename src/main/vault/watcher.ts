@@ -41,6 +41,7 @@ import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@shared/file-types'
 import { createLogger } from '../lib/logger'
 import { isWritebackIgnored, wasRecentNetworkUpdate } from '../sync/crdt-writeback'
+import { attachmentEvents } from '../sync/attachment-events'
 import { getNoteSyncService } from '../sync/note-sync'
 import { getJournalSyncService } from '../sync/journal-sync'
 import { getCrdtProvider, ORIGIN_LOCAL } from '../sync/crdt-provider'
@@ -424,6 +425,15 @@ export class VaultWatcher {
       snippet: syncResult.snippet
     }
 
+    // Enqueue sync push so other devices learn about the new file
+    const config = getConfig()
+    if (isJournalPath(relativePath, config.journalFolder)) {
+      const journalDate = extractJournalDate(relativePath)
+      getJournalSyncService()?.enqueueCreate(parsed.frontmatter.id, journalDate)
+    } else {
+      getNoteSyncService()?.enqueueCreate(parsed.frontmatter.id)
+    }
+
     // Emit event to renderer
     emitEvent(NotesChannels.events.CREATED, {
       note: noteListItem,
@@ -435,7 +445,6 @@ export class VaultWatcher {
     queueEmbeddingUpdate(parsed.frontmatter.id)
 
     // Also emit journal event if this is a journal entry
-    const config = getConfig()
     if (isJournalPath(relativePath, config.journalFolder)) {
       const journalDate = extractJournalDate(relativePath)
       emitEvent(JournalChannels.events.ENTRY_CREATED, {
@@ -500,6 +509,8 @@ export class VaultWatcher {
       wordCount: 0
     }
 
+    getNoteSyncService()?.enqueueCreate(id)
+
     // Emit event to renderer (using same channel for unified tree)
     emitEvent(NotesChannels.events.CREATED, {
       note: fileListItem,
@@ -507,6 +518,8 @@ export class VaultWatcher {
       source: 'external',
       fileType // Include file type so renderer knows this is not markdown
     })
+
+    attachmentEvents.emitSaved({ noteId: id, diskPath: absolutePath })
   }
 
   /**
@@ -653,6 +666,8 @@ export class VaultWatcher {
       modifiedAt: stats.mtime
     })
 
+    getNoteSyncService()?.enqueueUpdate(cached.id)
+
     // Emit update event
     emitEvent(NotesChannels.events.UPDATED, {
       id: cached.id,
@@ -663,6 +678,8 @@ export class VaultWatcher {
       source: 'external',
       fileType
     })
+
+    attachmentEvents.emitSaved({ noteId: cached.id, diskPath: absolutePath })
   }
 
   /**
