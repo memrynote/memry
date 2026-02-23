@@ -170,7 +170,7 @@ export class SyncEngine extends EventEmitter {
     this.pendingPushRequested = false
     this.abortController?.abort()
     if (this.inFlightSync) {
-      await this.inFlightSync.catch(() => {})
+      await this.inFlightSync.catch(() => { })
     }
     this.abortController = null
     this.inFlightSync = null
@@ -192,7 +192,6 @@ export class SyncEngine extends EventEmitter {
       })
       return
     }
-    log.debug('Periodic pull triggered')
     this.scheduleSync(() => this.pull())
   }
 
@@ -438,13 +437,6 @@ export class SyncEngine extends EventEmitter {
 
         const changes = changesResult.value
 
-        log.debug('Pull: changes fetched', {
-          itemCount: changes.items.length,
-          deletedCount: changes.deleted.length,
-          cursor,
-          nextCursor: changes.nextCursor
-        })
-
         const itemIds = Array.from(
           new Set([...changes.items.map((item) => item.id), ...changes.deleted])
         )
@@ -518,9 +510,9 @@ export class SyncEngine extends EventEmitter {
                 metadata:
                   item.clock || item.stateVector
                     ? {
-                        ...(item.clock ? { clock: item.clock } : {}),
-                        ...(item.stateVector ? { stateVector: item.stateVector } : {})
-                      }
+                      ...(item.clock ? { clock: item.clock } : {}),
+                      ...(item.stateVector ? { stateVector: item.stateVector } : {})
+                    }
                     : undefined,
                 vaultKey,
                 signerPublicKey: signerPubKey
@@ -642,7 +634,6 @@ export class SyncEngine extends EventEmitter {
         hasMore = changes.hasMore
       }
 
-      log.debug('Pull complete', { totalPulled: pulledCount, finalCursor: cursor })
       this.recordHistory('pull', pulledCount, Date.now() - startTime)
       this.updateLastSyncAt()
     } catch (error) {
@@ -803,7 +794,7 @@ export class SyncEngine extends EventEmitter {
         }
 
         if (this.inFlightSync) {
-          await this.inFlightSync.catch(() => {})
+          await this.inFlightSync.catch(() => { })
         }
 
         this.setState('idle')

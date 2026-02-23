@@ -47,7 +47,7 @@ function makeCtx(db: TestDatabaseResult): ApplyContext {
 
 function makeTaskPayload(overrides: Partial<TaskSyncPayload> = {}): TaskSyncPayload {
   return {
-    title: 'Remote Task',
+    title: 'Task',
     description: null,
     projectId: 'proj-1',
     statusId: 'status-todo',

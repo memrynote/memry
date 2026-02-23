@@ -99,17 +99,6 @@ export function mergeFields<T>(
       }
     }
 
-    if (valsDiffer) {
-      log.debug('Field merge decision', {
-        field,
-        winner,
-        localSum,
-        remoteSum,
-        localFC,
-        remoteFC
-      })
-    }
-
     mergedFieldClocks[field] = mergeClock(localFC, remoteFC)
   }
 
