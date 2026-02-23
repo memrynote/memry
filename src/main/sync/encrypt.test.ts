@@ -173,11 +173,7 @@ describe('encryptItemForPush', () => {
       )
 
       const plaintext = decompressPayload(
-        decrypt(
-        fromB64(result.pushItem.encryptedData),
-        fromB64(result.pushItem.dataNonce),
-        fileKey
-        )
+        decrypt(fromB64(result.pushItem.encryptedData), fromB64(result.pushItem.dataNonce), fileKey)
       )
 
       expect(plaintext).toEqual(originalContent)

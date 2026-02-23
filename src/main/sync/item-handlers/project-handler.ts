@@ -10,11 +10,7 @@ import { TasksChannels } from '@shared/ipc-channels'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
-import {
-  mergeProjectFields,
-  initAllFieldClocks,
-  PROJECT_SYNCABLE_FIELDS
-} from '../field-merge'
+import { mergeProjectFields, initAllFieldClocks, PROJECT_SYNCABLE_FIELDS } from '../field-merge'
 import { createLogger } from '../../lib/logger'
 import { resolveClockConflict } from './types'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -98,7 +94,8 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
         if (resolution.action === 'merge') {
           log.warn('Concurrent project edit, using field-level merge', { itemId })
           const localFC =
-            existing.fieldClocks ?? initAllFieldClocks(existing.clock ?? {}, PROJECT_SYNCABLE_FIELDS)
+            existing.fieldClocks ??
+            initAllFieldClocks(existing.clock ?? {}, PROJECT_SYNCABLE_FIELDS)
           const remoteFC =
             data.fieldClocks ?? initAllFieldClocks(remoteClock, PROJECT_SYNCABLE_FIELDS)
           const mergeResult = mergeProjectFields(

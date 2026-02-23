@@ -6,16 +6,8 @@ import { statuses } from '@shared/db/schema/statuses'
 import { tasks } from '@shared/db/schema/tasks'
 import { ItemApplier } from './apply-item'
 import { SyncQueueManager } from './queue'
-import {
-  TASK_SYNCABLE_FIELDS,
-  initAllFieldClocks,
-  type FieldClocks
-} from './field-merge'
-import {
-  TaskSyncService,
-  initTaskSyncService,
-  resetTaskSyncService
-} from './task-sync'
+import { TASK_SYNCABLE_FIELDS, initAllFieldClocks, type FieldClocks } from './field-merge'
+import { TaskSyncService, initTaskSyncService, resetTaskSyncService } from './task-sync'
 import { recoverDirtyItems } from './dirty-recovery'
 import { taskHandler } from './item-handlers/task-handler'
 import type { DrizzleDb } from './item-handlers/types'
@@ -149,7 +141,9 @@ describe('task merge integration', () => {
       getDeviceId: () => 'device-A'
     })
 
-    const recovered = recoverDirtyItems(deviceA.db as unknown as Parameters<typeof recoverDirtyItems>[0])
+    const recovered = recoverDirtyItems(
+      deviceA.db as unknown as Parameters<typeof recoverDirtyItems>[0]
+    )
     expect(recovered.tasks).toBe(1)
 
     // Frozen queue payload was captured before pull and can be stale.
