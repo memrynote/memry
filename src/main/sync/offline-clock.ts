@@ -9,8 +9,60 @@ import { initAllFieldClocks, TASK_SYNCABLE_FIELDS, PROJECT_SYNCABLE_FIELDS } fro
 import { createLogger } from '../lib/logger'
 import type { DrizzleDb } from '../database/client'
 
-const OFFLINE_DEVICE_KEY = '_offline'
+export const OFFLINE_DEVICE_KEY = '_offline'
 const log = createLogger('OfflineClock')
+
+function hasOfflineTick(clock: VectorClock | null | undefined): boolean {
+  if (!clock) return false
+  return (clock[OFFLINE_DEVICE_KEY] ?? 0) > 0
+}
+
+function rebindClockDevice(clock: VectorClock, targetDeviceId: string): VectorClock {
+  const offlineTick = clock[OFFLINE_DEVICE_KEY] ?? 0
+  if (offlineTick <= 0) return { ...clock }
+
+  const next = { ...clock }
+  delete next[OFFLINE_DEVICE_KEY]
+  next[targetDeviceId] = (next[targetDeviceId] ?? 0) + offlineTick
+  return next
+}
+
+function rebindFieldClockDevice(fieldClock: VectorClock, targetDeviceId: string): VectorClock {
+  const offlineTick = fieldClock[OFFLINE_DEVICE_KEY] ?? 0
+  if (offlineTick <= 0) return { ...fieldClock }
+
+  const next = { ...fieldClock }
+  delete next[OFFLINE_DEVICE_KEY]
+  next[targetDeviceId] = (next[targetDeviceId] ?? 0) + offlineTick
+  return next
+}
+
+export function hasOfflineClockData(
+  clock: VectorClock | null | undefined,
+  fieldClocks: FieldClocks | null | undefined
+): boolean {
+  if (hasOfflineTick(clock)) return true
+  if (!fieldClocks) return false
+  return Object.values(fieldClocks).some((fc) => hasOfflineTick(fc))
+}
+
+export function rebindOfflineClockData(
+  clock: VectorClock | null | undefined,
+  fieldClocks: FieldClocks | null | undefined,
+  targetDeviceId: string,
+  allSyncableFields: readonly string[]
+): { clock: VectorClock; fieldClocks: FieldClocks } {
+  const docClock = clock ?? {}
+  const nextClock = rebindClockDevice(docClock, targetDeviceId)
+  const fc = fieldClocks ?? initAllFieldClocks(docClock, allSyncableFields)
+  const nextFieldClocks: FieldClocks = {}
+
+  for (const [field, fieldClock] of Object.entries(fc)) {
+    nextFieldClocks[field] = rebindFieldClockDevice(fieldClock ?? {}, targetDeviceId)
+  }
+
+  return { clock: nextClock, fieldClocks: nextFieldClocks }
+}
 
 function incrementFieldClocksForFields(
   existing: FieldClocks | null,
