@@ -6,6 +6,7 @@ import { cors } from 'hono/cors'
 
 import { AppError, ErrorCodes, errorHandler } from './lib/errors'
 import { auth } from './routes/auth'
+import { blob } from './routes/blob'
 import { linking } from './routes/linking'
 import { sync } from './routes/sync'
 import { securityHeaders } from './middleware/security'
@@ -38,8 +39,8 @@ app.use('*', async (c, next) => {
   const contentLength = c.req.header('Content-Length')
   if (contentLength) {
     const size = parseInt(contentLength, 10)
-    const isBlob = c.req.path.includes('/blob')
-    const limit = isBlob ? MAX_BODY_BYTES_BLOB : MAX_BODY_BYTES_API
+    const isBinaryUpload = c.req.path.includes('/blob') || c.req.path.includes('/attachments/')
+    const limit = isBinaryUpload ? MAX_BODY_BYTES_BLOB : MAX_BODY_BYTES_API
     if (size > limit) {
       throw new AppError(
         ErrorCodes.VALIDATION_BODY_TOO_LARGE,
@@ -91,6 +92,7 @@ app.get('/health', (c) => c.json({ status: 'ok' }))
 app.route('/auth', auth)
 app.route('/auth/linking', linking)
 app.route('/sync', sync)
+app.route('/sync', blob)
 
 const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env, _ctx) => {
   const results = await Promise.allSettled([
