@@ -7,6 +7,11 @@ import type { VectorClock } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from './queue'
 import { increment } from './vector-clock'
 import { type FieldClocks, initAllFieldClocks, PROJECT_SYNCABLE_FIELDS } from './field-merge'
+import {
+  hasOfflineClockData,
+  incrementProjectClocksOffline,
+  rebindOfflineClockData
+} from './offline-clock'
 import { createLogger } from '../lib/logger'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
@@ -79,6 +84,65 @@ export class ProjectSyncService {
     }
   }
 
+  enqueueRecoveredUpdate(projectId: string): void {
+    const deviceId = this.getDeviceId()
+    if (!deviceId) {
+      log.warn('No device ID available, skipping recovered project enqueue')
+      return
+    }
+
+    try {
+      const project = this.db.select().from(projects).where(eq(projects.id, projectId)).get()
+      if (!project) {
+        log.warn('Project not found for recovered enqueue', { projectId })
+        return
+      }
+
+      const projectStatuses = this.db
+        .select()
+        .from(statuses)
+        .where(eq(statuses.projectId, projectId))
+        .all()
+
+      const existingClock = (project.clock as VectorClock) ?? {}
+      const existingFieldClocks = (project.fieldClocks as FieldClocks | null) ?? null
+
+      if (!hasOfflineClockData(existingClock, existingFieldClocks)) {
+        // No offline marker: local clocks were already advanced when the change was made.
+        this.enqueueForPush(projectId, 'update')
+        return
+      }
+
+      const rebased = rebindOfflineClockData(
+        existingClock,
+        existingFieldClocks,
+        deviceId,
+        PROJECT_SYNCABLE_FIELDS
+      )
+
+      this.db
+        .update(projects)
+        .set({ clock: rebased.clock, fieldClocks: rebased.fieldClocks })
+        .where(eq(projects.id, projectId))
+        .run()
+
+      this.queue.enqueue({
+        type: 'project',
+        itemId: projectId,
+        operation: 'update',
+        payload: JSON.stringify({
+          ...project,
+          clock: rebased.clock,
+          fieldClocks: rebased.fieldClocks,
+          statuses: projectStatuses
+        }),
+        priority: 0
+      })
+    } catch (err) {
+      log.error('Failed to enqueue recovered project update', err)
+    }
+  }
+
   enqueueDelete(projectId: string, snapshotPayload: string): void {
     const deviceId = this.getDeviceId()
     if (!deviceId) {
@@ -107,7 +171,19 @@ export class ProjectSyncService {
   ): void {
     const deviceId = this.getDeviceId()
     if (!deviceId) {
-      log.warn('No device ID available, skipping sync enqueue')
+      log.warn('No device ID available, tracking project change with offline clock', {
+        projectId,
+        operation
+      })
+      if (operation === 'create') {
+        incrementProjectClocksOffline(this.db, projectId)
+      } else {
+        incrementProjectClocksOffline(
+          this.db,
+          projectId,
+          changedFields ?? [...PROJECT_SYNCABLE_FIELDS]
+        )
+      }
       return
     }
 

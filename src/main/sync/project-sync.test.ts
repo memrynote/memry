@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { eq } from 'drizzle-orm'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { projects } from '@shared/db/schema/projects'
 import { statuses } from '@shared/db/schema/statuses'
@@ -98,7 +99,7 @@ describe('ProjectSyncService', () => {
   })
 
   describe('#given no device ID #when enqueue called', () => {
-    it('#then skips silently without enqueueing', () => {
+    it('#then records offline clocks and avoids enqueueing', () => {
       const noDeviceService = new ProjectSyncService({
         queue,
         db: testDb.db as any,
@@ -106,9 +107,50 @@ describe('ProjectSyncService', () => {
       })
       testDb.db.insert(projects).values(TEST_PROJECT).run()
 
-      noDeviceService.enqueueCreate('proj-1')
+      noDeviceService.enqueueUpdate('proj-1', ['color'])
 
       expect(queue.getQueueStats().pending).toBe(0)
+
+      const updated = testDb.db.select().from(projects).where(eq(projects.id, 'proj-1')).get()
+      expect(updated).toBeDefined()
+
+      const updatedClock = updated!.clock as Record<string, number>
+      const updatedFieldClocks = updated!.fieldClocks as Record<string, Record<string, number>>
+
+      expect(updatedClock).toEqual({ _offline: 1 })
+      expect(updatedFieldClocks.color).toEqual({ _offline: 1 })
+    })
+  })
+
+  describe('#given offline-marked dirty project #when enqueueRecoveredUpdate called', () => {
+    it('#then rebinds offline clocks to current device without incrementing untouched fields', () => {
+      const clock: VectorClock = { 'device-old': 2, _offline: 1 }
+      const fieldClocks = {
+        name: { 'device-old': 2, _offline: 1 },
+        color: { 'device-old': 2 }
+      }
+
+      testDb.db
+        .insert(projects)
+        .values({ ...TEST_PROJECT, clock, fieldClocks, syncedAt: '2026-01-01T00:00:00Z' })
+        .run()
+
+      service.enqueueRecoveredUpdate('proj-1')
+
+      const [item] = queue.dequeue(1)
+      expect(item.operation).toBe('update')
+      const payload = JSON.parse(item.payload)
+
+      expect(payload.clock).toEqual({ 'device-old': 2, 'device-A': 1 })
+      expect(payload.fieldClocks.name).toEqual({ 'device-old': 2, 'device-A': 1 })
+      expect(payload.fieldClocks.color).toEqual({ 'device-old': 2 })
+
+      const updated = testDb.db.select().from(projects).where(eq(projects.id, 'proj-1')).get()
+      expect(updated).toBeDefined()
+      const updatedClock = updated!.clock as Record<string, number>
+      const updatedFieldClocks = updated!.fieldClocks as Record<string, Record<string, number>>
+      expect(updatedClock._offline).toBeUndefined()
+      expect(updatedFieldClocks.name._offline).toBeUndefined()
     })
   })
 
