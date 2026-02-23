@@ -6,6 +6,11 @@ import type { VectorClock, FieldClocks } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from './queue'
 import { increment } from './vector-clock'
 import { initAllFieldClocks, TASK_SYNCABLE_FIELDS } from './field-merge'
+import {
+  hasOfflineClockData,
+  incrementTaskClocksOffline,
+  rebindOfflineClockData
+} from './offline-clock'
 import { createLogger } from '../lib/logger'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
@@ -72,6 +77,54 @@ export class TaskSyncService {
     }
   }
 
+  enqueueRecoveredUpdate(taskId: string): void {
+    const deviceId = this.getDeviceId()
+    if (!deviceId) {
+      log.warn('No device ID available, skipping recovered task enqueue')
+      return
+    }
+
+    try {
+      const task = this.db.select().from(tasks).where(eq(tasks.id, taskId)).get()
+      if (!task) {
+        log.warn('Task not found for recovered enqueue', { taskId })
+        return
+      }
+
+      const existingClock = (task.clock as VectorClock) ?? {}
+      const existingFieldClocks = (task.fieldClocks as FieldClocks | null) ?? null
+
+      if (!hasOfflineClockData(existingClock, existingFieldClocks)) {
+        // No offline marker: local clocks were already advanced when the change was made.
+        this.enqueueForPush(taskId, 'update')
+        return
+      }
+
+      const rebased = rebindOfflineClockData(
+        existingClock,
+        existingFieldClocks,
+        deviceId,
+        TASK_SYNCABLE_FIELDS
+      )
+
+      this.db
+        .update(tasks)
+        .set({ clock: rebased.clock, fieldClocks: rebased.fieldClocks })
+        .where(eq(tasks.id, taskId))
+        .run()
+
+      this.queue.enqueue({
+        type: 'task',
+        itemId: taskId,
+        operation: 'update',
+        payload: JSON.stringify({ ...task, clock: rebased.clock, fieldClocks: rebased.fieldClocks }),
+        priority: 0
+      })
+    } catch (err) {
+      log.error('Failed to enqueue recovered task update', err)
+    }
+  }
+
   enqueueDelete(taskId: string, snapshotPayload: string): void {
     const deviceId = this.getDeviceId()
     if (!deviceId) {
@@ -100,7 +153,15 @@ export class TaskSyncService {
   ): void {
     const deviceId = this.getDeviceId()
     if (!deviceId) {
-      log.warn('No device ID available, skipping sync enqueue')
+      log.warn('No device ID available, tracking task change with offline clock', {
+        taskId,
+        operation
+      })
+      if (operation === 'create') {
+        incrementTaskClocksOffline(this.db, taskId, [])
+      } else {
+        incrementTaskClocksOffline(this.db, taskId, changedFields ?? [...TASK_SYNCABLE_FIELDS])
+      }
       return
     }
 
