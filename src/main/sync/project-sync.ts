@@ -209,7 +209,9 @@ export class ProjectSyncService {
       }
 
       const fieldsToIncrement =
-        operation === 'create' ? PROJECT_SYNCABLE_FIELDS : (changedFields ?? PROJECT_SYNCABLE_FIELDS)
+        operation === 'create'
+          ? PROJECT_SYNCABLE_FIELDS
+          : (changedFields ?? PROJECT_SYNCABLE_FIELDS)
       const updatedFieldClocks = { ...fieldClocks }
       for (const field of fieldsToIncrement) {
         updatedFieldClocks[field] = increment(updatedFieldClocks[field] ?? {}, deviceId)
