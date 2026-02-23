@@ -70,6 +70,8 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
         title: cached.title,
         emoji: cached.emoji,
         fileType: cached.fileType,
+        mimeType: cached.mimeType,
+        attachmentId: cached.attachmentId,
         folderPath,
         clock,
         createdAt: cached.createdAt,
