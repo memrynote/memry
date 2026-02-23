@@ -1,4 +1,5 @@
 import { app, BrowserWindow, clipboard, ipcMain, shell } from 'electron'
+import fs from 'node:fs'
 import http from 'node:http'
 import https from 'node:https'
 import os from 'os'
@@ -39,6 +40,7 @@ import {
 import path from 'node:path'
 import { AttachmentSyncService } from '../sync/attachments'
 import { attachmentEvents } from '../sync/attachment-events'
+import { markWritebackIgnored } from '../sync/crdt-writeback'
 import {
   approveDeviceLinking,
   completeLinkingQr,
@@ -67,7 +69,8 @@ import {
   validateKeyVerifier,
   validateRecoveryPhrase
 } from '../crypto'
-import { getDatabase, isDatabaseInitialized } from '../database/client'
+import { getDatabase, getIndexDatabase, isDatabaseInitialized } from '../database/client'
+import { updateNoteCache } from '@shared/db/queries/notes'
 import { store } from '../store'
 import { deleteFromServer, getFromServer, postToServer } from '../sync/http-client'
 
@@ -1086,7 +1089,10 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
           })
         }
       })
-      await service.uploadAttachment(noteId, diskPath)
+      const result = await service.uploadAttachment(noteId, diskPath)
+      if (isDatabaseInitialized()) {
+        updateNoteCache(getIndexDatabase(), noteId, { attachmentId: result.attachmentId })
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
       logger.error('Attachment upload failed', { noteId, diskPath, error: message })
@@ -1102,11 +1108,35 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     }
   })
 
+  attachmentEvents.onDownloadNeeded(async ({ noteId, attachmentId, diskPath }) => {
+    const service = getOrCreateAttachmentService()
+    if (!service) return
+    try {
+      markWritebackIgnored(diskPath)
+      await service.downloadAttachment(attachmentId, diskPath)
+      const stats = await fs.promises.stat(diskPath)
+      if (isDatabaseInitialized()) {
+        updateNoteCache(getIndexDatabase(), noteId, { fileSize: stats.size })
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      logger.error('Attachment download failed', { noteId, attachmentId, diskPath, error: message })
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
+          noteId,
+          diskPath,
+          error: message
+        })
+      }
+    }
+  })
+
   logger.info('Sync handlers registered')
 }
 
 export function unregisterSyncHandlers(): void {
   attachmentEvents.removeAllListeners('saved')
+  attachmentEvents.removeAllListeners('download-needed')
   stopOtpClipboardDetection()
   cancelTokenRefresh()
   pendingRecoveryPhrase = null

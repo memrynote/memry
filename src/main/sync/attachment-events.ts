@@ -8,6 +8,14 @@ interface AttachmentSavedEvent {
   diskPath: string
 }
 
+interface AttachmentDownloadNeededEvent {
+  noteId: string
+  attachmentId: string
+  diskPath: string
+}
+
+type DownloadNeededHandler = (event: AttachmentDownloadNeededEvent) => void
+
 type SavedHandler = (event: AttachmentSavedEvent) => void
 
 class AttachmentEventBus extends EventEmitter {
@@ -22,6 +30,22 @@ class AttachmentEventBus extends EventEmitter {
 
   offSaved(handler: SavedHandler): void {
     this.off('saved', handler)
+  }
+
+  emitDownloadNeeded(event: AttachmentDownloadNeededEvent): void {
+    log.debug('attachment download needed', {
+      noteId: event.noteId,
+      attachmentId: event.attachmentId
+    })
+    this.emit('download-needed', event)
+  }
+
+  onDownloadNeeded(handler: DownloadNeededHandler): void {
+    this.on('download-needed', handler)
+  }
+
+  offDownloadNeeded(handler: DownloadNeededHandler): void {
+    this.off('download-needed', handler)
   }
 }
 
