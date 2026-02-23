@@ -332,6 +332,21 @@ export function generateNotePath(notesDir: string, title: string, folder?: strin
   return path.join(notesDir, filename)
 }
 
+export function generateFilePath(
+  notesDir: string,
+  title: string,
+  extension: string,
+  folder?: string
+): string {
+  const filename = sanitizeFilename(title) + '.' + extension
+
+  if (folder) {
+    return path.join(notesDir, folder, filename)
+  }
+
+  return path.join(notesDir, filename)
+}
+
 /**
  * Generate a unique file path, adding a number suffix if file exists.
  *
