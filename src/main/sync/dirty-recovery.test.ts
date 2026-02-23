@@ -109,8 +109,8 @@ describe('dirty-recovery', () => {
     expect(queue.getPendingCount()).toBe(0)
   })
 
-  it('increments clocks for recovered tasks', () => {
-    // #given — stale clock from before signout
+  it('preserves existing clocks for recovered tasks without offline marker', () => {
+    // #given — dirty task whose clock was already advanced at write time
     db.insert(tasks)
       .values({
         id: 'task-stale',
@@ -127,14 +127,14 @@ describe('dirty-recovery', () => {
     // #when
     recoverDirtyItems(db)
 
-    // #then — clock should now include device-A
+    // #then — recovery should not mutate non-offline clocks
     const task = db.select().from(tasks).where(eq(tasks.id, 'task-stale')).get()
     const clock = task.clock as Record<string, number>
     expect(clock['old-device']).toBe(1)
-    expect(clock['device-A']).toBe(1)
+    expect(clock['device-A']).toBeUndefined()
   })
 
-  it('initializes field clocks for recovered tasks without them', () => {
+  it('does not synthesize field clocks for recovered tasks without offline marker', () => {
     // #given
     db.insert(tasks)
       .values({
@@ -151,13 +151,47 @@ describe('dirty-recovery', () => {
     // #when
     recoverDirtyItems(db)
 
-    // #then — field clocks should be initialized
+    // #then — recovery should not inflate field-level metadata
     const task = db.select().from(tasks).where(eq(tasks.id, 'task-nofc')).get()
+    expect(task.fieldClocks ?? null).toBeNull()
+  })
+
+  it('rebinds offline task clocks to current device during recovery', () => {
+    db.insert(tasks)
+      .values({
+        id: 'task-offline',
+        projectId: 'proj-1',
+        title: 'Offline dirty',
+        priority: 0,
+        position: 0,
+        clock: { 'old-device': 1, _offline: 1 },
+        fieldClocks: {
+          title: { 'old-device': 1 },
+          statusId: { 'old-device': 1, _offline: 1 },
+          dueDate: { 'old-device': 1 }
+        },
+        syncedAt: '2026-01-01T00:00:00Z',
+        modifiedAt: '2026-01-02T00:00:00Z'
+      })
+      .run()
+
+    recoverDirtyItems(db)
+
+    const queued = queue.peek(1)[0]
+    expect(queued?.operation).toBe('update')
+    const payload = queued ? (JSON.parse(queued.payload) as Record<string, unknown>) : null
+    const payloadFieldClocks = payload?.fieldClocks as
+      | Record<string, Record<string, number>>
+      | undefined
+    expect(payload?.clock).toEqual({ 'old-device': 1, 'device-A': 1 })
+    expect(payloadFieldClocks?.statusId).toEqual({ 'old-device': 1, 'device-A': 1 })
+    expect(payloadFieldClocks?.title).toEqual({ 'old-device': 1 })
+
+    const task = db.select().from(tasks).where(eq(tasks.id, 'task-offline')).get()
+    const clock = task.clock as Record<string, number>
     const fc = task.fieldClocks as Record<string, Record<string, number>>
-    expect(fc).not.toBeNull()
-    expect(fc.title).toBeDefined()
-    expect(fc.title['device-A']).toBe(1)
-    expect(fc.dueDate['device-A']).toBe(1)
+    expect(clock._offline).toBeUndefined()
+    expect(fc.statusId._offline).toBeUndefined()
   })
 
   it('recovers dirty projects', () => {
