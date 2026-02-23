@@ -738,53 +738,53 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Chunked Upload for US7
 
-- [ ] T148 [US7] Implement file chunking (8MB chunks) in src/main/sync/attachments.ts
-- [ ] T149 [US7] Implement chunk hash calculation for deduplication in src/main/sync/attachments.ts
-- [ ] T150 [US7] Implement chunk encryption in src/main/sync/attachments.ts
-- [ ] T151 [US7] Implement upload session management in src/main/sync/attachments.ts
-- [ ] T152 [US7] Implement resumable upload tracking in src/main/sync/attachments.ts
+- [x] T148 [US7] Implement file chunking (8MB chunks) in src/main/sync/attachments.ts
+- [x] T149 [US7] Implement chunk hash calculation for deduplication in src/main/sync/attachments.ts
+- [x] T150 [US7] Implement chunk encryption in src/main/sync/attachments.ts
+- [x] T151 [US7] Implement upload session management in src/main/sync/attachments.ts
+- [x] T152 [US7] Implement resumable upload tracking in src/main/sync/attachments.ts
 
 ### Thumbnail Generation for US7
 
-- [ ] T152a [US7] Implement image thumbnail generation (sharp) in src/main/sync/attachments.ts
-- [ ] T152b [US7] Implement PDF thumbnail generation (first page) in src/main/sync/attachments.ts
-- [ ] T152c [US7] Implement video thumbnail extraction (ffmpeg via @aspect-build/ffmpeg or fluent-ffmpeg) in src/main/sync/attachments.ts
+- [x] T152a [US7] Implement image thumbnail generation (sharp) in src/main/sync/thumbnails.ts
+- [x] T152b [US7] Implement PDF thumbnail generation (first page) in src/main/sync/thumbnails.ts
+- [x] T152c [US7] Implement video thumbnail extraction (system ffmpeg) in src/main/sync/thumbnails.ts
 
 ### Server Blob Endpoints for US7
 
-- [ ] T153 [P] [US7] Implement upload session initiation POST /blob/upload/init in sync-server/src/routes/blob.ts
-- [ ] T153a [P] [US7] Implement server-side Range header support for blob downloads GET /blob/:id with Range header in sync-server/src/routes/blob.ts
-- [ ] T153b [P] [US7] Define R2 object naming scheme in sync-server/src/services/blob.ts: {user_id}/{content_hash} for chunks, {user_id}/meta/{attachment_id} for manifests
-- [ ] T154 [P] [US7] Implement chunk upload endpoint PUT /blob/upload/:session_id/chunk/:index in sync-server/src/routes/blob.ts
-- [ ] T155 [US7] Implement upload completion endpoint POST /blob/upload/:session_id/complete in sync-server/src/routes/blob.ts
-- [ ] T156 [US7] Implement chunk existence check (dedup) HEAD /blob/chunk/:hash in sync-server/src/routes/blob.ts
-- [ ] T156a [US7] Implement simple blob upload PUT /blob/:blob_key (for non-chunked sync item payloads stored in R2) in sync-server/src/routes/blob.ts
-- [ ] T156b [US7] Implement simple blob download GET /blob/:blob_key in sync-server/src/routes/blob.ts
-- [ ] T156c [US7] Implement simple blob delete DELETE /blob/:blob_key in sync-server/src/routes/blob.ts
-- [ ] T156d [US7] Implement upload session status GET /blob/upload/:session_id/status in sync-server/src/routes/blob.ts
-- [ ] T156e [US7] Implement upload session cancellation DELETE /blob/upload/:session_id in sync-server/src/routes/blob.ts
-- [ ] T157 [US7] Implement chunk download endpoint GET /blob/chunk/:hash in sync-server/src/routes/blob.ts
-- [ ] T158 [US7] Implement attachment manifest endpoints (GET/PUT /blob/manifest/:attachment_id) in sync-server/src/routes/blob.ts
+- [x] T153 [P] [US7] Implement upload session initiation POST /blob/upload/init in sync-server/src/routes/blob.ts
+- [x] T153a [P] [US7] Implement server-side Range header support for blob downloads GET /blob/:id with Range header in sync-server/src/routes/blob.ts
+- [x] T153b [P] [US7] Define R2 object naming scheme in sync-server/src/services/blob.ts: {user_id}/{content_hash} for chunks, {user_id}/meta/{attachment_id} for manifests
+- [x] T154 [P] [US7] Implement chunk upload endpoint PUT /blob/upload/:session_id/chunk/:index in sync-server/src/routes/blob.ts
+- [x] T155 [US7] Implement upload completion endpoint POST /blob/upload/:session_id/complete in sync-server/src/routes/blob.ts
+- [x] T156 [US7] Implement chunk existence check (dedup) HEAD /blob/chunk/:hash in sync-server/src/routes/blob.ts
+- [x] T156a [US7] Implement simple blob upload PUT /blob/:blob_key (for non-chunked sync item payloads stored in R2) in sync-server/src/routes/blob.ts
+- [x] T156b [US7] Implement simple blob download GET /blob/:blob_key in sync-server/src/routes/blob.ts
+- [x] T156c [US7] Implement simple blob delete DELETE /blob/:blob_key in sync-server/src/routes/blob.ts
+- [x] T156d [US7] Implement upload session status GET /blob/upload/:session_id/status in sync-server/src/routes/blob.ts
+- [x] T156e [US7] Implement upload session cancellation DELETE /blob/upload/:session_id in sync-server/src/routes/blob.ts
+- [x] T157 [US7] Implement chunk download endpoint GET /blob/chunk/:hash in sync-server/src/routes/blob.ts
+- [x] T158 [US7] Implement attachment manifest endpoints (GET/PUT /blob/manifest/:attachment_id) in sync-server/src/routes/blob.ts
 
 ### Attachment IPC for US7
 
-- [ ] T159 [US7] Implement upload attachment IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T160 [US7] Implement get upload progress IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T161 [US7] Implement download attachment IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T162 [US7] Implement get download progress IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T159 [US7] Implement upload attachment IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T160 [US7] Implement get upload progress IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T161 [US7] Implement download attachment IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T162 [US7] Implement get download progress IPC handler in src/main/ipc/sync-handlers.ts
 
 ### UI Components for US7
 
-- [ ] T163 [P] [US7] Create upload progress component in src/renderer/src/components/sync/upload-progress.tsx
-- [ ] T164 [P] [US7] Create download progress component in src/renderer/src/components/sync/download-progress.tsx
+- [x] T163 [P] [US7] Create upload progress component in src/renderer/src/components/sync/upload-progress.tsx
+- [x] T164 [P] [US7] Create download progress component in src/renderer/src/components/sync/download-progress.tsx
 
 ### Streaming Playback for US7
 
 - [ ] T164a [P] [US7] Create video player component with streaming support in src/renderer/src/components/sync/video-player.tsx
 - [ ] T164b [US7] Implement chunk-based video streaming in src/main/sync/attachments.ts
 - [ ] T164c [US7] Add client-side Range header support for partial content requests in src/main/sync/attachments.ts
-- [ ] T164d [US7] Wire upload/download progress UI into attachment flow in src/renderer/src/components/note/content-area/file-block.tsx
-- [ ] T164e [P] [US7] Implement client-side attachment size validation (max 500MB per FR-025) before initiating upload in src/main/sync/attachments.ts
+- [x] T164d [US7] Wire upload/download progress UI into attachment flow in src/renderer/src/components/note/content-area/file-block.tsx
+- [x] T164e [P] [US7] Implement client-side attachment size validation (max 500MB per FR-025) before initiating upload in src/main/sync/attachments.ts
 
 **Checkpoint**: User Story 7 complete - attachments sync with progress and deduplication
 
