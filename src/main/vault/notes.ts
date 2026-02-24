@@ -64,7 +64,7 @@ import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@shared/contracts/notes-api'
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { createLogger } from '../lib/logger'
-import { getFileType, getExtension } from '@shared/file-types'
+import { getFileType, getExtension, isBinaryFileType } from '@shared/file-types'
 
 const logger = createLogger('Notes')
 
@@ -677,34 +677,45 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
     throw new NoteError(`Note not found: ${id}`, NoteErrorCode.NOT_FOUND, id)
   }
 
-  // Generate new path
+  // Check if binary from cache
+  const cached = getNoteCacheById(db, id)
+  const isBinary = cached?.fileType ? isBinaryFileType(cached.fileType) : false
+
+  // Generate new path — preserve original extension
   const oldPath = toAbsolutePath(existing.path)
   const dir = path.dirname(oldPath)
-  let newPath = path.join(dir, sanitizeFilename(newTitle) + '.md')
+  const ext = path.extname(oldPath) || '.md'
+  let newPath = path.join(dir, sanitizeFilename(newTitle) + ext)
   newPath = await generateUniquePath(newPath)
   const newRelativePath = toRelativePath(newPath)
 
-  // Update frontmatter
+  const now = new Date().toISOString()
   const newFrontmatter: NoteFrontmatter = {
     ...existing.frontmatter,
     title: newTitle,
-    modified: new Date().toISOString()
+    modified: now
   }
 
-  // Serialize and write to new location
-  const fileContent = serializeNote(newFrontmatter, existing.content)
-  await atomicWrite(newPath, fileContent)
-
-  // Delete old file
-  await deleteFile(oldPath)
-
-  // Update cache
-  updateNoteCache(db, id, {
-    path: newRelativePath,
-    title: newTitle,
-    contentHash: generateContentHash(fileContent),
-    modifiedAt: newFrontmatter.modified
-  })
+  if (isBinary) {
+    // Binary files: filesystem rename only, no frontmatter manipulation
+    await fs.rename(oldPath, newPath)
+    updateNoteCache(db, id, {
+      path: newRelativePath,
+      title: newTitle,
+      modifiedAt: now
+    })
+  } else {
+    // Markdown: update frontmatter and rewrite
+    const fileContent = serializeNote(newFrontmatter, existing.content)
+    await atomicWrite(newPath, fileContent)
+    await deleteFile(oldPath)
+    updateNoteCache(db, id, {
+      path: newRelativePath,
+      title: newTitle,
+      contentHash: generateContentHash(fileContent),
+      modifiedAt: now
+    })
+  }
 
   // Build response
   const note: Note = {
@@ -712,7 +723,7 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
     path: newRelativePath,
     title: newTitle,
     frontmatter: newFrontmatter,
-    modified: new Date(newFrontmatter.modified)
+    modified: new Date(now)
   }
 
   // Emit event
@@ -740,6 +751,10 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
     throw new NoteError(`Note not found: ${id}`, NoteErrorCode.NOT_FOUND, id)
   }
 
+  // Check if binary from cache
+  const cached = getNoteCacheById(db, id)
+  const isBinary = cached?.fileType ? isBinaryFileType(cached.fileType) : false
+
   // Generate new path
   const oldPath = toAbsolutePath(existing.path)
   const filename = path.basename(oldPath)
@@ -749,32 +764,37 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
   newPath = await generateUniquePath(newPath)
   const newRelativePath = toRelativePath(newPath)
 
-  // Update frontmatter
+  const now = new Date().toISOString()
   const newFrontmatter: NoteFrontmatter = {
     ...existing.frontmatter,
-    modified: new Date().toISOString()
+    modified: now
   }
 
-  // Serialize and write to new location
-  const fileContent = serializeNote(newFrontmatter, existing.content)
-  await atomicWrite(newPath, fileContent)
-
-  // Delete old file
-  await deleteFile(oldPath)
-
-  // Update cache
-  updateNoteCache(db, id, {
-    path: newRelativePath,
-    contentHash: generateContentHash(fileContent),
-    modifiedAt: newFrontmatter.modified
-  })
+  if (isBinary) {
+    // Binary files: filesystem move only, no serialization
+    await fs.rename(oldPath, newPath)
+    updateNoteCache(db, id, {
+      path: newRelativePath,
+      modifiedAt: now
+    })
+  } else {
+    // Markdown: update frontmatter and rewrite
+    const fileContent = serializeNote(newFrontmatter, existing.content)
+    await atomicWrite(newPath, fileContent)
+    await deleteFile(oldPath)
+    updateNoteCache(db, id, {
+      path: newRelativePath,
+      contentHash: generateContentHash(fileContent),
+      modifiedAt: now
+    })
+  }
 
   // Build response
   const note: Note = {
     ...existing,
     path: newRelativePath,
     frontmatter: newFrontmatter,
-    modified: new Date(newFrontmatter.modified)
+    modified: new Date(now)
   }
 
   // Emit event

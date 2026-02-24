@@ -1,91 +1,46 @@
-import { defineConfig, mergeConfig } from 'vitest/config'
+import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
 
 const projectRoot = resolve(__dirname, '..')
-
-const baseConfig = defineConfig({
-  test: {
-    globals: true,
-    passWithNoTests: true,
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
-      reportsDirectory: './coverage',
-      exclude: [
-        'node_modules/**',
-        'dist/**',
-        'out/**',
-        'tests/**',
-        '**/*.d.ts',
-        '**/*.config.*',
-        '**/types/**'
-      ],
-      include: ['src/**/*.ts', 'src/**/*.tsx'],
-      thresholds: {
-        statements: 50,
-        branches: 50,
-        functions: 50,
-        lines: 50
-      }
-    },
-    reporters: ['verbose'],
-    pool: 'threads',
-    isolate: true,
-    testTimeout: 10000,
-    hookTimeout: 10000
-  },
-  resolve: {
-    alias: {
-      '@': resolve(projectRoot, 'src/renderer/src'),
-      '@renderer': resolve(projectRoot, 'src/renderer/src'),
-      '@shared': resolve(projectRoot, 'src/shared'),
-      '@tests': resolve(projectRoot, 'tests')
-    }
-  }
-})
 
 export default defineConfig({
   test: {
     globals: true,
     passWithNoTests: true,
     projects: [
-      // Sync Server - references its own vitest.config.ts
-      'sync-server',
-      // Shared tests - Node environment
+      resolve(projectRoot, 'sync-server'),
       {
-        ...baseConfig,
+        extends: true,
         test: {
-          ...baseConfig.test,
           name: 'shared',
+          root: projectRoot,
           environment: 'node',
           include: ['src/shared/**/*.{test,spec}.{ts,tsx}'],
-          setupFiles: ['./tests/setup.ts']
+          setupFiles: ['tests/setup.ts']
         }
       },
-      // Main process tests - Node environment
       {
-        ...baseConfig,
+        extends: true,
         test: {
-          ...baseConfig.test,
           name: 'main',
+          root: projectRoot,
           environment: 'node',
           include: ['src/main/**/*.{test,spec}.{ts,tsx}'],
-          setupFiles: ['./tests/setup.ts'],
+          setupFiles: ['tests/setup.ts'],
           testTimeout: 15000,
           hookTimeout: 15000,
           pool: 'forks',
           isolate: true
         }
       },
-      // Renderer tests - JSDOM environment
       {
-        ...baseConfig,
+        extends: true,
         test: {
-          ...baseConfig.test,
           name: 'renderer',
+          root: projectRoot,
           environment: 'jsdom',
           include: ['src/renderer/**/*.{test,spec}.{ts,tsx}'],
-          setupFiles: ['./tests/setup.ts', './tests/setup-dom.ts'],
+          setupFiles: ['tests/setup.ts', 'tests/setup-dom.ts'],
           css: true,
           environmentOptions: {
             jsdom: {
