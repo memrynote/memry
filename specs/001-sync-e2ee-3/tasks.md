@@ -865,17 +865,17 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Local-Only for US11
 
-- [ ] T183 [US11] Add localOnly column to notes cache schema in src/shared/db/schema/index-schema.ts
-- [ ] T184 [US11] Add local-only property to note frontmatter in src/main/vault/frontmatter.ts
-- [ ] T185 [US11] Filter local-only items from sync queue in src/main/sync/queue.ts
-- [ ] T186 [US11] Implement set local-only IPC handler in src/main/ipc/notes-handlers.ts
+- [x] T183 [US11] Add localOnly column to notes cache schema in src/shared/db/schema/index-schema.ts
+- [x] T184 [US11] Add local-only property to note frontmatter in src/main/vault/frontmatter.ts
+- [x] T185 [US11] Filter local-only items from sync queue in src/main/sync/queue.ts
+- [x] T186 [US11] Implement set local-only IPC handler in src/main/ipc/notes-handlers.ts
 
 ### UI Components for US11
 
-- [ ] T187 [US11] Add "Local Only" toggle to note settings in src/renderer/src/components/note/info-section/note-info-section.tsx
-- [ ] T188 [US11] Show local-only indicator on note in notes tree in src/renderer/src/components/sidebar/notes-tree.tsx
-- [ ] T189 [US11] Show local-only count in sync status in src/renderer/src/components/sync/sync-status.tsx
-- [ ] T189a [US11] Wire local-only toggle to IPC + update note state in src/renderer/src/components/note/info-section/note-info-section.tsx
+- [x] T187 [US11] Add "Local Only" toggle to note settings in src/renderer/src/pages/note.tsx
+- [x] T188 [US11] Show local-only indicator on note in notes tree in src/renderer/src/components/notes-tree.tsx
+- [x] T189 [US11] Show local-only count in sync status in src/renderer/src/components/sync/sync-status.tsx
+- [x] T189a [US11] Wire local-only toggle to IPC + update note state in src/renderer/src/pages/note.tsx
 
 **Checkpoint**: User Story 11 complete - notes can be marked local-only
 
