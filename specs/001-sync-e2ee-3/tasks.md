@@ -824,17 +824,17 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### History Storage for US9
 
-- [ ] T173 [US9] Implement sync history logging in src/main/sync/engine.ts
-- [ ] T174 [US9] Implement get history IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T173 [US9] Implement sync history logging in src/main/sync/engine.ts
+- [x] T174 [US9] Implement get history IPC handler in src/main/ipc/sync-handlers.ts
 
 ### UI Components for US9
 
-- [ ] T175 [US9] Create sync history panel in src/renderer/src/components/sync/sync-history.tsx
-- [ ] T176 [US9] Display timestamp, item count, direction for each entry in src/renderer/src/components/sync/sync-history.tsx
-- [ ] T177 [US9] Display error details for failed syncs in src/renderer/src/components/sync/sync-history.tsx
-- [ ] T178 [US9] Add date/type filtering to history view in src/renderer/src/components/sync/sync-history.tsx
-- [ ] T179 [US9] Add sync history to Settings > Sync page in src/renderer/src/pages/settings/sync-settings.tsx
-- [ ] T179a [US9] Bind sync history panel to IPC data source in src/renderer/src/components/sync/sync-history.tsx
+- [x] T175 [US9] Create sync history panel in src/renderer/src/components/sync/sync-history.tsx
+- [x] T176 [US9] Display timestamp, item count, direction for each entry in src/renderer/src/components/sync/sync-history.tsx
+- [x] T177 [US9] Display error details for failed syncs in src/renderer/src/components/sync/sync-history.tsx
+- [x] T178 [US9] Add date/type filtering to history view in src/renderer/src/components/sync/sync-history.tsx
+- [x] T179 [US9] Add sync history to Settings > Sync page in src/renderer/src/pages/settings.tsx
+- [x] T179a [US9] Bind sync history panel to IPC data source in src/renderer/src/components/sync/sync-history.tsx
 
 **Checkpoint**: User Story 9 complete - sync history visible
 
@@ -848,10 +848,10 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Manual Sync for US10
 
-- [ ] T180 [US10] Add "Sync Now" button to sync status menu in src/renderer/src/components/sync/sync-status.tsx
-- [ ] T181 [US10] Queue manual sync request when sync already in progress (merge with current operation) in src/main/sync/engine.ts
-- [ ] T182 [US10] Handle manual sync when offline (show message) in src/main/sync/engine.ts
-- [ ] T182a [US10] Wire "Sync Now" button to trigger-sync IPC in src/renderer/src/components/sync/sync-status.tsx
+- [x] T180 [US10] Add "Sync Now" button to sync status menu in src/renderer/src/components/sync/sync-status.tsx
+- [x] T181 [US10] Queue manual sync request when sync already in progress (merge with current operation) in src/main/sync/engine.ts
+- [x] T182 [US10] Handle manual sync when offline (show message) in src/main/sync/engine.ts
+- [x] T182a [US10] Wire "Sync Now" button to trigger-sync IPC in src/renderer/src/components/sync/sync-status.tsx
 
 **Checkpoint**: User Story 10 complete - users can force manual sync
 
