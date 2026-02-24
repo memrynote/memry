@@ -34,9 +34,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
@@ -726,6 +726,13 @@ export function NotePage({ noteId }: NotePageProps) {
               <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>
                 Export
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))}
+              >
+                <Monitor className="mr-2 h-4 w-4" />
+                {note.frontmatter.localOnly ? 'Disable local only' : 'Set local only'}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -759,18 +766,6 @@ export function NotePage({ noteId }: NotePageProps) {
                 onAddTag={handleAddTag}
                 onCreateTag={handleCreateTag}
                 onRemoveTag={handleRemoveTag}
-              />
-            </div>
-
-            {/* Local-only toggle */}
-            <div className="flex items-center gap-2 py-1">
-              <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Local only</span>
-              <Switch
-                checked={note.frontmatter.localOnly ?? false}
-                onCheckedChange={handleToggleLocalOnly}
-                disabled={isDeleted}
-                className="ml-auto"
               />
             </div>
 
