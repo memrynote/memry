@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // Import channel constants from shared (single source of truth)
@@ -45,6 +45,10 @@ const api = {
   windowMinimize: (): void => ipcRenderer.send('window-minimize'),
   windowMaximize: (): void => ipcRenderer.send('window-maximize'),
   windowClose: (): void => ipcRenderer.send('window-close'),
+
+  // File drop utility — resolves real filesystem paths from dropped File objects
+  // (File.path is empty with contextIsolation; webUtils.getPathForFile is the replacement)
+  getFileDropPaths: (files: File[]): string[] => files.map((f) => webUtils.getPathForFile(f)),
 
   // Vault API
   vault: {

@@ -2,7 +2,8 @@
 
 import * as React from 'react'
 import { useMemo, useState, useCallback, useRef } from 'react'
-import { BookOpen, Home, Inbox, ListTodo, Plus, Search } from 'lucide-react'
+import { BookOpen, Home, Inbox, ListTodo, Plus, Search, Upload } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
 import { VaultSwitcher } from '@/components/vault-switcher'
@@ -38,7 +39,10 @@ import type { SidebarItem, TabType } from '@/contexts/tabs/types'
 import type { AppPage } from '@/App'
 import type { BookmarkWithItem } from '@/hooks/use-bookmarks'
 import { BookmarkItemTypes } from '@shared/contracts/bookmarks-api'
+import { getAllSupportedExtensions } from '@shared/file-types'
 import { createLogger } from '@/lib/logger'
+import { useFileDrop } from '@/hooks/use-file-drop'
+import { extractErrorMessage } from '@/lib/ipc-error'
 
 const log = createLogger('Component:AppSidebar')
 
@@ -137,6 +141,31 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
   // State to hold action buttons from NotesTree
   const [notesActions, setNotesActions] = useState<React.ReactNode>(null)
   const sidebarScrollRef = useRef<HTMLDivElement>(null)
+  const targetFolderRef = useRef('')
+
+  const handleFileDrop = useCallback(async (paths: string[]) => {
+    try {
+      const result = await notesService.importFiles(paths, targetFolderRef.current)
+
+      if (result.imported > 0) {
+        toast.success(`Imported ${result.imported} file${result.imported > 1 ? 's' : ''}`)
+      }
+      if (result.failed > 0) {
+        toast.error(`Failed to import ${result.failed} file${result.failed > 1 ? 's' : ''}`, {
+          description: result.errors?.join('\n')
+        })
+      }
+    } catch (err) {
+      log.error('Failed to import dropped files', err)
+      toast.error(extractErrorMessage(err, 'Failed to import files'))
+    }
+  }, [])
+
+  const handleTargetFolderChange = useCallback((folder: string) => {
+    targetFolderRef.current = folder
+  }, [])
+
+  const { isDraggingFiles, dropHandlers } = useFileDrop({ onDrop: handleFileDrop })
 
   // Calculate today's tasks count for Tasks badge in sidebar
   const todayTasksCount = useMemo(() => {
@@ -314,27 +343,50 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
         <SidebarSeparator className="w-auto!" />
       </div>
 
-      {/* SCROLLABLE SECTION - Collections, Bookmarks, Tags */}
-      <div ref={sidebarScrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
-        {/* COLLECTIONS Section - Collapsible with actions */}
+      {/* SCROLLABLE SECTION - Collections, Bookmarks, Tags — entire area is drop target */}
+      <div
+        ref={sidebarScrollRef}
+        className="relative flex-1 min-h-0 overflow-y-auto scrollbar-thin"
+        {...dropHandlers}
+      >
+        {/* COLLECTIONS Section */}
         <SidebarSection
           id="collections"
           label="Collections"
           defaultExpanded={false}
           actions={notesActions}
         >
-          <NotesTree onActionsReady={setNotesActions} />
+          <NotesTree
+            onActionsReady={setNotesActions}
+            onTargetFolderChange={handleTargetFolderChange}
+          />
         </SidebarSection>
 
-        {/* BOOKMARKS Section - Collapsible */}
+        {/* BOOKMARKS Section */}
         <SidebarSection id="bookmarks" label="Bookmarks" defaultExpanded={false}>
           <SidebarBookmarkList maxVisible={6} onBookmarkClick={handleBookmarkClick} />
         </SidebarSection>
 
-        {/* TAGS Section - Collapsible */}
+        {/* TAGS Section */}
         <SidebarSection id="tags" label="Tags" defaultExpanded={false}>
           <SidebarTagList maxVisible={6} onTagClick={handleTagClick} />
         </SidebarSection>
+
+        {/* Drop overlay — covers entire scrollable area, blocks pointer events when visible */}
+        <div
+          className={cn(
+            'absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm transition-opacity duration-150',
+            isDraggingFiles ? 'opacity-100' : 'opacity-0 invisible pointer-events-none'
+          )}
+        >
+          <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-primary/50 px-6 py-4">
+            <Upload className="size-6 text-primary" />
+            <span className="text-sm font-medium">Drop files to import</span>
+            <span className="text-xs text-muted-foreground">
+              {getAllSupportedExtensions().join(', ')}
+            </span>
+          </div>
+        </div>
       </div>
     </>
   )

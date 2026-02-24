@@ -428,9 +428,11 @@ function RevealHandler({ pendingRevealNoteId, noteMap, onReveal, onClear }: Reve
 interface NotesTreeProps {
   /** Callback to receive action buttons for external rendering */
   onActionsReady?: (actions: React.ReactNode) => void
+  /** Callback when the focused target folder changes */
+  onTargetFolderChange?: (folder: string) => void
 }
 
-export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
+export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreeProps = {}) {
   // Load all notes so the tree can correctly show files in all folders
   // Tree views need complete data - pagination doesn't make sense here
   const { notes, isLoading, error } = useNotesList({ limit: 10000 })
@@ -785,6 +787,10 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       toast.error('Failed to import files')
     }
   }, [targetFolder])
+
+  useEffect(() => {
+    onTargetFolderChange?.(targetFolder)
+  }, [targetFolder, onTargetFolderChange])
 
   // Handle creating a note in a specific folder (from context menu)
   const handleCreateNoteInFolder = useCallback(
