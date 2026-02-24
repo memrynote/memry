@@ -42,10 +42,13 @@ import {
   Info,
   Brain,
   Cloud,
+  CloudOff,
   Loader2,
   CheckCircle,
   XCircle,
   RefreshCw,
+  Pause,
+  Play,
   PenLine,
   LogOut,
   QrCode
@@ -69,6 +72,7 @@ import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAuth } from '@/contexts/auth-context'
 import { useSync } from '@/contexts/sync-context'
+import { useSyncStatus } from '@/hooks/use-sync-status'
 import { SetupWizard } from './settings/setup-wizard'
 import { QrLinking } from '@/components/sync/qr-linking'
 import { LinkingApprovalDialog } from '@/components/sync/linking-approval-dialog'
@@ -100,10 +104,19 @@ export function SettingsPage() {
     return (saved as SettingsSection) || 'templates'
   })
 
-  // Persist section changes to localStorage
   useEffect(() => {
     localStorage.setItem('memry_settings_section', activeSection)
   }, [activeSection])
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'memry_settings_section' && e.newValue) {
+        setActiveSection(e.newValue as SettingsSection)
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
 
   return (
     <div className="h-full flex">
@@ -1286,6 +1299,7 @@ function AISettings() {
 function SyncSettings() {
   const { state, logout } = useAuth()
   const { linkingRequest, clearLinkingRequest } = useSync()
+  const syncStatus = useSyncStatus()
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [showLinkingQr, setShowLinkingQr] = useState(false)
@@ -1303,6 +1317,8 @@ function SyncSettings() {
     }
   }, [logout])
 
+  const isSyncBusy = syncStatus.status === 'syncing' || syncStatus.status === 'offline'
+
   if (state.status === 'checking') {
     return (
       <div className="space-y-6">
@@ -1319,8 +1335,65 @@ function SyncSettings() {
       <div className="space-y-6">
         <div>
           <h3 className="text-lg font-semibold">Sync</h3>
-          <p className="text-sm text-muted-foreground">End-to-end encrypted sync is active.</p>
+          <p className="text-sm text-muted-foreground">End-to-end encrypted</p>
         </div>
+        <Separator />
+
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
+              <syncStatus.IconComponent
+                className={`w-4 h-4 text-primary ${syncStatus.isAnimating ? 'animate-spin' : ''}`}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${syncStatus.dotColor}`} />
+                <p className="text-sm font-medium">{syncStatus.label}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Last synced {syncStatus.lastSyncLabel}
+                {syncStatus.pendingCount > 0 && ` · ${syncStatus.pendingCount} pending`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isSyncBusy}
+              onClick={() => void syncStatus.triggerSync()}
+              className="gap-2"
+            >
+              <RefreshCw
+                className={`w-4 h-4 ${syncStatus.status === 'syncing' ? 'animate-spin' : ''}`}
+              />
+              Sync Now
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                void (syncStatus.status === 'paused' ? syncStatus.resume() : syncStatus.pause())
+              }
+              className="gap-2"
+            >
+              {syncStatus.status === 'paused' ? (
+                <>
+                  <Play className="w-4 h-4" />
+                  Resume
+                </>
+              ) : (
+                <>
+                  <Pause className="w-4 h-4" />
+                  Pause
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
         <Separator />
 
         <div className="space-y-4">
@@ -1330,7 +1403,7 @@ function SyncSettings() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium">{state.email ?? 'Signed in'}</p>
-              <p className="text-xs text-muted-foreground">Sync active</p>
+              <p className="text-xs text-muted-foreground">End-to-end encrypted</p>
             </div>
           </div>
 
@@ -1410,6 +1483,15 @@ function SyncSettings() {
         </p>
       </div>
       <Separator />
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted">
+          <CloudOff className="w-4 h-4 text-muted-foreground" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">Sync disabled</p>
+          <p className="text-xs text-muted-foreground">Your notes are only stored on this device</p>
+        </div>
+      </div>
       <SetupWizard />
     </div>
   )

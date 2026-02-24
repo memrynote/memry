@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useMemo, useState, useCallback, useRef } from 'react'
-import { BookOpen, Home, Inbox, ListTodo, Plus, Search, Upload } from 'lucide-react'
+import { BookOpen, CloudOff, Home, Inbox, ListTodo, Plus, Search, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
@@ -394,6 +394,10 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
   const { state: authState } = useAuth()
 
   const handleSyncClick = useCallback(() => {
+    localStorage.setItem('memry_settings_section', 'sync')
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: 'memry_settings_section', newValue: 'sync' })
+    )
     openTab({
       type: 'settings',
       title: 'Settings',
@@ -412,15 +416,20 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
       <SidebarContent className="flex flex-col overflow-hidden">
         <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
       </SidebarContent>
-      {authState.status === 'authenticated' && (
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            {authState.status === 'authenticated' ? (
               <SyncStatus onOpenSettings={handleSyncClick} />
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      )}
+            ) : authState.status === 'checking' ? null : (
+              <SidebarMenuButton tooltip="Sync disabled" onClick={handleSyncClick}>
+                <CloudOff className="size-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Sync disabled</span>
+              </SidebarMenuButton>
+            )}
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )
