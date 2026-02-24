@@ -12,11 +12,12 @@ export default defineWorkspace([
   // Shared Workspace - Pure TypeScript (Zod schemas, Drizzle queries)
   {
     extends: './vitest.config.ts',
+    root: projectRoot,
     test: {
       name: 'shared',
       environment: 'node',
       include: ['src/shared/**/*.{test,spec}.{ts,tsx}'],
-      setupFiles: ['./tests/setup.ts'],
+      setupFiles: ['tests/setup.ts'],
       globals: true
     },
     resolve: {
@@ -30,11 +31,12 @@ export default defineWorkspace([
   // Main Process Workspace - Node.js (IPC handlers, database, vault)
   {
     extends: './vitest.config.ts',
+    root: projectRoot,
     test: {
       name: 'main',
       environment: 'node',
       include: ['src/main/**/*.{test,spec}.{ts,tsx}'],
-      setupFiles: ['./tests/setup.ts'],
+      setupFiles: ['tests/setup.ts'],
       globals: true,
       testTimeout: 15000,
       hookTimeout: 15000,
@@ -52,11 +54,12 @@ export default defineWorkspace([
   // Renderer Workspace - JSDOM (React components, hooks)
   {
     extends: './vitest.config.ts',
+    root: projectRoot,
     test: {
       name: 'renderer',
       environment: 'jsdom',
       include: ['src/renderer/**/*.{test,spec}.{ts,tsx}'],
-      setupFiles: ['./tests/setup.ts', './tests/setup-dom.ts'],
+      setupFiles: ['tests/setup.ts', 'tests/setup-dom.ts'],
       globals: true,
       css: true,
       environmentOptions: {

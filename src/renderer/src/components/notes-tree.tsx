@@ -1860,53 +1860,55 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
                 return `Delete ${totalItems} Items`
               })()}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {(() => {
-                const totalItems = notesToDelete.length + foldersToDelete.length
+            <AlertDialogDescription asChild>
+              <div className="text-sm text-muted-foreground">
+                {(() => {
+                  const totalItems = notesToDelete.length + foldersToDelete.length
 
-                // Single item
-                if (totalItems === 1) {
-                  if (foldersToDelete.length === 1) {
-                    const folderName = foldersToDelete[0].split('/').pop() || foldersToDelete[0]
+                  // Single item
+                  if (totalItems === 1) {
+                    if (foldersToDelete.length === 1) {
+                      const folderName = foldersToDelete[0].split('/').pop() || foldersToDelete[0]
+                      return (
+                        <>
+                          Are you sure you want to delete the folder &quot;{folderName}&quot; and
+                          all its contents? This action cannot be undone.
+                        </>
+                      )
+                    }
                     return (
                       <>
-                        Are you sure you want to delete the folder &quot;{folderName}&quot; and all
-                        its contents? This action cannot be undone.
+                        Are you sure you want to delete &quot;
+                        {getDisplayName(notesToDelete[0]?.path || '')}&quot;? This action cannot be
+                        undone.
                       </>
                     )
                   }
+
+                  // Multiple items
                   return (
                     <>
-                      Are you sure you want to delete &quot;
-                      {getDisplayName(notesToDelete[0]?.path || '')}&quot;? This action cannot be
-                      undone.
+                      Are you sure you want to delete these items? This action cannot be undone.
+                      <ul className="mt-2 max-h-32 overflow-y-auto text-sm list-disc list-inside">
+                        {foldersToDelete.slice(0, 3).map((folderPath) => (
+                          <li key={`folder-${folderPath}`} className="flex items-center gap-1">
+                            <Folder className="h-3 w-3 inline" />
+                            {folderPath.split('/').pop() || folderPath} (folder)
+                          </li>
+                        ))}
+                        {notesToDelete
+                          .slice(0, 5 - Math.min(foldersToDelete.length, 3))
+                          .map((note) => (
+                            <li key={note.id}>{getDisplayName(note.path)}</li>
+                          ))}
+                        {totalItems > 5 && (
+                          <li className="text-muted-foreground">...and {totalItems - 5} more</li>
+                        )}
+                      </ul>
                     </>
                   )
-                }
-
-                // Multiple items
-                return (
-                  <>
-                    Are you sure you want to delete these items? This action cannot be undone.
-                    <ul className="mt-2 max-h-32 overflow-y-auto text-sm list-disc list-inside">
-                      {foldersToDelete.slice(0, 3).map((folderPath) => (
-                        <li key={`folder-${folderPath}`} className="flex items-center gap-1">
-                          <Folder className="h-3 w-3 inline" />
-                          {folderPath.split('/').pop() || folderPath} (folder)
-                        </li>
-                      ))}
-                      {notesToDelete
-                        .slice(0, 5 - Math.min(foldersToDelete.length, 3))
-                        .map((note) => (
-                          <li key={note.id}>{getDisplayName(note.path)}</li>
-                        ))}
-                      {totalItems > 5 && (
-                        <li className="text-muted-foreground">...and {totalItems - 5} more</li>
-                      )}
-                    </ul>
-                  </>
-                )
-              })()}
+                })()}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
