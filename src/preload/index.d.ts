@@ -2170,6 +2170,7 @@ interface SyncOpsClientAPI {
       direction: string
       itemCount: number
       details: string
+      durationMs?: number
       createdAt: number
     }>
     total: number

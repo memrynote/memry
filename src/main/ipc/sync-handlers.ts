@@ -914,6 +914,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
           itemCount: r.itemCount,
           direction: r.direction ?? undefined,
           details: r.details ? parseSyncHistoryDetails(r.details) : undefined,
+          durationMs: r.durationMs ?? undefined,
           createdAt: r.createdAt.getTime()
         })),
         total: totalRow?.total ?? 0
