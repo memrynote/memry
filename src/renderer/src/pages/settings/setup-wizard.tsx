@@ -1,8 +1,8 @@
-import { useReducer, useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CheckCircle, QrCode, KeyRound } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth, type WizardStep } from '@/contexts/auth-context'
 import { EmailEntryForm } from '@/components/sync/email-entry-form'
 import { OtpVerification } from '@/components/sync/otp-verification'
 import { OAuthButtons } from '@/components/sync/oauth-buttons'
@@ -12,135 +12,9 @@ import { RecoveryPhraseInput } from '@/components/sync/recovery-phrase-input'
 import { LinkingCodeEntry } from '@/components/sync/linking-code-entry'
 import { LinkingPending } from '@/components/sync/linking-pending'
 
-type WizardStep =
-  | 'sign-in'
-  | 'otp-verification'
-  | 'recovery-display'
-  | 'recovery-confirm'
-  | 'recovery-input'
-  | 'linking-choice'
-  | 'linking-scan'
-  | 'linking-pending'
-  | 'complete'
-
-interface WizardState {
-  step: WizardStep
-  email: string
-  deviceId: string | null
-  error: string | null
-  isLoading: boolean
-  isResending: boolean
-  expiresIn: number
-  linkingSessionId: string | null
-}
-
-type WizardAction =
-  | { type: 'SET_LOADING'; isLoading: boolean }
-  | { type: 'SET_RESENDING'; isResending: boolean }
-  | { type: 'OTP_SENT'; email: string; expiresIn: number }
-  | { type: 'OTP_RESENT'; expiresIn: number }
-  | {
-      type: 'OTP_VERIFIED'
-      deviceId: string
-      needsRecovery: boolean
-      needsRecoveryInput: boolean
-    }
-  | { type: 'RECOVERY_DISPLAYED' }
-  | { type: 'RECOVERY_CONFIRMED' }
-  | { type: 'RECOVERY_LINKED'; deviceId: string }
-  | { type: 'CHOOSE_QR_LINKING' }
-  | { type: 'CHOOSE_RECOVERY' }
-  | { type: 'LINKING_SCANNED'; sessionId: string }
-  | { type: 'LINKING_COMPLETED'; deviceId: string }
-  | { type: 'GO_BACK'; step: WizardStep }
-  | { type: 'SET_ERROR'; error: string }
-  | { type: 'CLEAR_ERROR' }
-
-const initialState: WizardState = {
-  step: 'sign-in',
-  email: '',
-  deviceId: null,
-  error: null,
-  isLoading: false,
-  isResending: false,
-  expiresIn: 60,
-  linkingSessionId: null
-}
-
-const wizardReducer = (state: WizardState, action: WizardAction): WizardState => {
-  switch (action.type) {
-    case 'SET_LOADING':
-      return { ...state, isLoading: action.isLoading }
-    case 'SET_RESENDING':
-      return { ...state, isResending: action.isResending }
-    case 'OTP_SENT':
-      return {
-        ...state,
-        step: 'otp-verification',
-        email: action.email,
-        expiresIn: action.expiresIn,
-        isLoading: false,
-        error: null
-      }
-    case 'OTP_RESENT':
-      return { ...state, expiresIn: action.expiresIn, isResending: false, error: null }
-    case 'OTP_VERIFIED': {
-      let nextStep: WizardStep = 'complete'
-      if (action.needsRecoveryInput) nextStep = 'linking-choice'
-      else if (action.needsRecovery) nextStep = 'recovery-display'
-      return {
-        ...state,
-        step: nextStep,
-        deviceId: action.deviceId,
-        isLoading: false,
-        error: null
-      }
-    }
-    case 'RECOVERY_DISPLAYED':
-      return { ...state, step: 'recovery-confirm' }
-    case 'RECOVERY_CONFIRMED':
-      return { ...state, step: 'complete', isLoading: false }
-    case 'RECOVERY_LINKED':
-      return {
-        ...state,
-        step: 'complete',
-        deviceId: action.deviceId,
-        isLoading: false,
-        error: null
-      }
-    case 'CHOOSE_QR_LINKING':
-      return { ...state, step: 'linking-scan', error: null }
-    case 'CHOOSE_RECOVERY':
-      return { ...state, step: 'recovery-input', error: null }
-    case 'LINKING_SCANNED':
-      return {
-        ...state,
-        step: 'linking-pending',
-        linkingSessionId: action.sessionId,
-        error: null
-      }
-    case 'LINKING_COMPLETED':
-      return {
-        ...state,
-        step: 'complete',
-        deviceId: action.deviceId,
-        linkingSessionId: null,
-        isLoading: false,
-        error: null
-      }
-    case 'GO_BACK':
-      return { ...state, step: action.step, error: null }
-    case 'SET_ERROR':
-      return { ...state, error: action.error, isLoading: false, isResending: false }
-    case 'CLEAR_ERROR':
-      return { ...state, error: null }
-    default:
-      return state
-  }
-}
-
 const STEPS = ['Sign In', 'Verify', 'Link', 'Done'] as const
 const STEP_MAP: Record<WizardStep, number> = {
+  idle: 0,
   'sign-in': 0,
   'otp-verification': 1,
   'recovery-display': 2,
@@ -154,19 +28,27 @@ const STEP_MAP: Record<WizardStep, number> = {
 
 export function SetupWizard(): React.JSX.Element {
   const {
+    state: { wizardStep, wizardLinkingSessionId, wizardExpiresAt, wizardError, email },
     requestOtp,
     verifyOtp,
     resendOtp,
     initOAuth,
-    setupFirstDevice,
     confirmRecoveryPhrase,
     linkViaRecovery,
-    linkingCompleted
+    linkingCompleted,
+    setWizardStep,
+    setWizardError,
+    clearWizardError
   } = useAuth()
-  const [state, dispatch] = useReducer(wizardReducer, initialState)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const oauthStateRef = useRef<string | null>(null)
+
+  const [isLoading, setIsLoading] = useState(false)
+  const [isResending, setIsResending] = useState(false)
   const [recoveryPhrase, setRecoveryPhrase] = useState<string | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const expiresIn = wizardExpiresAt
+    ? Math.max(0, Math.floor((wizardExpiresAt - Date.now()) / 1000))
+    : 60
 
   useEffect(() => {
     const el = containerRef.current
@@ -175,10 +57,10 @@ export function SetupWizard(): React.JSX.Element {
       'input, button:not([disabled]), [tabindex]:not([tabindex="-1"])'
     )
     firstFocusable?.focus()
-  }, [state.step])
+  }, [wizardStep])
 
   useEffect(() => {
-    if (state.step !== 'recovery-display' && state.step !== 'recovery-confirm') return
+    if (wizardStep !== 'recovery-display' && wizardStep !== 'recovery-confirm') return
     if (recoveryPhrase) return
     let cancelled = false
     void window.api.syncSetup
@@ -193,163 +75,123 @@ export function SetupWizard(): React.JSX.Element {
     return () => {
       cancelled = true
     }
-  }, [state.step, recoveryPhrase])
+  }, [wizardStep, recoveryPhrase])
 
-  const isRecoveryStep = state.step === 'recovery-display' || state.step === 'recovery-confirm'
+  const isRecoveryStep = wizardStep === 'recovery-display' || wizardStep === 'recovery-confirm'
   const activePhrase = isRecoveryStep ? recoveryPhrase : null
 
-  useEffect(() => {
-    const unsubCallback = window.api.onOAuthCallback(({ code, state: cbState }) => {
-      if (cbState !== oauthStateRef.current) return
-      oauthStateRef.current = null
-      dispatch({ type: 'SET_LOADING', isLoading: true })
-      setupFirstDevice({ provider: 'google', oauthToken: code, state: cbState })
-        .then((result) => {
-          if (!result || result.error) {
-            dispatch({
-              type: 'SET_ERROR',
-              error: extractErrorMessage(result?.error, 'Google sign-in failed')
-            })
-            return
-          }
-          dispatch({
-            type: 'OTP_VERIFIED',
-            deviceId: result.deviceId ?? '',
-            needsRecovery: !!result.needsRecoverySetup,
-            needsRecoveryInput: !!result.needsRecoveryInput
-          })
-        })
-        .catch((err: unknown) => {
-          dispatch({
-            type: 'SET_ERROR',
-            error: extractErrorMessage(err, 'Google sign-in failed')
-          })
-        })
-    })
-
-    const unsubError = window.api.onOAuthError(({ error }) => {
-      oauthStateRef.current = null
-      dispatch({ type: 'SET_ERROR', error: error || 'Google sign-in failed' })
-    })
-
-    return () => {
-      unsubCallback()
-      unsubError()
-    }
-  }, [setupFirstDevice])
-
   const handleEmailSubmit = useCallback(
-    (email: string) => {
-      dispatch({ type: 'SET_LOADING', isLoading: true })
-      requestOtp(email)
+    (submittedEmail: string) => {
+      setIsLoading(true)
+      clearWizardError()
+      requestOtp(submittedEmail)
         .then((result) => {
-          dispatch({ type: 'OTP_SENT', email, expiresIn: result.expiresIn ?? 60 })
+          setIsLoading(false)
+          setWizardStep('otp-verification', {
+            expiresAt: Date.now() + (result.expiresIn ?? 60) * 1000
+          })
         })
         .catch((err: unknown) => {
-          dispatch({
-            type: 'SET_ERROR',
-            error: extractErrorMessage(err, 'Failed to send code')
-          })
+          setIsLoading(false)
+          setWizardError(extractErrorMessage(err, 'Failed to send code'))
         })
     },
-    [requestOtp]
+    [requestOtp, setWizardStep, setWizardError, clearWizardError]
   )
 
   const handleOtpVerify = useCallback(
     (code: string) => {
-      dispatch({ type: 'SET_LOADING', isLoading: true })
+      setIsLoading(true)
+      clearWizardError()
       verifyOtp(code)
         .then((result) => {
-          dispatch({
-            type: 'OTP_VERIFIED',
-            deviceId: result.deviceId,
-            needsRecovery: result.needsRecoverySetup,
-            needsRecoveryInput: result.needsRecoveryInput ?? false
-          })
+          setIsLoading(false)
+          let nextStep: WizardStep = 'complete'
+          if (result.needsRecoveryInput) nextStep = 'linking-choice'
+          else if (result.needsRecoverySetup) nextStep = 'recovery-display'
+          setWizardStep(nextStep)
         })
         .catch((err: unknown) => {
-          dispatch({
-            type: 'SET_ERROR',
-            error: extractErrorMessage(err, 'Verification failed')
-          })
+          setIsLoading(false)
+          setWizardError(extractErrorMessage(err, 'Verification failed'))
         })
     },
-    [verifyOtp]
+    [verifyOtp, setWizardStep, setWizardError, clearWizardError]
   )
 
   const handleResendOtp = useCallback(() => {
-    dispatch({ type: 'SET_RESENDING', isResending: true })
+    setIsResending(true)
+    clearWizardError()
     resendOtp()
       .then((result) => {
-        dispatch({ type: 'OTP_RESENT', expiresIn: result.expiresIn ?? 60 })
-      })
-      .catch((err: unknown) => {
-        dispatch({
-          type: 'SET_ERROR',
-          error: extractErrorMessage(err, 'Failed to resend')
+        setIsResending(false)
+        setWizardStep('otp-verification', {
+          expiresAt: Date.now() + (result.expiresIn ?? 60) * 1000
         })
       })
-  }, [resendOtp])
+      .catch((err: unknown) => {
+        setIsResending(false)
+        setWizardError(extractErrorMessage(err, 'Failed to resend'))
+      })
+  }, [resendOtp, setWizardStep, setWizardError, clearWizardError])
 
   const handleGoogleClick = useCallback(() => {
-    dispatch({ type: 'SET_LOADING', isLoading: true })
+    setIsLoading(true)
+    clearWizardError()
     initOAuth()
       .then((result) => {
+        setIsLoading(false)
         if (!result) {
-          dispatch({ type: 'SET_ERROR', error: 'Failed to start Google sign-in' })
+          setWizardError('Failed to start Google sign-in')
           return
         }
-        oauthStateRef.current = result.state
-        dispatch({ type: 'SET_LOADING', isLoading: false })
+        setWizardStep('sign-in', { oauthState: result.state })
       })
       .catch((err: unknown) => {
-        dispatch({
-          type: 'SET_ERROR',
-          error: extractErrorMessage(err, 'Failed to start Google sign-in')
-        })
+        setIsLoading(false)
+        setWizardError(extractErrorMessage(err, 'Failed to start Google sign-in'))
       })
-  }, [initOAuth])
+  }, [initOAuth, setWizardStep, setWizardError, clearWizardError])
 
   const handleRecoverySubmit = useCallback(
     (phrase: string) => {
-      dispatch({ type: 'SET_LOADING', isLoading: true })
-      dispatch({ type: 'CLEAR_ERROR' })
+      setIsLoading(true)
+      clearWizardError()
       linkViaRecovery(phrase)
-        .then((result) => {
-          dispatch({ type: 'RECOVERY_LINKED', deviceId: result.deviceId ?? '' })
+        .then(() => {
+          setIsLoading(false)
+          setWizardStep('complete')
         })
         .catch((err: unknown) => {
-          dispatch({
-            type: 'SET_ERROR',
-            error: extractErrorMessage(err, 'Recovery failed')
-          })
+          setIsLoading(false)
+          setWizardError(extractErrorMessage(err, 'Recovery failed'))
         })
     },
-    [linkViaRecovery]
+    [linkViaRecovery, setWizardStep, setWizardError, clearWizardError]
   )
 
   const handleConfirmRecovery = useCallback(() => {
-    dispatch({ type: 'SET_LOADING', isLoading: true })
+    setIsLoading(true)
+    clearWizardError()
     confirmRecoveryPhrase()
       .then(() => {
+        setIsLoading(false)
         void navigator.clipboard.writeText('')
-        dispatch({ type: 'RECOVERY_CONFIRMED' })
+        setWizardStep('complete')
       })
       .catch((err: unknown) => {
-        dispatch({
-          type: 'SET_ERROR',
-          error: extractErrorMessage(err, 'Confirmation failed')
-        })
+        setIsLoading(false)
+        setWizardError(extractErrorMessage(err, 'Confirmation failed'))
       })
-  }, [confirmRecoveryPhrase])
+  }, [confirmRecoveryPhrase, setWizardStep, setWizardError, clearWizardError])
 
-  const currentStepIndex = STEP_MAP[state.step]
+  const currentStepIndex = STEP_MAP[wizardStep]
 
   return (
     <div className="space-y-8" ref={containerRef}>
       <WizardProgress currentStep={currentStepIndex} />
 
-      {state.step === 'sign-in' && (
+      {wizardStep === 'sign-in' && (
         <div className="wizard-step-enter space-y-6">
           <div className="space-y-2">
             <h3 className="font-display text-2xl tracking-tight">Set up Sync</h3>
@@ -358,11 +200,7 @@ export function SetupWizard(): React.JSX.Element {
             </p>
           </div>
 
-          <EmailEntryForm
-            onSubmit={handleEmailSubmit}
-            isLoading={state.isLoading}
-            error={state.error}
-          />
+          <EmailEntryForm onSubmit={handleEmailSubmit} isLoading={isLoading} error={wizardError} />
 
           <div className="relative py-1">
             <div className="absolute inset-0 flex items-center">
@@ -377,79 +215,81 @@ export function SetupWizard(): React.JSX.Element {
 
           <OAuthButtons
             onGoogleClick={handleGoogleClick}
-            isLoading={state.isLoading}
-            error={state.error}
+            isLoading={isLoading}
+            error={wizardError}
           />
         </div>
       )}
 
-      {state.step === 'otp-verification' && (
+      {wizardStep === 'otp-verification' && (
         <div className="wizard-step-enter">
           <OtpVerification
-            email={state.email}
+            email={email ?? ''}
             onVerify={handleOtpVerify}
             onResend={handleResendOtp}
-            onBack={() => dispatch({ type: 'GO_BACK', step: 'sign-in' })}
-            isVerifying={state.isLoading}
-            isResending={state.isResending}
-            error={state.error}
-            expiresIn={state.expiresIn}
+            onBack={() => setWizardStep('sign-in')}
+            isVerifying={isLoading}
+            isResending={isResending}
+            error={wizardError}
+            expiresIn={expiresIn}
           />
         </div>
       )}
 
-      {state.step === 'recovery-display' && activePhrase && (
+      {wizardStep === 'recovery-display' && activePhrase && (
         <RecoveryPhraseDisplay
           phrase={activePhrase}
-          onContinue={() => dispatch({ type: 'RECOVERY_DISPLAYED' })}
+          onContinue={() => setWizardStep('recovery-confirm')}
         />
       )}
 
-      {state.step === 'recovery-confirm' && activePhrase && (
+      {wizardStep === 'recovery-confirm' && activePhrase && (
         <RecoveryPhraseConfirm
           phrase={activePhrase}
           onConfirmed={handleConfirmRecovery}
-          onBack={() => dispatch({ type: 'GO_BACK', step: 'recovery-display' })}
+          onBack={() => setWizardStep('recovery-display')}
         />
       )}
 
-      {state.step === 'linking-choice' && (
+      {wizardStep === 'linking-choice' && (
         <LinkingChoiceStep
-          onChooseQr={() => dispatch({ type: 'CHOOSE_QR_LINKING' })}
-          onChooseRecovery={() => dispatch({ type: 'CHOOSE_RECOVERY' })}
+          onChooseQr={() => setWizardStep('linking-scan')}
+          onChooseRecovery={() => setWizardStep('recovery-input')}
         />
       )}
 
-      {state.step === 'linking-scan' && (
+      {wizardStep === 'linking-scan' && (
         <LinkingCodeEntry
-          onLinked={(sessionId) => dispatch({ type: 'LINKING_SCANNED', sessionId })}
-          onError={(error) => dispatch({ type: 'SET_ERROR', error })}
-          onBack={() => dispatch({ type: 'GO_BACK', step: 'linking-choice' })}
+          onLinked={(sessionId) =>
+            setWizardStep('linking-pending', { linkingSessionId: sessionId })
+          }
+          onError={(error) => setWizardError(error)}
+          onBack={() => setWizardStep('linking-choice')}
         />
       )}
 
-      {state.step === 'linking-pending' && state.linkingSessionId && (
+      {wizardStep === 'linking-pending' && wizardLinkingSessionId && (
         <LinkingPending
-          sessionId={state.linkingSessionId}
+          sessionId={wizardLinkingSessionId}
           onComplete={(deviceId) => {
             linkingCompleted(deviceId)
-            dispatch({ type: 'LINKING_COMPLETED', deviceId })
+            setWizardStep('complete', { linkingSessionId: null })
           }}
-          onError={(error) => dispatch({ type: 'SET_ERROR', error })}
-          onCancel={() => dispatch({ type: 'GO_BACK', step: 'linking-choice' })}
+          onError={(error) => setWizardError(error)}
+          onCancel={() => setWizardStep('linking-choice')}
         />
       )}
 
-      {state.step === 'recovery-input' && (
+      {wizardStep === 'recovery-input' && (
         <RecoveryPhraseInput
           onSubmit={handleRecoverySubmit}
-          isLoading={state.isLoading}
-          error={state.error}
-          onBack={() => dispatch({ type: 'GO_BACK', step: 'linking-choice' })}
+          isLoading={isLoading}
+          error={wizardError}
+          onBack={() => setWizardStep('linking-choice')}
         />
       )}
 
-      {state.step === 'complete' && (
+      {wizardStep === 'complete' && (
         <div className="wizard-step-enter text-center space-y-5 py-10">
           <div className="flex justify-center">
             <div className="w-16 h-16 rounded-2xl bg-green-500/10 dark:bg-green-400/10 flex items-center justify-center wizard-check-ring">

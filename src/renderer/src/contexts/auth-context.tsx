@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   type ReactNode
 } from 'react'
 import { authService } from '@/services/auth-service'
@@ -19,12 +20,36 @@ type AuthStatus =
   | 'authenticated'
   | 'error'
 
+export type WizardStep =
+  | 'idle'
+  | 'sign-in'
+  | 'otp-verification'
+  | 'recovery-display'
+  | 'recovery-confirm'
+  | 'recovery-input'
+  | 'linking-choice'
+  | 'linking-scan'
+  | 'linking-pending'
+  | 'complete'
+
+export interface WizardData {
+  linkingSessionId?: string | null
+  expiresAt?: number | null
+  oauthState?: string | null
+  error?: string | null
+}
+
 interface AuthState {
   status: AuthStatus
   email: string | null
   deviceId: string | null
   error: string | null
   needsRecoverySetup: boolean
+  wizardStep: WizardStep
+  wizardLinkingSessionId: string | null
+  wizardExpiresAt: number | null
+  wizardOAuthState: string | null
+  wizardError: string | null
 }
 
 export interface VerifyOtpResult {
@@ -50,13 +75,26 @@ type AuthAction =
   | { type: 'CLEAR_ERROR' }
   | { type: 'RESET_AUTH' }
   | { type: 'SET_AUTHENTICATING' }
+  | { type: 'WIZARD_SET_STEP'; step: WizardStep; data?: WizardData }
+  | { type: 'WIZARD_SET_ERROR'; error: string }
+  | { type: 'WIZARD_CLEAR_ERROR' }
+  | { type: 'WIZARD_RESET' }
+
+const WIZARD_IDLE_FIELDS = {
+  wizardStep: 'idle' as const,
+  wizardLinkingSessionId: null,
+  wizardExpiresAt: null,
+  wizardOAuthState: null,
+  wizardError: null
+}
 
 const initialState: AuthState = {
   status: 'idle',
   email: null,
   deviceId: null,
   error: null,
-  needsRecoverySetup: false
+  needsRecoverySetup: false,
+  ...WIZARD_IDLE_FIELDS
 }
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
@@ -69,7 +107,8 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         status: 'authenticated',
         deviceId: action.deviceId,
         email: action.email ?? state.email,
-        error: null
+        error: null,
+        ...WIZARD_IDLE_FIELDS
       }
     case 'CHECK_UNAUTHENTICATED':
       return { ...state, status: 'unauthenticated', error: null }
@@ -89,7 +128,8 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       return {
         ...state,
         status: 'authenticated',
-        needsRecoverySetup: false
+        needsRecoverySetup: false,
+        ...WIZARD_IDLE_FIELDS
       }
     case 'RECOVERY_LINKED':
       return {
@@ -97,7 +137,8 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         status: 'authenticated',
         deviceId: action.deviceId,
         needsRecoverySetup: false,
-        error: null
+        error: null,
+        ...WIZARD_IDLE_FIELDS
       }
     case 'LINKING_COMPLETED':
       return {
@@ -105,7 +146,8 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         status: 'authenticated',
         deviceId: action.deviceId,
         needsRecoverySetup: false,
-        error: null
+        error: null,
+        ...WIZARD_IDLE_FIELDS
       }
     case 'SET_ERROR':
       return { ...state, error: action.error, status: 'error' }
@@ -117,6 +159,27 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       }
     case 'RESET_AUTH':
       return { ...initialState, status: 'unauthenticated' }
+    case 'WIZARD_SET_STEP':
+      return {
+        ...state,
+        wizardStep: action.step,
+        wizardError: null,
+        ...(action.data?.linkingSessionId !== undefined && {
+          wizardLinkingSessionId: action.data.linkingSessionId
+        }),
+        ...(action.data?.expiresAt !== undefined && {
+          wizardExpiresAt: action.data.expiresAt
+        }),
+        ...(action.data?.oauthState !== undefined && {
+          wizardOAuthState: action.data.oauthState
+        })
+      }
+    case 'WIZARD_SET_ERROR':
+      return { ...state, wizardError: action.error }
+    case 'WIZARD_CLEAR_ERROR':
+      return { ...state, wizardError: null }
+    case 'WIZARD_RESET':
+      return { ...state, ...WIZARD_IDLE_FIELDS }
     default:
       return state
   }
@@ -147,6 +210,10 @@ interface AuthContextValue {
   logout: () => Promise<void>
   clearError: () => void
   resetAuthState: () => void
+  setWizardStep: (step: WizardStep, data?: WizardData) => void
+  setWizardError: (error: string) => void
+  clearWizardError: () => void
+  resetWizard: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -165,6 +232,7 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element => {
   const [state, dispatch] = useReducer(authReducer, initialState)
+  const oauthStateRef = useRef<string | null>(null)
 
   useEffect(() => {
     const checkAuth = async (): Promise<void> => {
@@ -202,6 +270,48 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   useEffect(() => {
     const unsubscribe = window.api.onOAuthError(({ error }) => {
       dispatch({ type: 'SET_ERROR', error: error || 'OAuth sign-in failed' })
+      dispatch({ type: 'WIZARD_SET_ERROR', error: error || 'OAuth sign-in failed' })
+    })
+    return unsubscribe
+  }, [])
+
+  useEffect(() => {
+    oauthStateRef.current = state.wizardOAuthState
+  }, [state.wizardOAuthState])
+
+  useEffect(() => {
+    const unsubscribe = window.api.onOAuthCallback(({ code, state: cbState }) => {
+      if (cbState !== oauthStateRef.current) return
+      oauthStateRef.current = null
+
+      void (async () => {
+        try {
+          const result = await authService.setupFirstDevice({
+            provider: 'google',
+            oauthToken: code,
+            state: cbState
+          })
+          if (result.error) {
+            const message = extractErrorMessage(result.error, 'Google sign-in failed')
+            dispatch({ type: 'SET_ERROR', error: message })
+            dispatch({ type: 'WIZARD_SET_ERROR', error: message })
+            return
+          }
+          dispatch({
+            type: 'OTP_VERIFIED',
+            deviceId: result.deviceId ?? '',
+            needsRecoverySetup: !!result.needsRecoverySetup
+          })
+          let nextStep: WizardStep = 'complete'
+          if (result.needsRecoveryInput) nextStep = 'linking-choice'
+          else if (result.needsRecoverySetup) nextStep = 'recovery-display'
+          dispatch({ type: 'WIZARD_SET_STEP', step: nextStep })
+        } catch (err: unknown) {
+          const message = extractErrorMessage(err, 'Google sign-in failed')
+          dispatch({ type: 'SET_ERROR', error: message })
+          dispatch({ type: 'WIZARD_SET_ERROR', error: message })
+        }
+      })()
     })
     return unsubscribe
   }, [])
@@ -371,6 +481,22 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     dispatch({ type: 'RESET_AUTH' })
   }, [])
 
+  const setWizardStep = useCallback((step: WizardStep, data?: WizardData) => {
+    dispatch({ type: 'WIZARD_SET_STEP', step, data })
+  }, [])
+
+  const setWizardError = useCallback((error: string) => {
+    dispatch({ type: 'WIZARD_SET_ERROR', error })
+  }, [])
+
+  const clearWizardError = useCallback(() => {
+    dispatch({ type: 'WIZARD_CLEAR_ERROR' })
+  }, [])
+
+  const resetWizard = useCallback(() => {
+    dispatch({ type: 'WIZARD_RESET' })
+  }, [])
+
   const value = useMemo<AuthContextValue>(
     () => ({
       state,
@@ -384,7 +510,11 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       linkingCompleted,
       logout,
       clearError,
-      resetAuthState
+      resetAuthState,
+      setWizardStep,
+      setWizardError,
+      clearWizardError,
+      resetWizard
     }),
     [
       state,
@@ -398,7 +528,11 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       linkingCompleted,
       logout,
       clearError,
-      resetAuthState
+      resetAuthState,
+      setWizardStep,
+      setWizardError,
+      clearWizardError,
+      resetWizard
     ]
   )
 
