@@ -800,17 +800,17 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 **Note**: SyncContext is created in T100 (US2). This phase adds UI components that consume it.
 
-- [ ] T166 [US8] Create sync status indicator component in src/renderer/src/components/sync/sync-status.tsx
-- [ ] T166a [US8] Bind SyncStatus to useSync data and IPC-triggered actions in src/renderer/src/components/sync/sync-status.tsx
-- [ ] T167 [US8] Implement "Synced" state with last sync time display in src/renderer/src/components/sync/sync-status.tsx
-- [ ] T168 [US8] Implement "Syncing..." state with item count in src/renderer/src/components/sync/sync-status.tsx
-- [ ] T169 [US8] Implement "Offline" state with pending changes count in src/renderer/src/components/sync/sync-status.tsx
-- [ ] T170 [US8] Implement error state with retry button in src/renderer/src/components/sync/sync-status.tsx
-- [ ] T171 [US8] Add sync status to app header/status bar in src/renderer/src/App.tsx
+- [x] T166 [US8] Create sync status indicator component in src/renderer/src/components/sync/sync-status.tsx
+- [x] T166a [US8] Bind SyncStatus to useSync data and IPC-triggered actions in src/renderer/src/components/sync/sync-status.tsx
+- [x] T167 [US8] Implement "Synced" state with last sync time display in src/renderer/src/components/sync/sync-status.tsx
+- [x] T168 [US8] Implement "Syncing..." state with item count in src/renderer/src/components/sync/sync-status.tsx
+- [x] T169 [US8] Implement "Offline" state with pending changes count in src/renderer/src/components/sync/sync-status.tsx
+- [x] T170 [US8] Implement error state with retry button in src/renderer/src/components/sync/sync-status.tsx
+- [x] T171 [US8] Add sync status to app header/status bar in src/renderer/src/App.tsx
 
 ### Sync Hook for US8
 
-- [ ] T172 [US8] Create useSync hook in src/renderer/src/hooks/use-sync.ts
+- [x] T172 [US8] Create useSync hook in src/renderer/src/hooks/use-sync.ts
 
 **Checkpoint**: User Story 8 complete - sync status visible to users
 
