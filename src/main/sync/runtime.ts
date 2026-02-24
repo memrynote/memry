@@ -290,6 +290,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 }
 
 export async function stopSyncRuntime(): Promise<void> {
+  if (startPromise) {
+    await startPromise.catch(() => {})
+  }
+
   const active = runtime
 
   if (active) {

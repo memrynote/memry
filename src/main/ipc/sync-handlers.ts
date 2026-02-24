@@ -6,6 +6,7 @@ import os from 'os'
 import sodium from 'libsodium-wrappers-sumo'
 
 import { syncDevices } from '@shared/db/schema/sync-devices'
+import { syncQueue } from '@shared/db/schema/sync-queue'
 import { syncState } from '@shared/db/schema/sync-state'
 import { KEYCHAIN_ENTRIES } from '@shared/contracts/crypto'
 import {
@@ -83,7 +84,7 @@ import {
   storeToken,
   extractJtiFromToken,
   scheduleTokenRefresh,
-  cancelTokenRefresh,
+  resetTokenManagerState,
   refreshAccessToken,
   ACCESS_TOKEN_EXPIRY_SECONDS
 } from '../sync/token-manager'
@@ -749,7 +750,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
 
   ipcMain.handle(SYNC_CHANNELS.AUTH_LOGOUT, async () => {
     await stopSyncRuntime()
-    cancelTokenRefresh()
+    resetTokenManagerState()
     pendingRecoveryPhrase = null
 
     const keychainEntries = [
@@ -763,7 +764,10 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
 
     if (isDatabaseInitialized()) {
       const db = getDatabase()
-      db.delete(syncDevices).where(eq(syncDevices.isCurrentDevice, true)).run()
+      db.delete(syncQueue).run()
+      db.delete(syncDevices).run()
+      db.delete(syncState).run()
+      db.delete(syncHistory).run()
     }
 
     store.set('sync', {})
