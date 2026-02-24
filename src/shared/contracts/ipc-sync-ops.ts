@@ -44,6 +44,7 @@ export interface SyncHistoryEntry {
   itemCount: number
   direction?: string
   details?: Record<string, unknown>
+  durationMs?: number
   createdAt: number
 }
 

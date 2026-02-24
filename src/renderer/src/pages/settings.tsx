@@ -76,6 +76,7 @@ import { useSyncStatus } from '@/hooks/use-sync-status'
 import { SetupWizard } from './settings/setup-wizard'
 import { QrLinking } from '@/components/sync/qr-linking'
 import { LinkingApprovalDialog } from '@/components/sync/linking-approval-dialog'
+import { SyncHistoryPanel } from '@/components/sync/sync-history'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Page:Settings')
@@ -1297,12 +1298,18 @@ function AISettings() {
 // ============================================================================
 
 function SyncSettings() {
-  const { state, logout } = useAuth()
+  const { state, logout, setWizardStep } = useAuth()
   const { linkingRequest, clearLinkingRequest } = useSync()
   const syncStatus = useSyncStatus()
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [showLinkingQr, setShowLinkingQr] = useState(false)
+
+  useEffect(() => {
+    if (state.status === 'unauthenticated' && state.wizardStep === 'idle') {
+      setWizardStep('sign-in')
+    }
+  }, [state.status, state.wizardStep, setWizardStep])
 
   const handleSignOut = useCallback(async () => {
     setSigningOut(true)
@@ -1421,6 +1428,10 @@ function SyncSettings() {
             </Button>
           )}
         </div>
+
+        <Separator />
+
+        <SyncHistoryPanel />
 
         <Separator />
 
