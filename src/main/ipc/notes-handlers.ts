@@ -16,7 +16,8 @@ import {
   NoteMoveSchema,
   NoteListSchema,
   NoteReorderSchema,
-  NoteGetPositionsSchema
+  NoteGetPositionsSchema,
+  SetLocalOnlySchema
 } from '@shared/contracts/notes-api'
 import { PropertyTypes } from '@shared/db/schema/notes-cache'
 import { RenameFolderSchema } from '@shared/contracts/tasks-api'
@@ -61,7 +62,9 @@ import {
   getAllPropertyDefinitions,
   insertPropertyDefinition,
   updatePropertyDefinition,
-  resolveNoteByTitle
+  resolveNoteByTitle,
+  updateNoteCache,
+  getLocalOnlyCount
 } from '@shared/db/queries/notes'
 import { getIndexDatabase, getDatabase } from '../database'
 import {
@@ -780,6 +783,37 @@ export function registerNotesHandlers(): void {
       }
 
       return { canceled: false, filePaths: result.filePaths }
+    })
+  )
+
+  // notes:set-local-only — Toggle local-only flag (excludes from sync)
+  ipcMain.handle(
+    NotesChannels.invoke.SET_LOCAL_ONLY,
+    createValidatedHandler(SetLocalOnlySchema, async (input) => {
+      try {
+        const note = await updateNote({ id: input.id, frontmatter: { localOnly: input.localOnly } })
+        const indexDb = getIndexDatabase()
+        updateNoteCache(indexDb, input.id, { localOnly: input.localOnly })
+        const syncService = getNoteSyncService()
+        if (input.localOnly) {
+          syncService?.removeQueueItems(input.id)
+        } else {
+          syncService?.enqueueUpdate(input.id)
+        }
+        return { success: true, note }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to set local-only'
+        return { success: false, note: null, error: message }
+      }
+    })
+  )
+
+  // notes:get-local-only-count — Count of local-only notes
+  ipcMain.handle(
+    NotesChannels.invoke.GET_LOCAL_ONLY_COUNT,
+    createHandler(() => {
+      const indexDb = getIndexDatabase()
+      return { count: getLocalOnlyCount(indexDb) }
     })
   )
 }

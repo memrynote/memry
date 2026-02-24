@@ -53,7 +53,8 @@ import {
   FileType2,
   Image,
   Music,
-  Video
+  Video,
+  Monitor
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -1675,6 +1676,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
           ) : (
             <TreeLabel>{getDisplayName(note.path)}</TreeLabel>
           )}
+          {note.localOnly && <Monitor className="ml-1 h-3 w-3 shrink-0 text-muted-foreground/60" />}
         </TreeNodeTrigger>
       </TreeNode>
     )

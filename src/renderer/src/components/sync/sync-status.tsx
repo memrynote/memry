@@ -24,6 +24,7 @@ export function SyncStatus({ onOpenSettings }: SyncStatusProps): React.JSX.Eleme
     isAnimating,
     hasIssues,
     pendingCount,
+    localOnlyCount,
     conflicts,
     error,
     sessionExpired,
@@ -86,6 +87,7 @@ export function SyncStatus({ onOpenSettings }: SyncStatusProps): React.JSX.Eleme
 
         {/* Info rows */}
         {(pendingCount > 0 ||
+          localOnlyCount > 0 ||
           conflicts.length > 0 ||
           clockSkewDetected ||
           (isSyncing && initialSyncProgress)) && (
@@ -95,6 +97,11 @@ export function SyncStatus({ onOpenSettings }: SyncStatusProps): React.JSX.Eleme
               {pendingCount > 0 && (
                 <p className="text-muted-foreground text-xs">
                   {pendingCount} {pendingCount === 1 ? 'change' : 'changes'} pending
+                </p>
+              )}
+              {localOnlyCount > 0 && (
+                <p className="text-muted-foreground text-xs">
+                  {localOnlyCount} local-only {localOnlyCount === 1 ? 'note' : 'notes'}
                 </p>
               )}
               {conflicts.length > 0 && (

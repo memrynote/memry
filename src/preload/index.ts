@@ -182,7 +182,12 @@ const api = {
     // File import API
     importFiles: (sourcePaths: string[], targetFolder?: string) =>
       ipcRenderer.invoke(NotesChannels.invoke.IMPORT_FILES, { sourcePaths, targetFolder }),
-    showImportDialog: () => ipcRenderer.invoke(NotesChannels.invoke.SHOW_IMPORT_DIALOG)
+    showImportDialog: () => ipcRenderer.invoke(NotesChannels.invoke.SHOW_IMPORT_DIALOG),
+
+    // Local-only API
+    setLocalOnly: (id: string, localOnly: boolean) =>
+      ipcRenderer.invoke(NotesChannels.invoke.SET_LOCAL_ONLY, { id, localOnly }),
+    getLocalOnlyCount: () => ipcRenderer.invoke(NotesChannels.invoke.GET_LOCAL_ONLY_COUNT)
   },
 
   // Unified Properties API (works with notes and journal entries)

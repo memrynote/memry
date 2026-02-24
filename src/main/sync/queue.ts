@@ -213,6 +213,11 @@ export class SyncQueueManager {
     this.db.delete(syncQueue).where(eq(syncQueue.id, id)).run()
   }
 
+  removeByItemId(itemId: string): number {
+    log.debug('removeByItemId: deleting items', { itemId: itemId.slice(0, 8) })
+    return this.db.delete(syncQueue).where(eq(syncQueue.itemId, itemId)).run().changes
+  }
+
   getRetryableItems(maxAttempts = DEFAULT_MAX_ATTEMPTS): Array<typeof syncQueue.$inferSelect> {
     return this.db
       .select()

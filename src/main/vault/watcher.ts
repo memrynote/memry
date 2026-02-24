@@ -62,6 +62,7 @@ interface NoteListItem {
   tags: string[]
   wordCount: number
   snippet?: string
+  localOnly?: boolean
 }
 
 interface WatcherOptions {
@@ -422,7 +423,8 @@ export class VaultWatcher {
       modified: new Date(parsed.frontmatter.modified),
       tags,
       wordCount: syncResult.wordCount,
-      snippet: syncResult.snippet
+      snippet: syncResult.snippet,
+      localOnly: parsed.frontmatter.localOnly ?? false
     }
 
     // Enqueue sync push so other devices learn about the new file

@@ -18,6 +18,7 @@ export const noteCache = sqliteTable(
     // Attachment ID for synced binary files (links to R2 blob)
     attachmentId: text('attachment_id'),
     emoji: text('emoji'), // T003: Emoji icon for visual identification (markdown only)
+    localOnly: integer('local_only', { mode: 'boolean' }).default(false),
     // Content hash for change detection (markdown only - nullable for other types)
     contentHash: text('content_hash'),
     // Word count (markdown only - nullable for other types)

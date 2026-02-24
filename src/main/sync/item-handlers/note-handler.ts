@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { isNull, and } from 'drizzle-orm'
+import { isNull, and, sql } from 'drizzle-orm'
 import { noteCache } from '@shared/db/schema/notes-cache'
 import { NoteSyncPayloadSchema, type NoteSyncPayload } from '@shared/contracts/sync-payloads'
 import {
@@ -451,6 +451,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     const indexDb = getIndexDatabase()
     const cached = getNoteCacheById(indexDb, itemId)
     if (!cached) return null
+    if (cached.localOnly) return null
 
     if (cached.fileType && isBinaryFileType(cached.fileType)) {
       const folderPath = extractFolderFromPath(cached.path)
@@ -511,7 +512,9 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     const items = indexDb
       .select()
       .from(noteCache)
-      .where(and(isNull(noteCache.clock), isNull(noteCache.date)))
+      .where(
+        and(isNull(noteCache.clock), isNull(noteCache.date), sql`${noteCache.localOnly} IS NOT 1`)
+      )
       .all()
 
     for (const item of items) {

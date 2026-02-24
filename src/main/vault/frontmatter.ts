@@ -23,6 +23,7 @@ export interface NoteFrontmatter {
   modified: string
   tags?: string[]
   aliases?: string[]
+  localOnly?: boolean
   [key: string]: unknown // Allow custom properties
 }
 
@@ -87,6 +88,17 @@ export function parseNote(rawContent: string, filePath?: string): ParsedNote {
   if (data.aliases && !Array.isArray(data.aliases)) {
     data.aliases = [String(data.aliases)]
     wasModified = true
+  }
+
+  // Normalize localOnly to boolean (YAML may parse as string)
+  if (data.localOnly !== undefined) {
+    if (typeof data.localOnly === 'string') {
+      data.localOnly = data.localOnly === 'true'
+      wasModified = true
+    } else if (typeof data.localOnly !== 'boolean') {
+      data.localOnly = Boolean(data.localOnly)
+      wasModified = true
+    }
   }
 
   return {
@@ -280,7 +292,8 @@ const RESERVED_FRONTMATTER_KEYS = new Set([
   'modified',
   'tags',
   'aliases',
-  'emoji'
+  'emoji',
+  'localOnly'
 ])
 
 /**

@@ -116,7 +116,11 @@ export const NotesChannels = {
     /** Import files from external paths into the vault */
     IMPORT_FILES: 'notes:import-files',
     /** Open a file dialog to select files for import */
-    SHOW_IMPORT_DIALOG: 'notes:show-import-dialog'
+    SHOW_IMPORT_DIALOG: 'notes:show-import-dialog',
+    /** Toggle local-only flag (excludes note from sync) */
+    SET_LOCAL_ONLY: 'notes:set-local-only',
+    /** Get count of local-only notes */
+    GET_LOCAL_ONLY_COUNT: 'notes:get-local-only-count'
   },
   events: {
     /** Note was created (externally or internally) */

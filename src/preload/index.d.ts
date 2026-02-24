@@ -1005,6 +1005,11 @@ export interface NotesClientAPI {
     importedFiles: Array<{ destPath: string; filename: string; fileType: string }>
   }>
   showImportDialog(): Promise<{ canceled: boolean; filePaths: string[] }>
+  setLocalOnly(
+    id: string,
+    localOnly: boolean
+  ): Promise<{ success: boolean; note: Note | null; error?: string }>
+  getLocalOnlyCount(): Promise<{ count: number }>
 }
 
 // Unified Properties API (works with notes and journal entries)

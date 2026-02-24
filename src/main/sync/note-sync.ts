@@ -109,6 +109,10 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
       modifiedAt: cached.modifiedAt
     }
   }
+
+  removeQueueItems(itemId: string): number {
+    return this.queue.removeByItemId(itemId)
+  }
 }
 
 export function extractFolderFromPath(relativePath: string): string | null {

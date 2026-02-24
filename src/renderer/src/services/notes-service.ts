@@ -372,6 +372,17 @@ export const notesService: NotesClientAPI = {
    */
   showImportDialog: () => {
     return window.api.notes.showImportDialog()
+  },
+
+  setLocalOnly: (
+    id: string,
+    localOnly: boolean
+  ): Promise<{ success: boolean; note: Note | null; error?: string }> => {
+    return window.api.notes.setLocalOnly(id, localOnly)
+  },
+
+  getLocalOnlyCount: (): Promise<{ count: number }> => {
+    return window.api.notes.getLocalOnlyCount()
   }
 }
 

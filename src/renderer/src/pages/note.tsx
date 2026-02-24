@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
@@ -24,10 +25,10 @@ import {
 } from '@/hooks/use-notes-query'
 import { usePropertySection, type PropertySectionAction } from '@/hooks/use-property-section'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
-import { onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
+import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
-import { MoreHorizontal, History, Bookmark } from 'lucide-react'
+import { MoreHorizontal, History, Bookmark, Monitor } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -35,11 +36,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { NoteReminderButton } from '@/components/note/note-reminder-button'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Page:Note')
@@ -100,6 +103,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const { tags: allAvailableTags } = useNoteTagsQuery()
   const { openTab, setTabDeleted, updateTabTitleByEntityId } = useTabs()
   const activeTab = useActiveTab()
+  const queryClient = useQueryClient()
 
   // Extract highlight info from tab viewState (from reminder navigation)
   const initialHighlight = useMemo(() => {
@@ -525,6 +529,26 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, note, updateNote.mutateAsync, isDeleted]
   )
 
+  // Local-only toggle
+  const handleToggleLocalOnly = useCallback(
+    async (value: boolean) => {
+      if (!noteId) return
+      if (isDeleted) {
+        toast.error('Cannot change local-only — this note was deleted')
+        return
+      }
+      try {
+        await notesService.setLocalOnly(noteId, value)
+        refetchNote()
+        queryClient.invalidateQueries({ queryKey: ['notes', 'localOnlyCount'] })
+        toast.success(value ? 'Note set to local only' : 'Note will sync to cloud')
+      } catch (err) {
+        toast.error(extractErrorMessage(err, 'Failed to toggle local only'))
+      }
+    },
+    [noteId, isDeleted, refetchNote, queryClient]
+  )
+
   // Link handlers
   const handleLinkClick = useCallback((href: string) => {
     window.open(href, '_blank', 'noopener,noreferrer')
@@ -735,6 +759,18 @@ export function NotePage({ noteId }: NotePageProps) {
                 onAddTag={handleAddTag}
                 onCreateTag={handleCreateTag}
                 onRemoveTag={handleRemoveTag}
+              />
+            </div>
+
+            {/* Local-only toggle */}
+            <div className="flex items-center gap-2 py-1">
+              <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Local only</span>
+              <Switch
+                checked={note.frontmatter.localOnly ?? false}
+                onCheckedChange={handleToggleLocalOnly}
+                disabled={isDeleted}
+                className="ml-auto"
               />
             </div>
 

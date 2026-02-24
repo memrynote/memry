@@ -93,6 +93,15 @@ export function noteCacheExists(db: DrizzleDb, id: string): boolean {
   return result !== undefined
 }
 
+export function getLocalOnlyCount(db: DrizzleDb): number {
+  const result = db
+    .select({ count: count() })
+    .from(noteCache)
+    .where(eq(noteCache.localOnly, true))
+    .get()
+  return result?.count ?? 0
+}
+
 /**
  * Check if a note exists with a given path but different ID (duplicate detection).
  */

@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { Check, Loader2, Pause, CloudOff, AlertCircle, Cloud, type LucideIcon } from 'lucide-react'
 import { useSync } from '@/contexts/sync-context'
+import { notesService } from '@/services/notes-service'
 
 type SyncStatusType = 'idle' | 'syncing' | 'paused' | 'error' | 'offline' | 'unknown'
 
@@ -16,6 +18,7 @@ interface SyncStatusResult extends SyncStatusDisplay {
   status: SyncStatusType
   lastSyncAt: number | null
   pendingCount: number
+  localOnlyCount: number
   error: string | null
   conflicts: Array<{ itemId: string; itemType: string; detectedAt: number }>
   sessionExpired: boolean
@@ -73,6 +76,14 @@ export function useSyncStatus(): SyncStatusResult {
     initialSyncProgress
   } = state
 
+  const { data: localOnlyData } = useQuery({
+    queryKey: ['notes', 'localOnlyCount'],
+    queryFn: () => notesService.getLocalOnlyCount(),
+    staleTime: 30_000,
+    refetchOnWindowFocus: true
+  })
+  const localOnlyCount = localOnlyData?.count ?? 0
+
   const display = useMemo(() => STATUS_MAP[status] ?? FALLBACK_DISPLAY, [status])
 
   const lastSyncLabel = useMemo(
@@ -89,6 +100,7 @@ export function useSyncStatus(): SyncStatusResult {
     status,
     lastSyncAt,
     pendingCount,
+    localOnlyCount,
     error,
     conflicts,
     sessionExpired,

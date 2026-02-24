@@ -97,6 +97,7 @@ export interface NoteListItem {
   wordCount: number
   snippet?: string
   emoji?: string | null // T028: Emoji icon for visual identification
+  localOnly?: boolean
   properties?: Record<string, unknown> // T040: Optional properties for folder view
   fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video' // File type discriminator
   mimeType?: string | null // MIME type (e.g., 'application/pdf')
@@ -883,6 +884,7 @@ export function listNotes(options: NoteListOptions = {}): NoteListResponse {
     wordCount: c.wordCount ?? 0,
     snippet: c.snippet ?? undefined, // Use cached snippet from database
     emoji: c.emoji, // T028: Include emoji
+    localOnly: c.localOnly ?? false,
     fileType: c.fileType ?? 'markdown', // File type (default to markdown for backward compat)
     mimeType: c.mimeType, // MIME type
     fileSize: c.fileSize, // File size in bytes

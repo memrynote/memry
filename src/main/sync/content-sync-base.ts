@@ -53,6 +53,12 @@ export abstract class ContentSyncService<TPayload> {
     try {
       const indexDb = getIndexDatabase()
       const cached = getNoteCacheById(indexDb, itemId)
+
+      if (cached?.localOnly) {
+        this.log.debug(`Skipping ${this.itemType} delete enqueue: localOnly`, { itemId })
+        return
+      }
+
       const existingClock = (cached?.clock as VectorClock) ?? {}
       const newClock = increment(existingClock, deviceId)
 
@@ -87,6 +93,11 @@ export abstract class ContentSyncService<TPayload> {
       const cached = getNoteCacheById(indexDb, itemId)
       if (!cached) {
         this.log.warn(`${this.itemType} not found in cache for enqueue`, { itemId })
+        return
+      }
+
+      if (cached.localOnly) {
+        this.log.debug(`Skipping ${this.itemType} enqueue: localOnly`, { itemId })
         return
       }
 
