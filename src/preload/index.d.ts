@@ -2290,6 +2290,7 @@ interface WindowAPI {
 
 // Full API interface
 interface API extends WindowAPI {
+  getFileDropPaths: (files: File[]) => string[]
   vault: VaultClientAPI
   notes: NotesClientAPI
   properties: PropertiesClientAPI
