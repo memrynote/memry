@@ -67,9 +67,7 @@ export const deriveMasterKey = async (
   }
 }
 
-export const generateFileKey = (): Uint8Array => {
-  return sodium.randombytes_buf(32)
-}
+export { generateFileKey } from './primitives'
 
 export const generateDeviceSigningKeyPair = async (): Promise<DeviceSigningKeyPair> => {
   await sodium.ready

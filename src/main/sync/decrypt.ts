@@ -1,7 +1,7 @@
 import sodium from 'libsodium-wrappers-sumo'
 import { decrypt, unwrapFileKey } from '../crypto/encryption'
 import { verifySignature } from '../crypto/signatures'
-import { secureCleanup } from '../crypto/index'
+import { secureCleanup } from '../crypto/primitives'
 import { CBOR_FIELD_ORDER } from '@shared/contracts/cbor-ordering'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import { decompressPayload } from './compress'
