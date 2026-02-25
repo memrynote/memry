@@ -1101,6 +1101,7 @@ export class SyncEngine extends EventEmitter {
     vaultKey: Uint8Array
   ): Promise<void> {
     if (!this.deps.crdtProvider) return
+    if (!this.abortController) return
 
     try {
       const doc = await this.deps.crdtProvider.open(noteId)
@@ -1137,6 +1138,11 @@ export class SyncEngine extends EventEmitter {
       let hasMore = true
 
       while (hasMore) {
+        if (this.abortController.signal.aborted) {
+          log.debug('applyCrdtIncrementals aborted', { noteId, lastSeq: since })
+          return
+        }
+
         const result = await withRetry(
           () =>
             getFromServer<{
@@ -1151,7 +1157,7 @@ export class SyncEngine extends EventEmitter {
               `/sync/crdt/updates?note_id=${encodeURIComponent(noteId)}&since=${since}&limit=100`,
               token
             ),
-          { maxRetries: 3, baseDelayMs: 2000 }
+          { maxRetries: 3, baseDelayMs: 2000, signal: this.abortController.signal }
         ).then((r) => r.value)
 
         const signerIds = new Set(result.updates.map((u) => u.signerDeviceId))
@@ -1187,6 +1193,10 @@ export class SyncEngine extends EventEmitter {
         log.debug('Applied CRDT incrementals', { noteId, lastSeq: since })
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        log.debug('applyCrdtIncrementals aborted via signal', { noteId })
+        return
+      }
       log.warn('Failed to apply CRDT incrementals', {
         noteId,
         error: err instanceof Error ? err.message : String(err)
