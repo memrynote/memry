@@ -1188,10 +1188,6 @@ export class SyncEngine extends EventEmitter {
 
         hasMore = result.hasMore
       }
-
-      if (since > 0) {
-        log.debug('Applied CRDT incrementals', { noteId, lastSeq: since })
-      }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         log.debug('applyCrdtIncrementals aborted via signal', { noteId })

@@ -122,7 +122,6 @@ export class CrdtProvider {
       this.onDocUpdate(noteId, update, origin)
     })
 
-    log.debug('Doc opened', { noteId, windowId })
     return doc
   }
 
@@ -284,7 +283,6 @@ export class CrdtProvider {
     if (ok && this.persistence) {
       await this.persistence.storeUpdate(noteId, Y.encodeStateAsUpdate(doc))
     }
-    if (ok) log.debug('Seeded Y.Doc from markdown', { noteId })
   }
 
   async initForNote(
