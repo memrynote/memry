@@ -1,8 +1,7 @@
 import sodium from 'libsodium-wrappers-sumo'
-import { generateFileKey } from '../crypto/keys'
 import { encrypt, wrapFileKey } from '../crypto/encryption'
 import { signPayload } from '../crypto/signatures'
-import { secureCleanup } from '../crypto/index'
+import { generateFileKey, secureCleanup } from '../crypto/primitives'
 import { CBOR_FIELD_ORDER } from '@shared/contracts/cbor-ordering'
 import type { PushItem, SyncItemType, SyncOperation, VectorClock } from '@shared/contracts/sync-api'
 // Compression before encryption: compression oracle risk accepted because CRDT updates

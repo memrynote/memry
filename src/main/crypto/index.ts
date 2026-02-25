@@ -43,11 +43,7 @@ export { CBOR_FIELD_ORDER } from '@shared/contracts/cbor-ordering'
 
 export { deleteKey, retrieveKey, storeKey } from './keychain'
 
-export const secureCleanup = (...buffers: Uint8Array[]): void => {
-  for (const buffer of buffers) {
-    sodium.memzero(buffer)
-  }
-}
+export { secureCleanup } from './primitives'
 
 /**
  * Constant-time comparison via libsodium memcmp.
