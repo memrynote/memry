@@ -35,6 +35,10 @@ export default defineConfig({
         ]
       },
       rollupOptions: {
+        input: {
+          index: resolve('src/main/index.ts'),
+          'sync-worker': resolve('src/main/sync/worker.ts')
+        },
         external: ['better-sqlite3', 'jsdom', 'canvas']
       }
     },
