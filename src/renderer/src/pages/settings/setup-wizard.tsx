@@ -136,12 +136,13 @@ export function SetupWizard(): React.JSX.Element {
   }, [resendOtp, setWizardStep, setWizardError, clearWizardError])
 
   const handleGoogleClick = useCallback(() => {
+    if (isLoading) return
     setIsLoading(true)
     clearWizardError()
     initOAuth()
       .then((result) => {
-        setIsLoading(false)
         if (!result) {
+          setIsLoading(false)
           setWizardError('Failed to start Google sign-in')
           return
         }
@@ -151,7 +152,7 @@ export function SetupWizard(): React.JSX.Element {
         setIsLoading(false)
         setWizardError(extractErrorMessage(err, 'Failed to start Google sign-in'))
       })
-  }, [initOAuth, setWizardStep, setWizardError, clearWizardError])
+  }, [isLoading, initOAuth, setWizardStep, setWizardError, clearWizardError])
 
   const handleRecoverySubmit = useCallback(
     (phrase: string) => {

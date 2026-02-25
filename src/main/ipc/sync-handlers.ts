@@ -1039,6 +1039,9 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   ipcMain.handle(
     SYNC_CHANNELS.UPLOAD_ATTACHMENT,
     createValidatedHandler(UploadAttachmentSchema, async (input) => {
+      const token = await getValidAccessToken()
+      if (!token) return { success: false, error: 'Not authenticated' }
+
       const queue = getOrCreateUploadQueue()
       if (!queue) return { success: false, error: 'Sync not initialized' }
 
@@ -1074,6 +1077,9 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   ipcMain.handle(
     SYNC_CHANNELS.DOWNLOAD_ATTACHMENT,
     createValidatedHandler(DownloadAttachmentSchema, async (input) => {
+      const token = await getValidAccessToken()
+      if (!token) return { success: false, error: 'Not authenticated' }
+
       const service = getOrCreateAttachmentService()
       if (!service) return { success: false, error: 'Sync not initialized' }
 
@@ -1138,6 +1144,9 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   )
 
   attachmentEvents.onSaved(async ({ noteId, diskPath }) => {
+    const token = await getValidAccessToken()
+    if (!token) return
+
     const queue = getOrCreateUploadQueue()
     if (!queue) return
     try {
@@ -1159,6 +1168,9 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   })
 
   attachmentEvents.onDownloadNeeded(async ({ noteId, attachmentId, diskPath }) => {
+    const token = await getValidAccessToken()
+    if (!token) return
+
     const service = getOrCreateAttachmentService()
     if (!service) return
     try {
