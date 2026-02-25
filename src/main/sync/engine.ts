@@ -106,6 +106,7 @@ export class SyncEngine extends EventEmitter {
   private applier: ItemApplier
   private deviceKeyCache = new Map<string, Uint8Array | null>()
   private suppressPushDuringPull = false
+  private pendingCrdtPulls = new Set<string>()
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
@@ -744,6 +745,15 @@ export class SyncEngine extends EventEmitter {
       } satisfies InitialSyncProgressEvent)
     } finally {
       this.fullSyncActive = false
+      if (this.pendingCrdtPulls.size > 0) {
+        log.debug('fullSync: flushing pending CRDT pulls', {
+          count: this.pendingCrdtPulls.size
+        })
+        for (const noteId of this.pendingCrdtPulls) {
+          this.scheduleSync(() => this.pullCrdtForNote(noteId))
+        }
+        this.pendingCrdtPulls.clear()
+      }
     }
   }
 
@@ -838,11 +848,23 @@ export class SyncEngine extends EventEmitter {
         }
         break
       case 'crdt_updated': {
-        if (!this.isPaused()) {
-          const noteId = message.payload?.noteId as string | undefined
-          if (noteId && this.deps.crdtProvider) {
-            this.scheduleSync(() => this.pullCrdtForNote(noteId))
-          }
+        const noteId = message.payload?.noteId as string | undefined
+        log.warn('[DIAG] crdt_updated handler entered', {
+          noteId,
+          hasCrdtProvider: !!this.deps.crdtProvider,
+          isPaused: this.isPaused(),
+          fullSyncActive: this.fullSyncActive
+        })
+        if (!noteId || !this.deps.crdtProvider || this.isPaused()) {
+          log.warn('[DIAG] crdt_updated dropped by guard')
+          break
+        }
+        if (this.fullSyncActive) {
+          log.warn('[DIAG] crdt_updated queued (fullSync active)', { noteId })
+          this.pendingCrdtPulls.add(noteId)
+        } else {
+          log.warn('[DIAG] crdt_updated scheduling pull', { noteId })
+          this.scheduleSync(() => this.pullCrdtForNote(noteId))
         }
         break
       }
@@ -1109,10 +1131,23 @@ export class SyncEngine extends EventEmitter {
   private async applyCrdtIncrementals(
     noteId: string,
     token: string,
-    vaultKey: Uint8Array
+    vaultKey: Uint8Array,
+    signal?: AbortSignal
   ): Promise<void> {
-    if (!this.deps.crdtProvider) return
-    if (!this.abortController) return
+    if (!this.deps.crdtProvider) {
+      log.warn('[DIAG] applyCrdtIncrementals: no crdtProvider', { noteId })
+      return
+    }
+
+    const effectiveSignal = signal ?? this.abortController?.signal
+    if (!effectiveSignal) {
+      log.warn('[DIAG] applyCrdtIncrementals: no signal available', {
+        noteId,
+        hasPassedSignal: !!signal,
+        hasAbortController: !!this.abortController
+      })
+      return
+    }
 
     try {
       const doc = await this.deps.crdtProvider.open(noteId)
@@ -1149,7 +1184,7 @@ export class SyncEngine extends EventEmitter {
       let hasMore = true
 
       while (hasMore) {
-        if (this.abortController.signal.aborted) {
+        if (effectiveSignal.aborted) {
           log.debug('applyCrdtIncrementals aborted', { noteId, lastSeq: since })
           return
         }
@@ -1168,8 +1203,15 @@ export class SyncEngine extends EventEmitter {
               `/sync/crdt/updates?note_id=${encodeURIComponent(noteId)}&since=${since}&limit=100`,
               token
             ),
-          { maxRetries: 3, baseDelayMs: 2000, signal: this.abortController.signal }
+          { maxRetries: 3, baseDelayMs: 2000, signal: effectiveSignal }
         ).then((r) => r.value)
+
+        log.warn('[DIAG] applyCrdtIncrementals fetched', {
+          noteId,
+          since,
+          updateCount: result.updates.length,
+          hasMore: result.hasMore
+        })
 
         const signerIds = new Set(result.updates.map((u) => u.signerDeviceId))
         for (const sid of signerIds) {
@@ -1323,14 +1365,23 @@ export class SyncEngine extends EventEmitter {
   }
 
   private async pullCrdtForNote(noteId: string): Promise<void> {
+    log.warn('[DIAG] pullCrdtForNote entered', { noteId })
     const token = await this.deps.getAccessToken()
-    if (!token) return
+    if (!token) {
+      log.warn('[DIAG] pullCrdtForNote: no access token', { noteId })
+      return
+    }
 
     const vaultKey = await this.deps.getVaultKey()
-    if (!vaultKey) return
+    if (!vaultKey) {
+      log.warn('[DIAG] pullCrdtForNote: no vault key', { noteId })
+      return
+    }
 
+    const localAbort = new AbortController()
     try {
-      await this.applyCrdtIncrementals(noteId, token, vaultKey)
+      await this.applyCrdtIncrementals(noteId, token, vaultKey, localAbort.signal)
+      log.warn('[DIAG] pullCrdtForNote completed', { noteId })
     } finally {
       secureCleanup(vaultKey)
     }

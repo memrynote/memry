@@ -287,7 +287,6 @@ export function SetupWizard(): React.JSX.Element {
           onBack={() => setWizardStep('linking-choice')}
         />
       )}
-
     </div>
   )
 }
