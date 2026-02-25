@@ -25,6 +25,7 @@ import {
 import { createLogger } from '../lib/logger'
 
 import { getFromServer, postToServer, SyncServerError } from './http-client'
+import { withRetry } from './retry'
 
 const log = createLogger('DeviceLinking')
 
@@ -185,12 +186,16 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
   const { encKey, macKey, setupToken } = pendingLinkCompletion
 
   try {
-    const completeResponse = await postToServer<{
-      success: boolean
-      encryptedMasterKey?: string
-      encryptedKeyNonce?: string
-      keyConfirm?: string
-    }>('/auth/linking/complete', { sessionId })
+    const { value: completeResponse } = await withRetry(
+      () =>
+        postToServer<{
+          success: boolean
+          encryptedMasterKey?: string
+          encryptedKeyNonce?: string
+          keyConfirm?: string
+        }>('/auth/linking/complete', { sessionId }),
+      { maxRetries: 3, baseDelayMs: 2000 }
+    )
 
     if (
       !completeResponse.encryptedMasterKey ||
@@ -225,9 +230,10 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
     )
     const masterKey = decryptMasterKeyFromLinking(ciphertext, nonce, encKey)
 
-    const recoveryInfo = await getFromServer<{ kdfSalt: string; keyVerifier: string }>(
-      '/auth/recovery-info',
-      setupToken
+    const { value: recoveryInfo } = await withRetry(
+      () =>
+        getFromServer<{ kdfSalt: string; keyVerifier: string }>('/auth/recovery-info', setupToken),
+      { maxRetries: 3, baseDelayMs: 2000 }
     )
 
     const signingKeyPair = await getOrCreateSigningKeyPair()

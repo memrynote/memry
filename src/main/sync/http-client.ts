@@ -1,4 +1,5 @@
 import { net } from 'electron'
+import { withRetry } from './retry'
 
 function getSyncServerUrl(): string {
   const url = process.env.SYNC_SERVER_URL
@@ -123,6 +124,15 @@ export const deleteFromServer = async <T>(
   return syncFetch<T>('DELETE', path, undefined, token, fetchFn)
 }
 
+export const patchToServer = async <T>(
+  path: string,
+  body?: unknown,
+  token?: string,
+  fetchFn?: FetchFn
+): Promise<T> => {
+  return syncFetch<T>('PATCH', path, body, token, fetchFn)
+}
+
 export interface CrdtSnapshotResponse {
   snapshot: string | null
   sequenceNum: number
@@ -146,9 +156,13 @@ export async function fetchCrdtSnapshot(
   noteId: string,
   token: string
 ): Promise<{ snapshot: Uint8Array; sequenceNum: number; signerDeviceId: string } | null> {
-  const result = await getFromServer<CrdtSnapshotResponse>(
-    `/sync/crdt/snapshot/${encodeURIComponent(noteId)}`,
-    token
+  const { value: result } = await withRetry(
+    () =>
+      getFromServer<CrdtSnapshotResponse>(
+        `/sync/crdt/snapshot/${encodeURIComponent(noteId)}`,
+        token
+      ),
+    { maxRetries: 3, baseDelayMs: 2000 }
   )
 
   if (!result.snapshot || !result.signerDeviceId) return null

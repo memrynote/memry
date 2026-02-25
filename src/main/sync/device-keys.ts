@@ -4,6 +4,7 @@ import { syncDevices } from '@shared/db/schema/sync-devices'
 import { DeviceKeysResponseSchema } from '@shared/contracts/sync-api'
 import { createLogger } from '../lib/logger'
 import { getFromServer } from './http-client'
+import { withRetry } from './retry'
 import type { DrizzleDb } from './item-handlers'
 
 const log = createLogger('DeviceKeys')
@@ -43,7 +44,10 @@ export async function getDeviceSigningKey(
 }
 
 export async function fetchAndCacheDeviceKeys(db: DrizzleDb, accessToken: string): Promise<void> {
-  const raw = await getFromServer<unknown>('/auth/devices', accessToken)
+  const { value: raw } = await withRetry(
+    () => getFromServer<unknown>('/auth/devices', accessToken),
+    { maxRetries: 3, baseDelayMs: 2000 }
+  )
   const parsed = DeviceKeysResponseSchema.safeParse(raw)
   if (!parsed.success) {
     log.error('Invalid device keys response from server', { error: parsed.error.message })

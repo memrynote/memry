@@ -18,6 +18,7 @@ import { createValidatedHandler } from '../ipc/validate'
 import { getIndexDatabase } from '../database/client'
 import { getNoteCacheById } from '@shared/db/queries/notes'
 import type { CrdtUpdateQueue } from './crdt-queue'
+import { MicrotaskBatchBroadcaster } from './microtask-batch-broadcaster'
 import { scheduleWriteback, cancelPendingWritebacks, recordNetworkUpdate } from './crdt-writeback'
 import { toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
@@ -49,6 +50,9 @@ export class CrdtProvider {
   private updateQueue: CrdtUpdateQueue | null = null
   private snapshotPushFn: SnapshotPushFn | null = null
   private ipcHandlersRegistered = false
+  private networkBatcher = new MicrotaskBatchBroadcaster((noteId, merged) => {
+    this.broadcastToWindows(noteId, merged, ORIGIN_NETWORK, undefined)
+  })
 
   async init(queue?: CrdtUpdateQueue, snapshotPush?: SnapshotPushFn): Promise<void> {
     // If already initialized in this process, keep the existing persistence handle.
@@ -131,6 +135,8 @@ export class CrdtProvider {
       if (entry.windowIds.size > 0) return
     }
 
+    this.flushNetworkBroadcast(noteId)
+
     if (this.snapshotPushFn && entry.accumulatedBytes > 0) {
       const state = Y.encodeStateAsUpdate(entry.doc)
       this.snapshotPushFn(noteId, state).catch((err) => {
@@ -179,6 +185,8 @@ export class CrdtProvider {
 
   async destroy(): Promise<void> {
     cancelPendingWritebacks()
+    this.networkBatcher.flushAll()
+
     for (const [noteId] of this.docs) {
       try {
         await this.flushDoc(noteId)
@@ -345,7 +353,7 @@ export class CrdtProvider {
     if (isIpcOrigin(origin)) {
       this.broadcastToWindows(noteId, update, 'ipc', origin.windowId)
     } else if (origin === ORIGIN_NETWORK) {
-      this.broadcastToWindows(noteId, update, ORIGIN_NETWORK, undefined)
+      this.queueNetworkBroadcast(noteId, update)
     } else {
       this.broadcastToWindows(noteId, update, ORIGIN_LOCAL, undefined)
     }
@@ -384,6 +392,14 @@ export class CrdtProvider {
         })
       }
     }
+  }
+
+  private queueNetworkBroadcast(noteId: string, update: Uint8Array): void {
+    this.networkBatcher.enqueue(noteId, update)
+  }
+
+  private flushNetworkBroadcast(noteId: string): void {
+    this.networkBatcher.flush(noteId)
   }
 
   private persistUpdate(noteId: string, update: Uint8Array): void {
