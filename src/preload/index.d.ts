@@ -2084,6 +2084,10 @@ interface SyncAuthClientAPI {
     success: boolean
     error?: string
   }>
+  logout: () => Promise<{
+    success: boolean
+    keychainWarning?: string
+  }>
 }
 
 // Sync Setup API

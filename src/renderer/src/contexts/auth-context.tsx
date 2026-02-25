@@ -473,8 +473,11 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   }, [])
 
   const logout = useCallback(async (): Promise<void> => {
-    await authService.logout()
-    dispatch({ type: 'RESET_AUTH' })
+    try {
+      await authService.logout()
+    } finally {
+      dispatch({ type: 'RESET_AUTH' })
+    }
   }, [])
 
   const resetAuthState = useCallback(() => {

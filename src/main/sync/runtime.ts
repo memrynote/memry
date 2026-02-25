@@ -308,14 +308,14 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
   return startPromise
 }
 
-export async function stopSyncRuntime(): Promise<void> {
+export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Promise<void> {
   if (startPromise) {
     await startPromise.catch(() => {})
   }
 
   const active = runtime
 
-  if (active) {
+  if (active && !options?.skipFinalSync) {
     try {
       const pushed = await getCrdtProvider().pushAllSnapshots()
       if (pushed > 0) log.info(`Pushed ${pushed} CRDT snapshot(s) before shutdown`)

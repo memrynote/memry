@@ -6,7 +6,6 @@ import os from 'os'
 import sodium from 'libsodium-wrappers-sumo'
 
 import { syncDevices } from '@shared/db/schema/sync-devices'
-import { syncQueue } from '@shared/db/schema/sync-queue'
 import { syncState } from '@shared/db/schema/sync-state'
 import { KEYCHAIN_ENTRIES } from '@shared/contracts/crypto'
 import {
@@ -81,14 +80,15 @@ import { deleteFromServer, getFromServer, patchToServer, postToServer } from '..
 
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler } from './validate'
-import { getSyncEngine, startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
+import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
+import { teardownSession } from '../sync/session-teardown'
 import {
   getValidAccessToken,
   retrieveToken,
   storeToken,
   extractJtiFromToken,
   scheduleTokenRefresh,
-  resetTokenManagerState,
+  cancelTokenRefresh,
   refreshAccessToken,
   ACCESS_TOKEN_EXPIRY_SECONDS
 } from '../sync/token-manager'
@@ -436,7 +436,7 @@ export async function checkSyncIntegrity(): Promise<void> {
           'Cleaning up local state. User will need to re-authenticate.',
         { deviceId: currentDevice.id }
       )
-      await cleanupLocalSyncState(db)
+      await cleanupLocalSyncState()
       return
     }
 
@@ -447,7 +447,7 @@ export async function checkSyncIntegrity(): Promise<void> {
           'Cleaning up local state. User will need to re-authenticate.',
         { deviceId: currentDevice.id }
       )
-      await cleanupLocalSyncState(db)
+      await cleanupLocalSyncState()
       return
     }
 
@@ -472,15 +472,8 @@ export async function checkSyncIntegrity(): Promise<void> {
   }
 }
 
-async function cleanupLocalSyncState(db: ReturnType<typeof getDatabase>): Promise<void> {
-  await db.delete(syncDevices).where(eq(syncDevices.isCurrentDevice, true))
-  await Promise.allSettled([
-    deleteKey(KEYCHAIN_ENTRIES.ACCESS_TOKEN),
-    deleteKey(KEYCHAIN_ENTRIES.REFRESH_TOKEN),
-    deleteKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY),
-    deleteKey(KEYCHAIN_ENTRIES.MASTER_KEY)
-  ])
-  store.set('sync', {})
+async function cleanupLocalSyncState(): Promise<void> {
+  await teardownSession('integrity')
 }
 
 // ============================================================================
@@ -554,6 +547,22 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
   })
 
   return attachmentService
+}
+
+// ============================================================================
+// Exported cleanup helper for session-teardown module
+// ============================================================================
+
+export function clearInMemoryAuthState(): void {
+  pendingRecoveryPhrase = null
+  oauthSessions.clear()
+  stopOtpClipboardDetection()
+  shutdownLoopbackServer()
+  if (uploadQueue) {
+    uploadQueue.clear()
+    uploadQueue = null
+  }
+  attachmentService = null
 }
 
 // ============================================================================
@@ -763,30 +772,13 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   // --- Logout (clears all local auth state) ---
 
   ipcMain.handle(SYNC_CHANNELS.AUTH_LOGOUT, async () => {
-    await stopSyncRuntime()
-    resetTokenManagerState()
-    pendingRecoveryPhrase = null
-
-    const keychainEntries = [
-      KEYCHAIN_ENTRIES.ACCESS_TOKEN,
-      KEYCHAIN_ENTRIES.REFRESH_TOKEN,
-      KEYCHAIN_ENTRIES.SETUP_TOKEN,
-      KEYCHAIN_ENTRIES.MASTER_KEY,
-      KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY
-    ]
-    await Promise.allSettled(keychainEntries.map((entry) => deleteKey(entry)))
-
-    if (isDatabaseInitialized()) {
-      const db = getDatabase()
-      db.delete(syncQueue).run()
-      db.delete(syncDevices).run()
-      db.delete(syncState).run()
-      db.delete(syncHistory).run()
+    const result = await teardownSession('logout')
+    return {
+      success: true,
+      ...(result.keychainFailures.length > 0 && {
+        keychainWarning: `Failed to remove: ${result.keychainFailures.join(', ')}`
+      })
     }
-
-    store.set('sync', {})
-
-    return { success: true }
   })
 
   // --- Not-yet-implemented handlers ---
