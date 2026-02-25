@@ -323,12 +323,18 @@ export class CrdtProvider {
 
   async seedExistingDocs(
     entries: Array<{ id: string; title?: string; date?: string; tags?: string[] }>,
-    onProgress?: (done: number, total: number) => void
+    onProgress?: (done: number, total: number) => void,
+    signal?: AbortSignal
   ): Promise<number> {
     const BATCH_SIZE = 50
     let seeded = 0
 
     for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+      if (signal?.aborted) {
+        log.info('CRDT seed aborted', { seeded, total: entries.length })
+        return seeded
+      }
+
       const batch = entries.slice(i, i + BATCH_SIZE)
 
       for (const entry of batch) {

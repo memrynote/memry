@@ -50,6 +50,8 @@ const SYNC_SERVER_URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'
 
 let runtime: SyncRuntimeState | null = null
 let startPromise: Promise<SyncEngine | null> | null = null
+let seedAbortController: AbortController | null = null
+let seedPromise: Promise<void> | null = null
 
 function getCurrentDeviceId(db: DrizzleDb): string | null {
   const device = db
@@ -69,7 +71,8 @@ export function getCrdtQueue(): CrdtUpdateQueue | null {
 }
 
 async function seedExistingCrdtDocs(
-  crdtProvider: ReturnType<typeof getCrdtProvider>
+  crdtProvider: ReturnType<typeof getCrdtProvider>,
+  signal?: AbortSignal
 ): Promise<void> {
   const indexDb = getIndexDatabase()
   const rows = indexDb
@@ -89,7 +92,7 @@ async function seedExistingCrdtDocs(
     date: r.date ?? undefined
   }))
 
-  const seeded = await crdtProvider.seedExistingDocs(entries)
+  const seeded = await crdtProvider.seedExistingDocs(entries, undefined, signal)
   if (seeded > 0) {
     log.info('Initial CRDT seed complete', { seeded, total: entries.length })
   }
@@ -269,7 +272,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       await engine.start()
       log.info('Sync runtime started')
 
-      seedExistingCrdtDocs(crdtProvider).catch((err) => {
+      seedAbortController = new AbortController()
+      seedPromise = seedExistingCrdtDocs(crdtProvider, seedAbortController.signal).catch((err) => {
         log.warn('CRDT seed failed (non-fatal)', err)
       })
 
@@ -311,6 +315,15 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Promise<void> {
   if (startPromise) {
     await startPromise.catch(() => {})
+  }
+
+  if (seedAbortController) {
+    seedAbortController.abort()
+    seedAbortController = null
+  }
+  if (seedPromise) {
+    await seedPromise.catch(() => {})
+    seedPromise = null
   }
 
   const active = runtime
