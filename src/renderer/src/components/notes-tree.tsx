@@ -1760,7 +1760,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
               className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
             />
           ) : (
-            <div className="group/folder flex flex-1 items-center">
+            <div className="group/folder flex flex-1 items-center min-w-0">
               <TreeLabel className="flex-1">{folder.name}</TreeLabel>
               {/* Hover action icon to open folder view */}
               <div className="flex items-center opacity-0 group-hover/folder:opacity-100 transition-opacity ml-auto">
