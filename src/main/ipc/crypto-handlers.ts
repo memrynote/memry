@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import sodium from 'libsodium-wrappers-sumo'
 
 import { createLogger } from '../lib/logger'
@@ -7,31 +7,55 @@ import {
   SYNC_CHANNELS,
   EncryptItemSchema,
   DecryptItemSchema,
-  VerifySignatureSchema
+  VerifySignatureSchema,
+  RotateKeysSchema
 } from '@shared/contracts/ipc-sync'
+import { SYNC_EVENTS } from '@shared/contracts/ipc-sync'
 import { CBOR_FIELD_ORDER } from '@shared/contracts/cbor-ordering'
-import { CRYPTO_VERSION, XCHACHA20_PARAMS, ED25519_PARAMS } from '@shared/contracts/crypto'
+import {
+  CRYPTO_VERSION,
+  XCHACHA20_PARAMS,
+  ED25519_PARAMS,
+  KEYCHAIN_ENTRIES
+} from '@shared/contracts/crypto'
 import type {
   EncryptItemInput,
   EncryptItemResult,
   DecryptItemInput,
   DecryptItemResult,
   VerifySignatureInput,
-  VerifySignatureResult
+  VerifySignatureResult,
+  RotateKeysInput,
+  RotateKeysResult,
+  GetRotationProgressResult
 } from '@shared/contracts/ipc-sync'
+import type { PullItemResponse, SyncManifest, PushResponse } from '@shared/contracts/sync-api'
+import { PullResponseSchema } from '@shared/contracts/sync-api'
 import {
   encrypt,
   decrypt,
   generateFileKey,
   getOrDeriveVaultKey,
+  deriveKey,
+  generateSalt,
+  generateRecoveryPhrase,
+  deriveMasterKey,
   wrapFileKey,
   unwrapFileKey,
   signPayload,
   verifySignature,
   retrieveKey,
+  storeKey,
   secureCleanup
 } from '../crypto'
-import { KEYCHAIN_ENTRIES } from '@shared/contracts/crypto'
+import { KEY_DERIVATION_CONTEXTS } from '@shared/contracts/crypto'
+import { eq } from 'drizzle-orm'
+import { syncDevices } from '@shared/db/schema/sync-devices'
+import { getDatabase } from '../database'
+import { getSyncEngine } from '../sync/runtime'
+import { getFromServer, postToServer } from '../sync/http-client'
+import { getValidAccessToken } from '../sync/token-manager'
+import { performKeyRotation, type RotationState } from '../crypto/rotation'
 
 const logger = createLogger('IPC:Crypto')
 
@@ -251,8 +275,156 @@ async function handleVerifySignature(input: VerifySignatureInput): Promise<Verif
   return { valid }
 }
 
-const notImplemented = (channel: string) => (): never => {
-  throw new Error(`${channel} not yet implemented`)
+let currentRotationState: RotationState | null = null
+let rotationLock = false
+
+function emitToAllWindows(channel: string, data: unknown): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send(channel, data)
+  }
+}
+
+async function handleRotateKeys(input: RotateKeysInput): Promise<RotateKeysResult> {
+  if (!input.confirm) {
+    return { success: false, error: 'Key rotation not confirmed' }
+  }
+
+  if (rotationLock) {
+    return { success: false, error: 'Key rotation already in progress' }
+  }
+  rotationLock = true
+
+  let seed: Uint8Array | undefined
+  let newMasterKey: Uint8Array | undefined
+  let newVaultKey: Uint8Array | undefined
+  let salt: Uint8Array | undefined
+
+  try {
+    await ensureSodiumReady()
+
+    const generated = await generateRecoveryPhrase()
+    seed = generated.seed
+    const phrase = generated.phrase
+    salt = generateSalt()
+
+    const material = await deriveMasterKey(seed, salt)
+    newMasterKey = material.masterKey
+    newVaultKey = await deriveKey(newMasterKey, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
+
+    const result = await performKeyRotation(
+      {
+        getAccessToken: getValidAccessToken,
+        getVaultKey: async () => getOrDeriveVaultKey(),
+        getSigningKeys: async () => {
+          const sk = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
+          if (!sk) return null
+          const db = getDatabase()
+          const device = db
+            .select({ id: syncDevices.id })
+            .from(syncDevices)
+            .where(eq(syncDevices.isCurrentDevice, true))
+            .get()
+          if (!device) {
+            secureCleanup(sk)
+            return null
+          }
+          const pk = sodium.crypto_sign_ed25519_sk_to_pk(sk)
+          return { secretKey: sk, publicKey: pk, deviceId: device.id }
+        },
+        fetchManifest: (token) => getFromServer<SyncManifest>('/sync/manifest', token),
+        pullItems: async (token, itemIds) => {
+          const raw = await postToServer<{ items: PullItemResponse[] }>(
+            '/sync/pull',
+            { itemIds },
+            token
+          )
+          const parsed = PullResponseSchema.safeParse(raw)
+          if (!parsed.success) {
+            throw new Error(`Invalid pull response: ${parsed.error.message}`)
+          }
+          return parsed.data.items
+        },
+        pushItems: async (token, items) => {
+          return postToServer<PushResponse>('/sync/push', { items }, token)
+        },
+        fetchCrdtSnapshots: async (token, noteIds) => {
+          const results: Array<{ noteId: string; snapshot: Uint8Array; sequenceNum: number }> = []
+          for (const noteId of noteIds) {
+            const resp = await getFromServer<{
+              snapshot: string | null
+              sequenceNum: number
+            }>(`/sync/crdt/snapshot/${encodeURIComponent(noteId)}`, token)
+            if (resp.snapshot) {
+              results.push({
+                noteId,
+                snapshot: Buffer.from(resp.snapshot, 'base64'),
+                sequenceNum: resp.sequenceNum
+              })
+            }
+          }
+          return results
+        },
+        pushCrdtSnapshot: async (token, noteId, snapshot) => {
+          const b64 = Buffer.from(snapshot).toString('base64')
+          await postToServer('/sync/crdt/snapshot', { noteId, snapshot: b64 }, token)
+        },
+        updateServerKeys: async (token, kdfSalt, keyVerifier) => {
+          await postToServer('/auth/setup', { kdfSalt, keyVerifier }, token)
+        },
+        pauseSync: () => {
+          const engine = getSyncEngine()
+          engine?.pause()
+        },
+        resumeSync: () => {
+          const engine = getSyncEngine()
+          engine?.resume()
+        },
+        storeNewMasterKey: async (mk) => {
+          await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, mk)
+        },
+        onProgress: (rotationState) => {
+          currentRotationState = rotationState
+          emitToAllWindows(SYNC_EVENTS.KEY_ROTATION_PROGRESS, {
+            phase: rotationState.phase,
+            totalItems: rotationState.totalItems,
+            processedItems: rotationState.processedItems,
+            error: rotationState.error
+          })
+        }
+      },
+      newVaultKey,
+      material.kdfSalt,
+      material.keyVerifier,
+      newMasterKey
+    )
+
+    if (result.success) {
+      return { success: true, newRecoveryPhrase: phrase }
+    }
+    return { success: false, error: result.error }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Key rotation failed'
+    logger.error('handleRotateKeys failed', err)
+    return { success: false, error: message }
+  } finally {
+    rotationLock = false
+    if (seed) secureCleanup(seed)
+    if (salt) secureCleanup(salt)
+    if (newVaultKey) secureCleanup(newVaultKey)
+    if (newMasterKey) secureCleanup(newMasterKey)
+  }
+}
+
+function handleGetRotationProgress(): GetRotationProgressResult {
+  if (!currentRotationState) {
+    return { inProgress: false }
+  }
+  return {
+    inProgress: currentRotationState.inProgress,
+    phase: currentRotationState.phase,
+    totalItems: currentRotationState.totalItems,
+    processedItems: currentRotationState.processedItems
+  }
 }
 
 export function registerCryptoHandlers(): void {
@@ -271,8 +443,12 @@ export function registerCryptoHandlers(): void {
     createValidatedHandler(VerifySignatureSchema, handleVerifySignature)
   )
 
-  ipcMain.handle(SYNC_CHANNELS.ROTATE_KEYS, notImplemented('ROTATE_KEYS'))
-  ipcMain.handle(SYNC_CHANNELS.GET_ROTATION_PROGRESS, notImplemented('GET_ROTATION_PROGRESS'))
+  ipcMain.handle(
+    SYNC_CHANNELS.ROTATE_KEYS,
+    createValidatedHandler(RotateKeysSchema, handleRotateKeys)
+  )
+
+  ipcMain.handle(SYNC_CHANNELS.GET_ROTATION_PROGRESS, handleGetRotationProgress)
 
   logger.info('Crypto handlers registered')
 }
