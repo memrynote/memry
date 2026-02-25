@@ -41,6 +41,7 @@ export const getDevice = async (
 export const updateDevice = async (
   db: D1Database,
   deviceId: string,
+  userId: string,
   updates: Partial<Pick<Device, 'name' | 'last_sync_at'>>
 ): Promise<void> => {
   const setClauses: string[] = []
@@ -60,9 +61,10 @@ export const updateDevice = async (
   setClauses.push('updated_at = ?')
   values.push(Math.floor(Date.now() / 1000))
   values.push(deviceId)
+  values.push(userId)
 
   await db
-    .prepare(`UPDATE devices SET ${setClauses.join(', ')} WHERE id = ?`)
+    .prepare(`UPDATE devices SET ${setClauses.join(', ')} WHERE id = ? AND user_id = ?`)
     .bind(...values)
     .run()
 }
@@ -82,8 +84,8 @@ export const revokeDevice = async (
   }
 
   await db
-    .prepare('UPDATE devices SET revoked_at = ? WHERE id = ?')
-    .bind(Math.floor(Date.now() / 1000), deviceId)
+    .prepare('UPDATE devices SET revoked_at = ? WHERE id = ? AND user_id = ?')
+    .bind(Math.floor(Date.now() / 1000), deviceId, userId)
     .run()
 
   await revokeDeviceTokens(db, deviceId)

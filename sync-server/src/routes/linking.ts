@@ -19,6 +19,12 @@ const linkingRateLimit = createRateLimiter({
   keyPrefix: 'linking'
 })
 
+const linkingCompleteRateLimit = createRateLimiter({
+  maxRequests: 40,
+  windowSeconds: 60,
+  keyPrefix: 'linking_complete'
+})
+
 const InitiateLinkingSchema = z.object({
   ephemeralPublicKey: z.string().min(1)
 })
@@ -193,7 +199,7 @@ linking.post('/approve', authMiddleware, linkingRateLimit, async (c) => {
   return c.json({ success: true, status: 'approved' })
 })
 
-linking.post('/complete', linkingRateLimit, async (c) => {
+linking.post('/complete', linkingCompleteRateLimit, async (c) => {
   const body: unknown = await c.req.json()
   const parsed = CompleteLinkingSchema.safeParse(body)
   if (!parsed.success) {

@@ -489,7 +489,7 @@ auth.post('/setup', authMiddleware, async (c) => {
 
 // GET /devices — returns all non-revoked devices for the authenticated user
 const devicesRateLimit = createRateLimiter({
-  maxRequests: 30,
+  maxRequests: 60,
   windowSeconds: 60,
   keyPrefix: 'devices-list'
 })
