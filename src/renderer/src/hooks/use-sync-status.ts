@@ -1,7 +1,16 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
-import { Check, Loader2, Pause, CloudOff, AlertCircle, Cloud, type LucideIcon } from 'lucide-react'
+import {
+  ArrowUpFromLine,
+  Check,
+  Loader2,
+  Pause,
+  CloudOff,
+  AlertCircle,
+  Cloud,
+  type LucideIcon
+} from 'lucide-react'
 import { useSync } from '@/contexts/sync-context'
 import { notesService } from '@/services/notes-service'
 
@@ -14,6 +23,11 @@ interface SyncStatusDisplay {
   isAnimating: boolean
 }
 
+interface SyncActivityInfo {
+  pushCount: number
+  pullCount: number
+}
+
 interface SyncStatusResult extends SyncStatusDisplay {
   status: SyncStatusType
   lastSyncAt: number | null
@@ -24,6 +38,7 @@ interface SyncStatusResult extends SyncStatusDisplay {
   sessionExpired: boolean
   clockSkewDetected: boolean
   initialSyncProgress: { current: number; total: number } | null
+  syncActivity: SyncActivityInfo
   lastSyncLabel: string
   hasIssues: boolean
   triggerSync: () => Promise<void>
@@ -73,7 +88,8 @@ export function useSyncStatus(): SyncStatusResult {
     conflicts,
     sessionExpired,
     clockSkewDetected,
-    initialSyncProgress
+    initialSyncProgress,
+    syncActivity
   } = state
 
   const { data: localOnlyData } = useQuery({
@@ -84,7 +100,33 @@ export function useSyncStatus(): SyncStatusResult {
   })
   const localOnlyCount = localOnlyData?.count ?? 0
 
-  const display = useMemo(() => STATUS_MAP[status] ?? FALLBACK_DISPLAY, [status])
+  const display = useMemo((): SyncStatusDisplay => {
+    if (status === 'syncing') {
+      const { pushCount, pullCount } = syncActivity
+      const hasActivity = pushCount > 0 || pullCount > 0
+      const parts: string[] = []
+      if (pushCount > 0) parts.push(`${pushCount} pushed`)
+      if (pullCount > 0) parts.push(`${pullCount} pulled`)
+
+      return {
+        label: hasActivity ? parts.join(', ') : 'Syncing...',
+        dotColor: 'bg-blue-500',
+        IconComponent: Loader2,
+        isAnimating: true
+      }
+    }
+
+    if (status === 'idle' && pendingCount > 0) {
+      return {
+        label: `${pendingCount} ${pendingCount === 1 ? 'change' : 'changes'} pending`,
+        dotColor: 'bg-amber-500',
+        IconComponent: ArrowUpFromLine,
+        isAnimating: false
+      }
+    }
+
+    return STATUS_MAP[status] ?? FALLBACK_DISPLAY
+  }, [status, pendingCount, syncActivity])
 
   const lastSyncLabel = useMemo(
     () => (lastSyncAt ? formatDistanceToNow(lastSyncAt, { addSuffix: true }) : 'Never'),
@@ -106,6 +148,7 @@ export function useSyncStatus(): SyncStatusResult {
     sessionExpired,
     clockSkewDetected,
     initialSyncProgress,
+    syncActivity,
     ...display,
     lastSyncLabel,
     hasIssues,

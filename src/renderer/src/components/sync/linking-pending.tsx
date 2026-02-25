@@ -39,6 +39,7 @@ export function LinkingPending({
       }
 
       if (result.error && result.error !== 'Session not yet approved') {
+        if (result.error.includes('Too many requests')) return
         setStatus('error')
         setError(result.error)
         if (intervalRef.current) clearInterval(intervalRef.current)
@@ -47,6 +48,7 @@ export function LinkingPending({
     } catch (err) {
       if (cancelledRef.current) return
       const msg = extractErrorMessage(err, 'Linking check failed')
+      if (msg.includes('Too many requests')) return
       setStatus('error')
       setError(msg)
       if (intervalRef.current) clearInterval(intervalRef.current)

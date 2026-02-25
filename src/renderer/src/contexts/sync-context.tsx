@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { useAuth } from './auth-context'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import type { LinkingRequestEvent } from '@shared/contracts/ipc-events'
+import type { InitialSyncPhase, LinkingRequestEvent } from '@shared/contracts/ipc-events'
 
 type SyncStatus = 'idle' | 'syncing' | 'paused' | 'error' | 'offline' | 'unknown'
 
@@ -25,6 +25,11 @@ interface ConflictEntry {
   detectedAt: number
 }
 
+interface SyncActivity {
+  pushCount: number
+  pullCount: number
+}
+
 interface SyncState {
   status: SyncStatus
   lastSyncAt: number | null
@@ -35,7 +40,8 @@ interface SyncState {
   sessionExpired: boolean
   conflicts: ConflictEntry[]
   clockSkewDetected: boolean
-  initialSyncProgress: { current: number; total: number } | null
+  initialSyncProgress: { phase: InitialSyncPhase; current: number; total: number } | null
+  syncActivity: SyncActivity
 }
 
 type SyncAction =
@@ -56,8 +62,8 @@ type SyncAction =
   | { type: 'CONFLICT_DETECTED'; itemId: string; itemType: string }
   | { type: 'QUEUE_CLEARED' }
   | { type: 'CLOCK_SKEW_WARNING' }
-  | { type: 'ITEM_SYNCED'; lastSyncAt: number }
-  | { type: 'INITIAL_SYNC_PROGRESS'; current: number; total: number }
+  | { type: 'ITEM_SYNCED'; lastSyncAt: number; operation: 'push' | 'pull' }
+  | { type: 'INITIAL_SYNC_PROGRESS'; phase: InitialSyncPhase; current: number; total: number }
   | { type: 'RESET' }
 
 const initialState: SyncState = {
@@ -70,19 +76,23 @@ const initialState: SyncState = {
   sessionExpired: false,
   conflicts: [],
   clockSkewDetected: false,
-  initialSyncProgress: null
+  initialSyncProgress: null,
+  syncActivity: { pushCount: 0, pullCount: 0 }
 }
 
 function syncReducer(state: SyncState, action: SyncAction): SyncState {
   switch (action.type) {
-    case 'STATUS_CHANGED':
+    case 'STATUS_CHANGED': {
+      const leavingSyncing = state.status === 'syncing' && action.status !== 'syncing'
       return {
         ...state,
         status: action.status,
         lastSyncAt: action.lastSyncAt ?? state.lastSyncAt,
         pendingCount: action.pendingCount,
-        error: action.error ?? null
+        error: action.error ?? null,
+        syncActivity: leavingSyncing ? { pushCount: 0, pullCount: 0 } : state.syncActivity
       }
+    }
     case 'PAUSED':
       return { ...state, status: 'paused', pendingCount: action.pendingCount }
     case 'RESUMED':
@@ -126,9 +136,24 @@ function syncReducer(state: SyncState, action: SyncAction): SyncState {
     case 'CLOCK_SKEW_WARNING':
       return { ...state, clockSkewDetected: true }
     case 'ITEM_SYNCED':
-      return { ...state, lastSyncAt: action.lastSyncAt }
+      return {
+        ...state,
+        lastSyncAt: action.lastSyncAt,
+        syncActivity: {
+          pushCount: state.syncActivity.pushCount + (action.operation === 'push' ? 1 : 0),
+          pullCount: state.syncActivity.pullCount + (action.operation === 'pull' ? 1 : 0)
+        }
+      }
     case 'INITIAL_SYNC_PROGRESS':
-      return { ...state, initialSyncProgress: { current: action.current, total: action.total } }
+      if (action.phase === 'complete') return { ...state, initialSyncProgress: null }
+      return {
+        ...state,
+        initialSyncProgress: {
+          phase: action.phase,
+          current: action.current,
+          total: action.total
+        }
+      }
     case 'RESET':
       return initialState
     default:
@@ -274,9 +299,9 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onItemSynced(() => {
+      window.api.onItemSynced((event) => {
         if (cancelled) return
-        dispatch({ type: 'ITEM_SYNCED', lastSyncAt: Date.now() })
+        dispatch({ type: 'ITEM_SYNCED', lastSyncAt: Date.now(), operation: event.operation })
       })
     )
 
@@ -285,6 +310,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
         if (cancelled) return
         dispatch({
           type: 'INITIAL_SYNC_PROGRESS',
+          phase: event.phase,
           current: event.processedItems,
           total: event.totalItems
         })
@@ -305,7 +331,16 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       })
     )
 
-    // TODO: onKeyRotationProgress — connect in key rotation phase (Phase 5)
+    cleanups.push(
+      window.api.onKeyRotationProgress((event) => {
+        if (cancelled) return
+        if (event.phase === 'complete') {
+          dispatch({ type: 'CLEAR_ERROR' })
+        } else if (event.error) {
+          dispatch({ type: 'SET_ERROR', error: event.error })
+        }
+      })
+    )
 
     return () => {
       cancelled = true
