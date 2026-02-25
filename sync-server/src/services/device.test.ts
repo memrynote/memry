@@ -200,7 +200,7 @@ describe('revokeDevice', () => {
     expect(db.prepare).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE devices SET revoked_at')
     )
-    expect(updateStmt.bind).toHaveBeenCalledWith(expect.any(Number), 'dev-1')
+    expect(updateStmt.bind).toHaveBeenCalledWith(expect.any(Number), 'dev-1', 'user-1')
     expect(updateStmt.run).toHaveBeenCalled()
     expect(revokeDeviceTokens).toHaveBeenCalledWith(expect.anything(), 'dev-1')
   })

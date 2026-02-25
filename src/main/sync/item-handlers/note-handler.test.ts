@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest'
 import fs from 'fs'
+import os from 'os'
 import * as path from 'path'
 import type { ApplyContext } from './types'
 import type { NoteSyncPayload } from '@shared/contracts/sync-payloads'
 
-const VAULT_ROOT = '/tmp/test-vault'
+const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-handler-'))
 const NOTES_DIR = path.join(VAULT_ROOT, 'notes')
 
 vi.mock('../../database/client', () => ({
@@ -81,6 +82,10 @@ function makePayload(overrides: Partial<NoteSyncPayload> = {}): NoteSyncPayload 
 describe('noteHandler.applyUpsert — path collision', () => {
   let ctx: ApplyContext
   const takenRelPaths = new Set<string>()
+
+  afterAll(() => {
+    fs.rmSync(VAULT_ROOT, { recursive: true, force: true })
+  })
 
   beforeEach(() => {
     vi.clearAllMocks()

@@ -307,7 +307,7 @@ describe('sync routes', () => {
       await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(updateDevice).toHaveBeenCalledWith(env.DB, 'device-1', {
+      expect(updateDevice).toHaveBeenCalledWith(env.DB, 'device-1', 'user-1', {
         last_sync_at: expect.any(Number)
       })
     })
@@ -435,7 +435,7 @@ describe('sync routes', () => {
       )
 
       // #then
-      expect(updateDevice).toHaveBeenCalledWith(env.DB, 'device-1', {
+      expect(updateDevice).toHaveBeenCalledWith(env.DB, 'device-1', 'user-1', {
         last_sync_at: expect.any(Number)
       })
     })
