@@ -148,7 +148,7 @@ describe('updateDevice', () => {
 
   it('should update the device name', async () => {
     // #when
-    await updateDevice(db as unknown as D1Database, 'dev-1', { name: 'New Name' })
+    await updateDevice(db as unknown as D1Database, 'dev-1', 'user-1', { name: 'New Name' })
 
     // #then
     expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('name = ?'))
@@ -157,7 +157,7 @@ describe('updateDevice', () => {
 
   it('should update last_sync_at', async () => {
     // #when
-    await updateDevice(db as unknown as D1Database, 'dev-1', { last_sync_at: 9999 })
+    await updateDevice(db as unknown as D1Database, 'dev-1', 'user-1', { last_sync_at: 9999 })
 
     // #then
     expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('last_sync_at = ?'))
@@ -165,7 +165,7 @@ describe('updateDevice', () => {
 
   it('should do nothing when no updates are provided', async () => {
     // #when
-    await updateDevice(db as unknown as D1Database, 'dev-1', {})
+    await updateDevice(db as unknown as D1Database, 'dev-1', 'user-1', {})
 
     // #then
     const stmt = db.prepare.mock.results[0]?.value as MockStatement | undefined

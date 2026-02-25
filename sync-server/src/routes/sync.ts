@@ -42,7 +42,7 @@ const changesRateLimit = createRateLimiter({
 
 const pullRateLimit = createRateLimiter({
   keyPrefix: 'sync_pull',
-  maxRequests: 30,
+  maxRequests: 120,
   windowSeconds: 60
 })
 
@@ -112,7 +112,7 @@ sync.get('/changes', changesRateLimit, async (c) => {
 
   if (changes.items.length > 0 || changes.deleted.length > 0) {
     await updateDeviceCursor(c.env.DB, deviceId, userId, changes.nextCursor)
-    await updateDevice(c.env.DB, deviceId, {
+    await updateDevice(c.env.DB, deviceId, userId, {
       last_sync_at: Math.floor(Date.now() / 1000)
     })
   }
@@ -155,7 +155,7 @@ sync.post('/push', pushRateLimit, async (c) => {
   }
 
   if (accepted.length > 0) {
-    await updateDevice(c.env.DB, deviceId, {
+    await updateDevice(c.env.DB, deviceId, userId, {
       last_sync_at: Math.floor(Date.now() / 1000)
     })
     const doId = c.env.USER_SYNC_STATE.idFromName(userId)
@@ -242,13 +242,13 @@ const NoteIdSchema = z
 
 const crdtPushRateLimit = createRateLimiter({
   keyPrefix: 'crdt_push',
-  maxRequests: 120,
+  maxRequests: 300,
   windowSeconds: 60
 })
 
 const crdtPullRateLimit = createRateLimiter({
   keyPrefix: 'crdt_pull',
-  maxRequests: 120,
+  maxRequests: 300,
   windowSeconds: 60
 })
 

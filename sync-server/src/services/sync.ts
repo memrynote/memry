@@ -406,6 +406,8 @@ export const getChanges = async (
   return { items, deleted, hasMore, nextCursor }
 }
 
+const D1_MAX_BIND_PARAMS = 95
+
 export const pullItems = async (
   db: D1Database,
   storage: R2Bucket,
@@ -429,29 +431,51 @@ export const pullItems = async (
     return []
   }
 
-  const placeholders = itemIds.map(() => '?').join(', ')
-  const rows = await db
-    .prepare(
-      `SELECT item_id, item_type, blob_key, crypto_version, operation, signer_device_id, signature,
-              state_vector, clock, deleted_at, server_cursor
-       FROM sync_items
-       WHERE user_id = ? AND item_id IN (${placeholders})
-       ORDER BY server_cursor ASC`
-    )
-    .bind(userId, ...itemIds)
-    .all<{
-      item_id: string
-      item_type: string
-      blob_key: string
-      crypto_version: number
-      operation: string
-      signer_device_id: string | null
-      signature: string | null
-      state_vector: string | null
-      clock: string | null
-      deleted_at: number | null
-      server_cursor: number
-    }>()
+  const BATCH_SIZE = D1_MAX_BIND_PARAMS - 1
+
+  const allDbRows: Array<{
+    item_id: string
+    item_type: string
+    blob_key: string
+    crypto_version: number
+    operation: string
+    signer_device_id: string | null
+    signature: string | null
+    state_vector: string | null
+    clock: string | null
+    deleted_at: number | null
+    server_cursor: number
+  }> = []
+
+  for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
+    const batch = itemIds.slice(i, i + BATCH_SIZE)
+    const placeholders = batch.map(() => '?').join(', ')
+    const rows = await db
+      .prepare(
+        `SELECT item_id, item_type, blob_key, crypto_version, operation, signer_device_id, signature,
+                state_vector, clock, deleted_at, server_cursor
+         FROM sync_items
+         WHERE user_id = ? AND item_id IN (${placeholders})
+         ORDER BY server_cursor ASC`
+      )
+      .bind(userId, ...batch)
+      .all<{
+        item_id: string
+        item_type: string
+        blob_key: string
+        crypto_version: number
+        operation: string
+        signer_device_id: string | null
+        signature: string | null
+        state_vector: string | null
+        clock: string | null
+        deleted_at: number | null
+        server_cursor: number
+      }>()
+    allDbRows.push(...(rows.results ?? []))
+  }
+
+  allDbRows.sort((a, b) => a.server_cursor - b.server_cursor)
 
   const results: Array<{
     id: string
@@ -466,7 +490,7 @@ export const pullItems = async (
     blob: EncryptedItemPayload
   }> = []
 
-  for (const row of rows.results ?? []) {
+  for (const row of allDbRows) {
     const blob = await getBlob(storage, row.blob_key, userId)
     if (!blob) {
       throw new AppError(
