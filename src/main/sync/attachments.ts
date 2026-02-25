@@ -13,6 +13,7 @@ import { secureCleanup } from '../crypto/index'
 import { signPayload, verifySignature } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@shared/contracts/cbor-ordering'
 import { NetworkError, SyncServerError, RateLimitError, type FetchFn } from './http-client'
+import { withRetry } from './retry'
 
 import type { UploadInitResponse, UploadStatusResponse } from '@shared/contracts/blob-api'
 
@@ -227,9 +228,14 @@ export class AttachmentSyncService {
   // Upload (T151, T152)
   // ==========================================================================
 
-  async uploadAttachment(noteId: string, filePath: string): Promise<UploadResult> {
+  async uploadAttachment(
+    noteId: string,
+    filePath: string,
+    onProgress?: ProgressCallback
+  ): Promise<UploadResult> {
     const [token, vaultKey, signingKeys] = await this.requireAuth()
     const fileKey = generateFileKey()
+    const emit = (p: TransferProgress): void => (onProgress ?? this.onProgress)?.(p)
 
     try {
       const fileStat = await stat(filePath)
@@ -254,7 +260,7 @@ export class AttachmentSyncService {
       const encryptedChunks: { data: Uint8Array; ref: ChunkRef }[] = []
 
       for (let i = 0; i < totalChunks; i++) {
-        this.emitProgress({
+        emit({
           attachmentId,
           phase: 'hashing',
           chunksCompleted: i,
@@ -283,7 +289,7 @@ export class AttachmentSyncService {
         chunkRefs.push(ref)
         encryptedChunks.push({ data: encryptedWithNonce, ref })
 
-        this.emitProgress({
+        emit({
           attachmentId,
           phase: 'encrypting',
           chunksCompleted: i + 1,
@@ -358,7 +364,7 @@ export class AttachmentSyncService {
         uploadState.completedChunks.add(chunk.ref.index)
         bytesUploaded += chunk.ref.size
 
-        this.emitProgress({
+        emit({
           attachmentId,
           phase: 'uploading',
           chunksCompleted: uploadState.completedChunks.size,
@@ -499,7 +505,10 @@ export class AttachmentSyncService {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/initiate`
     const body = JSON.stringify({ attachmentId, filename, totalSize, chunkCount })
 
-    const resp = await binaryFetch('POST', url, token, body, this.deps.fetchFn)
+    const { value: resp } = await withRetry(
+      () => binaryFetch('POST', url, token, body, this.deps.fetchFn),
+      { maxRetries: 3, baseDelayMs: 2000 }
+    )
     if (!resp.ok) {
       const errBody = await resp.text()
       throw new SyncServerError(`Failed to initiate upload: ${errBody}`, resp.status)
@@ -551,7 +560,10 @@ export class AttachmentSyncService {
   ): Promise<void> {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/${sessionId}/complete`
     const body = JSON.stringify(encryptedManifest)
-    const resp = await binaryFetch('POST', url, token, body, this.deps.fetchFn)
+    const { value: resp } = await withRetry(
+      () => binaryFetch('POST', url, token, body, this.deps.fetchFn),
+      { maxRetries: 3, baseDelayMs: 2000 }
+    )
 
     if (!resp.ok) {
       const errBody = await resp.text()

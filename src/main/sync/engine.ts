@@ -31,8 +31,8 @@ import { SyncQueueManager, ERROR_RETENTION_DAYS, type QueueStats } from './queue
 import { NetworkMonitor } from './network'
 import { WebSocketManager, type WebSocketMessage } from './websocket'
 import { secureCleanup } from '../crypto/index'
-import { encryptItemForPush } from './encrypt'
-import { decryptItemFromPull, SignatureVerificationError } from './decrypt'
+import { encryptPushBatch, decryptPullBatch } from './sync-crypto-batch'
+import type { SyncWorkerBridge } from './worker-bridge'
 import { ItemApplier } from './apply-item'
 import { getHandler, type DrizzleDb } from './item-handlers'
 import { withRetry } from './retry'
@@ -43,6 +43,9 @@ import type { CrdtProvider } from './crdt-provider'
 import { decryptCrdtUpdate } from './crdt-encrypt'
 
 const log = createLogger('SyncEngine')
+
+const YIELD_EVERY_N_ITEMS = 20
+const yieldToEventLoop = (): Promise<void> => new Promise((r) => setImmediate(r))
 
 const PUSH_BATCH_SIZE = 100
 const MAX_PUSH_ITERATIONS = 50
@@ -70,6 +73,7 @@ export interface SyncEngineDeps {
   db: DrizzleDb
   emitToRenderer: (channel: string, data: unknown) => void
   crdtProvider?: CrdtProvider
+  workerBridge?: SyncWorkerBridge
 }
 
 export interface SyncEngineOptions {
@@ -96,6 +100,7 @@ export class SyncEngine extends EventEmitter {
   private readonly PUSH_DEBOUNCE_MS = 2000
   private applier: ItemApplier
   private deviceKeyCache = new Map<string, Uint8Array | null>()
+  private suppressPushDuringPull = false
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
@@ -266,25 +271,18 @@ export class SyncEngine extends EventEmitter {
 
         const dedupedItems = this.deduplicateByItemId(items)
 
-        const pushItems = dedupedItems.map((item) => {
-          const payload = this.resolvePushPayload(item, signingKeys.deviceId)
-          const payloadMeta = this.extractPayloadMetadata(payload)
-          const result = encryptItemForPush({
-            id: item.itemId,
-            type: item.type as Parameters<typeof encryptItemForPush>[0]['type'],
-            operation: item.operation as Parameters<typeof encryptItemForPush>[0]['operation'],
-            content: new TextEncoder().encode(payload),
-            vaultKey,
-            signingSecretKey: signingKeys.secretKey,
-            signerDeviceId: signingKeys.deviceId,
-            clock: payloadMeta.clock,
-            stateVector: payloadMeta.stateVector,
-            ...(item.operation === 'delete' && {
-              deletedAt: Math.floor(Date.now() / 1000)
-            })
-          })
-          return { queueId: item.id, pushItem: result.pushItem }
-        })
+        const pushItems = await encryptPushBatch(
+          dedupedItems,
+          vaultKey,
+          signingKeys.secretKey,
+          signingKeys.deviceId,
+          {
+            workerBridge: this.deps.workerBridge,
+            queue: this.deps.queue,
+            extractPayloadMetadata: (p) => this.extractPayloadMetadata(p),
+            resolvePushPayload: (item, deviceId) => this.resolvePushPayload(item, deviceId)
+          }
+        )
 
         const response = await withRetry(
           () =>
@@ -308,7 +306,10 @@ export class SyncEngine extends EventEmitter {
           lastMaxCursor = response.value.maxCursor
         }
         const acceptedSet = new Set(response.value.accepted)
-        for (const { queueId, pushItem } of pushItems) {
+        for (let pi = 0; pi < pushItems.length; pi++) {
+          if (this.abortController?.signal.aborted) break
+          if (pi > 0 && pi % YIELD_EVERY_N_ITEMS === 0) await yieldToEventLoop()
+          const { queueId, pushItem } = pushItems[pi]
           if (acceptedSet.has(pushItem.id)) {
             this.deps.queue.markSuccess(queueId)
             this.markItemSynced(pushItem.id, pushItem.type as SyncItemType)
@@ -372,7 +373,7 @@ export class SyncEngine extends EventEmitter {
   }
 
   requestPush(): void {
-    if (this.isPaused()) return
+    if (this.isPaused() || this.suppressPushDuringPull) return
     this.pendingPushRequested = true
     if (!this.deps.network.online) return
     if (this.pushDebounceTimer) return
@@ -417,6 +418,8 @@ export class SyncEngine extends EventEmitter {
     let pulledCount = 0
     const processedIds = new Set<string>()
     this.deviceKeyCache.clear()
+
+    let totalConflictsResolved = 0
 
     try {
       let cursor = this.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)
@@ -467,138 +470,123 @@ export class SyncEngine extends EventEmitter {
           let pageSkipped = 0
           let pageFailed = 0
           let cryptoFailCount = 0
+          let pageConflicts = 0
 
-          for (const item of parsed.data.items) {
+          const itemsToProcess = parsed.data.items.filter((item) => {
             if (processedIds.has(item.id)) {
               log.debug('Skipping duplicate item in pull', { itemId: item.id })
               pageSkipped++
-              continue
+              return false
             }
+            return true
+          })
 
-            try {
-              const signerPubKey = await this.resolveDeviceKey(item.signerDeviceId)
-              if (!signerPubKey) {
-                log.warn('Skipping item from unresolvable signer device', {
-                  itemId: item.id,
-                  signerDeviceId: item.signerDeviceId
+          const { decrypted, failures } = await decryptPullBatch(itemsToProcess, vaultKey, {
+            workerBridge: this.deps.workerBridge,
+            resolveDeviceKey: (id) => this.resolveDeviceKey(id)
+          })
+
+          for (const failure of failures) {
+            log.error('Pull: failed to process item', {
+              itemId: failure.id,
+              type: failure.type,
+              signerDeviceId: failure.signerDeviceId,
+              isCryptoError: failure.isCryptoError,
+              error: failure.error
+            })
+            pageFailed++
+            if (failure.isCryptoError) cryptoFailCount++
+          }
+
+          this.suppressPushDuringPull = true
+          try {
+            for (let i = 0; i < decrypted.length; i++) {
+              if (this.abortController?.signal.aborted) break
+              if (i > 0 && i % YIELD_EVERY_N_ITEMS === 0) await yieldToEventLoop()
+              const dec = decrypted[i]
+              try {
+                const contentBytes = new TextEncoder().encode(dec.content)
+                const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
+                const result = this.applier.apply({
+                  itemId: dec.id,
+                  type: dec.type as Parameters<ItemApplier['apply']>[0]['type'],
+                  operation: itemOp,
+                  content: contentBytes,
+                  clock: dec.clock,
+                  deletedAt: dec.deletedAt
                 })
-                pageSkipped++
-                continue
-              }
 
-              log.debug('Pull: verifying item', {
-                itemId: item.id,
-                signerDeviceId: item.signerDeviceId,
-                operation: item.operation,
-                cryptoVersion: item.cryptoVersion,
-                hasMetadata: !!(item.clock || item.stateVector),
-                signaturePrefix: item.signature.slice(0, 8)
-              })
-
-              const decrypted = decryptItemFromPull({
-                id: item.id,
-                type: item.type,
-                operation: item.operation,
-                cryptoVersion: item.cryptoVersion,
-                encryptedKey: item.blob.encryptedKey,
-                keyNonce: item.blob.keyNonce,
-                encryptedData: item.blob.encryptedData,
-                dataNonce: item.blob.dataNonce,
-                signature: item.signature,
-                signerDeviceId: item.signerDeviceId,
-                deletedAt: item.deletedAt,
-                metadata:
-                  item.clock || item.stateVector
-                    ? {
-                        ...(item.clock ? { clock: item.clock } : {}),
-                        ...(item.stateVector ? { stateVector: item.stateVector } : {})
-                      }
-                    : undefined,
-                vaultKey,
-                signerPublicKey: signerPubKey
-              })
-
-              const itemOp = item.deletedAt ? 'delete' : (item.operation as 'create' | 'update')
-              const result = this.applier.apply({
-                itemId: item.id,
-                type: item.type as Parameters<ItemApplier['apply']>[0]['type'],
-                operation: itemOp,
-                content: decrypted.content,
-                clock: item.clock,
-                deletedAt: item.deletedAt
-              })
-
-              if (result === 'conflict') {
-                let remoteVersion: Record<string, unknown> = {}
-                try {
-                  const parsedRemote = JSON.parse(
-                    new TextDecoder().decode(decrypted.content)
-                  ) as unknown
-                  if (
-                    parsedRemote &&
-                    typeof parsedRemote === 'object' &&
-                    !Array.isArray(parsedRemote)
-                  ) {
-                    remoteVersion = parsedRemote as Record<string, unknown>
+                if (result === 'conflict') {
+                  let remoteVersion: Record<string, unknown> = {}
+                  try {
+                    const parsedRemote = JSON.parse(dec.content) as unknown
+                    if (
+                      parsedRemote &&
+                      typeof parsedRemote === 'object' &&
+                      !Array.isArray(parsedRemote)
+                    ) {
+                      remoteVersion = parsedRemote as Record<string, unknown>
+                    }
+                    if (dec.clock) remoteVersion.clock = dec.clock
+                  } catch {
+                    log.warn('Failed to parse remote content for conflict event', {
+                      itemId: dec.id
+                    })
                   }
-                  if (item.clock) remoteVersion.clock = item.clock
-                } catch {
-                  log.warn('Failed to parse remote content for conflict event', {
-                    itemId: item.id
+
+                  const localVersion = this.fetchLocalItem(dec.id, dec.type)
+
+                  this.deps.emitToRenderer(EVENT_CHANNELS.CONFLICT_DETECTED, {
+                    itemId: dec.id,
+                    type: dec.type,
+                    localVersion,
+                    remoteVersion,
+                    localClock: (localVersion.clock as Record<string, number>) ?? undefined,
+                    remoteClock: dec.clock ?? undefined
+                  } satisfies ConflictDetectedEvent)
+
+                  this.deps.queue.enqueue({
+                    type: dec.type as SyncItemType,
+                    itemId: dec.id,
+                    operation: 'update',
+                    payload: '{}'
                   })
+                  pageConflicts++
                 }
 
-                const localVersion = this.fetchLocalItem(item.id, item.type)
+                if (
+                  (dec.type === 'note' || dec.type === 'journal') &&
+                  this.deps.crdtProvider &&
+                  itemOp !== 'delete'
+                ) {
+                  await this.applyCrdtIncrementals(dec.id, token, vaultKey)
+                }
 
-                this.deps.emitToRenderer(EVENT_CHANNELS.CONFLICT_DETECTED, {
-                  itemId: item.id,
-                  type: item.type,
-                  localVersion,
-                  remoteVersion,
-                  localClock: (localVersion.clock as Record<string, number>) ?? undefined,
-                  remoteClock: item.clock ?? undefined
-                } satisfies ConflictDetectedEvent)
+                processedIds.add(dec.id)
+                pulledCount++
+                pageApplied++
+                this.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
+              } catch (applyError) {
+                log.error('Pull: failed to apply decrypted item', {
+                  itemId: dec.id,
+                  type: dec.type,
+                  error: applyError instanceof Error ? applyError.message : String(applyError)
+                })
+                pageFailed++
               }
-
-              if (
-                (item.type === 'note' || item.type === 'journal') &&
-                this.deps.crdtProvider &&
-                itemOp !== 'delete'
-              ) {
-                await this.applyCrdtIncrementals(item.id, token, vaultKey)
-              }
-
-              processedIds.add(item.id)
-              pulledCount++
-              pageApplied++
-              this.emitItemSynced(item.id, item.type, 'pull', itemOp)
-            } catch (itemError) {
-              const isCryptoError =
-                itemError instanceof SignatureVerificationError ||
-                (itemError instanceof Error &&
-                  (itemError.message.includes('signature') ||
-                    itemError.message.includes('decrypt') ||
-                    itemError.message.includes('sodium') ||
-                    itemError.message.includes('nonce') ||
-                    itemError.message.includes('base64')))
-
-              log.error('Pull: failed to process item', {
-                itemId: item.id,
-                type: item.type,
-                signerDeviceId: item.signerDeviceId,
-                isCryptoError,
-                error: itemError instanceof Error ? itemError.message : String(itemError)
-              })
-              pageFailed++
-              if (isCryptoError) cryptoFailCount++
             }
+          } finally {
+            this.suppressPushDuringPull = false
           }
+
+          totalConflictsResolved += pageConflicts
 
           log.info('Pull page processed', {
             total: parsed.data.items.length,
             applied: pageApplied,
             skipped: pageSkipped,
-            failed: pageFailed
+            failed: pageFailed,
+            conflicts: pageConflicts
           })
 
           if (
@@ -636,6 +624,13 @@ export class SyncEngine extends EventEmitter {
 
       this.recordHistory('pull', pulledCount, Date.now() - startTime)
       this.updateLastSyncAt()
+
+      if (totalConflictsResolved > 0) {
+        log.info('Pull: re-enqueued merged items for push-back', {
+          conflicts: totalConflictsResolved
+        })
+        this.requestPush()
+      }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         log.debug('Pull aborted (likely network change)')
@@ -672,8 +667,22 @@ export class SyncEngine extends EventEmitter {
         seededCount
       })
 
+      if (queueAfterSeed > 0) {
+        this.deps.emitToRenderer(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
+          phase: 'tasks',
+          processedItems: 0,
+          totalItems: queueAfterSeed
+        } satisfies InitialSyncProgressEvent)
+      }
+
       await this.push()
       log.debug('fullSync: push complete')
+
+      this.deps.emitToRenderer(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
+        phase: 'manifest',
+        processedItems: 0,
+        totalItems: 0
+      } satisfies InitialSyncProgressEvent)
 
       const manifestResult = await checkManifestIntegrity({
         db: this.deps.db,
@@ -1056,7 +1065,7 @@ export class SyncEngine extends EventEmitter {
   }
 
   private resolvePushPayload(
-    item: typeof import('@shared/db/schema/sync-queue').syncQueue.$inferSelect,
+    item: { itemId: string; type: string; operation: string; payload: string },
     deviceId: string
   ): string {
     if (item.operation === 'delete') return item.payload
@@ -1127,18 +1136,22 @@ export class SyncEngine extends EventEmitter {
       let hasMore = true
 
       while (hasMore) {
-        const result = await getFromServer<{
-          updates: Array<{
-            sequenceNum: number
-            data: string
-            createdAt: number
-            signerDeviceId: string
-          }>
-          hasMore: boolean
-        }>(
-          `/sync/crdt/updates?note_id=${encodeURIComponent(noteId)}&since=${since}&limit=100`,
-          token
-        )
+        const result = await withRetry(
+          () =>
+            getFromServer<{
+              updates: Array<{
+                sequenceNum: number
+                data: string
+                createdAt: number
+                signerDeviceId: string
+              }>
+              hasMore: boolean
+            }>(
+              `/sync/crdt/updates?note_id=${encodeURIComponent(noteId)}&since=${since}&limit=100`,
+              token
+            ),
+          { maxRetries: 3, baseDelayMs: 2000 }
+        ).then((r) => r.value)
 
         const signerIds = new Set(result.updates.map((u) => u.signerDeviceId))
         for (const sid of signerIds) {

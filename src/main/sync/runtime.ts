@@ -5,7 +5,12 @@ import { KEYCHAIN_ENTRIES } from '@shared/contracts/crypto'
 import { syncDevices } from '@shared/db/schema/sync-devices'
 import { getDatabase, type DrizzleDb } from '../database'
 import { createLogger } from '../lib/logger'
-import { getDevicePublicKey as deriveDevicePublicKey, retrieveKey, secureCleanup } from '../crypto'
+import {
+  getDevicePublicKey as deriveDevicePublicKey,
+  getOrDeriveVaultKey,
+  retrieveKey,
+  secureCleanup
+} from '../crypto'
 import { SyncEngine, type SyncEngineDeps } from './engine'
 import { SyncQueueManager } from './queue'
 import { NetworkMonitor } from './network'
@@ -26,7 +31,9 @@ import { CrdtUpdateQueue } from './crdt-queue'
 import { recoverDirtyItems } from './dirty-recovery'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { postToServer, pushCrdtSnapshot, SyncServerError } from './http-client'
+import { withRetry } from './retry'
 import { getValidAccessToken, retrieveToken, setOnTokenRefreshed } from './token-manager'
+import { SyncWorkerBridge } from './worker-bridge'
 
 const log = createLogger('SyncRuntime')
 
@@ -36,6 +43,7 @@ interface SyncRuntimeState {
   ws: WebSocketManager
   engine: SyncEngine
   crdtQueue: CrdtUpdateQueue
+  workerBridge: SyncWorkerBridge
 }
 
 const SYNC_SERVER_URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'
@@ -123,7 +131,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       setOnTokenRefreshed(() => crdtQueue.resume())
       crdtQueue.start(async (noteId, updates) => {
         const token = await getValidAccessToken()
-        const vaultKey = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY)
+        const vaultKey = await getOrDeriveVaultKey().catch(() => null)
         const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
         if (!token || !vaultKey || !signingSecretKey) return
 
@@ -132,7 +140,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             const encrypted = encryptCrdtUpdate(raw, vaultKey, noteId, signingSecretKey)
             return btoa(String.fromCharCode(...encrypted))
           })
-          await postToServer('/sync/crdt/updates', { noteId, updates: b64Updates }, token)
+          await withRetry(
+            () => postToServer('/sync/crdt/updates', { noteId, updates: b64Updates }, token),
+            { maxRetries: 3, baseDelayMs: 2000 }
+          )
         } catch (err) {
           if (err instanceof SyncServerError && err.statusCode === 401) {
             crdtQueue.pause()
@@ -146,7 +157,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       const snapshotPushFn = async (noteId: string, state: Uint8Array): Promise<void> => {
         const token = await getValidAccessToken()
-        const vaultKey = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY)
+        const vaultKey = await getOrDeriveVaultKey().catch(() => null)
         const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
         if (!token || !vaultKey || !signingSecretKey) {
           log.warn('Missing credentials for CRDT snapshot push', {
@@ -162,7 +173,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
         try {
           const encrypted = encryptCrdtUpdate(state, vaultKey, noteId, signingSecretKey)
-          await pushCrdtSnapshot(noteId, encrypted, token)
+          await withRetry(() => pushCrdtSnapshot(noteId, encrypted, token), {
+            maxRetries: 3,
+            baseDelayMs: 2000
+          })
           log.debug('Pushed CRDT snapshot', { noteId, size: state.byteLength })
         } catch (err) {
           if (err instanceof SyncServerError && err.statusCode === 401) {
@@ -184,6 +198,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         }
       }
 
+      const workerBridge = new SyncWorkerBridge()
+      await workerBridge.start()
+
       const network = new NetworkMonitor()
       network.start()
 
@@ -199,7 +216,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         ws,
         db: engineDb,
         getAccessToken: () => getValidAccessToken(),
-        getVaultKey: () => retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY),
+        getVaultKey: () => getOrDeriveVaultKey().catch(() => null),
         getSigningKeys: async () => {
           const secretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
           if (!secretKey) return null
@@ -239,14 +256,15 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           return getDeviceSigningKey(engineDb, deviceId, token)
         },
         emitToRenderer: emitFn,
-        crdtProvider
+        crdtProvider,
+        workerBridge
       })
 
       queue.setOnItemEnqueued(() => engine.requestPush())
 
       recoverDirtyItems(db as unknown as Parameters<typeof recoverDirtyItems>[0])
 
-      pendingRuntime = { queue, network, ws, engine, crdtQueue }
+      pendingRuntime = { queue, network, ws, engine, crdtQueue, workerBridge }
       runtime = pendingRuntime
       await engine.start()
       log.info('Sync runtime started')
@@ -261,6 +279,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         pendingRuntime.crdtQueue.stop()
         pendingRuntime.ws.disconnect()
         pendingRuntime.network.stop()
+        await pendingRuntime.workerBridge.stop().catch(() => {})
         await pendingRuntime.engine.stop().catch(() => {})
       }
       await getCrdtProvider()
@@ -334,6 +353,9 @@ export async function stopSyncRuntime(): Promise<void> {
   }
 
   active.crdtQueue.stop()
+  await active.workerBridge.stop().catch((err) => {
+    log.error('Failed to stop sync worker', err)
+  })
   await getCrdtProvider()
     .destroy()
     .catch((err) => {

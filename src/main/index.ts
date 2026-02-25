@@ -35,6 +35,7 @@ if (process.type === 'browser') {
 
 const deviceId = process.env.MEMRY_DEVICE
 if (deviceId) {
+  app.name = `memry-${deviceId}`
   const deviceUserData = `${app.getPath('userData')}-${deviceId}`
   app.setPath('userData', deviceUserData)
 }
