@@ -36,7 +36,12 @@ import type { SyncWorkerBridge } from './worker-bridge'
 import { ItemApplier } from './apply-item'
 import { getHandler, type DrizzleDb } from './item-handlers'
 import { withRetry } from './retry'
-import { postToServer, getFromServer, fetchCrdtSnapshot } from './http-client'
+import {
+  postToServer,
+  getFromServer,
+  fetchCrdtSnapshot,
+  type CrdtBatchPullResponse
+} from './http-client'
 import { checkManifestIntegrity } from './manifest-check'
 import { runInitialSeed } from './initial-seed'
 import type { CrdtProvider } from './crdt-provider'
@@ -418,6 +423,7 @@ export class SyncEngine extends EventEmitter {
     const startTime = Date.now()
     let pulledCount = 0
     const processedIds = new Set<string>()
+    const crdtNoteIds: string[] = []
     this.deviceKeyCache.clear()
 
     let totalConflictsResolved = 0
@@ -560,7 +566,7 @@ export class SyncEngine extends EventEmitter {
                   this.deps.crdtProvider &&
                   itemOp !== 'delete'
                 ) {
-                  await this.applyCrdtIncrementals(dec.id, token, vaultKey)
+                  crdtNoteIds.push(dec.id)
                 }
 
                 processedIds.add(dec.id)
@@ -578,6 +584,11 @@ export class SyncEngine extends EventEmitter {
             }
           } finally {
             this.suppressPushDuringPull = false
+          }
+
+          if (crdtNoteIds.length > 0 && this.deps.crdtProvider) {
+            await this.applyCrdtBatch(crdtNoteIds, token, vaultKey)
+            crdtNoteIds.length = 0
           }
 
           totalConflictsResolved += pageConflicts
@@ -1195,6 +1206,117 @@ export class SyncEngine extends EventEmitter {
       }
       log.warn('Failed to apply CRDT incrementals', {
         noteId,
+        error: err instanceof Error ? err.message : String(err)
+      })
+    }
+  }
+
+  private async applyCrdtBatch(
+    noteIds: string[],
+    token: string,
+    vaultKey: Uint8Array
+  ): Promise<void> {
+    if (!this.deps.crdtProvider || !this.abortController) return
+
+    try {
+      const sinceMap = new Map<string, number>()
+
+      for (const noteId of noteIds) {
+        try {
+          await this.deps.crdtProvider.open(noteId)
+        } catch (err) {
+          log.warn('Failed to open CRDT doc, skipping note in batch', {
+            noteId,
+            error: err instanceof Error ? err.message : String(err)
+          })
+          continue
+        }
+
+        let since = 0
+        const stateVector = this.deps.crdtProvider.getStateVector(noteId)
+        const needsBootstrap = !stateVector || stateVector.length <= 2
+
+        if (needsBootstrap) {
+          const snap = await fetchCrdtSnapshot(noteId, token)
+          if (snap) {
+            const pubKey = await this.resolveDeviceKey(snap.signerDeviceId)
+            if (pubKey) {
+              const decrypted = decryptCrdtUpdate(snap.snapshot, vaultKey, noteId, pubKey)
+              this.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted)
+              since = snap.sequenceNum
+            } else {
+              log.warn('Skipping CRDT snapshot from unresolvable signer in batch', {
+                noteId,
+                signerDeviceId: snap.signerDeviceId
+              })
+            }
+          }
+        }
+        sinceMap.set(noteId, since)
+      }
+
+      if (sinceMap.size === 0) return
+
+      const activeSince = new Map(sinceMap)
+
+      while (activeSince.size > 0) {
+        if (this.abortController.signal.aborted) return
+
+        const notes = Array.from(activeSince, ([noteId, since]) => ({ noteId, since }))
+
+        const result = await withRetry(
+          () =>
+            postToServer<CrdtBatchPullResponse>(
+              '/sync/crdt/updates/batch',
+              { notes, limit: 100 },
+              token
+            ),
+          { maxRetries: 3, baseDelayMs: 2000, signal: this.abortController.signal }
+        ).then((r) => r.value)
+
+        const signerIds = new Set<string>()
+        for (const noteData of Object.values(result.notes)) {
+          for (const u of noteData.updates) signerIds.add(u.signerDeviceId)
+        }
+        for (const sid of signerIds) await this.resolveDeviceKey(sid)
+
+        for (const [noteId, noteData] of Object.entries(result.notes)) {
+          for (const entry of noteData.updates) {
+            const bin = atob(entry.data)
+            const packed = new Uint8Array(bin.length)
+            for (let i = 0; i < bin.length; i++) packed[i] = bin.charCodeAt(i)
+
+            const pubKey = await this.resolveDeviceKey(entry.signerDeviceId)
+            if (!pubKey) {
+              log.warn('Skipping CRDT batch update from unresolvable signer', {
+                noteId,
+                signerDeviceId: entry.signerDeviceId,
+                sequenceNum: entry.sequenceNum
+              })
+              activeSince.set(noteId, entry.sequenceNum)
+              continue
+            }
+            const decrypted = decryptCrdtUpdate(packed, vaultKey, noteId, pubKey)
+            this.deps.crdtProvider!.applyRemoteUpdate(noteId, decrypted)
+            activeSince.set(noteId, entry.sequenceNum)
+          }
+
+          if (!noteData.hasMore) activeSince.delete(noteId)
+        }
+
+        for (const [noteId] of activeSince) {
+          if (!result.notes[noteId]) {
+            log.warn('Server omitted noteId from batch response, removing', { noteId })
+            activeSince.delete(noteId)
+          }
+        }
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        log.debug('applyCrdtBatch aborted via signal')
+        return
+      }
+      log.warn('Failed to apply CRDT batch', {
         error: err instanceof Error ? err.message : String(err)
       })
     }
