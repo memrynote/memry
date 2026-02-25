@@ -18,6 +18,7 @@ import { updateDevice } from '../services/device'
 import {
   storeUpdates,
   getUpdates,
+  getBatchUpdates,
   storeSnapshot,
   getSnapshot,
   pruneUpdatesBeforeSnapshot
@@ -252,6 +253,29 @@ const crdtPullRateLimit = createRateLimiter({
   windowSeconds: 60
 })
 
+const crdtBatchPullRateLimit = createRateLimiter({
+  keyPrefix: 'crdt_batch_pull',
+  maxRequests: 30,
+  windowSeconds: 60
+})
+
+const CrdtBatchPullSchema = z.object({
+  notes: z
+    .array(
+      z.object({
+        noteId: NoteIdSchema,
+        since: z.number().int().nonnegative().default(0)
+      })
+    )
+    .min(1)
+    .max(100)
+    .refine(
+      (arr) => new Set(arr.map((n) => n.noteId)).size === arr.length,
+      'Duplicate noteIds are not allowed'
+    ),
+  limit: z.number().int().min(1).max(100).default(100)
+})
+
 const CrdtPushSchema = z.object({
   noteId: NoteIdSchema,
   updates: z.array(z.string().max(MAX_UPDATE_BYTES * 2)).max(100)
@@ -317,6 +341,36 @@ sync.get('/crdt/updates', crdtPullRateLimit, async (c) => {
   }))
 
   return c.json({ updates: encoded, hasMore: result.hasMore })
+})
+
+sync.post('/crdt/updates/batch', crdtBatchPullRateLimit, async (c) => {
+  const userId = c.get('userId')!
+  const body: unknown = await c.req.json()
+  const parsed = CrdtBatchPullSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(
+      ErrorCodes.VALIDATION_ERROR,
+      `Invalid batch request: ${parsed.error.issues[0]?.message ?? 'validation failed'}`,
+      400
+    )
+  }
+
+  const { notes, limit } = parsed.data
+  const batchResult = await getBatchUpdates(c.env.DB, userId, notes, limit)
+
+  const response: Record<string, { updates: unknown[]; hasMore: boolean }> = {}
+  for (const [noteId, r] of Object.entries(batchResult)) {
+    response[noteId] = {
+      updates: r.updates.map((u) => ({
+        sequenceNum: u.sequence_num,
+        data: safeBase64Encode(u.update_data as ArrayBuffer),
+        signerDeviceId: u.signer_device_id,
+        createdAt: u.created_at
+      })),
+      hasMore: r.hasMore
+    }
+  }
+  return c.json({ notes: response })
 })
 
 const CrdtSnapshotPushSchema = z.object({

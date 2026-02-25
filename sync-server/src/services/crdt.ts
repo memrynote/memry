@@ -71,6 +71,35 @@ export const getUpdates = async (
   }
 }
 
+export const getBatchUpdates = async (
+  db: D1Database,
+  userId: string,
+  notes: Array<{ noteId: string; since: number }>,
+  limitPerNote: number
+): Promise<Record<string, { updates: CrdtUpdate[]; hasMore: boolean }>> => {
+  if (notes.length === 0) return {}
+
+  const statements = notes.map((n) =>
+    db
+      .prepare(
+        'SELECT id, user_id, note_id, update_data, sequence_num, signer_device_id, created_at FROM crdt_updates WHERE user_id = ? AND note_id = ? AND sequence_num > ? ORDER BY sequence_num ASC LIMIT ?'
+      )
+      .bind(userId, n.noteId, n.since, limitPerNote + 1)
+  )
+
+  const batchResults = await db.batch(statements)
+
+  const result: Record<string, { updates: CrdtUpdate[]; hasMore: boolean }> = {}
+  for (let i = 0; i < notes.length; i++) {
+    const rows = (batchResults[i] as D1Result<CrdtUpdate>).results ?? []
+    result[notes[i].noteId] = {
+      updates: rows.slice(0, limitPerNote),
+      hasMore: rows.length > limitPerNote
+    }
+  }
+  return result
+}
+
 export const storeSnapshot = async (
   db: D1Database,
   storage: R2Bucket,

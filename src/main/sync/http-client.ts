@@ -139,6 +139,21 @@ export interface CrdtSnapshotResponse {
   signerDeviceId: string | null
 }
 
+export interface CrdtBatchPullResponse {
+  notes: Record<
+    string,
+    {
+      updates: Array<{
+        sequenceNum: number
+        data: string
+        signerDeviceId: string
+        createdAt: number
+      }>
+      hasMore: boolean
+    }
+  >
+}
+
 export async function pushCrdtSnapshot(
   noteId: string,
   encryptedSnapshot: Uint8Array,
