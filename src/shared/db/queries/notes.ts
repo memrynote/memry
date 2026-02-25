@@ -42,7 +42,27 @@ type DrizzleDb = BetterSQLite3Database<typeof schema>
  * Insert a new note into the cache.
  */
 export function insertNoteCache(db: DrizzleDb, note: NewNoteCache): NoteCache {
-  return db.insert(noteCache).values(note).returning().get()
+  return db
+    .insert(noteCache)
+    .values(note)
+    .onConflictDoUpdate({
+      target: noteCache.id,
+      set: {
+        path: note.path,
+        title: note.title,
+        emoji: note.emoji,
+        localOnly: note.localOnly,
+        contentHash: note.contentHash,
+        wordCount: note.wordCount,
+        characterCount: note.characterCount,
+        snippet: note.snippet,
+        date: note.date,
+        modifiedAt: note.modifiedAt,
+        indexedAt: new Date().toISOString()
+      }
+    })
+    .returning()
+    .get()
 }
 
 /**
