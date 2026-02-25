@@ -167,6 +167,11 @@ export class CrdtProvider {
       log.warn('Received remote update for unopened doc', { noteId })
       return
     }
+    log.warn('[DIAG] applyRemoteUpdate', {
+      noteId,
+      updateBytes: update.byteLength,
+      windowIds: [...entry.windowIds]
+    })
     Y.applyUpdate(entry.doc, update, ORIGIN_NETWORK)
   }
 
@@ -369,6 +374,11 @@ export class CrdtProvider {
     if (isIpcOrigin(origin)) {
       this.broadcastToWindows(noteId, update, 'ipc', origin.windowId)
     } else if (origin === ORIGIN_NETWORK) {
+      log.warn('[DIAG] onDocUpdate ORIGIN_NETWORK', {
+        noteId,
+        updateBytes: update.byteLength,
+        windowIds: [...entry.windowIds]
+      })
       this.queueNetworkBroadcast(noteId, update)
     } else {
       this.broadcastToWindows(noteId, update, ORIGIN_LOCAL, undefined)
@@ -396,6 +406,13 @@ export class CrdtProvider {
     const entry = this.docs.get(noteId)
     if (!entry) return
 
+    log.warn('[DIAG] broadcastToWindows', {
+      noteId,
+      origin,
+      windowIds: [...entry.windowIds],
+      sourceWindowId
+    })
+
     for (const windowId of entry.windowIds) {
       if (windowId === sourceWindowId) continue
 
@@ -406,6 +423,9 @@ export class CrdtProvider {
           update: Array.from(update),
           origin
         })
+        log.warn('[DIAG] sent STATE_CHANGED to window', { noteId, windowId })
+      } else {
+        log.warn('[DIAG] window gone or destroyed', { noteId, windowId })
       }
     }
   }
