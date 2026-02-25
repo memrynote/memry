@@ -889,19 +889,19 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Background Sync for US12
 
-**Note**: SQLite (better-sqlite3) is synchronous and not thread-safe. Worker thread communicates with main thread via message passing; main thread performs all DB operations.
+    **Note**: SQLite (better-sqlite3) is synchronous and not thread-safe. Worker thread communicates with main thread via message passing; main thread performs all DB operations.
 
-- [ ] T190 [US12] Implement worker thread for sync operations (network, encryption only - no SQLite) in src/main/sync/worker.ts
-- [ ] T190a [US12] Implement main↔worker message passing for DB operations in src/main/sync/worker.ts
-- [ ] T191 [US12] Implement batched sync to avoid blocking main thread in src/main/sync/engine.ts
-- [ ] T192 [US12] Implement concurrent edit handling with incoming sync updates in src/main/sync/engine.ts
-- [ ] T193 [US12] Ensure CRDT merges don't disrupt cursor position in editor in src/main/sync/crdt-provider.ts
-- [ ] T193a [US12] [TEST] Write integration test verifying cursor stability during CRDT merge in tests/integration/crdt-cursor.test.ts
+- [x] T190 [US12] Implement worker thread for sync operations (network, encryption only - no SQLite) in src/main/sync/worker.ts
+- [x] T190a [US12] Implement main↔worker message passing for DB operations in src/main/sync/worker.ts
+- [x] T191 [US12] Implement batched sync to avoid blocking main thread in src/main/sync/engine.ts
+- [x] T192 [US12] Implement concurrent edit handling with incoming sync updates in src/main/sync/engine.ts
+- [x] T193 [US12] Ensure CRDT merges don't disrupt cursor position in editor in src/main/sync/crdt-provider.ts
+- [x] T193a [US12] [TEST] Write integration test verifying cursor stability during CRDT merge in src/main/sync/crdt-cursor-stability.test.ts
 
 ### Initial Sync Progress for US12
 
-- [ ] T194 [US12] Implement initial sync progress events in src/main/sync/engine.ts
-- [ ] T195 [US12] Create initial sync progress UI in src/renderer/src/components/sync/initial-sync-progress.tsx
+- [x] T194 [US12] Implement initial sync progress events in src/main/sync/engine.ts
+- [x] T195 [US12] Create initial sync progress UI in src/renderer/src/components/sync/initial-sync-progress.tsx
 
 **Checkpoint**: User Story 12 complete - sync runs in background
 
@@ -915,26 +915,26 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Device Management for US13
 
-- [ ] T196 [US13] Implement get devices IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T197 [US13] Implement remove device IPC handler in src/main/ipc/sync-handlers.ts
-- [ ] T198 [US13] Implement rename device IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T196 [US13] Implement get devices IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T197 [US13] Implement remove device IPC handler in src/main/ipc/sync-handlers.ts
+- [x] T198 [US13] Implement rename device IPC handler in src/main/ipc/sync-handlers.ts
 
 ### Server Device Endpoints for US13
 
-- [ ] T199 [US13] Implement devices list endpoint GET /devices in sync-server/src/routes/devices.ts
-- [ ] T200 [US13] Implement device removal endpoint DELETE /devices/:id in sync-server/src/routes/devices.ts
-- [ ] T201 [US13] Implement device update endpoint PATCH /devices/:id in sync-server/src/routes/devices.ts
-- [ ] T202 [US13] Revoke sync access on device removal (invalidate refresh tokens via T031b, close WebSocket) in sync-server/src/services/device.ts
+- [x] T199 [US13] Implement devices list endpoint GET /devices in sync-server/src/routes/devices.ts
+- [x] T200 [US13] Implement device removal endpoint DELETE /devices/:id in sync-server/src/routes/devices.ts
+- [x] T201 [US13] Implement device update endpoint PATCH /devices/:id in sync-server/src/routes/devices.ts
+- [x] T202 [US13] Revoke sync access on device removal (invalidate refresh tokens via T031b, close WebSocket) in sync-server/src/services/device.ts
 
 ### UI Components for US13
 
-- [ ] T203 [US13] Create device list component in src/renderer/src/components/sync/device-list.tsx
-- [ ] T204 [US13] Display device name, type, platform, last sync time in src/renderer/src/components/sync/device-list.tsx
-- [ ] T205 [US13] Add remove device confirmation dialog in src/renderer/src/components/sync/device-list.tsx
-- [ ] T206 [US13] Add rename device dialog in src/renderer/src/components/sync/device-list.tsx
-- [ ] T207 [US13] Highlight current device in list in src/renderer/src/components/sync/device-list.tsx
-- [ ] T208 [US13] Add devices section to Settings > Sync page in src/renderer/src/pages/settings/sync-settings.tsx
-- [ ] T208a [US13] Bind device list/rename/remove UI to IPC handlers in src/renderer/src/components/sync/device-list.tsx
+- [x] T203 [US13] Create device list component in src/renderer/src/components/sync/device-list.tsx
+- [x] T204 [US13] Display device name, type, platform, last sync time in src/renderer/src/components/sync/device-list.tsx
+- [x] T205 [US13] Add remove device confirmation dialog in src/renderer/src/components/sync/device-list.tsx
+- [x] T206 [US13] Add rename device dialog in src/renderer/src/components/sync/device-list.tsx
+- [x] T207 [US13] Highlight current device in list in src/renderer/src/components/sync/device-list.tsx
+- [x] T208 [US13] Add devices section to Settings > Sync page in src/renderer/src/pages/settings/sync-settings.tsx
+- [x] T208a [US13] Bind device list/rename/remove UI to IPC handlers in src/renderer/src/components/sync/device-list.tsx
 
 **Checkpoint**: User Story 13 complete - users can manage devices
 
@@ -948,21 +948,21 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Key Rotation for US14
 
-- [ ] T209 [US14] Implement key rotation initiation IPC handler in src/main/ipc/crypto-handlers.ts
-- [ ] T210 [US14] Implement file key re-encryption (not content) in src/main/crypto/rotation.ts
-- [ ] T210a [US14] Track crypto_version in sync_items during key rotation in src/main/crypto/rotation.ts
-- [ ] T210b [US14] Implement sync pause during key rotation window in src/main/sync/engine.ts
-- [ ] T211 [US14] Implement rotation progress tracking in src/main/crypto/rotation.ts
-- [ ] T212 [US14] Implement get rotation progress IPC handler in src/main/ipc/crypto-handlers.ts
-- [ ] T212a [US14] Rewrap attachment keys and CRDT snapshot keys during rotation in src/main/crypto/rotation.ts
-- [ ] T212b [US14] Add crypto key version metadata to encrypted payloads in src/main/crypto/encryption.ts
+- [x] T209 [US14] Implement key rotation initiation IPC handler in src/main/ipc/crypto-handlers.ts
+- [x] T210 [US14] Implement file key re-encryption (not content) in src/main/crypto/rotation.ts
+- [x] T210a [US14] Track crypto_version in sync_items during key rotation in src/main/crypto/rotation.ts
+- [x] T210b [US14] Implement sync pause during key rotation window in src/main/sync/engine.ts
+- [x] T211 [US14] Implement rotation progress tracking in src/main/crypto/rotation.ts
+- [x] T212 [US14] Implement get rotation progress IPC handler in src/main/ipc/crypto-handlers.ts
+- [x] T212a [US14] Rewrap attachment keys and CRDT snapshot keys during rotation in src/main/crypto/rotation.ts
+- [x] T212b [US14] Add crypto key version metadata to encrypted payloads in src/main/crypto/encryption.ts
 
 ### UI Components for US14
 
-- [ ] T213 [US14] Create key rotation wizard in src/renderer/src/components/sync/key-rotation-wizard.tsx
-- [ ] T214 [US14] Display rotation progress (items re-encrypted) in src/renderer/src/components/sync/key-rotation-wizard.tsx
-- [ ] T215 [US14] Display new recovery phrase on completion in src/renderer/src/components/sync/key-rotation-wizard.tsx
-- [ ] T215a [US14] Wire crypto:key-rotation-progress IPC event to key rotation wizard state in src/renderer/src/components/sync/key-rotation-wizard.tsx
+- [x] T213 [US14] Create key rotation wizard in src/renderer/src/components/sync/key-rotation-wizard.tsx
+- [x] T214 [US14] Display rotation progress (items re-encrypted) in src/renderer/src/components/sync/key-rotation-wizard.tsx
+- [x] T215 [US14] Display new recovery phrase on completion in src/renderer/src/components/sync/key-rotation-wizard.tsx
+- [x] T215a [US14] Wire crypto:key-rotation-progress IPC event to key rotation wizard state in src/renderer/src/components/sync/key-rotation-wizard.tsx
 
 **Checkpoint**: User Story 14 complete - key rotation available
 
