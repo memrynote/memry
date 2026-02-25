@@ -368,9 +368,11 @@ export const persistKeysAndRegisterDevice = async (
   })
 
   if (!skipActivation) {
-    const engine = getSyncEngine() ?? (await startSyncRuntime())
+    const engine = getSyncEngine()
     if (engine) {
       void engine.activate()
+    } else {
+      void startSyncRuntime()
     }
   }
 
@@ -756,8 +758,12 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     createValidatedHandler(ConfirmRecoveryPhraseSchema, async (input) => {
       if (input.confirmed) {
         store.set('sync', { ...store.get('sync'), recoveryPhraseConfirmed: true })
-        const engine = getSyncEngine() ?? (await startSyncRuntime())
-        if (engine) void engine.activate()
+        const engine = getSyncEngine()
+        if (engine) {
+          void engine.activate()
+        } else {
+          void startSyncRuntime()
+        }
       }
       return { success: true }
     })

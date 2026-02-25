@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CheckCircle, QrCode, KeyRound } from 'lucide-react'
+import { QrCode, KeyRound } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAuth, type WizardStep } from '@/contexts/auth-context'
@@ -12,7 +12,7 @@ import { RecoveryPhraseInput } from '@/components/sync/recovery-phrase-input'
 import { LinkingCodeEntry } from '@/components/sync/linking-code-entry'
 import { LinkingPending } from '@/components/sync/linking-pending'
 
-const STEPS = ['Sign In', 'Verify', 'Link', 'Done'] as const
+const STEPS = ['Sign In', 'Verify', 'Link'] as const
 const STEP_MAP: Record<WizardStep, number> = {
   idle: 0,
   'sign-in': 0,
@@ -22,8 +22,7 @@ const STEP_MAP: Record<WizardStep, number> = {
   'recovery-input': 2,
   'linking-choice': 2,
   'linking-scan': 2,
-  'linking-pending': 2,
-  complete: 3
+  'linking-pending': 2
 }
 
 export function SetupWizard(): React.JSX.Element {
@@ -77,6 +76,10 @@ export function SetupWizard(): React.JSX.Element {
     }
   }, [wizardStep, recoveryPhrase])
 
+  useEffect(() => {
+    setIsLoading(false)
+  }, [wizardStep])
+
   const isRecoveryStep = wizardStep === 'recovery-display' || wizardStep === 'recovery-confirm'
   const activePhrase = isRecoveryStep ? recoveryPhrase : null
 
@@ -106,10 +109,8 @@ export function SetupWizard(): React.JSX.Element {
       verifyOtp(code)
         .then((result) => {
           setIsLoading(false)
-          let nextStep: WizardStep = 'complete'
-          if (result.needsRecoveryInput) nextStep = 'linking-choice'
-          else if (result.needsRecoverySetup) nextStep = 'recovery-display'
-          setWizardStep(nextStep)
+          if (result.needsRecoveryInput) setWizardStep('linking-choice')
+          else if (result.needsRecoverySetup) setWizardStep('recovery-display')
         })
         .catch((err: unknown) => {
           setIsLoading(false)
@@ -161,14 +162,13 @@ export function SetupWizard(): React.JSX.Element {
       linkViaRecovery(phrase)
         .then(() => {
           setIsLoading(false)
-          setWizardStep('complete')
         })
         .catch((err: unknown) => {
           setIsLoading(false)
           setWizardError(extractErrorMessage(err, 'Recovery failed'))
         })
     },
-    [linkViaRecovery, setWizardStep, setWizardError, clearWizardError]
+    [linkViaRecovery, setWizardError, clearWizardError]
   )
 
   const handleConfirmRecovery = useCallback(() => {
@@ -178,13 +178,12 @@ export function SetupWizard(): React.JSX.Element {
       .then(() => {
         setIsLoading(false)
         void navigator.clipboard.writeText('')
-        setWizardStep('complete')
       })
       .catch((err: unknown) => {
         setIsLoading(false)
         setWizardError(extractErrorMessage(err, 'Confirmation failed'))
       })
-  }, [confirmRecoveryPhrase, setWizardStep, setWizardError, clearWizardError])
+  }, [confirmRecoveryPhrase, setWizardError, clearWizardError])
 
   const currentStepIndex = STEP_MAP[wizardStep]
 
@@ -272,9 +271,8 @@ export function SetupWizard(): React.JSX.Element {
       {wizardStep === 'linking-pending' && wizardLinkingSessionId && (
         <LinkingPending
           sessionId={wizardLinkingSessionId}
-          onComplete={(deviceId) => {
-            linkingCompleted(deviceId)
-            setWizardStep('complete', { linkingSessionId: null })
+          onComplete={() => {
+            linkingCompleted()
           }}
           onError={(error) => setWizardError(error)}
           onCancel={() => setWizardStep('linking-choice')}
@@ -290,21 +288,6 @@ export function SetupWizard(): React.JSX.Element {
         />
       )}
 
-      {wizardStep === 'complete' && (
-        <div className="wizard-step-enter text-center space-y-5 py-10">
-          <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-2xl bg-green-500/10 dark:bg-green-400/10 flex items-center justify-center wizard-check-ring">
-              <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <h3 className="font-display text-2xl tracking-tight">You&apos;re all set</h3>
-            <p className="font-serif text-[15px] text-muted-foreground leading-relaxed max-w-xs mx-auto">
-              Your data will sync securely across devices with end-to-end encryption.
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

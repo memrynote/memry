@@ -30,7 +30,6 @@ export type WizardStep =
   | 'linking-choice'
   | 'linking-scan'
   | 'linking-pending'
-  | 'complete'
 
 export interface WizardData {
   linkingSessionId?: string | null
@@ -70,7 +69,7 @@ type AuthAction =
     }
   | { type: 'RECOVERY_CONFIRMED' }
   | { type: 'RECOVERY_LINKED'; deviceId: string }
-  | { type: 'LINKING_COMPLETED'; deviceId: string }
+  | { type: 'LINKING_COMPLETED'; deviceId?: string }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
   | { type: 'RESET_AUTH' }
@@ -122,7 +121,8 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         status: action.needsRecoverySetup ? 'authenticating' : 'authenticated',
         deviceId: action.deviceId,
         needsRecoverySetup: action.needsRecoverySetup,
-        error: null
+        error: null,
+        ...(!action.needsRecoverySetup && WIZARD_IDLE_FIELDS)
       }
     case 'RECOVERY_CONFIRMED':
       return {
@@ -144,7 +144,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       return {
         ...state,
         status: 'authenticated',
-        deviceId: action.deviceId,
+        deviceId: action.deviceId ?? state.deviceId,
         needsRecoverySetup: false,
         error: null,
         ...WIZARD_IDLE_FIELDS
@@ -206,7 +206,7 @@ interface AuthContextValue {
   }) => Promise<SetupFirstDeviceResult | null>
   confirmRecoveryPhrase: () => Promise<void>
   linkViaRecovery: (phrase: string) => Promise<{ deviceId?: string }>
-  linkingCompleted: (deviceId: string) => void
+  linkingCompleted: (deviceId?: string) => void
   logout: () => Promise<void>
   clearError: () => void
   resetAuthState: () => void
@@ -276,6 +276,17 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   }, [])
 
   useEffect(() => {
+    const unsubscribe = window.api.onLinkingFinalized(({ deviceId, error }) => {
+      if (deviceId) {
+        dispatch({ type: 'LINKING_COMPLETED', deviceId })
+      } else if (error) {
+        dispatch({ type: 'SET_ERROR', error })
+      }
+    })
+    return unsubscribe
+  }, [])
+
+  useEffect(() => {
     oauthStateRef.current = state.wizardOAuthState
   }, [state.wizardOAuthState])
 
@@ -302,10 +313,11 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
             deviceId: result.deviceId ?? '',
             needsRecoverySetup: !!result.needsRecoverySetup
           })
-          let nextStep: WizardStep = 'complete'
-          if (result.needsRecoveryInput) nextStep = 'linking-choice'
-          else if (result.needsRecoverySetup) nextStep = 'recovery-display'
-          dispatch({ type: 'WIZARD_SET_STEP', step: nextStep })
+          if (result.needsRecoveryInput) {
+            dispatch({ type: 'WIZARD_SET_STEP', step: 'linking-choice' })
+          } else if (result.needsRecoverySetup) {
+            dispatch({ type: 'WIZARD_SET_STEP', step: 'recovery-display' })
+          }
         } catch (err: unknown) {
           const message = extractErrorMessage(err, 'Google sign-in failed')
           dispatch({ type: 'SET_ERROR', error: message })
@@ -464,7 +476,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     }
   }, [])
 
-  const linkingCompleted = useCallback((deviceId: string) => {
+  const linkingCompleted = useCallback((deviceId?: string) => {
     dispatch({ type: 'LINKING_COMPLETED', deviceId })
   }, [])
 

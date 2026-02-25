@@ -25,6 +25,7 @@ import type {
   ConflictDetectedEvent,
   LinkingRequestEvent,
   LinkingApprovedEvent,
+  LinkingFinalizedEvent,
   UploadProgressEvent,
   DownloadProgressEvent,
   InitialSyncProgressEvent,
@@ -1518,6 +1519,12 @@ const api = {
       callback(data)
     ipcRenderer.on(SYNC_EVENTS.LINKING_APPROVED, handler)
     return () => ipcRenderer.removeListener(SYNC_EVENTS.LINKING_APPROVED, handler)
+  },
+  onLinkingFinalized: (callback: (event: LinkingFinalizedEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: LinkingFinalizedEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.LINKING_FINALIZED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.LINKING_FINALIZED, handler)
   },
   onUploadProgress: (callback: (event: UploadProgressEvent) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, data: UploadProgressEvent): void =>

@@ -7,7 +7,7 @@ const POLL_INTERVAL_MS = 3000
 
 interface LinkingPendingProps {
   sessionId: string
-  onComplete: (deviceId: string) => void
+  onComplete: () => void
   onError: (error: string) => void
   onCancel: () => void
 }
@@ -31,10 +31,10 @@ export function LinkingPending({
 
       if (cancelledRef.current) return
 
-      if (result.success && result.deviceId) {
+      if (result.success) {
         setStatus('completing')
         if (intervalRef.current) clearInterval(intervalRef.current)
-        onComplete(result.deviceId)
+        onComplete()
         return
       }
 

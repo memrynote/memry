@@ -5,6 +5,7 @@ import type {
   ConflictDetectedEvent,
   LinkingRequestEvent,
   LinkingApprovedEvent,
+  LinkingFinalizedEvent,
   UploadProgressEvent,
   DownloadProgressEvent,
   InitialSyncProgressEvent,
@@ -2416,6 +2417,7 @@ interface API extends WindowAPI {
   onConflictDetected: (callback: (event: ConflictDetectedEvent) => void) => () => void
   onLinkingRequest: (callback: (event: LinkingRequestEvent) => void) => () => void
   onLinkingApproved: (callback: (event: LinkingApprovedEvent) => void) => () => void
+  onLinkingFinalized: (callback: (event: LinkingFinalizedEvent) => void) => () => void
   onUploadProgress: (callback: (event: UploadProgressEvent) => void) => () => void
   onDownloadProgress: (callback: (event: DownloadProgressEvent) => void) => () => void
   onInitialSyncProgress: (callback: (event: InitialSyncProgressEvent) => void) => () => void

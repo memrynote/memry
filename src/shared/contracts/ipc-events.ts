@@ -26,7 +26,8 @@ export const EVENT_CHANNELS = {
   OAUTH_ERROR: 'auth:oauth-error',
   ATTACHMENT_UPLOAD_FAILED: 'sync:attachment-upload-failed',
   DEVICE_REMOVED: 'sync:device-removed',
-  DEVICE_RENAMED: 'sync:device-renamed'
+  DEVICE_RENAMED: 'sync:device-renamed',
+  LINKING_FINALIZED: 'sync:linking-finalized'
 } as const
 
 // ============================================================================
@@ -146,4 +147,9 @@ export interface DeviceRemovedEvent {
 export interface DeviceRenamedEvent {
   deviceId: string
   name: string
+}
+
+export interface LinkingFinalizedEvent {
+  deviceId?: string
+  error?: string
 }

@@ -230,6 +230,22 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
     )
     const masterKey = decryptMasterKeyFromLinking(ciphertext, nonce, encKey)
 
+    void finalizeLinking(masterKey, setupToken)
+
+    log.info('Linking approved — finalizing device registration in background')
+    return { success: true }
+  } catch (err) {
+    if (err instanceof SyncServerError && err.statusCode === 409) {
+      return { success: false, error: 'Session not yet approved' }
+    }
+    log.error('Failed to complete device linking', err)
+    clearPendingLinkCompletion()
+    throw err
+  }
+}
+
+async function finalizeLinking(masterKey: Uint8Array, setupToken: string): Promise<void> {
+  try {
     const { value: recoveryInfo } = await withRetry(
       () =>
         getFromServer<{ kdfSalt: string; keyVerifier: string }>('/auth/recovery-info', setupToken),
@@ -251,15 +267,21 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
     secureCleanup(masterKey, signingKeyPair.secretKey)
     clearPendingLinkCompletion()
 
-    log.info('Device linking completed', { deviceId })
-    return { success: true, deviceId }
+    log.info('Device linking finalized', { deviceId })
+    emitLinkingFinalized({ deviceId })
   } catch (err) {
-    if (err instanceof SyncServerError && err.statusCode === 409) {
-      return { success: false, error: 'Session not yet approved' }
-    }
-    log.error('Failed to complete device linking', err)
+    log.error('Background linking finalization failed', err)
+    secureCleanup(masterKey)
     clearPendingLinkCompletion()
-    throw err
+    const message = err instanceof Error ? err.message : 'Device registration failed'
+    emitLinkingFinalized({ error: message })
+  }
+}
+
+function emitLinkingFinalized(payload: { deviceId?: string; error?: string }): void {
+  const { BrowserWindow } = require('electron') as typeof import('electron')
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send('sync:linking-finalized', payload)
   }
 }
 
