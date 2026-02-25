@@ -51,7 +51,8 @@ import {
   Play,
   PenLine,
   LogOut,
-  QrCode
+  QrCode,
+  RotateCw
 } from 'lucide-react'
 import {
   Select,
@@ -77,6 +78,8 @@ import { SetupWizard } from './settings/setup-wizard'
 import { QrLinking } from '@/components/sync/qr-linking'
 import { LinkingApprovalDialog } from '@/components/sync/linking-approval-dialog'
 import { SyncHistoryPanel } from '@/components/sync/sync-history'
+import { DeviceList } from '@/components/sync/device-list'
+import { KeyRotationWizard } from '@/components/sync/key-rotation-wizard'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Page:Settings')
@@ -1304,6 +1307,7 @@ function SyncSettings() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [showLinkingQr, setShowLinkingQr] = useState(false)
+  const [showRotationWizard, setShowRotationWizard] = useState(false)
 
   useEffect(() => {
     if (state.status === 'unauthenticated' && state.wizardStep === 'idle') {
@@ -1376,7 +1380,11 @@ function SyncSettings() {
               <RefreshCw
                 className={`w-4 h-4 ${syncStatus.status === 'syncing' ? 'animate-spin' : ''}`}
               />
-              Sync Now
+              {syncStatus.status === 'syncing'
+                ? 'Syncing...'
+                : syncStatus.status === 'idle' && syncStatus.pendingCount > 0
+                  ? `Sync ${syncStatus.pendingCount} ${syncStatus.pendingCount === 1 ? 'change' : 'changes'}`
+                  : 'Sync Now'}
             </Button>
             <Button
               variant="outline"
@@ -1428,6 +1436,33 @@ function SyncSettings() {
             </Button>
           )}
         </div>
+
+        <Separator />
+
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium">Devices</h4>
+          <DeviceList />
+        </div>
+
+        <Separator />
+
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium">Security</h4>
+          <p className="text-xs text-muted-foreground">
+            Rotate encryption keys to generate a new recovery phrase. Your data stays intact.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowRotationWizard(true)}
+            className="gap-2"
+          >
+            <RotateCw className="w-4 h-4" />
+            Rotate Encryption Keys
+          </Button>
+        </div>
+
+        <KeyRotationWizard open={showRotationWizard} onOpenChange={setShowRotationWizard} />
 
         <Separator />
 

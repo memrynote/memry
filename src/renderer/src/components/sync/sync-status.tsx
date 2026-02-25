@@ -30,6 +30,7 @@ export function SyncStatus({ onOpenSettings }: SyncStatusProps): React.JSX.Eleme
     sessionExpired,
     clockSkewDetected,
     initialSyncProgress,
+    syncActivity,
     triggerSync,
     pause,
     resume,
@@ -90,10 +91,21 @@ export function SyncStatus({ onOpenSettings }: SyncStatusProps): React.JSX.Eleme
           localOnlyCount > 0 ||
           conflicts.length > 0 ||
           clockSkewDetected ||
-          (isSyncing && initialSyncProgress)) && (
+          (isSyncing && initialSyncProgress) ||
+          (isSyncing && (syncActivity.pushCount > 0 || syncActivity.pullCount > 0))) && (
           <>
             <Separator />
             <div className="space-y-1 px-3 py-2">
+              {isSyncing && (syncActivity.pushCount > 0 || syncActivity.pullCount > 0) && (
+                <p className="text-muted-foreground text-xs">
+                  {[
+                    syncActivity.pushCount > 0 && `${syncActivity.pushCount} pushed`,
+                    syncActivity.pullCount > 0 && `${syncActivity.pullCount} pulled`
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              )}
               {pendingCount > 0 && (
                 <p className="text-muted-foreground text-xs">
                   {pendingCount} {pendingCount === 1 ? 'change' : 'changes'} pending
