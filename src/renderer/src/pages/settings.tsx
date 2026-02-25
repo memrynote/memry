@@ -1360,80 +1360,70 @@ function SyncSettings() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${syncStatus.dotColor}`} />
-                <p className="text-sm font-medium">{syncStatus.label}</p>
+                <p className="text-sm font-medium">
+                  {syncStatus.label}
+                  <span className="text-muted-foreground font-normal">
+                    {' · '}Last synced {syncStatus.lastSyncLabel}
+                    {syncStatus.pendingCount > 0 && ` · ${syncStatus.pendingCount} pending`}
+                  </span>
+                </p>
               </div>
               <p className="text-xs text-muted-foreground">
-                Last synced {syncStatus.lastSyncLabel}
-                {syncStatus.pendingCount > 0 && ` · ${syncStatus.pendingCount} pending`}
+                Signed in{state.email ? ` as ${state.email}` : ''}
               </p>
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isSyncBusy}
-              onClick={() => void syncStatus.triggerSync()}
-              className="gap-2"
-            >
-              <RefreshCw
-                className={`w-4 h-4 ${syncStatus.status === 'syncing' ? 'animate-spin' : ''}`}
-              />
-              {syncStatus.status === 'syncing'
-                ? 'Syncing...'
-                : syncStatus.status === 'idle' && syncStatus.pendingCount > 0
-                  ? `Sync ${syncStatus.pendingCount} ${syncStatus.pendingCount === 1 ? 'change' : 'changes'}`
-                  : 'Sync Now'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                void (syncStatus.status === 'paused' ? syncStatus.resume() : syncStatus.pause())
-              }
-              className="gap-2"
-            >
-              {syncStatus.status === 'paused' ? (
-                <>
-                  <Play className="w-4 h-4" />
-                  Resume
-                </>
-              ) : (
-                <>
-                  <Pause className="w-4 h-4" />
-                  Pause
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-
-        <Separator />
-
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-500/10">
-              <CheckCircle className="w-4 h-4 text-green-500" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">{state.email ?? 'Signed in'}</p>
-              <p className="text-xs text-muted-foreground">End-to-end encrypted</p>
             </div>
           </div>
 
           {showLinkingQr ? (
             <QrLinking onCancel={() => setShowLinkingQr(false)} />
           ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowLinkingQr(true)}
-              className="gap-2"
-            >
-              <QrCode className="w-4 h-4" />
-              Link New Device
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isSyncBusy}
+                onClick={() => void syncStatus.triggerSync()}
+                className="gap-2"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 ${syncStatus.status === 'syncing' ? 'animate-spin' : ''}`}
+                />
+                {syncStatus.status === 'syncing'
+                  ? 'Syncing...'
+                  : syncStatus.status === 'idle' && syncStatus.pendingCount > 0
+                    ? `Sync ${syncStatus.pendingCount} ${syncStatus.pendingCount === 1 ? 'change' : 'changes'}`
+                    : 'Sync Now'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  void (syncStatus.status === 'paused' ? syncStatus.resume() : syncStatus.pause())
+                }
+                className="gap-2"
+              >
+                {syncStatus.status === 'paused' ? (
+                  <>
+                    <Play className="w-4 h-4" />
+                    Resume
+                  </>
+                ) : (
+                  <>
+                    <Pause className="w-4 h-4" />
+                    Pause
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowLinkingQr(true)}
+                className="gap-2"
+              >
+                <QrCode className="w-4 h-4" />
+                Link Device
+              </Button>
+            </div>
           )}
         </div>
 

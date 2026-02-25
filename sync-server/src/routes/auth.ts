@@ -18,7 +18,12 @@ import { getPrivateKey, getPublicKey } from '../lib/jwt-keys'
 import { authMiddleware } from '../middleware/auth'
 import { createRateLimiter } from '../middleware/rate-limit'
 import { setupAuthMiddleware } from '../middleware/setup-auth'
-import { issueTokens, rotateRefreshToken, signSetupToken } from '../services/auth'
+import {
+  issueTokens,
+  revokeDeviceTokens,
+  rotateRefreshToken,
+  signSetupToken
+} from '../services/auth'
 import { listDevices } from '../services/device'
 import { sendEmail } from '../services/email'
 import {
@@ -553,4 +558,16 @@ auth.post('/refresh', refreshRateLimit, async (c) => {
     refreshToken: tokens.refreshToken,
     expiresIn: 900
   })
+})
+
+auth.post('/logout', authMiddleware, async (c) => {
+  const deviceId = c.get('deviceId')
+
+  try {
+    await revokeDeviceTokens(c.env.DB, deviceId)
+  } catch (err) {
+    console.error('Failed to revoke tokens during logout', { deviceId, err })
+  }
+
+  return c.json({ success: true })
 })

@@ -227,6 +227,18 @@ export class CrdtProvider {
     return Array.from(this.docs.keys())
   }
 
+  async wipeStorage(): Promise<void> {
+    await this.destroy()
+    const storagePath = path.join(app.getPath('userData'), 'crdt-store')
+    try {
+      const { rmSync } = await import('fs')
+      rmSync(storagePath, { recursive: true, force: true })
+      log.info('CRDT storage wiped', { storagePath })
+    } catch (err) {
+      log.warn('Failed to wipe CRDT storage', { storagePath, error: err })
+    }
+  }
+
   async pushAllSnapshots(): Promise<number> {
     if (!this.snapshotPushFn) {
       log.debug('No snapshotPushFn configured, skipping server push')

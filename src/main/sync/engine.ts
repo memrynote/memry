@@ -183,6 +183,7 @@ export class SyncEngine extends EventEmitter {
     this.deps.ws.removeListener('message', this.handleWsMessage)
     this.deps.ws.removeListener('connected', this.handleWsConnected)
     this.deps.ws.disconnect()
+    this.deviceKeyCache.clear()
     this.setState('idle')
     SyncEngine.activeInstance = null
   }

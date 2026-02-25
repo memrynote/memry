@@ -56,14 +56,14 @@ interface PendingLinkCompletion {
 let pendingSession: PendingSession | null = null
 let pendingLinkCompletion: PendingLinkCompletion | null = null
 
-const clearPendingSession = (): void => {
+export const clearPendingSession = (): void => {
   if (pendingSession) {
     secureCleanup(pendingSession.ephemeralPrivateKey)
     pendingSession = null
   }
 }
 
-const clearPendingLinkCompletion = (): void => {
+export const clearPendingLinkCompletion = (): void => {
   if (pendingLinkCompletion) {
     secureCleanup(pendingLinkCompletion.encKey, pendingLinkCompletion.macKey)
     pendingLinkCompletion = null
