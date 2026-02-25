@@ -89,6 +89,7 @@ beforeEach(() => {
   api.onClockSkewWarning = vi.fn(() => () => {})
   api.onItemSynced = vi.fn(() => () => {})
   api.onInitialSyncProgress = vi.fn(() => () => {})
+  api.onKeyRotationProgress = vi.fn(() => () => {})
 })
 
 import { SyncProvider, useSync } from './sync-context'

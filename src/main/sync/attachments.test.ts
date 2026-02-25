@@ -10,6 +10,8 @@ import {
   type TransferProgress
 } from './attachments'
 import { generateFileKey } from '../crypto/keys'
+import { signPayload } from '../crypto/signatures'
+import { CBOR_FIELD_ORDER } from '@shared/contracts/cbor-ordering'
 
 let tmpDir: string
 
@@ -51,6 +53,7 @@ function createTestDeps(fetchFn: ReturnType<typeof vi.fn>): AttachmentSyncDeps {
       publicKey: sodium.crypto_sign_keypair().publicKey,
       deviceId: 'device-1'
     }),
+    getDevicePublicKey: vi.fn().mockResolvedValue(sodium.crypto_sign_keypair().publicKey),
     getSyncServerUrl: () => 'http://localhost:8787',
     fetchFn
   }
@@ -236,12 +239,27 @@ describe('AttachmentSyncService', () => {
         vaultKey
       )
 
+      const signingKeypair = sodium.crypto_sign_keypair()
+
+      const signaturePayload: Record<string, unknown> = {
+        encryptedManifest: toB64(manifestCiphertext),
+        manifestNonce: toB64(manifestNonce),
+        encryptedFileKey: toB64(wrappedKey),
+        keyNonce: toB64(wrappedNonce)
+      }
+      const manifestSignature = signPayload(
+        signaturePayload,
+        CBOR_FIELD_ORDER.ATTACHMENT_MANIFEST,
+        signingKeypair.privateKey
+      )
+
       const encManifest = {
         encryptedManifest: toB64(manifestCiphertext),
         manifestNonce: toB64(manifestNonce),
         encryptedFileKey: toB64(wrappedKey),
         keyNonce: toB64(wrappedNonce),
-        manifestSignature: toB64(sodium.randombytes_buf(64))
+        manifestSignature: toB64(manifestSignature),
+        signerDeviceId: 'device-1'
       }
 
       const responses = new Map<string, { status: number; body?: unknown; binary?: Uint8Array }>()
@@ -253,10 +271,11 @@ describe('AttachmentSyncService', () => {
         getAccessToken: vi.fn().mockResolvedValue('test-token'),
         getVaultKey: vi.fn().mockResolvedValue(vaultKey),
         getSigningKeys: vi.fn().mockResolvedValue({
-          secretKey: sodium.crypto_sign_keypair().privateKey,
-          publicKey: sodium.crypto_sign_keypair().publicKey,
+          secretKey: signingKeypair.privateKey,
+          publicKey: signingKeypair.publicKey,
           deviceId: 'device-1'
         }),
+        getDevicePublicKey: vi.fn().mockResolvedValue(signingKeypair.publicKey),
         getSyncServerUrl: () => 'http://localhost:8787',
         fetchFn: mockFetch
       }
