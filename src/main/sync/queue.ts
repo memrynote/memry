@@ -44,20 +44,24 @@ export class SyncQueueManager {
 
     const id = this.db.transaction((tx) => {
       const existing = tx
-        .select({ id: syncQueue.id })
+        .select({ id: syncQueue.id, operation: syncQueue.operation })
         .from(syncQueue)
         .where(
-          and(
-            eq(syncQueue.itemId, itemId),
-            eq(syncQueue.type, type),
-            eq(syncQueue.operation, operation),
-            eq(syncQueue.attempts, 0)
-          )
+          and(eq(syncQueue.itemId, itemId), eq(syncQueue.type, type), eq(syncQueue.attempts, 0))
         )
         .get()
 
       if (existing) {
-        tx.update(syncQueue).set({ payload, priority }).where(eq(syncQueue.id, existing.id)).run()
+        const coalescedOp =
+          operation === 'delete'
+            ? 'delete'
+            : existing.operation === 'create' || operation === 'create'
+              ? 'create'
+              : operation
+        tx.update(syncQueue)
+          .set({ payload, priority, operation: coalescedOp })
+          .where(eq(syncQueue.id, existing.id))
+          .run()
         return existing.id
       }
 

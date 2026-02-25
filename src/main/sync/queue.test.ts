@@ -39,17 +39,74 @@ describe('SyncQueueManager', () => {
       expect(queue.getSize()).toBe(1)
     })
 
-    it('deduplicates same itemId+type+operation with zero attempts', () => {
+    it('deduplicates same itemId+type with zero attempts', () => {
       // #given existing item
       const id1 = queue.enqueue(makeInput({ payload: '{"v":1}' }))
 
-      // #when enqueue same itemId+type+operation
+      // #when enqueue same itemId+type
       const id2 = queue.enqueue(makeInput({ payload: '{"v":2}' }))
 
       // #then updates payload, same id
       expect(id2).toBe(id1)
       expect(queue.getSize()).toBe(1)
       const items = queue.peek(1)
+      expect(items[0].payload).toBe('{"v":2}')
+    })
+
+    it('coalesces create+update into create', () => {
+      // #given pending create
+      const id = queue.enqueue(makeInput({ operation: 'create', payload: '{"v":1}' }))
+
+      // #when update arrives for same item
+      queue.enqueue(makeInput({ operation: 'update', payload: '{"v":2}' }))
+
+      // #then single entry, operation stays create, payload updated
+      expect(queue.getSize()).toBe(1)
+      const items = queue.peek(1)
+      expect(items[0].id).toBe(id)
+      expect(items[0].operation).toBe('create')
+      expect(items[0].payload).toBe('{"v":2}')
+    })
+
+    it('coalesces update+create into create', () => {
+      // #given pending update
+      queue.enqueue(makeInput({ operation: 'update', payload: '{"v":1}' }))
+
+      // #when create arrives for same item
+      queue.enqueue(makeInput({ operation: 'create', payload: '{"v":2}' }))
+
+      // #then promotes to create
+      expect(queue.getSize()).toBe(1)
+      const items = queue.peek(1)
+      expect(items[0].operation).toBe('create')
+      expect(items[0].payload).toBe('{"v":2}')
+    })
+
+    it('coalesces create+delete into delete', () => {
+      // #given pending create
+      queue.enqueue(makeInput({ operation: 'create', payload: '{"v":1}' }))
+
+      // #when delete arrives
+      queue.enqueue(makeInput({ operation: 'delete', payload: '{"deleted":true}' }))
+
+      // #then delete wins
+      expect(queue.getSize()).toBe(1)
+      const items = queue.peek(1)
+      expect(items[0].operation).toBe('delete')
+      expect(items[0].payload).toBe('{"deleted":true}')
+    })
+
+    it('coalesces update+update keeping update operation', () => {
+      // #given pending update
+      queue.enqueue(makeInput({ operation: 'update', payload: '{"v":1}' }))
+
+      // #when another update arrives
+      queue.enqueue(makeInput({ operation: 'update', payload: '{"v":2}' }))
+
+      // #then stays update with latest payload
+      expect(queue.getSize()).toBe(1)
+      const items = queue.peek(1)
+      expect(items[0].operation).toBe('update')
       expect(items[0].payload).toBe('{"v":2}')
     })
 
