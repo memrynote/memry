@@ -24,7 +24,9 @@ export const EVENT_CHANNELS = {
   CLOCK_SKEW_WARNING: 'sync:clock-skew-warning',
   OAUTH_CALLBACK: 'auth:oauth-callback',
   OAUTH_ERROR: 'auth:oauth-error',
-  ATTACHMENT_UPLOAD_FAILED: 'sync:attachment-upload-failed'
+  ATTACHMENT_UPLOAD_FAILED: 'sync:attachment-upload-failed',
+  DEVICE_REMOVED: 'sync:device-removed',
+  DEVICE_RENAMED: 'sync:device-renamed'
 } as const
 
 // ============================================================================
@@ -135,4 +137,13 @@ export interface AttachmentUploadFailedEvent {
   noteId: string
   diskPath: string
   error: string
+}
+
+export interface DeviceRemovedEvent {
+  deviceId: string
+}
+
+export interface DeviceRenamedEvent {
+  deviceId: string
+  name: string
 }

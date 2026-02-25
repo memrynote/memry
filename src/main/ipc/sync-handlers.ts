@@ -28,7 +28,9 @@ import {
   ApproveLinkingSchema,
   CompleteLinkingQrSchema,
   LinkViaQrSchema,
-  LinkViaRecoverySchema
+  LinkViaRecoverySchema,
+  RemoveDeviceSchema,
+  RenameDeviceSchema
 } from '@shared/contracts/ipc-devices'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@shared/contracts/ipc-sync'
 import { GetHistorySchema, UpdateSyncedSettingSchema } from '@shared/contracts/ipc-sync-ops'
@@ -39,7 +41,8 @@ import {
   GetDownloadProgressSchema
 } from '@shared/contracts/ipc-attachments'
 import path from 'node:path'
-import { AttachmentSyncService } from '../sync/attachments'
+import { AttachmentSyncService, type TransferProgress } from '../sync/attachments'
+import { UploadQueue } from '../sync/upload-queue'
 import { attachmentEvents } from '../sync/attachment-events'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import {
@@ -63,6 +66,7 @@ import {
   generateSalt,
   getDevicePublicKey,
   getOrCreateSigningKeyPair,
+  getOrDeriveVaultKey,
   recoverMasterKeyFromPhrase,
   secureCleanup,
   storeKey,
@@ -73,7 +77,7 @@ import {
 import { getDatabase, getIndexDatabase, isDatabaseInitialized } from '../database/client'
 import { updateNoteCache } from '@shared/db/queries/notes'
 import { store } from '../store'
-import { deleteFromServer, getFromServer, postToServer } from '../sync/http-client'
+import { deleteFromServer, getFromServer, patchToServer, postToServer } from '../sync/http-client'
 
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler } from './validate'
@@ -407,20 +411,6 @@ const performFirstDeviceSetup = async (setupToken: string): Promise<FirstDeviceS
 }
 
 // ============================================================================
-// Stub helper for not-yet-implemented handlers
-// ============================================================================
-
-const notImplemented =
-  (feature: string, phase: number) =>
-  (): {
-    success: false
-    error: string
-  } => {
-    logger.warn(`Attempted to use unimplemented feature: ${feature} (Phase ${phase})`)
-    return { success: false, error: `${feature} is not yet available` }
-  }
-
-// ============================================================================
 // Startup Integrity Check
 // ============================================================================
 
@@ -498,13 +488,37 @@ async function cleanupLocalSyncState(db: ReturnType<typeof getDatabase>): Promis
 // ============================================================================
 
 let attachmentService: AttachmentSyncService | null = null
+let uploadQueue: UploadQueue | null = null
+
+const getOrCreateUploadQueue = (): UploadQueue | null => {
+  if (uploadQueue) return uploadQueue
+  const service = getOrCreateAttachmentService()
+  if (!service) return null
+  uploadQueue = new UploadQueue(service.uploadAttachment.bind(service))
+  return uploadQueue
+}
+
+const broadcastUploadProgress = (progress: TransferProgress): void => {
+  const percent =
+    progress.totalChunks > 0
+      ? Math.round((progress.chunksCompleted / progress.totalChunks) * 100)
+      : 0
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send(SYNC_EVENTS.UPLOAD_PROGRESS, {
+      attachmentId: progress.attachmentId,
+      sessionId: '',
+      progress: percent,
+      status: progress.phase
+    })
+  }
+}
 
 const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
   if (attachmentService) return attachmentService
 
   attachmentService = new AttachmentSyncService({
     getAccessToken: () => getValidAccessToken(),
-    getVaultKey: () => retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY),
+    getVaultKey: () => getOrDeriveVaultKey().catch(() => null),
     getSigningKeys: async () => {
       const secretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
       if (!secretKey) return null
@@ -865,8 +879,80 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     const syncData = store.get('sync')
     return { devices, email: syncData.email }
   })
-  ipcMain.handle(SYNC_CHANNELS.REMOVE_DEVICE, notImplemented('device removal', 5))
-  ipcMain.handle(SYNC_CHANNELS.RENAME_DEVICE, notImplemented('device rename', 5))
+  ipcMain.handle(
+    SYNC_CHANNELS.REMOVE_DEVICE,
+    createValidatedHandler(RemoveDeviceSchema, async (input) => {
+      if (isDatabaseInitialized()) {
+        const db = getDatabase()
+        const current = db
+          .select({ id: syncDevices.id })
+          .from(syncDevices)
+          .where(eq(syncDevices.isCurrentDevice, true))
+          .get()
+        if (current && current.id === input.deviceId) {
+          return { success: false, error: 'Cannot remove the current device' }
+        }
+      }
+
+      const accessToken = await getValidAccessToken()
+      if (!accessToken) return { success: false, error: 'Not authenticated' }
+
+      try {
+        await deleteFromServer(`/devices/${input.deviceId}`, accessToken)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (!msg.includes('404')) {
+          return { success: false, error: `Server error: ${msg}` }
+        }
+        logger.warn(`Device ${input.deviceId} already gone on server (404), cleaning up locally`)
+      }
+
+      if (isDatabaseInitialized()) {
+        const db = getDatabase()
+        db.delete(syncDevices).where(eq(syncDevices.id, input.deviceId)).run()
+      }
+
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send(SYNC_EVENTS.DEVICE_REMOVED, { deviceId: input.deviceId })
+      }
+
+      logger.info(`Device removed: ${input.deviceId}`)
+      return { success: true }
+    })
+  )
+
+  ipcMain.handle(
+    SYNC_CHANNELS.RENAME_DEVICE,
+    createValidatedHandler(RenameDeviceSchema, async (input) => {
+      const accessToken = await getValidAccessToken()
+      if (!accessToken) return { success: false, error: 'Not authenticated' }
+
+      try {
+        await patchToServer(`/devices/${input.deviceId}`, { name: input.newName }, accessToken)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        return { success: false, error: `Server error: ${msg}` }
+      }
+
+      if (isDatabaseInitialized()) {
+        const db = getDatabase()
+        db.update(syncDevices)
+          .set({ name: input.newName })
+          .where(eq(syncDevices.id, input.deviceId))
+          .run()
+      }
+
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send(SYNC_EVENTS.DEVICE_RENAMED, {
+          deviceId: input.deviceId,
+          name: input.newName
+        })
+      }
+
+      logger.info(`Device renamed: ${input.deviceId} → ${input.newName}`)
+      return { success: true }
+    })
+  )
 
   ipcMain.handle(SYNC_CHANNELS.GET_STATUS, () => {
     const engine = resolveSyncEngine()
@@ -961,32 +1047,15 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   ipcMain.handle(
     SYNC_CHANNELS.UPLOAD_ATTACHMENT,
     createValidatedHandler(UploadAttachmentSchema, async (input) => {
-      const service = getOrCreateAttachmentService()
-      if (!service) return { success: false, error: 'Sync not initialized' }
-
-      service.setProgressCallback((progress) => {
-        const percent =
-          progress.totalChunks > 0
-            ? Math.round((progress.chunksCompleted / progress.totalChunks) * 100)
-            : 0
-        for (const win of BrowserWindow.getAllWindows()) {
-          win.webContents.send(SYNC_EVENTS.UPLOAD_PROGRESS, {
-            attachmentId: progress.attachmentId,
-            sessionId: '',
-            progress: percent,
-            status: progress.phase
-          })
-        }
-      })
+      const queue = getOrCreateUploadQueue()
+      if (!queue) return { success: false, error: 'Sync not initialized' }
 
       try {
-        const result = await service.uploadAttachment(input.noteId, input.filePath)
+        const result = await queue.enqueue(input.noteId, input.filePath, broadcastUploadProgress)
         return { success: true, attachmentId: result.attachmentId, sessionId: result.sessionId }
       } catch (err) {
         logger.error('Attachment upload failed', err)
         return { success: false, error: err instanceof Error ? err.message : String(err) }
-      } finally {
-        service.setProgressCallback(null)
       }
     })
   )
@@ -1077,24 +1146,10 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   )
 
   attachmentEvents.onSaved(async ({ noteId, diskPath }) => {
-    const service = getOrCreateAttachmentService()
-    if (!service) return
+    const queue = getOrCreateUploadQueue()
+    if (!queue) return
     try {
-      service.setProgressCallback((progress) => {
-        const percent =
-          progress.totalChunks > 0
-            ? Math.round((progress.chunksCompleted / progress.totalChunks) * 100)
-            : 0
-        for (const win of BrowserWindow.getAllWindows()) {
-          win.webContents.send(SYNC_EVENTS.UPLOAD_PROGRESS, {
-            attachmentId: progress.attachmentId,
-            sessionId: '',
-            progress: percent,
-            status: progress.phase
-          })
-        }
-      })
-      const result = await service.uploadAttachment(noteId, diskPath)
+      const result = await queue.enqueue(noteId, diskPath, broadcastUploadProgress)
       if (isDatabaseInitialized()) {
         updateNoteCache(getIndexDatabase(), noteId, { attachmentId: result.attachmentId })
       }
@@ -1108,8 +1163,6 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
           error: message
         })
       }
-    } finally {
-      service.setProgressCallback(null)
     }
   })
 
@@ -1147,6 +1200,8 @@ export function unregisterSyncHandlers(): void {
   pendingRecoveryPhrase = null
   oauthSessions.clear()
   shutdownLoopbackServer()
+  uploadQueue?.clear()
+  uploadQueue = null
   attachmentService = null
 
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_REQUEST_OTP)

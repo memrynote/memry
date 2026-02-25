@@ -2145,6 +2145,7 @@ interface SyncDevicesClientAPI {
       lastSyncAt?: number
       linkedAt: number
     }>
+    email?: string
   }>
   removeDevice: (input: { deviceId: string }) => Promise<{
     success: boolean
