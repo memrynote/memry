@@ -1,5 +1,5 @@
 import type { RotationPhase } from './ipc-crypto'
-import type { SyncStatusValue } from './ipc-sync-ops'
+import type { SyncErrorCategory, SyncStatusValue } from './ipc-sync-ops'
 import type { VectorClock } from './sync-api'
 
 // ============================================================================
@@ -39,6 +39,7 @@ export interface SyncStatusChangedEvent {
   lastSyncAt?: number
   pendingCount: number
   error?: string
+  errorCategory?: SyncErrorCategory
 }
 
 export interface ItemSyncedEvent {

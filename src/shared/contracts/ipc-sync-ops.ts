@@ -21,11 +21,21 @@ export const SYNC_OP_CHANNELS = {
 
 export type SyncStatusValue = 'idle' | 'syncing' | 'offline' | 'error'
 
+export type SyncErrorCategory =
+  | 'network_offline'
+  | 'network_timeout'
+  | 'server_error'
+  | 'auth_expired'
+  | 'rate_limited'
+  | 'crypto_failure'
+  | 'unknown'
+
 export interface GetSyncStatusResult {
   status: SyncStatusValue
   lastSyncAt?: number
   pendingCount: number
   error?: string
+  errorCategory?: SyncErrorCategory
 }
 
 export interface TriggerSyncResult {
