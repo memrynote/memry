@@ -1010,9 +1010,9 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Graceful Shutdown
 
-- [ ] T227 Update graceful shutdown to close sync connections in src/main/index.ts
-- [ ] T228 Persist pending sync queue on shutdown in src/main/sync/queue.ts
-- [ ] T228a Implement graceful sync queue persistence via main-thread message passing (worker sends pending items to main before exit) in src/main/sync/worker.ts
+- [x] T227 Update graceful shutdown to close sync connections in src/main/index.ts
+- [x] T228 Persist pending sync queue on shutdown in src/main/sync/queue.ts
+- [x] T228a Implement graceful sync queue persistence via main-thread message passing (worker sends pending items to main before exit) in src/main/sync/worker.ts
 
 ### Error Handling
 

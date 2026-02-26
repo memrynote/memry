@@ -23,6 +23,7 @@ import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } fro
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { log, createLogger } from './lib/logger'
 import { getCrdtProvider } from './sync/crdt-provider'
+import { stopSyncRuntime } from './sync/runtime'
 import { getNoteCacheById } from '@shared/db/queries/notes'
 import { getIndexDatabase } from './database/client'
 import { toAbsolutePath, createSnapshot } from './vault/notes'
@@ -724,6 +725,10 @@ app.on('before-quit', (event) => {
       shutdownLog.info('stopping reminder scheduler...')
       stopReminderScheduler()
 
+      shutdownLog.info('stopping sync runtime...')
+      return stopSyncRuntime()
+    })
+    .then(() => {
       shutdownLog.info('closing vault and stopping watcher...')
       return closeVault()
     })
