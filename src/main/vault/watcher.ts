@@ -433,8 +433,18 @@ export class VaultWatcher {
     if (isJournalPath(relativePath, config.journalFolder)) {
       const journalDate = extractJournalDate(relativePath)
       getJournalSyncService()?.enqueueCreate(parsed.frontmatter.id, journalDate)
+      getCrdtProvider()
+        .initForNote(parsed.frontmatter.id, { date: journalDate }, tags)
+        .catch(() => {})
     } else {
       getNoteSyncService()?.enqueueCreate(parsed.frontmatter.id)
+      getCrdtProvider()
+        .initForNote(
+          parsed.frontmatter.id,
+          { title: parsed.frontmatter.title ?? path.basename(relativePath, '.md') },
+          tags
+        )
+        .catch(() => {})
     }
 
     // Emit event to renderer

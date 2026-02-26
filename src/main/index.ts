@@ -464,6 +464,12 @@ void app.whenReady().then(async () => {
   // Register all IPC handlers (vault, notes, tasks, search)
   registerAllHandlers()
 
+  // Initialize CRDT persistence early so offline-created notes survive app restarts.
+  // Sync callbacks (queue, snapshot push) attach later when auth is ready.
+  getCrdtProvider()
+    .initPersistence()
+    .catch((err) => mainLog.warn('Early CRDT persistence init failed (non-fatal)', err))
+
   // Register global shortcut for quick capture (Cmd+Shift+Space)
   registerQuickCaptureShortcut()
 

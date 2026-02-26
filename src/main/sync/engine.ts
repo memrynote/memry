@@ -257,6 +257,7 @@ export class SyncEngine extends EventEmitter {
     let pushedCount = 0
     let lastServerTime = 0
     let lastMaxCursor = 0
+    const crdtSnapshotNoteIds: string[] = []
 
     try {
       for (let iteration = 0; iteration < MAX_PUSH_ITERATIONS; iteration++) {
@@ -277,6 +278,7 @@ export class SyncEngine extends EventEmitter {
         }
 
         const dedupedItems = this.deduplicateByItemId(items)
+        const queueRowByQueueId = new Map(dedupedItems.map((r) => [r.id, r]))
 
         const pushItems = await encryptPushBatch(
           dedupedItems,
@@ -322,6 +324,15 @@ export class SyncEngine extends EventEmitter {
             this.markItemSynced(pushItem.id, pushItem.type as SyncItemType)
             pushedCount++
             this.emitItemSynced(pushItem.id, pushItem.type, 'push')
+
+            const queueRow = queueRowByQueueId.get(queueId)
+            if (
+              queueRow &&
+              queueRow.operation === 'create' &&
+              (queueRow.type === 'note' || queueRow.type === 'journal')
+            ) {
+              crdtSnapshotNoteIds.push(pushItem.id)
+            }
           } else {
             const rejection = response.value.rejected.find((r) => r.id === pushItem.id)
             const reason = rejection?.reason ?? 'Unknown rejection'
@@ -342,6 +353,22 @@ export class SyncEngine extends EventEmitter {
             }
           }
         }
+      }
+
+      if (crdtSnapshotNoteIds.length > 0 && this.deps.crdtProvider) {
+        for (const noteId of crdtSnapshotNoteIds) {
+          try {
+            await this.deps.crdtProvider.pushSnapshotForNote(noteId)
+          } catch (err) {
+            log.warn('Push: failed to push CRDT snapshot after CREATE', {
+              noteId,
+              error: err instanceof Error ? err.message : String(err)
+            })
+          }
+        }
+        log.info('Push: pushed CRDT snapshots for accepted CREATEs', {
+          count: crdtSnapshotNoteIds.length
+        })
       }
 
       if (pushedCount > 0) {
@@ -1150,7 +1177,7 @@ export class SyncEngine extends EventEmitter {
     }
 
     try {
-      const doc = await this.deps.crdtProvider.open(noteId)
+      const doc = await this.deps.crdtProvider.open(noteId, undefined, { skipSeed: true })
       if (!doc) return
 
       let since = 0
@@ -1241,6 +1268,15 @@ export class SyncEngine extends EventEmitter {
 
         hasMore = result.hasMore
       }
+
+      // Fallback: if server had no CRDT state, seed from local markdown so note is viewable
+      const postVector = this.deps.crdtProvider.getStateVector(noteId)
+      if (!postVector || postVector.length <= 2) {
+        await this.deps.crdtProvider.seedFromMarkdownPublic(noteId)
+        log.debug('applyCrdtIncrementals: seeded from markdown as fallback (no server CRDT)', {
+          noteId
+        })
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         log.debug('applyCrdtIncrementals aborted via signal', { noteId })
@@ -1265,7 +1301,7 @@ export class SyncEngine extends EventEmitter {
 
       for (const noteId of noteIds) {
         try {
-          await this.deps.crdtProvider.open(noteId)
+          await this.deps.crdtProvider.open(noteId, undefined, { skipSeed: true })
         } catch (err) {
           log.warn('Failed to open CRDT doc, skipping note in batch', {
             noteId,
@@ -1351,6 +1387,17 @@ export class SyncEngine extends EventEmitter {
             log.warn('Server omitted noteId from batch response, removing', { noteId })
             activeSince.delete(noteId)
           }
+        }
+      }
+
+      // Fallback: seed from markdown for notes where server had no CRDT state
+      for (const noteId of noteIds) {
+        const postVector = this.deps.crdtProvider.getStateVector(noteId)
+        if (!postVector || postVector.length <= 2) {
+          await this.deps.crdtProvider.seedFromMarkdownPublic(noteId)
+          log.debug('applyCrdtBatch: seeded from markdown as fallback (no server CRDT)', {
+            noteId
+          })
         }
       }
     } catch (err) {
