@@ -311,4 +311,36 @@ describe('vault watcher', () => {
     expect(getWatcher().isWatching()).toBe(false)
     expect(hasPendingDeletes()).toBe(false)
   })
+
+  // ==========================================================================
+  // T604: Finder copy derives title from OS filename, not original
+  // ==========================================================================
+  it('sets frontmatter title from OS filename when detecting a copy', async () => {
+    // #given — original note in the cache
+    const originalPath = createTestNote(vault, {
+      id: 'original-id',
+      title: 'my-note',
+      content: 'Some content'
+    })
+
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+
+    await watcher.handleFileAdd(originalPath)
+
+    // #when — simulate Finder copy: identical frontmatter at "my-note copy.md"
+    const copyFilename = 'my-note copy.md'
+    const copyAbsPath = path.join(vault.notesDir, copyFilename)
+    const originalContent = fs.readFileSync(originalPath, 'utf8')
+    fs.writeFileSync(copyAbsPath, originalContent, 'utf8')
+
+    await watcher.handleFileAdd(copyAbsPath)
+
+    // #then — copy gets new ID AND title derived from OS filename
+    const copyContent = fs.readFileSync(copyAbsPath, 'utf8')
+    const parsed = parseNote(copyContent, `notes/${copyFilename}`)
+
+    expect(parsed.frontmatter.id).not.toBe('original-id')
+    expect(parsed.frontmatter.title).toBe('my-note copy')
+  })
 })

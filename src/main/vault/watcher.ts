@@ -382,9 +382,10 @@ export class VaultWatcher {
         return
       }
 
-      // Old file still exists — genuine copy, regenerate ID
+      // Old file still exists — genuine copy, regenerate ID + derive title from OS filename
       const newId = generateNoteId()
       parsed.frontmatter.id = newId
+      parsed.frontmatter.title = path.basename(relativePath, path.extname(relativePath))
       try {
         const newContent = serializeNote(parsed.frontmatter, parsed.content)
         await atomicWrite(absolutePath, newContent)

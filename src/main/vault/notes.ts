@@ -388,6 +388,7 @@ export async function getNoteById(id: string): Promise<Note | null> {
     // Generate new ID and update file
     const newId = generateNoteId()
     parsed.frontmatter.id = newId
+    parsed.frontmatter.title = path.basename(cached.path, path.extname(cached.path))
     const newContent = serializeNote(parsed.frontmatter, parsed.content)
     await atomicWrite(absolutePath, newContent)
 

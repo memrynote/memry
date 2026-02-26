@@ -166,6 +166,7 @@ async function indexMarkdownFile(
     logger.debug(`Duplicate ID detected, regenerating for: ${relativePath}`)
     const newId = generateNoteId()
     parsed.frontmatter.id = newId
+    parsed.frontmatter.title = path.basename(relativePath, path.extname(relativePath))
 
     // Write back to file with new ID
     try {
