@@ -77,7 +77,7 @@ export const cancelTokenRefresh = (): void => {
   }
 }
 
-const emitSessionExpired = (): void => {
+export const emitSessionExpired = (): void => {
   cancelTokenRefresh()
   const windows = BrowserWindow.getAllWindows()
   for (const win of windows) {

@@ -5,9 +5,11 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode
 } from 'react'
+import { toast } from 'sonner'
 import { useAuth } from './auth-context'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { InitialSyncPhase, LinkingRequestEvent } from '@shared/contracts/ipc-events'
@@ -189,6 +191,8 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const { state: authState } = useAuth()
   const [state, dispatch] = useReducer(syncReducer, initialState)
   const [linkingRequest, setLinkingRequest] = useState<LinkingRequestEvent | null>(null)
+  const sessionExpiredRef = useRef(state.sessionExpired)
+  sessionExpiredRef.current = state.sessionExpired
 
   useEffect(() => {
     if (authState.status !== 'authenticated') {
@@ -273,6 +277,9 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     cleanups.push(
       window.api.onSessionExpired(() => {
         if (cancelled) return
+        if (!sessionExpiredRef.current) {
+          toast.error('Session expired — sign in again', { duration: 8000 })
+        }
         dispatch({ type: 'SESSION_EXPIRED' })
       })
     )
@@ -347,6 +354,13 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       for (const cleanup of cleanups) cleanup()
     }
   }, [authState.status])
+
+  useEffect(() => {
+    if (authState.status === 'authenticated' && state.sessionExpired) {
+      dispatch({ type: 'CLEAR_ERROR' })
+      void window.api.syncOps.triggerSync().catch(() => {})
+    }
+  }, [authState.status, state.sessionExpired])
 
   const triggerSync = useCallback(async (): Promise<void> => {
     if (authState.status !== 'authenticated') return

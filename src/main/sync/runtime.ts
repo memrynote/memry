@@ -32,7 +32,13 @@ import { recoverDirtyItems } from './dirty-recovery'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { postToServer, pushCrdtSnapshot, SyncServerError } from './http-client'
 import { withRetry } from './retry'
-import { getValidAccessToken, retrieveToken, setOnTokenRefreshed } from './token-manager'
+import {
+  emitSessionExpired,
+  getValidAccessToken,
+  refreshAccessToken,
+  retrieveToken,
+  setOnTokenRefreshed
+} from './token-manager'
 import { SyncWorkerBridge } from './worker-bridge'
 
 const log = createLogger('SyncRuntime')
@@ -150,6 +156,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         } catch (err) {
           if (err instanceof SyncServerError && err.statusCode === 401) {
             crdtQueue.pause()
+            emitSessionExpired()
           }
           throw err
         } finally {
@@ -184,6 +191,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         } catch (err) {
           if (err instanceof SyncServerError && err.statusCode === 401) {
             crdtQueue.pause()
+            emitSessionExpired()
           }
           throw err
         } finally {
@@ -260,7 +268,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         },
         emitToRenderer: emitFn,
         crdtProvider,
-        workerBridge
+        workerBridge,
+        refreshAccessToken: () => refreshAccessToken()
       })
 
       queue.setOnItemEnqueued(() => engine.requestPush())
