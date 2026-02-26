@@ -1005,8 +1005,8 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Multi-Window Handling
 
-- [ ] T225 [P] Implement single-writer pattern for sync in multi-window scenario in src/main/sync/engine.ts
-- [ ] T226 Broadcast sync status to all windows via IPC in src/main/sync/engine.ts
+- [x] T225 [P] Implement single-writer pattern for sync in multi-window scenario in src/main/sync/engine.ts
+- [x] T226 Broadcast sync status to all windows via IPC in src/main/sync/engine.ts
 
 ### Graceful Shutdown
 

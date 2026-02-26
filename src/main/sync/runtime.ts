@@ -98,29 +98,6 @@ async function seedExistingCrdtDocs(
   }
 }
 
-async function pushOrphanedCrdtSnapshots(
-  crdtProvider: ReturnType<typeof getCrdtProvider>,
-  signal?: AbortSignal
-): Promise<void> {
-  const indexDb = getIndexDatabase()
-  const rows = indexDb.select({ id: noteCache.id }).from(noteCache).all()
-  if (rows.length === 0) return
-
-  let pushed = 0
-  for (const { id } of rows) {
-    if (signal?.aborted) break
-    try {
-      const ok = await crdtProvider.pushSnapshotForNote(id)
-      if (ok) pushed++
-    } catch {
-      // Non-fatal: will retry next startup
-    }
-  }
-  if (pushed > 0) {
-    log.info('Recovery CRDT snapshot push complete', { pushed, total: rows.length })
-  }
-}
-
 export async function startSyncRuntime(): Promise<SyncEngine | null> {
   if (runtime) return runtime.engine
   if (startPromise) return startPromise
@@ -293,21 +270,14 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       pendingRuntime = { queue, network, ws, engine, crdtQueue, workerBridge }
       runtime = pendingRuntime
 
-      // Seed CRDT docs BEFORE engine start so snapshots reach the server
-      // before fullSync pushes sync items that notify other devices (RC4 fix).
       seedAbortController = new AbortController()
-      await seedExistingCrdtDocs(crdtProvider, seedAbortController.signal)
 
       await engine.start()
       log.info('Sync runtime started')
 
-      // Fire-and-forget: push CRDT snapshots for notes with local content
-      // that the server may be missing (crash recovery, offline-created notes).
-      seedPromise = pushOrphanedCrdtSnapshots(crdtProvider, seedAbortController.signal).catch(
-        (err) => {
-          log.warn('CRDT recovery push failed (non-fatal)', err)
-        }
-      )
+      seedPromise = seedExistingCrdtDocs(crdtProvider, seedAbortController.signal).catch((err) => {
+        log.warn('Post-engine CRDT seed failed (non-fatal)', err)
+      })
 
       return engine
     } catch (error) {

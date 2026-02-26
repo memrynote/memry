@@ -257,7 +257,6 @@ export class SyncEngine extends EventEmitter {
     let pushedCount = 0
     let lastServerTime = 0
     let lastMaxCursor = 0
-    const crdtSnapshotNoteIds: string[] = []
 
     try {
       for (let iteration = 0; iteration < MAX_PUSH_ITERATIONS; iteration++) {
@@ -278,7 +277,21 @@ export class SyncEngine extends EventEmitter {
         }
 
         const dedupedItems = this.deduplicateByItemId(items)
-        const queueRowByQueueId = new Map(dedupedItems.map((r) => [r.id, r]))
+
+        if (this.deps.crdtProvider) {
+          for (const item of dedupedItems) {
+            if (item.operation === 'create' && (item.type === 'note' || item.type === 'journal')) {
+              try {
+                await this.deps.crdtProvider.pushSnapshotForNote(item.itemId)
+              } catch (err) {
+                log.warn('Push: pre-POST CRDT snapshot failed', {
+                  noteId: item.itemId,
+                  error: err instanceof Error ? err.message : String(err)
+                })
+              }
+            }
+          }
+        }
 
         const pushItems = await encryptPushBatch(
           dedupedItems,
@@ -324,15 +337,6 @@ export class SyncEngine extends EventEmitter {
             this.markItemSynced(pushItem.id, pushItem.type as SyncItemType)
             pushedCount++
             this.emitItemSynced(pushItem.id, pushItem.type, 'push')
-
-            const queueRow = queueRowByQueueId.get(queueId)
-            if (
-              queueRow &&
-              queueRow.operation === 'create' &&
-              (queueRow.type === 'note' || queueRow.type === 'journal')
-            ) {
-              crdtSnapshotNoteIds.push(pushItem.id)
-            }
           } else {
             const rejection = response.value.rejected.find((r) => r.id === pushItem.id)
             const reason = rejection?.reason ?? 'Unknown rejection'
@@ -353,22 +357,6 @@ export class SyncEngine extends EventEmitter {
             }
           }
         }
-      }
-
-      if (crdtSnapshotNoteIds.length > 0 && this.deps.crdtProvider) {
-        for (const noteId of crdtSnapshotNoteIds) {
-          try {
-            await this.deps.crdtProvider.pushSnapshotForNote(noteId)
-          } catch (err) {
-            log.warn('Push: failed to push CRDT snapshot after CREATE', {
-              noteId,
-              error: err instanceof Error ? err.message : String(err)
-            })
-          }
-        }
-        log.info('Push: pushed CRDT snapshots for accepted CREATEs', {
-          count: crdtSnapshotNoteIds.length
-        })
       }
 
       if (pushedCount > 0) {
