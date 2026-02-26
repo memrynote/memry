@@ -169,7 +169,7 @@ export class SyncEngine extends EventEmitter {
     }
   }
 
-  async stop(): Promise<void> {
+  async stop(options?: { skipFinalPush?: boolean }): Promise<void> {
     if (this.pushDebounceTimer) {
       clearTimeout(this.pushDebounceTimer)
       this.pushDebounceTimer = null
@@ -179,12 +179,36 @@ export class SyncEngine extends EventEmitter {
       this.pullInterval = null
     }
     this.pendingPushRequested = false
+
     this.abortController?.abort()
     if (this.inFlightSync) {
       await this.inFlightSync.catch(() => {})
     }
     this.abortController = null
     this.inFlightSync = null
+
+    if (!options?.skipFinalPush && this.deps.network.online) {
+      const pending = this.deps.queue.getPendingCount()
+      if (pending > 0) {
+        log.info(`Shutdown: attempting final push of ${pending} item(s)`)
+        const ac = new AbortController()
+        const timer = setTimeout(() => ac.abort(), 2000)
+        this.abortController = ac
+        try {
+          await this.push()
+        } catch {
+          log.warn('Shutdown: final push failed (non-fatal)')
+        }
+        clearTimeout(timer)
+        this.abortController = null
+      }
+    }
+
+    const remaining = this.deps.queue.getPendingCount()
+    if (remaining > 0) {
+      log.warn(`Shutdown: ${remaining} sync item(s) deferred to next startup`)
+    }
+
     this.deps.network.removeListener('status-changed', this.handleNetworkChange)
     this.deps.ws.removeListener('message', this.handleWsMessage)
     this.deps.ws.removeListener('connected', this.handleWsConnected)
