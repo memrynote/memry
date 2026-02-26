@@ -15,7 +15,9 @@ import {
   cleanupConsumedSetupTokens,
   cleanupExpiredLinkingSessions,
   cleanupExpiredOtpCodes,
+  cleanupExpiredTombstones,
   cleanupExpiredUploadSessions,
+  cleanupOrphanedBlobChunks,
   cleanupStaleRateLimits
 } from './services/cleanup'
 import type { Bindings, AppContext } from './types'
@@ -102,7 +104,9 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env,
     cleanupExpiredLinkingSessions(env.DB),
     cleanupExpiredUploadSessions(env.DB, env.STORAGE),
     cleanupStaleRateLimits(env.DB),
-    cleanupConsumedSetupTokens(env.DB)
+    cleanupConsumedSetupTokens(env.DB),
+    cleanupExpiredTombstones(env.DB, env.STORAGE),
+    cleanupOrphanedBlobChunks(env.DB, env.STORAGE)
   ])
 
   for (const [i, result] of results.entries()) {
