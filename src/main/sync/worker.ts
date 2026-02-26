@@ -17,6 +17,7 @@ if (!parentPort) {
 }
 
 const port = parentPort
+let shuttingDown = false
 
 async function init(): Promise<void> {
   await sodium.ready
@@ -30,8 +31,11 @@ async function init(): Promise<void> {
         handleDecryptBatch(msg)
         break
       case 'shutdown':
+        shuttingDown = true
+        port.postMessage({ type: 'shutdown-ack' } satisfies WorkerToMainMessage)
         process.exit(0)
     }
+    if (shuttingDown) process.exit(0)
   })
 
   port.postMessage({ type: 'ready' } satisfies WorkerToMainMessage)

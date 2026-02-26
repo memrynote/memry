@@ -185,16 +185,18 @@ export class SyncWorkerBridge {
 
   async stop(): Promise<void> {
     if (!this.worker) return
-    this.rejectAll(new Error('Worker shutting down'))
+
     this.worker.postMessage({ type: 'shutdown' } satisfies MainToWorkerMessage)
 
     await new Promise<void>((resolve) => {
       const timeout = setTimeout(() => {
+        this.rejectAll(new Error('Worker shutdown timeout'))
         this.worker?.terminate()
         resolve()
       }, 3_000)
 
       this.worker!.once('exit', () => {
+        this.rejectAll(new Error('Worker exited'))
         clearTimeout(timeout)
         resolve()
       })

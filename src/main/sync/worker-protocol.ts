@@ -98,3 +98,4 @@ export type WorkerToMainMessage =
       error: string
     }
   | { type: 'ready' }
+  | { type: 'shutdown-ack' }

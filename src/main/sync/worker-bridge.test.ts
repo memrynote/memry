@@ -146,6 +146,50 @@ describe('SyncWorkerBridge', () => {
       // #when / #then
       await expect(bridge.stop()).resolves.toBeUndefined()
     })
+
+    it('#then lets in-flight request resolve before rejecting stragglers', async () => {
+      // #given
+      const p = bridge.start()
+      mockWorkerInstance.simulateMessage({ type: 'ready' })
+      await p
+
+      const encryptPromise = bridge.encryptBatch(
+        [
+          {
+            queueId: 'q1',
+            itemId: 'item1',
+            type: 'note',
+            operation: 'update',
+            payload: '{"title":"draining"}'
+          }
+        ],
+        new Uint8Array(32),
+        new Uint8Array(64),
+        'device-1'
+      )
+
+      const postedMsg = mockWorkerInstance.postMessage.mock.calls.find(
+        ([m]) => m.type === 'encrypt-batch'
+      )![0]
+
+      // #when — stop is called, but worker sends result before exiting
+      const stopPromise = bridge.stop()
+
+      mockWorkerInstance.simulateMessage({
+        type: 'encrypt-batch-result',
+        requestId: postedMsg.requestId,
+        results: [{ queueId: 'q1', pushItem: { id: 'item1' } as never, sizeBytes: 50 }],
+        errors: []
+      })
+
+      mockWorkerInstance.simulateExit(0)
+      await stopPromise
+
+      // #then — in-flight request resolved successfully
+      const result = await encryptPromise
+      expect(result.results).toHaveLength(1)
+      expect(result.results[0].queueId).toBe('q1')
+    })
   })
 
   describe('#given running bridge #when encryptBatch called', () => {
