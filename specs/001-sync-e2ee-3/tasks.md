@@ -1016,9 +1016,9 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Error Handling
 
-- [ ] T229 [P] Implement comprehensive error handling for network failures in src/main/sync/engine.ts
-- [ ] T230 [P] Implement error handling for crypto failures in src/main/crypto/encryption.ts
-- [ ] T231 Handle session expiry event and prompt re-authentication in src/main/ipc/sync-handlers.ts and src/renderer/src/contexts/auth-context.tsx
+- [x] T229 [P] Implement comprehensive error handling for network failures in src/main/sync/engine.ts
+- [x] T230 [P] Implement error handling for crypto failures in src/main/crypto/encryption.ts
+- [x] T231 Handle session expiry event and prompt re-authentication in src/main/ipc/sync-handlers.ts and src/renderer/src/contexts/auth-context.tsx
 
 ### Tombstone Cleanup
 
