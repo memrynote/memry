@@ -46,6 +46,7 @@ interface ActiveDoc {
 
 export class CrdtProvider {
   private docs = new Map<string, ActiveDoc>()
+  private openLocks = new Map<string, Promise<Y.Doc>>()
   private persistence: LeveldbPersistence | null = null
   private updateQueue: CrdtUpdateQueue | null = null
   private snapshotPushFn: SnapshotPushFn | null = null
@@ -55,19 +56,18 @@ export class CrdtProvider {
   })
 
   async init(queue?: CrdtUpdateQueue, snapshotPush?: SnapshotPushFn): Promise<void> {
-    // If already initialized in this process, keep the existing persistence handle.
-    // Re-registering handlers or re-opening the same LevelDB path can lead to runtime errors.
-    if (this.persistence && this.ipcHandlersRegistered) {
-      this.updateQueue = queue ?? null
-      this.snapshotPushFn = snapshotPush ?? null
-      log.debug('CrdtProvider already initialized; callbacks updated')
-      return
-    }
+    await this.initPersistence()
 
     this.updateQueue = queue ?? null
     this.snapshotPushFn = snapshotPush ?? null
+    log.debug('CrdtProvider sync callbacks updated')
+  }
 
-    // Defensive cleanup for partial init/destroy races.
+  async initPersistence(): Promise<void> {
+    if (this.persistence && this.ipcHandlersRegistered) {
+      return
+    }
+
     if (this.persistence) {
       try {
         await this.persistence.destroy()
@@ -83,16 +83,39 @@ export class CrdtProvider {
       this.registerIpcHandlers()
       this.ipcHandlersRegistered = true
     }
-    log.info('CrdtProvider initialized', { storagePath })
+    log.info('CrdtProvider persistence initialized', { storagePath })
   }
 
-  async open(noteId: string, windowId?: number): Promise<Y.Doc> {
+  async open(noteId: string, windowId?: number, options?: { skipSeed?: boolean }): Promise<Y.Doc> {
     const existing = this.docs.get(noteId)
     if (existing) {
       if (windowId) existing.windowIds.add(windowId)
       return existing.doc
     }
 
+    // Coalesce concurrent opens for the same noteId to prevent doc/listener leaks
+    const pending = this.openLocks.get(noteId)
+    if (pending) {
+      const doc = await pending
+      const entry = this.docs.get(noteId)
+      if (entry && windowId) entry.windowIds.add(windowId)
+      return doc
+    }
+
+    const promise = this.doOpen(noteId, windowId, options)
+    this.openLocks.set(noteId, promise)
+    try {
+      return await promise
+    } finally {
+      this.openLocks.delete(noteId)
+    }
+  }
+
+  private async doOpen(
+    noteId: string,
+    windowId?: number,
+    options?: { skipSeed?: boolean }
+  ): Promise<Y.Doc> {
     const doc = new Y.Doc({ guid: noteId })
     this.initDocStructure(doc)
 
@@ -103,13 +126,13 @@ export class CrdtProvider {
         Y.applyUpdate(doc, update)
         persisted.destroy()
       } else {
-        // y-leveldb swallows transaction errors and returns null.
-        // Continue with an empty in-memory doc so editor remains usable.
         log.warn('CRDT persistence returned empty doc; continuing in-memory', { noteId })
       }
     }
 
-    await this.seedFromMarkdown(noteId, doc)
+    if (!options?.skipSeed) {
+      await this.seedFromMarkdown(noteId, doc)
+    }
 
     const entry: ActiveDoc = {
       doc,
@@ -221,6 +244,7 @@ export class CrdtProvider {
       this.persistence = null
     }
 
+    this.openLocks.clear()
     this.updateQueue = null
     this.snapshotPushFn = null
 
@@ -264,6 +288,33 @@ export class CrdtProvider {
     return pushed
   }
 
+  async pushSnapshotForNote(noteId: string): Promise<boolean> {
+    if (!this.snapshotPushFn) return false
+
+    const wasOpen = this.docs.has(noteId)
+    try {
+      const doc = await this.open(noteId)
+      const entry = this.docs.get(noteId)
+      const state = Y.encodeStateAsUpdate(doc)
+      if (state.length <= 4) {
+        if (!wasOpen) this.close(noteId)
+        return false
+      }
+
+      // Reset accumulatedBytes BEFORE push so close() won't fire a duplicate push
+      if (entry) entry.accumulatedBytes = 0
+
+      await this.snapshotPushFn(noteId, state)
+      log.info('Pushed snapshot for note', { noteId, size: state.byteLength })
+      if (!wasOpen) this.close(noteId)
+      return true
+    } catch (err) {
+      log.warn('pushSnapshotForNote failed', { noteId, error: err })
+      if (!wasOpen) this.close(noteId)
+      return false
+    }
+  }
+
   private initDocStructure(doc: Y.Doc): void {
     doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     doc.getMap('meta')
@@ -288,6 +339,12 @@ export class CrdtProvider {
     if (ok && this.persistence) {
       await this.persistence.storeUpdate(noteId, Y.encodeStateAsUpdate(doc))
     }
+  }
+
+  async seedFromMarkdownPublic(noteId: string): Promise<void> {
+    const entry = this.docs.get(noteId)
+    if (!entry) return
+    await this.seedFromMarkdown(noteId, entry.doc)
   }
 
   async initForNote(
