@@ -42,6 +42,7 @@ import {
   fetchCrdtSnapshot,
   type CrdtBatchPullResponse
 } from './http-client'
+import { classifyError, type SyncErrorInfo } from './sync-errors'
 import { checkManifestIntegrity } from './manifest-check'
 import { runInitialSeed } from './initial-seed'
 import type { CrdtProvider } from './crdt-provider'
@@ -79,6 +80,7 @@ export interface SyncEngineDeps {
   emitToRenderer: (channel: string, data: unknown) => void
   crdtProvider?: CrdtProvider
   workerBridge?: SyncWorkerBridge
+  refreshAccessToken?: () => Promise<boolean>
 }
 
 export interface SyncEngineOptions {
@@ -95,6 +97,7 @@ export class SyncEngine extends EventEmitter {
   private fullSyncActive = false
   private lastManifestCheckAt = 0
   private lastError: string | undefined
+  private lastErrorInfo: SyncErrorInfo | undefined
   private deps: SyncEngineDeps
   private options: SyncEngineOptions
   private abortController: AbortController | null = null
@@ -408,9 +411,15 @@ export class SyncEngine extends EventEmitter {
         log.debug('Push aborted (likely network change)')
         return
       }
-      this.lastError = error instanceof Error ? error.message : String(error)
+      const errorInfo = classifyError(error)
+      if (errorInfo.category === 'auth_expired') {
+        await this.handleAuthExpired()
+        return
+      }
+      this.lastErrorInfo = errorInfo
+      this.lastError = errorInfo.message
       this.setState('error')
-      this.recordHistory('error', 0, Date.now() - startTime, this.lastError)
+      this.recordHistory('error', 0, Date.now() - startTime, errorInfo.message)
     } finally {
       secureCleanup(vaultKey, signingKeys.secretKey)
       this.releaseLock()
@@ -650,6 +659,11 @@ export class SyncEngine extends EventEmitter {
             this.lastError =
               'All items failed with crypto errors — possible vault key mismatch. ' +
               `${cryptoFailCount} item(s) could not be decrypted.`
+            this.lastErrorInfo = {
+              category: 'crypto_failure',
+              message: this.lastError,
+              retryable: false
+            }
             this.setState('error')
             log.error('Pull: circuit breaker tripped — all items failed crypto', {
               cryptoFailCount
@@ -688,9 +702,15 @@ export class SyncEngine extends EventEmitter {
         log.debug('Pull aborted (likely network change)')
         return
       }
-      this.lastError = error instanceof Error ? error.message : String(error)
+      const errorInfo = classifyError(error)
+      if (errorInfo.category === 'auth_expired') {
+        await this.handleAuthExpired()
+        return
+      }
+      this.lastErrorInfo = errorInfo
+      this.lastError = errorInfo.message
       this.setState('error')
-      this.recordHistory('error', 0, Date.now() - startTime, this.lastError)
+      this.recordHistory('error', 0, Date.now() - startTime, errorInfo.message)
     } finally {
       this.deviceKeyCache.clear()
       secureCleanup(vaultKey)
@@ -801,7 +821,8 @@ export class SyncEngine extends EventEmitter {
       status: this.state,
       lastSyncAt: this.getLastSyncAt(),
       pendingCount: this.deps.queue.getPendingCount(),
-      error: this.lastError
+      error: this.lastError,
+      errorCategory: this.lastErrorInfo?.category
     }
   }
 
@@ -964,8 +985,37 @@ export class SyncEngine extends EventEmitter {
     this.state = newState
     if (newState !== 'error') {
       this.lastError = undefined
+      this.lastErrorInfo = undefined
     }
     this.emitStatusChanged()
+  }
+
+  private async handleAuthExpired(): Promise<void> {
+    if (!this.deps.refreshAccessToken) {
+      this.lastErrorInfo = {
+        category: 'auth_expired',
+        message: 'Session expired',
+        retryable: false
+      }
+      this.lastError = 'Session expired'
+      this.setState('error')
+      return
+    }
+
+    log.info('Auth expired during sync, attempting token refresh')
+    const refreshed = await this.deps.refreshAccessToken()
+    if (refreshed) {
+      log.info('Token refreshed successfully, scheduling full sync')
+      this.scheduleSync(() => this.fullSync())
+    } else {
+      this.lastErrorInfo = {
+        category: 'auth_expired',
+        message: 'Session expired',
+        retryable: false
+      }
+      this.lastError = 'Session expired'
+      this.setState('error')
+    }
   }
 
   private isPaused(): boolean {
@@ -1022,7 +1072,8 @@ export class SyncEngine extends EventEmitter {
       status: this.state,
       lastSyncAt: this.getLastSyncAt(),
       pendingCount: this.deps.queue.getPendingCount(),
-      error: this.lastError
+      error: this.lastError,
+      errorCategory: this.lastErrorInfo?.category
     }
     this.deps.emitToRenderer(EVENT_CHANNELS.STATUS_CHANGED, event)
     this.emit('status-changed', event)
