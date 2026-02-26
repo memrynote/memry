@@ -1,6 +1,7 @@
 import { decryptItemFromPull, SignatureVerificationError } from './decrypt'
 import type { DecryptedPullItem, DecryptionFailure, PullItemForDecrypt } from './worker-protocol'
 import { isCryptoErrorMessage } from './worker-protocol'
+import { CryptoError } from '../crypto/crypto-errors'
 
 export type DecryptSingleResult =
   | { ok: true; item: DecryptedPullItem }
@@ -42,6 +43,7 @@ export function decryptSingleItem(
     }
   } catch (err) {
     const isCryptoError =
+      err instanceof CryptoError ||
       err instanceof SignatureVerificationError ||
       (err instanceof Error && isCryptoErrorMessage(err.message))
 

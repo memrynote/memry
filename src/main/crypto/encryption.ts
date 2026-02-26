@@ -1,6 +1,7 @@
 import sodium from 'libsodium-wrappers-sumo'
 
 import { XCHACHA20_PARAMS } from '@shared/contracts/crypto'
+import { CryptoError } from './crypto-errors'
 
 export const generateNonce = (): Uint8Array => {
   const nonce = sodium.randombytes_buf(XCHACHA20_PARAMS.NONCE_LENGTH)
@@ -19,17 +20,30 @@ export const encrypt = (
   key: Uint8Array,
   associatedData?: Uint8Array
 ): { ciphertext: Uint8Array; nonce: Uint8Array } => {
+  if (key.length !== XCHACHA20_PARAMS.KEY_LENGTH) {
+    throw new CryptoError(
+      'INVALID_KEY_LENGTH',
+      `Expected key length ${XCHACHA20_PARAMS.KEY_LENGTH}, got ${key.length}`
+    )
+  }
+
   const nonce = generateNonce()
 
-  const ciphertext = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
-    plaintext,
-    associatedData ?? null,
-    null,
-    nonce,
-    key
-  )
-
-  return { ciphertext, nonce }
+  try {
+    const ciphertext = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+      plaintext,
+      associatedData ?? null,
+      null,
+      nonce,
+      key
+    )
+    return { ciphertext, nonce }
+  } catch (err) {
+    throw new CryptoError(
+      'ENCRYPTION_FAILED',
+      err instanceof Error ? err.message : 'Encryption failed'
+    )
+  }
 }
 
 export const decrypt = (
@@ -38,13 +52,36 @@ export const decrypt = (
   key: Uint8Array,
   associatedData?: Uint8Array
 ): Uint8Array => {
-  return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
-    null,
-    ciphertext,
-    associatedData ?? null,
-    nonce,
-    key
-  )
+  if (key.length !== XCHACHA20_PARAMS.KEY_LENGTH) {
+    throw new CryptoError(
+      'INVALID_KEY_LENGTH',
+      `Expected key length ${XCHACHA20_PARAMS.KEY_LENGTH}, got ${key.length}`
+    )
+  }
+  if (nonce.length !== XCHACHA20_PARAMS.NONCE_LENGTH) {
+    throw new CryptoError(
+      'INVALID_NONCE_LENGTH',
+      `Expected nonce length ${XCHACHA20_PARAMS.NONCE_LENGTH}, got ${nonce.length}`
+    )
+  }
+
+  try {
+    return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
+      null,
+      ciphertext,
+      associatedData ?? null,
+      nonce,
+      key
+    )
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Decryption failed'
+    throw new CryptoError(
+      'DECRYPTION_FAILED',
+      msg.toLowerCase().includes('ciphertext') || msg.toLowerCase().includes('mac')
+        ? `Ciphertext authentication failed: ${msg}`
+        : msg
+    )
+  }
 }
 
 export const wrapFileKey = (
