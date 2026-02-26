@@ -2437,4 +2437,116 @@ describe('SyncEngine', () => {
       vi.restoreAllMocks()
     })
   })
+
+  describe('#given engine with pending items #when stop() called', () => {
+    it('#then attempts final push before teardown', async () => {
+      // #given
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-shutdown',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Pending', clock: { 'device-1': 1 } })
+      })
+
+      const pushSpy = vi.spyOn(engine, 'push').mockResolvedValue()
+
+      // #when
+      await engine.stop()
+
+      // #then
+      expect(pushSpy).toHaveBeenCalledTimes(1)
+      expect(engine.currentState).toBe('idle')
+
+      vi.restoreAllMocks()
+    })
+
+    it('#then skips final push when skipFinalPush option is set', async () => {
+      // #given
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-skip',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Skipped', clock: { 'device-1': 1 } })
+      })
+
+      const pushSpy = vi.spyOn(engine, 'push').mockResolvedValue()
+
+      // #when
+      await engine.stop({ skipFinalPush: true })
+
+      // #then
+      expect(pushSpy).not.toHaveBeenCalled()
+
+      vi.restoreAllMocks()
+    })
+
+    it('#then skips final push when offline', async () => {
+      // #given
+      const network = createMockNetwork(false)
+      const deps = createMockDeps(testDb, { network })
+      const engine = new SyncEngine(deps)
+
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-offline',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Offline', clock: { 'device-1': 1 } })
+      })
+
+      const pushSpy = vi.spyOn(engine, 'push').mockResolvedValue()
+
+      // #when
+      await engine.stop()
+
+      // #then
+      expect(pushSpy).not.toHaveBeenCalled()
+
+      vi.restoreAllMocks()
+    })
+
+    it('#then skips final push when queue is empty', async () => {
+      // #given
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      const pushSpy = vi.spyOn(engine, 'push').mockResolvedValue()
+
+      // #when
+      await engine.stop()
+
+      // #then
+      expect(pushSpy).not.toHaveBeenCalled()
+
+      vi.restoreAllMocks()
+    })
+
+    it('#then completes teardown even if final push throws', async () => {
+      // #given
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-fail',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Fail', clock: { 'device-1': 1 } })
+      })
+
+      vi.spyOn(engine, 'push').mockRejectedValue(new Error('push failed'))
+
+      // #when
+      await engine.stop()
+
+      // #then — teardown still completed
+      expect(engine.currentState).toBe('idle')
+
+      vi.restoreAllMocks()
+    })
+  })
 })

@@ -362,7 +362,7 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
   }
 
   try {
-    await active.engine.stop()
+    await active.engine.stop({ skipFinalPush: options?.skipFinalSync })
   } catch (error) {
     log.error('Failed to stop sync engine cleanly', error)
   }
