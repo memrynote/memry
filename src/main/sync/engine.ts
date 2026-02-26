@@ -12,7 +12,9 @@ import type {
   ConflictDetectedEvent,
   QueueClearedEvent,
   ClockSkewWarningEvent,
-  InitialSyncProgressEvent
+  InitialSyncProgressEvent,
+  ItemRecoveredEvent,
+  ItemCorruptEvent
 } from '@shared/contracts/ipc-events'
 import type {
   GetSyncStatusResult,
@@ -57,6 +59,7 @@ const PUSH_BATCH_SIZE = 100
 const MAX_PUSH_ITERATIONS = 50
 const CLOCK_SKEW_THRESHOLD_SECONDS = 300
 const PULL_PAGE_LIMIT = 100
+const CORRUPT_ITEM_COOLDOWN_MS = 60 * 60 * 1000
 const SYNC_STATE_KEYS = {
   LAST_CURSOR: 'lastCursor',
   LAST_SYNC_AT: 'lastSyncAt',
@@ -110,6 +113,7 @@ export class SyncEngine extends EventEmitter {
   private deviceKeyCache = new Map<string, Uint8Array | null>()
   private suppressPushDuringPull = false
   private pendingCrdtPulls = new Set<string>()
+  private corruptItems = new Map<string, { failedAt: number; attempts: number }>()
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
@@ -217,8 +221,102 @@ export class SyncEngine extends EventEmitter {
     this.deps.ws.removeListener('connected', this.handleWsConnected)
     this.deps.ws.disconnect()
     this.deviceKeyCache.clear()
+    this.corruptItems.clear()
     this.setState('idle')
     SyncEngine.activeInstance = null
+  }
+
+  private shouldRetryCorruptItem(itemId: string): boolean {
+    const entry = this.corruptItems.get(itemId)
+    if (!entry) return true
+    if (Date.now() - entry.failedAt > CORRUPT_ITEM_COOLDOWN_MS) {
+      this.corruptItems.delete(itemId)
+      return true
+    }
+    return false
+  }
+
+  private markCorruptItemFailed(itemId: string): void {
+    const entry = this.corruptItems.get(itemId)
+    if (entry) {
+      entry.attempts++
+      entry.failedAt = Date.now()
+    } else {
+      this.corruptItems.set(itemId, { failedAt: Date.now(), attempts: 1 })
+    }
+  }
+
+  private clearExpiredCorruptItems(): void {
+    const now = Date.now()
+    for (const [id, entry] of this.corruptItems) {
+      if (now - entry.failedAt > CORRUPT_ITEM_COOLDOWN_MS) {
+        this.corruptItems.delete(id)
+      }
+    }
+  }
+
+  private async refetchCorruptItems(
+    failedItemIds: string[],
+    token: string,
+    vaultKey: Uint8Array
+  ): Promise<{
+    recovered: Array<{
+      id: string
+      type: string
+      content: string
+      clock?: Record<string, number>
+      deletedAt?: number
+      operation: string
+    }>
+    permanentFailures: string[]
+  }> {
+    const eligible = failedItemIds.filter((id) => this.shouldRetryCorruptItem(id))
+    if (eligible.length === 0) return { recovered: [], permanentFailures: [] }
+
+    log.info('Attempting re-fetch for corrupt items', { count: eligible.length })
+
+    try {
+      const pullResult = await withRetry(
+        () =>
+          postToServer<{ items: PullItemResponse[] }>('/sync/pull', { itemIds: eligible }, token),
+        {
+          signal: this.abortController?.signal ?? undefined,
+          isOnline: () => this.deps.network.online
+        }
+      )
+
+      const parsed = PullResponseSchema.safeParse(pullResult.value)
+      if (!parsed.success) {
+        log.error('Re-fetch: invalid response', { error: parsed.error.message })
+        for (const id of eligible) this.markCorruptItemFailed(id)
+        return { recovered: [], permanentFailures: eligible }
+      }
+
+      const signerIds = new Set(parsed.data.items.map((i) => i.signerDeviceId))
+      for (const sid of signerIds) {
+        await this.resolveDeviceKey(sid)
+      }
+
+      const { decrypted, failures } = await decryptPullBatch(parsed.data.items, vaultKey, {
+        workerBridge: this.deps.workerBridge,
+        resolveDeviceKey: (id) => this.resolveDeviceKey(id)
+      })
+
+      const permanentFailures: string[] = []
+      for (const failure of failures) {
+        this.markCorruptItemFailed(failure.id)
+        permanentFailures.push(failure.id)
+        log.warn('Re-fetch: item failed again', { itemId: failure.id, error: failure.error })
+      }
+
+      return { recovered: decrypted, permanentFailures }
+    } catch (error) {
+      log.error('Re-fetch request failed', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+      for (const id of eligible) this.markCorruptItemFailed(id)
+      return { recovered: [], permanentFailures: eligible }
+    }
   }
 
   private periodicPull(): void {
@@ -554,6 +652,8 @@ export class SyncEngine extends EventEmitter {
             if (failure.isCryptoError) cryptoFailCount++
           }
 
+          const parseErrorIds: Array<{ id: string; type: string }> = []
+
           this.suppressPushDuringPull = true
           try {
             for (let i = 0; i < decrypted.length; i++) {
@@ -571,6 +671,12 @@ export class SyncEngine extends EventEmitter {
                   clock: dec.clock,
                   deletedAt: dec.deletedAt
                 })
+
+                if (result === 'parse_error') {
+                  parseErrorIds.push({ id: dec.id, type: dec.type })
+                  pageFailed++
+                  continue
+                }
 
                 if (result === 'conflict') {
                   let remoteVersion: Record<string, unknown> = {}
@@ -638,6 +744,70 @@ export class SyncEngine extends EventEmitter {
           if (crdtNoteIds.length > 0 && this.deps.crdtProvider) {
             await this.applyCrdtBatch(crdtNoteIds, token, vaultKey)
             crdtNoteIds.length = 0
+          }
+
+          const cryptoRefetchIds = failures.filter((f) => f.isCryptoError).map((f) => f.id)
+          const parseRefetchIds = parseErrorIds.map((p) => p.id)
+          const allRefetchIds = [...cryptoRefetchIds, ...parseRefetchIds]
+
+          const hasNonCryptoSuccesses = pageApplied > 0
+          if (allRefetchIds.length > 0 && hasNonCryptoSuccesses) {
+            this.clearExpiredCorruptItems()
+            const { recovered, permanentFailures } = await this.refetchCorruptItems(
+              allRefetchIds,
+              token,
+              vaultKey
+            )
+
+            for (const dec of recovered) {
+              try {
+                const contentBytes = new TextEncoder().encode(dec.content)
+                const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
+                const result = this.applier.apply({
+                  itemId: dec.id,
+                  type: dec.type as Parameters<ItemApplier['apply']>[0]['type'],
+                  operation: itemOp,
+                  content: contentBytes,
+                  clock: dec.clock,
+                  deletedAt: dec.deletedAt
+                })
+
+                if (result === 'applied' || result === 'conflict') {
+                  processedIds.add(dec.id)
+                  pulledCount++
+                  pageApplied++
+                  pageFailed--
+                  this.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
+                  this.deps.emitToRenderer(EVENT_CHANNELS.ITEM_RECOVERED, {
+                    itemId: dec.id,
+                    type: dec.type
+                  } satisfies ItemRecoveredEvent)
+                  log.info('Pull: recovered corrupt item', { itemId: dec.id, type: dec.type })
+                }
+              } catch (err) {
+                log.error('Pull: failed to apply recovered item', {
+                  itemId: dec.id,
+                  error: err instanceof Error ? err.message : String(err)
+                })
+              }
+            }
+
+            for (const id of permanentFailures) {
+              const failInfo =
+                parseErrorIds.find((p) => p.id === id) ?? failures.find((f) => f.id === id)
+              this.deps.emitToRenderer(EVENT_CHANNELS.ITEM_CORRUPT, {
+                itemId: id,
+                type: failInfo?.type ?? 'unknown',
+                error: 'Item corrupt after re-fetch attempt'
+              } satisfies ItemCorruptEvent)
+            }
+
+            if (recovered.length > 0 || permanentFailures.length > 0) {
+              log.info('Pull: re-fetch summary', {
+                recovered: recovered.length,
+                permanentFailures: permanentFailures.length
+              })
+            }
           }
 
           totalConflictsResolved += pageConflicts
