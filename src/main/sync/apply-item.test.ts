@@ -220,8 +220,8 @@ describe('ItemApplier', () => {
     })
   })
 
-  describe('#given unsupported type #when apply called', () => {
-    it('#then skips', () => {
+  describe('#given empty content #when apply called', () => {
+    it('#then returns parse_error for invalid JSON', () => {
       const result = applier.apply({
         itemId: 'x',
         type: 'note',
@@ -229,7 +229,7 @@ describe('ItemApplier', () => {
         content: new Uint8Array()
       })
 
-      expect(result).toBe('skipped')
+      expect(result).toBe('parse_error')
     })
   })
 

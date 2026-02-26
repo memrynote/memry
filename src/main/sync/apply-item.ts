@@ -36,11 +36,19 @@ export class ItemApplier {
     }
 
     const decoded = new TextDecoder().decode(input.content)
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(decoded)
+    } catch (err) {
+      log.error('JSON parse failed', { type: input.type, itemId: input.itemId, error: err })
+      return 'parse_error'
+    }
+
     let data: unknown
     try {
-      data = handler.schema.parse(JSON.parse(decoded))
+      data = handler.schema.parse(parsed)
     } catch (err) {
-      log.error('Invalid payload', { type: input.type, itemId: input.itemId, error: err })
+      log.error('Schema validation failed', { type: input.type, itemId: input.itemId, error: err })
       return 'skipped'
     }
 

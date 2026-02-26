@@ -27,7 +27,9 @@ export const EVENT_CHANNELS = {
   ATTACHMENT_UPLOAD_FAILED: 'sync:attachment-upload-failed',
   DEVICE_REMOVED: 'sync:device-removed',
   DEVICE_RENAMED: 'sync:device-renamed',
-  LINKING_FINALIZED: 'sync:linking-finalized'
+  LINKING_FINALIZED: 'sync:linking-finalized',
+  ITEM_RECOVERED: 'sync:item-recovered',
+  ITEM_CORRUPT: 'sync:item-corrupt'
 } as const
 
 // ============================================================================
@@ -153,4 +155,15 @@ export interface DeviceRenamedEvent {
 export interface LinkingFinalizedEvent {
   deviceId?: string
   error?: string
+}
+
+export interface ItemRecoveredEvent {
+  itemId: string
+  type: string
+}
+
+export interface ItemCorruptEvent {
+  itemId: string
+  type: string
+  error: string
 }

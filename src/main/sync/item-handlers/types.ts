@@ -7,7 +7,7 @@ import { compare, merge } from '../vector-clock'
 
 export type DrizzleDb = BetterSQLite3Database<typeof dataSchema>
 export type EmitToWindows = (channel: string, data: unknown) => void
-export type ApplyResult = 'applied' | 'skipped' | 'conflict'
+export type ApplyResult = 'applied' | 'skipped' | 'conflict' | 'parse_error'
 
 export interface ApplyContext {
   db: DrizzleDb
