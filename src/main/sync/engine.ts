@@ -49,10 +49,13 @@ import { checkManifestIntegrity } from './manifest-check'
 import { runInitialSeed } from './initial-seed'
 import type { CrdtProvider } from './crdt-provider'
 import { decryptCrdtUpdate } from './crdt-encrypt'
+import { parallelWithLimit } from './concurrency'
+import { SyncTimer } from './sync-timer'
 
 const log = createLogger('SyncEngine')
 
 const YIELD_EVERY_N_ITEMS = 20
+const CRDT_SNAPSHOT_CONCURRENCY = 5
 const yieldToEventLoop = (): Promise<void> => new Promise((r) => setImmediate(r))
 
 const PUSH_BATCH_SIZE = 100
@@ -378,6 +381,7 @@ export class SyncEngine extends EventEmitter {
       return
     }
 
+    const timer = new SyncTimer()
     const startTime = Date.now()
     let pushedCount = 0
     let lastServerTime = 0
@@ -404,20 +408,26 @@ export class SyncEngine extends EventEmitter {
         const dedupedItems = this.deduplicateByItemId(items)
 
         if (this.deps.crdtProvider) {
-          for (const item of dedupedItems) {
-            if (item.operation === 'create' && (item.type === 'note' || item.type === 'journal')) {
-              try {
-                await this.deps.crdtProvider.pushSnapshotForNote(item.itemId)
-              } catch (err) {
-                log.warn('Push: pre-POST CRDT snapshot failed', {
-                  noteId: item.itemId,
-                  error: err instanceof Error ? err.message : String(err)
-                })
-              }
+          const snapshotTasks = dedupedItems
+            .filter(
+              (item) =>
+                item.operation === 'create' && (item.type === 'note' || item.type === 'journal')
+            )
+            .map((item) => () => this.deps.crdtProvider!.pushSnapshotForNote(item.itemId))
+          if (snapshotTasks.length > 0) {
+            const snapshotResults = await parallelWithLimit(
+              snapshotTasks,
+              CRDT_SNAPSHOT_CONCURRENCY,
+              this.abortController.signal
+            )
+            const failedSnapshots = snapshotResults.filter((r) => r.status === 'rejected')
+            if (failedSnapshots.length > 0) {
+              log.warn('Push: some CRDT snapshots failed', { count: failedSnapshots.length })
             }
           }
         }
 
+        timer.startPhase('encrypt')
         const pushItems = await encryptPushBatch(
           dedupedItems,
           vaultKey,
@@ -430,7 +440,9 @@ export class SyncEngine extends EventEmitter {
             resolvePushPayload: (item, deviceId) => this.resolvePushPayload(item, deviceId)
           }
         )
+        timer.endPhase(dedupedItems.length)
 
+        timer.startPhase('network')
         const response = await withRetry(
           () =>
             postToServer<PushResponse>(
@@ -440,6 +452,7 @@ export class SyncEngine extends EventEmitter {
             ),
           { signal: this.abortController.signal, isOnline: () => this.deps.network.online }
         )
+        timer.endPhase()
 
         log.info('Push: server response', {
           iteration,
@@ -483,6 +496,8 @@ export class SyncEngine extends EventEmitter {
           }
         }
       }
+
+      log.info('Push timing', timer.finish())
 
       if (pushedCount > 0) {
         this.recordHistory('push', pushedCount, Date.now() - startTime)
@@ -567,6 +582,7 @@ export class SyncEngine extends EventEmitter {
       release()
       return
     }
+    const timer = new SyncTimer()
     const startTime = Date.now()
     let pulledCount = 0
     const processedIds = new Set<string>()
@@ -579,18 +595,31 @@ export class SyncEngine extends EventEmitter {
       let cursor = this.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)
       let hasMore = true
 
+      const fetchChangesPage = (pageCursor: string | null | undefined) =>
+        withRetry(
+          () => {
+            const cp = pageCursor ? `&cursor=${pageCursor}` : ''
+            return getFromServer<ChangesResponse>(
+              `/sync/changes?limit=${this.options.pullPageLimit}${cp}`,
+              token
+            )
+          },
+          { signal: this.abortController!.signal, isOnline: () => this.deps.network.online }
+        )
+
+      type ChangesRetryResult = Awaited<ReturnType<typeof fetchChangesPage>>
+      let changesResult: ChangesRetryResult
+      let prefetchedNext: Promise<ChangesRetryResult> | null = null
+
       while (hasMore) {
         if (this.abortController.signal.aborted) break
 
-        const cursorParam = cursor ? `&cursor=${cursor}` : ''
-        const changesResult = await withRetry(
-          () =>
-            getFromServer<ChangesResponse>(
-              `/sync/changes?limit=${this.options.pullPageLimit}${cursorParam}`,
-              token
-            ),
-          { signal: this.abortController.signal, isOnline: () => this.deps.network.online }
-        )
+        if (prefetchedNext) {
+          changesResult = await prefetchedNext
+          prefetchedNext = null
+        } else {
+          changesResult = await fetchChangesPage(cursor)
+        }
 
         const changes = changesResult.value
 
@@ -615,9 +644,7 @@ export class SyncEngine extends EventEmitter {
           })
 
           const signerIds = new Set(parsed.data.items.map((i) => i.signerDeviceId))
-          for (const sid of signerIds) {
-            await this.resolveDeviceKey(sid)
-          }
+          await Promise.all(Array.from(signerIds).map((sid) => this.resolveDeviceKey(sid)))
           log.debug('Pull: device keys prefetched', { signerCount: signerIds.size })
 
           let pageApplied = 0
@@ -635,10 +662,12 @@ export class SyncEngine extends EventEmitter {
             return true
           })
 
+          timer.startPhase('encrypt')
           const { decrypted, failures } = await decryptPullBatch(itemsToProcess, vaultKey, {
             workerBridge: this.deps.workerBridge,
             resolveDeviceKey: (id) => this.resolveDeviceKey(id)
           })
+          timer.endPhase(itemsToProcess.length)
 
           for (const failure of failures) {
             log.error('Pull: failed to process item', {
@@ -654,6 +683,7 @@ export class SyncEngine extends EventEmitter {
 
           const parseErrorIds: Array<{ id: string; type: string }> = []
 
+          timer.startPhase('apply')
           this.suppressPushDuringPull = true
           try {
             for (let i = 0; i < decrypted.length; i++) {
@@ -740,9 +770,12 @@ export class SyncEngine extends EventEmitter {
           } finally {
             this.suppressPushDuringPull = false
           }
+          timer.endPhase(decrypted.length)
 
           if (crdtNoteIds.length > 0 && this.deps.crdtProvider) {
+            timer.startPhase('crdt-batch')
             await this.applyCrdtBatch(crdtNoteIds, token, vaultKey)
+            timer.endPhase(crdtNoteIds.length)
             crdtNoteIds.length = 0
           }
 
@@ -856,7 +889,14 @@ export class SyncEngine extends EventEmitter {
         this.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(changes.nextCursor))
         cursor = String(changes.nextCursor)
         hasMore = changes.hasMore
+
+        if (hasMore && !this.abortController?.signal.aborted) {
+          prefetchedNext = fetchChangesPage(cursor)
+          prefetchedNext.catch(() => {})
+        }
       }
+
+      log.info('Pull timing', timer.finish())
 
       this.recordHistory('pull', pulledCount, Date.now() - startTime)
       this.updateLastSyncAt()
@@ -1474,9 +1514,7 @@ export class SyncEngine extends EventEmitter {
         })
 
         const signerIds = new Set(result.updates.map((u) => u.signerDeviceId))
-        for (const sid of signerIds) {
-          await this.resolveDeviceKey(sid)
-        }
+        await Promise.all(Array.from(signerIds).map((sid) => this.resolveDeviceKey(sid)))
 
         for (const entry of result.updates) {
           const bin = atob(entry.data)
@@ -1589,7 +1627,7 @@ export class SyncEngine extends EventEmitter {
         for (const noteData of Object.values(result.notes)) {
           for (const u of noteData.updates) signerIds.add(u.signerDeviceId)
         }
-        for (const sid of signerIds) await this.resolveDeviceKey(sid)
+        await Promise.all(Array.from(signerIds).map((sid) => this.resolveDeviceKey(sid)))
 
         for (const [noteId, noteData] of Object.entries(result.notes)) {
           for (const entry of noteData.updates) {
