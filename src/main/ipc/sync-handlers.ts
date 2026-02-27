@@ -32,7 +32,11 @@ import {
   RenameDeviceSchema
 } from '@shared/contracts/ipc-devices'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@shared/contracts/ipc-sync'
-import { GetHistorySchema, UpdateSyncedSettingSchema } from '@shared/contracts/ipc-sync-ops'
+import {
+  GetHistorySchema,
+  StorageBreakdownResult,
+  UpdateSyncedSettingSchema
+} from '@shared/contracts/ipc-sync-ops'
 import {
   UploadAttachmentSchema,
   GetUploadProgressSchema,
@@ -1040,6 +1044,12 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     return manager.getSettings()
   })
 
+  ipcMain.handle(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN, async () => {
+    const token = await getValidAccessToken()
+    if (!token) return null
+    return getFromServer<StorageBreakdownResult>('/sync/storage', token)
+  })
+
   // --- Attachment Sync Handlers (T159–T162) ---
 
   ipcMain.handle(
@@ -1245,6 +1255,7 @@ export function unregisterSyncHandlers(): void {
 
   ipcMain.removeHandler(SYNC_CHANNELS.UPDATE_SYNCED_SETTING)
   ipcMain.removeHandler(SYNC_CHANNELS.GET_SYNCED_SETTINGS)
+  ipcMain.removeHandler(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN)
 
   ipcMain.removeHandler(SYNC_CHANNELS.UPLOAD_ATTACHMENT)
   ipcMain.removeHandler(SYNC_CHANNELS.GET_UPLOAD_PROGRESS)

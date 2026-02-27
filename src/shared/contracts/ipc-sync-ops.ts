@@ -12,7 +12,8 @@ export const SYNC_OP_CHANNELS = {
   PAUSE: 'sync:pause',
   RESUME: 'sync:resume',
   UPDATE_SYNCED_SETTING: 'sync:update-synced-setting',
-  GET_SYNCED_SETTINGS: 'sync:get-synced-settings'
+  GET_SYNCED_SETTINGS: 'sync:get-synced-settings',
+  GET_STORAGE_BREAKDOWN: 'sync:get-storage-breakdown'
 } as const
 
 // ============================================================================
@@ -89,6 +90,17 @@ export interface UpdateSyncedSettingInput {
 export interface UpdateSyncedSettingResult {
   success: boolean
   error?: string
+}
+
+export interface StorageBreakdownResult {
+  used: number
+  limit: number
+  breakdown: {
+    notes: number
+    attachments: number
+    crdt: number
+    other: number
+  }
 }
 
 // ============================================================================

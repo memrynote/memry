@@ -2206,6 +2206,16 @@ interface SyncOpsClientAPI {
   getSyncedSettings: () => Promise<
     import('../shared/contracts/settings-sync').SyncedSettings | null
   >
+  getStorageBreakdown: () => Promise<{
+    used: number
+    limit: number
+    breakdown: {
+      notes: number
+      attachments: number
+      crdt: number
+      other: number
+    }
+  } | null>
 }
 
 // Crypto API
