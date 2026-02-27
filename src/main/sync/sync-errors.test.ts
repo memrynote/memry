@@ -63,6 +63,27 @@ describe('classifyError', () => {
     expect(result.retryable).toBe(false)
   })
 
+  it('#given SyncServerError 403 with AUTH_DEVICE_REVOKED #then device_revoked, not retryable', () => {
+    const err = new SyncServerError(
+      'Forbidden',
+      403,
+      'AUTH_DEVICE_REVOKED: Device has been revoked'
+    )
+    const result = classifyError(err)
+
+    expect(result.category).toBe('device_revoked')
+    expect(result.message).toBe('This device has been removed')
+    expect(result.retryable).toBe(false)
+  })
+
+  it('#given SyncServerError 403 without AUTH_DEVICE_REVOKED #then server_error', () => {
+    const err = new SyncServerError('Forbidden', 403, 'SOME_OTHER_ERROR')
+    const result = classifyError(err)
+
+    expect(result.category).toBe('server_error')
+    expect(result.retryable).toBe(false)
+  })
+
   it('#given NetworkError #then network_offline, retryable', () => {
     const err = new NetworkError('fetch failed')
     const result = classifyError(err)

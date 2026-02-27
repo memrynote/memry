@@ -33,6 +33,13 @@ export function classifyError(error: unknown): SyncErrorInfo {
         retryable: false
       }
     }
+    if (error.statusCode === 403 && error.serverError?.includes('AUTH_DEVICE_REVOKED')) {
+      return {
+        category: 'device_revoked',
+        message: 'This device has been removed',
+        retryable: false
+      }
+    }
     if (error.statusCode === 426) {
       return {
         category: 'version_incompatible',

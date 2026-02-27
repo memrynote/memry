@@ -26,6 +26,7 @@ export type SyncErrorCategory =
   | 'network_timeout'
   | 'server_error'
   | 'auth_expired'
+  | 'device_revoked'
   | 'rate_limited'
   | 'crypto_failure'
   | 'version_incompatible'

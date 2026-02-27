@@ -143,8 +143,8 @@ export interface AttachmentUploadFailedEvent {
   error: string
 }
 
-export interface DeviceRemovedEvent {
-  deviceId: string
+export interface DeviceRevokedEvent {
+  unsyncedCount: number
 }
 
 export interface DeviceRenamedEvent {
