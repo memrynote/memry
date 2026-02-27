@@ -1414,7 +1414,8 @@ const api = {
     resume: () => ipcRenderer.invoke(SYNC_CHANNELS.RESUME),
     updateSyncedSetting: (fieldPath: string, value: unknown) =>
       ipcRenderer.invoke(SYNC_CHANNELS.UPDATE_SYNCED_SETTING, { fieldPath, value }),
-    getSyncedSettings: () => ipcRenderer.invoke(SYNC_CHANNELS.GET_SYNCED_SETTINGS)
+    getSyncedSettings: () => ipcRenderer.invoke(SYNC_CHANNELS.GET_SYNCED_SETTINGS),
+    getStorageBreakdown: () => ipcRenderer.invoke(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN)
   },
 
   // Crypto API
