@@ -88,6 +88,7 @@ async function seedExistingCrdtDocs(
       date: noteCache.date
     })
     .from(noteCache)
+    .where(eq(noteCache.fileType, 'markdown'))
     .all()
 
   if (rows.length === 0) return
@@ -147,8 +148,20 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         try {
           const b64Updates = updates.map((raw) => {
             const encrypted = encryptCrdtUpdate(raw, vaultKey, noteId, signingSecretKey)
-            return btoa(String.fromCharCode(...encrypted))
+            return Buffer.from(encrypted).toString('base64')
           })
+
+          const MAX_CRDT_PAYLOAD_BYTES = 900_000
+          const estimatedBytes = b64Updates.reduce((sum, s) => sum + s.length, 0) + 128
+          if (estimatedBytes > MAX_CRDT_PAYLOAD_BYTES) {
+            log.warn('CRDT payload exceeds size limit, dropping batch', {
+              noteId,
+              estimatedBytes,
+              updateCount: b64Updates.length
+            })
+            return
+          }
+
           await withRetry(
             () => postToServer('/sync/crdt/updates', { noteId, updates: b64Updates }, token),
             { maxRetries: 3, baseDelayMs: 2000 }
