@@ -17,7 +17,8 @@ import type {
   OtpDetectedEvent,
   OAuthCallbackEvent,
   OAuthErrorEvent,
-  ClockSkewWarningEvent
+  ClockSkewWarningEvent,
+  DeviceRevokedEvent
 } from '../shared/contracts/ipc-sync'
 
 // Vault types (mirrored from contracts for preload compatibility)
@@ -2426,6 +2427,7 @@ interface API extends WindowAPI {
   onSyncResumed: (callback: (event: SyncResumedEvent) => void) => () => void
   onKeyRotationProgress: (callback: (event: KeyRotationProgressEvent) => void) => () => void
   onSessionExpired: (callback: (event: SessionExpiredEvent) => void) => () => void
+  onDeviceRevoked: (callback: (event: DeviceRevokedEvent) => void) => () => void
   onOtpDetected: (callback: (event: OtpDetectedEvent) => void) => () => void
   onOAuthCallback: (callback: (event: OAuthCallbackEvent) => void) => () => void
   onOAuthError: (callback: (event: OAuthErrorEvent) => void) => () => void

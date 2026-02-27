@@ -14,7 +14,8 @@ import type {
   ClockSkewWarningEvent,
   InitialSyncProgressEvent,
   ItemRecoveredEvent,
-  ItemCorruptEvent
+  ItemCorruptEvent,
+  DeviceRevokedEvent
 } from '@shared/contracts/ipc-events'
 import type {
   GetSyncStatusResult,
@@ -148,6 +149,7 @@ export class SyncEngine extends EventEmitter {
     this.deps.network.on('status-changed', this.handleNetworkChange)
     this.deps.ws.on('message', this.handleWsMessage)
     this.deps.ws.on('connected', this.handleWsConnected)
+    this.deps.ws.on('device_revoked', this.handleDeviceRevokedFromWs)
 
     if (!(await this.isAuthReady())) {
       this.setState('idle')
@@ -197,7 +199,12 @@ export class SyncEngine extends EventEmitter {
     this.abortController = null
     this.inFlightSync = null
 
-    if (!options?.skipFinalPush && this.deps.network.online) {
+    const skipPush =
+      options?.skipFinalPush ||
+      !this.deps.network.online ||
+      this.lastErrorInfo?.category === 'device_revoked'
+
+    if (!skipPush) {
       const pending = this.deps.queue.getPendingCount()
       if (pending > 0) {
         log.info(`Shutdown: attempting final push of ${pending} item(s)`)
@@ -222,9 +229,11 @@ export class SyncEngine extends EventEmitter {
     this.deps.network.removeListener('status-changed', this.handleNetworkChange)
     this.deps.ws.removeListener('message', this.handleWsMessage)
     this.deps.ws.removeListener('connected', this.handleWsConnected)
+    this.deps.ws.removeListener('device_revoked', this.handleDeviceRevokedFromWs)
     this.deps.ws.disconnect()
     this.deviceKeyCache.clear()
     this.corruptItems.clear()
+    this.syncing = false
     this.setState('idle')
     SyncEngine.activeInstance = null
   }
@@ -525,6 +534,10 @@ export class SyncEngine extends EventEmitter {
         return
       }
       const errorInfo = classifyError(error)
+      if (errorInfo.category === 'device_revoked') {
+        this.handleDeviceRevoked()
+        return
+      }
       if (errorInfo.category === 'auth_expired') {
         await this.handleAuthExpired()
         return
@@ -913,6 +926,10 @@ export class SyncEngine extends EventEmitter {
         return
       }
       const errorInfo = classifyError(error)
+      if (errorInfo.category === 'device_revoked') {
+        this.handleDeviceRevoked()
+        return
+      }
       if (errorInfo.category === 'auth_expired') {
         await this.handleAuthExpired()
         return
@@ -1110,6 +1127,10 @@ export class SyncEngine extends EventEmitter {
     }
   }
 
+  private handleDeviceRevokedFromWs = (): void => {
+    this.handleDeviceRevoked()
+  }
+
   private handleWsMessage = (message: WebSocketMessage): void => {
     switch (message.type) {
       case 'changes_available':
@@ -1141,7 +1162,11 @@ export class SyncEngine extends EventEmitter {
       case 'heartbeat':
         break
       case 'error':
-        log.warn('Server-sent WS error', { payload: message.payload })
+        if (message.payload?.code === 'AUTH_DEVICE_REVOKED') {
+          this.handleDeviceRevoked()
+        } else {
+          log.warn('Server-sent WS error', { payload: message.payload })
+        }
         break
       case 'linking_request':
         this.deps.emitToRenderer(EVENT_CHANNELS.LINKING_REQUEST, message.payload)
@@ -1226,6 +1251,27 @@ export class SyncEngine extends EventEmitter {
       this.lastError = 'Session expired'
       this.setState('error')
     }
+  }
+
+  private handleDeviceRevoked(): void {
+    log.warn('Device has been revoked by another device')
+
+    this.abortController?.abort()
+
+    this.lastErrorInfo = {
+      category: 'device_revoked',
+      message: 'This device has been removed',
+      retryable: false
+    }
+    this.lastError = 'This device has been removed'
+    this.setState('error')
+
+    this.deps.ws.disconnect()
+
+    const unsyncedCount = this.deps.queue.getPendingCount()
+    this.deps.emitToRenderer(EVENT_CHANNELS.DEVICE_REMOVED, {
+      unsyncedCount
+    } satisfies DeviceRevokedEvent)
   }
 
   private isPaused(): boolean {

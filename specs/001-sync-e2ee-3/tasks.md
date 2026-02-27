@@ -1038,7 +1038,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 - [ ] T237 Implement app version compatibility check on sync connect in src/main/sync/websocket.ts
 - [ ] T238 Implement corrupt data detection and recovery (re-fetch from server) in src/main/sync/engine.ts
-- [ ] T239 Handle device removal with unsynced local changes (warn user, offer export) in src/main/sync/engine.ts
+- [x] T239 Handle device removal with unsynced local changes (warn user, offer export) in src/main/sync/engine.ts
 - [ ] T240 Implement storage quota exceeded error handling with user notification in src/main/sync/engine.ts
 - [ ] T240a Implement server-side storage quota validation before accepting uploads (return 413 when quota exceeded) in sync-server/src/routes/sync.ts and sync-server/src/routes/blob.ts
 - [ ] T241 Handle concurrent device linking attempts (reject second, show error) in sync-server/src/routes/auth.ts

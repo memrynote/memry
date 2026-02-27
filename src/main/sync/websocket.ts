@@ -25,6 +25,7 @@ const WebSocketMessageSchema = z.object({
 
 export type WebSocketMessage = z.infer<typeof WebSocketMessageSchema>
 
+export const CLOSE_CODE_DEVICE_REVOKED = 4004
 export const CLOSE_CODE_VERSION_INCOMPATIBLE = 4009
 
 export interface WebSocketManagerDeps {
@@ -130,6 +131,12 @@ export class WebSocketManager extends EventEmitter {
 
     ws.on('close', (code: number, reason: Buffer) => {
       log.info('WebSocket disconnected', { code, reason: reason.toString() })
+      if (code === CLOSE_CODE_DEVICE_REVOKED) {
+        this.cleanup()
+        this.shouldBeConnected = false
+        this.emit('device_revoked')
+        return
+      }
       if (code === CLOSE_CODE_VERSION_INCOMPATIBLE) {
         this.versionRejected = true
         this.cleanup()
