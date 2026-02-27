@@ -1,4 +1,5 @@
 import { createLogger } from '../lib/logger'
+import { SyncServerError } from './http-client'
 
 const log = createLogger('CrdtUpdateQueue')
 
@@ -99,6 +100,13 @@ export class CrdtUpdateQueue {
         if (!this.paused) {
           log.error('Failed to push CRDT updates', { noteId, error: err })
         }
+        const nonRetryable =
+          err instanceof SyncServerError &&
+          err.statusCode >= 400 &&
+          err.statusCode < 500 &&
+          err.statusCode !== 429
+        if (nonRetryable) return
+
         let existing = this.buffers.get(noteId)
         if (!existing) {
           existing = []
