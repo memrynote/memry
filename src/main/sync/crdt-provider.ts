@@ -24,6 +24,8 @@ import { toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
 import { parseNote } from '../vault/frontmatter'
 import { markdownToYFragment } from './blocknote-converter'
+import { compactYDoc } from './crdt-compact-utils'
+import { isBinaryFileType } from '@shared/file-types'
 
 const log = createLogger('CrdtProvider')
 
@@ -34,7 +36,9 @@ interface IpcOrigin {
 
 const ORIGIN_NETWORK = 'network'
 export const ORIGIN_LOCAL = 'local'
-const COMPACTION_THRESHOLD_BYTES = 1024 * 1024
+const SIZE_CHECK_INTERVAL_MS = 60_000
+const ENCODED_SIZE_COMPACTION_THRESHOLD = 1024 * 1024
+const ACCUMULATED_BYTES_RECHECK_THRESHOLD = 512 * 1024
 
 export type SnapshotPushFn = (noteId: string, state: Uint8Array) => Promise<void>
 
@@ -42,6 +46,8 @@ interface ActiveDoc {
   doc: Y.Doc
   windowIds: Set<number>
   accumulatedBytes: number
+  lastEncodedSize: number
+  lastSizeCheckAt: number
 }
 
 export class CrdtProvider {
@@ -51,6 +57,8 @@ export class CrdtProvider {
   private updateQueue: CrdtUpdateQueue | null = null
   private snapshotPushFn: SnapshotPushFn | null = null
   private ipcHandlersRegistered = false
+  private compactingDocs = new Set<string>()
+  private compactionBuffers = new Map<string, Uint8Array[]>()
   private networkBatcher = new MicrotaskBatchBroadcaster((noteId, merged) => {
     this.broadcastToWindows(noteId, merged, ORIGIN_NETWORK, undefined)
   })
@@ -137,7 +145,9 @@ export class CrdtProvider {
     const entry: ActiveDoc = {
       doc,
       windowIds: new Set(windowId ? [windowId] : []),
-      accumulatedBytes: 0
+      accumulatedBytes: 0,
+      lastEncodedSize: 0,
+      lastSizeCheckAt: 0
     }
     this.docs.set(noteId, entry)
 
@@ -190,6 +200,19 @@ export class CrdtProvider {
       log.warn('Received remote update for unopened doc', { noteId })
       return
     }
+
+    if (this.compactingDocs.has(noteId)) {
+      const buf = this.compactionBuffers.get(noteId)
+      if (buf) {
+        buf.push(update)
+        log.debug('Buffered remote update during compaction', {
+          noteId,
+          updateBytes: update.byteLength
+        })
+        return
+      }
+    }
+
     log.warn('[DIAG] applyRemoteUpdate', {
       noteId,
       updateBytes: update.byteLength,
@@ -253,6 +276,20 @@ export class CrdtProvider {
 
   getOpenNoteIds(): string[] {
     return Array.from(this.docs.keys())
+  }
+
+  getDocSizeMetrics(): Array<{
+    noteId: string
+    encodedSizeBytes: number
+    accumulatedBytes: number
+    windowCount: number
+  }> {
+    return Array.from(this.docs.entries()).map(([noteId, entry]) => ({
+      noteId,
+      encodedSizeBytes: entry.lastEncodedSize,
+      accumulatedBytes: entry.accumulatedBytes,
+      windowCount: entry.windowIds.size
+    }))
   }
 
   async wipeStorage(): Promise<void> {
@@ -505,11 +542,32 @@ export class CrdtProvider {
   private maybeCompact(noteId: string): void {
     const entry = this.docs.get(noteId)
     if (!entry) return
+    if (entry.accumulatedBytes < ACCUMULATED_BYTES_RECHECK_THRESHOLD) return
+    if (this.compactingDocs.has(noteId)) return
 
-    if (entry.accumulatedBytes > COMPACTION_THRESHOLD_BYTES) {
+    const now = Date.now()
+    if (now - entry.lastSizeCheckAt < SIZE_CHECK_INTERVAL_MS) return
+
+    setImmediate(() => this.checkAndCompact(noteId))
+  }
+
+  private checkAndCompact(noteId: string): void {
+    const entry = this.docs.get(noteId)
+    if (!entry) return
+
+    entry.lastSizeCheckAt = Date.now()
+    const encoded = Y.encodeStateAsUpdate(entry.doc)
+    entry.lastEncodedSize = encoded.byteLength
+
+    if (entry.lastEncodedSize > ENCODED_SIZE_COMPACTION_THRESHOLD && entry.windowIds.size === 0) {
+      entry.accumulatedBytes = 0
+      this.compactDoc(noteId).catch((err) => {
+        log.error('Failed to compact doc', { noteId, error: err })
+      })
+    } else if (entry.accumulatedBytes > ENCODED_SIZE_COMPACTION_THRESHOLD) {
       entry.accumulatedBytes = 0
       this.flushDoc(noteId).catch((err) => {
-        log.error('Failed to compact doc', { noteId, error: err })
+        log.error('Failed to flush doc', { noteId, error: err })
       })
     }
   }
@@ -517,6 +575,73 @@ export class CrdtProvider {
   private async flushDoc(noteId: string): Promise<void> {
     if (!this.persistence) return
     await this.persistence.flushDocument(noteId)
+  }
+
+  async compactDoc(noteId: string): Promise<void> {
+    const entry = this.docs.get(noteId)
+    if (!entry) return
+
+    if (entry.windowIds.size > 0) {
+      log.debug('Skipping compaction: editors open', { noteId, windowCount: entry.windowIds.size })
+      return
+    }
+
+    if (this.compactingDocs.has(noteId)) return
+
+    const result = compactYDoc(entry.doc, CRDT_FRAGMENT_NAME)
+    if (!result) return
+
+    const beforeSize = entry.lastEncodedSize
+    log.info('Compacting doc', {
+      noteId,
+      beforeSize,
+      afterSize: result.compacted.byteLength,
+      savedBytes: result.savedBytes
+    })
+
+    this.compactingDocs.add(noteId)
+    this.compactionBuffers.set(noteId, [])
+
+    try {
+      if (this.snapshotPushFn) {
+        await this.snapshotPushFn(noteId, result.compacted)
+      }
+
+      if (this.persistence) {
+        await this.persistence.storeUpdate(noteId, result.compacted)
+        await this.persistence.flushDocument(noteId)
+      }
+
+      if (entry.windowIds.size > 0) {
+        log.info('Compaction aborted: editor opened during compaction', { noteId })
+        return
+      }
+
+      const oldDoc = entry.doc
+      const newDoc = new Y.Doc()
+      Y.applyUpdate(newDoc, result.compacted)
+
+      const buffered = this.compactionBuffers.get(noteId) ?? []
+      for (const update of buffered) {
+        Y.applyUpdate(newDoc, update, ORIGIN_NETWORK)
+      }
+
+      newDoc.on('update', (update: Uint8Array, origin: unknown) => {
+        this.onDocUpdate(noteId, update, origin)
+      })
+
+      entry.doc = newDoc
+      entry.accumulatedBytes = 0
+      entry.lastEncodedSize = result.compacted.byteLength
+      entry.lastSizeCheckAt = Date.now()
+
+      oldDoc.destroy()
+
+      log.info('Doc compacted', { noteId, beforeSize, afterSize: result.compacted.byteLength })
+    } finally {
+      this.compactingDocs.delete(noteId)
+      this.compactionBuffers.delete(noteId)
+    }
   }
 
   private registerIpcHandlers(): void {
@@ -528,6 +653,9 @@ export class CrdtProvider {
       const noteExists = getNoteCacheById(indexDb, noteId)
       if (!noteExists) {
         return { success: false, error: `Note not found: ${noteId}` }
+      }
+      if (noteExists.fileType && isBinaryFileType(noteExists.fileType)) {
+        return { success: false, error: `Binary notes do not use CRDT: ${noteId}` }
       }
 
       await this.open(noteId, windowId)
