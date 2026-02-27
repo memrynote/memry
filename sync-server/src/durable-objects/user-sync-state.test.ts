@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { MockWebSocket } from '../__mocks__/cloudflare-workers'
 import { ErrorCodes } from '../lib/errors'
+import { isVersionBelow } from './user-sync-state'
 
 const hoisted = vi.hoisted(() => ({
   verifyAccessTokenMock: vi.fn(async () => ({
@@ -27,8 +28,16 @@ function createMockDB(revoked_at: number | null = null) {
   }
 }
 
-function createDO(dbOverride?: ReturnType<typeof createMockDB>) {
-  const env = { JWT_PUBLIC_KEY: 'test-pem', DB: dbOverride ?? createMockDB() }
+function createDO(
+  dbOverride?: ReturnType<typeof createMockDB>,
+  envOverrides?: Record<string, string>
+) {
+  const env = {
+    JWT_PUBLIC_KEY: 'test-pem',
+    DB: dbOverride ?? createMockDB(),
+    MIN_APP_VERSION: '1.0.0',
+    ...envOverrides
+  }
   return new UserSyncState({} as DurableObjectState, env as never)
 }
 
@@ -36,10 +45,13 @@ function getCtx(doObj: UserSyncState) {
   return (doObj as unknown as { ctx: UserSyncState['ctx'] }).ctx
 }
 
-function connectRequest(token = 'valid-token'): Request {
-  return new Request('https://do.internal/connect', {
-    headers: { Authorization: `Bearer ${token}`, Upgrade: 'websocket' }
-  })
+function connectRequest(token = 'valid-token', appVersion = '1.0.0'): Request {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    Upgrade: 'websocket'
+  }
+  if (appVersion) headers['X-App-Version'] = appVersion
+  return new Request('https://do.internal/connect', { headers })
 }
 
 function broadcastRequest(excludeDeviceId: string, cursor: number): Request {
@@ -309,6 +321,87 @@ describe('UserSyncState', () => {
 
       // #then
       expect(body.closed).toBe(0)
+    })
+  })
+
+  describe('/connect — version validation (T237)', () => {
+    it('returns 426 when X-App-Version header missing (T237e)', async () => {
+      // #given
+      const doObj = createDO()
+      const req = new Request('https://do.internal/connect', {
+        headers: { Authorization: 'Bearer valid-token', Upgrade: 'websocket' }
+      })
+
+      // #when
+      const res = await doObj.fetch(req)
+
+      // #then
+      expect(res.status).toBe(426)
+      const body = (await res.json()) as { error: { code: string } }
+      expect(body.error.code).toBe(ErrorCodes.SYNC_VERSION_INCOMPATIBLE)
+    })
+
+    it('returns 426 when version below minimum (T237f)', async () => {
+      // #given
+      const doObj = createDO(undefined, { MIN_APP_VERSION: '2.0.0' })
+
+      // #when
+      const res = await doObj.fetch(connectRequest('valid-token', '1.9.9'))
+
+      // #then
+      expect(res.status).toBe(426)
+      const body = (await res.json()) as { error: { code: string; minVersion?: string } }
+      expect(body.error.code).toBe(ErrorCodes.SYNC_VERSION_INCOMPATIBLE)
+      expect(body.error.minVersion).toBe('2.0.0')
+    })
+
+    it('accepts connection when version equals minimum (T237g)', async () => {
+      // #given
+      const doObj = createDO()
+
+      // #when
+      const res = await doObj.fetch(connectRequest('valid-token', '1.0.0'))
+
+      // #then
+      expect(res.status).toBe(101)
+    })
+
+    it('accepts connection when version above minimum (T237h)', async () => {
+      // #given
+      const doObj = createDO()
+
+      // #when
+      const res = await doObj.fetch(connectRequest('valid-token', '2.5.3'))
+
+      // #then
+      expect(res.status).toBe(101)
+    })
+  })
+
+  describe('isVersionBelow (T237i)', () => {
+    it('returns true when major is lower', () => {
+      expect(isVersionBelow('1.0.0', '2.0.0')).toBe(true)
+    })
+
+    it('returns true when minor is lower', () => {
+      expect(isVersionBelow('1.1.0', '1.2.0')).toBe(true)
+    })
+
+    it('returns true when patch is lower', () => {
+      expect(isVersionBelow('1.0.1', '1.0.2')).toBe(true)
+    })
+
+    it('returns false when versions are equal', () => {
+      expect(isVersionBelow('1.0.0', '1.0.0')).toBe(false)
+    })
+
+    it('returns false when version is above minimum', () => {
+      expect(isVersionBelow('2.0.0', '1.0.0')).toBe(false)
+    })
+
+    it('handles two-segment versions', () => {
+      expect(isVersionBelow('1.0', '1.1')).toBe(true)
+      expect(isVersionBelow('1.1', '1.0')).toBe(false)
     })
   })
 

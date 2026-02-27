@@ -19,6 +19,16 @@ const CLOSE_CODE_REPLACED = 4001
 const CLOSE_CODE_TOKEN_EXPIRED = 4003
 const CLOSE_CODE_DEVICE_REVOKED = 4004
 const CLOSE_CODE_RATE_LIMITED = 4008
+const CLOSE_CODE_VERSION_INCOMPATIBLE = 4009
+
+export function isVersionBelow(version: string, minimum: string): boolean {
+  const parse = (v: string) => v.split('.').map(Number)
+  const [aMaj, aMin = 0, aPat = 0] = parse(version)
+  const [bMaj, bMin = 0, bPat = 0] = parse(minimum)
+  if (aMaj !== bMaj) return aMaj < bMaj
+  if (aMin !== bMin) return aMin < bMin
+  return aPat < bPat
+}
 
 export class UserSyncState extends DurableObject<Bindings> {
   constructor(ctx: DurableObjectState, env: Bindings) {
@@ -60,6 +70,31 @@ export class UserSyncState extends DurableObject<Bindings> {
       return Response.json(
         { error: { code: ErrorCodes.AUTH_INVALID_TOKEN, message: 'Invalid token' } },
         { status: 401 }
+      )
+    }
+
+    const appVersion = request.headers.get('X-App-Version')
+    if (!appVersion) {
+      return Response.json(
+        {
+          error: {
+            code: ErrorCodes.SYNC_VERSION_INCOMPATIBLE,
+            message: 'App version header required'
+          }
+        },
+        { status: 426 }
+      )
+    }
+    if (isVersionBelow(appVersion, this.env.MIN_APP_VERSION)) {
+      return Response.json(
+        {
+          error: {
+            code: ErrorCodes.SYNC_VERSION_INCOMPATIBLE,
+            message: 'App update required',
+            minVersion: this.env.MIN_APP_VERSION
+          }
+        },
+        { status: 426 }
       )
     }
 
