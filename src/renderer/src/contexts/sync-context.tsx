@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner'
 import { useAuth } from './auth-context'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { DeviceRevokedDialog } from '@/components/sync/device-revoked-dialog'
 import type { InitialSyncPhase, LinkingRequestEvent } from '@shared/contracts/ipc-events'
 
 type SyncStatus = 'idle' | 'syncing' | 'paused' | 'error' | 'offline' | 'unknown'
@@ -40,6 +41,7 @@ interface SyncState {
   uploadProgress: Record<string, ProgressEntry> | null
   downloadProgress: Record<string, ProgressEntry> | null
   sessionExpired: boolean
+  deviceRevoked: { unsyncedCount: number } | null
   conflicts: ConflictEntry[]
   clockSkewDetected: boolean
   initialSyncProgress: { phase: InitialSyncPhase; current: number; total: number } | null
@@ -61,6 +63,7 @@ type SyncAction =
   | { type: 'UPLOAD_PROGRESS'; attachmentId: string; progress: number; status: string }
   | { type: 'DOWNLOAD_PROGRESS'; attachmentId: string; progress: number; status: string }
   | { type: 'SESSION_EXPIRED' }
+  | { type: 'DEVICE_REVOKED'; unsyncedCount: number }
   | { type: 'CONFLICT_DETECTED'; itemId: string; itemType: string }
   | { type: 'QUEUE_CLEARED' }
   | { type: 'CLOCK_SKEW_WARNING' }
@@ -76,6 +79,7 @@ const initialState: SyncState = {
   uploadProgress: null,
   downloadProgress: null,
   sessionExpired: false,
+  deviceRevoked: null,
   conflicts: [],
   clockSkewDetected: false,
   initialSyncProgress: null,
@@ -125,6 +129,13 @@ function syncReducer(state: SyncState, action: SyncAction): SyncState {
       }
     case 'SESSION_EXPIRED':
       return { ...state, sessionExpired: true, status: 'error', error: 'Session expired' }
+    case 'DEVICE_REVOKED':
+      return {
+        ...state,
+        deviceRevoked: { unsyncedCount: action.unsyncedCount },
+        status: 'error',
+        error: 'This device has been removed'
+      }
     case 'CONFLICT_DETECTED':
       return {
         ...state,
@@ -171,6 +182,7 @@ interface SyncContextValue {
   clearError: () => void
   linkingRequest: LinkingRequestEvent | null
   clearLinkingRequest: () => void
+  dismissDeviceRevoked: () => void
 }
 
 const SyncContext = createContext<SyncContextValue | null>(null)
@@ -188,7 +200,7 @@ interface SyncProviderProps {
 }
 
 export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element {
-  const { state: authState } = useAuth()
+  const { state: authState, logout } = useAuth()
   const [state, dispatch] = useReducer(syncReducer, initialState)
   const [linkingRequest, setLinkingRequest] = useState<LinkingRequestEvent | null>(null)
   const sessionExpiredRef = useRef(state.sessionExpired)
@@ -281,6 +293,13 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
           toast.error('Session expired — sign in again', { duration: 8000 })
         }
         dispatch({ type: 'SESSION_EXPIRED' })
+      })
+    )
+
+    cleanups.push(
+      window.api.onDeviceRevoked((event) => {
+        if (cancelled) return
+        dispatch({ type: 'DEVICE_REVOKED', unsyncedCount: event.unsyncedCount })
       })
     )
 
@@ -397,10 +416,50 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     setLinkingRequest(null)
   }, [])
 
+  const dismissDeviceRevoked = useCallback(() => {
+    dispatch({ type: 'RESET' })
+  }, [])
+
   const value = useMemo<SyncContextValue>(
-    () => ({ state, triggerSync, pause, resume, clearError, linkingRequest, clearLinkingRequest }),
-    [state, triggerSync, pause, resume, clearError, linkingRequest, clearLinkingRequest]
+    () => ({
+      state,
+      triggerSync,
+      pause,
+      resume,
+      clearError,
+      linkingRequest,
+      clearLinkingRequest,
+      dismissDeviceRevoked
+    }),
+    [
+      state,
+      triggerSync,
+      pause,
+      resume,
+      clearError,
+      linkingRequest,
+      clearLinkingRequest,
+      dismissDeviceRevoked
+    ]
   )
 
-  return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>
+  const handleDeviceRevokedExport = useCallback(async () => {
+    toast.info('Local data export is not yet implemented', { duration: 5000 })
+  }, [])
+
+  const handleDeviceRevokedSignOut = useCallback(() => {
+    void logout()
+  }, [logout])
+
+  return (
+    <SyncContext.Provider value={value}>
+      {children}
+      <DeviceRevokedDialog
+        open={state.deviceRevoked !== null}
+        unsyncedCount={state.deviceRevoked?.unsyncedCount ?? 0}
+        onExport={handleDeviceRevokedExport}
+        onSignOut={handleDeviceRevokedSignOut}
+      />
+    </SyncContext.Provider>
+  )
 }

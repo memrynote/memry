@@ -2549,4 +2549,162 @@ describe('SyncEngine', () => {
       vi.restoreAllMocks()
     })
   })
+
+  describe('#given device revoked via WS error message', () => {
+    it('#then sets error state, disconnects WS, emits DEVICE_REMOVED', async () => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+      await engine.start()
+
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'create',
+        payload: '{}'
+      })
+
+      deps.ws.emit('message', {
+        type: 'error',
+        payload: { code: 'AUTH_DEVICE_REVOKED' }
+      } as WebSocketMessage)
+
+      expect(engine.currentState).toBe('error')
+      expect(deps.ws.disconnect).toHaveBeenCalled()
+      expect(deps.emitToRenderer).toHaveBeenCalledWith(
+        'sync:device-removed',
+        expect.objectContaining({ unsyncedCount: 1 })
+      )
+
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given device revoked via WS close code 4004', () => {
+    it('#then sets error state and emits DEVICE_REMOVED', async () => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+      await engine.start()
+
+      deps.ws.emit('device_revoked')
+
+      expect(engine.currentState).toBe('error')
+      expect(deps.emitToRenderer).toHaveBeenCalledWith(
+        'sync:device-removed',
+        expect.objectContaining({ unsyncedCount: expect.any(Number) })
+      )
+
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given push fails with 403 AUTH_DEVICE_REVOKED', () => {
+    it('#then handles device revocation instead of generic error', async () => {
+      const { SyncServerError } = await import('./http-client')
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'create',
+        payload: JSON.stringify({ title: 'Test' })
+      })
+
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockReturnValue({
+        pushItem: {
+          id: 'task-1',
+          type: 'task',
+          operation: 'create',
+          encryptedKey: 'ek',
+          keyNonce: 'kn',
+          encryptedData: 'ed',
+          dataNonce: 'dn',
+          signature: 'sig',
+          signerDeviceId: 'device-1'
+        },
+        sizeBytes: 100
+      })
+
+      vi.spyOn(await import('./http-client'), 'postToServer').mockRejectedValue(
+        new SyncServerError('Forbidden', 403, 'AUTH_DEVICE_REVOKED: Device has been revoked')
+      )
+
+      await engine.push()
+
+      expect(engine.currentState).toBe('error')
+      expect(deps.ws.disconnect).toHaveBeenCalled()
+      expect(deps.emitToRenderer).toHaveBeenCalledWith(
+        'sync:device-removed',
+        expect.objectContaining({ unsyncedCount: expect.any(Number) })
+      )
+
+      await engine.stop({ skipFinalPush: true })
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given pull fails with 403 AUTH_DEVICE_REVOKED', () => {
+    it('#then handles device revocation instead of generic error', async () => {
+      const { SyncServerError } = await import('./http-client')
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockRejectedValue(
+        new SyncServerError('Forbidden', 403, 'AUTH_DEVICE_REVOKED: Device has been revoked')
+      )
+
+      await engine.pull()
+
+      expect(engine.currentState).toBe('error')
+      expect(deps.ws.disconnect).toHaveBeenCalled()
+      expect(deps.emitToRenderer).toHaveBeenCalledWith(
+        'sync:device-removed',
+        expect.objectContaining({ unsyncedCount: expect.any(Number) })
+      )
+
+      await engine.stop({ skipFinalPush: true })
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given device revoked #when engine is in error state', () => {
+    it('#then does NOT schedule retry', async () => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+      await engine.start()
+
+      deps.ws.emit('message', {
+        type: 'error',
+        payload: { code: 'AUTH_DEVICE_REVOKED' }
+      } as WebSocketMessage)
+
+      expect(engine.currentState).toBe('error')
+
+      const status = engine.getStatus()
+      expect(status.errorCategory).toBe('device_revoked')
+
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+  })
 })

@@ -14,8 +14,13 @@ let linkingApprovedListeners: EventCallback[] = []
 
 vi.mock('./auth-context', () => ({
   useAuth: vi.fn().mockReturnValue({
-    state: { status: 'authenticated' }
+    state: { status: 'authenticated' },
+    logout: vi.fn().mockResolvedValue(undefined)
   })
+}))
+
+vi.mock('@/components/sync/device-revoked-dialog', () => ({
+  DeviceRevokedDialog: () => null
 }))
 
 const mockSyncOps = {
@@ -84,6 +89,7 @@ beforeEach(() => {
     }
   })
   api.onSessionExpired = vi.fn(() => () => {})
+  api.onDeviceRevoked = vi.fn(() => () => {})
   api.onConflictDetected = vi.fn(() => () => {})
   api.onQueueCleared = vi.fn(() => () => {})
   api.onClockSkewWarning = vi.fn(() => () => {})

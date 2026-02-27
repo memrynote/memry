@@ -37,7 +37,8 @@ import type {
   OtpDetectedEvent,
   OAuthCallbackEvent,
   OAuthErrorEvent,
-  ClockSkewWarningEvent
+  ClockSkewWarningEvent,
+  DeviceRevokedEvent
 } from '@shared/contracts/ipc-sync'
 
 // Custom APIs for renderer
@@ -1573,6 +1574,12 @@ const api = {
       callback(data)
     ipcRenderer.on(SYNC_EVENTS.SESSION_EXPIRED, handler)
     return () => ipcRenderer.removeListener(SYNC_EVENTS.SESSION_EXPIRED, handler)
+  },
+  onDeviceRevoked: (callback: (event: DeviceRevokedEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: DeviceRevokedEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.DEVICE_REMOVED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.DEVICE_REMOVED, handler)
   },
   onOtpDetected: (callback: (event: OtpDetectedEvent) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, data: OtpDetectedEvent): void =>
