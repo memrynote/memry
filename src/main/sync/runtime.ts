@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import sodium from 'libsodium-wrappers-sumo'
 import { eq } from 'drizzle-orm'
 import { KEYCHAIN_ENTRIES } from '@shared/contracts/crypto'
@@ -230,6 +230,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       const ws = new WebSocketManager({
         getAccessToken: () => getValidAccessToken(),
+        getAppVersion: () => app.getVersion(),
         isOnline: () => network.online,
         serverUrl: SYNC_SERVER_URL
       })

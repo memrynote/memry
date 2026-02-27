@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { WebSocketManager, type WebSocketManagerDeps } from './websocket'
+import {
+  WebSocketManager,
+  CLOSE_CODE_VERSION_INCOMPATIBLE,
+  type WebSocketManagerDeps
+} from './websocket'
 
 const { MockWebSocket, getInstances, resetInstances } = vi.hoisted(() => {
   const { EventEmitter: EE } = require('events')
@@ -72,6 +76,7 @@ function lastWs() {
 function createMockDeps(overrides?: Partial<WebSocketManagerDeps>): WebSocketManagerDeps {
   return {
     getAccessToken: vi.fn().mockResolvedValue('test-token'),
+    getAppVersion: vi.fn().mockReturnValue('1.0.0'),
     isOnline: vi.fn().mockReturnValue(true),
     serverUrl: 'http://localhost:8787',
     ...overrides
@@ -347,6 +352,90 @@ describe('WebSocketManager', () => {
       ws.send.mockClear()
       await vi.advanceTimersByTimeAsync(50_000)
       expect(ws.send).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('#given valid deps #when connect — version header (T237a)', () => {
+    it('#then sends X-App-Version header', async () => {
+      // #given
+      const deps = createMockDeps({ getAppVersion: vi.fn().mockReturnValue('2.3.1') })
+      const manager = new WebSocketManager(deps)
+
+      // #when
+      await manager.connect()
+
+      // #then
+      expect(lastWs().options?.headers?.['X-App-Version']).toBe('2.3.1')
+    })
+  })
+
+  describe('#given server rejects with 426 #when version incompatible (T237b)', () => {
+    it('#then emits version_rejected on 426 error', async () => {
+      // #given
+      const manager = new WebSocketManager(createMockDeps())
+      const spy = vi.fn()
+      manager.on('version_rejected', spy)
+
+      // #when
+      await manager.connect()
+      lastWs().simulateError(new Error('Unexpected server response: 426'))
+
+      // #then
+      expect(spy).toHaveBeenCalledWith(expect.stringContaining('426'))
+    })
+  })
+
+  describe('#given server rejects with 426 #when reconnect scheduled (T237c)', () => {
+    it('#then does not auto-reconnect after version rejection', async () => {
+      // #given
+      const manager = new WebSocketManager(createMockDeps())
+      await manager.connect()
+      lastWs().simulateError(new Error('Unexpected server response: 426'))
+      lastWs().simulateClose(1006)
+
+      // #when
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      // #then
+      expect(getInstances().length).toBe(1)
+    })
+  })
+
+  describe('#given previous version rejection #when connect called again (T237d)', () => {
+    it('#then resets versionRejected flag on new connect()', async () => {
+      // #given
+      const manager = new WebSocketManager(createMockDeps())
+      await manager.connect()
+      lastWs().simulateError(new Error('Unexpected server response: 426'))
+      lastWs().simulateClose(1006)
+
+      // #when
+      await manager.connect()
+
+      // #then — new WS instance created (flag was reset)
+      expect(getInstances().length).toBe(2)
+    })
+  })
+
+  describe('#given WS close code 4009 #when version rejected via close (T237b-alt)', () => {
+    it('#then emits version_rejected and suppresses reconnect', async () => {
+      // #given
+      const manager = new WebSocketManager(createMockDeps())
+      const rejectedSpy = vi.fn()
+      const disconnectedSpy = vi.fn()
+      manager.on('version_rejected', rejectedSpy)
+      manager.on('disconnected', disconnectedSpy)
+
+      // #when
+      await manager.connect()
+      lastWs().simulateOpen()
+      lastWs().simulateClose(CLOSE_CODE_VERSION_INCOMPATIBLE)
+
+      // #then
+      expect(rejectedSpy).toHaveBeenCalled()
+      expect(disconnectedSpy).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(getInstances().length).toBe(1)
     })
   })
 })
