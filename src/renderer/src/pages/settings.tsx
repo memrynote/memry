@@ -80,6 +80,7 @@ import { LinkingApprovalDialog } from '@/components/sync/linking-approval-dialog
 import { SyncHistoryPanel } from '@/components/sync/sync-history'
 import { DeviceList } from '@/components/sync/device-list'
 import { KeyRotationWizard } from '@/components/sync/key-rotation-wizard'
+import { StorageUsageBar } from '@/components/settings/storage-usage-bar'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Page:Settings')
@@ -1545,7 +1546,7 @@ function VaultSettings() {
         <p className="text-sm text-muted-foreground">Vault configuration and storage settings</p>
       </div>
       <Separator />
-      <div className="text-muted-foreground text-sm">Vault settings coming soon...</div>
+      <StorageUsageBar />
     </div>
   )
 }
