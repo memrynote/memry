@@ -31,6 +31,7 @@ import { CrdtUpdateQueue } from './crdt-queue'
 import { recoverDirtyItems } from './dirty-recovery'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { postToServer, pushCrdtSnapshot, SyncServerError } from './http-client'
+import { EVENT_CHANNELS, type SyncStatusChangedEvent } from '@shared/contracts/ipc-events'
 import { withRetry } from './retry'
 import {
   emitSessionExpired,
@@ -53,6 +54,18 @@ interface SyncRuntimeState {
 }
 
 const SYNC_SERVER_URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'
+
+function emitQuotaExceeded(): void {
+  const event: SyncStatusChangedEvent = {
+    status: 'error',
+    pendingCount: 0,
+    error: 'Storage quota exceeded',
+    errorCategory: 'storage_quota_exceeded'
+  }
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send(EVENT_CHANNELS.STATUS_CHANGED, event)
+  }
+}
 
 let runtime: SyncRuntimeState | null = null
 let startPromise: Promise<SyncEngine | null> | null = null
@@ -171,6 +184,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             crdtQueue.pause()
             emitSessionExpired()
           }
+          if (err instanceof SyncServerError && err.statusCode === 413) {
+            crdtQueue.pause()
+            emitQuotaExceeded()
+          }
           throw err
         } finally {
           secureCleanup(vaultKey)
@@ -205,6 +222,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           if (err instanceof SyncServerError && err.statusCode === 401) {
             crdtQueue.pause()
             emitSessionExpired()
+          }
+          if (err instanceof SyncServerError && err.statusCode === 413) {
+            crdtQueue.pause()
+            emitQuotaExceeded()
           }
           throw err
         } finally {

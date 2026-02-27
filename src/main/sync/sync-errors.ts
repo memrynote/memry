@@ -47,6 +47,13 @@ export function classifyError(error: unknown): SyncErrorInfo {
         retryable: false
       }
     }
+    if (error.statusCode === 413) {
+      return {
+        category: 'storage_quota_exceeded',
+        message: 'Storage quota exceeded',
+        retryable: false
+      }
+    }
     if (error.statusCode === 429) {
       return {
         category: 'rate_limited',

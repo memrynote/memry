@@ -15,6 +15,7 @@ import {
   updateDeviceCursor
 } from '../services/sync'
 import { updateDevice } from '../services/device'
+import { checkQuota } from '../services/quota'
 import {
   storeUpdates,
   getUpdates,
@@ -134,6 +135,9 @@ sync.post('/push', pushRateLimit, async (c) => {
       400
     )
   }
+
+  const estimatedBytes = JSON.stringify(parsed.data.items).length
+  await checkQuota(c.env.DB, userId, estimatedBytes)
 
   const accepted: string[] = []
   const rejected: Array<{ id: string; reason: string }> = []
@@ -295,6 +299,9 @@ sync.post('/crdt/updates', crdtPushRateLimit, async (c) => {
     return bytes.buffer as ArrayBuffer
   })
 
+  const totalBytes = buffers.reduce((sum, buf) => sum + buf.byteLength, 0)
+  await checkQuota(c.env.DB, userId, totalBytes)
+
   const sequences = await storeUpdates(c.env.DB, userId, parsed.noteId, deviceId, buffers)
 
   const doId = c.env.USER_SYNC_STATE.idFromName(userId)
@@ -388,6 +395,8 @@ sync.post('/crdt/snapshot', crdtPushRateLimit, async (c) => {
   if (bytes.byteLength > MAX_UPDATE_BYTES) {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Snapshot exceeds 5MB limit', 413)
   }
+
+  await checkQuota(c.env.DB, userId, bytes.byteLength)
 
   const result = await storeSnapshot(
     c.env.DB,

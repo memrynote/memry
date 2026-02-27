@@ -46,6 +46,15 @@ describe('classifyError', () => {
     expect(result.retryable).toBe(true)
   })
 
+  it('#given SyncServerError 413 #then storage_quota_exceeded, not retryable', () => {
+    const err = new SyncServerError('Storage quota exceeded', 413)
+    const result = classifyError(err)
+
+    expect(result.category).toBe('storage_quota_exceeded')
+    expect(result.message).toBe('Storage quota exceeded')
+    expect(result.retryable).toBe(false)
+  })
+
   it('#given SyncServerError 400 #then server_error, not retryable', () => {
     const err = new SyncServerError('Bad Request', 400, 'invalid payload')
     const result = classifyError(err)

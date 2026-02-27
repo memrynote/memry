@@ -245,6 +245,9 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
           pendingCount: event.pendingCount,
           error: event.error
         })
+        if (event.errorCategory === 'storage_quota_exceeded') {
+          toast.error('Storage full — free up space or upgrade your plan', { duration: 10000 })
+        }
       })
     )
 
