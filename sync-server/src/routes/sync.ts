@@ -16,6 +16,7 @@ import {
 } from '../services/sync'
 import { updateDevice } from '../services/device'
 import { checkQuota } from '../services/quota'
+import { getStorageBreakdown } from '../services/storage'
 import {
   storeUpdates,
   getUpdates,
@@ -78,6 +79,18 @@ sync.get('/ws', wsRateLimit, async (c) => {
       headers: c.req.raw.headers
     })
   )
+})
+
+const storageRateLimit = createRateLimiter({
+  keyPrefix: 'sync_storage',
+  maxRequests: 30,
+  windowSeconds: 60
+})
+
+sync.get('/storage', storageRateLimit, async (c) => {
+  const userId = c.get('userId')!
+  const breakdown = await getStorageBreakdown(c.env.DB, userId)
+  return c.json(breakdown)
 })
 
 sync.get('/status', statusRateLimit, async (c) => {
