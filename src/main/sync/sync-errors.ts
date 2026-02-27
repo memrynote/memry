@@ -33,6 +33,13 @@ export function classifyError(error: unknown): SyncErrorInfo {
         retryable: false
       }
     }
+    if (error.statusCode === 426) {
+      return {
+        category: 'version_incompatible',
+        message: error.serverError ?? 'App update required',
+        retryable: false
+      }
+    }
     if (error.statusCode === 429) {
       return {
         category: 'rate_limited',

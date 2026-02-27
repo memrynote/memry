@@ -28,6 +28,7 @@ export type SyncErrorCategory =
   | 'auth_expired'
   | 'rate_limited'
   | 'crypto_failure'
+  | 'version_incompatible'
   | 'unknown'
 
 export interface GetSyncStatusResult {
