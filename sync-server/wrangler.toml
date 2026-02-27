@@ -4,6 +4,7 @@ compatibility_date = "2025-01-01"
 
 [vars]
 ENVIRONMENT = "development"
+MIN_APP_VERSION = "0.1.0"
 
 [[d1_databases]]
 binding = "DB"
@@ -32,6 +33,7 @@ name = "memry-sync-server-staging"
 [env.staging.vars]
 ENVIRONMENT = "staging"
 ALLOWED_ORIGIN = "TODO-staging-origin"
+MIN_APP_VERSION = "0.1.0"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -53,6 +55,7 @@ name = "memry-sync-server-production"
 [env.production.vars]
 ENVIRONMENT = "production"
 ALLOWED_ORIGIN = "TODO-production-origin"
+MIN_APP_VERSION = "0.1.0"
 
 [[env.production.d1_databases]]
 binding = "DB"
