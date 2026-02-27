@@ -25,8 +25,11 @@ const WebSocketMessageSchema = z.object({
 
 export type WebSocketMessage = z.infer<typeof WebSocketMessageSchema>
 
+export const CLOSE_CODE_VERSION_INCOMPATIBLE = 4009
+
 export interface WebSocketManagerDeps {
   getAccessToken: () => Promise<string | null>
+  getAppVersion: () => string
   isOnline: () => boolean
   serverUrl: string
 }
@@ -40,6 +43,7 @@ export class WebSocketManager extends EventEmitter {
   private shouldBeConnected = false
   private _connected = false
   private authFailed = false
+  private versionRejected = false
   private deps: WebSocketManagerDeps
 
   constructor(deps: WebSocketManagerDeps) {
@@ -57,6 +61,7 @@ export class WebSocketManager extends EventEmitter {
   async connect(): Promise<void> {
     this.shouldBeConnected = true
     this.authFailed = false
+    this.versionRejected = false
 
     if (this._connected || this.ws) {
       return
@@ -76,7 +81,10 @@ export class WebSocketManager extends EventEmitter {
     const wsUrl = this.deps.serverUrl.replace(/^http/, 'ws') + '/sync/ws'
 
     const ws = new WebSocket(wsUrl, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'X-App-Version': this.deps.getAppVersion()
+      }
     })
 
     this.ws = ws
@@ -122,6 +130,12 @@ export class WebSocketManager extends EventEmitter {
 
     ws.on('close', (code: number, reason: Buffer) => {
       log.info('WebSocket disconnected', { code, reason: reason.toString() })
+      if (code === CLOSE_CODE_VERSION_INCOMPATIBLE) {
+        this.versionRejected = true
+        this.cleanup()
+        this.emit('version_rejected', reason.toString())
+        return
+      }
       this.cleanup()
       this.emit('disconnected')
       if (this.shouldBeConnected) {
@@ -133,6 +147,10 @@ export class WebSocketManager extends EventEmitter {
       log.warn('WebSocket error', { message: err.message })
       if (err.message?.includes('401')) {
         this.authFailed = true
+      }
+      if (err.message?.includes('426')) {
+        this.versionRejected = true
+        this.emit('version_rejected', err.message)
       }
       this.emit('error', err)
     })
@@ -191,7 +209,7 @@ export class WebSocketManager extends EventEmitter {
   }
 
   private scheduleReconnect(): void {
-    if (!this.shouldBeConnected || this.authFailed) return
+    if (!this.shouldBeConnected || this.authFailed || this.versionRejected) return
     this.clearReconnectTimer()
 
     const delay = Math.min(
