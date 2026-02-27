@@ -328,6 +328,16 @@ export class CrdtProvider {
   async pushSnapshotForNote(noteId: string): Promise<boolean> {
     if (!this.snapshotPushFn) return false
 
+    const indexDb = getIndexDatabase()
+    const cached = getNoteCacheById(indexDb, noteId)
+    if (cached?.fileType && isBinaryFileType(cached.fileType)) {
+      log.debug('Skipping CRDT snapshot push for binary note', {
+        noteId,
+        fileType: cached.fileType
+      })
+      return false
+    }
+
     const wasOpen = this.docs.has(noteId)
     try {
       const doc = await this.open(noteId)
@@ -365,6 +375,7 @@ export class CrdtProvider {
     const indexDb = getIndexDatabase()
     const cached = getNoteCacheById(indexDb, noteId)
     if (!cached) return
+    if (cached.fileType && isBinaryFileType(cached.fileType)) return
 
     const raw = await safeRead(toAbsolutePath(cached.path))
     if (!raw) return

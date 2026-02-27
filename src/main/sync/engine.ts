@@ -46,6 +46,7 @@ import {
   type CrdtBatchPullResponse
 } from './http-client'
 import { classifyError, type SyncErrorInfo } from './sync-errors'
+import { isBinaryFileType } from '@shared/file-types'
 import { checkManifestIntegrity } from './manifest-check'
 import { runInitialSeed } from './initial-seed'
 import type { CrdtProvider } from './crdt-provider'
@@ -418,10 +419,17 @@ export class SyncEngine extends EventEmitter {
 
         if (this.deps.crdtProvider) {
           const snapshotTasks = dedupedItems
-            .filter(
-              (item) =>
-                item.operation === 'create' && (item.type === 'note' || item.type === 'journal')
-            )
+            .filter((item) => {
+              if (item.operation !== 'create') return false
+              if (item.type !== 'note' && item.type !== 'journal') return false
+              try {
+                const parsed = JSON.parse(item.payload) as { fileType?: string }
+                if (parsed.fileType && isBinaryFileType(parsed.fileType)) return false
+              } catch {
+                /* no payload parse = assume text, let snapshot push decide */
+              }
+              return true
+            })
             .map((item) => () => this.deps.crdtProvider!.pushSnapshotForNote(item.itemId))
           if (snapshotTasks.length > 0) {
             const snapshotResults = await parallelWithLimit(
@@ -494,6 +502,17 @@ export class SyncEngine extends EventEmitter {
               })
               this.deps.queue.markSuccess(queueId)
               this.markItemSynced(pushItem.id, pushItem.type as SyncItemType)
+            } else if (reason === 'STORAGE_QUOTA_EXCEEDED') {
+              log.warn('Push: storage quota exceeded', { itemId: pushItem.id.slice(0, 8) })
+              this.deps.queue.markFailed(queueId, reason)
+              this.lastErrorInfo = {
+                category: 'storage_quota_exceeded',
+                message: 'Storage quota exceeded',
+                retryable: false
+              }
+              this.lastError = 'Storage quota exceeded'
+              this.setState('error')
+              break
             } else {
               log.warn('Push: item rejected', {
                 queueId: queueId.slice(0, 8),
@@ -764,7 +783,14 @@ export class SyncEngine extends EventEmitter {
                   this.deps.crdtProvider &&
                   itemOp !== 'delete'
                 ) {
-                  crdtNoteIds.push(dec.id)
+                  let isBinary = false
+                  try {
+                    const parsed = JSON.parse(dec.content) as { fileType?: string }
+                    if (parsed.fileType && isBinaryFileType(parsed.fileType)) isBinary = true
+                  } catch {
+                    /* content already applied by handler; safe to skip CRDT on parse failure */
+                  }
+                  if (!isBinary) crdtNoteIds.push(dec.id)
                 }
 
                 processedIds.add(dec.id)

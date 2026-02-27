@@ -30,6 +30,7 @@ export type SyncErrorCategory =
   | 'rate_limited'
   | 'crypto_failure'
   | 'version_incompatible'
+  | 'storage_quota_exceeded'
   | 'unknown'
 
 export interface GetSyncStatusResult {
