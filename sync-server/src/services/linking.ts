@@ -48,34 +48,25 @@ const createLinkingSession = async (
   deviceId: string,
   ephemeralPublicKey: string
 ): Promise<{ sessionId: string; expiresAt: number }> => {
-  const existing = await db
-    .prepare(
-      `SELECT id FROM linking_sessions
-       WHERE user_id = ? AND status IN ('pending', 'scanned')
-       AND expires_at > ?`
-    )
-    .bind(userId, Math.floor(Date.now() / 1000))
-    .first<{ id: string }>()
-
-  if (existing) {
-    await db
-      .prepare(`UPDATE linking_sessions SET status = 'cancelled' WHERE id = ?`)
-      .bind(existing.id)
-      .run()
-  }
-
   const sessionId = crypto.randomUUID()
   const now = Math.floor(Date.now() / 1000)
   const expiresAt = now + SESSION_TTL_SECONDS
 
-  await db
-    .prepare(
-      `INSERT INTO linking_sessions
-       (id, user_id, initiator_device_id, ephemeral_public_key, status, expires_at, created_at)
-       VALUES (?, ?, ?, ?, 'pending', ?, ?)`
-    )
-    .bind(sessionId, userId, deviceId, ephemeralPublicKey, expiresAt, now)
-    .run()
+  await db.batch([
+    db
+      .prepare(
+        `UPDATE linking_sessions SET status = 'cancelled'
+         WHERE user_id = ? AND status IN ('pending', 'scanned') AND expires_at > ?`
+      )
+      .bind(userId, now),
+    db
+      .prepare(
+        `INSERT INTO linking_sessions
+         (id, user_id, initiator_device_id, ephemeral_public_key, status, expires_at, created_at)
+         VALUES (?, ?, ?, ?, 'pending', ?, ?)`
+      )
+      .bind(sessionId, userId, deviceId, ephemeralPublicKey, expiresAt, now)
+  ])
 
   return { sessionId, expiresAt }
 }
@@ -99,9 +90,24 @@ const transitionToScanned = async (
     .run()
 
   if (!result.meta.changes) {
+    const current = await getSession(db, sessionId)
+    if (!current) {
+      throw new AppError(
+        ErrorCodes.LINKING_SESSION_NOT_FOUND,
+        'This linking session has expired or was cancelled',
+        404
+      )
+    }
+    if (current.status === 'scanned') {
+      throw new AppError(
+        ErrorCodes.LINKING_CONCURRENT_ATTEMPT,
+        'Another device has already scanned this QR code',
+        409
+      )
+    }
     throw new AppError(
       ErrorCodes.LINKING_INVALID_TRANSITION,
-      'Session is not in pending state',
+      'This linking session is no longer available. Please generate a new QR code',
       409
     )
   }
@@ -138,9 +144,24 @@ const transitionToApproved = async (
     .run()
 
   if (!result.meta.changes) {
+    const current = await getSession(db, sessionId)
+    if (!current) {
+      throw new AppError(
+        ErrorCodes.LINKING_SESSION_NOT_FOUND,
+        'This linking session has expired or was cancelled',
+        404
+      )
+    }
+    if (current.status === 'approved') {
+      throw new AppError(
+        ErrorCodes.LINKING_CONCURRENT_ATTEMPT,
+        'This session was already approved from another device',
+        409
+      )
+    }
     throw new AppError(
       ErrorCodes.LINKING_INVALID_TRANSITION,
-      'Session is not in scanned state',
+      'This linking session is no longer available. Please start again',
       409
     )
   }
@@ -164,9 +185,24 @@ const transitionToCompleted = async (
     .run()
 
   if (!result.meta.changes) {
+    const current = await getSession(db, sessionId)
+    if (!current) {
+      throw new AppError(
+        ErrorCodes.LINKING_SESSION_NOT_FOUND,
+        'This linking session has expired or was cancelled',
+        404
+      )
+    }
+    if (current.status === 'completed') {
+      throw new AppError(
+        ErrorCodes.LINKING_CONCURRENT_ATTEMPT,
+        'This device has already been linked',
+        409
+      )
+    }
     throw new AppError(
       ErrorCodes.LINKING_INVALID_TRANSITION,
-      'Session is not in approved state',
+      'This linking session is no longer available. Please start again',
       409
     )
   }
@@ -181,6 +217,7 @@ const transitionToCompleted = async (
 export {
   createLinkingSession,
   getSession,
+  requireSession,
   isSessionExpired,
   transitionToScanned,
   transitionToApproved,

@@ -1041,7 +1041,7 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 - [x] T239 Handle device removal with unsynced local changes (warn user, offer export) in src/main/sync/engine.ts
 - [ ] T240 Implement storage quota exceeded error handling with user notification in src/main/sync/engine.ts
 - [ ] T240a Implement server-side storage quota validation before accepting uploads (return 413 when quota exceeded) in sync-server/src/routes/sync.ts and sync-server/src/routes/blob.ts
-- [ ] T241 Handle concurrent device linking attempts (reject second, show error) in sync-server/src/routes/auth.ts
+- [x] T241 Handle concurrent device linking attempts (reject second, show error) in sync-server/src/routes/auth.ts
 - [ ] T242 Implement extended offline mode with sync resumption on reconnect in src/main/sync/engine.ts
 - [ ] T243 Handle network disconnect during attachment upload (auto-resume) in src/main/sync/attachments.ts
 - [ ] T244 Normalize timestamps to UTC for cross-timezone consistency in src/main/sync/engine.ts
