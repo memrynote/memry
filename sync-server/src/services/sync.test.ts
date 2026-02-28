@@ -296,7 +296,7 @@ describe('verifyItemSignature', () => {
 // ============================================================================
 
 describe('detectReplay', () => {
-  it('should return false when incoming is undefined', () => {
+  it('should return true when incoming is undefined and existing clock is present', () => {
     // #given
     const existing: VectorClock = { 'device-1': 5 }
 
@@ -304,7 +304,7 @@ describe('detectReplay', () => {
     const result = detectReplay(undefined, existing)
 
     // #then
-    expect(result).toBe(false)
+    expect(result).toBe(true)
   })
 
   it('should return false when existing is undefined', () => {

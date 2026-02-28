@@ -120,6 +120,7 @@ export const verifyItemSignature = async (
 }
 
 export const detectReplay = (incoming?: VectorClock, existing?: VectorClock): boolean => {
+  if (existing && !incoming) return true
   if (!incoming || !existing) return false
 
   for (const key of Object.keys(incoming)) {
