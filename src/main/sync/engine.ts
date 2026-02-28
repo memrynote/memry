@@ -15,7 +15,10 @@ import type {
   InitialSyncProgressEvent,
   ItemRecoveredEvent,
   ItemCorruptEvent,
-  DeviceRevokedEvent
+  DeviceRevokedEvent,
+  SecurityWarningEvent,
+  QuarantinedItemInfo,
+  CertificatePinFailedEvent
 } from '@shared/contracts/ipc-events'
 import type {
   GetSyncStatusResult,
@@ -43,6 +46,7 @@ import {
   postToServer,
   getFromServer,
   fetchCrdtSnapshot,
+  RateLimitError,
   type CrdtBatchPullResponse
 } from './http-client'
 import { classifyError, type SyncErrorInfo } from './sync-errors'
@@ -65,12 +69,25 @@ const MAX_PUSH_ITERATIONS = 50
 const CLOCK_SKEW_THRESHOLD_SECONDS = 300
 const PULL_PAGE_LIMIT = 100
 const CORRUPT_ITEM_COOLDOWN_MS = 60 * 60 * 1000
+const QUARANTINE_MAX_ATTEMPTS = 3
 const STALE_CURSOR_THRESHOLD_MS = 24 * 60 * 60 * 1000
+const MAX_RATE_LIMIT_BACKOFF_MS = 5 * 60 * 1000
+const BASE_RATE_LIMIT_BACKOFF_MS = 5_000
+
+interface QuarantineEntry {
+  itemId: string
+  itemType: string
+  signerDeviceId: string
+  failedAt: number
+  attemptCount: number
+  lastError: string
+}
 const SYNC_STATE_KEYS = {
   LAST_CURSOR: 'lastCursor',
   LAST_SYNC_AT: 'lastSyncAt',
   SYNC_PAUSED: 'syncPaused',
-  INITIAL_SEED_DONE: 'initialSeedDone'
+  INITIAL_SEED_DONE: 'initialSeedDone',
+  QUARANTINED_ITEMS: 'quarantinedItems'
 } as const
 
 export interface SyncEngineDeps {
@@ -120,7 +137,10 @@ export class SyncEngine extends EventEmitter {
   private suppressPushDuringPull = false
   private pendingCrdtPulls = new Set<string>()
   private corruptItems = new Map<string, { failedAt: number; attempts: number }>()
+  private quarantinedItems = new Map<string, QuarantineEntry>()
   private offlineSince: number | null = null
+  private rateLimitConsecutive = 0
+  private rateLimitResumeTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
@@ -153,6 +173,9 @@ export class SyncEngine extends EventEmitter {
     this.deps.ws.on('message', this.handleWsMessage)
     this.deps.ws.on('connected', this.handleWsConnected)
     this.deps.ws.on('device_revoked', this.handleDeviceRevokedFromWs)
+    this.deps.ws.on('certificate_pin_failed', this.handleCertPinFailed)
+
+    this.loadQuarantineState()
 
     if (!(await this.isAuthReady())) {
       this.setState('idle')
@@ -160,6 +183,14 @@ export class SyncEngine extends EventEmitter {
     }
 
     if (this.deps.network.online) {
+      const deviceStatus = await this.checkDeviceStatus()
+      if (deviceStatus === 'revoked') {
+        log.warn('SECURITY_AUDIT: Device revoked detected at launch')
+        this.handleDeviceRevoked()
+        this.emit('device_revoked_on_launch')
+        return
+      }
+
       await this.deps.ws.connect()
       if (!this.isPaused()) {
         await this.fullSync()
@@ -193,6 +224,7 @@ export class SyncEngine extends EventEmitter {
       this.pullInterval = null
     }
     this.pendingPushRequested = false
+    this.clearRateLimitState()
 
     this.abortController?.abort()
     if (this.inFlightSync) {
@@ -232,6 +264,7 @@ export class SyncEngine extends EventEmitter {
     this.deps.ws.removeListener('message', this.handleWsMessage)
     this.deps.ws.removeListener('connected', this.handleWsConnected)
     this.deps.ws.removeListener('device_revoked', this.handleDeviceRevokedFromWs)
+    this.deps.ws.removeListener('certificate_pin_failed', this.handleCertPinFailed)
     this.deps.ws.disconnect()
     this.deviceKeyCache.clear()
     this.corruptItems.clear()
@@ -267,6 +300,156 @@ export class SyncEngine extends EventEmitter {
         this.corruptItems.delete(id)
       }
     }
+  }
+
+  private quarantineItem(
+    itemId: string,
+    itemType: string,
+    signerDeviceId: string,
+    error: string
+  ): void {
+    const existing = this.quarantinedItems.get(itemId)
+    const attemptCount = existing ? existing.attemptCount + 1 : 1
+    const permanent = attemptCount >= QUARANTINE_MAX_ATTEMPTS
+
+    this.quarantinedItems.set(itemId, {
+      itemId,
+      itemType,
+      signerDeviceId,
+      failedAt: Date.now(),
+      attemptCount,
+      lastError: error
+    })
+
+    log.warn('SECURITY_AUDIT: Signature verification failed', {
+      itemId,
+      itemType,
+      signerDeviceId,
+      attemptCount,
+      permanent
+    })
+
+    this.deps.emitToRenderer(EVENT_CHANNELS.SECURITY_WARNING, {
+      itemId,
+      itemType,
+      signerDeviceId,
+      reason: 'signature_verification_failed',
+      attemptCount,
+      permanent
+    } satisfies SecurityWarningEvent)
+
+    if (permanent) {
+      this.persistQuarantineState()
+    }
+  }
+
+  private loadQuarantineState(): void {
+    try {
+      const raw = this.getStateValue(SYNC_STATE_KEYS.QUARANTINED_ITEMS)
+      if (!raw) return
+      const entries = JSON.parse(raw) as QuarantineEntry[]
+      for (const entry of entries) {
+        this.quarantinedItems.set(entry.itemId, entry)
+      }
+      if (entries.length > 0) {
+        log.info('Loaded persisted quarantine state', { count: entries.length })
+      }
+    } catch (err) {
+      log.warn('Failed to load quarantine state', {
+        error: err instanceof Error ? err.message : String(err)
+      })
+    }
+  }
+
+  private persistQuarantineState(): void {
+    try {
+      const permanent = Array.from(this.quarantinedItems.values()).filter(
+        (e) => e.attemptCount >= QUARANTINE_MAX_ATTEMPTS
+      )
+      this.setStateValue(SYNC_STATE_KEYS.QUARANTINED_ITEMS, JSON.stringify(permanent))
+    } catch (err) {
+      log.warn('Failed to persist quarantine state', {
+        error: err instanceof Error ? err.message : String(err)
+      })
+    }
+  }
+
+  private isQuarantined(itemId: string): boolean {
+    const entry = this.quarantinedItems.get(itemId)
+    if (!entry) return false
+    return entry.attemptCount >= QUARANTINE_MAX_ATTEMPTS
+  }
+
+  getQuarantinedItems(): QuarantinedItemInfo[] {
+    return Array.from(this.quarantinedItems.values()).map((entry) => ({
+      ...entry,
+      permanent: entry.attemptCount >= QUARANTINE_MAX_ATTEMPTS
+    }))
+  }
+
+  async checkDeviceStatus(): Promise<'active' | 'revoked' | 'unknown'> {
+    const token = await this.deps.getAccessToken()
+    if (!token) return 'unknown'
+
+    try {
+      await getFromServer('/sync/changes?limit=1', token)
+      return 'active'
+    } catch (err) {
+      const errorInfo = classifyError(err)
+      if (errorInfo.category === 'device_revoked') {
+        log.warn('SECURITY_AUDIT: Device revocation detected on status check')
+        return 'revoked'
+      }
+      if (errorInfo.category === 'auth_expired') {
+        return 'unknown'
+      }
+      return 'unknown'
+    }
+  }
+
+  async performEmergencyWipe(): Promise<void> {
+    log.warn(
+      'SECURITY_AUDIT: Emergency wipe Phase 1 — zeroing in-memory keys, clearing sync state (local vault files preserved). Phase 2 (IPC teardownSession) handles keychain + session cleanup.'
+    )
+
+    this.abortController?.abort()
+    this.deps.ws.disconnect()
+
+    if (this.pullInterval) {
+      clearInterval(this.pullInterval)
+      this.pullInterval = null
+    }
+
+    this.deviceKeyCache.clear()
+    this.corruptItems.clear()
+    this.quarantinedItems.clear()
+
+    try {
+      this.deps.db.transaction((tx) => {
+        tx.delete(syncState).run()
+      })
+    } catch (err) {
+      log.error('Emergency wipe: failed to clear sync state', {
+        error: err instanceof Error ? err.message : String(err)
+      })
+    }
+
+    const vaultKey = await this.deps.getVaultKey()
+    if (vaultKey) {
+      secureCleanup(vaultKey)
+    }
+    const signingKeys = await this.deps.getSigningKeys()
+    if (signingKeys) {
+      secureCleanup(signingKeys.secretKey)
+      secureCleanup(signingKeys.publicKey)
+    }
+
+    this.setState('idle')
+    this.syncing = false
+
+    log.warn(
+      'SECURITY_AUDIT: Emergency wipe Phase 1 complete — in-memory keys zeroed, sync state cleared'
+    )
   }
 
   private async refetchCorruptItems(
@@ -318,7 +501,11 @@ export class SyncEngine extends EventEmitter {
 
       const permanentFailures: string[] = []
       for (const failure of failures) {
-        this.markCorruptItemFailed(failure.id)
+        if (failure.isSignatureError) {
+          this.quarantineItem(failure.id, failure.type, failure.signerDeviceId, failure.error)
+        } else {
+          this.markCorruptItemFailed(failure.id)
+        }
         permanentFailures.push(failure.id)
         log.warn('Re-fetch: item failed again', { itemId: failure.id, error: failure.error })
       }
@@ -531,6 +718,7 @@ export class SyncEngine extends EventEmitter {
       if (pushedCount > 0) {
         this.recordHistory('push', pushedCount, Date.now() - startTime)
         this.updateLastSyncAt()
+        this.rateLimitConsecutive = 0
         if (lastServerTime > 0) this.checkClockSkew(lastServerTime)
 
         if (lastMaxCursor > 0) {
@@ -565,6 +753,10 @@ export class SyncEngine extends EventEmitter {
       if (errorInfo.category === 'network_offline') {
         log.info('Push failed: device offline, transitioning to offline state')
         this.setState('offline')
+        return
+      }
+      if (error instanceof RateLimitError) {
+        this.handleRateLimited(error)
         return
       }
       this.lastErrorInfo = errorInfo
@@ -697,6 +889,11 @@ export class SyncEngine extends EventEmitter {
               pageSkipped++
               return false
             }
+            if (this.isQuarantined(item.id)) {
+              log.debug('Skipping permanently quarantined item', { itemId: item.id })
+              pageSkipped++
+              return false
+            }
             return true
           })
 
@@ -708,6 +905,11 @@ export class SyncEngine extends EventEmitter {
           timer.endPhase(itemsToProcess.length)
 
           for (const failure of failures) {
+            if (failure.isSignatureError) {
+              this.quarantineItem(failure.id, failure.type, failure.signerDeviceId, failure.error)
+              pageFailed++
+              continue
+            }
             log.error('Pull: failed to process item', {
               itemId: failure.id,
               type: failure.type,
@@ -945,6 +1147,7 @@ export class SyncEngine extends EventEmitter {
 
       this.recordHistory('pull', pulledCount, Date.now() - startTime)
       this.updateLastSyncAt()
+      this.rateLimitConsecutive = 0
 
       if (totalConflictsResolved > 0) {
         log.info('Pull: re-enqueued merged items for push-back', {
@@ -969,6 +1172,10 @@ export class SyncEngine extends EventEmitter {
       if (errorInfo.category === 'network_offline') {
         log.info('Pull failed: device offline, transitioning to offline state')
         this.setState('offline')
+        return
+      }
+      if (error instanceof RateLimitError) {
+        this.handleRateLimited(error)
         return
       }
       this.lastErrorInfo = errorInfo
@@ -1191,6 +1398,62 @@ export class SyncEngine extends EventEmitter {
 
   private handleDeviceRevokedFromWs = (): void => {
     this.handleDeviceRevoked()
+  }
+
+  private handleCertPinFailed = (event: CertificatePinFailedEvent): void => {
+    log.error('SECURITY: Certificate pin failed — sync permanently paused', {
+      hostname: event.hostname
+    })
+    this.lastError = 'Certificate pin verification failed. Restart the app to retry.'
+    this.lastErrorInfo = {
+      category: 'certificate_pin_failed' as SyncErrorCategory,
+      message: this.lastError,
+      retryable: false
+    }
+    this.setState('error')
+    this.deps.emitToRenderer(EVENT_CHANNELS.CERTIFICATE_PIN_FAILED, event)
+  }
+
+  private handleRateLimited(error: RateLimitError): void {
+    this.rateLimitConsecutive++
+    const serverBackoffMs = error.retryAfterMs
+    const expBackoffMs = Math.min(
+      BASE_RATE_LIMIT_BACKOFF_MS * Math.pow(2, this.rateLimitConsecutive - 1),
+      MAX_RATE_LIMIT_BACKOFF_MS
+    )
+    const pauseMs = Math.min(Math.max(serverBackoffMs, expBackoffMs), MAX_RATE_LIMIT_BACKOFF_MS)
+
+    log.warn('Rate limited — pausing sync', {
+      retryAfterMs: error.retryAfterMs,
+      consecutiveHits: this.rateLimitConsecutive,
+      pauseMs
+    })
+
+    this.lastError = `Rate limited. Resuming in ${Math.ceil(pauseMs / 1000)}s.`
+    this.lastErrorInfo = {
+      category: 'rate_limited',
+      message: this.lastError,
+      retryable: true
+    }
+    this.setState('error')
+
+    if (this.rateLimitResumeTimer) clearTimeout(this.rateLimitResumeTimer)
+    this.rateLimitResumeTimer = setTimeout(() => {
+      this.rateLimitResumeTimer = null
+      log.info('Rate limit pause expired — resuming sync')
+      this.lastError = undefined
+      this.lastErrorInfo = undefined
+      this.setState('idle')
+      this.scheduleSync(() => this.fullSync())
+    }, pauseMs)
+  }
+
+  private clearRateLimitState(): void {
+    this.rateLimitConsecutive = 0
+    if (this.rateLimitResumeTimer) {
+      clearTimeout(this.rateLimitResumeTimer)
+      this.rateLimitResumeTimer = null
+    }
   }
 
   private handleWsMessage = (message: WebSocketMessage): void => {

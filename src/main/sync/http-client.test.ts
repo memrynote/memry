@@ -17,7 +17,8 @@ import {
   deleteFromServer,
   SyncServerError,
   NetworkError,
-  RateLimitError
+  RateLimitError,
+  parseRetryAfterHeader
 } from './http-client'
 
 const createJsonResponse = (
@@ -177,6 +178,72 @@ describe('http-client', () => {
         expect.stringContaining('/api/devices/dev-1'),
         expect.objectContaining({ method: 'DELETE' })
       )
+    })
+  })
+
+  describe('parseRetryAfterHeader', () => {
+    it('#given numeric seconds #then returns seconds', () => {
+      expect(parseRetryAfterHeader('60')).toBe(60)
+    })
+
+    it('#given zero seconds #then returns 0', () => {
+      expect(parseRetryAfterHeader('0')).toBe(0)
+    })
+
+    it('#given null #then returns undefined', () => {
+      expect(parseRetryAfterHeader(null)).toBeUndefined()
+    })
+
+    it('#given HTTP-date in the future #then returns positive seconds', () => {
+      const futureDate = new Date(Date.now() + 120_000).toUTCString()
+      const result = parseRetryAfterHeader(futureDate)!
+      expect(result).toBeGreaterThan(100)
+      expect(result).toBeLessThanOrEqual(120)
+    })
+
+    it('#given HTTP-date in the past #then returns 0', () => {
+      const pastDate = new Date(Date.now() - 60_000).toUTCString()
+      expect(parseRetryAfterHeader(pastDate)).toBe(0)
+    })
+
+    it('#given invalid string #then returns undefined', () => {
+      expect(parseRetryAfterHeader('not-a-number-or-date')).toBeUndefined()
+    })
+  })
+
+  describe('RateLimitError', () => {
+    it('#given retryAfter in seconds #then retryAfterMs is seconds * 1000', () => {
+      const err = new RateLimitError(30)
+      expect(err.retryAfterMs).toBe(30_000)
+    })
+
+    it('#given no retryAfter #then retryAfterMs defaults to 60000', () => {
+      const err = new RateLimitError()
+      expect(err.retryAfterMs).toBe(60_000)
+    })
+
+    it('#given very large retryAfter #then caps at 300 seconds', () => {
+      const err = new RateLimitError(999_999)
+      expect(err.retryAfterMs).toBe(300_000)
+    })
+
+    it('#given 429 response with HTTP-date Retry-After #then uses parsed value', async () => {
+      // #given
+      const futureDate = new Date(Date.now() + 30_000).toUTCString()
+      mockFetch.mockResolvedValue(
+        createJsonResponse({ error: 'rate limited' }, 429, { 'Retry-After': futureDate })
+      )
+
+      // #when / #then
+      try {
+        await syncFetch('GET', '/api/test')
+        expect.unreachable()
+      } catch (err) {
+        expect(err).toBeInstanceOf(RateLimitError)
+        const rle = err as RateLimitError
+        expect(rle.retryAfter).toBeGreaterThan(25)
+        expect(rle.retryAfter).toBeLessThanOrEqual(30)
+      }
     })
   })
 })

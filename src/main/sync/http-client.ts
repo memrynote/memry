@@ -28,11 +28,28 @@ export class NetworkError extends Error {
   }
 }
 
+const MAX_RETRY_AFTER_SECONDS = 300
+
 export class RateLimitError extends SyncServerError {
+  public readonly retryAfterMs: number
+
   constructor(public readonly retryAfter?: number) {
     super('Too many requests. Please try again later.', 429)
     this.name = 'RateLimitError'
+    this.retryAfterMs = Math.min(retryAfter ?? 60, MAX_RETRY_AFTER_SECONDS) * 1000
   }
+}
+
+export function parseRetryAfterHeader(header: string | null): number | undefined {
+  if (!header) return undefined
+  const seconds = Number(header)
+  if (!Number.isNaN(seconds) && seconds >= 0) return seconds
+  const date = new Date(header)
+  if (!Number.isNaN(date.getTime())) {
+    const deltaMs = date.getTime() - Date.now()
+    return Math.max(0, Math.ceil(deltaMs / 1000))
+  }
+  return undefined
 }
 
 interface ServerErrorResponse {
@@ -73,8 +90,8 @@ export const syncFetch = async <T>(
   }
 
   if (response.status === 429) {
-    const retryAfter = response.headers.get('Retry-After')
-    throw new RateLimitError(retryAfter ? parseInt(retryAfter, 10) : undefined)
+    const retryAfter = parseRetryAfterHeader(response.headers.get('Retry-After'))
+    throw new RateLimitError(retryAfter)
   }
 
   let responseBody: unknown
