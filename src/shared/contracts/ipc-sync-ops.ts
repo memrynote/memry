@@ -13,7 +13,10 @@ export const SYNC_OP_CHANNELS = {
   RESUME: 'sync:resume',
   UPDATE_SYNCED_SETTING: 'sync:update-synced-setting',
   GET_SYNCED_SETTINGS: 'sync:get-synced-settings',
-  GET_STORAGE_BREAKDOWN: 'sync:get-storage-breakdown'
+  GET_STORAGE_BREAKDOWN: 'sync:get-storage-breakdown',
+  GET_QUARANTINED_ITEMS: 'sync:get-quarantined-items',
+  CHECK_DEVICE_STATUS: 'sync:check-device-status',
+  EMERGENCY_WIPE: 'sync:emergency-wipe'
 } as const
 
 // ============================================================================
@@ -32,6 +35,7 @@ export type SyncErrorCategory =
   | 'crypto_failure'
   | 'version_incompatible'
   | 'storage_quota_exceeded'
+  | 'certificate_pin_failed'
   | 'unknown'
 
 export interface GetSyncStatusResult {

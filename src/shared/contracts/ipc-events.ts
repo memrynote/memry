@@ -29,7 +29,9 @@ export const EVENT_CHANNELS = {
   DEVICE_RENAMED: 'sync:device-renamed',
   LINKING_FINALIZED: 'sync:linking-finalized',
   ITEM_RECOVERED: 'sync:item-recovered',
-  ITEM_CORRUPT: 'sync:item-corrupt'
+  ITEM_CORRUPT: 'sync:item-corrupt',
+  SECURITY_WARNING: 'sync:security-warning',
+  CERTIFICATE_PIN_FAILED: 'sync:certificate-pin-failed'
 } as const
 
 // ============================================================================
@@ -167,4 +169,29 @@ export interface ItemCorruptEvent {
   itemId: string
   type: string
   error: string
+}
+
+export interface SecurityWarningEvent {
+  itemId: string
+  itemType: string
+  signerDeviceId: string
+  reason: 'signature_verification_failed'
+  attemptCount: number
+  permanent: boolean
+}
+
+export interface QuarantinedItemInfo {
+  itemId: string
+  itemType: string
+  signerDeviceId: string
+  failedAt: number
+  attemptCount: number
+  lastError: string
+  permanent: boolean
+}
+
+export interface CertificatePinFailedEvent {
+  hostname: string
+  actualHash: string
+  expectedHashes: string[]
 }
