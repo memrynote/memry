@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { webcrypto } from 'node:crypto'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { AppError, ErrorCodes, errorHandler } from '../lib/errors'
@@ -21,6 +22,7 @@ vi.mock('../services/user', () => ({
     user: { id: 'user-1', kdf_salt: null },
     isNewUser: true
   }),
+  getUserByEmail: vi.fn().mockResolvedValue(null),
   getUserById: vi.fn().mockResolvedValue({ id: 'user-1', kdf_salt: null }),
   updateUser: vi.fn().mockResolvedValue(undefined)
 }))
@@ -108,7 +110,7 @@ vi.mock('jose', () => ({
 
 import { auth } from './auth'
 import { checkEmailRateLimit } from '../services/otp'
-import { getOrCreateUserByEmail, getUserById, updateUser } from '../services/user'
+import { getOrCreateUserByEmail, getUserByEmail, getUserById, updateUser } from '../services/user'
 import { rotateRefreshToken } from '../services/auth'
 import { jwtVerify } from 'jose'
 
@@ -494,6 +496,66 @@ describe('auth routes', () => {
       expect(res.status).toBe(400)
       const json = (await res.json()) as { error: { code: string } }
       expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+    })
+  })
+
+  // ==========================================================================
+  // GET /auth/recovery
+  // ==========================================================================
+
+  describe('GET /auth/recovery', () => {
+    beforeEach(() => {
+      vi.stubGlobal('crypto', webcrypto as unknown as Crypto)
+    })
+
+    it('should derive dummy recovery data from RECOVERY_DUMMY_SECRET, not JWT_PRIVATE_KEY', async () => {
+      vi.mocked(getUserByEmail).mockResolvedValueOnce(
+        null as unknown as Awaited<ReturnType<typeof getUserByEmail>>
+      )
+      const envWithJwtA = {
+        ...env,
+        JWT_PRIVATE_KEY: 'jwt-key-a',
+        RECOVERY_DUMMY_SECRET: 'dummy-secret'
+      }
+      const first = await app.request('/auth/recovery?email=test@example.com', { method: 'GET' }, envWithJwtA)
+      expect(first.status).toBe(200)
+      const firstJson = await first.json()
+
+      vi.mocked(getUserByEmail).mockResolvedValueOnce(
+        null as unknown as Awaited<ReturnType<typeof getUserByEmail>>
+      )
+      const envWithJwtB = {
+        ...env,
+        JWT_PRIVATE_KEY: 'jwt-key-b',
+        RECOVERY_DUMMY_SECRET: 'dummy-secret'
+      }
+      const second = await app.request(
+        '/auth/recovery?email=test@example.com',
+        { method: 'GET' },
+        envWithJwtB
+      )
+      expect(second.status).toBe(200)
+      const secondJson = await second.json()
+
+      expect(secondJson).toEqual(firstJson)
+
+      vi.mocked(getUserByEmail).mockResolvedValueOnce(
+        null as unknown as Awaited<ReturnType<typeof getUserByEmail>>
+      )
+      const envWithDifferentDummySecret = {
+        ...env,
+        JWT_PRIVATE_KEY: 'jwt-key-a',
+        RECOVERY_DUMMY_SECRET: 'different-dummy-secret'
+      }
+      const third = await app.request(
+        '/auth/recovery?email=test@example.com',
+        { method: 'GET' },
+        envWithDifferentDummySecret
+      )
+      expect(third.status).toBe(200)
+      const thirdJson = await third.json()
+
+      expect(thirdJson).not.toEqual(firstJson)
     })
   })
 
