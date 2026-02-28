@@ -2,24 +2,36 @@ import sodium from 'libsodium-wrappers-sumo'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('CryptoMemLock')
+type SodiumLockApi = Record<string, unknown> & {
+  sodium_mlock?: (buf: Uint8Array) => void
+  sodium_munlock?: (buf: Uint8Array) => void
+}
 
-const hasMlock = typeof (sodium as Record<string, unknown>).sodium_mlock === 'function'
-const hasMunlock = typeof (sodium as Record<string, unknown>).sodium_munlock === 'function'
+let warnedMissingMlock = false
+let warnedMissingMunlock = false
 
-if (!hasMlock) {
-  log.warn(
-    'sodium_mlock unavailable in WASM build. Key material will not be pinned to RAM. ' +
-      'This is expected in Electron/Node.js — OS-level FDE provides equivalent swap protection.'
-  )
+const getLockFunction = (name: 'sodium_mlock' | 'sodium_munlock'): ((buf: Uint8Array) => void) | null => {
+  const fn = (sodium as SodiumLockApi)[name]
+  return typeof fn === 'function' ? fn : null
 }
 
 export function lockKeyMaterial(buffer: Uint8Array): boolean {
-  if (!hasMlock) return false
+  if (buffer.byteLength === 0) return false
+
+  const mlock = getLockFunction('sodium_mlock')
+  if (!mlock) {
+    if (!warnedMissingMlock) {
+      warnedMissingMlock = true
+      log.warn(
+        'sodium_mlock unavailable in WASM build. Key material will not be pinned to RAM. ' +
+          'This is expected in Electron/Node.js — OS-level FDE provides equivalent swap protection.'
+      )
+    }
+    return false
+  }
 
   try {
-    ;(sodium as Record<string, unknown> & { sodium_mlock: (buf: Uint8Array) => void }).sodium_mlock(
-      buffer
-    )
+    mlock(buffer)
     return true
   } catch (err) {
     log.warn('sodium_mlock failed — key material may be swappable:', err)
@@ -28,12 +40,19 @@ export function lockKeyMaterial(buffer: Uint8Array): boolean {
 }
 
 export function unlockKeyMaterial(buffer: Uint8Array): boolean {
-  if (!hasMunlock) return false
+  if (buffer.byteLength === 0) return false
+
+  const munlock = getLockFunction('sodium_munlock')
+  if (!munlock) {
+    if (!warnedMissingMunlock) {
+      warnedMissingMunlock = true
+      log.warn('sodium_munlock unavailable in WASM build. Cleanup will continue without munlock.')
+    }
+    return false
+  }
 
   try {
-    ;(
-      sodium as Record<string, unknown> & { sodium_munlock: (buf: Uint8Array) => void }
-    ).sodium_munlock(buffer)
+    munlock(buffer)
     return true
   } catch (err) {
     log.warn('sodium_munlock failed:', err)
