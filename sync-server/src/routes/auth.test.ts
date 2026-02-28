@@ -488,6 +488,32 @@ describe('auth routes', () => {
       expect(json.error.code).toBe(ErrorCodes.AUTH_INVALID_TOKEN)
     })
 
+    it('should sanitize device name before persistence', async () => {
+      const prepareMock = env.DB.prepare as unknown as ReturnType<typeof vi.fn>
+      const statements: ReturnType<typeof createD1Statement>[] = []
+      prepareMock.mockImplementation(() => {
+        const statement = createD1Statement()
+        statements.push(statement)
+        return statement
+      })
+
+      const body = {
+        ...validDeviceBody,
+        name: 'My <script>alert(1)</script> Device'
+      }
+
+      const res = await app.request('/auth/devices', jsonPost('/auth/devices', body), env)
+
+      expect(res.status).toBe(200)
+      const deviceInsertIndex = prepareMock.mock.calls.findIndex(([sql]) =>
+        String(sql).includes('INSERT INTO devices')
+      )
+      expect(deviceInsertIndex).toBeGreaterThan(-1)
+      const insertBindArgs = statements[deviceInsertIndex].bind.mock.calls[0]
+      expect(insertBindArgs[2]).not.toMatch(/[<>"'`&]/)
+      expect(insertBindArgs[3]).toBe('macos')
+    })
+
     it('should return 400 for invalid body', async () => {
       // #when
       const res = await app.request('/auth/devices', jsonPost('/auth/devices', { name: '' }), env)

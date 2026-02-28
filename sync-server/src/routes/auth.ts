@@ -37,6 +37,10 @@ import { getOrCreateUserByEmail, getUserByEmail, getUserById, updateUser } from 
 import type { AppContext } from '../types'
 
 const OTP_EXPIRY_MINUTES = 10
+const DEVICE_TEXT_UNSAFE_CHARS = /[\u0000-\u001F\u007F<>"'`&]/g
+
+const sanitizeDeviceText = (value: string, maxLength: number): string =>
+  value.replace(DEVICE_TEXT_UNSAFE_CHARS, '').trim().slice(0, maxLength)
 
 const otpIpRateLimit = createRateLimiter({
   maxRequests: 10,
@@ -351,6 +355,13 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
     sessionNonce
   } = parsed.data
 
+  const sanitizedName = sanitizeDeviceText(name, 255)
+  const sanitizedPlatform = sanitizeDeviceText(platform, 32)
+
+  if (!sanitizedName || !sanitizedPlatform) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid device metadata', 400)
+  }
+
   const tokenSessionNonce = c.get('sessionNonce')
   if (tokenSessionNonce && tokenSessionNonce !== sessionNonce) {
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Session nonce mismatch', 401)
@@ -379,8 +390,8 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
     .bind(
       candidateDeviceId,
       userId,
-      name,
-      platform,
+      sanitizedName,
+      sanitizedPlatform,
       osVersion ?? null,
       appVersion,
       authPublicKey,
