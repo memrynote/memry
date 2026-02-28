@@ -1,0 +1,22 @@
+name: Contracts Drift Check
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-contracts:
+    name: Check contracts drift
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify shared/server contract sync
+        run: bash scripts/check-contracts.sh
