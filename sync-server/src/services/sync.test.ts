@@ -78,7 +78,8 @@ const createMockStatement = (): MockStatement => {
 }
 
 const createMockDb = () => ({
-  prepare: vi.fn().mockReturnValue(createMockStatement())
+  prepare: vi.fn().mockReturnValue(createMockStatement()),
+  batch: vi.fn().mockResolvedValue([])
 })
 
 // ============================================================================
@@ -884,5 +885,41 @@ describe('processPushItem', () => {
     expect(upsertStmt.bind).toHaveBeenCalled()
     const bindArgs = upsertStmt.bind.mock.calls[0]
     expect(bindArgs[15]).toBe(123456)
+  })
+
+  it('should batch sync item upsert and storage usage update atomically', async () => {
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue({
+      version: 3,
+      clock: '{"device-1":3}',
+      created_at: 123456,
+      size_bytes: 50000
+    })
+
+    const upsertStmt = createMockStatement()
+    const updateStmt = createMockStatement()
+    const db = createMockDb()
+    db.prepare
+      .mockReturnValueOnce(selectStmt)
+      .mockReturnValueOnce(upsertStmt)
+      .mockReturnValueOnce(updateStmt)
+
+    const storage = {
+      put: vi.fn().mockResolvedValue({ etag: 'etag-1' })
+    } as unknown as R2Bucket
+
+    const result = await processPushItem(
+      db as unknown as D1Database,
+      storage,
+      'user-1',
+      'device-1',
+      createValidPushItem({ clock: { 'device-1': 4 } })
+    )
+
+    expect(result.accepted).toBe(true)
+    expect(db.batch).toHaveBeenCalledTimes(1)
+    expect(db.batch).toHaveBeenCalledWith([upsertStmt, updateStmt])
+    expect(upsertStmt.run).not.toHaveBeenCalled()
+    expect(updateStmt.run).not.toHaveBeenCalled()
   })
 })

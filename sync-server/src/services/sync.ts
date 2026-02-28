@@ -216,7 +216,7 @@ export const processPushItem = async (
 
     const existingCreatedAt = existing?.created_at ?? existing?.createdAt ?? now
 
-    await db
+    const upsertSyncItemStmt = db
       .prepare(
         `INSERT INTO sync_items (
           id, user_id, item_type, item_id, blob_key, size_bytes, content_hash,
@@ -258,14 +258,16 @@ export const processPushItem = async (
         now,
         deletedAt
       )
-      .run()
 
+    const transactionalStatements = [upsertSyncItemStmt]
     if (sizeDelta !== 0) {
-      await db
+      const updateStorageStmt = db
         .prepare('UPDATE users SET storage_used = MAX(0, storage_used + ?) WHERE id = ?')
         .bind(sizeDelta, userId)
-        .run()
+      transactionalStatements.push(updateStorageStmt)
     }
+
+    await db.batch(transactionalStatements)
 
     return { accepted: true, serverCursor }
   } catch (error) {
