@@ -34,6 +34,7 @@ const ScanLinkingSchema = z.object({
   newDevicePublicKey: z.string().min(1),
   newDeviceConfirm: z.string().min(1),
   linkingSecret: z.string().min(1),
+  scanProof: z.string().min(1),
   deviceName: z.string().min(1).max(100),
   devicePlatform: z.string().min(1).max(50)
 })
@@ -93,7 +94,7 @@ linking.post('/scan', linkingRateLimit, async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid request body', 400)
   }
 
-  const { sessionId, newDevicePublicKey, newDeviceConfirm, linkingSecret } = parsed.data
+  const { sessionId, newDevicePublicKey, newDeviceConfirm, linkingSecret, scanProof } = parsed.data
   const scannerIp = c.req.header('cf-connecting-ip') || null
 
   const { userId, initiatorDeviceId } = await transitionToScanned(
@@ -102,6 +103,7 @@ linking.post('/scan', linkingRateLimit, async (c) => {
     newDevicePublicKey,
     newDeviceConfirm,
     linkingSecret,
+    scanProof,
     scannerIp
   )
 

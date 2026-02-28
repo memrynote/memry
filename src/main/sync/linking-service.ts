@@ -10,6 +10,7 @@ import type {
 } from '@shared/contracts/ipc-devices'
 
 import {
+  CBOR_FIELD_ORDER,
   computeKeyConfirm,
   computeLinkingProof,
   computeSharedSecret,
@@ -17,6 +18,7 @@ import {
   constantTimeEqual,
   decryptMasterKeyFromLinking,
   deriveLinkingKeys,
+  encodeCbor,
   encryptMasterKeyForLinking,
   generateX25519KeyPair,
   getOrCreateSigningKeyPair,
@@ -72,6 +74,30 @@ export const clearPendingLinkCompletion = (): void => {
 }
 
 const isExpired = (expiresAt: number): boolean => Date.now() / 1000 > expiresAt
+
+const decodeBase64 = (input: string): Uint8Array => Uint8Array.from(atob(input), (ch) => ch.charCodeAt(0))
+
+const encodeBase64 = (input: Uint8Array): string => btoa(String.fromCharCode(...input))
+
+const toArrayBuffer = (input: Uint8Array): ArrayBuffer => Uint8Array.from(input).buffer
+
+const computeScanProof = async (
+  linkingSecret: string,
+  sessionId: string,
+  devicePublicKey: string
+): Promise<string> => {
+  const payload = encodeCbor({ sessionId, devicePublicKey }, CBOR_FIELD_ORDER.LINKING_PROOF)
+  const secretBytes = decodeBase64(linkingSecret)
+  const hmacKey = await crypto.subtle.importKey(
+    'raw',
+    toArrayBuffer(secretBytes),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const signature = await crypto.subtle.sign('HMAC', hmacKey, toArrayBuffer(payload))
+  return encodeBase64(new Uint8Array(signature))
+}
 
 // ============================================================================
 // Flow 1: Existing device generates QR code
@@ -157,12 +183,18 @@ export const linkViaQr = async (qrData: string, setupToken: string): Promise<Lin
 
   const proof = computeLinkingProof(macKey, parsed.sessionId, newDevicePublicKeyB64)
   const proofB64 = sodium.to_base64(proof, sodium.base64_variants.ORIGINAL)
+  const scanProof = await computeScanProof(
+    parsed.linkingSecret,
+    parsed.sessionId,
+    newDevicePublicKeyB64
+  )
 
   await postToServer('/auth/linking/scan', {
     sessionId: parsed.sessionId,
     newDevicePublicKey: newDevicePublicKeyB64,
     newDeviceConfirm: proofB64,
     linkingSecret: parsed.linkingSecret,
+    scanProof,
     deviceName: os.hostname(),
     devicePlatform: PLATFORM_MAP[process.platform] || 'linux'
   })
