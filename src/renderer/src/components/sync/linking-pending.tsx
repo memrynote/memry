@@ -5,8 +5,13 @@ import { Loader2, X, CheckCircle, AlertCircle } from 'lucide-react'
 
 const POLL_INTERVAL_MS = 3000
 
+function formatSasCode(code: string): string {
+  return `${code.slice(0, 3)} ${code.slice(3)}`
+}
+
 interface LinkingPendingProps {
   sessionId: string
+  verificationCode?: string
   onComplete: () => void
   onError: (error: string) => void
   onCancel: () => void
@@ -14,6 +19,7 @@ interface LinkingPendingProps {
 
 export function LinkingPending({
   sessionId,
+  verificationCode,
   onComplete,
   onError,
   onCancel
@@ -110,6 +116,19 @@ export function LinkingPending({
           Open Memry on your other device and approve the linking request.
         </p>
       </div>
+      {verificationCode && (
+        <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 px-6 py-3 text-center space-y-1">
+          <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
+            Verification code
+          </p>
+          <p className="font-mono text-2xl tracking-[0.3em] font-semibold text-amber-700 dark:text-amber-400">
+            {formatSasCode(verificationCode)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Confirm this matches the code on your other device
+          </p>
+        </div>
+      )}
       <Button
         variant="ghost"
         size="sm"

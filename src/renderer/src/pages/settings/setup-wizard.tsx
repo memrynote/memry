@@ -27,7 +27,14 @@ const STEP_MAP: Record<WizardStep, number> = {
 
 export function SetupWizard(): React.JSX.Element {
   const {
-    state: { wizardStep, wizardLinkingSessionId, wizardExpiresAt, wizardError, email },
+    state: {
+      wizardStep,
+      wizardLinkingSessionId,
+      wizardVerificationCode,
+      wizardExpiresAt,
+      wizardError,
+      email
+    },
     requestOtp,
     verifyOtp,
     resendOtp,
@@ -260,8 +267,11 @@ export function SetupWizard(): React.JSX.Element {
 
       {wizardStep === 'linking-scan' && (
         <LinkingCodeEntry
-          onLinked={(sessionId) =>
-            setWizardStep('linking-pending', { linkingSessionId: sessionId })
+          onLinked={(sessionId, verificationCode) =>
+            setWizardStep('linking-pending', {
+              linkingSessionId: sessionId,
+              verificationCode
+            })
           }
           onError={(error) => setWizardError(error)}
           onBack={() => setWizardStep('linking-choice')}
@@ -271,6 +281,7 @@ export function SetupWizard(): React.JSX.Element {
       {wizardStep === 'linking-pending' && wizardLinkingSessionId && (
         <LinkingPending
           sessionId={wizardLinkingSessionId}
+          verificationCode={wizardVerificationCode ?? undefined}
           onComplete={() => {
             linkingCompleted()
           }}

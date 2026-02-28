@@ -33,6 +33,7 @@ export type WizardStep =
 
 export interface WizardData {
   linkingSessionId?: string | null
+  verificationCode?: string | null
   expiresAt?: number | null
   oauthState?: string | null
   error?: string | null
@@ -46,6 +47,7 @@ interface AuthState {
   needsRecoverySetup: boolean
   wizardStep: WizardStep
   wizardLinkingSessionId: string | null
+  wizardVerificationCode: string | null
   wizardExpiresAt: number | null
   wizardOAuthState: string | null
   wizardError: string | null
@@ -82,6 +84,7 @@ type AuthAction =
 const WIZARD_IDLE_FIELDS = {
   wizardStep: 'idle' as const,
   wizardLinkingSessionId: null,
+  wizardVerificationCode: null,
   wizardExpiresAt: null,
   wizardOAuthState: null,
   wizardError: null
@@ -166,6 +169,9 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         wizardError: null,
         ...(action.data?.linkingSessionId !== undefined && {
           wizardLinkingSessionId: action.data.linkingSessionId
+        }),
+        ...(action.data?.verificationCode !== undefined && {
+          wizardVerificationCode: action.data.verificationCode
         }),
         ...(action.data?.expiresAt !== undefined && {
           wizardExpiresAt: action.data.expiresAt
