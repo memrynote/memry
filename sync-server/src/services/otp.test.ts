@@ -21,12 +21,14 @@ beforeAll(() => {
 
 import {
   generateOtp,
-  hashOtp,
+  hmacOtp,
   constantTimeCompare,
   storeOtp,
   verifyOtp,
   checkEmailRateLimit
 } from './otp'
+
+const TEST_HMAC_KEY = 'test-hmac-secret-key'
 
 // ============================================================================
 // D1 mock
@@ -118,22 +120,22 @@ describe('generateOtp', () => {
 })
 
 // ============================================================================
-// Tests: hashOtp
+// Tests: hmacOtp
 // ============================================================================
 
-describe('hashOtp', () => {
+describe('hmacOtp', () => {
   it('should return a 64-character hex string', async () => {
     // #when
-    const hash = await hashOtp('123456')
+    const hash = await hmacOtp('123456', TEST_HMAC_KEY)
 
     // #then
     expect(hash).toMatch(/^[0-9a-f]{64}$/)
   })
 
-  it('should produce deterministic output for the same input', async () => {
+  it('should produce deterministic output for the same input and key', async () => {
     // #when
-    const hash1 = await hashOtp('999999')
-    const hash2 = await hashOtp('999999')
+    const hash1 = await hmacOtp('999999', TEST_HMAC_KEY)
+    const hash2 = await hmacOtp('999999', TEST_HMAC_KEY)
 
     // #then
     expect(hash1).toBe(hash2)
@@ -141,8 +143,17 @@ describe('hashOtp', () => {
 
   it('should produce different hashes for different inputs', async () => {
     // #when
-    const hash1 = await hashOtp('111111')
-    const hash2 = await hashOtp('222222')
+    const hash1 = await hmacOtp('111111', TEST_HMAC_KEY)
+    const hash2 = await hmacOtp('222222', TEST_HMAC_KEY)
+
+    // #then
+    expect(hash1).not.toBe(hash2)
+  })
+
+  it('should produce different hashes for the same code with different keys', async () => {
+    // #when
+    const hash1 = await hmacOtp('123456', 'key-alpha')
+    const hash2 = await hmacOtp('123456', 'key-beta')
 
     // #then
     expect(hash1).not.toBe(hash2)
@@ -209,7 +220,7 @@ describe('storeOtp', () => {
     })
 
     // #when
-    await storeOtp(db as unknown as D1Database, 'user@example.com', '123456')
+    await storeOtp(db as unknown as D1Database, 'user@example.com', '123456', TEST_HMAC_KEY)
 
     // #then
     expect(db.prepare).toHaveBeenCalledWith(
@@ -229,7 +240,7 @@ describe('storeOtp', () => {
     })
 
     // #when
-    await storeOtp(db as unknown as D1Database, 'user@example.com', '123456')
+    await storeOtp(db as unknown as D1Database, 'user@example.com', '123456', TEST_HMAC_KEY)
 
     // #then
     expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO otp_codes'))
@@ -248,7 +259,12 @@ describe('storeOtp', () => {
     })
 
     // #when
-    const result = await storeOtp(db as unknown as D1Database, 'user@example.com', '123456')
+    const result = await storeOtp(
+      db as unknown as D1Database,
+      'user@example.com',
+      '123456',
+      TEST_HMAC_KEY
+    )
 
     // #then
     const nowSeconds = Math.floor(1_700_000_000_000 / 1000)
@@ -264,11 +280,11 @@ describe('storeOtp', () => {
       stmts.push(s)
       return s
     })
-    const expectedHash = await hashOtp('654321')
+    const expectedHash = await hmacOtp('654321', TEST_HMAC_KEY)
     const nowSeconds = Math.floor(1_700_000_000_000 / 1000)
 
     // #when
-    await storeOtp(db as unknown as D1Database, 'test@test.com', '654321')
+    await storeOtp(db as unknown as D1Database, 'test@test.com', '654321', TEST_HMAC_KEY)
 
     // #then
     const insertArgs = stmts[1].bind.mock.calls[0]
@@ -294,7 +310,7 @@ describe('verifyOtp', () => {
   it('should mark the OTP as used when code matches', async () => {
     // #given
     const code = '123456'
-    const codeHash = await hashOtp(code)
+    const codeHash = await hmacOtp(code, TEST_HMAC_KEY)
     const selectStmt = createMockStatement()
     selectStmt.first.mockResolvedValue({ id: 'otp-1', code_hash: codeHash, attempts: 0 })
 
@@ -303,7 +319,7 @@ describe('verifyOtp', () => {
     db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(updateStmt)
 
     // #when
-    await verifyOtp(db as unknown as D1Database, 'user@example.com', code)
+    await verifyOtp(db as unknown as D1Database, 'user@example.com', code, TEST_HMAC_KEY)
 
     // #then
     expect(db.prepare).toHaveBeenCalledWith(
@@ -321,7 +337,7 @@ describe('verifyOtp', () => {
 
     // #when / #then
     try {
-      await verifyOtp(db as unknown as D1Database, 'user@example.com', '123456')
+      await verifyOtp(db as unknown as D1Database, 'user@example.com', '123456', TEST_HMAC_KEY)
       expect.fail('Should have thrown')
     } catch (e) {
       expect(e).toBeInstanceOf(AppError)
@@ -338,7 +354,7 @@ describe('verifyOtp', () => {
 
     // #when / #then
     try {
-      await verifyOtp(db as unknown as D1Database, 'user@example.com', '123456')
+      await verifyOtp(db as unknown as D1Database, 'user@example.com', '123456', TEST_HMAC_KEY)
       expect.fail('Should have thrown')
     } catch (e) {
       expect(e).toBeInstanceOf(AppError)
@@ -349,7 +365,7 @@ describe('verifyOtp', () => {
 
   it('should increment attempts and throw AUTH_INVALID_OTP on wrong code', async () => {
     // #given
-    const correctHash = await hashOtp('999999')
+    const correctHash = await hmacOtp('999999', TEST_HMAC_KEY)
     const selectStmt = createMockStatement()
     selectStmt.first.mockResolvedValue({ id: 'otp-1', code_hash: correctHash, attempts: 0 })
 
@@ -359,7 +375,7 @@ describe('verifyOtp', () => {
 
     // #when / #then
     try {
-      await verifyOtp(db as unknown as D1Database, 'user@example.com', '000000')
+      await verifyOtp(db as unknown as D1Database, 'user@example.com', '000000', TEST_HMAC_KEY)
       expect.fail('Should have thrown')
     } catch (e) {
       expect(e).toBeInstanceOf(AppError)
@@ -382,7 +398,7 @@ describe('verifyOtp', () => {
 
     // #when
     try {
-      await verifyOtp(db as unknown as D1Database, 'user@example.com', '123456')
+      await verifyOtp(db as unknown as D1Database, 'user@example.com', '123456', TEST_HMAC_KEY)
     } catch {
       // expected
     }
@@ -401,7 +417,7 @@ describe('verifyOtp', () => {
 
     // #when
     try {
-      await verifyOtp(db as unknown as D1Database, 'test@test.com', '123456')
+      await verifyOtp(db as unknown as D1Database, 'test@test.com', '123456', TEST_HMAC_KEY)
     } catch {
       // expected
     }

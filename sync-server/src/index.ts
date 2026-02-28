@@ -70,7 +70,12 @@ app.use('*', async (c, next) => {
     throw new Error('ENVIRONMENT binding is required (development | staging | production)')
   }
 
-  const requiredSecrets = ['JWT_PUBLIC_KEY', 'JWT_PRIVATE_KEY', 'RESEND_API_KEY'] as const
+  const requiredSecrets = [
+    'JWT_PUBLIC_KEY',
+    'JWT_PRIVATE_KEY',
+    'RESEND_API_KEY',
+    'OTP_HMAC_KEY'
+  ] as const
 
   for (const key of requiredSecrets) {
     const value = c.env[key]
