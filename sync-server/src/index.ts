@@ -2,7 +2,6 @@ export { UserSyncState } from './durable-objects/user-sync-state'
 export { LinkingSession } from './durable-objects/linking-session'
 
 import { Hono } from 'hono'
-import { bodyLimit } from 'hono/body-limit'
 import { cors } from 'hono/cors'
 
 import { AppError, ErrorCodes, errorHandler } from './lib/errors'
@@ -43,20 +42,57 @@ const bodyLimitError = () => {
   throw new AppError(ErrorCodes.VALIDATION_BODY_TOO_LARGE, 'Request body too large', 413)
 }
 
-const apiBodyLimit = bodyLimit({
-  maxSize: MAX_BODY_BYTES_API,
-  onError: bodyLimitError
-})
+const METHOD_WITHOUT_BODY = new Set(['GET', 'HEAD', 'OPTIONS'])
 
-const blobBodyLimit = bodyLimit({
-  maxSize: MAX_BODY_BYTES_BLOB,
-  onError: bodyLimitError
-})
+const getMaxBodyBytes = (path: string): number => {
+  const isBlobRoute = path.includes('/blob') || path.includes('/attachments/')
+  return isBlobRoute ? MAX_BODY_BYTES_BLOB : MAX_BODY_BYTES_API
+}
+
+const isBodyWithinLimit = async (request: Request, maxBodyBytes: number): Promise<boolean> => {
+  if (!request.body) {
+    return true
+  }
+
+  const reader = request.clone().body?.getReader()
+  if (!reader) {
+    return true
+  }
+
+  let totalBytes = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        return true
+      }
+
+      totalBytes += value.byteLength
+      if (totalBytes > maxBodyBytes) {
+        return false
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
 
 app.use('*', async (c, next) => {
-  const isBlobRoute = c.req.path.includes('/blob') || c.req.path.includes('/attachments/')
-  const middleware = isBlobRoute ? blobBodyLimit : apiBodyLimit
-  return middleware(c, next)
+  const maxBodyBytes = getMaxBodyBytes(c.req.path)
+
+  const contentLength = c.req.header('Content-Length')
+  if (contentLength && Number(contentLength) > maxBodyBytes) {
+    bodyLimitError()
+  }
+
+  if (!METHOD_WITHOUT_BODY.has(c.req.method)) {
+    const withinLimit = await isBodyWithinLimit(c.req.raw, maxBodyBytes)
+    if (!withinLimit) {
+      bodyLimitError()
+    }
+  }
+
+  await next()
 })
 
 app.use('*', async (c, next) => {
