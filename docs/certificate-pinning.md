@@ -6,12 +6,12 @@ Certificate pinning hardcodes the server's TLS certificate fingerprints (SPKI ha
 
 ## Where Things Live
 
-| What | Where | Who manages it |
-|------|-------|----------------|
-| TLS certificate | Cloudflare (auto-provisioned) | Cloudflare |
-| SPKI pin hashes | `src/main/sync/certificate-pinning.ts` | Us (hardcoded) |
-| Build-time check | `scripts/check-cert-hashes.sh` | CI (runs in `prebuild`) |
-| Hash extraction tool | `scripts/extract-cert-hashes.ts` | Dev utility |
+| What                 | Where                                  | Who manages it          |
+| -------------------- | -------------------------------------- | ----------------------- |
+| TLS certificate      | Cloudflare (auto-provisioned)          | Cloudflare              |
+| SPKI pin hashes      | `src/main/sync/certificate-pinning.ts` | Us (hardcoded)          |
+| Build-time check     | `scripts/check-cert-hashes.sh`         | CI (runs in `prebuild`) |
+| Hash extraction tool | `scripts/extract-cert-hashes.ts`       | Dev utility             |
 
 ## Pinning Strategy
 
@@ -66,12 +66,12 @@ Mitigation: monitor pin mismatches server-side (the app logs `Certificate pin ve
 
 Three independent layers prevent bricking:
 
-| Layer | When | What happens |
-|-------|------|-------------|
-| **Build-time** (`prebuild`) | `pnpm build` | Blocks build if `PLACEHOLDER` found in source |
-| **Runtime: getPinnedCertificateHashes** | App startup | Returns `[]` if placeholders detected in packaged app |
-| **Runtime: createPinnedAgent** | HTTP client init | Falls back to standard TLS agent if placeholders detected |
-| **Session: configureCertificatePinning** | Electron session | Skips `setCertificateVerifyProc` if pin list is empty |
+| Layer                                    | When             | What happens                                              |
+| ---------------------------------------- | ---------------- | --------------------------------------------------------- |
+| **Build-time** (`prebuild`)              | `pnpm build`     | Blocks build if `PLACEHOLDER` found in source             |
+| **Runtime: getPinnedCertificateHashes**  | App startup      | Returns `[]` if placeholders detected in packaged app     |
+| **Runtime: createPinnedAgent**           | HTTP client init | Falls back to standard TLS agent if placeholders detected |
+| **Session: configureCertificatePinning** | Electron session | Skips `setCertificateVerifyProc` if pin list is empty     |
 
 All three log `CRITICAL` or `error` level messages so they're visible in production logs.
 
