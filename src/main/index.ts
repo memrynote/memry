@@ -182,6 +182,11 @@ function configureCertificatePinning(): void {
 
   const pins = getPinnedCertificateHashes()
 
+  if (pins.length === 0) {
+    certPinLog.error('No valid certificate pins available — session pinning disabled (TLS-only)')
+    return
+  }
+
   session.defaultSession.setCertificateVerifyProc((request, callback) => {
     const cert = request.certificate
     if (!cert.data) {

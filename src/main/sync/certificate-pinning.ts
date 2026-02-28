@@ -11,6 +11,10 @@ const PINNED_CERTIFICATE_HASHES: string[] = [
   'sha256/PLACEHOLDER_BACKUP_CERT_HASH_BASE64'
 ]
 
+export function hasPlaceholderHashes(pins: readonly string[] = PINNED_CERTIFICATE_HASHES): boolean {
+  return pins.some((pin) => /PLACEHOLDER/i.test(pin))
+}
+
 export class CertificatePinningError extends Error {
   constructor(
     message: string,
@@ -60,9 +64,16 @@ export function verifyCertificatePin(
   return pins.some((pin) => pin === spkiHash)
 }
 
-export function createPinnedAgent(pins: string[] = PINNED_CERTIFICATE_HASHES): https.Agent {
+export function createPinnedAgent(pins: string[] = [...PINNED_CERTIFICATE_HASHES]): https.Agent {
   if (isPinningDisabled()) {
     log.debug('Certificate pinning disabled (dev/test mode)')
+    return new https.Agent({ rejectUnauthorized: true })
+  }
+
+  if (hasPlaceholderHashes(pins)) {
+    log.error(
+      'CRITICAL: Certificate pinning active but hashes are placeholders — using TLS-only agent'
+    )
     return new https.Agent({ rejectUnauthorized: true })
   }
 
@@ -94,5 +105,11 @@ export function createPinnedAgent(pins: string[] = PINNED_CERTIFICATE_HASHES): h
 }
 
 export function getPinnedCertificateHashes(): readonly string[] {
+  if (!isPinningDisabled() && hasPlaceholderHashes()) {
+    log.error(
+      'CRITICAL: Certificate pinning active but hashes are placeholders — falling back to TLS-only'
+    )
+    return []
+  }
   return PINNED_CERTIFICATE_HASHES
 }
