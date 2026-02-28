@@ -1,4 +1,6 @@
 import { AppError, ErrorCodes } from '../lib/errors'
+import { encodeCbor } from '../lib/cbor'
+import { CBOR_FIELD_ORDER } from '../contracts/cbor-ordering'
 import { constantTimeCompare } from './otp'
 
 const SESSION_TTL_SECONDS = 300
@@ -26,6 +28,28 @@ const hashLinkingSecret = async (secret: string): Promise<string> => {
   const encoded = new TextEncoder().encode(secret)
   const digest = await crypto.subtle.digest('SHA-256', encoded)
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+const decodeBase64 = (input: string): Uint8Array => Uint8Array.from(atob(input), (ch) => ch.charCodeAt(0))
+
+const encodeBase64 = (input: Uint8Array): string => btoa(String.fromCharCode(...input))
+
+const computeScanProof = async (
+  linkingSecret: string,
+  sessionId: string,
+  devicePublicKey: string
+): Promise<string> => {
+  const payload = encodeCbor({ sessionId, devicePublicKey }, CBOR_FIELD_ORDER.LINKING_PROOF)
+  const secretBytes = decodeBase64(linkingSecret)
+  const hmacKey = await crypto.subtle.importKey(
+    'raw',
+    secretBytes,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const signature = await crypto.subtle.sign('HMAC', hmacKey, payload)
+  return encodeBase64(new Uint8Array(signature))
 }
 
 const isSessionExpired = (session: LinkingSessionRow): boolean =>
@@ -92,6 +116,7 @@ const transitionToScanned = async (
   newDevicePublicKey: string,
   newDeviceConfirm: string,
   linkingSecret: string,
+  scanProof: string,
   scannerIp: string | null
 ): Promise<{ userId: string; initiatorDeviceId: string }> => {
   const session = await requireSession(db, sessionId)
@@ -103,6 +128,16 @@ const transitionToScanned = async (
     throw new AppError(
       ErrorCodes.LINKING_SECRET_INVALID,
       'Invalid linking secret. Please scan the QR code again',
+      403
+    )
+  }
+
+  const expectedScanProof = await computeScanProof(linkingSecret, sessionId, newDevicePublicKey)
+  const scanProofValid = await constantTimeCompare(expectedScanProof, scanProof)
+  if (!scanProofValid) {
+    throw new AppError(
+      ErrorCodes.LINKING_SECRET_INVALID,
+      'Invalid linking proof. Please scan the QR code again',
       403
     )
   }
