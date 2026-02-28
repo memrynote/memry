@@ -20,12 +20,16 @@ const { mockSodium, MOCK_PHRASE, MOCK_SEED_BUFFER } = vi.hoisted(() => {
     }),
     crypto_pwhash_ALG_ARGON2ID13: 2,
     crypto_kdf_derive_from_key: vi.fn(
-      (length: number, _id: number, _ctx: string, _key: Uint8Array) => {
-        return new Uint8Array(length).fill(0xcd)
+      (length: number, id: number, _ctx: string, key: Uint8Array) => {
+        const result = new Uint8Array(length)
+        for (let i = 0; i < length; i++) result[i] = (key[i % key.length] ^ id) & 0xff
+        return result
       }
     ),
-    crypto_generichash: vi.fn((length: number, _message: Uint8Array, _key: Uint8Array) => {
-      return new Uint8Array(length).fill(0xef)
+    crypto_generichash: vi.fn((length: number, message: Uint8Array) => {
+      const result = new Uint8Array(length)
+      for (let i = 0; i < length; i++) result[i] = message[i % message.length]
+      return result
     }),
     crypto_sign_keypair: vi.fn(() => ({
       publicKey: new Uint8Array(32).fill(0x01),
@@ -77,6 +81,7 @@ vi.mock('keytar', () => ({
 import {
   secureCleanup,
   constantTimeEqual,
+  computeVerificationCode,
   initCrypto,
   deriveKey,
   deriveMasterKey,
@@ -428,5 +433,62 @@ describe('phraseToSeed', () => {
 
     // #then
     expect(seed1.length).toBe(seed2.length)
+  })
+})
+
+// ============================================================================
+// Tests: computeVerificationCode
+// ============================================================================
+
+describe('computeVerificationCode', () => {
+  it('should return a 6-digit string', async () => {
+    // #given
+    const sharedSecret = new Uint8Array(32)
+    sharedSecret.fill(0xab)
+
+    // #when
+    const code = await computeVerificationCode(sharedSecret)
+
+    // #then
+    expect(code).toMatch(/^\d{6}$/)
+  })
+
+  it('should be deterministic for the same input', async () => {
+    // #given
+    const sharedSecret = new Uint8Array(32)
+    sharedSecret.fill(0xcd)
+
+    // #when
+    const code1 = await computeVerificationCode(sharedSecret)
+    const code2 = await computeVerificationCode(sharedSecret)
+
+    // #then
+    expect(code1).toBe(code2)
+  })
+
+  it('should differ for different shared secrets', async () => {
+    // #given
+    const secretA = new Uint8Array(32)
+    secretA.fill(0x01)
+    const secretB = new Uint8Array(32)
+    secretB.fill(0x02)
+
+    // #when
+    const codeA = await computeVerificationCode(secretA)
+    const codeB = await computeVerificationCode(secretB)
+
+    // #then
+    expect(codeA).not.toBe(codeB)
+  })
+
+  it('should zero-pad codes shorter than 6 digits', async () => {
+    // #given — use a known secret that produces a small number
+    const sharedSecret = new Uint8Array(32)
+
+    // #when
+    const code = await computeVerificationCode(sharedSecret)
+
+    // #then
+    expect(code.length).toBe(6)
   })
 })
