@@ -1,18 +1,25 @@
 import { createReadStream } from 'node:fs'
-import { stat, writeFile, unlink, rename } from 'node:fs/promises'
+import { stat, writeFile, rename } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import path from 'node:path'
 import sodium from 'libsodium-wrappers-sumo'
 import { net } from 'electron'
 
 import { createLogger } from '../lib/logger'
+import { secureDeleteFile } from '../lib/secure-fs'
 import { ensureDirectory } from '../vault/file-ops'
 import { encrypt, decrypt, wrapFileKey, unwrapFileKey } from '../crypto/encryption'
 import { generateFileKey } from '../crypto/keys'
 import { secureCleanup } from '../crypto/index'
 import { signPayload, verifySignature } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@shared/contracts/cbor-ordering'
-import { NetworkError, SyncServerError, RateLimitError, type FetchFn } from './http-client'
+import {
+  NetworkError,
+  SyncServerError,
+  RateLimitError,
+  parseRetryAfterHeader,
+  type FetchFn
+} from './http-client'
 import { withRetry } from './retry'
 
 import type { UploadInitResponse, UploadStatusResponse } from '@shared/contracts/blob-api'
@@ -175,8 +182,8 @@ async function binaryFetch(
   }
 
   if (response.status === 429) {
-    const retryAfter = response.headers.get('Retry-After')
-    throw new RateLimitError(retryAfter ? parseInt(retryAfter, 10) : undefined)
+    const retryAfter = parseRetryAfterHeader(response.headers.get('Retry-After'))
+    throw new RateLimitError(retryAfter)
   }
 
   return response
@@ -793,7 +800,7 @@ export class AttachmentSyncService {
       await rename(tempPath, filePath)
     } catch {
       try {
-        await unlink(tempPath)
+        await secureDeleteFile(tempPath)
       } catch {
         // ignore cleanup errors
       }
