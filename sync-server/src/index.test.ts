@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { app } from './index'
 
+const ONE_MB = 1024 * 1024
+const TEN_MB = 10 * ONE_MB
+
 function createEnv(overrides?: Partial<Record<string, unknown>>) {
   return {
     DB: {} as D1Database,
@@ -78,5 +81,61 @@ describe('sync-server app entry point', () => {
     expect(response.headers.get('Strict-Transport-Security')).toBe(
       'max-age=31536000; includeSubDomains'
     )
+  })
+
+  it('rejects oversized API bodies even when Content-Length is omitted', async () => {
+    const request = new Request('http://localhost/health', {
+      method: 'POST',
+      body: new Uint8Array(ONE_MB + 1)
+    })
+    expect(request.headers.get('Content-Length')).toBeNull()
+
+    const response = await app.request(request, {}, createEnv())
+
+    expect(response.status).toBe(413)
+    const body = await response.json()
+    expect(body).toEqual({
+      error: {
+        code: 'VALIDATION_BODY_TOO_LARGE',
+        message: 'Request body too large'
+      }
+    })
+  })
+
+  it('rejects oversized blob bodies even when Content-Length is omitted', async () => {
+    const request = new Request('http://localhost/sync/blob/blob-key', {
+      method: 'PUT',
+      body: new Uint8Array(TEN_MB + 1)
+    })
+    expect(request.headers.get('Content-Length')).toBeNull()
+
+    const response = await app.request(request, {}, createEnv())
+
+    expect(response.status).toBe(413)
+    const body = await response.json()
+    expect(body).toEqual({
+      error: {
+        code: 'VALIDATION_BODY_TOO_LARGE',
+        message: 'Request body too large'
+      }
+    })
+  })
+
+  it('uses a larger body limit for blob routes', async () => {
+    const request = new Request('http://localhost/sync/blob/blob-key', {
+      method: 'PUT',
+      body: new Uint8Array(2 * ONE_MB)
+    })
+
+    const response = await app.request(request, {}, createEnv())
+
+    expect(response.status).toBe(401)
+    const body = await response.json()
+    expect(body).toEqual({
+      error: {
+        code: 'AUTH_INVALID_TOKEN',
+        message: 'Missing or malformed Authorization header'
+      }
+    })
   })
 })
