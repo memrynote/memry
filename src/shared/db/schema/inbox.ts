@@ -81,12 +81,12 @@ export const inboxItems = sqliteTable(
     /** Creation timestamp */
     createdAt: text('created_at')
       .notNull()
-      .default(sql`(datetime('now'))`),
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 
     /** Last modification timestamp */
     modifiedAt: text('modified_at')
       .notNull()
-      .default(sql`(datetime('now'))`),
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 
     // ========================================================================
     // Filing Status
@@ -214,7 +214,7 @@ export const inboxItemTags = sqliteTable(
     /** When the tag was added */
     createdAt: text('created_at')
       .notNull()
-      .default(sql`(datetime('now'))`)
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
   },
   (table) => [
     index('idx_inbox_tags_item').on(table.itemId),
@@ -257,7 +257,7 @@ export const filingHistory = sqliteTable(
     /** When the item was filed */
     filedAt: text('filed_at')
       .notNull()
-      .default(sql`(datetime('now'))`)
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
   },
   (table) => [
     index('idx_filing_history_type').on(table.itemType),
@@ -362,7 +362,7 @@ export const suggestionFeedback = sqliteTable(
     /** When the feedback was recorded */
     createdAt: text('created_at')
       .notNull()
-      .default(sql`(datetime('now'))`)
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
   },
   (table) => [
     index('idx_suggestion_feedback_item_type').on(table.itemType),

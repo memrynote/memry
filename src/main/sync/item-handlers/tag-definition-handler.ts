@@ -1,5 +1,6 @@
 import { eq, isNull } from 'drizzle-orm'
 import { tagDefinitions } from '@shared/db/schema/tag-definitions'
+import { utcNow } from '@shared/utc'
 import {
   TagDefinitionSyncPayloadSchema,
   type TagDefinitionSyncPayload
@@ -27,7 +28,7 @@ export const tagDefinitionHandler: SyncItemHandler<TagDefinitionSyncPayload> = {
     return ctx.db.transaction((tx): ApplyResult => {
       const existing = tx.select().from(tagDefinitions).where(eq(tagDefinitions.name, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
-      const now = new Date().toISOString()
+      const now = utcNow()
 
       if (existing) {
         const resolution = resolveClockConflict(existing.clock as VectorClock | null, remoteClock)

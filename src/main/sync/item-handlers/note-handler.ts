@@ -3,6 +3,7 @@ import path from 'path'
 import { isNull, and, sql } from 'drizzle-orm'
 import { noteCache } from '@shared/db/schema/notes-cache'
 import { NoteSyncPayloadSchema, type NoteSyncPayload } from '@shared/contracts/sync-payloads'
+import { utcNow } from '@shared/utc'
 import {
   isBinaryFileType,
   getExtensionFromMimeType,
@@ -86,7 +87,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
   ): ApplyResult {
     const indexDb = getIndexDatabase()
     const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
-    const now = new Date().toISOString()
+    const now = utcNow()
 
     const existing = getNoteCacheById(indexDb, itemId)
 

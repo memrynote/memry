@@ -7,7 +7,7 @@ export const tagDefinitions = sqliteTable('tag_definitions', {
   clock: text('clock', { mode: 'json' }),
   createdAt: text('created_at')
     .notNull()
-    .default(sql`(datetime('now'))`)
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
 })
 
 export type TagDefinition = typeof tagDefinitions.$inferSelect

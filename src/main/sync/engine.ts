@@ -1436,8 +1436,9 @@ export class SyncEngine extends EventEmitter {
     this.emit('resumed', event)
   }
 
-  // Timestamp convention: server uses Unix seconds, client uses Date.now() ms internally,
-  // and ISO 8601 strings for DB columns (syncedAt, createdAt, modifiedAt).
+  // UTC timestamp policy: server uses Unix seconds, client uses Date.now() ms internally,
+  // and ISO 8601 strings (utcNow()) for DB columns (syncedAt, createdAt, modifiedAt).
+  // All text timestamps MUST use utcNow() from @shared/utc to guarantee ISO 8601 + Z suffix.
   private checkClockSkew(serverTimeSeconds: number): void {
     const localTimeSeconds = Math.floor(Date.now() / 1000)
     const skew = Math.abs(localTimeSeconds - serverTimeSeconds)

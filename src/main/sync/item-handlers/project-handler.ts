@@ -1,6 +1,7 @@
 import { eq, isNull, and, notInArray } from 'drizzle-orm'
 import { projects } from '@shared/db/schema/projects'
 import { statuses } from '@shared/db/schema/statuses'
+import { utcNow } from '@shared/utc'
 import {
   ProjectSyncPayloadSchema,
   type ProjectSyncPayload,
@@ -51,7 +52,7 @@ function reconcileStatuses(tx: DrizzleDb, projectId: string, incoming: StatusSyn
           position: s.position,
           isDefault: s.isDefault ?? false,
           isDone: s.isDone ?? false,
-          createdAt: s.createdAt ?? new Date().toISOString()
+          createdAt: s.createdAt ?? utcNow()
         })
         .run()
     }
@@ -71,7 +72,7 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
     return ctx.db.transaction((tx): ApplyResult => {
       const existing = tx.select().from(projects).where(eq(projects.id, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
-      const now = new Date().toISOString()
+      const now = utcNow()
 
       if (data.isInbox && !existing) {
         const localInbox = tx.select().from(projects).where(eq(projects.isInbox, true)).get()
@@ -238,10 +239,7 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
   },
 
   markPushSynced(db: DrizzleDb, itemId: string): void {
-    db.update(projects)
-      .set({ syncedAt: new Date().toISOString() })
-      .where(eq(projects.id, itemId))
-      .run()
+    db.update(projects).set({ syncedAt: utcNow() }).where(eq(projects.id, itemId)).run()
   },
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {

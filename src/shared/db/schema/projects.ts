@@ -12,10 +12,10 @@ export const projects = sqliteTable('projects', {
   isInbox: integer('is_inbox', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at')
     .notNull()
-    .default(sql`(datetime('now'))`),
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   modifiedAt: text('modified_at')
     .notNull()
-    .default(sql`(datetime('now'))`),
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   archivedAt: text('archived_at'),
 
   clock: text('clock', { mode: 'json' }).$type<VectorClock>(),

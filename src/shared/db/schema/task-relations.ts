@@ -11,7 +11,7 @@ export const taskNotes = sqliteTable(
     noteId: text('note_id').notNull(),
     createdAt: text('created_at')
       .notNull()
-      .default(sql`(datetime('now'))`)
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
   },
   (table) => [primaryKey({ columns: [table.taskId, table.noteId] })]
 )

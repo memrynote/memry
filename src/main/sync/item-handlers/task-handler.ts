@@ -3,6 +3,7 @@ import { tasks } from '@shared/db/schema/tasks'
 import { TaskSyncPayloadSchema, type TaskSyncPayload } from '@shared/contracts/sync-payloads'
 import { TasksChannels } from '@shared/ipc-channels'
 import type { VectorClock, FieldClocks } from '@shared/contracts/sync-api'
+import { utcNow } from '@shared/utc'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { mergeTaskFields, initAllFieldClocks, TASK_SYNCABLE_FIELDS } from '../field-merge'
@@ -26,7 +27,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
       const existing = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
       const remoteFieldClocks = data.fieldClocks ?? null
-      const now = new Date().toISOString()
+      const now = utcNow()
 
       if (existing) {
         const resolution = resolveClockConflict(existing.clock, remoteClock)
@@ -179,7 +180,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
   },
 
   markPushSynced(db: DrizzleDb, itemId: string): void {
-    db.update(tasks).set({ syncedAt: new Date().toISOString() }).where(eq(tasks.id, itemId)).run()
+    db.update(tasks).set({ syncedAt: utcNow() }).where(eq(tasks.id, itemId)).run()
   },
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {

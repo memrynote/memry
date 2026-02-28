@@ -2,6 +2,7 @@ import { eq, isNotNull, and } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type * as indexSchema from '@shared/db/schema/index-schema'
 import { noteTags } from '@shared/db/schema/notes-cache'
+import { utcNow } from '@shared/utc'
 
 type IndexDb = BetterSQLite3Database<typeof indexSchema>
 
@@ -16,7 +17,7 @@ export function getPinnedTagsForNote(indexDb: IndexDb, noteId: string): string[]
 
 export function applyPinnedTags(indexDb: IndexDb, noteId: string, pinnedTags: string[]): void {
   const pinnedSet = new Set(pinnedTags)
-  const now = new Date().toISOString()
+  const now = utcNow()
 
   const existingRows = indexDb.select().from(noteTags).where(eq(noteTags.noteId, noteId)).all()
 
