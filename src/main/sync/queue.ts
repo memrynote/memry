@@ -2,11 +2,12 @@ import { eq, and, sql, desc, asc, lt, lte, count } from 'drizzle-orm'
 import { syncQueue } from '@shared/db/schema/sync-queue'
 import type { SyncItemType, SyncOperation } from '@shared/contracts/sync-api'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import type * as dbSchema from '@shared/db/schema'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('SyncQueue')
 
-type DrizzleDb = BetterSQLite3Database
+type DrizzleDb = BetterSQLite3Database<typeof dbSchema>
 
 export const DEFAULT_MAX_ATTEMPTS = 5
 
@@ -131,23 +132,6 @@ export class SyncQueueManager {
       }
     }
 
-    if (items.length > 0) {
-      const ids = items.map((i) => i.id)
-      this.db
-        .update(syncQueue)
-        .set({
-          attempts: sql`${syncQueue.attempts} + 1`,
-          lastAttempt: new Date()
-        })
-        .where(
-          sql`${syncQueue.id} IN (${sql.join(
-            ids.map((id) => sql`${id}`),
-            sql`, `
-          )})`
-        )
-        .run()
-    }
-
     return items
   }
 
@@ -170,6 +154,7 @@ export class SyncQueueManager {
     this.db
       .update(syncQueue)
       .set({
+        attempts: sql`${syncQueue.attempts} + 1`,
         lastAttempt: new Date(),
         errorMessage: error
       })

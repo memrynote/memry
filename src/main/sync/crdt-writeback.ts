@@ -362,7 +362,7 @@ export async function handleSyncDeletion(noteId: string): Promise<void> {
     log.error('Failed to delete synced note file', { noteId, error: err })
   })
 
-  getCrdtProvider().close(noteId)
+  await getCrdtProvider().close(noteId)
 
   const channel = isJournalId(noteId)
     ? JournalChannels.events.ENTRY_DELETED

@@ -56,6 +56,17 @@ const { MockWebSocket, getInstances, resetInstances } = vi.hoisted(() => {
     simulateError(err: Error): void {
       this.emit('error', err)
     }
+
+    simulateUnexpectedResponse(statusCode: number, statusMessage?: string): void {
+      this.emit(
+        'unexpected-response',
+        {} as unknown,
+        {
+          statusCode,
+          statusMessage: statusMessage ?? `HTTP ${statusCode}`
+        } as unknown
+      )
+    }
   }
 
   return {
@@ -379,7 +390,7 @@ describe('WebSocketManager', () => {
 
       // #when
       await manager.connect()
-      lastWs().simulateError(new Error('Unexpected server response: 426'))
+      lastWs().simulateUnexpectedResponse(426)
 
       // #then
       expect(spy).toHaveBeenCalledWith(expect.stringContaining('426'))
@@ -391,7 +402,7 @@ describe('WebSocketManager', () => {
       // #given
       const manager = new WebSocketManager(createMockDeps())
       await manager.connect()
-      lastWs().simulateError(new Error('Unexpected server response: 426'))
+      lastWs().simulateUnexpectedResponse(426)
       lastWs().simulateClose(1006)
 
       // #when
@@ -407,7 +418,7 @@ describe('WebSocketManager', () => {
       // #given
       const manager = new WebSocketManager(createMockDeps())
       await manager.connect()
-      lastWs().simulateError(new Error('Unexpected server response: 426'))
+      lastWs().simulateUnexpectedResponse(426)
       lastWs().simulateClose(1006)
 
       // #when
@@ -415,6 +426,19 @@ describe('WebSocketManager', () => {
 
       // #then — new WS instance created (flag was reset)
       expect(getInstances().length).toBe(2)
+    })
+  })
+
+  describe('#given server rejects with 401 #when reconnect scheduled', () => {
+    it('#then does not auto-reconnect after auth rejection', async () => {
+      const manager = new WebSocketManager(createMockDeps())
+      await manager.connect()
+      lastWs().simulateUnexpectedResponse(401)
+      lastWs().simulateClose(1006)
+
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      expect(getInstances().length).toBe(1)
     })
   })
 
