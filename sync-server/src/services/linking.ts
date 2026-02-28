@@ -1,12 +1,16 @@
 import { AppError, ErrorCodes } from '../lib/errors'
+import { constantTimeCompare } from './otp'
 
 const SESSION_TTL_SECONDS = 300
+const LINKING_SECRET_BYTES = 32
 
 interface LinkingSessionRow {
   id: string
   user_id: string
   initiator_device_id: string
   ephemeral_public_key: string
+  linking_secret_hash: string
+  scanner_ip: string | null
   new_device_public_key: string | null
   new_device_confirm: string | null
   encrypted_master_key: string | null
@@ -16,6 +20,12 @@ interface LinkingSessionRow {
   expires_at: number
   created_at: number
   completed_at: number | null
+}
+
+const hashLinkingSecret = async (secret: string): Promise<string> => {
+  const encoded = new TextEncoder().encode(secret)
+  const digest = await crypto.subtle.digest('SHA-256', encoded)
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 const isSessionExpired = (session: LinkingSessionRow): boolean =>
@@ -47,10 +57,15 @@ const createLinkingSession = async (
   userId: string,
   deviceId: string,
   ephemeralPublicKey: string
-): Promise<{ sessionId: string; expiresAt: number }> => {
+): Promise<{ sessionId: string; expiresAt: number; linkingSecret: string }> => {
   const sessionId = crypto.randomUUID()
   const now = Math.floor(Date.now() / 1000)
   const expiresAt = now + SESSION_TTL_SECONDS
+
+  const secretBytes = new Uint8Array(LINKING_SECRET_BYTES)
+  crypto.getRandomValues(secretBytes)
+  const linkingSecret = btoa(String.fromCharCode(...secretBytes))
+  const secretHash = await hashLinkingSecret(linkingSecret)
 
   await db.batch([
     db
@@ -62,31 +77,43 @@ const createLinkingSession = async (
     db
       .prepare(
         `INSERT INTO linking_sessions
-         (id, user_id, initiator_device_id, ephemeral_public_key, status, expires_at, created_at)
-         VALUES (?, ?, ?, ?, 'pending', ?, ?)`
+         (id, user_id, initiator_device_id, ephemeral_public_key, linking_secret_hash, status, expires_at, created_at)
+         VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`
       )
-      .bind(sessionId, userId, deviceId, ephemeralPublicKey, expiresAt, now)
+      .bind(sessionId, userId, deviceId, ephemeralPublicKey, secretHash, expiresAt, now)
   ])
 
-  return { sessionId, expiresAt }
+  return { sessionId, expiresAt, linkingSecret }
 }
 
 const transitionToScanned = async (
   db: D1Database,
   sessionId: string,
   newDevicePublicKey: string,
-  newDeviceConfirm: string
+  newDeviceConfirm: string,
+  linkingSecret: string,
+  scannerIp: string | null
 ): Promise<{ userId: string; initiatorDeviceId: string }> => {
   const session = await requireSession(db, sessionId)
   assertNotExpired(session)
 
+  const providedHash = await hashLinkingSecret(linkingSecret)
+  const secretValid = await constantTimeCompare(providedHash, session.linking_secret_hash)
+  if (!secretValid) {
+    throw new AppError(
+      ErrorCodes.LINKING_SECRET_INVALID,
+      'Invalid linking secret. Please scan the QR code again',
+      403
+    )
+  }
+
   const result = await db
     .prepare(
       `UPDATE linking_sessions
-       SET status = 'scanned', new_device_public_key = ?, new_device_confirm = ?
+       SET status = 'scanned', new_device_public_key = ?, new_device_confirm = ?, scanner_ip = ?
        WHERE id = ? AND status = 'pending'`
     )
-    .bind(newDevicePublicKey, newDeviceConfirm, sessionId)
+    .bind(newDevicePublicKey, newDeviceConfirm, scannerIp, sessionId)
     .run()
 
   if (!result.meta.changes) {
@@ -169,10 +196,19 @@ const transitionToApproved = async (
 
 const transitionToCompleted = async (
   db: D1Database,
-  sessionId: string
+  sessionId: string,
+  callerIp: string | null
 ): Promise<{ encryptedMasterKey: string; encryptedKeyNonce: string; keyConfirm: string }> => {
   const session = await requireSession(db, sessionId)
   assertNotExpired(session)
+
+  if (session.scanner_ip && callerIp && session.scanner_ip !== callerIp) {
+    throw new AppError(
+      ErrorCodes.LINKING_IP_MISMATCH,
+      'Request must come from the same device that scanned the QR code',
+      403
+    )
+  }
 
   const now = Math.floor(Date.now() / 1000)
   const result = await db
@@ -217,6 +253,7 @@ const transitionToCompleted = async (
 export {
   createLinkingSession,
   getSession,
+  hashLinkingSecret,
   requireSession,
   isSessionExpired,
   transitionToScanned,

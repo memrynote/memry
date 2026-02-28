@@ -20,7 +20,7 @@ const linkingRateLimit = createRateLimiter({
 })
 
 const linkingCompleteRateLimit = createRateLimiter({
-  maxRequests: 40,
+  maxRequests: 5,
   windowSeconds: 60,
   keyPrefix: 'linking_complete'
 })
@@ -33,6 +33,7 @@ const ScanLinkingSchema = z.object({
   sessionId: z.string().uuid(),
   newDevicePublicKey: z.string().min(1),
   newDeviceConfirm: z.string().min(1),
+  linkingSecret: z.string().min(1),
   deviceName: z.string().min(1).max(100),
   devicePlatform: z.string().min(1).max(50)
 })
@@ -60,7 +61,7 @@ linking.post('/initiate', authMiddleware, linkingRateLimit, async (c) => {
   const userId = c.get('userId')!
   const deviceId = c.get('deviceId')!
 
-  const { sessionId, expiresAt } = await createLinkingSession(
+  const { sessionId, expiresAt, linkingSecret } = await createLinkingSession(
     c.env.DB,
     userId,
     deviceId,
@@ -82,7 +83,7 @@ linking.post('/initiate', authMiddleware, linkingRateLimit, async (c) => {
     })
   )
 
-  return c.json({ sessionId, expiresAt })
+  return c.json({ sessionId, expiresAt, linkingSecret })
 })
 
 linking.post('/scan', linkingRateLimit, async (c) => {
@@ -92,13 +93,16 @@ linking.post('/scan', linkingRateLimit, async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid request body', 400)
   }
 
-  const { sessionId, newDevicePublicKey, newDeviceConfirm } = parsed.data
+  const { sessionId, newDevicePublicKey, newDeviceConfirm, linkingSecret } = parsed.data
+  const scannerIp = c.req.header('cf-connecting-ip') || null
 
   const { userId, initiatorDeviceId } = await transitionToScanned(
     c.env.DB,
     sessionId,
     newDevicePublicKey,
-    newDeviceConfirm
+    newDeviceConfirm,
+    linkingSecret,
+    scannerIp
   )
 
   const doId = c.env.LINKING_SESSION.idFromName(sessionId)
@@ -207,8 +211,9 @@ linking.post('/complete', linkingCompleteRateLimit, async (c) => {
   }
 
   const { sessionId } = parsed.data
+  const callerIp = c.req.header('cf-connecting-ip') || null
 
-  const keyData = await transitionToCompleted(c.env.DB, sessionId)
+  const keyData = await transitionToCompleted(c.env.DB, sessionId, callerIp)
 
   const doId = c.env.LINKING_SESSION.idFromName(sessionId)
   const stub = c.env.LINKING_SESSION.get(doId)
