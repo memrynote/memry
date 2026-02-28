@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 
 import { AppError, ErrorCodes } from '../lib/errors'
 import {
   createLinkingSession,
   getSession,
+  hashLinkingSecret,
   requireSession,
   transitionToScanned,
   transitionToApproved,
@@ -40,11 +41,33 @@ const createMockDb = () => ({
 const futureExpiry = Math.floor(Date.now() / 1000) + 300
 const pastExpiry = Math.floor(Date.now() / 1000) - 10
 
+beforeAll(async () => {
+  if (!crypto.subtle.timingSafeEqual) {
+    ;(crypto.subtle as Record<string, unknown>).timingSafeEqual = (
+      a: ArrayBuffer,
+      b: ArrayBuffer
+    ): boolean => {
+      const viewA = new Uint8Array(a)
+      const viewB = new Uint8Array(b)
+      if (viewA.length !== viewB.length) return false
+      let result = 0
+      for (let i = 0; i < viewA.length; i++) result |= viewA[i] ^ viewB[i]
+      return result === 0
+    }
+  }
+  testSecretHash = await hashLinkingSecret(TEST_LINKING_SECRET)
+})
+
+const TEST_LINKING_SECRET = 'dGVzdC1saW5raW5nLXNlY3JldC0xMjM0NTY3ODkwYWI='
+let testSecretHash: string
+
 const makeSession = (overrides: Partial<LinkingSessionRow> = {}): LinkingSessionRow => ({
   id: 'session-1',
   user_id: 'user-1',
   initiator_device_id: 'dev-1',
   ephemeral_public_key: 'eph-pk',
+  linking_secret_hash: testSecretHash,
+  scanner_ip: null,
   new_device_public_key: null,
   new_device_confirm: null,
   encrypted_master_key: null,
@@ -136,12 +159,14 @@ describe('transitionToScanned', () => {
       db as unknown as D1Database,
       'session-1',
       'new-pk',
-      'new-confirm'
+      'new-confirm',
+      TEST_LINKING_SECRET,
+      '1.2.3.4'
     )
 
     // #then
     expect(result).toEqual({ userId: 'user-1', initiatorDeviceId: 'dev-1' })
-    expect(updateStmt.bind).toHaveBeenCalledWith('new-pk', 'new-confirm', 'session-1')
+    expect(updateStmt.bind).toHaveBeenCalledWith('new-pk', 'new-confirm', '1.2.3.4', 'session-1')
   })
 
   it('should throw LINKING_CONCURRENT_ATTEMPT when session already scanned', async () => {
@@ -162,7 +187,14 @@ describe('transitionToScanned', () => {
 
     // #when / #then
     await expect(
-      transitionToScanned(db as unknown as D1Database, 'session-1', 'new-pk', 'confirm')
+      transitionToScanned(
+        db as unknown as D1Database,
+        'session-1',
+        'new-pk',
+        'confirm',
+        TEST_LINKING_SECRET,
+        null
+      )
     ).rejects.toThrow(
       expect.objectContaining({
         code: ErrorCodes.LINKING_CONCURRENT_ATTEMPT,
@@ -189,7 +221,14 @@ describe('transitionToScanned', () => {
 
     // #when / #then
     await expect(
-      transitionToScanned(db as unknown as D1Database, 'session-1', 'new-pk', 'confirm')
+      transitionToScanned(
+        db as unknown as D1Database,
+        'session-1',
+        'new-pk',
+        'confirm',
+        TEST_LINKING_SECRET,
+        null
+      )
     ).rejects.toThrow(
       expect.objectContaining({
         code: ErrorCodes.LINKING_INVALID_TRANSITION,
@@ -208,7 +247,14 @@ describe('transitionToScanned', () => {
 
     // #when / #then
     await expect(
-      transitionToScanned(db as unknown as D1Database, 'session-1', 'new-pk', 'confirm')
+      transitionToScanned(
+        db as unknown as D1Database,
+        'session-1',
+        'new-pk',
+        'confirm',
+        TEST_LINKING_SECRET,
+        null
+      )
     ).rejects.toThrow(
       expect.objectContaining({
         code: ErrorCodes.LINKING_SESSION_EXPIRED,
@@ -235,7 +281,14 @@ describe('transitionToScanned', () => {
 
     // #when / #then
     await expect(
-      transitionToScanned(db as unknown as D1Database, 'session-1', 'new-pk', 'confirm')
+      transitionToScanned(
+        db as unknown as D1Database,
+        'session-1',
+        'new-pk',
+        'confirm',
+        TEST_LINKING_SECRET,
+        null
+      )
     ).rejects.toThrow(
       expect.objectContaining({
         code: ErrorCodes.LINKING_SESSION_NOT_FOUND,
@@ -426,7 +479,7 @@ describe('transitionToCompleted', () => {
     db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(updateStmt)
 
     // #when
-    const result = await transitionToCompleted(db as unknown as D1Database, 'session-1')
+    const result = await transitionToCompleted(db as unknown as D1Database, 'session-1', null)
 
     // #then
     expect(result).toEqual({
@@ -453,7 +506,9 @@ describe('transitionToCompleted', () => {
       .mockReturnValueOnce(rereadStmt)
 
     // #when / #then
-    await expect(transitionToCompleted(db as unknown as D1Database, 'session-1')).rejects.toThrow(
+    await expect(
+      transitionToCompleted(db as unknown as D1Database, 'session-1', null)
+    ).rejects.toThrow(
       expect.objectContaining({
         code: ErrorCodes.LINKING_CONCURRENT_ATTEMPT,
         statusCode: 409
@@ -478,7 +533,9 @@ describe('transitionToCompleted', () => {
       .mockReturnValueOnce(rereadStmt)
 
     // #when / #then
-    await expect(transitionToCompleted(db as unknown as D1Database, 'session-1')).rejects.toThrow(
+    await expect(
+      transitionToCompleted(db as unknown as D1Database, 'session-1', null)
+    ).rejects.toThrow(
       expect.objectContaining({
         code: ErrorCodes.LINKING_INVALID_TRANSITION,
         statusCode: 409
@@ -503,7 +560,9 @@ describe('transitionToCompleted', () => {
       .mockReturnValueOnce(rereadStmt)
 
     // #when / #then
-    await expect(transitionToCompleted(db as unknown as D1Database, 'session-1')).rejects.toThrow(
+    await expect(
+      transitionToCompleted(db as unknown as D1Database, 'session-1', null)
+    ).rejects.toThrow(
       expect.objectContaining({
         code: ErrorCodes.LINKING_SESSION_NOT_FOUND,
         statusCode: 404
@@ -541,6 +600,9 @@ describe('createLinkingSession', () => {
     // #then
     expect(result.sessionId).toBe('new-session-id')
     expect(result.expiresAt).toBeGreaterThan(Math.floor(Date.now() / 1000))
+    expect(result.linkingSecret).toBeDefined()
+    expect(typeof result.linkingSecret).toBe('string')
+    expect(atob(result.linkingSecret).length).toBe(32)
     expect(db.batch).toHaveBeenCalledWith([cancelStmt, insertStmt])
     expect(db.prepare).toHaveBeenCalledTimes(2)
     expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining("SET status = 'cancelled'"))
@@ -566,5 +628,165 @@ describe('createLinkingSession', () => {
     // #then
     expect(result.sessionId).toBe('new-session-id')
     expect(db.batch).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ============================================================================
+// Tests: linkingSecret validation in transitionToScanned
+// ============================================================================
+
+describe('transitionToScanned — linkingSecret', () => {
+  it('should reject with LINKING_SECRET_INVALID when secret does not match', async () => {
+    // #given
+    const session = makeSession({ status: 'pending' })
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue(session)
+    const db = createMockDb()
+    db.prepare.mockReturnValue(selectStmt)
+
+    // #when / #then
+    await expect(
+      transitionToScanned(
+        db as unknown as D1Database,
+        'session-1',
+        'new-pk',
+        'confirm',
+        'wrong-secret',
+        null
+      )
+    ).rejects.toThrow(
+      expect.objectContaining({
+        code: ErrorCodes.LINKING_SECRET_INVALID,
+        statusCode: 403
+      })
+    )
+  })
+
+  it('should succeed when linkingSecret matches stored hash', async () => {
+    // #given
+    const session = makeSession({ status: 'pending' })
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue(session)
+    const updateStmt = createMockStatement()
+    updateStmt.run.mockResolvedValue({ meta: { changes: 1 } })
+    const db = createMockDb()
+    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(updateStmt)
+
+    // #when
+    const result = await transitionToScanned(
+      db as unknown as D1Database,
+      'session-1',
+      'new-pk',
+      'confirm',
+      TEST_LINKING_SECRET,
+      '1.2.3.4'
+    )
+
+    // #then
+    expect(result).toEqual({ userId: 'user-1', initiatorDeviceId: 'dev-1' })
+  })
+})
+
+// ============================================================================
+// Tests: IP binding in transitionToCompleted
+// ============================================================================
+
+describe('transitionToCompleted — IP binding', () => {
+  it('should succeed when caller IP matches scanner IP', async () => {
+    // #given
+    const session = makeSession({
+      status: 'approved',
+      scanner_ip: '1.2.3.4',
+      encrypted_master_key: 'enc-mk',
+      encrypted_key_nonce: 'enc-n',
+      key_confirm: 'kc'
+    })
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue(session)
+    const updateStmt = createMockStatement()
+    updateStmt.run.mockResolvedValue({ meta: { changes: 1 } })
+    const db = createMockDb()
+    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(updateStmt)
+
+    // #when
+    const result = await transitionToCompleted(db as unknown as D1Database, 'session-1', '1.2.3.4')
+
+    // #then
+    expect(result).toEqual({
+      encryptedMasterKey: 'enc-mk',
+      encryptedKeyNonce: 'enc-n',
+      keyConfirm: 'kc'
+    })
+  })
+
+  it('should reject with LINKING_IP_MISMATCH when caller IP differs from scanner IP', async () => {
+    // #given
+    const session = makeSession({
+      status: 'approved',
+      scanner_ip: '1.2.3.4',
+      encrypted_master_key: 'enc-mk',
+      encrypted_key_nonce: 'enc-n',
+      key_confirm: 'kc'
+    })
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue(session)
+    const db = createMockDb()
+    db.prepare.mockReturnValue(selectStmt)
+
+    // #when / #then
+    await expect(
+      transitionToCompleted(db as unknown as D1Database, 'session-1', '5.6.7.8')
+    ).rejects.toThrow(
+      expect.objectContaining({
+        code: ErrorCodes.LINKING_IP_MISMATCH,
+        statusCode: 403
+      })
+    )
+  })
+
+  it('should skip IP check when scanner_ip is null', async () => {
+    // #given
+    const session = makeSession({
+      status: 'approved',
+      scanner_ip: null,
+      encrypted_master_key: 'enc-mk',
+      encrypted_key_nonce: 'enc-n',
+      key_confirm: 'kc'
+    })
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue(session)
+    const updateStmt = createMockStatement()
+    updateStmt.run.mockResolvedValue({ meta: { changes: 1 } })
+    const db = createMockDb()
+    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(updateStmt)
+
+    // #when
+    const result = await transitionToCompleted(db as unknown as D1Database, 'session-1', '5.6.7.8')
+
+    // #then
+    expect(result.encryptedMasterKey).toBe('enc-mk')
+  })
+
+  it('should skip IP check when caller IP is null', async () => {
+    // #given
+    const session = makeSession({
+      status: 'approved',
+      scanner_ip: '1.2.3.4',
+      encrypted_master_key: 'enc-mk',
+      encrypted_key_nonce: 'enc-n',
+      key_confirm: 'kc'
+    })
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue(session)
+    const updateStmt = createMockStatement()
+    updateStmt.run.mockResolvedValue({ meta: { changes: 1 } })
+    const db = createMockDb()
+    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(updateStmt)
+
+    // #when
+    const result = await transitionToCompleted(db as unknown as D1Database, 'session-1', null)
+
+    // #then
+    expect(result.encryptedMasterKey).toBe('enc-mk')
   })
 })

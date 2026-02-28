@@ -34,6 +34,7 @@ import {
   GetDownloadProgressSchema,
   UploadAttachmentSchema
 } from './ipc-attachments'
+import { CRDT_CHANNELS, CRDT_EVENTS } from './ipc-crdt'
 import { EVENT_CHANNELS } from './ipc-events'
 import { GetHistorySchema, SYNC_OP_CHANNELS } from './ipc-sync-ops'
 import { SYNC_CHANNELS, SYNC_EVENTS } from './ipc-sync'
@@ -116,7 +117,8 @@ describe('sync-server contracts', () => {
 
     expect(RequestOtpSchema.safeParse({ email: 'user@example.com' }).success).toBe(true)
     expect(
-      SetupFirstDeviceSchema.safeParse({ oauthToken: 'oauth', provider: 'google' }).success
+      SetupFirstDeviceSchema.safeParse({ oauthToken: 'oauth', provider: 'google', state: 'abc' })
+        .success
     ).toBe(true)
     expect(ConfirmRecoveryPhraseSchema.safeParse({ confirmed: true }).success).toBe(true)
 
@@ -177,10 +179,11 @@ describe('sync-server contracts', () => {
       ...CRYPTO_CHANNELS,
       ...SYNC_OP_CHANNELS,
       ...DEVICE_CHANNELS,
-      ...ATTACHMENT_CHANNELS
+      ...ATTACHMENT_CHANNELS,
+      ...CRDT_CHANNELS
     })
 
-    expect(SYNC_EVENTS).toEqual({ ...EVENT_CHANNELS })
+    expect(SYNC_EVENTS).toEqual({ ...EVENT_CHANNELS, ...CRDT_EVENTS })
     expect(new Set(Object.values(SYNC_CHANNELS)).size).toBe(Object.keys(SYNC_CHANNELS).length)
     expect(new Set(Object.values(SYNC_EVENTS)).size).toBe(Object.keys(SYNC_EVENTS).length)
   })
