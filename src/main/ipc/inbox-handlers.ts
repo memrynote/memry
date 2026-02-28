@@ -1873,8 +1873,8 @@ export function registerInboxHandlers(): void {
   ipcMain.handle(InboxChannels.invoke.CAPTURE_LINK, (_, input) => handleCaptureLink(input))
   ipcMain.handle(InboxChannels.invoke.CAPTURE_IMAGE, (_, input) => handleCaptureImage(input))
   ipcMain.handle(InboxChannels.invoke.CAPTURE_VOICE, (_, input) => handleCaptureVoice(input))
-  ipcMain.handle(InboxChannels.invoke.CAPTURE_CLIP, () => stubCaptureClip())
-  ipcMain.handle(InboxChannels.invoke.CAPTURE_PDF, () => stubCapturePdf())
+  ipcMain.handle(InboxChannels.invoke.CAPTURE_CLIP, (_event, _input) => stubCaptureClip())
+  ipcMain.handle(InboxChannels.invoke.CAPTURE_PDF, (_event, _input) => stubCapturePdf())
 
   // CRUD handlers
   ipcMain.handle(InboxChannels.invoke.GET, (_, id) => handleGet(id))

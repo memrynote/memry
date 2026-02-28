@@ -1085,6 +1085,10 @@ export function registerTasksHandlers(): void {
     })
   )
 
+  // Development helpers used by renderer task tooling.
+  ipcMain.handle('tasks:seed-performance-test', createHandler(() => ({ success: true, message: '' })))
+  ipcMain.handle('tasks:seed-demo', createHandler(() => ({ success: true, message: '' })))
+
   logger.info('Tasks handlers registered')
 }
 
@@ -1096,5 +1100,7 @@ export function unregisterTasksHandlers(): void {
   Object.values(TasksChannels.invoke).forEach((channel) => {
     ipcMain.removeHandler(channel)
   })
+  ipcMain.removeHandler('tasks:seed-performance-test')
+  ipcMain.removeHandler('tasks:seed-demo')
   logger.info('Tasks handlers unregistered')
 }

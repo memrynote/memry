@@ -30,8 +30,8 @@ const ipcLog = createLogger('IPC')
 export function createValidatedHandler<TSchema extends z.ZodSchema, TResult>(
   schema: TSchema,
   handler: (input: z.infer<TSchema>) => TResult | Promise<TResult>
-): (event: IpcMainInvokeEvent, rawInput: unknown) => Promise<TResult> {
-  return async (_event: IpcMainInvokeEvent, rawInput: unknown): Promise<TResult> => {
+): (event: IpcMainInvokeEvent, rawInput: z.input<TSchema>) => Promise<TResult> {
+  return async (_event: IpcMainInvokeEvent, rawInput: z.input<TSchema>): Promise<TResult> => {
     try {
       const validated = schema.parse(rawInput)
       return await handler(validated)
@@ -91,7 +91,7 @@ export function createHandler<TResult>(
  */
 export function createStringHandler<TResult>(
   handler: (input: string) => TResult | Promise<TResult>
-): (event: IpcMainInvokeEvent, rawInput: unknown) => Promise<TResult> {
+): (event: IpcMainInvokeEvent, rawInput: string) => Promise<TResult> {
   return createValidatedHandler(z.string(), handler)
 }
 
