@@ -12,16 +12,22 @@ import {
   Menu,
   MenuItem
 } from 'electron'
-import { join } from 'path'
+import { join, resolve, normalize } from 'path'
 import { homedir } from 'node:os'
 import { existsSync, readdirSync } from 'node:fs'
 import { config } from 'dotenv'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllHandlers } from './ipc'
 import { autoOpenLastVault, closeVault } from './vault'
+import { getCurrentVaultPath } from './store'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { log, createLogger } from './lib/logger'
+import {
+  computeSpkiHashFromPem,
+  isPinningDisabled,
+  getPinnedCertificateHashes
+} from './sync/certificate-pinning'
 import { getCrdtProvider } from './sync/crdt-provider'
 import { stopSyncRuntime } from './sync/runtime'
 import { getNoteCacheById } from '@shared/db/queries/notes'
@@ -127,6 +133,87 @@ function loadEnvironmentConfig(): void {
 
 // Load environment config early
 loadEnvironmentConfig()
+
+const cspLog = createLogger('CSP')
+
+function configureCsp(): void {
+  const policy = [
+    "default-src 'self' memry-file:",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: memry-file:",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "connect-src 'self' memry-file: https://*.memry.app wss://*.memry.app",
+    "media-src 'self' memry-file:",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'"
+  ]
+
+  if (is.dev) {
+    policy[1] = "script-src 'self' 'unsafe-eval'"
+    policy[5] =
+      "connect-src 'self' memry-file: https://*.memry.app wss://*.memry.app ws://localhost:* http://localhost:*"
+  }
+
+  const cspString = policy.join('; ')
+
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [cspString]
+      }
+    })
+  })
+
+  cspLog.info('CSP configured', is.dev ? '(dev mode)' : '(production)')
+}
+
+const certPinLog = createLogger('CertPinSession')
+
+function configureCertificatePinning(): void {
+  if (isPinningDisabled()) {
+    certPinLog.debug('Session cert pinning disabled (dev/test mode)')
+    return
+  }
+
+  const pins = getPinnedCertificateHashes()
+
+  session.defaultSession.setCertificateVerifyProc((request, callback) => {
+    const cert = request.certificate
+    if (!cert.data) {
+      certPinLog.error('Certificate missing PEM data', { hostname: request.hostname })
+      callback(-2)
+      return
+    }
+
+    try {
+      const spkiHash = computeSpkiHashFromPem(cert.data)
+      if (!pins.some((pin) => pin === spkiHash)) {
+        certPinLog.error('Session certificate pin mismatch', {
+          hostname: request.hostname,
+          hash: spkiHash
+        })
+        callback(-2)
+        return
+      }
+
+      certPinLog.debug('Session certificate pin verified', { hostname: request.hostname })
+      callback(0)
+    } catch (err) {
+      certPinLog.error('Certificate verification error', {
+        hostname: request.hostname,
+        error: err instanceof Error ? err.message : err
+      })
+      callback(-2)
+    }
+  })
+
+  certPinLog.info('Session certificate pinning configured')
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -287,7 +374,18 @@ void app.whenReady().then(async () => {
       }
     }
 
-    // Check if file exists before fetching to avoid noisy errors
+    filePath = resolve(normalize(filePath))
+
+    const allowedDirs: string[] = [app.getPath('userData')]
+    const vaultPath = getCurrentVaultPath()
+    if (vaultPath) allowedDirs.push(resolve(vaultPath))
+
+    const isAllowed = allowedDirs.some((dir) => filePath.startsWith(dir + '/') || filePath === dir)
+    if (!isAllowed) {
+      mainLog.warn('memry-file: blocked path outside allowed directories', { filePath })
+      return new Response(null, { status: 403, statusText: 'Forbidden' })
+    }
+
     const { existsSync } = await import('fs')
     if (!existsSync(filePath)) {
       // Return empty 1x1 transparent PNG for missing image files (null thumbnails)
@@ -495,6 +593,9 @@ void app.whenReady().then(async () => {
     // Reminder scheduler is non-critical - log and continue
     mainLog.warn('reminder scheduler failed to start:', error)
   }
+
+  configureCsp()
+  configureCertificatePinning()
 
   createWindow()
 

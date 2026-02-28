@@ -4,6 +4,7 @@ import {
   CLOSE_CODE_VERSION_INCOMPATIBLE,
   type WebSocketManagerDeps
 } from './websocket'
+import { CertificatePinningError } from './certificate-pinning'
 
 const { MockWebSocket, getInstances, resetInstances } = vi.hoisted(() => {
   const { EventEmitter: EE } = require('events')
@@ -435,6 +436,65 @@ describe('WebSocketManager', () => {
       expect(rejectedSpy).toHaveBeenCalled()
       expect(disconnectedSpy).not.toHaveBeenCalled()
       await vi.advanceTimersByTimeAsync(60_000)
+      expect(getInstances().length).toBe(1)
+    })
+  })
+
+  describe('#given CertificatePinningError #when TLS pin fails (T245f)', () => {
+    it('#then emits certificate_pin_failed and prevents reconnect', async () => {
+      // #given
+      const manager = new WebSocketManager(createMockDeps())
+      const pinSpy = vi.fn()
+      const errorSpy = vi.fn()
+      manager.on('certificate_pin_failed', pinSpy)
+      manager.on('error', errorSpy)
+
+      // #when
+      await manager.connect()
+      const pinErr = new CertificatePinningError(
+        'Certificate pin mismatch for sync.memry.app',
+        'sha256/badHash',
+        ['sha256/expectedHash']
+      )
+      lastWs().simulateError(pinErr)
+
+      // #then
+      expect(pinSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actualHash: 'sha256/badHash',
+          expectedHashes: ['sha256/expectedHash']
+        })
+      )
+      expect(errorSpy).not.toHaveBeenCalled()
+    })
+
+    it('#then blocks all future connect() calls', async () => {
+      // #given
+      const manager = new WebSocketManager(createMockDeps())
+      await manager.connect()
+      lastWs().simulateError(
+        new CertificatePinningError('pin mismatch', 'sha256/bad', ['sha256/good'])
+      )
+
+      // #when
+      await manager.connect()
+
+      // #then — no new WS created
+      expect(getInstances().length).toBe(1)
+    })
+
+    it('#then does not schedule reconnect after pin failure', async () => {
+      // #given
+      const manager = new WebSocketManager(createMockDeps())
+      await manager.connect()
+      lastWs().simulateError(
+        new CertificatePinningError('pin mismatch', 'sha256/bad', ['sha256/good'])
+      )
+
+      // #when
+      await vi.advanceTimersByTimeAsync(120_000)
+
+      // #then
       expect(getInstances().length).toBe(1)
     })
   })

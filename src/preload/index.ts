@@ -38,7 +38,9 @@ import type {
   OAuthCallbackEvent,
   OAuthErrorEvent,
   ClockSkewWarningEvent,
-  DeviceRevokedEvent
+  DeviceRevokedEvent,
+  SecurityWarningEvent,
+  CertificatePinFailedEvent
 } from '@shared/contracts/ipc-sync'
 
 // Custom APIs for renderer
@@ -1605,6 +1607,18 @@ const api = {
       callback(data)
     ipcRenderer.on(SYNC_EVENTS.CLOCK_SKEW_WARNING, handler)
     return () => ipcRenderer.removeListener(SYNC_EVENTS.CLOCK_SKEW_WARNING, handler)
+  },
+  onSecurityWarning: (callback: (event: SecurityWarningEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: SecurityWarningEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.SECURITY_WARNING, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.SECURITY_WARNING, handler)
+  },
+  onCertificatePinFailed: (callback: (event: CertificatePinFailedEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: CertificatePinFailedEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.CERTIFICATE_PIN_FAILED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.CERTIFICATE_PIN_FAILED, handler)
   },
 
   // Flush-on-quit protocol: main asks renderer to flush pending saves before shutdown
