@@ -55,31 +55,13 @@ export class PushCoordinator {
       log.debug('Push skipped', { syncing: this.ctx.syncing, paused: this.stateManager.isPaused() })
       return
     }
-    this.stateManager.setState('syncing')
-    this.ctx.abortController = new AbortController()
 
-    const token = await this.ctx.deps.getAccessToken()
-    if (!token) {
-      log.debug('Push aborted: no access token')
+    let released = false
+    const cleanup = (): void => {
+      if (released) return
+      released = true
       this.ctx.releaseLock()
       release()
-      return
-    }
-
-    const signingKeys = await this.ctx.deps.getSigningKeys()
-    if (!signingKeys) {
-      log.debug('Push aborted: no signing keys')
-      this.ctx.releaseLock()
-      release()
-      return
-    }
-
-    const vaultKey = await this.ctx.deps.getVaultKey()
-    if (!vaultKey) {
-      log.debug('Push aborted: no vault key')
-      this.ctx.releaseLock()
-      release()
-      return
     }
 
     const timer = new SyncTimer()
@@ -87,182 +69,216 @@ export class PushCoordinator {
     let pushedCount = 0
     let lastServerTime = 0
     let lastMaxCursor = 0
+    let vaultKey: Uint8Array | null = null
+    let signingSecretKey: Uint8Array | null = null
 
     try {
-      for (let iteration = 0; iteration < MAX_PUSH_ITERATIONS; iteration++) {
-        if (this.ctx.abortController!.signal.aborted) break
+      this.stateManager.setState('syncing')
+      this.ctx.abortController = new AbortController()
 
-        const preDequeueCount = this.ctx.deps.queue.getPendingCount()
-        const rawCount = this.ctx.deps.queue.getRawPendingCount()
-        if (preDequeueCount !== rawCount) {
-          log.error('Push: Drizzle vs raw SQL mismatch!', {
-            drizzle: preDequeueCount,
-            raw: rawCount
-          })
-        }
-        const items = this.ctx.deps.queue.dequeue(this.ctx.options.pushBatchSize)
-        if (items.length === 0) {
-          log.debug('Push complete: queue empty', { preDequeueCount, rawCount })
-          break
-        }
-
-        const dedupedItems = this.deduplicateByItemId(items)
-
-        if (this.ctx.deps.crdtProvider) {
-          const snapshotTasks = dedupedItems
-            .filter((item) => {
-              if (item.operation !== 'create') return false
-              if (item.type !== 'note' && item.type !== 'journal') return false
-              try {
-                const parsed = JSON.parse(item.payload) as { fileType?: string }
-                if (parsed.fileType && isBinaryFileType(parsed.fileType)) return false
-              } catch {
-                /* no payload parse = assume text */
-              }
-              return true
-            })
-            .map((item) => () => this.ctx.deps.crdtProvider!.pushSnapshotForNote(item.itemId))
-          if (snapshotTasks.length > 0) {
-            const snapshotResults = await parallelWithLimit(
-              snapshotTasks,
-              CRDT_SNAPSHOT_CONCURRENCY,
-              this.ctx.abortController!.signal
-            )
-            const failedSnapshots = snapshotResults.filter((r) => r.status === 'rejected')
-            if (failedSnapshots.length > 0) {
-              log.warn('Push: some CRDT snapshots failed', { count: failedSnapshots.length })
-            }
-          }
-        }
-
-        timer.startPhase('encrypt')
-        const pushItems = await encryptPushBatch(
-          dedupedItems,
-          vaultKey,
-          signingKeys.secretKey,
-          signingKeys.deviceId,
-          {
-            workerBridge: this.ctx.deps.workerBridge,
-            queue: this.ctx.deps.queue,
-            extractPayloadMetadata: (p) => this.extractPayloadMetadata(p),
-            resolvePushPayload: (item, deviceId) => this.resolvePushPayload(item, deviceId)
-          }
-        )
-        timer.endPhase(dedupedItems.length)
-
-        timer.startPhase('network')
-        const response = await withRetry(
-          () =>
-            postToServer<PushResponse>(
-              '/sync/push',
-              { items: pushItems.map((p) => p.pushItem) },
-              token
-            ),
-          { signal: this.ctx.abortController!.signal, isOnline: () => this.ctx.deps.network.online }
-        )
-        timer.endPhase()
-
-        log.info('Push: server response', {
-          iteration,
-          accepted: response.value.accepted.length,
-          rejected: response.value.rejected.length,
-          serverTime: response.value.serverTime
-        })
-
-        lastServerTime = response.value.serverTime
-        if (response.value.maxCursor > lastMaxCursor) {
-          lastMaxCursor = response.value.maxCursor
-        }
-        const acceptedSet = new Set(response.value.accepted)
-        for (let pi = 0; pi < pushItems.length; pi++) {
-          if (this.ctx.abortController?.signal.aborted) break
-          if (pi > 0 && pi % YIELD_EVERY_N_ITEMS === 0) await yieldToEventLoop()
-          const { queueId, pushItem } = pushItems[pi]
-          if (acceptedSet.has(pushItem.id)) {
-            this.ctx.deps.queue.markSuccess(queueId)
-            this.markItemSynced(pushItem.id, pushItem.type as SyncItemType)
-            pushedCount++
-            this.stateManager.emitItemSynced(pushItem.id, pushItem.type, 'push')
-          } else {
-            const rejection = response.value.rejected.find((r) => r.id === pushItem.id)
-            const reason = rejection?.reason ?? 'Unknown rejection'
-            if (reason === 'SYNC_REPLAY_DETECTED') {
-              log.info('Push: replay detected, server already has this or newer', {
-                queueId: queueId.slice(0, 8),
-                itemId: pushItem.id.slice(0, 8)
-              })
-              this.ctx.deps.queue.markSuccess(queueId)
-              this.markItemSynced(pushItem.id, pushItem.type as SyncItemType)
-            } else if (reason === 'STORAGE_QUOTA_EXCEEDED') {
-              log.warn('Push: storage quota exceeded', { itemId: pushItem.id.slice(0, 8) })
-              this.ctx.deps.queue.markFailed(queueId, reason)
-              this.ctx.lastErrorInfo = {
-                category: 'storage_quota_exceeded',
-                message: 'Storage quota exceeded',
-                retryable: false
-              }
-              this.ctx.lastError = 'Storage quota exceeded'
-              this.stateManager.setState('error')
-              break
-            } else {
-              log.warn('Push: item rejected', {
-                queueId: queueId.slice(0, 8),
-                itemId: pushItem.id.slice(0, 8),
-                reason
-              })
-              this.ctx.deps.queue.markFailed(queueId, reason)
-            }
-          }
-        }
-      }
-
-      log.info('Push timing', timer.finish())
-
-      if (pushedCount > 0) {
-        this.stateManager.recordHistory('push', pushedCount, Date.now() - startTime)
-        this.stateManager.updateLastSyncAt()
-        this.ctx.rateLimitConsecutive = 0
-        if (lastServerTime > 0) this.stateManager.checkClockSkew(lastServerTime)
-
-        if (lastMaxCursor > 0) {
-          const currentCursor = Number(
-            this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? '0'
-          )
-          if (lastMaxCursor > currentCursor) {
-            this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(lastMaxCursor))
-            log.debug('Push: advanced pull cursor', { from: currentCursor, to: lastMaxCursor })
-          }
-        }
-
-        if (this.ctx.deps.queue.getPendingCount() === 0) {
-          this.ctx.deps.emitToRenderer(EVENT_CHANNELS.QUEUE_CLEARED, {
-            itemCount: pushedCount,
-            duration: Date.now() - startTime
-          } satisfies QueueClearedEvent)
-        }
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        log.debug('Push aborted (likely network change)')
+      const token = await this.ctx.deps.getAccessToken()
+      if (!token) {
+        log.debug('Push aborted: no access token')
         return
       }
-      const errorInfo = classifyError(error)
-      this.ctx.lastErrorInfo = errorInfo
-      this.ctx.lastError = errorInfo.message
-      if (
-        errorInfo.category === 'device_revoked' ||
-        errorInfo.category === 'auth_expired' ||
-        errorInfo.category === 'network_offline' ||
-        error instanceof RateLimitError
-      ) {
-        throw error
+
+      const signingKeys = await this.ctx.deps.getSigningKeys()
+      if (!signingKeys) {
+        log.debug('Push aborted: no signing keys')
+        return
       }
-      this.stateManager.setState('error')
-      this.stateManager.recordHistory('error', 0, Date.now() - startTime, errorInfo.message)
+      signingSecretKey = signingKeys.secretKey
+
+      vaultKey = await this.ctx.deps.getVaultKey()
+      if (!vaultKey) {
+        log.debug('Push aborted: no vault key')
+        return
+      }
+
+      try {
+        for (let iteration = 0; iteration < MAX_PUSH_ITERATIONS; iteration++) {
+          if (this.ctx.abortController!.signal.aborted) break
+
+          const preDequeueCount = this.ctx.deps.queue.getPendingCount()
+          const rawCount = this.ctx.deps.queue.getRawPendingCount()
+          if (preDequeueCount !== rawCount) {
+            log.error('Push: Drizzle vs raw SQL mismatch!', {
+              drizzle: preDequeueCount,
+              raw: rawCount
+            })
+          }
+          const items = this.ctx.deps.queue.dequeue(this.ctx.options.pushBatchSize)
+          if (items.length === 0) {
+            log.debug('Push complete: queue empty', { preDequeueCount, rawCount })
+            break
+          }
+
+          const dedupedItems = this.deduplicateByItemId(items)
+
+          if (this.ctx.deps.crdtProvider) {
+            const snapshotTasks = dedupedItems
+              .filter((item) => {
+                if (item.operation !== 'create') return false
+                if (item.type !== 'note' && item.type !== 'journal') return false
+                try {
+                  const parsed = JSON.parse(item.payload) as { fileType?: string }
+                  if (parsed.fileType && isBinaryFileType(parsed.fileType)) return false
+                } catch {
+                  /* no payload parse = assume text */
+                }
+                return true
+              })
+              .map((item) => () => this.ctx.deps.crdtProvider!.pushSnapshotForNote(item.itemId))
+            if (snapshotTasks.length > 0) {
+              const snapshotResults = await parallelWithLimit(
+                snapshotTasks,
+                CRDT_SNAPSHOT_CONCURRENCY,
+                this.ctx.abortController!.signal
+              )
+              const failedSnapshots = snapshotResults.filter((r) => r.status === 'rejected')
+              if (failedSnapshots.length > 0) {
+                log.warn('Push: some CRDT snapshots failed', { count: failedSnapshots.length })
+              }
+            }
+          }
+
+          timer.startPhase('encrypt')
+          const pushItems = await encryptPushBatch(
+            dedupedItems,
+            vaultKey,
+            signingKeys.secretKey,
+            signingKeys.deviceId,
+            {
+              workerBridge: this.ctx.deps.workerBridge,
+              queue: this.ctx.deps.queue,
+              extractPayloadMetadata: (p) => this.extractPayloadMetadata(p),
+              resolvePushPayload: (item, deviceId) => this.resolvePushPayload(item, deviceId)
+            }
+          )
+          timer.endPhase(dedupedItems.length)
+
+          timer.startPhase('network')
+          const response = await withRetry(
+            () =>
+              postToServer<PushResponse>(
+                '/sync/push',
+                { items: pushItems.map((p) => p.pushItem) },
+                token
+              ),
+            { signal: this.ctx.abortController!.signal, isOnline: () => this.ctx.deps.network.online }
+          )
+          timer.endPhase()
+
+          log.info('Push: server response', {
+            iteration,
+            accepted: response.value.accepted.length,
+            rejected: response.value.rejected.length,
+            serverTime: response.value.serverTime
+          })
+
+          lastServerTime = response.value.serverTime
+          if (response.value.maxCursor > lastMaxCursor) {
+            lastMaxCursor = response.value.maxCursor
+          }
+          const acceptedSet = new Set(response.value.accepted)
+          for (let pi = 0; pi < pushItems.length; pi++) {
+            if (this.ctx.abortController?.signal.aborted) break
+            if (pi > 0 && pi % YIELD_EVERY_N_ITEMS === 0) await yieldToEventLoop()
+            const { queueId, pushItem } = pushItems[pi]
+            if (acceptedSet.has(pushItem.id)) {
+              this.ctx.deps.queue.markSuccess(queueId)
+              this.markItemSynced(pushItem.id, pushItem.type as SyncItemType)
+              pushedCount++
+              this.stateManager.emitItemSynced(pushItem.id, pushItem.type, 'push')
+            } else {
+              const rejection = response.value.rejected.find((r) => r.id === pushItem.id)
+              const reason = rejection?.reason ?? 'Unknown rejection'
+              if (reason === 'SYNC_REPLAY_DETECTED') {
+                log.info('Push: replay detected, server already has this or newer', {
+                  queueId: queueId.slice(0, 8),
+                  itemId: pushItem.id.slice(0, 8)
+                })
+                this.ctx.deps.queue.markSuccess(queueId)
+                this.markItemSynced(pushItem.id, pushItem.type as SyncItemType)
+              } else if (reason === 'STORAGE_QUOTA_EXCEEDED') {
+                log.warn('Push: storage quota exceeded', { itemId: pushItem.id.slice(0, 8) })
+                this.ctx.deps.queue.markFailed(queueId, reason)
+                this.ctx.lastErrorInfo = {
+                  category: 'storage_quota_exceeded',
+                  message: 'Storage quota exceeded',
+                  retryable: false
+                }
+                this.ctx.lastError = 'Storage quota exceeded'
+                this.stateManager.setState('error')
+                break
+              } else {
+                log.warn('Push: item rejected', {
+                  queueId: queueId.slice(0, 8),
+                  itemId: pushItem.id.slice(0, 8),
+                  reason
+                })
+                this.ctx.deps.queue.markFailed(queueId, reason)
+              }
+            }
+          }
+        }
+
+        log.info('Push timing', timer.finish())
+
+        if (pushedCount > 0) {
+          this.stateManager.recordHistory('push', pushedCount, Date.now() - startTime)
+          this.stateManager.updateLastSyncAt()
+          this.ctx.rateLimitConsecutive = 0
+          if (lastServerTime > 0) this.stateManager.checkClockSkew(lastServerTime)
+
+          if (lastMaxCursor > 0) {
+            const currentCursor = Number(
+              this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? '0'
+            )
+            if (lastMaxCursor > currentCursor) {
+              this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(lastMaxCursor))
+              log.debug('Push: advanced pull cursor', { from: currentCursor, to: lastMaxCursor })
+            }
+          }
+
+          if (this.ctx.deps.queue.getPendingCount() === 0) {
+            this.ctx.deps.emitToRenderer(EVENT_CHANNELS.QUEUE_CLEARED, {
+              itemCount: pushedCount,
+              duration: Date.now() - startTime
+            } satisfies QueueClearedEvent)
+          }
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          log.debug('Push aborted (likely network change)')
+          return
+        }
+        const errorInfo = classifyError(error)
+        this.ctx.lastErrorInfo = errorInfo
+        this.ctx.lastError = errorInfo.message
+        if (
+          errorInfo.category === 'device_revoked' ||
+          errorInfo.category === 'auth_expired' ||
+          errorInfo.category === 'network_offline' ||
+          error instanceof RateLimitError
+        ) {
+          throw error
+        }
+        this.stateManager.setState('error')
+        this.stateManager.recordHistory('error', 0, Date.now() - startTime, errorInfo.message)
+      }
     } finally {
-      secureCleanup(vaultKey, signingKeys.secretKey)
-      this.ctx.releaseLock()
-      release()
+      try {
+        if (vaultKey && signingSecretKey) {
+          secureCleanup(vaultKey, signingSecretKey)
+        } else if (vaultKey) {
+          secureCleanup(vaultKey)
+        } else if (signingSecretKey) {
+          secureCleanup(signingSecretKey)
+        }
+      } finally {
+        cleanup()
+      }
     }
   }
 

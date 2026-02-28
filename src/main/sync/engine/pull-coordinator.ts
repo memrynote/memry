@@ -57,138 +57,153 @@ export class PullCoordinator {
   async pull(): Promise<void> {
     const release = await this.ctx.acquireLock()
     if (!release) return
-    this.stateManager.setState('syncing')
-    this.ctx.abortController = new AbortController()
 
-    const token = await this.ctx.deps.getAccessToken()
-    if (!token) {
+    let released = false
+    const cleanup = (): void => {
+      if (released) return
+      released = true
       this.ctx.releaseLock()
       release()
-      return
     }
 
-    const vaultKey = await this.ctx.deps.getVaultKey()
-    if (!vaultKey) {
-      this.ctx.releaseLock()
-      release()
-      return
-    }
     const timer = new SyncTimer()
     const startTime = Date.now()
     let pulledCount = 0
     const processedIds = new Set<string>()
     const crdtNoteIds: string[] = []
+    let vaultKey: Uint8Array | null = null
     this.deviceKeyCache.clear()
 
     let totalConflictsResolved = 0
 
     try {
-      let cursor = this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)
-      let hasMore = true
+      this.stateManager.setState('syncing')
+      this.ctx.abortController = new AbortController()
 
-      const fetchChangesPage = (pageCursor: string | null | undefined) =>
-        withRetry(
-          () => {
-            const cp = pageCursor ? `&cursor=${pageCursor}` : ''
-            return getFromServer<ChangesResponse>(
-              `/sync/changes?limit=${this.ctx.options.pullPageLimit}${cp}`,
-              token
-            )
-          },
-          { signal: this.ctx.abortController!.signal, isOnline: () => this.ctx.deps.network.online }
-        )
+      const token = await this.ctx.deps.getAccessToken()
+      if (!token) return
 
-      type ChangesRetryResult = Awaited<ReturnType<typeof fetchChangesPage>>
-      let changesResult: ChangesRetryResult
-      let prefetchedNext: Promise<ChangesRetryResult> | null = null
+      vaultKey = await this.ctx.deps.getVaultKey()
+      if (!vaultKey) return
 
-      while (hasMore) {
-        if (this.ctx.abortController!.signal.aborted) break
+      try {
+        let cursor = this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)
+        let hasMore = true
 
-        if (prefetchedNext) {
-          changesResult = await prefetchedNext
-          prefetchedNext = null
-        } else {
-          changesResult = await fetchChangesPage(cursor)
-        }
-
-        const changes = changesResult.value
-        const itemIds = Array.from(
-          new Set([...changes.items.map((item) => item.id), ...changes.deleted])
-        )
-
-        if (itemIds.length > 0) {
-          const pageResult = await this.processPage(
-            itemIds, token, vaultKey, timer, processedIds, crdtNoteIds
+        const fetchChangesPage = (pageCursor: string | null | undefined) =>
+          withRetry(
+            () => {
+              const cp = pageCursor ? `&cursor=${pageCursor}` : ''
+              return getFromServer<ChangesResponse>(
+                `/sync/changes?limit=${this.ctx.options.pullPageLimit}${cp}`,
+                token
+              )
+            },
+            {
+              signal: this.ctx.abortController!.signal,
+              isOnline: () => this.ctx.deps.network.online
+            }
           )
-          pulledCount += pageResult.applied
-          totalConflictsResolved += pageResult.conflicts
 
-          if (crdtNoteIds.length > 0 && this.ctx.deps.crdtProvider) {
-            timer.startPhase('crdt-batch')
-            await this.crdtSync.applyCrdtBatch(crdtNoteIds, token, vaultKey)
-            timer.endPhase(crdtNoteIds.length)
-            crdtNoteIds.length = 0
+        type ChangesRetryResult = Awaited<ReturnType<typeof fetchChangesPage>>
+        let changesResult: ChangesRetryResult
+        let prefetchedNext: Promise<ChangesRetryResult> | null = null
+
+        while (hasMore) {
+          if (this.ctx.abortController!.signal.aborted) break
+
+          if (prefetchedNext) {
+            changesResult = await prefetchedNext
+            prefetchedNext = null
+          } else {
+            changesResult = await fetchChangesPage(cursor)
           }
 
-          if (pageResult.allCryptoFailed) break
+          const changes = changesResult.value
+          const itemIds = Array.from(
+            new Set([...changes.items.map((item) => item.id), ...changes.deleted])
+          )
+
+          if (itemIds.length > 0) {
+            const pageResult = await this.processPage(
+              itemIds,
+              token,
+              vaultKey,
+              timer,
+              processedIds,
+              crdtNoteIds
+            )
+            pulledCount += pageResult.applied
+            totalConflictsResolved += pageResult.conflicts
+
+            if (crdtNoteIds.length > 0 && this.ctx.deps.crdtProvider) {
+              timer.startPhase('crdt-batch')
+              await this.crdtSync.applyCrdtBatch(crdtNoteIds, token, vaultKey)
+              timer.endPhase(crdtNoteIds.length)
+              crdtNoteIds.length = 0
+            }
+
+            if (pageResult.allCryptoFailed) break
+          }
+
+          if (this.ctx.fullSyncActive) {
+            const estimatedTotal = changes.hasMore
+              ? pulledCount + this.ctx.options.pullPageLimit
+              : pulledCount
+            this.ctx.deps.emitToRenderer(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
+              phase: 'notes',
+              processedItems: pulledCount,
+              totalItems: estimatedTotal
+            } satisfies InitialSyncProgressEvent)
+          }
+
+          this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(changes.nextCursor))
+          cursor = String(changes.nextCursor)
+          hasMore = changes.hasMore
+
+          if (hasMore && !this.ctx.abortController?.signal.aborted) {
+            prefetchedNext = fetchChangesPage(cursor)
+            prefetchedNext.catch(() => {})
+          }
         }
 
-        if (this.ctx.fullSyncActive) {
-          const estimatedTotal = changes.hasMore
-            ? pulledCount + this.ctx.options.pullPageLimit
-            : pulledCount
-          this.ctx.deps.emitToRenderer(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
-            phase: 'notes',
-            processedItems: pulledCount,
-            totalItems: estimatedTotal
-          } satisfies InitialSyncProgressEvent)
+        log.info('Pull timing', timer.finish())
+        this.stateManager.recordHistory('pull', pulledCount, Date.now() - startTime)
+        this.stateManager.updateLastSyncAt()
+        this.ctx.rateLimitConsecutive = 0
+
+        if (totalConflictsResolved > 0) {
+          log.info('Pull: re-enqueued merged items for push-back', {
+            conflicts: totalConflictsResolved
+          })
+          this.ctx.requestPush()
         }
-
-        this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(changes.nextCursor))
-        cursor = String(changes.nextCursor)
-        hasMore = changes.hasMore
-
-        if (hasMore && !this.ctx.abortController?.signal.aborted) {
-          prefetchedNext = fetchChangesPage(cursor)
-          prefetchedNext.catch(() => {})
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          log.debug('Pull aborted (likely network change)')
+          return
         }
+        const errorInfo = classifyError(error)
+        this.ctx.lastErrorInfo = errorInfo
+        this.ctx.lastError = errorInfo.message
+        if (
+          errorInfo.category === 'device_revoked' ||
+          errorInfo.category === 'auth_expired' ||
+          errorInfo.category === 'network_offline' ||
+          error instanceof RateLimitError
+        ) {
+          throw error
+        }
+        this.stateManager.setState('error')
+        this.stateManager.recordHistory('error', 0, Date.now() - startTime, errorInfo.message)
       }
-
-      log.info('Pull timing', timer.finish())
-      this.stateManager.recordHistory('pull', pulledCount, Date.now() - startTime)
-      this.stateManager.updateLastSyncAt()
-      this.ctx.rateLimitConsecutive = 0
-
-      if (totalConflictsResolved > 0) {
-        log.info('Pull: re-enqueued merged items for push-back', {
-          conflicts: totalConflictsResolved
-        })
-        this.ctx.requestPush()
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        log.debug('Pull aborted (likely network change)')
-        return
-      }
-      const errorInfo = classifyError(error)
-      this.ctx.lastErrorInfo = errorInfo
-      this.ctx.lastError = errorInfo.message
-      if (
-        errorInfo.category === 'device_revoked' ||
-        errorInfo.category === 'auth_expired' ||
-        errorInfo.category === 'network_offline' ||
-        error instanceof RateLimitError
-      ) {
-        throw error
-      }
-      this.stateManager.setState('error')
-      this.stateManager.recordHistory('error', 0, Date.now() - startTime, errorInfo.message)
     } finally {
       this.deviceKeyCache.clear()
-      secureCleanup(vaultKey)
-      this.ctx.releaseLock()
-      release()
+      try {
+        if (vaultKey) secureCleanup(vaultKey)
+      } finally {
+        cleanup()
+      }
     }
   }
 
