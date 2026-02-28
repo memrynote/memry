@@ -60,6 +60,7 @@ function buildDecryptInput(
     id: pushItem.id,
     type: pushItem.type,
     operation: pushItem.operation,
+    cryptoVersion: 1,
     encryptedKey: pushItem.encryptedKey,
     keyNonce: pushItem.keyNonce,
     encryptedData: pushItem.encryptedData,
@@ -159,6 +160,77 @@ describe('decryptItemFromPull', () => {
 
       expect(result.verified).toBe(true)
       expect(new TextDecoder().decode(result.content)).toBe(JSON.stringify({ synced: true }))
+    })
+  })
+
+  describe('#given V1 item with explicit cryptoVersion #when decrypted', () => {
+    it('#then V1 roundtrip works with explicit version', () => {
+      const keys = generateTestKeys()
+      const original = new TextEncoder().encode(JSON.stringify({ v: 1 }))
+      const { pushItem } = encryptTestItem(original, keys)
+
+      const input = buildDecryptInput(pushItem, keys, { cryptoVersion: 1 })
+
+      const result = decryptItemFromPull(input)
+
+      expect(result.verified).toBe(true)
+      expect(new TextDecoder().decode(result.content)).toBe(JSON.stringify({ v: 1 }))
+    })
+  })
+
+  describe('#given cryptoVersion is required #when called without it', () => {
+    it('#then TypeScript enforces the field at compile time', () => {
+      const keys = generateTestKeys()
+      const original = new TextEncoder().encode('default-version')
+      const { pushItem } = encryptTestItem(original, keys)
+
+      const input = buildDecryptInput(pushItem, keys, { cryptoVersion: 1 })
+
+      const result = decryptItemFromPull(input)
+
+      expect(result.verified).toBe(true)
+    })
+  })
+
+  describe('#given cryptoVersion 2 #when decrypted', () => {
+    it('#then throws upgrade-required error', () => {
+      const keys = generateTestKeys()
+      const original = new TextEncoder().encode('future')
+      const { pushItem } = encryptTestItem(original, keys)
+
+      const input = buildDecryptInput(pushItem, keys, { cryptoVersion: 2 })
+
+      expect(() => decryptItemFromPull(input)).toThrow(
+        'Crypto version 2 is not supported. Please update the app.'
+      )
+    })
+  })
+
+  describe('#given cryptoVersion 0 #when decrypted', () => {
+    it('#then throws invalid version error', () => {
+      const keys = generateTestKeys()
+      const original = new TextEncoder().encode('zero')
+      const { pushItem } = encryptTestItem(original, keys)
+
+      const input = buildDecryptInput(pushItem, keys, { cryptoVersion: 0 })
+
+      expect(() => decryptItemFromPull(input)).toThrow(
+        'Invalid crypto version: 0. Version must be >= 1.'
+      )
+    })
+  })
+
+  describe('#given negative cryptoVersion #when decrypted', () => {
+    it('#then throws invalid version error', () => {
+      const keys = generateTestKeys()
+      const original = new TextEncoder().encode('negative')
+      const { pushItem } = encryptTestItem(original, keys)
+
+      const input = buildDecryptInput(pushItem, keys, { cryptoVersion: -1 })
+
+      expect(() => decryptItemFromPull(input)).toThrow(
+        'Invalid crypto version: -1. Version must be >= 1.'
+      )
     })
   })
 

@@ -86,7 +86,8 @@ function makeCryptoFailure(id: string, type: string): DecryptionFailure {
     type,
     signerDeviceId: 'device-1',
     error: 'Decryption failed',
-    isCryptoError: true
+    isCryptoError: true,
+    isSignatureError: false
   }
 }
 

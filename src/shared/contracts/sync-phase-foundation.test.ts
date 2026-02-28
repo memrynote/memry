@@ -122,7 +122,11 @@ describe('sync phase contract schemas', () => {
     }
 
     expect(EncryptedItemSchema.safeParse(encryptedItem).success).toBe(true)
-    expect(EncryptedItemSchema.safeParse({ ...encryptedItem, cryptoVersion: 2 }).success).toBe(
+    expect(EncryptedItemSchema.safeParse({ ...encryptedItem, cryptoVersion: 2 }).success).toBe(true)
+    expect(EncryptedItemSchema.safeParse({ ...encryptedItem, cryptoVersion: 0 }).success).toBe(
+      false
+    )
+    expect(EncryptedItemSchema.safeParse({ ...encryptedItem, cryptoVersion: 100 }).success).toBe(
       false
     )
 

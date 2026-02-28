@@ -21,7 +21,7 @@ export interface PullItemForDecrypt {
   id: string
   type: string
   operation: string
-  cryptoVersion?: number
+  cryptoVersion: number
   encryptedKey: string
   keyNonce: string
   encryptedData: string
@@ -49,6 +49,7 @@ export interface DecryptionFailure {
   signerDeviceId: string
   error: string
   isCryptoError: boolean
+  isSignatureError: boolean
 }
 
 export type MainToWorkerMessage =

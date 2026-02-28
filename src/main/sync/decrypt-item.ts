@@ -42,9 +42,10 @@ export function decryptSingleItem(
       }
     }
   } catch (err) {
+    const isSignatureError = err instanceof SignatureVerificationError
     const isCryptoError =
+      isSignatureError ||
       err instanceof CryptoError ||
-      err instanceof SignatureVerificationError ||
       (err instanceof Error && isCryptoErrorMessage(err.message))
 
     return {
@@ -54,7 +55,8 @@ export function decryptSingleItem(
         type: item.type,
         signerDeviceId: item.signerDeviceId,
         error: err instanceof Error ? err.message : String(err),
-        isCryptoError
+        isCryptoError,
+        isSignatureError
       }
     }
   }

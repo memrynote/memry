@@ -20,7 +20,7 @@ export interface DecryptItemInput {
   id: string
   type: string
   operation?: string
-  cryptoVersion?: number
+  cryptoVersion: number
   encryptedKey: string
   keyNonce: string
   encryptedData: string
@@ -38,19 +38,27 @@ export interface DecryptItemResult {
   verified: true
 }
 
-const SUPPORTED_CRYPTO_VERSIONS = [1]
-
 export function decryptItemFromPull(input: DecryptItemInput): DecryptItemResult {
-  const version = input.cryptoVersion ?? 1
-  if (!SUPPORTED_CRYPTO_VERSIONS.includes(version)) {
-    throw new Error(`Unsupported crypto version: ${version}`)
+  const version = input.cryptoVersion
+
+  if (version < 1) {
+    throw new Error(`Invalid crypto version: ${version}. Version must be >= 1.`)
   }
 
+  switch (version) {
+    case 1:
+      return decryptV1(input, version)
+    default:
+      throw new Error(`Crypto version ${version} is not supported. Please update the app.`)
+  }
+}
+
+function decryptV1(input: DecryptItemInput, version: number): DecryptItemResult {
   const signaturePayload: Record<string, unknown> = {
     id: input.id,
     type: input.type,
     operation: input.operation ?? 'update',
-    cryptoVersion: input.cryptoVersion ?? 1,
+    cryptoVersion: version,
     encryptedKey: input.encryptedKey,
     keyNonce: input.keyNonce,
     encryptedData: input.encryptedData,

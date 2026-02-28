@@ -10,7 +10,7 @@ import {
 // Version
 // ============================================================================
 
-export type CryptoVersion = 1
+export type CryptoVersion = 1 | 2
 export const CRYPTO_VERSION: CryptoVersion = 1
 
 // ============================================================================
@@ -176,7 +176,7 @@ const FieldClocksSchema = z.record(z.string(), z.record(z.string(), z.number().i
 export const EncryptedItemSchema = z.object({
   id: z.string().min(1),
   type: z.enum(ENCRYPTABLE_ITEM_TYPES),
-  cryptoVersion: z.literal(CRYPTO_VERSION),
+  cryptoVersion: z.number().int().min(1).max(99),
   encryptedKey: z.string().min(1),
   keyNonce: z.string().min(1),
   encryptedData: z.string().min(1),
@@ -191,7 +191,7 @@ export const EncryptedItemSchema = z.object({
 export const EncryptedCrdtItemSchema = z.object({
   id: z.string().min(1),
   type: z.literal('note'),
-  cryptoVersion: z.literal(CRYPTO_VERSION),
+  cryptoVersion: z.number().int().min(1).max(99),
   encryptedSnapshot: z.string().min(1),
   snapshotNonce: z.string().min(1),
   stateVector: z.string().min(1),
