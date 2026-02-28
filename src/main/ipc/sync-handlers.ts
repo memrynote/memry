@@ -1212,6 +1212,29 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     }
   })
 
+  ipcMain.handle(SYNC_CHANNELS.GET_QUARANTINED_ITEMS, () => {
+    const engine = resolveSyncEngine()
+    if (!engine) return []
+    return engine.getQuarantinedItems()
+  })
+
+  ipcMain.handle(SYNC_CHANNELS.CHECK_DEVICE_STATUS, async () => {
+    const engine = resolveSyncEngine()
+    if (!engine) return { status: 'unknown' }
+    const status = await engine.checkDeviceStatus()
+    return { status }
+  })
+
+  ipcMain.handle(SYNC_CHANNELS.EMERGENCY_WIPE, async () => {
+    const engine = resolveSyncEngine()
+    if (engine) {
+      await engine.performEmergencyWipe()
+    }
+    const result = await teardownSession('integrity')
+    logger.warn('SECURITY_AUDIT: Emergency wipe via IPC complete')
+    return { success: result.success }
+  })
+
   logger.info('Sync handlers registered')
 }
 
