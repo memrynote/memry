@@ -17,7 +17,8 @@ export const InitiateLinkingRequestSchema = z.object({
 export const ScanLinkingRequestSchema = z.object({
   sessionId: z.string().min(1),
   newDevicePublicKey: z.string().min(1),
-  newDeviceConfirm: z.string().min(1)
+  newDeviceConfirm: z.string().min(1),
+  linkingSecret: z.string().min(1)
 })
 
 export const ApproveLinkingRequestSchema = z.object({
@@ -33,7 +34,8 @@ export const CompleteLinkingRequestSchema = z.object({
 
 export const InitiateLinkingResponseSchema = z.object({
   sessionId: z.string(),
-  expiresAt: z.number()
+  expiresAt: z.number(),
+  linkingSecret: z.string()
 })
 
 export const ScanLinkingResponseSchema = z.object({

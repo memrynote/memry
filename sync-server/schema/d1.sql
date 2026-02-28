@@ -116,6 +116,8 @@ CREATE TABLE linking_sessions (
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   initiator_device_id TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
   ephemeral_public_key TEXT NOT NULL,
+  linking_secret_hash TEXT NOT NULL,
+  scanner_ip TEXT,
   new_device_public_key TEXT,
   new_device_confirm TEXT,
   encrypted_master_key TEXT,
