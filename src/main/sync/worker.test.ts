@@ -277,7 +277,8 @@ describe('worker', () => {
           type: 'note',
           signerDeviceId: 'device-1',
           error: 'could not decrypt',
-          isCryptoError: true
+          isCryptoError: true,
+          isSignatureError: false
         }
       })
 

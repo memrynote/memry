@@ -224,6 +224,7 @@ describe('SettingsSyncManager', () => {
         dataNonce: pushItem.dataNonce,
         signature: pushItem.signature,
         signerDeviceId: pushItem.signerDeviceId,
+        cryptoVersion: 1,
         vaultKey,
         signerPublicKey: keyPair.publicKey
       }
