@@ -233,13 +233,15 @@ describe('rotateRefreshToken', () => {
     }
   })
 
-  it('should recover when UNIQUE constraint fails during rotation', async () => {
+  it('should retry with fresh tokens when UNIQUE constraint fails during rotation', async () => {
     // #given - valid existing token
     const selectStmt = createMockStatement()
     selectStmt.first.mockResolvedValue({ id: 'token-id-1' })
     db.prepare.mockReturnValueOnce(selectStmt)
 
-    db.batch.mockRejectedValueOnce(new Error('UNIQUE constraint failed: refresh_tokens.token_hash'))
+    db.batch
+      .mockRejectedValueOnce(new Error('UNIQUE constraint failed: refresh_tokens.token_hash'))
+      .mockResolvedValueOnce([])
 
     // #when
     const result = await rotateRefreshToken(
@@ -250,10 +252,40 @@ describe('rotateRefreshToken', () => {
       'pem-key'
     )
 
-    // #then - fallback generateTokens still returns valid tokens
+    // #then - retried and succeeded on second attempt
     expect(result).toHaveProperty('accessToken')
     expect(result).toHaveProperty('refreshToken')
-    expect(db.batch).toHaveBeenCalledTimes(1)
+    expect(db.batch).toHaveBeenCalledTimes(2)
+  })
+
+  it('should throw AUTH_TOKEN_ROTATION_FAILED when all retry attempts exhausted', async () => {
+    // #given - valid existing token, all batch attempts fail
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue({ id: 'token-id-1' })
+    db.prepare.mockReturnValueOnce(selectStmt)
+
+    const uniqueError = new Error('UNIQUE constraint failed: refresh_tokens.token_hash')
+    db.batch
+      .mockRejectedValueOnce(uniqueError)
+      .mockRejectedValueOnce(uniqueError)
+      .mockRejectedValueOnce(uniqueError)
+
+    // #when / #then
+    try {
+      await rotateRefreshToken(
+        db as unknown as D1Database,
+        'old-refresh-token',
+        'user-1',
+        'device-1',
+        'pem-key'
+      )
+      expect.fail('Should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(AppError)
+      expect((e as AppError).code).toBe(ErrorCodes.AUTH_TOKEN_ROTATION_FAILED)
+      expect((e as AppError).statusCode).toBe(500)
+    }
+    expect(db.batch).toHaveBeenCalledTimes(3)
   })
 })
 

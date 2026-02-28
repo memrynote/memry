@@ -75,6 +75,7 @@ export const issueTokens = async (
 }
 
 const ROTATION_GRACE_SECONDS = 60
+const MAX_ROTATION_ATTEMPTS = 3
 
 const tryRotateBatch = async (
   db: D1Database,
@@ -104,6 +105,38 @@ const tryRotateBatch = async (
     }
     throw err
   }
+}
+
+const rotateWithRetry = async (
+  db: D1Database,
+  revokeId: string,
+  userId: string,
+  deviceId: string,
+  privateKeyPem: string,
+  nowEpoch: number
+): Promise<{ accessToken: string; refreshToken: string }> => {
+  const expiresAt = nowEpoch + 7 * 24 * 60 * 60
+
+  for (let attempt = 0; attempt < MAX_ROTATION_ATTEMPTS; attempt++) {
+    const tokens = await generateTokens(userId, deviceId, privateKeyPem)
+    const newHash = await hashToken(tokens.refreshToken)
+    const inserted = await tryRotateBatch(
+      db,
+      revokeId,
+      userId,
+      deviceId,
+      newHash,
+      expiresAt,
+      nowEpoch
+    )
+    if (inserted) return tokens
+  }
+
+  throw new AppError(
+    ErrorCodes.AUTH_TOKEN_ROTATION_FAILED,
+    'Token rotation failed after retries',
+    500
+  )
 }
 
 export const rotateRefreshToken = async (
@@ -140,24 +173,7 @@ export const rotateRefreshToken = async (
         .first<{ id: string }>()
 
       if (current) {
-        const tokens = await generateTokens(userId, deviceId, privateKeyPem)
-        const newHash = await hashToken(tokens.refreshToken)
-        const expiresAt = nowEpoch + 7 * 24 * 60 * 60
-
-        const inserted = await tryRotateBatch(
-          db,
-          current.id,
-          userId,
-          deviceId,
-          newHash,
-          expiresAt,
-          nowEpoch
-        )
-        if (!inserted) {
-          return generateTokens(userId, deviceId, privateKeyPem)
-        }
-
-        return tokens
+        return rotateWithRetry(db, current.id, userId, deviceId, privateKeyPem, nowEpoch)
       }
     }
 
@@ -169,24 +185,7 @@ export const rotateRefreshToken = async (
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid refresh token', 401)
   }
 
-  const tokens = await generateTokens(userId, deviceId, privateKeyPem)
-  const newHash = await hashToken(tokens.refreshToken)
-  const expiresAt = nowEpoch + 7 * 24 * 60 * 60
-
-  const inserted = await tryRotateBatch(
-    db,
-    existing.id,
-    userId,
-    deviceId,
-    newHash,
-    expiresAt,
-    nowEpoch
-  )
-  if (!inserted) {
-    return generateTokens(userId, deviceId, privateKeyPem)
-  }
-
-  return tokens
+  return rotateWithRetry(db, existing.id, userId, deviceId, privateKeyPem, nowEpoch)
 }
 
 export const revokeDeviceTokens = async (db: D1Database, deviceId: string): Promise<void> => {
