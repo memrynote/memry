@@ -23,7 +23,8 @@ import {
   createPinnedAgent,
   CertificatePinningError,
   getPinnedCertificateHashes,
-  isPinningDisabled
+  isPinningDisabled,
+  hasPlaceholderHashes
 } from './certificate-pinning'
 
 function makeMockCertWithRaw(raw: Buffer): tls.PeerCertificate {
@@ -205,6 +206,26 @@ describe('certificate-pinning', () => {
     })
   })
 
+  describe('hasPlaceholderHashes', () => {
+    it('#given default placeholder hashes #then returns true', () => {
+      expect(hasPlaceholderHashes()).toBe(true)
+    })
+
+    it('#given real hashes #then returns false', () => {
+      const pins = ['sha256/abc123def456=', 'sha256/xyz789ghi012=']
+      expect(hasPlaceholderHashes(pins)).toBe(false)
+    })
+
+    it('#given mixed real and placeholder #then returns true', () => {
+      const pins = ['sha256/abc123def456=', 'sha256/PLACEHOLDER_BACKUP']
+      expect(hasPlaceholderHashes(pins)).toBe(true)
+    })
+
+    it('#given empty array #then returns false', () => {
+      expect(hasPlaceholderHashes([])).toBe(false)
+    })
+  })
+
   describe('createPinnedAgent', () => {
     it('#given dev mode (app.isPackaged=false) #then returns agent without pin checking', () => {
       // #when
@@ -226,10 +247,23 @@ describe('certificate-pinning', () => {
       expect(agent).toBeDefined()
       expect(agent.options.checkServerIdentity).toBeDefined()
     })
+
+    it('#given packaged mode with placeholder hashes #then returns standard TLS agent', () => {
+      // #given
+      mockApp.isPackaged = true
+
+      // #when
+      const agent = createPinnedAgent(['sha256/PLACEHOLDER_PRIMARY_CERT_HASH_BASE64'])
+
+      // #then
+      expect(agent).toBeDefined()
+      expect(agent.options.checkServerIdentity).toBeUndefined()
+      expect(agent.options.rejectUnauthorized).not.toBe(false)
+    })
   })
 
   describe('getPinnedCertificateHashes', () => {
-    it('#then returns readonly array of placeholder hashes', () => {
+    it('#given dev mode #then returns placeholder hashes as-is', () => {
       // #when
       const hashes = getPinnedCertificateHashes()
 
@@ -237,6 +271,17 @@ describe('certificate-pinning', () => {
       expect(hashes).toHaveLength(2)
       expect(hashes[0]).toMatch(/^sha256\//)
       expect(hashes[1]).toMatch(/^sha256\//)
+    })
+
+    it('#given packaged mode with placeholders #then returns empty array', () => {
+      // #given
+      mockApp.isPackaged = true
+
+      // #when
+      const hashes = getPinnedCertificateHashes()
+
+      // #then
+      expect(hashes).toHaveLength(0)
     })
   })
 })
