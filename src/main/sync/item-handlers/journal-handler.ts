@@ -3,6 +3,7 @@ import { noteCache } from '@shared/db/schema/notes-cache'
 import { JournalSyncPayloadSchema, type JournalSyncPayload } from '@shared/contracts/sync-payloads'
 import { JournalChannels } from '@shared/ipc-channels'
 import type { VectorClock } from '@shared/contracts/sync-api'
+import { utcNow } from '@shared/utc'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { getIndexDatabase } from '../../database/client'
@@ -33,7 +34,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
   ): ApplyResult {
     const indexDb = getIndexDatabase()
     const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
-    const now = new Date().toISOString()
+    const now = utcNow()
 
     const existing = getNoteCacheById(indexDb, itemId)
 

@@ -3,6 +3,7 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import * as schema from '@shared/db/schema/data-schema'
 import { settings } from '@shared/db/schema/settings'
 import type { VectorClock } from '@shared/contracts/sync-api'
+import { utcNow } from '@shared/utc'
 import type {
   SyncedSettings,
   FieldClockMap,
@@ -142,7 +143,7 @@ export class SettingsSyncManager {
 
   private saveSettings(value: SyncedSettings): void {
     const json = JSON.stringify(value)
-    const now = new Date().toISOString()
+    const now = utcNow()
     this.db
       .insert(settings)
       .values({ key: SETTINGS_KEY, value: json, modifiedAt: now })
@@ -152,7 +153,7 @@ export class SettingsSyncManager {
 
   private saveClocks(value: FieldClockMap): void {
     const json = JSON.stringify(value)
-    const now = new Date().toISOString()
+    const now = utcNow()
     this.db
       .insert(settings)
       .values({ key: CLOCKS_KEY, value: json, modifiedAt: now })

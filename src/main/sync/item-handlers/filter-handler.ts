@@ -3,6 +3,7 @@ import { savedFilters } from '@shared/db/schema/settings'
 import { FilterSyncPayloadSchema, type FilterSyncPayload } from '@shared/contracts/sync-payloads'
 import { SavedFiltersChannels } from '@shared/ipc-channels'
 import type { VectorClock } from '@shared/contracts/sync-api'
+import { utcNow } from '@shared/utc'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { createLogger } from '../../lib/logger'
@@ -24,7 +25,7 @@ export const filterHandler: SyncItemHandler<FilterSyncPayload> = {
     return ctx.db.transaction((tx): ApplyResult => {
       const existing = tx.select().from(savedFilters).where(eq(savedFilters.id, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
-      const now = new Date().toISOString()
+      const now = utcNow()
 
       if (existing) {
         const resolution = resolveClockConflict(existing.clock, remoteClock)
@@ -103,10 +104,7 @@ export const filterHandler: SyncItemHandler<FilterSyncPayload> = {
   },
 
   markPushSynced(db: DrizzleDb, itemId: string): void {
-    db.update(savedFilters)
-      .set({ syncedAt: new Date().toISOString() })
-      .where(eq(savedFilters.id, itemId))
-      .run()
+    db.update(savedFilters).set({ syncedAt: utcNow() }).where(eq(savedFilters.id, itemId)).run()
   },
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {

@@ -5,10 +5,11 @@
  * @module db/queries/settings
  */
 
-import { eq, asc, sql } from 'drizzle-orm'
+import { eq, asc } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { settings, savedFilters, type SavedFilter, type NewSavedFilter } from '../schema/settings'
 import * as schema from '../schema'
+import { utcNow } from '@shared/utc'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
 
@@ -33,10 +34,10 @@ export function getSetting(db: DrizzleDb, key: string): string | null {
  */
 export function setSetting(db: DrizzleDb, key: string, value: string): void {
   db.insert(settings)
-    .values({ key, value, modifiedAt: sql`datetime('now')` })
+    .values({ key, value, modifiedAt: utcNow() })
     .onConflictDoUpdate({
       target: settings.key,
-      set: { value, modifiedAt: sql`datetime('now')` }
+      set: { value, modifiedAt: utcNow() }
     })
     .run()
 }
