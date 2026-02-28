@@ -53,6 +53,7 @@ export class SyncEngine extends EventEmitter {
   private errorRecovery: ErrorRecoveryHandler
   private fullSyncRunner: FullSyncRunner
   private pullInterval: ReturnType<typeof setInterval> | null = null
+  private networkReconnectAbortController: AbortController | null = null
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
@@ -190,6 +191,8 @@ export class SyncEngine extends EventEmitter {
       this.pullInterval = null
     }
     this.errorRecovery.clearRateLimitState()
+    this.networkReconnectAbortController?.abort()
+    this.networkReconnectAbortController = null
 
     this.ctx.abortController?.abort()
     if (this.ctx.inFlightSync) {
@@ -338,6 +341,8 @@ export class SyncEngine extends EventEmitter {
       'SECURITY_AUDIT: Emergency wipe Phase 1 — zeroing in-memory keys, clearing sync state'
     )
 
+    this.networkReconnectAbortController?.abort()
+    this.networkReconnectAbortController = null
     this.ctx.abortController?.abort()
     this.ctx.deps.ws.disconnect()
 
@@ -445,8 +450,17 @@ export class SyncEngine extends EventEmitter {
 
   private handleNetworkChange = ({ online }: { online: boolean }): void => {
     if (online) {
+      this.networkReconnectAbortController?.abort()
+      const reconnectAbortController = new AbortController()
+      this.networkReconnectAbortController = reconnectAbortController
+
       void (async () => {
-        if (!(await this.isAuthReady())) return
+        const isStaleReconnectAttempt = (): boolean =>
+          reconnectAbortController.signal.aborted ||
+          this.networkReconnectAbortController !== reconnectAbortController ||
+          !this.ctx.deps.network.online
+
+        if (!(await this.isAuthReady()) || isStaleReconnectAttempt()) return
 
         if (this.ctx.abortController && this.ctx.syncing) {
           log.info('Network restored: aborting in-flight sync to run fullSync')
@@ -456,8 +470,10 @@ export class SyncEngine extends EventEmitter {
         if (this.ctx.inFlightSync) {
           await this.ctx.inFlightSync.catch(() => {})
         }
+        if (isStaleReconnectAttempt()) return
 
         const offlineDurationMs = this.ctx.offlineSince ? Date.now() - this.ctx.offlineSince : 0
+        if (isStaleReconnectAttempt()) return
         this.stateManager.setState('idle')
         void this.ctx.deps.ws.connect()
 
@@ -468,8 +484,15 @@ export class SyncEngine extends EventEmitter {
         if (!this.stateManager.isPaused()) {
           this.scheduleSync(() => this.reconnectSync(offlineDurationMs))
         }
-      })()
+      })().finally(() => {
+        if (this.networkReconnectAbortController === reconnectAbortController) {
+          this.networkReconnectAbortController = null
+        }
+      })
     } else {
+      this.networkReconnectAbortController?.abort()
+      this.networkReconnectAbortController = null
+
       if (this.pullInterval) {
         clearInterval(this.pullInterval)
         this.pullInterval = null

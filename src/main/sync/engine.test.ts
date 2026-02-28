@@ -352,6 +352,50 @@ describe('SyncEngine', () => {
     })
   })
 
+  describe('#given rapid offline-online bounce while reconnecting', () => {
+    it('#then ignores stale reconnect attempt and reconnects once', async () => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+      let resolveFirstOnlineToken: ((token: string | null) => void) | null = null
+      const firstOnlineToken = new Promise<string | null>((resolve) => {
+        resolveFirstOnlineToken = resolve
+      })
+      const getAccessToken = vi
+        .fn()
+        .mockResolvedValueOnce('test-token')
+        .mockReturnValueOnce(firstOnlineToken)
+        .mockResolvedValue('test-token')
+
+      const network = createMockNetwork(false)
+      const deps = createMockDeps(testDb, { network, getAccessToken })
+      const engine = new SyncEngine(deps)
+      await engine.start()
+
+      ;(network as unknown as { _online: boolean })._online = true
+      network.emit('status-changed', { online: true })
+      ;(network as unknown as { _online: boolean })._online = false
+      network.emit('status-changed', { online: false })
+      ;(network as unknown as { _online: boolean })._online = true
+      network.emit('status-changed', { online: true })
+
+      await vi.waitFor(() => {
+        expect(deps.ws.connect).toHaveBeenCalledTimes(1)
+      })
+
+      resolveFirstOnlineToken?.('test-token')
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(deps.ws.connect).toHaveBeenCalledTimes(1)
+
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+  })
+
   describe('#given connected engine #when WS receives changes_available', () => {
     it('#then triggers pull', async () => {
       const getServerMock = vi.fn().mockResolvedValue({
