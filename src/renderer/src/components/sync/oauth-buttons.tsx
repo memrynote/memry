@@ -47,7 +47,11 @@ export function OAuthButtons({
         Continue with Google
       </Button>
 
-      {error && <p className="text-sm text-destructive text-center">{error}</p>}
+      {error && (
+        <p className="text-sm text-destructive text-center" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   )
 }

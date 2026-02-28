@@ -61,12 +61,17 @@ export function RecoveryPhraseDisplay({
         </p>
       </div>
 
-      <div className="wizard-card-lift recovery-phrase-card rounded-xl border p-5">
-        <div className="grid grid-cols-4 gap-x-3 gap-y-2">
+      <div
+        className="wizard-card-lift recovery-phrase-card rounded-xl border p-5"
+        aria-label="Recovery phrase words"
+      >
+        <div className="grid grid-cols-4 gap-x-3 gap-y-2" role="list">
           {words.map((word, i) => (
             <div
               key={word}
+              role="listitem"
               className="flex items-baseline gap-1.5 px-2.5 py-1.5 rounded-md bg-background/60"
+              aria-label={`Word ${i + 1}: ${word}`}
             >
               <span className="text-[10px] tabular-nums text-muted-foreground/50 w-4 text-right select-none">
                 {i + 1}
@@ -82,6 +87,7 @@ export function RecoveryPhraseDisplay({
             size="sm"
             onClick={() => void handleCopy()}
             className="gap-1.5 text-muted-foreground h-8"
+            aria-label={copied ? 'Recovery phrase copied' : 'Copy recovery phrase to clipboard'}
           >
             {copied ? (
               <>

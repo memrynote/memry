@@ -79,7 +79,12 @@ function HistoryRow({ entry }: { entry: SyncHistoryEntry }): React.JSX.Element {
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger asChild className="w-full cursor-pointer">
+      <CollapsibleTrigger
+        asChild
+        className="w-full cursor-pointer"
+        aria-expanded={open}
+        aria-label={`${entrySummary(entry)}, show error details`}
+      >
         {row}
       </CollapsibleTrigger>
       <CollapsibleContent>
@@ -103,7 +108,7 @@ export function SyncHistoryPanel(): React.JSX.Element {
             value={filter.type}
             onValueChange={(v) => setFilter({ type: v as HistoryTypeFilter })}
           >
-            <SelectTrigger className="h-7 w-[120px] text-xs">
+            <SelectTrigger className="h-7 w-[120px] text-xs" aria-label="Filter by sync type">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -117,7 +122,7 @@ export function SyncHistoryPanel(): React.JSX.Element {
             value={filter.period}
             onValueChange={(v) => setFilter({ period: v as HistoryPeriodFilter })}
           >
-            <SelectTrigger className="h-7 w-[110px] text-xs">
+            <SelectTrigger className="h-7 w-[110px] text-xs" aria-label="Filter by time period">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -131,8 +136,12 @@ export function SyncHistoryPanel(): React.JSX.Element {
       </div>
 
       {isLoading && entries.length === 0 ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        <div
+          className="flex items-center justify-center py-8"
+          role="status"
+          aria-label="Loading sync history"
+        >
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" aria-hidden="true" />
         </div>
       ) : entries.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">No sync activity yet</p>

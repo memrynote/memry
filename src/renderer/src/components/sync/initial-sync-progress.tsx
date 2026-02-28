@@ -25,10 +25,21 @@ export function InitialSyncProgress({ className }: InitialSyncProgressProps) {
     : undefined
 
   return (
-    <div className={className}>
+    <div
+      className={className}
+      role="status"
+      aria-live="polite"
+      aria-label={`${label}: ${hasTotal ? `${progress.current} of ${progress.total}` : 'in progress'}`}
+    >
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <span className="shrink-0">{label}</span>
-        <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
+        <div
+          className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden"
+          role="progressbar"
+          aria-valuenow={percent ?? undefined}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
           {percent !== undefined ? (
             <div
               className="h-full rounded-full bg-primary transition-all duration-300"

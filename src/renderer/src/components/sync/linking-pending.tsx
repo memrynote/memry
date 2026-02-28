@@ -95,8 +95,15 @@ export function LinkingPending({
   }
 
   return (
-    <div className="wizard-step-enter flex flex-col items-center justify-center py-12 gap-4">
-      <Loader2 className="w-10 h-10 animate-spin text-amber-600 dark:text-amber-400" />
+    <div
+      className="wizard-step-enter flex flex-col items-center justify-center py-12 gap-4"
+      role="status"
+      aria-live="polite"
+    >
+      <Loader2
+        className="w-10 h-10 animate-spin text-amber-600 dark:text-amber-400"
+        aria-hidden="true"
+      />
       <div className="text-center space-y-1">
         <p className="font-display text-lg tracking-tight">Waiting for approval</p>
         <p className="font-serif text-[15px] text-muted-foreground leading-relaxed max-w-xs">

@@ -60,8 +60,14 @@ export function QrLinking({ onCancel }: QrLinkingProps): React.JSX.Element {
           </div>
           <h3 className="font-display text-xl tracking-tight">Link a device</h3>
         </div>
-        <Button variant="ghost" size="icon" onClick={onCancel} className="h-8 w-8">
-          <X className="w-4 h-4" />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onCancel}
+          className="h-8 w-8"
+          aria-label="Cancel device linking"
+        >
+          <X className="w-4 h-4" aria-hidden="true" />
         </Button>
       </div>
 
@@ -87,8 +93,15 @@ function QrDisplay({
 }): React.JSX.Element {
   if (qrState === 'loading') {
     return (
-      <div className="flex flex-col items-center justify-center py-12 gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
+      <div
+        className="flex flex-col items-center justify-center py-12 gap-3"
+        role="status"
+        aria-label="Generating linking code"
+      >
+        <Loader2
+          className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400"
+          aria-hidden="true"
+        />
         <p className="text-sm text-muted-foreground">Generating linking code...</p>
       </div>
     )
@@ -153,8 +166,18 @@ function QrReady({
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="p-4 bg-white rounded-2xl border shadow-sm">
-        <QRCodeSVG value={session.qrData} size={200} level="M" marginSize={0} />
+      <div
+        className="p-4 bg-white rounded-2xl border shadow-sm"
+        aria-label="QR code for device linking"
+      >
+        <QRCodeSVG
+          value={session.qrData}
+          size={200}
+          level="M"
+          marginSize={0}
+          role="img"
+          aria-label="Device linking QR code"
+        />
       </div>
 
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

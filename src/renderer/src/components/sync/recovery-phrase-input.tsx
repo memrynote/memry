@@ -99,7 +99,7 @@ export function RecoveryPhraseInput({
             className="flex w-full rounded-md border border-input bg-background px-3 py-2.5 text-[15px] font-mono leading-relaxed ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600/15 focus-visible:border-amber-600/50 dark:focus-visible:ring-amber-400/10 dark:focus-visible:border-amber-400/40 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
           />
           {error && (
-            <p id="recovery-error" className="text-sm text-destructive">
+            <p id="recovery-error" className="text-sm text-destructive" role="alert">
               {error}
             </p>
           )}

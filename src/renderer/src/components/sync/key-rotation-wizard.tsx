@@ -241,9 +241,21 @@ function RotatingStep({
           : 'Working...'
 
   return (
-    <div className="space-y-5 pt-1">
+    <div
+      className="space-y-5 pt-1"
+      role="status"
+      aria-live="polite"
+      aria-label={`Key rotation: ${phaseLabel} ${pct}%`}
+    >
       <div className="space-y-3">
-        <div className="h-2 rounded-full bg-muted overflow-hidden">
+        <div
+          className="h-2 rounded-full bg-muted overflow-hidden"
+          role="progressbar"
+          aria-valuenow={pct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Key rotation progress"
+        >
           <div
             className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
             style={{ width: `${Math.max(pct, 2)}%` }}
@@ -292,8 +304,14 @@ function ErrorStep({
 }): React.JSX.Element {
   return (
     <div className="space-y-5 pt-1">
-      <div className="flex items-start gap-3 p-3.5 rounded-lg border border-red-500/20 bg-red-500/[0.07]">
-        <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+      <div
+        className="flex items-start gap-3 p-3.5 rounded-lg border border-red-500/20 bg-red-500/[0.07]"
+        role="alert"
+      >
+        <AlertTriangle
+          className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5"
+          aria-hidden="true"
+        />
         <p className="text-[13px] leading-relaxed text-red-800 dark:text-red-300/90">
           {error ?? 'An unknown error occurred during key rotation.'}
         </p>

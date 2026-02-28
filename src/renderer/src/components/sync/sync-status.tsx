@@ -66,11 +66,18 @@ export function SyncStatus({ onOpenSettings }: SyncStatusProps): React.JSX.Eleme
         <SidebarMenuButton
           size="sm"
           tooltip={label}
+          aria-label={`Sync status: ${label}`}
           className={cn('text-muted-foreground', hasIssues && 'text-destructive')}
         >
           <span className="relative">
-            <IconComponent className={cn('size-4', isAnimating && 'animate-spin')} />
-            <span className={cn('absolute -top-0.5 -right-0.5 size-2 rounded-full', dotColor)} />
+            <IconComponent
+              className={cn('size-4', isAnimating && 'animate-spin')}
+              aria-hidden="true"
+            />
+            <span
+              className={cn('absolute -top-0.5 -right-0.5 size-2 rounded-full', dotColor)}
+              aria-hidden="true"
+            />
           </span>
           <span className="text-xs">{label}</span>
         </SidebarMenuButton>
@@ -78,8 +85,8 @@ export function SyncStatus({ onOpenSettings }: SyncStatusProps): React.JSX.Eleme
 
       <PopoverContent side="top" align="start" className="w-72 p-0">
         {/* Status header */}
-        <div className="flex items-center gap-2 px-3 py-2.5">
-          <span className={cn('size-2 shrink-0 rounded-full', dotColor)} />
+        <div className="flex items-center gap-2 px-3 py-2.5" role="status" aria-live="polite">
+          <span className={cn('size-2 shrink-0 rounded-full', dotColor)} aria-hidden="true" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">{label}</p>
             <p className="text-muted-foreground text-xs">Last synced {lastSyncLabel}</p>
@@ -140,7 +147,7 @@ export function SyncStatus({ onOpenSettings }: SyncStatusProps): React.JSX.Eleme
         {error && (
           <>
             <Separator />
-            <div className="bg-destructive/10 px-3 py-2">
+            <div className="bg-destructive/10 px-3 py-2" role="alert">
               <p className="text-destructive text-xs">
                 {sessionExpired ? 'Session expired — sign in again' : error}
               </p>
@@ -177,8 +184,14 @@ export function SyncStatus({ onOpenSettings }: SyncStatusProps): React.JSX.Eleme
             {status === 'paused' ? 'Resume' : 'Pause'}
           </Button>
           <div className="flex-1" />
-          <Button variant="ghost" size="icon-sm" onClick={onOpenSettings} className="size-7">
-            <Settings className="size-3.5" />
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={onOpenSettings}
+            className="size-7"
+            aria-label="Open sync settings"
+          >
+            <Settings className="size-3.5" aria-hidden="true" />
           </Button>
         </div>
       </PopoverContent>

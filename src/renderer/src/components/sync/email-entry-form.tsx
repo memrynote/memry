@@ -64,7 +64,7 @@ export function EmailEntryForm({
           className="h-11 text-[15px] focus-visible:ring-amber-600/15 focus-visible:border-amber-600/50 dark:focus-visible:ring-amber-400/10 dark:focus-visible:border-amber-400/40"
         />
         {displayError && (
-          <p id="email-error" className="text-sm text-destructive">
+          <p id="email-error" className="text-sm text-destructive" role="alert">
             {displayError}
           </p>
         )}

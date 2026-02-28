@@ -152,8 +152,12 @@ export function DeviceList(): React.JSX.Element {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-        <Loader2 className="w-4 h-4 animate-spin" />
+      <div
+        className="flex items-center gap-2 py-4 text-sm text-muted-foreground"
+        role="status"
+        aria-label="Loading devices"
+      >
+        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
         Loading devices...
       </div>
     )
@@ -233,6 +237,12 @@ export function DeviceList(): React.JSX.Element {
             size="sm"
             className="w-full text-xs text-muted-foreground hover:text-foreground"
             onClick={() => setExpanded((prev) => !prev)}
+            aria-expanded={expanded}
+            aria-label={
+              expanded
+                ? 'Show fewer devices'
+                : `Show ${hiddenCount} more ${hiddenCount === 1 ? 'device' : 'devices'}`
+            }
           >
             {expanded ? (
               <>

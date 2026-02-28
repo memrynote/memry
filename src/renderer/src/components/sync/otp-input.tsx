@@ -114,6 +114,7 @@ export function OtpInput({
           onChange={handleChange}
           disabled={isVerifying}
           autoFocus
+          aria-label="6-digit verification code"
         >
           <InputOTPGroup className="gap-1.5">
             {[0, 1, 2].map((i) => (
@@ -144,13 +145,21 @@ export function OtpInput({
       </div>
 
       {isVerifying && (
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" />
+        <div
+          className="flex items-center justify-center gap-2 text-sm text-muted-foreground"
+          role="status"
+          aria-label="Verifying code"
+        >
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
           Verifying...
         </div>
       )}
 
-      {error && <p className="text-sm text-destructive text-center">{error}</p>}
+      {error && (
+        <p className="text-sm text-destructive text-center" role="alert">
+          {error}
+        </p>
+      )}
 
       <div className="text-center">
         <Button

@@ -35,6 +35,8 @@ export const DownloadProgress = memo(function DownloadProgress({
         isActive && 'border-border bg-muted/30',
         className
       )}
+      role="status"
+      aria-label={`Download ${fileName}: ${STATUS_LABELS[status] ?? status} ${progress}%`}
     >
       {isComplete ? (
         <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
@@ -47,7 +49,14 @@ export const DownloadProgress = memo(function DownloadProgress({
       <div className="flex-1 min-w-0">
         <p className="truncate text-xs font-medium">{fileName}</p>
         <div className="mt-1 flex items-center gap-2">
-          <div className="h-1 flex-1 rounded-full bg-muted overflow-hidden">
+          <div
+            className="h-1 flex-1 rounded-full bg-muted overflow-hidden"
+            role="progressbar"
+            aria-valuenow={progress}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Download progress: ${progress}%`}
+          >
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-300',
