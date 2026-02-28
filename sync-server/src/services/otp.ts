@@ -8,6 +8,13 @@ const EMAIL_WINDOW_SECONDS = 600
 
 const MAX_UNBIASED = 4_294_000_000
 
+const requireOtpHmacKey = (hmacKey: string): string => {
+  if (typeof hmacKey !== 'string' || hmacKey.length === 0) {
+    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'OTP HMAC key is not configured', 500)
+  }
+  return hmacKey
+}
+
 export const generateOtp = (): string => {
   const array = new Uint32Array(1)
   do {
@@ -18,9 +25,10 @@ export const generateOtp = (): string => {
 
 export const hmacOtp = async (code: string, hmacKey: string): Promise<string> => {
   const encoder = new TextEncoder()
+  const keyMaterial = requireOtpHmacKey(hmacKey)
   const key = await crypto.subtle.importKey(
     'raw',
-    encoder.encode(hmacKey),
+    encoder.encode(keyMaterial),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']

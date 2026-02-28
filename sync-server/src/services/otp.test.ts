@@ -158,6 +158,13 @@ describe('hmacOtp', () => {
     // #then
     expect(hash1).not.toBe(hash2)
   })
+
+  it('should throw INTERNAL_ERROR when the HMAC key is missing', async () => {
+    // #when / #then
+    await expect(hmacOtp('123456', '')).rejects.toMatchObject({
+      code: ErrorCodes.INTERNAL_ERROR
+    })
+  })
 })
 
 // ============================================================================
