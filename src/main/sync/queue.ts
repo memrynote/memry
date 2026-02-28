@@ -93,46 +93,13 @@ export class SyncQueueManager {
   }
 
   dequeue(batchSize: number): Array<typeof syncQueue.$inferSelect> {
-    let items = this.db
+    return this.db
       .select()
       .from(syncQueue)
       .where(lt(syncQueue.attempts, DEFAULT_MAX_ATTEMPTS))
       .orderBy(desc(syncQueue.priority), asc(syncQueue.createdAt))
       .limit(batchSize)
       .all()
-
-    if (items.length === 0) {
-      const pendingCount = this.getPendingCount()
-      if (pendingCount > 0) {
-        const allRows = this.db.select().from(syncQueue).all()
-        log.error('dequeue/getPendingCount mismatch', {
-          dequeueResult: 0,
-          pendingCount,
-          totalRows: allRows.length,
-          rows: allRows.map((r) => ({
-            id: r.id.slice(0, 8),
-            type: r.type,
-            itemId: r.itemId.slice(0, 8),
-            attempts: r.attempts,
-            createdAt: r.createdAt
-          }))
-        })
-
-        const fallbackItems = this.db
-          .select()
-          .from(syncQueue)
-          .where(lt(syncQueue.attempts, DEFAULT_MAX_ATTEMPTS))
-          .limit(batchSize)
-          .all()
-
-        if (fallbackItems.length > 0) {
-          log.warn('dequeue: fallback query recovered items', { count: fallbackItems.length })
-          items = fallbackItems
-        }
-      }
-    }
-
-    return items
   }
 
   peek(count = 10): Array<typeof syncQueue.$inferSelect> {

@@ -3,13 +3,17 @@ import { tasks } from '@shared/db/schema/tasks'
 import { projects } from '@shared/db/schema/projects'
 import { inboxItems } from '@shared/db/schema/inbox'
 import { savedFilters } from '@shared/db/schema/settings'
-import type { VectorClock, FieldClocks } from '@shared/contracts/sync-api'
+import {
+  OFFLINE_CLOCK_DEVICE_ID,
+  type VectorClock,
+  type FieldClocks
+} from '@shared/contracts/sync-api'
 import { increment } from './vector-clock'
 import { initAllFieldClocks, TASK_SYNCABLE_FIELDS, PROJECT_SYNCABLE_FIELDS } from './field-merge'
 import { createLogger } from '../lib/logger'
 import type { DrizzleDb } from '../database/client'
 
-export const OFFLINE_DEVICE_KEY = '_offline'
+export const OFFLINE_DEVICE_KEY = OFFLINE_CLOCK_DEVICE_ID
 const log = createLogger('OfflineClock')
 
 function hasOfflineTick(clock: VectorClock | null | undefined): boolean {

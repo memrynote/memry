@@ -13,6 +13,7 @@ const RECONNECT_JITTER_MS = 500
 const PING_INTERVAL_MS = 25_000
 const HTTP_UNAUTHORIZED = 401
 const HTTP_UPGRADE_REQUIRED = 426
+const MAX_WEBSOCKET_MANAGER_LISTENERS = 50
 
 const WebSocketMessageSchema = z.object({
   type: z.enum([
@@ -53,6 +54,7 @@ export class WebSocketManager extends EventEmitter {
 
   constructor(deps: WebSocketManagerDeps) {
     super()
+    this.setMaxListeners(MAX_WEBSOCKET_MANAGER_LISTENERS)
     this.deps = deps
     this.on('error', (err: Error) => {
       log.warn('WebSocket error event', { message: err.message })

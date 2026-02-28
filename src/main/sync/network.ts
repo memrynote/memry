@@ -22,6 +22,7 @@ function createElectronDeps(): NetworkMonitorDeps {
 
 const POLL_INTERVAL_MS = 5000
 const DEFAULT_DEBOUNCE_MS = 2000
+const MAX_NETWORK_MONITOR_LISTENERS = 50
 
 export class NetworkMonitor extends EventEmitter {
   private _online: boolean
@@ -34,6 +35,7 @@ export class NetworkMonitor extends EventEmitter {
 
   constructor(debounceMs?: number, deps?: NetworkMonitorDeps) {
     super()
+    this.setMaxListeners(MAX_NETWORK_MONITOR_LISTENERS)
     this.deps = deps ?? createElectronDeps()
     this.debounceMs = debounceMs ?? DEFAULT_DEBOUNCE_MS
     this._online = this.deps.getIsOnline()

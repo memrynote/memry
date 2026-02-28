@@ -1,4 +1,8 @@
-import type { VectorClock, FieldClocks } from '@shared/contracts/sync-api'
+import {
+  OFFLINE_CLOCK_DEVICE_ID,
+  type VectorClock,
+  type FieldClocks
+} from '@shared/contracts/sync-api'
 import { merge as mergeClock } from './vector-clock'
 import { compare as compareClock } from './vector-clock'
 
@@ -81,7 +85,8 @@ export function mergeFields<T>(
     } else if (localTotal > remoteTotal) {
       merged[field] = localVal
     } else {
-      const localHasOffline = '_offline' in localFC && !('_offline' in remoteFC)
+      const localHasOffline =
+        OFFLINE_CLOCK_DEVICE_ID in localFC && !(OFFLINE_CLOCK_DEVICE_ID in remoteFC)
       if (localHasOffline && valsDiffer) {
         merged[field] = localVal
       } else {

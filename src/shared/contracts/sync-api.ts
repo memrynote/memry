@@ -37,8 +37,14 @@ export type EncryptableItemType = (typeof ENCRYPTABLE_ITEM_TYPES)[number]
 export type SyncItemType = (typeof SYNC_ITEM_TYPES)[number]
 export type SyncOperation = (typeof SYNC_OPERATIONS)[number]
 
+/**
+ * Logical clock ticks keyed by device id.
+ * `_offline` is a reserved pseudo-device key used for offline-local edits
+ * before ticks are rebound to a concrete device id.
+ */
 export type VectorClock = Record<string, number>
 export type FieldClocks = Record<string, VectorClock>
+export const OFFLINE_CLOCK_DEVICE_ID = '_offline' as const
 
 export interface SyncItem {
   id: string
