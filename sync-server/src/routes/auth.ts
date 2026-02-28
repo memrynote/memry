@@ -453,13 +453,14 @@ auth.get('/recovery', recoveryIpRateLimit, async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Valid email is required', 400)
   }
 
-  const user = await getUserByEmail(c.env.DB, parsed.data.email)
+  const [user, dummy] = await Promise.all([
+    getUserByEmail(c.env.DB, parsed.data.email),
+    generateDummyRecoveryData(parsed.data.email, c.env.JWT_PRIVATE_KEY)
+  ])
 
   if (user?.kdf_salt && user.key_verifier) {
     return c.json({ kdfSalt: user.kdf_salt, keyVerifier: user.key_verifier })
   }
-
-  const dummy = await generateDummyRecoveryData(parsed.data.email, c.env.JWT_PRIVATE_KEY)
   return c.json(dummy)
 })
 
