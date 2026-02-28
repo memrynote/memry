@@ -153,7 +153,7 @@ function configureCsp(): void {
   ]
 
   if (is.dev) {
-    policy[1] = "script-src 'self' 'unsafe-eval'"
+    policy[1] = "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
     policy[5] =
       "connect-src 'self' memry-file: https://*.memry.app wss://*.memry.app ws://localhost:* http://localhost:*"
   }

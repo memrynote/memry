@@ -5,6 +5,18 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import type { Plugin } from 'vite'
 
+function devCsp(): Plugin {
+  return {
+    name: 'dev-csp',
+    transformIndexHtml(html) {
+      if (process.env.NODE_ENV !== 'production') {
+        return html.replace("script-src 'self'", "script-src 'self' 'unsafe-eval' 'unsafe-inline'")
+      }
+      return html
+    }
+  }
+}
+
 function copyMigrations(): Plugin {
   return {
     name: 'copy-drizzle-migrations',
@@ -69,6 +81,6 @@ export default defineConfig({
         '@shared': resolve('src/shared')
       }
     },
-    plugins: [react(), tailwindcss()]
+    plugins: [devCsp(), react(), tailwindcss()]
   }
 })
