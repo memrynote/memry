@@ -26,6 +26,17 @@ import { SYNC_STATE_KEYS, YIELD_EVERY_N_ITEMS, yieldToEventLoop } from './sync-c
 
 const log = createLogger('PullCoordinator')
 
+interface PullRunState {
+  timer: SyncTimer
+  startTime: number
+  pulledCount: number
+  totalConflictsResolved: number
+  processedIds: Set<string>
+  crdtNoteIds: string[]
+  token: string
+  vaultKey: Uint8Array
+}
+
 export class PullCoordinator {
   private ctx: SyncContext
   private stateManager: SyncStateManager
@@ -58,152 +69,32 @@ export class PullCoordinator {
     const release = await this.ctx.acquireLock()
     if (!release) return
 
-    let released = false
-    const cleanup = (): void => {
-      if (released) return
-      released = true
-      this.ctx.releaseLock()
-      release()
-    }
-
-    const timer = new SyncTimer()
-    const startTime = Date.now()
-    let pulledCount = 0
-    const processedIds = new Set<string>()
-    const crdtNoteIds: string[] = []
+    const cleanup = this.createPullCleanup(release)
     let vaultKey: Uint8Array | null = null
     this.deviceKeyCache.clear()
 
-    let totalConflictsResolved = 0
-
     try {
+      const pullStartedAt = Date.now()
       this.stateManager.setState('syncing')
       this.ctx.abortController = new AbortController()
 
-      const token = await this.ctx.deps.getAccessToken()
-      if (!token) return
+      const credentials = await this.getPullCredentials()
+      if (!credentials) return
+      vaultKey = credentials.vaultKey
 
-      vaultKey = await this.ctx.deps.getVaultKey()
-      if (!vaultKey) return
-
+      const runState = this.createPullRunState(
+        credentials.token,
+        credentials.vaultKey,
+        pullStartedAt
+      )
       try {
-        let cursor = this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)
-        let hasMore = true
-
-        const fetchChangesPage = (pageCursor: string | null | undefined) =>
-          withRetry(
-            () => {
-              const cp = pageCursor ? `&cursor=${pageCursor}` : ''
-              return getFromServer<ChangesResponse>(
-                `/sync/changes?limit=${this.ctx.options.pullPageLimit}${cp}`,
-                token
-              )
-            },
-            {
-              signal: this.ctx.abortController!.signal,
-              isOnline: () => this.ctx.deps.network.online
-            }
-          )
-
-        type ChangesRetryResult = Awaited<ReturnType<typeof fetchChangesPage>>
-        let changesResult: ChangesRetryResult
-        let prefetchedNext: Promise<ChangesRetryResult> | null = null
-
-        while (hasMore) {
-          if (this.ctx.abortController!.signal.aborted) break
-
-          if (prefetchedNext) {
-            changesResult = await prefetchedNext
-            prefetchedNext = null
-          } else {
-            changesResult = await fetchChangesPage(cursor)
-          }
-
-          const changes = changesResult.value
-          const itemIds = Array.from(
-            new Set([...changes.items.map((item) => item.id), ...changes.deleted])
-          )
-
-          if (itemIds.length > 0) {
-            const pageResult = await this.processPage(
-              itemIds,
-              token,
-              vaultKey,
-              timer,
-              processedIds,
-              crdtNoteIds
-            )
-            pulledCount += pageResult.applied
-            totalConflictsResolved += pageResult.conflicts
-
-            if (crdtNoteIds.length > 0 && this.ctx.deps.crdtProvider) {
-              timer.startPhase('crdt-batch')
-              await this.crdtSync.applyCrdtBatch(crdtNoteIds, token, vaultKey)
-              timer.endPhase(crdtNoteIds.length)
-              crdtNoteIds.length = 0
-            }
-
-            if (pageResult.allCryptoFailed) break
-          }
-
-          if (this.ctx.fullSyncActive) {
-            const estimatedTotal = changes.hasMore
-              ? pulledCount + this.ctx.options.pullPageLimit
-              : pulledCount
-            this.ctx.deps.emitToRenderer(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
-              phase: 'notes',
-              processedItems: pulledCount,
-              totalItems: estimatedTotal
-            } satisfies InitialSyncProgressEvent)
-          }
-
-          this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(changes.nextCursor))
-          cursor = String(changes.nextCursor)
-          hasMore = changes.hasMore
-
-          if (hasMore && !this.ctx.abortController?.signal.aborted) {
-            prefetchedNext = fetchChangesPage(cursor)
-            prefetchedNext.catch(() => {})
-          }
-        }
-
-        log.info('Pull timing', timer.finish())
-        this.stateManager.recordHistory('pull', pulledCount, Date.now() - startTime)
-        this.stateManager.updateLastSyncAt()
-        this.ctx.rateLimitConsecutive = 0
-
-        if (totalConflictsResolved > 0) {
-          log.info('Pull: re-enqueued merged items for push-back', {
-            conflicts: totalConflictsResolved
-          })
-          this.ctx.requestPush()
-        }
+        await this.pullChanges(runState)
+        this.finalizePullSuccess(runState)
       } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          log.debug('Pull aborted (likely network change)')
-          return
-        }
-        const errorInfo = classifyError(error)
-        this.ctx.lastErrorInfo = errorInfo
-        this.ctx.lastError = errorInfo.message
-        if (
-          errorInfo.category === 'device_revoked' ||
-          errorInfo.category === 'auth_expired' ||
-          errorInfo.category === 'network_offline' ||
-          error instanceof RateLimitError
-        ) {
-          throw error
-        }
-        this.stateManager.setState('error')
-        this.stateManager.recordHistory('error', 0, Date.now() - startTime, errorInfo.message)
+        this.handlePullError(error, runState.startTime)
       }
     } finally {
-      this.deviceKeyCache.clear()
-      try {
-        if (vaultKey) secureCleanup(vaultKey)
-      } finally {
-        cleanup()
-      }
+      this.cleanupAfterPull(vaultKey, cleanup)
     }
   }
 
@@ -237,6 +128,177 @@ export class PullCoordinator {
   clearCaches(): void {
     this.deviceKeyCache.clear()
     this.corruptTracker.clear()
+  }
+
+  private createPullCleanup(release: () => void): () => void {
+    let released = false
+    return () => {
+      if (released) return
+      released = true
+      this.ctx.releaseLock()
+      release()
+    }
+  }
+
+  private async getPullCredentials(): Promise<{ token: string; vaultKey: Uint8Array } | null> {
+    const token = await this.ctx.deps.getAccessToken()
+    if (!token) return null
+
+    const vaultKey = await this.ctx.deps.getVaultKey()
+    if (!vaultKey) return null
+
+    return { token, vaultKey }
+  }
+
+  private createPullRunState(token: string, vaultKey: Uint8Array, startTime: number): PullRunState {
+    return {
+      timer: new SyncTimer(),
+      startTime,
+      pulledCount: 0,
+      totalConflictsResolved: 0,
+      processedIds: new Set<string>(),
+      crdtNoteIds: [],
+      token,
+      vaultKey
+    }
+  }
+
+  private async pullChanges(runState: PullRunState): Promise<void> {
+    let cursor = this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)
+    let hasMore = true
+
+    type ChangesRetryResult = Awaited<ReturnType<typeof this.fetchChangesPage>>
+    let changesResult: ChangesRetryResult
+    let prefetchedNext: Promise<ChangesRetryResult> | null = null
+
+    while (hasMore) {
+      if (this.ctx.abortController!.signal.aborted) break
+
+      if (prefetchedNext) {
+        changesResult = await prefetchedNext
+        prefetchedNext = null
+      } else {
+        changesResult = await this.fetchChangesPage(runState.token, cursor)
+      }
+
+      const changes = changesResult.value
+      const shouldStop = await this.pullChangesPage(changes, runState)
+      this.emitInitialSyncProgress(changes, runState.pulledCount)
+
+      this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(changes.nextCursor))
+      cursor = String(changes.nextCursor)
+      hasMore = changes.hasMore
+
+      if (shouldStop) break
+
+      if (hasMore && !this.ctx.abortController?.signal.aborted) {
+        prefetchedNext = this.fetchChangesPage(runState.token, cursor)
+        prefetchedNext.catch(() => {})
+      }
+    }
+  }
+
+  private async fetchChangesPage(
+    token: string,
+    pageCursor: string | null | undefined
+  ): ReturnType<typeof withRetry<ChangesResponse>> {
+    return withRetry(
+      () => {
+        const cp = pageCursor ? `&cursor=${pageCursor}` : ''
+        return getFromServer<ChangesResponse>(
+          `/sync/changes?limit=${this.ctx.options.pullPageLimit}${cp}`,
+          token
+        )
+      },
+      {
+        signal: this.ctx.abortController!.signal,
+        isOnline: () => this.ctx.deps.network.online
+      }
+    )
+  }
+
+  private async pullChangesPage(changes: ChangesResponse, runState: PullRunState): Promise<boolean> {
+    const itemIds = Array.from(new Set([...changes.items.map((item) => item.id), ...changes.deleted]))
+    if (itemIds.length === 0) return false
+
+    const pageResult = await this.processPage(
+      itemIds,
+      runState.token,
+      runState.vaultKey,
+      runState.timer,
+      runState.processedIds,
+      runState.crdtNoteIds
+    )
+    runState.pulledCount += pageResult.applied
+    runState.totalConflictsResolved += pageResult.conflicts
+    await this.applyCrdtBatch(runState)
+
+    return pageResult.allCryptoFailed
+  }
+
+  private async applyCrdtBatch(runState: PullRunState): Promise<void> {
+    if (runState.crdtNoteIds.length === 0 || !this.ctx.deps.crdtProvider) return
+
+    runState.timer.startPhase('crdt-batch')
+    await this.crdtSync.applyCrdtBatch(runState.crdtNoteIds, runState.token, runState.vaultKey)
+    runState.timer.endPhase(runState.crdtNoteIds.length)
+    runState.crdtNoteIds.length = 0
+  }
+
+  private emitInitialSyncProgress(changes: ChangesResponse, pulledCount: number): void {
+    if (!this.ctx.fullSyncActive) return
+
+    const estimatedTotal = changes.hasMore ? pulledCount + this.ctx.options.pullPageLimit : pulledCount
+    this.ctx.deps.emitToRenderer(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
+      phase: 'notes',
+      processedItems: pulledCount,
+      totalItems: estimatedTotal
+    } satisfies InitialSyncProgressEvent)
+  }
+
+  private finalizePullSuccess(runState: PullRunState): void {
+    log.info('Pull timing', runState.timer.finish())
+    this.stateManager.recordHistory('pull', runState.pulledCount, Date.now() - runState.startTime)
+    this.stateManager.updateLastSyncAt()
+    this.ctx.rateLimitConsecutive = 0
+
+    if (runState.totalConflictsResolved > 0) {
+      log.info('Pull: re-enqueued merged items for push-back', {
+        conflicts: runState.totalConflictsResolved
+      })
+      this.ctx.requestPush()
+    }
+  }
+
+  private handlePullError(error: unknown, startedAt: number): void {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      log.debug('Pull aborted (likely network change)')
+      return
+    }
+
+    const errorInfo = classifyError(error)
+    this.ctx.lastErrorInfo = errorInfo
+    this.ctx.lastError = errorInfo.message
+    if (
+      errorInfo.category === 'device_revoked' ||
+      errorInfo.category === 'auth_expired' ||
+      errorInfo.category === 'network_offline' ||
+      error instanceof RateLimitError
+    ) {
+      throw error
+    }
+
+    this.stateManager.setState('error')
+    this.stateManager.recordHistory('error', 0, Date.now() - startedAt, errorInfo.message)
+  }
+
+  private cleanupAfterPull(vaultKey: Uint8Array | null, cleanup: () => void): void {
+    this.deviceKeyCache.clear()
+    try {
+      if (vaultKey) secureCleanup(vaultKey)
+    } finally {
+      cleanup()
+    }
   }
 
   private async processPage(
