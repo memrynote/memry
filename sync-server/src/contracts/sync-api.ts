@@ -38,6 +38,7 @@ export type SyncItemType = (typeof SYNC_ITEM_TYPES)[number]
 export type SyncOperation = (typeof SYNC_OPERATIONS)[number]
 
 export type VectorClock = Record<string, number>
+export type FieldClocks = Record<string, VectorClock>
 
 export interface SyncItem {
   id: string
@@ -91,6 +92,7 @@ export interface PushItem {
   signerDeviceId: string
   clock?: VectorClock
   stateVector?: string
+  deletedAt?: number
 }
 
 export interface PushRequest {
@@ -152,6 +154,7 @@ export interface DeviceSyncState {
 // ============================================================================
 
 export const VectorClockSchema = z.record(z.string(), z.number().int().nonnegative())
+export const FieldClocksSchema = z.record(z.string(), VectorClockSchema)
 
 export const EncryptedItemPayloadSchema = z.object({
   encryptedKey: z.string().min(1),
@@ -274,6 +277,47 @@ export const DeviceSyncStateSchema = z.object({
 })
 
 // ============================================================================
+// Pull Response (validated client-side)
+// ============================================================================
+
+export const PullItemResponseSchema = z.object({
+  id: z.string().min(1),
+  type: z.enum(SYNC_ITEM_TYPES),
+  operation: z.enum(SYNC_OPERATIONS),
+  cryptoVersion: z.number().int().min(1).optional(),
+  signature: z.string().min(1),
+  signerDeviceId: z.string().min(1),
+  deletedAt: z.number().int().min(0).optional(),
+  clock: VectorClockSchema.optional(),
+  stateVector: z.string().optional(),
+  blob: EncryptedItemPayloadSchema
+})
+
+export const PullResponseSchema = z.object({
+  items: z.array(PullItemResponseSchema)
+})
+
+export type PullItemResponse = z.infer<typeof PullItemResponseSchema>
+
+// ============================================================================
+// Device Keys (key distribution for multi-device signature verification)
+// ============================================================================
+
+export const DeviceKeySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  platform: z.string(),
+  signingPublicKey: z.string(),
+  revokedAt: z.number().nullable()
+})
+
+export const DeviceKeysResponseSchema = z.object({
+  devices: z.array(DeviceKeySchema)
+})
+
+export type DeviceKeysResponse = z.infer<typeof DeviceKeysResponseSchema>
+
+// ============================================================================
 // Cursor & Signature Metadata (T041g)
 // ============================================================================
 
@@ -319,6 +363,6 @@ export type ChangesResponseInput = z.infer<typeof ChangesResponseSchema>
 export type SyncStatusInput = z.infer<typeof SyncStatusSchema>
 export type ConflictResponseInput = z.infer<typeof ConflictResponseSchema>
 export type DeviceSyncStateInput = z.infer<typeof DeviceSyncStateSchema>
-export type CursorPositionInput = z.infer<typeof CursorPositionSchema>
 export type PullRequestInput = z.infer<typeof PullRequestSchema>
+export type CursorPositionInput = z.infer<typeof CursorPositionSchema>
 export type SignatureMetadataInput = z.infer<typeof SignatureMetadataSchema>
