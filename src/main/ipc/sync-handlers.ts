@@ -278,6 +278,10 @@ const registerDevice = async (
   )
   const response = DeviceRegisterResponseSchema.parse(raw)
 
+  if (!response.accessToken || !response.refreshToken || !response.deviceId) {
+    throw new Error(response.error ?? 'Device registration failed: missing tokens')
+  }
+
   await storeToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN, response.accessToken)
   await storeToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN, response.refreshToken)
   scheduleTokenRefresh(ACCESS_TOKEN_EXPIRY_SECONDS)
@@ -300,9 +304,10 @@ export const persistKeysAndRegisterDevice = async (
 ): Promise<string> => {
   await storeKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY, signingSecretKey)
 
-  let deviceResponse: DeviceRegisterResponse
+  let deviceResponse: DeviceRegisterResponse & { deviceId: string }
   try {
-    deviceResponse = await registerDevice(setupToken, signingSecretKey)
+    const raw = await registerDevice(setupToken, signingSecretKey)
+    deviceResponse = raw as DeviceRegisterResponse & { deviceId: string }
   } catch (err) {
     await deleteKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => {})
     throw err
@@ -606,13 +611,15 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
 
       store.set('sync', { ...store.get('sync'), email: input.email })
 
-      await storeToken(KEYCHAIN_ENTRIES.SETUP_TOKEN, serverResponse.setupToken)
+      if (serverResponse.setupToken) {
+        await storeToken(KEYCHAIN_ENTRIES.SETUP_TOKEN, serverResponse.setupToken)
+      }
 
       return {
         success: true,
-        isNewUser: serverResponse.isNewUser,
-        needsSetup: serverResponse.needsSetup,
-        needsRecoveryInput: !serverResponse.needsSetup
+        isNewUser: serverResponse.isNewUser ?? false,
+        needsSetup: serverResponse.needsSetup ?? false,
+        needsRecoveryInput: !(serverResponse.needsSetup ?? false)
       }
     })
   )
@@ -743,6 +750,10 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
         redirectUri: session.redirectUri
       })
       const serverResponse = OAuthCallbackResponseSchema.parse(raw)
+
+      if (!serverResponse.setupToken) {
+        throw new Error('OAuth callback missing setupToken')
+      }
 
       await storeToken(KEYCHAIN_ENTRIES.SETUP_TOKEN, serverResponse.setupToken)
 

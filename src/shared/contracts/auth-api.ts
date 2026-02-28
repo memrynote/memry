@@ -6,7 +6,8 @@ export const RequestOtpRequestSchema = z.object({
 
 export const VerifyOtpRequestSchema = z.object({
   email: z.string().email(),
-  code: z.string().regex(/^\d{6}$/)
+  code: z.string().regex(/^\d{6}$/),
+  sessionNonce: z.string().min(1).optional()
 })
 
 export const ResendOtpRequestSchema = z.object({
@@ -20,7 +21,8 @@ export const DeviceRegisterRequestSchema = z.object({
   appVersion: z.string().min(1),
   authPublicKey: z.string().min(1),
   challengeSignature: z.string().min(1),
-  challengeNonce: z.string().min(1)
+  challengeNonce: z.string().min(1),
+  sessionNonce: z.string().min(1).optional()
 })
 
 export const FirstDeviceSetupRequestSchema = z.object({
@@ -34,7 +36,8 @@ export const RefreshTokenRequestSchema = z.object({
 
 export const OAuthCallbackSchema = z.object({
   code: z.string().min(1),
-  state: z.string().min(1)
+  state: z.string().min(1),
+  sessionNonce: z.string().min(1).optional()
 })
 
 export const RequestOtpResponseSchema = z.object({
@@ -45,23 +48,27 @@ export const RequestOtpResponseSchema = z.object({
 
 export const VerifyOtpResponseSchema = z.object({
   success: z.boolean(),
-  isNewUser: z.boolean(),
-  needsSetup: z.boolean(),
-  setupToken: z.string()
+  accessToken: z.string().optional(),
+  refreshToken: z.string().optional(),
+  setupToken: z.string().optional(),
+  userId: z.string().optional(),
+  isNewUser: z.boolean().optional(),
+  needsSetup: z.boolean().optional()
 })
 
 export const DeviceRegisterResponseSchema = z.object({
   success: z.boolean(),
-  deviceId: z.string(),
-  accessToken: z.string(),
-  refreshToken: z.string()
+  deviceId: z.string().optional(),
+  accessToken: z.string().optional(),
+  refreshToken: z.string().optional(),
+  error: z.string().optional()
 })
 
 export const OAuthCallbackResponseSchema = z.object({
   success: z.boolean(),
-  isNewUser: z.boolean(),
-  needsSetup: z.boolean(),
-  setupToken: z.string()
+  isNewUser: z.boolean().optional(),
+  needsSetup: z.boolean().optional(),
+  setupToken: z.string().optional()
 })
 
 export const RecoveryDataResponseSchema = z.object({
