@@ -147,7 +147,8 @@ const createEnv = () => ({
   RESEND_API_KEY: 'mock-resend-key',
   GOOGLE_CLIENT_ID: 'mock-google-client-id',
   GOOGLE_CLIENT_SECRET: 'mock-google-client-secret',
-  GOOGLE_REDIRECT_URI: 'http://localhost/callback'
+  GOOGLE_REDIRECT_URI: 'http://localhost/callback',
+  RECOVERY_DUMMY_SECRET: 'mock-dummy-recovery-secret'
 })
 
 const jsonPost = (path: string, body: Record<string, unknown>) => ({
