@@ -334,5 +334,6 @@ export async function performKeyRotation(
   } finally {
     if (oldVaultKey) secureCleanup(oldVaultKey)
     if (signingKeys) secureCleanup(signingKeys.secretKey)
+    secureCleanup(newVaultKey, newMasterKey)
   }
 }
