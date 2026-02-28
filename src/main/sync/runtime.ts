@@ -89,6 +89,10 @@ export function getCrdtQueue(): CrdtUpdateQueue | null {
   return runtime?.crdtQueue ?? null
 }
 
+export function getNetworkMonitor(): NetworkMonitor | null {
+  return runtime?.network ?? null
+}
+
 async function seedExistingCrdtDocs(
   crdtProvider: ReturnType<typeof getCrdtProvider>,
   signal?: AbortSignal

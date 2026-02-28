@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { EventEmitter } from 'node:events'
 import { UploadQueue, type UploadFn } from './upload-queue'
-import { RateLimitError } from './http-client'
+import { NetworkError, RateLimitError } from './http-client'
+import type { NetworkMonitor } from './network'
 
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({
@@ -16,6 +18,18 @@ function makeUploadFn(delayMs = 10): UploadFn {
     await new Promise((r) => setTimeout(r, delayMs))
     return { attachmentId: `att-${noteId}`, sessionId: `sess-${noteId}`, manifest: {} as never }
   })
+}
+
+function createMockNetworkMonitor(initialOnline = true): NetworkMonitor & EventEmitter {
+  const emitter = new EventEmitter()
+  let _online = initialOnline
+  Object.defineProperty(emitter, 'online', { get: () => _online, configurable: true })
+  const setOnline = (v: boolean): void => {
+    _online = v
+    emitter.emit('status-changed', { online: v })
+  }
+  ;(emitter as unknown as { setOnline: typeof setOnline }).setOnline = setOnline
+  return emitter as unknown as NetworkMonitor & EventEmitter
 }
 
 describe('UploadQueue', () => {
@@ -134,6 +148,91 @@ describe('UploadQueue', () => {
 
     await q.enqueue('note-1', '/path/1', onProgress)
 
-    expect(mockFn).toHaveBeenCalledWith('note-1', '/path/1', onProgress)
+    expect(mockFn).toHaveBeenCalledWith(
+      'note-1',
+      '/path/1',
+      onProgress,
+      expect.objectContaining({})
+    )
+  })
+
+  describe('network awareness', () => {
+    it('re-queues on NetworkError and resolves on retry', async () => {
+      // #given
+      let callCount = 0
+      const flakyNetFn: UploadFn = vi.fn(async (noteId) => {
+        callCount++
+        if (callCount === 1) throw new NetworkError('offline')
+        await new Promise((r) => setTimeout(r, 5))
+        return { attachmentId: `att-${noteId}`, sessionId: `sess-${noteId}`, manifest: {} as never }
+      })
+
+      const monitor = createMockNetworkMonitor(true)
+      const q = new UploadQueue(flakyNetFn, monitor)
+
+      // #when
+      const result = await q.enqueue('n1', '/p1')
+
+      // #then
+      expect(result.attachmentId).toBe('att-n1')
+      expect(callCount).toBe(2)
+    })
+
+    it('drains queue when network restored event fires', async () => {
+      // #given
+      const monitor = createMockNetworkMonitor(false)
+      const fn = makeUploadFn(5)
+      const q = new UploadQueue(fn, monitor)
+
+      q.enqueue('n1', '/p1')
+      await new Promise((r) => setTimeout(r, 20))
+
+      // #when — simulate network restored
+      ;(monitor as unknown as { setOnline: (v: boolean) => void }).setOnline(true)
+      await new Promise((r) => setTimeout(r, 50))
+
+      // #then
+      expect(fn).toHaveBeenCalled()
+    })
+
+    it('does not trigger drain on offline event', async () => {
+      // #given
+      const monitor = createMockNetworkMonitor(true)
+      const fn = makeUploadFn(5)
+      const q = new UploadQueue(fn, monitor)
+
+      // drain spy — after construction, drain has been idle
+      const drainSpy = vi.spyOn(q as unknown as { drain: () => void }, 'drain')
+
+      // #when — fire offline event
+      ;(monitor as unknown as { setOnline: (v: boolean) => void }).setOnline(false)
+      await new Promise((r) => setTimeout(r, 20))
+
+      // #then — drain should not have been called by the offline event
+      // (it may have been called during constructor setup, but not from the event)
+      const callsAfterEvent = drainSpy.mock.calls.length
+      ;(monitor as unknown as { setOnline: (v: boolean) => void }).setOnline(false)
+      await new Promise((r) => setTimeout(r, 20))
+      expect(drainSpy.mock.calls.length).toBe(callsAfterEvent)
+    })
+
+    it('dispose() stops listening without nuking other listeners', async () => {
+      // #given
+      const monitor = createMockNetworkMonitor(true)
+      const fn = makeUploadFn(5)
+      const q = new UploadQueue(fn, monitor)
+
+      const otherListener = vi.fn()
+      monitor.on('status-changed', otherListener)
+
+      // #when
+      q.dispose()
+
+      // #then — queue's listener removed, other listener survives
+      expect(q.pending).toBe(0)
+      expect(monitor.listenerCount('status-changed')).toBe(1)
+      ;(monitor as unknown as { setOnline: (v: boolean) => void }).setOnline(false)
+      expect(otherListener).toHaveBeenCalledWith({ online: false })
+    })
   })
 })

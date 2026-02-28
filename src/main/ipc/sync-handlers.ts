@@ -84,7 +84,7 @@ import { deleteFromServer, getFromServer, patchToServer, postToServer } from '..
 
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler } from './validate'
-import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
+import { getNetworkMonitor, getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import { teardownSession } from '../sync/session-teardown'
 import {
   getValidAccessToken,
@@ -493,7 +493,10 @@ const getOrCreateUploadQueue = (): UploadQueue | null => {
   if (uploadQueue) return uploadQueue
   const service = getOrCreateAttachmentService()
   if (!service) return null
-  uploadQueue = new UploadQueue(service.uploadAttachment.bind(service))
+  uploadQueue = new UploadQueue(
+    service.uploadAttachment.bind(service),
+    getNetworkMonitor() ?? undefined
+  )
   return uploadQueue
 }
 
@@ -565,7 +568,7 @@ export function clearInMemoryAuthState(): void {
   stopOtpClipboardDetection()
   shutdownLoopbackServer()
   if (uploadQueue) {
-    uploadQueue.clear()
+    uploadQueue.dispose()
     uploadQueue = null
   }
   attachmentService = null
@@ -1220,7 +1223,7 @@ export function unregisterSyncHandlers(): void {
   pendingRecoveryPhrase = null
   oauthSessions.clear()
   shutdownLoopbackServer()
-  uploadQueue?.clear()
+  uploadQueue?.dispose()
   uploadQueue = null
   attachmentService = null
 

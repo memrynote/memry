@@ -389,4 +389,181 @@ describe('AttachmentSyncService', () => {
       expect(service.getUploadProgress('session-x')).toBeNull()
     })
   })
+
+  describe('network retry behavior', () => {
+    it('should retry uploadChunk on transient NetworkError', async () => {
+      const testFile = path.join(tmpDir, 'retry.txt')
+      await writeFile(testFile, Buffer.alloc(1024, 'R'))
+
+      let putCallCount = 0
+      const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+        const method = init?.method ?? 'GET'
+
+        if (method === 'POST' && urlStr.includes('/initiate')) {
+          return new Response(
+            JSON.stringify({ sessionId: 'session-retry', expiresAt: Date.now() + 3600000 }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+        if (method === 'GET' && urlStr.includes('/upload/session-retry')) {
+          return new Response(
+            JSON.stringify({
+              sessionId: 'session-retry',
+              attachmentId: '',
+              totalSize: 0,
+              chunkCount: 1,
+              uploadedChunks: [],
+              expiresAt: 0
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+        if (method === 'HEAD' && urlStr.includes('/chunks/')) {
+          return new Response(null, { status: 404 })
+        }
+        if (method === 'PUT' && urlStr.includes('/chunk/')) {
+          putCallCount++
+          if (putCallCount <= 2) {
+            throw new TypeError('Failed to fetch')
+          }
+          return new Response(JSON.stringify({ success: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+        if (method === 'POST' && urlStr.includes('/complete')) {
+          return new Response(JSON.stringify({ success: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+        return new Response(null, { status: 404 })
+      })
+
+      const deps = createTestDeps(fetchFn)
+      const service = new AttachmentSyncService(deps)
+
+      // #when
+      const result = await service.uploadAttachment('note-1', testFile)
+
+      // #then
+      expect(result.attachmentId).toBeTruthy()
+      expect(putCallCount).toBeGreaterThanOrEqual(3)
+    })
+
+    it('should emit waiting_network phase during retry', async () => {
+      const testFile = path.join(tmpDir, 'waiting.txt')
+      await writeFile(testFile, Buffer.alloc(512, 'W'))
+
+      let putCallCount = 0
+      const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+        const method = init?.method ?? 'GET'
+
+        if (method === 'POST' && urlStr.includes('/initiate')) {
+          return new Response(
+            JSON.stringify({ sessionId: 'session-wait', expiresAt: Date.now() + 3600000 }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+        if (method === 'GET' && urlStr.includes('/upload/session-wait')) {
+          return new Response(
+            JSON.stringify({
+              sessionId: 'session-wait',
+              attachmentId: '',
+              totalSize: 0,
+              chunkCount: 1,
+              uploadedChunks: [],
+              expiresAt: 0
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+        if (method === 'HEAD' && urlStr.includes('/chunks/')) {
+          return new Response(null, { status: 404 })
+        }
+        if (method === 'PUT' && urlStr.includes('/chunk/')) {
+          putCallCount++
+          if (putCallCount === 1) {
+            throw new TypeError('Failed to fetch')
+          }
+          return new Response(JSON.stringify({ success: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+        if (method === 'POST' && urlStr.includes('/complete')) {
+          return new Response(JSON.stringify({ success: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+        return new Response(null, { status: 404 })
+      })
+
+      const deps = createTestDeps(fetchFn)
+      const service = new AttachmentSyncService(deps)
+
+      // #given — collect progress phases
+      const phases: string[] = []
+      service.setProgressCallback((p) => phases.push(p.phase))
+
+      // #when
+      await service.uploadAttachment('note-1', testFile)
+
+      // #then — waiting_network phase should appear before uploading resumes
+      expect(phases).toContain('waiting_network')
+      expect(phases).toContain('uploading')
+    })
+
+    it('should respect AbortSignal during upload', async () => {
+      const testFile = path.join(tmpDir, 'abort.txt')
+      await writeFile(testFile, Buffer.alloc(1024, 'A'))
+
+      const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+        const method = init?.method ?? 'GET'
+
+        if (method === 'POST' && urlStr.includes('/initiate')) {
+          return new Response(
+            JSON.stringify({ sessionId: 'session-abort', expiresAt: Date.now() + 3600000 }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+        if (method === 'GET' && urlStr.includes('/upload/session-abort')) {
+          return new Response(
+            JSON.stringify({
+              sessionId: 'session-abort',
+              attachmentId: '',
+              totalSize: 0,
+              chunkCount: 1,
+              uploadedChunks: [],
+              expiresAt: 0
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+        if (method === 'HEAD' && urlStr.includes('/chunks/')) {
+          return new Response(null, { status: 404 })
+        }
+        if (method === 'PUT' && urlStr.includes('/chunk/')) {
+          throw new TypeError('Failed to fetch')
+        }
+        return new Response(null, { status: 404 })
+      })
+
+      const deps = createTestDeps(fetchFn)
+      const service = new AttachmentSyncService(deps)
+
+      // #given — pre-aborted signal
+      const controller = new AbortController()
+      controller.abort()
+
+      // #when + #then
+      await expect(
+        service.uploadAttachment('note-1', testFile, undefined, { signal: controller.signal })
+      ).rejects.toThrow('aborted')
+    })
+  })
 })
