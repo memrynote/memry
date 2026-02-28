@@ -78,7 +78,8 @@ app.use('*', async (c, next) => {
     'JWT_PUBLIC_KEY',
     'JWT_PRIVATE_KEY',
     'RESEND_API_KEY',
-    'OTP_HMAC_KEY'
+    'OTP_HMAC_KEY',
+    'RECOVERY_DUMMY_SECRET'
   ] as const
 
   for (const key of requiredSecrets) {

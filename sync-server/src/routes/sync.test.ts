@@ -102,7 +102,8 @@ const createEnv = () => ({
   RESEND_API_KEY: 'rk',
   GOOGLE_CLIENT_ID: 'gc',
   GOOGLE_CLIENT_SECRET: 'gs',
-  GOOGLE_REDIRECT_URI: 'http://localhost/callback'
+  GOOGLE_REDIRECT_URI: 'http://localhost/callback',
+  RECOVERY_DUMMY_SECRET: 'mock-dummy-secret'
 })
 
 const executionCtx = {

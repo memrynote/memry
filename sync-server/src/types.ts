@@ -13,6 +13,7 @@ export type Bindings = {
   GOOGLE_CLIENT_SECRET: string
   GOOGLE_REDIRECT_URI: string
   MIN_APP_VERSION: string
+  RECOVERY_DUMMY_SECRET: string
 }
 
 export type AppContext = {
