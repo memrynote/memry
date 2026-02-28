@@ -4,6 +4,7 @@ export {
   computeKeyConfirm,
   computeLinkingProof,
   computeSharedSecret,
+  computeVerificationCode,
   deriveKey,
   deriveLinkingKeys,
   deriveMasterKey,

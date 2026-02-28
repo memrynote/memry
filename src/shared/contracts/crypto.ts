@@ -54,7 +54,8 @@ export const X25519_PARAMS = {
 // libsodium's crypto_kdf_derive_from_key, not traditional HKDF-SHA256.
 export const LINKING_HKDF_CONTEXTS = {
   ENCRYPTION: 'memry-linking-enc-v1',
-  MAC: 'memry-linking-mac-v1'
+  MAC: 'memry-linking-mac-v1',
+  SAS: 'memry-linking-sas-v1'
 } as const
 
 // ============================================================================

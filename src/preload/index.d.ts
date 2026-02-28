@@ -2124,6 +2124,7 @@ interface SyncLinkingClientAPI {
   linkViaQr: (input: { qrData: string; provider?: string; oauthToken?: string }) => Promise<{
     success: boolean
     status?: 'waiting_approval' | 'approved' | 'error'
+    verificationCode?: string
     error?: string
   }>
   linkViaRecovery: (input: { recoveryPhrase: string }) => Promise<{
@@ -2133,6 +2134,10 @@ interface SyncLinkingClientAPI {
   }>
   approveLinking: (input: { sessionId: string }) => Promise<{
     success: boolean
+    error?: string
+  }>
+  getLinkingSas: (input: { sessionId: string }) => Promise<{
+    verificationCode?: string
     error?: string
   }>
   completeLinkingQr: (input: { sessionId: string }) => Promise<{

@@ -13,6 +13,7 @@ import {
   computeKeyConfirm,
   computeLinkingProof,
   computeSharedSecret,
+  computeVerificationCode,
   constantTimeEqual,
   decryptMasterKeyFromLinking,
   deriveLinkingKeys,
@@ -84,11 +85,11 @@ export const initiateDeviceLinking = async (
   const keyPair = await generateX25519KeyPair()
   const ephemeralPublicKeyB64 = sodium.to_base64(keyPair.publicKey, sodium.base64_variants.ORIGINAL)
 
-  const response = await postToServer<{ sessionId: string; expiresAt: number }>(
-    '/auth/linking/initiate',
-    { ephemeralPublicKey: ephemeralPublicKeyB64 },
-    accessToken
-  )
+  const response = await postToServer<{
+    sessionId: string
+    expiresAt: number
+    linkingSecret: string
+  }>('/auth/linking/initiate', { ephemeralPublicKey: ephemeralPublicKeyB64 }, accessToken)
 
   pendingSession = {
     sessionId: response.sessionId,
@@ -99,6 +100,7 @@ export const initiateDeviceLinking = async (
   const qrData = JSON.stringify({
     sessionId: response.sessionId,
     ephemeralPublicKey: ephemeralPublicKeyB64,
+    linkingSecret: response.linkingSecret,
     expiresAt: response.expiresAt
   })
 
@@ -114,14 +116,24 @@ export const initiateDeviceLinking = async (
 export const linkViaQr = async (qrData: string, setupToken: string): Promise<LinkViaQrResult> => {
   clearPendingLinkCompletion()
 
-  let parsed: { sessionId: string; ephemeralPublicKey: string; expiresAt: number }
+  let parsed: {
+    sessionId: string
+    ephemeralPublicKey: string
+    linkingSecret?: string
+    expiresAt: number
+  }
   try {
     parsed = JSON.parse(qrData) as typeof parsed
   } catch {
     return { success: false, error: 'Invalid QR code data' }
   }
 
-  if (!parsed.sessionId || !parsed.ephemeralPublicKey || !parsed.expiresAt) {
+  if (
+    !parsed.sessionId ||
+    !parsed.ephemeralPublicKey ||
+    !parsed.expiresAt ||
+    !parsed.linkingSecret
+  ) {
     return { success: false, error: 'Malformed QR code data' }
   }
 
@@ -150,9 +162,12 @@ export const linkViaQr = async (qrData: string, setupToken: string): Promise<Lin
     sessionId: parsed.sessionId,
     newDevicePublicKey: newDevicePublicKeyB64,
     newDeviceConfirm: proofB64,
+    linkingSecret: parsed.linkingSecret,
     deviceName: os.hostname(),
     devicePlatform: PLATFORM_MAP[process.platform] || 'linux'
   })
+
+  const verificationCode = await computeVerificationCode(sharedSecret)
 
   pendingLinkCompletion = {
     sessionId: parsed.sessionId,
@@ -166,7 +181,7 @@ export const linkViaQr = async (qrData: string, setupToken: string): Promise<Lin
 
   log.info('QR scanned, awaiting approval', { sessionId: parsed.sessionId })
 
-  return { success: true, status: 'waiting_approval' }
+  return { success: true, status: 'waiting_approval', verificationCode }
 }
 
 // ============================================================================
@@ -373,4 +388,45 @@ export const approveDeviceLinking = async (
     clearPendingSession()
     throw err
   }
+}
+
+// ============================================================================
+// Flow 5: Existing device retrieves SAS verification code
+// ============================================================================
+
+export const getLinkingVerificationCode = async (
+  sessionId: string,
+  accessToken: string
+): Promise<{ verificationCode?: string; error?: string }> => {
+  if (!pendingSession || pendingSession.sessionId !== sessionId) {
+    return { error: 'No pending linking session found' }
+  }
+
+  if (isExpired(pendingSession.expiresAt)) {
+    return { error: 'Linking session has expired' }
+  }
+
+  const session = await getFromServer<{
+    sessionId: string
+    status: string
+    newDevicePublicKey: string | null
+    expiresAt: number
+  }>(`/auth/linking/session/${sessionId}`, accessToken)
+
+  if (!session.newDevicePublicKey) {
+    return { error: 'Session has not been scanned yet' }
+  }
+
+  const newDevicePublicKey = sodium.from_base64(
+    session.newDevicePublicKey,
+    sodium.base64_variants.ORIGINAL
+  )
+  const sharedSecret = await computeSharedSecret(
+    pendingSession.ephemeralPrivateKey,
+    newDevicePublicKey
+  )
+  const verificationCode = await computeVerificationCode(sharedSecret)
+  secureCleanup(sharedSecret)
+
+  return { verificationCode }
 }

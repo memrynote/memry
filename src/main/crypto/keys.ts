@@ -22,7 +22,8 @@ const KDF_CONTEXT_MAP: Record<string, { ctx: string; id: number }> = {
   'memry-verify-key-v1': { ctx: 'memryvrf', id: 3 },
   'memry-key-verifier-v1': { ctx: 'memrykve', id: 4 },
   [LINKING_HKDF_CONTEXTS.ENCRYPTION]: { ctx: 'memrylnk', id: 5 },
-  [LINKING_HKDF_CONTEXTS.MAC]: { ctx: 'memrymac', id: 6 }
+  [LINKING_HKDF_CONTEXTS.MAC]: { ctx: 'memrymac', id: 6 },
+  [LINKING_HKDF_CONTEXTS.SAS]: { ctx: 'memrysas', id: 7 }
 }
 
 export const deriveKey = async (
@@ -167,6 +168,18 @@ export const deriveLinkingKeys = async (
   const encKey = await deriveKey(sharedSecret, LINKING_HKDF_CONTEXTS.ENCRYPTION, 32)
   const macKey = await deriveKey(sharedSecret, LINKING_HKDF_CONTEXTS.MAC, 32)
   return { encKey, macKey }
+}
+
+export const computeVerificationCode = async (sharedSecret: Uint8Array): Promise<string> => {
+  await sodium.ready
+
+  const sasKey = await deriveKey(sharedSecret, LINKING_HKDF_CONTEXTS.SAS, 32)
+  const hash = sodium.crypto_generichash(4, sasKey)
+  sodium.memzero(sasKey)
+
+  const uint32 = (hash[0] << 24) | (hash[1] << 16) | (hash[2] << 8) | hash[3]
+  const code = (uint32 >>> 0) % 1000000
+  return code.toString().padStart(6, '0')
 }
 
 // ============================================================================

@@ -26,6 +26,7 @@ import type { DeviceRegisterResponse } from '@shared/contracts/auth-api'
 import {
   ApproveLinkingSchema,
   CompleteLinkingQrSchema,
+  GetLinkingSasSchema,
   LinkViaQrSchema,
   LinkViaRecoverySchema,
   RemoveDeviceSchema,
@@ -51,6 +52,7 @@ import { markWritebackIgnored } from '../sync/crdt-writeback'
 import {
   approveDeviceLinking,
   completeLinkingQr,
+  getLinkingVerificationCode,
   initiateDeviceLinking,
   linkViaQr
 } from '../sync/linking-service'
@@ -869,6 +871,15 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     })
   )
 
+  ipcMain.handle(
+    SYNC_CHANNELS.GET_LINKING_SAS,
+    createValidatedHandler(GetLinkingSasSchema, async (input) => {
+      const accessToken = await getValidAccessToken()
+      if (!accessToken) throw new Error('Not authenticated')
+      return getLinkingVerificationCode(input.sessionId, accessToken)
+    })
+  )
+
   ipcMain.handle(SYNC_CHANNELS.GET_DEVICES, async () => {
     if (!isDatabaseInitialized()) return { devices: [], email: undefined }
     const db = getDatabase()
@@ -1267,6 +1278,7 @@ export function unregisterSyncHandlers(): void {
   ipcMain.removeHandler(SYNC_CHANNELS.COMPLETE_LINKING_QR)
   ipcMain.removeHandler(SYNC_CHANNELS.LINK_VIA_RECOVERY)
   ipcMain.removeHandler(SYNC_CHANNELS.APPROVE_LINKING)
+  ipcMain.removeHandler(SYNC_CHANNELS.GET_LINKING_SAS)
 
   ipcMain.removeHandler(SYNC_CHANNELS.GET_DEVICES)
   ipcMain.removeHandler(SYNC_CHANNELS.REMOVE_DEVICE)

@@ -1392,6 +1392,8 @@ const api = {
       ipcRenderer.invoke(SYNC_CHANNELS.LINK_VIA_RECOVERY, input),
     approveLinking: (input: { sessionId: string }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.APPROVE_LINKING, input),
+    getLinkingSas: (input: { sessionId: string }) =>
+      ipcRenderer.invoke(SYNC_CHANNELS.GET_LINKING_SAS, input),
     completeLinkingQr: (input: { sessionId: string }) =>
       ipcRenderer.invoke(SYNC_CHANNELS.COMPLETE_LINKING_QR, input)
   },
