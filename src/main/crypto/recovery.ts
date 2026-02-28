@@ -10,10 +10,7 @@ import { deriveMasterKey } from './keys'
 export const generateRecoveryPhrase = async (): Promise<RecoveryPhraseResult> => {
   const phrase = bip39.generateMnemonic(256)
   const seedBuffer = await bip39.mnemonicToSeed(phrase)
-  const seed = new Uint8Array(seedBuffer.length)
-  seed.set(new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength))
-  const original = new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength)
-  sodium.memzero(original)
+  const seed = new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength)
 
   return { phrase, seed }
 }
@@ -24,11 +21,7 @@ export const validateRecoveryPhrase = (phrase: string): boolean => {
 
 export const phraseToSeed = async (phrase: string): Promise<Uint8Array> => {
   const seedBuffer = await bip39.mnemonicToSeed(phrase)
-  const seed = new Uint8Array(seedBuffer.length)
-  seed.set(new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength))
-  const original = new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength)
-  sodium.memzero(original)
-  return seed
+  return new Uint8Array(seedBuffer.buffer, seedBuffer.byteOffset, seedBuffer.byteLength)
 }
 
 export interface RecoveredKeyMaterial {
