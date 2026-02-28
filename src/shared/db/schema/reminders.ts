@@ -115,12 +115,12 @@ export const reminders = sqliteTable(
     /** When the reminder was created */
     createdAt: text('created_at')
       .notNull()
-      .default(sql`(datetime('now'))`),
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 
     /** When the reminder was last modified */
     modifiedAt: text('modified_at')
       .notNull()
-      .default(sql`(datetime('now'))`)
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
   },
   (table) => [
     /** Index for finding reminders by target */

@@ -71,7 +71,7 @@ export const bookmarks = sqliteTable(
     /** When the bookmark was created */
     createdAt: text('created_at')
       .notNull()
-      .default(sql`(datetime('now'))`)
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
   },
   (table) => [
     // Prevent duplicate bookmarks of the same item

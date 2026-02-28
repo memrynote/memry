@@ -35,7 +35,7 @@ export const noteCache = sqliteTable(
     modifiedAt: text('modified_at').notNull(),
     indexedAt: text('indexed_at')
       .notNull()
-      .default(sql`(datetime('now'))`)
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
   },
   (table) => [
     index('idx_note_cache_path').on(table.path),
@@ -113,7 +113,7 @@ export const propertyDefinitions = sqliteTable('property_definitions', {
   color: text('color'),
   createdAt: text('created_at')
     .notNull()
-    .default(sql`(datetime('now'))`)
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
 })
 
 // ============================================================================
@@ -164,7 +164,7 @@ export const noteSnapshots = sqliteTable(
     reason: text('reason').notNull(), // 'auto' | 'significant'
     createdAt: text('created_at')
       .notNull()
-      .default(sql`(datetime('now'))`)
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
   },
   (table) => [
     index('idx_note_snapshots_note_id').on(table.noteId),

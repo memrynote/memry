@@ -2,6 +2,7 @@ import * as Y from 'yjs'
 import { createLogger } from '../lib/logger'
 import { getCrdtProvider } from './crdt-provider'
 import { yDocToMarkdown } from './blocknote-converter'
+import { utcNow } from '@shared/utc'
 import {
   atomicWrite,
   safeRead,
@@ -394,8 +395,8 @@ function mergeFrontmatter(
     return {
       id: noteId,
       title: authorityTitle || yjsTitle,
-      created: (meta.get('date') as string) || new Date().toISOString(),
-      modified: new Date().toISOString(),
+      created: (meta.get('date') as string) || utcNow(),
+      modified: utcNow(),
       tags: yjsTags.length > 0 ? yjsTags : undefined
     }
   }
@@ -403,7 +404,7 @@ function mergeFrontmatter(
   return {
     ...existing,
     title: authorityTitle || existing.title || yjsTitle,
-    modified: new Date().toISOString(),
+    modified: utcNow(),
     tags: yjsTags.length > 0 ? yjsTags : existing.tags
   }
 }
@@ -420,8 +421,8 @@ function mergeJournalFrontmatter(
     return {
       id: noteId,
       date,
-      created: new Date().toISOString(),
-      modified: new Date().toISOString(),
+      created: utcNow(),
+      modified: utcNow(),
       tags: yjsTags.length > 0 ? yjsTags : undefined
     }
   }
@@ -429,7 +430,7 @@ function mergeJournalFrontmatter(
   return {
     ...existing,
     date,
-    modified: new Date().toISOString(),
+    modified: utcNow(),
     tags: yjsTags.length > 0 ? yjsTags : existing.tags
   }
 }

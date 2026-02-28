@@ -16,7 +16,7 @@ export const statuses = sqliteTable(
     isDone: integer('is_done', { mode: 'boolean' }).notNull().default(false),
     createdAt: text('created_at')
       .notNull()
-      .default(sql`(datetime('now'))`)
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
   },
   (table) => [index('idx_statuses_project').on(table.projectId)]
 )
