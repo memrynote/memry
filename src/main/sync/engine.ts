@@ -1,10 +1,7 @@
 import { EventEmitter } from 'events'
 import { createLogger } from '../lib/logger'
 import { EVENT_CHANNELS } from '@shared/contracts/ipc-events'
-import type {
-  CertificatePinFailedEvent,
-  QuarantinedItemInfo
-} from '@shared/contracts/ipc-events'
+import type { CertificatePinFailedEvent, QuarantinedItemInfo } from '@shared/contracts/ipc-events'
 import type {
   GetSyncStatusResult,
   PauseSyncResult,
@@ -19,11 +16,7 @@ import { classifyError } from './sync-errors'
 import { syncState } from '@shared/db/schema/sync-state'
 import { ItemApplier } from './apply-item'
 import { FullSyncRunner } from './engine/full-sync-runner'
-import type {
-  SyncContext,
-  SyncEngineDeps,
-  SyncEngineOptions
-} from './engine/sync-context'
+import type { SyncContext, SyncEngineDeps, SyncEngineOptions } from './engine/sync-context'
 import {
   PUSH_BATCH_SIZE,
   PULL_PAGE_LIMIT,
@@ -40,6 +33,7 @@ import { ErrorRecoveryHandler } from './engine/error-recovery-handler'
 export type { SyncEngineDeps, SyncEngineOptions }
 
 const log = createLogger('SyncEngine')
+const MAX_SYNC_ENGINE_LISTENERS = 50
 
 export class SyncEngine extends EventEmitter {
   private static activeInstance: SyncEngine | null = null
@@ -57,6 +51,7 @@ export class SyncEngine extends EventEmitter {
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
+    this.setMaxListeners(MAX_SYNC_ENGINE_LISTENERS)
     if (SyncEngine.activeInstance && SyncEngine.activeInstance.ctx.syncing) {
       throw new Error('SyncEngine instance already active — call stop() before creating a new one')
     }
@@ -85,7 +80,9 @@ export class SyncEngine extends EventEmitter {
       requestPush: () => this.requestPush()
     }
 
-    this.stateManager = new SyncStateManager(this.ctx, (event, ...args) => this.emit(event, ...args))
+    this.stateManager = new SyncStateManager(this.ctx, (event, ...args) =>
+      this.emit(event, ...args)
+    )
     this.quarantine = new QuarantineManager(this.ctx)
     this.pullCoordinator = new PullCoordinator(
       this.ctx,
@@ -94,9 +91,8 @@ export class SyncEngine extends EventEmitter {
       null as unknown as CrdtSyncCoordinator,
       null as unknown as PushCoordinator
     )
-    this.crdtSync = new CrdtSyncCoordinator(
-      this.ctx,
-      (id) => this.pullCoordinator.resolveDeviceKey(id)
+    this.crdtSync = new CrdtSyncCoordinator(this.ctx, (id) =>
+      this.pullCoordinator.resolveDeviceKey(id)
     )
     this.pushCoordinator = new PushCoordinator(this.ctx, this.stateManager)
     // Wire up the circular dependencies now that all collaborators exist
@@ -104,10 +100,8 @@ export class SyncEngine extends EventEmitter {
     ;(this.pullCoordinator as unknown as { pushCoordinator: PushCoordinator }).pushCoordinator =
       this.pushCoordinator
 
-    this.errorRecovery = new ErrorRecoveryHandler(
-      this.ctx,
-      this.stateManager,
-      () => this.scheduleSync(() => this.fullSync())
+    this.errorRecovery = new ErrorRecoveryHandler(this.ctx, this.stateManager, () =>
+      this.scheduleSync(() => this.fullSync())
     )
     this.fullSyncRunner = new FullSyncRunner(
       this.ctx,
@@ -337,9 +331,7 @@ export class SyncEngine extends EventEmitter {
   }
 
   async performEmergencyWipe(): Promise<void> {
-    log.warn(
-      'SECURITY_AUDIT: Emergency wipe Phase 1 — zeroing in-memory keys, clearing sync state'
-    )
+    log.warn('SECURITY_AUDIT: Emergency wipe Phase 1 — zeroing in-memory keys, clearing sync state')
 
     this.networkReconnectAbortController?.abort()
     this.networkReconnectAbortController = null

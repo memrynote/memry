@@ -3,6 +3,7 @@ import sodium from 'libsodium-wrappers-sumo'
 import { encryptItemForPush } from './encrypt'
 import { decryptSingleItem } from './decrypt-item'
 import { secureCleanup } from '../crypto/primitives'
+import { createLogger } from '../lib/logger'
 import type {
   MainToWorkerMessage,
   WorkerToMainMessage,
@@ -17,6 +18,7 @@ if (!parentPort) {
 }
 
 const port = parentPort
+const log = createLogger('SyncWorker')
 let shuttingDown = false
 
 async function init(): Promise<void> {
@@ -127,6 +129,7 @@ function handleDecryptBatch(msg: Extract<MainToWorkerMessage, { type: 'decrypt-b
 }
 
 init().catch((err) => {
-  console.error('Sync worker init failed:', err)
+  const message = err instanceof Error ? err.message : String(err)
+  log.error('Sync worker init failed', { message })
   process.exit(1)
 })

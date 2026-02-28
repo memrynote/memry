@@ -1,7 +1,5 @@
 import fs from 'fs'
 import path from 'path'
-import { isNull, and, sql } from 'drizzle-orm'
-import { noteCache } from '@shared/db/schema/notes-cache'
 import { NoteSyncPayloadSchema, type NoteSyncPayload } from '@shared/contracts/sync-payloads'
 import { utcNow } from '@shared/utc'
 import {
@@ -14,7 +12,6 @@ import {
 import { NotesChannels } from '@shared/ipc-channels'
 import type { VectorClock } from '@shared/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
-import { increment } from '../vector-clock'
 import { extractFolderFromPath } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
 import { attachmentEvents } from '../attachment-events'
@@ -39,21 +36,20 @@ import {
   getNoteTags,
   setNoteTags,
   updateNoteCache,
-  getNoteProperties,
   setNoteProperties,
-  getPropertyType,
-  type PropertyValue
+  getPropertyType
 } from '@shared/db/queries/notes'
 import { createLogger } from '../../lib/logger'
 import { resolveClockConflict } from './types'
-import { getPinnedTagsForNote, applyPinnedTags } from './note-pin-helpers'
+import { applyPinnedTags } from './note-pin-helpers'
+import {
+  buildNotePushPayload,
+  fetchLocalNote,
+  seedUnclockedNotes
+} from './note-handler-sync-helpers'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('NoteHandler')
-
-function propsToRecord(props: PropertyValue[]): Record<string, unknown> {
-  return Object.fromEntries(props.map((p) => [p.name, p.value]))
-}
 
 async function removeEmptyParents(dir: string, stopAt: string): Promise<void> {
   let current = dir
@@ -437,10 +433,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
   },
 
   fetchLocal(_db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    const indexDb = getIndexDatabase()
-    const cached = getNoteCacheById(indexDb, itemId)
-    if (!cached) return undefined
-    return cached as unknown as Record<string, unknown>
+    return fetchLocalNote(itemId)
   },
 
   buildPushPayload(
@@ -449,99 +442,10 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     _deviceId: string,
     operation: string
   ): string | null {
-    const indexDb = getIndexDatabase()
-    const cached = getNoteCacheById(indexDb, itemId)
-    if (!cached) return null
-    if (cached.localOnly) return null
-
-    if (cached.fileType && isBinaryFileType(cached.fileType)) {
-      const folderPath = extractFolderFromPath(cached.path)
-      return JSON.stringify({
-        title: cached.title,
-        emoji: cached.emoji,
-        fileType: cached.fileType,
-        mimeType: cached.mimeType,
-        attachmentId: cached.attachmentId,
-        folderPath,
-        clock: cached.clock ?? {},
-        createdAt: cached.createdAt,
-        modifiedAt: cached.modifiedAt
-      })
-    }
-
-    let content: string | null = null
-    let tags: string[] = []
-    const absolutePath = toAbsolutePath(cached.path)
-    try {
-      const raw = fs.readFileSync(absolutePath, 'utf-8')
-      const parsed = parseNote(raw)
-      content = operation === 'create' ? parsed.content : null
-      tags = parsed.frontmatter.tags ?? []
-    } catch {
-      log.warn('Could not read note file for push payload', { noteId: cached.id })
-    }
-
-    const folderPath = extractFolderFromPath(cached.path)
-    const properties = propsToRecord(getNoteProperties(indexDb, itemId))
-    const pinnedTags = getPinnedTagsForNote(indexDb, itemId)
-
-    return JSON.stringify({
-      title: cached.title,
-      content,
-      tags,
-      properties,
-      pinnedTags,
-      emoji: cached.emoji,
-      fileType: cached.fileType,
-      folderPath,
-      clock: cached.clock ?? {},
-      createdAt: cached.createdAt,
-      modifiedAt: cached.modifiedAt
-    })
+    return buildNotePushPayload(itemId, operation)
   },
 
   seedUnclocked(_db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
-    let indexDb: ReturnType<typeof getIndexDatabase>
-    try {
-      indexDb = getIndexDatabase()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      log.warn('Skipping unclocked note seeding: index database unavailable', { message })
-      return 0
-    }
-
-    const items = indexDb
-      .select()
-      .from(noteCache)
-      .where(
-        and(isNull(noteCache.clock), isNull(noteCache.date), sql`${noteCache.localOnly} IS NOT 1`)
-      )
-      .all()
-
-    for (const item of items) {
-      const clock = increment({}, deviceId)
-      const folderPath = extractFolderFromPath(item.path)
-      const properties = propsToRecord(getNoteProperties(indexDb, item.id))
-      const pinnedTags = getPinnedTagsForNote(indexDb, item.id)
-      updateNoteCache(indexDb, item.id, { clock })
-      queue.enqueue({
-        type: 'note',
-        itemId: item.id,
-        operation: 'create',
-        payload: JSON.stringify({
-          title: item.title,
-          emoji: item.emoji,
-          fileType: item.fileType,
-          folderPath,
-          ...(Object.keys(properties).length > 0 ? { properties } : {}),
-          ...(pinnedTags.length > 0 ? { pinnedTags } : {}),
-          clock,
-          createdAt: item.createdAt,
-          modifiedAt: item.modifiedAt
-        }),
-        priority: 0
-      })
-    }
-    return items.length
+    return seedUnclockedNotes(deviceId, queue)
   }
 }
