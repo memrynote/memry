@@ -1,5 +1,6 @@
 import { createLogger } from '../lib/logger'
-import { RateLimitError } from './http-client'
+import { NetworkError, RateLimitError } from './http-client'
+import type { NetworkMonitor } from './network'
 import type { ProgressCallback, UploadResult } from './attachments'
 
 const log = createLogger('UploadQueue')
@@ -9,7 +10,8 @@ const MAX_CONCURRENT_UPLOADS = 3
 export type UploadFn = (
   noteId: string,
   filePath: string,
-  onProgress?: ProgressCallback
+  onProgress?: ProgressCallback,
+  options?: { signal?: AbortSignal; isOnline?: () => boolean }
 ) => Promise<UploadResult>
 
 interface QueueItem {
@@ -26,9 +28,22 @@ export class UploadQueue {
   private backoffUntil = 0
   private draining = false
   private readonly uploadFn: UploadFn
+  private readonly network?: NetworkMonitor
+  private readonly boundHandler?: (ev: { online: boolean }) => void
 
-  constructor(uploadFn: UploadFn) {
+  constructor(uploadFn: UploadFn, network?: NetworkMonitor) {
     this.uploadFn = uploadFn
+    this.network = network
+
+    if (network) {
+      this.boundHandler = (ev: { online: boolean }) => {
+        if (ev.online && this.queue.length > 0) {
+          log.info('network restored, draining upload queue', { pending: this.queue.length })
+          this.drain()
+        }
+      }
+      network.on('status-changed', this.boundHandler)
+    }
   }
 
   enqueue(noteId: string, filePath: string, onProgress?: ProgressCallback): Promise<UploadResult> {
@@ -45,6 +60,13 @@ export class UploadQueue {
       item.reject(new Error('Upload queue cleared'))
     }
     log.info('queue cleared', { rejected: pending.length })
+  }
+
+  dispose(): void {
+    if (this.network && this.boundHandler) {
+      this.network.removeListener('status-changed', this.boundHandler)
+    }
+    this.clear()
   }
 
   get pending(): number {
@@ -85,7 +107,9 @@ export class UploadQueue {
 
   private async processItem(item: QueueItem): Promise<void> {
     try {
-      const result = await this.uploadFn(item.noteId, item.filePath, item.onProgress)
+      const result = await this.uploadFn(item.noteId, item.filePath, item.onProgress, {
+        isOnline: this.network ? () => this.network!.online : undefined
+      })
       item.resolve(result)
     } catch (err) {
       if (err instanceof RateLimitError) {
@@ -93,6 +117,11 @@ export class UploadQueue {
         this.backoffUntil = Math.max(this.backoffUntil, Date.now() + backoffMs)
         log.warn('429 received, applying global backoff', { backoffMs })
 
+        this.queue.unshift(item)
+        return
+      }
+      if (err instanceof NetworkError) {
+        log.warn('network error, re-queuing upload', { noteId: item.noteId })
         this.queue.unshift(item)
         return
       }

@@ -67,7 +67,7 @@ export interface DownloadResult {
 
 export interface TransferProgress {
   attachmentId: string
-  phase: 'hashing' | 'encrypting' | 'uploading' | 'downloading' | 'decrypting'
+  phase: 'hashing' | 'encrypting' | 'uploading' | 'downloading' | 'decrypting' | 'waiting_network'
   chunksCompleted: number
   totalChunks: number
   bytesTransferred: number
@@ -231,7 +231,8 @@ export class AttachmentSyncService {
   async uploadAttachment(
     noteId: string,
     filePath: string,
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
+    options?: { signal?: AbortSignal; isOnline?: () => boolean }
   ): Promise<UploadResult> {
     const [token, vaultKey, signingKeys] = await this.requireAuth()
     const fileKey = generateFileKey()
@@ -312,12 +313,17 @@ export class AttachmentSyncService {
         createdAt: Date.now()
       }
 
+      const netOpts: { signal?: AbortSignal; isOnline?: () => boolean } = {}
+      if (options?.signal) netOpts.signal = options.signal
+      if (options?.isOnline) netOpts.isOnline = options.isOnline
+
       const sessionId = await this.initiateUploadSession(
         token,
         attachmentId,
         filename,
         fileStat.size,
-        totalChunks
+        totalChunks,
+        netOpts
       )
 
       const uploadState: UploadState = {
@@ -329,7 +335,7 @@ export class AttachmentSyncService {
       }
       this.activeUploads.set(sessionId, uploadState)
 
-      const existingChunks = await this.checkResumableSession(token, sessionId)
+      const existingChunks = await this.checkResumableSession(token, sessionId, netOpts)
       if (existingChunks) {
         for (const idx of existingChunks) {
           uploadState.completedChunks.add(idx)
@@ -354,11 +360,25 @@ export class AttachmentSyncService {
           : 0
 
       await parallelMap(chunksToUpload, MAX_CONCURRENT_CHUNKS, async (chunk) => {
-        const dedupExists = await this.checkChunkDedup(token, chunk.ref.encryptedHash)
+        const onWaitingNetwork = (): void => {
+          emit({
+            attachmentId,
+            phase: 'waiting_network',
+            chunksCompleted: uploadState.completedChunks.size,
+            totalChunks,
+            bytesTransferred: bytesUploaded,
+            totalBytes: fileStat.size
+          })
+        }
+
+        const dedupExists = await this.checkChunkDedup(token, chunk.ref.encryptedHash, netOpts)
         if (dedupExists) {
           log.debug('chunk deduped', { index: chunk.ref.index, hash: chunk.ref.encryptedHash })
         } else {
-          await this.uploadChunk(token, sessionId, chunk.ref.index, chunk.data)
+          await this.uploadChunk(token, sessionId, chunk.ref.index, chunk.data, {
+            ...netOpts,
+            onWaitingNetwork
+          })
         }
 
         uploadState.completedChunks.add(chunk.ref.index)
@@ -375,7 +395,7 @@ export class AttachmentSyncService {
       })
 
       const encryptedManifest = this.encryptManifest(manifest, fileKey, vaultKey, signingKeys)
-      await this.completeUploadSession(token, sessionId, encryptedManifest)
+      await this.completeUploadSession(token, sessionId, encryptedManifest, netOpts)
 
       this.activeUploads.delete(sessionId)
       log.info('upload complete', { attachmentId, sessionId })
@@ -500,14 +520,19 @@ export class AttachmentSyncService {
     attachmentId: string,
     filename: string,
     totalSize: number,
-    chunkCount: number
+    chunkCount: number,
+    options?: { signal?: AbortSignal; isOnline?: () => boolean }
   ): Promise<string> {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/initiate`
     const body = JSON.stringify({ attachmentId, filename, totalSize, chunkCount })
 
+    const retryOpts: Partial<import('./retry').RetryOptions> = { maxRetries: 3, baseDelayMs: 2000 }
+    if (options?.signal) retryOpts.signal = options.signal
+    if (options?.isOnline) retryOpts.isOnline = options.isOnline
+
     const { value: resp } = await withRetry(
       () => binaryFetch('POST', url, token, body, this.deps.fetchFn),
-      { maxRetries: 3, baseDelayMs: 2000 }
+      retryOpts
     )
     if (!resp.ok) {
       const errBody = await resp.text()
@@ -518,34 +543,84 @@ export class AttachmentSyncService {
     return data.sessionId
   }
 
-  private async checkResumableSession(token: string, sessionId: string): Promise<number[] | null> {
+  private async checkResumableSession(
+    token: string,
+    sessionId: string,
+    options?: { signal?: AbortSignal; isOnline?: () => boolean }
+  ): Promise<number[] | null> {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/${sessionId}`
-    const resp = await binaryFetch('GET', url, token, undefined, this.deps.fetchFn)
 
-    if (resp.status === 410) {
-      log.info('session expired, starting fresh', { sessionId })
+    try {
+      const retryOpts: Partial<import('./retry').RetryOptions> = {
+        maxRetries: 2,
+        baseDelayMs: 1000
+      }
+      if (options?.signal) retryOpts.signal = options.signal
+      if (options?.isOnline) retryOpts.isOnline = options.isOnline
+
+      const { value: resp } = await withRetry(
+        () => binaryFetch('GET', url, token, undefined, this.deps.fetchFn),
+        retryOpts
+      )
+
+      if (resp.status === 410) {
+        log.info('session expired, starting fresh', { sessionId })
+        return null
+      }
+      if (!resp.ok) return null
+
+      const data = (await resp.json()) as UploadStatusResponse
+      return data.uploadedChunks.length > 0 ? data.uploadedChunks : null
+    } catch {
+      log.warn('checkResumableSession failed, starting fresh', { sessionId })
       return null
     }
-    if (!resp.ok) return null
-
-    const data = (await resp.json()) as UploadStatusResponse
-    return data.uploadedChunks.length > 0 ? data.uploadedChunks : null
   }
 
-  private async checkChunkDedup(token: string, encryptedHash: string): Promise<boolean> {
+  private async checkChunkDedup(
+    token: string,
+    encryptedHash: string,
+    options?: { signal?: AbortSignal; isOnline?: () => boolean }
+  ): Promise<boolean> {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/chunks/${encryptedHash}`
-    const resp = await binaryFetch('HEAD', url, token, undefined, this.deps.fetchFn)
-    return resp.status === 200
+    const retryOpts: Partial<import('./retry').RetryOptions> = { maxRetries: 3, baseDelayMs: 1000 }
+    if (options?.signal) retryOpts.signal = options.signal
+    if (options?.isOnline) retryOpts.isOnline = options.isOnline
+
+    try {
+      const { value: resp } = await withRetry(
+        () => binaryFetch('HEAD', url, token, undefined, this.deps.fetchFn),
+        retryOpts
+      )
+      return resp.status === 200
+    } catch {
+      log.warn('checkChunkDedup failed, assuming not deduped', { encryptedHash })
+      return false
+    }
   }
 
   private async uploadChunk(
     token: string,
     sessionId: string,
     chunkIndex: number,
-    data: Uint8Array
+    data: Uint8Array,
+    options?: { signal?: AbortSignal; isOnline?: () => boolean; onWaitingNetwork?: () => void }
   ): Promise<void> {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/${sessionId}/chunk/${chunkIndex}`
-    const resp = await binaryFetch('PUT', url, token, data, this.deps.fetchFn)
+    const retryOpts: Partial<import('./retry').RetryOptions> = {
+      maxRetries: 5,
+      baseDelayMs: 2000,
+      onRetry: (_attempt, error) => {
+        if (error instanceof NetworkError) options?.onWaitingNetwork?.()
+      }
+    }
+    if (options?.signal) retryOpts.signal = options.signal
+    if (options?.isOnline) retryOpts.isOnline = options.isOnline
+
+    const { value: resp } = await withRetry(
+      () => binaryFetch('PUT', url, token, data, this.deps.fetchFn),
+      retryOpts
+    )
 
     if (!resp.ok) {
       const errBody = await resp.text()
@@ -556,13 +631,19 @@ export class AttachmentSyncService {
   private async completeUploadSession(
     token: string,
     sessionId: string,
-    encryptedManifest: EncryptedAttachmentManifest
+    encryptedManifest: EncryptedAttachmentManifest,
+    options?: { signal?: AbortSignal; isOnline?: () => boolean }
   ): Promise<void> {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/${sessionId}/complete`
     const body = JSON.stringify(encryptedManifest)
+
+    const retryOpts: Partial<import('./retry').RetryOptions> = { maxRetries: 3, baseDelayMs: 2000 }
+    if (options?.signal) retryOpts.signal = options.signal
+    if (options?.isOnline) retryOpts.isOnline = options.isOnline
+
     const { value: resp } = await withRetry(
       () => binaryFetch('POST', url, token, body, this.deps.fetchFn),
-      { maxRetries: 3, baseDelayMs: 2000 }
+      retryOpts
     )
 
     if (!resp.ok) {
