@@ -16,10 +16,17 @@ export const generateOtp = (): string => {
   return String(array[0] % 1_000_000).padStart(OTP_LENGTH, '0')
 }
 
-export const hashOtp = async (code: string): Promise<string> => {
-  const encoded = new TextEncoder().encode(code)
-  const digest = await crypto.subtle.digest('SHA-256', encoded)
-  return Array.from(new Uint8Array(digest))
+export const hmacOtp = async (code: string, hmacKey: string): Promise<string> => {
+  const encoder = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(hmacKey),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(code))
+  return Array.from(new Uint8Array(sig))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
 }
@@ -40,14 +47,15 @@ export const constantTimeCompare = async (a: string, b: string): Promise<boolean
 export const storeOtp = async (
   db: D1Database,
   email: string,
-  code: string
+  code: string,
+  hmacKey: string
 ): Promise<{ id: string; expiresAt: number }> => {
   const now = Math.floor(Date.now() / 1000)
 
   await db.prepare('UPDATE otp_codes SET used = 1 WHERE email = ? AND used = 0').bind(email).run()
 
   const id = crypto.randomUUID()
-  const codeHash = await hashOtp(code)
+  const codeHash = await hmacOtp(code, hmacKey)
   const expiresAt = now + OTP_EXPIRY_SECONDS
 
   await db
@@ -60,7 +68,12 @@ export const storeOtp = async (
   return { id, expiresAt }
 }
 
-export const verifyOtp = async (db: D1Database, email: string, code: string): Promise<void> => {
+export const verifyOtp = async (
+  db: D1Database,
+  email: string,
+  code: string,
+  hmacKey: string
+): Promise<void> => {
   const now = Math.floor(Date.now() / 1000)
 
   const record = await db
@@ -78,7 +91,7 @@ export const verifyOtp = async (db: D1Database, email: string, code: string): Pr
     throw new AppError(ErrorCodes.AUTH_OTP_MAX_ATTEMPTS, 'Maximum OTP attempts exceeded', 401)
   }
 
-  const inputHash = await hashOtp(code)
+  const inputHash = await hmacOtp(code, hmacKey)
   const isMatch = await constantTimeCompare(inputHash, record.code_hash)
 
   if (!isMatch) {

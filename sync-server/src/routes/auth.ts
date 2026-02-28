@@ -68,7 +68,7 @@ const handleOtpRequest = async (c: Parameters<typeof otpIpRateLimit>[0]): Promis
   await checkEmailRateLimit(c.env.DB, email)
 
   const code = generateOtp()
-  await storeOtp(c.env.DB, email, code)
+  await storeOtp(c.env.DB, email, code, c.env.OTP_HMAC_KEY)
 
   const html = buildOtpEmailHtml(code, OTP_EXPIRY_MINUTES)
   await sendEmail(email, 'Your Memry verification code', html, c.env.RESEND_API_KEY)
@@ -179,7 +179,7 @@ auth.post('/otp/resend', otpIpRateLimit, async (c) => {
   await checkEmailRateLimit(c.env.DB, email)
 
   const code = generateOtp()
-  await storeOtp(c.env.DB, email, code)
+  await storeOtp(c.env.DB, email, code, c.env.OTP_HMAC_KEY)
 
   const html = buildOtpEmailHtml(code, OTP_EXPIRY_MINUTES)
   await sendEmail(email, 'Your Memry verification code', html, c.env.RESEND_API_KEY)
@@ -197,7 +197,7 @@ auth.post('/otp/verify', otpIpRateLimit, async (c) => {
 
   const { email, code, sessionNonce } = parsed.data
 
-  await verifyOtp(c.env.DB, email, code)
+  await verifyOtp(c.env.DB, email, code, c.env.OTP_HMAC_KEY)
 
   const { user, isNewUser } = await getOrCreateUserByEmail(c.env.DB, email, {
     authMethod: 'otp'
