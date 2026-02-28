@@ -1767,7 +1767,7 @@ describe('SyncEngine', () => {
   })
 
   describe('#given pull with all crypto failures #when every item throws SignatureVerificationError', () => {
-    it('#then trips circuit breaker and sets error state', async () => {
+    it('#then quarantines items instead of tripping circuit breaker', async () => {
       // #given
       const deps = createMockDeps(testDb)
       const engine = new SyncEngine(deps)
@@ -1815,10 +1815,87 @@ describe('SyncEngine', () => {
       // #when
       await engine.pull()
 
-      // #then — circuit breaker trips
-      expect(engine.currentState).toBe('error')
+      // #then — items are quarantined, circuit breaker does NOT trip
+      expect(engine.currentState).not.toBe('error')
+      const quarantined = engine.getQuarantinedItems()
+      expect(quarantined).toHaveLength(2)
+      expect(quarantined[0].signerDeviceId).toBe('device-1')
+      expect(quarantined[0].attemptCount).toBe(1)
+      expect(quarantined[0].permanent).toBe(false)
+
+      // security warning emitted to renderer
+      expect(deps.emitToRenderer).toHaveBeenCalledWith(
+        'sync:security-warning',
+        expect.objectContaining({
+          reason: 'signature_verification_failed',
+          itemId: expect.any(String),
+          signerDeviceId: 'device-1'
+        })
+      )
 
       vi.restoreAllMocks()
+    })
+
+    it('#then permanently quarantines after 3 failures', async () => {
+      // #given
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      const makeServerMocks = async () => {
+        vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+          items: [{ id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 10 }],
+          deleted: [],
+          hasMore: false,
+          nextCursor: 2
+        })
+
+        vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+          items: [
+            {
+              id: 'task-1',
+              type: 'task',
+              operation: 'create',
+              cryptoVersion: 1,
+              blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+              signature: 'sig',
+              signerDeviceId: 'device-1',
+              clock: { 'device-1': 1 }
+            }
+          ]
+        })
+
+        const { SignatureVerificationError } = await import('./decrypt')
+        vi.spyOn(await import('./decrypt'), 'decryptItemFromPull').mockImplementation((input) => {
+          throw new SignatureVerificationError(input.id, input.signerDeviceId)
+        })
+      }
+
+      // #when — pull 3 times
+      await makeServerMocks()
+      await engine.pull()
+      vi.restoreAllMocks()
+
+      await makeServerMocks()
+      await engine.pull()
+      vi.restoreAllMocks()
+
+      await makeServerMocks()
+      await engine.pull()
+      vi.restoreAllMocks()
+
+      // #then — permanently quarantined after 3 attempts
+      const quarantined = engine.getQuarantinedItems()
+      expect(quarantined).toHaveLength(1)
+      expect(quarantined[0].attemptCount).toBe(3)
+      expect(quarantined[0].permanent).toBe(true)
+
+      // #when — 4th pull: item is skipped entirely (permanently quarantined)
+      await makeServerMocks()
+      await engine.pull()
+      vi.restoreAllMocks()
+
+      const q2 = engine.getQuarantinedItems()
+      expect(q2[0].attemptCount).toBe(3)
     })
   })
 
@@ -2909,6 +2986,96 @@ describe('SyncEngine', () => {
         expect(statusCall).toBeDefined()
         expect((statusCall![1] as { offlineSince?: number }).offlineSince).toBeDefined()
       })
+    })
+  })
+
+  describe('Remote wipe detection (T245k)', () => {
+    it('#given device revoked on server #when checkDeviceStatus called #then returns revoked', async () => {
+      // #given
+      const { SyncServerError } = await import('./http-client')
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockRejectedValue(
+        new SyncServerError('Forbidden', 403, 'AUTH_DEVICE_REVOKED: Device has been revoked')
+      )
+
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      // #when
+      const status = await engine.checkDeviceStatus()
+
+      // #then
+      expect(status).toBe('revoked')
+      vi.restoreAllMocks()
+    })
+
+    it('#given device active on server #when checkDeviceStatus called #then returns active', async () => {
+      // #given
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      // #when
+      const status = await engine.checkDeviceStatus()
+
+      // #then
+      expect(status).toBe('active')
+      vi.restoreAllMocks()
+    })
+
+    it('#given device revoked #when start() called #then does not connect WS and emits device_revoked', async () => {
+      // #given
+      const { SyncServerError } = await import('./http-client')
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockRejectedValue(
+        new SyncServerError('Forbidden', 403, 'AUTH_DEVICE_REVOKED: Device has been revoked')
+      )
+
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      const revokedEvents: string[] = []
+      engine.on('device_revoked_on_launch', () => revokedEvents.push('revoked'))
+
+      // #when
+      await engine.start()
+
+      // #then
+      expect(engine.currentState).toBe('error')
+      expect(revokedEvents).toHaveLength(1)
+      expect(deps.ws.connect).not.toHaveBeenCalled()
+      expect(deps.emitToRenderer).toHaveBeenCalledWith(
+        'sync:device-removed',
+        expect.objectContaining({ unsyncedCount: expect.any(Number) })
+      )
+
+      vi.restoreAllMocks()
+    })
+
+    it('#given engine running #when performEmergencyWipe called #then clears state and zeros keys', async () => {
+      // #given
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+
+      const deps = createMockDeps(testDb)
+      const engine = new SyncEngine(deps)
+
+      // #when
+      await engine.performEmergencyWipe()
+
+      // #then
+      expect(engine.currentState).toBe('idle')
+      expect(deps.ws.disconnect).toHaveBeenCalled()
+
+      vi.restoreAllMocks()
     })
   })
 })

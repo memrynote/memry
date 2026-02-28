@@ -377,6 +377,26 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       })
     )
 
+    cleanups.push(
+      window.api.onSecurityWarning((event) => {
+        if (cancelled) return
+        const message = event.permanent
+          ? 'A sync item could not be verified and has been quarantined for security.'
+          : 'A sync item failed signature verification and will be retried.'
+        toast.error(message, { duration: 8000 })
+      })
+    )
+
+    cleanups.push(
+      window.api.onCertificatePinFailed(() => {
+        if (cancelled) return
+        toast.error(
+          'Secure connection to sync server could not be verified. Syncing has been paused for your protection.',
+          { duration: 15000 }
+        )
+      })
+    )
+
     return () => {
       cancelled = true
       for (const cleanup of cleanups) cleanup()
