@@ -25,17 +25,17 @@ describe('getPublicKey', () => {
     expect(importSPKI).toHaveBeenCalledWith('public-pem', 'EdDSA')
   })
 
-  it('should return cached key on subsequent calls with same PEM', async () => {
+  it('should import again on subsequent calls with same PEM', async () => {
     // #given
-    await getPublicKey('same-pem')
-    vi.mocked(importSPKI).mockClear()
+    await getPublicKey('same-pem\\nline2')
 
     // #when
-    const key = await getPublicKey('same-pem')
+    const key = await getPublicKey('same-pem\\nline2')
 
     // #then
     expect(key).toEqual(mockPublicKey)
-    expect(importSPKI).not.toHaveBeenCalled()
+    expect(importSPKI).toHaveBeenNthCalledWith(1, 'same-pem\nline2', 'EdDSA')
+    expect(importSPKI).toHaveBeenNthCalledWith(2, 'same-pem\nline2', 'EdDSA')
   })
 
   it('should re-import when PEM changes', async () => {
@@ -73,17 +73,17 @@ describe('getPrivateKey', () => {
     expect(importPKCS8).toHaveBeenCalledWith('private-pem', 'EdDSA')
   })
 
-  it('should return cached key on subsequent calls with same PEM', async () => {
+  it('should import again on subsequent calls with same PEM', async () => {
     // #given
-    await getPrivateKey('same-pem')
-    vi.mocked(importPKCS8).mockClear()
+    await getPrivateKey('same-pem\\nline2')
 
     // #when
-    const key = await getPrivateKey('same-pem')
+    const key = await getPrivateKey('same-pem\\nline2')
 
     // #then
     expect(key).toEqual(mockPrivateKey)
-    expect(importPKCS8).not.toHaveBeenCalled()
+    expect(importPKCS8).toHaveBeenNthCalledWith(1, 'same-pem\nline2', 'EdDSA')
+    expect(importPKCS8).toHaveBeenNthCalledWith(2, 'same-pem\nline2', 'EdDSA')
   })
 
   it('should re-import when PEM changes', async () => {

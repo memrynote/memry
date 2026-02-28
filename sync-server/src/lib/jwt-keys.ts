@@ -4,24 +4,8 @@ const ALGORITHM = 'EdDSA'
 
 const normalizePem = (pem: string): string => pem.replace(/\\n/g, '\n')
 
-let cachedPublicPem: string | null = null
-let cachedPublicKey: CryptoKey | null = null
+export const getPublicKey = async (pem: string): Promise<CryptoKey> =>
+  importSPKI(normalizePem(pem), ALGORITHM)
 
-let cachedPrivatePem: string | null = null
-let cachedPrivateKey: CryptoKey | null = null
-
-export const getPublicKey = async (pem: string): Promise<CryptoKey> => {
-  if (cachedPublicKey && cachedPublicPem === pem) return cachedPublicKey
-  const key = await importSPKI(normalizePem(pem), ALGORITHM)
-  cachedPublicPem = pem
-  cachedPublicKey = key
-  return key
-}
-
-export const getPrivateKey = async (pem: string): Promise<CryptoKey> => {
-  if (cachedPrivateKey && cachedPrivatePem === pem) return cachedPrivateKey
-  const key = await importPKCS8(normalizePem(pem), ALGORITHM)
-  cachedPrivatePem = pem
-  cachedPrivateKey = key
-  return key
-}
+export const getPrivateKey = async (pem: string): Promise<CryptoKey> =>
+  importPKCS8(normalizePem(pem), ALGORITHM)
