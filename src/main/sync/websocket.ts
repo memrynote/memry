@@ -2,6 +2,7 @@ import WebSocket from 'ws'
 import { EventEmitter } from 'events'
 import { z } from 'zod'
 import { createLogger } from '../lib/logger'
+import { createPinnedAgent, CertificatePinningError } from './certificate-pinning'
 
 const log = createLogger('WebSocket')
 
@@ -45,6 +46,7 @@ export class WebSocketManager extends EventEmitter {
   private _connected = false
   private authFailed = false
   private versionRejected = false
+  private certPinFailed = false
   private deps: WebSocketManagerDeps
 
   constructor(deps: WebSocketManagerDeps) {
@@ -60,6 +62,11 @@ export class WebSocketManager extends EventEmitter {
   }
 
   async connect(): Promise<void> {
+    if (this.certPinFailed) {
+      log.warn('Connect blocked: certificate pin failure requires app restart')
+      return
+    }
+
     this.shouldBeConnected = true
     this.authFailed = false
     this.versionRejected = false
@@ -85,7 +92,8 @@ export class WebSocketManager extends EventEmitter {
       headers: {
         Authorization: `Bearer ${token}`,
         'X-App-Version': this.deps.getAppVersion()
-      }
+      },
+      agent: wsUrl.startsWith('wss://') ? createPinnedAgent() : undefined
     })
 
     this.ws = ws
@@ -152,6 +160,21 @@ export class WebSocketManager extends EventEmitter {
 
     ws.on('error', (err: Error) => {
       log.warn('WebSocket error', { message: err.message })
+      if (err instanceof CertificatePinningError) {
+        this.certPinFailed = true
+        this.shouldBeConnected = false
+        log.error('SECURITY: Certificate pin verification failed', {
+          actualHash: err.actualHash,
+          expectedCount: err.expectedHashes.length
+        })
+        this.cleanup()
+        this.emit('certificate_pin_failed', {
+          hostname: err.message,
+          actualHash: err.actualHash,
+          expectedHashes: err.expectedHashes
+        })
+        return
+      }
       if (err.message?.includes('401')) {
         this.authFailed = true
       }
@@ -216,7 +239,8 @@ export class WebSocketManager extends EventEmitter {
   }
 
   private scheduleReconnect(): void {
-    if (!this.shouldBeConnected || this.authFailed || this.versionRejected) return
+    if (!this.shouldBeConnected || this.authFailed || this.versionRejected || this.certPinFailed)
+      return
     this.clearReconnectTimer()
 
     const delay = Math.min(
