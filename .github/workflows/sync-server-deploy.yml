@@ -1,0 +1,81 @@
+name: Sync Server Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment target
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+      ref:
+        description: Git ref to deploy (optional)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-server-deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  CI: true
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: sync-server/pnpm-lock.yaml
+
+      - name: Check shared contract stubs
+        run: bash scripts/check-contracts.sh
+
+      - name: Install sync-server dependencies
+        working-directory: sync-server
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck sync-server
+        working-directory: sync-server
+        run: pnpm typecheck
+
+      - name: Test sync-server
+        working-directory: sync-server
+        run: pnpm test
+
+      - name: Deploy to staging
+        if: inputs.environment == 'staging'
+        working-directory: sync-server
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm deploy:staging
+
+      - name: Deploy to production
+        if: inputs.environment == 'production'
+        working-directory: sync-server
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm deploy
