@@ -2,6 +2,7 @@ export { UserSyncState } from './durable-objects/user-sync-state'
 export { LinkingSession } from './durable-objects/linking-session'
 
 import { Hono } from 'hono'
+import { bodyLimit } from 'hono/body-limit'
 import { cors } from 'hono/cors'
 
 import { AppError, ErrorCodes, errorHandler } from './lib/errors'
@@ -38,21 +39,24 @@ app.use('*', securityHeaders)
 const MAX_BODY_BYTES_API = 1 * 1024 * 1024
 const MAX_BODY_BYTES_BLOB = 10 * 1024 * 1024
 
+const bodyLimitError = () => {
+  throw new AppError(ErrorCodes.VALIDATION_BODY_TOO_LARGE, 'Request body too large', 413)
+}
+
+const apiBodyLimit = bodyLimit({
+  maxSize: MAX_BODY_BYTES_API,
+  onError: bodyLimitError
+})
+
+const blobBodyLimit = bodyLimit({
+  maxSize: MAX_BODY_BYTES_BLOB,
+  onError: bodyLimitError
+})
+
 app.use('*', async (c, next) => {
-  const contentLength = c.req.header('Content-Length')
-  if (contentLength) {
-    const size = parseInt(contentLength, 10)
-    const isBinaryUpload = c.req.path.includes('/blob') || c.req.path.includes('/attachments/')
-    const limit = isBinaryUpload ? MAX_BODY_BYTES_BLOB : MAX_BODY_BYTES_API
-    if (size > limit) {
-      throw new AppError(
-        ErrorCodes.VALIDATION_BODY_TOO_LARGE,
-        `Request body too large (limit: ${limit} bytes)`,
-        413
-      )
-    }
-  }
-  await next()
+  const isBlobRoute = c.req.path.includes('/blob') || c.req.path.includes('/attachments/')
+  const middleware = isBlobRoute ? blobBodyLimit : apiBodyLimit
+  return middleware(c, next)
 })
 
 app.use('*', async (c, next) => {
