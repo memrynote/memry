@@ -56,6 +56,10 @@ vi.mock('../middleware/rate-limit', () => ({
   )
 }))
 
+vi.mock('../services/quota', () => ({
+  checkQuota: vi.fn().mockResolvedValue(undefined)
+}))
+
 import { sync } from './sync'
 import {
   getSyncStatus,
