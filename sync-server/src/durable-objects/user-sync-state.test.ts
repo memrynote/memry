@@ -18,11 +18,12 @@ vi.mock('../lib/jwt-verify', () => ({
 
 import { UserSyncState } from './user-sync-state'
 
-function createMockDB(revoked_at: number | null = null) {
+function createMockDB(revoked_at: number | null = null, revokedDeviceIds: string[] = []) {
   return {
     prepare: () => ({
-      bind: () => ({
-        first: async () => ({ revoked_at })
+      bind: (..._args: unknown[]) => ({
+        first: async () => ({ revoked_at }),
+        all: async () => ({ results: revokedDeviceIds.map((id) => ({ id })) })
       })
     })
   }
@@ -278,6 +279,56 @@ describe('UserSyncState', () => {
       const ctx = getCtx(doObj)
       const alarm = await ctx.storage.getAlarm()
       expect(alarm).not.toBeNull()
+    })
+
+    it('closes sockets for revoked devices as fallback (S-M3)', async () => {
+      // #given — device connects OK, then gets revoked in DB without /revoke-device call
+      const doObj = createDO(createMockDB(null, ['device-1']))
+      await doObj.fetch(connectRequest())
+
+      const ctx = getCtx(doObj)
+      const sockets = ctx.getWebSockets('device:device-1')
+      const ws = sockets[0] as unknown as MockWebSocket
+
+      // #when — alarm fires, fallback revocation check runs
+      await doObj.alarm()
+
+      // #then
+      expect(ws.closeCalled).toBe(true)
+      expect(ws.closeCode).toBe(4004)
+      const revokedMsg = ws.sentMessages.find((m) => m.includes(ErrorCodes.AUTH_DEVICE_REVOKED))
+      expect(revokedMsg).toBeDefined()
+    })
+
+    it('keeps non-revoked sockets open during alarm revocation check', async () => {
+      // #given — two devices: one revoked, one clean
+      const doObj = createDO(createMockDB(null, ['device-revoked']))
+
+      hoisted.verifyAccessTokenMock.mockResolvedValueOnce({
+        userId: 'user-1',
+        deviceId: 'device-revoked',
+        exp: Math.floor(Date.now() / 1000) + 900
+      })
+      await doObj.fetch(connectRequest('token-a'))
+
+      hoisted.verifyAccessTokenMock.mockResolvedValueOnce({
+        userId: 'user-1',
+        deviceId: 'device-clean',
+        exp: Math.floor(Date.now() / 1000) + 900
+      })
+      await doObj.fetch(connectRequest('token-b'))
+
+      const ctx = getCtx(doObj)
+      const revokedWs = ctx.getWebSockets('device:device-revoked')[0] as unknown as MockWebSocket
+      const cleanWs = ctx.getWebSockets('device:device-clean')[0] as unknown as MockWebSocket
+
+      // #when
+      await doObj.alarm()
+
+      // #then
+      expect(revokedWs.closeCalled).toBe(true)
+      expect(revokedWs.closeCode).toBe(4004)
+      expect(cleanWs.closeCalled).toBe(false)
     })
   })
 
