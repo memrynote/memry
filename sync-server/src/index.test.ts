@@ -14,6 +14,7 @@ function createEnv(overrides?: Partial<Record<string, unknown>>) {
     JWT_PRIVATE_KEY: '',
     RESEND_API_KEY: '',
     OTP_HMAC_KEY: '',
+    RECOVERY_DUMMY_SECRET: '',
     ...overrides
   }
 }
@@ -66,6 +67,7 @@ describe('sync-server app entry point', () => {
         JWT_PRIVATE_KEY: 'private-key',
         RESEND_API_KEY: 'resend-key',
         OTP_HMAC_KEY: 'test-hmac-key',
+        RECOVERY_DUMMY_SECRET: 'test-dummy-secret',
         ALLOWED_ORIGIN: 'https://app.memry.test'
       })
     )
