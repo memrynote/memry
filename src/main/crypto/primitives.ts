@@ -7,7 +7,10 @@ export const generateFileKey = (): Uint8Array => {
 
 export const secureCleanup = (...buffers: Uint8Array[]): void => {
   for (const buffer of buffers) {
-    unlockKeyMaterial(buffer)
-    sodium.memzero(buffer)
+    try {
+      unlockKeyMaterial(buffer)
+    } finally {
+      sodium.memzero(buffer)
+    }
   }
 }
