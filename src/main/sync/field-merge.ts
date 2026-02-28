@@ -1,8 +1,6 @@
 import type { VectorClock, FieldClocks } from '@shared/contracts/sync-api'
 import { merge as mergeClock } from './vector-clock'
-import { createLogger } from '../lib/logger'
-
-const log = createLogger('FieldMerge')
+import { compare as compareClock } from './vector-clock'
 
 export type { FieldClocks }
 
@@ -41,10 +39,10 @@ export function initAllFieldClocks(docClock: VectorClock, fields: readonly strin
   return fc
 }
 
-function tickSum(clock: VectorClock): number {
-  let sum = 0
-  for (const v of Object.values(clock)) sum += v
-  return sum
+function clockTotal(clock: VectorClock): number {
+  let total = 0
+  for (const value of Object.values(clock)) total += value
+  return total
 }
 
 export interface MergeResult<T> {
@@ -69,29 +67,25 @@ export function mergeFields<T>(
   for (const field of syncableFields) {
     const localFC = localFieldClocks[field] ?? {}
     const remoteFC = remoteFieldClocks[field] ?? {}
-    const localSum = tickSum(localFC)
-    const remoteSum = tickSum(remoteFC)
+    const clockComparison = compareClock(localFC, remoteFC)
+    const localTotal = clockTotal(localFC)
+    const remoteTotal = clockTotal(remoteFC)
 
     const localVal = (localData as Record<string, unknown>)[field]
     const remoteVal = (remoteData as Record<string, unknown>)[field]
-    const isConcurrent = localSum > 0 && remoteSum > 0 && localSum === remoteSum
+    const isConcurrent = clockComparison === 'concurrent'
     const valsDiffer = JSON.stringify(localVal) !== JSON.stringify(remoteVal)
 
-    let winner: 'local' | 'remote'
-    if (remoteSum > localSum) {
+    if (remoteTotal > localTotal) {
       merged[field] = remoteVal
-      winner = 'remote'
-    } else if (localSum > remoteSum) {
+    } else if (localTotal > remoteTotal) {
       merged[field] = localVal
-      winner = 'local'
     } else {
       const localHasOffline = '_offline' in localFC && !('_offline' in remoteFC)
       if (localHasOffline && valsDiffer) {
         merged[field] = localVal
-        winner = 'local'
       } else {
         merged[field] = remoteVal
-        winner = 'remote'
       }
       if (isConcurrent && valsDiffer) {
         hadConflicts = true

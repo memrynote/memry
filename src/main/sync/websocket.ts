@@ -11,6 +11,8 @@ const MAX_RECONNECT_DELAY_MS = 30_000
 const BASE_RECONNECT_DELAY_MS = 1_000
 const RECONNECT_JITTER_MS = 500
 const PING_INTERVAL_MS = 25_000
+const HTTP_UNAUTHORIZED = 401
+const HTTP_UPGRADE_REQUIRED = 426
 
 const WebSocketMessageSchema = z.object({
   type: z.enum([
@@ -158,6 +160,20 @@ export class WebSocketManager extends EventEmitter {
       }
     })
 
+    ws.on('unexpected-response', (_request, response) => {
+      const statusCode = response.statusCode
+      if (statusCode === HTTP_UNAUTHORIZED) {
+        this.authFailed = true
+        log.warn('WebSocket auth rejected during handshake', { statusCode })
+      }
+
+      if (statusCode === HTTP_UPGRADE_REQUIRED) {
+        this.versionRejected = true
+        const reason = response.statusMessage || `HTTP ${statusCode}`
+        this.emit('version_rejected', reason)
+      }
+    })
+
     ws.on('error', (err: Error) => {
       log.warn('WebSocket error', { message: err.message })
       if (err instanceof CertificatePinningError) {
@@ -174,13 +190,6 @@ export class WebSocketManager extends EventEmitter {
           expectedHashes: err.expectedHashes
         })
         return
-      }
-      if (err.message?.includes('401')) {
-        this.authFailed = true
-      }
-      if (err.message?.includes('426')) {
-        this.versionRejected = true
-        this.emit('version_rejected', err.message)
       }
       this.emit('error', err)
     })

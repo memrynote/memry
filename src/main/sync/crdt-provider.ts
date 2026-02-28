@@ -158,7 +158,7 @@ export class CrdtProvider {
     return doc
   }
 
-  close(noteId: string, windowId?: number): void {
+  async close(noteId: string, windowId?: number): Promise<void> {
     const entry = this.docs.get(noteId)
     if (!entry) return
 
@@ -171,12 +171,12 @@ export class CrdtProvider {
 
     if (this.snapshotPushFn && entry.accumulatedBytes > 0) {
       const state = Y.encodeStateAsUpdate(entry.doc)
-      this.snapshotPushFn(noteId, state).catch((err) => {
+      await this.snapshotPushFn(noteId, state).catch((err) => {
         log.warn('Failed to push snapshot on close', { noteId, error: err })
       })
     }
 
-    this.flushDoc(noteId).catch((err) => {
+    await this.flushDoc(noteId).catch((err) => {
       log.error('Failed to flush doc on close', { noteId, error: err })
     })
 
@@ -186,7 +186,7 @@ export class CrdtProvider {
   }
 
   async purge(noteId: string): Promise<void> {
-    this.close(noteId)
+    await this.close(noteId)
     await this.persistence?.clearDocument(noteId)
   }
 
@@ -213,11 +213,6 @@ export class CrdtProvider {
       }
     }
 
-    log.warn('[DIAG] applyRemoteUpdate', {
-      noteId,
-      updateBytes: update.byteLength,
-      windowIds: [...entry.windowIds]
-    })
     Y.applyUpdate(entry.doc, update, ORIGIN_NETWORK)
   }
 
@@ -344,7 +339,7 @@ export class CrdtProvider {
       const entry = this.docs.get(noteId)
       const state = Y.encodeStateAsUpdate(doc)
       if (state.length <= 4) {
-        if (!wasOpen) this.close(noteId)
+        if (!wasOpen) await this.close(noteId)
         return false
       }
 
@@ -353,11 +348,11 @@ export class CrdtProvider {
 
       await this.snapshotPushFn(noteId, state)
       log.info('Pushed snapshot for note', { noteId, size: state.byteLength })
-      if (!wasOpen) this.close(noteId)
+      if (!wasOpen) await this.close(noteId)
       return true
     } catch (err) {
       log.warn('pushSnapshotForNote failed', { noteId, error: err })
-      if (!wasOpen) this.close(noteId)
+      if (!wasOpen) await this.close(noteId)
       return false
     }
   }
@@ -479,11 +474,6 @@ export class CrdtProvider {
     if (isIpcOrigin(origin)) {
       this.broadcastToWindows(noteId, update, 'ipc', origin.windowId)
     } else if (origin === ORIGIN_NETWORK) {
-      log.warn('[DIAG] onDocUpdate ORIGIN_NETWORK', {
-        noteId,
-        updateBytes: update.byteLength,
-        windowIds: [...entry.windowIds]
-      })
       this.queueNetworkBroadcast(noteId, update)
     } else {
       this.broadcastToWindows(noteId, update, ORIGIN_LOCAL, undefined)
@@ -511,13 +501,6 @@ export class CrdtProvider {
     const entry = this.docs.get(noteId)
     if (!entry) return
 
-    log.warn('[DIAG] broadcastToWindows', {
-      noteId,
-      origin,
-      windowIds: [...entry.windowIds],
-      sourceWindowId
-    })
-
     for (const windowId of entry.windowIds) {
       if (windowId === sourceWindowId) continue
 
@@ -528,9 +511,8 @@ export class CrdtProvider {
           update: Array.from(update),
           origin
         })
-        log.warn('[DIAG] sent STATE_CHANGED to window', { noteId, windowId })
       } else {
-        log.warn('[DIAG] window gone or destroyed', { noteId, windowId })
+        log.debug('Skipping CRDT broadcast for unavailable window', { noteId, windowId })
       }
     }
   }
@@ -676,7 +658,7 @@ export class CrdtProvider {
     ipcMain.handle(CRDT_CHANNELS.CLOSE_DOC, async (event, rawInput: unknown) => {
       const { noteId } = CrdtCloseDocSchema.parse(rawInput)
       const windowId = BrowserWindow.fromWebContents(event.sender)?.id
-      this.close(noteId, windowId)
+      await this.close(noteId, windowId)
       return { success: true }
     })
 

@@ -111,7 +111,7 @@ describe('SyncQueueManager', () => {
     })
 
     it('creates new entry when existing item has attempts > 0', () => {
-      // #given existing item with attempts > 0 (dequeue increments)
+      // #given existing item with a recorded failed attempt
       const id1 = queue.enqueue(makeInput())
       simulateFailedAttempt(queue, id1, 'network error')
 
@@ -186,16 +186,16 @@ describe('SyncQueueManager', () => {
       expect(queue.getSize()).toBe(1)
     })
 
-    it('increments attempts atomically on dequeue', () => {
+    it('does not increment attempts on dequeue before a failure is recorded', () => {
       // #given item in queue
       queue.enqueue(makeInput())
 
       // #when dequeue
       queue.dequeue(1)
 
-      // #then attempts incremented in DB
+      // #then attempts unchanged until markFailed
       const items = queue.peek(1)
-      expect(items[0].attempts).toBe(1)
+      expect(items[0].attempts).toBe(0)
     })
 
     it('orders same-priority items by createdAt ascending', () => {
@@ -259,26 +259,26 @@ describe('SyncQueueManager', () => {
   })
 
   describe('markFailed', () => {
-    it('records error after dequeue increments attempts', () => {
-      // #given item dequeued (attempts incremented to 1)
+    it('increments attempts and records error', () => {
+      // #given item dequeued
       const id = queue.enqueue(makeInput())
       queue.dequeue(1)
 
       // #when markFailed
       queue.markFailed(id, 'connection timeout')
 
-      // #then attempts=1 (from dequeue), error recorded
+      // #then attempts incremented and error recorded
       const items = queue.peek(1)
       expect(items[0].attempts).toBe(1)
       expect(items[0].errorMessage).toBe('connection timeout')
       expect(items[0].lastAttempt).toBeInstanceOf(Date)
     })
 
-    it('accumulates attempts via dequeue+markFailed cycles', () => {
+    it('accumulates attempts across dequeue+markFailed cycles', () => {
       // #given item
       const id = queue.enqueue(makeInput())
 
-      // #when fail 3 times (dequeue increments, markFailed records error)
+      // #when fail 3 times
       simulateFailedAttempt(queue, id, 'err-1')
       simulateFailedAttempt(queue, id, 'err-2')
       simulateFailedAttempt(queue, id, 'err-3')
@@ -477,10 +477,11 @@ describe('SyncQueueManager', () => {
 
     it('dequeue finds new items even when old failed items exist for same itemId', () => {
       // #given old items from previous session with attempts > 0
-      queue.enqueue(
+      const oldId = queue.enqueue(
         makeInput({ type: 'inbox', itemId: 'inbox-1', operation: 'create', payload: '{"v":1}' })
       )
       queue.dequeue(1)
+      queue.markFailed(oldId, 'old failure')
 
       // #when manifest re-enqueues same item (creates new row since attempts > 0)
       queue.enqueue(

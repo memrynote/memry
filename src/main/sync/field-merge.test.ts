@@ -104,6 +104,19 @@ describe('field-merge', () => {
       expect(result.conflictedFields).toEqual([])
     })
 
+    it('does not flag conflict when clocks are identical but values differ', () => {
+      const local = { title: 'Local', dueDate: null, priority: 0 }
+      const remote = { title: 'Remote', dueDate: null, priority: 0 }
+      const localFC: FieldClocks = { title: { deviceA: 3, deviceB: 1 }, dueDate: {}, priority: {} }
+      const remoteFC: FieldClocks = { title: { deviceA: 3, deviceB: 1 }, dueDate: {}, priority: {} }
+
+      const result = mergeFields(local, remote, localFC, remoteFC, fields)
+
+      expect(result.merged.title).toBe('Remote')
+      expect(result.hadConflicts).toBe(false)
+      expect(result.conflictedFields).toEqual([])
+    })
+
     it('higher tick sum wins regardless of device count', () => {
       // #given — local has 2 devices summing to 3, remote has 1 device with tick 5
       const local = { title: 'Local', dueDate: null, priority: 0 }

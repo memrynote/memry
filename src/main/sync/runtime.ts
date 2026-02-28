@@ -72,6 +72,17 @@ let startPromise: Promise<SyncEngine | null> | null = null
 let seedAbortController: AbortController | null = null
 let seedPromise: Promise<void> | null = null
 
+function resetSyncServiceSingletons(): void {
+  resetTaskSyncService()
+  resetInboxSyncService()
+  resetFilterSyncService()
+  resetProjectSyncService()
+  resetSettingsSyncManager()
+  resetNoteSyncService()
+  resetJournalSyncService()
+  resetTagDefinitionSyncService()
+}
+
 function getCurrentDeviceId(db: DrizzleDb): string | null {
   const device = db
     .select({ id: syncDevices.id })
@@ -137,22 +148,20 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
     try {
       const db = getDatabase()
-      const queue = new SyncQueueManager(
-        db as unknown as ConstructorParameters<typeof SyncQueueManager>[0]
-      )
-      const getDeviceId = (): string | null => getCurrentDeviceId(db)
-      const serviceDb = db as unknown as Parameters<typeof initTaskSyncService>[0]['db']
-      const settingsDb = db as unknown as Parameters<typeof initSettingsSyncManager>[0]['db']
-      const engineDb = db as unknown as SyncEngineDeps['db']
+      const queue = new SyncQueueManager(db)
+      type RuntimeSyncDb = SyncEngineDeps['db'] & Parameters<typeof initTaskSyncService>[0]['db']
+      const runtimeSyncDb = db as unknown as RuntimeSyncDb
 
-      initTaskSyncService({ queue, db: serviceDb, getDeviceId })
-      initInboxSyncService({ queue, db: serviceDb, getDeviceId })
-      initFilterSyncService({ queue, db: serviceDb, getDeviceId })
-      initProjectSyncService({ queue, db: serviceDb, getDeviceId })
-      initSettingsSyncManager({ db: settingsDb, queue, getDeviceId })
+      const getDeviceId = (): string | null => getCurrentDeviceId(db)
+
+      initTaskSyncService({ queue, db: runtimeSyncDb, getDeviceId })
+      initInboxSyncService({ queue, db: runtimeSyncDb, getDeviceId })
+      initFilterSyncService({ queue, db: runtimeSyncDb, getDeviceId })
+      initProjectSyncService({ queue, db: runtimeSyncDb, getDeviceId })
+      initSettingsSyncManager({ db: runtimeSyncDb, queue, getDeviceId })
       initNoteSyncService({ queue, getDeviceId })
       initJournalSyncService({ queue, getDeviceId })
-      initTagDefinitionSyncService({ queue, db: serviceDb, getDeviceId })
+      initTagDefinitionSyncService({ queue, db: runtimeSyncDb, getDeviceId })
 
       const crdtQueue = new CrdtUpdateQueue()
       setOnTokenRefreshed(() => crdtQueue.resume())
@@ -264,7 +273,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         queue,
         network,
         ws,
-        db: engineDb,
+        db: runtimeSyncDb,
         getAccessToken: () => getValidAccessToken(),
         getVaultKey: () => getOrDeriveVaultKey().catch(() => null),
         getSigningKeys: async () => {
@@ -303,7 +312,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         getDevicePublicKey: async (deviceId) => {
           const token = await getValidAccessToken()
           if (!token) return null
-          return getDeviceSigningKey(engineDb, deviceId, token)
+          return getDeviceSigningKey(runtimeSyncDb, deviceId, token)
         },
         emitToRenderer: emitFn,
         crdtProvider,
@@ -313,7 +322,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       queue.setOnItemEnqueued(() => engine.requestPush())
 
-      recoverDirtyItems(db as unknown as Parameters<typeof recoverDirtyItems>[0])
+      recoverDirtyItems(runtimeSyncDb)
 
       pendingRuntime = { queue, network, ws, engine, crdtQueue, workerBridge }
       runtime = pendingRuntime
@@ -344,14 +353,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       resetCrdtProvider()
 
       runtime = null
-      resetTaskSyncService()
-      resetInboxSyncService()
-      resetFilterSyncService()
-      resetProjectSyncService()
-      resetSettingsSyncManager()
-      resetNoteSyncService()
-      resetJournalSyncService()
-      resetTagDefinitionSyncService()
+      resetSyncServiceSingletons()
       log.error('Failed to start sync runtime', error)
       return null
     } finally {
@@ -390,14 +392,7 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
   runtime = null
   startPromise = null
 
-  resetTaskSyncService()
-  resetInboxSyncService()
-  resetFilterSyncService()
-  resetProjectSyncService()
-  resetSettingsSyncManager()
-  resetNoteSyncService()
-  resetJournalSyncService()
-  resetTagDefinitionSyncService()
+  resetSyncServiceSingletons()
 
   if (!active) {
     await getCrdtProvider()
