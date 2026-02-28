@@ -60,6 +60,27 @@ const computeScanProof = async (
   return encodeBase64(new Uint8Array(signature))
 }
 
+const computeScanConfirm = async (
+  linkingSecret: string,
+  sessionId: string,
+  initiatorPublicKey: string,
+  devicePublicKey: string
+): Promise<string> => {
+  const payload = encodeCbor(
+    { sessionId, initiatorPublicKey, devicePublicKey },
+    CBOR_FIELD_ORDER.SCAN_CONFIRM
+  )
+  const hmacKey = await crypto.subtle.importKey(
+    'raw',
+    decodeBase64(linkingSecret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const signature = await crypto.subtle.sign('HMAC', hmacKey, payload)
+  return encodeBase64(new Uint8Array(signature))
+}
+
 const futureExpiry = Math.floor(Date.now() / 1000) + 300
 const pastExpiry = Math.floor(Date.now() / 1000) - 10
 
@@ -79,10 +100,12 @@ beforeAll(async () => {
   }
   testSecretHash = await hashLinkingSecret(TEST_LINKING_SECRET)
   testScanProof = await computeScanProof(TEST_LINKING_SECRET, 'session-1', 'new-pk')
+  testScanConfirm = await computeScanConfirm(TEST_LINKING_SECRET, 'session-1', 'eph-pk', 'new-pk')
 })
 
 const TEST_LINKING_SECRET = 'dGVzdC1saW5raW5nLXNlY3JldC0xMjM0NTY3ODkwYWI='
 let testSecretHash: string
+let testScanConfirm: string
 let testScanProof: string
 
 const makeSession = (overrides: Partial<LinkingSessionRow> = {}): LinkingSessionRow => ({
@@ -185,6 +208,7 @@ describe('transitionToScanned', () => {
       'new-pk',
       'new-confirm',
       TEST_LINKING_SECRET,
+      testScanConfirm,
       testScanProof,
       '1.2.3.4'
     )
@@ -218,6 +242,7 @@ describe('transitionToScanned', () => {
         'new-pk',
         'confirm',
         TEST_LINKING_SECRET,
+        testScanConfirm,
         testScanProof,
         null
       )
@@ -253,6 +278,7 @@ describe('transitionToScanned', () => {
         'new-pk',
         'confirm',
         TEST_LINKING_SECRET,
+        testScanConfirm,
         testScanProof,
         null
       )
@@ -280,6 +306,7 @@ describe('transitionToScanned', () => {
         'new-pk',
         'confirm',
         TEST_LINKING_SECRET,
+        testScanConfirm,
         testScanProof,
         null
       )
@@ -315,6 +342,7 @@ describe('transitionToScanned', () => {
         'new-pk',
         'confirm',
         TEST_LINKING_SECRET,
+        testScanConfirm,
         testScanProof,
         null
       )
@@ -681,6 +709,7 @@ describe('transitionToScanned — linkingSecret', () => {
         'new-pk',
         'confirm',
         'wrong-secret',
+        testScanConfirm,
         testScanProof,
         null
       )
@@ -708,7 +737,36 @@ describe('transitionToScanned — linkingSecret', () => {
         'new-pk',
         'confirm',
         TEST_LINKING_SECRET,
+        testScanConfirm,
         'invalid-scan-proof',
+        null
+      )
+    ).rejects.toThrow(
+      expect.objectContaining({
+        code: ErrorCodes.LINKING_SECRET_INVALID,
+        statusCode: 403
+      })
+    )
+  })
+
+  it('should reject with LINKING_SECRET_INVALID when scanConfirm does not match', async () => {
+    // #given
+    const session = makeSession({ status: 'pending' })
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue(session)
+    const db = createMockDb()
+    db.prepare.mockReturnValue(selectStmt)
+
+    // #when / #then
+    await expect(
+      transitionToScanned(
+        db as unknown as D1Database,
+        'session-1',
+        'new-pk',
+        'confirm',
+        TEST_LINKING_SECRET,
+        'invalid-scan-confirm',
+        testScanProof,
         null
       )
     ).rejects.toThrow(
@@ -736,6 +794,7 @@ describe('transitionToScanned — linkingSecret', () => {
       'new-pk',
       'confirm',
       TEST_LINKING_SECRET,
+      testScanConfirm,
       testScanProof,
       '1.2.3.4'
     )

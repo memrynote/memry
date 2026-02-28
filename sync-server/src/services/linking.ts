@@ -52,6 +52,28 @@ const computeScanProof = async (
   return encodeBase64(new Uint8Array(signature))
 }
 
+const computeScanConfirm = async (
+  linkingSecret: string,
+  sessionId: string,
+  initiatorPublicKey: string,
+  devicePublicKey: string
+): Promise<string> => {
+  const payload = encodeCbor(
+    { sessionId, initiatorPublicKey, devicePublicKey },
+    CBOR_FIELD_ORDER.SCAN_CONFIRM
+  )
+  const secretBytes = decodeBase64(linkingSecret)
+  const hmacKey = await crypto.subtle.importKey(
+    'raw',
+    secretBytes,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const signature = await crypto.subtle.sign('HMAC', hmacKey, payload)
+  return encodeBase64(new Uint8Array(signature))
+}
+
 const isSessionExpired = (session: LinkingSessionRow): boolean =>
   session.expires_at < Math.floor(Date.now() / 1000)
 
@@ -116,6 +138,7 @@ const transitionToScanned = async (
   newDevicePublicKey: string,
   newDeviceConfirm: string,
   linkingSecret: string,
+  scanConfirm: string,
   scanProof: string,
   scannerIp: string | null
 ): Promise<{ userId: string; initiatorDeviceId: string }> => {
@@ -138,6 +161,21 @@ const transitionToScanned = async (
     throw new AppError(
       ErrorCodes.LINKING_SECRET_INVALID,
       'Invalid linking proof. Please scan the QR code again',
+      403
+    )
+  }
+
+  const expectedScanConfirm = await computeScanConfirm(
+    linkingSecret,
+    sessionId,
+    session.ephemeral_public_key,
+    newDevicePublicKey
+  )
+  const scanConfirmValid = await constantTimeCompare(expectedScanConfirm, scanConfirm)
+  if (!scanConfirmValid) {
+    throw new AppError(
+      ErrorCodes.LINKING_SECRET_INVALID,
+      'Invalid scan confirmation. Please scan the QR code again',
       403
     )
   }

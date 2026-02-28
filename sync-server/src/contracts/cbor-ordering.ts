@@ -13,6 +13,7 @@ export const CBOR_FIELD_ORDER = {
   ] as const,
   TOMBSTONE: ['id', 'type', 'deletedAt', 'deviceId'] as const,
   LINKING_PROOF: ['sessionId', 'devicePublicKey'] as const,
+  SCAN_CONFIRM: ['sessionId', 'initiatorPublicKey', 'devicePublicKey'] as const,
   KEY_CONFIRM: ['sessionId', 'encryptedMasterKey'] as const,
   ATTACHMENT_MANIFEST: [
     'encryptedManifest',

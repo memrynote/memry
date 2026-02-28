@@ -19,6 +19,7 @@ export const ScanLinkingRequestSchema = z.object({
   newDevicePublicKey: z.string().min(1),
   newDeviceConfirm: z.string().min(1),
   linkingSecret: z.string().min(1),
+  scanConfirm: z.string().min(1),
   scanProof: z.string().min(1)
 })
 

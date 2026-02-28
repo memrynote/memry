@@ -99,6 +99,28 @@ const computeScanProof = async (
   return encodeBase64(new Uint8Array(signature))
 }
 
+const computeScanConfirm = async (
+  linkingSecret: string,
+  sessionId: string,
+  initiatorPublicKey: string,
+  devicePublicKey: string
+): Promise<string> => {
+  const payload = encodeCbor(
+    { sessionId, initiatorPublicKey, devicePublicKey },
+    CBOR_FIELD_ORDER.SCAN_CONFIRM
+  )
+  const secretBytes = decodeBase64(linkingSecret)
+  const hmacKey = await crypto.subtle.importKey(
+    'raw',
+    toArrayBuffer(secretBytes),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const signature = await crypto.subtle.sign('HMAC', hmacKey, toArrayBuffer(payload))
+  return encodeBase64(new Uint8Array(signature))
+}
+
 // ============================================================================
 // Flow 1: Existing device generates QR code
 // ============================================================================
@@ -188,12 +210,19 @@ export const linkViaQr = async (qrData: string, setupToken: string): Promise<Lin
     parsed.sessionId,
     newDevicePublicKeyB64
   )
+  const scanConfirm = await computeScanConfirm(
+    parsed.linkingSecret,
+    parsed.sessionId,
+    parsed.ephemeralPublicKey,
+    newDevicePublicKeyB64
+  )
 
   await postToServer('/auth/linking/scan', {
     sessionId: parsed.sessionId,
     newDevicePublicKey: newDevicePublicKeyB64,
     newDeviceConfirm: proofB64,
     linkingSecret: parsed.linkingSecret,
+    scanConfirm,
     scanProof,
     deviceName: os.hostname(),
     devicePlatform: PLATFORM_MAP[process.platform] || 'linux'
