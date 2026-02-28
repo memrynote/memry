@@ -1022,13 +1022,13 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Tombstone Cleanup
 
-- [ ] T232 Implement tombstone retention policy (90 days) in sync-server/src/services/cleanup.ts - include R2 blob deletion for tombstoned items and orphaned R2 objects from failed uploads
-- [ ] T233 Create scheduled cleanup job (Cloudflare Cron Trigger) in sync-server/src/index.ts - runs tombstone cleanup, upload session expiry, R2 orphan cleanup
+- [x] T232 Implement tombstone retention policy (90 days) in sync-server/src/services/cleanup.ts - include R2 blob deletion for tombstoned items and orphaned R2 objects from failed uploads
+- [x] T233 Create scheduled cleanup job (Cloudflare Cron Trigger) in sync-server/src/index.ts - runs tombstone cleanup, upload session expiry, R2 orphan cleanup
 
 ### Performance
 
-- [ ] T234 [P] Profile and optimize sync for 10,000+ items (target: <5min initial sync, <100ms per-item) in src/main/sync/engine.ts
-- [ ] T235 [P] Optimize Yjs document size management (compact docs >1MB to <500KB via snapshot) in src/main/sync/crdt-provider.ts
+- [x] T234 [P] Profile and optimize sync for 10,000+ items (target: <5min initial sync, <100ms per-item) in src/main/sync/engine.ts
+- [x] T235 [P] Optimize Yjs document size management (compact docs >1MB to <500KB via snapshot) in src/main/sync/crdt-provider.ts
 
 ### Run Quickstart Validation
 
@@ -1036,15 +1036,15 @@ All D1 tables include explicit PKs, FKs, indexes, and constraints.
 
 ### Edge Case Handling
 
-- [ ] T237 Implement app version compatibility check on sync connect in src/main/sync/websocket.ts
-- [ ] T238 Implement corrupt data detection and recovery (re-fetch from server) in src/main/sync/engine.ts
+- [x] T237 Implement app version compatibility check on sync connect in src/main/sync/websocket.ts
+- [x] T238 Implement corrupt data detection and recovery (re-fetch from server) in src/main/sync/engine.ts
 - [x] T239 Handle device removal with unsynced local changes (warn user, offer export) in src/main/sync/engine.ts
-- [ ] T240 Implement storage quota exceeded error handling with user notification in src/main/sync/engine.ts
-- [ ] T240a Implement server-side storage quota validation before accepting uploads (return 413 when quota exceeded) in sync-server/src/routes/sync.ts and sync-server/src/routes/blob.ts
+- [x] T240 Implement storage quota exceeded error handling with user notification in src/main/sync/engine.ts
+- [x] T240a Implement server-side storage quota validation before accepting uploads (return 413 when quota exceeded) in sync-server/src/routes/sync.ts and sync-server/src/routes/blob.ts
 - [x] T241 Handle concurrent device linking attempts (reject second, show error) in sync-server/src/routes/auth.ts
-- [ ] T242 Implement extended offline mode with sync resumption on reconnect in src/main/sync/engine.ts
+- [x] T242 Implement extended offline mode with sync resumption on reconnect in src/main/sync/engine.ts
 - [ ] T243 Handle network disconnect during attachment upload (auto-resume) in src/main/sync/attachments.ts
-- [ ] T244 Normalize timestamps to UTC for cross-timezone consistency in src/main/sync/engine.ts
+- [x] T244 Normalize timestamps to UTC for cross-timezone consistency in src/main/sync/engine.ts
 
 ### Crypto Version Handling
 
