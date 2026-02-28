@@ -10,6 +10,7 @@ export const DEVICE_CHANNELS = {
   COMPLETE_LINKING_QR: 'sync:complete-linking-qr',
   LINK_VIA_RECOVERY: 'sync:link-via-recovery',
   APPROVE_LINKING: 'sync:approve-linking',
+  GET_LINKING_SAS: 'sync:get-linking-sas',
   GET_DEVICES: 'sync:get-devices',
   REMOVE_DEVICE: 'sync:remove-device',
   RENAME_DEVICE: 'sync:rename-device'
@@ -34,6 +35,7 @@ export interface LinkViaQrInput {
 export interface LinkViaQrResult {
   success: boolean
   status?: 'waiting_approval' | 'approved' | 'error'
+  verificationCode?: string
   error?: string
 }
 
@@ -54,6 +56,15 @@ export interface CompleteLinkingQrInput {
 export interface CompleteLinkingQrResult {
   success: boolean
   deviceId?: string
+  error?: string
+}
+
+export interface GetLinkingSasInput {
+  sessionId: string
+}
+
+export interface GetLinkingSasResult {
+  verificationCode?: string
   error?: string
 }
 
@@ -114,6 +125,10 @@ export const LinkViaRecoverySchema = z.object({
 })
 
 export const CompleteLinkingQrSchema = z.object({
+  sessionId: z.string().min(1)
+})
+
+export const GetLinkingSasSchema = z.object({
   sessionId: z.string().min(1)
 })
 

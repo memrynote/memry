@@ -18,6 +18,10 @@ SHARED_FILES=(
   "ipc-devices.ts"
   "ipc-attachments.ts"
   "ipc-events.ts"
+  "auth-api.ts"
+  "sync-api.ts"
+  "sync-payloads.ts"
+  "settings-sync.ts"
 )
 
 if [ ! -d "$SOURCE_DIR" ]; then
