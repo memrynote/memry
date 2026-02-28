@@ -65,6 +65,7 @@ const MAX_PUSH_ITERATIONS = 50
 const CLOCK_SKEW_THRESHOLD_SECONDS = 300
 const PULL_PAGE_LIMIT = 100
 const CORRUPT_ITEM_COOLDOWN_MS = 60 * 60 * 1000
+const STALE_CURSOR_THRESHOLD_MS = 24 * 60 * 60 * 1000
 const SYNC_STATE_KEYS = {
   LAST_CURSOR: 'lastCursor',
   LAST_SYNC_AT: 'lastSyncAt',
@@ -119,6 +120,7 @@ export class SyncEngine extends EventEmitter {
   private suppressPushDuringPull = false
   private pendingCrdtPulls = new Set<string>()
   private corruptItems = new Map<string, { failedAt: number; attempts: number }>()
+  private offlineSince: number | null = null
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
@@ -162,11 +164,10 @@ export class SyncEngine extends EventEmitter {
       if (!this.isPaused()) {
         await this.fullSync()
       }
+      this.pullInterval = setInterval(() => this.periodicPull(), 60_000)
     } else {
       this.setState('offline')
     }
-
-    this.pullInterval = setInterval(() => this.periodicPull(), 60_000)
   }
 
   async activate(): Promise<void> {
@@ -559,6 +560,11 @@ export class SyncEngine extends EventEmitter {
       }
       if (errorInfo.category === 'auth_expired') {
         await this.handleAuthExpired()
+        return
+      }
+      if (errorInfo.category === 'network_offline') {
+        log.info('Push failed: device offline, transitioning to offline state')
+        this.setState('offline')
         return
       }
       this.lastErrorInfo = errorInfo
@@ -960,6 +966,11 @@ export class SyncEngine extends EventEmitter {
         await this.handleAuthExpired()
         return
       }
+      if (errorInfo.category === 'network_offline') {
+        log.info('Pull failed: device offline, transitioning to offline state')
+        this.setState('offline')
+        return
+      }
       this.lastErrorInfo = errorInfo
       this.lastError = errorInfo.message
       this.setState('error')
@@ -1069,13 +1080,24 @@ export class SyncEngine extends EventEmitter {
     }
   }
 
+  private async reconnectSync(offlineDurationMs: number): Promise<void> {
+    if (offlineDurationMs > STALE_CURSOR_THRESHOLD_MS) {
+      log.info('Extended offline detected, resetting cursor for full re-pull', {
+        offlineHours: Math.round(offlineDurationMs / 3_600_000)
+      })
+      this.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '0')
+    }
+    await this.fullSync()
+  }
+
   getStatus(): GetSyncStatusResult {
     return {
       status: this.state,
       lastSyncAt: this.getLastSyncAt(),
       pendingCount: this.deps.queue.getPendingCount(),
       error: this.lastError,
-      errorCategory: this.lastErrorInfo?.category
+      errorCategory: this.lastErrorInfo?.category,
+      offlineSince: this.offlineSince ?? undefined
     }
   }
 
@@ -1141,13 +1163,27 @@ export class SyncEngine extends EventEmitter {
           await this.inFlightSync.catch(() => {})
         }
 
+        const offlineDurationMs = this.offlineSince ? Date.now() - this.offlineSince : 0
         this.setState('idle')
         void this.deps.ws.connect()
+
+        if (!this.pullInterval) {
+          this.pullInterval = setInterval(() => this.periodicPull(), 60_000)
+        }
+
         if (!this.isPaused()) {
-          this.scheduleSync(() => this.fullSync())
+          this.scheduleSync(() => this.reconnectSync(offlineDurationMs))
         }
       })()
     } else {
+      if (this.pullInterval) {
+        clearInterval(this.pullInterval)
+        this.pullInterval = null
+      }
+      if (this.abortController && this.syncing) {
+        log.info('Network lost: aborting in-flight sync')
+        this.abortController.abort()
+      }
       this.setState('offline')
       this.deps.ws.disconnect()
     }
@@ -1243,7 +1279,13 @@ export class SyncEngine extends EventEmitter {
 
   private setState(newState: SyncStatusValue): void {
     if (this.state === newState) return
+    const wasOffline = this.state === 'offline'
     this.state = newState
+    if (newState === 'offline' && !wasOffline) {
+      this.offlineSince = Date.now()
+    } else if (newState !== 'offline') {
+      this.offlineSince = null
+    }
     if (newState !== 'error') {
       this.lastError = undefined
       this.lastErrorInfo = undefined
@@ -1355,7 +1397,8 @@ export class SyncEngine extends EventEmitter {
       lastSyncAt: this.getLastSyncAt(),
       pendingCount: this.deps.queue.getPendingCount(),
       error: this.lastError,
-      errorCategory: this.lastErrorInfo?.category
+      errorCategory: this.lastErrorInfo?.category,
+      offlineSince: this.offlineSince ?? undefined
     }
     this.deps.emitToRenderer(EVENT_CHANNELS.STATUS_CHANGED, event)
     this.emit('status-changed', event)

@@ -4,6 +4,7 @@ import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { SyncEngine, type SyncEngineDeps } from './engine'
 import { SyncQueueManager } from './queue'
 import { NetworkMonitor } from './network'
+import { NetworkError } from './http-client'
 import type { WebSocketManager, WebSocketMessage } from './websocket'
 
 function createMockNetwork(online = true): NetworkMonitor {
@@ -2705,6 +2706,209 @@ describe('SyncEngine', () => {
 
       await engine.stop()
       vi.restoreAllMocks()
+    })
+  })
+
+  describe('Extended offline mode', () => {
+    describe('#given engine online #when network goes offline', () => {
+      it('#then sets offlineSince timestamp', async () => {
+        vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+          items: [],
+          deleted: [],
+          hasMore: false,
+          nextCursor: 0
+        })
+        const network = createMockNetwork(true)
+        const deps = createMockDeps(testDb, { network })
+        const engine = new SyncEngine(deps)
+        await engine.start()
+
+        const before = Date.now()
+        ;(network as EventEmitter).emit('status-changed', { online: false })
+
+        const status = engine.getStatus()
+        expect(status.status).toBe('offline')
+        expect(status.offlineSince).toBeGreaterThanOrEqual(before)
+        expect(status.offlineSince).toBeLessThanOrEqual(Date.now())
+
+        await engine.stop()
+        vi.restoreAllMocks()
+      })
+    })
+
+    describe('#given engine offline #when network comes back online', () => {
+      it('#then clears offlineSince', async () => {
+        vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+          items: [],
+          deleted: [],
+          hasMore: false,
+          nextCursor: 0
+        })
+        const network = createMockNetwork(true)
+        const deps = createMockDeps(testDb, { network })
+        const engine = new SyncEngine(deps)
+        await engine.start()
+        ;(network as EventEmitter).emit('status-changed', { online: false })
+        expect(engine.getStatus().offlineSince).toBeDefined()
+        ;(network as EventEmitter).emit('status-changed', { online: true })
+
+        await vi.waitFor(() => {
+          expect(engine.getStatus().offlineSince).toBeUndefined()
+        })
+
+        await engine.stop()
+        vi.restoreAllMocks()
+      })
+    })
+
+    describe('#given engine online #when going offline', () => {
+      it('#then stops periodic pull interval', async () => {
+        vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+          items: [],
+          deleted: [],
+          hasMore: false,
+          nextCursor: 0
+        })
+        const clearIntervalSpy = vi.spyOn(global, 'clearInterval')
+        const network = createMockNetwork(true)
+        const deps = createMockDeps(testDb, { network })
+        const engine = new SyncEngine(deps)
+        await engine.start()
+        ;(network as EventEmitter).emit('status-changed', { online: false })
+
+        expect(clearIntervalSpy).toHaveBeenCalled()
+
+        await engine.stop()
+        vi.restoreAllMocks()
+      })
+    })
+
+    describe('#given engine offline #when coming back online', () => {
+      it('#then restarts periodic pull interval', async () => {
+        vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+          items: [],
+          deleted: [],
+          hasMore: false,
+          nextCursor: 0
+        })
+        const setIntervalSpy = vi.spyOn(global, 'setInterval')
+        const network = createMockNetwork(true)
+        const deps = createMockDeps(testDb, { network })
+        const engine = new SyncEngine(deps)
+        await engine.start()
+
+        const callsAfterStart = setIntervalSpy.mock.calls.length
+        ;(network as EventEmitter).emit('status-changed', { online: false })
+        ;(network as EventEmitter).emit('status-changed', { online: true })
+
+        await vi.waitFor(() => {
+          expect(setIntervalSpy.mock.calls.length).toBeGreaterThan(callsAfterStart)
+        })
+
+        await engine.stop()
+        vi.restoreAllMocks()
+      })
+    })
+
+    describe('#given push encounters network error #when error is network_offline', () => {
+      it('#then transitions to offline state instead of error', async () => {
+        vi.spyOn(await import('./http-client'), 'postToServer').mockRejectedValue(
+          new NetworkError('Network request failed')
+        )
+        const deps = createMockDeps(testDb)
+        const engine = new SyncEngine(deps)
+
+        deps.queue.enqueue({
+          type: 'task',
+          itemId: 'task-1',
+          operation: 'create',
+          payload: JSON.stringify({ title: 'Test', clock: { 'device-1': 1 } })
+        })
+
+        await engine.push()
+
+        expect(engine.currentState).toBe('offline')
+        expect(engine.getStatus().error).toBeUndefined()
+
+        vi.restoreAllMocks()
+      })
+    })
+
+    describe('#given engine offline 25+ hours #when reconnecting', () => {
+      it('#then resets cursor for full re-pull', async () => {
+        vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+          items: [],
+          deleted: [],
+          hasMore: false,
+          nextCursor: 0
+        })
+
+        const deps = createMockDeps(testDb)
+        const engine = new SyncEngine(deps)
+
+        // @ts-expect-error accessing private for test
+        engine.setStateValue('lastCursor', '12345')
+
+        const TWENTY_FIVE_HOURS_MS = 25 * 60 * 60 * 1000
+        // @ts-expect-error accessing private for test
+        await engine.reconnectSync(TWENTY_FIVE_HOURS_MS)
+
+        // @ts-expect-error accessing private for test
+        const cursor = engine.getStateValue('lastCursor')
+        expect(cursor).toBe('0')
+
+        vi.restoreAllMocks()
+      })
+    })
+
+    describe('#given engine offline 30 minutes #when reconnecting', () => {
+      it('#then preserves existing cursor for incremental pull', async () => {
+        const getServerMock = vi
+          .spyOn(await import('./http-client'), 'getFromServer')
+          .mockResolvedValue({
+            items: [],
+            deleted: [],
+            hasMore: false,
+            nextCursor: 99999
+          })
+
+        const deps = createMockDeps(testDb)
+        const engine = new SyncEngine(deps)
+
+        // @ts-expect-error accessing private for test
+        engine.setStateValue('lastCursor', '12345')
+
+        const THIRTY_MINUTES_MS = 30 * 60 * 1000
+        // @ts-expect-error accessing private for test
+        await engine.reconnectSync(THIRTY_MINUTES_MS)
+
+        const changesCall = getServerMock.mock.calls.find((c) =>
+          String(c[0]).includes('/sync/changes')
+        )
+        expect(changesCall).toBeDefined()
+        expect(String(changesCall![0])).toContain('cursor=12345')
+
+        vi.restoreAllMocks()
+      })
+    })
+
+    describe('#given engine is offline #when status event emitted', () => {
+      it('#then includes offlineSince in status event', async () => {
+        const network = createMockNetwork(false)
+        const deps = createMockDeps(testDb, { network })
+        const engine = new SyncEngine(deps)
+        await engine.start()
+
+        expect(engine.currentState).toBe('offline')
+        const status = engine.getStatus()
+        expect(status.offlineSince).toBeDefined()
+        expect(typeof status.offlineSince).toBe('number')
+
+        const emitCalls = vi.mocked(deps.emitToRenderer).mock.calls
+        const statusCall = emitCalls.find((c) => c[0] === 'sync:status-changed')
+        expect(statusCall).toBeDefined()
+        expect((statusCall![1] as { offlineSince?: number }).offlineSince).toBeDefined()
+      })
     })
   })
 })

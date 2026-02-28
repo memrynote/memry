@@ -42,6 +42,7 @@ export interface SyncStatusChangedEvent {
   pendingCount: number
   error?: string
   errorCategory?: SyncErrorCategory
+  offlineSince?: number
 }
 
 export interface ItemSyncedEvent {

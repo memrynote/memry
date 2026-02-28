@@ -40,6 +40,7 @@ export interface GetSyncStatusResult {
   pendingCount: number
   error?: string
   errorCategory?: SyncErrorCategory
+  offlineSince?: number
 }
 
 export interface TriggerSyncResult {

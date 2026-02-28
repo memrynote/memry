@@ -38,6 +38,7 @@ interface SyncState {
   lastSyncAt: number | null
   pendingCount: number
   error: string | null
+  offlineSince: number | null
   uploadProgress: Record<string, ProgressEntry> | null
   downloadProgress: Record<string, ProgressEntry> | null
   sessionExpired: boolean
@@ -55,6 +56,7 @@ type SyncAction =
       lastSyncAt?: number
       pendingCount: number
       error?: string
+      offlineSince?: number
     }
   | { type: 'PAUSED'; pendingCount: number }
   | { type: 'RESUMED'; pendingCount: number }
@@ -76,6 +78,7 @@ const initialState: SyncState = {
   lastSyncAt: null,
   pendingCount: 0,
   error: null,
+  offlineSince: null,
   uploadProgress: null,
   downloadProgress: null,
   sessionExpired: false,
@@ -96,6 +99,7 @@ function syncReducer(state: SyncState, action: SyncAction): SyncState {
         lastSyncAt: action.lastSyncAt ?? state.lastSyncAt,
         pendingCount: action.pendingCount,
         error: action.error ?? null,
+        offlineSince: action.offlineSince ?? null,
         syncActivity: leavingSyncing ? { pushCount: 0, pullCount: 0 } : state.syncActivity
       }
     }
@@ -223,7 +227,8 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
           status: status.status as SyncStatus,
           lastSyncAt: status.lastSyncAt,
           pendingCount: status.pendingCount,
-          error: status.error
+          error: status.error,
+          offlineSince: status.offlineSince
         })
       } catch {
         if (!cancelled) {
@@ -243,7 +248,8 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
           status: event.status as SyncStatus,
           lastSyncAt: event.lastSyncAt,
           pendingCount: event.pendingCount,
-          error: event.error
+          error: event.error,
+          offlineSince: event.offlineSince
         })
         if (event.errorCategory === 'storage_quota_exceeded') {
           toast.error('Storage full — free up space or upgrade your plan', { duration: 10000 })

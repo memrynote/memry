@@ -125,6 +125,15 @@ export function useSyncStatus(): SyncStatusResult {
       }
     }
 
+    if (status === 'offline' && pendingCount > 0) {
+      return {
+        label: `Offline (${pendingCount} ${pendingCount === 1 ? 'change' : 'changes'} pending)`,
+        dotColor: 'bg-gray-400',
+        IconComponent: CloudOff,
+        isAnimating: false
+      }
+    }
+
     return STATUS_MAP[status] ?? FALLBACK_DISPLAY
   }, [status, pendingCount, syncActivity])
 
