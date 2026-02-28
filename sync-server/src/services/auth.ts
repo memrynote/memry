@@ -107,15 +107,32 @@ const tryRotateBatch = async (
   }
 }
 
+const getLatestActiveTokenId = async (
+  db: D1Database,
+  userId: string,
+  deviceId: string,
+  nowEpoch: number
+): Promise<string | null> => {
+  const current = await db
+    .prepare(
+      'SELECT id FROM refresh_tokens WHERE user_id = ? AND device_id = ? AND revoked = 0 AND expires_at > ? ORDER BY created_at DESC LIMIT 1'
+    )
+    .bind(userId, deviceId, nowEpoch)
+    .first<{ id: string }>()
+
+  return current?.id ?? null
+}
+
 const rotateWithRetry = async (
   db: D1Database,
-  revokeId: string,
+  initialRevokeId: string,
   userId: string,
   deviceId: string,
   privateKeyPem: string,
   nowEpoch: number
 ): Promise<{ accessToken: string; refreshToken: string }> => {
   const expiresAt = nowEpoch + 7 * 24 * 60 * 60
+  let revokeId = initialRevokeId
 
   for (let attempt = 0; attempt < MAX_ROTATION_ATTEMPTS; attempt++) {
     const tokens = await generateTokens(userId, deviceId, privateKeyPem)
@@ -130,6 +147,11 @@ const rotateWithRetry = async (
       nowEpoch
     )
     if (inserted) return tokens
+
+    const currentTokenId = await getLatestActiveTokenId(db, userId, deviceId, nowEpoch)
+    if (currentTokenId) {
+      revokeId = currentTokenId
+    }
   }
 
   throw new AppError(
@@ -165,15 +187,10 @@ export const rotateRefreshToken = async (
       .first<{ id: string }>()
 
     if (recentlyRotated) {
-      const current = await db
-        .prepare(
-          'SELECT id FROM refresh_tokens WHERE user_id = ? AND device_id = ? AND revoked = 0 AND expires_at > ? ORDER BY created_at DESC LIMIT 1'
-        )
-        .bind(userId, deviceId, nowEpoch)
-        .first<{ id: string }>()
+      const currentTokenId = await getLatestActiveTokenId(db, userId, deviceId, nowEpoch)
 
-      if (current) {
-        return rotateWithRetry(db, current.id, userId, deviceId, privateKeyPem, nowEpoch)
+      if (currentTokenId) {
+        return rotateWithRetry(db, currentTokenId, userId, deviceId, privateKeyPem, nowEpoch)
       }
     }
 

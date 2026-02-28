@@ -258,6 +258,58 @@ describe('rotateRefreshToken', () => {
     expect(db.batch).toHaveBeenCalledTimes(2)
   })
 
+  it('should re-read current active token after UNIQUE collision and retry rotation from that token', async () => {
+    // #given - first select returns stale token id, collision then recovers using latest active token id
+    const selectExistingStmt = createMockStatement()
+    selectExistingStmt.first.mockResolvedValue({ id: 'stale-token-id' })
+    const selectLatestActiveStmt = createMockStatement()
+    selectLatestActiveStmt.first.mockResolvedValue({ id: 'current-token-id' })
+
+    const updateBindArgs: unknown[][] = []
+    db.prepare.mockImplementation((query: string) => {
+      if (query.includes('token_hash = ? AND user_id = ? AND device_id = ? AND revoked = 0')) {
+        return selectExistingStmt
+      }
+      if (
+        query.includes(
+          'WHERE user_id = ? AND device_id = ? AND revoked = 0 AND expires_at > ? ORDER BY created_at DESC LIMIT 1'
+        )
+      ) {
+        return selectLatestActiveStmt
+      }
+      if (query.includes('UPDATE refresh_tokens SET revoked = 1, rotated_at = ? WHERE id = ?')) {
+        const stmt = createMockStatement()
+        stmt.bind.mockImplementation((...args: unknown[]) => {
+          updateBindArgs.push(args)
+          return stmt
+        })
+        return stmt
+      }
+      return createMockStatement()
+    })
+
+    db.batch
+      .mockRejectedValueOnce(new Error('UNIQUE constraint failed: refresh_tokens.user_id, refresh_tokens.device_id'))
+      .mockResolvedValueOnce([])
+
+    // #when
+    const result = await rotateRefreshToken(
+      db as unknown as D1Database,
+      'old-refresh-token',
+      'user-1',
+      'device-1',
+      'pem-key'
+    )
+
+    // #then - second rotation attempt revokes the current active token id
+    expect(result).toHaveProperty('accessToken')
+    expect(result).toHaveProperty('refreshToken')
+    expect(db.batch).toHaveBeenCalledTimes(2)
+    expect(updateBindArgs).toHaveLength(2)
+    expect(updateBindArgs[0][1]).toBe('stale-token-id')
+    expect(updateBindArgs[1][1]).toBe('current-token-id')
+  })
+
   it('should throw AUTH_TOKEN_ROTATION_FAILED when all retry attempts exhausted', async () => {
     // #given - valid existing token, all batch attempts fail
     const selectStmt = createMockStatement()
