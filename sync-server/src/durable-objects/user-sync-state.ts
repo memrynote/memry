@@ -269,10 +269,18 @@ export class UserSyncState extends DurableObject<Bindings> {
     }
   }
 
+  /**
+   * Periodic check (every 60s) providing two layers of connection cleanup:
+   * 1. Token expiry — closes sockets whose JWT has expired (primary timer)
+   * 2. Revocation fallback — batch-queries D1 for revoked devices among active sockets.
+   *    The primary revocation path is /revoke-device which closes sockets instantly;
+   *    this alarm catch is defense-in-depth if that call failed (max 60s window).
+   */
+
   async alarm(): Promise<void> {
     const now = Math.floor(Date.now() / 1000)
     const allSockets = this.ctx.getWebSockets()
-    let remaining = 0
+    const activeSockets: WebSocket[] = []
 
     for (const ws of allSockets) {
       const attachment = ws.deserializeAttachment() as WsAttachment | null
@@ -295,7 +303,61 @@ export class UserSyncState extends DurableObject<Bindings> {
           // Already closed
         }
       } else {
-        remaining++
+        activeSockets.push(ws)
+      }
+    }
+
+    // Defense-in-depth: re-check revocation for remaining sockets.
+    // Primary path (/revoke-device) closes instantly; this is a fallback
+    // if that call failed (network hiccup, DO unavailable).
+    let remaining = activeSockets.length
+    const deviceIds = [
+      ...new Set(
+        activeSockets
+          .map((ws) => {
+            const att = ws.deserializeAttachment() as WsAttachment | null
+            return att?.deviceId
+          })
+          .filter((id): id is string => Boolean(id))
+      )
+    ]
+
+    if (deviceIds.length > 0) {
+      try {
+        const placeholders = deviceIds.map(() => '?').join(',')
+        const { results } = await this.env.DB.prepare(
+          `SELECT id FROM devices WHERE id IN (${placeholders}) AND revoked_at IS NOT NULL`
+        )
+          .bind(...deviceIds)
+          .all<{ id: string }>()
+
+        const revokedIds = new Set(results.map((r) => r.id))
+        for (const ws of activeSockets) {
+          const att = ws.deserializeAttachment() as WsAttachment | null
+          if (att && revokedIds.has(att.deviceId)) {
+            try {
+              ws.send(
+                JSON.stringify({
+                  type: 'error',
+                  payload: {
+                    code: ErrorCodes.AUTH_DEVICE_REVOKED,
+                    message: 'Device has been revoked'
+                  }
+                })
+              )
+            } catch {
+              // already closed
+            }
+            try {
+              ws.close(CLOSE_CODE_DEVICE_REVOKED, 'Device revoked')
+            } catch {
+              // already closed
+            }
+            remaining--
+          }
+        }
+      } catch {
+        // D1 query failed; will retry on next alarm cycle
       }
     }
 
