@@ -44,6 +44,7 @@ export { CBOR_FIELD_ORDER } from '@shared/contracts/cbor-ordering'
 export { deleteKey, retrieveKey, storeKey } from './keychain'
 
 export { secureCleanup } from './primitives'
+export { lockKeyMaterial, unlockKeyMaterial } from './memory-lock'
 
 /**
  * Constant-time comparison via libsodium memcmp.

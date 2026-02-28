@@ -14,6 +14,7 @@ import { CBOR_FIELD_ORDER } from '@shared/contracts/cbor-ordering'
 
 import { encodeCbor } from './cbor'
 import { retrieveKey } from './keychain'
+import { lockKeyMaterial, unlockKeyMaterial } from './memory-lock'
 
 const KDF_CONTEXT_MAP: Record<string, { ctx: string; id: number }> = {
   'memry-vault-key-v1': { ctx: 'memryvlt', id: 1 },
@@ -53,6 +54,8 @@ export const deriveMasterKey = async (
     sodium.crypto_pwhash_ALG_ARGON2ID13
   )
 
+  lockKeyMaterial(masterKey)
+
   try {
     const keyVerifier = await generateKeyVerifier(masterKey)
 
@@ -62,6 +65,7 @@ export const deriveMasterKey = async (
       keyVerifier
     }
   } catch (error) {
+    unlockKeyMaterial(masterKey)
     sodium.memzero(masterKey)
     throw error
   }
@@ -122,8 +126,11 @@ export const getOrDeriveVaultKey = async (): Promise<Uint8Array> => {
   }
 
   try {
-    return await deriveKey(masterKey, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
+    const vaultKey = await deriveKey(masterKey, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
+    lockKeyMaterial(vaultKey)
+    return vaultKey
   } finally {
+    unlockKeyMaterial(masterKey)
     sodium.memzero(masterKey)
   }
 }
