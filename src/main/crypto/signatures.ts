@@ -18,10 +18,5 @@ export const verifySignature = (
   publicKey: Uint8Array
 ): boolean => {
   const message = encodeCbor(payload, fieldOrder)
-
-  try {
-    return sodium.crypto_sign_verify_detached(signature, message, publicKey)
-  } catch {
-    return false
-  }
+  return sodium.crypto_sign_verify_detached(signature, message, publicKey)
 }
