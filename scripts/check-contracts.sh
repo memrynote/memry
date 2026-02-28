@@ -11,6 +11,7 @@ DRIFT=0
 SHARED_FILES=(
   "crypto.ts"
   "cbor-ordering.ts"
+  "ipc-crdt.ts"
   "ipc-sync.ts"
   "ipc-auth.ts"
   "ipc-crypto.ts"

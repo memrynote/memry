@@ -1,5 +1,6 @@
 import type { RotationPhase } from './ipc-crypto'
-import type { SyncStatusValue } from './ipc-sync-ops'
+import type { SyncErrorCategory, SyncStatusValue } from './ipc-sync-ops'
+import type { VectorClock } from './sync-api'
 
 // ============================================================================
 // Event Channel Constants
@@ -18,7 +19,19 @@ export const EVENT_CHANNELS = {
   PAUSED: 'sync:paused',
   RESUMED: 'sync:resumed',
   KEY_ROTATION_PROGRESS: 'crypto:key-rotation-progress',
-  SESSION_EXPIRED: 'auth:session-expired'
+  SESSION_EXPIRED: 'auth:session-expired',
+  OTP_DETECTED: 'auth:otp-detected',
+  CLOCK_SKEW_WARNING: 'sync:clock-skew-warning',
+  OAUTH_CALLBACK: 'auth:oauth-callback',
+  OAUTH_ERROR: 'auth:oauth-error',
+  ATTACHMENT_UPLOAD_FAILED: 'sync:attachment-upload-failed',
+  DEVICE_REMOVED: 'sync:device-removed',
+  DEVICE_RENAMED: 'sync:device-renamed',
+  LINKING_FINALIZED: 'sync:linking-finalized',
+  ITEM_RECOVERED: 'sync:item-recovered',
+  ITEM_CORRUPT: 'sync:item-corrupt',
+  SECURITY_WARNING: 'sync:security-warning',
+  CERTIFICATE_PIN_FAILED: 'sync:certificate-pin-failed'
 } as const
 
 // ============================================================================
@@ -30,12 +43,15 @@ export interface SyncStatusChangedEvent {
   lastSyncAt?: number
   pendingCount: number
   error?: string
+  errorCategory?: SyncErrorCategory
+  offlineSince?: number
 }
 
 export interface ItemSyncedEvent {
   itemId: string
   type: string
   operation: 'push' | 'pull'
+  itemOperation?: 'create' | 'update' | 'delete'
 }
 
 export interface ConflictDetectedEvent {
@@ -43,6 +59,8 @@ export interface ConflictDetectedEvent {
   type: string
   localVersion: Record<string, unknown>
   remoteVersion: Record<string, unknown>
+  localClock?: VectorClock
+  remoteClock?: VectorClock
 }
 
 export interface LinkingRequestEvent {
@@ -101,4 +119,79 @@ export type SessionExpiredReason = 'token_expired' | 'device_revoked' | 'server_
 
 export interface SessionExpiredEvent {
   reason: SessionExpiredReason
+}
+
+export interface OtpDetectedEvent {
+  code: string
+}
+
+export interface OAuthCallbackEvent {
+  code: string
+  state: string
+}
+
+export interface ClockSkewWarningEvent {
+  localTime: number
+  serverTime: number
+  skewSeconds: number
+}
+
+export interface OAuthErrorEvent {
+  error: string
+}
+
+export interface AttachmentUploadFailedEvent {
+  noteId: string
+  diskPath: string
+  error: string
+}
+
+export interface DeviceRevokedEvent {
+  unsyncedCount: number
+}
+
+export interface DeviceRenamedEvent {
+  deviceId: string
+  name: string
+}
+
+export interface LinkingFinalizedEvent {
+  deviceId?: string
+  error?: string
+}
+
+export interface ItemRecoveredEvent {
+  itemId: string
+  type: string
+}
+
+export interface ItemCorruptEvent {
+  itemId: string
+  type: string
+  error: string
+}
+
+export interface SecurityWarningEvent {
+  itemId: string
+  itemType: string
+  signerDeviceId: string
+  reason: 'signature_verification_failed'
+  attemptCount: number
+  permanent: boolean
+}
+
+export interface QuarantinedItemInfo {
+  itemId: string
+  itemType: string
+  signerDeviceId: string
+  failedAt: number
+  attemptCount: number
+  lastError: string
+  permanent: boolean
+}
+
+export interface CertificatePinFailedEvent {
+  hostname: string
+  actualHash: string
+  expectedHashes: string[]
 }

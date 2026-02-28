@@ -10,6 +10,7 @@ TARGET_DIR="sync-server/src/contracts"
 SHARED_FILES=(
   "crypto.ts"
   "cbor-ordering.ts"
+  "ipc-crdt.ts"
   "ipc-sync.ts"
   "ipc-auth.ts"
   "ipc-crypto.ts"

@@ -8,8 +8,13 @@ export const AUTH_CHANNELS = {
   AUTH_REQUEST_OTP: 'auth:request-otp',
   AUTH_VERIFY_OTP: 'auth:verify-otp',
   AUTH_RESEND_OTP: 'auth:resend-otp',
+  AUTH_INIT_OAUTH: 'auth:init-oauth',
+  AUTH_REFRESH_TOKEN: 'auth:refresh-token',
   SETUP_FIRST_DEVICE: 'sync:setup-first-device',
-  CONFIRM_RECOVERY_PHRASE: 'sync:confirm-recovery-phrase'
+  SETUP_NEW_ACCOUNT: 'sync:setup-new-account',
+  CONFIRM_RECOVERY_PHRASE: 'sync:confirm-recovery-phrase',
+  GET_RECOVERY_PHRASE: 'sync:get-recovery-phrase',
+  AUTH_LOGOUT: 'sync:logout'
 } as const
 
 // ============================================================================
@@ -35,8 +40,16 @@ export interface VerifyOtpInput {
 export interface VerifyOtpResult {
   success: boolean
   isNewUser?: boolean
+  needsSetup?: boolean
   needsRecoverySetup?: boolean
+  needsRecoveryInput?: boolean
   recoveryPhrase?: string
+  deviceId?: string
+  error?: string
+}
+
+export interface SetupNewAccountResult {
+  success: boolean
   deviceId?: string
   error?: string
 }
@@ -52,14 +65,29 @@ export interface ResendOtpResult {
   error?: string
 }
 
+export interface InitOAuthInput {
+  provider: 'google'
+}
+
+export interface InitOAuthResult {
+  state: string
+}
+
+export interface RefreshTokenResult {
+  success: boolean
+  error?: string
+}
+
 export interface SetupFirstDeviceInput {
   oauthToken: string
   provider: 'google'
+  state: string
 }
 
 export interface SetupFirstDeviceResult {
   success: boolean
-  recoveryPhrase?: string
+  needsRecoverySetup?: boolean
+  needsRecoveryInput?: boolean
   deviceId?: string
   error?: string
 }
@@ -69,6 +97,10 @@ export interface ConfirmRecoveryPhraseInput {
 }
 
 export interface ConfirmRecoveryPhraseResult {
+  success: boolean
+}
+
+export interface LogoutResult {
   success: boolean
 }
 
@@ -89,9 +121,14 @@ export const ResendOtpSchema = z.object({
   email: z.string().email()
 })
 
+export const InitOAuthSchema = z.object({
+  provider: z.literal('google')
+})
+
 export const SetupFirstDeviceSchema = z.object({
   oauthToken: z.string().min(1),
-  provider: z.literal('google')
+  provider: z.literal('google'),
+  state: z.string().min(1)
 })
 
 export const ConfirmRecoveryPhraseSchema = z.object({
@@ -105,5 +142,6 @@ export const ConfirmRecoveryPhraseSchema = z.object({
 export type RequestOtpSchemaInput = z.infer<typeof RequestOtpSchema>
 export type VerifyOtpSchemaInput = z.infer<typeof VerifyOtpSchema>
 export type ResendOtpSchemaInput = z.infer<typeof ResendOtpSchema>
+export type InitOAuthSchemaInput = z.infer<typeof InitOAuthSchema>
 export type SetupFirstDeviceSchemaInput = z.infer<typeof SetupFirstDeviceSchema>
 export type ConfirmRecoveryPhraseSchemaInput = z.infer<typeof ConfirmRecoveryPhraseSchema>
