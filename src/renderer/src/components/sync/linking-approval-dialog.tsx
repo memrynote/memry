@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,10 @@ import { Button } from '@/components/ui/button'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { LinkingRequestEvent } from '@shared/contracts/ipc-events'
 import { Monitor, Smartphone, Loader2 } from 'lucide-react'
+
+function formatSasCode(code: string): string {
+  return `${code.slice(0, 3)} ${code.slice(3)}`
+}
 
 interface LinkingApprovalDialogProps {
   open: boolean
@@ -32,6 +36,25 @@ export function LinkingApprovalDialog({
 }: LinkingApprovalDialogProps): React.JSX.Element {
   const [isApproving, setIsApproving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [verificationCode, setVerificationCode] = useState<string | null>(null)
+  const [sasLoading, setSasLoading] = useState(false)
+
+  useEffect(() => {
+    if (!event?.sessionId || !open) {
+      setVerificationCode(null)
+      return
+    }
+    setSasLoading(true)
+    window.api.syncLinking
+      .getLinkingSas({ sessionId: event.sessionId })
+      .then((result) => {
+        if (result.verificationCode) {
+          setVerificationCode(result.verificationCode)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setSasLoading(false))
+  }, [event?.sessionId, open])
 
   const PlatformIcon = event?.newDevicePlatform
     ? (PLATFORM_ICONS[event.newDevicePlatform] ?? Monitor)
@@ -87,6 +110,27 @@ export function LinkingApprovalDialog({
           </div>
         )}
 
+        <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 p-3 space-y-1.5">
+          <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
+            Verification code
+          </p>
+          {sasLoading ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Computing...</span>
+            </div>
+          ) : verificationCode ? (
+            <p className="font-mono text-2xl tracking-[0.3em] font-semibold text-amber-700 dark:text-amber-400">
+              {formatSasCode(verificationCode)}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">Unavailable</p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Confirm this code matches the one shown on the new device
+          </p>
+        </div>
+
         {error && (
           <p className="text-sm text-destructive" role="alert">
             {error}
@@ -97,7 +141,7 @@ export function LinkingApprovalDialog({
           <Button variant="outline" onClick={onReject} disabled={isApproving}>
             Reject
           </Button>
-          <Button onClick={handleApprove} disabled={isApproving}>
+          <Button onClick={handleApprove} disabled={isApproving || sasLoading}>
             {isApproving ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />

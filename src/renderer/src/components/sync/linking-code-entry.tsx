@@ -5,7 +5,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { ArrowLeft, Link2, Loader2 } from 'lucide-react'
 
 interface LinkingCodeEntryProps {
-  onLinked: (sessionId: string) => void
+  onLinked: (sessionId: string, verificationCode?: string) => void
   onError: (error: string) => void
   onBack: () => void
 }
@@ -59,7 +59,7 @@ export function LinkingCodeEntry({
             onError(msg)
             return
           }
-          onLinked(parsed.sessionId)
+          onLinked(parsed.sessionId, result.verificationCode)
         })
         .catch((err: unknown) => {
           const msg = extractErrorMessage(err, 'Failed to link device')
