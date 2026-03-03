@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
-import { webcrypto } from 'node:crypto'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+const realCrypto = crypto
 
 import { AppError, ErrorCodes, errorHandler } from '../lib/errors'
 import type { AppContext } from '../types'
@@ -531,7 +532,7 @@ describe('auth routes', () => {
 
   describe('GET /auth/recovery', () => {
     beforeEach(() => {
-      vi.stubGlobal('crypto', webcrypto as unknown as Crypto)
+      vi.stubGlobal('crypto', realCrypto)
     })
 
     it('should derive dummy recovery data from RECOVERY_DUMMY_SECRET, not JWT_PRIVATE_KEY', async () => {
@@ -665,7 +666,7 @@ describe('auth routes', () => {
           sub: 'user-1',
           device_id: 'device-1'
         }
-      } as Awaited<ReturnType<typeof jwtVerify>>)
+      } as never)
 
       // #when
       const res = await app.request(
@@ -708,7 +709,7 @@ describe('auth routes', () => {
           sub: 'user-1',
           device_id: 'device-1'
         }
-      } as Awaited<ReturnType<typeof jwtVerify>>)
+      } as never)
 
       // #when
       const res = await app.request(
