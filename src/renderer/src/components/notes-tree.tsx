@@ -8,6 +8,7 @@
  */
 
 import { useMemo, useCallback, useState, useRef, useEffect, type ReactNode } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   TreeExpander,
   TreeIcon,
@@ -21,7 +22,10 @@ import {
   type MoveOperation,
   type DropPosition
 } from '@/components/kibo-ui/tree'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTabActions } from '@/contexts/tabs'
+import { notesKeys } from '@/hooks/use-notes-query'
+import type { Note } from '@shared/contracts/notes-api'
 import {
   useNotesList,
   useNoteFoldersQuery,
@@ -49,7 +53,8 @@ import {
   FileType2,
   Image,
   Music,
-  Video
+  Video,
+  Monitor
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -68,6 +73,9 @@ import {
 } from '@/components/ui/alert-dialog'
 import { TemplateSelector } from '@/components/note/template-selector'
 import { getTabIconForFileType, type FileType } from '@shared/file-types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:NotesTree')
 
 // ============================================================================
 // Types
@@ -223,10 +231,14 @@ function buildTreeFromNotes(
   const folderMap = new Map<string, FolderNode>()
   const rootNotes: NoteListItem[] = []
 
-  folders.forEach((folderPath) => {
+  const ensureFolderInMap = (folderPath: string): FolderNode => {
+    const existing = folderMap.get(folderPath)
+    if (existing) return existing
+
     const parts = folderPath.split('/').filter(Boolean)
     let currentPath = ''
 
+    let lastNode: FolderNode | undefined
     parts.forEach((part) => {
       const parentPath = currentPath
       currentPath = currentPath ? `${currentPath}/${part}` : part
@@ -246,8 +258,17 @@ function buildTreeFromNotes(
             parent.children.push(node)
           }
         }
+        lastNode = node
+      } else {
+        lastNode = folderMap.get(currentPath)!
       }
     })
+
+    return lastNode!
+  }
+
+  folders.forEach((folderPath) => {
+    ensureFolderInMap(folderPath)
   })
 
   notes.forEach((note) => {
@@ -259,23 +280,14 @@ function buildTreeFromNotes(
         rootNotes.push(note)
       } else {
         const folderPath = pathParts.slice(1).join('/')
-        if (folderMap.has(folderPath)) {
-          folderMap.get(folderPath)!.notes.push(note)
-        } else {
-          rootNotes.push(note)
-        }
+        ensureFolderInMap(folderPath).notes.push(note)
       }
     } else {
       const folderPath = pathParts.join('/')
-      if (folderMap.has(folderPath)) {
-        folderMap.get(folderPath)!.notes.push(note)
-      } else {
-        rootNotes.push(note)
-      }
+      ensureFolderInMap(folderPath).notes.push(note)
     }
   })
 
-  // Sort notes by position, fallback to modified date
   const sortByPosition = (a: NoteListItem, b: NoteListItem): number => {
     const posA = positions[a.path] ?? Number.MAX_SAFE_INTEGER
     const posB = positions[b.path] ?? Number.MAX_SAFE_INTEGER
@@ -283,7 +295,6 @@ function buildTreeFromNotes(
     return b.modified.getTime() - a.modified.getTime()
   }
 
-  // Sort folders by position, fallback to alphabetical
   const sortFoldersByPosition = (a: FolderNode, b: FolderNode): number => {
     const posA = positions[a.path] ?? Number.MAX_SAFE_INTEGER
     const posB = positions[b.path] ?? Number.MAX_SAFE_INTEGER
@@ -303,7 +314,6 @@ function buildTreeFromNotes(
     return !folder.path.includes('/')
   })
 
-  // Sort root folders by position
   rootFolders.sort(sortFoldersByPosition)
   rootFolders.forEach(sortFolderContents)
 
@@ -370,15 +380,60 @@ function NotesTreeError({ error }: { error: string }) {
 }
 
 // ============================================================================
+// RevealHandler — must render inside TreeProvider to access useTree()
+// ============================================================================
+
+interface RevealHandlerProps {
+  pendingRevealNoteId: string | null
+  noteMap: Map<string, { path: string }>
+  onReveal: (noteId: string) => void
+  onClear: () => void
+}
+
+function RevealHandler({ pendingRevealNoteId, noteMap, onReveal, onClear }: RevealHandlerProps) {
+  const { expandNode } = useTree()
+
+  useEffect(() => {
+    if (!pendingRevealNoteId) return
+
+    const note = noteMap.get(pendingRevealNoteId)
+    if (!note) {
+      onClear()
+      return
+    }
+
+    const pathParts = note.path.split('/')
+    pathParts.pop()
+
+    if (pathParts.length > 1) {
+      const folderParts = pathParts.slice(1)
+      let currentPath = ''
+      for (const part of folderParts) {
+        currentPath = currentPath ? `${currentPath}/${part}` : part
+        expandNode(`folder-${currentPath}`)
+      }
+    }
+
+    setTimeout(() => {
+      onReveal(pendingRevealNoteId)
+    }, 50)
+  }, [pendingRevealNoteId, noteMap, expandNode, onReveal, onClear])
+
+  return null
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
 interface NotesTreeProps {
   /** Callback to receive action buttons for external rendering */
   onActionsReady?: (actions: React.ReactNode) => void
+  /** Callback when the focused target folder changes */
+  onTargetFolderChange?: (folder: string) => void
 }
 
-export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
+export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreeProps = {}) {
   // Load all notes so the tree can correctly show files in all folders
   // Tree views need complete data - pagination doesn't make sense here
   const { notes, isLoading, error } = useNotesList({ limit: 10000 })
@@ -390,7 +445,9 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   const renameNoteMutateAsync = mutations.renameNote.mutateAsync
   const moveNoteMutateAsync = mutations.moveNote.mutateAsync
   const { folders, createFolder, refetch: refreshFolders } = useNoteFoldersQuery()
-  const { openTab, closeTab } = useTabActions()
+  const { openTab, closeTab, updateTabTitleByEntityId } = useTabActions()
+  const queryClient = useQueryClient()
+  const originalRenameTitle = useRef<string>('')
   const [isCreating, setIsCreating] = useState(false)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
   const [isMoving, setIsMoving] = useState(false)
@@ -410,12 +467,24 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   const [isRenaming, setIsRenaming] = useState(false)
   const renameInputRef = useRef<HTMLInputElement>(null)
   const treeContainerRef = useRef<HTMLDivElement>(null)
+  const [isTreeFocused, setIsTreeFocused] = useState(false)
+  const isTreeFocusedRef = useRef(false)
 
   // Inline rename state for folders
   const [renamingFolderPath, setRenamingFolderPath] = useState<string | null>(null)
   const [folderRenameValue, setFolderRenameValue] = useState('')
   const [isFolderRenaming, setIsFolderRenaming] = useState(false)
   const folderRenameInputRef = useRef<HTMLInputElement>(null)
+
+  const folderRenameCallbackRef = useCallback((el: HTMLInputElement | null) => {
+    folderRenameInputRef.current = el
+    if (el) {
+      requestAnimationFrame(() => {
+        el.focus()
+        el.select()
+      })
+    }
+  }, [])
 
   // Folder template configuration state
   const [folderToConfigureTemplate, setFolderToConfigureTemplate] = useState<string | null>(null)
@@ -424,21 +493,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   // Note positions for custom ordering
   const [notePositions, setNotePositions] = useState<Record<string, number>>({})
 
-  // Focus input when note renaming starts
-  useEffect(() => {
-    if (renamingNoteId && renameInputRef.current) {
-      renameInputRef.current.focus()
-      renameInputRef.current.select()
-    }
-  }, [renamingNoteId])
-
-  // Focus input when folder renaming starts
-  useEffect(() => {
-    if (renamingFolderPath && folderRenameInputRef.current) {
-      folderRenameInputRef.current.focus()
-      folderRenameInputRef.current.select()
-    }
-  }, [renamingFolderPath])
+  // Focus handled by renameCallbackRef / folderRenameCallbackRef (synchronous on mount)
 
   // Load folder template names on mount/folder change
   useEffect(() => {
@@ -470,7 +525,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
 
         setFolderTemplateNames(namesMap)
       } catch (err) {
-        console.error('Failed to load folder template names:', err)
+        log.error('Failed to load folder template names', err)
       }
     }
 
@@ -486,7 +541,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           setNotePositions(result.positions)
         }
       } catch (err) {
-        console.error('Failed to fetch positions:', err)
+        log.error('Failed to fetch positions', err)
       }
     }
     fetchPositions()
@@ -504,32 +559,30 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     return map
   }, [notes])
 
-  // Compute target folder from selection (for creating notes/folders in context)
+  // Compute target folder from selection — only when tree is focused so toolbar
+  // buttons create at root when the user clicks away from the tree
   const targetFolder = useMemo(() => {
-    if (selectedIds.length === 0) return '' // root
+    if (!isTreeFocused) return ''
+    if (selectedIds.length === 0) return ''
 
     const selectedId = selectedIds[0]
 
-    // If folder selected, use its path
     if (selectedId.startsWith('folder-')) {
       return selectedId.replace('folder-', '')
     }
 
-    // If note selected, get its parent folder
     const note = noteMap.get(selectedId)
     if (note) {
       const parts = note.path.split('/')
-      parts.pop() // remove filename
-      // If path is "notes/subfolder/file.md", after pop we have ["notes", "subfolder"]
-      // We want "subfolder" (remove the "notes" prefix)
+      parts.pop()
       if (parts.length > 1 && parts[0] === 'notes') {
         return parts.slice(1).join('/')
       }
-      return '' // root notes folder
+      return ''
     }
 
     return ''
-  }, [selectedIds, noteMap])
+  }, [selectedIds, noteMap, isTreeFocused])
 
   // Handle note selection - update state and optionally open in tab
   const handleSelectionChange = useCallback(
@@ -586,21 +639,20 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   const handleCreateNote = useCallback(async () => {
     if (isCreating) return
 
+    const folder = isTreeFocusedRef.current ? targetFolder : ''
+
     setIsCreating(true)
     try {
-      // Get folder's default template (if any)
-      const templateId = targetFolder ? await notesService.getFolderTemplate(targetFolder) : null
+      const templateId = folder ? await notesService.getFolderTemplate(folder) : null
 
       const result = await createNoteMutateAsync({
         title: 'Untitled',
-        folder: targetFolder || undefined,
+        folder: folder || undefined,
         template: templateId ?? undefined
-        // Note: content is intentionally omitted to allow template content to be used
       })
 
       if (result.success && result.note) {
         const newNote = result.note
-        // Open the new note in a tab
         openTab({
           type: 'note',
           title: getDisplayName(newNote.path),
@@ -614,12 +666,12 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           isDeleted: false
         })
 
-        // Auto-focus rename mode for the new note
+        originalRenameTitle.current = 'Untitled'
         setRenamingNoteId(newNote.id)
         setRenameValue('Untitled')
       }
     } catch (err) {
-      console.error('Failed to create note:', err)
+      log.error('Failed to create note', err)
     } finally {
       setIsCreating(false)
     }
@@ -651,7 +703,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           }
           toast.success('Default template set')
         } catch (err) {
-          console.error('Failed to set folder template:', err)
+          log.error('Failed to set folder template', err)
           toast.error('Failed to set default template')
         }
       }
@@ -675,7 +727,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       })
       toast.success('Default template cleared')
     } catch (err) {
-      console.error('Failed to clear folder template:', err)
+      log.error('Failed to clear folder template', err)
       toast.error('Failed to clear default template')
     }
   }, [])
@@ -684,15 +736,15 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   const handleCreateFolder = useCallback(async () => {
     if (isCreatingFolder) return
 
+    const folder = isTreeFocusedRef.current ? targetFolder : ''
+
     setIsCreatingFolder(true)
     try {
-      // Generate unique folder name
       const baseName = 'Untitled Folder'
       let folderName = baseName
       let counter = 1
-      const targetPath = targetFolder ? `${targetFolder}/` : ''
+      const targetPath = folder ? `${folder}/` : ''
 
-      // Check for existing folders with same name
       while (folders.includes(`${targetPath}${folderName}`)) {
         folderName = `${baseName} ${counter++}`
       }
@@ -701,31 +753,26 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       const success = await createFolder(fullPath)
 
       if (success) {
-        // Reload folders to show the new one
         await refreshFolders()
-
-        // Auto-focus rename mode for the new folder
         setRenamingFolderPath(fullPath)
         setFolderRenameValue(folderName)
       }
     } catch (err) {
-      console.error('Failed to create folder:', err)
+      log.error('Failed to create folder', err)
     } finally {
       setIsCreatingFolder(false)
     }
   }, [isCreatingFolder, createFolder, folders, targetFolder, refreshFolders])
 
-  // Handle importing files
   const handleImportFiles = useCallback(async () => {
+    const folder = isTreeFocusedRef.current ? targetFolder : ''
     try {
-      // Show file dialog
       const dialogResult = await notesService.showImportDialog()
       if (dialogResult.canceled || dialogResult.filePaths.length === 0) {
         return
       }
 
-      // Import files to current folder
-      const result = await notesService.importFiles(dialogResult.filePaths, targetFolder || '')
+      const result = await notesService.importFiles(dialogResult.filePaths, folder || '')
 
       if (result.imported > 0) {
         toast.success(`Imported ${result.imported} file${result.imported > 1 ? 's' : ''}`)
@@ -737,10 +784,14 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         })
       }
     } catch (err) {
-      console.error('Failed to import files:', err)
+      log.error('Failed to import files', err)
       toast.error('Failed to import files')
     }
   }, [targetFolder])
+
+  useEffect(() => {
+    onTargetFolderChange?.(targetFolder)
+  }, [targetFolder, onTargetFolderChange])
 
   // Handle creating a note in a specific folder (from context menu)
   const handleCreateNoteInFolder = useCallback(
@@ -775,7 +826,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           })
         }
       } catch (err) {
-        console.error('Failed to create note:', err)
+        log.error('Failed to create note', err)
       } finally {
         setIsCreating(false)
       }
@@ -806,7 +857,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           await refreshFolders()
         }
       } catch (err) {
-        console.error('Failed to create folder:', err)
+        log.error('Failed to create folder', err)
       } finally {
         setIsCreatingFolder(false)
       }
@@ -816,19 +867,56 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
 
   // Context menu action handlers
   const handleRenameClick = useCallback((note: NoteListItem) => {
+    const displayName = getDisplayName(note.path)
+    originalRenameTitle.current = displayName
     setRenamingNoteId(note.id)
-    setRenameValue(getDisplayName(note.path))
+    setRenameValue(displayName)
   }, [])
+
+  const renameCallbackRef = useCallback((el: HTMLInputElement | null) => {
+    renameInputRef.current = el
+    if (el) {
+      requestAnimationFrame(() => {
+        el.focus()
+        el.select()
+      })
+    }
+  }, [])
+
+  const handleRenameInputChange = useCallback(
+    (noteId: string, value: string) => {
+      setRenameValue(value)
+      const displayTitle = value || 'Untitled'
+      updateTabTitleByEntityId(noteId, displayTitle)
+      queryClient.setQueryData<Note>(notesKeys.note(noteId), (old) =>
+        old ? { ...old, title: displayTitle } : old
+      )
+    },
+    [updateTabTitleByEntityId, queryClient]
+  )
+
+  const revertOptimisticTitle = useCallback(
+    (noteId: string) => {
+      const title = originalRenameTitle.current
+      updateTabTitleByEntityId(noteId, title)
+      queryClient.setQueryData<Note>(notesKeys.note(noteId), (old) =>
+        old ? { ...old, title } : old
+      )
+    },
+    [updateTabTitleByEntityId, queryClient]
+  )
 
   const handleRenameSubmit = useCallback(
     async (noteId: string, originalPath: string) => {
       if (!renameValue.trim() || isRenaming) {
+        revertOptimisticTitle(noteId)
         setRenamingNoteId(null)
         return
       }
 
       const currentName = getDisplayName(originalPath)
       if (renameValue.trim() === currentName) {
+        revertOptimisticTitle(noteId)
         setRenamingNoteId(null)
         return
       }
@@ -837,19 +925,26 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       try {
         await renameNoteMutateAsync({ id: noteId, newTitle: renameValue.trim() })
       } catch (err) {
-        console.error('Failed to rename note:', err)
+        log.error('Failed to rename note', err)
+        revertOptimisticTitle(noteId)
       } finally {
         setIsRenaming(false)
         setRenamingNoteId(null)
       }
     },
-    [renameValue, isRenaming, renameNoteMutateAsync]
+    [renameValue, isRenaming, renameNoteMutateAsync, revertOptimisticTitle]
   )
 
-  const handleRenameCancel = useCallback(() => {
-    setRenamingNoteId(null)
-    setRenameValue('')
-  }, [])
+  const handleRenameCancel = useCallback(
+    (noteId?: string) => {
+      if (noteId) {
+        revertOptimisticTitle(noteId)
+      }
+      setRenamingNoteId(null)
+      setRenameValue('')
+    },
+    [revertOptimisticTitle]
+  )
 
   // Folder rename handlers
   const handleRenameFolderClick = useCallback((folderPath: string) => {
@@ -884,7 +979,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         await notesService.renameFolder(oldPath, newPath)
         await refreshFolders()
       } catch (err) {
-        console.error('Failed to rename folder:', err)
+        log.error('Failed to rename folder', err)
       } finally {
         setIsFolderRenaming(false)
         setRenamingFolderPath(null)
@@ -967,7 +1062,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
       setFoldersToDelete([])
       setSelectedIds([]) // Clear selection after delete
     } catch (err) {
-      console.error('Failed to delete items:', err)
+      log.error('Failed to delete items', err)
     } finally {
       setIsDeleting(false)
     }
@@ -977,7 +1072,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     try {
       await notesService.openExternal(note.id)
     } catch (err) {
-      console.error('Failed to open note externally:', err)
+      log.error('Failed to open note externally', err)
     }
   }, [])
 
@@ -985,7 +1080,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     try {
       await notesService.revealInFinder(note.id)
     } catch (err) {
-      console.error('Failed to reveal note in Finder:', err)
+      log.error('Failed to reveal note in Finder', err)
     }
   }, [])
 
@@ -1044,7 +1139,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         await moveNoteMutateAsync({ id: noteId, newFolder: targetFolder })
         return true
       } catch (err) {
-        console.error('Failed to move note:', err)
+        log.error('Failed to move note', err)
         return false
       }
     },
@@ -1072,7 +1167,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
 
         // Prevent invalid moves (into self or descendants)
         if (isDescendantOrSelf(sourceFolderPath, targetPath)) {
-          console.warn('Cannot move folder into itself or its descendants')
+          log.warn('Cannot move folder into itself or its descendants')
           return false
         }
 
@@ -1105,7 +1200,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         await refreshFolders()
         return true
       } catch (err) {
-        console.error('Failed to move folder:', err)
+        log.error('Failed to move folder', err)
         return false
       }
     },
@@ -1160,7 +1255,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         }
         return true
       } catch (err) {
-        console.error('Failed to reorder notes:', err)
+        log.error('Failed to reorder notes', err)
         return false
       }
     },
@@ -1211,7 +1306,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         }
         return true
       } catch (err) {
-        console.error('Failed to reorder folders:', err)
+        log.error('Failed to reorder folders', err)
         return false
       }
     },
@@ -1400,58 +1495,23 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     }
   }, [noteMap])
 
-  // Helper component that runs inside TreeProvider to handle folder expansion
-  const RevealHandler = useCallback(() => {
-    const { expandNode } = useTree()
-
-    useEffect(() => {
-      if (!pendingRevealNoteId) return
-
-      const note = noteMap.get(pendingRevealNoteId)
-      if (!note) {
-        setPendingRevealNoteId(null)
-        return
-      }
-
-      // Extract folder path from note path to expand parent folders
-      const pathParts = note.path.split('/')
-      pathParts.pop() // Remove filename
-
-      // If note is in a subfolder, expand all parent folders
-      if (pathParts.length > 1) {
-        const folderParts = pathParts.slice(1) // Remove "notes" prefix
-        let currentPath = ''
-        for (const part of folderParts) {
-          currentPath = currentPath ? `${currentPath}/${part}` : part
-          // Expand this folder
-          expandNode(`folder-${currentPath}`)
-        }
-      }
-
-      // Select the note and scroll to it
+  const handleRevealComplete = useCallback(
+    (noteId: string) => {
+      setSelectedIds([noteId])
       setTimeout(() => {
-        setSelectedIds([pendingRevealNoteId])
-
-        // Scroll the note into view
-        setTimeout(() => {
-          const element = document.querySelector(`[data-tree-node-id="${pendingRevealNoteId}"]`)
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            // Add a brief highlight effect
-            element.classList.add('bg-accent')
-            setTimeout(() => {
-              element.classList.remove('bg-accent')
-            }, 2000)
-          }
-        }, 100)
-
-        // Clear pending reveal
-        setPendingRevealNoteId(null)
-      }, 50)
-    }, [pendingRevealNoteId, expandNode])
-
-    return null
-  }, [pendingRevealNoteId, noteMap])
+        const element = document.querySelector(`[data-tree-node-id="${noteId}"]`)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          element.classList.add('bg-accent')
+          setTimeout(() => {
+            element.classList.remove('bg-accent')
+          }, 2000)
+        }
+      }, 100)
+      setPendingRevealNoteId(null)
+    },
+    [setSelectedIds]
+  )
 
   // Render action buttons (must be before early returns to follow Rules of Hooks)
   const actionButtons = useMemo(
@@ -1537,7 +1597,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
 
   // Render error state
   if (error) {
-    return <NotesTreeError error={error.message ?? 'Failed to load notes'} />
+    return <NotesTreeError error={extractErrorMessage(error, 'Failed to load notes')} />
   }
 
   // Render empty state (only if no notes AND no folders)
@@ -1594,17 +1654,17 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           <TreeIcon icon={getFileIcon(note)} />
           {isBeingRenamed ? (
             <input
-              ref={renameInputRef}
+              ref={renameCallbackRef}
               type="text"
               value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
+              onChange={(e) => handleRenameInputChange(note.id, e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
                   handleRenameSubmit(note.id, note.path)
                 } else if (e.key === 'Escape') {
                   e.preventDefault()
-                  handleRenameCancel()
+                  handleRenameCancel(note.id)
                 }
                 e.stopPropagation()
               }}
@@ -1616,6 +1676,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           ) : (
             <TreeLabel>{getDisplayName(note.path)}</TreeLabel>
           )}
+          {note.localOnly && <Monitor className="ml-1 h-3 w-3 shrink-0 text-muted-foreground/60" />}
         </TreeNodeTrigger>
       </TreeNode>
     )
@@ -1627,7 +1688,13 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
     const isBeingRenamed = renamingFolderPath === folder.path
 
     return (
-      <TreeNode key={folder.path} nodeId={`folder-${folder.path}`} level={level} isLast={isLast}>
+      <TreeNode
+        key={folder.path}
+        nodeId={`folder-${folder.path}`}
+        level={level}
+        isLast={isLast}
+        acceptsDropInside
+      >
         <TreeNodeTrigger
           expandOnly
           contextMenuContent={
@@ -1673,7 +1740,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
           <TreeIcon hasChildren={hasChildren} icon={<Folder className="h-4 w-4" />} />
           {isBeingRenamed ? (
             <input
-              ref={folderRenameInputRef}
+              ref={folderRenameCallbackRef}
               type="text"
               value={folderRenameValue}
               onChange={(e) => setFolderRenameValue(e.target.value)}
@@ -1693,7 +1760,7 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
               className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
             />
           ) : (
-            <div className="group/folder flex flex-1 items-center">
+            <div className="group/folder flex flex-1 items-center min-w-0">
               <TreeLabel className="flex-1">{folder.name}</TreeLabel>
               {/* Hover action icon to open folder view */}
               <div className="flex items-center opacity-0 group-hover/folder:opacity-100 transition-opacity ml-auto">
@@ -1733,7 +1800,21 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
   }
 
   return (
-    <div ref={treeContainerRef} className="flex flex-col" tabIndex={-1}>
+    <div
+      ref={treeContainerRef}
+      className="flex flex-col"
+      tabIndex={-1}
+      onFocus={() => {
+        isTreeFocusedRef.current = true
+        setIsTreeFocused(true)
+      }}
+      onBlur={(e) => {
+        if (!treeContainerRef.current?.contains(e.relatedTarget as Node)) {
+          isTreeFocusedRef.current = false
+          setIsTreeFocused(false)
+        }
+      }}
+    >
       <TreeProvider
         selectedIds={selectedIds}
         onSelectionChange={handleSelectionChange}
@@ -1744,7 +1825,12 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
         indent={16}
       >
         {/* Handle reveal-in-sidebar requests */}
-        <RevealHandler />
+        <RevealHandler
+          pendingRevealNoteId={pendingRevealNoteId}
+          noteMap={noteMap}
+          onReveal={handleRevealComplete}
+          onClear={() => setPendingRevealNoteId(null)}
+        />
         <TreeView>
           {/* Folders first */}
           {tree.folders.map((folder, index) =>
@@ -1776,53 +1862,55 @@ export function NotesTree({ onActionsReady }: NotesTreeProps = {}) {
                 return `Delete ${totalItems} Items`
               })()}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {(() => {
-                const totalItems = notesToDelete.length + foldersToDelete.length
+            <AlertDialogDescription asChild>
+              <div className="text-sm text-muted-foreground">
+                {(() => {
+                  const totalItems = notesToDelete.length + foldersToDelete.length
 
-                // Single item
-                if (totalItems === 1) {
-                  if (foldersToDelete.length === 1) {
-                    const folderName = foldersToDelete[0].split('/').pop() || foldersToDelete[0]
+                  // Single item
+                  if (totalItems === 1) {
+                    if (foldersToDelete.length === 1) {
+                      const folderName = foldersToDelete[0].split('/').pop() || foldersToDelete[0]
+                      return (
+                        <>
+                          Are you sure you want to delete the folder &quot;{folderName}&quot; and
+                          all its contents? This action cannot be undone.
+                        </>
+                      )
+                    }
                     return (
                       <>
-                        Are you sure you want to delete the folder &quot;{folderName}&quot; and all
-                        its contents? This action cannot be undone.
+                        Are you sure you want to delete &quot;
+                        {getDisplayName(notesToDelete[0]?.path || '')}&quot;? This action cannot be
+                        undone.
                       </>
                     )
                   }
+
+                  // Multiple items
                   return (
                     <>
-                      Are you sure you want to delete &quot;
-                      {getDisplayName(notesToDelete[0]?.path || '')}&quot;? This action cannot be
-                      undone.
+                      Are you sure you want to delete these items? This action cannot be undone.
+                      <ul className="mt-2 max-h-32 overflow-y-auto text-sm list-disc list-inside">
+                        {foldersToDelete.slice(0, 3).map((folderPath) => (
+                          <li key={`folder-${folderPath}`} className="flex items-center gap-1">
+                            <Folder className="h-3 w-3 inline" />
+                            {folderPath.split('/').pop() || folderPath} (folder)
+                          </li>
+                        ))}
+                        {notesToDelete
+                          .slice(0, 5 - Math.min(foldersToDelete.length, 3))
+                          .map((note) => (
+                            <li key={note.id}>{getDisplayName(note.path)}</li>
+                          ))}
+                        {totalItems > 5 && (
+                          <li className="text-muted-foreground">...and {totalItems - 5} more</li>
+                        )}
+                      </ul>
                     </>
                   )
-                }
-
-                // Multiple items
-                return (
-                  <>
-                    Are you sure you want to delete these items? This action cannot be undone.
-                    <ul className="mt-2 max-h-32 overflow-y-auto text-sm list-disc list-inside">
-                      {foldersToDelete.slice(0, 3).map((folderPath) => (
-                        <li key={`folder-${folderPath}`} className="flex items-center gap-1">
-                          <Folder className="h-3 w-3 inline" />
-                          {folderPath.split('/').pop() || folderPath} (folder)
-                        </li>
-                      ))}
-                      {notesToDelete
-                        .slice(0, 5 - Math.min(foldersToDelete.length, 3))
-                        .map((note) => (
-                          <li key={note.id}>{getDisplayName(note.path)}</li>
-                        ))}
-                      {totalItems > 5 && (
-                        <li className="text-muted-foreground">...and {totalItems - 5} more</li>
-                      )}
-                    </ul>
-                  </>
-                )
-              })()}
+                })()}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

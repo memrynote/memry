@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
 import { createTestVault, readTestNote, type TestVaultResult } from '@tests/utils/test-vault'
-import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { VaultStatus, VaultConfig } from '@shared/contracts/vault-api'
 
 // ============================================================================
@@ -43,6 +43,7 @@ vi.mock('../inbox/suggestions', () => ({
 
 describe('notes operations', () => {
   let tempVault: TestVaultResult
+  let dataDb: TestDatabaseResult
   let testDb: TestDatabaseResult
 
   // Import modules after mocks are set up
@@ -53,6 +54,7 @@ describe('notes operations', () => {
   beforeEach(async () => {
     // Create fresh test fixtures
     tempVault = createTestVault('notes-test')
+    dataDb = createTestDataDb()
     testDb = createTestIndexDb()
 
     // Use fake timers for deterministic timestamps
@@ -82,6 +84,7 @@ describe('notes operations', () => {
     } satisfies VaultConfig)
 
     // Inject test database - spyOn ensures type compatibility
+    vi.spyOn(database, 'getDatabase').mockReturnValue(dataDb.db)
     vi.spyOn(database, 'getIndexDatabase').mockReturnValue(testDb.db)
 
     // Use real updateFtsContent with test DB
@@ -94,6 +97,7 @@ describe('notes operations', () => {
     vi.useRealTimers()
     vi.restoreAllMocks()
     testDb.close()
+    dataDb.close()
     tempVault.cleanup()
   })
 
@@ -485,6 +489,60 @@ describe('notes operations', () => {
         })
       )
     })
+
+    it('preserves binary file extension on rename', async () => {
+      // #given — a PNG file in the vault with 'image' fileType in cache
+      const binaryContent = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+      const binaryPath = path.join(tempVault.notesDir, 'photo.png')
+      fs.writeFileSync(binaryPath, binaryContent)
+
+      const { insertNoteCache } = await import('@shared/db/queries/notes')
+      insertNoteCache(testDb.db, {
+        id: 'binary-rename-1',
+        path: 'notes/photo.png',
+        title: 'photo',
+        fileType: 'image',
+        createdAt: '2026-01-15T12:00:00.000Z',
+        modifiedAt: '2026-01-15T12:00:00.000Z'
+      })
+
+      // #when
+      const renamed = await notes.renameNote('binary-rename-1', 'vacation')
+
+      // #then — extension stays .png, not replaced with .md
+      expect(renamed.path).toMatch(/vacation.*\.png$/)
+      expect(renamed.path).not.toMatch(/\.md/)
+
+      const newAbsPath = path.join(tempVault.path, renamed.path)
+      expect(fs.existsSync(newAbsPath)).toBe(true)
+      expect(fs.existsSync(binaryPath)).toBe(false)
+      expect(Buffer.compare(fs.readFileSync(newAbsPath), binaryContent)).toBe(0)
+    })
+
+    it('binary rename coexists with same-name .md file', async () => {
+      // #given — an existing .md note "photo" + a .png file with different name
+      await notes.createNote({ title: 'photo', content: 'A note about photos.' })
+
+      const binaryContent = Buffer.from([0xff, 0xd8, 0xff, 0xe0])
+      const binaryPath = path.join(tempVault.notesDir, 'camera-shot.png')
+      fs.writeFileSync(binaryPath, binaryContent)
+
+      const { insertNoteCache } = await import('@shared/db/queries/notes')
+      insertNoteCache(testDb.db, {
+        id: 'binary-rename-2',
+        path: 'notes/camera-shot.png',
+        title: 'camera-shot',
+        fileType: 'image',
+        createdAt: '2026-01-15T12:00:00.000Z',
+        modifiedAt: '2026-01-15T12:00:00.000Z'
+      })
+
+      // #when — rename .png to "photo" (same base as .md but different ext = no collision)
+      const renamed = await notes.renameNote('binary-rename-2', 'photo')
+
+      // #then — photo.md and photo.png coexist, no dedup suffix needed
+      expect(renamed.path).toBe('notes/photo.png')
+    })
   })
 
   // ==========================================================================
@@ -569,6 +627,35 @@ describe('notes operations', () => {
           oldPath: created.path
         })
       )
+    })
+
+    it('preserves binary content on move (no frontmatter injection)', async () => {
+      // #given — a binary file in the vault
+      const binaryContent = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+      const binaryPath = path.join(tempVault.notesDir, 'image.png')
+      fs.writeFileSync(binaryPath, binaryContent)
+
+      const { insertNoteCache } = await import('@shared/db/queries/notes')
+      insertNoteCache(testDb.db, {
+        id: 'binary-move-1',
+        path: 'notes/image.png',
+        title: 'image',
+        fileType: 'image',
+        createdAt: '2026-01-15T12:00:00.000Z',
+        modifiedAt: '2026-01-15T12:00:00.000Z'
+      })
+
+      // #when
+      const moved = await notes.moveNote('binary-move-1', 'archive')
+
+      // #then — binary content preserved, not serialized with frontmatter
+      expect(moved.path).toContain('notes/archive/')
+      expect(moved.path).toMatch(/\.png$/)
+
+      const newAbsPath = path.join(tempVault.path, moved.path)
+      expect(fs.existsSync(newAbsPath)).toBe(true)
+      expect(fs.existsSync(binaryPath)).toBe(false)
+      expect(Buffer.compare(fs.readFileSync(newAbsPath), binaryContent)).toBe(0)
     })
   })
 

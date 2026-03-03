@@ -8,7 +8,10 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { createLogger } from '@/lib/logger'
 import type { FolderSuggestion } from '@shared/contracts/folder-view-api'
+
+const log = createLogger('Hook:FolderSuggestions')
 
 interface UseFolderSuggestionsResult {
   /** AI folder suggestions */
@@ -85,7 +88,7 @@ export function useFolderSuggestions(noteId: string | null): UseFolderSuggestion
     } catch (err) {
       if (!mountedRef.current) return
 
-      console.error('[useFolderSuggestions] Error fetching suggestions:', err)
+      log.error('Error fetching suggestions:', err)
       setError(err instanceof Error ? err : new Error('Failed to fetch suggestions'))
       setSuggestions([])
       setIsLoading(false)

@@ -59,6 +59,10 @@ export interface DayContextSidebarProps {
   onTaskToggle?: (taskId: string) => void
   /** Callback when event is clicked */
   onEventClick?: (eventId: string) => void
+  /** Whether to show the Schedule section */
+  showSchedule?: boolean
+  /** Whether to show the Tasks section */
+  showTasks?: boolean
   className?: string
 }
 
@@ -76,12 +80,19 @@ export const DayContextSidebar = memo(function DayContextSidebar({
   onTaskClick,
   onTaskToggle,
   onEventClick,
+  showSchedule = true,
+  showTasks = true,
   className
-}: DayContextSidebarProps): React.JSX.Element {
+}: DayContextSidebarProps): React.JSX.Element | null {
   // dateLabel reserved for future use (e.g., showing selected date label)
   void _dateLabel
   const [eventsExpanded, setEventsExpanded] = useState(true)
   const [tasksExpanded, setTasksExpanded] = useState(true)
+
+  // If both sections are hidden, don't render anything
+  if (!showSchedule && !showTasks) {
+    return null
+  }
 
   const completedTasks = tasks.filter((t) => t.completed).length
   const pendingTasks = tasks.filter((t) => !t.completed).length
@@ -106,58 +117,62 @@ export const DayContextSidebar = memo(function DayContextSidebar({
       aria-label="Day context: tasks and schedule"
     >
       {/* Schedule Section */}
-      <ContextSection
-        icon={<Calendar className="size-4" aria-hidden="true" />}
-        title={isToday ? "Today's Schedule" : 'Schedule'}
-        count={events.length}
-        countLabel={events.length === 1 ? 'event' : 'events'}
-        isExpanded={eventsExpanded}
-        onToggle={() => setEventsExpanded(!eventsExpanded)}
-        isEmpty={events.length === 0}
-        emptyMessage={getEventsEmptyMessage()}
-      >
-        <div className="flex flex-col" role="list" aria-label="Schedule events">
-          {events.map((event, index) => (
-            <EventItem
-              key={event.id}
-              event={event}
-              onClick={() => onEventClick?.(event.id)}
-              isLast={index === events.length - 1}
-            />
-          ))}
-        </div>
-      </ContextSection>
+      {showSchedule && (
+        <ContextSection
+          icon={<Calendar className="size-4" aria-hidden="true" />}
+          title={isToday ? "Today's Schedule" : 'Schedule'}
+          count={events.length}
+          countLabel={events.length === 1 ? 'event' : 'events'}
+          isExpanded={eventsExpanded}
+          onToggle={() => setEventsExpanded(!eventsExpanded)}
+          isEmpty={events.length === 0}
+          emptyMessage={getEventsEmptyMessage()}
+        >
+          <div className="flex flex-col" role="list" aria-label="Schedule events">
+            {events.map((event, index) => (
+              <EventItem
+                key={event.id}
+                event={event}
+                onClick={() => onEventClick?.(event.id)}
+                isLast={index === events.length - 1}
+              />
+            ))}
+          </div>
+        </ContextSection>
+      )}
 
       {/* Tasks Section */}
-      <ContextSection
-        icon={<CheckCircle2 className="size-4" aria-hidden="true" />}
-        title={isToday ? "Today's Tasks" : 'Tasks'}
-        count={pendingTasks}
-        countLabel="to do"
-        badge={overdueCount > 0 ? { count: overdueCount, type: 'warning' } : undefined}
-        isExpanded={tasksExpanded}
-        onToggle={() => setTasksExpanded(!tasksExpanded)}
-        isEmpty={tasks.length === 0}
-        emptyMessage={getTasksEmptyMessage()}
-      >
-        <div className="flex flex-col gap-0.5" role="list" aria-label="Tasks">
-          {tasks.map((task) => (
-            <TaskItem
-              key={task.id}
-              task={task}
-              onClick={() => onTaskClick?.(task.id)}
-              onToggle={() => onTaskToggle?.(task.id)}
-            />
-          ))}
+      {showTasks && (
+        <ContextSection
+          icon={<CheckCircle2 className="size-4" aria-hidden="true" />}
+          title={isToday ? "Today's Tasks" : 'Tasks'}
+          count={pendingTasks}
+          countLabel="to do"
+          badge={overdueCount > 0 ? { count: overdueCount, type: 'warning' } : undefined}
+          isExpanded={tasksExpanded}
+          onToggle={() => setTasksExpanded(!tasksExpanded)}
+          isEmpty={tasks.length === 0}
+          emptyMessage={getTasksEmptyMessage()}
+        >
+          <div className="flex flex-col gap-0.5" role="list" aria-label="Tasks">
+            {tasks.map((task) => (
+              <TaskItem
+                key={task.id}
+                task={task}
+                onClick={() => onTaskClick?.(task.id)}
+                onToggle={() => onTaskToggle?.(task.id)}
+              />
+            ))}
 
-          {/* Completed summary if any */}
-          {completedTasks > 0 && (
-            <div className="mt-2 pt-2 border-t border-border/30">
-              <span className="text-xs text-muted-foreground">{completedTasks} completed</span>
-            </div>
-          )}
-        </div>
-      </ContextSection>
+            {/* Completed summary if any */}
+            {completedTasks > 0 && (
+              <div className="mt-2 pt-2 border-t border-border/30">
+                <span className="text-xs text-muted-foreground">{completedTasks} completed</span>
+              </div>
+            )}
+          </div>
+        </ContextSection>
+      )}
     </div>
   )
 })

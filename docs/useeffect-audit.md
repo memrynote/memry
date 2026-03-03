@@ -174,10 +174,6 @@ Legend:
 
 - useEffect @75: Good. Escape key handler for dialog close.
 
-## src/renderer/src/components/ui/sidebar.tsx
-
-- useEffect @95: Good. Keyboard shortcut to toggle sidebar.
-
 ## src/renderer/src/components/note/note-layout.tsx
 
 - useEffect @40: Good. Load sidebar preference from localStorage.

@@ -16,11 +16,14 @@ import {
   NoteMoveSchema,
   NoteListSchema,
   NoteReorderSchema,
-  NoteGetPositionsSchema
+  NoteGetPositionsSchema,
+  SetLocalOnlySchema
 } from '@shared/contracts/notes-api'
 import { PropertyTypes } from '@shared/db/schema/notes-cache'
 import { RenameFolderSchema } from '@shared/contracts/tasks-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
+import { getNoteSyncService } from '../sync/note-sync'
+import { getCrdtProvider } from '../sync/crdt-provider'
 import {
   createNote,
   getNoteById,
@@ -50,15 +53,18 @@ import {
 import { getAllSupportedExtensions } from '@shared/file-types'
 import { deleteNoteSnapshot } from '@shared/db/queries/notes'
 import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
+import { fromMemryFileUrl } from '../lib/paths'
+import { attachmentEvents } from '../sync/attachment-events'
 import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault/folders'
 import { renderNoteAsHtml, sanitizeFilename } from '../lib/export-utils'
 import { SetFolderConfigSchema } from '@shared/contracts/templates-api'
 import {
-  getNoteProperties,
   getAllPropertyDefinitions,
   insertPropertyDefinition,
   updatePropertyDefinition,
-  resolveNoteByTitle
+  resolveNoteByTitle,
+  updateNoteCache,
+  getLocalOnlyCount
 } from '@shared/db/queries/notes'
 import { getIndexDatabase, getDatabase } from '../database'
 import {
@@ -68,13 +74,9 @@ import {
 } from '@shared/db/queries/note-positions'
 
 // ============================================================================
-// Zod Schemas for Properties (T015-T018)
+// Zod Schemas for Property Definitions (T017-T018)
+// Note: T015-T016 (get/set properties) moved to properties-handlers.ts
 // ============================================================================
-
-const SetPropertiesSchema = z.object({
-  noteId: z.string().min(1),
-  properties: z.record(z.string(), z.unknown())
-})
 
 const CreatePropertyDefinitionSchema = z.object({
   name: z.string().min(1),
@@ -83,10 +85,7 @@ const CreatePropertyDefinitionSchema = z.object({
     PropertyTypes.NUMBER,
     PropertyTypes.CHECKBOX,
     PropertyTypes.DATE,
-    PropertyTypes.SELECT,
-    PropertyTypes.MULTISELECT,
-    PropertyTypes.URL,
-    PropertyTypes.RATING
+    PropertyTypes.URL
   ]),
   options: z.array(z.string()).optional(),
   defaultValue: z.unknown().optional(),
@@ -116,10 +115,7 @@ const UpdatePropertyDefinitionSchema = z.object({
       PropertyTypes.NUMBER,
       PropertyTypes.CHECKBOX,
       PropertyTypes.DATE,
-      PropertyTypes.SELECT,
-      PropertyTypes.MULTISELECT,
-      PropertyTypes.URL,
-      PropertyTypes.RATING
+      PropertyTypes.URL
     ])
     .optional(),
   options: z.array(z.string()).optional(),
@@ -148,6 +144,10 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(NoteCreateSchema, async (input) => {
       try {
         const note = await createNote(input)
+        getNoteSyncService()?.enqueueCreate(note.id)
+        getCrdtProvider()
+          .initForNote(note.id, { title: note.title }, note.tags)
+          .catch(() => {})
         return { success: true, note }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to create note'
@@ -206,6 +206,15 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(NoteUpdateSchema, async (input) => {
       try {
         const note = await updateNote(input)
+        const hasMetadataChanges =
+          input.title !== undefined ||
+          input.tags !== undefined ||
+          input.frontmatter !== undefined ||
+          input.emoji !== undefined
+        if (hasMetadataChanges) {
+          getNoteSyncService()?.enqueueUpdate(input.id)
+        }
+        if (input.title) getCrdtProvider()?.updateMeta(input.id, { title: input.title })
         return { success: true, note }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update note'
@@ -220,6 +229,8 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(NoteRenameSchema, async (input) => {
       try {
         const note = await renameNote(input.id, input.newTitle)
+        getNoteSyncService()?.enqueueUpdate(input.id)
+        getCrdtProvider()?.updateMeta(input.id, { title: input.newTitle })
         return { success: true, note }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to rename note'
@@ -234,6 +245,7 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(NoteMoveSchema, async (input) => {
       try {
         const note = await moveNote(input.id, input.newFolder)
+        getNoteSyncService()?.enqueueUpdate(input.id)
         return { success: true, note }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to move note'
@@ -247,6 +259,7 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.DELETE,
     createStringHandler(async (id) => {
       try {
+        getNoteSyncService()?.enqueueDelete(id)
         await deleteNote(id)
         return { success: true }
       } catch (error) {
@@ -355,37 +368,9 @@ export function registerNotesHandlers(): void {
   )
 
   // =========================================================================
-  // T015-T018: Properties IPC Handlers
+  // T017-T018: Property Definitions IPC Handlers
+  // Note: T015-T016 (get/set properties) moved to properties-handlers.ts
   // =========================================================================
-
-  // T015: notes:get-properties - Get properties for a note
-  ipcMain.handle(
-    NotesChannels.invoke.GET_PROPERTIES,
-    createStringHandler((noteId) => {
-      const db = getIndexDatabase()
-      return getNoteProperties(db, noteId)
-    })
-  )
-
-  // T016: notes:set-properties - Set properties for a note
-  // IMPORTANT: Must save to frontmatter file (source of truth), not just DB cache
-  ipcMain.handle(
-    NotesChannels.invoke.SET_PROPERTIES,
-    createValidatedHandler(SetPropertiesSchema, async (input) => {
-      try {
-        // Use updateNote to save properties to frontmatter (source of truth)
-        // The updateNote function handles both file write and DB cache update
-        await updateNote({
-          id: input.noteId,
-          properties: input.properties
-        })
-        return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to set properties'
-        return { success: false, error: message }
-      }
-    })
-  )
 
   // T017: notes:get-property-definitions - Get all property definitions
   ipcMain.handle(
@@ -448,11 +433,19 @@ export function registerNotesHandlers(): void {
   ipcMain.handle(
     NotesChannels.invoke.UPLOAD_ATTACHMENT,
     createValidatedHandler(UploadAttachmentSchema, async (input) => {
-      // Convert ArrayBuffer or number[] to Buffer
       const data = Array.isArray(input.data)
         ? Buffer.from(input.data)
         : Buffer.from(new Uint8Array(input.data))
-      return saveAttachment(input.noteId, data, input.filename)
+      const result = await saveAttachment(input.noteId, data, input.filename)
+      if (result.success && result.path) {
+        try {
+          const diskPath = fromMemryFileUrl(result.path)
+          attachmentEvents.emitSaved({ noteId: input.noteId, diskPath })
+        } catch {
+          // Don't block local save if sync event fails
+        }
+      }
+      return result
     })
   )
 
@@ -757,10 +750,16 @@ export function registerNotesHandlers(): void {
       }),
       async (input) => {
         try {
-          return await importFiles(input)
+          const result = await importFiles(input)
+          for (const file of result.importedFiles) {
+            if (file.fileType !== 'markdown') {
+              attachmentEvents.emitSaved({ noteId: 'vault-import', diskPath: file.destPath })
+            }
+          }
+          return result
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Failed to import files'
-          return { success: false, imported: 0, failed: 0, errors: [message] }
+          return { success: false, imported: 0, failed: 0, errors: [message], importedFiles: [] }
         }
       }
     )
@@ -784,6 +783,37 @@ export function registerNotesHandlers(): void {
       }
 
       return { canceled: false, filePaths: result.filePaths }
+    })
+  )
+
+  // notes:set-local-only — Toggle local-only flag (excludes from sync)
+  ipcMain.handle(
+    NotesChannels.invoke.SET_LOCAL_ONLY,
+    createValidatedHandler(SetLocalOnlySchema, async (input) => {
+      try {
+        const note = await updateNote({ id: input.id, frontmatter: { localOnly: input.localOnly } })
+        const indexDb = getIndexDatabase()
+        updateNoteCache(indexDb, input.id, { localOnly: input.localOnly })
+        const syncService = getNoteSyncService()
+        if (input.localOnly) {
+          syncService?.removeQueueItems(input.id)
+        } else {
+          syncService?.enqueueUpdate(input.id)
+        }
+        return { success: true, note }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to set local-only'
+        return { success: false, note: null, error: message }
+      }
+    })
+  )
+
+  // notes:get-local-only-count — Count of local-only notes
+  ipcMain.handle(
+    NotesChannels.invoke.GET_LOCAL_ONLY_COUNT,
+    createHandler(() => {
+      const indexDb = getIndexDatabase()
+      return { count: getLocalOnlyCount(indexDb) }
     })
   )
 }

@@ -17,77 +17,86 @@ import {
   CaptureTextSchema,
   CaptureLinkSchema,
   CaptureImageSchema,
-  InboxListSchema,
-  InboxUpdateSchema,
-  BulkArchiveSchema,
-  ListArchivedSchema,
-  GetFilingHistorySchema,
   type CaptureResponse,
-  type InboxListResponse,
   type InboxItem,
   type InboxItemListItem,
   type FileResponse,
-  type BulkResponse,
   type SuggestionsResponse,
-  type InboxStats,
-  type CapturePattern,
   type ImageMetadata,
-  type ArchivedListResponse,
-  type FilingHistoryResponse,
-  type FilingHistoryEntry
+  type SocialMetadata
 } from '@shared/contracts/inbox-api'
 import sharp from 'sharp'
 import { getDatabase, type DrizzleDb } from '../database'
 import { generateId } from '../lib/id'
 import { inboxItems, inboxItemTags } from '@shared/db/schema/inbox'
-import { eq, desc, asc, and, isNull, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import {
   resolveAttachmentUrl,
   getItemAttachmentsDir,
   storeInboxAttachment,
   storeThumbnail,
-  deleteInboxAttachments,
   ALLOWED_IMAGE_TYPES,
   ALLOWED_AUDIO_TYPES,
   ALLOWED_VIDEO_TYPES,
   ALLOWED_DOCUMENT_TYPES
 } from '../inbox/attachments'
 import { fetchUrlMetadata, downloadImage } from '../inbox/metadata'
-import {
-  fileToFolder,
-  convertToNote,
-  linkToNote,
-  linkToNotes,
-  bulkFileToFolder
-} from '../inbox/filing'
+import { fileToFolder, convertToNote, linkToNote, linkToNotes } from '../inbox/filing'
 import {
   extractSocialPost,
   detectSocialPlatform,
   isSocialPost,
   createFallbackSocialMetadata
 } from '../inbox/social'
-import type { SocialMetadata } from '@shared/contracts/inbox-api'
+import { createLogger } from '../lib/logger'
 import { captureVoice } from '../inbox/capture'
 import { retryTranscription } from '../inbox/transcription'
 import { getSuggestions, trackSuggestionFeedback } from '../inbox/suggestions'
-import { FileItemSchema, BulkFileSchema, BulkTagSchema } from '@shared/contracts/inbox-api'
-import {
-  getStaleThreshold as getStaleThresholdDays,
-  setStaleThreshold as setStaleThresholdDays,
-  isStale as checkIsStale,
-  getStaleItemIds,
-  countStaleItems,
-  incrementArchivedCount,
-  incrementProcessedCount,
-  getTodayActivity,
-  getAverageTimeToProcess
-} from '../inbox/stats'
-import { snoozeItem, unsnoozeItem, getSnoozedItems, bulkSnoozeItems } from '../inbox/snooze'
+import { FileItemSchema } from '@shared/contracts/inbox-api'
+import { isStale as checkIsStale } from '../inbox/stats'
+import { snoozeItem, unsnoozeItem, getSnoozedItems } from '../inbox/snooze'
 import type { SnoozeInput, SnoozedItem } from '../inbox/snooze'
+import { getInboxSyncService } from '../sync/inbox-sync'
+import { incrementInboxClockOffline } from '../sync/offline-clock'
+import {
+  createInboxCrudHandlers,
+  registerInboxCrudHandlers,
+  unregisterInboxCrudHandlers
+} from './inbox-crud-handlers'
+import {
+  createInboxBatchHandlers,
+  registerInboxBatchHandlers,
+  unregisterInboxBatchHandlers
+} from './inbox-batch-handlers'
+import {
+  createInboxQueryHandlers,
+  registerInboxQueryHandlers,
+  unregisterInboxQueryHandlers
+} from './inbox-query-handlers'
 
 // ============================================================================
 // Constants
 // ============================================================================
+
+const logger = createLogger('IPC:Inbox')
+
+function syncInboxCreate(db: DrizzleDb, itemId: string): void {
+  const svc = getInboxSyncService()
+  if (svc) {
+    svc.enqueueCreate(itemId)
+  } else {
+    incrementInboxClockOffline(db, itemId)
+  }
+}
+
+function syncInboxUpdate(db: DrizzleDb, itemId: string): void {
+  const svc = getInboxSyncService()
+  if (svc) {
+    svc.enqueueUpdate(itemId)
+  } else {
+    incrementInboxClockOffline(db, itemId)
+  }
+}
 
 /** Retry delay for metadata fetch (5 seconds) */
 const METADATA_RETRY_DELAY = 5000
@@ -109,7 +118,7 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
   try {
     db = requireDatabase()
   } catch {
-    console.warn('[Metadata] No database available, skipping metadata fetch')
+    logger.warn('No database available, skipping metadata fetch')
     return
   }
 
@@ -124,9 +133,9 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
       .run()
 
     // Fetch metadata
-    console.log(`[Metadata] Fetching metadata for ${url}`)
+    logger.info(`Fetching metadata for ${url}`)
     const metadata = await fetchUrlMetadata(url)
-    console.log(`[Metadata] Extracted: title="${metadata.title}", hasImage=${!!metadata.image}`)
+    logger.debug(`Extracted: title="${metadata.title}", hasImage=${!!metadata.image}`)
 
     // Download image if available
     let thumbnailPath: string | null = null
@@ -136,7 +145,7 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
       if (imageName) {
         // Store relative path from vault root: attachments/inbox/{itemId}/thumbnail.ext
         thumbnailPath = `attachments/inbox/${itemId}/${imageName}`
-        console.log(`[Metadata] Downloaded thumbnail: ${thumbnailPath}`)
+        logger.debug(`Downloaded thumbnail: ${thumbnailPath}`)
       }
     }
 
@@ -170,16 +179,16 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
       }
     })
 
-    console.log(`[Metadata] Successfully updated item ${itemId}`)
+    logger.info(`Successfully updated item ${itemId}`)
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    console.error(`[Metadata] Error fetching metadata for ${url}:`, errorMessage)
+    logger.error(`Error fetching metadata for ${url}: ${errorMessage}`)
 
     // Auto-retry once after delay
     if (retryCount < 1) {
-      console.log(`[Metadata] Scheduling retry for ${itemId} in ${METADATA_RETRY_DELAY}ms`)
+      logger.info(`Scheduling retry for ${itemId} in ${METADATA_RETRY_DELAY}ms`)
       setTimeout(() => {
-        fetchAndUpdateMetadata(itemId, url, retryCount + 1).catch(console.error)
+        fetchAndUpdateMetadata(itemId, url, retryCount + 1).catch((e) => logger.error(e))
       }, METADATA_RETRY_DELAY)
       return
     }
@@ -206,7 +215,7 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
         error: errorMessage
       })
     } catch (dbError) {
-      console.error('[Metadata] Failed to update error status:', dbError)
+      logger.error('Failed to update error status:', dbError)
     }
   }
 }
@@ -235,12 +244,12 @@ async function fetchAndUpdateSocialMetadata(
   try {
     db = requireDatabase()
   } catch {
-    console.warn('[Social] No database available, skipping social metadata fetch')
+    logger.warn('No database available, skipping social metadata fetch')
     return
   }
 
   const platform = detectSocialPlatform(url)
-  console.log(`[Social] Fetching ${platform} metadata for ${url}`)
+  logger.info(`Fetching ${platform} metadata for ${url}`)
 
   try {
     // Update status to processing
@@ -296,12 +305,10 @@ async function fetchAndUpdateSocialMetadata(
         metadata
       })
 
-      console.log(`[Social] Successfully updated social item ${itemId}: ${title}`)
+      logger.info(`Successfully updated social item ${itemId}: ${title}`)
     } else {
       // Social extraction failed, try regular metadata as fallback
-      console.log(
-        `[Social] Social extraction failed, falling back to regular metadata: ${result.error}`
-      )
+      logger.info(`Social extraction failed, falling back to regular metadata: ${result.error}`)
 
       // Try regular metadata extraction
       try {
@@ -335,7 +342,7 @@ async function fetchAndUpdateSocialMetadata(
           metadata: mergedMetadata
         })
 
-        console.log(`[Social] Used fallback metadata for ${itemId}`)
+        logger.info(`Used fallback metadata for ${itemId}`)
       } catch (fallbackError) {
         throw new Error(
           `Social extraction failed: ${result.error}; Fallback also failed: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown'}`
@@ -344,13 +351,13 @@ async function fetchAndUpdateSocialMetadata(
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    console.error(`[Social] Error fetching social metadata for ${url}:`, errorMessage)
+    logger.error(`Error fetching social metadata for ${url}: ${errorMessage}`)
 
     // Auto-retry once after delay
     if (retryCount < 1) {
-      console.log(`[Social] Scheduling retry for ${itemId} in ${METADATA_RETRY_DELAY}ms`)
+      logger.info(`Scheduling retry for ${itemId} in ${METADATA_RETRY_DELAY}ms`)
       setTimeout(() => {
-        fetchAndUpdateSocialMetadata(itemId, url, retryCount + 1).catch(console.error)
+        fetchAndUpdateSocialMetadata(itemId, url, retryCount + 1).catch((e) => logger.error(e))
       }, METADATA_RETRY_DELAY)
       return
     }
@@ -376,7 +383,7 @@ async function fetchAndUpdateSocialMetadata(
         error: errorMessage
       })
     } catch (dbError) {
-      console.error('[Social] Failed to update error status:', dbError)
+      logger.error('Failed to update social error status:', dbError)
     }
   }
 }
@@ -543,8 +550,8 @@ async function handleCaptureText(input: unknown): Promise<CaptureResponse> {
     const tags = getItemTags(db, id)
     const item = toInboxItem(created, tags)
 
-    // Emit event
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
+    syncInboxCreate(db, id)
 
     return { success: true, item }
   } catch (error) {
@@ -572,9 +579,7 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
     const isSocial = platform !== null && isSocialPost(parsed.url)
     const itemType = isSocial ? 'social' : 'link'
 
-    console.log(
-      `[Capture] URL detected as ${itemType}${platform ? ` (${platform})` : ''}: ${parsed.url}`
-    )
+    logger.info(`URL detected as ${itemType}${platform ? ` (${platform})` : ''}: ${parsed.url}`)
 
     // Create item with pending status
     // For social posts, we set type to 'social' for specialized UI handling
@@ -627,19 +632,19 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
     const tags = getItemTags(db, id)
     const item = toInboxItem(created, tags)
 
-    // Emit captured event immediately (UI shows pending state)
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
+    syncInboxCreate(db, id)
 
     // Trigger background metadata fetch (don't await - non-blocking)
     // Use specialized social extraction for social posts
     setImmediate(() => {
       if (isSocial) {
         fetchAndUpdateSocialMetadata(id, parsed.url).catch((err) => {
-          console.error('[Inbox] Background social metadata fetch error:', err)
+          logger.error('Background social metadata fetch error:', err)
         })
       } else {
         fetchAndUpdateMetadata(id, parsed.url).catch((err) => {
-          console.error('[Inbox] Background metadata fetch error:', err)
+          logger.error('Background metadata fetch error:', err)
         })
       }
     })
@@ -649,357 +654,6 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
     const message = error instanceof Error ? error.message : 'Unknown error'
     return { success: false, item: null, error: message }
   }
-}
-
-/**
- * Get a single inbox item by ID
- */
-async function handleGet(id: string): Promise<InboxItem | null> {
-  const db = requireDatabase()
-  const row = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-
-  if (!row) return null
-
-  const tags = getItemTags(db, id)
-  return toInboxItem(row, tags)
-}
-
-/**
- * List inbox items with filtering
- */
-async function handleList(input: unknown): Promise<InboxListResponse> {
-  const options = InboxListSchema.parse(input || {})
-  const db = requireDatabase()
-
-  // Build conditions
-  const conditions: ReturnType<typeof eq>[] = []
-
-  // Filter by type
-  if (options.type) {
-    conditions.push(eq(inboxItems.type, options.type))
-  }
-
-  // Always exclude filed items (filed items are no longer in the inbox)
-  conditions.push(isNull(inboxItems.filedAt))
-
-  // Exclude snoozed items unless requested
-  if (!options.includeSnoozed) {
-    conditions.push(isNull(inboxItems.snoozedUntil))
-  }
-
-  // Always exclude archived items
-  conditions.push(isNull(inboxItems.archivedAt))
-
-  // Build query
-  let query = db.select().from(inboxItems)
-
-  if (conditions.length > 0) {
-    query = query.where(and(...conditions)) as typeof query
-  }
-
-  // Sort
-  const sortColumn =
-    options.sortBy === 'modified'
-      ? inboxItems.modifiedAt
-      : options.sortBy === 'title'
-        ? inboxItems.title
-        : inboxItems.createdAt
-
-  query = query.orderBy(
-    options.sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn)
-  ) as typeof query
-
-  // Count total
-  const countResult = db
-    .select({ count: sql<number>`count(*)` })
-    .from(inboxItems)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .get()
-  const total = countResult?.count || 0
-
-  // Pagination
-  query = query.limit(options.limit).offset(options.offset) as typeof query
-
-  const rows = query.all()
-
-  // Convert to list items with tags
-  const items: InboxItemListItem[] = rows.map((row) => {
-    const tags = getItemTags(db, row.id)
-    return toListItem(row, tags)
-  })
-
-  return {
-    items,
-    total,
-    hasMore: options.offset + items.length < total
-  }
-}
-
-/**
- * Update an inbox item
- */
-async function handleUpdate(input: unknown): Promise<CaptureResponse> {
-  try {
-    const parsed = InboxUpdateSchema.parse(input)
-    const db = requireDatabase()
-
-    const existing = db.select().from(inboxItems).where(eq(inboxItems.id, parsed.id)).get()
-    if (!existing) {
-      return { success: false, item: null, error: 'Item not found' }
-    }
-
-    const updates: Partial<typeof inboxItems.$inferInsert> = {
-      modifiedAt: new Date().toISOString()
-    }
-
-    if (parsed.title !== undefined) updates.title = parsed.title
-    if (parsed.content !== undefined) updates.content = parsed.content
-
-    db.update(inboxItems).set(updates).where(eq(inboxItems.id, parsed.id)).run()
-
-    const updated = db.select().from(inboxItems).where(eq(inboxItems.id, parsed.id)).get()
-    if (!updated) {
-      return { success: false, item: null, error: 'Failed to update item' }
-    }
-
-    const tags = getItemTags(db, parsed.id)
-    const item = toInboxItem(updated, tags)
-
-    emitInboxEvent(InboxChannels.events.UPDATED, { id: parsed.id, changes: updates })
-
-    return { success: true, item }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return { success: false, item: null, error: message }
-  }
-}
-
-/**
- * Archive an inbox item (soft delete)
- */
-async function handleArchive(id: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    const db = requireDatabase()
-
-    const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-    if (!existing) {
-      return { success: false, error: 'Item not found' }
-    }
-
-    // Set archivedAt timestamp (soft delete - keep attachments and tags)
-    db.update(inboxItems)
-      .set({ archivedAt: new Date().toISOString() })
-      .where(eq(inboxItems.id, id))
-      .run()
-
-    // Update stats
-    incrementArchivedCount()
-
-    emitInboxEvent(InboxChannels.events.ARCHIVED, { id })
-
-    return { success: true }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return { success: false, error: message }
-  }
-}
-
-/**
- * Add tag to an item
- */
-async function handleAddTag(
-  itemId: string,
-  tag: string
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const db = requireDatabase()
-
-    // Check item exists
-    const existing = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
-    if (!existing) {
-      return { success: false, error: 'Item not found' }
-    }
-
-    // Check if tag already exists
-    const existingTag = db
-      .select()
-      .from(inboxItemTags)
-      .where(and(eq(inboxItemTags.itemId, itemId), eq(inboxItemTags.tag, tag)))
-      .get()
-
-    if (existingTag) {
-      return { success: true } // Already exists, not an error
-    }
-
-    // Add tag
-    db.insert(inboxItemTags)
-      .values({
-        id: generateId(),
-        itemId,
-        tag,
-        createdAt: new Date().toISOString()
-      })
-      .run()
-
-    return { success: true }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return { success: false, error: message }
-  }
-}
-
-/**
- * Remove tag from an item
- */
-async function handleRemoveTag(
-  itemId: string,
-  tag: string
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const db = requireDatabase()
-
-    db.delete(inboxItemTags)
-      .where(and(eq(inboxItemTags.itemId, itemId), eq(inboxItemTags.tag, tag)))
-      .run()
-
-    return { success: true }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return { success: false, error: message }
-  }
-}
-
-/**
- * Get all tags used in inbox
- */
-async function handleGetTags(): Promise<Array<{ tag: string; count: number }>> {
-  const db = requireDatabase()
-
-  const result = db
-    .select({
-      tag: inboxItemTags.tag,
-      count: sql<number>`count(*)`
-    })
-    .from(inboxItemTags)
-    .groupBy(inboxItemTags.tag)
-    .orderBy(desc(sql`count(*)`))
-    .all()
-
-  return result
-}
-
-/**
- * Bulk archive items
- */
-async function handleBulkArchive(input: unknown): Promise<BulkResponse> {
-  const parsed = BulkArchiveSchema.parse(input)
-  const errors: Array<{ itemId: string; error: string }> = []
-  let processedCount = 0
-
-  for (const itemId of parsed.itemIds) {
-    const result = await handleArchive(itemId)
-    if (result.success) {
-      processedCount++
-    } else {
-      errors.push({ itemId, error: result.error || 'Unknown error' })
-    }
-  }
-
-  return {
-    success: errors.length === 0,
-    processedCount,
-    errors
-  }
-}
-
-/**
- * Get inbox statistics
- */
-async function handleGetStats(): Promise<InboxStats> {
-  const db = requireDatabase()
-
-  // Total items (not filed, not snoozed, not archived)
-  const totalResult = db
-    .select({ count: sql<number>`count(*)` })
-    .from(inboxItems)
-    .where(
-      and(
-        isNull(inboxItems.filedAt),
-        isNull(inboxItems.snoozedUntil),
-        isNull(inboxItems.archivedAt)
-      )
-    )
-    .get()
-
-  // Items by type
-  const typeResult = db
-    .select({
-      type: inboxItems.type,
-      count: sql<number>`count(*)`
-    })
-    .from(inboxItems)
-    .where(
-      and(
-        isNull(inboxItems.filedAt),
-        isNull(inboxItems.snoozedUntil),
-        isNull(inboxItems.archivedAt)
-      )
-    )
-    .groupBy(inboxItems.type)
-    .all()
-
-  const itemsByType: Record<string, number> = {
-    link: 0,
-    note: 0,
-    image: 0,
-    voice: 0,
-    clip: 0,
-    pdf: 0,
-    social: 0
-  }
-
-  for (const row of typeResult) {
-    itemsByType[row.type] = row.count
-  }
-
-  // Stale count - use stats module
-  const staleCount = countStaleItems()
-
-  // Snoozed count (exclude archived)
-  const snoozedResult = db
-    .select({ count: sql<number>`count(*)` })
-    .from(inboxItems)
-    .where(and(sql`${inboxItems.snoozedUntil} IS NOT NULL`, isNull(inboxItems.archivedAt)))
-    .get()
-
-  // Get today's activity from stats module
-  const { capturedToday, processedToday } = getTodayActivity()
-  const avgTimeToProcess = getAverageTimeToProcess()
-
-  return {
-    totalItems: totalResult?.count || 0,
-    itemsByType: itemsByType as InboxStats['itemsByType'],
-    staleCount,
-    snoozedCount: snoozedResult?.count || 0,
-    processedToday,
-    capturedToday,
-    avgTimeToProcess
-  }
-}
-
-/**
- * Get stale threshold
- */
-async function handleGetStaleThreshold(): Promise<number> {
-  return getStaleThresholdDays()
-}
-
-/**
- * Set stale threshold
- */
-async function handleSetStaleThreshold(days: number): Promise<{ success: boolean }> {
-  setStaleThresholdDays(days)
-  return { success: true }
 }
 
 // ============================================================================
@@ -1081,12 +735,7 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
     }
 
     // Store the file
-    const storeResult = await storeInboxAttachment(
-      id,
-      fileBuffer,
-      parsed.filename,
-      parsed.mimeType
-    )
+    const storeResult = await storeInboxAttachment(id, fileBuffer, parsed.filename, parsed.mimeType)
 
     if (!storeResult.success) {
       return {
@@ -1136,12 +785,12 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
             }
           } catch (err) {
             // Thumbnail generation failed - not fatal, continue without thumbnail
-            console.warn('[Attachment] Failed to generate thumbnail:', err)
+            logger.warn('Failed to generate thumbnail:', err)
           }
         }
       } catch (err) {
         // Image metadata extraction failed - not fatal for storage
-        console.warn('[Attachment] Failed to read image metadata:', err)
+        logger.warn('Failed to read image metadata:', err)
       }
     }
 
@@ -1184,15 +833,15 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
     const tags = getItemTags(db, id)
     const item = toInboxItem(created, tags)
 
-    // Emit captured event
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
+    syncInboxCreate(db, id)
 
-    console.log(`[Attachment] Captured ${inboxType}: ${parsed.filename} (${fileBuffer.length} bytes)`)
+    logger.info(`Captured ${inboxType}: ${parsed.filename} (${fileBuffer.length} bytes)`)
 
     return { success: true, item }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Attachment] Capture failed:', message)
+    logger.error('Attachment capture failed:', message)
     return { success: false, item: null, error: message }
   }
 }
@@ -1261,7 +910,7 @@ async function handleCaptureVoice(input: unknown): Promise<CaptureResponse> {
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Voice] Capture failed:', message)
+    logger.error('Voice capture failed:', message)
     return { success: false, item: null, error: message }
   }
 }
@@ -1330,7 +979,7 @@ async function handleGetSuggestions(itemId: string): Promise<SuggestionsResponse
     return { suggestions }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Suggestions] Failed to get suggestions:', message)
+    logger.error('Failed to get suggestions:', message)
     return { suggestions: [] } // Empty fallback on error
   }
 }
@@ -1360,7 +1009,7 @@ async function handleTrackSuggestion(
     return { success: true }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Suggestions] Failed to track feedback:', message)
+    logger.error('Failed to track feedback:', message)
     return { success: false, error: message }
   }
 }
@@ -1423,224 +1072,14 @@ async function handleUnsnooze(itemId: string): Promise<{ success: boolean; error
 }
 
 /**
- * Mark an inbox item as viewed (for reminder items)
- */
-async function handleMarkViewed(itemId: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    if (!itemId) {
-      return { success: false, error: 'itemId is required' }
-    }
-
-    const db = requireDatabase()
-    const now = new Date().toISOString()
-
-    // Update the viewedAt field
-    db.update(inboxItems)
-      .set({
-        viewedAt: now,
-        modifiedAt: now
-      })
-      .where(eq(inboxItems.id, itemId))
-      .run()
-
-    // Emit updated event
-    emitInboxEvent(InboxChannels.events.UPDATED, {
-      id: itemId,
-      changes: { viewedAt: now }
-    })
-
-    console.log(`[Inbox] Marked item ${itemId} as viewed`)
-    return { success: true }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error(`[Inbox] Failed to mark item ${itemId} as viewed:`, message)
-    return { success: false, error: message }
-  }
-}
-
-/**
  * Get all snoozed items
  */
 async function handleGetSnoozed(): Promise<SnoozedItem[]> {
   try {
     return getSnoozedItems()
   } catch (error) {
-    console.error('[Snooze] Error getting snoozed items:', error)
+    logger.error('Error getting snoozed items:', error)
     return []
-  }
-}
-
-/**
- * Bulk snooze multiple items
- */
-async function handleBulkSnooze(input: unknown): Promise<{
-  success: boolean
-  processedCount: number
-  errors: Array<{ itemId: string; error: string }>
-}> {
-  try {
-    if (!input || typeof input !== 'object') {
-      return { success: false, processedCount: 0, errors: [{ itemId: '', error: 'Invalid input' }] }
-    }
-
-    const { itemIds, snoozeUntil, reason } = input as {
-      itemIds: string[]
-      snoozeUntil: string
-      reason?: string
-    }
-
-    if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
-      return {
-        success: false,
-        processedCount: 0,
-        errors: [{ itemId: '', error: 'itemIds array is required' }]
-      }
-    }
-
-    if (!snoozeUntil) {
-      return {
-        success: false,
-        processedCount: 0,
-        errors: [{ itemId: '', error: 'snoozeUntil is required' }]
-      }
-    }
-
-    return bulkSnoozeItems(itemIds, snoozeUntil, reason)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return { success: false, processedCount: 0, errors: [{ itemId: '', error: message }] }
-  }
-}
-
-/**
- * Bulk file multiple items to a folder
- */
-async function handleBulkFile(input: unknown): Promise<BulkResponse> {
-  try {
-    const parsed = BulkFileSchema.parse(input)
-    const { itemIds, destination, tags } = parsed
-
-    if (destination.type !== 'folder') {
-      return {
-        success: false,
-        processedCount: 0,
-        errors: [{ itemId: '', error: 'Bulk filing only supports folder destination' }]
-      }
-    }
-
-    return bulkFileToFolder(itemIds, destination.path || '', tags)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return {
-      success: false,
-      processedCount: 0,
-      errors: [{ itemId: '', error: message }]
-    }
-  }
-}
-
-/**
- * Bulk add tags to multiple items
- */
-async function handleBulkTag(input: unknown): Promise<BulkResponse> {
-  try {
-    const parsed = BulkTagSchema.parse(input)
-    const { itemIds, tags } = parsed
-    const db = requireDatabase()
-
-    let processedCount = 0
-    const errors: Array<{ itemId: string; error: string }> = []
-
-    for (const itemId of itemIds) {
-      try {
-        // Check if item exists
-        const item = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
-        if (!item) {
-          errors.push({ itemId, error: 'Item not found' })
-          continue
-        }
-
-        // Add each tag (skip if already exists)
-        for (const tag of tags) {
-          const normalizedTag = tag.trim().toLowerCase()
-          if (!normalizedTag) continue
-
-          const existing = db
-            .select()
-            .from(inboxItemTags)
-            .where(and(eq(inboxItemTags.itemId, itemId), eq(inboxItemTags.tag, normalizedTag)))
-            .get()
-
-          if (!existing) {
-            db.insert(inboxItemTags)
-              .values({
-                id: generateId(),
-                itemId,
-                tag: normalizedTag
-              })
-              .run()
-          }
-        }
-        processedCount++
-      } catch (error) {
-        errors.push({
-          itemId,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        })
-      }
-    }
-
-    // Emit update events for each item
-    for (const itemId of itemIds) {
-      emitInboxEvent(InboxChannels.events.UPDATED, { id: itemId, changes: { tags } })
-    }
-
-    return {
-      success: errors.length === 0,
-      processedCount,
-      errors
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return {
-      success: false,
-      processedCount: 0,
-      errors: [{ itemId: '', error: message }]
-    }
-  }
-}
-
-/**
- * File all stale items to Unsorted folder
- */
-async function handleFileAllStale(): Promise<BulkResponse> {
-  try {
-    const staleIds = getStaleItemIds()
-
-    if (staleIds.length === 0) {
-      return {
-        success: true,
-        processedCount: 0,
-        errors: []
-      }
-    }
-
-    // Use bulk file to folder (Unsorted)
-    const result = await bulkFileToFolder(staleIds, 'Unsorted', [])
-
-    // Update stats for processed items
-    if (result.processedCount > 0) {
-      incrementProcessedCount(result.processedCount)
-    }
-
-    return result
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return {
-      success: false,
-      processedCount: 0,
-      errors: [{ itemId: '', error: message }]
-    }
   }
 }
 
@@ -1660,7 +1099,7 @@ async function handleRetryTranscription(
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Transcription] Retry failed:', message)
+    logger.error('Transcription retry failed:', message)
     return { success: false, error: message }
   }
 }
@@ -1698,7 +1137,7 @@ async function handleRetryMetadata(itemId: string): Promise<{ success: boolean; 
     // Trigger background fetch (start fresh with retryCount = 0)
     setImmediate(() => {
       fetchAndUpdateMetadata(itemId, item.sourceUrl!, 0).catch((err) => {
-        console.error('[Inbox] Retry metadata fetch error:', err)
+        logger.error('Retry metadata fetch error:', err)
       })
     })
 
@@ -1706,138 +1145,6 @@ async function handleRetryMetadata(itemId: string): Promise<{ success: boolean; 
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     return { success: false, error: message }
-  }
-}
-
-async function handleListArchived(input: unknown): Promise<ArchivedListResponse> {
-  const options = ListArchivedSchema.parse(input || {})
-  const db = requireDatabase()
-
-  const conditions: ReturnType<typeof sql>[] = []
-  conditions.push(sql`${inboxItems.archivedAt} IS NOT NULL`)
-
-  if (options.search) {
-    conditions.push(
-      sql`(${inboxItems.title} LIKE ${'%' + options.search + '%'} OR ${inboxItems.content} LIKE ${'%' + options.search + '%'})`
-    )
-  }
-
-  const countResult = db
-    .select({ count: sql<number>`count(*)` })
-    .from(inboxItems)
-    .where(and(...conditions))
-    .get()
-
-  const total = countResult?.count || 0
-
-  const rows = db
-    .select()
-    .from(inboxItems)
-    .where(and(...conditions))
-    .orderBy(desc(inboxItems.archivedAt))
-    .limit(options.limit)
-    .offset(options.offset)
-    .all()
-
-  const items: InboxItemListItem[] = rows.map((row) => {
-    const tags = getItemTags(db, row.id)
-    return toListItem(row, tags)
-  })
-
-  return {
-    items,
-    total,
-    hasMore: options.offset + items.length < total
-  }
-}
-
-async function handleUnarchive(id: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    const db = requireDatabase()
-
-    const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-    if (!existing) {
-      return { success: false, error: 'Item not found' }
-    }
-
-    if (!existing.archivedAt) {
-      return { success: false, error: 'Item is not archived' }
-    }
-
-    db.update(inboxItems)
-      .set({
-        archivedAt: null,
-        modifiedAt: new Date().toISOString()
-      })
-      .where(eq(inboxItems.id, id))
-      .run()
-
-    emitInboxEvent(InboxChannels.events.UPDATED, { id, changes: { archivedAt: null } })
-
-    return { success: true }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return { success: false, error: message }
-  }
-}
-
-async function handleDeletePermanent(id: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    const db = requireDatabase()
-
-    const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-    if (!existing) {
-      return { success: false, error: 'Item not found' }
-    }
-
-    await deleteInboxAttachments(id)
-
-    db.delete(inboxItemTags).where(eq(inboxItemTags.itemId, id)).run()
-
-    db.delete(inboxItems).where(eq(inboxItems.id, id)).run()
-
-    return { success: true }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return { success: false, error: message }
-  }
-}
-
-async function handleGetFilingHistory(input: unknown): Promise<FilingHistoryResponse> {
-  const options = GetFilingHistorySchema.parse(input || {})
-  const db = requireDatabase()
-
-  const rows = db
-    .select()
-    .from(inboxItems)
-    .where(sql`${inboxItems.filedAt} IS NOT NULL`)
-    .orderBy(desc(inboxItems.filedAt))
-    .limit(options.limit)
-    .all()
-
-  const entries: FilingHistoryEntry[] = rows.map((row) => {
-    const tags = getItemTags(db, row.id)
-    return {
-      id: row.id,
-      itemId: row.id,
-      itemType: row.type as FilingHistoryEntry['itemType'],
-      itemTitle: row.title,
-      filedTo: row.filedTo || '',
-      filedAction: (row.filedAction || 'folder') as FilingHistoryEntry['filedAction'],
-      filedAt: new Date(row.filedAt!),
-      tags
-    }
-  })
-
-  return { entries }
-}
-
-async function stubGetPatterns(): Promise<CapturePattern> {
-  return {
-    timeHeatmap: [],
-    typeDistribution: [],
-    topDomains: [],
-    topTags: []
   }
 }
 
@@ -1854,14 +1161,25 @@ export function registerInboxHandlers(): void {
   ipcMain.handle(InboxChannels.invoke.CAPTURE_LINK, (_, input) => handleCaptureLink(input))
   ipcMain.handle(InboxChannels.invoke.CAPTURE_IMAGE, (_, input) => handleCaptureImage(input))
   ipcMain.handle(InboxChannels.invoke.CAPTURE_VOICE, (_, input) => handleCaptureVoice(input))
-  ipcMain.handle(InboxChannels.invoke.CAPTURE_CLIP, () => stubCaptureClip())
-  ipcMain.handle(InboxChannels.invoke.CAPTURE_PDF, () => stubCapturePdf())
+  ipcMain.handle(InboxChannels.invoke.CAPTURE_CLIP, (_event, _input) => stubCaptureClip())
+  ipcMain.handle(InboxChannels.invoke.CAPTURE_PDF, (_event, _input) => stubCapturePdf())
 
-  // CRUD handlers
-  ipcMain.handle(InboxChannels.invoke.GET, (_, id) => handleGet(id))
-  ipcMain.handle(InboxChannels.invoke.LIST, (_, input) => handleList(input))
-  ipcMain.handle(InboxChannels.invoke.UPDATE, (_, input) => handleUpdate(input))
-  ipcMain.handle(InboxChannels.invoke.ARCHIVE, (_, id) => handleArchive(id))
+  const crudHandlers = createInboxCrudHandlers({
+    requireDatabase,
+    getItemTags,
+    toInboxItem,
+    emitInboxEvent,
+    syncInboxUpdate,
+    logger
+  })
+  registerInboxCrudHandlers(crudHandlers)
+
+  const queryHandlers = createInboxQueryHandlers({
+    requireDatabase,
+    getItemTags,
+    toListItem
+  })
+  registerInboxQueryHandlers(queryHandlers)
 
   // Filing handlers
   ipcMain.handle(InboxChannels.invoke.FILE, (_, input) => handleFile(input))
@@ -1884,25 +1202,17 @@ export function registerInboxHandlers(): void {
     handleLinkToNote(itemId, noteId, tags || [])
   )
 
-  // Tag handlers
-  ipcMain.handle(InboxChannels.invoke.ADD_TAG, (_, itemId, tag) => handleAddTag(itemId, tag))
-  ipcMain.handle(InboxChannels.invoke.REMOVE_TAG, (_, itemId, tag) => handleRemoveTag(itemId, tag))
-  ipcMain.handle(InboxChannels.invoke.GET_TAGS, () => handleGetTags())
-
   // Snooze handlers
   ipcMain.handle(InboxChannels.invoke.SNOOZE, (_, input) => handleSnooze(input))
   ipcMain.handle(InboxChannels.invoke.UNSNOOZE, (_, itemId) => handleUnsnooze(itemId))
   ipcMain.handle(InboxChannels.invoke.GET_SNOOZED, () => handleGetSnoozed())
-  ipcMain.handle(InboxChannels.invoke.BULK_SNOOZE, (_, input) => handleBulkSnooze(input))
 
-  // Viewed handlers (for reminder items)
-  ipcMain.handle(InboxChannels.invoke.MARK_VIEWED, (_, itemId) => handleMarkViewed(itemId))
-
-  // Bulk handlers
-  ipcMain.handle(InboxChannels.invoke.BULK_FILE, (_, input) => handleBulkFile(input))
-  ipcMain.handle(InboxChannels.invoke.BULK_ARCHIVE, (_, input) => handleBulkArchive(input))
-  ipcMain.handle(InboxChannels.invoke.BULK_TAG, (_, input) => handleBulkTag(input))
-  ipcMain.handle(InboxChannels.invoke.FILE_ALL_STALE, () => handleFileAllStale())
+  const batchHandlers = createInboxBatchHandlers({
+    requireDatabase,
+    emitInboxEvent,
+    archiveItem: crudHandlers.handleArchive
+  })
+  registerInboxBatchHandlers(batchHandlers)
 
   // Transcription handlers
   ipcMain.handle(InboxChannels.invoke.RETRY_TRANSCRIPTION, (_, itemId) =>
@@ -1912,27 +1222,7 @@ export function registerInboxHandlers(): void {
   // Metadata handlers
   ipcMain.handle(InboxChannels.invoke.RETRY_METADATA, (_, id) => handleRetryMetadata(id))
 
-  // Stats handlers
-  ipcMain.handle(InboxChannels.invoke.GET_STATS, () => handleGetStats())
-  ipcMain.handle(InboxChannels.invoke.GET_PATTERNS, () => stubGetPatterns())
-
-  // Settings handlers
-  ipcMain.handle(InboxChannels.invoke.GET_STALE_THRESHOLD, () => handleGetStaleThreshold())
-  ipcMain.handle(InboxChannels.invoke.SET_STALE_THRESHOLD, (_, days) =>
-    handleSetStaleThreshold(days)
-  )
-
-  // Archived items handlers
-  ipcMain.handle(InboxChannels.invoke.LIST_ARCHIVED, (_, input) => handleListArchived(input))
-  ipcMain.handle(InboxChannels.invoke.UNARCHIVE, (_, id) => handleUnarchive(id))
-  ipcMain.handle(InboxChannels.invoke.DELETE_PERMANENT, (_, id) => handleDeletePermanent(id))
-
-  // Filing history handler
-  ipcMain.handle(InboxChannels.invoke.GET_FILING_HISTORY, (_, input) =>
-    handleGetFilingHistory(input)
-  )
-
-  console.log('[IPC] Inbox handlers registered')
+  logger.info('Inbox handlers registered')
 }
 
 /**
@@ -1947,11 +1237,9 @@ export function unregisterInboxHandlers(): void {
   ipcMain.removeHandler(InboxChannels.invoke.CAPTURE_CLIP)
   ipcMain.removeHandler(InboxChannels.invoke.CAPTURE_PDF)
 
-  // CRUD
-  ipcMain.removeHandler(InboxChannels.invoke.GET)
-  ipcMain.removeHandler(InboxChannels.invoke.LIST)
-  ipcMain.removeHandler(InboxChannels.invoke.UPDATE)
-  ipcMain.removeHandler(InboxChannels.invoke.ARCHIVE)
+  unregisterInboxCrudHandlers()
+  unregisterInboxQueryHandlers()
+  unregisterInboxBatchHandlers()
 
   // Filing
   ipcMain.removeHandler(InboxChannels.invoke.FILE)
@@ -1960,25 +1248,10 @@ export function unregisterInboxHandlers(): void {
   ipcMain.removeHandler(InboxChannels.invoke.CONVERT_TO_NOTE)
   ipcMain.removeHandler(InboxChannels.invoke.LINK_TO_NOTE)
 
-  // Tags
-  ipcMain.removeHandler(InboxChannels.invoke.ADD_TAG)
-  ipcMain.removeHandler(InboxChannels.invoke.REMOVE_TAG)
-  ipcMain.removeHandler(InboxChannels.invoke.GET_TAGS)
-
   // Snooze
   ipcMain.removeHandler(InboxChannels.invoke.SNOOZE)
   ipcMain.removeHandler(InboxChannels.invoke.UNSNOOZE)
   ipcMain.removeHandler(InboxChannels.invoke.GET_SNOOZED)
-  ipcMain.removeHandler(InboxChannels.invoke.BULK_SNOOZE)
-
-  // Viewed
-  ipcMain.removeHandler(InboxChannels.invoke.MARK_VIEWED)
-
-  // Bulk
-  ipcMain.removeHandler(InboxChannels.invoke.BULK_FILE)
-  ipcMain.removeHandler(InboxChannels.invoke.BULK_ARCHIVE)
-  ipcMain.removeHandler(InboxChannels.invoke.BULK_TAG)
-  ipcMain.removeHandler(InboxChannels.invoke.FILE_ALL_STALE)
 
   // Transcription
   ipcMain.removeHandler(InboxChannels.invoke.RETRY_TRANSCRIPTION)
@@ -1986,21 +1259,5 @@ export function unregisterInboxHandlers(): void {
   // Metadata
   ipcMain.removeHandler(InboxChannels.invoke.RETRY_METADATA)
 
-  // Stats
-  ipcMain.removeHandler(InboxChannels.invoke.GET_STATS)
-  ipcMain.removeHandler(InboxChannels.invoke.GET_PATTERNS)
-
-  // Settings
-  ipcMain.removeHandler(InboxChannels.invoke.GET_STALE_THRESHOLD)
-  ipcMain.removeHandler(InboxChannels.invoke.SET_STALE_THRESHOLD)
-
-  // Archived items
-  ipcMain.removeHandler(InboxChannels.invoke.LIST_ARCHIVED)
-  ipcMain.removeHandler(InboxChannels.invoke.UNARCHIVE)
-  ipcMain.removeHandler(InboxChannels.invoke.DELETE_PERMANENT)
-
-  // Filing history
-  ipcMain.removeHandler(InboxChannels.invoke.GET_FILING_HISTORY)
-
-  console.log('[IPC] Inbox handlers unregistered')
+  logger.info('Inbox handlers unregistered')
 }

@@ -27,3 +27,6 @@ export * from './default-template-indicator'
 
 // Error Boundary
 export * from './journal-error-boundary'
+
+// Stats Footer
+export * from './journal-stats-footer'

@@ -12,7 +12,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react'
-import { ChevronDown, SlidersHorizontal, Search, Plus, Pencil, Trash2 } from 'lucide-react'
+import { SlidersHorizontal, Search, Plus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -112,6 +112,9 @@ const DEFAULT_WIDTHS: Record<string, number> = {
 const DEFAULT_PROPERTY_WIDTH = 120
 const DEFAULT_FORMULA_WIDTH = 120
 
+const EMPTY_FORMULAS: FormulaInfo[] = []
+const EMPTY_SUMMARIES: Record<string, SummaryConfig> = {}
+
 // ============================================================================
 // Component
 // ============================================================================
@@ -123,14 +126,14 @@ export function ColumnSelector({
   columns,
   builtInColumns,
   availableProperties,
-  formulas = [],
+  formulas = EMPTY_FORMULAS,
   onColumnsChange,
   onSearchChange,
   onFormulaAdd,
   onFormulaEdit,
   onFormulaDelete,
   sampleNote,
-  summaries = {},
+  summaries = EMPTY_SUMMARIES,
   onSummaryChange,
   className
 }: ColumnSelectorProps): React.JSX.Element {
@@ -304,15 +307,18 @@ export function ColumnSelector({
   const canManageFormulas = Boolean(onFormulaAdd && onFormulaEdit && onFormulaDelete)
 
   return (
-    <>
+    <TooltipProvider>
       <Popover open={isOpen} onOpenChange={handleOpenChange}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className={cn('gap-1.5', className)}>
-            <SlidersHorizontal className="h-4 w-4" />
-            <span>Properties</span>
-            <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-          </Button>
-        </PopoverTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn('gap-1.5 px-2', className)}>
+                <SlidersHorizontal className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Properties</TooltipContent>
+        </Tooltip>
 
         <PopoverContent align="start" className="w-72 p-0">
           {/* Search input */}
@@ -440,7 +446,7 @@ export function ColumnSelector({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </TooltipProvider>
   )
 }
 

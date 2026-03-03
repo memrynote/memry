@@ -213,6 +213,16 @@ export const TaskListSchema = z.object({
   offset: z.number().int().min(0).default(0)
 })
 
+export const StatusInputSchema = z.object({
+  name: z.string().min(1).max(50),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default('#6b7280'),
+  type: z.enum(['todo', 'in_progress', 'done']),
+  order: z.number().int().min(0)
+})
+
 export const ProjectCreateSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(500).nullish(),
@@ -220,7 +230,19 @@ export const ProjectCreateSchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
     .default('#6366f1'),
-  icon: z.string().nullish()
+  icon: z.string().nullish(),
+  statuses: z.array(StatusInputSchema).min(2).optional()
+})
+
+export const StatusUpsertSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1).max(50),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default('#6b7280'),
+  type: z.enum(['todo', 'in_progress', 'done']),
+  order: z.number().int().min(0)
 })
 
 export const ProjectUpdateSchema = z.object({
@@ -231,7 +253,8 @@ export const ProjectUpdateSchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
     .optional(),
-  icon: z.string().nullish()
+  icon: z.string().nullish(),
+  statuses: z.array(StatusUpsertSchema).min(2).optional()
 })
 
 export const StatusCreateSchema = z.object({
@@ -339,6 +362,7 @@ export type TaskUpdateInput = z.infer<typeof TaskUpdateSchema>
 export type TaskCompleteInput = z.infer<typeof TaskCompleteSchema>
 export type TaskMoveInput = z.infer<typeof TaskMoveSchema>
 export type TaskListInput = z.infer<typeof TaskListSchema>
+export type StatusInput = z.infer<typeof StatusInputSchema>
 export type ProjectCreateInput = z.infer<typeof ProjectCreateSchema>
 export type ProjectUpdateInput = z.infer<typeof ProjectUpdateSchema>
 export type StatusCreateInput = z.infer<typeof StatusCreateSchema>

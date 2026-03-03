@@ -6,9 +6,9 @@
  * @module hooks/use-all-tags
  */
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { notesService } from '@/services/notes-service'
+import { notesService, onTagsChanged } from '@/services/notes-service'
 import { inboxService } from '@/services/inbox-service'
 
 // =============================================================================
@@ -75,6 +75,14 @@ export function useAllTags(): UseAllTagsResult {
     queryFn: () => inboxService.getTags(),
     staleTime: 60 * 1000 // 1 minute
   })
+
+  useEffect(() => {
+    const unsubscribe = onTagsChanged(() => {
+      void notesQuery.refetch()
+    })
+
+    return unsubscribe
+  }, [notesQuery.refetch])
 
   // Combine and deduplicate tags from both sources
   const combinedTags = useMemo((): TagWithMeta[] => {

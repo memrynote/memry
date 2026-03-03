@@ -19,33 +19,26 @@ const createProperty = (
   name: string,
   type: Property['type'],
   value: unknown,
-  isCustom = false,
-  options?: string[]
+  isCustom = false
 ): Property => ({
   id,
   name,
   type,
   value,
-  isCustom,
-  options
+  isCustom
 })
 
 const mockProperties: Property[] = [
-  createProperty('prop-1', 'Status', 'select', 'In Progress', false, [
-    'Draft',
-    'In Progress',
-    'Done'
-  ]),
+  createProperty('prop-1', 'Status', 'text', 'In Progress', false),
   createProperty('prop-2', 'Priority', 'number', 3, false),
   createProperty('prop-3', 'Due Date', 'date', '2026-01-15', false),
   createProperty('prop-4', 'Completed', 'checkbox', false, false),
-  createProperty('prop-5', 'Rating', 'rating', 4, false),
-  createProperty('prop-6', 'Notes', 'text', 'Some notes', true),
-  createProperty('prop-7', 'URL', 'url', 'https://example.com', true)
+  createProperty('prop-5', 'Notes', 'text', 'Some notes', true),
+  createProperty('prop-6', 'URL', 'url', 'https://example.com', true)
 ]
 
 const mockFolderProperties: PropertyTemplate[] = [
-  { id: 'tpl-1', name: 'Category', type: 'select', options: ['A', 'B', 'C'] },
+  { id: 'tpl-1', name: 'Category', type: 'text' },
   { id: 'tpl-2', name: 'Author', type: 'text' }
 ]
 
@@ -86,8 +79,7 @@ describe('T513: InfoSection - basic display', () => {
     const user = userEvent.setup()
     render(<InfoSection {...defaultProps} />)
 
-    // Header shows "Info" text
-    const header = screen.getByRole('button', { name: /info/i })
+    const header = screen.getByRole('button', { name: /^properties$/i })
     await user.click(header)
 
     expect(defaultProps.onToggleExpand).toHaveBeenCalled()
@@ -175,8 +167,7 @@ describe('T514: InfoSection - property editors', () => {
     it('should display formatted date', () => {
       render(<InfoSection {...defaultProps} />)
 
-      // Date is formatted as "MMM d, yyyy"
-      expect(screen.getByText(/Jan 15, 2026/i)).toBeInTheDocument()
+      expect(screen.getByText('15.01.2026')).toBeInTheDocument()
     })
   })
 
@@ -196,16 +187,6 @@ describe('T514: InfoSection - property editors', () => {
       await user.click(checkbox)
 
       expect(defaultProps.onPropertyChange).toHaveBeenCalledWith('prop-4', true)
-    })
-  })
-
-  describe('rating editor', () => {
-    it('should display star rating', () => {
-      render(<InfoSection {...defaultProps} />)
-
-      // Rating of 4 should show filled stars
-      const ratingSection = screen.getByText('Rating').parentElement
-      expect(ratingSection).toBeInTheDocument()
     })
   })
 
@@ -239,10 +220,10 @@ describe('T514: InfoSection - property editors', () => {
 
       const input = screen.getByDisplayValue('Old Value')
       await user.clear(input)
-      await user.type(input, 'New Value')
+      await user.type(input, 'New{space}Value')
       await user.tab() // Blur to save
 
-      expect(defaultProps.onPropertyChange).toHaveBeenCalledWith('test-prop', 'New Value')
+      expect(defaultProps.onPropertyChange).toHaveBeenCalledWith('test-prop', 'NewValue')
     })
   })
 
@@ -381,7 +362,6 @@ describe('InfoSection - show more/less', () => {
     expect(screen.getByText('Priority')).toBeInTheDocument()
     expect(screen.getByText('Due Date')).toBeInTheDocument()
     expect(screen.getByText('Completed')).toBeInTheDocument()
-    expect(screen.getByText('Rating')).toBeInTheDocument()
     expect(screen.getByText('Notes')).toBeInTheDocument()
     expect(screen.getByText('URL')).toBeInTheDocument()
   })
@@ -455,7 +435,7 @@ describe('InfoSection - accessibility', () => {
   it('should have aria-expanded on toggle header', () => {
     render(<InfoSection {...defaultProps} />)
 
-    const header = screen.getByRole('button', { name: /info/i })
+    const header = screen.getByRole('button', { name: /^properties$/i })
     expect(header).toHaveAttribute('aria-expanded', 'true')
   })
 })

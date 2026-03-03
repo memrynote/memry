@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, Property, NewProperty, PropertyType } from '@/components/note/info-section'
@@ -20,6 +21,9 @@ import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
 import { toast } from 'sonner'
 import type { TemplateProperty } from '@/services/templates-service'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:TemplateEditor')
 
 // ============================================================================
 // Types
@@ -35,10 +39,7 @@ function getDefaultValueForType(type: PropertyType): unknown {
     case 'checkbox':
       return false
     case 'number':
-    case 'rating':
       return 0
-    case 'multiSelect':
-      return []
     case 'date':
       return null
     default:
@@ -47,34 +48,27 @@ function getDefaultValueForType(type: PropertyType): unknown {
 }
 
 // Map PropertyType to TemplatePropertyType
+// Note: Templates support more property types than the unified properties system
 function mapToTemplatePropertyType(type: PropertyType): TemplateProperty['type'] {
   const typeMap: Record<PropertyType, TemplateProperty['type']> = {
     text: 'text',
-    longText: 'text',
     number: 'number',
     date: 'date',
     checkbox: 'checkbox',
-    select: 'select',
-    multiSelect: 'multiselect',
-    rating: 'rating',
-    url: 'url',
-    relation: 'text',
-    person: 'text'
+    url: 'url'
   }
   return typeMap[type] ?? 'text'
 }
 
 // Map TemplatePropertyType to PropertyType
+// Unsupported template types fall back to 'text'
 function mapFromTemplatePropertyType(type: TemplateProperty['type']): PropertyType {
-  const typeMap: Record<TemplateProperty['type'], PropertyType> = {
+  const typeMap: Partial<Record<TemplateProperty['type'], PropertyType>> = {
     text: 'text',
     number: 'number',
     checkbox: 'checkbox',
     date: 'date',
-    select: 'select',
-    multiselect: 'multiSelect',
-    url: 'url',
-    rating: 'rating'
+    url: 'url'
   }
   return typeMap[type] ?? 'text'
 }
@@ -120,7 +114,18 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
   const [content, setContent] = useState('')
 
   // Track if modified
-  const initialStateRef = useRef<string>('')
+  const initialStateRef = useRef<string>(
+    isNew
+      ? JSON.stringify({
+          name: '',
+          description: '',
+          icon: null,
+          tags: [],
+          properties: [],
+          content: ''
+        })
+      : ''
+  )
   const isModified = useMemo(() => {
     const currentState = JSON.stringify({ name, description, icon, tags, properties, content })
     return currentState !== initialStateRef.current
@@ -156,20 +161,6 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
     }
     load()
   }, [templateId, getTemplate])
-
-  // Initialize state for new template
-  useEffect(() => {
-    if (isNew) {
-      initialStateRef.current = JSON.stringify({
-        name: '',
-        description: '',
-        icon: null,
-        tags: [],
-        properties: [],
-        content: ''
-      })
-    }
-  }, [isNew])
 
   // Convert tags to UI format
   const tagColorMap = useMemo(() => {
@@ -271,7 +262,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
         }
       }
     } catch (err) {
-      console.error('Failed to save template:', err)
+      log.error('Failed to save template:', err)
       toast.error('Failed to save template')
     } finally {
       setIsSaving(false)

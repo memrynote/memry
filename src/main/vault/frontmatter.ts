@@ -23,6 +23,7 @@ export interface NoteFrontmatter {
   modified: string
   tags?: string[]
   aliases?: string[]
+  localOnly?: boolean
   [key: string]: unknown // Allow custom properties
 }
 
@@ -89,6 +90,17 @@ export function parseNote(rawContent: string, filePath?: string): ParsedNote {
     wasModified = true
   }
 
+  // Normalize localOnly to boolean (YAML may parse as string)
+  if (data.localOnly !== undefined) {
+    if (typeof data.localOnly === 'string') {
+      data.localOnly = data.localOnly === 'true'
+      wasModified = true
+    } else if (typeof data.localOnly !== 'boolean') {
+      data.localOnly = Boolean(data.localOnly)
+      wasModified = true
+    }
+  }
+
   return {
     frontmatter: data as NoteFrontmatter,
     content: content.trim(),
@@ -126,13 +138,16 @@ function stripTrailingNewlines(value: string): string {
  * @returns Complete markdown file content with YAML frontmatter
  */
 export function serializeNote(frontmatter: NoteFrontmatter, content: string): string {
-  // Update modified timestamp
   const updatedFrontmatter = {
     ...frontmatter,
     modified: new Date().toISOString()
   }
 
-  const serialized = matter.stringify(content.trim(), updatedFrontmatter)
+  const clean = Object.fromEntries(
+    Object.entries(updatedFrontmatter).filter(([, v]) => v !== undefined)
+  )
+
+  const serialized = matter.stringify(content.trim(), clean)
   return stripTrailingNewlines(serialized)
 }
 
@@ -270,7 +285,16 @@ import type { PropertyType } from '@shared/db/schema/notes-cache'
 /**
  * Reserved frontmatter keys that are NOT properties.
  */
-const RESERVED_FRONTMATTER_KEYS = new Set(['id', 'title', 'created', 'modified', 'tags', 'aliases'])
+const RESERVED_FRONTMATTER_KEYS = new Set([
+  'id',
+  'title',
+  'created',
+  'modified',
+  'tags',
+  'aliases',
+  'emoji',
+  'localOnly'
+])
 
 /**
  * Extract custom properties from frontmatter.
@@ -327,11 +351,11 @@ function isURL(value: string): boolean {
  * T008: Used when syncing externally-edited properties that don't have
  * a pre-existing type definition.
  *
- * @param name - Property name (used for contextual hints like "rating")
+ * @param _name - Property name (unused, kept for API compatibility)
  * @param value - Property value to infer type from
  * @returns Inferred property type
  */
-export function inferPropertyType(name: string, value: unknown): PropertyType {
+export function inferPropertyType(_name: string, value: unknown): PropertyType {
   // Boolean -> checkbox
   if (typeof value === 'boolean') {
     return 'checkbox'
@@ -339,16 +363,12 @@ export function inferPropertyType(name: string, value: unknown): PropertyType {
 
   // Number with contextual hints
   if (typeof value === 'number') {
-    // Check if this looks like a rating (1-5 range and name contains "rating")
-    if (value >= 1 && value <= 5 && name.toLowerCase().includes('rating')) {
-      return 'rating'
-    }
     return 'number'
   }
 
-  // Array -> multiselect
+  // Array -> text (arrays no longer supported, convert to JSON string)
   if (Array.isArray(value)) {
-    return 'multiselect'
+    return 'text'
   }
 
   // String with format detection
@@ -403,20 +423,12 @@ export function deserializePropertyValue(value: string | null, type: PropertyTyp
 
   switch (type) {
     case 'number':
-    case 'rating':
       return Number(value)
     case 'checkbox':
       return value === 'true'
-    case 'multiselect':
-      try {
-        return JSON.parse(value)
-      } catch {
-        return []
-      }
     case 'text':
     case 'date':
     case 'url':
-    case 'select':
     default:
       return value
   }

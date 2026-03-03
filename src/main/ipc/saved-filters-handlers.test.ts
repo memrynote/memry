@@ -43,7 +43,12 @@ vi.mock('@shared/db/queries/settings', () => ({
   savedFilterExists: vi.fn(),
   updateSavedFilter: vi.fn(),
   deleteSavedFilter: vi.fn(),
-  reorderSavedFilters: vi.fn()
+  reorderSavedFilters: vi.fn(),
+  getSavedFilterById: vi.fn()
+}))
+
+vi.mock('../sync/filter-sync', () => ({
+  getFilterSyncService: vi.fn().mockReturnValue(null)
 }))
 
 import {
@@ -122,6 +127,13 @@ describe('saved-filters-handlers', () => {
       SavedFiltersChannels.events.UPDATED,
       expect.objectContaining({ id: 'sf-2' })
     )
+    ;(settingsQueries.getSavedFilterById as Mock).mockReturnValue({
+      id: 'sf-2',
+      name: 'Inbox',
+      config: '{}',
+      position: 1,
+      createdAt: 'now'
+    })
 
     const deleteResult = await invokeHandler(SavedFiltersChannels.invoke.DELETE, { id: 'sf-2' })
     expect(deleteResult.success).toBe(true)

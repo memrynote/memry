@@ -20,6 +20,7 @@ import {
   onNoteDeleted,
   onNoteCreated,
   onNoteUpdated,
+  onNoteRenamed,
   onNoteExternalChange
 } from '@/services/notes-service'
 import { folderViewKeys } from './use-folder-view'
@@ -35,32 +36,23 @@ export function useFolderViewEvents(): void {
     // Invalidate ALL folder-view caches when notes change
     // This ensures all tabs (mounted or not) get fresh data when activated
 
-    const unsubMoved = onNoteMoved(() => {
+    const invalidate = () => {
       void queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
-    })
+    }
 
-    const unsubDeleted = onNoteDeleted(() => {
-      void queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
-    })
-
-    const unsubCreated = onNoteCreated(() => {
-      void queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
-    })
-
-    const unsubUpdated = onNoteUpdated(() => {
-      void queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
-    })
-
-    // Handle external file changes (edited outside the app)
-    const unsubExternal = onNoteExternalChange(() => {
-      void queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
-    })
+    const unsubMoved = onNoteMoved(invalidate)
+    const unsubDeleted = onNoteDeleted(invalidate)
+    const unsubCreated = onNoteCreated(invalidate)
+    const unsubUpdated = onNoteUpdated(invalidate)
+    const unsubRenamed = onNoteRenamed(invalidate)
+    const unsubExternal = onNoteExternalChange(invalidate)
 
     return () => {
       unsubMoved()
       unsubDeleted()
       unsubCreated()
       unsubUpdated()
+      unsubRenamed()
       unsubExternal()
     }
   }, [queryClient])

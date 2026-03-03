@@ -61,15 +61,17 @@ export function RatingEditor({ value, onChange, maxRating = 5 }: RatingEditorPro
             onKeyDown={(e) => handleKeyDown(e, rating)}
             onMouseEnter={() => setHoverValue(rating)}
             className={cn(
-              'p-0.5 transition-transform duration-100',
-              'hover:scale-110',
+              'p-0 transition-opacity duration-100',
+              'hover:opacity-80',
               'focus:outline-none focus-visible:ring-1 focus-visible:ring-border/40 focus-visible:rounded'
             )}
           >
             <Star
               className={cn(
-                'h-4 w-4 transition-colors duration-100',
-                isFilled ? 'fill-amber-400 text-amber-400' : 'fill-transparent text-border'
+                'h-3.5 w-3.5 transition-colors duration-100',
+                isFilled
+                  ? 'fill-amber-400 text-amber-400'
+                  : 'fill-transparent text-muted-foreground/20'
               )}
             />
           </button>

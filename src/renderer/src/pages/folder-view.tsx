@@ -54,13 +54,14 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useDisplayDensity } from '@/hooks/use-display-density'
 import { useTabs } from '@/contexts/tabs'
+import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { GroupedTable } from '@/components/folder-view/grouped-table'
 import { FolderViewToolbar } from '@/components/folder-view/folder-view-toolbar'
 import { ViewSwitcher } from '@/components/folder-view/view-switcher'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import { useFolderView } from '@/hooks/use-folder-view'
-import { useNoteMutations } from '@/hooks/use-notes-query'
+import { useNoteMutations, useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
 import {
   DEFAULT_COLUMNS,
@@ -68,6 +69,9 @@ import {
   type ColumnConfig,
   type GroupByConfig
 } from '@shared/contracts/folder-view-api'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:FolderView')
 
 interface FolderViewPageProps {
   /** Folder path relative to notes/ */
@@ -79,6 +83,8 @@ interface FolderViewPageProps {
  */
 export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.Element {
   const { openTab, closeTab, getActiveTab } = useTabs()
+  const { openTag } = useSidebarDrillDown()
+  const { tags: allTags } = useNoteTagsQuery()
 
   // Use mutations hook for creating new notes (with folder template support)
   const { createNote } = useNoteMutations()
@@ -115,7 +121,9 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     updateFormula,
     deleteFormula,
     refresh,
-    removeNotesOptimistically
+    removeNotesOptimistically,
+    updateNoteProperty,
+    updateNoteTags
   } = useFolderView({ folderPath: folderPath ?? '' })
 
   // Get first note for formula preview in editor
@@ -232,6 +240,14 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
     return map
   }, [availableProperties])
 
+  const tagColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const tag of allTags) {
+      map.set(tag.tag.toLowerCase(), tag.color)
+    }
+    return map
+  }, [allTags])
+
   // Handle opening a note (single click opens permanent tab)
   const handleNoteOpen = (noteId: string): void => {
     const note = notes.find((n) => n.id === noteId)
@@ -271,9 +287,23 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   }
 
   // Handle clicking a tag
-  const handleTagClick = (_tag: string): void => {
-    // TODO: Open search/filter for this tag
-  }
+  const handleTagClick = useCallback(
+    (tag: string): void => {
+      const color = tagColorMap.get(tag.toLowerCase()) ?? 'stone'
+      openTag(tag, color)
+    },
+    [openTag, tagColorMap]
+  )
+
+  const handleTagRemove = useCallback(
+    (noteId: string, tag: string): void => {
+      const note = notes.find((n) => n.id === noteId)
+      if (!note) return
+      const nextTags = note.tags.filter((t) => t !== tag)
+      void updateNoteTags(noteId, nextTags)
+    },
+    [notes, updateNoteTags]
+  )
 
   // Handle opening note in new tab (for context menu)
   const handleOpenInNewTab = useCallback(
@@ -340,11 +370,11 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
 
         if (failures.length > 0) {
-          console.error(`${failures.length} notes failed to move:`, failures)
+          log.error(`${failures.length} notes failed to move:`, failures)
           await refresh() // Restore correct state on failure
         }
       } catch (err) {
-        console.error('Failed to move notes:', err)
+        log.error('Failed to move notes:', err)
         await refresh() // Restore correct state on error
       } finally {
         setMoveDialogOpen(false)
@@ -390,11 +420,11 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
       const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
 
       if (failures.length > 0) {
-        console.error(`${failures.length} notes failed to delete:`, failures)
+        log.error(`${failures.length} notes failed to delete:`, failures)
         await refresh() // Restore correct state on failure
       }
     } catch (err) {
-      console.error('Failed to delete notes:', err)
+      log.error('Failed to delete notes:', err)
       await refresh() // Restore correct state on error
     } finally {
       setIsDeleting(false)
@@ -451,7 +481,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         })
       }
     } catch (err) {
-      console.error('[FolderViewPage] Failed to create note:', err)
+      log.error('Failed to create note:', err)
     }
   }, [createNote, folderPath, openTab])
 
@@ -629,6 +659,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               onOpenInNewTab={handleOpenInNewTab}
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
+              onTagRemove={handleTagRemove}
+              onPropertyUpdate={updateNoteProperty}
               onColumnsChange={updateColumns}
               onSortingChange={updateSorting}
               onDisplayNameChange={updateDisplayName}
@@ -660,6 +692,8 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               onOpenInNewTab={handleOpenInNewTab}
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
+              onTagRemove={handleTagRemove}
+              onPropertyUpdate={updateNoteProperty}
               onColumnsChange={updateColumns}
               onSortingChange={updateSorting}
               onDisplayNameChange={updateDisplayName}
@@ -765,15 +799,15 @@ function FolderViewSkeleton({ columns, className }: FolderViewSkeletonProps): Re
     <div ref={containerRef} className={`h-full p-4 space-y-2 ${className ?? ''}`}>
       {/* Header skeleton */}
       <div className="flex gap-4 pb-2 border-b">
-        {columns.map((col, i) => (
-          <Skeleton key={i} className="h-6" style={{ width: col.width ?? 150 }} />
+        {columns.map((col) => (
+          <Skeleton key={col.id} className="h-6" style={{ width: col.width ?? 150 }} />
         ))}
       </div>
       {/* Row skeletons */}
       {Array.from({ length: rowCount }).map((_, i) => (
         <div key={i} className="flex gap-4">
-          {columns.map((col, j) => (
-            <Skeleton key={j} className="h-8" style={{ width: col.width ?? 150 }} />
+          {columns.map((col) => (
+            <Skeleton key={col.id} className="h-8" style={{ width: col.width ?? 150 }} />
           ))}
         </div>
       ))}

@@ -20,6 +20,9 @@ import { cn } from '@/lib/utils'
 import { ReminderPicker } from './reminder-picker'
 import { useCreateReminder } from '@/hooks/use-reminders'
 import { toast } from 'sonner'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:HighlightReminderPopover')
 
 // ============================================================================
 // Types
@@ -105,7 +108,7 @@ export function HighlightReminderPopover({
         onClose()
         onReminderCreated?.()
       } catch (error) {
-        console.error('[HighlightReminderPopover] Failed to create reminder:', error)
+        log.error('Failed to create reminder', error)
         toast.error('Failed to set reminder')
       }
     },

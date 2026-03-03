@@ -4,9 +4,14 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { createLogger } from '@/lib/logger'
+import { extractErrorMessage } from '@/lib/ipc-error'
+
+const log = createLogger('Hook:TagDetail')
 import {
   tagsService,
   onTagNotesChanged,
+  onTagColorUpdated,
   type TagNoteItem,
   type GetNotesByTagResponse
 } from '@/services/tags-service'
@@ -18,6 +23,7 @@ export interface UseTagDetailOptions {
   tag: string
   sortBy?: TagSortBy
   sortOrder?: TagSortOrder
+  fallbackColor?: string
 }
 
 export interface UseTagDetailReturn {
@@ -50,7 +56,7 @@ export interface UseTagDetailReturn {
  * Fetches notes for a tag and provides actions for pinning/unpinning.
  */
 export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
-  const { tag } = options
+  const { tag, fallbackColor } = options
   const [data, setData] = useState<GetNotesByTagResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -72,9 +78,9 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
       })
       setData(response)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load notes'
+      const message = extractErrorMessage(err, 'Failed to load notes')
       setError(message)
-      console.error('[useTagDetail] Error fetching notes:', err)
+      log.error('Error fetching notes:', err)
     } finally {
       setIsLoading(false)
     }
@@ -97,6 +103,16 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
     return unsubscribe
   }, [tag, fetchNotes])
 
+  useEffect(() => {
+    const unsubscribe = onTagColorUpdated((event) => {
+      if (event.tag.toLowerCase() === tag.toLowerCase()) {
+        fetchNotes()
+      }
+    })
+
+    return unsubscribe
+  }, [tag, fetchNotes])
+
   // Pin a note
   const pinNote = useCallback(
     async (noteId: string) => {
@@ -107,7 +123,7 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
         }
         // The onTagNotesChanged event will trigger a refresh
       } catch (err) {
-        console.error('[useTagDetail] Error pinning note:', err)
+        log.error('Error pinning note:', err)
         throw err
       }
     },
@@ -124,7 +140,7 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
         }
         // The onTagNotesChanged event will trigger a refresh
       } catch (err) {
-        console.error('[useTagDetail] Error unpinning note:', err)
+        log.error('Error unpinning note:', err)
         throw err
       }
     },
@@ -141,7 +157,7 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
         }
         // The onTagNotesChanged event will trigger a refresh
       } catch (err) {
-        console.error('[useTagDetail] Error removing note from tag:', err)
+        log.error('Error removing note from tag:', err)
         throw err
       }
     },
@@ -152,7 +168,7 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
   return useMemo(
     () => ({
       tag: data?.tag ?? tag,
-      color: data?.color ?? 'gray',
+      color: data?.color ?? fallbackColor ?? 'gray',
       count: data?.count ?? 0,
       pinnedNotes: data?.pinnedNotes ?? [],
       unpinnedNotes: data?.unpinnedNotes ?? [],

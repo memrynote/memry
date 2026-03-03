@@ -18,10 +18,11 @@ export function LongTextEditor({
 }: LongTextEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [localValue, setLocalValue] = useState(value)
-
-  useEffect(() => {
+  const [prevValue, setPrevValue] = useState(value)
+  if (value !== prevValue) {
+    setPrevValue(value)
     setLocalValue(value)
-  }, [value])
+  }
 
   useEffect(() => {
     if (autoFocus && textareaRef.current) {
@@ -74,12 +75,10 @@ export function LongTextEditor({
       placeholder={placeholder}
       rows={2}
       className={cn(
-        'w-full min-h-[60px] resize-y rounded px-2 py-1',
-        'text-[13px] text-stone-900',
-        'bg-white border border-stone-300',
-        'placeholder:text-stone-400',
-        'outline-none',
-        'focus:border-stone-400 focus:ring-1 focus:ring-stone-400'
+        'w-full min-h-[60px] resize-y bg-transparent border-none p-0',
+        'text-[13px] text-foreground',
+        'placeholder:text-muted-foreground/30',
+        'outline-none focus:ring-0 shadow-none'
       )}
     />
   )

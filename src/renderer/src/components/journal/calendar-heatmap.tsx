@@ -26,8 +26,6 @@ export interface JournalCalendarProps {
   selectedDate: string
   /** Callback when a day is clicked */
   onDayClick: (date: string) => void
-  /** Callback to scroll to today */
-  onTodayClick: () => void
   /** Heatmap data for displaying activity */
   heatmapData?: HeatmapEntry[]
   /** Additional CSS classes */
@@ -58,15 +56,15 @@ export function getHeatmapLevel(charCount: number): 0 | 1 | 2 | 3 | 4 {
 // COMPONENT
 // =============================================================================
 
+const EMPTY_HEATMAP: HeatmapEntry[] = []
+
 export function JournalCalendar({
   selectedDate,
   onDayClick,
-  onTodayClick,
-  heatmapData = [],
+  heatmapData = EMPTY_HEATMAP,
   className
 }: JournalCalendarProps): React.JSX.Element {
   const today = getTodayString()
-  const todayDate = parseISODate(today)
   const selectedDateObj = parseISODate(selectedDate)
 
   // Track displayed month
@@ -95,11 +93,6 @@ export function JournalCalendar({
   const handleNextMonth = useCallback(() => {
     setDisplayMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
   }, [])
-
-  const handleTodayClick = useCallback(() => {
-    setDisplayMonth(todayDate)
-    onTodayClick()
-  }, [todayDate, onTodayClick])
 
   // Get month/year display
   const monthYearDisplay = displayMonth.toLocaleDateString('en-US', {
@@ -150,15 +143,6 @@ export function JournalCalendar({
             aria-label="Next month"
           >
             <ChevronRight className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 px-2 text-xs ml-1"
-            onClick={handleTodayClick}
-            aria-label="Go to today"
-          >
-            Today
           </Button>
         </div>
       </div>

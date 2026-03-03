@@ -251,20 +251,21 @@ export function registerBookmarksHandlers(): void {
     createValidatedHandler(BookmarkToggleSchema, (input) => {
       const db = requireDatabase()
 
+      // Capture existing bookmark BEFORE toggle (since toggle deletes it)
+      const existing = bookmarkQueries.getBookmarkByItem(db, input.itemType, input.itemId)
+
       const result = bookmarkQueries.toggleBookmark(db, input.itemType, input.itemId, generateId)
 
       // Emit appropriate event
       if (result.isBookmarked && result.bookmark) {
         emitBookmarkEvent(BookmarksChannels.events.CREATED, { bookmark: result.bookmark })
-      } else {
-        const existing = bookmarkQueries.getBookmarkByItem(db, input.itemType, input.itemId)
-        if (existing) {
-          emitBookmarkEvent(BookmarksChannels.events.DELETED, {
-            id: existing.id,
-            itemType: input.itemType,
-            itemId: input.itemId
-          })
-        }
+      } else if (existing) {
+        // Use the 'existing' we captured before toggle deleted it
+        emitBookmarkEvent(BookmarksChannels.events.DELETED, {
+          id: existing.id,
+          itemType: input.itemType,
+          itemId: input.itemId
+        })
       }
 
       return {

@@ -14,7 +14,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Send, Loader2, Link, FileText, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { useCaptureText, useCaptureLink } from '@/hooks/use-inbox'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:QuickCapture')
 
 type CaptureState = 'idle' | 'capturing' | 'success' | 'error'
 
@@ -79,7 +83,7 @@ export function QuickCapture(): React.JSX.Element {
           setValue(clipboardText.trim())
         }
       } catch (err) {
-        console.warn('[QuickCapture] Failed to read clipboard:', err)
+        log.warn('Failed to read clipboard', err)
       }
 
       // Focus the textarea after clipboard is loaded
@@ -128,7 +132,7 @@ export function QuickCapture(): React.JSX.Element {
         if (result.success) {
           setCaptureState('success')
         } else {
-          setErrorMessage(result.error || 'Failed to capture link')
+          setErrorMessage(extractErrorMessage(result.error, 'Failed to capture link'))
           setCaptureState('error')
         }
       } else {
@@ -144,12 +148,12 @@ export function QuickCapture(): React.JSX.Element {
         if (result.success) {
           setCaptureState('success')
         } else {
-          setErrorMessage(result.error || 'Failed to capture note')
+          setErrorMessage(extractErrorMessage(result.error, 'Failed to capture note'))
           setCaptureState('error')
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Capture failed'
+      const message = extractErrorMessage(err, 'Capture failed')
       setErrorMessage(message)
       setCaptureState('error')
     }

@@ -332,6 +332,21 @@ export function generateNotePath(notesDir: string, title: string, folder?: strin
   return path.join(notesDir, filename)
 }
 
+export function generateFilePath(
+  notesDir: string,
+  title: string,
+  extension: string,
+  folder?: string
+): string {
+  const filename = sanitizeFilename(title) + '.' + extension
+
+  if (folder) {
+    return path.join(notesDir, folder, filename)
+  }
+
+  return path.join(notesDir, filename)
+}
+
 /**
  * Generate a unique file path, adding a number suffix if file exists.
  *
@@ -356,6 +371,25 @@ export async function generateUniquePath(basePath: string): Promise<string> {
   } while (await fileExists(newPath))
 
   return newPath
+}
+
+export function generateUniquePathSync(
+  basePath: string,
+  isPathTaken?: (p: string) => boolean
+): string {
+  const taken = (p: string) => existsSync(p) || (isPathTaken?.(p) ?? false)
+  if (!taken(basePath)) return basePath
+
+  const dir = path.dirname(basePath)
+  const ext = path.extname(basePath)
+  const name = path.basename(basePath, ext)
+  let counter = 1
+  let candidate: string
+  do {
+    candidate = path.join(dir, `${name} ${counter}${ext}`)
+    counter++
+  } while (taken(candidate))
+  return candidate
 }
 
 // ============================================================================

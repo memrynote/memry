@@ -39,3 +39,6 @@ export {
   createTabFromSidebarItem,
   createInitialState
 } from './tabs'
+
+// Sync
+export { SyncProvider, useSync } from './sync-context'

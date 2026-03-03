@@ -8,6 +8,7 @@
  */
 
 import { useMemo, useCallback } from 'react'
+import { createLogger } from '@/lib/logger'
 import {
   useRemindersForTarget,
   useCreateReminder,
@@ -16,6 +17,9 @@ import {
   useSnoozeReminder
 } from './use-reminders'
 import { toast } from 'sonner'
+import { extractErrorMessage } from '@/lib/ipc-error'
+
+const log = createLogger('Hook:NoteReminders')
 
 // ============================================================================
 // Types
@@ -110,11 +114,11 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
           toast.success('Reminder set')
           return true
         } else {
-          toast.error(result.error || 'Failed to set reminder')
+          toast.error(extractErrorMessage(result.error, 'Failed to set reminder'))
           return false
         }
       } catch (err) {
-        console.error('Failed to set reminder:', err)
+        log.error('Failed to set reminder:', err)
         toast.error('Failed to set reminder')
         return false
       }
@@ -147,11 +151,11 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
           toast.success('Reminder set for highlighted text')
           return true
         } else {
-          toast.error(result.error || 'Failed to set reminder')
+          toast.error(extractErrorMessage(result.error, 'Failed to set reminder'))
           return false
         }
       } catch (err) {
-        console.error('Failed to set highlight reminder:', err)
+        log.error('Failed to set highlight reminder:', err)
         toast.error('Failed to set reminder')
         return false
       }
@@ -168,11 +172,11 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
           toast.success('Reminder deleted')
           return true
         } else {
-          toast.error(result.error || 'Failed to delete reminder')
+          toast.error(extractErrorMessage(result.error, 'Failed to delete reminder'))
           return false
         }
       } catch (err) {
-        console.error('Failed to delete reminder:', err)
+        log.error('Failed to delete reminder:', err)
         toast.error('Failed to delete reminder')
         return false
       }
@@ -189,11 +193,11 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
           toast.success('Reminder dismissed')
           return true
         } else {
-          toast.error(result.error || 'Failed to dismiss reminder')
+          toast.error(extractErrorMessage(result.error, 'Failed to dismiss reminder'))
           return false
         }
       } catch (err) {
-        console.error('Failed to dismiss reminder:', err)
+        log.error('Failed to dismiss reminder:', err)
         toast.error('Failed to dismiss reminder')
         return false
       }
@@ -213,11 +217,11 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
           toast.success('Reminder snoozed')
           return true
         } else {
-          toast.error(result.error || 'Failed to snooze reminder')
+          toast.error(extractErrorMessage(result.error, 'Failed to snooze reminder'))
           return false
         }
       } catch (err) {
-        console.error('Failed to snooze reminder:', err)
+        log.error('Failed to snooze reminder:', err)
         toast.error('Failed to snooze reminder')
         return false
       }

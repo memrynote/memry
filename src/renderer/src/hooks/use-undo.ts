@@ -14,7 +14,10 @@
  */
 
 import { useCallback, useEffect } from 'react'
+import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
+
+const log = createLogger('Hook:Undo')
 
 // ============================================================================
 // GLOBAL UNDO STACK
@@ -46,10 +49,14 @@ function startCleanupInterval() {
     const now = Date.now()
     const hadEntries = globalUndoStack.length > 0
     globalUndoStack = globalUndoStack.filter((entry) => now - entry.timestamp < UNDO_EXPIRY_MS)
+    if (globalUndoStack.length === 0) {
+      stopCleanupInterval()
+    }
     if (hadEntries && globalUndoStack.length === 0) {
       notifyListeners()
     }
   }, 1000)
+  cleanupInterval.unref?.()
 }
 
 function stopCleanupInterval() {
@@ -95,6 +102,9 @@ function getLastUndoEntry(): UndoEntry | undefined {
   // Filter out expired entries
   const now = Date.now()
   globalUndoStack = globalUndoStack.filter((entry) => now - entry.timestamp < UNDO_EXPIRY_MS)
+  if (globalUndoStack.length === 0) {
+    stopCleanupInterval()
+  }
   return globalUndoStack[globalUndoStack.length - 1]
 }
 
@@ -125,6 +135,10 @@ export const useUndoTracker = (): UseUndoTrackerReturn => {
     globalUndoListeners.add(forceUpdate)
     return () => {
       globalUndoListeners.delete(forceUpdate)
+      if (globalUndoListeners.size === 0) {
+        globalUndoStack = []
+        stopCleanupInterval()
+      }
     }
   }, [forceUpdate])
 
@@ -144,7 +158,7 @@ export const useUndoTracker = (): UseUndoTrackerReturn => {
       toast.success(`Undone: ${entry.description}`)
       return true
     } catch (error) {
-      console.error('[useUndoTracker] Error executing undo:', error)
+      log.error('Error executing undo:', error)
       toast.error('Failed to undo action')
       return false
     }
@@ -195,7 +209,7 @@ export const useUndoKeyboardShortcut = (): void => {
               popped.undoFn()
               toast.success(`Undone: ${popped.description}`)
             } catch (error) {
-              console.error('[useUndoKeyboardShortcut] Error executing undo:', error)
+              log.error('Keyboard shortcut undo error:', error)
               toast.error('Failed to undo action')
             }
           }

@@ -343,7 +343,7 @@ describe('useFilterState', () => {
   })
 
   describe('view key changes', () => {
-    it('should reload filters when view changes', () => {
+    it('should reload filters when view changes', async () => {
       const viewKey1 = 'project-project-1-all'
       const viewKey2 = 'project-project-2-all'
 
@@ -369,7 +369,9 @@ describe('useFilterState', () => {
 
       rerender({ ...defaultOptions, selectedId: 'project-2' })
 
-      expect(result.current.filters.search).toBe('project-2-search')
+      await waitFor(() => {
+        expect(result.current.filters.search).toBe('project-2-search')
+      })
     })
   })
 })
@@ -414,19 +416,18 @@ describe('useFilteredAndSortedTasks', () => {
   })
 
   it('should debounce search filter', () => {
-    const filtersWithSearch = { ...defaultFilters, search: 'query' }
-
-    renderHook(() =>
-      useFilteredAndSortedTasks({
-        tasks: mockTasks,
-        filters: filtersWithSearch,
-        sort: defaultSort,
-        projects: mockProjects,
-        searchDebounceMs: 150
-      })
+    const { rerender } = renderHook(
+      ({ filters }) =>
+        useFilteredAndSortedTasks({
+          tasks: mockTasks,
+          filters,
+          sort: defaultSort,
+          projects: mockProjects,
+          searchDebounceMs: 150
+        }),
+      { initialProps: { filters: defaultFilters } }
     )
 
-    // applyFiltersAndSort should be called with empty search initially
     expect(applyFiltersAndSort).toHaveBeenCalledWith(
       mockTasks,
       expect.objectContaining({ search: '' }),
@@ -434,12 +435,18 @@ describe('useFilteredAndSortedTasks', () => {
       mockProjects
     )
 
-    // Advance past debounce
+    rerender({ filters: { ...defaultFilters, search: 'query' } })
+
+    const callCountBeforeDebounce = vi.mocked(applyFiltersAndSort).mock.calls.length
     act(() => {
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(100)
+    })
+    expect(vi.mocked(applyFiltersAndSort).mock.calls.length).toBe(callCountBeforeDebounce)
+
+    act(() => {
+      vi.advanceTimersByTime(100)
     })
 
-    // Now should be called with the search query
     expect(applyFiltersAndSort).toHaveBeenCalledWith(
       mockTasks,
       expect.objectContaining({ search: 'query' }),

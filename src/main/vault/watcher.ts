@@ -23,12 +23,31 @@ import {
 import { safeRead, atomicWrite } from './file-ops'
 import { generateNoteId } from '../lib/id'
 import { syncNoteToCache, syncFileToCache } from './note-sync'
-import { deleteNoteCache, getNoteCacheByPath, getNoteCacheById } from '@shared/db/queries/notes'
-import { getIndexDatabase } from '../database'
+import {
+  deleteNoteCache,
+  getNoteCacheByPath,
+  getNoteCacheById,
+  ensureTagDefinitions
+} from '@shared/db/queries/notes'
+import { getDatabase, getIndexDatabase } from '../database'
 import { NotesChannels, JournalChannels } from '@shared/ipc-channels'
-import { trackPendingDelete, checkForRename, clearAllPendingDeletes } from './rename-tracker'
+import {
+  trackPendingDelete,
+  checkForRename,
+  clearAllPendingDeletes,
+  processRename
+} from './rename-tracker'
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@shared/file-types'
+import { createLogger } from '../lib/logger'
+import { isWritebackIgnored, wasRecentNetworkUpdate } from '../sync/crdt-writeback'
+import { attachmentEvents } from '../sync/attachment-events'
+import { getNoteSyncService } from '../sync/note-sync'
+import { getJournalSyncService } from '../sync/journal-sync'
+import { getCrdtProvider, ORIGIN_LOCAL } from '../sync/crdt-provider'
+import { markdownToBlocks, blocksToYFragment } from '../sync/blocknote-converter'
+
+const logger = createLogger('Watcher')
 
 // ============================================================================
 // Types
@@ -43,6 +62,7 @@ interface NoteListItem {
   tags: string[]
   wordCount: number
   snippet?: string
+  localOnly?: boolean
 }
 
 interface WatcherOptions {
@@ -76,7 +96,7 @@ function createPathDebouncer(
     const timeout = setTimeout(() => {
       pending.delete(filePath)
       handler(filePath).catch((error: unknown) => {
-        console.error(`[Watcher] Error processing ${filePath}:`, error)
+        logger.error(`Error processing ${filePath}:`, error)
       })
     }, delayMs)
 
@@ -122,6 +142,27 @@ function isJournalPath(relativePath: string, journalFolder: string): boolean {
 function extractJournalDate(relativePath: string): string {
   const filename = relativePath.substring(relativePath.lastIndexOf('/') + 1)
   return filename.replace('.md', '')
+}
+
+// Full fragment replace on external edits: lossy but acceptable since
+// out-of-app edits are infrequent and round-trip through MD destroys Yjs history anyway
+async function feedExternalEditToCrdt(noteId: string, markdownContent: string): Promise<void> {
+  const provider = getCrdtProvider()
+  const doc = provider.getDoc(noteId)
+  if (!doc) return
+
+  if (wasRecentNetworkUpdate(noteId)) {
+    emitEvent('sync:concurrent-edit', { noteId })
+  }
+
+  const blocks = await markdownToBlocks(markdownContent)
+  if (!blocks) return
+
+  const fragment = doc.getXmlFragment('prosemirror')
+  doc.transact(() => {
+    fragment.delete(0, fragment.length)
+    blocksToYFragment(blocks, fragment)
+  }, ORIGIN_LOCAL)
 }
 
 // ============================================================================
@@ -225,7 +266,7 @@ export class VaultWatcher {
       })
       .on('error', (err) => {
         const error = err instanceof Error ? err : new Error(String(err))
-        console.error('[Watcher] Error:', error)
+        logger.error('Error:', error)
         this.onError?.(error)
       })
 
@@ -274,29 +315,26 @@ export class VaultWatcher {
   private async handleFileAdd(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
 
+    if (isWritebackIgnored(absolutePath)) return
+
     try {
       const relativePath = path.relative(this.vaultPath, absolutePath)
       const fileType = getFileType(getExtension(absolutePath))
 
       if (!fileType) {
-        // Unsupported file type, skip
         return
       }
 
       const db = getIndexDatabase()
 
-      // Check if already in cache (might have been added by internal operation)
       const existing = getNoteCacheByPath(db, relativePath)
       if (existing) {
-        // Already cached, skip
         return
       }
 
-      // Handle markdown files with full frontmatter support
       if (fileType === 'markdown') {
         await this.handleMarkdownFileAdd(absolutePath, relativePath, db)
       } else {
-        // Handle non-markdown files (PDF, images, audio, video)
         await this.handleNonMarkdownFileAdd(absolutePath, relativePath, fileType, db)
       }
     } catch (error) {
@@ -327,14 +365,27 @@ export class VaultWatcher {
       return
     }
 
-    // Check if a note with this ID exists at a different path (copy-paste scenario)
+    // Check if a note with this ID exists at a different path
     const existingById = getNoteCacheById(db, parsed.frontmatter.id)
     if (existingById && existingById.path !== relativePath) {
-      // This is a copy of an existing note - regenerate ID
+      const oldAbsPath = path.join(this.vaultPath!, existingById.path)
+      let oldFileExists = false
+      try {
+        await fs.access(oldAbsPath)
+        oldFileExists = true
+      } catch {
+        // old file gone
+      }
+
+      if (!oldFileExists) {
+        processRename(existingById.id, existingById.path, relativePath)
+        return
+      }
+
+      // Old file still exists — genuine copy, regenerate ID + derive title from OS filename
       const newId = generateNoteId()
       parsed.frontmatter.id = newId
-
-      // Write back to file with new ID
+      parsed.frontmatter.title = path.basename(relativePath, path.extname(relativePath))
       try {
         const newContent = serializeNote(parsed.frontmatter, parsed.content)
         await atomicWrite(absolutePath, newContent)
@@ -360,6 +411,10 @@ export class VaultWatcher {
     const tags = extractTags(parsed.frontmatter)
     const properties = extractProperties(parsed.frontmatter)
 
+    if (tags.length > 0) {
+      ensureTagDefinitions(getDatabase(), tags)
+    }
+
     // Create list item for event
     const noteListItem: NoteListItem = {
       id: parsed.frontmatter.id,
@@ -369,7 +424,27 @@ export class VaultWatcher {
       modified: new Date(parsed.frontmatter.modified),
       tags,
       wordCount: syncResult.wordCount,
-      snippet: syncResult.snippet
+      snippet: syncResult.snippet,
+      localOnly: parsed.frontmatter.localOnly ?? false
+    }
+
+    // Enqueue sync push so other devices learn about the new file
+    const config = getConfig()
+    if (isJournalPath(relativePath, config.journalFolder)) {
+      const journalDate = extractJournalDate(relativePath)
+      getJournalSyncService()?.enqueueCreate(parsed.frontmatter.id, journalDate)
+      getCrdtProvider()
+        .initForNote(parsed.frontmatter.id, { date: journalDate }, tags)
+        .catch(() => {})
+    } else {
+      getNoteSyncService()?.enqueueCreate(parsed.frontmatter.id)
+      getCrdtProvider()
+        .initForNote(
+          parsed.frontmatter.id,
+          { title: parsed.frontmatter.title ?? path.basename(relativePath, '.md') },
+          tags
+        )
+        .catch(() => {})
     }
 
     // Emit event to renderer
@@ -383,7 +458,6 @@ export class VaultWatcher {
     queueEmbeddingUpdate(parsed.frontmatter.id)
 
     // Also emit journal event if this is a journal entry
-    const config = getConfig()
     if (isJournalPath(relativePath, config.journalFolder)) {
       const journalDate = extractJournalDate(relativePath)
       emitEvent(JournalChannels.events.ENTRY_CREATED, {
@@ -448,6 +522,8 @@ export class VaultWatcher {
       wordCount: 0
     }
 
+    getNoteSyncService()?.enqueueCreate(id)
+
     // Emit event to renderer (using same channel for unified tree)
     emitEvent(NotesChannels.events.CREATED, {
       note: fileListItem,
@@ -455,6 +531,8 @@ export class VaultWatcher {
       source: 'external',
       fileType // Include file type so renderer knows this is not markdown
     })
+
+    attachmentEvents.emitSaved({ noteId: id, diskPath: absolutePath })
   }
 
   /**
@@ -464,31 +542,28 @@ export class VaultWatcher {
   private async handleFileChange(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
 
+    if (isWritebackIgnored(absolutePath)) return
+
     try {
       const relativePath = path.relative(this.vaultPath, absolutePath)
       const fileType = getFileType(getExtension(absolutePath))
 
       if (!fileType) {
-        // Unsupported file type, skip
         return
       }
 
       const db = getIndexDatabase()
 
-      // Get cached version
       const cached = getNoteCacheByPath(db, relativePath)
 
       if (!cached) {
-        // File not in cache, treat as add
         await this.handleFileAdd(absolutePath)
         return
       }
 
-      // Handle markdown files with full frontmatter support
       if (fileType === 'markdown') {
         await this.handleMarkdownFileChange(absolutePath, relativePath, cached, db)
       } else {
-        // Handle non-markdown files (PDF, images, audio, video)
         await this.handleNonMarkdownFileChange(absolutePath, relativePath, fileType, cached, db)
       }
     } catch (err) {
@@ -506,7 +581,6 @@ export class VaultWatcher {
     cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
-    // Read and parse the file
     const content = await safeRead(absolutePath)
     if (!content) {
       return
@@ -514,16 +588,12 @@ export class VaultWatcher {
 
     const parsed = parseNote(content, relativePath)
 
-    // Calculate new hash
     const contentHash = generateContentHash(content)
 
-    // Check if content actually changed
     if (cached.contentHash === contentHash) {
-      // No actual change, skip
       return
     }
 
-    // Sync to cache using NoteSyncService (handles tags, properties, FTS, links)
     const syncResult = syncNoteToCache(
       db,
       {
@@ -536,19 +606,21 @@ export class VaultWatcher {
       { isNew: false }
     )
 
-    // Extract tags and properties for event emission
     const tags = extractTags(parsed.frontmatter)
     const properties = extractProperties(parsed.frontmatter)
     const title = parsed.frontmatter.title ?? path.basename(relativePath, '.md')
 
-    // Emit update event for notes
+    if (tags.length > 0) {
+      ensureTagDefinitions(getDatabase(), tags)
+    }
+
     emitEvent(NotesChannels.events.UPDATED, {
       id: cached.id,
       changes: {
         title,
         content: parsed.content,
         tags,
-        properties, // T012: Include properties in event
+        properties,
         modified: new Date(parsed.frontmatter.modified),
         wordCount: syncResult.wordCount,
         snippet: syncResult.snippet
@@ -556,10 +628,12 @@ export class VaultWatcher {
       source: 'external'
     })
 
-    // Queue embedding update for AI suggestions (batched for performance)
     queueEmbeddingUpdate(cached.id)
 
-    // Also emit journal event if this is a journal entry
+    feedExternalEditToCrdt(cached.id, parsed.content).catch((err) => {
+      logger.warn('Failed to feed external edit to CRDT', { noteId: cached.id, error: err })
+    })
+
     const config = getConfig()
     if (isJournalPath(relativePath, config.journalFolder)) {
       const journalDate = extractJournalDate(relativePath)
@@ -605,6 +679,8 @@ export class VaultWatcher {
       modifiedAt: stats.mtime
     })
 
+    getNoteSyncService()?.enqueueUpdate(cached.id)
+
     // Emit update event
     emitEvent(NotesChannels.events.UPDATED, {
       id: cached.id,
@@ -615,6 +691,8 @@ export class VaultWatcher {
       source: 'external',
       fileType
     })
+
+    attachmentEvents.emitSaved({ noteId: cached.id, diskPath: absolutePath })
   }
 
   /**
@@ -643,8 +721,13 @@ export class VaultWatcher {
 
       // Track as pending delete - wait for potential rename (matching 'add' event)
       trackPendingDelete(cached.id, relativePath, async () => {
-        // This callback runs if no rename is detected within 500ms
-        // Remove from cache (cascades to tags and links)
+        // Enqueue sync delete BEFORE cache removal (enqueue reads cache for vector clock)
+        if (isJournal && journalDate) {
+          getJournalSyncService()?.enqueueDelete(cached.id, journalDate)
+        } else {
+          getNoteSyncService()?.enqueueDelete(cached.id)
+        }
+
         deleteNoteCache(db, cached.id)
 
         // Emit delete event
@@ -700,8 +783,7 @@ export async function startWatcher(vaultPath: string, excludePatterns?: string[]
     vaultPath,
     excludePatterns: patterns,
     onError: (error) => {
-      console.error('[Watcher] Error:', error)
-      // Could emit vault error here if needed
+      logger.error('Error:', error)
     }
   })
 }

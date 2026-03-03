@@ -40,7 +40,9 @@ import {
   countNotes,
   getNoteTags,
   getTagsForNotes,
-  getAllTagsWithColors,
+  getAllTags,
+  getAllTagDefinitions,
+  getOrCreateTag,
   ensureTagDefinitions,
   getNotePropertiesAsRecord,
   getPropertiesForNotes,
@@ -56,11 +58,15 @@ import {
   pruneOldSnapshots
 } from '@shared/db/queries/notes'
 import { SnapshotReasons, type SnapshotReason } from '@shared/db/schema/notes-cache'
-import { getIndexDatabase } from '../database'
+import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@shared/contracts/notes-api'
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
+import { createLogger } from '../lib/logger'
+import { getFileType, getExtension, isBinaryFileType } from '@shared/file-types'
+
+const logger = createLogger('Notes')
 
 // ============================================================================
 // Types
@@ -91,6 +97,7 @@ export interface NoteListItem {
   wordCount: number
   snippet?: string
   emoji?: string | null // T028: Emoji icon for visual identification
+  localOnly?: boolean
   properties?: Record<string, unknown> // T040: Optional properties for folder view
   fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video' // File type discriminator
   mimeType?: string | null // MIME type (e.g., 'application/pdf')
@@ -207,7 +214,7 @@ function getVaultPath(): string {
 /**
  * Get the notes directory path.
  */
-function getNotesDir(): string {
+export function getNotesDir(): string {
   const vaultPath = getVaultPath()
   const config = getConfig()
   return path.join(vaultPath, config.defaultNoteFolder)
@@ -216,7 +223,7 @@ function getNotesDir(): string {
 /**
  * Convert relative path to absolute path.
  */
-function toAbsolutePath(relativePath: string): string {
+export function toAbsolutePath(relativePath: string): string {
   const vaultPath = getVaultPath()
   return path.join(vaultPath, relativePath)
 }
@@ -224,7 +231,7 @@ function toAbsolutePath(relativePath: string): string {
 /**
  * Convert absolute path to relative path (from vault root).
  */
-function toRelativePath(absolutePath: string): string {
+export function toRelativePath(absolutePath: string): string {
   const vaultPath = getVaultPath()
   return path.relative(vaultPath, absolutePath)
 }
@@ -248,6 +255,7 @@ function emitNoteEvent(channel: string, payload: unknown): void {
 export async function createNote(input: NoteCreateInput): Promise<Note> {
   const notesDir = getNotesDir()
   const db = getIndexDatabase()
+  const dataDb = getDatabase()
 
   // T096.6: Apply template if specified or folder has default
   let templateContent = ''
@@ -313,6 +321,8 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     { isNew: true }
   )
 
+  ensureTagDefinitions(dataDb, mergedTags)
+
   // Build response
   const note: Note = {
     id: frontmatter.id,
@@ -362,8 +372,10 @@ export async function getNoteById(id: string): Promise<Note | null> {
   const fileContent = await safeRead(absolutePath)
 
   if (!fileContent) {
-    // File was deleted externally, remove from cache
-    deleteNoteCache(db, id)
+    logger.warn('getNoteById: file missing on disk, returning null (watcher handles cleanup)', {
+      id,
+      path: cached.path
+    })
     return null
   }
 
@@ -376,6 +388,7 @@ export async function getNoteById(id: string): Promise<Note | null> {
     // Generate new ID and update file
     const newId = generateNoteId()
     parsed.frontmatter.id = newId
+    parsed.frontmatter.title = path.basename(cached.path, path.extname(cached.path))
     const newContent = serializeNote(parsed.frontmatter, parsed.content)
     await atomicWrite(absolutePath, newContent)
 
@@ -520,6 +533,7 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
  */
 export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   const db = getIndexDatabase()
+  const dataDb = getDatabase()
 
   // Get existing note
   const existing = await getNoteById(input.id)
@@ -535,22 +549,28 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   // T028: Handle emoji - use input.emoji if provided, otherwise keep existing
   const newEmoji = input.emoji !== undefined ? input.emoji : existing.emoji
 
-  // T111: Create snapshot before significant content changes
-  // Read current file content BEFORE making any changes
   if (input.content !== undefined && input.content !== existing.content) {
+    logger.info('updateNote: content changed, attempting snapshot', { noteId: input.id })
     try {
       const absolutePath = toAbsolutePath(existing.path)
       const currentFileContent = await fs.readFile(absolutePath, 'utf-8')
-      maybeCreateSignificantSnapshot(
+      const snap = maybeCreateSignificantSnapshot(
         input.id,
         currentFileContent,
         existing.content,
         newContent,
         existing.title
       )
+      if (snap) {
+        logger.info('updateNote: snapshot created', { noteId: input.id, snapshotId: snap.id })
+      } else {
+        logger.info('updateNote: snapshot skipped (below threshold)', { noteId: input.id })
+      }
     } catch (err) {
-      console.error('[Snapshot] Failed to read current file for snapshot:', err)
+      logger.error('Failed to read current file for snapshot:', err)
     }
+  } else if (input.content !== undefined) {
+    logger.info('updateNote: content unchanged, skipping snapshot', { noteId: input.id })
   }
 
   // Update frontmatter
@@ -565,9 +585,10 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     modified: new Date().toISOString()
   }
 
-  // T013: Add properties to frontmatter if present
   if (Object.keys(newProperties).length > 0) {
     newFrontmatter.properties = newProperties
+  } else {
+    delete newFrontmatter.properties
   }
 
   // T028: Add emoji to frontmatter if present
@@ -599,7 +620,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
 
   if (tagsChanged) {
     // Ensure all tags have definitions (creates new tags with auto-assigned colors)
-    ensureTagDefinitions(db, newTags)
+    ensureTagDefinitions(dataDb, newTags)
   }
 
   // Build response
@@ -658,34 +679,45 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
     throw new NoteError(`Note not found: ${id}`, NoteErrorCode.NOT_FOUND, id)
   }
 
-  // Generate new path
+  // Check if binary from cache
+  const cached = getNoteCacheById(db, id)
+  const isBinary = cached?.fileType ? isBinaryFileType(cached.fileType) : false
+
+  // Generate new path — preserve original extension
   const oldPath = toAbsolutePath(existing.path)
   const dir = path.dirname(oldPath)
-  let newPath = path.join(dir, sanitizeFilename(newTitle) + '.md')
+  const ext = path.extname(oldPath) || '.md'
+  let newPath = path.join(dir, sanitizeFilename(newTitle) + ext)
   newPath = await generateUniquePath(newPath)
   const newRelativePath = toRelativePath(newPath)
 
-  // Update frontmatter
+  const now = new Date().toISOString()
   const newFrontmatter: NoteFrontmatter = {
     ...existing.frontmatter,
     title: newTitle,
-    modified: new Date().toISOString()
+    modified: now
   }
 
-  // Serialize and write to new location
-  const fileContent = serializeNote(newFrontmatter, existing.content)
-  await atomicWrite(newPath, fileContent)
-
-  // Delete old file
-  await deleteFile(oldPath)
-
-  // Update cache
-  updateNoteCache(db, id, {
-    path: newRelativePath,
-    title: newTitle,
-    contentHash: generateContentHash(fileContent),
-    modifiedAt: newFrontmatter.modified
-  })
+  if (isBinary) {
+    // Binary files: filesystem rename only, no frontmatter manipulation
+    await fs.rename(oldPath, newPath)
+    updateNoteCache(db, id, {
+      path: newRelativePath,
+      title: newTitle,
+      modifiedAt: now
+    })
+  } else {
+    // Markdown: update frontmatter and rewrite
+    const fileContent = serializeNote(newFrontmatter, existing.content)
+    await atomicWrite(newPath, fileContent)
+    await deleteFile(oldPath)
+    updateNoteCache(db, id, {
+      path: newRelativePath,
+      title: newTitle,
+      contentHash: generateContentHash(fileContent),
+      modifiedAt: now
+    })
+  }
 
   // Build response
   const note: Note = {
@@ -693,7 +725,7 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
     path: newRelativePath,
     title: newTitle,
     frontmatter: newFrontmatter,
-    modified: new Date(newFrontmatter.modified)
+    modified: new Date(now)
   }
 
   // Emit event
@@ -721,6 +753,10 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
     throw new NoteError(`Note not found: ${id}`, NoteErrorCode.NOT_FOUND, id)
   }
 
+  // Check if binary from cache
+  const cached = getNoteCacheById(db, id)
+  const isBinary = cached?.fileType ? isBinaryFileType(cached.fileType) : false
+
   // Generate new path
   const oldPath = toAbsolutePath(existing.path)
   const filename = path.basename(oldPath)
@@ -730,32 +766,37 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
   newPath = await generateUniquePath(newPath)
   const newRelativePath = toRelativePath(newPath)
 
-  // Update frontmatter
+  const now = new Date().toISOString()
   const newFrontmatter: NoteFrontmatter = {
     ...existing.frontmatter,
-    modified: new Date().toISOString()
+    modified: now
   }
 
-  // Serialize and write to new location
-  const fileContent = serializeNote(newFrontmatter, existing.content)
-  await atomicWrite(newPath, fileContent)
-
-  // Delete old file
-  await deleteFile(oldPath)
-
-  // Update cache
-  updateNoteCache(db, id, {
-    path: newRelativePath,
-    contentHash: generateContentHash(fileContent),
-    modifiedAt: newFrontmatter.modified
-  })
+  if (isBinary) {
+    // Binary files: filesystem move only, no serialization
+    await fs.rename(oldPath, newPath)
+    updateNoteCache(db, id, {
+      path: newRelativePath,
+      modifiedAt: now
+    })
+  } else {
+    // Markdown: update frontmatter and rewrite
+    const fileContent = serializeNote(newFrontmatter, existing.content)
+    await atomicWrite(newPath, fileContent)
+    await deleteFile(oldPath)
+    updateNoteCache(db, id, {
+      path: newRelativePath,
+      contentHash: generateContentHash(fileContent),
+      modifiedAt: now
+    })
+  }
 
   // Build response
   const note: Note = {
     ...existing,
     path: newRelativePath,
     frontmatter: newFrontmatter,
-    modified: new Date(newFrontmatter.modified)
+    modified: new Date(now)
   }
 
   // Emit event
@@ -844,6 +885,7 @@ export function listNotes(options: NoteListOptions = {}): NoteListResponse {
     wordCount: c.wordCount ?? 0,
     snippet: c.snippet ?? undefined, // Use cached snippet from database
     emoji: c.emoji, // T028: Include emoji
+    localOnly: c.localOnly ?? false,
     fileType: c.fileType ?? 'markdown', // File type (default to markdown for backward compat)
     mimeType: c.mimeType, // MIME type
     fileSize: c.fileSize, // File size in bytes
@@ -879,8 +921,38 @@ function noteToListItem(note: Note): NoteListItem {
  * Returns tags sorted by usage count descending.
  */
 export function getTagsWithCounts(): { tag: string; color: string; count: number }[] {
-  const db = getIndexDatabase()
-  return getAllTagsWithColors(db)
+  const indexDb = getIndexDatabase()
+  const dataDb = getDatabase()
+
+  const definitions = getAllTagDefinitions(dataDb)
+  const usageCounts = getAllTags(indexDb)
+
+  const defMap = new Map(definitions.map((d) => [d.name, d.color]))
+  const countMap = new Map(usageCounts.map((u) => [u.tag, u.count]))
+
+  const results: { tag: string; color: string; count: number }[] = []
+
+  for (const def of definitions) {
+    results.push({
+      tag: def.name,
+      color: def.color,
+      count: countMap.get(def.name) ?? 0
+    })
+  }
+
+  for (const usage of usageCounts) {
+    if (!defMap.has(usage.tag)) {
+      const { color } = getOrCreateTag(dataDb, usage.tag)
+      defMap.set(usage.tag, color)
+      results.push({
+        tag: usage.tag,
+        color,
+        count: usage.count
+      })
+    }
+  }
+
+  return results.sort((a, b) => b.count - a.count)
 }
 
 /**
@@ -1169,6 +1241,7 @@ export function getVersion(snapshotId: string): SnapshotDetail | null {
  */
 export async function restoreVersion(snapshotId: string): Promise<Note> {
   const db = getIndexDatabase()
+  const dataDb = getDatabase()
   const snapshot = getNoteSnapshotById(db, snapshotId)
 
   if (!snapshot) {
@@ -1219,7 +1292,7 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
   )
 
   // Ensure all tags have definitions (creates new tags with auto-assigned colors)
-  ensureTagDefinitions(db, syncResult.tags)
+  ensureTagDefinitions(dataDb, syncResult.tags)
 
   // Build the restored note object
   const restoredNote: Note = {
@@ -1258,11 +1331,18 @@ export interface ImportFilesInput {
   targetFolder?: string
 }
 
+export interface ImportedFileInfo {
+  destPath: string
+  filename: string
+  fileType: string
+}
+
 export interface ImportFilesResult {
   success: boolean
   imported: number
   failed: number
   errors: string[]
+  importedFiles: ImportedFileInfo[]
 }
 
 /**
@@ -1283,6 +1363,7 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
   await ensureDirectory(notesPath)
 
   const errors: string[] = []
+  const importedFiles: ImportedFileInfo[] = []
   let imported = 0
   let failed = 0
 
@@ -1318,7 +1399,8 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
       await fs.copyFile(sourcePath, destPath)
       imported++
 
-      // Note: The watcher will automatically pick up the new file and index it
+      const fileType = getFileType(getExtension(destPath)) ?? 'markdown'
+      importedFiles.push({ destPath, filename, fileType })
     } catch (error) {
       failed++
       const message = error instanceof Error ? error.message : 'Unknown error'
@@ -1330,6 +1412,7 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
     success: failed === 0,
     imported,
     failed,
-    errors
+    errors,
+    importedFiles
   }
 }
