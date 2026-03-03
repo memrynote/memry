@@ -12,7 +12,10 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "paths": {
+      "zod": ["./node_modules/zod"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules"]
