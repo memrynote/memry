@@ -32,20 +32,10 @@ export class YjsIpcProvider extends Observable<string> {
 
     this.ipcCleanup = window.api.onCrdtStateChanged(
       (data: { noteId: string; update: number[]; origin: string }) => {
-        log.warn('[DIAG] onCrdtStateChanged received', {
-          incomingNoteId: data.noteId,
-          myNoteId: this.noteId,
-          match: data.noteId === this.noteId,
-          updateLen: data.update.length,
-          destroyed: this.destroyed
-        })
         if (data.noteId !== this.noteId) return
         const update = new Uint8Array(data.update)
         Y.applyUpdate(this.doc, update, 'remote')
-        log.warn('[DIAG] applied remote update to renderer doc', {
-          noteId: this.noteId,
-          updateBytes: update.byteLength
-        })
+        log.debug('Applied remote update', { noteId: this.noteId, bytes: update.byteLength })
       }
     )
 

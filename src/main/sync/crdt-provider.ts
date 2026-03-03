@@ -48,6 +48,7 @@ interface ActiveDoc {
   accumulatedBytes: number
   lastEncodedSize: number
   lastSizeCheckAt: number
+  closing?: boolean
 }
 
 export class CrdtProvider {
@@ -96,12 +97,11 @@ export class CrdtProvider {
 
   async open(noteId: string, windowId?: number, options?: { skipSeed?: boolean }): Promise<Y.Doc> {
     const existing = this.docs.get(noteId)
-    if (existing) {
+    if (existing && !existing.closing) {
       if (windowId) existing.windowIds.add(windowId)
       return existing.doc
     }
 
-    // Coalesce concurrent opens for the same noteId to prevent doc/listener leaks
     const pending = this.openLocks.get(noteId)
     if (pending) {
       const doc = await pending
@@ -160,12 +160,14 @@ export class CrdtProvider {
 
   async close(noteId: string, windowId?: number): Promise<void> {
     const entry = this.docs.get(noteId)
-    if (!entry) return
+    if (!entry || entry.closing) return
 
     if (windowId) {
       entry.windowIds.delete(windowId)
       if (entry.windowIds.size > 0) return
     }
+
+    entry.closing = true
 
     this.flushNetworkBroadcast(noteId)
 
@@ -179,6 +181,11 @@ export class CrdtProvider {
     await this.flushDoc(noteId).catch((err) => {
       log.error('Failed to flush doc on close', { noteId, error: err })
     })
+
+    if (this.docs.get(noteId) !== entry) {
+      log.debug('Doc reopened during async close, skipping destroy', { noteId })
+      return
+    }
 
     entry.doc.destroy()
     this.docs.delete(noteId)
@@ -200,6 +207,17 @@ export class CrdtProvider {
       log.warn('Received remote update for unopened doc', { noteId })
       return
     }
+
+    if (entry.closing) {
+      log.debug('Ignoring remote update for closing doc', { noteId })
+      return
+    }
+
+    log.debug('applyRemoteUpdate', {
+      noteId,
+      bytes: update.byteLength,
+      windows: entry.windowIds.size
+    })
 
     if (this.compactingDocs.has(noteId)) {
       const buf = this.compactionBuffers.get(noteId)
@@ -500,6 +518,11 @@ export class CrdtProvider {
   ): void {
     const entry = this.docs.get(noteId)
     if (!entry) return
+
+    if (entry.windowIds.size === 0) {
+      log.debug('No windows to broadcast CRDT update', { noteId, origin })
+      return
+    }
 
     for (const windowId of entry.windowIds) {
       if (windowId === sourceWindowId) continue
