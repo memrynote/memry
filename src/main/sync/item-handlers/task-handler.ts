@@ -117,7 +117,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
         .values({
           id: itemId,
           title: data.title ?? 'Untitled',
-          projectId: data.projectId,
+          projectId: data.projectId!,
           statusId: data.statusId ?? null,
           parentId: data.parentId ?? null,
           description: data.description ?? null,

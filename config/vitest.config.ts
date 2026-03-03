@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
+import react from '@vitejs/plugin-react'
 
 const projectRoot = resolve(__dirname, '..')
 
@@ -35,6 +36,7 @@ export default defineConfig({
       },
       {
         extends: true,
+        plugins: [react()],
         test: {
           name: 'renderer',
           root: projectRoot,

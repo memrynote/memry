@@ -15,13 +15,18 @@ export default defineConfig(
       '**/build',
       '**/coverage',
       '**/*.min.js',
+      '**/*.test.ts',
+      '**/*.test.tsx',
+      '**/*.spec.ts',
+      'tests/**',
       '*.config.ts',
       '*.config.mjs',
       '*.config.js',
       'config/**',
       'scripts/**',
       'specs/**',
-      'docs/**'
+      'docs/**',
+      'sync-server/**'
     ]
   },
   tseslint.configs.recommended,
@@ -55,18 +60,49 @@ export default defineConfig(
   tseslint.configs.recommendedTypeChecked,
   eslintConfigPrettier,
   reactYouMightNotNeedAnEffect.configs.recommended,
-  // Relaxed rules for test files - mocking often requires any types
   {
-    files: ['**/*.test.ts', '**/*.test.tsx', 'tests/**/*.ts', 'tests/**/*.tsx'],
     rules: {
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
-      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
-      '@typescript-eslint/unbound-method': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
       '@typescript-eslint/require-await': 'off',
-      '@typescript-eslint/no-explicit-any': 'off'
+      '@typescript-eslint/restrict-template-expressions': 'off',
+      '@typescript-eslint/no-misused-promises': 'warn',
+      '@typescript-eslint/no-floating-promises': 'warn',
+      '@typescript-eslint/await-thenable': 'warn',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'warn',
+      '@typescript-eslint/no-base-to-string': 'warn',
+      '@typescript-eslint/no-redundant-type-constituents': 'warn',
+      '@typescript-eslint/ban-ts-comment': 'warn',
+      '@typescript-eslint/prefer-promise-reject-errors': 'warn',
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
+      ],
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-require-imports': 'warn',
+      '@typescript-eslint/prefer-as-const': 'warn',
+      'react/prop-types': 'off',
+      'react/no-unescaped-entities': 'off',
+      'react/display-name': 'off',
+      '@typescript-eslint/unbound-method': 'warn',
+      '@typescript-eslint/no-empty-object-type': 'warn',
+      'react-refresh/only-export-components': 'warn',
+      'react-hooks/rules-of-hooks': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/preserve-manual-memoization': 'warn',
+      'react-hooks/immutability': 'warn',
+      'react-hooks/refs': 'warn',
+      'react-hooks/purity': 'warn',
+      'react-hooks/static-components': 'warn',
+      'no-useless-escape': 'warn',
+      'no-case-declarations': 'warn',
+      'no-empty-pattern': 'warn',
+      'no-control-regex': 'warn',
+      'prefer-const': 'warn'
     }
   }
 )

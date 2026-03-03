@@ -174,7 +174,7 @@ export const computeVerificationCode = async (sharedSecret: Uint8Array): Promise
   await sodium.ready
 
   const sasKey = await deriveKey(sharedSecret, LINKING_HKDF_CONTEXTS.SAS, 32)
-  const hash = sodium.crypto_generichash(4, sasKey)
+  const hash = sodium.crypto_generichash(4, sasKey, null)
   sodium.memzero(sasKey)
 
   const uint32 = (hash[0] << 24) | (hash[1] << 16) | (hash[2] << 8) | hash[3]
