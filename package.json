@@ -237,6 +237,9 @@
       "sharp",
       "classic-level",
       "keytar"
-    ]
+    ],
+    "overrides": {
+      "tar": ">=7.5.4"
+    }
   }
 }

@@ -110,7 +110,7 @@ describe('auth middleware', () => {
   })
 
   it('rejects tokens with missing required claims', async () => {
-    hoisted.jwtVerifyMock.mockResolvedValue({ payload: { sub: 'user-1', type: 'access' } })
+    hoisted.jwtVerifyMock.mockResolvedValue({ payload: { sub: 'user-1', type: 'access' } } as never)
     const { context } = createContext()
 
     await expect(

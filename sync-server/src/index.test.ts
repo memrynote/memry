@@ -28,7 +28,7 @@ describe('sync-server app entry point', () => {
     const response = await app.request('http://localhost/health', {}, createEnv())
 
     expect(response.status).toBe(200)
-    const body = await response.json()
+    const body = (await response.json()) as Record<string, unknown>
     expect(body.status).toBe('ok')
     expect(warnSpy).toHaveBeenCalled()
     expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff')
@@ -76,7 +76,7 @@ describe('sync-server app entry point', () => {
     )
 
     expect(response.status).toBe(200)
-    const body = await response.json()
+    const body = (await response.json()) as Record<string, unknown>
     expect(body.status).toBe('ok')
     expect(response.headers.get('Strict-Transport-Security')).toBe(
       'max-age=31536000; includeSubDomains'
