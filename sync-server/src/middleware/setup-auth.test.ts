@@ -160,7 +160,7 @@ describe('setup-auth middleware', () => {
     // #given
     hoisted.jwtVerifyMock.mockResolvedValue({
       payload: { sub: 'user-1', type: 'access' }
-    })
+    } as never)
     const { context } = createContext()
 
     // #when / #then
@@ -179,7 +179,7 @@ describe('setup-auth middleware', () => {
     // #given
     hoisted.jwtVerifyMock.mockResolvedValue({
       payload: { type: 'setup' }
-    })
+    } as never)
     const { context } = createContext()
 
     // #when / #then

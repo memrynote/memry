@@ -5,7 +5,7 @@ import { AppError, ErrorCodes } from '../lib/errors'
 // crypto.subtle.timingSafeEqual is a Workers API not available in Node
 beforeAll(() => {
   if (!crypto.subtle.timingSafeEqual) {
-    ;(crypto.subtle as Record<string, unknown>).timingSafeEqual = (
+    ;(crypto.subtle as unknown as Record<string, unknown>).timingSafeEqual = (
       a: ArrayBuffer,
       b: ArrayBuffer
     ): boolean => {

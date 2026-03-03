@@ -31,9 +31,9 @@ describe('securityHeaders', () => {
     next.mockImplementation(async () => {
       callOrder.push('next')
     })
-    c.header = vi.fn((..._args: unknown[]) => {
+    c.header = vi.fn((_name: string, _value: string) => {
       callOrder.push('header')
-    }) as ReturnType<typeof vi.fn>
+    }) as typeof c.header
 
     // #when
     await securityHeaders(c as never, next)

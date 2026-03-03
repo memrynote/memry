@@ -1,3 +1,4 @@
+import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import type { Context } from 'hono'
 
 export const ErrorCodes = {
@@ -82,7 +83,7 @@ export const formatErrorResponse = (
 
 export const errorHandler = (err: Error, c: Context): Response => {
   if (err instanceof AppError) {
-    return c.json(formatErrorResponse(err), { status: err.statusCode })
+    return c.json(formatErrorResponse(err), { status: err.statusCode as ContentfulStatusCode })
   }
 
   console.error(

@@ -573,7 +573,7 @@ auth.post('/refresh', refreshRateLimit, async (c) => {
 })
 
 auth.post('/logout', authMiddleware, async (c) => {
-  const deviceId = c.get('deviceId')
+  const deviceId = c.get('deviceId')!
 
   try {
     await revokeDeviceTokens(c.env.DB, deviceId)
