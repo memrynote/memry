@@ -159,11 +159,7 @@ export class CrdtSyncCoordinator {
     }
   }
 
-  async applyCrdtBatch(
-    noteIds: string[],
-    token: string,
-    vaultKey: Uint8Array
-  ): Promise<void> {
+  async applyCrdtBatch(noteIds: string[], token: string, vaultKey: Uint8Array): Promise<void> {
     if (!this.ctx.deps.crdtProvider || !this.ctx.abortController) return
 
     try {

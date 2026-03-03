@@ -165,7 +165,10 @@ export class PushCoordinator {
                 { items: pushItems.map((p) => p.pushItem) },
                 token
               ),
-            { signal: this.ctx.abortController!.signal, isOnline: () => this.ctx.deps.network.online }
+            {
+              signal: this.ctx.abortController!.signal,
+              isOnline: () => this.ctx.deps.network.online
+            }
           )
           timer.endPhase()
 
@@ -386,7 +389,12 @@ export class PushCoordinator {
       const handler = getHandler(item.type as SyncItemType)
       if (!handler?.buildPushPayload) return item.payload
 
-      const fresh = handler.buildPushPayload(this.ctx.deps.db, item.itemId, deviceId, item.operation)
+      const fresh = handler.buildPushPayload(
+        this.ctx.deps.db,
+        item.itemId,
+        deviceId,
+        item.operation
+      )
       if (!fresh) {
         log.debug('Push: item no longer exists locally, using frozen payload', {
           itemId: item.itemId.slice(0, 8),

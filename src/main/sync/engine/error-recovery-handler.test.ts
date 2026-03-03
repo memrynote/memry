@@ -189,7 +189,9 @@ describe('ErrorRecoveryHandler', () => {
     })
 
     it('#given no refreshAccessToken dep #when auth_expired #then sets error state directly', async () => {
-      ctx = createCtx({ deps: { ...ctx.deps, refreshAccessToken: undefined } as SyncContext['deps'] })
+      ctx = createCtx({
+        deps: { ...ctx.deps, refreshAccessToken: undefined } as SyncContext['deps']
+      })
       handler = new ErrorRecoveryHandler(ctx, stateManager, onFullSync)
 
       const err = { category: 'auth_expired', message: 'expired', retryable: false }

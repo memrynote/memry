@@ -10,7 +10,9 @@ type SodiumLockApi = Record<string, unknown> & {
 let warnedMissingMlock = false
 let warnedMissingMunlock = false
 
-const getLockFunction = (name: 'sodium_mlock' | 'sodium_munlock'): ((buf: Uint8Array) => void) | null => {
+const getLockFunction = (
+  name: 'sodium_mlock' | 'sodium_munlock'
+): ((buf: Uint8Array) => void) | null => {
   const fn = (sodium as SodiumLockApi)[name]
   return typeof fn === 'function' ? fn : null
 }

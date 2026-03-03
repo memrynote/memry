@@ -69,8 +69,7 @@ export const api = {
   // Vault API
   vault: {
     select: (path?: string) => invoke(VaultChannels.invoke.SELECT, { path }),
-    create: (path: string, _name: string) =>
-      invoke(VaultChannels.invoke.SELECT, { path }),
+    create: (path: string, _name: string) => invoke(VaultChannels.invoke.SELECT, { path }),
     getAll: () => invoke(VaultChannels.invoke.GET_ALL),
     getStatus: () => invoke(VaultChannels.invoke.GET_STATUS),
     getConfig: () => invoke(VaultChannels.invoke.GET_CONFIG),
@@ -89,8 +88,7 @@ export const api = {
     get: (id: string) => invoke(NotesChannels.invoke.GET, id),
     getByPath: (path: string) => invoke(NotesChannels.invoke.GET_BY_PATH, path),
     getFile: (id: string) => invoke(NotesChannels.invoke.GET_FILE, id),
-    resolveByTitle: (title: string) =>
-      invoke(NotesChannels.invoke.RESOLVE_BY_TITLE, title),
+    resolveByTitle: (title: string) => invoke(NotesChannels.invoke.RESOLVE_BY_TITLE, title),
     update: (input: {
       id: string
       title?: string
@@ -99,10 +97,8 @@ export const api = {
       frontmatter?: Record<string, unknown>
       emoji?: string | null // T028: Emoji support
     }) => invoke(NotesChannels.invoke.UPDATE, input),
-    rename: (id: string, newTitle: string) =>
-      invoke(NotesChannels.invoke.RENAME, { id, newTitle }),
-    move: (id: string, newFolder: string) =>
-      invoke(NotesChannels.invoke.MOVE, { id, newFolder }),
+    rename: (id: string, newTitle: string) => invoke(NotesChannels.invoke.RENAME, { id, newTitle }),
+    move: (id: string, newFolder: string) => invoke(NotesChannels.invoke.MOVE, { id, newFolder }),
     delete: (id: string) => invoke(NotesChannels.invoke.DELETE, id),
     list: (options?: {
       folder?: string
@@ -156,10 +152,10 @@ export const api = {
         reader.onload = () => {
           const arrayBuffer = reader.result as ArrayBuffer
           invoke(NotesChannels.invoke.UPLOAD_ATTACHMENT, {
-              noteId,
-              filename: file.name,
-              data: Array.from(new Uint8Array(arrayBuffer))
-            })
+            noteId,
+            filename: file.name,
+            data: Array.from(new Uint8Array(arrayBuffer))
+          })
             .then(resolve)
             .catch(reject)
         }
@@ -167,8 +163,7 @@ export const api = {
         reader.readAsArrayBuffer(file)
       })
     },
-    listAttachments: (noteId: string) =>
-      invoke(NotesChannels.invoke.LIST_ATTACHMENTS, noteId),
+    listAttachments: (noteId: string) => invoke(NotesChannels.invoke.LIST_ATTACHMENTS, noteId),
     deleteAttachment: (noteId: string, filename: string) =>
       invoke(NotesChannels.invoke.DELETE_ATTACHMENT, { noteId, filename }),
 
@@ -191,12 +186,10 @@ export const api = {
 
     // Version History API (T114)
     getVersions: (noteId: string) => invoke(NotesChannels.invoke.GET_VERSIONS, noteId),
-    getVersion: (snapshotId: string) =>
-      invoke(NotesChannels.invoke.GET_VERSION, snapshotId),
+    getVersion: (snapshotId: string) => invoke(NotesChannels.invoke.GET_VERSION, snapshotId),
     restoreVersion: (snapshotId: string) =>
       invoke(NotesChannels.invoke.RESTORE_VERSION, snapshotId),
-    deleteVersion: (snapshotId: string) =>
-      invoke(NotesChannels.invoke.DELETE_VERSION, snapshotId),
+    deleteVersion: (snapshotId: string) => invoke(NotesChannels.invoke.DELETE_VERSION, snapshotId),
 
     // Position/Reorder API (drag-drop sidebar reordering)
     getPositions: (folderPath: string) =>
@@ -296,8 +289,7 @@ export const api = {
     searchNotes: (query: string, options?: { tags?: string[]; limit?: number }) =>
       invoke(SearchChannels.invoke.SEARCH_NOTES, { query, ...options }),
     findByTag: (tag: string) => invoke(SearchChannels.invoke.FIND_BY_TAG, tag),
-    findBacklinks: (noteId: string) =>
-      invoke(SearchChannels.invoke.FIND_BACKLINKS, noteId),
+    findBacklinks: (noteId: string) => invoke(SearchChannels.invoke.FIND_BACKLINKS, noteId),
     advancedSearch: (input: {
       text?: string
       operators?: {
@@ -385,12 +377,10 @@ export const api = {
     duplicate: (id: string) => invoke(TasksChannels.invoke.DUPLICATE, id),
 
     // Subtask operations
-    getSubtasks: (parentId: string) =>
-      invoke(TasksChannels.invoke.GET_SUBTASKS, parentId),
+    getSubtasks: (parentId: string) => invoke(TasksChannels.invoke.GET_SUBTASKS, parentId),
     convertToSubtask: (taskId: string, parentId: string) =>
       invoke(TasksChannels.invoke.CONVERT_TO_SUBTASK, { taskId, parentId }),
-    convertToTask: (taskId: string) =>
-      invoke(TasksChannels.invoke.CONVERT_TO_TASK, taskId),
+    convertToTask: (taskId: string) => invoke(TasksChannels.invoke.CONVERT_TO_TASK, taskId),
 
     // Project operations
     createProject: (input: {
@@ -442,15 +432,13 @@ export const api = {
     deleteStatus: (id: string) => invoke(TasksChannels.invoke.STATUS_DELETE, id),
     reorderStatuses: (statusIds: string[], positions: number[]) =>
       invoke(TasksChannels.invoke.STATUS_REORDER, { statusIds, positions }),
-    listStatuses: (projectId: string) =>
-      invoke(TasksChannels.invoke.STATUS_LIST, projectId),
+    listStatuses: (projectId: string) => invoke(TasksChannels.invoke.STATUS_LIST, projectId),
 
     // Tag operations
     getTags: () => invoke(TasksChannels.invoke.GET_TAGS),
 
     // Bulk operations
-    bulkComplete: (ids: string[]) =>
-      invoke(TasksChannels.invoke.BULK_COMPLETE, { ids }),
+    bulkComplete: (ids: string[]) => invoke(TasksChannels.invoke.BULK_COMPLETE, { ids }),
     bulkDelete: (ids: string[]) => invoke(TasksChannels.invoke.BULK_DELETE, { ids }),
     bulkMove: (ids: string[], projectId: string) =>
       invoke(TasksChannels.invoke.BULK_MOVE, { ids, projectId }),
@@ -459,13 +447,11 @@ export const api = {
     // Stats and views
     getStats: () => invoke(TasksChannels.invoke.GET_STATS),
     getToday: () => invoke(TasksChannels.invoke.GET_TODAY),
-    getUpcoming: (days?: number) =>
-      invoke(TasksChannels.invoke.GET_UPCOMING, { days: days ?? 7 }),
+    getUpcoming: (days?: number) => invoke(TasksChannels.invoke.GET_UPCOMING, { days: days ?? 7 }),
     getOverdue: () => invoke(TasksChannels.invoke.GET_OVERDUE),
 
     // Note linking
-    getLinkedTasks: (noteId: string) =>
-      invoke(TasksChannels.invoke.GET_LINKED_TASKS, noteId),
+    getLinkedTasks: (noteId: string) => invoke(TasksChannels.invoke.GET_LINKED_TASKS, noteId),
 
     // Development/Testing
     seedPerformanceTest: () => invoke('tasks:seed-performance-test'),
@@ -498,19 +484,16 @@ export const api = {
       invoke(JournalChannels.invoke.CREATE_ENTRY, input),
     updateEntry: (input: { date: string; content?: string; tags?: string[] }) =>
       invoke(JournalChannels.invoke.UPDATE_ENTRY, input),
-    deleteEntry: (date: string) =>
-      invoke(JournalChannels.invoke.DELETE_ENTRY, { date }),
+    deleteEntry: (date: string) => invoke(JournalChannels.invoke.DELETE_ENTRY, { date }),
 
     // Calendar & Views
     getHeatmap: (year: number) => invoke(JournalChannels.invoke.GET_HEATMAP, { year }),
     getMonthEntries: (year: number, month: number) =>
       invoke(JournalChannels.invoke.GET_MONTH_ENTRIES, { year, month }),
-    getYearStats: (year: number) =>
-      invoke(JournalChannels.invoke.GET_YEAR_STATS, { year }),
+    getYearStats: (year: number) => invoke(JournalChannels.invoke.GET_YEAR_STATS, { year }),
 
     // Context
-    getDayContext: (date: string) =>
-      invoke(JournalChannels.invoke.GET_DAY_CONTEXT, { date }),
+    getDayContext: (date: string) => invoke(JournalChannels.invoke.GET_DAY_CONTEXT, { date }),
 
     // Tags
     getAllTags: () => invoke(JournalChannels.invoke.GET_ALL_TAGS),
@@ -522,8 +505,7 @@ export const api = {
   // Settings API
   settings: {
     get: (key: string) => invoke(SettingsChannels.invoke.GET, key),
-    set: (key: string, value: string) =>
-      invoke(SettingsChannels.invoke.SET, { key, value }),
+    set: (key: string, value: string) => invoke(SettingsChannels.invoke.SET, { key, value }),
     getJournalSettings: () => invoke(SettingsChannels.invoke.GET_JOURNAL_SETTINGS),
     setJournalSettings: (settings: {
       defaultTemplate?: string | null
@@ -547,8 +529,7 @@ export const api = {
       tabCloseButton?: 'always' | 'hover' | 'active'
     }) => invoke(SettingsChannels.invoke.SET_TAB_SETTINGS, settings),
     // Note Editor Settings
-    getNoteEditorSettings: () =>
-      invoke(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS),
+    getNoteEditorSettings: () => invoke(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS),
     setNoteEditorSettings: (settings: { toolbarMode?: 'floating' | 'sticky' }) =>
       invoke(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS, settings)
   },
@@ -577,11 +558,9 @@ export const api = {
     toggle: (input: { itemType: string; itemId: string }) =>
       invoke(BookmarksChannels.invoke.TOGGLE, input),
     /** Reorder bookmarks */
-    reorder: (bookmarkIds: string[]) =>
-      invoke(BookmarksChannels.invoke.REORDER, { bookmarkIds }),
+    reorder: (bookmarkIds: string[]) => invoke(BookmarksChannels.invoke.REORDER, { bookmarkIds }),
     /** List bookmarks by item type */
-    listByType: (itemType: string) =>
-      invoke(BookmarksChannels.invoke.LIST_BY_TYPE, itemType),
+    listByType: (itemType: string) => invoke(BookmarksChannels.invoke.LIST_BY_TYPE, itemType),
     /** Get bookmark for a specific item */
     getByItem: (input: { itemType: string; itemId: string }) =>
       invoke(BookmarksChannels.invoke.GET_BY_ITEM, input),
@@ -647,8 +626,7 @@ export const api = {
       destination: { type: string; path?: string; noteId?: string; noteTitle?: string }
       tags?: string[]
     }) => invoke(InboxChannels.invoke.FILE, input),
-    getSuggestions: (itemId: string) =>
-      invoke(InboxChannels.invoke.GET_SUGGESTIONS, itemId),
+    getSuggestions: (itemId: string) => invoke(InboxChannels.invoke.GET_SUGGESTIONS, itemId),
     trackSuggestion: (input: {
       itemId: string
       itemType: string
@@ -668,14 +646,12 @@ export const api = {
         input.suggestedTags || [],
         input.actualTags || []
       ),
-    convertToNote: (itemId: string) =>
-      invoke(InboxChannels.invoke.CONVERT_TO_NOTE, itemId),
+    convertToNote: (itemId: string) => invoke(InboxChannels.invoke.CONVERT_TO_NOTE, itemId),
     linkToNote: (itemId: string, noteId: string, tags?: string[]) =>
       invoke(InboxChannels.invoke.LINK_TO_NOTE, itemId, noteId, tags || []),
 
     // Tags
-    addTag: (itemId: string, tag: string) =>
-      invoke(InboxChannels.invoke.ADD_TAG, itemId, tag),
+    addTag: (itemId: string, tag: string) => invoke(InboxChannels.invoke.ADD_TAG, itemId, tag),
     removeTag: (itemId: string, tag: string) =>
       invoke(InboxChannels.invoke.REMOVE_TAG, itemId, tag),
     getTags: () => invoke(InboxChannels.invoke.GET_TAGS),
@@ -697,8 +673,7 @@ export const api = {
       destination: { type: string; path?: string; noteId?: string }
       tags?: string[]
     }) => invoke(InboxChannels.invoke.BULK_FILE, input),
-    bulkArchive: (input: { itemIds: string[] }) =>
-      invoke(InboxChannels.invoke.BULK_ARCHIVE, input),
+    bulkArchive: (input: { itemIds: string[] }) => invoke(InboxChannels.invoke.BULK_ARCHIVE, input),
     bulkTag: (input: { itemIds: string[]; tags: string[] }) =>
       invoke(InboxChannels.invoke.BULK_TAG, input),
     fileAllStale: () => invoke(InboxChannels.invoke.FILE_ALL_STALE),
@@ -708,8 +683,7 @@ export const api = {
       invoke(InboxChannels.invoke.RETRY_TRANSCRIPTION, itemId),
 
     // Metadata
-    retryMetadata: (itemId: string) =>
-      invoke(InboxChannels.invoke.RETRY_METADATA, itemId),
+    retryMetadata: (itemId: string) => invoke(InboxChannels.invoke.RETRY_METADATA, itemId),
 
     // Stats
     getStats: () => invoke(InboxChannels.invoke.GET_STATS),
@@ -717,8 +691,7 @@ export const api = {
 
     // Settings
     getStaleThreshold: () => invoke(InboxChannels.invoke.GET_STALE_THRESHOLD),
-    setStaleThreshold: (days: number) =>
-      invoke(InboxChannels.invoke.SET_STALE_THRESHOLD, days),
+    setStaleThreshold: (days: number) => invoke(InboxChannels.invoke.SET_STALE_THRESHOLD, days),
 
     // Archived items
     listArchived: (options?: { search?: string; limit?: number; offset?: number }) =>
@@ -1366,20 +1339,17 @@ export const api = {
   // Folder View API (Bases-like database view)
   folderView: {
     /** Get folder view configuration */
-    getConfig: (folderPath: string) =>
-      invoke(FolderViewChannels.invoke.GET_CONFIG, { folderPath }),
+    getConfig: (folderPath: string) => invoke(FolderViewChannels.invoke.GET_CONFIG, { folderPath }),
     /** Set/update folder view configuration */
     setConfig: (folderPath: string, config: Record<string, unknown>) =>
       invoke(FolderViewChannels.invoke.SET_CONFIG, { folderPath, config }),
     /** Get all views for a folder */
-    getViews: (folderPath: string) =>
-      invoke(FolderViewChannels.invoke.GET_VIEWS, { folderPath }),
+    getViews: (folderPath: string) => invoke(FolderViewChannels.invoke.GET_VIEWS, { folderPath }),
     /** Add or update a single view */
     setView: (folderPath: string, view: Record<string, unknown>) =>
-      invoke(
-        FolderViewChannels.invoke.SET_VIEW,
-        { folderPath, view } as MainIpcInvokeArgs<typeof FolderViewChannels.invoke.SET_VIEW>[0]
-      ),
+      invoke(FolderViewChannels.invoke.SET_VIEW, { folderPath, view } as MainIpcInvokeArgs<
+        typeof FolderViewChannels.invoke.SET_VIEW
+      >[0]),
     /** Delete a view by name */
     deleteView: (folderPath: string, viewName: string) =>
       invoke(FolderViewChannels.invoke.DELETE_VIEW, { folderPath, viewName }),
@@ -1415,14 +1385,11 @@ export const api = {
 
   // Sync Auth API
   syncAuth: {
-    requestOtp: (input: { email: string }) =>
-      invoke(SYNC_CHANNELS.AUTH_REQUEST_OTP, input),
+    requestOtp: (input: { email: string }) => invoke(SYNC_CHANNELS.AUTH_REQUEST_OTP, input),
     verifyOtp: (input: { email: string; code: string }) =>
       invoke(SYNC_CHANNELS.AUTH_VERIFY_OTP, input),
-    resendOtp: (input: { email: string }) =>
-      invoke(SYNC_CHANNELS.AUTH_RESEND_OTP, input),
-    initOAuth: (input: { provider: 'google' }) =>
-      invoke(SYNC_CHANNELS.AUTH_INIT_OAUTH, input),
+    resendOtp: (input: { email: string }) => invoke(SYNC_CHANNELS.AUTH_RESEND_OTP, input),
+    initOAuth: (input: { provider: 'google' }) => invoke(SYNC_CHANNELS.AUTH_INIT_OAUTH, input),
     refreshToken: () => invoke(SYNC_CHANNELS.AUTH_REFRESH_TOKEN),
     logout: () => invoke(SYNC_CHANNELS.AUTH_LOGOUT)
   },
@@ -1434,8 +1401,7 @@ export const api = {
     setupNewAccount: () => invoke(SYNC_CHANNELS.SETUP_NEW_ACCOUNT),
     confirmRecoveryPhrase: (input: { confirmed: boolean }) =>
       invoke(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, input),
-    getRecoveryPhrase: (): Promise<string | null> =>
-      invoke(SYNC_CHANNELS.GET_RECOVERY_PHRASE)
+    getRecoveryPhrase: (): Promise<string | null> => invoke(SYNC_CHANNELS.GET_RECOVERY_PHRASE)
   },
 
   // Device Linking API
@@ -1445,10 +1411,8 @@ export const api = {
       invoke(SYNC_CHANNELS.LINK_VIA_QR, input),
     linkViaRecovery: (input: { recoveryPhrase: string }) =>
       invoke(SYNC_CHANNELS.LINK_VIA_RECOVERY, input),
-    approveLinking: (input: { sessionId: string }) =>
-      invoke(SYNC_CHANNELS.APPROVE_LINKING, input),
-    getLinkingSas: (input: { sessionId: string }) =>
-      invoke(SYNC_CHANNELS.GET_LINKING_SAS, input),
+    approveLinking: (input: { sessionId: string }) => invoke(SYNC_CHANNELS.APPROVE_LINKING, input),
+    getLinkingSas: (input: { sessionId: string }) => invoke(SYNC_CHANNELS.GET_LINKING_SAS, input),
     completeLinkingQr: (input: { sessionId: string }) =>
       invoke(SYNC_CHANNELS.COMPLETE_LINKING_QR, input)
   },
@@ -1456,8 +1420,7 @@ export const api = {
   // Device Management API
   syncDevices: {
     getDevices: () => invoke(SYNC_CHANNELS.GET_DEVICES),
-    removeDevice: (input: { deviceId: string }) =>
-      invoke(SYNC_CHANNELS.REMOVE_DEVICE, input),
+    removeDevice: (input: { deviceId: string }) => invoke(SYNC_CHANNELS.REMOVE_DEVICE, input),
     renameDevice: (input: { deviceId: string; newName: string }) =>
       invoke(SYNC_CHANNELS.RENAME_DEVICE, input)
   },
@@ -1511,8 +1474,7 @@ export const api = {
       deletedAt?: number
       metadata?: Record<string, unknown>
     }) => invoke(SYNC_CHANNELS.VERIFY_SIGNATURE, input),
-    rotateKeys: (input: { confirm: boolean }) =>
-      invoke(SYNC_CHANNELS.ROTATE_KEYS, input),
+    rotateKeys: (input: { confirm: boolean }) => invoke(SYNC_CHANNELS.ROTATE_KEYS, input),
     getRotationProgress: () => invoke(SYNC_CHANNELS.GET_ROTATION_PROGRESS)
   },
 
